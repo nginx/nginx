@@ -10,8 +10,8 @@
 #include <ngx_event_write.h>
 
 
-ngx_chain_t *ngx_event_writer(ngx_connection_t *cn, ngx_chain_t *in,
-                              off_t flush)
+ngx_chain_t *ngx_event_write(ngx_connection_t *cn, ngx_chain_t *in,
+                             off_t flush)
 {
     int           rc;
     char         *last;
@@ -34,25 +34,21 @@ ngx_chain_t *ngx_event_writer(ngx_connection_t *cn, ngx_chain_t *in,
         header->nelts = 0;
         trailer->nelts = 0;
 
-        if (ch->hunk->type & (NGX_HUNK_IN_MEMORY | NGX_HUNK_FLUSH)) {
+        if (ch->hunk->type & NGX_HUNK_IN_MEMORY) {
             last = NULL;
             iov = NULL;
 
-            while (ch
-                   && (ch->hunk->type & (NGX_HUNK_IN_MEMORY | NGX_HUNK_FLUSH)))
+            while (ch && (ch->hunk->type & NGX_HUNK_IN_MEMORY))
             {
-                if (ch->hunk->type & NGX_HUNK_FLUSH)
-                    continue;
-
-                if (last == ch->hunk->pos.p) {
-                    iov->ngx_iov_len += ch->hunk->last.p - ch->hunk->pos.p;
+                if (last == ch->hunk->pos.mem) {
+                    iov->ngx_iov_len += ch->hunk->last.mem - ch->hunk->pos.mem;
 
                 } else {
                     ngx_test_null(iov, ngx_push_array(header),
                                   (ngx_chain_t *) -1);
-                    iov->ngx_iov_base = ch->hunk->pos.p;
-                    iov->ngx_iov_len = ch->hunk->last.p - ch->hunk->pos.p;
-                    last = ch->hunk->last.p;
+                    iov->ngx_iov_base = ch->hunk->pos.mem;
+                    iov->ngx_iov_len = ch->hunk->last.mem - ch->hunk->pos.mem;
+                    last = ch->hunk->last.mem;
                 }
 
                 ch = ch->next;
@@ -70,25 +66,23 @@ ngx_chain_t *ngx_event_writer(ngx_connection_t *cn, ngx_chain_t *in,
                            &sent);
         } else {
 #endif
-            if (ch && ch->hunk->type & (NGX_HUNK_IN_MEMORY | NGX_HUNK_FLUSH)) {
+            if (ch && ch->hunk->type & NGX_HUNK_IN_MEMORY) {
                 last = NULL;
                 iov = NULL;
 
-                while (ch
-                   && (ch->hunk->type & (NGX_HUNK_IN_MEMORY | NGX_HUNK_FLUSH)))
-                {
-                    if (ch->hunk->type & NGX_HUNK_FLUSH)
-                        continue;
+                while (ch && (ch->hunk->type & NGX_HUNK_IN_MEMORY)) {
 
-                    if (last == ch->hunk->pos.p) {
-                        iov->ngx_iov_len += ch->hunk->last.p - ch->hunk->pos.p;
+                    if (last == ch->hunk->pos.mem) {
+                        iov->ngx_iov_len +=
+                                        ch->hunk->last.mem - ch->hunk->pos.mem;
 
                     } else {
                         ngx_test_null(iov, ngx_push_array(trailer),
                                       (ngx_chain_t *) -1);
-                        iov->ngx_iov_base = ch->hunk->pos.p;
-                        iov->ngx_iov_len = ch->hunk->last.p - ch->hunk->pos.p;
-                        last = ch->hunk->last.p;
+                        iov->ngx_iov_base = ch->hunk->pos.mem;
+                        iov->ngx_iov_len =
+                                        ch->hunk->last.mem - ch->hunk->pos.mem;
+                        last = ch->hunk->last.mem;
                     }
 
                     ch = ch->next;
@@ -98,8 +92,8 @@ ngx_chain_t *ngx_event_writer(ngx_connection_t *cn, ngx_chain_t *in,
             if (file) {
                 rc = ngx_sendfile(cn->fd,
                                   (ngx_iovec_t *) header->elts, header->nelts,
-                                  file->fd, file->pos.f,
-                                          (size_t) (file->last.f - file->pos.f),
+                                  file->fd, file->pos.file,
+                                  (size_t) (file->last.file - file->pos.file),
                                   (ngx_iovec_t *) trailer->elts, trailer->nelts,
                                   &sent, cn->log);
             } else {
@@ -117,17 +111,18 @@ ngx_chain_t *ngx_event_writer(ngx_connection_t *cn, ngx_chain_t *in,
         flush -= sent;
 
         for (ch = in; ch && !(ch->hunk->type & NGX_HUNK_LAST); ch = ch->next) {
-            if (sent >= ch->hunk->last.f - ch->hunk->pos.f) {
-                sent -= ch->hunk->last.f - ch->hunk->pos.f;
-                ch->hunk->last.f = ch->hunk->pos.f;
+            if (sent >= ch->hunk->last.file - ch->hunk->pos.file) {
+                sent -= ch->hunk->last.file - ch->hunk->pos.file;
+                ch->hunk->last.file = ch->hunk->pos.file;
                     continue;
             }
 
-            ch->hunk->pos.f += sent;
+            ch->hunk->pos.file += sent;
             break;
         }
 
-    } while (flush > 0);
+    /* flush hunks if threaded state */
+    } while (cn->write->context && flush > 0);
 
     ngx_destroy_array(trailer);
     ngx_destroy_array(header);

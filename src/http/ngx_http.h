@@ -23,6 +23,13 @@
 
 
 typedef struct {
+    void *ctx;   /* STUB */
+} ngx_http_module_t;
+
+/* STUB */
+#define ngx_get_module_ctx(r, module)  (module)->ctx
+
+typedef struct {
     char *buff;
     char *pos;
     char *last;

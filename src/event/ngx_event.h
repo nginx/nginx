@@ -16,8 +16,8 @@ struct ngx_event_s {
     void            *context;
     char            *action;
 
-    ngx_event_t     *prev;     /* queue in select(), poll() */
-    ngx_event_t     *next;
+    ngx_event_t     *prev;     /* queue in select(), poll(), mutex(),        */
+    ngx_event_t     *next;     /*   aio_read(), aio_write()                  */
 
     int            (*timer_handler)(ngx_event_t *ev);
     ngx_event_t     *timer_prev;
@@ -52,7 +52,7 @@ struct ngx_event_s {
 #endif
 #if (HAVE_KQUEUE)
     unsigned         eof:1;
-    int              errno;
+    int              error;
 #endif
 };
 
@@ -70,12 +70,20 @@ typedef struct {
     int  (*add)(ngx_event_t *ev, int event, u_int flags);
     int  (*del)(ngx_event_t *ev, int event);
     int  (*process)(ngx_log_t *log);
-/*
     int  (*read)(ngx_event_t *ev, char *buf, size_t size);
+/*
     int  (*write)(ngx_event_t *ev, char *buf, size_t size);
 */
 } ngx_event_actions_t;
 
+/*
+
+NGX_LEVEL_EVENT (default)  select, poll, kqueue
+                                requires to read whole data
+NGX_ONESHOT_EVENT          kqueue
+NGX_CLEAR_EVENT            kqueue
+
+*/
 
 #if (HAVE_KQUEUE)
 
@@ -99,15 +107,21 @@ typedef struct {
 
 
 #if (USE_KQUEUE)
+
 #define ngx_init_events      ngx_kqueue_init
 #define ngx_process_events   ngx_kqueue_process_events
 #define ngx_add_event        ngx_kqueue_add_event
 #define ngx_del_event        ngx_kqueue_del_event
+#define ngx_event_recv       ngx_event_recv_core
+
 #else
+
 #define ngx_init_events     (ngx_event_init[ngx_event_type])
 #define ngx_process_events   ngx_event_actions.process
 #define ngx_add_event        ngx_event_actions.add
 #define ngx_del_event        ngx_event_actions.del
+#define ngx_event_recv       ngx_event_recv_core
+
 #endif
 
 

@@ -38,10 +38,7 @@ int ngx_http_init_connection(ngx_connection_t *c)
     ngx_event_t  *ev;
 
     ev = c->read;
-/*
     ev->event_handler = ngx_http_init_request;
-*/
-    ev->event_handler = NULL;
     ev->log->action = "reading client request line";
 
     ngx_log_debug(ev->log, "ngx_http_init_connection: entered");
@@ -62,8 +59,6 @@ int ngx_http_init_connection(ngx_connection_t *c)
 #endif
 }
 
-#if 0
-
 int ngx_http_init_request(ngx_event_t *ev)
 {
     ngx_connection_t   *c = (ngx_connection_t *) ev->data;
@@ -71,11 +66,13 @@ int ngx_http_init_request(ngx_event_t *ev)
 
     ngx_log_debug(ev->log, "ngx_http_init_request: entered");
 
+    ngx_test_null(c->pool, ngx_create_pool(16384, ev->log), -1);
     ngx_test_null(r, ngx_pcalloc(c->pool, sizeof(ngx_http_request_t)), -1);
 
     c->data = r;
     r->connection = c;
 
+    ngx_test_null(r->pool, ngx_create_pool(16384, ev->log), -1);
     ngx_test_null(r->buff, ngx_palloc(r->pool, sizeof(ngx_buff_t)), -1);
     ngx_test_null(r->buff->buff,
                   ngx_pcalloc(r->pool, sizeof(c->server->buff_size)), -1);
@@ -99,33 +96,15 @@ int ngx_http_process_request(ngx_event_t *ev)
 
     ngx_log_debug(ev->log, "http process request");
 
-    ngx_log_debug(ev->log, "http: eof:%d, avail:%d", ev->eof, ev->available);
+    n = ngx_event_recv(ev, r->buff->last, r->buff->end - r->buff->last);
 
-    if (ev->eof && ev->available == 0) {
-        if (ev->err_no)
-            ngx_log_error(NGX_LOG_ERR, ev->log, ev->err_no,
-                         "ngx_http_process_request: "
-                         "read failed while %s", ev->action);
+    if (n == -2)
+        return 0;
 
+    if (n == -1)
         return -1;
-    }
 
-    if ((n = read(c->fd, r->buff->last, r->buff->end - r->buff->last)) == -1) {
-
-        if (errno == NGX_EWOULDBLOCK) {
-            ngx_log_error(NGX_LOG_INFO, ev->log, errno,
-                         "ngx_http_process_request: "
-                         "EAGAIN while %s", ev->action);
-            return 0;
-        }
-
-        ngx_log_error(NGX_LOG_ERR, ev->log, errno,
-                     "ngx_http_process_request: "
-                     "read failed while %s", ev->action);
-        return -1;
-    }
-
-    ngx_log_debug(ev->log, "http read %d", n);
+    ngx_log_debug(ev->log, "http read %d" _ n);
 
     if (n == 0) {
         if (ev->unexpected_eof) {
@@ -137,8 +116,6 @@ int ngx_http_process_request(ngx_event_t *ev)
 
         return ngx_http_close_request(ev);
     }
-
-    n == r->buff->end - r->buff->last;
 
     if (!ev->read_discarded) {
         r->buff->last += n;
@@ -168,8 +145,8 @@ static int ngx_process_http_request_line(ngx_http_request_t *r)
 
     if ((n = ngx_read_http_request_line(r)) == 1) {
         *r->uri_end = '\0';
-        ngx_log_debug(r->connection->log, "HTTP: %d, %d, %s",
-                     r->method, r->http_version, r->uri_start);
+        ngx_log_debug(r->connection->log, "HTTP: %d, %d, %s" _
+                     r->method _ r->http_version _ r->uri_start);
         r->state_handler = ngx_process_http_request_header;
         r->connection->read->action = "reading client request headers";
     }
@@ -184,8 +161,8 @@ static int ngx_process_http_request_header(ngx_http_request_t *r)
     while ((n = ngx_read_http_header_line(r)) == 1) {
         *r->header_name_end = '\0';
         *r->header_end = '\0';
-        ngx_log_debug(r->connection->log, "HTTP header: '%s: %s'",
-                     r->header_name_start, r->header_start);
+        ngx_log_debug(r->connection->log, "HTTP header: '%s: %s'" _
+                     r->header_name_start _ r->header_start);
     }
 
     if (n != 2)
@@ -200,6 +177,13 @@ static int ngx_process_http_request_header(ngx_http_request_t *r)
 
     return ngx_process_http_request(r);
 }
+
+static int ngx_process_http_request(ngx_http_request_t *r)
+{
+    return -1;
+}
+
+#if 0
 
 static int ngx_process_http_request(ngx_http_request_t *r)
 {
@@ -258,6 +242,8 @@ static int ngx_process_http_request(ngx_http_request_t *r)
     return 0;
 }
 
+#endif
+
 static int ngx_http_close_request(ngx_event_t *ev)
 {
     ngx_connection_t *c = (ngx_connection_t *) ev->data;
@@ -269,5 +255,3 @@ static int ngx_http_close_request(ngx_event_t *ev)
 
     return ngx_event_close(ev);
 }
-
-#endif

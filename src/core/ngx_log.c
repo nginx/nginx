@@ -45,6 +45,7 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
             len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
                             " [%s] (%d)",
                             err_levels[level], err);
+        else
             len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
                             " [%s] (%X)",
                             err_levels[level], err);

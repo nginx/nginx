@@ -20,10 +20,11 @@ int ngx_http_index_handler(ngx_http_request_t *r)
                     ngx_get_module_loc_conf(r, &ngx_http_index_handler_module);
 
     index_len = (*(r->uri_end - 1) == '/') ? cf->max_index_len : 0;
-    name = ngx_palloc(r->pool, r->uri_end - r->uri_start + index_len
-                              + r->server->doc_root_len);
-    if (name == NULL)
-        return NGX_ERROR;
+
+    ngx_test_null(name,
+                  ngx_palloc(r->pool, r->uri_end - r->uri_start + index_len
+                                      + r->server->doc_root_len),
+                  NGX_HTTP_INTERNAL_SERVER_ERROR);
 
     loc = ngx_cpystrn(name, r->server->doc_root, r->server->doc_root_len);
     file = ngx_cpystrn(loc, r->uri_start, r->uri_end - r->uri_start + 1);
@@ -39,7 +40,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
             if (err == NGX_ENOENT)
                 return NGX_HTTP_NOT_FOUND;
             else
-                return NGX_ERROR;
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
         if (ngx_is_dir(r->stat)) {
