@@ -85,7 +85,7 @@ void ngx_time_init()
 
     ngx_gettimeofday(&tv);
 
-    ngx_start_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    ngx_start_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
     ngx_old_elapsed_msec = 0;
     ngx_elapsed_msec = 0;
 
