@@ -9,7 +9,7 @@
 
 #if (NGX_EVENT_COPY_FILTER)
 static int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p,
-                                                           ngx_chain_t *chain);
+                                             ngx_chain_t *chain);
 #endif
 
 
@@ -109,7 +109,7 @@ ngx_log_debug(p->log, "new hunk: %08X" _ chain->hunk);
 ngx_log_debug(p->log, "file hunk: %08X" _ chain->hunk _
               chain->hunk->end - chain->hunk->last);
 
-            /* if the hunks is not needed to be saved in a cache and
+            /* if the hunks are not needed to be saved in a cache and
                a downstream is ready then write the hunks to a downstream */
 
             } else if (p->cachable == 0 && p->downstream->write->ready) {
@@ -709,7 +709,7 @@ ngx_log_debug(p->log, "event proxy file hunk: %08X:%08X" _ h _ h->shadow);
 /* the copy input filter */
 
 static int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p,
-                                                            ngx_chain_t *chain)
+                                             ngx_chain_t *chain)
 {
     ngx_hunk_t   *h;
     ngx_chain_t  *entry, *temp;

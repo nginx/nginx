@@ -779,11 +779,24 @@ static void ngx_http_proxy_process_upstream_body(ngx_event_t *rev)
     ngx_log_debug(rev->log, "http proxy process upstream body");
 
     if (rev->timedout) {
-        ngx_http_proxy_next_upstream(p);
+        ngx_http_proxy_close_connection(p->upstream.connection);
+        p->upstream.connection = NULL;
         return;
     }
 
     ngx_event_proxy_read_upstream(p->event_proxy);
+
+    if (p->event_proxy->upstream_eof) {
+        ngx_http_proxy_close_connection(p->upstream.connection);
+        p->upstream.connection = NULL;
+        return;
+    }
+
+    if (p->event_proxy->upstream_error) {
+        ngx_http_proxy_close_connection(p->upstream.connection);
+        p->upstream.connection = NULL;
+        return;
+    }
 
     return;
 }
@@ -1042,6 +1055,8 @@ static void ngx_http_proxy_close_connection(ngx_connection_t *c)
         ngx_del_timer(c->write);
         c->write->timer_set = 0;
     }
+
+    /* TODO: move connection to the connection pool */
 
     if (ngx_del_conn) {
         ngx_del_conn(c);

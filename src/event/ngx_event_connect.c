@@ -161,6 +161,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     rev->data = wev->data = c;
     c->read = rev;
     c->write = wev;
+    wev->write = 1;
 
     rev->instance = wev->instance = !instance;
 
