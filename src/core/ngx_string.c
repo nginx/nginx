@@ -63,6 +63,46 @@ ngx_int_t ngx_atoi(u_char *line, size_t n)
 
     if (value < 0) {
         return NGX_ERROR;
+
+    } else {
+        return value;
+    }
+}
+
+
+ngx_int_t ngx_hextoi(u_char *line, size_t n)
+{
+    u_char     ch;
+    ngx_int_t  value;
+
+    if (n == 0) {
+        return NGX_ERROR;
+    }
+
+    for (value = 0; n--; line++) {
+        ch = *line;
+
+        if (ch >= '0' && ch <= '9') {
+            value = value * 16 + (ch - '0');
+            continue;
+        }
+
+        if (ch >= 'A' && ch <= 'F') {
+            value = value * 16 + (*line - 'A');
+            continue;
+        }
+
+        if (ch >= 'a' && ch <= 'f') {
+            value = value * 16 + (*line - 'a');
+            continue;
+        }
+
+        return NGX_ERROR;
+    }
+
+    if (value < 0) {
+        return NGX_ERROR;
+
     } else {
         return value;
     }

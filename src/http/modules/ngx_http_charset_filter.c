@@ -5,11 +5,29 @@
 
 
 typedef struct {
+    ngx_str_t   from;
+    ngx_str_t   to;
+    char       *table;
+} ngx_http_charset_table_t;
+
+
+typedef struct {
+    ngx_array_t  tables;                 /* ngx_http_charset_table_t */
+} ngx_http_charset_main_conf_t;
+
+
+typedef struct {
     ngx_str_t  default_charset;
 } ngx_http_charset_loc_conf_t;
 
 
+static char *ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd,
+                                   void *conf);
+static char *ngx_charset_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf);
+
 static int ngx_http_charset_filter_init(ngx_cycle_t *cycle);
+
+static void *ngx_http_charset_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_charset_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_charset_merge_loc_conf(ngx_conf_t *cf,
                                              void *parent, void *child);
@@ -17,21 +35,28 @@ static char *ngx_http_charset_merge_loc_conf(ngx_conf_t *cf,
 
 static ngx_command_t  ngx_http_charset_filter_commands[] = {
 
-    {ngx_string("default_charset"),
-     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_str_slot,
-     NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_charset_loc_conf_t, default_charset),
-     NULL},
+    { ngx_string("charset_map"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE2,
+      ngx_charset_map_block,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
 
-    ngx_null_command
+    { ngx_string("default_charset"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_charset_loc_conf_t, default_charset),
+      NULL },
+
+      ngx_null_command
 };
 
 
 static ngx_http_module_t  ngx_http_charset_filter_module_ctx = {
     NULL,                                  /* pre conf */
 
-    NULL,                                  /* create main configuration */
+    ngx_http_charset_create_main_conf,     /* create main configuration */
     NULL,                                  /* init main configuration */
 
     NULL,                                  /* create server configuration */
@@ -106,6 +131,58 @@ static int ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #endif
 
 
+static char *ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd,
+                                   void *conf)
+{
+    char        *rv;
+    ngx_conf_t   pcf;
+
+    pcf = *cf;
+    cf->handler = ngx_charset_map;
+    cf->handler_conf = conf;
+    rv = ngx_conf_parse(cf, NULL);
+    *cf = pcf;
+
+    return rv;
+}
+
+
+static char *ngx_charset_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
+{
+    ngx_http_charset_main_conf_t  *mcf = conf;
+
+    ngx_int_t   src, dst;
+    ngx_str_t  *args;
+
+    if (cf->args->nelts != 2) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameters number");
+        return NGX_CONF_ERROR;
+    }
+
+    args = cf->args->elts;
+
+    src = ngx_hextoi(args[0].data, args[0].len);
+    if (src == NGX_ERROR || src > 255) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid value \"%s\"", args[0].data);
+        return NGX_CONF_ERROR;
+    }
+
+    dst = ngx_hextoi(args[1].data, args[1].len);
+    if (dst == NGX_ERROR || dst > 255) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid value \"%s\"", args[1].data);
+        return NGX_CONF_ERROR;
+    }
+
+#if 0
+    mcf->tables[src] = dst;
+#endif
+
+    return NGX_CONF_OK;
+}
+
+
 static int ngx_http_charset_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
@@ -117,6 +194,21 @@ static int ngx_http_charset_filter_init(ngx_cycle_t *cycle)
 #endif
 
     return NGX_OK;
+}
+
+
+static void *ngx_http_charset_create_main_conf(ngx_conf_t *cf)
+{
+    ngx_http_charset_main_conf_t  *mcf;
+
+    ngx_test_null(mcf,
+                  ngx_pcalloc(cf->pool, sizeof(ngx_http_charset_main_conf_t)),
+                  NGX_CONF_ERROR);
+
+    ngx_init_array(mcf->tables, cf->pool, 10, sizeof(ngx_http_charset_table_t),
+                   NGX_CONF_ERROR);
+
+    return mcf;
 }
 
 
