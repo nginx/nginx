@@ -48,10 +48,17 @@ if [ $ngx_fmt = no ]; then
     exit 1
 fi
 
-fmtX="%0`expr 2 \* ${ngx_ptr_bytes}`"
+
+if [ $ngx_ptr_bytes = 4 ]; then
+    fmtX="%0`expr 2 \* $ngx_ptr_bytes`"
+else
+    fmtX="%$ngx_ptr_bytes'
+fi
+
 ngx_fmt=`echo $ngx_fmt | sed -e "s/d/X/" -e "s/^%/$fmtX/"`
 
 echo "$comma \"${ngx_fmt}\" used"
+
 
 cat << END >> $NGX_AUTO_CONFIG_H
 
