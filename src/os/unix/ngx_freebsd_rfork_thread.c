@@ -11,6 +11,8 @@ extern int   __isthreaded;
 
 typedef int  ngx_tid_t;
 
+#define NGX_MAX_THREADS  10
+
 
 static inline int ngx_gettid();
 
@@ -23,22 +25,18 @@ static int          last_thread;
 
 static ngx_log_t   *log;
 
-static ngx_tid_t   *tids;
+static ngx_tid_t    tids[NGX_MAX_THREADS];
 
 static int          red_zone = 4096;
 
 
 /* the thread-safe errno */
 
-static int   errno0;   /* the main thread's errno */
-static int  *errnos;
+static int   errnos[NGX_MAX_THREADS];
 
 int *__error()
 {
-    int  tid;
-
-    tid = ngx_gettid();
-    return tid ? &errnos[tid] : &errno0;
+    return &errnos[ngx_gettid()];
 }
 
 
@@ -56,8 +54,10 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg)
     }
 
 #if 0
-    id = rfork_thread(RFPROC|RFMEM|RFFDG|RFCFDG, stack_top, func, arg);
-#elif 1
+    id = rfork(RFFDG|RFCFDG);
+#elif 0
+    id = rfork_thread(RFFDG|RFCFDG, stack_top, func, arg);
+#elif 0
     id = rfork_thread(RFPROC|RFMEM, stack_top, func, arg);
 #else
     id = rfork_thread(RFPROC|RFTHREAD|RFMEM, stack_top, func, arg);
@@ -129,12 +129,6 @@ printf("stack: %08X\n", last_stack);
     stack_size = size + red_zone;
     stacks_end = stacks_start + n * stack_size;
 
-    /* create the thread errno array */
-    ngx_test_null(errnos, ngx_calloc(n * sizeof(int), log), NGX_ERROR);
-
-    /* create the thread tid array */
-    ngx_test_null(tids, ngx_calloc(n * sizeof(ngx_tid_t), log), NGX_ERROR);
-
     tids[0] = ngx_getpid();
     last_thread = 1;
 
@@ -154,5 +148,5 @@ static inline int ngx_gettid()
 
     __asm__ ("mov %%esp, %0" : "=q" (sp));
 
-    return (sp > stacks_end) ? 0: ((sp - stacks_start) / stack_size  + 1);
+    return (sp > stacks_end) ? 0 : ((sp - stacks_start) / stack_size  + 1);
 }
