@@ -9,6 +9,8 @@
 
 
 static void ngx_http_proxy_send_request(ngx_event_t *wev);
+static void ngx_http_proxy_close_connection(ngx_connection_t *c);
+static ngx_chain_t *ngx_http_proxy_copy_request_hunks(ngx_http_proxy_ctx_t *p);
 static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf);
 
 
@@ -66,15 +68,37 @@ int ngx_http_proxy_handler(ngx_http_request_t *r)
     p->action = "connecting to upstream";
     p->request = r;
     p->upstream.peers = p->lcf->peers;
+    p->upstream.tries = p->lcf->peers->number;
 
-    /* TODO: change log->data, how to restore log->data ? */
+    /* TODO: log->data would be changed, how to restore log->data ? */
     p->upstream.log = r->connection->log;
 
-    do {
+    for ( ;; ) {
         rc = ngx_event_connect_peer(&p->upstream);
 
         if (rc == NGX_ERROR) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        if (rc == NGX_CONNECT_ERROR) {
+            ngx_event_connect_peer_failed(&p->upstream);
+
+            if (p->upstream.tries == 0) {
+                return NGX_HTTP_BAD_GATEWAY;
+            }
+        }
+
+        p->upstream.connection->data = p;
+        p->upstream.connection->write->event_handler =
+                                                   ngx_http_proxy_send_request;
+        p->upstream.connection->read->event_handler = /* STUB */ NULL;
+
+        if (p->upstream.tries > 1) {
+            ngx_test_null(p->work_request_hunks,
+                          ngx_http_proxy_copy_request_hunks(p),
+                          NGX_HTTP_INTERNAL_SERVER_ERROR);
+        } else {
+            p->work_request_hunks = p->request_hunks;
         }
 
         if (rc == NGX_OK) {
@@ -82,17 +106,12 @@ int ngx_http_proxy_handler(ngx_http_request_t *r)
             return NGX_OK;
         }
 
-        if (rc == NGX_AGAIN) {
-            /* TODO */ return NGX_OK;
-        }
+        /* rc == NGX_AGAIN */
 
-        /* rc == NGX_CONNECT_FAILED */
+        /* timer */
 
-        ngx_event_connect_peer_failed(&p->upstream);
-
-    } while (p->upstream.tries);
-
-    return NGX_HTTP_BAD_GATEWAY;
+        /* TODO */ return NGX_OK;
+    }
 }
 
 
@@ -112,31 +131,8 @@ static void ngx_http_proxy_send_request(ngx_event_t *wev)
         if (chain == (ngx_chain_t *) -1) {
             ngx_http_proxy_close_connection(c);
 
-            do {
+            for ( ;; ) {
                 rc = ngx_event_connect_peer(&p->upstream);
-
-                if (rc == NGX_OK) {
-
-                    /* copy chain and hunks p->request_hunks
-                       from p->initial_request_hunks */
-
-                    p->request_hunks = NULL;
-                    if (ngx_chain_add_copy(r->pool, p->request_hunks,
-                                        p->initial_request_hunks) == NGX_ERROR)
-                    {
-                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-                    }
-
-                    for (ce = p->request_hunks; ce; ce = ce->next) {
-                        ce->hunk->pos = ce->hunk->start;
-                    }
-
-
-                    c = p->connection;
-                    wev = c->write;
-
-                    break;
-                }
 
                 if (rc == NGX_ERROR) {
                     ngx_http_finalize_request(p->request,
@@ -144,20 +140,36 @@ static void ngx_http_proxy_send_request(ngx_event_t *wev)
                     return;
                 }
 
-                if (rc == NGX_AGAIN) {
-                    return;
+                if (rc == NGX_CONNECT_ERROR) {
+                    ngx_event_connect_peer_failed(&p->upstream);
+
+                    if (p->upstream.tries == 0) {
+                        return;
+                    }
                 }
 
-                /* rc == NGX_CONNECT_FAILED */
+                if (p->upstream.tries > 1) {
+                    ngx_test_null(p->work_request_hunks,
+                                  ngx_http_proxy_copy_request_hunks(p),
+                                  /* void */);
+                } else {
+                    p->work_request_hunks = p->request_hunks;
+                }
 
-                ngx_event_connect_peer_failed(&p->upstream);
+                if (rc == NGX_OK) {
+                    c = p->connection;
+                    wev = c->write;
 
-            } while (p->upstream.tries);
+                    break;
+                }
 
-            return;
+                /* rc == NGX_AGAIN */
+                return;
+
+            }
 
         } else {
-            p->request_hunks = chain;
+            p->work_request_hunks = chain;
 
             ngx_del_timer(wev);
 
@@ -173,6 +185,37 @@ static void ngx_http_proxy_send_request(ngx_event_t *wev)
             return;
         }
     }
+}
+
+static void ngx_http_proxy_close_connection(ngx_connection_t *c)
+{
+    return;
+}
+
+static ngx_chain_t *ngx_http_proxy_copy_request_hunks(ngx_http_proxy_ctx_t *p)
+{
+    ngx_chain_t  *ce, *te, *fe, **le;
+
+#if (NGX_SUPPRESS_WARN)
+    le = NULL;
+#endif
+
+    ngx_test_null(fe, ngx_alloc_chain_entry(p->request->pool), NULL);
+
+    te = fe;
+
+    for (ce = p->request_hunks; ce; ce = ce->next) {
+        te->hunk = ce->hunk;
+        *le = te;
+        le = &te->next;
+        ce->hunk->pos = ce->hunk->start;
+
+        ngx_test_null(te, ngx_alloc_chain_entry(p->request->pool), NULL);
+    }
+
+    *le = NULL;
+
+    return fe;
 }
 
 

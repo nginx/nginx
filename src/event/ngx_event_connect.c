@@ -1,4 +1,7 @@
 
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_event.h>
 #include <ngx_event_connect.h>
 
 
@@ -6,10 +9,14 @@
 
 int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
+    int                  rc, instance;
     time_t               now;
-    ngx_peer_r          *peer;
+    ngx_err_t            err;
+    ngx_peer_t          *peer;
     ngx_socket_t         s;
-    struct sockaddr_in  *addr;
+    ngx_event_t         *rev, *wev;
+    ngx_connection_t    *c;
+    struct sockaddr_in   addr;
 
     now = ngx_time();
 
@@ -31,6 +38,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     pc->cached = 0;
     pc->connection = NULL;
 
+    peer = &pc->peers->peers[0];
+
     if (pc->peers->number > 1) {
 
         /* there are several peers */
@@ -41,7 +50,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
             pc->cur_peer = pc->peers->current++;
 
-            if (cp->peers->current >= cp->peers->number) {
+            if (pc->peers->current >= pc->peers->number) {
                 pc->peers->current = 0;
             }
         }
@@ -69,6 +78,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
                 if (pc->tries == 0) {
                     /* ngx_unlock_mutex(pc->peers->mutex); */
+
                     return NGX_ERROR;
                 }
             }
@@ -77,7 +87,9 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     /* ngx_unlock_mutex(pc->peers->mutex); */
 
+#if 0
     pc->addr_port_text = peer->addr_port_text;
+#endif
 
     s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP, 0);
 
@@ -163,13 +175,11 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     } 
 
-    addr = p->sockaddr;
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = peer->addr;
+    addr.sin_port = htons(peer->port);
 
-    addr->sin_family = AF_INET;
-    addr->sin_addr.s_addr = peer->addr;
-    addr->sin_port = htons(peer->port);
-
-    rc = connect(s, p->sockaddr, sizeof(struct sockaddr_in));
+    rc = connect(s, (struct sockaddr *) &addr, sizeof(struct sockaddr_in));
 
     if (rc == -1) {
         err = ngx_socket_errno;
@@ -185,9 +195,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     }
 
-    c->data = ???;
-
-
+    return NGX_OK;
 }
 
 

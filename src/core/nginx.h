@@ -2,7 +2,7 @@
 #define _NGINX_H_INCLUDED_
 
 
-#define  NGINX_VER   "nginx/0.0.1"
+#define  NGINX_VER   "ng:nx/0.0.1"
 #define  NGINX_CONF  "nginx.conf"
 
 

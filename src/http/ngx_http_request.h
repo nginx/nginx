@@ -121,6 +121,7 @@ typedef struct {
     ngx_table_elt_t  *location;
     ngx_table_elt_t  *last_modified;
     ngx_table_elt_t  *content_range;
+    ngx_table_elt_t  *accept_ranges;
 
     ngx_str_t         charset;
     ngx_array_t       ranges;

@@ -113,11 +113,12 @@ int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **ch, ngx_chain_t *in)
         ngx_test_null(ce, ngx_alloc_chain_entry(pool), NGX_ERROR);
 
         ce->hunk = in->hunk;
-        ce->next = NULL;
         *le = ce;
         le = &ce->next;
         in = in->next;
     }
+
+    *le = NULL;
 
     return NGX_OK;
 }

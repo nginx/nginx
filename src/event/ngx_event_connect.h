@@ -7,6 +7,9 @@
 #include <ngx_event.h>
 
 
+#define NGX_CONNECT_ERROR   -10
+
+
 typedef struct {
     u_int32_t          addr;
     ngx_str_t          host;
@@ -19,15 +22,16 @@ typedef struct {
 
 
 typedef struct {
-    int                current;
-    int                number;
-    int                max_fails;
-    int                fail_timeout;
+    int                 current;
+    int                 number;
+    int                 max_fails;
+    int                 fail_timeout;
+    int                 last_cached;
 
- /* ngx_mutex_t       *mutex; */
-    ngx_connection_t  *cached;
+ /* ngx_mutex_t        *mutex; */
+    ngx_connection_t  **cached;
 
-    ngx_peer_t         peers[1];
+    ngx_peer_t          peers[1];
 } ngx_peers_t;
 
 
@@ -44,6 +48,10 @@ typedef struct {
 
     unsigned           cached:1;
 } ngx_peer_connection_t;
+
+
+int ngx_event_connect_peer(ngx_peer_connection_t *pc);
+void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc);
 
 
 #endif /* _NGX_EVENT_CONNECT_H_INCLUDED_ */

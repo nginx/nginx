@@ -57,8 +57,7 @@ static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
         r->headers_out.content_length = -1;
         r->headers_out.content_type->key.len = 0;
         r->headers_out.content_type = NULL;
-
-        /* TODO: delete "Accept-Ranges" header
+        r->headers_out.accept_ranges->key.len = 0;
     }
 
     return next_header_filter(r);

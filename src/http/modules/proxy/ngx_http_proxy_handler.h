@@ -26,6 +26,7 @@ struct ngx_http_proxy_ctx_s {
 
     ngx_http_proxy_loc_conf_t  *lcf;
 
+    ngx_chain_t                *work_request_hunks;
     ngx_chain_t                *request_hunks;
 
     char                       *action;

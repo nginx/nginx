@@ -173,7 +173,7 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
 
 static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    int                    rc, zin, zout;
+    int                    rc, wbits, mem_level, zin, zout;
     struct gztrailer      *trailer;
     ngx_hunk_t            *h;
     ngx_chain_t           *ce;
@@ -189,14 +189,27 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     conf = ngx_http_get_module_loc_conf(r, ngx_http_gzip_filter_module);
 
     if (ctx->alloc == NULL) {
+        wbits = MAX_WBITS;
+        mem_level = MAX_MEM_LEVEL - 1;
+
+        if (ctx->length > 0) {
+
+            /* the actual zlib window size is smaller by 262 bytes */
+
+            while (ctx->length < ((1 << (wbits - 1)) - 262)) {
+                wbits--;
+                mem_level--;
+            }
+        }
+
 #if 0
         ngx_test_null(ctx->alloc, ngx_alloc(200K, r->log), NGX_ERROR);
 #else
         ctx->alloc = (void *) ~NULL;
 #endif
+
         rc = deflateInit2(&ctx->zstream, /**/ 1, Z_DEFLATED,
-                          /**/ -MAX_WBITS, /**/ MAX_MEM_LEVEL - 1,
-                          Z_DEFAULT_STRATEGY);
+                          -wbits, mem_level, Z_DEFAULT_STRATEGY);
 
         if (rc != Z_OK) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
@@ -244,7 +257,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ctx->in_hunk = ctx->in->hunk;
                 ctx->in = ctx->in->next;
 
-                ctx->zstream.next_in = ctx->in_hunk->pos;
+                ctx->zstream.next_in = (unsigned char *) ctx->in_hunk->pos;
                 ctx->zstream.avail_in = ctx->in_hunk->last - ctx->in_hunk->pos;
 
                 if (ctx->in_hunk->type & NGX_HUNK_LAST) {
@@ -283,7 +296,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     break;
                 }
 
-                ctx->zstream.next_out = ctx->out_hunk->pos;
+                ctx->zstream.next_out = (unsigned char *) ctx->out_hunk->pos;
                 ctx->zstream.avail_out = conf->hunk_size;
             }
 
@@ -302,7 +315,7 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
               ctx->zstream.next_in _ ctx->zstream.next_out _
               ctx->zstream.avail_in _ ctx->zstream.avail_out _ rc);
 
-            ctx->in_hunk->pos = ctx->zstream.next_in;
+            ctx->in_hunk->pos = (char *) ctx->zstream.next_in;
 
             if (ctx->zstream.avail_out == 0) {
                 ctx->out_hunk->last += conf->hunk_size;
@@ -313,7 +326,7 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
                 ctx->redo = 1;
 
             } else {
-                ctx->out_hunk->last = ctx->zstream.next_out;
+                ctx->out_hunk->last = (char *) ctx->zstream.next_out;
                 ctx->redo = 0;
 
                 if (ctx->flush == Z_SYNC_FLUSH) {
@@ -378,10 +391,11 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
 
                     ctx->zstream.avail_in = 0;
                     ctx->zstream.avail_out = 0;
-                    ngx_http_delete_ctx(r, ngx_http_gzip_filter_module);
 #if 0
-                    ngx_free();
+                    ngx_free(ctx->alloc);
 #endif
+                    ngx_http_delete_ctx(r, ngx_http_gzip_filter_module);
+
                     break;
 
                 } else if (conf->no_buffer && ctx->in == NULL) {
