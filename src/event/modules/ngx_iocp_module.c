@@ -105,7 +105,7 @@ static int ngx_iocp_init(ngx_cycle_t *cycle)
 
     ngx_event_actions = ngx_iocp_module_ctx.actions;
 
-    ngx_event_flags = NGX_HAVE_AIO_EVENT|NGX_HAVE_IOCP_EVENT;
+    ngx_event_flags = NGX_USE_AIO_EVENT|NGX_USE_IOCP_EVENT;
 
     return NGX_OK;
 }

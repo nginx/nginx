@@ -24,9 +24,6 @@ struct ngx_event_s {
     void            *data;
     void           (*event_handler)(ngx_event_t *ev);
 
-#if 0
-    int            (*close_handler)(ngx_event_t *ev);
-#endif
     void            *context;
     char            *action;
 
@@ -35,9 +32,6 @@ struct ngx_event_s {
     ngx_event_t     *prev;     /* queue in mutex(), aio_read(), aio_write()  */
     ngx_event_t     *next;     /*                                            */
 
-#if 0
-    int            (*timer_handler)(ngx_event_t *ev);
-#endif
     ngx_event_t     *timer_prev;
     ngx_event_t     *timer_next;
 
@@ -61,17 +55,26 @@ struct ngx_event_s {
 #endif
     unsigned         write:1;
 
-    unsigned         instance:1;  /* used to detect stale events in kqueue,
-                                     rt signals and epoll */
+    /* used to detect stale events in kqueue, rt signals and epoll */
+    unsigned         instance:1;
 
+    /*
+     * event was passed or would be passed to a kernel;
+     * the posted aio operation.
+     */
     unsigned         active:1;
+
+    /* ready event; the complete aio operation */
     unsigned         ready:1;
+
     unsigned         timedout:1;
-    unsigned         blocked:1;
     unsigned         timer_set:1;
+
+#if 1
+    unsigned         blocked:1;
+#endif
     unsigned         delayed:1;
 
-    unsigned         process:1;
     unsigned         read_discarded:1;
 
     unsigned         ignore_econnreset:1;
@@ -156,50 +159,68 @@ typedef struct {
 } ngx_event_actions_t;
 
 
-/* The event filter requires to read/write the whole data -
-   select, poll, /dev/poll, kqueue. */
-#define NGX_HAVE_LEVEL_EVENT    0x00000001
+/*
+ * The event filter requires to read/write the whole data -
+ * select, poll, /dev/poll, kqueue.
+ */
+#define NGX_USE_LEVEL_EVENT    0x00000001
 
-/* The event filter is deleted after a notification without an additional
-   syscall - select, poll, kqueue.  */
-#define NGX_HAVE_ONESHOT_EVENT  0x00000002
+/*
+ * The event filter is deleted after a notification without an additional
+ * syscall - select, poll, kqueue.
+ */
+#define NGX_USE_ONESHOT_EVENT  0x00000002
 
-/* The event filter notifies only the changes and an initial level - kqueue */
-#define NGX_HAVE_CLEAR_EVENT    0x00000004
+/*
+ *  The event filter notifies only the changes and an initial level - kqueue.
+ */
+#define NGX_USE_CLEAR_EVENT    0x00000004
 
-/* The event filter has kqueue features - the eof flag, errno,
-   available data, etc */
-#define NGX_HAVE_KQUEUE_EVENT   0x00000008
+/*
+ * The event filter has kqueue features - the eof flag, errno,
+ * available data, etc
+ */
+#define NGX_HAVE_KQUEUE_EVENT  0x00000008
 
-/* The event filter supports low water mark - kqueue's NOTE_LOWAT.
-   kqueue in FreeBSD 4.1-4.2 has no NOTE_LOWAT so we need a separate flag */
-#define NGX_HAVE_LOWAT_EVENT    0x00000010
+/*
+ * The event filter supports low water mark - kqueue's NOTE_LOWAT.
+ * kqueue in FreeBSD 4.1-4.2 has no NOTE_LOWAT so we need a separate flag.
+ */
+#define NGX_HAVE_LOWAT_EVENT   0x00000010
 
-/* The event filter notifies only the changes (the edges)
-   but not an initial level - epoll */
-#define NGX_HAVE_EDGE_EVENT     0x00000020
+/*
+ * The event filter notifies only the changes (the edges)
+ * but not an initial level - epoll.
+ */
+#define NGX_USE_EDGE_EVENT     0x00000020
 
-/* No need to add or delete the event filters - rt signals */
-#define NGX_HAVE_SIGIO_EVENT    0x00000040
+/*
+ * No need to add or delete the event filters - rt signals.
+ */
+#define NGX_USE_SIGIO_EVENT    0x00000040
 
-/* No need to add or delete the event filters - overlapped, aio_read, aioread */
-#define NGX_HAVE_AIO_EVENT      0x00000080
+/*
+ * No need to add or delete the event filters - overlapped, aio_read,
+ * aioread, io_submit.
+ */
+#define NGX_USE_AIO_EVENT      0x00000080
 
-/* Need to add socket or handle only once - i/o completion port.
-   It also requires HAVE_AIO_EVENT and NGX_HAVE_AIO_EVENT to be set */
-#define NGX_HAVE_IOCP_EVENT     0x00000100
+/*
+ * Need to add socket or handle only once - i/o completion port.
+ * It also requires HAVE_AIO_EVENT and NGX_HAVE_AIO_EVENT to be set.
+ */
+#define NGX_USE_IOCP_EVENT     0x00000100
 
 
-#define NGX_USE_LEVEL_EVENT     0x00010000
-#define NGX_USE_AIO_EVENT       0x00020000
 
-
-/* Event filter is deleted before closing file.
-   Has no meaning for select, poll, epoll.
-
-   kqueue:     kqueue deletes event filters for file that closed
-               so we need only to delete filters in user-level batch array
-   /dev/poll:  we need to flush POLLREMOVE event before closing file */
+/*
+ * The event filter is deleted before the closing file.
+ * Has no meaning for select, poll, epoll.
+ *
+ * kqueue:     kqueue deletes event filters for file that closed
+ *             so we need only to delete filters in user-level batch array
+ * /dev/poll:  we need to flush POLLREMOVE event before closing file
+ */
 
 #define NGX_CLOSE_EVENT         1
 
@@ -209,10 +230,12 @@ typedef struct {
 #define NGX_READ_EVENT     EVFILT_READ
 #define NGX_WRITE_EVENT    EVFILT_WRITE
 
-/* NGX_CLOSE_EVENT is the module flag and it would not go into a kernel
-   so we need to choose the value that would not interfere with any existent
-   and future flags. kqueue has such values - EV_FLAG1, EV_EOF and EV_ERROR.
-   They are reserved and cleared on a kernel entrance */
+/*
+ * NGX_CLOSE_EVENT is the module flag and it would not go into a kernel
+ * so we need to choose the value that would not interfere with any existent
+ * and future flags.  kqueue has such values - EV_FLAG1, EV_EOF and EV_ERROR.
+ * They are reserved and cleared on a kernel entrance.
+ */
 #undef  NGX_CLOSE_EVENT
 #define NGX_CLOSE_EVENT    EV_FLAG1
 
@@ -383,14 +406,14 @@ void ngx_worker(ngx_cycle_t *cycle);
 
 ngx_inline static int ngx_handle_read_event(ngx_event_t *rev)
 {
-    if (ngx_event_flags & (NGX_HAVE_AIO_EVENT|NGX_HAVE_EDGE_EVENT)) {
+    if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT)) {
 
         /* aio, iocp, epoll */
 
         return NGX_OK;
     }
 
-    if (ngx_event_flags & NGX_HAVE_CLEAR_EVENT) {
+    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
         /* kqueue */
 
@@ -426,16 +449,41 @@ ngx_inline static int ngx_handle_read_event(ngx_event_t *rev)
 }
 
 
+ngx_inline static int ngx_handle_level_read_event(ngx_event_t *rev)
+{
+    if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
+        if (!rev->active && !rev->ready) {
+            if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT)
+                                                                == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
+
+        if (rev->active && rev->ready) {
+            if (ngx_del_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
 ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, int lowat)
 {
-    if (ngx_event_flags & (NGX_HAVE_AIO_EVENT|NGX_HAVE_EDGE_EVENT)) {
+    if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT)) {
 
         /* aio, iocp, epoll */
 
         return NGX_OK;
     }
 
-    if (ngx_event_flags & NGX_HAVE_CLEAR_EVENT) {
+    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
         /* kqueue */
 
@@ -477,6 +525,30 @@ ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, int lowat)
     return NGX_OK;
 }
 
+
+ngx_inline static int ngx_handle_level_write_event(ngx_event_t *wev)
+{
+    if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
+        if (!wev->active && !wev->ready) {
+            if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT)
+                                                                == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
+
+        if (wev->active && wev->ready) {
+            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
+    }
+
+    return NGX_OK;
+}
 
 
 /* ***************************** */

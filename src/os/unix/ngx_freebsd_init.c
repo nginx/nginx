@@ -19,8 +19,13 @@ ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
     ngx_readv_chain,
     NULL,
+#if (HAVE_FREEBSD_SENDFILE)
     ngx_freebsd_sendfile_chain,
     NGX_HAVE_SENDFILE|NGX_HAVE_ZEROCOPY
+#else
+    ngx_writev_chain,
+    NULL
+#endif
 };
 
 

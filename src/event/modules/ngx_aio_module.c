@@ -68,7 +68,7 @@ static int ngx_aio_init(ngx_cycle_t *cycle)
 
     ngx_io = ngx_os_aio;
 
-    ngx_event_flags = NGX_HAVE_AIO_EVENT|NGX_USE_AIO_EVENT;
+    ngx_event_flags = NGX_USE_AIO_EVENT;
     ngx_event_actions = ngx_aio_module_ctx.actions;
 
 

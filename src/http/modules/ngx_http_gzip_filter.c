@@ -23,7 +23,7 @@ typedef struct {
     ngx_hunk_t    *out_hunk;
     int            hunks;
 
-    int            length;
+    off_t          length;
     void          *alloc;
 
     unsigned       flush:4;
@@ -90,7 +90,9 @@ ngx_module_t  ngx_http_gzip_filter_module = {
 };
 
 
-static char gzheader[10] = { 0x1f, 0x8b, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3 };
+static char gzheader[10] = { 0x1f,
+                             (char) 0x8b,  /* suppress MSVC warning */
+                             Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3 };
 
 #if (HAVE_LITTLE_ENDIAN)
 
@@ -197,7 +199,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #if 0
         ngx_test_null(ctx->alloc, ngx_alloc(200K, r->log), NGX_ERROR);
 #else
-        ctx->alloc = (void *) ~NULL;
+        ctx->alloc = (void *) -1;
 #endif
 
         rc = deflateInit2(&ctx->zstream, /**/ 1, Z_DEFLATED,

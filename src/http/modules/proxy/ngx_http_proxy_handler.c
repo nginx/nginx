@@ -292,10 +292,8 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
 
                 if (chain) {
                     ngx_add_timer(c->write, p->lcf->send_timeout);
-                    c->write->timer_set = 1;
 
                 } else {
-                    c->write->timer_set = 0;
                     /* TODO: del event */
                 }
 
@@ -376,7 +374,6 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
             /* rc == NGX_AGAIN */
 
             ngx_add_timer(c->write, p->lcf->connect_timeout);
-            c->write->timer_set = 1;
 
             return;
         }
@@ -600,29 +597,11 @@ static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
                  p->header_in->end - p->header_in->last);
 
     if (n == NGX_AGAIN) {
-        if (rev->timer_set) {
-            ngx_del_timer(rev);
-        } else {
-            rev->timer_set = 1;
-        }
-
         ngx_add_timer(rev, p->lcf->read_timeout);
 
-        if (!rev->active) {
-            if (ngx_event_flags & NGX_HAVE_CLEAR_EVENT) {
-                /* kqueue */
-                event = NGX_CLEAR_EVENT;
-
-            } else {
-                /* select, poll, /dev/poll */
-                event = NGX_LEVEL_EVENT;
-            }
-
-            if (ngx_add_event(rev, NGX_READ_EVENT, event) == NGX_ERROR) {
-                ngx_http_proxy_finalize_request(p,
-                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
-                return NGX_ERROR;
-            }
+        if (ngx_handle_read_event(rev) == NGX_ERROR) {
+            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_ERROR;
         }
 
         return NGX_AGAIN;
@@ -1052,12 +1031,10 @@ static void ngx_http_proxy_close_connection(ngx_connection_t *c)
 
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
-        c->read->timer_set = 0;
     }
 
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
-        c->write->timer_set = 0;
     }
 
     /* TODO: move connection to the connection pool */

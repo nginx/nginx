@@ -224,7 +224,7 @@ ngx_log_debug(cycle->log, "TYPE: %d" _ ecf->use);
         /* required by poll */
         wev->index = NGX_INVALID_INDEX;
 
-        if ((ngx_event_flags & NGX_HAVE_IOCP_EVENT) == 0) {
+        if ((ngx_event_flags & NGX_USE_IOCP_EVENT) == 0) {
             if (s[i].remain) {
 
                 if (ngx_del_event(&cycle->old_cycle->read_events[fd],
@@ -238,7 +238,7 @@ ngx_log_debug(cycle->log, "TYPE: %d" _ ecf->use);
 
 #if (WIN32)
 
-        if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
+        if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
             rev->event_handler = &ngx_event_acceptex;
 
             if (ngx_add_event(rev, 0, NGX_IOCP_ACCEPT) == NGX_ERROR) {

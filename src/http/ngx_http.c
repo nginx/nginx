@@ -201,7 +201,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
 
-    /* init list of the handlers */
+    /* init lists of the handlers */
 
     ngx_init_array(cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
                    cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
@@ -217,10 +217,6 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                    NGX_CONF_ERROR);
 
     cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].type = NGX_OK;
-
-
-    ngx_init_array(cmcf->index_handlers, cf->cycle->pool,
-                   3, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
 
 
     /* create the lists of the ports, the addresses and the server names

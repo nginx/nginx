@@ -584,7 +584,7 @@ ngx_log_debug(p->log, "downstream level: %d" _ p->downstream_level);
 
 int ngx_event_proxy_write_chain_to_temp_file(ngx_event_proxy_t *p)
 {
-    int           i, rc, size;
+    int           rc, size;
     ngx_hunk_t   *h;
     ngx_chain_t  *entry, *next, *saved_in, *saved_read;
 

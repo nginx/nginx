@@ -109,9 +109,7 @@ static int ngx_poll_init(ngx_cycle_t *cycle)
 
     ngx_event_actions = ngx_poll_module_ctx.actions;
 
-    ngx_event_flags = NGX_HAVE_LEVEL_EVENT
-                      |NGX_HAVE_ONESHOT_EVENT
-                      |NGX_USE_LEVEL_EVENT;
+    ngx_event_flags = NGX_USE_LEVEL_EVENT|NGX_USE_ONESHOT_EVENT;
 
     return NGX_OK;
 }
@@ -364,7 +362,6 @@ static int ngx_poll_process_events(ngx_log_t *log)
         if (ev->oneshot) {
             if (ev->timer_set) {
                 ngx_del_timer(ev);
-                ev->timer_set = 0;
             }
 
             if (ev->write) {

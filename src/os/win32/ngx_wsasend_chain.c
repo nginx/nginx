@@ -65,8 +65,8 @@ non-block
 
     wev = c->write;
 
-    if (((ngx_event_flags & NGX_HAVE_AIO_EVENT) && !wev->ready)
-        || ((ngx_event_flags & NGX_HAVE_AIO_EVENT) == 0))
+    if (((ngx_event_flags & NGX_USE_AIO_EVENT) && !wev->ready)
+        || ((ngx_event_flags & NGX_USE_AIO_EVENT) == 0))
     {
         /*
          * WSABUFs must be 4-byte aligned otherwise
@@ -94,7 +94,7 @@ non-block
             }
         }
 
-        if (ngx_event_flags & NGX_HAVE_AIO_EVENT) {
+        if (ngx_event_flags & NGX_USE_AIO_EVENT) {
             ovlp = (LPWSAOVERLAPPED) &c->write->ovlp;
             ngx_memzero(ovlp, sizeof(WSAOVERLAPPED));
 
@@ -120,7 +120,7 @@ non-block
 
         } else {
 
-            if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
+            if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
 
                 /*
                  * If a socket was bound with I/O completion port then
@@ -133,7 +133,7 @@ non-block
         }
 
     } else {
-        if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
+        if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
             wev->ready = 0;
 
             /* the overlapped WSASend() completed */

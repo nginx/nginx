@@ -4,7 +4,7 @@
 #include <ngx_event.h>
 
 
-/* in multithreaded enviroment all timer operations must be
+/* TODO: in multithreaded enviroment all timer operations must be
    protected by the single mutex */
 
 
@@ -70,11 +70,18 @@ void ngx_event_timer_done(ngx_cycle_t *cycle)
 void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_event_t  *e, *queue;
+#if (NGX_DEBUG_EVENT)
+    ngx_connection_t *c;
+#endif
+
+    if (ev->timer_set) {
+        ngx_del_timer(ev);
+    }
 
 #if (NGX_DEBUG_EVENT)
-    ngx_connection_t *c = ev->data;
-    ngx_log_debug(ev->log, "set timer: %d:%d, slot: %d" _
-                  c->fd _ timer _ ngx_timer_cur_queue);
+    c = ev->data;
+    ngx_log_debug(ev->log, "set timer: %d:%d:%d, slot: %d" _
+                  c->fd _ ev->write _ timer _ ngx_timer_cur_queue);
 #endif
 
     if (ev->timer_next || ev->timer_prev) {
@@ -107,6 +114,10 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 
     e->timer_prev->timer_next = ev;
     e->timer_prev = ev;
+
+    ev->timer_set = 1;
+
+    return;
 }
 
 
@@ -129,9 +140,9 @@ int ngx_event_find_timer(void)
 
     if (timer == NGX_MAX_MSEC) {
         return 0;
-    } else {
-        return timer;
     }
+
+    return timer;
 }
 
 
@@ -189,6 +200,10 @@ void ngx_event_expire_timers(ngx_msec_t timer)
     while (ngx_temp_timer_queue.timer_next != &ngx_temp_timer_queue) {
         timer += ngx_temp_timer_queue.timer_next->timer_delta;
         ev = ngx_temp_timer_queue.timer_next;
+
+#if (NGX_DEBUG_EVENT)
+        ngx_log_debug(ev->log, "process temp timer queue");
+#endif
 
         ngx_del_timer(ev);
         ngx_add_timer(ev, timer);

@@ -1,6 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_event.h>
 
 
 ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
@@ -12,6 +13,10 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
     ngx_err_t        err;
     ngx_array_t      iovecs;
     ngx_chain_t     *ce;
+
+    if (!c->write->ready) {
+        return in;
+    }
 
     ngx_init_array(iovecs, c->pool, 10, sizeof(struct iovec), NGX_CHAIN_ERROR);
 

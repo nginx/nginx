@@ -22,6 +22,14 @@ static char msie_stub[] =
 ;
 
 
+static char error_301_page[] =
+"<html>" CRLF
+"<head><title>301 Moved Permanently</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>301 Moved Permanently</h1></center>" CRLF
+;
+
+
 static char error_302_page[] =
 "<html>" CRLF
 "<head><title>302 Found</title></head>" CRLF
@@ -111,8 +119,8 @@ static char error_504_page[] =
 
 
 static ngx_str_t error_pages[] = {
-    ngx_null_string,             /* 300 */
-    ngx_null_string,             /* 301 */
+ /* ngx_null_string, */          /* 300 */
+    ngx_string(error_301_page),
     ngx_string(error_302_page),
     ngx_null_string,             /* 303 */
 
@@ -224,7 +232,11 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     h->pos = error_tail;
     h->last = error_tail + sizeof(error_tail) - 1;
 
-    if (/* STUB: "msie_padding on/off" */ 1) {
+    if (/* STUB: "msie_padding on/off" */ 1
+        && r->http_version >= NGX_HTTP_VERSION_10
+        && error >= NGX_HTTP_BAD_REQUEST)
+    {
+
         if (ngx_http_output_filter(r, h) == NGX_ERROR) {
             return NGX_ERROR;
         }

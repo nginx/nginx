@@ -688,7 +688,6 @@ static void ngx_clean_old_cycles(ngx_event_t *ev)
         ngx_add_timer(ev, 30000);
 
     } else {
-        ngx_cleaner_event.timer_set = 0;
         ngx_destroy_pool(ngx_temp_pool);
         ngx_temp_pool = NULL;
         ngx_old_cycles.nelts = 0;

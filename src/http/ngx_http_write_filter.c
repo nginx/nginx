@@ -139,7 +139,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_OK;
     }
 
-    if (!r->connection->write->ready || r->connection->write->delayed) {
+    if (r->connection->write->delayed) {
         return NGX_AGAIN;
     }
 
@@ -161,10 +161,9 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (chain == NULL) {
         return NGX_OK;
-
-    } else {
-        return NGX_AGAIN;
     }
+
+    return NGX_AGAIN;
 }
 
 

@@ -109,6 +109,7 @@ ngx_log_debug(ev->log, "aio: aiocb: %08x" _ &ev->aiocb);
         return NGX_ERROR;
     }
 
+    ev->active = 0;
     ngx_log_debug(ev->log, "aio_write: %d" _ rc);
 
     return rc;

@@ -34,6 +34,10 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     ngx_hunk_t      *file;
     ngx_chain_t     *ce, *tail;
 
+    if (!c->write->ready) {
+        return in;
+    }
+
     do {
         ce = in;
         file = NULL;

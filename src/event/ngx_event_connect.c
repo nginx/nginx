@@ -202,7 +202,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     /* TODO: epoll, aio, iocp */
 
-    if (ngx_event_flags & NGX_HAVE_CLEAR_EVENT) {     /* kqueue */
+    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {     /* kqueue */
         event = NGX_CLEAR_EVENT;
 
     } else {                                  /* select, poll, /dev/poll */

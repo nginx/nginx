@@ -173,7 +173,7 @@ ngx_log_debug(cycle->log, "EV: %d" _ dpcf->events);
 
     ngx_event_actions = ngx_devpoll_module_ctx.actions;
 
-    ngx_event_flags = NGX_HAVE_LEVEL_EVENT|NGX_USE_LEVEL_EVENT;
+    ngx_event_flags = NGX_USE_LEVEL_EVENT;
 
     return NGX_OK;
 }

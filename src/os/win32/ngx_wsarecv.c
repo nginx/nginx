@@ -17,12 +17,12 @@ ssize_t ngx_wsarecv(ngx_connection_t *c, char *buf, size_t size)
     rev = c->read;
     bytes = 0;
 
-    if ((ngx_event_flags & NGX_HAVE_AIO_EVENT) && rev->ready) {
+    if ((ngx_event_flags & NGX_USE_AIO_EVENT) && rev->ready) {
         rev->ready = 0;
 
         /* the overlapped WSARecv() completed */
 
-        if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
+        if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
             if (rev->ovlp.error) {
                 ngx_log_error(NGX_LOG_ERR, c->log, rev->ovlp.error,
                               "WSARecv() failed");
@@ -44,7 +44,7 @@ ssize_t ngx_wsarecv(ngx_connection_t *c, char *buf, size_t size)
         return bytes;
     }
 
-    if (ngx_event_flags & NGX_HAVE_AIO_EVENT) {
+    if (ngx_event_flags & NGX_USE_AIO_EVENT) {
         ovlp = (LPWSAOVERLAPPED) &c->read->ovlp;
         ngx_memzero(ovlp, sizeof(WSAOVERLAPPED));
 
@@ -75,7 +75,7 @@ ssize_t ngx_wsarecv(ngx_connection_t *c, char *buf, size_t size)
         }
     }
 
-    if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
+    if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
 
         /*
          * If a socket was bound with I/O completion port

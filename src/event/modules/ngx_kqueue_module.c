@@ -151,10 +151,9 @@ ngx_log_debug(cycle->log, "EV: %d" _ kcf->events);
 
     ngx_event_actions = ngx_kqueue_module_ctx.actions;
 
-    ngx_event_flags = NGX_HAVE_LEVEL_EVENT
-                     |NGX_HAVE_ONESHOT_EVENT
+    ngx_event_flags = NGX_USE_ONESHOT_EVENT
 #if (HAVE_CLEAR_EVENT)
-                     |NGX_HAVE_CLEAR_EVENT
+                     |NGX_USE_CLEAR_EVENT
 #else
                      |NGX_USE_LEVEL_EVENT
 #endif
@@ -238,9 +237,11 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_OK;
     }
 
-    /* when the file descriptor is closed a kqueue automatically deletes
-       its filters so we do not need to delete explicity the event
-       before the closing the file descriptor */
+    /*
+     * when the file descriptor is closed a kqueue automatically deletes
+     * its filters so we do not need to delete explicity the event
+     * before the closing the file descriptor.
+     */
 
     if (flags & NGX_CLOSE_EVENT) {
         return NGX_OK;
@@ -427,13 +428,17 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
             if (ev->oneshot && ev->timer_set) {
                 ngx_del_timer(ev);
-                ev->timer_set = 0;
             }
 
-            /* fall through */
+            ev->ready = 1;
+
+            ev->event_handler(ev);
+
+            break;
 
         case EVFILT_AIO:
             ev->ready = 1;
+            ev->active = 0;
 
             ev->event_handler(ev);
 

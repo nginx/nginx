@@ -43,8 +43,11 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
         if (n >= 0) {
             if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
                 rev->available -= n;
-                if (rev->available == 0) {
+                if (rev->available <= 0) {
                     rev->ready = 0;
+                    if (rev->available < 0) {
+                        rev->available = 0;
+                    }
                 }
 
                 return n;

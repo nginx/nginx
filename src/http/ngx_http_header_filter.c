@@ -121,7 +121,10 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         } else if (r->headers_out.status < NGX_HTTP_BAD_REQUEST) {
             /* 3XX */
             status = r->headers_out.status - NGX_HTTP_MOVED_PERMANENTLY + 8;
-            r->header_only = 1;
+
+            if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED) {
+                r->header_only = 1;
+            }
 
         } else if (r->headers_out.status < NGX_HTTP_INTERNAL_SERVER_ERROR) {
             /* 4XX */

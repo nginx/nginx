@@ -8,11 +8,10 @@
 
 /* STUB */
 int ngx_http_static_handler(ngx_http_request_t *r);
+/**/
 
 static void ngx_http_phase_event_handler(ngx_event_t *rev);
 static void ngx_http_run_phases(ngx_http_request_t *r);
-
-static int ngx_http_core_index_handler(ngx_http_request_t *r);
 
 static void *ngx_http_core_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf);
@@ -221,9 +220,6 @@ void ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->write->event_handler = ngx_http_phase_event_handler;
 
-    r->phase = 0;
-    r->phase_handler = 0;
-
     ngx_http_run_phases(r);
 
     return;
@@ -237,6 +233,8 @@ static void ngx_http_phase_event_handler(ngx_event_t *ev)
 
     c = ev->data;
     r = c->data;
+
+    ngx_log_debug(ev->log, "phase event handler");
 
     ngx_http_run_phases(r);
 
@@ -262,6 +260,10 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
              r->phase_handler--)
         {
             rc = h[r->phase_handler](r);
+
+            if (r->closed) {
+                return;
+            }
 
             if (rc == NGX_DECLINED) {
                 continue;
@@ -370,8 +372,24 @@ int ngx_http_core_translate_handler(ngx_http_request_t *r)
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
     if (r->uri.data[r->uri.len - 1] == '/') {
-        r->content_handler = ngx_http_core_index_handler;
-        return NGX_OK;
+        if (r->path.data == NULL) {
+            ngx_test_null(r->path.data,
+                          ngx_palloc(r->pool,
+                                     clcf->doc_root.len + r->uri.len),
+                          NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+            ngx_cpystrn(ngx_cpymem(r->path.data, clcf->doc_root.data,
+                                   clcf->doc_root.len),
+                        r->uri.data, r->uri.len + 1);
+
+        } else {
+            r->path.data[r->path.len] = '\0';
+        }
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "directory index of \"%s\" is forbidden", r->path.data);
+
+        return NGX_HTTP_FORBIDDEN;
     }
 
     /* "+ 2" is for trailing '/' in redirect and '\0' */
@@ -388,9 +406,11 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
 
 #if (WIN9X)
 
-    /* There is no way to open a file or a directory in Win9X with
-       one syscall: Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag.
-       so we need to check its type before the opening */
+    /*
+     * There is no way to open a file or a directory in Win9X with
+     * one syscall: Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag.
+     * so we need to check its type before the opening
+     */
 
     r->file.info.dwFileAttributes = GetFileAttributes(r->file.name.data);
     if (r->file.info.dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
@@ -488,42 +508,6 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 }
 
 
-static int ngx_http_core_index_handler(ngx_http_request_t *r)
-{
-    int                         i, rc;
-    ngx_http_handler_pt        *h;
-    ngx_http_core_main_conf_t  *cmcf;
-
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-
-    h = cmcf->index_handlers.elts;
-    for (i = cmcf->index_handlers.nelts; i > 0; /* void */) {
-        rc = h[--i](r);
-
-        if (rc != NGX_DECLINED) {
-
-            if (rc == NGX_HTTP_NOT_FOUND) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, r->path_err,
-                              "\"%s\" is not found", r->path.data);
-            }
-
-            if (rc == NGX_HTTP_FORBIDDEN) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, r->path_err,
-                          "\"%s\" is forbidden", r->path.data);
-            }
-
-            return rc;
-        }
-    }
-
-    r->path.data[r->path.len] = '\0';
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "directory index of \"%s\" is forbidden", r->path.data);
-
-    return NGX_HTTP_FORBIDDEN;
-}
-
-
 int ngx_http_send_header(ngx_http_request_t *r)
 {
     return (*ngx_http_top_header_filter)(r);
@@ -591,10 +575,36 @@ int ngx_http_internal_redirect(ngx_http_request_t *r,
         }
     }
 
+    /* clear the modules contexts */
+    ngx_memzero(r->ctx, sizeof(void *) * ngx_http_max_module);
+
+    r->phase = 0;
+    r->phase_handler = 0;
+
     ngx_http_handler(r);
 
     return NGX_OK;
 }
+
+
+#if 1       /* STUB: test the delay http handler */
+
+int ngx_http_delay_handler(ngx_http_request_t *r)
+{
+    static int  on;
+
+    if (on++ == 0) {
+        ngx_log_debug(r->connection->log, "SET http delay");
+        ngx_add_timer(r->connection->write, 10000);
+        return NGX_AGAIN;
+    }
+
+    r->connection->write->timedout = 0;
+    ngx_log_debug(r->connection->log, "RESET http delay");
+    return NGX_DECLINED;
+}
+
+#endif
 
 
 static int ngx_http_core_init(ngx_cycle_t *cycle)
@@ -609,8 +619,14 @@ static int ngx_http_core_init(ngx_cycle_t *cycle)
     ngx_test_null(h, ngx_push_array(
                              &cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers),
                   NGX_ERROR);
-
     *h = ngx_http_core_translate_handler;
+
+#if 0
+    ngx_test_null(h, ngx_push_array(
+                             &cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers),
+                  NGX_ERROR);
+    *h = ngx_http_delay_handler;
+#endif
 
     return NGX_OK;
 }

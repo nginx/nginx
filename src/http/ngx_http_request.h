@@ -157,6 +157,8 @@ struct ngx_http_request_s {
     ngx_str_t            args;
     ngx_str_t            exten;
     ngx_str_t            unparsed_uri;
+    ngx_str_t            path;
+    int                  path_allocated;
 
     ngx_http_request_t  *main;
 
@@ -171,9 +173,6 @@ struct ngx_http_request_s {
     ngx_http_handler_pt  content_handler;
 
     char                *discarded_buffer;
-
-    ngx_str_t            path;
-    int                  path_err;
 
     /* URI is not started with '/' - "GET http://" */
     unsigned             unusual_uri:1;

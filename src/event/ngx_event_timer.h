@@ -19,7 +19,7 @@ ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
 {
 #if (NGX_DEBUG_EVENT)
     ngx_connection_t *c = ev->data;
-    ngx_log_debug(ev->log, "del timer: %d" _ c->fd);
+    ngx_log_debug(ev->log, "del timer: %d:%d" _ c->fd _ ev->write);
 #endif
 
     if (!ev->timer_next || !ev->timer_prev) {
@@ -40,6 +40,8 @@ ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
     if (ev->timer_prev) {
         ev->timer_prev = NULL;
     }
+
+    ev->timer_set = 0;
 }
 
 

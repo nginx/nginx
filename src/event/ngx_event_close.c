@@ -20,12 +20,10 @@ int ngx_event_close_connection(ngx_event_t *ev)
 
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
-        c->read->timer_set = 0;
     }
 
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
-        c->write->timer_set = 0;
     }
 
     ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
