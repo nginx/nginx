@@ -524,22 +524,22 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
 
 size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len)
 {
-    ngx_http_proxy_ctx_t *p = data;
+    ngx_http_proxy_log_ctx_t *ctx = data;
 
     ngx_http_request_t     *r;
     ngx_peer_connection_t  *peer;
 
-    r = p->request;
-    peer = &p->upstream->peer;
+    r = ctx->proxy->request;
+    peer = &ctx->proxy->upstream->peer;
 
     return ngx_snprintf(buf, len,
                         " while %s, client: %s, URL: %s, upstream: %s%s%s%s%s",
-                        p->action,
+                        ctx->proxy->action,
                         r->connection->addr_text.data,
                         r->unparsed_uri.data,
                         peer->peers->peers[peer->cur_peer].addr_port_text.data,
-                        p->lcf->upstream->uri.data,
-                        r->uri.data + p->lcf->upstream->location->len,
+                        ctx->proxy->lcf->upstream->uri.data,
+                        r->uri.data + ctx->proxy->lcf->upstream->location->len,
                         r->args.len ? "?" : "",
                         r->args.len ? r->args.data : "");
 }
@@ -934,7 +934,9 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     clcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
     lcf->upstream->location = &clcf->name;
     clcf->handler = ngx_http_proxy_handler;
-    clcf->auto_redirect = 1;
+    if (clcf->name.data[clcf->name.len - 1] == '/') {
+        clcf->auto_redirect = 1;
+    }
 
     return NULL;
 }

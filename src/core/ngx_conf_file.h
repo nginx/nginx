@@ -264,9 +264,9 @@ char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);
 
 
-extern ngx_module_t     *ngx_modules[];
-extern ngx_cycle_t      *ngx_cycle;
-extern ngx_array_t       ngx_old_cycles;
+extern ngx_module_t          *ngx_modules[];
+extern volatile ngx_cycle_t  *ngx_cycle;
+extern ngx_array_t            ngx_old_cycles;
 
 
 #endif /* _NGX_HTTP_CONF_FILE_H_INCLUDED_ */

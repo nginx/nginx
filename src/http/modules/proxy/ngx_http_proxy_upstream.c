@@ -210,10 +210,11 @@ static void ngx_http_proxy_init_upstream(void *data)
 {
     ngx_http_proxy_ctx_t *p = data;
 
-    ngx_chain_t             *cl;
-    ngx_http_request_t      *r;
-    ngx_output_chain_ctx_t  *octx;
-    ngx_chain_writer_ctx_t  *wctx;
+    ngx_chain_t               *cl;
+    ngx_http_request_t        *r;
+    ngx_output_chain_ctx_t    *octx;
+    ngx_chain_writer_ctx_t    *wctx;
+    ngx_http_proxy_log_ctx_t  *lctx;
 
     r = p->request;
 
@@ -252,10 +253,17 @@ ngx_log_debug(r->connection->log, "timer_set: %d" _
 
     r->request_hunks = cl;
 
+    if (!(lctx = ngx_pcalloc(r->pool, sizeof(ngx_http_proxy_log_ctx_t)))) {
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+    lctx->connection = r->connection->number;
+    lctx->proxy = p;
+
     p->upstream->peer.log = r->connection->log;
     p->saved_ctx = r->connection->log->data;
     p->saved_handler = r->connection->log->handler;
-    r->connection->log->data = p;
+    r->connection->log->data = lctx;
     r->connection->log->handler = ngx_http_proxy_log_error;
     p->action = "connecting to upstream";
 

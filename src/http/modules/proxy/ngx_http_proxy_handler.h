@@ -185,6 +185,12 @@ struct ngx_http_proxy_ctx_s {
 };
 
 
+typedef struct {
+    u_int                  connection;
+    ngx_http_proxy_ctx_t  *proxy;
+} ngx_http_proxy_log_ctx_t;
+
+
 #define NGX_HTTP_PROXY_PARSE_NO_HEADER       20
 
 

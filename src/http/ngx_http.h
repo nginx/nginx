@@ -16,9 +16,10 @@
 
 
 typedef struct {
-    char  *action;
-    char  *client;
-    char  *url;
+    u_int   connection;
+    char   *action;
+    char   *client;
+    char   *url;
 } ngx_http_log_ctx_t;
 
 
@@ -52,6 +53,7 @@ void ngx_http_handler(ngx_http_request_t *r);
 void ngx_http_finalize_request(ngx_http_request_t *r, int error);
 void ngx_http_writer(ngx_event_t *wev);
 
+void ngx_http_empty_handler(ngx_event_t *wev);
 
 int ngx_http_send_last(ngx_http_request_t *r);
 void ngx_http_close_request(ngx_http_request_t *r, int error);

@@ -30,9 +30,9 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
             ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
             return NGX_ERROR;
         }
-    }
 
-    file->sys_offset = offset;
+        file->sys_offset = offset;
+    }
 
     n = read(file->fd, buf, size);
 
@@ -77,9 +77,9 @@ ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
             ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
             return NGX_ERROR;
         }
-    }
 
-    file->sys_offset = offset;
+        file->sys_offset = offset;
+    }
 
     n = write(file->fd, buf, size);
 
@@ -151,14 +151,14 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
         return ngx_write_file(file, iov[0].iov_base, iov[0].iov_len, offset);
     }
 
-    if (file->offset != offset) {
+    if (file->sys_offset != offset) {
         if (lseek(file->fd, offset, SEEK_SET) == -1) {
             ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
             return NGX_ERROR;
         }
-    }
 
-    file->sys_offset = offset;
+        file->sys_offset = offset;
+    }
 
     n = writev(file->fd, io.elts, io.nelts);
 

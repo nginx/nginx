@@ -158,15 +158,23 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_memzero(rev, sizeof(ngx_event_t));
     ngx_memzero(wev, sizeof(ngx_event_t));
 
-    rev->index = wev->index = NGX_INVALID_INDEX;
-    rev->data = wev->data = c;
+    rev->index = NGX_INVALID_INDEX;
+    wev->index = NGX_INVALID_INDEX;
+
+    rev->data = c;
+    wev->data = c;
+
     c->read = rev;
     c->write = wev;
     wev->write = 1;
 
-    rev->instance = wev->instance = !instance;
+    rev->instance = !instance;
+    wev->instance = !instance;
 
-    rev->log = wev->log = c->log = pc->log;
+    c->log = pc->log;
+    rev->log = pc->log;
+    wev->log = pc->log;
+
     c->fd = s;
 
     pc->connection = c;

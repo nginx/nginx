@@ -13,8 +13,8 @@ void ngx_rotate_signal_handler(int signo);
 
 int ngx_posix_init(ngx_log_t *log)
 {
-    struct sigaction sa;
-    struct rlimit  rlmt;
+    struct rlimit     rlmt;
+    struct sigaction  sa;
 
     ngx_memzero(&sa, sizeof(struct sigaction));
     sa.sa_handler = SIG_IGN;
@@ -22,6 +22,15 @@ int ngx_posix_init(ngx_log_t *log)
     if (sigaction(SIGPIPE, &sa, NULL) == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "sigaction(SIGPIPE, SIG_IGN) failed");
+        return NGX_ERROR;
+    }
+
+    ngx_memzero(&sa, sizeof(struct sigaction));
+    sa.sa_handler = ngx_sigchld_handler;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "sigaction(SIGCHLD) failed");
         return NGX_ERROR;
     }
 

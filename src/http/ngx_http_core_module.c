@@ -355,7 +355,7 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
     }
 
     if (r->content_handler) {
-        r->connection->write->event_handler = ngx_http_writer;
+        r->connection->write->event_handler = ngx_http_empty_handler;
         rc = r->content_handler(r);
         ngx_http_finalize_request(r, rc);
         return;

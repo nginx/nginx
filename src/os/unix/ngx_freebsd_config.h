@@ -16,6 +16,7 @@
 #include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/sysctl.h>
+#include <sys/wait.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <netinet/in.h>

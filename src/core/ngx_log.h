@@ -66,7 +66,7 @@ typedef enum {
 typedef size_t  (*ngx_log_handler_pt) (void *ctx, char *buf, size_t len);
 
 
-typedef struct {
+struct ngx_log_s {
     int                  log_level;
     ngx_open_file_t     *file;
     void                *data;
@@ -78,7 +78,7 @@ typedef struct {
     char     *context;
 /* */
 #endif
-} ngx_log_t;
+};
 
 #define MAX_ERROR_STR	2048
 

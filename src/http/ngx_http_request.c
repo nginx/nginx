@@ -21,7 +21,6 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
 static void ngx_http_lingering_close_handler(ngx_event_t *ev);
-static void ngx_http_empty_handler(ngx_event_t *wev);
 
 static void ngx_http_client_error(ngx_http_request_t *r,
                                   int client_error, int error);
@@ -52,7 +51,7 @@ static void ngx_http_dummy(ngx_event_t *wev)
 void ngx_http_init_connection(ngx_connection_t *c)
 {
     ngx_event_t         *rev;
-    ngx_http_log_ctx_t  *lctx;
+    ngx_http_log_ctx_t  *ctx;
 
     c->addr_text.data = ngx_palloc(c->pool, c->listening->addr_text_max_len);
     if (c->addr_text.data == NULL) {
@@ -68,14 +67,15 @@ void ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
-    if (!(lctx = ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t)))) {
+    if (!(ctx = ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t)))) {
         ngx_http_close_connection(c);
         return;
     }
 
-    lctx->client = c->addr_text.data;
-    lctx->action = "reading client request line";
-    c->log->data = lctx;
+    ctx->connection = c->number;
+    ctx->client = c->addr_text.data;
+    ctx->action = "reading client request line";
+    c->log->data = ctx;
     c->log->handler = ngx_http_log_error;
 
     rev = c->read;
@@ -263,7 +263,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
     ssize_t                    n;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
-    ngx_http_log_ctx_t        *lctx;
+    ngx_http_log_ctx_t        *ctx;
     ngx_http_core_srv_conf_t  *cscf;
 
     c = rev->data;
@@ -414,9 +414,9 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             return;
         }
 
-        lctx = c->log->data;
-        lctx->action = "reading client request headers";
-        lctx->url = r->unparsed_uri.data;
+        ctx = c->log->data;
+        ctx->action = "reading client request headers";
+        ctx->url = r->unparsed_uri.data;
         /* TODO: ngx_init_table */
         r->headers_in.headers = ngx_create_table(r->pool, 20);
 
@@ -874,6 +874,8 @@ void ngx_http_writer(ngx_event_t *wev)
     ngx_http_request_t        *r;
     ngx_http_core_loc_conf_t  *clcf;
 
+    ngx_log_debug(wev->log, "http writer handler");
+
     c = wev->data;
     r = c->data;
 
@@ -1138,7 +1140,7 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
 {
     ssize_t              n;
     ngx_connection_t    *c;
-    ngx_http_log_ctx_t  *lctx;
+    ngx_http_log_ctx_t  *ctx;
 
     c = (ngx_connection_t *) rev->data;
 
@@ -1168,19 +1170,19 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
         return;
     }
 
-    lctx = (ngx_http_log_ctx_t *) rev->log->data;
+    ctx = (ngx_http_log_ctx_t *) rev->log->data;
     rev->log->handler = NULL;
 
     if (n == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, ngx_socket_errno,
-                      "client %s closed keepalive connection", lctx->client);
+                      "client %s closed keepalive connection", ctx->client);
         ngx_http_close_connection(c);
         return;
     }
 
     c->buffer->last += n;
     rev->log->handler = ngx_http_log_error;
-    lctx->action = "reading client request line";
+    ctx->action = "reading client request line";
 
     ngx_http_init_request(rev);
 }
@@ -1306,7 +1308,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
 }
 
 
-static void ngx_http_empty_handler(ngx_event_t *wev)
+void ngx_http_empty_handler(ngx_event_t *wev)
 {
     ngx_log_debug(wev->log, "http EMPTY handler");
 
@@ -1442,7 +1444,7 @@ static void ngx_http_client_error(ngx_http_request_t *r,
 
 static size_t ngx_http_log_error(void *data, char *buf, size_t len)
 {
-    ngx_http_log_ctx_t *ctx = (ngx_http_log_ctx_t *) data;
+    ngx_http_log_ctx_t *ctx = data;
 
     if (ctx->action && ctx->url) {
         return ngx_snprintf(buf, len, " while %s, client: %s, URL: %s",

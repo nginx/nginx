@@ -6,10 +6,10 @@
 #define  NGINX_CONF  "nginx.conf"
 
 
-extern int ngx_max_module;
-extern int ngx_connection_counter;
+extern int           ngx_max_module;
+extern u_int         ngx_connection_counter;
 
-extern ngx_module_t ngx_core_module;
+extern ngx_module_t  ngx_core_module;
 
 
 

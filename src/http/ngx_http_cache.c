@@ -107,7 +107,7 @@ int ngx_http_cache_open_file(ngx_http_cache_ctx_t *ctx, ngx_file_uniq_t uniq)
     ctx->date = h->date;
     ctx->length = h->length;
 
-    if (h->key_len > (size_t) (ctx->buf->last - ctx->buf->pos)) {
+    if (h->key_len > (size_t) (ctx->buf->end - ctx->buf->pos)) {
         ngx_log_error(NGX_LOG_ALERT, ctx->log, 0,
                       "cache file \"%s\" is probably invalid",
                       ctx->file.name.data);
