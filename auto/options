@@ -123,3 +123,9 @@ if [ $help = yes ]; then
 
     exit 1
 fi
+
+
+if [ ".$PLATFORM" = ".win32" -a $EVENT_POLL = YES ]; then
+    EVENT_POLL=NO
+    echo "$0: warning: --with-poll_module option is ignored for win32"
+fi

@@ -1449,7 +1449,8 @@ static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
-    ngx_uint_t            i;
+    int                   overwrite;
+    ngx_uint_t            i, n;
     ngx_str_t            *value;
     ngx_http_err_page_t  *err;
 
@@ -1463,8 +1464,35 @@ static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    for (i = 1; i < cf->args->nelts - 1; i++) {
-        ngx_test_null(err, ngx_push_array(lcf->error_pages), NGX_CONF_ERROR);
+    i = cf->args->nelts - 2;
+
+    if (value[i].data[0] == '=') {
+        if (i == 1) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid value \"%s\"", value[i].data);
+            return NGX_CONF_ERROR;
+        }
+
+        overwrite = ngx_atoi(&value[i].data[1], value[i].len - 1);
+
+        if (overwrite == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid value \"%s\"", value[i].data);
+            return NGX_CONF_ERROR;
+        }
+
+        n = 2;
+
+    } else {
+        overwrite = 0;
+        n = 1;
+    }
+
+    for (i = 1; i < cf->args->nelts - n; i++) {
+        if (!(err = ngx_push_array(lcf->error_pages))) {
+            return NGX_CONF_ERROR;
+        }
+
         err->code = ngx_atoi(value[i].data, value[i].len);
         if (err->code == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1479,6 +1507,7 @@ static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
+        err->overwrite = overwrite;
         err->uri = value[cf->args->nelts - 1];
     }
 

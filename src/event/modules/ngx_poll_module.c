@@ -304,23 +304,31 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
     ngx_old_elapsed_msec = ngx_elapsed_msec; 
 
 #if (NGX_DEBUG0)
-    for (i = 0; i < nevents; i++) {
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "poll: %d: fd:%d ev:%04X",
-                       i, event_list[i].fd, event_list[i].events);
+    if (cycle->log->log_level & NGX_LOG_DEBUG_ALL) {
+        for (i = 0; i < nevents; i++) {
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                           "poll: %d: fd:%d ev:%04X",
+                           i, event_list[i].fd, event_list[i].events);
+        }
     }
 #endif
 
     if (ngx_accept_mutex) {
-        if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
+        if (ngx_accept_disabled > 0) {
+            ngx_accept_disabled--;
 
-        if (ngx_accept_mutex_held == 0 
-            && (timer == NGX_TIMER_INFINITE || timer > ngx_accept_mutex_delay))
-        {
-            timer = ngx_accept_mutex_delay;
-            expire = 0;
+        } else {
+            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (ngx_accept_mutex_held == 0
+                && (timer == NGX_TIMER_INFINITE
+                    || timer > ngx_accept_mutex_delay))
+            { 
+                timer = ngx_accept_mutex_delay;
+                expire = 0;
+            } 
         }
     }
 
@@ -543,6 +551,11 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
 
         ev->event_handler(ev);
 
+        if (ngx_accept_disabled > 0) {
+            lock = 0;
+            break;
+        }
+
         ev = ev->next;
 
         if (ev == NULL) {
@@ -557,12 +570,12 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
 
     }
 
+    ngx_accept_mutex_unlock();
+    accept_events = NULL;
+
     if (lock) {
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }
-
-    ngx_accept_mutex_unlock();
-    accept_events = NULL;
 
     if (ready != 0) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "poll ready != events");

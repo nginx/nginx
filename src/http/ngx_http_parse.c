@@ -46,6 +46,10 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
         case sw_start:
             r->request_start = p - 1;
 
+            if (ch == CR || ch == LF) {
+                break;
+            }
+
             if (ch < 'A' || ch > 'Z') {
                 return NGX_HTTP_PARSE_INVALID_METHOD;
             }

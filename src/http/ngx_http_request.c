@@ -728,8 +728,10 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
             /* there was error while a header line parsing */
 
-#if (NGX_LOG_DEBUG)
-            if (rc == NGX_HTTP_PARSE_INVALID_HEADER) {
+#if (NGX_DEBUG)
+            if (rc == NGX_HTTP_PARSE_INVALID_HEADER
+                && (rev->log->log_level & NGX_LOG_DEBUG_HTTP))
+            {
                 u_char *p;
                 for (p = r->header_name_start;
                      p < r->header_in->last - 1;
@@ -1248,12 +1250,6 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     wev = c->write;
     wev->event_handler = ngx_http_empty_handler;
 
-
-    /* skip the tralling "\r\n" before the possible pipelined request */
-
-    while (h->pos < h->last && (*h->pos == CR || *h->pos == LF)) {
-        h->pos++;
-    }
 
     if (h->pos < h->last) {
 

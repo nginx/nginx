@@ -19,6 +19,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_socket_t         s;
     ngx_event_t         *rev, *wev;
     ngx_connection_t    *c;
+    ngx_event_conf_t    *ecf;
     struct sockaddr_in   addr;
 
     now = ngx_time();
@@ -102,6 +103,29 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
                       ngx_socket_n " failed");
         return NGX_ERROR;
     }
+
+
+    ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
+
+    /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
+
+    if ((ngx_uint_t) s >= ecf->connections) {
+
+        ngx_log_error(NGX_LOG_ALERT, pc->log, 0,
+                      "socket() returned socket #%d while only %d "
+                      "connections was configured, closing the socket",
+                      s, ecf->connections);
+
+        if (ngx_close_socket(s) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
+                          ngx_close_socket_n "failed");
+        }
+
+        /* TODO: sleep for some time */
+
+        return NGX_ERROR;
+    }
+
 
     if (pc->rcvbuf) {
         if (setsockopt(s, SOL_SOCKET, SO_RCVBUF,

@@ -214,7 +214,11 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         err_page = clcf->error_pages->elts;
         for (i = 0; i < clcf->error_pages->nelts; i++) {
             if (err_page[i].code == error) {
-                r->err_status = error;
+                if (err_page[i].overwrite) {
+                    r->err_status = err_page[i].overwrite;
+                } else {
+                    r->err_status = error;
+                }
                 r->err_ctx = r->ctx;
                 return ngx_http_internal_redirect(r, &err_page[i].uri, NULL);
             }

@@ -33,7 +33,6 @@ typedef FILETIME       ngx_mtime_t;
 
 
 #define ngx_msleep     Sleep
-#define ngx_localtime  GetLocalTime
 
 
 void ngx_gettimeofday(struct timeval *tp);

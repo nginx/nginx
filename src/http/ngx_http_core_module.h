@@ -106,6 +106,7 @@ typedef struct {
 
 typedef struct {
     int        code;
+    int        overwrite;
     ngx_str_t  uri;
 } ngx_http_err_page_t;
 

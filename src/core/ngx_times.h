@@ -17,12 +17,12 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp);
 #define ngx_time()   ngx_cached_time
 
 
-extern time_t            ngx_cached_time;
-extern ngx_str_t         ngx_cached_err_log_time;
-extern ngx_str_t         ngx_cached_http_time;
-extern ngx_str_t         ngx_cached_http_log_time;
+extern volatile time_t     ngx_cached_time;
+extern volatile ngx_str_t  ngx_cached_err_log_time;
+extern volatile ngx_str_t  ngx_cached_http_time;
+extern volatile ngx_str_t  ngx_cached_http_log_time;
 
-extern ngx_epoch_msec_t  ngx_start_msec;
+extern ngx_epoch_msec_t    ngx_start_msec;
 
 /*
  * msecs elapsed since ngx_start_msec in the current event cycle,

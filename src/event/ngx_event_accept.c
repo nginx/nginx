@@ -125,9 +125,13 @@ void ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
+
+        ngx_accept_disabled = (ngx_uint_t) s + NGX_ACCEPT_THRESHOLD
+                                                            - ecf->connections;
+
         /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
 
-        if ((unsigned) s >= (unsigned) ecf->connections) {
+        if ((ngx_uint_t) s >= ecf->connections) {
 
             ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
                           "accept() on %s returned socket #%d while "
@@ -139,8 +143,6 @@ void ngx_event_accept(ngx_event_t *ev)
                 ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
                               ngx_close_socket_n "failed");
             }
-
-            /* TODO: disable temporary accept() event */
 
             ngx_destroy_pool(pool);
             return;

@@ -313,7 +313,7 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
 {
     int                 events;
     ngx_int_t           i;
-    ngx_uint_t          j, lock, expire;
+    ngx_uint_t          j, lock, accept_lock, expire;
     size_t              n;
     ngx_msec_t          timer;
     ngx_err_t           err;
@@ -346,20 +346,29 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
         expire = 1;
     }
 
-    if (ngx_accept_mutex) {
-        if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
+    ngx_old_elapsed_msec = ngx_elapsed_msec;
+    accept_lock = 0;
 
-        if (ngx_accept_mutex_held == 0
-            && (timer == NGX_TIMER_INFINITE || timer > ngx_accept_mutex_delay))
-        {
-            timer = ngx_accept_mutex_delay;
-            expire = 0;
+    if (ngx_accept_mutex) {
+        if (ngx_accept_disabled > 0) {
+            ngx_accept_disabled--;
+
+        } else {
+            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+                return NGX_ERROR;
+            } 
+
+            if (ngx_accept_mutex_held) {
+                accept_lock = 1;
+
+            } else if (timer == NGX_TIMER_INFINITE
+                       || timer > ngx_accept_mutex_delay)
+            {
+                timer = ngx_accept_mutex_delay;
+                expire = 0;
+            }
         }
     }
-
-    ngx_old_elapsed_msec = ngx_elapsed_msec;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "devpoll timer: %d", timer);
@@ -493,10 +502,15 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
             } else if (!c->read->accept) {
                 ngx_post_event(c->read);
 
-            } else {
+            } else if (ngx_accept_disabled <= 0) {
                 ngx_mutex_unlock(ngx_posted_events_mutex);
 
                 c->read->event_handler(c->read);
+
+                if (ngx_accept_disabled > 0) { 
+                    ngx_accept_mutex_unlock();
+                    accept_lock = 0;
+                }
 
                 if (i + 1 == events) {
                     lock = 0;
@@ -504,18 +518,22 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
                 }
 
                 if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-                    ngx_accept_mutex_unlock();
+                    if (accept_lock) {
+                        ngx_accept_mutex_unlock();
+                    }
                     return NGX_ERROR;
                 }
             }
         }
     }
 
+    if (accept_lock) {
+        ngx_accept_mutex_unlock();
+    }
+
     if (lock) {
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }
-
-    ngx_accept_mutex_unlock();
 
     if (expire && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);

@@ -20,6 +20,7 @@ typedef struct tm      ngx_tm_t;
 #define ngx_tm_mon     tm_mon
 #define ngx_tm_year    tm_year
 #define ngx_tm_wday    tm_wday
+#define ngx_tm_gmtoff  tm_gmtoff
 
 #ifndef SOLARIS
 #define ngx_tm_zone    tm_zone
@@ -39,9 +40,6 @@ void ngx_localtime(ngx_tm_t *tm);
 
 #define ngx_gettimeofday(tp)  gettimeofday(tp, NULL);
 #define ngx_msleep(ms)        usleep(ms * 1000)
-
-
-extern time_t  ngx_cached_time;
 
 
 #endif /* _NGX_TIME_H_INCLUDED_ */

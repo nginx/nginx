@@ -381,7 +381,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 
 typedef struct {
-    ngx_int_t     connections;
+    ngx_uint_t    connections;
     ngx_int_t     use;
 
     ngx_flag_t    multi_accept;
@@ -413,6 +413,7 @@ extern ngx_atomic_t          *ngx_accept_mutex_ptr;
 extern ngx_atomic_t          *ngx_accept_mutex;
 extern ngx_uint_t             ngx_accept_mutex_held;
 extern ngx_msec_t             ngx_accept_mutex_delay;
+extern ngx_int_t              ngx_accept_disabled;
 
 
 #define ngx_accept_mutex_unlock()                                             \

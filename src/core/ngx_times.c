@@ -8,21 +8,27 @@ static ngx_mutex_t  *ngx_time_mutex;
 #endif
 
 
-time_t            ngx_cached_time;
-ngx_epoch_msec_t  ngx_elapsed_msec;
-ngx_epoch_msec_t  ngx_old_elapsed_msec;
-ngx_epoch_msec_t  ngx_start_msec;
+ngx_epoch_msec_t    ngx_elapsed_msec;
+ngx_epoch_msec_t    ngx_old_elapsed_msec;
+ngx_epoch_msec_t    ngx_start_msec;
 
-ngx_tm_t          ngx_cached_gmtime;
+volatile time_t     ngx_cached_time;
 
-static u_char     cached_err_log_time[] = "1970/09/28 12:00:00";
-ngx_str_t         ngx_cached_err_log_time;
+volatile ngx_str_t  ngx_cached_err_log_time;
+volatile ngx_str_t  ngx_cached_http_time;
+volatile ngx_str_t  ngx_cached_http_log_time;
 
-static u_char     cached_http_time[] = "Mon, 28 Sep 1970 06:00:00 GMT";
-ngx_str_t         ngx_cached_http_time;
+static ngx_tm_t     ngx_cached_gmtime;
+static ngx_int_t    ngx_gmtoff;
 
-static u_char     cached_http_log_time[] = "28/Sep/1970:12:00:00";
-ngx_str_t         ngx_cached_http_log_time;
+static u_char       cached_err_log_time0[] = "1970/09/28 12:00:00";
+static u_char       cached_err_log_time1[] = "1970/09/28 12:00:00";
+
+static u_char       cached_http_time0[] = "Mon, 28 Sep 1970 06:00:00 GMT";
+static u_char       cached_http_time1[] = "Mon, 28 Sep 1970 06:00:00 GMT";
+
+static u_char       cached_http_log_time0[] = "28/Sep/1970:12:00:00 +0600";
+static u_char       cached_http_log_time1[] = "28/Sep/1970:12:00:00 +0600";
 
 
 static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fir", "Sat" };
@@ -39,9 +45,15 @@ void ngx_time_init()
     ngx_cached_gmtime.ngx_tm_zone = "GMT";
 #endif
 
-    ngx_cached_err_log_time.data = cached_err_log_time;
-    ngx_cached_http_time.data = cached_http_time;
-    ngx_cached_http_log_time.data = cached_http_log_time;
+    ngx_cached_err_log_time.len = sizeof(cached_err_log_time0) - 1;
+    ngx_cached_err_log_time.data = cached_err_log_time0;
+
+    ngx_cached_http_time.len = sizeof(cached_http_time0) - 1;
+    ngx_cached_http_time.data = cached_http_time0;
+
+    ngx_cached_http_log_time.len = sizeof(cached_http_log_time0) - 1;
+    ngx_cached_http_log_time.data = cached_http_log_time0;
+
     ngx_cached_time = 0;
 
     ngx_gettimeofday(&tv);
@@ -49,6 +61,10 @@ void ngx_time_init()
     ngx_start_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000;
     ngx_old_elapsed_msec = 0;
     ngx_elapsed_msec = 0;
+
+#if !(WIN32)
+    tzset();
+#endif
 
     ngx_time_update(tv.tv_sec);
 }
@@ -70,7 +86,11 @@ ngx_int_t ngx_time_mutex_init(ngx_log_t *log)
 
 void ngx_time_update(time_t s)
 {
-    ngx_tm_t  tm;
+    char                   *p;
+    ngx_tm_t                tm;
+#if (WIN32)
+    TIME_ZONE_INFORMATION   tz;
+#endif
 
     if (ngx_cached_time == s) {
         return;
@@ -86,37 +106,88 @@ void ngx_time_update(time_t s)
 
     ngx_gmtime(ngx_cached_time, &ngx_cached_gmtime);
 
-    ngx_cached_http_time.len = ngx_snprintf((char *) ngx_cached_http_time.data,
-                                       sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
-                                       "%s, %02d %s %4d %02d:%02d:%02d GMT",
-                                       week[ngx_cached_gmtime.ngx_tm_wday],
-                                       ngx_cached_gmtime.ngx_tm_mday,
-                                       months[ngx_cached_gmtime.ngx_tm_mon - 1],
-                                       ngx_cached_gmtime.ngx_tm_year,
-                                       ngx_cached_gmtime.ngx_tm_hour,
-                                       ngx_cached_gmtime.ngx_tm_min,
-                                       ngx_cached_gmtime.ngx_tm_sec);
+
+    if (ngx_cached_http_time.data == cached_http_time0) {
+        p = cached_http_time1;
+    } else {
+        p = cached_http_time0;
+    }
+
+    ngx_snprintf(p, sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
+                 "%s, %02d %s %4d %02d:%02d:%02d GMT",
+                 week[ngx_cached_gmtime.ngx_tm_wday],
+                 ngx_cached_gmtime.ngx_tm_mday,
+                 months[ngx_cached_gmtime.ngx_tm_mon - 1],
+                 ngx_cached_gmtime.ngx_tm_year,
+                 ngx_cached_gmtime.ngx_tm_hour,
+                 ngx_cached_gmtime.ngx_tm_min,
+                 ngx_cached_gmtime.ngx_tm_sec);
+
+    ngx_cached_http_time.data = p;
+
+
+#if (WIN32)
+
+    /*
+     * we do not use GetLocalTime() because it does not return GMT offset,
+     * and our ngx_gmtime() is fast enough
+     */
+
+    if (GetTimeZoneInformation(&tz) != TIME_ZONE_ID_INVALID) {
+        ngx_gmtoff = - tz.Bias;
+    }
+
+    ngx_gmtime(ngx_cached_time + ngx_gmtoff * 60, &tm);
+
+#elif (SOLARIS)
+
+    ngx_gmtoff = (daylight) ? - altzone / 60: - timezone / 60;
+    ngx_gmtime(ngx_cached_time + ngx_gmtoff * 60, &tm);
+
+#elif defined __linux__
+
+    ngx_gmtoff = - timezone / 60 + daylight * 60;
+    ngx_gmtime(ngx_cached_time + ngx_gmtoff * 60, &tm);
+
+#else
 
     ngx_localtime(&tm);
+    ngx_gmtoff = tm.ngx_tm_gmtoff / 60;
 
-    ngx_cached_err_log_time.len = ngx_snprintf((char *)
-                                       ngx_cached_err_log_time.data,
-                                       sizeof("1970/09/28 12:00:00"),
-                                       "%4d/%02d/%02d %02d:%02d:%02d",
-                                       tm.ngx_tm_year, tm.ngx_tm_mon,
-                                       tm.ngx_tm_mday, tm.ngx_tm_hour,
-                                       tm.ngx_tm_min, tm.ngx_tm_sec);
+#endif
 
-    ngx_cached_http_log_time.len = ngx_snprintf((char *)
-                                       ngx_cached_http_log_time.data,
-                                       sizeof("28/Sep/1970:12:00:00"),
-                                       "%02d/%s/%d:%02d:%02d:%02d",
-                                       tm.ngx_tm_mday,
-                                       months[tm.ngx_tm_mon - 1],
-                                       tm.ngx_tm_year,
-                                       tm.ngx_tm_hour,
-                                       tm.ngx_tm_min,
-                                       tm.ngx_tm_sec);
+
+    if (ngx_cached_err_log_time.data == cached_err_log_time0) {
+        p = cached_err_log_time1;
+    } else {
+        p = cached_err_log_time0;
+    }
+
+    ngx_snprintf(p, sizeof("1970/09/28 12:00:00"),
+                 "%4d/%02d/%02d %02d:%02d:%02d",
+                 tm.ngx_tm_year, tm.ngx_tm_mon,
+                 tm.ngx_tm_mday, tm.ngx_tm_hour,
+                 tm.ngx_tm_min, tm.ngx_tm_sec);
+
+    ngx_cached_err_log_time.data = p;
+
+
+    if (ngx_cached_http_log_time.data == cached_http_log_time0) {
+        p = cached_http_log_time1;
+    } else {
+        p = cached_http_log_time0;
+    }
+
+    ngx_snprintf(p, sizeof("28/Sep/1970:12:00:00 +0600"),
+                 "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
+                 tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
+                 tm.ngx_tm_year, tm.ngx_tm_hour,
+                 tm.ngx_tm_min, tm.ngx_tm_sec,
+                 ngx_gmtoff < 0 ? '-' : '+',
+                 abs(ngx_gmtoff / 60), abs(ngx_gmtoff % 60));
+
+    ngx_cached_http_log_time.data = p;
+
 
 #if (NGX_THREADS)
     ngx_mutex_unlock(ngx_time_mutex);

@@ -221,15 +221,21 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
     expire = 1;
 
     if (ngx_accept_mutex) {
-        if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
+        if (ngx_accept_disabled > 0) {
+            ngx_accept_disabled--;
 
-        if (ngx_accept_mutex_held == 0
-            && (timer == NGX_TIMER_INFINITE || timer > ngx_accept_mutex_delay))
-        {
-            timer = ngx_accept_mutex_delay;
-            expire = 0;
+        } else {
+            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (ngx_accept_mutex_held == 0
+                && (timer == NGX_TIMER_INFINITE
+                    || timer > ngx_accept_mutex_delay))
+            {
+                timer = ngx_accept_mutex_delay;
+                expire = 0;
+            } 
         }
     }
 
@@ -299,7 +305,9 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
                     c->read->event_handler(c->read);
 
                 } else if (c->read->accept) {
-                    c->read->event_handler(c->read);
+                    if (ngx_accept_disabled > 0) {
+                        c->read->event_handler(c->read);
+                    }
 
                 } else {
                     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
@@ -366,7 +374,6 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
         ngx_accept_mutex_unlock();
         return NGX_ERROR;
     }
-
 
     ngx_accept_mutex_unlock();
 

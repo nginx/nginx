@@ -494,6 +494,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
 
         if (ngx_quit) {
+            ngx_quit = 0;
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
                           "gracefully shutting down");
             ngx_setproctitle("worker process is shutting down");
@@ -505,9 +506,9 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
 
         if (ngx_reopen) {
+            ngx_reopen = 0;
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");
             ngx_reopen_files(cycle, -1);
-            ngx_reopen = 0;
         }
     }
 }

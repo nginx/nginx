@@ -345,7 +345,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 {
     int                events;
     ngx_int_t          i, instance;
-    ngx_uint_t         lock, expire;
+    ngx_uint_t         lock, accept_lock, expire;
     ngx_err_t          err;
     ngx_msec_t         timer;
     ngx_event_t       *ev;
@@ -384,17 +384,26 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
     ngx_old_elapsed_msec = ngx_elapsed_msec;
     expire = 1;
+    accept_lock = 0;
 
     if (ngx_accept_mutex) {
-        if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
+        if (ngx_accept_disabled > 0) {
+            ngx_accept_disabled--;
 
-        if (ngx_accept_mutex_held == 0
-            && (timer == NGX_TIMER_INFINITE || timer > ngx_accept_mutex_delay))
-        {
-            timer = ngx_accept_mutex_delay;
-            expire = 0;
+        } else {
+            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (ngx_accept_mutex_held) {
+                accept_lock = 1;
+
+            } else if (timer == NGX_TIMER_INFINITE
+                       || timer > ngx_accept_mutex_delay)
+            {
+                timer = ngx_accept_mutex_delay;
+                expire = 0;
+            }
         }
     }
 
@@ -539,9 +548,18 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
             continue;
         }
 
+        if (ngx_accept_disabled > 0) {
+            continue;
+        }
+
         ngx_mutex_unlock(ngx_posted_events_mutex);
 
         ev->event_handler(ev);
+
+        if (ngx_accept_disabled > 0) {
+            ngx_accept_mutex_unlock();
+            accept_lock = 0;
+        }
 
         if (i + 1 == events) {
             lock = 0;
@@ -549,16 +567,20 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         }
 
         if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-            ngx_accept_mutex_unlock();
+            if (accept_lock) {
+                ngx_accept_mutex_unlock();
+            }
             return NGX_ERROR;
         }
+    }
+
+    if (accept_lock) {
+        ngx_accept_mutex_unlock();
     }
 
     if (lock) {
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }
-
-    ngx_accept_mutex_unlock();
 
     /* TODO: wake up worker thread */
 

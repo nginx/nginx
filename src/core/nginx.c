@@ -86,7 +86,7 @@ int main(int argc, char *const *argv)
     ngx_core_conf_t   *ccf;
     ngx_master_ctx_t   ctx;
 
-#if __FreeBSD__
+#if defined __FreeBSD__
     ngx_debug_init();
 #endif
 
