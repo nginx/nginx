@@ -40,6 +40,7 @@ ngx_event_module_t  ngx_aio_module_ctx = {
         NULL,                              /* disable an event */
         NULL,                              /* add an connection */
         ngx_aio_del_connection,            /* delete an connection */
+        NULL,                              /* process the changes */
         ngx_aio_process_events,            /* process the events */
         ngx_aio_init,                      /* init the events */
         ngx_aio_done                       /* done the events */
@@ -139,7 +140,7 @@ static int ngx_aio_del_connection(ngx_connection_t *c, u_int flags)
 
 static int ngx_aio_process_events(ngx_cycle_t *cycle)
 {
-    return ngx_kqueue_module_ctx.actions.process(cycle);
+    return ngx_kqueue_module_ctx.actions.process_events(cycle);
 }
 
 #endif /* HAVE_KQUEUE */

@@ -211,12 +211,14 @@ void ngx_event_accept(ngx_event_t *ev)
         winstance = wev->returned_instance;
 
 #if (NGX_THREADS)
-        if (*(rev->lock)) {
+
+        if (*(&c->lock)) {
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                           "spinlock event " PTR_FMT " in accept", rev);
-            ngx_spinlock(rev->lock, 1000);
-            ngx_unlock(rev->lock);
+                           "spinlock in accept, fd:%", s);
+            ngx_spinlock(&c->lock, 1000);
+            ngx_unlock(&c->lock);
         }
+
 #endif
 
         ngx_memzero(rev, sizeof(ngx_event_t));
@@ -290,6 +292,8 @@ void ngx_event_accept(ngx_event_t *ev)
 #if (NGX_THREADS)
         rev->lock = &c->lock;
         wev->lock = &c->lock;
+        rev->own_lock = &c->lock;
+        wev->own_lock = &c->lock;
 #endif
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,

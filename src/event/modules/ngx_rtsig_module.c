@@ -105,6 +105,7 @@ ngx_event_module_t  ngx_rtsig_module_ctx = {
         NULL,                            /* disable an event */
         ngx_rtsig_add_connection,        /* add an connection */
         ngx_rtsig_del_connection,        /* delete an connection */
+        NULL,                            /* process the changes */
         ngx_rtsig_process_events,        /* process the events */
         ngx_rtsig_init,                  /* init the events */
         ngx_rtsig_done,                  /* done the events */
@@ -118,7 +119,7 @@ ngx_module_t  ngx_rtsig_module = {
     ngx_rtsig_commands,                  /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
     NULL,                                  /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -492,7 +493,7 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
 
         overflow = 1;
         overflow_current = 0;
-        ngx_event_actions.process = ngx_rtsig_process_overflow;
+        ngx_event_actions.process_events = ngx_rtsig_process_overflow;
 
         return NGX_ERROR;
 
@@ -690,7 +691,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
                   "rt signal queue overflow recovered");
 
     overflow = 0;
-    ngx_event_actions.process = ngx_rtsig_process_events;
+    ngx_event_actions.process_events = ngx_rtsig_process_events;
 
     return NGX_OK;
 }

@@ -161,6 +161,7 @@ struct ngx_event_s {
 #endif
 
     ngx_atomic_t    *lock;
+    ngx_atomic_t    *own_lock;
 
 #endif
 
@@ -201,7 +202,9 @@ typedef struct {
     ngx_int_t  (*add_conn)(ngx_connection_t *c);
     ngx_int_t  (*del_conn)(ngx_connection_t *c, u_int flags);
 
-    ngx_int_t  (*process)(ngx_cycle_t *cycle);
+    ngx_int_t  (*process_changes)(ngx_cycle_t *cycle, ngx_uint_t try);
+    ngx_int_t  (*process_events)(ngx_cycle_t *cycle);
+
     ngx_int_t  (*init)(ngx_cycle_t *cycle);
     void       (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
@@ -378,7 +381,10 @@ extern ngx_event_actions_t   ngx_event_actions;
 #endif
 
 
-#define ngx_process_events   ngx_event_actions.process
+#define ngx_process_changes  ngx_event_actions.process_changes
+#define ngx_process_events   ngx_event_actions.process_events
+#define ngx_done_events      ngx_event_actions.done
+
 #define ngx_add_event        ngx_event_actions.add
 #define ngx_del_event        ngx_event_actions.del
 #define ngx_add_conn         ngx_event_actions.add_conn

@@ -184,12 +184,14 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     winstance = wev->returned_instance;
 
 #if (NGX_THREADS)
-    if (*(rev->lock)) {
+
+    if (*(&c->lock)) {
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, 0,
-                       "spinlock event " PTR_FMT " in connect", rev);
-        ngx_spinlock(rev->lock, 1000);
-        ngx_unlock(rev->lock);
+                       "spinlock in connect, fd:%d", s);
+        ngx_spinlock(&c->lock, 1000);
+        ngx_unlock(&c->lock);
     }
+
 #endif
 
     ngx_memzero(c, sizeof(ngx_connection_t));
@@ -240,6 +242,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 #if (NGX_THREADS)
     rev->lock = pc->lock;
     wev->lock = pc->lock;
+    rev->own_lock = &c->lock;
+    wev->own_lock = &c->lock;
 #endif
 
     if (ngx_add_conn) {

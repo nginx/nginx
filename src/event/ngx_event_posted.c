@@ -100,6 +100,18 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
                 continue;
             }
 
+            if (ev->lock != ev->own_lock) {
+                if (*(ev->own_lock)) {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                                  "the own lock of the posted event "
+                                  PTR_FMT " is busy", ev);
+                    ngx_unlock(ev->lock);
+                    ev = ev->next;
+                    continue;
+                }
+                *(ev->own_lock) = 1;
+            }
+
             ngx_delete_posted_event(ev);
 
             ev->locked = 1;
@@ -134,6 +146,10 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 
             if (ev->locked) {
                 ngx_unlock(ev->lock);
+
+                if (ev->lock != ev->own_lock) {
+                    ngx_unlock(ev->own_lock);
+                }
             }
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,

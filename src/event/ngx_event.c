@@ -150,7 +150,7 @@ ngx_event_module_t  ngx_event_core_module_ctx = {
     ngx_event_create_conf,                 /* create configuration */
     ngx_event_init_conf,                   /* init configuration */
 
-    { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
+    { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
 
@@ -281,6 +281,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
         rev[i].closed = 1;
 #if (NGX_THREADS)
         rev[i].lock = &c[i].lock;
+        rev[i].own_lock = &c[i].lock;
 #endif
     }
 
@@ -295,6 +296,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
         wev[i].closed = 1;
 #if (NGX_THREADS)
         wev[i].lock = &c[i].lock;
+        wev[i].own_lock = &c[i].lock;
 #endif
     }
 

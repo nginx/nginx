@@ -290,6 +290,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         return;
     }
 
+    c->single_connection = 1;
     r->connection = c;
     r->pipeline = c->pipeline;
     r->header_in = c->buffer;
@@ -1760,9 +1761,11 @@ void ngx_http_close_connection(ngx_connection_t *c)
         c->read->closed = 1;
         c->write->closed = 1;
 
-        ngx_unlock(&c->lock);
-        c->read->locked = 0;
-        c->write->locked = 0;
+        if (c->single_connection) {
+            ngx_unlock(&c->lock);
+            c->read->locked = 0;
+            c->write->locked = 0;
+        }
 
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }

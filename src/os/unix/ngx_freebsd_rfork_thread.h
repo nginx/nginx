@@ -85,7 +85,6 @@ static inline int ngx_gettid()
 
 
 ngx_tid_t ngx_thread_self();
-#define ngx_thread_main()   (ngx_gettid() == 0)
 
 
 #define ngx_mutex_trylock(m)  ngx_mutex_dolock(m, 1)

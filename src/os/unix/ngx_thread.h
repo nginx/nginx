@@ -21,7 +21,6 @@
 typedef pthread_t  ngx_tid_t;
 
 #define ngx_thread_self()   pthread_self()
-#define ngx_thread_main()   pthread_main_np()
 #define ngx_log_tid         (int) ngx_thread_self()
 
 #define TID_T_FMT           PTR_FMT

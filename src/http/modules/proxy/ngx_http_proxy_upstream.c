@@ -573,6 +573,8 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
 
     p->action = "connecting to upstream";
 
+    p->request->connection->single_connection = 0;
+
     rc = ngx_event_connect_peer(&p->upstream->peer);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, p->request->connection->log, 0,
