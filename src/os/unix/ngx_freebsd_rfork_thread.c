@@ -459,6 +459,11 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 
     /* free the mutex */
 
+#if 0
+    ngx_log_debug2(NGX_LOG_DEBUG_CORE, m->log, 0,
+                   "unlock mutex " PTR_FMT " lock:%X", m, old);
+#endif
+
     for ( ;; ) {
         lock = old & ~NGX_MUTEX_LOCK_BUSY;
 
@@ -524,33 +529,29 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 }
 
 
-ngx_cv_t *ngx_cv_init(ngx_log_t *log)
+ngx_cond_t *ngx_cond_init(ngx_log_t *log)
 {
-    ngx_cv_t     *cv;
-    u_short       val[2];
+    ngx_cond_t   *cv;
     union semun   op;
 
-    if (!(cv = ngx_alloc(sizeof(ngx_cv_t), log))) {
+    if (!(cv = ngx_alloc(sizeof(ngx_cond_t), log))) {
         return NULL;
     }
 
-    cv->mutex.lock = 0;
-    cv->mutex.log = log;
+    cv->log = log;
 
-    cv->mutex.semid = semget(IPC_PRIVATE, 2, SEM_R|SEM_A);
-    if (cv->mutex.semid == -1) {
+    cv->semid = semget(IPC_PRIVATE, 2, SEM_R|SEM_A);
+    if (cv->semid == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "semget() failed");
         return NULL;
     }
 
-    val[0] = 0;
-    val[1] = 0;
-    op.array = val;
+    op.val = 0;
 
-    if (semctl(cv->mutex.semid, 0, SETALL, op) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "semctl(SETALL) failed");
+    if (semctl(cv->semid, 0, SETVAL, op) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "semctl(SETVAL) failed");
 
-        if (semctl(cv->mutex.semid, 0, IPC_RMID) == -1) {
+        if (semctl(cv->semid, 0, IPC_RMID) == -1) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           "semctl(IPC_RMID) failed");
         }
@@ -562,10 +563,10 @@ ngx_cv_t *ngx_cv_init(ngx_log_t *log)
 }
 
 
-void ngx_cv_done(ngx_cv_t *cv)
+void ngx_cond_done(ngx_cond_t *cv)
 {
-    if (semctl(cv->mutex.semid, 0, IPC_RMID) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cv->mutex.log, ngx_errno,
+    if (semctl(cv->semid, 0, IPC_RMID) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,
                       "semctl(IPC_RMID) failed");
     }
 
@@ -573,56 +574,52 @@ void ngx_cv_done(ngx_cv_t *cv)
 }
 
 
-ngx_int_t ngx_cv_wait(ngx_cv_t *cv)
+ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
 {
-    struct sembuf  op[2];
+    struct sembuf  op;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->mutex.log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->log, 0,
                    "cv " PTR_FMT " wait", cv);
 
-    op[0].sem_num = 0;
-    op[0].sem_op = -1;
-    op[0].sem_flg = SEM_UNDO;
+    op.sem_num = 0;
+    op.sem_op = -1;
+    op.sem_flg = SEM_UNDO;
 
-    op[1].sem_num = 1;
-    op[1].sem_op = -1;
-    op[1].sem_flg = SEM_UNDO;
-
-    if (semop(cv->mutex.semid, op, 2) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cv->mutex.log, ngx_errno,
+    if (semop(cv->semid, &op, 1) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,
                       "semop() failed while waiting on cv " PTR_FMT, cv);
         return NGX_ERROR;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->mutex.log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->log, 0,
                    "cv " PTR_FMT " is waked up", cv);
+
+    if (ngx_mutex_lock(m) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
 }
 
 
-ngx_int_t ngx_cv_signal(ngx_cv_t *cv)
+ngx_int_t ngx_cond_signal(ngx_cond_t *cv)
 {
-    struct sembuf  op[2];
+    struct sembuf  op;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->mutex.log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->log, 0,
                    "cv " PTR_FMT " to signal", cv);
 
-    op[0].sem_num = 0;
-    op[0].sem_op = 1;
-    op[0].sem_flg = SEM_UNDO;
+    op.sem_num = 0;
+    op.sem_op = 1;
+    op.sem_flg = SEM_UNDO;
 
-    op[1].sem_num = 1;
-    op[1].sem_op = 1;
-    op[1].sem_flg = SEM_UNDO;
-
-    if (semop(cv->mutex.semid, op, 2) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cv->mutex.log, ngx_errno,
+    if (semop(cv->semid, &op, 1) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,
                       "semop() failed while signaling cv " PTR_FMT, cv);
         return NGX_ERROR;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->mutex.log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->log, 0,
                    "cv " PTR_FMT " is signaled", cv);
 
     return NGX_OK;

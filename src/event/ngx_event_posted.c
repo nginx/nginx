@@ -8,7 +8,7 @@ ngx_thread_volatile ngx_event_t  *ngx_posted_events;
 
 #if (NGX_THREADS)
 ngx_mutex_t                      *ngx_posted_events_mutex;
-ngx_cv_t                         *ngx_posted_events_cv;
+ngx_cond_t                       *ngx_posted_events_cv;
 #endif
 
 
@@ -76,7 +76,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
                 return NGX_OK;
             }
 
-            if (ngx_trylock(ev->lock) == NGX_BUSY) {
+            if (ngx_trylock(ev->lock) == 0) {
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                "posted event " PTR_FMT " is busy", ev);
@@ -112,7 +112,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 
             ev->event_handler(ev);
 
-            *(ev->lock) = 0;
+            ngx_unlock(ev->lock);
 
             if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
                 return NGX_ERROR;

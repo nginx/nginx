@@ -361,11 +361,10 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-         /*
-          * TODO: if timer is NGX_TIMER_INFINITE and any worker thread
-          *       is still busy then set the configurable 500ms timeout
-          *       to wake up another worker thread
-          */
+        if (timer == NGX_TIMER_INFINITE || timer > 500) {
+            timer = 500;
+            break;
+        }
 
 #endif
 
@@ -461,12 +460,17 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         }
     }
 
-    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-        ngx_accept_mutex_unlock();
-        return NGX_ERROR;
-    }
+    if (events > 0) {
+        if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+            ngx_accept_mutex_unlock();
+            return NGX_ERROR;
+        }
 
-    lock = 1;
+        lock = 1;
+
+    } else {
+        lock =0;
+    }
 
     for (i = 0; i < events; i++) {
 
@@ -588,7 +592,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
     if (ngx_posted_events) {
         if (ngx_threaded) {
-            ngx_cv_signal(ngx_posted_events_cv);
+            ngx_cond_signal(ngx_posted_events_cv);
 
         } else {
             ngx_event_process_posted(cycle);

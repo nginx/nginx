@@ -72,13 +72,19 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 
 #define ngx_atomic_inc(p)       InterlockedIncrement((long *) p)
 #define ngx_atomic_dec(p)       InterlockedDecrement((long *) p)
-/* STUB */
-#define ngx_atomic_cmp_set(lock, old, set)   1
-#if 0
-#define ngx_atomic_cmp_set(lock, old, set)                                   \
-                                  InterlockedCompareExchange(lock, set, old)
-#endif
 
+#if defined(__WATCOMC__) || defined(__BORLANDC__)
+
+#define ngx_atomic_cmp_set(lock, old, set)                                    \
+     (InterlockedCompareExchange((long *) lock, set, old) == old)
+
+#else
+
+#define ngx_atomic_cmp_set(lock, old, set)                                    \
+     (InterlockedCompareExchange((void **) lock, (void *) set, (void *) old)  \
+      == (void *) old)
+
+#endif
 
 #else
 
@@ -93,18 +99,8 @@ typedef volatile uint32_t  ngx_atomic_t;
 #endif
 
 
-static ngx_inline ngx_int_t ngx_trylock(ngx_atomic_t *lock)
-{
-    if (*lock) {
-        return NGX_BUSY;
-    }
-
-    if (ngx_atomic_cmp_set(lock, 0, 1)) {
-        return NGX_OK;
-    }
-
-    return NGX_BUSY;
-}
+#define ngx_trylock(lock)  (*(lock) == 0 && ngx_atomic_cmp_set(lock, 0, 1))
+#define ngx_unlock(lock)    *(lock) = 0
 
 
 #endif /* _NGX_ATOMIC_H_INCLUDED_ */

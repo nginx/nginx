@@ -104,6 +104,8 @@ typedef int               sig_atomic_t;
 typedef uint32_t          ngx_atomic_t;
 
 
+#define TIME_T_LEN        sizeof("-2147483648") - 1
+
 #define OFF_T_FMT         "%I64d"
 #define SIZE_T_FMT        "%d"
 #define SIZE_T_X_FMT      "%x"

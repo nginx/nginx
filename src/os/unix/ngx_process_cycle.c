@@ -625,14 +625,12 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         exit(2);
     }
 
-    if (!(ngx_posted_events_cv = ngx_cv_init(cycle->log))) {
+    if (!(ngx_posted_events_cv = ngx_cond_init(cycle->log))) {
         /* fatal */
         exit(2);
     }
 
-    ngx_posted_events_mutex = &ngx_posted_events_cv->mutex;
-
-    for (i = 0; i < 1; i++) {
+    for (i = 0; i < 2; i++) {
         if (ngx_create_thread(&tid, ngx_worker_thread_cycle,
                               cycle, cycle->log) != 0)
         {
@@ -780,7 +778,9 @@ int ngx_worker_thread_cycle(void *data)
     ngx_setproctitle("worker thread");
 
     for ( ;; ) {
-        if (ngx_cv_wait(ngx_posted_events_cv) == NGX_ERROR) {
+        if (ngx_cond_wait(ngx_posted_events_cv, ngx_posted_events_mutex)
+                                                                  == NGX_ERROR)
+        {
             return 1;
         }
 

@@ -28,9 +28,9 @@ extern volatile time_t     ngx_cached_time;
 #endif
 
 
-extern volatile ngx_str_t  ngx_cached_err_log_time;
-extern volatile ngx_str_t  ngx_cached_http_time;
-extern volatile ngx_str_t  ngx_cached_http_log_time;
+extern ngx_thread_volatile ngx_str_t  ngx_cached_err_log_time;
+extern ngx_thread_volatile ngx_str_t  ngx_cached_http_time;
+extern ngx_thread_volatile ngx_str_t  ngx_cached_http_log_time;
 
 extern ngx_epoch_msec_t    ngx_start_msec;
 

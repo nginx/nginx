@@ -37,8 +37,9 @@ typedef volatile struct {
 
 
 typedef struct {
-    ngx_mutex_t   mutex;
-} ngx_cv_t;
+    int           semid;
+    ngx_log_t    *log;
+} ngx_cond_t;
 
 
 #define ngx_thread_sigmask(how, set, oset)                         \
@@ -107,10 +108,10 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try);
 ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m);
 
 
-ngx_cv_t *ngx_cv_init(ngx_log_t *log);
-void ngx_cv_done(ngx_cv_t *cv);
-ngx_int_t ngx_cv_wait(ngx_cv_t *cv);
-ngx_int_t ngx_cv_signal(ngx_cv_t *cv);
+ngx_cond_t *ngx_cond_init(ngx_log_t *log);
+void ngx_cond_done(ngx_cond_t *cv);
+ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m);
+ngx_int_t ngx_cond_signal(ngx_cond_t *cv);
 
 
 #else /* !NGX_THREADS */
