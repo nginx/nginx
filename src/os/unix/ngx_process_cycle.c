@@ -655,11 +655,18 @@ static void ngx_channel_handler(ngx_event_t *ev)
 
     c = ev->data;
 
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel handler");
+
     n = ngx_read_channel(c->fd, &ch, sizeof(ngx_channel_t), ev->log);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %d", n);
 
     if (n <= 0) {
         return;
     }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,
+                   "channel command: %d", ch.command);
 
     switch (ch.command) {
 
