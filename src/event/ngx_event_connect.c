@@ -1,11 +1,17 @@
 
 #include <ngx_event_connect.h>
 
+/* AF_INET only */
 
 int ngx_event_connect_peer(ngx_peer_connecttion_t *pc)
 {
-    time_t        now;
-    ngx_socket_t  s;
+    time_t               now;
+    ngx_peer_r          *peer;
+    ngx_socket_t         s;
+    struct sockaddr_in  *addr;
+
+
+    now = ngx_time();
 
     /* ngx_lock_mutex(pc->peers->mutex); */
 
@@ -22,11 +28,7 @@ int ngx_event_connect_peer(ngx_peer_connecttion_t *pc)
         return NGX_OK;
     }
 
-    /* ngx_unlock_mutex(pc->peers->mutex); */
-
     pc->cached = 0;
-
-    now = ngx_time();
 
     if (pc->peers->number > 1) {
 
@@ -36,24 +38,11 @@ int ngx_event_connect_peer(ngx_peer_connecttion_t *pc)
 
             /* it's a first try - get a current peer */
 
-            /* Here is the race condition when the peers are shared between
-               the threads or the processes but it should not be serious */
-
             pc->cur_peer = pc->peers->current++;
 
             if (cp->peers->current >= cp->peers->number) {
                 pc->peers->current = 0;
             }
-
-            /* the end of the race condition */
-
-#if (NGX_MULTITHREADED || NGX_MULTIPROCESSED)
-            /* eliminate the sequences of the race condition */
-
-            if (pc->cur_peer >= pc->peers->number) {
-                pc->cur_peer = 0;
-            }
-#endif
         }
 
         if (pc->peers->max_fails > 0) {
@@ -63,16 +52,11 @@ int ngx_event_connect_peer(ngx_peer_connecttion_t *pc)
             for ( ;; ) {
                 peer = &pc->peers->peers[pc->cur_peer];
 
-                /* Here is the race condition when the peers are shared between
-                   the threads or the processes but it should not be serious */
-
                 if (peer->fails <= pc->peers->max_fails
                     || (now - peer->accessed > pc->peers->fail_timeout))
                 {
                     break;
                 }
-
-                /* the end of the race condition */
 
                 pc->cur_peer++;
 
@@ -83,11 +67,14 @@ int ngx_event_connect_peer(ngx_peer_connecttion_t *pc)
                 pc->tries--;
 
                 if (pc->tries == 0) {
+                    /* ngx_unlock_mutex(pc->peers->mutex); */
                     return NGX_ERROR;
                 }
             }
         }
     }
+
+    /* ngx_unlock_mutex(pc->peers->mutex); */
 
     pc->addr_port_text = peer->addr_port_text;
 
@@ -174,5 +161,30 @@ int ngx_event_connect_peer(ngx_peer_connecttion_t *pc)
             return NGX_ERROR;
         }
     } 
+
+    addr = p->sockaddr;
+
+    addr->sin_family = AF_INET;
+    addr->sin_addr.s_addr = peer->addr;
+    addr->sin_port = htons(peer->port);
+
+    rc = connect(s, p->sockaddr, sizeof(struct sockaddr_in));
+
+    if (rc == -1) {
+        err = ngx_socket_errno;
+        if (err != NGX_EINPROGRESS) {
+            ngx_log_error(NGX_LOG_CRIT, pc->log, err, "connect() failed");
+
+            if (ngx_close_socket(s) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
+                              ngx_close_socket_n " failed");
+            }
+
+            return NGX_CONNECT_ERROR;
+        }
+    }
+
+    c->data = ???;
+
 
 }
