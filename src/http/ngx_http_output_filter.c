@@ -57,6 +57,224 @@ ngx_module_t  ngx_http_output_filter_module = {
 };
 
 
+#if 1
+
+#define next_filter  ngx_http_output_filter_module_ctx.next_output_body_filter
+
+#define need_to_copy(r, hunk)                                             \
+            (((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)                \
+               && (hunk->type & NGX_HUNK_FILE))                           \
+            || ((r->filter & NGX_HTTP_FILTER_NEED_TEMP)                   \
+               && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP))))
+
+int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
+{
+    int                             rc;
+    size_t                          size;
+    ngx_chain_t                    *ce, *pe;
+    ngx_http_output_filter_ctx_t   *ctx;
+    ngx_http_output_filter_conf_t  *conf;
+
+    ctx = (ngx_http_output_filter_ctx_t *)
+                    ngx_http_get_module_ctx(r->main ? r->main : r,
+                                            ngx_http_output_filter_module);
+
+    if (ctx == NULL) {
+        ngx_http_create_ctx(r, ctx, ngx_http_output_filter_module,
+                            sizeof(ngx_http_output_filter_ctx_t));
+    }
+
+    /* the incoming chain ctx->in is empty */
+    if (ctx->in == NULL) {
+
+        if (hunk == NULL) {
+            return next_filter(r, NULL);
+        }
+
+        /* we do not need to copy the incoming hunk to our hunk */
+        if (!need_to_copy(r, hunk)) {
+            ctx->out.hunk = hunk;
+            ctx->out.next = NULL;
+
+            return next_filter(r, &ctx->out);
+        }
+
+        /* we need to copy the incoming hunk to our hunk */
+
+        /* allocate ctx->hunk if it's needed */
+        if (ctx->hunk == NULL) {
+
+            conf = (ngx_http_output_filter_conf_t *)
+                   ngx_http_get_module_loc_conf(r->main ? r->main : r,
+                                                ngx_http_output_filter_module);
+
+            if (hunk->type & NGX_HUNK_LAST) {
+                size = hunk->last.mem - hunk->pos.mem;
+                if (size > conf->hunk_size) {
+                    size = conf->hunk_size;
+                }
+
+            } else {
+                size = conf->hunk_size;
+            }
+
+            ngx_test_null(ctx->hunk,
+                          ngx_create_temp_hunk(r->pool, size, 50, 50),
+                          NGX_ERROR);
+
+            ctx->hunk->type |= NGX_HUNK_RECYCLED;
+        }
+
+        /* copy the incoming hunk or its part to our hunk
+           and pass it to the next filter */
+
+        do {
+            rc = ngx_http_output_filter_copy_hunk(ctx->hunk, hunk);
+
+            if (rc == NGX_ERROR) {
+                return rc;
+            }
+
+#if (NGX_FILE_AIO_READ)
+
+            if (rc == NGX_AGAIN) {
+                /* add the incoming hunk to the incoming chain */
+                ngx_add_hunk_to_chain(ctx->in, hunk, r->pool, NGX_ERROR);
+                return rc;
+            }
+
+#endif
+            ctx->out.hunk = ctx->hunk;
+            ctx->out.next = NULL;
+
+            rc = next_filter(r, &ctx->out);
+
+            if (rc == NGX_ERROR) {
+                return rc;
+            }
+
+            if (rc == NGX_AGAIN) {
+                /* add the incoming hunk to the incoming chain */
+                ngx_add_hunk_to_chain(ctx->in, hunk, r->pool, NGX_ERROR);
+                return rc;
+            }
+
+            /* NGX_OK */
+
+            /* set our hunk free */
+            ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
+
+        /* repeat until we will have copied the whole incoming hunk */
+        } while (hunk->pos.mem < hunk->last.mem);
+
+        return NGX_OK;
+    }
+
+    /* the incoming chain ctx->in is not empty */
+
+    /* add the incoming hunk to the incoming chain */
+    if (hunk) {
+        for (ce = ctx->in; ce->next; ce = ce->next) {
+            /* void */ ;
+        }
+
+        ngx_add_hunk_to_chain(ce->next, hunk, r->pool, NGX_ERROR);
+    }
+
+    /* our hunk is still busy */
+    if (ctx->hunk->pos.mem < ctx->hunk->last.mem) {
+        rc = next_filter(r, NULL);
+
+        if (rc == NGX_ERROR || rc == NGX_AGAIN) {
+            return rc;
+        }
+
+        /* NGX_OK */
+        ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
+    }
+
+#if (NGX_SUPPRESS_WARN)
+    pe = NULL;
+#endif
+
+    /* process the incoming chain ctx->in */
+    do {
+        /* find the hunks that do not need to be copied ... */
+        for (ce = ctx->in; ce; ce = ce->next) {
+            if (need_to_copy(r, ce->hunk)) {
+                break;
+            }
+            pe = ce;
+        }
+
+        /* ... and pass them to the next filter */
+        if (ctx->in != ce) {
+
+            ctx->out.hunk = ctx->in->hunk;
+            ctx->out.next = ctx->in->next;
+            ctx->in = ce;
+            pe->next = NULL;
+
+            rc = next_filter(r, &ctx->out);
+
+            if (rc == NGX_ERROR || rc == NGX_AGAIN) {
+                return rc;
+            }
+
+            /* NGX_OK */
+            if (ctx->in == NULL) {
+                return rc;
+            }
+        }
+
+
+        /* copy the first hunk or its part from the incoming chain ctx->in
+           to our hunk and pass it to the next filter */
+        do {
+            rc = ngx_http_output_filter_copy_hunk(ctx->hunk, ctx->in->hunk);
+
+            if (rc == NGX_ERROR) {
+                return rc;
+            }
+
+#if (NGX_FILE_AIO_READ)
+
+            if (rc == NGX_AGAIN) {
+                return rc;
+            }
+
+#endif
+            ctx->out.hunk = ctx->hunk;
+            ctx->out.next = NULL;
+
+            rc = next_filter(r, &ctx->out);
+
+            if (rc == NGX_ERROR || rc == NGX_AGAIN) {
+                return rc;
+            }
+
+            /* NGX_OK */
+
+            /* set our hunk free */
+            ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
+
+        /* repeat until we will have copied the whole first hunk from
+           the incoming chain ctx->in */
+        } while (ctx->in->hunk->pos.mem < ctx->in->hunk->last.mem);
+
+    /* delete the completed hunk from the incoming chain */
+    ctx->in = ctx->in->next;
+
+    /* repeat until we will have processed the whole incoming chain ctx->in */
+    } while (ctx->in);
+
+    return NGX_OK;
+}
+
+
+#else
+
+
 int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 {
     int                             rc, once;
@@ -106,6 +324,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
             } else {
                 ctx->out.hunk = ctx->hunk;
 
+                /* XXX: should we check hunk type before copy it ? */
                 rc = ngx_http_output_filter_copy_hunk(ctx->hunk, ctx->in->hunk);
 #if (NGX_FILE_AIO_READ)
                 if (rc == NGX_AGAIN) {
@@ -115,6 +334,8 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
                 if (rc == NGX_ERROR) {
                     return rc;
                 }
+
+                /* NGX_OK */
 
                 /* whole hunk is copied so we send to next filter chain part
                    up to next hunk that need to be copied */
@@ -242,8 +463,10 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
             }
         }
 
-        if (rc == NGX_OK && ctx->hunk)
+        /* set free our hunk if operation has completed */
+        if (rc == NGX_OK && ctx->hunk) {
             ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
+        }
     }
 
 #if (NGX_SUPPRESS_WARN)
@@ -259,7 +482,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
     }
 
     if (rc == NGX_OK) {
-        if (ctx->hunk) {
+        if (ctx->hunk) { /* XXX: double upper code ? */
             ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
         }
 #if (NGX_LEVEL_EVENT)
@@ -269,6 +492,8 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
     return rc;
 }
+
+#endif
 
 
 static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)

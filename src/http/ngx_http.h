@@ -163,6 +163,9 @@ struct ngx_http_request_s {
     unsigned  unusual_uri:1;  /* URI is not started with '/' - "GET http://" */
     unsigned  complex_uri:1;  /* URI with "/." or with "//" (WIN32) */
     unsigned  path_not_found:1;
+#ifdef NGX_EVENT
+    unsigned  write_level_event:1;
+#endif
 
     int    state;
     char  *uri_start;

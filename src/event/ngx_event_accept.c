@@ -156,7 +156,7 @@ int ngx_event_accept(ngx_event_t *ev)
 
 #elif (HAVE_KQUEUE)
 
-        if (ngx_event_type == NGX_KQUEUE_EVENT) {
+        if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT) {
             ev->available--;
         }
 

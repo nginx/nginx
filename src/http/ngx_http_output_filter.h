@@ -21,7 +21,6 @@ typedef struct {
     ngx_hunk_t   *hunk;
     ngx_chain_t  *in;
     ngx_chain_t   out;
-    unsigned      last;
 } ngx_http_output_filter_ctx_t;
 
 

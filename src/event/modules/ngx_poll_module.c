@@ -214,6 +214,8 @@ int ngx_poll_process_events(ngx_log_t *log)
         if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
             found = 1;
 
+            /* need ot add to ready_index[nready++] = c->read or c->write; */
+
             err = 0;
             if (event_list[i].revents & POLLNVAL) {
                 err = EBADF;

@@ -437,7 +437,7 @@ static int ngx_http_proxy_read_response_body(ngx_event_t *ev)
 
 #elif (HAVE_KQUEUE)
 
-        if (ngx_event_type == NGX_KQUEUE_EVENT) {
+        if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT) {
             /* do not allocate new block if there is EOF */
             if (ev->eof && ev->available == 0) {
                 left = 1;

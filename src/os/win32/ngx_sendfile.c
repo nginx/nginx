@@ -83,11 +83,12 @@ int ngx_sendfile(ngx_connection_t *c,
         ptfb = NULL;
     }
 
-#if 0
+#if 1
     flags = TF_DISCONNECT|TF_REUSE_SOCKET;
-#endif
-
+    tfrc = transmitfile(c->fd, NULL, 0, 0, &olp, NULL, flags);
+#else
     tfrc = TransmitFile(c->fd, fd, nbytes, 0, &olp, ptfb, flags);
+#endif
 
 #if 0
 #if 1

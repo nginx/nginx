@@ -36,7 +36,7 @@ ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
 
 #elif (HAVE_KQUEUE)
 
-    if (ngx_event_type == NGX_KQUEUE_EVENT) {
+    if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT) {
         if (c->read->eof && c->read->available == 0) {
             if (c->read->error) {
                 ngx_log_error(NGX_LOG_ERR, c->log, c->read->error,
@@ -70,7 +70,7 @@ ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
 
 #elif (HAVE_KQUEUE)
 
-    if (ngx_event_type == NGX_KQUEUE_EVENT) {
+    if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT) {
         c->read->available -= n;
     }
 

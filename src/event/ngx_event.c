@@ -36,33 +36,9 @@ ngx_event_t         *ngx_read_events, *ngx_write_events;
 
 #if !(USE_KQUEUE)
 
-#if (HAVE_KQUEUE)
+ngx_event_type_e     ngx_event_type;
 
-#if 0
-ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
-#elif 0
-ngx_event_type_e     ngx_event_type = NGX_POLL_EVENT;
-#else
-ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
-#endif
-
-#elif (HAVE_DEVPOLL)
-
-#if 0
-ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
-#elif 0
-ngx_event_type_e     ngx_event_type = NGX_POLL_EVENT;
-#else
-ngx_event_type_e     ngx_event_type = NGX_DEVPOLL_EVENT;
-#endif
-
-#else
-
-ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
-
-#endif
-
-int ngx_event_flags;
+int                  ngx_event_flags;
 
 ngx_event_actions_t  ngx_event_actions;
 
@@ -97,8 +73,17 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
     /* STUB */
     int max_connections = 512;
 
-#if (HAVE_IOCP)
-    ngx_event_type = NGX_IOCP_EVENT;
+#if 0
+    ngx_event_type = NGX_POLL_EVENT_N;
+#endif
+#if 1
+    ngx_event_type = NGX_KQUEUE_EVENT_N;
+#endif
+#if 0
+    ngx_event_type = NGX_DEVPOLL_EVENT_N;
+#endif
+#if 0
+    ngx_event_type = NGX_IOCP_EVENT_N;
 #endif
 
     if (ngx_init_events(max_connections, log) == NGX_ERROR) {

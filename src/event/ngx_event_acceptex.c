@@ -29,7 +29,7 @@ int ngx_event_acceptex(ngx_event_t *ev)
         return NGX_OK;
     }
 
-    GetAcceptExSockaddrs(c->data, 0,
+    getacceptexsockaddrs(c->data, 0,
                          c->socklen + 16, c->socklen + 16,
                          &c->local_sockaddr, &c->local_socklen,
                          &c->sockaddr, &c->socklen);
@@ -130,7 +130,7 @@ int ngx_event_post_acceptex(ngx_listen_t *ls, int n)
             return NGX_ERROR;
         }
 
-        if (AcceptEx(ls->fd, s, c->data, 0,
+        if (acceptex(ls->fd, s, c->data, 0,
                      c->socklen + 16, c->socklen + 16,
                      &rcvd, (LPOVERLAPPED) &rev->ovlp) == 0) {
 

@@ -106,20 +106,20 @@ struct ngx_event_s {
 };
 
 typedef enum {
-    NGX_SELECT_EVENT = 0,
+    NGX_SELECT_EVENT_N = 0,
 #if (HAVE_POLL)
-    NGX_POLL_EVENT,
+    NGX_POLL_EVENT_N,
 #endif
 #if (HAVE_DEVPOLL)
-    NGX_DEVPOLL_EVENT,
+    NGX_DEVPOLL_EVENT_N,
 #endif
 #if (HAVE_KQUEUE)
-    NGX_KQUEUE_EVENT,
+    NGX_KQUEUE_EVENT_N,
 #endif
 #if (HAVE_IOCP)
-    NGX_IOCP_EVENT,
+    NGX_IOCP_EVENT_N,
 #endif
-    NGX_DUMMY_EVENT    /* avoid comma at end of enumerator list */
+    NGX_DUMMY_EVENT_N    /* avoid comma at end of enumerator list */
 } ngx_event_type_e ;
 
 typedef struct {
@@ -145,15 +145,21 @@ typedef struct {
 /* Event filter notifies only changes and initial level - kqueue */
 #define NGX_HAVE_CLEAR_EVENT    4
 
+/* Event filter has kqueue features - eof flag, errno, available data, etc */
+#define NGX_HAVE_KQUEUE_EVENT   8
+
 /* Event filter notifies only changes (edgesi) but not initial level - epoll */
-#define NGX_HAVE_EDGE_EVENT     8
+#define NGX_HAVE_EDGE_EVENT     16
+
+/* No need to add or delete event filters - rt signals */
+#define NGX_HAVE_SIGIO_EVENT    32
 
 /* No need to add or delete event filters - overlapped, aio_read, aioread */
-#define NGX_HAVE_AIO_EVENT      16
+#define NGX_HAVE_AIO_EVENT      64
 
 /* Need to add socket or halde only once - i/o completion port.
    It also requires to set HAVE_AIO_EVENT and NGX_HAVE_AIO_EVENT */
-#define NGX_HAVE_IOCP_EVENT     32
+#define NGX_HAVE_IOCP_EVENT     128
 
 /* Event filter is deleted before closing file. Has no meaning
    for select, poll, epoll.

@@ -66,13 +66,21 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
     ngx_event_actions.timer = ngx_event_add_timer;
     ngx_event_actions.process = ngx_kqueue_process_events;
 
+#if (HAVE_AIO_EVENT)
+
+    ngx_event_flags = NGX_HAVE_AIO_EVENT;
+
+#else
+
     ngx_event_flags = NGX_HAVE_LEVEL_EVENT
                      |NGX_HAVE_ONESHOT_EVENT
-#if (HAVE_AIO_EVENT)
-                     |NGX_HAVE_AIO_EVENT;
-#else
-                     |NGX_HAVE_CLEAR_EVENT;
+#if (HAVE_CLEAR_EVENT)
+                     |NGX_HAVE_CLEAR_EVENT
 #endif
+                     |NGX_HAVE_KQUEUE_EVENT;
+
+#endif
+
 #endif
 
     return NGX_OK;

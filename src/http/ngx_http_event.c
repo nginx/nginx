@@ -30,6 +30,7 @@ static int ngx_http_event_request_handler(ngx_http_request_t *r);
 static int ngx_http_writer(ngx_event_t *ev);
 static int ngx_http_block_read(ngx_event_t *ev);
 static int ngx_http_read_discarded_body(ngx_event_t *ev);
+static int ngx_http_set_keepalive(ngx_http_request_t *r);
 static int ngx_http_keepalive_handler(ngx_event_t *ev);
 static int ngx_http_set_lingering_close(ngx_http_request_t *r);
 static int ngx_http_lingering_close_handler(ngx_event_t *ev);
@@ -112,10 +113,11 @@ int ngx_http_init_connection(ngx_connection_t *c)
 
 #endif
 
+/* THINK: should ngx_edge_add_event() be moved to accept part ? */
 #if (HAVE_EDGE_EVENT) /* epoll */
 
     if (ngx_event_flags & NGX_HAVE_EDGE_EVENT) {
-        if (ngx_add_event(ev, NGX_READ_EVENT, NGX_EDGE_EVENT) == NGX_ERROR) {
+        if (ngx_edge_add_event(ev) == NGX_ERROR) {
             return NGX_ERROR;
         }
         return ngx_http_init_request(ev);
@@ -129,7 +131,7 @@ int ngx_http_init_connection(ngx_connection_t *c)
         return ngx_http_init_request(ev);
     }
 
-#endif /* HAVE_AIO_EVENT */
+#endif
 
     /* select, poll, /dev/poll */
 
@@ -498,9 +500,9 @@ static int ngx_http_event_request_handler(ngx_http_request_t *r)
 
 #else
 
-#if (HAVE_AIO_EVENT) /* aio, iocp */
+#if (HAVE_AIO_EVENT) || (HAVE_EDGE_EVENT) /* aio, iocp, epoll */
 
-        if (ngx_event_flags & NGX_HAVE_AIO_EVENT) {
+        if (ngx_event_flags & (NGX_HAVE_AIO_EVENT|NGX_HAVE_EDGE_EVENT)) {
             return rc;
         }
 
@@ -512,30 +514,14 @@ static int ngx_http_event_request_handler(ngx_http_request_t *r)
             event = NGX_CLEAR_EVENT;
 
         } else {
-            event = NGX_ONESHOT_EVENT;
-        }
-
-#elif (HAVE_EDGE_EVENT) /* epoll */
-
-        if (ngx_event_flags & NGX_HAVE_EDGE_EVENT) {
-            event = NGX_EDGE_EVENT;
-
-        } else {
-            event = NGX_ONESHOT_EVENT;
-        }
-
-#elif (HAVE_DEVPOLL_EVENT) /* /dev/poll */
-
-        if (ngx_event_flags & NGX_HAVE_LEVEL_EVENT) {
             event = NGX_LEVEL_EVENT;
-
-        } else {
-            event = NGX_ONESHOT_EVENT;
+            r->write_level_event = 1;
         }
 
-#else /* select, poll */
+#else /* select, poll, /dev/poll */
 
-        event = NGX_ONESHOT_EVENT;
+        event = NGX_LEVEL_EVENT;
+        r->write_level_event = 1;
 
 #endif
 
@@ -571,13 +557,7 @@ static int ngx_http_event_request_handler(ngx_http_request_t *r)
 
     /* keepalive */
 
-    r->connection->buffer->pos.mem = r->connection->buffer->last.mem
-                                               = r->connection->buffer->start;
-    rev->event_handler = ngx_http_keepalive_handler;
-
-    ngx_http_close_request(r);
-
-    return NGX_OK;
+    return ngx_http_set_keepalive(r);
 }
 
 
@@ -617,14 +597,6 @@ static int ngx_http_writer(ngx_event_t *ev)
             ngx_add_timer(ev, timeout);
         }
 
-        /* TODO: /dev/poll, epoll, aio_write */
-
-        if (ev->oneshot)
-            if (ngx_add_event(ev, NGX_WRITE_EVENT, NGX_ONESHOT_EVENT)
-                                                                == NGX_ERROR) {
-            return ngx_http_close_request(r);
-        }
-
         return rc;
     }
 
@@ -646,15 +618,11 @@ static int ngx_http_writer(ngx_event_t *ev)
 
     /* keepalive */
 
-    c->buffer->pos.mem = c->buffer->last.mem = c->buffer->start;
-    c->read->event_handler = ngx_http_keepalive_handler;
-
-    ngx_http_close_request(r);
-
-    return NGX_OK;
+    return ngx_http_set_keepalive(r);
 }
 
 
+/* TODO */
 static int ngx_http_block_read(ngx_event_t *ev)
 {
     ngx_log_debug(ev->log, "http read blocked");
@@ -693,6 +661,7 @@ static int ngx_http_block_read(ngx_event_t *ev)
 }
 
 
+/* TODO */
 int ngx_http_discard_body(ngx_http_request_t *r)
 {
     ngx_event_t  *ev;
@@ -716,6 +685,7 @@ int ngx_http_discard_body(ngx_http_request_t *r)
 }
 
 
+/* TODO */
 static int ngx_http_read_discarded_body(ngx_event_t *ev)
 {
     size_t   size;
@@ -753,6 +723,34 @@ static int ngx_http_read_discarded_body(ngx_event_t *ev)
 
     r->client_content_length -= n;
     /* XXX: what if r->client_content_length == 0 ? */
+    return NGX_OK;
+}
+
+
+/* TODO: if c->read->blocked */
+static int ngx_http_set_keepalive(ngx_http_request_t *r)
+{
+    ngx_connection_t    *c;
+
+    c = (ngx_connection_t *) r->connection;
+
+    c->buffer->pos.mem = c->buffer->last.mem = c->buffer->start;
+    c->read->event_handler = ngx_http_keepalive_handler;
+
+    if (r->write_level_event) {
+        if (ngx_del_event(c->write, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+    }
+
+    ngx_http_close_request(r);
+
+#if (HAVE_AIO_EVENT) /* aio, iocp */
+    if (ngx_event_flags & NGX_HAVE_AIO_EVENT) {
+        return ngx_http_keepalive_handler(c->read);
+    }
+#endif
+
     return NGX_OK;
 }
 
@@ -796,8 +794,10 @@ static int ngx_http_keepalive_handler(ngx_event_t *ev)
 static int ngx_http_set_lingering_close(ngx_http_request_t *r)
 {
     ngx_event_t  *ev;
+    ngx_connection_t    *c;
     ngx_http_core_loc_conf_t  *lcf;
 
+    c = r->connection;
     ev = r->connection->read;
 
     lcf = (ngx_http_core_loc_conf_t *)
@@ -832,7 +832,21 @@ static int ngx_http_set_lingering_close(ngx_http_request_t *r)
         return ngx_http_close_request(r);
     }
 
-    return NGX_OK;
+#if (HAVE_AIO_EVENT) /* aio, iocp */
+    if (ngx_event_flags & NGX_HAVE_AIO_EVENT) {
+        return ngx_http_lingering_close_handler(ev);
+    }
+#endif
+
+#if (HAVE_CLEAR_EVENT) || (HAVE_EDGE_EVENT) /* kqueue, epoll */
+    if (ngx_event_flags & (NGX_HAVE_CLEAR_EVENT|NGX_HAVE_EDGE_EVENT)) {
+        return NGX_OK;
+    }
+#endif
+
+    /* select, poll, /dev/poll */
+
+    return ngx_del_event(c->write, NGX_WRITE_EVENT, 0);
 }
 
 

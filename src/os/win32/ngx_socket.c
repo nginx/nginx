@@ -8,9 +8,9 @@
 
 
 /* These pointers should be per protocol ? */
-LPFN_ACCEPTEX              AcceptEx;
-LPFN_GETACCEPTEXSOCKADDRS  GetAcceptExSockaddrs;
-LPFN_TRANSMITFILE          TransmitFile;
+LPFN_ACCEPTEX              acceptex;
+LPFN_GETACCEPTEXSOCKADDRS  getacceptexsockaddrs;
+LPFN_TRANSMITFILE          transmitfile;
 
 static GUID ae_guid = WSAID_ACCEPTEX;
 static GUID as_guid = WSAID_GETACCEPTEXSOCKADDRS;
@@ -37,7 +37,7 @@ int ngx_init_sockets(ngx_log_t *log)
     }
 
     if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &ae_guid, sizeof(GUID),
-                 &AcceptEx, sizeof(LPFN_ACCEPTEX), &bytes, NULL, NULL) == -1) {
+                 &acceptex, sizeof(LPFN_ACCEPTEX), &bytes, NULL, NULL) == -1) {
 
         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                       "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
@@ -46,7 +46,7 @@ int ngx_init_sockets(ngx_log_t *log)
     }
 
     if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &as_guid, sizeof(GUID),
-                 &GetAcceptExSockaddrs, sizeof(LPFN_GETACCEPTEXSOCKADDRS),
+                 &getacceptexsockaddrs, sizeof(LPFN_GETACCEPTEXSOCKADDRS),
                  &bytes, NULL, NULL) == -1) {
 
         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
@@ -56,7 +56,7 @@ int ngx_init_sockets(ngx_log_t *log)
     }
 
     if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &tf_guid, sizeof(GUID),
-                 &TransmitFile, sizeof(LPFN_TRANSMITFILE), &bytes,
+                 &transmitfile, sizeof(LPFN_TRANSMITFILE), &bytes,
                                                            NULL, NULL) == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                       "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
