@@ -74,12 +74,6 @@ typedef struct {
 } ngx_http_cache_conf_t;
 
 
-#define ngx_http_cache_unlock(ch, ce)                                        \
-            ngx_mutex_lock(&ch->mutex);                                      \
-            ce->refs--;                                                      \
-            ngx_mutex_unlock(&ch->mutex);
-
-
 
 #define NGX_HTTP_CACHE_STALE     1
 #define NGX_HTTP_CACHE_AGED      2
@@ -96,6 +90,9 @@ ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *cache,
 ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *cache,
                                        ngx_str_t *key, uint32_t crc,
                                        ngx_log_t *log);
+void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
+                           ngx_http_cache_t *cache, ngx_log_t *log);
+
 
 int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
                                              ngx_dir_t *dir);

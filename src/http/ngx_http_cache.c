@@ -176,6 +176,29 @@ ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *cache,
 }
 
 
+void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
+                           ngx_http_cache_t *cache, ngx_log_t *log)
+{
+    ngx_mutex_lock(&hash->mutex);
+
+    cache->refs--;
+
+    if (cache->refs == 0 && cache->deleted) {
+ngx_log_debug(log, "CLOSE FILE: %d" _ cache->fd);
+        if (cache->fd != NGX_INVALID_FILE) {
+            if (ngx_close_file(cache->fd) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                              ngx_close_file_n " \"%s\" failed",
+                              cache->key.data);
+            }
+        }
+        cache->key.data = NULL;
+    }
+
+    ngx_mutex_unlock(&hash->mutex);
+}
+
+
 int ngx_http_cache_open_file(ngx_http_cache_ctx_t *ctx, ngx_file_uniq_t uniq)
 {
     ssize_t                   n;

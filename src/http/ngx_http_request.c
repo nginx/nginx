@@ -225,6 +225,21 @@ ngx_log_debug(rev->log, "IN: %08x" _ in_port);
         return;
     }
 
+    r->cleanup.elts = ngx_palloc(r->pool, 5 * sizeof(ngx_http_cleanup_t));
+    if (r->cleanup.elts == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_http_close_connection(c);
+        return;
+    }
+    /*
+     * set by ngx_pcalloc():
+     *
+     * r->cleanup.nelts = 0;
+     */
+    r->cleanup.nalloc = 5;
+    r->cleanup.size = sizeof(ngx_http_cleanup_t);
+    r->cleanup.pool = r->pool;
+
     /* TODO: ngx_init_table */
     if (!(r->headers_out.headers = ngx_create_table(r->pool, 20))) {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -289,7 +304,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         /* the request line has been parsed successfully */
 
         /* TODO: we need to handle such URIs */
-        if (r->complex_uri || r->unusual_uri) {
+        if (r->unusual_uri) {
             r->request_line.len = r->request_end - r->request_start;
             r->request_line.data = r->request_start;
             r->request_line.data[r->request_line.len] = '\0';
@@ -313,6 +328,20 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         }
 
 
+        /* copy unparsed URI */
+
+        r->unparsed_uri.len = r->uri_end - r->uri_start;
+        r->unparsed_uri.data = ngx_palloc(r->pool, r->unparsed_uri.len + 1);
+        if (r->unparsed_uri.data == NULL) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        ngx_cpystrn(r->unparsed_uri.data, r->uri_start,
+                    r->unparsed_uri.len + 1);
+
+
         /* copy URI */
 
         if (r->args_start) {
@@ -327,21 +356,12 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             return;
         }
 
-        ngx_cpystrn(r->uri.data, r->uri_start, r->uri.len + 1);
+        if (r->complex_uri) {
+            rc = ngx_http_parse_complex_uri(r);
 
-
-        /* copy unparsed URI */
-
-        r->unparsed_uri.len = r->uri_end - r->uri_start;
-        r->unparsed_uri.data = ngx_palloc(r->pool, r->unparsed_uri.len + 1);
-        if (r->unparsed_uri.data == NULL) {
-            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            ngx_http_close_connection(c);
-            return;
+        } else {
+            ngx_cpystrn(r->uri.data, r->uri_start, r->uri.len + 1);
         }
-
-        ngx_cpystrn(r->unparsed_uri.data, r->uri_start,
-                    r->unparsed_uri.len + 1);
 
 
         r->request_line.len = r->request_end - r->request_start;
@@ -366,6 +386,16 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         } else {
             r->request_line.data = r->request_start;
             r->request_line.data[r->request_line.len] = '\0';
+        }
+
+
+        if (rc != NGX_OK) {
+            /*
+             * we check ngx_http_parse_complex_uri() result here to log
+             * the request line
+             */
+            ngx_http_client_error(r, rc, NGX_HTTP_BAD_REQUEST);
+            return;
         }
 
 
@@ -1356,7 +1386,9 @@ int ngx_http_send_last(ngx_http_request_t *r)
 
 void ngx_http_close_request(ngx_http_request_t *r, int error)
 {
+    ngx_int_t            i;
     ngx_http_log_ctx_t  *ctx;
+    ngx_http_cleanup_t  *cleanup;
 
     ngx_log_debug(r->connection->log, "close http request");
 
@@ -1371,6 +1403,22 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
     }
 
     ngx_http_log_handler(r);
+
+    cleanup = r->cleanup.elts;
+    for (i = 0; i < r->cleanup.nelts; i++) {
+        if (cleanup[i].cache) {
+            ngx_http_cache_unlock(cleanup[i].data.cache.hash,
+                                  cleanup[i].data.cache.cache,
+                                  r->connection->log);
+            continue;
+        }
+
+        if (ngx_close_file(cleanup[i].data.file.fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed",
+                          cleanup[i].data.file.name);
+        }
+    }
 
     if (r->file.fd != NGX_INVALID_FILE) {
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {

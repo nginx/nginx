@@ -48,8 +48,11 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log);
 /**/
 
 void ngx_http_init_connection(ngx_connection_t *c);
+
 int ngx_http_parse_request_line(ngx_http_request_t *r);
+int ngx_http_parse_complex_uri(ngx_http_request_t *r);
 int ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h);
+
 int ngx_http_find_server_conf(ngx_http_request_t *r);
 void ngx_http_handler(ngx_http_request_t *r);
 void ngx_http_finalize_request(ngx_http_request_t *r, int error);

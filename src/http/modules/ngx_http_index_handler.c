@@ -117,12 +117,12 @@ ngx_log_debug(r->connection->log, "index cache get: %x" _ cache);
 
             redirect.len = cache->data.value.len;
             if (!(redirect.data = ngx_palloc(r->pool, redirect.len + 1))) {
-                ngx_http_cache_unlock(ilcf->cache, cache);
+                ngx_http_cache_unlock(ilcf->cache, cache, r->connection->log);
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
             ngx_memcpy(redirect.data, cache->data.value.data, redirect.len + 1);
-            ngx_http_cache_unlock(ilcf->cache, cache);
+            ngx_http_cache_unlock(ilcf->cache, cache, r->connection->log);
 
             return ngx_http_internal_redirect(r, &redirect, NULL);
         }
@@ -230,7 +230,8 @@ ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
                 {
                     cache->accessed = ngx_cached_time;
                     cache->updated = ngx_cached_time;
-                    ngx_http_cache_unlock(ilcf->cache, cache);
+                    ngx_http_cache_unlock(ilcf->cache, cache,
+                                          r->connection->log);
 
                     return ngx_http_internal_redirect(r, &redirect, NULL);
 
@@ -270,7 +271,7 @@ ngx_log_debug(r->connection->log, "index cache alloc: %x" _ cache);
         }
 
         if (cache) {
-            ngx_http_cache_unlock(ilcf->cache, cache);
+            ngx_http_cache_unlock(ilcf->cache, cache, r->connection->log);
         }
 
         return ngx_http_internal_redirect(r, &redirect, NULL);

@@ -5,8 +5,7 @@
 
 int ngx_http_parse_request_line(ngx_http_request_t *r)
 {
-    char   ch;
-    char  *p;
+    char   ch, *p;
     enum {
         sw_start = 0,
         sw_G,
@@ -198,9 +197,7 @@ int ngx_http_parse_request_line(ngx_http_request_t *r)
                 state = sw_uri;
                 break;
             case '/':
-#if (WIN32)
                 r->complex_uri = 1;
-#endif
                 break;
             case '?':
                 r->args_start = p;
@@ -421,11 +418,11 @@ int ngx_http_parse_request_line(ngx_http_request_t *r)
     }
 }
 
+
 int ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
 {
-    char   c, ch;
-    char  *p;
-    enum  {
+    char   c, ch, *p;
+    enum {
         sw_start = 0,
         sw_name,
         sw_space_before_value,
@@ -621,4 +618,198 @@ int ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
         r->state = state;
         return NGX_AGAIN;
     }
+}
+
+
+int ngx_http_parse_complex_uri(ngx_http_request_t *r)
+{
+    char  c, ch, decoded, *p, *u;
+    enum {
+        sw_usual = 0,
+        sw_slash,
+        sw_dot,
+        sw_dot_dot,
+#if (WIN32)
+        sw_dot_dot_dot,
+#endif
+        sw_quoted,
+        sw_quoted_second
+    } state, quoted_state;
+
+    decoded = '\0';
+    quoted_state = sw_usual;
+
+    state = sw_usual;
+    p = r->uri_start;
+    u = r->uri.data;
+
+    ch = *p++;
+
+    while (p < r->uri_start + r->uri.len + 1) {
+
+ngx_log_debug(r->connection->log, "S: %d UN: '%x:%c', URI: '%c'" _
+              state _ ch _ ch _ *u);
+
+        switch (state) {
+        case sw_usual:
+            switch(ch) {
+            case '/':
+                state = sw_slash;
+                *u++ = ch;
+                break;
+            case '%':
+                quoted_state = state;
+                state = sw_quoted;
+                break;
+            default:
+                *u++ = ch;
+                break;
+            }
+            ch = *p++;
+            break;
+
+        case sw_slash:
+            switch(ch) {
+            case '/':
+                break;
+            case '.':
+                state = sw_dot;
+                *u++ = ch;
+                break;
+            case '%':
+                quoted_state = state;
+                state = sw_quoted;
+                break;
+            default:
+                state = sw_usual;
+                *u++ = ch;
+                break;
+            }
+            ch = *p++;
+            break;
+
+        case sw_dot:
+            switch(ch) {
+            case '/':
+                state = sw_slash;
+                u--;
+                break;
+            case '.':
+                state = sw_dot_dot;
+                *u++ = ch;
+                break;
+            case '%':
+                quoted_state = state;
+                state = sw_quoted;
+                break;
+            default:
+                state = sw_usual;
+                *u++ = ch;
+                break;
+            }
+            ch = *p++;
+            break;
+
+        case sw_dot_dot:
+            switch(ch) {
+            case '/':
+                state = sw_slash;
+                u -= 4;
+                if (u < r->uri.data) {
+                    return NGX_HTTP_PARSE_INVALID_REQUEST;
+                }
+                while (*(u - 1) != '/') {
+                    u--;
+                }
+                break;
+            case '%':
+                quoted_state = state;
+                state = sw_quoted;
+                break;
+#if (WIN32)
+            case '.':
+                state = sw_dot_dot_dot;
+                *u++ = ch;
+                break;
+#endif
+            default:
+                state = sw_usual;
+                *u++ = ch;
+                break;
+            }
+            ch = *p++;
+            break;
+
+#if (WIN32)
+        case sw_dot_dot_dot:
+            switch(ch) {
+            case '/':
+                state = sw_slash;
+                u -= 5;
+                if (u < r->uri.data) {
+                    return NGX_HTTP_PARSE_INVALID_REQUEST;
+                }
+                while (*u != '/') {
+                    u--;
+                }
+                if (u < r->uri.data) {
+                    return NGX_HTTP_PARSE_INVALID_REQUEST;
+                }
+                while (*(u - 1) != '/') {
+                    u--;
+                }
+                break;
+            case '%':
+                quoted_state = state;
+                state = sw_quoted;
+                break;
+            default:
+                state = sw_usual;
+                *u++ = ch;
+                break;
+            }
+            ch = *p++;
+            break;
+#endif
+
+        case sw_quoted:
+            if (ch >= '0' && ch <= '9') {
+                decoded = ch - '0';
+                state = sw_quoted_second;
+                ch = *p++;
+                break;
+            }
+
+            c = ch | 0x20;
+            if (c >= 'a' && c <= 'f') {
+                decoded = c - 'a' + 10;
+                state = sw_quoted_second;
+                ch = *p++;
+                break;
+            }
+
+            return NGX_HTTP_PARSE_INVALID_REQUEST;
+
+        case sw_quoted_second:
+            if (ch >= '0' && ch <= '9') {
+                ch = (decoded << 4) + ch - '0';
+                state = quoted_state;
+                break;
+            }
+
+            c = ch | 0x20;
+            if (c >= 'a' && c <= 'f') {
+                ch = (decoded << 4) + c - 'a' + 10;
+                state = quoted_state;
+                break;
+            }
+
+            return NGX_HTTP_PARSE_INVALID_REQUEST;
+        }
+    }
+
+    r->uri.len = u - r->uri.data;
+    r->uri.data[r->uri.len] = '\0';
+
+    return NGX_OK;
 }

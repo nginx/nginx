@@ -144,17 +144,34 @@ typedef struct {
 } ngx_http_headers_out_t;
 
 
+typedef struct {
+    union {
+        struct {
+            ngx_fd_t                 fd;
+            char                    *name;
+        } file;
+
+        struct {
+            ngx_http_cache_hash_t   *hash;
+            ngx_http_cache_t        *cache;
+        } cache;
+    } data;
+
+    unsigned                         cache:1;
+} ngx_http_cleanup_t;
+
+
 typedef int (*ngx_http_handler_pt)(ngx_http_request_t *r);
 
 struct ngx_http_request_s {
-    ngx_connection_t    *connection;
+    ngx_connection_t         *connection;
 
-    void               **ctx;
-    void               **main_conf;
-    void               **srv_conf;
-    void               **loc_conf;
+    void                    **ctx;
+    void                    **main_conf;
+    void                    **srv_conf;
+    void                    **loc_conf;
 
-    ngx_http_cache_t    *cache;
+    ngx_http_cache_t         *cache;
 
     ngx_file_t           file;
 
@@ -198,6 +215,8 @@ struct ngx_http_request_s {
     int                  request_body_len;
     void               (*request_body_handler) (void *data); 
     void                *data;
+
+    ngx_array_t          cleanup;
 
     char                *discarded_buffer;
     void               **err_ctx;
