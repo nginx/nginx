@@ -65,7 +65,19 @@ int ngx_http_static_handler(ngx_http_request_t *r)
 */
 
     /* STUB */
-    r->headers_out->content_type = "text/html";
+    if (r->exten) {
+        if (strcasecmp(r->exten, "html") == 0)
+            r->headers_out->content_type = "text/html; charset=koi8-r";
+        else if (strcasecmp(r->exten, "gif") == 0)
+            r->headers_out->content_type = "image/gif";
+        else if (strcasecmp(r->exten, "jpg") == 0)
+            r->headers_out->content_type = "image/jpeg";
+        else if (strcasecmp(r->exten, "pdf") == 0)
+            r->headers_out->content_type = "application/pdf";
+
+    } else {
+        r->headers_out->content_type = "text/html; charset=koi8-r";
+    }
 
     /* STUB */
     rc = ngx_http_header_filter(r);

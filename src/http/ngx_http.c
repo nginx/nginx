@@ -19,15 +19,20 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
 {
     ngx_listen_t  *ls;
 
+    ngx_http_server.connection_pool_size = 16384;
     ngx_http_server.request_pool_size = 16384;
     ngx_http_server.header_timeout = 20000;
     ngx_http_server.header_buffer_size = 1024;
     ngx_http_server.discarded_buffer_size = 1500;
 
+    ngx_http_server.lingering_timeout = 5000;
+    ngx_http_server.lingering_time = 30;
+
 #if (WIN32)
     ngx_http_server.doc_root = "html";
 #else
     ngx_http_server.doc_root = "/home/is/work/xml/site-1.0.0/html";
+    ngx_http_server.doc_root = "/home/is/dox/";
 #endif
     ngx_http_server.doc_root_len = strlen(ngx_http_server.doc_root) + 1;
 

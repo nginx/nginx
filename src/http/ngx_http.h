@@ -44,20 +44,16 @@ typedef struct {
     char          *doc_root;
     size_t         doc_root_len;
 
+    size_t         connection_pool_size;
     size_t         request_pool_size;
 
     size_t         header_buffer_size;
     size_t         discarded_buffer_size;
 
-    unsigned int   header_timeout;
+    ngx_msec_t     header_timeout;
+    ngx_msec_t     lingering_timeout;
+    time_t         lingering_time;
 } ngx_http_server_t;
-
-typedef struct {
-    char *buff;
-    char *pos;
-    char *last;
-    char *end;
-} ngx_buff_t;
 
 typedef struct {
     int     status;
@@ -105,6 +101,7 @@ struct ngx_http_request_s {
     int    http_minor;
 
     char  *uri;
+    char  *exten;
     ngx_http_request_t *main;
 
     ngx_connection_t  *connection;
@@ -118,6 +115,7 @@ struct ngx_http_request_s {
     unsigned  keepalive:1;
     unsigned  lingering_close:1;
 
+    unsigned  header_read:1;
     unsigned  process_header:1;
     unsigned  header_timeout:1;
 

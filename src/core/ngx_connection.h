@@ -3,6 +3,7 @@
 
 #include <ngx_socket.h>
 #include <ngx_log.h>
+#include <ngx_hunk.h>
 #include <ngx_alloc.h>
 #include <ngx_server.h>
 
@@ -36,6 +37,7 @@ struct ngx_connection_s {
     char             *addr_text;
     size_t            addr_textlen;
 
+    ngx_hunk_t       *buffer;
     unsigned int      post_accept_timeout;
 
     unsigned          unexpected_eof:1;

@@ -31,14 +31,20 @@ int ngx_http_header_filter(ngx_http_request_t *r)
 
     status = r->headers_out->status - NGX_HTTP_OK;
 
-    ngx_memcpy(h->last.mem, "HTTP/1.0 ", 9);
+    ngx_memcpy(h->last.mem, "HTTP/1.1 ", 9);
     h->last.mem += 9;
     ngx_memcpy(h->last.mem, http_codes[status].line, http_codes[status].len);
     h->last.mem += http_codes[status].len;
     *(h->last.mem++) = CR; *(h->last.mem++) = LF;
 
+#if 1
+    r->keepalive = 1;
+    ngx_memcpy(h->last.mem, "Connection: keep-alive" CRLF, 24);
+    h->last.mem += 24;
+#endif
+
 /*
-    memcpy(h->last.mem, "Date: ", 6);
+    ngx_memcpy(h->last.mem, "Date: ", 6);
     h->last.mem += 6;
     h->last.mem += ngx_http_get_time(h->last.mem, time(NULL));
     *(h->last.mem++) = CR; *(h->last.mem++) = LF;
@@ -51,17 +57,20 @@ int ngx_http_header_filter(ngx_http_request_t *r)
 
     /* check */
 
-    memcpy(h->last.mem, "Server: ", 8);
+    if (r->headers_out->content_type)
+        h->last.mem += ngx_snprintf(h->last.mem, 100, "Content-Type: %s" CRLF,
+                                    r->headers_out->content_type);
+
+    ngx_memcpy(h->last.mem, "Server: ", 8);
     h->last.mem += 8;
     if (r->headers_out->server) {
         h->last.mem = ngx_cpystrn(h->last.mem, r->headers_out->server,
                                   h->end - h->last.mem);
-
         /* check space */
 
     } else {
-        ngx_memcpy(h->last.mem, NGINX_VER, sizeof(NGINX_VER));
-        h->last.mem += sizeof(NGINX_VER);
+        ngx_memcpy(h->last.mem, NGINX_VER, sizeof(NGINX_VER) - 1);
+        h->last.mem += sizeof(NGINX_VER) - 1;
     }
     *(h->last.mem++) = CR; *(h->last.mem++) = LF;
 

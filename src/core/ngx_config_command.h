@@ -17,6 +17,7 @@ typedef struct {
 } ngx_command_t;
 
 char *ngx_conf_set_size_slot(char *conf, int offset, char *value);
+char *ngx_conf_set_time_slot(char *conf, int offset, char *value);
 
 
 #endif _NGX_HTTP_CONFIG_COMMAND_H_INCLUDED_

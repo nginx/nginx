@@ -186,7 +186,7 @@ int ngx_select_process_events(ngx_log_t *log)
     }
 #endif
 
-    ngx_log_debug(log, "ngx_select_process_events: timer: %d" _ timer);
+    ngx_log_debug(log, "select timer: %d" _ timer);
 
 #if (WIN32)
     if ((ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp))
@@ -195,24 +195,21 @@ int ngx_select_process_events(ngx_log_t *log)
                         NULL, tp))
 #endif
                == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
-                     "ngx_select_process_events: select failed");
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno, "select() failed");
         return NGX_ERROR;
     }
 
-    ngx_log_debug(log, "ngx_select_process_events: ready %d" _ ready);
+    ngx_log_debug(log, "select ready %d" _ ready);
 
     if (timer) {
         delta = ngx_msec() - delta;
 
     } else {
         ngx_assert((ready != 0), return NGX_ERROR, log,
-                   "ngx_select_process_events: "
-                   "select returns no events without timeout");
+                   "select() returns no events without timeout");
     }
 
-    ngx_log_debug(log, "ngx_select_process_events: "
-                       "timer: %d, delta: %d" _ timer _ delta);
+    ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ delta);
 
     if (timer) {
         if (delta >= timer) {
@@ -234,24 +231,26 @@ int ngx_select_process_events(ngx_log_t *log)
         }
     }
 
-    for (ev = event_queue.next; ev != &event_queue; ev = ev->next) {
+    for (ev = event_queue.next; ev != &event_queue; /* void */) {
         c = (ngx_connection_t *) ev->data;
         found = 0;
 
         if (ev->write) {
             if (FD_ISSET(c->fd, &work_write_fd_set)) {
-                ngx_log_debug(log, "ngx_select_process_events: write %d" _
+                ngx_log_debug(log, "select write %d" _
                               c->fd);
                 found = 1;
             }
 
         } else {
             if (FD_ISSET(c->fd, &work_read_fd_set)) {
-                ngx_log_debug(log, "ngx_select_process_events: read %d" _
+                ngx_log_debug(log, "select read %d" _
                               c->fd);
                 found = 1;
             }
         }
+
+        nx = ev->next;
 
         if (found) {
             ev->ready = 1;
@@ -270,10 +269,10 @@ int ngx_select_process_events(ngx_log_t *log)
             ready--;
         }
 
+        ev = nx;
     }
 
-    ngx_assert((ready == 0), /* void */ ; , log,
-               "ngx_select_process_events: ready != events");
+    ngx_assert((ready == 0), /* void */ ; , log, "select ready != events");
 
     return NGX_OK;
 }

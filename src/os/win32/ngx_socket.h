@@ -5,6 +5,8 @@
 #include <ngx_config.h>
 #include <ngx_log.h>
 
+#define NGX_WRITE_SHUTDOWN SD_SEND
+
 #define INET_ADDRSTRLEN     16
 
 typedef SOCKET  ngx_socket_t;
@@ -18,6 +20,9 @@ void ngx_init_sockets(ngx_log_t *log);
 
 int ngx_nonblocking(ngx_socket_t s);
 #define ngx_nonblocking_n   "ioctlsocket(FIONBIO)"
+
+#define ngx_shutdown_socket    shutdown
+#define ngx_shutdown_socket_n  "shutdown()"
 
 #define ngx_close_socket    closesocket
 #define ngx_close_socket_n  "closesocket()"
