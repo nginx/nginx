@@ -37,6 +37,9 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r)
             /* the whole request body was pre-read */
 
             r->header_in->pos += r->headers_in.content_length_n;
+
+            r->request_body->handler(r->request_body->data);
+
             return NGX_OK;
         }
 
@@ -83,6 +86,11 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
 
     c = rev->data;
     r = c->data;
+
+    if (rev->timedout) {
+        ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+        return;
+    }
 
     rc = ngx_http_do_read_client_request_body(r);
 

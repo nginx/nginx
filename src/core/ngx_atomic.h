@@ -28,7 +28,7 @@ static ngx_inline uint32_t ngx_atomic_inc(ngx_atomic_t *value)
         NGX_SMP_LOCK
     "   xaddl  %0, %1;   "
 
-    : "=q" (old) : "m" (*value));
+    : "+q" (old) : "m" (*value));
 
     return old;
 }
@@ -45,7 +45,7 @@ static ngx_inline uint32_t ngx_atomic_dec(ngx_atomic_t *value)
         NGX_SMP_LOCK
     "   xaddl  %0, %1;   "
 
-    : "=q" (old) : "m" (*value));
+    : "+q" (old) : "m" (*value));
 
     return old;
 }

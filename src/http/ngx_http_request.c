@@ -38,7 +38,7 @@ static char *client_header_errors[] = {
     "client %s sent invalid header, URL: %s",
     "client %s sent too long header line, URL: %s",
     "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s",
-    "client %s sent invalid \"Content-Length\" header, URL: %s"
+    "client %s sent invalid \"Content-Length\" header, URL: %s",
     "client %s sent POST method without \"Content-Length\" header, URL: %s"
 };
 
