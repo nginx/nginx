@@ -112,7 +112,6 @@ struct ngx_connection_s {
 
     unsigned            buffered:1;
     unsigned            single_connection:1;
-    unsigned            pipeline:1;
     unsigned            unexpected_eof:1;
     unsigned            timedout:1;
     signed              tcp_nopush:2;

@@ -4,7 +4,7 @@
 #include <ngx_http.h>
 
 
-ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
+ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
     u_char  ch, *p, *m;
     enum {
@@ -34,9 +34,9 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
     } state;
 
     state = r->state;
-    p = r->header_in->pos;
+    p = b->pos;
 
-    while (p < r->header_in->last && state < sw_done) {
+    while (p < b->last && state < sw_done) {
         ch = *p++;
 
         /* gcc 2.95.2 and vc 6.0 compile this switch as an jump table */
@@ -416,7 +416,7 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
         }
     }
 
-    r->header_in->pos = p;
+    b->pos = p;
 
     if (state == sw_done) {
         if (r->request_end == NULL) {

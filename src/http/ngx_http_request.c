@@ -172,6 +172,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
     ngx_http_request_t        *r;
     ngx_http_in_port_t        *in_port;
     ngx_http_in_addr_t        *in_addr;
+    ngx_http_connection_t     *hc;
     ngx_http_server_name_t    *server_name;
     ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf;
@@ -193,14 +194,28 @@ static void ngx_http_init_request(ngx_event_t *rev)
     }
 
     if (c->data) {
-        r = c->data;
+        hc = c->data;
+        r = hc->request;
+
         ngx_memzero(r, sizeof(ngx_http_request_t));
+
+        r->pipeline = hc->pipeline;
 
 #if (NGX_STAT_STUB)
         (*ngx_stat_reading)++;
 #endif
 
     } else {
+        if (!(hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t)))) {
+
+#if (NGX_STAT_STUB)
+            (*ngx_stat_reading)--;
+#endif
+
+            ngx_http_close_connection(c);
+            return;
+        }
+
         if (!(r = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t)))) {
 
 #if (NGX_STAT_STUB)
@@ -211,12 +226,15 @@ static void ngx_http_init_request(ngx_event_t *rev)
             return;
         }
 
-        c->data = r;
+        hc->request = r;
     }
 
 #if (NGX_STAT_STUB)
     r->stat_reading = 1;
 #endif
+
+    c->data = r;
+    r->http_connection = hc;
 
     c->sent = 0;
     r->signature = NGX_HTTP_MODULE;
@@ -367,7 +385,6 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
     c->single_connection = 1;
     r->connection = c;
-    r->pipeline = c->pipeline;
     r->header_in = c->buffer;
 
     r->file.fd = NGX_INVALID_FILE;
@@ -476,26 +493,11 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         return;
     }
 
-    rc = ngx_http_parse_request_line(r);
+    rc = ngx_http_parse_request_line(r, r->header_in);
 
     if (rc == NGX_OK) {
 
         /* the request line has been parsed successfully */
-
-#if 0
-        /* TODO: we need to handle proxy URIs */
-        if (r->unusual_uri) {
-            r->request_line.len = r->request_end - r->request_start;
-            r->request_line.data = r->request_start;
-#if 0
-            r->request_line.data[r->request_line.len] = '\0';
-#endif
-
-            ngx_http_client_error(r, NGX_HTTP_PARSE_INVALID_REQUEST,
-                                  NGX_HTTP_BAD_REQUEST);
-            return;
-        }
-#endif
 
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -1504,6 +1506,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     ngx_buf_t                 *b;
     ngx_event_t               *rev, *wev;
     ngx_connection_t          *c;
+    ngx_http_connection_t     *hc;
     ngx_http_log_ctx_t        *ctx;
     ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf;
@@ -1515,7 +1518,10 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     ctx = (ngx_http_log_ctx_t *) c->log->data;
     ctx->action = "closing request";
+
+    hc = r->http_connection;
     ngx_http_close_request(r, 0);
+    c->data = hc;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     ngx_add_timer(rev, clcf->keepalive_timeout);
@@ -1553,13 +1559,13 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "pipelined request");
 
-        c->pipeline = 1;
+        hc->pipeline = 1;
         ctx->action = "reading client pipelined request line";
         ngx_http_init_request(rev);
         return;
     }
 
-    c->pipeline = 0;
+    hc->pipeline = 0;
 
     b->pos = b->last = b->start;
     rev->event_handler = ngx_http_keepalive_handler;
@@ -1648,6 +1654,16 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
     c->buffer->last += n;
     rev->log->handler = ngx_http_log_error;
     ctx->action = "reading client request line";
+
+#if 0
+    if (!(hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t)) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    hc->request = r;
+    c->data = r;
+#endif
 
     ngx_http_init_request(rev);
 }

@@ -131,6 +131,16 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
         r->header_only = 1;
     }
 
+    if (r->headers_out.last_modified_time != -1) {
+        if (r->headers_out.status != NGX_HTTP_OK
+            && r->headers_out.status != NGX_HTTP_NOT_MODIFIED
+            && r->headers_out.status != NGX_HTTP_PARTIAL_CONTENT)
+        {
+            r->headers_out.last_modified_time = -1;
+            r->headers_out.last_modified = NULL;
+        }
+    }
+
     /* 2 is for trailing "\r\n" and 2 is for "\r\n" in the end of header */
     len = sizeof("HTTP/1.x ") - 1 + 2 + 2;
 

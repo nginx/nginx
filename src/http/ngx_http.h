@@ -57,7 +57,7 @@ typedef struct {
 
 void ngx_http_init_connection(ngx_connection_t *c);
 
-ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r);
+ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b);
 ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r);
 ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b);
 

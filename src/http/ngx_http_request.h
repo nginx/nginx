@@ -217,6 +217,13 @@ struct ngx_http_cleanup_s {
 };
 
 
+typedef struct {
+    ngx_http_request_t  *request;
+    ngx_array_t          large_buffers;
+    ngx_uint_t           pipeline;      /* unsigned  pipeline:1; */
+} ngx_http_connection_t;
+
+
 typedef ngx_int_t (*ngx_http_handler_pt)(ngx_http_request_t *r);
 
 struct ngx_http_request_s {
@@ -276,6 +283,8 @@ struct ngx_http_request_s {
     u_char              *discarded_buffer;
     void               **err_ctx;
     ngx_uint_t           err_status;
+
+    ngx_http_connection_t  *http_connection;
 
     unsigned             http_state:4;
 
