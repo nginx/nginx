@@ -265,6 +265,7 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
 
+ngx_int_t ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name);
 ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name);
 void ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
                         char *fmt, ...);

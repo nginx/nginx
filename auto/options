@@ -33,10 +33,10 @@ HTTP=YES
 HTTP_CHARSET=YES
 HTTP_GZIP=YES
 HTTP_SSL=NO
-HTTP_SSI=YES
+HTTP_SSI=NO
 HTTP_ACCESS=YES
 HTTP_USERID=YES
-HTTP_STATUS=YES
+HTTP_STATUS=NO
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
 
@@ -183,22 +183,72 @@ if [ ".$PREFIX" = "." ]; then
     PREFIX=/usr/local/nginx
 fi
 
-if [ ".$SBIN_PATH" = "." ]; then
-    SBIN_PATH=$PREFIX/sbin/nginx
-fi
 
-if [ ".$CONF_PATH" = "." ]; then
-    CONF_PATH=$PREFIX/conf/nginx.conf
-fi
+case ".$SBIN_PATH" in
+    ./*)
+    ;;
 
-if [ ".$PID_PATH" = "." ]; then
-    PID_PATH=$PREFIX/logs/nginx.pid
-fi
+    .)
+        SBIN_PATH=$PREFIX/sbin/nginx
+    ;;
 
-if [ ".$ERROR_LOG_PATH" = "." ]; then
-    ERROR_LOG_PATH=$PREFIX/logs/error.log
-fi
+    *)
+        SBIN_PATH=$PREFIX/$SBIN_PATH
+    ;;
+esac
 
-if [ ".$HTTP_LOG_PATH" = "." ]; then
-    HTTP_LOG_PATH=$PREFIX/logs/access.log
-fi
+
+case ".$CONF_PATH" in
+    ./*)
+    ;;
+
+    .)
+        CONF_PATH=$PREFIX/conf/nginx.conf
+    ;;
+
+    *)
+        CONF_PATH=$PREFIX/$CONF_PATH
+    ;;
+esac
+
+
+case ".$PID_PATH" in
+    ./*)
+    ;;
+
+    .)
+        PID_PATH=$PREFIX/logs/nginx.pid
+    ;;
+
+    *)
+        PID_PATH=$PREFIX/$PID_PATH
+    ;;
+esac
+
+
+case ".$ERROR_LOG_PATH" in
+    ./*)
+    ;;
+
+    .)
+        ERROR_LOG_PATH=$PREFIX/logs/error.log
+    ;;
+
+    *)
+        ERROR_LOG_PATH=$PREFIX/$ERROR_LOG_PATH
+    ;;
+esac
+
+
+case ".$HTTP_LOG_PATH" in
+    ./*)
+    ;;
+
+    .)
+        HTTP_LOG_PATH=$PREFIX/logs/access.log
+    ;;
+
+    *)
+        HTTP_LOG_PATH=$PREFIX/$HTTP_LOG_PATH
+    ;;
+esac

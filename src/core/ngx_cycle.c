@@ -530,6 +530,9 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
         if (ccf->pid.len == old_ccf->pid.len
             && ngx_strcmp(ccf->pid.data, old_ccf->pid.data) == 0)
         {
+
+            /* pid file name is the same */
+
             return NGX_OK;
         }
     }

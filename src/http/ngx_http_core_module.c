@@ -1416,6 +1416,10 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
 
     ngx_conf_merge_str_value(conf->root, prev->root, "html");
 
+    if (ngx_conf_full_name(cf->cycle, &conf->root) == NGX_ERROR) {
+        return NGX_CONF_ERROR;
+    }
+
     if (conf->types == NULL) {
         if (prev->types) {
             conf->types = prev->types;

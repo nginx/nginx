@@ -31,6 +31,7 @@ fi
 
 . auto/make
 . auto/lib/make
+. auto/install
 
 if [ "$PLATFORM" != win32 ]; then
     . auto/unix

@@ -549,19 +549,11 @@ static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t  *value, file;
 
     value = cf->args->elts;
+    file = value[1];
 
-    if (value[1].data[0] == '/') {
-        return ngx_conf_parse(cf, &value[1]);
-    }
-
-    file.len = cf->cycle->root.len + value[1].len;
-    if (!(file.data = ngx_palloc(cf->pool, file.len + 1))) {
+    if (ngx_conf_full_name(cf->cycle, &file) == NGX_ERROR){
         return NGX_CONF_ERROR;
     }
-
-    ngx_cpystrn(ngx_cpymem(file.data, cf->cycle->root.data,
-                           cf->cycle->root.len),
-                value[1].data, value[1].len + 1);
 
     ngx_log_error(NGX_LOG_INFO, cf->log, 0, "include %s", file.data);
 
@@ -569,13 +561,44 @@ static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+ngx_int_t ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
+{
+    u_char     *p;
+    ngx_str_t   old;
+
+    if (name->data[0] == '/') {
+        return NGX_OK;
+    }
+
+    old = *name;
+
+    name->len = cycle->root.len + old.len;
+
+    if (!(name->data = ngx_palloc(cycle->pool, name->len + 1))) {
+        return  NGX_ERROR;
+    }
+
+    p = ngx_cpymem(name->data, cycle->root.data, cycle->root.len),
+    ngx_cpystrn(p, old.data, old.len + 1);
+
+    return NGX_OK;
+}
+
+
 ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
 {
+    ngx_str_t         full;
     ngx_uint_t        i;
     ngx_list_part_t  *part;
     ngx_open_file_t  *file;
 
     if (name) {
+        full = *name;
+
+        if (ngx_conf_full_name(cycle, &full) == NGX_ERROR) {
+            return NULL;
+        }
+
         part = &cycle->open_files.part;
         file = part->elts;
 
@@ -590,11 +613,11 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
                 i = 0;
             }
 
-            if (name->len != file[i].name.len) {
+            if (full.len != file[i].name.len) {
                 continue;
             }
 
-            if (ngx_strcmp(name->data, file[i].name.data) == 0) {
+            if (ngx_strcmp(full.data, file[i].name.data) == 0) {
                 return &file[i];
             }
         }
@@ -607,8 +630,12 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
     file->fd = NGX_INVALID_FILE;
 
     if (name) {
-        file->name = *name;
+        file->name = full;
+
     } else {
+
+        /* stderr */
+
         file->name.len = 0;
         file->name.data = NULL;
     }

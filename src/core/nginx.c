@@ -128,15 +128,15 @@ int main(int argc, char *const *argv)
     ctx.argc = argc;
     ctx.argv = argv;
 
-    if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
-        return 1;
-    }
-
     if (ngx_os_init(log) == NGX_ERROR) {
         return 1;
     }
 
     if (!(init_cycle.pool = ngx_create_pool(1024, log))) {
+        return 1;
+    }
+
+    if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
         return 1;
     }
 
@@ -338,6 +338,10 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
         cycle->conf_file.data = (u_char *) NGX_CONF_PATH;
     }
 
+    if (ngx_conf_full_name(cycle, &cycle->conf_file) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
     return NGX_OK;
 }
 
@@ -372,6 +376,11 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_core_conf_t  *ccf = conf;
 
+#if !(WIN32)
+    struct passwd    *pwd;
+    struct group     *grp;
+#endif
+
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
     ngx_conf_init_value(ccf->worker_processes, 1);
@@ -384,24 +393,45 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #if !(WIN32)
 
-    /* TODO: default "nobody" user */
+    if (ccf->user == (uid_t) NGX_CONF_UNSET) {
+
+        pwd = getpwnam("nobody");
+        if (pwd == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "getpwnam(\"nobody\") failed");
+            return NGX_CONF_ERROR;
+        }
+
+        ccf->user = pwd->pw_uid;
+
+        grp = getgrnam("nobody");
+        if (grp == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "getgrnam(\"nobody\") failed");
+            return NGX_CONF_ERROR;
+        }
+
+        ccf->group = grp->gr_gid;
+    }
 
     if (ccf->pid.len == 0) {
         ccf->pid.len = sizeof(NGX_PID_PATH) - 1;
         ccf->pid.data = NGX_PID_PATH;
-        ccf->newpid.len = sizeof(NGX_PID_PATH NGX_NEWPID_EXT) - 1;
-        ccf->newpid.data = NGX_PID_PATH NGX_NEWPID_EXT;
-
-    } else {
-        ccf->newpid.len = ccf->pid.len + sizeof(NGX_NEWPID_EXT);
-
-        if (!(ccf->newpid.data = ngx_palloc(cycle->pool, ccf->newpid.len))) {
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
-                   NGX_NEWPID_EXT, sizeof(NGX_NEWPID_EXT));
     }
+
+    if (ngx_conf_full_name(cycle, &ccf->pid) == NGX_ERROR) {
+        return NGX_CONF_ERROR;
+    }
+
+    ccf->newpid.len = ccf->pid.len + sizeof(NGX_NEWPID_EXT);
+
+    if (!(ccf->newpid.data = ngx_palloc(cycle->pool, ccf->newpid.len))) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
+               NGX_NEWPID_EXT, sizeof(NGX_NEWPID_EXT));
+
 #endif
 
     return NGX_CONF_OK;
