@@ -18,6 +18,9 @@ int ngx_event_close_connection(ngx_event_t *ev)
 
     ngx_destroy_pool(c->pool);
 
+    ngx_del_timer(c->read);
+    ngx_del_timer(c->write);
+
     ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
     ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
 

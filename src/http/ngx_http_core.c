@@ -50,7 +50,7 @@ int ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->unexpected_eof = 0;
     r->lingering_close = 1;
-    r->keepalive = 1;
+    r->keepalive = 0;
 
 #if 1
     r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;

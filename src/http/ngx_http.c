@@ -33,6 +33,7 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
 #else
     ngx_http_server.doc_root = "/home/is/dox/";
     ngx_http_server.doc_root = "/home/is/work/xml/site-1.0.0/html";
+    ngx_http_server.doc_root = "/spool/test/lperltk";
 #endif
     ngx_http_server.doc_root_len = strlen(ngx_http_server.doc_root) + 1;
 

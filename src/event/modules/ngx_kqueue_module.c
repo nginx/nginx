@@ -61,7 +61,6 @@ int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
 
-#if 1
     if (nchanges > 0
         && ev->index < nchanges
         && change_list[ev->index].udata == ev)
@@ -75,7 +74,6 @@ int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 
         return NGX_OK;
     }
-#endif
 
     return ngx_kqueue_set_event(ev, event, EV_ADD | flags);
 }
@@ -140,10 +138,7 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
     change_list[nchanges].data = 0;
     change_list[nchanges].udata = ev;
 
-#if 0
-    if (flags == EV_ADD)
-#endif
-        ev->index = nchanges;
+    ev->index = nchanges;
 
     nchanges++;
 
@@ -264,8 +259,10 @@ void ngx_kqueue_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_event_t *e;
 
-    ngx_log_debug(ev->log, "set timer: %d" _ timer);
-
+#if (NGX_DEBUG)
+    ngx_connection_t *c = (ngx_connection_t *) ev->data;
+    ngx_log_debug(ev->log, "set timer: %d:%d" _ c->fd _ timer);
+#endif
     ngx_assert((!ev->timer_next && !ev->timer_prev), return, ev->log,
                "timer already set");
 

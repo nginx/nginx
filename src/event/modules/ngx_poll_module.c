@@ -190,7 +190,7 @@ int ngx_poll_process_events(ngx_log_t *log)
         }
     }
 
-    for (i = 0; ready; i++) {
+    for (i = 0; i < nevents && ready; i++) {
         c = &ngx_connections[event_list[i].fd];
 
         ngx_log_debug(log, "poll: fd:%d, ev:%d, rev:%d" _
@@ -244,6 +244,8 @@ int ngx_poll_process_events(ngx_log_t *log)
             ready--;
         }
     }
+
+    ngx_assert((ready == 0), /* void */ ; , log, "poll ready != nevents");
 
     return NGX_OK;
 }

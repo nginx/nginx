@@ -161,16 +161,23 @@ NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
 
 static void ngx_inline ngx_del_timer(ngx_event_t *ev)
 {
-    if (ev->timer_prev)
+#if (NGX_DEBUG)
+    ngx_log_debug(ev->log, "del timer: %d" _ *(int *)(ev->data));
+#endif
+
+    if (ev->timer_prev) {
         ev->timer_prev->timer_next = ev->timer_next;
+    }
 
     if (ev->timer_next) {
+        ev->timer_next->timer_delta += ev->timer_delta;
         ev->timer_next->timer_prev = ev->timer_prev;
         ev->timer_next = NULL;
     }
 
-    if (ev->timer_prev)
+    if (ev->timer_prev) {
         ev->timer_prev = NULL;
+    }
 }
 
 

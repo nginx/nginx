@@ -116,6 +116,7 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
         ngx_read_events[fd].data = &ngx_connections[fd];
         ngx_read_events[fd].event_handler = &ngx_event_accept;
         ngx_read_events[fd].listening = 1;
+        ev->index = NGX_INVALID_INDEX;
 
         ngx_read_events[fd].available = 0;
 

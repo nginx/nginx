@@ -695,14 +695,16 @@ static int ngx_http_set_lingering_close(ngx_http_request_t *r)
     ngx_del_timer(r->connection->read);
     ngx_add_timer(r->connection->read, r->server->lingering_timeout);
 
+    if (r->connection->read->blocked) {
+        if (ngx_add_event(r->connection->read, NGX_READ_EVENT,
 #if (HAVE_CLEAR_EVENT)
-    if (ngx_add_event(r->connection->read, NGX_READ_EVENT,
-                      NGX_CLEAR_EVENT) == NGX_ERROR) {
+                          NGX_CLEAR_EVENT) == NGX_ERROR)
 #else
-    if (ngx_add_event(r->connection->read, NGX_READ_EVENT,
-                      NGX_ONESHOT_EVENT) == NGX_ERROR) {
+                          NGX_ONESHOT_EVENT) == NGX_ERROR)
 #endif
-       return ngx_http_close_request(r);
+        {
+            return ngx_http_close_request(r);
+        }
     }
 
     if (ngx_shutdown_socket(r->connection->fd, NGX_WRITE_SHUTDOWN) == -1)
@@ -728,12 +730,14 @@ static int ngx_http_lingering_close_handler(ngx_event_t *ev)
 
     ngx_log_debug(ev->log, "http lingering close handler");
 
-    if (ev->timedout)
-        return NGX_DONE;
+    if (ev->timedout) {
+        return ngx_http_close_request(r);
+    }
 
     timer = r->lingering_time - ngx_time();
-    if (timer <= 0)
-        return NGX_DONE;
+    if (timer <= 0) {
+        return ngx_http_close_request(r);
+    }
 
     if (r->discarded_buffer == NULL) {
         if (r->header_in->end - r->header_in->last.mem
@@ -743,22 +747,23 @@ static int ngx_http_lingering_close_handler(ngx_event_t *ev)
         } else {
             ngx_test_null(r->discarded_buffer,
                           ngx_palloc(c->pool, r->server->discarded_buffer_size),
-                          NGX_ERROR);
+                          ngx_http_close_request(r));
         }
     }
 
     n = ngx_event_recv(c, r->discarded_buffer,
                        r->server->discarded_buffer_size);
 
-    if (n == NGX_ERROR)
-        return NGX_ERROR;
+    ngx_log_debug(ev->log, "lingering read: %d" _ n);
 
-    if (n == 0)
-        return NGX_DONE;
+    if (n == NGX_ERROR || n == 0) {
+        return ngx_http_close_request(r);
+    }
 
     timer *= 1000;
-    if (timer > r->server->lingering_timeout)
+    if (timer > r->server->lingering_timeout) {
         timer = r->server->lingering_timeout;
+    }
 
     ngx_del_timer(ev);
     ngx_add_timer(ev, timer);

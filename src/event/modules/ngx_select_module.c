@@ -81,6 +81,12 @@ int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 
     ngx_log_debug(ev->log, "select fd:%d event:%d" _ c->fd _ event);
 
+    if (ev->index != NGX_INVALID_INDEX) {
+        ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
+                      "%d:%d is already set", c->fd, event);
+        return NGX_OK;
+    }
+
 #if (WIN32)
     if ((event == NGX_READ_EVENT) && (max_read >= FD_SETSIZE)
         || (event == NGX_WRITE_EVENT) && (max_write >= FD_SETSIZE))
@@ -202,7 +208,7 @@ int ngx_select_process_events(ngx_log_t *log)
     for (i = 0; i < nevents; i++) {
         ev = event_index[i];
         c = (ngx_connection_t *) ev->data;
-        ngx_log_debug(log, "select: %d" _ c->fd);
+        ngx_log_debug(log, "select: %d:%d" _ c->fd _ ev->write);
     }
 #endif
 
@@ -304,6 +310,13 @@ int ngx_select_process_events(ngx_log_t *log)
 void ngx_select_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_event_t *e;
+
+#if (NGX_DEBUG)
+    ngx_connection_t *c = (ngx_connection_t *) ev->data;
+    ngx_log_debug(ev->log, "set timer: %d:%d" _ c->fd _ timer);
+#endif
+    ngx_assert((!ev->timer_next && !ev->timer_prev), return, ev->log,
+               "timer already set");
 
     for (e = timer_queue.timer_next;
          e != &timer_queue && timer > e->timer_delta;
