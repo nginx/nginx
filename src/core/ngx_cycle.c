@@ -138,8 +138,6 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                                    NGX_FILE_RDWR,
                                    NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 
-ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
-
         if (file[i].fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           ngx_open_file_n " \"%s\" failed",
@@ -152,6 +150,14 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
         if (ngx_file_append_mode(file[i].fd) == NGX_ERROR) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           ngx_file_append_mode_n " \"%s\" failed",
+                          file[i].name.data);
+            failed = 1;
+            break;
+        }
+#else
+        if (fcntl(file[i].fd, F_SETFD, FD_CLOEXEC) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          "fcntl(FD_CLOEXEC) \"%s\" failed",
                           file[i].name.data);
             failed = 1;
             break;
@@ -621,6 +627,20 @@ void ngx_reopen_files(ngx_cycle_t *cycle)
         if (ngx_file_append_mode(fd) == NGX_ERROR) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           ngx_file_append_mode_n " \"%s\" failed",
+                          file[i].name.data);
+
+            if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              ngx_close_file_n " \"%s\" failed",
+                              file[i].name.data);
+            }
+
+            continue;
+        }
+#else
+        if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "fcntl(FD_CLOEXEC) \"%s\" failed",
                           file[i].name.data);
 
             if (ngx_close_file(fd) == NGX_FILE_ERROR) {

@@ -276,8 +276,8 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
     ngx_test_null(log, ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)), NULL);
     ngx_test_null(log->file, ngx_conf_open_file(cycle, name), NULL);
 
-#if 0
-    /* STUB */ log->log_level = NGX_LOG_DEBUG;
+#if 1
+    /* STUB */ log->log_level = NGX_LOG_DEBUG | NGX_LOG_DEBUG_CORE | NGX_LOG_DEBUG_ALLOC | NGX_LOG_DEBUG_EVENT | NGX_LOG_DEBUG_HTTP;
 #endif
 
     return log;

@@ -106,13 +106,15 @@ static void ngx_exec_proc(ngx_cycle_t *cycle, void *data)
 }
 
 
-void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signo)
+#if 0
+
+void ngx_signal_processes(ngx_cycle_t *cycle)
 {
     ngx_uint_t  i;
 
     for (i = 0; i < ngx_last_process; i++) {
 
-        if (!ngx_processes[i].signal) {
+        if (ngx_processes[i].signal0 == 0) {
             continue;
         }
 
@@ -127,19 +129,22 @@ void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signo)
 
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                        "kill (" PID_T_FMT ", %d)" ,
-                       ngx_processes[i].pid, signo);
+                       ngx_processes[i].pid, ngx_processes[i].signal0);
 
-        if (kill(ngx_processes[i].pid, signo) == -1) {
+        if (kill(ngx_processes[i].pid, ngx_processes[i].signal0) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "kill(%d, %d) failed", ngx_processes[i].pid, signo);
+                          "kill(%d, %d) failed",
+                          ngx_processes[i].pid, ngx_processes[i].signal0);
             continue;
         }
 
-        if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
+        if (ngx_processes[i].signal0 != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
             ngx_processes[i].exiting = 1;
         }
     }
 }
+
+#endif
 
 
 void ngx_respawn_processes(ngx_cycle_t *cycle)
@@ -147,8 +152,6 @@ void ngx_respawn_processes(ngx_cycle_t *cycle)
     ngx_uint_t  i;
 
     for (i = 0; i < ngx_last_process; i++) {
-        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "proc table " PID_T_FMT, ngx_processes[i].pid);
 
         if (ngx_processes[i].exiting || !ngx_processes[i].exited) {
             continue;

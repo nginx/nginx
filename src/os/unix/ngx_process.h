@@ -8,6 +8,7 @@ typedef void (*ngx_spawn_proc_pt) (ngx_cycle_t *cycle, void *data);
 
 typedef struct {
     ngx_pid_t           pid;
+    int                 signal;
     int                 status;
 
     ngx_spawn_proc_pt   proc;
@@ -16,7 +17,6 @@ typedef struct {
 
     unsigned            respawn:1;
     unsigned            detached:1;
-    unsigned            signal:1;
     unsigned            exiting:1;
     unsigned            exited:1;
 } ngx_process_t;
@@ -47,7 +47,6 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,
                             char *name, ngx_int_t respawn);
 ngx_pid_t ngx_exec(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
-void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signo);
 void ngx_respawn_processes(ngx_cycle_t *cycle);
 void ngx_process_get_status(void);
 

@@ -374,7 +374,7 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (cf->cycle->old_cycle) {
+    if (cf->cycle->old_cycle->conf_ctx) {
         old_ecf = ngx_event_get_conf(cf->cycle->old_cycle->conf_ctx,
                                      ngx_event_core_module);
     } else {
