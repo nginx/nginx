@@ -206,7 +206,7 @@ ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr)
         return NGX_OK;
     }
 
-    in_cidr->mask = (ngx_uint_t) (0 - (1 << (32 - m)));
+    in_cidr->mask = htonl((ngx_uint_t) (0 - (1 << (32 - m))));
 
     return NGX_OK;
 }

@@ -92,6 +92,9 @@ static ngx_int_t ngx_http_access_handler(ngx_http_request_t *r)
     rule = alcf->rules->elts;
     for (i = 0; i < alcf->rules->nelts; i++) {
 
+ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%08X %08X %08X",
+               addr_in->sin_addr.s_addr, rule[i].mask, rule[i].addr);
+
         if ((addr_in->sin_addr.s_addr & rule[i].mask) == rule[i].addr) {
             if (rule[i].deny) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,

@@ -123,6 +123,83 @@ void ngx_md5_text(u_char *text, u_char *md5)
 }
 
 
+ngx_int_t ngx_encode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
+{
+    u_char         *d, *s;
+    ngx_uint_t      i;
+    static u_char   basis64[] =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    if (!(d = ngx_palloc(pool, ((src->len + 2) / 3) * 4 + 1))) {
+        return NGX_ERROR;
+    }
+
+    dst->data = d;
+    s = src->data;
+
+    for (i = 0; i < src->len - 2; i += 3) {
+        *d++ = basis64[(s[i] >> 2) & 0x3f];
+        *d++ = basis64[((s[i] & 3) << 4) | (s[i + 1] >> 4)];
+        *d++ = basis64[((s[i + 1] & 0x0f) << 2) | (s[i + 2] >> 6)];
+        *d++ = basis64[s[i + 2] & 0x3f];
+    }
+
+    if (i < src->len) {
+        *d++ = basis64[(s[i] >> 2) & 0x3f];
+
+        if (i == src->len - 1) {
+            *d++ = basis64[(s[i] & 3) << 4];
+            *d++ = '=';
+
+        } else {
+            *d++ = basis64[((s[i] & 3) << 4) | (s[i + 1] >> 4)];
+            *d++ = basis64[(s[i + 1] & 0x0f) << 2];
+        }
+
+        *d++ = '=';
+    }
+
+    dst->len = d - dst->data;
+    *d++ = '\0';
+
+    return NGX_OK;
+}
+
+
+ngx_int_t ngx_decode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
+{
+    u_char  *d, *s, c;
+
+    if (!(d = ngx_palloc(pool, ((src->len + 3) / 4) * 3))) {
+        return NGX_ABORT;
+    }
+
+    dst->data = d;
+    s = src->data;
+
+    if (*s == '+') {
+        c = 62;
+
+    } else if (*s == '/') {
+        c = 63;
+
+    } else if (*s >= '0' && *s <= '9') {
+        c = *s - '0' + 52;
+
+    } else if (*s >= 'A' && *s <= 'Z') {
+        c = *s - 'A';
+
+    } else if (*s >= 'a' && *s <= 'z') {
+        c = *s - 'a' + 26;
+
+    } else {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
 #if 0
 char *ngx_psprintf(ngx_pool_t *p, const char *fmt, ...)
 {
