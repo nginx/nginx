@@ -199,7 +199,7 @@ static ngx_http_ssl_ctx_t *ngx_http_ssl_create_ctx(ngx_http_request_t *r)
 void ngx_http_ssl_close_request(SSL *ssl, int mode)
 {
     SSL_set_shutdown(ssl, mode);
-    SSL_smart_shutdown(ssl);
+    SSL_shutdown(ssl);
     SSL_free(ssl);
 }
 

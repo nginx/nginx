@@ -815,7 +815,7 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
         return NGX_AGAIN;
     }
 
-#if 1
+#if 0
     ngx_http_ssl_read(r);
 #else
     n = ngx_recv(r->connection, r->header_in->last,
