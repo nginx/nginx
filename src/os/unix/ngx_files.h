@@ -30,6 +30,10 @@
 #define ngx_close_file_n         "close()"
 
 
+#define ngx_delete_file          unlink
+#define ngx_delete_file_n        "unlink()"
+
+
 #define ngx_open_tempfile(name, persistent)                                 \
                                  open(name, O_CREAT|O_EXCL|O_RDWR, 0600)
 #define ngx_open_tempfile_n      "open()"
@@ -49,8 +53,20 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 #define ngx_rename_file_n        "rename"
 
 
+#define ngx_open_dir             opendir
+#define ngx_open_dir_n           "opendir()"
+
+
+#define ngx_read_dir             readdir
+#define ngx_read_dir_n           "readdir()"
+
+
 #define ngx_mkdir(name)          mkdir(name, 0700)
 #define ngx_mkdir_n              "mkdir()"
+
+
+#define ngx_delete_dir           rmdir
+#define ngx_delete_dir_n         "rmdir()"
 
 
 #define ngx_file_type(file, sb)  stat(file, sb)
@@ -59,11 +75,11 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 #define ngx_stat_fd(fd, sb)      fstat(fd, sb)
 #define ngx_stat_fd_n            "fstat()"
 
-#define ngx_is_dir(sb)           (S_ISDIR(sb.st_mode))
-#define ngx_is_file(sb)          (S_ISREG(sb.st_mode))
-#define ngx_file_size(sb)        sb.st_size
-#define ngx_file_mtime(sb)       sb.st_mtime
-#define ngx_file_uniq(sb)        sb.st_ino
+#define ngx_is_dir(sb)           (S_ISDIR(sb->st_mode))
+#define ngx_is_file(sb)          (S_ISREG(sb->st_mode))
+#define ngx_file_size(sb)        sb->st_size
+#define ngx_file_mtime(sb)       sb->st_mtime
+#define ngx_file_uniq(sb)        sb->st_ino
 
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

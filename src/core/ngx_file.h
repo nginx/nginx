@@ -18,6 +18,7 @@ struct ngx_file_s {
     unsigned         info_valid:1;
 };
 
+#define NGX_MAX_PATH_LEVEL  3
 
 typedef struct {
     ngx_str_t  name;

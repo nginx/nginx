@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
@@ -19,6 +20,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>        /* TCP_NOPUSH */
+#include <dirent.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <osreldate.h>

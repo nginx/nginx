@@ -310,7 +310,7 @@ ngx_log_debug(cf->log, "TOKEN START");
 
         if (h->pos >= h->last) {
             if (cf->conf_file->file.offset
-                                  >= ngx_file_size(cf->conf_file->file.info)) {
+                               >= ngx_file_size((&cf->conf_file->file.info))) {
                 return NGX_CONF_FILE_DONE;
             }
 

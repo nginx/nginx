@@ -322,7 +322,7 @@ static void ngx_http_proxy_cache_look_complete_request(ngx_http_proxy_ctx_t *p)
     *ctx = p->cache->ctx;
 
     rc = ngx_http_cache_open_file(p->request, ctx,
-                                  ngx_file_uniq(p->cache->ctx.file.info));
+                                  ngx_file_uniq((&p->cache->ctx.file.info)));
 
     if (rc == NGX_HTTP_CACHE_THE_SAME) {
         p->try_busy_lock = 1;

@@ -78,7 +78,7 @@ int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
             return NGX_ERROR;
         }
 
-        if (ngx_file_uniq(ctx->file.info) == uniq) {
+        if (ngx_file_uniq((&ctx->file.info)) == uniq) {
             if (ngx_close_file(ctx->file.fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
                               ngx_close_file_n " \"%s\" failed",

@@ -65,7 +65,7 @@ int ngx_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool);
 #define ngx_mkdir_n                 "CreateDirectory()"
 
 int ngx_file_type(char *filename, ngx_file_info_t *fi);
-#define ngx_file_type_n             "GetFileAttributes"
+#define ngx_file_type_n             "GetFileAttributesEx()"
 
 #define ngx_stat_fd(fd, fi)         GetFileInformationByHandle(fd, fi)
 #define ngx_stat_fd_n               "GetFileInformationByHandle"

@@ -219,7 +219,7 @@ ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
 
     r->path.data[r->path.len - 1] = '/';
 
-    if (ngx_is_dir(r->file.info)) {
+    if (ngx_is_dir((&r->file.info))) {
         return NGX_OK;
     }
 

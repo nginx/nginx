@@ -220,6 +220,45 @@ int ngx_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 }
 
 
+int ngx_file_type(char *file, ngx_file_info_t *sb)
+{
+    WIN32_FILE_ATTRIBUTE_DATA  fa;
+
+    /* NT4 and Win98 */
+
+    if (GetFileAttributesEx(file, GetFileExInfoStandard, &fa) == 0) {
+        return NGX_ERROR;
+    }
+
+    sb->dwFileAttributes = fa.dwFileAttributes;
+    sb->ftCreationTime = fa.ftCreationTime;
+    sb->ftLastAccessTime = fa.ftLastAccessTime;
+    sb->ftLastWriteTime = fa.ftLastWriteTime;
+    sb->nFileSizeHigh = fa.nFileSizeHigh;
+    sb->nFileSizeLow = fa.nFileSizeLow;
+
+    return NGX_OK;
+}
+
+
+#if 0
+
+/* Win95 */
+
+int ngx_file_type(char *file, ngx_file_info_t *sb)
+{
+    sb->dwFileAttributes = GetFileAttributes(file);
+
+    if (sb->dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+#endif
+
+
 int ngx_file_append_mode(ngx_fd_t fd)
 {
     if (SetFilePointer(fd, 0, NULL, FILE_END) == INVALID_SET_FILE_POINTER) {

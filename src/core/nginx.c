@@ -5,6 +5,10 @@
 #include <nginx.h>
 
 
+/* STUB */
+void stub_init(ngx_log_t *log);
+
+
 static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log);
 static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
@@ -92,6 +96,8 @@ int main(int argc, char *const *argv)
     if (ngx_os_init(log) == NGX_ERROR) {
         return 1;
     }
+
+    stub_init(log);
 
     ngx_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {

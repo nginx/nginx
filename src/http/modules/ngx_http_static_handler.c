@@ -90,13 +90,12 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
     if (ngx_win32_version < NGX_WIN_NT) {
 
         /*
-         * There is no way to open a file or a directory in Win9X with
-         * one syscall: Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag.
-         * So we need to check its type before the opening.
+         * there is no way to open a file or a directory in Win9X with
+         * one syscall because Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag
+         * so we need to check its type before the opening
          */
 
-        r->file.info.dwFileAttributes = GetFileAttributes(r->file.name.data);
-        if (r->file.info.dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
+        if (ngx_file_type(r->file.name.data, &r->file.info) == NGX_FILE_ERROR) {
             err = ngx_errno;
             ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
                           ngx_file_type_n " \"%s\" failed", r->file.name.data);
@@ -182,7 +181,7 @@ ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);
         r->file.info_valid = 1;
     }
 
-    if (ngx_is_dir(r->file.info)) {
+    if (ngx_is_dir((&r->file.info))) {
 ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
@@ -211,7 +210,7 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
 #if !(WIN32) /* the not regular files are probably Unix specific */
 
-    if (!ngx_is_file(r->file.info)) {
+    if (!ngx_is_file((&r->file.info))) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       "%s is not a regular file", r->file.name.data);
 
@@ -288,8 +287,8 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
     }
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = ngx_file_size(r->file.info);
-    r->headers_out.last_modified_time = ngx_file_mtime(r->file.info);
+    r->headers_out.content_length_n = ngx_file_size((&r->file.info));
+    r->headers_out.last_modified_time = ngx_file_mtime((&r->file.info));
 
     if (!(r->headers_out.content_type =
                    ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
@@ -345,7 +344,7 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
     h->type = r->main ? NGX_HUNK_FILE : NGX_HUNK_FILE|NGX_HUNK_LAST;
 
     h->file_pos = 0;
-    h->file_last = ngx_file_size(r->file.info);
+    h->file_last = ngx_file_size((&r->file.info));
 
     h->file->fd = r->file.fd;
     h->file->log = r->connection->log;
