@@ -20,7 +20,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf);
 
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
-    int               m, rc, found;
+    int               m, rc, found, valid;
     char             *rv;
     void             *conf, **confp;
     ngx_str_t        *name;
@@ -139,15 +139,33 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
                     /* is the directive's argument count right ? */
 
-                    if (!(cmd->type & NGX_CONF_ANY)
-                        && ((cmd->type & NGX_CONF_FLAG && cf->args->nelts != 2)
-                            || (!(cmd->type & NGX_CONF_FLAG)
-                                && !(cmd->type
-                                      & argument_number[cf->args->nelts - 1])
-                               )
-                           )
-                       )
-                    {
+                    if (cmd->type & argument_number[cf->args->nelts - 1]) {
+                        valid = 1;
+
+                    } else if (cmd->type & NGX_CONF_ANY1) {
+
+                        if (cf->args->nelts != 1) {
+                            valid = 1;
+                        } else {
+                            valid = 0;
+                        }
+
+                    } else if (cmd->type & NGX_CONF_FLAG) {
+
+                        if (cf->args->nelts == 2) {
+                            valid = 1;
+                        } else {
+                            valid = 0;
+                        }
+
+                    } else if (cmd->type & NGX_CONF_ANY) {
+                        valid = 1;
+
+                    } else {
+                        valid = 0;
+                    }
+
+                    if (!valid) {
                         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                                       "invalid number arguments in "
                                       "directive \"%s\" in %s:%d",
@@ -441,10 +459,12 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 
 char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    char  *p = conf;
+
     int         flag;
     ngx_str_t  *value;
 
-    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -457,10 +477,13 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         flag = 0;
 
     } else {
-        return "must be \"on\" or \"off\"";
+        ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
+                     "invalid value \"%s\", it must be \"on\" or \"off\"",
+                     value[1].data);
+        return ngx_conf_errstr;
     }
 
-    *(int *) (conf + cmd->offset) = flag;
+    *(int *) (p + cmd->offset) = flag;
 
     return NGX_CONF_OK;
 }
@@ -468,9 +491,11 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    char  *p = conf;
+
     ngx_str_t  *field, *value;
 
-    field = (ngx_str_t *) (conf + cmd->offset);
+    field = (ngx_str_t *) (p + cmd->offset);
 
     if (field->data) {
         return "is duplicate";
@@ -487,10 +512,12 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    char  *p = conf;
+
     int         num, len;
     ngx_str_t  *value;
 
-    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -500,10 +527,10 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     num = ngx_atoi(value[1].data, len);
     if (num == NGX_ERROR) {
-        return "invalid value";
+        return "invalid number";
     }
 
-    *(int *) (conf + cmd->offset) = num;
+    *(int *) (p + cmd->offset) = num;
 
     return NGX_CONF_OK;
 }
@@ -511,11 +538,13 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    char  *p = conf;
+
     int         size, len, scale;
     char        last;
     ngx_str_t  *value;
 
-    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -548,7 +577,7 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     size *= scale;
 
-    *(int *) (conf + cmd->offset) = size;
+    *(int *) (p + cmd->offset) = size;
 
     return NGX_CONF_OK;
 }
@@ -556,12 +585,14 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    char  *p = conf;
+
     int         size, total, len, scale;
     u_int       max, i;
     char        last, *start;
     ngx_str_t  *value;
 
-    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -643,7 +674,7 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         start = &value[1].data[i + 1];
     }
 
-    *(int *) (conf + cmd->offset) = total;
+    *(int *) (p + cmd->offset) = total;
 
     return NGX_CONF_OK;
 }
@@ -651,12 +682,14 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    char  *p = conf;
+
     int         size, total, len, scale;
     u_int       max, i;
     char        last, *start;
     ngx_str_t  *value;
 
-    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -750,7 +783,7 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         start = &value[1].data[i + 1];
     }
 
-    *(int *) (conf + cmd->offset) = total;
+    *(int *) (p + cmd->offset) = total;
 
     return NGX_CONF_OK;
 }

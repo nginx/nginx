@@ -53,8 +53,8 @@
 int ngx_file_type(char *filename, ngx_file_info_t *fi);
 #define ngx_file_type_n             "GetFileAttributes"
 
-#define ngx_stat_fd(fd, fi)        GetFileInformationByHandle(fd, fi)
-#define ngx_stat_fd_n              "GetFileInformationByHandle"
+#define ngx_stat_fd(fd, fi)         GetFileInformationByHandle(fd, fi)
+#define ngx_stat_fd_n               "GetFileInformationByHandle"
 
 #define ngx_is_dir(fi)      (fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #define ngx_is_file(fi)     !(fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -73,7 +73,10 @@ int ngx_file_type(char *filename, ngx_file_info_t *fi);
 
 
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
-#define ngx_read_file_n            "ReadFile()"
+#define ngx_read_file_n             "ReadFile()"
+
+
+#define STDERR_FILENO               (HANDLE) 2
 
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

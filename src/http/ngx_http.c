@@ -151,14 +151,14 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
        and its location{}s' loc_conf's */
 
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
-    cscfp = (ngx_http_core_srv_conf_t **)cmcf->servers.elts;
+    cscfp = cmcf->servers.elts;
 
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
             continue;
         }
 
-        module = (ngx_http_module_t *) ngx_modules[m]->ctx;
+        module = ngx_modules[m]->ctx;
         mi = ngx_modules[m]->ctx_index;
 
         /* init http{} main_conf's */
@@ -227,18 +227,18 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                    NGX_CONF_ERROR);
 
     /* "server" directives */
-    cscfp = (ngx_http_core_srv_conf_t **) cmcf->servers.elts;
+    cscfp = cmcf->servers.elts;
     for (s = 0; s < cmcf->servers.nelts; s++) {
 
         /* "listen" directives */
-        lscf = (ngx_http_listen_t *) cscfp[s]->listen.elts;
+        lscf = cscfp[s]->listen.elts;
         for (l = 0; l < cscfp[s]->listen.nelts; l++) {
 
             port_found = 0;
 
             /* AF_INET only */
 
-            in_port = (ngx_http_in_port_t *) in_ports.elts;
+            in_port = in_ports.elts;
             for (p = 0; p < in_ports.nelts; p++) {
 
                 if (lscf[l].port == in_port[p].port) {
@@ -248,7 +248,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     port_found = 1;
                     addr_found = 0;
 
-                    in_addr = (ngx_http_in_addr_t *) in_port[p].addrs.elts;
+                    in_addr = in_port[p].addrs.elts;
                     for (a = 0; a < in_port[p].addrs.nelts; a++) {
 
                         if (lscf[l].addr == in_addr[a].addr) {
@@ -256,8 +256,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                             /* the address is already bound to this port */
 
                             /* "server_name" directives */
-                            s_name = (ngx_http_server_name_t *)
-                                                    cscfp[s]->server_names.elts;
+                            s_name = cscfp[s]->server_names.elts;
                             for (n = 0; n < cscfp[s]->server_names.nelts; n++) {
 
                                 /* add the server name and server core module
@@ -394,17 +393,17 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /* AF_INET only */
 
-    in_port = (ngx_http_in_port_t *) in_ports.elts;
+    in_port = in_ports.elts;
     for (p = 0; p < in_ports.nelts; p++) {
 
         /* check whether the all server names point to the same server */
 
-        in_addr = (ngx_http_in_addr_t *) in_port[p].addrs.elts;
+        in_addr = in_port[p].addrs.elts;
         for (a = 0; a < in_port[p].addrs.nelts; a++) {
 
             virtual_names = 0;
 
-            name = (ngx_http_server_name_t *) in_addr[a].names.elts;
+            name = in_addr[a].names.elts;
             for (n = 0; n < in_addr[a].names.nelts; n++) {
                 if (in_addr[a].core_srv_conf != name[n].core_srv_conf) {
                     virtual_names = 1;
@@ -430,7 +429,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             a = 0;
         }
 
-        in_addr = (ngx_http_in_addr_t *) in_port[p].addrs.elts;
+        in_addr = in_port[p].addrs.elts;
         while (a < in_port[p].addrs.nelts) {
 
             ngx_test_null(ls, ngx_push_array(&ngx_listening_sockets),
@@ -443,7 +442,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             addr_in->sin_family = AF_INET;
             addr_in->sin_addr.s_addr = in_addr[a].addr;
-            addr_in->sin_port = htons(in_port[p].port);
+            addr_in->sin_port = htons((u_short) in_port[p].port);
 
             ngx_test_null(ls->addr_text.data,
                           ngx_palloc(cf->pool, INET_ADDRSTRLEN + 6),
@@ -478,7 +477,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             if (in_port[p].addrs.nelts > 1) {
 
-                in_addr = (ngx_http_in_addr_t *) in_port[p].addrs.elts;
+                in_addr = in_port[p].addrs.elts;
                 if (in_addr[in_port[p].addrs.nelts - 1].addr != INADDR_ANY) {
 
                     /* if this port has not the "*:port" binding then create
@@ -523,14 +522,19 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     /* DEBUG STUFF */
-    in_port = (ngx_http_in_port_t *) in_ports.elts;
+    in_port = in_ports.elts;
     for (p = 0; p < in_ports.nelts; p++) {
 ngx_log_debug(cf->log, "port: %d" _ in_port[p].port);
-        in_addr = (ngx_http_in_addr_t *) in_port[p].addrs.elts;
+        in_addr = in_port[p].addrs.elts;
         for (a = 0; a < in_port[p].addrs.nelts; a++) {
             char ip[20];
             ngx_inet_ntop(AF_INET, (char *) &in_addr[a].addr, ip, 20);
 ngx_log_debug(cf->log, "%s %08x" _ ip _ in_addr[a].core_srv_conf);
+            s_name = in_addr[a].names.elts;
+            for (n = 0; n < in_addr[a].names.nelts; n++) {
+ngx_log_debug(cf->log, "%s %08x" _ s_name[n].name.data _
+              s_name[n].core_srv_conf);
+            }
         }
     }
     /**/

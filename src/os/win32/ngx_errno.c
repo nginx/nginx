@@ -1,13 +1,13 @@
 
 /*
    TODO:
-     add WSA error messages
+     add WSA error messages for NT and 98
      test for English only messages
 */
 
 #include <ngx_config.h>
-#include <ngx_string.h>
-#include <ngx_errno.h>
+#include <ngx_core.h>
+
 
 int ngx_strerror_r(ngx_err_t err, char *errstr, size_t size)
 {

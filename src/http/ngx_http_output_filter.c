@@ -119,7 +119,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
             if (hunk->type & NGX_HUNK_IN_MEMORY) {
                 size = hunk->last - hunk->pos;
             } else {
-                size = hunk->file_last - hunk->file_pos;
+                size = (size_t) (hunk->file_last - hunk->file_pos);
             }
 
             if (size > conf->hunk_size) {
@@ -201,8 +201,8 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
                 size = ctx->incoming->hunk->last - ctx->incoming->hunk->pos;
 
             } else {
-                size = ctx->incoming->hunk->file_last
-                                               - ctx->incoming->hunk->file_pos;
+                size = (size_t) (ctx->incoming->hunk->file_last
+                                              - ctx->incoming->hunk->file_pos);
             }
 
             /* delete the completed hunk from the incoming chain */
@@ -241,7 +241,7 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
     if (src->type & NGX_HUNK_IN_MEMORY) {
         size = src->last - src->pos;
     } else {
-        size = src->file_last - src->file_pos;
+        size = (size_t) (src->file_last - src->file_pos);
     }
 
     if (size > (dst->end - dst->pos)) {

@@ -43,7 +43,7 @@ typedef struct ngx_event_s       ngx_event_t;
 
 
 
-#define NGX_MAXHOSTNAMELEN 32
+#define NGX_MAXHOSTNAMELEN 64
 /*
 #define NGX_MAXHOSTNAMELEN MAXHOSTNAMELEN
 */

@@ -63,7 +63,8 @@ void ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
-        if (s >= ecf->connections) {
+        /* disable warnings: Win32 SOCKET is u_int while UNIX socket is int */
+        if ((unsigned) s >= (unsigned) ecf->connections) {
 
             ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
                           "accept() %s returned socket #%d while "

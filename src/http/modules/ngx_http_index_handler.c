@@ -14,7 +14,7 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_command_t ngx_http_index_commands[] = {
 
     {ngx_string("index"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
+     NGX_HTTP_LOC_CONF|NGX_CONF_ANY1,
      ngx_http_index_set_index,
      NGX_HTTP_LOC_CONF_OFFSET,
      0,
@@ -280,7 +280,7 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
     for (i = 1; i < cf->args->nelts; i++) {
         if (value[i].len == 0) {
             ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                         "index \"%s\" is invalid", value[1].data);
+                         "index \"%s\" is invalid", value[i].data);
             return ngx_conf_errstr;
         }
 

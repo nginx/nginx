@@ -1,30 +1,16 @@
 
-#include <nginx.h>
 
 #include <ngx_config.h>
-
 #include <ngx_core.h>
-#include <ngx_connection.h>
-#include <ngx_os_init.h>
-#include <ngx_server.h>
+
 #include <ngx_listen.h>
-#include <ngx_conf_file.h>
 
-/* STUB */
-#include <ngx_http.h>
-/* */
+#include <nginx.h>
 
 
-static void ngx_set_signals(ngx_log_t *log);
-static void ngx_open_listening_sockets(ngx_log_t *log);
 
+static int ngx_open_listening_sockets(ngx_log_t *log);
 
-/* STUB */
-int ngx_max_conn = 512;
-u_int  ngx_sendfile_flags;
-
-ngx_server_t  ngx_server;
-/* */
 
 ngx_log_t       ngx_log;
 ngx_pool_t     *ngx_pool;
@@ -34,8 +20,8 @@ void        ****ngx_conf_ctx;
 ngx_os_io_t  ngx_io;
 
 
-int ngx_max_module;
-void *ctx_conf;
+int     ngx_max_module;
+void   *ctx_conf;
 
 int ngx_connection_counter;
 
@@ -109,7 +95,9 @@ int main(int argc, char *const *argv)
             }
         }
 
-        ngx_open_listening_sockets(&ngx_log);
+        if (ngx_open_listening_sockets(&ngx_log) == NGX_ERROR) {
+            return 1;
+        }
 
         /* TODO: daemon, once only */
 
@@ -127,7 +115,7 @@ int main(int argc, char *const *argv)
 }
 
 
-static void ngx_open_listening_sockets(ngx_log_t *log)
+static int ngx_open_listening_sockets(ngx_log_t *log)
 {
     int           times, failed, reuseaddr, i;
     ngx_err_t     err;
@@ -161,7 +149,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
             if (s == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                               ngx_socket_n " %s falied", ls[i].addr_text.data);
-                exit(1);
+                return NGX_ERROR;
             }
 
             if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
@@ -169,7 +157,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                               "setsockopt(SO_REUSEADDR) %s failed",
                               ls[i].addr_text.data);
-                exit(1);
+                return NGX_ERROR;
             }
 
             /* TODO: close on exit */
@@ -179,7 +167,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_nonblocking_n " %s failed",
                                   ls[i].addr_text.data);
-                    exit(1);
+                    return NGX_ERROR;
                 }
             }
 
@@ -189,7 +177,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
                               "bind() to %s failed", ls[i].addr_text.data);
 
                 if (err != NGX_EADDRINUSE)
-                    exit(1);
+                    return NGX_ERROR;
 
                 if (ngx_close_socket(s) == -1)
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
@@ -203,7 +191,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
             if (listen(s, ls[i].backlog) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                               "listen() to %s failed", ls[i].addr_text.data);
-                exit(1);
+                return NGX_ERROR;
             }
 
             /* TODO: deferred accept */
@@ -222,6 +210,8 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
 
     if (failed) {
         ngx_log_error(NGX_LOG_EMERG, log, 0, "can not bind(), exiting");
-        exit(1);
+        return NGX_ERROR;
     }
+
+    return NGX_OK;
 }

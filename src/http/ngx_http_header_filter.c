@@ -1,16 +1,10 @@
 
+#include <ngx_config.h>
+#include <ngx_core.h>
+
 #include <nginx.h>
 
-#include <ngx_config.h>
-
-#include <ngx_core.h>
-#include <ngx_string.h>
-#include <ngx_table.h>
-#include <ngx_hunk.h>
-#include <ngx_conf_file.h>
-
 #include <ngx_http.h>
-#include <ngx_http_config.h>
 #include <ngx_http_write_filter.h>
 
 
