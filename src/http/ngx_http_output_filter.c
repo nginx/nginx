@@ -8,66 +8,77 @@
 #include <ngx_http_output_filter.h>
 
 
-/* STUB */
-int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in);
-
-
-
 static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src);
+static int ngx_http_output_filter_init(
+            int (*next_filter)(ngx_http_request_t *r, ngx_chain_t *ch));
+static void *ngx_http_output_filter_create_conf(ngx_pool_t *pool);
+static void *ngx_http_output_filter_set_hunk_size(ngx_pool_t *pool, void *conf,
+                                                  char *size);
 
-ngx_http_module_t  ngx_http_output_filter_module;
 
+ngx_http_module_t  ngx_http_output_filter_module = {
+    NGX_HTTP_MODULE
+};
+
+
+static int (*ngx_http_output_next_filter)(ngx_http_request_t *r,
+                                          ngx_chain_t *ch);
 
 /* STUB */
-static ngx_http_output_filter_ctx_t module_ctx;
+int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *ch);
 
-void ngx_http_output_filter_init()
+int ngx_http_output_filter_stub_init(ngx_pool_t *pool, void *loc_conf)
 {
-     module_ctx.hunk_size = 32 * 1024;
-     module_ctx.out.hunk = NULL;
-     module_ctx.out.next = NULL;
-     module_ctx.next_filter = ngx_http_write_filter;
+    ngx_http_output_filter_conf_t *conf;
 
-     ngx_http_output_filter_module.ctx = &module_ctx;
+    ngx_http_output_filter_init(ngx_http_write_filter);
+    conf = ngx_http_output_filter_create_conf(pool);
+    ngx_http_output_filter_set_hunk_size(pool, conf, "32");
+
+    loc_conf = conf;
 }
 /* */
 
 
-/*
-    flags NGX_HUNK_RECYCLED, NGX_HUNK_FLUSH, NGX_HUNK_LAST
-*/
-
 int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 {
-    int      rc, first;
+    int      rc, once;
     size_t   size;
     ssize_t  n;
     ngx_chain_t  *ce;
     ngx_http_output_filter_ctx_t  *ctx;
+    ngx_http_output_filter_conf_t *conf;
 
     ctx = (ngx_http_output_filter_ctx_t *)
-                              ngx_get_module_ctx(r->main ? r->main : r,
-                                               &ngx_http_output_filter_module);
+                            ngx_get_module_ctx(r->main ? r->main : r,
+                                                ngx_http_output_filter_module);
+
+    if (ctx == NULL) {
+        ngx_test_null(ctx,
+                    ngx_pcalloc(r->pool, sizeof(ngx_http_output_filter_ctx_t)),
+                    NGX_ERROR);
+
+        ctx->next_filter = ngx_http_output_next_filter;
+    }
+
+    ngx_log_debug(r->connection->log, "HUNK: x%x CTX-IN: x%x CTX->HUNK: x%x" _
+                  hunk _ ctx->in _ ctx->hunk);
 
     if (hunk && (hunk->type & NGX_HUNK_LAST))
         ctx->last = 1;
 
-    first = 1;
-
-    while (first || ctx->in) {
+    for (once = 1; once || ctx->in; once--) {
 
          /* input chain is not empty */
         if (ctx->in) {
 
             /* add hunk to input chain */
-            if (first && hunk) {
+            if (once && hunk) {
                 for (ce = ctx->in; ce->next; ce = ce->next)
                     /* void */ ;
 
                 ngx_add_hunk_to_chain(ce->next, hunk, r->pool, NGX_ERROR);
             }
-
-            first = 0;
 
             /* our hunk is still busy */
             if (ctx->hunk->pos.mem < ctx->hunk->last.mem) {
@@ -122,8 +133,6 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
         /* input chain is empty */
         } else {
 
-            first = 0;
-
             if (hunk == NULL) {
                 rc = ctx->next_filter(r, NULL);
 
@@ -147,12 +156,17 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
                         if (ctx->hunk == NULL) {
 
                             if (hunk->type & NGX_HUNK_LAST) {
+
+                                conf = (ngx_http_output_filter_conf_t *)
+                                 ngx_get_module_loc_conf(r->main ? r->main : r,
+                                                ngx_http_output_filter_module);
+
                                 size = hunk->last.mem - hunk->pos.mem;
-                                if (size > ctx->hunk_size)
-                                    size = ctx->hunk_size;
+                                if (size > conf->hunk_size)
+                                    size = conf->hunk_size;
 
                             } else {
-                                size = ctx->hunk_size;
+                                size = conf->hunk_size;
                             }
 
                             ngx_test_null(ctx->hunk,
@@ -250,4 +264,37 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
     }
 
     return NGX_OK;
+}
+
+
+static int ngx_http_output_filter_init(
+            int (*next_filter)(ngx_http_request_t *r, ngx_chain_t *ch))
+{
+    ngx_http_output_next_filter = next_filter;
+
+    return NGX_OK;
+}
+
+static void *ngx_http_output_filter_create_conf(ngx_pool_t *pool)
+{
+    ngx_http_output_filter_conf_t *conf;
+
+    ngx_test_null(conf,
+                  ngx_pcalloc(pool, sizeof(ngx_http_output_filter_conf_t)),
+                  NULL);
+
+    conf->hunk_size = 16384;
+}
+
+static void *ngx_http_output_filter_set_hunk_size(ngx_pool_t *pool, void *conf,
+                                                  char *size)
+{
+    ngx_http_output_filter_conf_t *cf = (ngx_http_output_filter_conf_t *) conf;
+
+    cf->hunk_size = atoi(size);
+    if (cf->hunk_size <= 0)
+        return "Error";
+
+    cf->hunk_size *= 1024;
+    return NULL;
 }

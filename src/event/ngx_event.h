@@ -106,6 +106,9 @@ NGX_AIO_EVENT              overlapped, aio_read, aioread
 
 #ifndef HAVE_CLEAR_EVENT
 #define HAVE_CLEAR_EVENT   1
+#endif
+
+#if (HAVE_CLEAR_EVENT)
 #define NGX_CLEAR_EVENT    EV_CLEAR
 #endif
 

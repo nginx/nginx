@@ -32,7 +32,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
        state, p, r->header_in->last, ch, p);
 */
 
-        /* GCC compiles switch as jump table */
+        /* GCC 2.95.2 and VC 6.0 compiles switch as jump table */
 
         switch (state) {
 

@@ -84,6 +84,7 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     errstr[len + 1] = '\0';
 
     fputs(errstr, stderr);
+    fflush(stderr);
 }
 
 #if !(HAVE_VARIADIC_MACROS)

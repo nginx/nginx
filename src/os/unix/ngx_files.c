@@ -10,8 +10,10 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 
     n = pread(file->fd, buf, size, offset);
 
-    if (n == NGX_ERROR)
+    if (n == -1) {
         ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "read() failed");
+        return NGX_ERROR;
+    }
 
     return n;
 }

@@ -36,12 +36,6 @@
 #define NGX_HTTP_DIRECTORY_HANDLER  1
 
 
-typedef struct {
-    void *ctx;   /* STUB */
-} ngx_http_module_t;
-
-/* STUB */
-#define ngx_get_module_ctx(r, module)  (module)->ctx
 
 typedef struct {
     char          *doc_root;
@@ -81,6 +75,10 @@ struct ngx_http_request_s {
     char  *filename;
     char  *location;
     ngx_fd_t  fd;
+
+    void  **ctx;
+    void  **loc_conf;
+    void  **srv_conf;
 
     ngx_pool_t  *pool;
     ngx_hunk_t  *header_in;
@@ -140,6 +138,18 @@ typedef struct {
 } ngx_http_log_ctx_t;
 
 
+typedef struct {
+    int    index;
+} ngx_http_module_t;
+
+#define NGX_HTTP_MODULE  0
+
+#define ngx_get_module_loc_conf(r, module)  r->loc_conf[module.index]
+#define ngx_get_module_ctx(r, module)  r->ctx[module.index]
+
+
+
+/* STUB */
 #define NGX_INDEX "index.html"
 
 

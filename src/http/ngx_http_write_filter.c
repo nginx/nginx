@@ -1,27 +1,19 @@
 
 #include <ngx_config.h>
-
+#include <ngx_core.h>
 #include <ngx_hunk.h>
 #include <ngx_event_write.h>
 #include <ngx_http.h>
 #include <ngx_http_output_filter.h>
-
 #include <ngx_http_write_filter.h>
 
 
-ngx_http_module_t  ngx_http_write_filter_module;
+ngx_http_module_t  ngx_http_write_filter_module = {
+    NGX_HTTP_MODULE
+};
 
 
 /* STUB */
-static ngx_http_write_filter_ctx_t module_ctx;
-
-void ngx_http_write_filter_init()
-{
-     module_ctx.buffer_output = 10240;
-     module_ctx.out = NULL;
-
-     ngx_http_write_filter_module.ctx = &module_ctx;
-}
 /* */
 
 
@@ -31,10 +23,17 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     off_t  size, flush;
     ngx_chain_t  *ch, **prev, *chain;
     ngx_http_write_filter_ctx_t  *ctx;
+    ngx_http_write_filter_conf_t *conf;
+
 
     ctx = (ngx_http_write_filter_ctx_t *)
                               ngx_get_module_ctx(r->main ? r->main : r,
-                                                 &ngx_http_write_filter_module);
+                                                 ngx_http_write_filter_module);
+    if (ctx == NULL)
+        ngx_test_null(ctx,
+                      ngx_pcalloc(r->pool, sizeof(ngx_http_write_filter_ctx_t)),
+                      NGX_ERROR);
+
     size = flush = 0;
     last = 0;
     prev = &ctx->out;
@@ -76,7 +75,11 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
             last = 1;
     }
 
-    if (!last && flush == 0 && size < ctx->buffer_output)
+    conf = (ngx_http_write_filter_conf_t *)
+                   ngx_get_module_loc_conf(r->main ? r->main : r,
+                                                ngx_http_write_filter_module);
+
+    if (!last && flush == 0 && size < conf->buffer_output)
         return NGX_OK;
 
     chain = ngx_event_write(r->connection, ctx->out, flush);
@@ -89,3 +92,29 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     return (chain ? NGX_AGAIN : NGX_OK);
 }
+
+
+static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool)
+{
+    ngx_http_write_filter_conf_t *conf;
+
+    ngx_test_null(conf,
+                  ngx_pcalloc(pool, sizeof(ngx_http_write_filter_conf_t)),
+                  NULL);
+
+    conf->buffer_output = 16384;
+}
+
+static void *ngx_http_write_filter_set_hunk_size(ngx_pool_t *pool, void *conf,
+                                                  char *size)
+{
+    ngx_http_write_filter_conf_t *cf = (ngx_http_write_filter_conf_t *) conf;
+
+    cf->buffer_output = atoi(size);
+    if (cf->buffer_output <= 0)
+        return "Error";
+
+    cf->buffer_output *= 1024;
+    return NULL;
+}
+

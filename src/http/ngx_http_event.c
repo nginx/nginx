@@ -361,6 +361,7 @@ static int ngx_http_discarded_read(ngx_event_t *ev)
 static int ngx_http_handler(ngx_http_request_t *r)
 {
     int  rc;
+    ngx_msec_t  timeout;
 
     ngx_del_timer(r->connection->read);
     r->header_timeout = 1;
@@ -393,7 +394,16 @@ static int ngx_http_handler(ngx_http_request_t *r)
             return ngx_http_close_request(r);
         }
 
-        ngx_add_timer(r->connection->write, 5000);
+        if (r->connection->sent > 0) {
+            ngx_log_debug(r->connection->log, "sent: " QD_FMT _
+                          r->connection->sent);
+            timeout = (ngx_msec_t) (r->connection->sent * 10);
+            ngx_log_debug(r->connection->log, "timeout: %d" _ timeout);
+            ngx_add_timer(r->connection->write, timeout);
+
+        } else {
+            ngx_add_timer(r->connection->write, 10000);
+        }
 
         r->connection->write->event_handler = ngx_http_writer;
         return rc;
@@ -487,6 +497,8 @@ static int ngx_http_writer(ngx_event_t *ev)
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
+
+    c->sent = 0;
 
     rc = ngx_http_output_filter(r, NULL);
 

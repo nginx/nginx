@@ -8,21 +8,27 @@
 
 ssize_t ngx_sendv(ngx_connection_t *c, ngx_iovec_t *iovec, int n)
 {
-     ssize_t rc;
-     ngx_err_t err;
+     int        rc;
+     size_t     sent;
+     ngx_err_t  err;
 
-     rc = writev(c->fd, iovec, n);
+     ngx_log_debug(c->log, "WSASend() start");
+
+     rc = WSASend(c->fd, iovec, n, &sent, 0, NULL, NULL);
+
+     ngx_log_debug(c->log, "WSASend() done");
 
      if (rc == -1) {
          err = ngx_socket_errno;
+
          if (err == NGX_EAGAIN) {
-             ngx_log_error(NGX_LOG_INFO, c->log, err, "sendv() eagain");
+             ngx_log_error(NGX_LOG_INFO, c->log, err, "WSASend() eagain");
              return NGX_AGAIN;
          }
 
-         ngx_log_error(NGX_LOG_ERR, c->log, err, "sendv() failed");
+         ngx_log_error(NGX_LOG_ERR, c->log, err, "WSASend() failed");
          return NGX_ERROR;
      }
 
-     return rc;
+     return sent;
 }

@@ -98,23 +98,20 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *c, ngx_chain_t *in,
                                   (ngx_iovec_t *) trailer->elts, trailer->nelts,
                                   &sent, c->log);
             } else {
-                size_t sendv_sent;
+                rc = ngx_sendv(c, (ngx_iovec_t *) header->elts,
+                               header->nelts);
 
-                sendv_sent = 0;
-                rc = ngx_sendv(c->fd, (ngx_iovec_t *) header->elts,
-                               header->nelts, &sendv_sent);
-                sent = sendv_sent;
+                sent = rc > 0 ? rc: 0;
+
                 ngx_log_debug(c->log, "sendv: " QD_FMT _ sent);
             }
 #if (HAVE_MAX_SENDFILE_IOVEC)
         }
 #endif
-        /* save sent for logging */
-
         if (rc == NGX_ERROR)
-            return (ngx_chain_t *) -1;
+            return (ngx_chain_t *) NGX_ERROR;
 
-        c->sent = sent;
+        c->sent += sent;
         flush -= sent;
 
         for (ch = in; ch; ch = ch->next) {

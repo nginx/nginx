@@ -3,12 +3,13 @@
 
 
 #include <ngx_config.h>
+#include <ngx_connection.h>
 
 typedef WSABUF        ngx_iovec_t;
 #define ngx_iov_base  buf
 #define ngx_iov_len   len
 
-#define ngx_sendv(s, iovec, n, sent)  WSASend(s, iovec, n, sent, 0, NULL, NULL)
+ssize_t ngx_sendv(ngx_connection_t *c, ngx_iovec_t *iovec, int n);
 
 
 #endif /* _NGX_SENDV_H_INCLUDED_ */
