@@ -118,13 +118,13 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
                                 off_t limit)
 {
     int          n;
-    ngx_uint_t   flush, last;
+    ngx_uint_t   flush;
     ssize_t      send, size;
     ngx_buf_t   *buf;
 
     buf = c->ssl->buf;
 
-    if (in && in->next == NULL && buf->pos == buf->last && !c->ssl->buffer) {
+    if (in && in->next == NULL && !c->buffered && !c->ssl->buffer) {
 
         /*
          * we avoid a buffer copy if the incoming buf is a single,
@@ -148,14 +148,12 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
 
     send = 0;
     flush = (in == NULL) ? 1 : 0;
-    last = (in == NULL) ? 1 : 0;
 
     for ( ;; ) {
 
         while (in && buf->last < buf->end) {
             if (in->buf->last_buf) {
                 flush = 1;
-                last = 1;
             }
 
             if (ngx_buf_special(in->buf)) {
@@ -226,15 +224,9 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
         }
     }
 
-    if (in) {
-        return in;
-    }
+    c->buffered = (buf->pos < buf->last) ? 1 : 0;
 
-    if (buf->pos == buf->last || !last) {
-        return NULL;
-    }
-
-    return NGX_CHAIN_AGAIN;
+    return in;
 }
 
 

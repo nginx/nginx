@@ -7,9 +7,6 @@
 
 typedef struct {
     ngx_chain_t  *out;
-
- /* unsigned      flush:1; */
-    ngx_uint_t    flush;
 } ngx_http_write_filter_ctx_t;
 
 
@@ -119,7 +116,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_AGAIN;
     }
 
-    if (size == 0 && !ctx->flush) {
+    if (size == 0 && !c->buffered) {
         if (!last) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           "the http output chain is empty");
@@ -146,19 +143,13 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
-    if (chain == NGX_CHAIN_AGAIN) {
-        ctx->out = NULL;
-        ctx->flush = 1;
+    ctx->out = chain;
+
+    if (chain || c->buffered) {
         return NGX_AGAIN;
     }
 
-    ctx->out = chain;
-
-    if (chain == NULL) {
-        return NGX_OK;
-    }
-
-    return NGX_AGAIN;
+    return NGX_OK;
 }
 
 

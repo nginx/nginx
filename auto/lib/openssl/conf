@@ -1,0 +1,40 @@
+
+if [ $OPENSSL != NONE ]; then
+    CORE_INCS="$CORE_INCS $OPENSSL/include"
+    CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
+    CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
+
+    case "$CC" in
+        *)
+            have=NGX_OPENSSL . auto/have
+            LINK_DEPS="$LINK_DEPS $OPENSSL/libssl.a $OPENSSL/libcrypto.a"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/libssl.a $OPENSSL/libcrypto.a"
+        ;;
+
+    esac
+
+else
+
+    if [ $PLATFORM != win32 ]; then
+            OPENSSL=NO
+            ngx_lib_cflags=
+
+            ngx_lib_inc="#include <openssl/ssl.h>"
+            ngx_lib="OpenSSL library"
+            ngx_lib_test="SSL_library_init()"
+            ngx_libs="-lssl -lcrypto"
+            . auto/lib/test
+
+
+        if [ $ngx_found = yes ]; then
+            have=NGX_OPENSSL . auto/have
+            CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
+            CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
+            CORE_LIBS="$CORE_LIBS $ngx_libs"
+            OPENSSL=YES
+            ngx_found=no
+        fi
+
+    fi
+
+fi

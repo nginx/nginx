@@ -42,6 +42,9 @@ USE_PCRE=NO
 PCRE=NONE
 PCRE_OPT=
 
+USE_OPENSSL=NO
+OPENSSL=NONE
+
 USE_MD5=NO
 MD5=NONE
 MD5_OPT=
@@ -102,6 +105,8 @@ do
         --without-pcre)                  USE_PCRE=DISABLED          ;;
         --with-pcre=*)                   PCRE="$value"              ;;
         --with-pcre-opt=*)               PCRE_OPT="$value"          ;;
+
+        --with-openssl=*)                OPENSSL="$value"           ;;
 
         --with-md5=*)                    MD5="$value"               ;;
         --with-md5-opt=*)                MD5_OPT="$value"           ;;

@@ -108,6 +108,7 @@ struct ngx_connection_s {
 
     unsigned            log_error:2;  /* ngx_connection_log_error_e */
 
+    unsigned            buffered:1;
     unsigned            single_connection:1;
     unsigned            pipeline:1;
     unsigned            unexpected_eof:1;

@@ -7,6 +7,10 @@ if [ $MD5 != NONE -a $MD5 != NO -a $MD5 != YES ]; then
     . auto/lib/md5/make
 fi
 
+if [ $OPENSSL != NONE -a $OPENSSL != NO -a $OPENSSL != YES ]; then
+    . auto/lib/openssl/make
+fi
+
 if [ $ZLIB != NONE -a $ZLIB != NO -a $ZLIB != YES ]; then
     . auto/lib/zlib/make
 fi

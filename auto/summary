@@ -22,6 +22,13 @@ case $MD5 in
     *)     echo " + using md5 library: $MD5" ;;
 esac
 
+case $OPENSSL in
+    YES)   echo " + using system OpenSSL library" ;;
+    NONE)  echo " + OpenSSL library is not used" ;;
+    NO)    echo " + OpenSSL library is not found" ;;
+    *)     echo " + using OpenSSL library: $OPENSSL" ;;
+esac
+
 case $ZLIB in
     YES)   echo " + using system zlib library" ;;
     NONE)  echo " + zlib library is not used" ;;

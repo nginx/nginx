@@ -1,0 +1,13 @@
+
+case $PLATFORM in
+    *)
+        echo "$OPENSSL/libssl.a:"                                 >> $MAKEFILE
+        echo "	cd $OPENSSL \\"                                   >> $MAKEFILE
+        echo "	&& CC=\"\$(CC)\" \\"                              >> $MAKEFILE
+        echo "	./config threads no-shared \\"                    >> $MAKEFILE
+        echo "	&& \$(MAKE)"                                      >> $MAKEFILE
+    ;;
+
+esac
+
+echo                                                              >> $MAKEFILE
