@@ -95,6 +95,8 @@ ngx_module_t  ngx_core_module = {
 
 ngx_uint_t  ngx_max_module;
 
+ngx_uint_t  ngx_use_stderr;
+
 
 int main(int argc, char *const *argv)
 {
@@ -116,8 +118,9 @@ int main(int argc, char *const *argv)
     ngx_regex_init();
 #endif
 
-    log = ngx_log_init_errlog();
     ngx_pid = ngx_getpid();
+
+    log = ngx_log_init_errlog();
 
 #if (NGX_OPENSSL)
     ngx_ssl_init(log);
@@ -133,15 +136,19 @@ int main(int argc, char *const *argv)
     ctx.argc = argc;
     ctx.argv = argv;
 
-    if (ngx_os_init(log) == NGX_ERROR) {
-        return 1;
-    }
-
     if (!(init_cycle.pool = ngx_create_pool(1024, log))) {
         return 1;
     }
 
     if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
+        return 1;
+    }
+
+    if (ngx_use_stderr) {
+        log = ngx_log_init_errlog();
+    }
+
+    if (ngx_os_init(log) == NGX_ERROR) {
         return 1;
     }
 
@@ -317,6 +324,10 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
 
         case 't':
             ngx_test_config = 1;
+            break;
+
+        case 's':
+            ngx_use_stderr = 1;
             break;
 
         case 'c':

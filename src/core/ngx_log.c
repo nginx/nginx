@@ -259,6 +259,8 @@ void ngx_log_stderr(ngx_event_t *ev)
 
 ngx_log_t *ngx_log_init_errlog()
 {
+    ngx_fd_t  fd;
+
 #if (WIN32)
 
     ngx_stderr.fd = GetStdHandle(STD_ERROR_HANDLE);
@@ -283,7 +285,37 @@ ngx_log_t *ngx_log_init_errlog()
 #endif
 
     ngx_log.file = &ngx_stderr;
-    ngx_log.log_level = NGX_LOG_INFO;
+    ngx_log.log_level = NGX_LOG_ERR;
+
+#if 0
+    fd = ngx_open_file(NGX_ERROR_LOG_PATH, NGX_FILE_RDWR,
+                       NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+
+    if (fd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_EMERG, (&ngx_log), ngx_errno,
+                      ngx_open_file_n " \"" NGX_ERROR_LOG_PATH "\" failed");
+        return NULL;
+    }
+
+#if (WIN32)
+
+    if (ngx_file_append_mode(fd) == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_EMERG, (&ngx_log), ngx_errno,
+                      ngx_file_append_mode_n " \"" NGX_ERROR_LOG_PATH
+                      "\" failed");
+        return NULL;
+    }
+
+#else
+
+    if (dup2(fd, STDERR_FILENO) == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_EMERG, (&ngx_log), ngx_errno,
+                      "dup2(STDERR) failed");
+        return NULL;
+    }
+
+#endif
+#endif
 
     return &ngx_log;
 }
