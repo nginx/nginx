@@ -136,7 +136,7 @@ typedef struct {
 #define ngx_buf_in_memory(b)        (b->temporary || b->memory || b->mmap)
 #define ngx_buf_in_memory_only(b)   (ngx_buf_in_memory(b) && !b->in_file)
 #define ngx_buf_special(b)                                                   \
-        ((b->flush || b->last) && !ngx_buf_in_memory(b) && !b->in_file)
+        ((b->flush || b->last_buf) && !ngx_buf_in_memory(b) && !b->in_file)
 
 #define ngx_buf_size(b)                                                      \
         (ngx_buf_in_memory(b) ? (size_t) (b->last - b->pos):                 \
