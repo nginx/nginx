@@ -18,7 +18,7 @@
 
 
 #define ngx_open_file(name, access, create)                                 \
-                                 open((const char *) name, access|create, 0644)
+    open((const char *) name, access|create, 0644)
 #define ngx_open_file_n          "open()"
 
 #define NGX_FILE_RDONLY          O_RDONLY
@@ -46,10 +46,10 @@ ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset);
 
 
 ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size,
-                       off_t offset);
+    off_t offset);
 
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
-                                off_t offset, ngx_pool_t *pool);
+    off_t offset, ngx_pool_t *pool);
 
 
 #define ngx_rename_file          rename
@@ -86,7 +86,7 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 
 
 #define ngx_read_dir(d)                                                      \
-                           (((d)->de = readdir((d)->dir)) ? NGX_OK : NGX_ERROR)
+    (((d)->de = readdir((d)->dir)) ? NGX_OK : NGX_ERROR)
 #define ngx_read_dir_n           "readdir()"
 
 
@@ -104,10 +104,13 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #else
 #define ngx_de_namelen(dir)      ngx_strlen((dir)->de->d_name)
 #endif
-#define ngx_de_info(name, dir)   lstat((const char *) name, &(dir)->info)
+#define ngx_de_info(name, dir)   stat((const char *) name, &(dir)->info)
 #define ngx_de_info_n            "stat()"
+#define ngx_de_link_info(name, dir)  lstat((const char *) name, &(dir)->info)
+#define ngx_de_link_info_n       "lstat()"
 #define ngx_de_is_dir(dir)       (S_ISDIR((dir)->info.st_mode))
 #define ngx_de_is_file(dir)      (S_ISREG((dir)->info.st_mode))
+#define ngx_de_is_link(dir)      (S_ISLNK((dir)->info.st_mode))
 #define ngx_de_size(dir)         (dir)->info.st_size
 #define ngx_de_mtime(dir)        (dir)->info.st_mtime
 

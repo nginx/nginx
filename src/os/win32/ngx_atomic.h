@@ -14,8 +14,9 @@
 
 #define NGX_HAVE_ATOMIC_OPS   1
 
-typedef uint32_t  ngx_atomic_int_t;
-typedef volatile ngx_atomic_int_t  ngx_atomic_t;
+typedef int32_t  ngx_atomic_int_t;
+typedef uint32_t  ngx_atomic_uint_t;
+typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 #define NGX_ATOMIC_T_LEN  sizeof("-2147483648") - 1
 
 

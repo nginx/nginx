@@ -29,11 +29,11 @@
 
 
 #define ngx_open_file(name, access, create)                                 \
-            CreateFile((const char *) name, access,                         \
-                       FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,  \
-                       NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL)
+    CreateFile((const char *) name, access,                                 \
+               FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,          \
+               NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL)
 /*
-                       NULL, OPEN_EXISTING, 0, NULL)
+               NULL, OPEN_EXISTING, 0, NULL)
 */
 #define ngx_open_file_n             "CreateFile()"
 
@@ -49,14 +49,14 @@ ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
 
 
 #define ngx_open_tempfile(name, persistent)                                 \
-            CreateFile((const char *) name,                                 \
-                    GENERIC_READ|GENERIC_WRITE,                             \
-                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,     \
-                    NULL,                                                   \
-                    CREATE_NEW,                                             \
-                    persistent ? 0:                                         \
-                        FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE, \
-                    NULL);
+    CreateFile((const char *) name,                                         \
+               GENERIC_READ|GENERIC_WRITE,                                  \
+               FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,          \
+               NULL,                                                        \
+               CREATE_NEW,                                                  \
+               persistent ? 0:                                              \
+                   FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE,      \
+               NULL);
 
 #define ngx_open_tempfile_n         "CreateFile()"
 
@@ -72,7 +72,7 @@ ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_rename_file             MoveFile
 #define ngx_rename_file_n           "MoveFile()"
 ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
-                                ngx_pool_t *pool);
+    ngx_pool_t *pool);
 
 
 ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
@@ -88,7 +88,7 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 
 
 #define ngx_file_size(fi)                                                    \
-            (((off_t) (fi)->nFileSizeHigh << 32) | (fi)->nFileSizeLow)
+    (((off_t) (fi)->nFileSizeHigh << 32) | (fi)->nFileSizeLow)
 
 #define ngx_file_uniq(fi)   (*(ngx_file_uniq_t *) &(fi)->nFileIndexHigh)
 
@@ -134,17 +134,20 @@ ngx_int_t ngx_read_dir(ngx_dir_t *dir);
 #define ngx_de_namelen(dir)         ngx_strlen((dir)->fd.cFileName)
 #define ngx_de_info(name, dir)      NGX_OK
 #define ngx_de_info_n               "dummy()"
+#define ngx_de_link_info(name, dir) NGX_OK
+#define ngx_de_link_info_n          "dummy()"
 #define ngx_de_is_dir(dir)                                                    \
-                       ((dir)->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    ((dir)->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #define ngx_de_is_file(dir)                                                   \
-                       !((dir)->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    !((dir)->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+#define ngx_de_is_link(dir)         0
 #define ngx_de_size(dir)                                                      \
-            (((off_t) (dir)->fd.nFileSizeHigh << 32) | (dir)->fd.nFileSizeLow)
+    (((off_t) (dir)->fd.nFileSizeHigh << 32) | (dir)->fd.nFileSizeLow)
 
 /* 116444736000000000 is commented in src/os/win32/ngx_time.c */
 
 #define ngx_de_mtime(dir)                                                     \
-             (time_t) (((((unsigned __int64)                                  \
+    (time_t) (((((unsigned __int64)                                           \
                            (dir)->fd.ftLastWriteTime.dwHighDateTime << 32)    \
                             | (dir)->fd.ftLastWriteTime.dwLowDateTime)        \
                                           - 116444736000000000) / 10000000)
@@ -155,10 +158,10 @@ ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset);
 #define ngx_read_file_n             "ReadFile()"
 
 ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size,
-                       off_t offset);
+    off_t offset);
 
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
-                                off_t offset, ngx_pool_t *pool);
+    off_t offset, ngx_pool_t *pool);
 
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

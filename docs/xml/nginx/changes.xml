@@ -9,6 +9,81 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.23" date="01.03.2005">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_filter_module и
+директивы ssi, ssi_silent_errors и ssi_min_file_chunk.
+Поддерживаются команды 'echo var="HTTP_..." default=""' и
+'echo var="REMOTE_ADDR"'.
+</para>
+<para lang="en">
+the ngx_http_ssi_filter_module and
+the ssi, ssi_silent_errors, and ssi_min_file_chunk directives.
+The 'echo var="HTTP_..." default=""' and 'echo var="REMOTE_ADDR"' commands
+are supported.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр лога %request_time.
+</para>
+<para lang="en">
+the %request_time log parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+если запрос пришёл без строки заголовка "Host", то директива
+proxy_preserve_host устанавливает в качестве этого заголовка первое имя
+сервера из директивы server_name.
+</para>
+<para lang="en">
+if the request has no the "Host" header line, then the proxy_preserve_host
+directive set this header line to the first server name of the server_name
+directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ошибка появилась в 0.1.22.
+</para>
+<para lang="en">
+nginx could not be built on platforms different from i386, amd64, sparc и ppc;
+bug appeared in 0.1.22.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_autoindex_module теперь показывает информацию не о
+символическом линке, а о файле или каталоге, на который он указывает.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module now shows the information not about the symlink,
+but about file or directory it points to.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если клиенту ничего не передавалось, то параметр %apache_length
+записывал в лог отрицательную длину заголовка ответа.
+</para>
+<para lang="en">
+the %apache_length parameter logged the negative length
+of the response header if the no response was transferred to a client.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.22" date="22.02.2005">
 
 <change type="bugfix">
@@ -19,7 +94,7 @@
 </para>
 <para lang="en">
 the ngx_http_stub_status_module showed incorrect handled connections
-statictics if the proxing or FastCGI server were used.
+statistics if the proxing or FastCGI server were used.
 </para>
 </change>
 
@@ -29,7 +104,7 @@ statictics if the proxing or FastCGI server were used.
 ошибка появилась в 0.1.21.
 </para>
 <para lang="en">
-the installation pathes were incorrectly quoted on Linux and Solaris;
+the installation paths were incorrectly quoted on Linux and Solaris;
 bug appeared in 0.1.21.
 </para>
 </change>
@@ -46,7 +121,7 @@ bug appeared in 0.1.21.
 рабочих процессов на SMP машине.
 </para>
 <para lang="en">
-the ngx_http_stub_status_module showed incorrect statictics
+the ngx_http_stub_status_module showed incorrect statistics
 if "rtsig" method was used or if several worker process ran on SMP.
 </para>
 </change>
@@ -82,7 +157,7 @@ nginx could not be built on NetBSD 2.0.
 </para>
 <para lang="en">
 the new "script_filename" and "remote_port" parameters
-ofthe fastcgi_params directive.
+of the fastcgi_params directive.
 </para>
 </change>
 
@@ -91,7 +166,7 @@ ofthe fastcgi_params directive.
 неправильно обрабатывался поток stderr от FastCGI-сервера.
 </para>
 <para lang="en">
-the FastCGI stderr stream was handled incorreсtly.
+the FastCGI stderr stream was handled incorrectly.
 </para>
 </change>
 
@@ -420,7 +495,7 @@ segmentation fault.
 выделенных частей не совпадает с числом подстановок.
 </para>
 <para lang="en">
-the correct handling of the regular exporession, that
+the correct handling of the regular expression, that
 has different number of the captures and substitutions.
 </para>
 </change>
@@ -432,7 +507,7 @@ location, который передаётся FastCGI-серверу, может быть задан
 </para>
 <para lang="en">
 the location, that is passed to the FastCGI server, can be
-regualar expression.
+regular expression.
 </para>
 </change>
 
@@ -480,9 +555,9 @@ bug appeared in 0.1.14.
 то происходил segmentation fault.
 </para>
 <para lang="en">
-the same pathes in autoconfiguration paramters
+the same paths in autoconfiguration parameters
 --http-client-body-temp-path=PATH and --http-proxy-temp-path=PATH,
-or --http-client-body-temp-path=PATH nad --http-fastcgi-temp-path=PATH
+or --http-client-body-temp-path=PATH and --http-fastcgi-temp-path=PATH
 caused segmentation fault.
 </para>
 </change>
@@ -783,7 +858,7 @@ method was used.
 автоматическое определение групп nobody и nogroup.
 </para>
 <para lang="en">
-the autodetection of the nobody and nogroup groups.
+the autodetection of the "nobody" and "nogroup" groups.
 </para>
 </change>
 
@@ -960,7 +1035,7 @@ bug appeared in 0.1.5.
 использовалась конфигурация не из того location.
 </para>
 <para lang="en">
-some location directive combiations with the regular expressions caused
+some location directive combinations with the regular expressions caused
 the wrong configuration choose.
 </para>
 </change>

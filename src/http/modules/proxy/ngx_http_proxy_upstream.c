@@ -145,10 +145,18 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     }
 
 
-    if (p->lcf->preserve_host && r->headers_in.host) {
-        len += sizeof(host_header) - 1
-            + r->headers_in.host_name_len + sizeof(":") - 1 + uc->port_text.len
-            + sizeof(CRLF) - 1;
+    if (p->lcf->preserve_host) {
+        if (r->headers_in.host) {
+            len += sizeof(host_header) - 1
+                + r->headers_in.host_name_len + sizeof(":") - 1
+                + uc->port_text.len + sizeof(CRLF) - 1;
+
+        } else {
+            len += sizeof(host_header) - 1
+                + r->server_name.len + sizeof(":") - 1
+                + uc->port_text.len + sizeof(CRLF) - 1;
+        }
+
     } else {
         len += sizeof(host_header) - 1 + uc->host_header.len
             + sizeof(CRLF) - 1;
@@ -278,9 +286,14 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     b->last = ngx_cpymem(b->last, host_header, sizeof(host_header) - 1);
 
-    if (p->lcf->preserve_host && r->headers_in.host) {
-        b->last = ngx_cpymem(b->last, r->headers_in.host->value.data,
-                             r->headers_in.host_name_len);
+    if (p->lcf->preserve_host) {
+        if (r->headers_in.host) {
+            b->last = ngx_cpymem(b->last, r->headers_in.host->value.data,
+                                 r->headers_in.host_name_len);
+        } else {
+            b->last = ngx_cpymem(b->last, r->server_name.data,
+                                 r->server_name.len);
+        }
 
         if (!uc->default_port) {
             *b->last++ = ':';

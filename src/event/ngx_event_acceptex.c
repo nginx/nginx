@@ -7,7 +7,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <nginx.h>
 
 
 void ngx_event_acceptex(ngx_event_t *rev)

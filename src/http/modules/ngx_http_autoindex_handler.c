@@ -241,7 +241,7 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         if (len == 2
             && ngx_de_name(&dir)[0] == '.'
-            && ngx_de_name(&dir)[0] == '.')
+            && ngx_de_name(&dir)[1] == '.')
         {
             continue;
         }
@@ -263,9 +263,20 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
             ngx_cpystrn(last, ngx_de_name(&dir), len + 1);
 
             if (ngx_de_info(fname.data, &dir) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                              ngx_de_info_n " \"%s\" failed", fname.data);
-                return ngx_http_autoindex_error(r, &dir, dname.data);
+                err = ngx_errno;
+
+                if (err != NGX_ENOENT) {
+                    ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
+                                  ngx_de_info_n " \"%s\" failed", fname.data);
+                    return ngx_http_autoindex_error(r, &dir, dname.data);
+                }
+
+                if (ngx_de_link_info(fname.data, &dir) == NGX_FILE_ERROR) {
+                    ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                                  ngx_de_link_info_n " \"%s\" failed",
+                                  fname.data);
+                    return ngx_http_autoindex_error(r, &dir, dname.data);
+                }
             }
         }
 

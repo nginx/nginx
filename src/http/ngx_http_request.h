@@ -275,7 +275,8 @@ struct ngx_http_request_s {
 
     ngx_http_request_body_t  *request_body;
 
-    time_t               lingering_time;
+    time_t                    lingering_time;
+    time_t                    start_time;
 
     ngx_uint_t           method;
     ngx_uint_t           http_version;

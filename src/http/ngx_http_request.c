@@ -422,6 +422,8 @@ static void ngx_http_init_request(ngx_event_t *rev)
     c->single_connection = 1;
     r->connection = c;
 
+    r->start_time = ngx_time();
+
     r->file.fd = NGX_INVALID_FILE;
 
     r->headers_in.content_length_n = -1;

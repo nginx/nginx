@@ -388,6 +388,7 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
 typedef int32_t  ngx_atomic_int_t;
 typedef uint32_t  ngx_atomic_uint_t;
 typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
+#define NGX_ATOMIC_T_LEN  sizeof("-2147483648") - 1
 
 #define ngx_atomic_inc(x)  ++(*(x))
 #define ngx_atomic_dec(x)  --(*(x))
