@@ -1,0 +1,25 @@
+
+echo "checking for $NGX_INC"
+
+inc=`echo $NGX_INC | sed -e 's/\./_/' | tr '[a-z]' '[A-Z]'`
+
+echo "#include <$NGX_INC>" > autotest.c
+echo "int main() { return 0; }" >> autotest.c
+
+eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+
+if [ -x autotest ]; then
+    echo " + $NGX_INC found"
+
+    echo "#ifndef HAVE_$inc"      >> $NGX_AUTO_CONFIG_H
+    echo "#define HAVE_$inc  1"   >> $NGX_AUTO_CONFIG_H
+    echo "#endif"                 >> $NGX_AUTO_CONFIG_H
+    echo                          >> $NGX_AUTO_CONFIG_H
+
+    eval "NGX_$inc='#include <$NGX_INC>'"
+
+else
+    echo " + $NGX_INC not found"
+fi
+
+rm autotest*

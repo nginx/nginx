@@ -17,8 +17,9 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <strings.h>
-
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 #include <sys/filio.h>          /* FIONBIO */
 #include <sys/stropts.h>        /* INFTIM */
 #include <sys/socket.h>
@@ -26,16 +27,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-
-
-#if 0
-#define OFF_FMT    "%lld"
-#define SIZE_FMT   "%d"
-#define SIZEX_FMT  "%x"
-#define TIME_FMT   "%ld"
-#define PID_FMT    "%ld"
-#define RLIM_FMT   "%lu"
-#endif
+#include <dirent.h>
 
 
 #ifndef HAVE_SELECT

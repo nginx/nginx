@@ -22,7 +22,7 @@ ngx_os_io_t ngx_os_io = {
     NULL,
 #if (HAVE_SENDFILE)
     ngx_freebsd_sendfile_chain,
-    NGX_HAVE_SENDFILE
+    NGX_IO_SENDFILE
 #else
     ngx_writev_chain,
     0

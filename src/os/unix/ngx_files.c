@@ -11,7 +11,7 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 {
     ssize_t n;
 
-    ngx_log_debug(file->log, "read: %d, %x, %d, %qd" _
+    ngx_log_debug(file->log, "read: %d, %x, %d, " OFF_T_FMT _
                   file->fd _ buf _ size _ offset);
 
 #if (HAVE_PREAD)

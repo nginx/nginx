@@ -7,10 +7,13 @@ for TYPE in $NGX_TYPE $NGX_TYPES
 do
     echo "#include <sys/types.h>" > autotest.c
     echo "#include <sys/socket.h>" >> autotest.c
+    echo "#include <sys/time.h>" >> autotest.c
+    echo "#include <sys/resource.h>" >> autotest.c
+    echo "#include <netinet/in.h>" >> autotest.c
     echo "$NGX_INTTYPES_H" >> autotest.c
     echo "int main() { $TYPE i = 0; return 0; }" >> autotest.c
 
-    eval "$CC -o autotest autotest.c > /dev/null 2>&1"
+    eval "$CC -o autotest autotest.c > $NGX_ERR 2>&1"
 
     if [ -x autotest ]; then
         if [ $TYPE = $NGX_TYPE ]; then

@@ -311,7 +311,12 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 
     if (filter == EVFILT_VNODE) {
         change_list[nchanges].fflags = NOTE_DELETE|NOTE_WRITE|NOTE_EXTEND
-                                       |NOTE_ATTRIB|NOTE_RENAME|NOTE_REVOKE;
+                                       |NOTE_ATTRIB|NOTE_RENAME
+#if (__FreeBSD__ == 4 && __FreeBSD_version >= 430000) \
+    || __FreeBSD_version >= 500018
+                                       |NOTE_REVOKE
+#endif
+                                       ;
         change_list[nchanges].data = 0;
 
     } else {

@@ -4,8 +4,10 @@
 
 #define _GNU_SOURCE             /* pread(), pwrite(), gethostname() */
 
+#if 0
 #define _FILE_OFFSET_BITS  64
 #define _LARGEFILE_SOURCE
+#endif
 
 
 #include <unistd.h>
@@ -24,8 +26,11 @@
 #include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/sysctl.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
+#include <sys/sendfile.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>        /* TCP_CORK */
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <netdb.h>

@@ -19,13 +19,12 @@ case $PLATFORM in
         . auto/os/freebsd
     ;;
 
-    Solaris:*)
-        CC_TEST_FLAGS="-D_FILE_OFFSET_BITS=64"
-        CORE_LIBS="$CORE_LIBS -lsocket -lnsl"
+    Linux:*)
+        . auto/os/linux
     ;;
 
-    Linux:*)
-        CC_TEST_FLAGS="-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
+    SunOS:*)
+        . auto/os/solaris
     ;;
 
     win32)

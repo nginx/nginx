@@ -57,4 +57,9 @@ extern int          rotate;
 #endif
 
 
+#ifdef __linux__
+#include <ngx_linux.h>
+#endif
+
+
 #endif /* _NGX_OS_H_INCLUDED_ */

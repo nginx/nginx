@@ -11,8 +11,8 @@ ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
     NULL,
     NULL,
-    ngx_writev_chain,
-    NGX_HAVE_ZEROCOPY
+    ngx_linux_sendfile_chain,
+    NGX_IO_SENDFILE
 };
 
 

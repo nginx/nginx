@@ -8,7 +8,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int              rc;
     char            *prev;
-    off_t            fprev;
+    off_t            offset;
     size_t           size, fsize, sent;
     ngx_int_t        use_cork, eintr;
     struct iovec    *iov;
@@ -16,15 +16,13 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     ngx_hunk_t      *file;
     ngx_array_t      header;
     ngx_event_t     *wev;
-    ngx_chain_t     *cl;
+    ngx_chain_t     *cl, *tail;
 
     wev = c->write;
 
     if (!wev->ready) {
         return in;
     }
-
-    cork = 0;
 
     do {
         file = NULL;
@@ -84,20 +82,20 @@ ngx_log_debug(c->log, "CORK");
 
             file = cl->hunk;
             fsize = (size_t) (file->file_last - file->file_pos);
-            fprev = file->file_last;
+            offset = file->file_last;
             cl = cl->next; 
 
             /* coalesce the neighbouring file hunks */
 
             while (cl && (cl->hunk->type & NGX_HUNK_FILE)) {
                 if (file->file->fd != cl->hunk->file->fd
-                    || fprev != cl->hunk->file_pos)
+                    || offset != cl->hunk->file_pos)
                 {
                     break;
                 }
 
                 fsize += (size_t) (cl->hunk->file_last - cl->hunk->file_pos);
-                fprev = cl->hunk->file_last;
+                offset = cl->hunk->file_last;
                 cl = cl->next;
             }
         }
@@ -110,7 +108,8 @@ ngx_log_debug(c->log, "CORK");
         tail = cl;
 
         if (fsize) {
-            rc = sendfile(c->fd, file->file->fd, file->file_pos, fsize);
+            offset = file->file_pos;
+            rc = sendfile(c->fd, file->file->fd, &offset, fsize);
 
             if (rc == -1) {
                 err = ngx_errno;

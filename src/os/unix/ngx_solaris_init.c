@@ -13,7 +13,7 @@ ngx_os_io_t ngx_os_io = {
     NULL,
     NULL,
     ngx_writev_chain,
-    NGX_HAVE_ZEROCOPY
+    0
 };
 
 
@@ -40,7 +40,7 @@ int ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s"
+    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
                   ngx_solaris_sysname, ngx_solaris_release);
 
     ngx_log_error(NGX_LOG_INFO, log, 0, "version: %s",

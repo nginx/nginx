@@ -5,8 +5,12 @@ NGX_FMT=NO
 
 for FMT in $NGX_FORMATS
 do
-    echo "#include <stdio.h>" >> autotest.c
+    echo "#include <stdio.h>" > autotest.c
     echo "#include <sys/types.h>" >> autotest.c
+    echo "#include <sys/time.h>" >> autotest.c
+    echo "#include <sys/resource.h>" >> autotest.c
+    echo "$NGX_INTTYPES_H" >> autotest.c
+    echo "$NGX_AUTO_CONFIG" >> autotest.c
     echo "int main() {" >> autotest.c
     echo "printf(\"${FMT}\", ($NGX_TYPE) $NGX_MAX_SIZE);" >> autotest.c
     echo "return 0; }" >> autotest.c
