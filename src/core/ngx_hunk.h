@@ -85,6 +85,11 @@ typedef struct {
         (h->type == (h->type & (NGX_HUNK_FLUSH|NGX_HUNK_LAST)))
 
 
+#define nxg_hunk_size(h)                                                     \
+        (h->type & NGX_HUNK_IN_MEMORY) ? h->last - h->pos:                   \
+                                         (size_t) h->file_last - h->file_pos
+
+
 ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
                                  int before, int after);
 

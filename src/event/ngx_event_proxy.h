@@ -76,7 +76,7 @@ struct ngx_event_proxy_s {
 
 int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p);
 int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p);
-int ngx_event_proxy_write_chain_to_temp_file(ngx_event_proxy_t *p);
+int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p, ngx_chain_t *chain);
 
 
 #endif /* _NGX_EVENT_PROXY_H_INCLUDED_ */
