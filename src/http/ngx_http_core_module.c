@@ -28,10 +28,13 @@ static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
 
 static int ngx_http_core_init(ngx_pool_t *pool);
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
+static int ngx_cmp_locations(const void *first, const void *second);
 static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
                                                                   void *dummy);
 static char *ngx_types_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
+                                                                   void *conf);
 
 
 static ngx_command_t  ngx_http_core_commands[] = {
@@ -41,7 +44,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
      ngx_server_block,
      0,
      0,
-     NULL,},
+     NULL},
 
     {ngx_string("connection_pool_size"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
@@ -95,6 +98,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
     {ngx_string("listen"),
      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
      ngx_set_listen,
+     NGX_HTTP_SRV_CONF_OFFSET,
+     0,
+     NULL},
+
+    {ngx_string("server_name"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_ANY,
+     ngx_set_server_name,
      NGX_HTTP_SRV_CONF_OFFSET,
      0,
      NULL},
@@ -215,8 +225,10 @@ ngx_log_debug(r->connection->log, "trans: %s" _ clcfp[i]->name.data);
              continue;
          }
 
-         rc = ngx_rstrncmp(r->uri.data, clcfp[i]->name.data,
-                           clcfp[i]->name.len);
+         rc = ngx_strncmp(r->uri.data, clcfp[i]->name.data,
+                          clcfp[i]->name.len);
+
+ngx_log_debug(r->connection->log, "rc: %d" _ rc);
 
          if (rc < 0) {
              break;
@@ -235,9 +247,10 @@ ngx_log_debug(r->connection->log, "trans: %s" _ clcfp[i]->name.data);
 
     /* run translation phase */
 
-    h = (ngx_http_handler_pt *) ngx_http_translate_handlers.elts;
-    for (i = ngx_http_translate_handlers.nelts; i > 0; /* void */) {
-        rc = h[--i](r);
+    h = ngx_http_translate_handlers.elts;
+    for (i = ngx_http_translate_handlers.nelts - 1; i >= 0; i--) {
+
+        rc = h[i](r);
 
         if (rc == NGX_DECLINED) {
             continue;
@@ -457,21 +470,46 @@ int ngx_http_error(ngx_http_request_t *r, int error)
 }
 
 
-int ngx_http_internal_redirect(ngx_http_request_t *r, ngx_str_t uri)
+int ngx_http_internal_redirect(ngx_http_request_t *r,
+                               ngx_str_t *uri, ngx_str_t *args)
 {
-    ngx_log_debug(r->connection->log, "internal redirect: '%s'" _ uri.data);
+    int  i;
 
-    r->uri.len = uri.len;
-    r->uri.data = uri.data;
+    ngx_log_debug(r->connection->log, "internal redirect: '%s'" _ uri->data);
 
-    /* BROKEN, NEEDED ? */
-    /* r->exten */
-    r->uri_start = uri.data;
-    r->uri_end = uri.data + uri.len;
-    /**/
+    r->uri.len = uri->len;
+    r->uri.data = uri->data;
+
+    if (args) {
+        r->args.len = args->len;
+        r->args.data = args->data;
+    }
+
+    r->exten.len = 0;
+    r->exten.data = NULL;
+
+    for (i = uri->len - 1; i > 1; i--) {
+        if (uri->data[i] == '.' && uri->data[i - 1] != '/') {
+            r->exten.len = uri->len - i - 1;
+
+            if (r->exten.len > 0) {
+                ngx_test_null(r->exten.data,
+                              ngx_palloc(r->pool, r->exten.len + 1),
+                              NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+                ngx_cpystrn(r->exten.data, &uri->data[i + 1], r->exten.len + 1);
+            }
+
+            break;
+
+        } else if (uri->data[i] == '/') {
+            break;
+        }
+    }
 
     ngx_http_handler(r);
-    return 0;
+
+    return NGX_OK;
 }
 
 
@@ -554,7 +592,23 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     rv = ngx_conf_parse(cf, NULL);
     *cf = pcf;
 
+    if (rv != NGX_CONF_OK) {
+        return rv;
+    }
+
+    ngx_qsort(cscf->locations.elts, cscf->locations.nelts,
+              sizeof(void *), ngx_cmp_locations);
+
     return rv;
+}
+
+
+static int ngx_cmp_locations(const void *first, const void *second)
+{
+    ngx_http_core_loc_conf_t *one = *(ngx_http_core_loc_conf_t **) first;
+    ngx_http_core_loc_conf_t *two = *(ngx_http_core_loc_conf_t **) second;
+
+    return ngx_strcmp(one->name.data, two->name.data);
 }
 
 
@@ -724,6 +778,7 @@ static char *ngx_http_core_merge_srv_conf(ngx_pool_t *pool,
     ngx_http_core_srv_conf_t *prev = (ngx_http_core_srv_conf_t *) parent;
     ngx_http_core_srv_conf_t *conf = (ngx_http_core_srv_conf_t *) child;
 
+    ngx_err_t                 err;
     ngx_http_listen_t        *l;
     ngx_http_server_name_t   *n;
 
@@ -740,10 +795,15 @@ static char *ngx_http_core_merge_srv_conf(ngx_pool_t *pool,
         ngx_test_null(n, ngx_push_array(&conf->server_names), NGX_CONF_ERROR);
         ngx_test_null(n->name.data, ngx_palloc(pool, NGX_MAXHOSTNAMELEN),
                       NGX_CONF_ERROR);
+
         if (gethostname(n->name.data, NGX_MAXHOSTNAMELEN) == -1) {
-            /* TODO: need ngx_errno here */
-            return "gethostname() failed";
+            err = ngx_errno;
+            ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
+                         "gethostname() failed (%d: %s)",
+                         err, ngx_strerror(err));
+            return ngx_conf_errstr;
         }
+
         n->name.len = ngx_strlen(n->name.data);
         n->core_srv_conf = conf;
     }
@@ -868,7 +928,7 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_listen_t  *ls;
 
     /* TODO: check duplicate 'listen' directives, 
-             add resolved name to server names */
+             add resolved name to server names ??? */
 
     ngx_test_null(ls, ngx_push_array(&scf->listen), NGX_CONF_ERROR);
 
@@ -879,37 +939,75 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
 
-    args = (ngx_str_t *) cf->args->elts;
+    args = cf->args->elts;
     addr = args[1].data;
 
     for (p = 0; p < args[1].len; p++) {
         if (addr[p] == ':') {
             addr[p++] = '\0';
-
-            ls->addr = inet_addr(addr);
-            if (ls->addr == INADDR_NONE) {
-                h = gethostbyname(addr);
-
-                if (h == NULL || h->h_addr_list[0] == NULL) {
-                    return "can not resolve host name";
-                }
-
-                ls->addr = *(u_int32_t *)(h->h_addr_list[0]);
-            }
-
             break;
         }
     }
 
     if (p == args[1].len) {
-        ls->addr = INADDR_ANY;
+        /* no ":" in the "listen" */
         p = 0;
     }
 
     ls->port = ngx_atoi(&addr[p], args[1].len - p);
-    if (ls->port < 1 || ls->port > 65536) {
-        return "port must be between 1 and 65535";
+    if (ls->port == NGX_ERROR && p == 0) {
+
+        /* "listen host" */
+        ls->port = 80;
+
+    } else if ((ls->port == NGX_ERROR && p != 0) /* "listen host:NONNUMBER" */
+               || (ls->port < 1 || ls->port > 65536)) { /* "listen 99999" */
+
+         ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
+                      "invalid port \"%s\", "
+                      "it must be a number between 1 and 65535",
+                      &addr[p]);
+         return ngx_conf_errstr;
+
+    } else if (p == 0) {
+        ls->addr = INADDR_ANY;
+        return NGX_CONF_OK;
     }
+
+    ls->addr = inet_addr(addr);
+    if (ls->addr == INADDR_NONE) {
+        h = gethostbyname(addr);
+
+        if (h == NULL || h->h_addr_list[0] == NULL) {
+            ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
+                         "can not resolve host \"%s\"", addr);
+            return ngx_conf_errstr;
+        }
+
+        ls->addr = *(u_int32_t *)(h->h_addr_list[0]);
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_srv_conf_t *scf = (ngx_http_core_srv_conf_t *) conf;
+
+    ngx_str_t               *args;
+    ngx_http_server_name_t  *sn;
+
+    /* TODO: several names */
+    /* TODO: warn about duplicate 'server_name' directives */
+
+    ngx_test_null(sn, ngx_push_array(&scf->server_names), NGX_CONF_ERROR);
+
+    args = cf->args->elts;
+
+    sn->name.len = args[1].len;
+    sn->name.data = args[1].data;
+    sn->core_srv_conf = scf;
 
     return NGX_CONF_OK;
 }

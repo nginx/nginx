@@ -52,9 +52,11 @@ char *ngx_cpystrn(char *dst, char *src, size_t n);
 int ngx_rstrncmp(char *s1, char *s2, size_t n);
 int ngx_atoi(char *line, size_t n);
 
+#define  ngx_qsort                qsort
 
-#define  ngx_value_helper(n)   #n
-#define  ngx_value(n)          ngx_value_helper(n)
+
+#define  ngx_value_helper(n)      #n
+#define  ngx_value(n)             ngx_value_helper(n)
 
 
 #endif /* _NGX_STRING_H_INCLUDED_ */

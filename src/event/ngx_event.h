@@ -90,9 +90,7 @@ struct ngx_event_s {
     unsigned         ignore_econnreset:1;
     unsigned         unexpected_eof:1;
 
-#if (HAVE_DEFERRED_ACCEPT)
     unsigned         deferred_accept:1;
-#endif
 
 #if (HAVE_KQUEUE)
     unsigned         eof:1;
@@ -277,6 +275,7 @@ typedef struct {
 #define ngx_process_events   ngx_event_actions.process
 #define ngx_add_event        ngx_event_actions.add
 #define ngx_del_event        ngx_event_actions.del
+#define ngx_add_conn         ngx_event_actions.add_conn
 #define ngx_del_conn         ngx_event_actions.del_conn
 
 #if 0

@@ -24,6 +24,8 @@ typedef int               ngx_err_t;
 #define ngx_socket_errno           errno
 #define ngx_set_socket_errno(err)  errno = err
 
+#define ngx_strerror(err)          strerror(err)
+
 #define ngx_strerror_r(err, errstr, size)  \
              ngx_cpystrn(errstr, strerror(err), size) - (errstr)
 

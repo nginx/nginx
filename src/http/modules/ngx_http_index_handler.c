@@ -59,7 +59,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
 {
     int                        i, rc, test_dir;
     char                      *name, *file;
-    ngx_str_t                  loc, *index;
+    ngx_str_t                  redirect, *index;
     ngx_err_t                  err;
     ngx_fd_t                   fd;
     ngx_http_index_conf_t     *icf;
@@ -74,14 +74,14 @@ int ngx_http_index_handler(ngx_http_request_t *r)
                              + icf->max_index_len),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    loc.data = ngx_cpystrn(r->path.data, clcf->doc_root.data,
-                           clcf->doc_root.len + 1);
-    file = ngx_cpystrn(loc.data, r->uri.data, r->uri.len + 1);
+    redirect.data = ngx_cpymem(r->path.data, clcf->doc_root.data,
+                               clcf->doc_root.len);
+    file = ngx_cpystrn(redirect.data, r->uri.data, r->uri.len + 1);
     r->path.len = file - r->path.data;
 
     test_dir = 1;
 
-    index = (ngx_str_t *) icf->indices.elts;
+    index = icf->indices.elts;
     for (i = 0; i < icf->indices.nelts; i++) {
 
         if (index[i].data[0] != '/') {
@@ -136,18 +136,15 @@ ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
 
         if (index[i].data[0] == '/') {
             r->file.name.len = index[i].len;
-            loc.len = index[i].len;
-            loc.data = index[i].data;
+            redirect.len = index[i].len;
+            redirect.data = index[i].data;
 
         } else {
-            loc.len = r->uri.len + index[i].len;
-            r->file.name.len = clcf->doc_root.len + r->uri.len
-                               + index[i].len;
+            redirect.len = r->uri.len + index[i].len;
+            r->file.name.len = clcf->doc_root.len + r->uri.len + index[i].len;
         }
 
-/* STUB */ r->exten.len = 4; r->exten.data = "html";
-
-        return ngx_http_internal_redirect(r, loc);
+        return ngx_http_internal_redirect(r, &redirect, NULL);
     }
 
     return NGX_DECLINED;
@@ -177,7 +174,6 @@ ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
         }
 
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, r->path_err,
-                      "ngx_http_index_test_dir: "
                       ngx_file_type_n " %s failed", r->path.data);
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -263,7 +259,7 @@ static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
 }
 
 
-/* TODO: check duplicate indices */
+/* TODO: warn about duplicate indices */
 
 static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
                                       void *conf)
@@ -283,7 +279,9 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
 
     for (i = 1; i < cf->args->nelts; i++) {
         if (value[i].len == 0) {
-            return "is invalid";
+            ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
+                         "index \"%s\" is invalid", value[1].data);
+            return ngx_conf_errstr;
         }
 
         ngx_test_null(index, ngx_push_array(&icf->indices), NGX_CONF_ERROR);
@@ -295,5 +293,5 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
         }
     }
 
-    return NULL;
+    return NGX_CONF_OK;
 }

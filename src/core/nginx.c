@@ -90,8 +90,8 @@ int main(int argc, char *const *argv)
         conf.module_type = NGX_CORE_MODULE;
         conf.cmd_type = NGX_MAIN_CONF;
 
-        conf_file.len = sizeof("nginx.conf") - 1;
-        conf_file.data = "nginx.conf";
+        conf_file.len = sizeof(NGINX_CONF) - 1;
+        conf_file.data = NGINX_CONF;
 
         if (ngx_conf_parse(&conf, &conf_file) != NGX_CONF_OK) {
             return 1;

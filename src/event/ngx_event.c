@@ -9,7 +9,7 @@
 #define DEF_CONNECTIONS  1024
 
 
-extern ngx_event_module_t ngx_select_module_ctx;
+extern ngx_module_t ngx_select_module;
 
 #if (HAVE_KQUEUE)
 #include <ngx_kqueue_module.h>
@@ -122,12 +122,11 @@ ngx_module_t  ngx_event_module = {
 
 int ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
 {
-    int  m, i, fd;
-
-    ngx_listen_t      *s;
-    ngx_event_t       *ev;
-    ngx_connection_t  *c;
-    ngx_event_conf_t  *ecf;
+    int                  m, i, fd;
+    ngx_listen_t        *s;
+    ngx_event_t         *ev;
+    ngx_connection_t    *c;
+    ngx_event_conf_t    *ecf;
     ngx_event_module_t  *module;
 
     ecf = ngx_event_get_conf(ngx_event_module);
