@@ -41,7 +41,6 @@ int ngx_http_static_translate_handler(ngx_http_request_t *r)
 {
     char                      *location, *last;
     ngx_err_t                  err;
-    ngx_table_elt_t           *h;
     ngx_http_core_loc_conf_t  *clcf;
 
     if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
@@ -181,16 +180,18 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
         r->file.info_valid = 0;
 #endif
 
-        ngx_test_null(h, ngx_push_table(r->headers_out.headers),
-                      NGX_HTTP_INTERNAL_SERVER_ERROR);
+        if (!(r->headers_out.location =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+        {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
 
         *last++ = '/';
         *last = '\0';
-        h->key.len = 8;
-        h->key.data = "Location" ;
-        h->value.len = last - location;
-        h->value.data = location;
-        r->headers_out.location = h;
+        r->headers_out.location->key.len = 8;
+        r->headers_out.location->key.data = "Location" ;
+        r->headers_out.location->value.len = last - location;
+        r->headers_out.location->value.data = location;
 
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
@@ -262,9 +263,11 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
     r->headers_out.content_length_n = ngx_file_size(r->file.info);
     r->headers_out.last_modified_time = ngx_file_mtime(r->file.info);
 
-    ngx_test_null(r->headers_out.content_type,
-                  ngx_push_table(r->headers_out.headers),
-                  NGX_HTTP_INTERNAL_SERVER_ERROR);
+    if (!(r->headers_out.content_type =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+    {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     r->headers_out.content_type->key.len = 0;
     r->headers_out.content_type->key.data = NULL;

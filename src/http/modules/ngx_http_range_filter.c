@@ -198,9 +198,14 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
         r->headers_out.status = rc;
         r->headers_out.ranges.nelts = 0;
 
-        ngx_test_null(r->headers_out.content_range,
-                      ngx_push_table(r->headers_out.headers),
-                      NGX_ERROR);
+        if (!(r->headers_out.content_range =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+        {
+            return NGX_ERROR;
+        }
+
+        r->headers_out.content_range->key.len = sizeof("Content-Range") - 1;
+        r->headers_out.content_range->key.data = "Content-Range";
 
         ngx_test_null(r->headers_out.content_range->value.data,
                       ngx_palloc(r->pool, 8 + 20 + 1),
@@ -212,7 +217,10 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                                      r->headers_out.content_length_n);
 
         r->headers_out.content_length_n = -1;
-        r->headers_out.content_length = NULL;
+        if (r->headers_out.content_length) {
+            r->headers_out.content_length->key.len = 0;
+            r->headers_out.content_length = NULL;
+        }
 
         return rc;
 
@@ -220,9 +228,15 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
         r->headers_out.status = NGX_HTTP_PARTIAL_CONTENT;
 
         if (r->headers_out.ranges.nelts == 1) {
-            ngx_test_null(r->headers_out.content_range,
-                          ngx_push_table(r->headers_out.headers),
-                          NGX_ERROR);
+
+            if (!(r->headers_out.content_range =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+            {
+                return NGX_ERROR;
+            }
+
+            r->headers_out.content_range->key.len = sizeof("Content-Range") - 1;
+            r->headers_out.content_range->key.data = "Content-Range";
 
             ngx_test_null(r->headers_out.content_range->value.data,
                           ngx_palloc(r->pool, 6 + 20 + 1 + 20 + 1 + 20 + 1),
@@ -243,9 +257,12 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
 
 #if 0
             /* TODO: what if no content_type ?? */
-            ngx_test_null(r->headers_out.content_type,
-                          ngx_push_table(r->headers_out.headers),
-                          NGX_ERROR);
+
+            if (!(r->headers_out.content_type =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+            {
+                return NGX_ERROR;
+            }
 #endif
 
             ngx_http_create_ctx(r, ctx, ngx_http_range_filter_module,

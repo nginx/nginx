@@ -519,49 +519,6 @@ int ngx_http_delay_handler(ngx_http_request_t *r)
 #endif
 
 
-ngx_table_elt_t *ngx_http_add_header(void *header,
-                                     ngx_http_header_t *http_headers)
-{
-    int               i, j;
-    char             *prev;
-    ngx_table_t      *headers;
-    ngx_table_elt_t  *h, *new;
-
-    headers = *(ngx_table_t **) header;
-
-    prev = headers->elts;
-
-    if (!(new = ngx_push_table(headers))) {
-        return NULL;
-    }
-
-    if (prev == headers->elts) {
-        return new;
-    }
-
-    h = headers->elts;
-    for (i = 0; i < headers->nelts; i++) {
-        if (h[i].key.len == 0) {
-            continue;
-        }
-
-        for (j = 0; http_headers[j].name.len != 0; j++) {
-            if (http_headers[j].name.len != h[i].key.len) {
-                continue;
-            }
-
-            if (ngx_strcasecmp(http_headers[j].name.data, h[i].key.data) == 0) {
-                *((ngx_table_elt_t **)
-                      ((char *) &header + http_headers[j].offset)) = &h[i];
-                break;
-            }
-        }
-    }
-
-    return new;
-}
-
-
 static int ngx_http_core_init(ngx_cycle_t *cycle)
 {
 #if 0

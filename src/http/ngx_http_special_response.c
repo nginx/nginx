@@ -224,13 +224,17 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
             return NGX_ERROR;
         }
 
-        r->headers_out.content_type->key.len = 12;
+        r->headers_out.content_type->key.len = sizeof("Content-Type") - 1;
         r->headers_out.content_type->key.data = "Content-Type";
-        r->headers_out.content_type->value.len = 9;
+        r->headers_out.content_type->value.len = sizeof("text/html") - 1;
         r->headers_out.content_type->value.data = "text/html";
 
     } else {
         r->headers_out.content_length_n = -1;
+    }
+
+    if (r->headers_out.content_length) {
+        r->headers_out.content_length->key.len = 0;
         r->headers_out.content_length = NULL;
     }
 

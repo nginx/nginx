@@ -658,7 +658,7 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
     if (p->headers_in.headers) {
         p->headers_in.headers->nelts = 0;
     } else {
-        p->headers_in.headers = ngx_create_table(p->request->pool, 10);
+        p->headers_in.headers = ngx_create_table(p->request->pool, 20);
     }
 
     c->read->event_handler = ngx_http_proxy_process_upstream_headers;
@@ -713,8 +713,7 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
 
             /* a header line has been parsed successfully */
 
-            h = ngx_push_table(p->headers_in.headers);
-            if (h == NULL) {
+            if (!(h = ngx_http_add_header(&p->headers_in, headers_in))) {
                 ngx_http_proxy_finalize_request(p,
                                                 NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
@@ -831,7 +830,7 @@ static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
 static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 {
     int                        rc, i;
-    ngx_table_elt_t           *ch, *h;
+    ngx_table_elt_t           *ho, *h;
     ngx_event_pipe_t          *ep;
     ngx_http_request_t        *r;
     ngx_http_core_loc_conf_t  *clcf;
@@ -869,13 +868,13 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
             continue;
         }
 
-        ch = ngx_push_table(r->headers_out.headers);
-        if (ch == NULL) {
+        if (!(ho = ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+        {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
 
-        *ch = h[i];
+        *ho = h[i];
 
         /*
          * ngx_http_header_filter() output the following headers
@@ -886,21 +885,19 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
          */
 
         if (&h[i] == p->headers_in.server) {
-            r->headers_out.server = ch;
+            r->headers_out.server = ho;
             continue;
         }
 
         if (&h[i] == p->headers_in.date) {
-            r->headers_out.date = ch;
+            r->headers_out.date = ho;
             continue;
         }
 
         if (&h[i] == p->headers_in.content_length) {
-
-            r->headers_out.content_length_n =
-                             ngx_atoi(p->headers_in.content_length->value.data,
-                                      p->headers_in.content_length->value.len);
-            r->headers_out.content_length = ch;
+            r->headers_out.content_length = ho;
+            r->headers_out.content_length_n = ngx_atoi(ho->value.data,
+                                                       ho->value.len);
             continue;
         }
     }

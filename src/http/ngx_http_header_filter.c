@@ -152,15 +152,9 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         len += sizeof("Date: Mon, 28 Sep 1970 00:00:00 GMT" CRLF) - 1;
     }
 
-    if (r->headers_out.content_range && r->headers_out.content_range->value.len)
-    {
-        len += sizeof("Content-Range: ") - 1
-               + r->headers_out.content_range->value.len + 2;
-    }
-
     if (r->headers_out.content_length == NULL) {
         if (r->headers_out.content_length_n >= 0) {
-                                            /* 2^64 */
+                                           /* 2^64 */
             len += sizeof("Content-Length: 18446744073709551616" CRLF) - 1;
         }
     }
@@ -173,12 +167,6 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         if (r->headers_out.charset.len) {
             len += sizeof("; charset=") - 1 + r->headers_out.charset.len;
         }
-    }
-
-    if (r->headers_out.content_encoding
-        && r->headers_out.content_encoding->value.len)
-    {
-        len += 18 + r->headers_out.content_encoding->value.len + 2;
     }
 
     if (r->headers_out.location
@@ -218,10 +206,11 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
             continue;
         }
 
+        /* 2 is for ": " and 2 is for "\r\n" */
         len += header[i].key.len + 2 + header[i].value.len + 2;
     }
 
-    ngx_test_null(h, ngx_create_temp_hunk(r->pool, len, 0, 64), NGX_ERROR);
+    ngx_test_null(h, ngx_create_temp_hunk(r->pool, len, 0, 0), NGX_ERROR);
 
     /* "HTTP/1.x " */
     h->last = ngx_cpymem(h->last, "HTTP/1.1 ", sizeof("HTTP/1.x ") - 1);
@@ -247,20 +236,9 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         *(h->last++) = CR; *(h->last++) = LF;
     }
 
-
-    if (r->headers_out.content_range && r->headers_out.content_range->value.len)
-    {
-        h->last = ngx_cpymem(h->last, "Content-Range: ",
-                             sizeof("Content-Range: ") - 1);
-        h->last = ngx_cpymem(h->last, r->headers_out.content_range->value.data,
-                             r->headers_out.content_range->value.len);
-        *(h->last++) = CR; *(h->last++) = LF;
-    }
-
     if (r->headers_out.content_length == NULL) {
-        /* 2^64 is 20 characters  */
         if (r->headers_out.content_length_n >= 0) {
-            h->last += ngx_snprintf(h->last,
+            h->last += ngx_snprintf(h->last,        /* 2^64 */
                             sizeof("Content-Length: 18446744073709551616" CRLF),
                             "Content-Length: " OFF_FMT CRLF,
                             r->headers_out.content_length_n);
@@ -279,18 +257,6 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
             h->last = ngx_cpymem(h->last, r->headers_out.charset.data,
                                  r->headers_out.charset.len);
         }
-
-        *(h->last++) = CR; *(h->last++) = LF;
-    }
-
-    if (r->headers_out.content_encoding
-        && r->headers_out.content_encoding->value.len)
-    {
-        h->last = ngx_cpymem(h->last, "Content-Encoding: ",
-                             sizeof("Content-Encoding: ") - 1);
-        h->last = ngx_cpymem(h->last,
-                             r->headers_out.content_encoding->value.data,
-                             r->headers_out.content_encoding->value.len);
 
         *(h->last++) = CR; *(h->last++) = LF;
     }
