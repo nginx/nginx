@@ -15,8 +15,6 @@ int ngx_event_find_timer(void);
 void ngx_event_expire_timers(ngx_msec_t timer);
 
 
-extern ngx_event_t  *ngx_timer_queue;
-
 
 ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
 {
@@ -41,4 +39,4 @@ ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
 }
 
 
-#endif _NGX_EVENT_TIMER_H_INCLUDED_
+#endif /* _NGX_EVENT_TIMER_H_INCLUDED_ */

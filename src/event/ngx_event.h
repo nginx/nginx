@@ -15,6 +15,15 @@
 
 typedef struct ngx_event_s       ngx_event_t;
 
+#if (HAVE_IOCP)
+typedef struct {
+    WSAOVERLAPPED    ovlp;
+    ngx_event_t     *event;
+    int              error;
+} ngx_event_ovlp_t;
+#endif
+
+
 struct ngx_event_s {
     void            *data;
 
@@ -45,11 +54,11 @@ struct ngx_event_s {
                                 /* otherwise:                                */
                                 /*   accept: 1 if accept many, 0 otherwise   */
 
-    /* flags - int are probably faster on write then bits ??? */
-
     unsigned         oneshot:1;
 
+#if 0
     unsigned         listening:1;
+#endif
     unsigned         write:1;
 
     unsigned         active:1;
@@ -66,10 +75,23 @@ struct ngx_event_s {
 #if (HAVE_DEFERRED_ACCEPT)
     unsigned         deferred_accept:1;
 #endif
+
 #if (HAVE_KQUEUE)
     unsigned         eof:1;
     int              error;
 #endif
+
+
+#if (HAVE_AIO)
+
+#if (HAVE_IOCP)
+    ngx_event_ovlp_t ovlp;
+#else
+    struct aiocb     aiocb;
+#endif
+
+#endif
+
 
 #if 0
     void            *thr_ctx;   /* event thread context if $(CC) doesn't
@@ -94,6 +116,10 @@ typedef enum {
 #if (HAVE_KQUEUE)
     NGX_KQUEUE_EVENT,
 #endif
+#if (HAVE_IOCP)
+    NGX_IOCP_EVENT,
+#endif
+    NGX_DUMMY_EVENT    /* avoid comma at end of enumerator list */
 } ngx_event_type_e ;
 
 typedef struct {
@@ -124,6 +150,10 @@ typedef struct {
 
 /* No need to add or delete event filters - overlapped, aio_read, aioread */
 #define NGX_HAVE_AIO_EVENT      16
+
+/* Need to add socket or halde only once - i/o completion port.
+   It also requires to set HAVE_AIO_EVENT and NGX_HAVE_AIO_EVENT */
+#define NGX_HAVE_IOCP_EVENT     32
 
 /* Event filter is deleted before closing file. Has no meaning
    for select, poll, epoll.
@@ -187,41 +217,24 @@ typedef struct {
 #define ngx_process_events   ngx_event_actions.process
 #define ngx_add_event        ngx_event_actions.add
 #define ngx_del_event        ngx_event_actions.del
+
 #if 0
 #define ngx_add_timer        ngx_event_actions.timer
 #else
 #define ngx_add_timer        ngx_event_add_timer
 #endif
+
+#if (HAVE_IOCP_EVENT)
+#define ngx_event_recv       ngx_event_wsarecv
+#elif (HAVE_AIO_EVENT)
+#define ngx_event_recv       ngx_event_aio_read
+#else
 #define ngx_event_recv       ngx_event_recv_core
+#endif
 
 #endif
 
 #define ngx_del_timer        ngx_event_del_timer
-
-
-#if 0
-ngx_inline static void ngx_del_timer(ngx_event_t *ev)
-{
-#if (NGX_DEBUG_EVENT)
-    /* STUB - we can not cast (ngx_connection_t *) here */
-    ngx_log_debug(ev->log, "del timer: %d" _ *(int *)(ev->data));
-#endif
-
-    if (ev->timer_prev) {
-        ev->timer_prev->timer_next = ev->timer_next;
-    }
-
-    if (ev->timer_next) {
-        ev->timer_next->timer_delta += ev->timer_delta;
-        ev->timer_next->timer_prev = ev->timer_prev;
-        ev->timer_next = NULL;
-    }
-
-    if (ev->timer_prev) {
-        ev->timer_prev = NULL;
-    }
-}
-#endif
 
 
 
@@ -234,6 +247,10 @@ extern ngx_event_actions_t   ngx_event_actions;
 extern ngx_event_type_e      ngx_event_type;
 extern int                   ngx_event_flags;
 #endif
+
+
+ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size);
+int ngx_event_close_connection(ngx_event_t *ev);
 
 
 void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log);

@@ -21,4 +21,4 @@ struct ngx_file_s {
 };
 
 
-#endif _NGX_FILE_H_INCLUDED_
+#endif /* _NGX_FILE_H_INCLUDED_ */

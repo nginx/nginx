@@ -304,11 +304,6 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
-
-#if (NGX_SUPPRESS_WARN)
-        case sw_done:
-            break;
-#endif
         }
     }
 
@@ -495,14 +490,6 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
             break;
-
-#if (NGX_SUPPRESS_WARN)
-        case sw_done:
-            break;
-
-        case sw_header_done:
-            break;
-#endif
         }
     }
 

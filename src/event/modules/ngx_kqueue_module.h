@@ -14,4 +14,10 @@ void ngx_kqueue_add_timer(ngx_event_t *ev, ngx_msec_t timer);
 int ngx_kqueue_process_events(ngx_log_t *log);
 
 
+#if 1
+extern int              kq;
+#endif
+
+
+
 #endif /* _NGX_KQUEUE_MODULE_H_INCLUDED_ */

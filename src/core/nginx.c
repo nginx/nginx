@@ -27,6 +27,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log);
 
 /* STUB */
 int ngx_max_conn = 512;
+u_int  ngx_sendfile_flags;
 
 ngx_server_t  ngx_server;
 /* */
@@ -53,11 +54,16 @@ int main(int argc, char *const *argv)
     /* */
 
 #if (WIN32)
-    ngx_init_sockets(&ngx_log);
-#else
-    ngx_set_signals(&ngx_log);
-#endif
 
+    if (ngx_init_sockets(&ngx_log) == NGX_ERROR) {
+        exit(1);
+    }
+
+#else
+
+    ngx_set_signals(&ngx_log);
+
+#endif
 
     ngx_init_array(ngx_listening_sockets, ngx_pool, 10, sizeof(ngx_listen_t),
                    1);

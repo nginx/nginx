@@ -20,7 +20,7 @@ struct ngx_http_proxy_ctx_s {
     ngx_chain_t  *out;
 
     int           last_hunk;
-    ngx_array_t  *hunks;
+    ngx_array_t   hunks;
 
     int           hunk_n;
 

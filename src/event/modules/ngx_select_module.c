@@ -23,7 +23,7 @@ static int            max_write;
 static int            max_fd;
 #endif
 
-static int            nevents;
+static u_int          nevents;
 
 static ngx_event_t  **event_index;
 static ngx_event_t  **ready_index;
@@ -177,8 +177,8 @@ int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 
 int ngx_select_process_events(ngx_log_t *log)
 {
-    int                ready, found, nready;
-    u_int              i;
+    int                ready, found;
+    u_int              i, nready;
     ngx_msec_t         timer, delta;
     ngx_event_t       *ev;
     ngx_connection_t  *c;

@@ -16,6 +16,7 @@
 #error "/dev/poll is not supported on this platform"
 #endif
 
+static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags);
 
 /* STUB */
 #define DEVPOLL_NCHANGES  512
@@ -137,7 +138,7 @@ int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
+static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 {
     int  n;
     ngx_connection_t  *c;
@@ -192,7 +193,6 @@ int ngx_devpoll_process_events(ngx_log_t *log)
     int                events, n, i;
     ngx_msec_t         timer, delta;
     ngx_err_t          err;
-    ngx_event_t       *ev;
     ngx_connection_t  *c;
     struct dvpoll      dvp;
     struct timeval     tv;
@@ -233,7 +233,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
 
     nchanges = 0;
 
-    if (timer != INFTIM) {
+    if ((int) timer != INFTIM) {
         gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
 
@@ -305,7 +305,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         }
     }
 
-    if (timer != INFTIM) {
+    if ((int) timer != INFTIM) {
         ngx_event_expire_timers(delta);
     }
 

@@ -13,7 +13,7 @@
 
 /* should be per-thread */
 static struct pollfd  *event_list;
-static unsigned int    nevents;
+static u_int           nevents;
 
 static ngx_event_t   **event_index;
 static ngx_event_t   **ready_index;
@@ -140,7 +140,8 @@ int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
 int ngx_poll_process_events(ngx_log_t *log)
 {
-    int                i, ready, nready, found;
+    int                ready, found;
+    u_int              i, nready;
     ngx_msec_t         timer, delta;
     ngx_err_t          err;
     ngx_event_t       *ev;
@@ -172,7 +173,7 @@ int ngx_poll_process_events(ngx_log_t *log)
 
     ngx_log_debug(log, "poll ready %d" _ ready);
 
-    if (timer != INFTIM) {
+    if ((int) timer != INFTIM) {
         delta = ngx_msec() - delta;
 
     } else {
@@ -256,7 +257,7 @@ int ngx_poll_process_events(ngx_log_t *log)
         ngx_log_error(NGX_LOG_ALERT, log, 0, "poll ready != events");
     }
 
-    if (timer != INFTIM) {
+    if ((int) timer != INFTIM) {
         ngx_event_expire_timers(delta);
     }
 

@@ -244,7 +244,9 @@ static void *ngx_http_index_create_conf(ngx_pool_t *pool)
 /* STUB */
 static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
 {
+#if 0
     ngx_http_index_conf_t *prev = (ngx_http_index_conf_t *) parent;
+#endif
     ngx_http_index_conf_t *conf = (ngx_http_index_conf_t *) child;
     ngx_str_t  *index;
 

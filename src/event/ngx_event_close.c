@@ -27,7 +27,7 @@ int ngx_event_close_connection(ngx_event_t *ev)
     ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
 
     if ((rc = ngx_close_socket(c->fd)) == -1)
-        ngx_log_error(NGX_LOG_ERR, c->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
                       "ngx_event_close: close failed");
 
     c->fd = -1;

@@ -171,7 +171,7 @@ static char *ngx_http_write_filter_merge_conf(ngx_pool_t *pool,
     ngx_http_write_filter_conf_t *conf =
                                        (ngx_http_write_filter_conf_t *) child;
 
-    ngx_conf_merge(conf->buffer_output, prev->buffer_output, 1460);
+    ngx_conf_size_merge(conf->buffer_output, prev->buffer_output, 1460);
 
     return NULL;
 }

@@ -94,19 +94,21 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+
 #ifndef HAVE_POLL
 #define HAVE_POLL  1
 #include <poll.h>
-/*
-#ifndef INFTIM
-#define INFTIM    -1
-#endif
-*/
 #endif
 
 
 #if (HAVE_DEVPOLL)
+#include <sys/ioctl.h>
 #include <sys/devpoll.h>        /* Solaris, HP/UX */
+#endif
+
+
+#if (HAVE_AIO)
+#include <aio.h>
 #endif
 
 

@@ -60,6 +60,7 @@ ngx_module_t  ngx_http_output_filter_module = {
 int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 {
     int                             rc, once;
+    u_int                           flags;
     size_t                          size;
     ngx_chain_t                    *ce;
     ngx_http_output_filter_ctx_t   *ctx;
@@ -272,11 +273,10 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
 static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
 {
-    size_t   size;
-    ssize_t  n;
+    ssize_t  n, size;
 
     size = src->last.mem - src->pos.mem;
-    if (size > dst->end - dst->pos.mem) {
+    if (size > (dst->end - dst->pos.mem)) {
         size = dst->end - dst->pos.mem;
     }
 
@@ -337,7 +337,7 @@ static char *ngx_http_output_filter_merge_conf(ngx_pool_t *pool,
     ngx_http_output_filter_conf_t *conf =
                                        (ngx_http_output_filter_conf_t *) child;
 
-    ngx_conf_merge(conf->hunk_size, prev->hunk_size, 32768);
+    ngx_conf_size_merge(conf->hunk_size, prev->hunk_size, 32768);
 
     return NULL;
 }

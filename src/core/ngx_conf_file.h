@@ -83,6 +83,12 @@ struct ngx_conf_s {
     }
 
 
+#define ngx_conf_size_merge(conf, prev, default)                             \
+    if (conf == (size_t) NGX_CONF_UNSET) {                                   \
+        conf = (prev == (size_t) NGX_CONF_UNSET) ? default : prev;           \
+    }
+
+
 
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
@@ -95,4 +101,4 @@ char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 extern ngx_module_t *ngx_modules[];
 
 
-#endif _NGX_HTTP_CONF_FILE_H_INCLUDED_
+#endif /* _NGX_HTTP_CONF_FILE_H_INCLUDED_ */

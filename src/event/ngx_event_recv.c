@@ -6,7 +6,7 @@
 #include <ngx_recv.h>
 #include <ngx_connection.h>
 
-int ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
+ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
 {
     int                n;
     ngx_err_t          err;
@@ -20,9 +20,23 @@ int ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
 #if (HAVE_KQUEUE)
     ngx_log_debug(c->log, "ngx_event_recv: eof:%d, avail:%d, err:%d" _
                   c->read->eof _ c->read->available _ c->read->error);
-#if !(USE_KQUEUE)
-    if (ngx_event_type == NGX_KQUEUE_EVENT)
 #endif
+
+#if (USE_KQUEUE)
+
+    if (c->read->eof && c->read->available == 0) {
+        if (c->read->error) {
+            ngx_log_error(NGX_LOG_ERR, c->log, c->read->error,
+                          "recv() failed");
+            return NGX_ERROR;
+        }
+
+        return 0;
+    }
+
+#elif (HAVE_KQUEUE)
+
+    if (ngx_event_type == NGX_KQUEUE_EVENT) {
         if (c->read->eof && c->read->available == 0) {
             if (c->read->error) {
                 ngx_log_error(NGX_LOG_ERR, c->log, c->read->error,
@@ -32,6 +46,8 @@ int ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
 
             return 0;
         }
+    }
+
 #endif
 
     n = ngx_recv(c->fd, buf, size, 0);
@@ -48,11 +64,16 @@ int ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
         return NGX_ERROR;
     }
 
-#if (HAVE_KQUEUE)
-#if !(USE_KQUEUE)
-    if (ngx_event_type == NGX_KQUEUE_EVENT)
-#endif
+#if (USE_KQUEUE)
+
+    c->read->available -= n;
+
+#elif (HAVE_KQUEUE)
+
+    if (ngx_event_type == NGX_KQUEUE_EVENT) {
         c->read->available -= n;
+    }
+
 #endif
 
     return n;

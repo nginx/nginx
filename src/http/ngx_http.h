@@ -67,14 +67,14 @@ typedef struct {
 
 
 typedef struct {
-    int    len;
-    char  *data;
-    int    offset;
+    size_t  len;
+    char   *data;
+    int     offset;
 } ngx_http_header_t;
 
 
 typedef struct {
-    int               host_name_len;
+    size_t            host_name_len;
 
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
@@ -240,12 +240,22 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log);
 /**/
 
 int ngx_http_init_connection(ngx_connection_t *c);
+int ngx_read_http_request_line(ngx_http_request_t *r);
+int ngx_read_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h);
+int ngx_http_handler(ngx_http_request_t *r);
+
+
+int ngx_http_send_header(ngx_http_request_t *r);
+int ngx_http_special_response(ngx_http_request_t *r, int error);
+
+
+time_t ngx_http_parse_time(char *value, size_t len);
+size_t ngx_http_get_time(char *buf, time_t t);
 
 
 int ngx_http_discard_body(ngx_http_request_t *r);
 
 
-int ngx_http_special_response(ngx_http_request_t *r, int error);
 
 
 extern int  ngx_max_module;
@@ -268,6 +278,10 @@ extern ngx_array_t  ngx_http_index_handlers;
 
 extern ngx_http_module_t  *ngx_http_modules[];
 
+
+/* STUB */
+int ngx_http_log_handler(ngx_http_request_t *r);
+/**/
 
 
 #endif /* _NGX_HTTP_H_INCLUDED_ */

@@ -8,7 +8,7 @@
 
 
 typedef struct {
-    int        addr;
+    u_int32_t  addr;
     int        port;
     int        family;
     int        flags;             /* 'default' */
@@ -85,6 +85,7 @@ extern int ngx_http_max_module;
 
 int ngx_http_core_translate_handler(ngx_http_request_t *r);
 
+int ngx_http_internal_redirect(ngx_http_request_t *r, ngx_str_t uri);
 int ngx_http_error(ngx_http_request_t *r, int error);
 int ngx_http_close_request(ngx_http_request_t *r);
 

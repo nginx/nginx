@@ -23,7 +23,11 @@
 
 
 /* should be per-thread */
+#if 1
+int              kq;
+#else
 static int              kq;
+#endif
 static struct kevent   *change_list, *event_list;
 static unsigned int     nchanges;
 static int              nevents;
@@ -63,7 +67,12 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
     ngx_event_actions.process = ngx_kqueue_process_events;
 
     ngx_event_flags = NGX_HAVE_LEVEL_EVENT
-                      |NGX_HAVE_ONESHOT_EVENT|NGX_HAVE_CLEAR_EVENT;
+                     |NGX_HAVE_ONESHOT_EVENT
+#if (HAVE_AIO_EVENT)
+                     |NGX_HAVE_AIO_EVENT;
+#else
+                     |NGX_HAVE_CLEAR_EVENT;
+#endif
 #endif
 
     return NGX_OK;
@@ -221,10 +230,19 @@ int ngx_kqueue_process_events(ngx_log_t *log)
     for (i = 0; i < events; i++) {
 
 #if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "kevent: %d: ft:%d f:%08x ff:%08x d:%d ud:%08x" _
-                      event_list[i].ident _ event_list[i].filter _
-                      event_list[i].flags _ event_list[i].fflags _
-                      event_list[i].data _ event_list[i].udata);
+        if (event_list[i].ident > 0x8000000) {
+            ngx_log_debug(log,
+                          "kevent: %08x: ft:%d f:%08x ff:%08x d:%d ud:%08x" _
+                          event_list[i].ident _ event_list[i].filter _
+                          event_list[i].flags _ event_list[i].fflags _
+                          event_list[i].data _ event_list[i].udata);
+        } else {
+            ngx_log_debug(log,
+                          "kevent: %d: ft:%d f:%08x ff:%08x d:%d ud:%08x" _
+                          event_list[i].ident _ event_list[i].filter _
+                          event_list[i].flags _ event_list[i].fflags _
+                          event_list[i].data _ event_list[i].udata);
+        }
 #endif
 
         if (event_list[i].flags & EV_ERROR) {
@@ -243,7 +261,6 @@ int ngx_kqueue_process_events(ngx_log_t *log)
 
         case EVFILT_READ:
         case EVFILT_WRITE:
-            ev->ready = 1;
             ev->available = event_list[i].data;
 
             if (event_list[i].flags & EV_EOF) {
@@ -255,11 +272,17 @@ int ngx_kqueue_process_events(ngx_log_t *log)
                 ngx_del_timer(ev);
             }
 
+            /* fall through */
+
+        case EVFILT_AIO:
+            ev->ready = 1;
+
             if (ev->event_handler(ev) == NGX_ERROR) {
                 ev->close_handler(ev);
             }
 
             break;
+
 
         default:
             ngx_log_error(NGX_LOG_ALERT, log, 0,

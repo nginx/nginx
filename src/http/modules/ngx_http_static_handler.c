@@ -1,9 +1,11 @@
 
 #include <ngx_config.h>
+
 #include <ngx_string.h>
 #include <ngx_file.h>
 #include <ngx_hunk.h>
 #include <ngx_http.h>
+#include <ngx_http_output_filter.h>
 
 ngx_http_module_t  ngx_http_static_module;
 

@@ -10,6 +10,7 @@
 #include <ngx_http_core_module.h>
 
 
+static void ngx_http_init_filters(ngx_pool_t *pool, ngx_module_t **modules);
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy);
 
 
@@ -57,6 +58,39 @@ ngx_module_t  ngx_http_module = {
     NGX_CORE_MODULE_TYPE,                  /* module type */
     NULL                                   /* init module */
 };
+
+
+
+static void ngx_http_init_filters(ngx_pool_t *pool, ngx_module_t **modules)
+{
+    int  i;
+    ngx_http_module_t  *module;
+    int (*ohf)(ngx_http_request_t *r);
+    int (*obf)(ngx_http_request_t *r, ngx_chain_t *ch);
+
+    ohf = NULL;
+    obf = NULL;
+
+    for (i = 0; modules[i]; i++) {
+        if (modules[i]->type != NGX_HTTP_MODULE_TYPE) {
+            continue;
+        }
+
+        module = (ngx_http_module_t *) modules[i]->ctx;
+
+        if (module->output_header_filter) {
+            module->next_output_header_filter = ohf;
+            ohf = module->output_header_filter;
+        }
+
+        if (module->output_body_filter) {
+            module->next_output_body_filter = obf;
+            obf = module->output_body_filter;
+        }
+    }
+
+    ngx_http_top_header_filter = ohf;
+}
 
 
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
@@ -442,9 +476,13 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
     ls->family = AF_INET;
     ls->type = SOCK_STREAM;
     ls->protocol = IPPROTO_IP;
+
 #if (NGX_OVERLAPPED)
     ls->flags = WSA_FLAG_OVERLAPPED;
+#else
+    ls->nonblocking = 1;
 #endif
+
     ls->sockaddr = (struct sockaddr *) &addr;
     ls->socklen = sizeof(struct sockaddr_in);
     ls->addr = offsetof(struct sockaddr_in, sin_addr);
@@ -452,7 +490,6 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
     ls->addr_text.data = addr_text;
     ls->backlog = -1;
     ls->post_accept_timeout = 10000;
-    ls->nonblocking = 1;
 
     ls->handler = ngx_http_init_connection;
     ls->server = &ngx_http_server;

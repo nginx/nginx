@@ -32,4 +32,4 @@ extern void **ngx_srv_conf;
 extern void **ngx_loc_conf;
 
 
-#endif _NGX_HTTP_CONFIG_H_INCLUDED_
+#endif /* _NGX_HTTP_CONFIG_H_INCLUDED_ */

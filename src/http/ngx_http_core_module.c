@@ -10,13 +10,9 @@
 #include <ngx_http_config.h>
 #include <ngx_http_core_module.h>
 
-#if 0
-#include <ngx_http_write_filter.h>
+/* STUB for r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY; */
 #include <ngx_http_output_filter.h>
-#endif
 
-/* STUB */
-#include <ngx_http_output_filter.h>
 int ngx_http_static_handler(ngx_http_request_t *r);
 int ngx_http_proxy_handler(ngx_http_request_t *r);
 /**/
@@ -104,8 +100,13 @@ int ngx_http_handler(ngx_http_request_t *r)
     ngx_http_server_name_t  *name;
 
     r->connection->unexpected_eof = 0;
-    r->lingering_close = 1;
-    r->keepalive = 1;
+
+    r->lingering_close = 0;
+    r->keepalive = 0;
+
+#if 0
+    r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
+#endif
 
 ngx_log_debug(r->connection->log, "servers: %0x" _ r->connection->servers);
 
@@ -162,12 +163,6 @@ ngx_log_debug(r->connection->log, "servers: %0x" _ r->connection->servers);
 ngx_log_debug(r->connection->log, "cxt: %08x" _ ctx);
 ngx_log_debug(r->connection->log, "srv_conf: %0x" _ r->srv_conf);
 ngx_log_debug(r->connection->log, "loc_conf: %0x" _ r->loc_conf);
-
-
-#if 1
-    r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
-#endif
-
 
     /* run translation phase */
     for (i = 0; ngx_modules[i]; i++) {
@@ -496,8 +491,13 @@ int ngx_http_close_request(ngx_http_request_t *r)
 
     ngx_log_debug(r->connection->log, "http close");
 
-    ngx_del_timer(r->connection->read);
-    ngx_del_timer(r->connection->write);
+    if (r->connection->read->timer_set) {
+        ngx_del_timer(r->connection->read);
+    }
+
+    if (r->connection->write->timer_set) {
+        ngx_del_timer(r->connection->write);
+    }
 
     return NGX_DONE;
 }
@@ -666,73 +666,6 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     cf->ctx = prev;
 
     return rv;
-}
-
-
-int ngx_http_config_modules(ngx_pool_t *pool, ngx_module_t **modules)
-{
-    int i;
-    ngx_http_module_t  *module;
-
-    for (i = 0; modules[i]; i++) {
-        if (modules[i]->type != NGX_HTTP_MODULE_TYPE) {
-            continue;
-        }
-
-        module = (ngx_http_module_t *) modules[i]->ctx;
-        module->index = i;
-    }
-
-    ngx_http_max_module = i;
-
-#if 0
-    ngx_test_null(ngx_srv_conf,
-                  ngx_pcalloc(pool, sizeof(void *) * ngx_http_max_module),
-                  NGX_ERROR);
-    ngx_test_null(ngx_loc_conf,
-                  ngx_pcalloc(pool, sizeof(void *) * ngx_http_max_module),
-                  NGX_ERROR);
-
-    for (i = 0; modules[i]; i++) {
-        if (modules[i]->create_srv_conf)
-            ngx_srv_conf[i] = modules[i]->create_srv_conf(pool);
-
-        if (modules[i]->create_loc_conf)
-            ngx_loc_conf[i] = modules[i]->create_loc_conf(pool);
-    }
-#endif
-}
-
-
-void ngx_http_init_filters(ngx_pool_t *pool, ngx_module_t **modules)
-{
-    int  i;
-    ngx_http_module_t  *module;
-    int (*ohf)(ngx_http_request_t *r);
-    int (*obf)(ngx_http_request_t *r, ngx_chain_t *ch);
-
-    ohf = NULL;
-    obf = NULL;
-
-    for (i = 0; modules[i]; i++) {
-        if (modules[i]->type != NGX_HTTP_MODULE_TYPE) {
-            continue;
-        }
-
-        module = (ngx_http_module_t *) modules[i]->ctx;
-
-        if (module->output_header_filter) {
-            module->next_output_header_filter = ohf;
-            ohf = module->output_header_filter;
-        }
-
-        if (module->output_body_filter) {
-            module->next_output_body_filter = obf;
-            obf = module->output_body_filter;
-        }
-    }
-
-    ngx_http_top_header_filter = ohf;
 }
 
 

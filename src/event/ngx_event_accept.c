@@ -31,7 +31,9 @@ int ngx_event_accept(ngx_event_t *ev)
 
     ev->ready = 0;
 
+#if 0
 /* DEBUG */ ev->available++;
+#endif
 
     do {
         ngx_test_null(pool, ngx_create_pool(ls->pool_size, ev->log), NGX_OK);
@@ -55,12 +57,39 @@ int ngx_event_accept(ngx_event_t *ev)
             return NGX_OK;
         }
 
-#if !(HAVE_INHERITED_NONBLOCK)
+
+#if (HAVE_INHERITED_NONBLOCK)
+
+#if (HAVE_AIO_EVENT)
+        if ((ngx_event_flags & NGX_HAVE_AIO_EVENT)) {
+            if (ngx_blocking(s) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                              ngx_blocking_n " %s failed", ls->addr_text.data);
+                return NGX_OK;
+            }
+        }
+#endif
+
+#else /* !HAVE_INHERITED_NONBLOCK */
+
+#if (HAVE_AIO_EVENT)
+        if (!(ngx_event_flags & NGX_HAVE_AIO_EVENT)) {
+            if (ngx_nonblocking(s) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                           ngx_nonblocking_n " %s failed", ls->addr_text.data);
+                return NGX_OK;
+            }
+        }
+#else
         if (ngx_nonblocking(s) == -1) {
             ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                           ngx_nonblocking_n " %s failed", ls->addr_text.data);
+            return NGX_OK;
         }
 #endif
+
+#endif /* HAVE_INHERITED_NONBLOCK */
+
 
         rev = &ngx_read_events[s];
         wev = &ngx_write_events[s];
@@ -88,9 +117,15 @@ int ngx_event_accept(ngx_event_t *ev)
         c->fd = s;
         c->unexpected_eof = 1;
         wev->write = 1;
-        wev->ready = 1;
 
-        wev->timer = rev->timer = 10000;
+#if (HAVE_AIO_EVENT)
+        if (!(ngx_event_flags & NGX_HAVE_AIO_EVENT)) {
+            wev->ready = 1;
+        }
+#endif
+
+        /* STUB ? */ wev->timer = rev->timer = 10000;
+
         wev->timer_handler = rev->timer_handler = ngx_event_close_connection;
         wev->close_handler = rev->close_handler = ngx_event_close_connection;
 

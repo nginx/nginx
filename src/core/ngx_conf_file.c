@@ -62,7 +62,9 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         /* NGX_OK, NGX_ERROR, NGX_CONF_FILE_DONE, NGX_CONF_BLOCK_DONE */
 
+#if 0
 ngx_log_debug(cf->log, "token %d" _ rc);
+#endif
 
         if (rc == NGX_ERROR) {
             return NGX_CONF_ERROR;
@@ -101,7 +103,9 @@ ngx_log_debug(cf->log, "token %d" _ rc);
                     && ngx_strcmp(name->data, cmd->name.data) == 0)
                 {
 
+#if 0
 ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
+#endif
 
                     if (!(cmd->type & NGX_CONF_ANY)
                         && !(cmd->type & argument_number[cf->args->nelts - 1]))
@@ -126,7 +130,9 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
                     rv = cmd->set(cf, cmd, conf);
 
+#if 0
 ngx_log_debug(cf->log, "rv: %d" _ rv);
+#endif
 
                     if (rv == NGX_CONF_OK) {
                         found = 1;
@@ -192,7 +198,9 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
     h = cf->conf_file->hunk;
     start = h->pos.mem;
 
+#if 0
 ngx_log_debug(cf->log, "TOKEN START");
+#endif
 
     for ( ;; ) {
 
@@ -360,7 +368,9 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
                 *dst = '\0';
                 word->len = len;
 
+#if 0
 ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
+#endif
 
                 if (ch == ';' || ch == '{') {
                     return NGX_OK;

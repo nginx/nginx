@@ -12,14 +12,22 @@
 #include <ngx_event_accept.h>
 
 #include <ngx_select_module.h>
+
 #if (HAVE_POLL)
 #include <ngx_poll_module.h>
 #endif
+
 #if (HAVE_DEVPOLL)
 #include <ngx_devpoll_module.h>
 #endif
+
 #if (HAVE_KQUEUE)
 #include <ngx_kqueue_module.h>
+#endif
+
+#if (HAVE_IOCP)
+#include <ngx_event_acceptex.h>
+#include <ngx_iocp_module.h>
 #endif
 
 
@@ -68,7 +76,10 @@ static int (*ngx_event_init[]) (int max_connections, ngx_log_t *log) = {
     ngx_devpoll_init,
 #endif
 #if (HAVE_KQUEUE)
-    ngx_kqueue_init
+    ngx_kqueue_init,
+#endif
+#if (HAVE_IOCP)
+    ngx_iocp_init
 #endif
 };
 
@@ -85,6 +96,10 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
 
     /* STUB */
     int max_connections = 512;
+
+#if (HAVE_IOCP)
+    ngx_event_type = NGX_IOCP_EVENT;
+#endif
 
     if (ngx_init_events(max_connections, log) == NGX_ERROR) {
         exit(1);
@@ -127,16 +142,38 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
         ngx_memcpy(ev->log, c->log, sizeof(ngx_log_t));
         c->read = ev;
         ev->data = c;
-        ev->event_handler = &ngx_event_accept;
-        ev->listening = 1;
         ev->index = NGX_INVALID_INDEX;
+#if 0
+        ev->listening = 1;
+#endif
 
         ev->available = 0;
 
 #if (HAVE_DEFERRED_ACCEPT)
         ev->deferred_accept = s[i].deferred_accept;
 #endif
+
+#if (HAVE_IOCP)
+
+        if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
+            ev->event_handler = &ngx_event_acceptex;
+
+            if (ngx_iocp_add_event(ev) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            ngx_event_post_acceptex(&s[i], 1);
+
+        } else {
+            ev->event_handler = &ngx_event_accept;
+        }
+
+#else
+
+        ev->event_handler = &ngx_event_accept;
         ngx_add_event(ev, NGX_READ_EVENT, 0);
+
+#endif
     }
 }
 

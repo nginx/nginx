@@ -6,6 +6,7 @@
 #include <ngx_hunk.h>
 #include <ngx_event_write.h>
 #include <ngx_http.h>
+#include <ngx_http_output_filter.h>
 #include <ngx_http_event_proxy_handler.h>
 
 ngx_http_module_t  ngx_http_proxy_module_ctx;
@@ -28,6 +29,9 @@ static int ngx_read_http_proxy_status_line(ngx_http_proxy_ctx_t *ctx);
 
 
 static char conn_close[] = "Connection: close" CRLF;
+
+
+/* AF_INET only */
 
 
 int ngx_http_proxy_handler(ngx_http_request_t *r)
@@ -56,7 +60,7 @@ int ngx_http_proxy_handler(ngx_http_request_t *r)
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr.sin_port = htons(9000);
 
-    ngx_http_proxy_connect(r, &addr, "connecting to 127.0.0.1:9000");
+    return ngx_http_proxy_connect(r, &addr, "connecting to 127.0.0.1:9000");
 }
 
 
@@ -151,7 +155,7 @@ static int ngx_http_proxy_connect(ngx_http_request_t *r,
 
     s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP, 0);
     if (s == -1) {
-        ngx_log_error(NGX_LOG_ERR, c->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
                       ngx_socket_n " failed");
         return NGX_ERROR;
     }
@@ -164,7 +168,7 @@ static int ngx_http_proxy_connect(ngx_http_request_t *r,
                           "setsockopt(SO_RCVBUF) failed");
 
             if (ngx_close_socket(s) == -1) {
-                ngx_log_error(NGX_LOG_ERR, c->log, ngx_socket_errno,
+                ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
                               ngx_close_socket_n " failed");
             }
 
@@ -178,7 +182,7 @@ static int ngx_http_proxy_connect(ngx_http_request_t *r,
                       ngx_nonblocking_n " failed");
 
         if (ngx_close_socket(s) == -1) {
-            ngx_log_error(NGX_LOG_ERR, c->log, ngx_socket_errno,
+            ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
                           ngx_close_socket_n " failed");
         }
 
@@ -190,10 +194,10 @@ static int ngx_http_proxy_connect(ngx_http_request_t *r,
     if (rc == -1) {
         err = ngx_socket_errno;
         if (err != NGX_EINPROGRESS) {
-            ngx_log_error(NGX_LOG_ERR, c->log, err, "connect() failed");
+            ngx_log_error(NGX_LOG_CRIT, c->log, err, "connect() failed");
 
             if (ngx_close_socket(s) == -1) {
-                ngx_log_error(NGX_LOG_ERR, c->log, ngx_socket_errno,
+                ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
                               ngx_close_socket_n " failed");
             }
 
@@ -271,7 +275,7 @@ static int ngx_http_proxy_send_request(ngx_event_t *ev)
 
 static int ngx_http_proxy_read_response_header(ngx_event_t *ev)
 {
-    int  n, rc;
+    int                    n;
     ngx_hunk_t           **ph;
     ngx_connection_t      *c;
     ngx_http_request_t    *r;
@@ -298,13 +302,12 @@ static int ngx_http_proxy_read_response_header(ngx_event_t *ev)
                       ngx_palloc(r->pool, sizeof(ngx_http_proxy_headers_in_t)),
                       NGX_ERROR);
 
-        ngx_test_null(p->hunks,
-                      ngx_create_array(r->pool,
-                                       /* STUB */ 10 /**/,
-                                       sizeof(ngx_hunk_t *)),
-                      NGX_ERROR);
+        ngx_init_array(p->hunks, r->pool,
+                       /* STUB */ 10 /**/,
+                       sizeof(ngx_hunk_t *),
+                       NGX_ERROR);
 
-        ngx_test_null(ph, ngx_push_array(p->hunks), NGX_ERROR);
+        ngx_test_null(ph, ngx_push_array(&p->hunks), NGX_ERROR);
         *ph = p->header_in;
 
         p->state_handler = ngx_http_proxy_process_status_line;
@@ -387,51 +390,64 @@ static int ngx_http_proxy_process_status_line(ngx_http_request_t *r,
     /* STUB */ return NGX_ERROR;
 }
 
+#if 0
 static int ngx_http_proxy_process_response_header(ngx_http_request_t *r,
                                                   ngx_http_proxy_ctx_t *p)
 {
+    return NGX_OK;
 }
+#endif
 
 static int ngx_http_proxy_read_response_body(ngx_event_t *ev)
 {
-    int     n;
-    size_t  left;
+    int                    n;
+    char                  *buf;
+    size_t                 left, size;
     ngx_hunk_t            *h, **ph;
     ngx_connection_t      *c;
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
 
-    if (ev->timedout)
+    if (ev->timedout) {
         return NGX_ERROR;
+    }
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
     p = (ngx_http_proxy_ctx_t *)
                          ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
 
-    left = 0;
-
-    if (p->hunks->nelts > 0) {
-        h = ((ngx_hunk_t **) p->hunks->elts)[p->hunks->nelts - 1];
+    if (p->hunks.nelts > 0) {
+        h = ((ngx_hunk_t **) p->hunks.elts)[p->hunks.nelts - 1];
         left = h->end - h->last.mem;
+
+    } else {
+        h = NULL;
+        left = 0;
     }
 
     do {
 
-#if (HAVE_KQUEUE)
-#if !(USE_KQUEUE)
+#if (USE_KQUEUE)
+
+        /* do not allocate new block if there is EOF */
+        if (ev->eof && ev->available == 0) {
+            left = 1;
+        }
+
+#elif (HAVE_KQUEUE)
+
         if (ngx_event_type == NGX_KQUEUE_EVENT) {
-#endif
             /* do not allocate new block if there is EOF */
             if (ev->eof && ev->available == 0) {
                 left = 1;
             }
-#if !(USE_KQUEUE)
         }
+
 #endif
-#endif
+
         if (left == 0) {
-            ngx_test_null(ph, ngx_push_array(p->hunks), NGX_ERROR);
+            ngx_test_null(ph, ngx_push_array(&p->hunks), NGX_ERROR);
             ngx_test_null(h,
                           ngx_create_temp_hunk(r->pool,
                                                /* STUB */ 4096 /**/, 0, 0),
@@ -441,7 +457,16 @@ static int ngx_http_proxy_read_response_body(ngx_event_t *ev)
             *ph = h;
         }
 
-        n = ngx_event_recv(c, h->last.mem, h->end - h->last.mem);
+        if (h != NULL) {
+            buf = h->last.mem;
+            size = h->end - h->last.mem;
+
+        } else {
+            buf = (char *) &buf;
+            size = 0;
+        }
+
+        n = ngx_event_recv(c, buf, size);
 
         ngx_log_debug(c->log, "READ:%d" _ n);
 
@@ -492,14 +517,14 @@ static int ngx_http_proxy_write_to_client(ngx_event_t *ev)
                          ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
 
     do {
-        h = ((ngx_hunk_t **) p->hunks->elts)[p->hunk_n];
+        h = ((ngx_hunk_t **) p->hunks.elts)[p->hunk_n];
 
         rc = ngx_http_output_filter(r, h);
         if (rc != NGX_OK) {
             return rc;
         }
 
-        if (p->hunk_n >= p->hunks->nelts) {
+        if (p->hunk_n >= p->hunks.nelts) {
             break;
         }
 
@@ -534,8 +559,10 @@ static int ngx_read_http_proxy_status_line(ngx_http_proxy_ctx_t *ctx)
     while (p < ctx->header_in->last.mem && state < sw_done) {
         ch = *p++;
 
+#if 0
 fprintf(stderr, "state: %d, pos: %x, end: %x, char: '%c', status: %d\n",
-       state, p, ctx->header_in->last.mem, ch, ctx->status);
+        state, p, ctx->header_in->last.mem, ch, ctx->status);
+#endif
 
         switch (state) {
 

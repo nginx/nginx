@@ -36,6 +36,7 @@ typedef struct {
 
     unsigned          bound:1;       /* already bound */
     unsigned          inherited:1;   /* inherited from previous process */
+    unsigned          nonblocking_accept:1;
     unsigned          nonblocking:1;
 #if 0
     unsigned          overlapped:1;  /* Winsock2 overlapped */

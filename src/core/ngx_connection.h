@@ -38,6 +38,11 @@ struct ngx_connection_s {
     int               family;
     struct sockaddr  *sockaddr;
     socklen_t         socklen;
+#if (HAVE_IOCP)
+    struct sockaddr  *local_sockaddr;
+    socklen_t         local_socklen;
+    void             *listening;
+#endif
     int               addr;
     int               addr_text_max_len;
     ngx_str_t         addr_text;
