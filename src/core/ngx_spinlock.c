@@ -1,19 +1,23 @@
 
+#include <ngx_config.h>
+#include <ngx_core.h>
 
-void _spinlock(ngx_atomic_t *lock)
+
+void ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin)
 {
-    ngx_int_t  tries;
+    ngx_uint_t  tries;
 
     tries = 0;
 
     for ( ;; ) {
 
         if (*lock) {
-            if (ngx_ncpu > 1 && tries++ < 1000) {
+            if (ngx_ncpu > 1 && tries++ < spin) {
                 continue;
             }
 
-            sched_yield();
+            ngx_sched_yield();
+
             tries = 0;
 
         } else {
@@ -23,4 +27,3 @@ void _spinlock(ngx_atomic_t *lock)
         }
     }
 }
-

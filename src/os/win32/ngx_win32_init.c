@@ -4,6 +4,7 @@
 
 
 int  ngx_win32_version;
+int  ngx_ncpu;
 int  ngx_max_sockets;
 int  ngx_inherited_nonblocking = 1;
 
@@ -124,6 +125,7 @@ int ngx_os_init(ngx_log_t *log)
 
     GetSystemInfo(&si);
     ngx_pagesize = si.dwPageSize;
+    ngx_ncpu = si.dwNumberOfProcessors;
 
 
     /* init Winsock */

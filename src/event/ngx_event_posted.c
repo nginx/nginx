@@ -111,6 +111,9 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 
             if (ev->posted) {
                 ev->posted = 0;
+                if (!ev->timedout) {
+                    ev->ready = 1;
+                }
             }
 
             ev->event_handler(ev);

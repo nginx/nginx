@@ -8,6 +8,7 @@ char ngx_freebsd_kern_ostype[20];
 char ngx_freebsd_kern_osrelease[20];
 int ngx_freebsd_kern_osreldate;
 int ngx_freebsd_hw_ncpu;
+int ngx_freebsd_machdep_hlt_logical_cpus;
 int ngx_freebsd_net_inet_tcp_sendspace;
 int ngx_freebsd_sendfile_nbytes_bug;
 int ngx_freebsd_use_tcp_nopush;
@@ -40,6 +41,10 @@ typedef struct {
 sysctl_t sysctls[] = {
     {"hw.ncpu",
      &ngx_freebsd_hw_ncpu,
+     sizeof(int)},
+
+    {"machdep.hlt_logical_cpus",
+     &ngx_freebsd_machdep_hlt_logical_cpus,
      sizeof(int)},
 
     {"net.inet.tcp.sendspace",
@@ -166,6 +171,10 @@ int ngx_os_init(ngx_log_t *log)
                                                                        == -1) {
             err = errno;
             if (err != NGX_ENOENT) {
+                if (sysctls[i].value == &ngx_freebsd_machdep_hlt_logical_cpus) {
+                    continue;
+                }
+
                 ngx_log_error(NGX_LOG_ALERT, log, err,
                               "sysctlbyname(%s) failed", sysctls[i].name);
                 return NGX_ERROR;
@@ -175,6 +184,12 @@ int ngx_os_init(ngx_log_t *log)
             ngx_log_error(NGX_LOG_INFO, log, 0, "%s: %d",
                           sysctls[i].name, *sysctls[i].value);
         }
+    }
+
+    if (ngx_freebsd_machdep_hlt_logical_cpus) {
+        ngx_ncpu = ngx_freebsd_hw_ncpu / 2;
+    } else {
+        ngx_ncpu = ngx_freebsd_hw_ncpu;
     }
 
     return ngx_posix_init(log);

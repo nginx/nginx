@@ -3,6 +3,7 @@
 #include <ngx_core.h>
 
 
+int  ngx_ncpu;
 int  ngx_max_sockets;
 int  ngx_inherited_nonblocking;
 
@@ -83,6 +84,10 @@ int ngx_posix_init(ngx_log_t *log)
     struct sigaction   sa;
 
     ngx_pagesize = getpagesize();
+
+    if (ngx_ncpu == 0) {
+        ngx_ncpu = 1;
+    }
 
     for (sig = signals; sig->signo != 0; sig++) {
         ngx_memzero(&sa, sizeof(struct sigaction));

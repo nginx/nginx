@@ -506,7 +506,6 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
             instance = (uintptr_t) ev & 1;
             ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
-            ev->returned_instance = instance;
 
             if (!ev->active || ev->instance != instance) {
 
@@ -519,6 +518,8 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
                                "kevent: stale event " PTR_FMT, ev);
                 continue;
             }
+
+            ev->returned_instance = instance;
 
             if (ev->log && (ev->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
                 ngx_kqueue_dump_event(ev->log, &event_list[i]);

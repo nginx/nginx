@@ -210,9 +210,30 @@ void ngx_event_accept(ngx_event_t *ev)
         rinstance = rev->returned_instance;
         winstance = wev->returned_instance;
 
+#if (NGX_THREADS)
+
+        /*
+         * We has to acquire the lock to avoid the race condition when
+         * the connection was just closed by another thread but its lock
+         * is not unlocked at this point and we got the same descriptor.
+         *
+         * The condition should be too rare.
+         */
+
+        if (ngx_trylock(&c->lock) == 0) {
+
+            /* TODO: ngx_cycle->stat.accept.spinlock++; */
+
+            ngx_spinlock(&c->lock, 1000);
+        }
+
+#endif
+
         ngx_memzero(rev, sizeof(ngx_event_t));
         ngx_memzero(wev, sizeof(ngx_event_t));
         ngx_memzero(c, sizeof(ngx_connection_t));
+
+        /* ngx_memzero(c) does ngx_unlock(&c->lock); */
 
         c->pool = pool;
 

@@ -44,6 +44,7 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
 
 
 extern ngx_os_io_t  ngx_os_io;
+extern int          ngx_ncpu;
 extern int          ngx_max_sockets;
 extern int          ngx_inherited_nonblocking;
 extern int          ngx_win32_version;

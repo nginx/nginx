@@ -6,7 +6,6 @@ CORE_INCS="src/core"
 CORE_DEPS="src/core/nginx.h \
             src/core/ngx_config.h \
             src/core/ngx_core.h \
-            src/core/ngx_atomic.h \
             src/core/ngx_log.h \
             src/core/ngx_palloc.h \
             src/core/ngx_array.h \
@@ -40,6 +39,7 @@ CORE_SRCS="src/core/nginx.c \
             src/core/ngx_times.c \
             src/core/ngx_connection.c \
             src/core/ngx_cycle.c \
+            src/core/ngx_spinlock.c \
             src/core/ngx_conf_file.c \
             src/core/ngx_garbage_collector.c"
 
@@ -108,6 +108,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_channel.h \
             src/os/unix/ngx_shared.h \
             src/os/unix/ngx_process.h \
+            src/os/unix/ngx_atomic.h \
             src/os/unix/ngx_thread.h \
             src/os/unix/ngx_socket.h \
             src/os/unix/ngx_os.h \
@@ -158,6 +159,7 @@ WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_files.h \
             src/os/win32/ngx_shared.h \
             src/os/win32/ngx_process.h \
+            src/os/win32/ngx_atomic.h \
             src/os/win32/ngx_socket.h \
             src/os/win32/ngx_os.h \
             src/os/win32/ngx_process_cycle.h"

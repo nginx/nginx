@@ -23,6 +23,9 @@ typedef struct {
 
 ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 
+#define ngx_sched_yeld()  Sleep(0)
+
+
 
 extern ngx_pid_t     ngx_pid;
 
