@@ -92,6 +92,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <sys/resource.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>

@@ -7,7 +7,7 @@
 #include <ngx_alloc.h>
 
 typedef struct {
-    char       *elts;
+    void       *elts;
     int         nelts;
     size_t      size;
     int         nalloc;

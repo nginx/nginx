@@ -21,7 +21,7 @@ int ngx_aio_init(int max_connections, ngx_log_t *log)
 
     rc = ngx_kqueue_init(max_connections, log);
 
-    ngx_event_flags = NGX_HAVE_AIO_EVENT;
+    ngx_event_flags = NGX_HAVE_AIO_EVENT|NGX_USE_AIO_EVENT;
     ngx_write_chain_proc = ngx_aio_write_chain;
 
     return rc;

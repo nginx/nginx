@@ -9,11 +9,15 @@
 #include <ngx_log.h>
 #include <ngx_alloc.h>
 #include <ngx_array.h>
+#include <ngx_conf_file.h>
+
+
 
 /* STUB */
 #define NGX_LOWAT   10000
 
 #define NGX_INVALID_INDEX  0x80000000
+
 
 typedef struct ngx_event_s       ngx_event_t;
 
@@ -141,15 +145,21 @@ typedef enum {
     NGX_DUMMY_EVENT_N    /* avoid comma at end of enumerator list */
 } ngx_event_type_e ;
 
+
+
 typedef struct {
-    int  (*add)(ngx_event_t *ev, int event, u_int flags);
-    int  (*del)(ngx_event_t *ev, int event, u_int flags);
-    void (*timer)(ngx_event_t *ev, ngx_msec_t timer);
-    int  (*process)(ngx_log_t *log);
-    int  (*read)(ngx_event_t *ev, char *buf, size_t size);
-/*
-    int  (*write)(ngx_event_t *ev, char *buf, size_t size);
-*/
+    int   (*add)(ngx_event_t *ev, int event, u_int flags);
+    int   (*del)(ngx_event_t *ev, int event, u_int flags);
+
+    int   (*enable)(ngx_event_t *ev, int event, u_int flags);
+    int   (*disable)(ngx_event_t *ev, int event, u_int flags);
+
+    int   (*add_conn)(ngx_connection_t *c);
+    int   (*del_conn)(ngx_connection_t *c);
+
+    int   (*process)(ngx_log_t *log);
+    int   (*init)(ngx_log_t *log);
+    void  (*done)(ngx_log_t *log);
 } ngx_event_actions_t;
 
 
@@ -273,7 +283,8 @@ typedef struct {
 #elif (HAVE_AIO_EVENT)
 #define ngx_event_recv       ngx_event_aio_read
 #else
-#define ngx_event_recv       ngx_event_recv_core
+#define ngx_event_recv       ngx_io.recv
+#define ngx_write_chain      ngx_io.send_chain
 #endif
 
 #endif
@@ -301,6 +312,33 @@ extern int                   ngx_event_flags;
 #define NGX_EVENT_MODULE_TYPE 0x544E5645  /* "EVNT" */
 
 #define NGX_EVENT_CONF        0x00200000
+#define NGX_EVENT_MODULE      0
+
+
+typedef struct {
+    int   connections;
+    int   type;
+    int   timer_queues;
+} ngx_event_conf_t;
+
+
+typedef struct {
+    int                     index;
+    ngx_str_t              *name;
+
+    void                 *(*create_conf)(ngx_pool_t *p);
+    char                 *(*init_conf)(ngx_pool_t *p, void *conf);
+
+    ngx_event_actions_t     actions;
+} ngx_event_module_t;
+
+
+extern ngx_module_t        ngx_events_module;
+extern ngx_event_module_t  ngx_event_module_ctx;
+
+
+#define ngx_event_get_conf(module)                                           \
+                          (*(ngx_get_conf(ngx_events_module))) [module.index];
 
 
 
@@ -311,8 +349,11 @@ ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size);
 int ngx_event_close_connection(ngx_event_t *ev);
 
 
-void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log);
+int  ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log);
 void ngx_worker(ngx_log_t *log);
+
+
+#include <ngx_event_timer.h>
 
 
 #endif /* _NGX_EVENT_H_INCLUDED_ */

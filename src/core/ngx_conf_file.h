@@ -96,17 +96,35 @@ struct ngx_conf_s {
 };
 
 
-#define ngx_conf_merge(conf, prev, default)                                  \
+#define ngx_get_conf(module)  ngx_conf_ctx[module.index]
+
+
+#define ngx_conf_init_value(conf, default)                                   \
+    if (conf == NGX_CONF_UNSET) {                                            \
+        conf = default;                                                      \
+    }
+
+#define ngx_conf_init_size_value(conf, default)                              \
+    if (conf == NGX_CONF_UNSET) {                                            \
+        conf = default;                                                      \
+    }
+
+#define ngx_conf_init_msec_value(conf, default)                              \
+    if (conf == NGX_CONF_UNSET) {                                            \
+        conf = default;                                                      \
+    }
+
+#define ngx_conf_merge_value(conf, prev, default)                            \
     if (conf == NGX_CONF_UNSET) {                                            \
         conf = (prev == NGX_CONF_UNSET) ? default : prev;                    \
     }
 
-#define ngx_conf_msec_merge(conf, prev, default)                             \
+#define ngx_conf_merge_msec_value(conf, prev, default)                       \
     if (conf == (ngx_msec_t) NGX_CONF_UNSET) {                               \
         conf = (prev == (ngx_msec_t) NGX_CONF_UNSET) ? default : prev;       \
     }
 
-#define ngx_conf_size_merge(conf, prev, default)                             \
+#define ngx_conf_merge_size_value(conf, prev, default)                       \
     if (conf == (size_t) NGX_CONF_UNSET) {                                   \
         conf = (prev == (size_t) NGX_CONF_UNSET) ? default : prev;           \
     }
@@ -126,7 +144,8 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 
 
-extern ngx_module_t *ngx_modules[];
+extern ngx_module_t     *ngx_modules[];
+extern void          ****ngx_conf_ctx;
 
 
 #endif /* _NGX_HTTP_CONF_FILE_H_INCLUDED_ */

@@ -19,7 +19,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
     int               i, rc, found;
     char             *rv;
-    void             *conf, **pconf;
+    void             *conf, **confp;
     ngx_str_t        *name;
     ngx_fd_t          fd;
     ngx_conf_file_t  *prev;
@@ -164,10 +164,10 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                         conf = &(((void **) cf->ctx)[ngx_modules[i]->index]);
 
                     } else if (cf->ctx) {
-                        pconf = *(void **) ((char *) cf->ctx + cmd->conf);
+                        confp = *(void **) ((char *) cf->ctx + cmd->conf);
 
-                        if (pconf) {
-                            conf = pconf[*(int *)(ngx_modules[i]->ctx)];
+                        if (confp) {
+                            conf = confp[*(int *)(ngx_modules[i]->ctx)];
                         }
                     }
 

@@ -137,15 +137,19 @@ void ngx_http_init_connection(ngx_connection_t *c)
 
 static void ngx_http_init_request(ngx_event_t *rev)
 {
-    ngx_connection_t     *c;
-    ngx_http_request_t   *r;
-    ngx_http_conf_ctx_t  *ctx;
+    ngx_connection_t           *c;
+    ngx_http_request_t         *r;
+    ngx_http_conf_ctx_t        *ctx;
+    ngx_http_core_main_conf_t  *cmcf;
 
-    c = (ngx_connection_t *) rev->data;
+    c = rev->data;
+    ctx = c->ctx;
+
+    cmcf = ngx_http_get_module_main_conf(ctx, ngx_http_core_module_ctx);
 
     if (c->buffer == NULL) {
         c->buffer = ngx_create_temp_hunk(c->pool,
-                                         ngx_http_client_header_buffer_size,
+                                         cmcf->client_header_buffer_size,
                                          0, 0);
         if (c->buffer == NULL) {
             ngx_http_close_connection(c);
@@ -159,7 +163,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         return;
     }
 
-    r->pool = ngx_create_pool(ngx_http_request_pool_size, c->log);
+    r->pool = ngx_create_pool(cmcf->request_pool_size, c->log);
     if (r->pool == NULL) {
         ngx_http_close_connection(c);
         return;
@@ -179,7 +183,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         return;
     }
 
-    ctx = (ngx_http_conf_ctx_t *) c->ctx;
+    r->main_conf = ctx->main_conf;
     r->srv_conf = ctx->srv_conf;
     r->loc_conf = ctx->loc_conf;
 
@@ -202,14 +206,15 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
 static void ngx_http_process_request_line(ngx_event_t *rev)
 {
-    int                  rc, offset;
-    ssize_t              n;
-    ngx_connection_t    *c;
-    ngx_http_request_t  *r;
-    ngx_http_log_ctx_t  *lcx;
+    int                         rc, offset;
+    ssize_t                     n;
+    ngx_connection_t           *c;
+    ngx_http_request_t         *r;
+    ngx_http_log_ctx_t         *lcx;
+    ngx_http_core_main_conf_t  *cmcf;
 
-    c = (ngx_connection_t *) rev->data;
-    r = (ngx_http_request_t *) c->data;
+    c = rev->data;
+    r = c->data;
 
     ngx_log_debug(rev->log, "http process request line");
 
@@ -231,8 +236,10 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         /* the request line has been parsed successfully */
 
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module_ctx);
+
         if (r->http_version >= NGX_HTTP_VERSION_10
-            && ngx_http_large_client_header == 0
+            && cmcf->large_client_header == 0
             && r->header_in->pos == r->header_in->end)
         {
             /* no space for "\r\n" at the end of the header */
@@ -259,12 +266,29 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         ngx_cpystrn(r->uri.data, r->uri_start, r->uri.len + 1);
 
+#if 1 /* needed to log url on errors in proxy only ? */
+
+        /* copy unparsed URI */
+
+        r->unparsed_uri.len = r->uri_end - r->uri_start;
+        r->unparsed_uri.data = ngx_palloc(r->pool, r->unparsed_uri.len + 1);
+        if (r->unparsed_uri.data == NULL) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        ngx_cpystrn(r->unparsed_uri.data, r->uri_start,
+                    r->unparsed_uri.len + 1);
+
+#endif
+
         r->request_line.len = r->request_end - r->request_start;
 
         /* if the large client headers are enabled then
            we need to copy a request line */
 
-        if (ngx_http_large_client_header) {
+        if (cmcf->large_client_header) {
 
             r->request_line.data = ngx_palloc(r->pool, r->request_line.len + 1);
             if (r->request_line.data == NULL) {
@@ -325,19 +349,6 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         if (r->args.data[0] == '\0') { r->args.data = NULL; }
 #endif
 
-        lcx = c->log->data;
-
-        if (ngx_http_url_in_error_log) {
-            lcx->url = ngx_palloc(r->pool, r->uri_end - r->uri_start + 1);
-            if (lcx->url == NULL) {
-                ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                ngx_http_close_connection(c);
-                return;
-            }
-
-            ngx_cpystrn(lcx->url, r->uri_start, r->uri_end - r->uri_start + 1);
-        }
-
         if (r->http_version == NGX_HTTP_VERSION_9) {
             if (ngx_http_find_server_conf(r) == NGX_ERROR) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -350,10 +361,12 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             return;
         }
 
+        lcx = c->log->data;
         lcx->action = "reading client request headers";
+        lcx->url = r->unparsed_uri.data;
         r->headers_in.headers = ngx_create_table(r->pool, 10);
 
-        if (ngx_http_large_client_header
+        if (cmcf->large_client_header
             && r->header_in->pos == r->header_in->last)
         {
             r->header_in->pos = r->header_in->last = r->header_in->start;
@@ -384,7 +397,9 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
            are enabled otherwise a request line had been already copied
            to the start of the r->header_in hunk in ngx_http_set_keepalive() */
 
-        if (ngx_http_large_client_header) {
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module_ctx);
+
+        if (cmcf->large_client_header) {
             offset = r->request_start - r->header_in->start;
 
             if (offset == 0) {
@@ -422,16 +437,17 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
 static void ngx_http_process_request_headers(ngx_event_t *rev)
 {
-    int                  rc, i, offset;
-    size_t               len;
-    ssize_t              n;
-    ngx_table_elt_t     *h;
-    ngx_connection_t    *c;
-    ngx_http_request_t  *r;
-    ngx_http_log_ctx_t  *ctx;
+    int                         rc, i, offset;
+    size_t                      len;
+    ssize_t                     n;
+    ngx_table_elt_t            *h;
+    ngx_connection_t           *c;
+    ngx_http_request_t         *r;
+    ngx_http_log_ctx_t         *ctx;
+    ngx_http_core_main_conf_t  *cmcf;
 
-    c = (ngx_connection_t *) rev->data;
-    r = (ngx_http_request_t *) c->data;
+    c = rev->data;
+    r = c->data;
 
     ngx_log_debug(rev->log, "http process request header line");
 
@@ -471,7 +487,9 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             /* if the large client headers are enabled then
                we need to copy the header name and value */
 
-            if (ngx_http_large_client_header) {
+            cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module_ctx);
+
+            if (cmcf->large_client_header) {
                 h->key.data = ngx_palloc(r->pool,
                                          h->key.len + 1 + h->value.len + 1);
                 if (h->key.data == NULL) {
@@ -505,7 +523,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             ngx_log_debug(r->connection->log, "HTTP header: '%s: %s'" _
                           h->key.data _ h->value.data);
 
-            if (ngx_http_large_client_header
+            if (cmcf->large_client_header
                 && r->header_in->pos == r->header_in->last)
             {
                 r->header_in->pos = r->header_in->last = r->header_in->start;
@@ -574,7 +592,9 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             /* if the large client headers are enabled then
                 we need to compact r->header_in hunk */
 
-            if (ngx_http_large_client_header) {
+            cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module_ctx);
+
+            if (cmcf->large_client_header) {
                 offset = r->header_name_start - r->header_in->start;
 
                 if (offset == 0) {
@@ -606,9 +626,10 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
 static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
 {
-    int           event;
-    ssize_t       n;
-    ngx_event_t  *rev;
+    int                         event;
+    ssize_t                     n;
+    ngx_event_t                *rev;
+    ngx_http_core_main_conf_t  *cmcf;
 
     n = r->header_in->last - r->header_in->pos;
 
@@ -629,7 +650,9 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
                 rev->timer_set = 1;
             }
 
-            ngx_add_timer(rev, ngx_http_client_header_timeout);
+            cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module_ctx);
+
+            ngx_add_timer(rev, cmcf->client_header_timeout);
             r->header_timeout_set = 1;
         }
 
@@ -724,7 +747,7 @@ void ngx_http_set_write_handler(ngx_http_request_t *r)
 {
     int                        event;
     ngx_event_t               *wev;
-    ngx_http_core_loc_conf_t  *lcf;
+    ngx_http_core_loc_conf_t  *clcf;
 
     wev = r->connection->write;
     wev->event_handler = ngx_http_writer;
@@ -733,10 +756,10 @@ void ngx_http_set_write_handler(ngx_http_request_t *r)
         return;
     }
 
-    lcf = (ngx_http_core_loc_conf_t *)
+    clcf = (ngx_http_core_loc_conf_t *)
                         ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                                      ngx_http_core_module_ctx);
-    ngx_add_timer(wev, lcf->send_timeout);
+    ngx_add_timer(wev, clcf->send_timeout);
     wev->timer_set = 1;
 
     if (ngx_event_flags & (NGX_HAVE_AIO_EVENT|NGX_HAVE_EDGE_EVENT)) {
@@ -747,7 +770,7 @@ void ngx_http_set_write_handler(ngx_http_request_t *r)
 #if (HAVE_LOWAT_EVENT) /* kqueue's NOTE_LOWAT */
 
     if (ngx_event_flags & NGX_HAVE_LOWAT_EVENT) {
-        wev->lowat = lcf->send_lowat;
+        wev->lowat = clcf->send_lowat;
     }
 
 #endif
@@ -823,9 +846,8 @@ static void ngx_http_writer(ngx_event_t *wev)
 
     if (r->keepalive != 0) {
         ngx_http_set_keepalive(r);
-    }
 
-    if (r->lingering_close) {
+    } else if (r->lingering_close) {
         ngx_http_set_lingering_close(r);
 
     } else {
@@ -970,11 +992,12 @@ static int ngx_http_read_discarded_body(ngx_http_request_t *r)
 
 static void ngx_http_set_keepalive(ngx_http_request_t *r)
 {
-    int                  len, blocked;
-    ngx_hunk_t          *h;
-    ngx_event_t         *rev, *wev;
-    ngx_connection_t    *c;
-    ngx_http_log_ctx_t  *ctx;
+    int                         len, blocked;
+    ngx_hunk_t                 *h;
+    ngx_event_t                *rev, *wev;
+    ngx_connection_t           *c;
+    ngx_http_log_ctx_t         *ctx;
+    ngx_http_core_main_conf_t  *cmcf;
 
     c = (ngx_connection_t *) r->connection;
     rev = c->read;
@@ -1007,7 +1030,9 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
            This copy should be rare because clients that support
            pipelined requests (Mozilla 1.x, Opera 6.x) are still rare */
 
-        if (!ngx_http_large_client_header) {
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module_ctx);
+
+        if (!cmcf->large_client_header) {
             len = h->last - h->pos; 
             ngx_memcpy(h->start, h->pos, len);
             h->pos = h->start;

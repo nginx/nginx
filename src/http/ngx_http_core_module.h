@@ -18,17 +18,27 @@ typedef struct {
 
 
 typedef struct {
+    int          post_accept_timeout;
+    int          connection_pool_size;
     int          request_pool_size;
+    int          client_header_timeout;
     int          client_header_buffer_size;
+    int          large_client_header;
+    int          url_in_error_log;
+
+    ngx_array_t  servers;      /* array of ngx_http_core_srv_conf_t */
 } ngx_http_core_main_conf_t;
 
 
 typedef struct {
-    ngx_array_t  locations;    /* array of ngx_http_core_loc_conf_t */
+    ngx_array_t  locations;    /* array of ngx_http_core_loc_conf_t,
+                                  used in the translation handler
+                                  and in the merge phase */
 
     ngx_array_t  listen;       /* 'listen', array of ngx_http_listen_t */
     ngx_array_t  server_names; /* 'server_name',
                                   array of ngx_http_server_name_t */
+
     ngx_http_conf_ctx_t *ctx;  /* server ctx */
 } ngx_http_core_srv_conf_t;
 
@@ -78,8 +88,7 @@ typedef struct {
 
 typedef struct {
     ngx_str_t   name;          /* location name */
-    void      **loc_conf;      /* pointer to modules loc_conf,
-                                  used in translation handler */
+    void      **loc_conf ;     /* pointer to the modules' loc_conf */
 
     int       (*handler) (ngx_http_request_t *r);
 

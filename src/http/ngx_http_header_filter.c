@@ -18,14 +18,17 @@ static int ngx_http_header_filter_init(ngx_pool_t *pool);
 static int ngx_http_header_filter(ngx_http_request_t *r);
 
 
-ngx_http_module_t  ngx_http_header_filter_module_ctx = {
-    NULL,                                  /* create server config */
-    NULL,                                  /* init server config */
+static ngx_http_module_t  ngx_http_header_filter_module_ctx = {
+    NGX_HTTP_MODULE,
 
-    NULL,                                  /* create location config */
-    NULL,                                  /* merge location config */
+    NULL,                                  /* create main configuration */
+    NULL,                                  /* init main configuration */
 
-    NULL                                   /* init filters */
+    NULL,                                  /* create server configuration */
+    NULL,                                  /* merge server configuration */
+
+    NULL,                                  /* create location configuration */
+    NULL,                                  /* merge location configuration */
 };
 
 

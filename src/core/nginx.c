@@ -4,6 +4,7 @@
 #include <ngx_config.h>
 
 #include <ngx_core.h>
+#include <ngx_connection.h>
 #include <ngx_os_init.h>
 #include <ngx_string.h>
 #include <ngx_errno.h>
@@ -13,7 +14,6 @@
 #include <ngx_array.h>
 #include <ngx_socket.h>
 #include <ngx_server.h>
-#include <ngx_connection.h>
 #include <ngx_listen.h>
 #include <ngx_conf_file.h>
 
@@ -33,8 +33,12 @@ u_int  ngx_sendfile_flags;
 ngx_server_t  ngx_server;
 /* */
 
-ngx_log_t     ngx_log;
-ngx_pool_t   *ngx_pool;
+ngx_log_t       ngx_log;
+ngx_pool_t     *ngx_pool;
+void        ****ngx_conf_ctx;
+
+
+ngx_os_io_t  ngx_io;
 
 
 int ngx_max_module;
@@ -55,94 +59,76 @@ int main(int argc, char *const *argv)
     ngx_log.log_level = NGX_LOG_DEBUG;
 
     if (ngx_os_init(&ngx_log) == NGX_ERROR) {
-        exit(1);
+        return 1;
     }
 
     ngx_pool = ngx_create_pool(16 * 1024, &ngx_log);
     /* */
-
-#if (WIN32)
-
-    if (ngx_init_sockets(&ngx_log) == NGX_ERROR) {
-        exit(1);
-    }
-
-#else
-
-    ngx_set_signals(&ngx_log);
-
-#endif
-
-    ngx_init_array(ngx_listening_sockets, ngx_pool, 10, sizeof(ngx_listen_t),
-                   1);
 
     ngx_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {
         ngx_modules[i]->index = ngx_max_module++;
     }
 
-    ngx_memzero(&conf, sizeof(ngx_conf_t));
+    /* life cycle */
 
-    ngx_test_null(conf.args, ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)),
-                  1);
+    {
+        ngx_init_array(ngx_listening_sockets,
+                       ngx_pool, 10, sizeof(ngx_listen_t),
+                       1);
 
-    ngx_test_null(conf.ctx,
-                  ngx_pcalloc(ngx_pool, ngx_max_module * sizeof(void *)),
-                  1);
+        ngx_memzero(&conf, sizeof(ngx_conf_t));
 
-    conf.pool = ngx_pool;
-    conf.log = &ngx_log;
-    conf.module_type = NGX_CORE_MODULE_TYPE;
-    conf.cmd_type = NGX_MAIN_CONF;
+        ngx_test_null(conf.args,
+                      ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)),
+                      1);
 
-    conf_file.len = sizeof("nginx.conf") - 1;
-    conf_file.data = "nginx.conf";
+        ngx_test_null(ngx_conf_ctx,
+                      ngx_pcalloc(ngx_pool, ngx_max_module * sizeof(void *)),
+                      1);
 
-    if (ngx_conf_parse(&conf, &conf_file) != NGX_CONF_OK) {
-        return 1;
-    }
+        conf.ctx = ngx_conf_ctx;
+        conf.pool = ngx_pool;
+        conf.log = &ngx_log;
+        conf.module_type = NGX_CORE_MODULE_TYPE;
+        conf.cmd_type = NGX_MAIN_CONF;
 
-    ngx_init_temp_number();
+        conf_file.len = sizeof("nginx.conf") - 1;
+        conf_file.data = "nginx.conf";
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->init_module) {
-            if (ngx_modules[i]->init_module(ngx_pool) == NGX_ERROR) {
-                return 1;
+        if (ngx_conf_parse(&conf, &conf_file) != NGX_CONF_OK) {
+            return 1;
+        }
+
+        ngx_init_temp_number();
+
+        ngx_io = ngx_os_io;
+
+        for (i = 0; ngx_modules[i]; i++) {
+            if (ngx_modules[i]->init_module) {
+                if (ngx_modules[i]->init_module(ngx_pool) == NGX_ERROR) {
+                    return 1;
+                }
             }
         }
-    }
 
-    ngx_open_listening_sockets(&ngx_log);
+        ngx_open_listening_sockets(&ngx_log);
 
-    /* TODO: daemon */
+        /* TODO: daemon, once only */
 
-    /* TODO: fork */
+        /* TODO: fork */
 
-    ngx_pre_thread(&ngx_listening_sockets, ngx_pool, &ngx_log);
+        ngx_pre_thread(&ngx_listening_sockets, ngx_pool, &ngx_log);
 
-    /* TODO: threads */
+        /* TODO: threads */
 
-    /* STUB */
-    ngx_worker(&ngx_log);
+        /* STUB */
+        ngx_worker(&ngx_log);
+    }     
 
     return 0;
 }
 
-#if !(WIN32)
-static void ngx_set_signals(ngx_log_t *log)
-{
-    struct sigaction sa;
-
-    ngx_memzero(&sa, sizeof(struct sigaction));
-    sa.sa_handler = SIG_IGN;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGPIPE, &sa, NULL) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "sigaction(SIGPIPE, SIG_IGN) failed");
-        exit(1);
-    }
-}
-#endif
 
 static void ngx_open_listening_sockets(ngx_log_t *log)
 {

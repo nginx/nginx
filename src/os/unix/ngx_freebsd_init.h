@@ -5,10 +5,12 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_log.h>
+#include <ngx_os_init.h>
 #include <sys/sysctl.h>
 
 
-int ngx_os_init(ngx_log_t *log);
+int ngx_unix_init(ngx_log_t *log);
+ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size);
 
 
 extern int ngx_freebsd_kern_osreldate;

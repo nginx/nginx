@@ -9,33 +9,38 @@
 
 #include <ngx_event_timer.h>
 
-/* STUB */
-#define NGX_TIMER_QUEUE_NUM  5
 
-/* should be per-thread */
 static ngx_event_t  *ngx_timer_queue;
 static int           ngx_timer_cur_queue;
-/* */
 static int           ngx_timer_queue_num;
 
 
-ngx_event_t *ngx_event_init_timer(ngx_log_t *log)
+int ngx_event_timer_init(ngx_log_t *log)
 {
-    int  i;
+    int                i;
+    ngx_event_conf_t  *ecf;
 
-    ngx_timer_queue_num = NGX_TIMER_QUEUE_NUM;
+    ecf = ngx_event_get_conf(ngx_event_module_ctx);
+
+    ngx_timer_queue_num = ecf->timer_queues;
     ngx_timer_cur_queue = 0;
 
     ngx_test_null(ngx_timer_queue,
                   ngx_alloc(ngx_timer_queue_num * sizeof(ngx_event_t), log),
-                  NULL);
+                  NGX_ERROR);
 
     for (i = 0; i < ngx_timer_queue_num; i++) {
         ngx_timer_queue[i].timer_prev = &ngx_timer_queue[i];
         ngx_timer_queue[i].timer_next = &ngx_timer_queue[i];
     }
 
-    return ngx_timer_queue;
+    return NGX_OK;;
+}
+
+
+void ngx_event_timer_done(ngx_log_t *log)
+{
+    ngx_free(ngx_timer_queue);
 }
 
 
@@ -126,6 +131,8 @@ void ngx_event_expire_timers(ngx_msec_t timer)
             delta -= ev->timer_delta;
 
             ngx_del_timer(ev);
+            ev->timer_set = 0;
+
             if (ev->delayed) {
                 ev->delayed = 0;
                 if (ev->ready == 0) {

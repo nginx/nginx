@@ -38,11 +38,14 @@ static ngx_command_t ngx_http_index_commands[] = {
 ngx_http_module_t  ngx_http_index_module_ctx = {
     NGX_HTTP_MODULE,
 
-    NULL,                                  /* create server config */
-    NULL,                                  /* init server config */
+    NULL,                                  /* create main configuration */
+    NULL,                                  /* init main configuration */
 
-    ngx_http_index_create_conf,            /* create location config */
-    ngx_http_index_merge_conf              /* merge location config */
+    NULL,                                  /* create server configuration */
+    NULL,                                  /* merge server configuration */
+
+    ngx_http_index_create_conf,            /* create location configration */
+    ngx_http_index_merge_conf              /* merge location configration */
 };
 
 

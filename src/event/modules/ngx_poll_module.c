@@ -242,7 +242,10 @@ int ngx_poll_process_events(ngx_log_t *log)
         ev->ready = 1;
 
         if (ev->oneshot) {
-            ngx_del_timer(ev);
+            if (ev->timer_set) {
+                ngx_del_timer(ev);
+                ev->timer_set = 0;
+            }
 
             if (ev->write) {
                 ngx_poll_del_event(ev, NGX_WRITE_EVENT, 0);

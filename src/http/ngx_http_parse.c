@@ -9,13 +9,24 @@ int ngx_parse_http_request_line(ngx_http_request_t *r)
     char  *p;
     enum {
         sw_start = 0,
+        sw_G,
+        sw_GE,
+        sw_H,
+        sw_HE,
+        sw_HEA,
+        sw_P,
+        sw_PO,
+        sw_POS,
         sw_space_after_method,
         sw_spaces_before_uri,
         sw_after_slash_in_uri,
         sw_check_uri,
         sw_uri,
         sw_http_09,
-        sw_http_version,
+        sw_http_H,
+        sw_http_HT,
+        sw_http_HTT,
+        sw_http_HTTP,
         sw_first_major_digit,
         sw_major_digit,
         sw_first_minor_digit,
@@ -30,7 +41,7 @@ int ngx_parse_http_request_line(ngx_http_request_t *r)
     while (p < r->header_in->last && state < sw_done) {
         ch = *p++;
 
-        /* GCC 2.95.2 and VC 6.0 compile this switch as jump table */
+        /* gcc 2.95.2 and vc 6.0 compile this switch as an jump table */
 
         switch (state) {
 
@@ -40,49 +51,100 @@ int ngx_parse_http_request_line(ngx_http_request_t *r)
 
             switch (ch) {
             case 'G':
-                if (p + 1 >= r->header_in->last) {
-                    return NGX_AGAIN;
-                }
-
-                if (*p != 'E' || *(p + 1) != 'T') {
-                    return NGX_HTTP_PARSE_INVALID_METHOD;
-                }
-
-                r->method = NGX_HTTP_GET;
-                p += 2;
+                state = sw_G;
                 break;
-
             case 'H':
-                if (p + 2 >= r->header_in->last) {
-                    return NGX_AGAIN;
-                }
-
-                if (*p != 'E' || *(p + 1) != 'A' || *(p + 2) != 'D') {
-                    return NGX_HTTP_PARSE_INVALID_METHOD;
-                }
-
-                r->method = NGX_HTTP_HEAD;
-                p += 3;
+                state = sw_H;
                 break;
-
             case 'P':
-                if (p + 2 >= r->header_in->last) {
-                    return NGX_AGAIN;
-                }
-
-                if (*p != 'O' || *(p + 1) != 'S' || *(p + 2) != 'T') {
-                    return NGX_HTTP_PARSE_INVALID_METHOD;
-                }
-
-                r->method = NGX_HTTP_POST;
-                p += 3;
+                state = sw_P;
                 break;
-
             default:
                 return NGX_HTTP_PARSE_INVALID_METHOD;
             }
+            break;
 
-            state = sw_space_after_method;
+        case sw_G:
+            switch (ch) {
+            case 'E':
+                state = sw_GE;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
+            break;
+
+        case sw_GE:
+            switch (ch) {
+            case 'T':
+                r->method = NGX_HTTP_GET;
+                state = sw_space_after_method;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
+            break;
+
+        case sw_H:
+            switch (ch) {
+            case 'E':
+                state = sw_HE;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
+            break;
+
+        case sw_HE:
+            switch (ch) {
+            case 'A':
+                state = sw_HEA;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
+            break;
+
+        case sw_HEA:
+            switch (ch) {
+            case 'D':
+                r->method = NGX_HTTP_HEAD;
+                state = sw_space_after_method;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
+            break;
+
+        case sw_P:
+            switch (ch) {
+            case 'O':
+                state = sw_PO;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
+            break;
+
+        case sw_PO:
+            switch (ch) {
+            case 'S':
+                state = sw_POS;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
+            break;
+
+        case sw_POS:
+            switch (ch) {
+            case 'T':
+                r->method = NGX_HTTP_POST;
+                state = sw_space_after_method;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
             break;
 
         /* single space after method */
@@ -214,27 +276,51 @@ int ngx_parse_http_request_line(ngx_http_request_t *r)
                 state = sw_done;
                 break;
             case 'H':
-                state = sw_http_version;
+                state = sw_http_H;
                 break;
             default:
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
 
-        /* "TTP/" */
-        case sw_http_version:
-            if (p + 2 >= r->header_in->last) {
-                r->state = sw_http_version;
-                r->header_in->pos = p - 1;
-                return NGX_AGAIN;
-            }
-
-            if (ch != 'T' || *p != 'T' || *(p + 1) != 'P' || *(p + 2) != '/') {
+        case sw_http_H:
+            switch (ch) {
+            case 'T':
+                state = sw_http_HT;
+                break;
+            default:
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
+            break;
 
-            p += 3;
-            state = sw_first_major_digit;
+        case sw_http_HT:
+            switch (ch) {
+            case 'T':
+                state = sw_http_HTT;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+            break;
+
+        case sw_http_HTT:
+            switch (ch) {
+            case 'P':
+                state = sw_http_HTTP;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+            break;
+
+        case sw_http_HTTP:
+            switch (ch) {
+            case '/':
+                state = sw_first_major_digit;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
             break;
 
         /* first digit of major HTTP version */

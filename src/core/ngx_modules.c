@@ -7,6 +7,11 @@
 extern ngx_module_t  ngx_events_module;
 extern ngx_module_t  ngx_event_module;
 
+extern ngx_module_t  ngx_select_module;
+#if (HAVE_KQUEUE)
+extern ngx_module_t  ngx_kqueue_module;
+#endif
+
 
 extern ngx_module_t  ngx_http_module;
 extern ngx_module_t  ngx_http_core_module;
@@ -25,6 +30,11 @@ ngx_module_t *ngx_modules[] = {
 
     &ngx_events_module,
     &ngx_event_module,
+
+    &ngx_select_module,
+#if (HAVE_KQUEUE)
+    &ngx_kqueue_module,
+#endif
 
     /* http */
 

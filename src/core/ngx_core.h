@@ -2,6 +2,23 @@
 #define _NGX_CORE_H_INCLUDED_
 
 
+#include <ngx_types.h>
+#include <ngx_time.h>
+#include <ngx_socket.h>
+#include <ngx_files.h>
+
+#include <ngx_log.h>
+#include <ngx_alloc.h>
+#include <ngx_hunk.h>
+#include <ngx_array.h>
+#include <ngx_string.h>
+#include <ngx_file.h>
+#include <ngx_conf_file.h>
+#include <ngx_connection.h>
+#include <ngx_os_init.h>
+
+
+
 #define  NGX_OK          0
 #define  NGX_ERROR      -1
 #define  NGX_AGAIN      -2

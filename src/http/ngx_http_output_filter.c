@@ -23,7 +23,7 @@ static void ngx_http_output_filter_init(ngx_pool_t *pool,
 static ngx_command_t  ngx_http_output_filter_commands[] = {
 
     {ngx_string("output_buffer"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_output_filter_conf_t, hunk_size),
@@ -36,11 +36,14 @@ static ngx_command_t  ngx_http_output_filter_commands[] = {
 static ngx_http_module_t  ngx_http_output_filter_module_ctx = {
     NGX_HTTP_MODULE,
 
-    NULL,                                  /* create server config */
-    NULL,                                  /* init server config */
+    NULL,                                  /* create main configuration */
+    NULL,                                  /* init main configuration */
 
-    ngx_http_output_filter_create_conf,    /* create location config */
-    ngx_http_output_filter_merge_conf      /* merge location config */
+    NULL,                                  /* create server configuration */
+    NULL,                                  /* merge server configuration */
+
+    ngx_http_output_filter_create_conf,    /* create location configuration */
+    ngx_http_output_filter_merge_conf      /* merge location configuration */
 };
 
 
@@ -336,7 +339,7 @@ static char *ngx_http_output_filter_merge_conf(ngx_pool_t *pool,
     ngx_http_output_filter_conf_t *conf =
                                        (ngx_http_output_filter_conf_t *) child;
 
-    ngx_conf_size_merge(conf->hunk_size, prev->hunk_size, 32768);
+    ngx_conf_merge_size_value(conf->hunk_size, prev->hunk_size, 32768);
 
     return NULL;
 }

@@ -9,9 +9,10 @@
 #include <ngx_event.h>
 
 
-ngx_event_t *ngx_event_init_timer(ngx_log_t *log);
+int  ngx_event_timer_init(ngx_log_t *log);
+void ngx_event_timer_done(ngx_log_t *log);
 void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer);
-int ngx_event_find_timer(void);
+int  ngx_event_find_timer(void);
 void ngx_event_expire_timers(ngx_msec_t timer);
 
 

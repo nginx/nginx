@@ -6,9 +6,12 @@
 #include <ngx_string.h>
 #include <ngx_conf_file.h>
 
+#include <nginx.h>
+
 #include <ngx_http.h>
 #include <ngx_http_config.h>
 #include <ngx_http_core_module.h>
+
 
 /* STUB for r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY; */
 #include <ngx_http_output_filter.h>
@@ -21,8 +24,11 @@ static int ngx_http_core_index_handler(ngx_http_request_t *r);
 
 static int ngx_http_core_init(ngx_pool_t *pool);
 
+static void *ngx_http_core_create_main_conf(ngx_pool_t *pool);
+static char *ngx_http_core_init_main_conf(ngx_pool_t *pool, void *conf);
 static void *ngx_http_core_create_srv_conf(ngx_pool_t *pool);
-static char *ngx_http_core_init_srv_conf(ngx_pool_t *pool, void *conf);
+static char *ngx_http_core_merge_srv_conf(ngx_pool_t *pool,
+                                          void *parent, void *child);
 static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool);
 static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
                                           void *parent, void *child);
@@ -46,29 +52,29 @@ static ngx_command_t  ngx_http_core_commands[] = {
     {ngx_string("post_accept_timeout"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
-     0,
-     addressof(ngx_http_post_accept_timeout),
+     NGX_HTTP_MAIN_CONF_OFFSET,
+     offsetof(ngx_http_core_main_conf_t, post_accept_timeout),
      NULL},
 
     {ngx_string("connection_pool_size"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
-     0,
-     addressof(ngx_http_connection_pool_size),
+     NGX_HTTP_MAIN_CONF_OFFSET,
+     offsetof(ngx_http_core_main_conf_t, connection_pool_size),
      NULL},
 
     {ngx_string("request_pool_size"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
-     0,
-     addressof(ngx_http_request_pool_size),
+     NGX_HTTP_MAIN_CONF_OFFSET,
+     offsetof(ngx_http_core_main_conf_t, request_pool_size),
      NULL},
 
     {ngx_string("client_header_timeout"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
-     0,
-     addressof(ngx_http_client_header_timeout),
+     NGX_HTTP_MAIN_CONF_OFFSET,
+     offsetof(ngx_http_core_main_conf_t, client_header_timeout),
      NULL},
 
     {ngx_string("client_header_buffer_size"),
@@ -81,8 +87,8 @@ static ngx_command_t  ngx_http_core_commands[] = {
     {ngx_string("large_client_header"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_FLAG,
      ngx_conf_set_flag_slot,
-     0,
-     addressof(ngx_http_large_client_header),
+     NGX_HTTP_MAIN_CONF_OFFSET,
+     offsetof(ngx_http_core_main_conf_t, large_client_header),
      NULL},
 
     {ngx_string("location"),
@@ -93,49 +99,50 @@ static ngx_command_t  ngx_http_core_commands[] = {
      NULL},
 
     {ngx_string("listen"),
-     NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
      ngx_set_listen,
      NGX_HTTP_SRV_CONF_OFFSET,
      0,
      NULL},
 
     {ngx_string("types"),
-     NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF
+                                         |NGX_CONF_BLOCK|NGX_CONF_NOARGS,
      ngx_types_block,
      NGX_HTTP_LOC_CONF_OFFSET,
      0,
      NULL},
 
     {ngx_string("root"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_str_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, doc_root),
      NULL},
 
     {ngx_string("sendfile"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_flag_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, sendfile),
      NULL},
 
     {ngx_string("send_timeout"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, send_timeout),
      NULL},
 
     {ngx_string("lingering_time"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, lingering_time),
      NULL},
 
     {ngx_string("lingering_timeout"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, lingering_timeout),
@@ -148,11 +155,14 @@ static ngx_command_t  ngx_http_core_commands[] = {
 ngx_http_module_t  ngx_http_core_module_ctx = {
     NGX_HTTP_MODULE,
 
-    ngx_http_core_create_srv_conf,         /* create server config */
-    ngx_http_core_init_srv_conf,           /* init server config */
+    ngx_http_core_create_main_conf,        /* create main configuration */
+    ngx_http_core_init_main_conf,          /* init main configuration */
 
-    ngx_http_core_create_loc_conf,         /* create location config */
-    ngx_http_core_merge_loc_conf           /* merge location config */
+    ngx_http_core_create_srv_conf,         /* create server configuration */
+    ngx_http_core_merge_srv_conf,          /* merge server configuration */
+
+    ngx_http_core_create_loc_conf,         /* create location configuration */
+    ngx_http_core_merge_loc_conf           /* merge location configuration */
 };
 
 
@@ -207,6 +217,7 @@ ngx_log_debug(r->connection->log, "FOUND");
             }
         }
 
+/* DEBUG */
 if (a == in_port->addrs.nelts) {
     ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                   "addr not found");
@@ -257,12 +268,12 @@ void ngx_http_handler(ngx_http_request_t *r)
     int                        rc, i;
     ngx_http_handler_pt       *h;
     ngx_http_module_t         *module;
-    ngx_http_core_loc_conf_t  *lcf, **plcf;
+    ngx_http_core_loc_conf_t  *lcf, **lcfp;
     ngx_http_core_srv_conf_t  *scf;
 
     r->connection->unexpected_eof = 0;
 
-    r->keepalive = 0;
+    r->keepalive = 1;
 
     if (r->headers_in.content_length_n > 0) {
         r->lingering_close = 1;
@@ -279,23 +290,23 @@ void ngx_http_handler(ngx_http_request_t *r)
     scf = (ngx_http_core_srv_conf_t *)
                      ngx_http_get_module_srv_conf(r, ngx_http_core_module_ctx);
 
-    plcf = (ngx_http_core_loc_conf_t **) scf->locations.elts;
+    lcfp = (ngx_http_core_loc_conf_t **) scf->locations.elts;
     for (i = 0; i < scf->locations.nelts; i++) {
 #if 0
-ngx_log_debug(r->connection->log, "trans: %s" _ plcf[i]->name.data);
+ngx_log_debug(r->connection->log, "trans: %s" _ lcfp[i]->name.data);
 #endif
-         if (r->uri.len < plcf[i]->name.len) {
+         if (r->uri.len < lcfp[i]->name.len) {
              continue;
          }
 
-         rc = ngx_rstrncmp(r->uri.data, plcf[i]->name.data, plcf[i]->name.len);
+         rc = ngx_rstrncmp(r->uri.data, lcfp[i]->name.data, lcfp[i]->name.len);
 
          if (rc < 0) {
              break;
          }
 
          if (rc == 0) {
-             r->loc_conf = plcf[i]->loc_conf;
+             r->loc_conf = lcfp[i]->loc_conf;
          }
     }
 
@@ -587,7 +598,8 @@ int ngx_http_internal_redirect(ngx_http_request_t *r, ngx_str_t uri)
     r->uri.len = uri.len;
     r->uri.data = uri.data;
 
-    /* NEEDED ? */
+    /* BROKEN, NEEDED ? */
+    /* r->exten */
     r->uri_start = uri.data;
     r->uri_end = uri.data + uri.len;
     /**/
@@ -611,28 +623,28 @@ static int ngx_http_core_init(ngx_pool_t *pool)
 
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 {
-    int                         i, j;
-    char                       *rv;
-    ngx_http_module_t          *module;
-    ngx_conf_t                  pcf;
-    ngx_http_conf_ctx_t        *ctx, *tctx, *pctx;
-    ngx_http_core_srv_conf_t   *scf;
-    ngx_http_core_loc_conf_t  **plcf;
+    int                          i, j;
+    char                        *rv;
+    ngx_http_module_t           *module;
+    ngx_conf_t                   pcf;
+    ngx_http_conf_ctx_t         *ctx, *hctx, *pctx;
+    ngx_http_core_main_conf_t   *cmcf;
+    ngx_http_core_srv_conf_t    *cscf, **cscfp;
 
     ngx_test_null(ctx,
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
                   NGX_CONF_ERROR);
 
-    tctx = (ngx_http_conf_ctx_t *) cf->ctx;
-    ctx->main_conf = tctx->main_conf;
+    hctx = (ngx_http_conf_ctx_t *) cf->ctx;
+    ctx->main_conf = hctx->main_conf;
 
-    /* server configuration */
+    /* the server{}'s srv_conf */
 
     ngx_test_null(ctx->srv_conf,
                   ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
                   NGX_CONF_ERROR);
 
-    /* server location configuration */
+    /* the server{}'s loc_conf */
 
     ngx_test_null(ctx->loc_conf,
                   ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
@@ -658,6 +670,17 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         }
     }
 
+    /* create links of the srv_conf's */
+
+    cscf = ctx->srv_conf[ngx_http_core_module_ctx.index];
+    cscf->ctx = ctx;
+
+    cmcf = ctx->main_conf[ngx_http_core_module_ctx.index];
+    ngx_test_null(cscfp, ngx_push_array(&cmcf->servers), NGX_CONF_ERROR);
+    *cscfp = cscf;
+
+    /* parse inside server{} */
+
     pcf = *cf;
     pctx = cf->ctx;
     cf->ctx = ctx;
@@ -665,50 +688,7 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     rv = ngx_conf_parse(cf, NULL);
     *cf = pcf;
 
-    if (rv != NGX_CONF_OK)
-        return rv;
-
-
-    scf = ctx->srv_conf[ngx_http_core_module_ctx.index];
-    scf->ctx = ctx;
-
-    plcf = (ngx_http_core_loc_conf_t **)scf->locations.elts;
-
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_HTTP_MODULE_TYPE) {
-            continue;
-        }
-
-        module = (ngx_http_module_t *) ngx_modules[i]->ctx;
-
-        if (module->init_srv_conf) {
-            if (module->init_srv_conf(cf->pool,
-                                      ctx->srv_conf[module->index])
-                                                           == NGX_CONF_ERROR) {
-                return NGX_CONF_ERROR;
-            }
-        }
-
-        if (module->merge_loc_conf) {
-            rv = module->merge_loc_conf(cf->pool,
-                                        pctx->loc_conf[module->index],
-                                        ctx->loc_conf[module->index]);
-            if (rv != NGX_CONF_OK) {
-                return rv;
-            }
-
-            for (j = 0; j < scf->locations.nelts; j++) {
-                rv = module->merge_loc_conf(cf->pool,
-                                            ctx->loc_conf[module->index],
-                                            plcf[j]->loc_conf[module->index]);
-                if (rv != NGX_CONF_OK) {
-                    return rv;
-                }
-            }
-        }
-    }
-
-    return NGX_CONF_OK;
+    return rv;
 }
 
 
@@ -720,14 +700,15 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     ngx_http_module_t         *module;
     ngx_conf_t                 pcf;
     ngx_http_conf_ctx_t       *ctx, *pctx;
-    ngx_http_core_srv_conf_t  *scf;
-    ngx_http_core_loc_conf_t  *lcf, **plcf;
+    ngx_http_core_srv_conf_t  *cscf;
+    ngx_http_core_loc_conf_t  *clcf, **clcfp;
 
     ngx_test_null(ctx,
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
                   NGX_CONF_ERROR);
 
     pctx = (ngx_http_conf_ctx_t *) cf->ctx;
+    ctx->main_conf = pctx->main_conf;
     ctx->srv_conf = pctx->srv_conf;
 
     ngx_test_null(ctx->loc_conf,
@@ -748,17 +729,15 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         }
     }
 
-    lcf = (ngx_http_core_loc_conf_t *)
-                                 ctx->loc_conf[ngx_http_core_module_ctx.index];
+    clcf = ctx->loc_conf[ngx_http_core_module_ctx.index];
     location = (ngx_str_t *) cf->args->elts;
-    lcf->name.len = location[1].len;
-    lcf->name.data = location[1].data;
-    lcf->loc_conf = ctx->loc_conf;
+    clcf->name.len = location[1].len;
+    clcf->name.data = location[1].data;
+    clcf->loc_conf = ctx->loc_conf;
 
-    scf = (ngx_http_core_srv_conf_t *)
-                                 ctx->srv_conf[ngx_http_core_module_ctx.index];
-    ngx_test_null(plcf, ngx_push_array(&scf->locations), NGX_CONF_ERROR);
-    *plcf = lcf;
+    cscf = ctx->srv_conf[ngx_http_core_module_ctx.index];
+    ngx_test_null(clcfp, ngx_push_array(&cscf->locations), NGX_CONF_ERROR);
+    *clcfp = clcf;
 
     pcf = *cf;
     cf->ctx = ctx;
@@ -821,43 +800,81 @@ static char *ngx_types_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 }
 
 
-static void *ngx_http_core_create_srv_conf(ngx_pool_t *pool)
+static void *ngx_http_core_create_main_conf(ngx_pool_t *pool)
 {
-    ngx_http_core_srv_conf_t *scf, **cf;
+    ngx_http_core_main_conf_t *cmcf;
 
-    ngx_test_null(scf,
-                  ngx_pcalloc(pool, sizeof(ngx_http_core_srv_conf_t)), 
+    ngx_test_null(cmcf,
+                  ngx_palloc(pool, sizeof(ngx_http_core_main_conf_t)), 
                   NGX_CONF_ERROR);
 
-    ngx_init_array(scf->locations, pool, 5, sizeof(void *), NGX_CONF_ERROR);
-    ngx_init_array(scf->listen, pool, 5, sizeof(ngx_http_listen_t),
-                   NGX_CONF_ERROR);
-    ngx_init_array(scf->server_names, pool, 5, sizeof(ngx_http_server_name_t),
+    cmcf->post_accept_timeout = NGX_CONF_UNSET;
+    cmcf->connection_pool_size = NGX_CONF_UNSET;
+    cmcf->request_pool_size = NGX_CONF_UNSET;
+    cmcf->client_header_timeout = NGX_CONF_UNSET;
+    cmcf->client_header_buffer_size = NGX_CONF_UNSET;
+    cmcf->large_client_header = NGX_CONF_UNSET;
+
+    ngx_init_array(cmcf->servers, pool, 5, sizeof(ngx_http_core_srv_conf_t *),
                    NGX_CONF_ERROR);
 
-    ngx_test_null(cf, ngx_push_array(&ngx_http_servers), NGX_CONF_ERROR);
-    *cf = scf;
-
-    return scf;
+    return cmcf;
 }
 
 
-static char *ngx_http_core_init_srv_conf(ngx_pool_t *pool, void *conf)
+static char *ngx_http_core_init_main_conf(ngx_pool_t *pool, void *conf)
 {
-    ngx_http_core_srv_conf_t *scf = (ngx_http_core_srv_conf_t *) conf;
+    ngx_http_core_main_conf_t *cmcf = (ngx_http_core_main_conf_t *) conf;
+
+    ngx_conf_init_msec_value(cmcf->post_accept_timeout, 30000);
+    ngx_conf_init_size_value(cmcf->connection_pool_size, 16384);
+    ngx_conf_init_size_value(cmcf->request_pool_size, 16384);
+    ngx_conf_init_msec_value(cmcf->client_header_timeout, 60000);
+    ngx_conf_init_size_value(cmcf->client_header_buffer_size, 1024);
+    ngx_conf_init_value(cmcf->large_client_header, 1);
+
+    return NGX_CONF_OK;
+}
+
+
+static void *ngx_http_core_create_srv_conf(ngx_pool_t *pool)
+{
+    ngx_http_core_srv_conf_t  *cscf;
+
+    ngx_test_null(cscf,
+                  ngx_pcalloc(pool, sizeof(ngx_http_core_srv_conf_t)), 
+                  NGX_CONF_ERROR);
+
+    ngx_init_array(cscf->locations, pool, 5, sizeof(void *), NGX_CONF_ERROR);
+    ngx_init_array(cscf->listen, pool, 5, sizeof(ngx_http_listen_t),
+                   NGX_CONF_ERROR);
+    ngx_init_array(cscf->server_names, pool, 5, sizeof(ngx_http_server_name_t),
+                   NGX_CONF_ERROR);
+
+    return cscf;
+}
+
+
+static char *ngx_http_core_merge_srv_conf(ngx_pool_t *pool,
+                                          void *parent, void *child)
+{
+    ngx_http_core_srv_conf_t *prev = (ngx_http_core_srv_conf_t *) parent;
+    ngx_http_core_srv_conf_t *conf = (ngx_http_core_srv_conf_t *) child;
 
     ngx_http_listen_t        *l;
     ngx_http_server_name_t   *n;
 
-    if (scf->listen.nelts == 0) {
-        ngx_test_null(l, ngx_push_array(&scf->listen), NGX_CONF_ERROR);
+    /* TODO: it does not merge, it init only */
+
+    if (conf->listen.nelts == 0) {
+        ngx_test_null(l, ngx_push_array(&conf->listen), NGX_CONF_ERROR);
         l->addr = INADDR_ANY;
         l->port = 8000;
         l->family = AF_INET;
     }
 
-    if (scf->server_names.nelts == 0) {
-        ngx_test_null(n, ngx_push_array(&scf->server_names), NGX_CONF_ERROR);
+    if (conf->server_names.nelts == 0) {
+        ngx_test_null(n, ngx_push_array(&conf->server_names), NGX_CONF_ERROR);
         ngx_test_null(n->name.data, ngx_palloc(pool, NGX_MAXHOSTNAMELEN),
                       NGX_CONF_ERROR);
         if (gethostname(n->name.data, NGX_MAXHOSTNAMELEN) == -1) {
@@ -959,15 +976,16 @@ static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
         }
     }
 
-    ngx_conf_merge(conf->sendfile, prev->sendfile, 0);
+    ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
 
-    ngx_conf_msec_merge(conf->send_timeout, prev->send_timeout, 10000);
+    ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 10000);
 
-    ngx_conf_size_merge(conf->discarded_buffer_size,
-                        prev->discarded_buffer_size, 1500);
-
-    ngx_conf_msec_merge(conf->lingering_time, prev->lingering_time, 30000);
-    ngx_conf_msec_merge(conf->lingering_timeout, prev->lingering_timeout, 5000);
+    ngx_conf_merge_size_value(conf->discarded_buffer_size,
+                              prev->discarded_buffer_size, 1500);
+    ngx_conf_merge_msec_value(conf->lingering_time, prev->lingering_time,
+                              30000);
+    ngx_conf_merge_msec_value(conf->lingering_timeout, prev->lingering_timeout,
+                              5000);
 
     return NGX_CONF_OK;
 }
@@ -975,11 +993,12 @@ static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
 
 static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
+    ngx_http_core_srv_conf_t *scf = (ngx_http_core_srv_conf_t *) conf;
+
     uint                p;
     char               *addr;
     ngx_str_t          *args;
     ngx_http_listen_t  *ls;
-    ngx_http_core_srv_conf_t *scf = (ngx_http_core_srv_conf_t *) conf;
 
     /* TODO: check duplicate 'listen' directives */
 
@@ -1001,7 +1020,8 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
             ls->addr = inet_addr(addr);
             if (ls->addr == INADDR_NONE) {
-                return "bad addr";
+                /* TODO: gethostbyname() */
+                return "can not resolve host name";
             }
 
             break;

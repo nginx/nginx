@@ -81,12 +81,26 @@ EV_VNODE        should notify by some signal if diretory tree is changed
 #endif
 
 
+typedef struct {
+    ssize_t       (*recv)(ngx_connection_t *c, char *buf, size_t size);
+    void           *dummy_recv_chain;
+    void           *dummy_send;
+    ngx_chain_t  *(*send_chain)(ngx_connection_t *c, ngx_chain_t *in);
+} ngx_os_io_t;
+
+
+extern ngx_os_io_t  ngx_io;
+
+
+
 extern ngx_chain_t *(*ngx_write_chain_proc)
                                         (ngx_connection_t *c, ngx_chain_t *in);
 
 
 ssize_t ngx_recv_chain(ngx_connection_t *c, ngx_chain_t *ce);
+#if 0
 ngx_chain_t *ngx_write_chain(ngx_connection_t *c, ngx_chain_t *in, off_t flush);
+#endif
 
 
 /* TODO: move it to OS specific file */

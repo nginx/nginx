@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru
  */
@@ -5,39 +6,30 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_types.h>
-#include <ngx_log.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
-#include <ngx_event_timer.h>
-#include <ngx_conf_file.h>
 #include <ngx_kqueue_module.h>
 
 
-/* STUB */
-#define KQUEUE_NCHANGES  512
-#define KQUEUE_NEVENTS   512
+static int ngx_kqueue_init(ngx_log_t *log);
+static void ngx_kqueue_done(ngx_log_t *log);
+static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags);
+static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags);
+static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags);
+static int ngx_kqueue_process_events(ngx_log_t *log);
+
+static void *ngx_kqueue_create_conf(ngx_pool_t *pool);
+static char *ngx_kqueue_init_conf(ngx_pool_t *pool, void *conf);
 
 
-static int  ngx_kqueue_changes;
-static int  ngx_kqueue_events;
+int                    ngx_kqueue;
+
+static struct kevent  *change_list, *event_list;
+static u_int           max_changes, nchanges;
+static int             nevents;
 
 
-/* should be per-thread if threads are used without thread pool */
-#if 1
-int                     kq;
-#else
-static int              kq;
-#endif
-static struct kevent   *change_list, *event_list;
-static unsigned int     nchanges;
-static int              nevents;
-
-static ngx_event_t     *timer_queue;
-/* */
-
-
-static ngx_str_t  kqueue_name = ngx_string("kqueue");
+static ngx_str_t      kqueue_name = ngx_string("kqueue");
 
 static ngx_command_t  ngx_kqueue_commands[] = {
 
@@ -45,21 +37,42 @@ static ngx_command_t  ngx_kqueue_commands[] = {
      NGX_EVENT_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_num_slot,
      0,
-     addressof(ngx_kqueue_changes),
+     offsetof(ngx_kqueue_conf_t, changes),
      NULL},
 
     {ngx_string("kqueue_events"),
      NGX_EVENT_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_num_slot,
      0,
-     addressof(ngx_kqueue_events),
+     offsetof(ngx_kqueue_conf_t, events),
      NULL},
 
     {ngx_string(""), 0, NULL, 0, 0, NULL}
 };
 
+
+ngx_event_module_t  ngx_kqueue_module_ctx = {
+    NGX_EVENT_MODULE,
+    &kqueue_name,
+    ngx_kqueue_create_conf,                /* create configuration */
+    ngx_kqueue_init_conf,                  /* init configuration */
+
+    { 
+        ngx_kqueue_add_event,              /* add an event */
+        ngx_kqueue_del_event,              /* delete an event */
+        ngx_kqueue_add_event,              /* enable an event */
+        ngx_kqueue_del_event,              /* disable an event */
+        NULL,                              /* add an connection */
+        NULL,                              /* delete an connection */
+        ngx_kqueue_process_events,         /* process the events */
+        ngx_kqueue_init,                   /* init the events */
+        ngx_kqueue_done,                   /* done the events */
+    }
+
+};
+
 ngx_module_t  ngx_kqueue_module = {
-    &kqueue_name,                          /* module context */
+    &ngx_kqueue_module_ctx,                /* module context */
     0,                                     /* module index */
     ngx_kqueue_commands,                   /* module directives */
     NGX_EVENT_MODULE_TYPE,                 /* module type */
@@ -67,109 +80,91 @@ ngx_module_t  ngx_kqueue_module = {
 };
 
 
-
-int ngx_kqueue_init(int max_connections, ngx_log_t *log)
+static int ngx_kqueue_init(ngx_log_t *log)
 {
-    int  change_size, event_size;
+    ngx_kqueue_conf_t  *kcf;
 
-    nevents = KQUEUE_NEVENTS;
+    kcf = ngx_event_get_conf(ngx_kqueue_module_ctx);
+
+ngx_log_debug(log, "CH: %d" _ kcf->changes);
+ngx_log_debug(log, "EV: %d" _ kcf->events);
+
+    max_changes = kcf->changes;
+    nevents = kcf->events;
     nchanges = 0;
-    change_size = sizeof(struct kevent) * KQUEUE_NCHANGES;
-    event_size = sizeof(struct kevent) * KQUEUE_NEVENTS;
 
-    kq = kqueue();
+    ngx_kqueue = kqueue();
 
-    if (kq == -1) {
+    if (ngx_kqueue == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "kqueue() failed");
         return NGX_ERROR;
     }
 
-    ngx_test_null(change_list, ngx_alloc(change_size, log), NGX_ERROR);
-    ngx_test_null(event_list, ngx_alloc(event_size, log), NGX_ERROR);
+    ngx_test_null(change_list,
+                  ngx_alloc(kcf->changes * sizeof(struct kevent), log),
+                  NGX_ERROR);
+    ngx_test_null(event_list,
+                  ngx_alloc(kcf->events * sizeof(struct kevent), log),
+                  NGX_ERROR);
 
-    timer_queue = ngx_event_init_timer(log);
-    if (timer_queue == NULL) {
+    if (ngx_event_timer_init(log) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
-    ngx_event_actions.add = ngx_kqueue_add_event;
-    ngx_event_actions.del = ngx_kqueue_del_event;
-    ngx_event_actions.timer = ngx_event_add_timer;
-    ngx_event_actions.process = ngx_kqueue_process_events;
-
-#if (HAVE_AIO_EVENT)
-
-    ngx_event_flags = NGX_HAVE_AIO_EVENT;
-
-#else
+    ngx_event_actions = ngx_kqueue_module_ctx.actions;
 
     ngx_event_flags = NGX_HAVE_LEVEL_EVENT
                      |NGX_HAVE_ONESHOT_EVENT
-
 #if (HAVE_CLEAR_EVENT)
                      |NGX_HAVE_CLEAR_EVENT
 #else
                      |NGX_USE_LEVEL_EVENT
 #endif
-
 #if (HAVE_LOWAT_EVENT)
                      |NGX_HAVE_LOWAT_EVENT
 #endif
-
                      |NGX_HAVE_KQUEUE_EVENT;
-
-    ngx_write_chain_proc = ngx_freebsd_write_chain;
-
-#endif
 
     return NGX_OK;
 }
 
 
-void ngx_kqueue_done(ngx_log_t *log)
+static void ngx_kqueue_done(ngx_log_t *log)
 {
-    if (close(kq) == -1) {
+    if (close(ngx_kqueue) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "kqueue close() failed");
     }
+
+    ngx_event_timer_done(log);
+
+    ngx_free(change_list);
+    ngx_free(event_list);
 }
 
 
-int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
+static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
+    ngx_connection_t  *c;
+
     ev->active = 1;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
 
-    /* The event addition or change should be always passed to a kernel
-       because there can be case when event was passed to a kernel then
-       added again to the change_list and then deleted from the change_list
-       by ngx_kqueue_del_event() so the first event still remains in a kernel */
-
-#if 0
-
     if (nchanges > 0
         && ev->index < nchanges
-        && change_list[ev->index].udata == ev)
+        && (void *) ((uintptr_t) change_list[ev->index].udata & ~1) == ev)
     {
-#if (NGX_DEBUG_EVENT)
-        ngx_connection_t *c = (ngx_connection_t *) ev->data;
-        ngx_log_debug(ev->log, "kqueue add event: %d: ft:%d" _ c->fd _ event);
-#endif
+        c = ev->data;
+        ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
+                      "previous event were not passed in kernel", c->fd);
 
-        /* if the event is still not passed to a kernel we change it */
-
-        change_list[ev->index].filter = event;
-        change_list[ev->index].flags = flags;
-
-        return NGX_OK;
+        return NGX_ERROR;
     }
-
-#endif
 
     return ngx_kqueue_set_event(ev, event, EV_ADD | flags);
 }
 
 
-int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
+static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t  *e;
 
@@ -181,7 +176,8 @@ int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
     {
 #if (NGX_DEBUG_EVENT)
         ngx_connection_t *c = (ngx_connection_t *) ev->data;
-        ngx_log_debug(ev->log, "kqueue del event: %d: ft:%d" _ c->fd _ event);
+        ngx_log_debug(ev->log, "kqueue event deleted: %d: ft:%d" _
+                      c->fd _ event);
 #endif
 
         /* if the event is still not passed to a kernel we will not pass it */
@@ -207,26 +203,26 @@ int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
+static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 {
-    struct timespec    ts;
-    ngx_connection_t  *c;
+    struct timespec     ts;
+    ngx_connection_t   *c;
 
-    c = (ngx_connection_t *) ev->data;
+    c = ev->data;
 
 #if (NGX_DEBUG_EVENT)
     ngx_log_debug(ev->log, "kqueue set event: %d: ft:%d f:%08x" _
                   c->fd _ filter _ flags);
 #endif
 
-    if (nchanges >= KQUEUE_NCHANGES) {
+    if (nchanges >= max_changes) {
         ngx_log_error(NGX_LOG_WARN, ev->log, 0,
                       "kqueue change list is filled up");
 
         ts.tv_sec = 0;
         ts.tv_nsec = 0;
 
-        if (kevent(kq, change_list, nchanges, NULL, 0, &ts) == -1) {
+        if (kevent(ngx_kqueue, change_list, nchanges, NULL, 0, &ts) == -1) {
             ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, "kevent failed");
             return NGX_ERROR;
         }
@@ -265,7 +261,7 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 }
 
 
-int ngx_kqueue_process_events(ngx_log_t *log)
+static int ngx_kqueue_process_events(ngx_log_t *log)
 {
     int              events, instance, i;
     ngx_msec_t       timer, delta;
@@ -292,7 +288,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
     ngx_log_debug(log, "kevent timer: %d" _ timer);
 #endif
 
-    events = kevent(kq, change_list, nchanges, event_list, nevents, tp);
+    events = kevent(ngx_kqueue, change_list, nchanges, event_list, nevents, tp);
 
     if (events == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "kevent failed");
@@ -305,8 +301,8 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
 
-        /* Expired timers must be deleted before the events processing
-           because the new timers can be added during the processing */
+        /* The expired timers must be handled before a processing of the events
+           because the new timers can be added during a processing */
 
         ngx_event_expire_timers(delta);
 
@@ -370,8 +366,9 @@ int ngx_kqueue_process_events(ngx_log_t *log)
                 ev->error = event_list[i].fflags;
             }
 
-            if (ev->oneshot) {
+            if (ev->oneshot && ev->timer_set) {
                 ngx_del_timer(ev);
+                ev->timer_set = 0;
             }
 
             /* fall through */
@@ -391,4 +388,29 @@ int ngx_kqueue_process_events(ngx_log_t *log)
     }
 
     return NGX_OK;
+}
+
+
+static void *ngx_kqueue_create_conf(ngx_pool_t *pool)
+{
+    ngx_kqueue_conf_t  *kcf;
+
+    ngx_test_null(kcf, ngx_palloc(pool, sizeof(ngx_kqueue_conf_t)),
+                  NGX_CONF_ERROR);
+
+    kcf->changes = NGX_CONF_UNSET;
+    kcf->events = NGX_CONF_UNSET;
+
+    return kcf;
+}
+
+
+static char *ngx_kqueue_init_conf(ngx_pool_t *pool, void *conf)
+{
+    ngx_kqueue_conf_t *kcf = conf;
+
+    ngx_conf_init_value(kcf->changes, 512);
+    ngx_conf_init_value(kcf->events, 512);
+
+    return NGX_CONF_OK;
 }

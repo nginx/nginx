@@ -1,16 +1,24 @@
 
+/*
+ * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_types.h>
-#include <ngx_log.h>
-#include <ngx_time.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
-#include <ngx_event_timer.h>
-#include <ngx_select_module.h>
 
 
-/* should be per-thread */
+static int ngx_select_init(ngx_log_t *log);
+static void ngx_select_done(ngx_log_t *log);
+static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags);
+static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags);
+static int ngx_select_process_events(ngx_log_t *log);
+
+static char *ngx_select_init_conf(ngx_pool_t *pool, void *conf);
+
+
 static fd_set         master_read_fd_set;
 static fd_set         master_write_fd_set;
 static fd_set         work_read_fd_set;
@@ -27,45 +35,67 @@ static u_int          nevents;
 
 static ngx_event_t  **event_index;
 static ngx_event_t  **ready_index;
-static ngx_event_t   *timer_queue;
-/* */
 
-int ngx_select_init(int max_connections, ngx_log_t *log)
-{
-    if (max_connections > FD_SETSIZE) {
-        ngx_log_error(NGX_LOG_EMERG, log, 0,
-#if (WIN32)
-                      "maximum number of descriptors "
-                      "supported by select() is %d", FD_SETSIZE);
-#else
-                      "maximum descriptor number"
-                      "supported by select() is %d", FD_SETSIZE - 1);
-#endif
-        exit(1);
+
+static ngx_str_t    select_name = ngx_string("select");
+
+ngx_event_module_t  ngx_select_module_ctx = {
+    NGX_EVENT_MODULE,
+    &select_name,
+    NULL,                                  /* create configuration */
+    ngx_select_init_conf,                  /* init configuration */
+
+    {
+        ngx_select_add_event,              /* add an event */
+        ngx_select_del_event,              /* delete an event */
+        ngx_select_add_event,              /* enable an event */
+        ngx_select_del_event,              /* disable an event */
+        NULL,                              /* add an connection */
+        NULL,                              /* delete an connection */
+        ngx_select_process_events,         /* process the events */
+        ngx_select_init,                   /* init the events */
+        ngx_select_done                    /* done the events */
     }
+
+};
+
+ngx_module_t  ngx_select_module = {
+    &ngx_select_module_ctx,                /* module context */
+    0,                                     /* module index */
+    NULL,                                  /* module directives */
+    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NULL                                   /* init module */
+};
+
+
+static int ngx_select_init(ngx_log_t *log)
+{
+    ngx_event_conf_t  *ecf;
+
+    ecf = ngx_event_get_conf(ngx_event_module_ctx);
 
     FD_ZERO(&master_read_fd_set);
     FD_ZERO(&master_write_fd_set);
 
     ngx_test_null(event_index,
-                  ngx_alloc(sizeof(ngx_event_t *) * 2 * max_connections, log),
+                  ngx_alloc(sizeof(ngx_event_t *) * 2 * ecf->connections, log),
                   NGX_ERROR);
 
     ngx_test_null(ready_index,
-                  ngx_alloc(sizeof(ngx_event_t *) * 2 * max_connections, log),
+                  ngx_alloc(sizeof(ngx_event_t *) * 2 * ecf->connections, log),
                   NGX_ERROR);
 
     nevents = 0;
 
-    timer_queue = ngx_event_init_timer(log);
-    if (timer_queue == NULL) {
+    if (ngx_event_timer_init(log) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
-    ngx_event_actions.add = ngx_select_add_event;
-    ngx_event_actions.del = ngx_select_del_event;
-    ngx_event_actions.timer = ngx_event_add_timer;
-    ngx_event_actions.process = ngx_select_process_events;
+    ngx_event_actions = ngx_select_module_ctx.actions;
+
+    ngx_event_flags = NGX_HAVE_LEVEL_EVENT
+                      |NGX_HAVE_ONESHOT_EVENT
+                      |NGX_USE_LEVEL_EVENT;
 
 #if (WIN32)
     max_read = max_write = 0;
@@ -76,11 +106,19 @@ int ngx_select_init(int max_connections, ngx_log_t *log)
     return NGX_OK;
 }
 
-int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
+
+static void ngx_select_done(ngx_log_t *log)
+{
+    ngx_free(event_index);
+    ngx_free(ready_index);
+}
+
+
+static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_connection_t  *c;
 
-    c = (ngx_connection_t *) ev->data;
+    c = ev->data;
 
 #if (NGX_DEBUG_EVENT)
     ngx_log_debug(ev->log, "select fd:%d event:%d" _ c->fd _ event);
@@ -132,10 +170,12 @@ int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
     return NGX_OK;
 }
 
-int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
+
+static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 {
-    ngx_connection_t *c;
-    c = (ngx_connection_t *) ev->data;
+    ngx_connection_t  *c;
+
+    c = ev->data;
 
     if (ev->index == NGX_INVALID_INDEX)
         return NGX_OK;
@@ -175,7 +215,8 @@ int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
     return NGX_OK;
 }
 
-int ngx_select_process_events(ngx_log_t *log)
+
+static int ngx_select_process_events(ngx_log_t *log)
 {
     int                ready, found;
     u_int              i, nready;
@@ -298,7 +339,10 @@ int ngx_select_process_events(ngx_log_t *log)
         ev->ready = 1;
 
         if (ev->oneshot) {
-            ngx_del_timer(ev);
+            if (ev->timer_set) {
+                ngx_del_timer(ev);
+                ev->timer_set = 0;
+            }
 
             if (ev->write)
                 ngx_select_del_event(ev, NGX_WRITE_EVENT, 0);
@@ -314,4 +358,19 @@ int ngx_select_process_events(ngx_log_t *log)
     }
 
     return NGX_OK;
+}
+
+
+static char *ngx_select_init_conf(ngx_pool_t *pool, void *conf)
+{
+    ngx_event_conf_t  *ecf;
+
+    ecf = ngx_event_get_conf(ngx_event_module_ctx);
+
+    if (ecf->connections > FD_SETSIZE) {
+        return "maximum number of connections "
+               "supported by select() is " ngx_value(FD_SETSIZE);
+    }
+
+    return NGX_CONF_OK;
 }
