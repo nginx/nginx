@@ -3,9 +3,7 @@
 
 
 #include <ngx_config.h>
-
-#include <ngx_log.h>
-#include <ngx_connection.h>
+#include <ngx_core.h>
 #include <ngx_event.h>
 
 
@@ -20,8 +18,8 @@ void ngx_event_expire_timers(ngx_msec_t timer);
 ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
 {
 #if (NGX_DEBUG_EVENT)
-    /* STUB - we can not cast (ngx_connection_t *) here */
-    ngx_log_debug(ev->log, "del timer: %d" _ *(int *)(ev->data));
+    ngx_connection_t *c = ev->data;
+    ngx_log_debug(ev->log, "del timer: %d" _ c->fd);
 #endif
 
     if (!ev->timer_next || !ev->timer_prev) {

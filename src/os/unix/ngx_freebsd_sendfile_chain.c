@@ -15,7 +15,8 @@
 
    Until FreeBSD 4.5 the turning TCP_NOPUSH off does not not flush
    the pending data that less than MSS and the data sent with 5 second delay.
-   So we use TCP_NOPUSH on FreeBSD 4.5+ only.
+   So we use TCP_NOPUSH on FreeBSD prior to 4.5 only if the connection
+   is not needed not keepalive.
 */
 
 
@@ -23,7 +24,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int              rc, eintr, tcp_nopush;
     char            *prev;
-    size_t           hsize, size;
+    ssize_t          hsize, size;
     off_t            sent;
     struct iovec    *iov;
     struct sf_hdtr   hdtr;

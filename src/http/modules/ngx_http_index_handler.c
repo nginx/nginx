@@ -240,7 +240,7 @@ static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
 
     if (conf->max_index_len == 0) {
         if (prev->max_index_len != 0) {
-            ngx_memcpy(conf, prev, sizeof(ngx_http_index_conf_t)); 
+            ngx_memcpy(conf, prev, sizeof(ngx_http_index_conf_t));
             return NGX_CONF_OK;
         }
 

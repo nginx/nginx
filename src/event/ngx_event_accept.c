@@ -30,21 +30,23 @@ void ngx_event_accept(ngx_event_t *ev)
 
         /*
          * Create the pool before accept() to avoid copy the sockaddr.
-         * Although accept() can fail it's uncommon case
+         * Although accept() can fail it's an uncommon case
          * and the pool can be got from the free pool list
          */
 
-        pool = ngx_create_pool(ls->pool_size, ev->log);
+        pool = ngx_create_pool(ls->listening->pool_size, ev->log);
         if (pool == NULL) {
             return;
         }
 
-        sa = ngx_palloc(pool, ls->socklen);
+        sa = ngx_palloc(pool, ls->listening->socklen);
         if (sa == NULL) {
             return;
         }
 
-        len = ls->socklen;
+        len = ls->listening->socklen;
+
+ngx_log_debug(ev->log, "ADDR %s" _ ls->listening->addr_text.data);
 
         s = accept(ls->fd, sa, &len);
         if (s == -1) {
@@ -52,12 +54,13 @@ void ngx_event_accept(ngx_event_t *ev)
 
             if (err == NGX_EAGAIN) {
                 ngx_log_error(NGX_LOG_NOTICE, ev->log, err,
-                              "EAGAIN while accept() %s", ls->addr_text.data);
+                              "EAGAIN while accept() %s",
+                              ls->listening->addr_text.data);
                 return;
             }
 
             ngx_log_error(NGX_LOG_ALERT, ev->log, err,
-                          "accept() %s failed", ls->addr_text.data);
+                          "accept() %s failed", ls->listening->addr_text.data);
 
             ngx_destroy_pool(pool);
             return;
@@ -70,12 +73,12 @@ void ngx_event_accept(ngx_event_t *ev)
                           "accept() %s returned socket #%d while "
                           "only %d connections was configured, "
                           "sleeping for 1 second",
-                          ls->addr_text.data, s, ecf->connections);
+                          ls->listening->addr_text.data, s, ecf->connections);
 
             if (ngx_close_socket(s) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                               ngx_close_socket_n " %s failed",
-                              ls->addr_text.data);
+                              ls->listening->addr_text.data);
             }
 
             ngx_msleep(1000);
@@ -91,12 +94,12 @@ void ngx_event_accept(ngx_event_t *ev)
                 if (ngx_blocking(s) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                   ngx_blocking_n " %s failed",
-                                  ls->addr_text.data);
+                                  ls->listening->addr_text.data);
 
                     if (ngx_close_socket(s) == -1) {
                         ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                       ngx_close_socket_n " %s failed",
-                                      ls->addr_text.data);
+                                      ls->listening->addr_text.data);
                     }
 
                     ngx_destroy_pool(pool);
@@ -109,12 +112,12 @@ void ngx_event_accept(ngx_event_t *ev)
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                   ngx_nonblocking_n " %s failed",
-                                  ls->addr_text.data);
+                                  ls->listening->addr_text.data);
 
                     if (ngx_close_socket(s) == -1) {
                         ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                       ngx_close_socket_n " %s failed",
-                                      ls->addr_text.data);
+                                      ls->listening->addr_text.data);
                     }
 
                     ngx_destroy_pool(pool);
@@ -123,9 +126,26 @@ void ngx_event_accept(ngx_event_t *ev)
             }
         }
 
+#if (WIN32)
+        /*
+         * Winsock assignes a socket number divisible by 4
+         * so to find a connection we divide a socket number by 4.
+         */
+
+        if (s % 4) {
+            ngx_log_error(NGX_LOG_EMERG, ls->log, 0,
+                          ngx_socket_n " created socket %d", s);
+            exit(1);
+        }
+
+        rev = &ngx_read_events[s / 4];
+        wev = &ngx_write_events[s / 4];
+        c = &ngx_connections[s / 4];
+#else
         rev = &ngx_read_events[s];
         wev = &ngx_write_events[s];
         c = &ngx_connections[s];
+#endif
 
         instance = rev->instance;
 
@@ -135,12 +155,9 @@ void ngx_event_accept(ngx_event_t *ev)
 
         c->pool = pool;
 
+        c->listening = ls->listening;
         c->sockaddr = sa;
-        c->family = ls->family;
         c->socklen = len;
-        c->addr = ls->addr;
-        c->addr_text_max_len = ls->addr_text_max_len;
-        c->post_accept_timeout = ls->post_accept_timeout;
 
         rev->instance = wev->instance = !instance;
 
@@ -182,7 +199,7 @@ void ngx_event_accept(ngx_event_t *ev)
                 if (ngx_close_socket(s) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                   ngx_close_socket_n " %s failed",
-                                  ls->addr_text.data);
+                                  ls->listening->addr_text.data);
                 }
 
                 ngx_destroy_pool(pool);
@@ -190,7 +207,7 @@ void ngx_event_accept(ngx_event_t *ev)
             }
         }
 
-        ls->handler(c);
+        ls->listening->handler(c);
 
         if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
             ev->available--;

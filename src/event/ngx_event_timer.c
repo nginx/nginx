@@ -1,13 +1,7 @@
 
 #include <ngx_config.h>
-
 #include <ngx_core.h>
-#include <ngx_log.h>
-#include <ngx_alloc.h>
-#include <ngx_connection.h>
 #include <ngx_event.h>
-
-#include <ngx_event_timer.h>
 
 
 static ngx_event_t  *ngx_timer_queue;
@@ -49,7 +43,7 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     ngx_event_t  *e;
 
 #if (NGX_DEBUG_EVENT)
-    ngx_connection_t *c = (ngx_connection_t *) ev->data;
+    ngx_connection_t *c = ev->data;
     ngx_log_debug(ev->log, "set timer: %d:%d, slot: %d" _
                   c->fd _ timer _ ngx_timer_cur_queue);
 #endif

@@ -7,16 +7,13 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-
-
-typedef struct {
-    int  threads;
-} ngx_iocp_conf_t;
+#include <ngx_iocp_module.h>
 
 
 static int ngx_iocp_init(ngx_log_t *log);
 static void ngx_iocp_done(ngx_log_t *log);
 static int ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key);
+static int ngx_iocp_del_connection(ngx_connection_t *c);
 static int ngx_iocp_process_events(ngx_log_t *log);
 static void *ngx_iocp_create_conf(ngx_pool_t *pool);
 static char *ngx_iocp_init_conf(ngx_pool_t *pool, void *conf);
@@ -31,6 +28,20 @@ static ngx_command_t  ngx_iocp_commands[] = {
      ngx_conf_set_num_slot,
      0,
      offsetof(ngx_iocp_conf_t, threads),
+     NULL},
+
+    {ngx_string("acceptex"),
+     NGX_EVENT_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_num_slot,
+     0,
+     offsetof(ngx_iocp_conf_t, acceptex),
+     NULL},
+
+    {ngx_string("acceptex_read"),
+     NGX_EVENT_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_flag_slot,
+     0,
+     offsetof(ngx_iocp_conf_t, acceptex_read),
      NULL},
 
     ngx_null_command
@@ -48,7 +59,7 @@ ngx_event_module_t  ngx_iocp_module_ctx = {
         NULL,                              /* enable an event */
         NULL,                              /* disable an event */
         NULL,                              /* add an connection */
-        NULL,                              /* delete an connection */
+        ngx_iocp_del_connection,           /* delete an connection */
         ngx_iocp_process_events,           /* process the events */
         ngx_iocp_init,                     /* init the events */
         ngx_iocp_done                      /* done the events */
@@ -111,11 +122,25 @@ static int ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
 
     c = (ngx_connection_t *) ev->data;
 
-    ngx_log_debug(ev->log, "iocp add: %d, %08x:%08x" _ c->fd _ key _ &ev->ovlp);
+    c->read->active = 1;
+    c->write->active = 1;
+
+    ngx_log_debug(ev->log, "iocp add: %d, %d:%08x" _ c->fd _ key _ &ev->ovlp);
 
     if (CreateIoCompletionPort((HANDLE) c->fd, iocp, key, 0) == NULL) {
-        ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
                       "CreateIoCompletionPort() failed");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static int ngx_iocp_del_connection(ngx_connection_t *c)
+{
+    if (CancelIo((HANDLE) c->fd) == 0) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno, "CancelIo() failed");
         return NGX_ERROR;
     }
 
@@ -148,7 +173,7 @@ static int ngx_iocp_process_events(ngx_log_t *log)
     rc = GetQueuedCompletionStatus(iocp, &bytes, (LPDWORD) &key,
                                    (LPOVERLAPPED *) &ovlp, timer);
 
-    ngx_log_debug(log, "iocp: %d, %d:%08x:%08x" _ rc _ bytes _ key _ ovlp);
+    ngx_log_debug(log, "iocp: %d, %d, %d:%08x" _ rc _ bytes _ key _ ovlp);
 
     if (rc == 0) {
         err = ngx_errno;
@@ -179,12 +204,16 @@ ngx_log_debug(log, "iocp ev: %08x" _ ev);
         switch (key) {
         case NGX_IOCP_IO:
             ev->ready = 1;
-            ev->available = bytes;
             break;
 
         case NGX_IOCP_ACCEPT:
+            if (bytes) {
+                ev->ready = 1;
+            }
             break;
         }
+
+        ev->available = bytes;
 
 ngx_log_debug(log, "iocp ev handler: %08x" _ ev->event_handler);
 
@@ -203,6 +232,8 @@ static void *ngx_iocp_create_conf(ngx_pool_t *pool)
                   NGX_CONF_ERROR);
 
     cf->threads = NGX_CONF_UNSET;
+    cf->acceptex = NGX_CONF_UNSET;
+    cf->acceptex_read = NGX_CONF_UNSET;
 
     return cf;
 }
@@ -213,6 +244,8 @@ static char *ngx_iocp_init_conf(ngx_pool_t *pool, void *conf)
     ngx_iocp_conf_t *cf = conf;
 
     ngx_conf_init_value(cf->threads, 0);
+    ngx_conf_init_value(cf->acceptex, 10);
+    ngx_conf_init_value(cf->acceptex_read, 1);
 
     return NGX_CONF_OK;
 }

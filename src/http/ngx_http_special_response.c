@@ -12,6 +12,16 @@ static char error_tail[] =
 ;
 
 
+static char msie_stub[] =
+"<!-- The padding to disable MSIE's friendly error page -->" CRLF
+"<!-- The padding to disable MSIE's friendly error page -->" CRLF
+"<!-- The padding to disable MSIE's friendly error page -->" CRLF
+"<!-- The padding to disable MSIE's friendly error page -->" CRLF
+"<!-- The padding to disable MSIE's friendly error page -->" CRLF
+"<!-- The padding to disable MSIE's friendly error page -->" CRLF
+;
+
+
 static char error_302_page[] =
 "<html>" CRLF
 "<head><title>302 Found</title></head>" CRLF
@@ -134,8 +144,8 @@ static ngx_str_t error_pages[] = {
 
 int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
-    int          err;
-    ngx_hunk_t  *message, *tail;
+    int          err, rc;
+    ngx_hunk_t  *h;
 
     r->headers_out.status = error;
 
@@ -172,7 +182,8 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 
     if (error_pages[err].len) {
         r->headers_out.content_length = error_pages[err].len
-                                        + sizeof(error_tail);
+                                        + sizeof(error_tail) - 1
+                                        + sizeof(msie_stub) - 1;
 
         ngx_test_null(r->headers_out.content_type,
                       ngx_push_table(r->headers_out.headers),
@@ -187,29 +198,63 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         r->headers_out.content_length = -1;
     }
 
-    if (ngx_http_send_header(r) == NGX_ERROR) {
+    rc = ngx_http_send_header(r);
+    if (rc == NGX_ERROR) {
         return NGX_ERROR;
+    }
+
+    if (r->header_only) {
+        if (rc == NGX_AGAIN) {
+            ngx_http_set_write_handler(r);
+            return NGX_AGAIN;
+        }
+
+        return NGX_OK;
     }
 
     if (error_pages[err].len == 0) {
         return NGX_OK;
     }
 
-    ngx_test_null(message, ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)), NGX_ERROR);
+    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
 
-    message->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
-    message->pos = error_pages[err].data;
-    message->last = error_pages[err].data + error_pages[err].len;
+    h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
+    h->pos = error_pages[err].data;
+    h->last = error_pages[err].data + error_pages[err].len;
 
-    if (ngx_http_output_filter(r, message) == NGX_ERROR) {
+    if (ngx_http_output_filter(r, h) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
-    ngx_test_null(tail, ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)), NGX_ERROR);
+    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
 
-    tail->type = NGX_HUNK_MEMORY|NGX_HUNK_LAST|NGX_HUNK_IN_MEMORY;
-    tail->pos = error_tail;
-    tail->last = error_tail + sizeof(error_tail);
+    h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
+    h->pos = error_tail;
+    h->last = error_tail + sizeof(error_tail) - 1;
 
-    return ngx_http_output_filter(r, tail);
+    if (1) {
+        if (ngx_http_output_filter(r, h) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
+
+        h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
+        h->pos = msie_stub;
+        h->last = msie_stub + sizeof(msie_stub) - 1;
+    }
+
+    h->type |= NGX_HUNK_LAST;
+
+    rc = ngx_http_output_filter(r, h);
+
+    if (r->main == NULL) {
+        if (rc == NGX_AGAIN) {
+            ngx_http_set_write_handler(r);
+            return NGX_AGAIN;
+        }
+    }
+
+    return NGX_OK;
+
 }

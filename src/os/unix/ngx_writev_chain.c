@@ -6,15 +6,14 @@
 ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     char            *prev;
-    size_t           size;
-    ssize_t          n;
+    ssize_t          n, size;
     off_t            sent;
     struct iovec    *iov;
     ngx_err_t        err;
-    ngx_array_t      io;
+    ngx_array_t      iovecs;
     ngx_chain_t     *ce;
 
-    ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_CHAIN_ERROR);
+    ngx_init_array(iovecs, c->pool, 10, sizeof(struct iovec), NGX_CHAIN_ERROR);
 
     prev = NULL;
     iov = NULL;
@@ -27,14 +26,14 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
             prev = ce->hunk->last;
 
         } else {
-            ngx_test_null(iov, ngx_push_array(&io), NGX_CHAIN_ERROR);
+            ngx_test_null(iov, ngx_push_array(&iovecs), NGX_CHAIN_ERROR);
             iov->iov_base = ce->hunk->pos;
             iov->iov_len = ce->hunk->last - ce->hunk->pos;
             prev = ce->hunk->last;
         }
     }
 
-    n = writev(c->fd, (struct iovec *) io.elts, io.nelts);
+    n = writev(c->fd, iovecs.elts, iovecs.nelts);
 
     if (n == -1) {
         err = ngx_errno;
@@ -93,7 +92,7 @@ ngx_log_debug(c->log, "SIZE: %d" _ size);
         break;
     }
 
-    ngx_destroy_array(&io);
+    ngx_destroy_array(&iovecs);
 
     return ce;
 }

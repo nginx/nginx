@@ -17,11 +17,10 @@ extern ngx_module_t  ngx_kqueue_module;
 #if (HAVE_DEVPOLL)
 extern ngx_module_t  ngx_devpoll_module;
 #endif
-#if (HAVE_AIO)
-extern ngx_module_t  ngx_aio_module;
-#endif
 #if (HAVE_IOCP)
 extern ngx_module_t  ngx_iocp_module;
+#elif (HAVE_AIO)
+extern ngx_module_t  ngx_aio_module;
 #endif
 
 
@@ -64,11 +63,10 @@ ngx_module_t *ngx_modules[] = {
 #if (HAVE_DEVPOLL)
     &ngx_devpoll_module,
 #endif
-#if (HAVE_AIO)
-    &ngx_aio_module,
-#endif
 #if (HAVE_IOCP)
     &ngx_iocp_module,
+#elif (HAVE_AIO)
+    &ngx_aio_module,
 #endif
 
     /* http */

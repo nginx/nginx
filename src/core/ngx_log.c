@@ -77,7 +77,7 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 
     /* pid#tid */
     len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                        "%d#%d: ", ngx_getpid(), 0);
+                        PID_FMT "#%d: ", ngx_getpid(), 0);
 
 #if (HAVE_VARIADIC_MACROS)
     va_start(args, fmt);

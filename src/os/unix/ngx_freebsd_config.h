@@ -22,9 +22,22 @@
 #include <osreldate.h>
 
 
-#define  QD_FMT   "%qd"
-#define  QX_FMT   "%qx"
-#define  OFF_FMT  "%qd"
+/* STUB */
+#define  QD_FMT   "%lld"
+#define  QX_FMT   "%llx"
+/**/
+
+#if (i386)
+#define  OFF_FMT    "%lld"
+#define  SIZE_FMT   "%d"
+#define  SIZEX_FMT  "%x"
+#else
+#define  OFF_FMT    "%ld"
+#define  SIZE_FMT   "%ld"
+#define  SIZEX_FMT  "%lx"
+#endif
+
+#define  PID_FMT  "%d"
 
 
 #ifndef HAVE_SELECT

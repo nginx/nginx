@@ -1,11 +1,12 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_event.h>
 #include <ngx_http.h>
 
 
 typedef struct {
-    size_t        buffer_output;
+    ssize_t  buffer_output;
 } ngx_http_write_filter_conf_t;
 
 
@@ -139,11 +140,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_AGAIN;
     }
 
-#if 1
     chain = ngx_write_chain(r->connection, ctx->out);
-#else
-    chain = ngx_write_chain(r->connection, ctx->out, flush);
-#endif
 
 #if (NGX_DEBUG_WRITE_FILTER)
     ngx_log_debug(r->connection->log, "write filter %x" _ chain);

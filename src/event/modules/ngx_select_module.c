@@ -378,7 +378,9 @@ static char *ngx_select_init_conf(ngx_pool_t *pool, void *conf)
 
     ecf = ngx_event_get_conf(ngx_event_module);
 
-    if (ecf->connections > FD_SETSIZE) {
+    /* the default FD_SETSIZE is 1024U in FreeBSD 5.x */
+
+    if ((unsigned) ecf->connections > FD_SETSIZE) {
         return "maximum number of connections "
                "supported by select() is " ngx_value(FD_SETSIZE);
     }

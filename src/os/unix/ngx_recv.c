@@ -1,6 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_event.h>
 
 
 static int ngx_unix_recv_error(ngx_event_t *rev, ngx_err_t err);

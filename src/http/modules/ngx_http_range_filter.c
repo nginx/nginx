@@ -61,6 +61,10 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
     ngx_init_array(r->headers_out.ranges, r->pool, 5, sizeof(ngx_http_range_t),
                    NGX_ERROR);
 
+#if (NGX_SUPPRESS_WARN)
+    range = NULL;
+#endif
+
     rc = 0;
     p = r->headers_in.range->value.data + 6;
 
@@ -149,7 +153,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                       ngx_palloc(r->pool, 8 + 20 + 1),
                       NGX_ERROR);
 
-        r->headers_out.content_range->value.len = 
+        r->headers_out.content_range->value.len =
                         ngx_snprintf(r->headers_out.content_range->value.data,
                                      8 + 20 + 1, "bytes */" OFF_FMT,
                                      r->headers_out.content_length);
@@ -170,7 +174,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                           ngx_palloc(r->pool, 6 + 20 + 1 + 20 + 1 + 20 + 1),
                           NGX_ERROR);
 
-            r->headers_out.content_range->value.len = 
+            r->headers_out.content_range->value.len =
                          ngx_snprintf(r->headers_out.content_range->value.data,
                                       6 + 20 + 1 + 20 + 1 + 20 + 1,
                                       "bytes " OFF_FMT "-" OFF_FMT "/" OFF_FMT,
@@ -244,7 +248,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                                ngx_palloc(r->pool, 20 + 1 + 20 + 1 + 20 + 5),
                                NGX_ERROR);
 
-                 range[i].content_range.len = 
+                 range[i].content_range.len =
                         ngx_snprintf(range[i].content_range.data,
                                      20 + 1 + 20 + 1 + 20 + 5,
                                      OFF_FMT "-" OFF_FMT "/" OFF_FMT CRLF CRLF,

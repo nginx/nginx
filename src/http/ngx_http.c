@@ -1,13 +1,10 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-
-#include <ngx_listen.h>
-
+#include <ngx_event.h>
 #include <ngx_http.h>
 
 
-static void ngx_http_init_filters(ngx_pool_t *pool, ngx_module_t **modules);
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
@@ -54,17 +51,20 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     char                        *rv;
     struct sockaddr_in          *addr_in;
     ngx_array_t                  in_ports;
-    ngx_listen_t                *ls;
+    ngx_listening_t             *ls;
     ngx_http_module_t           *module;
     ngx_conf_t                   pcf;
     ngx_http_conf_ctx_t         *ctx;
     ngx_http_in_port_t          *in_port, *inport;
     ngx_http_in_addr_t          *in_addr, *inaddr;
     ngx_http_core_main_conf_t   *cmcf;
-    ngx_http_core_srv_conf_t   **cscfp;
+    ngx_http_core_srv_conf_t   **cscfp, *cscf;
     ngx_http_core_loc_conf_t   **clcfp;
     ngx_http_listen_t           *lscf;
     ngx_http_server_name_t      *s_name, *name;
+#if (WIN32)
+    ngx_iocp_conf_t             *iocpcf;
+#endif
 
     /* the main http context */
     ngx_test_null(ctx,
@@ -431,7 +431,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             ngx_test_null(ls, ngx_push_array(&ngx_listening_sockets),
                           NGX_CONF_ERROR);
-            ngx_memzero(ls, sizeof(ngx_listen_t));
+            ngx_memzero(ls, sizeof(ngx_listening_t));
 
             ngx_test_null(addr_in,
                           ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in)),
@@ -456,7 +456,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->family = AF_INET;
             ls->type = SOCK_STREAM;
             ls->protocol = IPPROTO_IP;
-#if (NGX_OVERLAPPED)
+#if (WIN32)
             ls->flags = WSA_FLAG_OVERLAPPED;
 #endif
             ls->sockaddr = (struct sockaddr *) addr_in;
@@ -468,8 +468,18 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             ls->handler = ngx_http_init_connection;
             ls->log = cf->log;
-            ls->pool_size = cmcf->connection_pool_size;
-            ls->post_accept_timeout = cmcf->post_accept_timeout;
+
+            cscf = in_addr[a].core_srv_conf;
+            ls->pool_size = cscf->connection_pool_size;
+            ls->post_accept_timeout = cscf->post_accept_timeout;
+
+#if (WIN32)
+            iocpcf = ngx_event_get_conf(ngx_iocp_module);
+            if (iocpcf->acceptex_read) {
+                ls->post_accept_buffer_size = cscf->client_header_buffer_size;
+            }
+#endif
+
             ls->ctx = ctx;
 
             if (in_port[p].addrs.nelts > 1) {

@@ -2,9 +2,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-
-#include <ngx_listen.h>
-
+#include <ngx_event.h>
 #include <nginx.h>
 
 
@@ -61,7 +59,7 @@ int main(int argc, char *const *argv)
 
     {
         ngx_init_array(ngx_listening_sockets,
-                       ngx_pool, 10, sizeof(ngx_listen_t),
+                       ngx_pool, 10, sizeof(ngx_listening_t),
                        1);
 
         ngx_memzero(&conf, sizeof(ngx_conf_t));
@@ -126,10 +124,10 @@ int main(int argc, char *const *argv)
 
 static int ngx_open_listening_sockets(ngx_log_t *log)
 {
-    int           times, failed, reuseaddr, i;
-    ngx_err_t     err;
-    ngx_socket_t  s;
-    ngx_listen_t *ls;
+    int              times, failed, reuseaddr, i;
+    ngx_err_t        err;
+    ngx_socket_t     s;
+    ngx_listening_t *ls;
 
     reuseaddr = 1;
 
@@ -137,7 +135,8 @@ static int ngx_open_listening_sockets(ngx_log_t *log)
          failed = 0;
 
         /* for each listening socket */
-        ls = (ngx_listen_t *) ngx_listening_sockets.elts;
+
+        ls = ngx_listening_sockets.elts;
         for (i = 0; i < ngx_listening_sockets.nelts; i++) {
 
             if (ls[i].bound)
@@ -160,6 +159,19 @@ static int ngx_open_listening_sockets(ngx_log_t *log)
                               ngx_socket_n " %s falied", ls[i].addr_text.data);
                 return NGX_ERROR;
             }
+
+#if (WIN32)
+            /*
+             * Winsock assignes a socket number divisible by 4
+             * so to find a connection we divide a socket number by 4.
+             */
+
+            if (s % 4) {
+                ngx_log_error(NGX_LOG_EMERG, ls->log, 0,
+                              ngx_socket_n " created socket %d", s);
+                return NGX_ERROR;
+            }
+#endif
 
             if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
                            (const void *) &reuseaddr, sizeof(int)) == -1) {

@@ -1,8 +1,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_listen.h>
-#include <ngx_connection.h>
 #include <ngx_event.h>
 
 
@@ -21,11 +19,6 @@ extern ngx_module_t ngx_devpoll_module;
 
 #if (HAVE_AIO)
 #include <ngx_aio_module.h>
-#endif
-
-#if (HAVE_IOCP)
-#include <ngx_event_acceptex.h>
-#include <ngx_iocp_module.h>
 #endif
 
 
@@ -123,11 +116,14 @@ ngx_module_t  ngx_event_module = {
 int ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
 {
     int                  m, i, fd;
-    ngx_listen_t        *s;
-    ngx_event_t         *ev;
+    ngx_event_t         *rev, *wev;
+    ngx_listening_t     *s;
     ngx_connection_t    *c;
     ngx_event_conf_t    *ecf;
     ngx_event_module_t  *module;
+#if (WIN32)
+    ngx_iocp_conf_t     *iocpcf;
+#endif
 
     ecf = ngx_event_get_conf(ngx_event_module);
 
@@ -161,71 +157,76 @@ ngx_log_debug(log, "TYPE: %d" _ ecf->use);
                   NGX_ERROR);
 
     /* for each listening socket */
-    s = (ngx_listen_t *) ls->elts;
-    for (i = 0; i < ls->nelts; i++) {
+
+    for (s = ls->elts, i = 0; i < ls->nelts; i++) {
 
         fd = s[i].fd;
 
+#if (WIN32)
+        /*
+         * Winsock assignes a socket number divisible by 4
+         * so to find a connection we divide a socket number by 4.
+         */
+
+        c = &ngx_connections[fd / 4];
+        rev = &ngx_read_events[fd / 4];
+        wev = &ngx_write_events[fd / 4];
+#else
         c = &ngx_connections[fd];
-        ev = &ngx_read_events[fd];
+        rev = &ngx_read_events[fd];
+        wev = &ngx_write_events[fd];
+#endif
 
         ngx_memzero(c, sizeof(ngx_connection_t));
-        ngx_memzero(ev, sizeof(ngx_event_t));
+        ngx_memzero(rev, sizeof(ngx_event_t));
 
         c->fd = fd;
-        c->family = s[i].family;
-        c->socklen = s[i].socklen;
-        c->sockaddr = ngx_palloc(pool, s[i].socklen);
-        c->addr = s[i].addr;
-        c->addr_text = s[i].addr_text;
-        c->addr_text_max_len = s[i].addr_text_max_len;
-        c->post_accept_timeout = s[i].post_accept_timeout;
+        c->listening = &s[i];
 
-        c->handler = s[i].handler;
         c->ctx = s[i].ctx;
         c->servers = s[i].servers;
         c->log = s[i].log;
-        c->pool_size = s[i].pool_size;
 
-        ngx_test_null(ev->log,
-                      ngx_palloc(pool, sizeof(ngx_log_t)),
-                      NGX_ERROR);
+        ngx_test_null(rev->log, ngx_palloc(pool, sizeof(ngx_log_t)), NGX_ERROR);
 
-        ngx_memcpy(ev->log, c->log, sizeof(ngx_log_t));
-        c->read = ev;
-        ev->data = c;
-        ev->index = NGX_INVALID_INDEX;
+        ngx_memcpy(rev->log, c->log, sizeof(ngx_log_t));
+        c->read = rev;
+        c->write = wev;
+        rev->data = c;
+        rev->index = NGX_INVALID_INDEX;
 #if 0
-        ev->listening = 1;
+        rev->listening = 1;
 #endif
 
-        ev->available = 0;
+        rev->available = 0;
 
 #if (HAVE_DEFERRED_ACCEPT)
-        ev->deferred_accept = s[i].deferred_accept;
+        rev->deferred_accept = s[i].deferred_accept;
 #endif
 
-#if (HAVE_IOCP)
+#if (WIN32)
 
         if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
-            ev->event_handler = &ngx_event_acceptex;
+            rev->event_handler = &ngx_event_acceptex;
 
-            /* LOOK: we call ngx_iocp_add_event() also
-               in ngx_event_post_acceptex() */
-            if (ngx_iocp_add_event(ev) == NGX_ERROR) {
+            if (ngx_add_event(rev, 0, NGX_IOCP_ACCEPT) == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
-            ngx_event_post_acceptex(&s[i], 1);
+            iocpcf = ngx_event_get_conf(ngx_iocp_module);
+            if (ngx_event_post_acceptex(&s[i], iocpcf->acceptex) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
 
         } else {
-            ev->event_handler = &ngx_event_accept;
+            rev->event_handler = &ngx_event_accept;
+            ngx_add_event(rev, NGX_READ_EVENT, 0);
         }
 
 #else
 
-        ev->event_handler = &ngx_event_accept;
-        ngx_add_event(ev, NGX_READ_EVENT, 0);
+        rev->event_handler = &ngx_event_accept;
+        ngx_add_event(rev, NGX_READ_EVENT, 0);
 
 #endif
     }
@@ -382,14 +383,6 @@ static char *ngx_event_init_conf(ngx_pool_t *pool, void *conf)
 
     ngx_conf_init_value(ecf->use, ngx_select_module.ctx_index);
 
-#endif
-
-#if (WIN32)
-    /*
-     * Winsock assignes a socket number according to 4 * N + M,
-     * where M is the constant 32 (98SE), 88 (NT) or 100 (W2K).
-     * So to find a connection we divide a socket number by 4.
-     */
 #endif
 
     ngx_conf_init_value(ecf->timer_queues, 10);

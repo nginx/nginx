@@ -2,15 +2,23 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+/* STUB */
+ssize_t ngx_wsarecv(ngx_connection_t *c, char *buf, size_t size);
+ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in);
+/* */
 
+
+int  ngx_win32_version;
 int  ngx_max_sockets;
+int  ngx_inherited_nonblocking = 1;
 
 
 ngx_os_io_t ngx_os_io = {
     ngx_wsarecv,
     NULL,
     NULL,
-    NULL
+    ngx_wsasend_chain,
+    0
 };
 
 
@@ -26,7 +34,7 @@ static GUID tf_guid = WSAID_TRANSMITFILE;
 
 int ngx_os_init(ngx_log_t *log)
 {
-    u_int            sp;
+    u_int            osviex;
     DWORD            bytes;
     SOCKET           s;
     WSADATA          wsd;
@@ -34,14 +42,14 @@ int ngx_os_init(ngx_log_t *log)
 
     /* get Windows version */
 
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+    ngx_memzero(&osvi, sizeof(OSVERSIONINFOEX));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
     osviex = GetVersionEx((OSVERSIONINFO *) &osvi);
 
     if (osviex == 0) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-        if (GetVersionEx((OSVERSIONINFO *) &osvi) == 0)
+        if (GetVersionEx((OSVERSIONINFO *) &osvi) == 0) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           "GetVersionEx() failed");
             return NGX_ERROR;
@@ -49,27 +57,36 @@ int ngx_os_init(ngx_log_t *log)
     }
 
     /*
-     *  Windows 95       1400
-     *  Windows 98       1410
-     *  Windows ME       1490
-     *  Windows NT 3.51  2351
-     *  Windows NT 4.0   2400
-     *  Windows 2000     2500
-     *  Windows XP       2501
-     *  Windows 2003     2502
+     *  Windows 95           140000
+     *  Windows 98           141000
+     *  Windows ME           149000
+     *  Windows NT 3.51      235100
+     *  Windows NT 4.0       240000
+     *  Windows NT 4.0 SP5   240050
+     *  Windows 2000         250000
+     *  Windows XP           250100
+     *  Windows 2003         250200
      */
 
-    ngx_win32_version = osvi.dwPlatformId * 1000
-                        + osvi.dwMajorVersion * 100
-                        + osvi.dwMinorVersion;
+    ngx_win32_version = osvi.dwPlatformId * 100000
+                        + osvi.dwMajorVersion * 10000
+                        + osvi.dwMinorVersion * 100;
 
     if (osviex) {
-        sp = osvi.wServicePackMajor * 100 + osvi.wServicePackMinor;
+        ngx_win32_version += osvi.wServicePackMajor * 10
+                             + osvi.wServicePackMinor;
 
         ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "OS: %u build:%u, %s, SP:%u, suite:%x, type:%u",
+                      "OS: %u build:%u, %s, suite:%x, type:%u",
                       ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
-                      sp, osvi.wSuiteMask, osvi.wProductType);
+                      osvi.wReserved[0], osvi.wReserved[1]);
+
+#if 0
+        ngx_log_error(NGX_LOG_INFO, log, 0,
+                      "OS: %u build:%u, %s, suite:%x, type:%u",
+                      ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
+                      osvi.wSuiteMask, osvi.wProductType);
+#endif
 
     } else {
         ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %u build:%u, %s",

@@ -1,6 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_event.h>
 #include <ngx_aio.h>
 
 #if (HAVE_KQUEUE)
@@ -29,6 +30,7 @@ ssize_t ngx_aio_write(ngx_connection_t *c, char *buf, size_t size)
 ngx_log_debug(ev->log, "aio: ev->ready: %d" _ ev->ready);
 ngx_log_debug(ev->log, "aio: aiocb: %08x" _ &ev->aiocb);
 
+#if 0
     if (ev->timedout) {
         ngx_set_socket_errno(NGX_ETIMEDOUT);
         ngx_log_error(NGX_LOG_ERR, ev->log, 0, "aio_write() timed out");
@@ -46,6 +48,7 @@ ngx_log_debug(ev->log, "aio: aiocb: %08x" _ &ev->aiocb);
 
         ev->ready = 1;
     }
+#endif
 
     first = 0;
 

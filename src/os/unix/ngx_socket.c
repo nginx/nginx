@@ -55,8 +55,7 @@ int ngx_tcp_push(ngx_socket_t s)
                       (const void *) &tcp_nopush, sizeof(int));
 }
 
-#else 
-
+#else
 
 int ngx_tcp_nopush(ngx_socket_t s)
 {

@@ -5,7 +5,7 @@
 
 
 typedef struct {
-    size_t        hunk_size;
+    ssize_t  hunk_size;
 } ngx_http_output_filter_conf_t;
 
 

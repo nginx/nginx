@@ -67,14 +67,15 @@ void ngx_http_init_connection(ngx_connection_t *c)
     ngx_event_t         *rev;
     ngx_http_log_ctx_t  *lcx;
 
-    c->addr_text.data = ngx_palloc(c->pool, c->addr_text_max_len);
+    c->addr_text.data = ngx_palloc(c->pool, c->listening->addr_text_max_len);
     if (c->addr_text.data == NULL) {
         ngx_http_close_connection(c);
         return;
     }
 
-    c->addr_text.len = ngx_sock_ntop(c->family, c->sockaddr,
-                                     c->addr_text.data, c->addr_text_max_len);
+    c->addr_text.len = ngx_sock_ntop(c->listening->family, c->sockaddr,
+                                     c->addr_text.data,
+                                     c->listening->addr_text_max_len);
     if (c->addr_text.len == 0) {
         ngx_http_close_connection(c);
         return;
@@ -100,7 +101,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
-    ngx_add_timer(rev, c->post_accept_timeout);
+    ngx_add_timer(rev, c->listening->post_accept_timeout);
     rev->timer_set = 1;
 
     if (ngx_event_flags & (NGX_HAVE_AIO_EVENT|NGX_HAVE_EDGE_EVENT)) {
@@ -158,19 +159,30 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
     if (in_port->addrs.nelts > 1) {
 
-        /* there're the several addresses on this port and one of them
-           is "*:port" so getsockname() is needed to determine
-           the server address */
+        /*
+         * there're the several addresses on this port and one of them
+         * is "*:port" so getsockname() is needed to determine
+         * the server address.
+         * AcceptEx() already gave this address.
+         */
 
-        /* TODO: AcceptEx() already gave this sockaddr_in */
+#if (WIN32)
+        if (c->local_sockaddr) {
+            r->in_addr =
+                   ((struct sockaddr_in *) c->local_sockaddr)->sin_addr.s_addr;
 
-        len = sizeof(struct sockaddr_in);
-        if (getsockname(c->fd, (struct sockaddr *) &addr_in, &len) == -1) {
-            ngx_log_error(NGX_LOG_CRIT, rev->log, ngx_socket_errno,
-                          "getsockname() failed");
-            ngx_http_close_connection(c);
-            return;
+        } else {
+#endif
+            len = sizeof(struct sockaddr_in);
+            if (getsockname(c->fd, (struct sockaddr *) &addr_in, &len) == -1) {
+                ngx_log_error(NGX_LOG_CRIT, rev->log, ngx_socket_errno,
+                              "getsockname() failed");
+                ngx_http_close_connection(c);
+                return;
+            }
+#if (WIN32)
         }
+#endif
 
         r->in_addr = addr_in.sin_addr.s_addr;
 
@@ -689,18 +701,19 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
     ngx_event_t               *rev;
     ngx_http_core_srv_conf_t  *cscf;
 
+    rev = r->connection->read;
+
     n = r->header_in->last - r->header_in->pos;
 
     if (n > 0) {
+        rev->ready = 0;
         return n;
     }
 
-    n = ngx_event_recv(r->connection, r->header_in->last,
-                       r->header_in->end - r->header_in->last);
+    n = ngx_recv(r->connection, r->header_in->last,
+                 r->header_in->end - r->header_in->last);
 
     if (n == NGX_AGAIN) {
-        rev = r->connection->read;
-
         if (!r->header_timeout_set) {
             if (rev->timer_set) {
                 ngx_del_timer(rev);
@@ -773,6 +786,20 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int error)
         }
 
         rc = ngx_http_special_response_handler(r, rc);
+
+        if (rc == NGX_AGAIN) {
+            return;
+        }
+
+        if (rc == NGX_ERROR) {
+            ngx_http_close_request(r, 0);
+            ngx_http_close_connection(r->connection);
+            return;
+        }
+
+    } else if (rc == NGX_ERROR) {
+        r->keepalive = 0;
+        r->lingering_close = 0;
     }
 
     rev = r->connection->read;
@@ -1028,7 +1055,7 @@ static int ngx_http_read_discarded_body(ngx_http_request_t *r)
         size = clcf->discarded_buffer_size;
     }
 
-    n = ngx_event_recv(r->connection, r->discarded_buffer, size);
+    n = ngx_recv(r->connection, r->discarded_buffer, size);
     if (n == NGX_ERROR) {
         return NGX_HTTP_BAD_REQUEST;
     }
@@ -1169,7 +1196,7 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
 
     rev->ignore_econnreset = 1;
     ngx_set_socket_errno(0);
-    n = ngx_event_recv(c, c->buffer->last, c->buffer->end - c->buffer->last);
+    n = ngx_recv(c, c->buffer->last, c->buffer->end - c->buffer->last);
     rev->ignore_econnreset = 0;
 
     if (n == NGX_AGAIN) {
@@ -1307,7 +1334,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
     }
 
     do {
-        n = ngx_event_recv(c, r->discarded_buffer, clcf->discarded_buffer_size);
+        n = ngx_recv(c, r->discarded_buffer, clcf->discarded_buffer_size);
 
         ngx_log_debug(c->log, "lingering read: %d" _ n);
 

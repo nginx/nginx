@@ -29,14 +29,11 @@
 #include <netdb.h>
 
 
-typedef unsigned int    u_int;
-typedef unsigned short  u_short;
-typedef unsigned char   u_char;
 
-
-#define  QD_FMT         "%qd"
-#define  QX_FMT         "%qx"
-#define  OFF_FMT        "%qd"
+#define  QD_FMT   "%qd"
+#define  QX_FMT   "%qx"
+#define  OFF_FMT  "%qd"
+#define  PID_FMT  "%d"
 
 
 #ifndef HAVE_SELECT
@@ -63,7 +60,7 @@ typedef unsigned char   u_char;
 
 
 #ifndef HAVE_FIONBIO
-#define HAVE_FIONBIO   1         
+#define HAVE_FIONBIO   1
 #endif
 
 

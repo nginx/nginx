@@ -123,8 +123,8 @@ struct ngx_conf_s {
     }
 
 #define ngx_conf_merge_size_value(conf, prev, default)                       \
-    if (conf == (size_t) NGX_CONF_UNSET) {                                   \
-        conf = (prev == (size_t) NGX_CONF_UNSET) ? default : prev;           \
+    if (conf == (ssize_t) NGX_CONF_UNSET) {                                   \
+        conf = (prev == (ssize_t) NGX_CONF_UNSET) ? default : prev;           \
     }
 
 #define ngx_conf_merge_str_value(conf, prev, default)                        \

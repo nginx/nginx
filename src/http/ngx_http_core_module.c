@@ -1,10 +1,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-
-/* ???? */
-#include <ngx_listen.h>
-
 #include <ngx_http.h>
 #include <nginx.h>
 
@@ -46,17 +42,17 @@ static ngx_command_t  ngx_http_core_commands[] = {
      NULL},
 
     {ngx_string("connection_pool_size"),
-     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
-     NGX_HTTP_MAIN_CONF_OFFSET,
-     offsetof(ngx_http_core_main_conf_t, connection_pool_size),
+     NGX_HTTP_SRV_CONF_OFFSET,
+     offsetof(ngx_http_core_srv_conf_t, connection_pool_size),
      NULL},
 
     {ngx_string("post_accept_timeout"),
-     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
-     NGX_HTTP_MAIN_CONF_OFFSET,
-     offsetof(ngx_http_core_main_conf_t, post_accept_timeout),
+     NGX_HTTP_SRV_CONF_OFFSET,
+     offsetof(ngx_http_core_srv_conf_t, post_accept_timeout),
      NULL},
 
     {ngx_string("request_pool_size"),
@@ -738,9 +734,6 @@ static void *ngx_http_core_create_main_conf(ngx_pool_t *pool)
                   ngx_palloc(pool, sizeof(ngx_http_core_main_conf_t)),
                   NGX_CONF_ERROR);
 
-    cmcf->connection_pool_size = NGX_CONF_UNSET;
-    cmcf->post_accept_timeout = NGX_CONF_UNSET;
-
     ngx_init_array(cmcf->servers, pool, 5, sizeof(ngx_http_core_srv_conf_t *),
                    NGX_CONF_ERROR);
 
@@ -752,8 +745,7 @@ static char *ngx_http_core_init_main_conf(ngx_pool_t *pool, void *conf)
 {
     ngx_http_core_main_conf_t *cmcf = conf;
 
-    ngx_conf_init_size_value(cmcf->connection_pool_size, 16384);
-    ngx_conf_init_msec_value(cmcf->post_accept_timeout, 30000);
+    /* TODO: remove it if no directives */
 
     return NGX_CONF_OK;
 }
@@ -773,6 +765,8 @@ static void *ngx_http_core_create_srv_conf(ngx_pool_t *pool)
     ngx_init_array(cscf->server_names, pool, 5, sizeof(ngx_http_server_name_t),
                    NGX_CONF_ERROR);
 
+    cscf->connection_pool_size = NGX_CONF_UNSET;
+    cscf->post_accept_timeout = NGX_CONF_UNSET;
     cscf->request_pool_size = NGX_CONF_UNSET;
     cscf->client_header_timeout = NGX_CONF_UNSET;
     cscf->client_header_buffer_size = NGX_CONF_UNSET;
@@ -827,6 +821,10 @@ static char *ngx_http_core_merge_srv_conf(ngx_pool_t *pool,
         n->core_srv_conf = conf;
     }
 
+    ngx_conf_merge_size_value(conf->connection_pool_size,
+                              prev->connection_pool_size, 16384);
+    ngx_conf_merge_msec_value(conf->post_accept_timeout,
+                              prev->post_accept_timeout, 30000);
     ngx_conf_merge_size_value(conf->request_pool_size,
                               prev->request_pool_size, 16384);
     ngx_conf_merge_msec_value(conf->client_header_timeout,
@@ -945,7 +943,7 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t          *args;
     ngx_http_listen_t  *ls;
 
-    /* TODO: check duplicate 'listen' directives, 
+    /* TODO: check duplicate 'listen' directives,
              add resolved name to server names ??? */
 
     ngx_test_null(ls, ngx_push_array(&scf->listen), NGX_CONF_ERROR);

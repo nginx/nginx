@@ -270,11 +270,6 @@ typedef struct {
 #define ngx_del_conn         ngx_event_actions.del_conn
 
 #if 0
-#define ngx_add_timer        ngx_event_actions.timer
-#else
-#define ngx_add_timer        ngx_event_add_timer
-#endif
-
 #if (HAVE_IOCP_EVENT)
 #define ngx_event_recv       ngx_event_wsarecv
 #elif (HAVE_AIO_EVENT)
@@ -283,8 +278,22 @@ typedef struct {
 #define ngx_event_recv       ngx_io.recv
 #define ngx_write_chain      ngx_io.send_chain
 #endif
+#endif
 
 #endif
+
+
+
+
+
+/* ***************************** */
+
+#define ngx_recv             ngx_io.recv
+#define ngx_write_chain      ngx_io.send_chain
+
+
+#define ngx_add_timer        ngx_event_add_timer
+#define ngx_del_timer        ngx_event_del_timer
 
 
 #if (HAVE_IOCP_EVENT)
@@ -292,8 +301,10 @@ typedef struct {
 #define NGX_IOCP_IO          1
 #endif
 
+/* ***************************** */
 
-#define ngx_del_timer        ngx_event_del_timer
+
+
 
 
 
@@ -308,6 +319,8 @@ extern int                   ngx_event_flags;
 #endif
 
 
+
+/* ***************************** */
 
 #define NGX_EVENT_MODULE      0x544E5645  /* "EVNT" */
 
@@ -342,6 +355,16 @@ extern ngx_module_t        ngx_event_module;
 
 void ngx_event_accept(ngx_event_t *ev);
 
+#if (WIN32)
+void ngx_event_acceptex(ngx_event_t *ev);
+int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
+#endif
+
+/* ***************************** */
+
+
+
+
 
 ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size);
 int ngx_event_close_connection(ngx_event_t *ev);
@@ -351,7 +374,15 @@ int  ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log);
 void ngx_worker(ngx_log_t *log);
 
 
+/* ***************************** */
+
+
 #include <ngx_event_timer.h>
+#if (WIN32)
+#include <ngx_iocp_module.h>
+#endif
+
+/* ***************************** */
 
 
 #endif /* _NGX_EVENT_H_INCLUDED_ */

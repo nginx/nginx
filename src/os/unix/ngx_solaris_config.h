@@ -30,6 +30,7 @@ typedef uint32_t  u_int32_t;
 #define  QD_FMT   "%lld"
 #define  QX_FMT   "%llx"
 #define  OFF_FMT  "%lld"
+#define  PID_FMT  "%ld"
 
 
 #ifndef HAVE_SELECT
@@ -62,7 +63,7 @@ typedef uint32_t  u_int32_t;
 
 
 #ifndef HAVE_FIONBIO
-#define HAVE_FIONBIO   1         
+#define HAVE_FIONBIO   1
 #endif
 
 

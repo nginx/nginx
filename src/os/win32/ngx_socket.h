@@ -16,6 +16,7 @@ typedef int     socklen_t;
 
 #define ngx_socket(af, type, proto, flags)                                    \
             WSASocket(af, type, proto, NULL, 0, flags)
+
 #define ngx_socket_n        "WSASocket()"
 
 int ngx_nonblocking(ngx_socket_t s);
@@ -34,6 +35,13 @@ int ngx_blocking(ngx_socket_t s);
 extern LPFN_ACCEPTEX              acceptex;
 extern LPFN_GETACCEPTEXSOCKADDRS  getacceptexsockaddrs;
 extern LPFN_TRANSMITFILE          transmitfile;
+
+
+ngx_inline int ngx_tcp_push(s) {
+     return 0;
+}
+
+#define ngx_tcp_push_n        "tcp_push()"
 
 
 #endif /* _NGX_SOCKET_H_INCLUDED_ */
