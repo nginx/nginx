@@ -10,31 +10,14 @@ typedef struct {
     time_t       expires;
     time_t       last_modified;
     off_t        length;
-
-    size_t       size;
 } ngx_http_cache_header_t;
 
 
 typedef struct {
-    ssize_t                  type;
     ngx_http_cache_header_t  header;
-    ssize_t                  key_len;
+    size_t                   key_len;
     char                     key[0];
-} ngx_http_bin_cache_t;
-
-
-typedef struct {
-    char                     type;
-    char                     space0;
-    char                     expires[8];
-    char                     space1;
-    char                     last_modified[8];
-    char                     space2;
-    char                     length[16];
-    char                     space3;
-    char                     lf;
-    char                     key_len[0];
-} ngx_http_text_cache_t;
+} ngx_http_cache_file_t;
 
 
 typedef struct {
@@ -57,14 +40,16 @@ typedef struct {
     ngx_path_t               *path;
     ngx_hunk_t               *buf;
     ngx_http_cache_header_t   header;
+    ssize_t                   header_size;
 } ngx_http_cache_ctx_t;
+
+
+#define NGX_STALE  1
 
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx);
 int ngx_http_cache_update_file(ngx_http_request_t *r,ngx_http_cache_ctx_t *ctx,
                                ngx_str_t *temp_file);
-
-
 
 
 

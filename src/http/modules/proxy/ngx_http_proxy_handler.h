@@ -11,93 +11,102 @@
 
 
 typedef struct {
-    ngx_str_t   url;
-    ngx_str_t   host;
-    ngx_str_t   uri;
-    ngx_str_t   host_header;
-    ngx_str_t   port_text;
-    ngx_str_t  *location;
-    int         port;
-} ngx_http_proxy_upstream_t;
+    ngx_str_t                        url;
+    ngx_str_t                        host;
+    ngx_str_t                        uri;
+    ngx_str_t                        host_header;
+    ngx_str_t                        port_text;
+    ngx_str_t                       *location;
+    int                              port;
+} ngx_http_proxy_upstream_conf_t;
 
 
 typedef struct {
-    ssize_t                       request_buffer_size;
-    ngx_msec_t                    connect_timeout;
-    ngx_msec_t                    send_timeout;
-    ssize_t                       header_buffer_size;
-    ngx_msec_t                    read_timeout;
+    ssize_t                          request_buffer_size;
+    ngx_msec_t                       connect_timeout;
+    ngx_msec_t                       send_timeout;
+    ssize_t                          header_buffer_size;
+    ngx_msec_t                       read_timeout;
 
-    ngx_bufs_t                    bufs;
-    ssize_t                       busy_buffers_size;
+    ngx_bufs_t                       bufs;
+    ssize_t                          busy_buffers_size;
 
-    ssize_t                       max_temp_file_size;
-    ssize_t                       temp_file_write_size;
-    int                           cyclic_temp_file;
+    ssize_t                          max_temp_file_size;
+    ssize_t                          temp_file_write_size;
+    int                              cyclic_temp_file;
 
-    int                           cache;
-    int                           pass_server;
+    int                              cache;
+    int                              pass_server;
 
-    int                           next_upstream;
-    int                           use_stale;
+    int                              next_upstream;
+    int                              use_stale;
 
-    ngx_path_t                   *cache_path;
-    ngx_path_t                   *temp_path;
+    ngx_path_t                      *cache_path;
+    ngx_path_t                      *temp_path;
 
-    ngx_http_proxy_upstream_t    *upstream;
-    ngx_peers_t                  *peers;
+    ngx_http_proxy_upstream_conf_t  *upstream;
+    ngx_peers_t                     *peers;
 } ngx_http_proxy_loc_conf_t;
 
 
 typedef struct {
-    int                           status;
-    ngx_str_t                    *peer;
+    int                              status;
+    ngx_str_t                       *peer;
 } ngx_http_proxy_state_t;
 
 
 typedef struct {
-    ngx_table_t                  *headers;   /* it must be first field */
+    ngx_table_t                     *headers;   /* it must be first field */
 
-    ngx_table_elt_t              *date;
-    ngx_table_elt_t              *server;
-    ngx_table_elt_t              *connection;
-    ngx_table_elt_t              *content_type;
-    ngx_table_elt_t              *content_length;
-    ngx_table_elt_t              *last_modified;
-    ngx_table_elt_t              *accept_ranges;
+    ngx_table_elt_t                 *date;
+    ngx_table_elt_t                 *server;
 
-    off_t                         content_length_n;
+    ngx_table_elt_t                 *expires;
+    ngx_table_elt_t                 *cache_control;
+    ngx_table_elt_t                 *x_accel_expires;
+
+    ngx_table_elt_t                 *connection;
+    ngx_table_elt_t                 *content_type;
+    ngx_table_elt_t                 *content_length;
+    ngx_table_elt_t                 *last_modified;
+    ngx_table_elt_t                 *accept_ranges;
+
+    off_t                            content_length_n;
 } ngx_http_proxy_headers_in_t;
 
 
 typedef struct {
-    ngx_http_cache_ctx_t          ctx;
-    int                           status;
-    ngx_str_t                     status_line;
-    ngx_http_proxy_headers_in_t   headers_in;
+    ngx_http_cache_ctx_t             ctx;
+    int                              status;
+    ngx_str_t                        status_line;
+
+    ngx_http_proxy_headers_in_t      headers_in;
 } ngx_http_proxy_cache_t;
+
+
+typedef struct {
+    ngx_peer_connection_t            peer;
+    int                              status;
+    ngx_str_t                        status_line;
+    int                              method;
+
+    ngx_output_chain_ctx_t          *output_chain_ctx;
+    ngx_event_pipe_t                *event_pipe;
+
+    ngx_http_proxy_headers_in_t      headers_in;
+} ngx_http_proxy_upstream_t;
 
 
 typedef struct ngx_http_proxy_ctx_s  ngx_http_proxy_ctx_t;
 
 struct ngx_http_proxy_ctx_s {
-    ngx_peer_connection_t         upstream;
-    ngx_peer_t                   *peer;
-
     ngx_http_request_t           *request;
     ngx_http_proxy_loc_conf_t    *lcf;
+    ngx_http_proxy_upstream_t    *upstream;
     ngx_http_proxy_cache_t       *cache;
-    ngx_http_proxy_headers_in_t   headers_in;
 
     ngx_hunk_t                   *header_in;
-    int                           status;
-    ngx_str_t                     status_line;
 
-    ngx_output_chain_ctx_t       *output_chain_ctx;
-
-    int                           method;
-
-    ngx_event_pipe_t             *event_pipe;
 
     unsigned                      accel:1;
 
@@ -107,7 +116,9 @@ struct ngx_http_proxy_ctx_s {
     unsigned                      request_sent:1;
     unsigned                      header_sent:1;
 
+
     /* used to parse an upstream HTTP header */
+    int                           status;
     char                         *status_start;
     char                         *status_end;
     int                           status_count;
@@ -121,8 +132,6 @@ struct ngx_http_proxy_ctx_s {
 };
 
 
-#define NGX_STALE                            1
-
 #define NGX_HTTP_PROXY_PARSE_NO_HEADER       20
 
 #define NGX_HTTP_PROXY_FT_ERROR              2
@@ -134,11 +143,16 @@ struct ngx_http_proxy_ctx_s {
 #define NGX_HTTP_PROXY_FT_MAX_WAITING        128
 
 
-void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p);
+int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p);
 
 int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p);
-int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p);
+int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p);
+
+int ngx_http_proxy_log_state(ngx_http_proxy_ctx_t *p, int status);
+size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len);
+void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc);
+void ngx_http_proxy_close_connection(ngx_connection_t *c);
 
 int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,

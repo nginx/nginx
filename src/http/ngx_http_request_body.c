@@ -18,15 +18,13 @@ int ngx_http_read_client_request_body(ngx_http_request_t *r,
     size = r->header_in->last - r->header_in->pos;
 
     if (size) {
-        ngx_test_null(h, ngx_calloc_hunk(r->pool),
-                      NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
 
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
         h->start = h->pos = r->header_in->pos;
         h->end = h->last = r->header_in->last;
 
-        ngx_alloc_link_and_set_hunk(r->request_hunks, h, r->pool,
-                                    NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_alloc_link_and_set_hunk(r->request_hunks, h, r->pool, NGX_ERROR);
 
         if (size >= r->headers_in.content_length_n) {
             r->header_in->pos += r->headers_in.content_length_n;
@@ -48,7 +46,7 @@ int ngx_http_read_client_request_body(ngx_http_request_t *r,
     }
 
     ngx_test_null(r->request_body_hunk, ngx_create_temp_hunk(r->pool, size),
-                  NGX_HTTP_INTERNAL_SERVER_ERROR);
+                  NGX_ERROR);
 
     r->connection->read->event_handler =
                                      ngx_http_read_client_request_body_handler;
@@ -56,7 +54,7 @@ int ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_http_read_client_request_body_handler(r->connection->read);
 
     ngx_alloc_link_and_set_hunk(cl, r->request_body_hunk, r->pool,
-                                NGX_HTTP_INTERNAL_SERVER_ERROR);
+                                NGX_ERROR);
 
     if (r->request_hunks) {
         r->request_hunks->next = cl;

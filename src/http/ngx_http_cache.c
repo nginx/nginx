@@ -8,12 +8,12 @@
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
 {
-    int                    small;
-    ssize_t                n, len;
-    MD5_CTX                md5;
-    ngx_err_t              err;
-    ngx_str_t              key;
-    ngx_http_bin_cache_t  *h;
+    ssize_t                 n;
+    MD5_CTX                 md5;
+    ngx_err_t               err;
+    ngx_http_cache_file_t  *h;
+
+    ctx->header_size = sizeof(ngx_http_cache_file_t) + ctx->key.len + 1;
 
     ctx->file.name.len = ctx->path->name.len + 1 + ctx->path->len + 32;
     if (!(ctx->file.name.data = ngx_palloc(r->pool, ctx->file.name.len + 1))) {
@@ -43,13 +43,6 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
         err = ngx_errno;
 
         if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
-
-            /* TODO: text size */
-
-            ctx->header.size = 2 * sizeof(ssize_t)
-                               + sizeof(ngx_http_cache_header_t)
-                               + ctx->key.len + 1;
-
             return NGX_DECLINED;
         }
 
@@ -65,57 +58,30 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
         return n;
     }
 
-    len = 0;
-    small = 1;
-
-    if (n > 1) {
-        if (ctx->buf->pos[0] == 'T') {
-            /* STUB */
-            return NGX_ERROR;
-
-        } else if (ctx->buf->pos[0] == 'B') {
-
-            len = sizeof(ngx_http_bin_cache_t);
-
-            if (n > len) {
-                h = (ngx_http_bin_cache_t *) ctx->buf->pos;
-                key.len =  h->key_len;
-
-                if (n >= len + (ssize_t) key.len + 1) {
-                    ctx->header = h->header;
-                    key.data = h->key;
-
-                    small = 0;
-                }
-            }
-
-        } else {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "unknown type of cache file \"%s\"",
-                          ctx->file.name.data);
-            return NGX_ERROR;
-        }
-
-    }
-
-    if (small) {
+    if (n <= ctx->header_size) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                      "cache file \"%s\" is to small", ctx->file.name.data);
+                      "cache file \"%s\" is too small", ctx->file.name.data);
         return NGX_ERROR;
     }
 
-    if (key.len != ctx->key.len
-        || ngx_strncmp(key.data, ctx->key.data, key.len) != 0)
+    h = (ngx_http_cache_file_t *) ctx->buf->pos;
+    ctx->header = h->header;
+
+    if (h->key_len != ctx->key.len
+        || ngx_strncmp(h->key, ctx->key.data, h->key_len) != 0)
     {
-        key.data[key.len] = '\0';
+        h->key[h->key_len] = '\0';
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           "md5 collision: \"%s\" and \"%s\"",
-                          key.data, ctx->key.data);
+                          h->key, ctx->key.data);
         return NGX_DECLINED;
     }
 
-    ctx->header.size = len + key.len + 1;
     ctx->buf->last += n;
+
+    if (ctx->header.expires < ngx_time()) {
+        return NGX_STALE;
+    }
 
     return NGX_OK;
 }

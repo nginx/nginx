@@ -5,19 +5,24 @@
 #include <ngx_http_proxy_handler.h>
 
 
+static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p);
+
+
 int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p)
 {
-    int                         rc;
-    char                       *last;
-    ngx_http_request_t         *r;
-    ngx_http_proxy_cache_t     *c;
-    ngx_http_proxy_upstream_t  *u;
+    int                              rc;
+    char                            *last;
+    ngx_http_request_t              *r;
+    ngx_http_proxy_cache_t          *c;
+    ngx_http_proxy_upstream_conf_t  *u;
 
     r = p->request;
 
     if (!(c = ngx_pcalloc(r->pool, sizeof(ngx_http_proxy_cache_t)))) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
+    p->cache = c;
 
     c->ctx.file.fd = NGX_INVALID_FILE;
     c->ctx.file.log = r->connection->log;
@@ -48,15 +53,21 @@ int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p)
     p->header_in->tag = (ngx_hunk_tag_t) &ngx_http_proxy_module;
 
     c->ctx.buf = p->header_in; 
-    p->cache = c;
 
     rc = ngx_http_cache_get_file(r, &c->ctx);
 
+    if (rc == NGX_STALE) {
+        p->stale = 1;
+    }
+
     if (rc == NGX_OK || rc == NGX_STALE) {
-        p->header_in->pos += c->ctx.header.size;
+        p->header_in->pos += c->ctx.header_size;
+        if (ngx_http_proxy_process_cached_header(p) == NGX_ERROR) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
 
     } else if (rc == NGX_DECLINED) {
-        p->header_in->pos += c->ctx.header.size;
+        p->header_in->pos += c->ctx.header_size;
         p->header_in->last = p->header_in->pos;
     }
 
@@ -64,7 +75,7 @@ int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p)
 }
 
 
-int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p)
+static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p)
 {
     int                      rc, i;
     ngx_table_elt_t         *h;
@@ -81,14 +92,14 @@ int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p)
                       "\"proxy_header_buffer_size\" "
                       "is too small to read header from \"%s\"",
                       c->ctx.file.name.data);
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     if (rc == NGX_HTTP_PROXY_PARSE_NO_HEADER) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "no valid HTTP/1.0 header in \"%s\"",
                       c->ctx.file.name.data);
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     /* rc == NGX_OK */
@@ -97,7 +108,7 @@ int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p)
     c->status_line.len = p->status_end - p->status_start;
     c->status_line.data = ngx_palloc(r->pool, c->status_line.len + 1);
     if (c->status_line.data == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     ngx_cpystrn(c->status_line.data, p->status_start, c->status_line.len + 1);
@@ -116,7 +127,7 @@ int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p)
 
             h = ngx_http_add_header(&c->headers_in, ngx_http_proxy_headers_in);
             if (h == NULL) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                return NGX_ERROR;
             }
 
             h->key.len = r->header_name_end - r->header_name_start;
@@ -125,7 +136,7 @@ int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p)
             h->key.data = ngx_palloc(r->pool,
                                      h->key.len + 1 + h->value.len + 1);
             if (h->key.data == NULL) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                return NGX_ERROR;
             }
 
             h->value.data = h->key.data + h->key.len + 1;
@@ -157,14 +168,14 @@ int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p)
 
             ngx_log_debug(r->connection->log, "HTTP header done");
 
-            return ngx_http_proxy_send_cached_response(p);
+            return NGX_OK;
 
         } else if (rc == NGX_HTTP_PARSE_INVALID_HEADER) {
 
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "invalid header in \"%s\"",
                           c->ctx.file.name.data);
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            return NGX_ERROR;
         }
 
         /* rc == NGX_AGAIN || rc == NGX_HTTP_PARSE_TOO_LONG_HEADER */
@@ -173,7 +184,7 @@ int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p)
                       "\"proxy_header_buffer_size\" "
                       "is too small to read header from \"%s\"",
                       c->ctx.file.name.data);
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 }
 
@@ -187,7 +198,7 @@ int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p)
 
     r = p->request;
 
-    r->headers_out.status = p->status;
+    r->headers_out.status = p->cache->status;
 
 #if 0
     r->headers_out.content_length_n = -1;
@@ -232,4 +243,15 @@ int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p)
     out.next = NULL;
 
     return ngx_http_output_filter(r, &out);
+}
+
+
+int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p)
+{
+    if (p->cache == NULL) {
+        return NGX_OK;
+    }
+
+    return ngx_http_cache_update_file(p->request, &p->cache->ctx,
+                               &p->upstream->event_pipe->temp_file->file.name);
 }
