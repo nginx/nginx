@@ -42,8 +42,8 @@ then
 
     have=HAVE_KQUEUE . auto/have
     have=HAVE_CLEAR_EVENT . auto/have
-    CORE_SRCS="$CORE_SRCS $KQUEUE_SRCS"
     EVENT_MODULES="$EVENT_MODULES $KQUEUE_MODULE"
+    CORE_SRCS="$CORE_SRCS $KQUEUE_SRCS"
     EVENT_FOUND=YES
 fi
 
@@ -60,6 +60,9 @@ fi
 
 
 if [ $EVENT_AIO = YES ]; then
-    CORE_SRCS="$CORE_SRCS $AIO_SRCS"
+    have=HAVE_AIO . auto/have
     EVENT_MODULES="$EVENT_MODULES $AIO_MODULE"
+    CORE_SRCS="$CORE_SRCS $AIO_SRCS"
+else
+    have=HAVE_AIO . auto/nohave
 fi

@@ -1,0 +1,8 @@
+
+cat << END >> $NGX_AUTO_CONFIG_H
+
+#ifndef $have
+#define $have  0
+#endif
+
+END

@@ -227,7 +227,7 @@ void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p);
 
 #endif
 
-void ngx_http_proxy_check_broken_connection(ngx_event_t *wev);
+void ngx_http_proxy_check_broken_connection(ngx_event_t *ev);
 
 void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev);
 void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p);

@@ -39,6 +39,7 @@ static char *client_header_errors[] = {
     "client %s sent too long header line, URL: %s",
     "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s",
     "client %s sent invalid \"Content-Length\" header, URL: %s"
+    "client %s sent POST method without \"Content-Length\" header, URL: %s"
 };
 
 
@@ -873,6 +874,10 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
         }
     }
 
+    if (r->method == NGX_HTTP_POST && r->headers_in.content_length_n <= 0) {
+        return NGX_HTTP_PARSE_POST_WO_CL_HEADER;
+    }
+
     if (r->headers_in.connection) {
         if (r->headers_in.connection->value.len == 5
             && ngx_strcasecmp(r->headers_in.connection->value.data, "close")
@@ -1222,10 +1227,17 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     wev = c->write;
     wev->event_handler = ngx_http_empty_handler;
 
+
+    /* skip the tralling "\r\n" before the possible pipelined request */
+
+    while (h->pos < h->last && (*h->pos == CR || *h->pos == LF)) {
+        h->pos++;
+    }
+
     if (h->pos < h->last) {
 
         /*
-         * Pipelined request.
+         * The pipelined request.
          *
          * We do not know here whether the pipelined request is complete
          * so if the large client headers are not enabled

@@ -374,28 +374,29 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
 }
 
 
-void ngx_http_proxy_check_broken_connection(ngx_event_t *wev)
+void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 {
     ngx_connection_t      *c;
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0, "http proxy check client");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+                   "http proxy check client, write event:%d", ev->write);
 
-    c = wev->data;
+    c = ev->data;
     r = c->data;
     p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
 #if (HAVE_KQUEUE)
-    if (wev->kq_eof) {
-        wev->eof = 1;
+    if (ev->kq_eof) {
+        ev->eof = 1;
 
-        if (wev->kq_errno) {
-            wev->error = 1;
+        if (ev->kq_errno) {
+            ev->error = 1;
         }
 
         if (!p->cachable && p->upstream->peer.connection) {
-            ngx_log_error(NGX_LOG_INFO, wev->log, wev->kq_errno,
+            ngx_log_error(NGX_LOG_INFO, ev->log, ev->kq_errno,
                           "kevent() reported that client have closed "
                           "prematurely connection, "
                           "so upstream connection is closed too");
@@ -403,7 +404,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *wev)
             return;
         }
 
-        ngx_log_error(NGX_LOG_INFO, wev->log, wev->kq_errno,
+        ngx_log_error(NGX_LOG_INFO, ev->log, ev->kq_errno,
                       "kevent() reported that client have closed "
                       "prematurely connection");
 

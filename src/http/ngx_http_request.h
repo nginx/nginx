@@ -30,6 +30,7 @@
 #define NGX_HTTP_PARSE_TOO_LONG_HEADER     15
 #define NGX_HTTP_PARSE_NO_HOST_HEADER      16
 #define NGX_HTTP_PARSE_INVALID_CL_HEADER   17
+#define NGX_HTTP_PARSE_POST_WO_CL_HEADER   18
 
 
 #define NGX_HTTP_OK                        200

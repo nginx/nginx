@@ -1,10 +1,4 @@
 
-if [ $EVENT_RTSIG = YES ]; then
-    have=HAVE_RTSIG . auto/have
-    EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"
-    CORE_SRCS="$CORE_SRCS $RTSIG_SRCS"
-fi
-
 if [ $EVENT_SELECT = NO -a $EVENT_FOUND = NO ]; then
     EVENT_SELECT=YES
 fi

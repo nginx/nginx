@@ -8,7 +8,7 @@
 ssize_t ngx_aio_read_chain(ngx_connection_t *c, ngx_chain_t *cl)
 {
     int           n;
-    char         *buf, *prev;
+    u_char       *buf, *prev;
     size_t        size, total;
     ngx_err_t     err;
 

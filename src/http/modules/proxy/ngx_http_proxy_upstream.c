@@ -70,40 +70,36 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
     }
     r->request_body = rb;
 
-    if (r->headers_in.content_length_n > 0) {
-
-        if (!(tf = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t)))) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        tf->file.fd = NGX_INVALID_FILE;
-        tf->file.log = r->connection->log;
-        tf->path = p->lcf->temp_path;
-        tf->pool = r->pool;
-        tf->warn = "a client request body is buffered to a temporary file";
-        /* tf->persistent = 0; */
-
-        rb->buf_size = p->lcf->request_buffer_size;
-        rb->handler = ngx_http_proxy_init_upstream;
-        rb->data = p;
-        /* rb->bufs = NULL; */
-        /* rb->buf = NULL; */
-        /* rb->rest = 0; */
-
-        rb->temp_file = tf;
-
-        rc = ngx_http_read_client_request_body(r);
-
-        if (rc == NGX_AGAIN) {
-            return NGX_DONE;
-        }
-
-        if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-            return rc;
-        }
+    if (r->headers_in.content_length_n <= 0) {
+        ngx_http_proxy_init_upstream(p);
+        return NGX_DONE;
     }
 
-    ngx_http_proxy_init_upstream(p);
+    if (!(tf = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t)))) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    tf->file.fd = NGX_INVALID_FILE;
+    tf->file.log = r->connection->log;
+    tf->path = p->lcf->temp_path;
+    tf->pool = r->pool;
+    tf->warn = "a client request body is buffered to a temporary file";
+    /* tf->persistent = 0; */
+
+    rb->buf_size = p->lcf->request_buffer_size;
+    rb->handler = ngx_http_proxy_init_upstream;
+    rb->data = p;
+    /* rb->bufs = NULL; */
+    /* rb->buf = NULL; */
+    /* rb->rest = 0; */
+
+    rb->temp_file = tf;
+
+    rc = ngx_http_read_client_request_body(r);
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        return rc;
+    }
 
     return NGX_DONE;
 }
@@ -323,12 +319,14 @@ static void ngx_http_proxy_init_upstream(void *data)
     r = p->request;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                  "http proxy set timer: %d",
+                  "http proxy init upstream, client timer: %d",
                   r->connection->read->timer_set);
 
     if (r->connection->read->timer_set) {
         ngx_del_timer(r->connection->read);
     }
+
+    r->connection->read->event_handler = ngx_http_proxy_check_broken_connection;
 
     if ((ngx_event_flags & (NGX_USE_CLEAR_EVENT|NGX_HAVE_KQUEUE_EVENT))
         && !r->connection->write->active)

@@ -17,7 +17,7 @@
  *                               timeout, aio_cancel(), aio_error()
  */
 
-ssize_t ngx_aio_write(ngx_connection_t *c, char *buf, size_t size)
+ssize_t ngx_aio_write(ngx_connection_t *c, u_char *buf, size_t size)
 {
     int           n;
     ngx_event_t  *wev;

@@ -30,6 +30,15 @@ if [ $ngx_found = yes ]; then
 fi
 
 
+# rtsig
+
+if [ $EVENT_RTSIG = YES ]; then
+    have=HAVE_RTSIG . auto/have
+    EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"
+    CORE_SRCS="$CORE_SRCS $RTSIG_SRCS"
+fi
+
+
 # sendfile()
 
 CC_TEST_FLAGS="-D_GNU_SOURCE"

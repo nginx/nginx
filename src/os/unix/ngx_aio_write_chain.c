@@ -8,7 +8,7 @@
 ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int           n;
-    char         *buf, *prev;
+    u_char       *buf, *prev;
     off_t         sent;
     size_t        size;
     ngx_err_t     err;

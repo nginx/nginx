@@ -62,8 +62,8 @@ case $CC in
          # debug
          CFLAGS="$CFLAGS -g"
 
-         # DragonFly's gcc3 generate DWARF
-         CFLAGS="$CFLAGS -g -gstabs"
+         # DragonFly's gcc3 generates DWARF
+         #CFLAGS="$CFLAGS -g -gstabs"
 
          have=HAVE_GCC_VARIADIC_MACROS . auto/have
 
