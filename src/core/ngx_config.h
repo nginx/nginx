@@ -84,10 +84,19 @@ typedef long               ngx_flag_t;
 #define NGX_OFF_T_LEN      sizeof("-9223372036854775808") - 1
 
 
+#if (SOLARIS)
+
+/* TODO: auto_conf */
+#define NGX_ALIGN       (_MAX_ALIGNMENT - 1)         /* platform word */
+#define NGX_ALIGN_CAST  (unsigned long)              /* size of the pointer */
+
+#else
 
 /* TODO: auto_conf */
 #define NGX_ALIGN       (sizeof(unsigned long) - 1)  /* platform word */
 #define NGX_ALIGN_CAST  (unsigned long)              /* size of the pointer */
+
+#endif
 
 #define ngx_align(p)    (char *) ((NGX_ALIGN_CAST p + NGX_ALIGN) & ~NGX_ALIGN)
 

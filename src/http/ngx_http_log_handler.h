@@ -49,6 +49,7 @@ typedef struct {
 
 typedef struct {
     ngx_array_t         *logs;       /* array of ngx_http_log_t */
+    ngx_uint_t           off;        /* unsigned  off:1 */
 } ngx_http_log_loc_conf_t;
 
 

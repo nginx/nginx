@@ -148,6 +148,7 @@ typedef struct {
 
     unsigned          msie:1;
     unsigned          msie4:1;
+    unsigned          opera:1;
 } ngx_http_headers_in_t;
 
 
@@ -307,6 +308,11 @@ struct ngx_http_request_s {
     unsigned             filter_ssi_need_in_memory:1;
     unsigned             filter_need_temporary:1;
     unsigned             filter_allow_ranges:1;
+
+#if (NGX_STAT_STUB)
+    unsigned             stat_reading:1;
+    unsigned             stat_writing:1;
+#endif
 
     ngx_uint_t           headers_n;
 

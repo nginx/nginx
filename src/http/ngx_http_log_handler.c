@@ -137,6 +137,10 @@ ngx_int_t ngx_http_log_handler(ngx_http_request_t *r)
 
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_log_module);
 
+    if (lcf->off) {
+        return NGX_OK;
+    }
+
     log = lcf->logs->elts;
     for (l = 0; l < lcf->logs->nelts; l++) {
 
@@ -662,8 +666,9 @@ static void *ngx_http_log_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_log_loc_conf_t  *conf;
 
-    ngx_test_null(conf, ngx_pcalloc(cf->pool, sizeof(ngx_http_log_loc_conf_t)),
-                  NGX_CONF_ERROR);
+    if (!(conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_log_loc_conf_t)))) {
+        return NGX_CONF_ERROR;
+    }
 
     return conf;
 }
@@ -680,17 +685,27 @@ static char *ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent,
     ngx_http_log_main_conf_t  *lmcf;
 
     if (conf->logs == NULL) {
+
+        if (conf->off) {
+            return NGX_CONF_OK;
+        }
+
         if (prev->logs) {
             conf->logs = prev->logs;
 
         } else {
 
-            conf->logs = ngx_create_array(cf->pool, 2, sizeof(ngx_http_log_t));
+            if (prev->off) {
+                conf->off = prev->off;
+                return NGX_CONF_OK;
+            }
+
+            conf->logs = ngx_array_create(cf->pool, 2, sizeof(ngx_http_log_t));
             if (conf->logs == NULL) {
                 return NGX_CONF_ERROR;
             }
 
-            if (!(log = ngx_push_array(conf->logs))) {
+            if (!(log = ngx_array_push(conf->logs))) {
                 return NGX_CONF_ERROR;
             }
 
@@ -701,6 +716,7 @@ static char *ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent,
 
             lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
             fmt = lmcf->formats.elts;
+
             /* the default "combined" format */
             log->ops = fmt[0].ops;
         }
@@ -721,17 +737,23 @@ static char *ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_http_log_fmt_t        *fmt;
     ngx_http_log_main_conf_t  *lmcf;
 
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        llcf->off = 1;
+        return NGX_CONF_OK;
+    }
+
     if (llcf->logs == NULL) {
-        if (!(llcf->logs = ngx_create_array(cf->pool, 2,
-                                            sizeof(ngx_http_log_t)))) {
+        llcf->logs = ngx_array_create(cf->pool, 2, sizeof(ngx_http_log_t));
+        if (llcf->logs == NULL) {
             return NGX_CONF_ERROR;
         }
     }
 
-    value = cf->args->elts;
     lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
 
-    if (!(log = ngx_push_array(llcf->logs))) {
+    if (!(log = ngx_array_push(llcf->logs))) {
         return NGX_CONF_ERROR;
     }
 

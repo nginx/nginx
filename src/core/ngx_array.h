@@ -41,7 +41,8 @@ ngx_inline static ngx_int_t ngx_array_init(ngx_array_t *array, ngx_pool_t *pool,
     ngx_test_null(a.elts, ngx_palloc(p, n * s), rc);                         \
     a.nelts = 0; a.size = s; a.nalloc = n; a.pool = p;
 
-#define ngx_array_push  ngx_push_array
+#define ngx_array_create  ngx_create_array
+#define ngx_array_push    ngx_push_array
 
 
 #endif /* _NGX_ARRAY_H_INCLUDED_ */
