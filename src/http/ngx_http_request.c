@@ -12,6 +12,8 @@ static void ngx_http_ssl_handshake(ngx_event_t *rev);
 static void ngx_http_process_request_line(ngx_event_t *rev);
 static void ngx_http_process_request_headers(ngx_event_t *rev);
 static ssize_t ngx_http_read_request_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_alloc_header_buf(ngx_http_request_t *r,
+                                           ngx_uint_t request_line);
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
 
 static void ngx_http_set_write_handler(ngx_http_request_t *r);
@@ -935,6 +937,25 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
         if (r->header_in->last == r->header_in->end) {
 
+#if 1
+            /* ngx_http_alloc_large_header_buffer() */
+
+            rc = ngx_http_alloc_header_buf(r, 0);
+
+            if (rc == NGX_ERROR) {
+                ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                ngx_http_close_connection(c);
+                return;
+            }
+
+            if (rc == NGX_DECLINED) {
+                ngx_http_client_error(r, NGX_HTTP_PARSE_TOO_LONG_HEADER,
+                                      NGX_HTTP_BAD_REQUEST);
+                return;
+            }
+#endif
+
+#if 0
             /*
              * if the large client headers are enabled then
              * we need to compact r->header_in buf
@@ -964,6 +985,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
                                       NGX_HTTP_BAD_REQUEST);
                 return;
             }
+#endif
         }
     }
 }
@@ -1021,6 +1043,92 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
 
     return n;
 }
+
+
+#if 1
+
+static ngx_int_t ngx_http_alloc_header_buf(ngx_http_request_t *r,
+                                           ngx_uint_t request_line)
+{
+    u_char                    *old, *new;
+    ngx_int_t                  offset;
+    ngx_buf_t                 *b;
+    ngx_http_connection_t     *hc;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http alloc large header buffer");
+
+    old = request_line ? r->request_start : r->header_name_start;
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    if ((size_t) (r->header_in->pos - old) >= cscf->client_large_buffers.size) {
+        return NGX_DECLINED;
+    }
+
+    hc = r->http_connection;
+
+    if (hc->nfree) {
+        b = hc->free[--hc->nfree];
+
+    } else if (hc->nbusy < cscf->client_large_buffers.num) {
+
+        if (hc->busy == NULL) {
+            hc->busy = ngx_palloc(r->connection->pool,
+                         cscf->client_large_buffers.num * sizeof(ngx_buf_t *));
+            if (hc->busy == NULL) {
+                return NGX_ERROR;
+            }
+        }
+
+        b = ngx_create_temp_buf(r->connection->pool,
+                                cscf->client_large_buffers.size);
+        if (b == NULL) {
+            return NGX_ERROR;
+        }
+
+    } else {
+        return NGX_DECLINED;
+    }
+
+    hc->busy[hc->nbusy++] = b;
+
+    new = b->start;
+
+    ngx_memcpy(new, old, r->header_in->last - old);
+
+    b->pos = new + (r->header_in->pos - old);
+    b->last = new + (r->header_in->last - old);
+
+    if (request_line) {
+        r->request_start = new;
+        r->request_end = new + (r->request_end - old);
+
+        r->uri_start = new + (r->uri_start - old);
+        r->uri_end = new + (r->uri_end - old);
+
+        if (r->uri_ext) {
+            r->uri_ext = new + (r->uri_ext - old);
+        }
+
+        if (r->args_start) {
+            r->args_start = new + (r->args_start - old);
+        }
+
+    } else {
+        r->header_name_start = new;
+        r->header_name_end = new + (r->header_name_end - old);
+        r->header_start = new + (r->header_start - old);
+        r->header_end = new + (r->header_end - old);
+    }
+
+    r->header_in = b;
+
+    return NGX_OK;
+}
+
+#endif
 
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)

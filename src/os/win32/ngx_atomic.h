@@ -6,16 +6,22 @@
 #include <ngx_core.h>
 
 
+#define NGX_HAVE_ATOMIC_OPS   1
+
+
 #define ngx_atomic_inc(p)       InterlockedIncrement((long *) p)
-#define ngx_atomic_dec(p)       InterlockedDecrement((long *) p)
 
 
 #if defined( __WATCOMC__ ) || defined( __BORLANDC__ )
+
+/* the new SDK headers */
 
 #define ngx_atomic_cmp_set(lock, old, set)                                    \
      (InterlockedCompareExchange((long *) lock, set, old) == old)
 
 #else
+
+/* the old MS VC6.0SP2 SDK headers */
 
 #define ngx_atomic_cmp_set(lock, old, set)                                    \
      (InterlockedCompareExchange((void **) lock, (void *) set, (void *) old)  \

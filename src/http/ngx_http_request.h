@@ -221,10 +221,10 @@ typedef struct {
     ngx_http_request_t   *request;
 
     ngx_buf_t           **busy;
-    ngx_uint_t            nbusy;
+    ngx_int_t             nbusy;
 
     ngx_buf_t           **free;
-    ngx_uint_t            nfree;
+    ngx_int_t             nfree;
 
     ngx_uint_t            pipeline;      /* unsigned  pipeline:1; */
 } ngx_http_connection_t;

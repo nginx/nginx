@@ -645,21 +645,23 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    ngx_flag_t   flag;
-    ngx_str_t   *value;
+    ngx_str_t        *value;
+    ngx_flag_t       *fp;
+    ngx_conf_post_t  *post;
 
+    fp = (ngx_flag_t *) (p + cmd->offset);
 
-    if (*(ngx_flag_t *) (p + cmd->offset) != NGX_CONF_UNSET) {
+    if (*fp != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
     value = cf->args->elts;
 
     if (ngx_strcasecmp(value[1].data, "on") == 0) {
-        flag = 1;
+        *fp = 1;
 
     } else if (ngx_strcasecmp(value[1].data, "off") == 0) {
-        flag = 0;
+        *fp = 0;
 
     } else {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -669,7 +671,10 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    *(ngx_flag_t *) (p + cmd->offset) = flag;
+    if (cmd->post) {
+        post = cmd->post;
+        return post->post_handler(cf, post, fp);
+    }
 
     return NGX_CONF_OK;
 }

@@ -96,6 +96,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_srv_conf_t, client_header_buffer_size),
       NULL },
 
+    { ngx_string("client_large_buffers"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE2,
+      ngx_conf_set_bufs_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_core_srv_conf_t, client_large_buffers),
+      NULL },
+
     { ngx_string("large_client_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -1247,6 +1254,15 @@ static void *ngx_http_core_create_srv_conf(ngx_conf_t *cf)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_core_srv_conf_t)),
                   NGX_CONF_ERROR);
 
+    /*
+
+    set by ngx_pcalloc():
+
+    conf->client_large_buffers.num = 0;
+
+    */
+
+
     ngx_init_array(cscf->locations, cf->pool,
                    5, sizeof(void *), NGX_CONF_ERROR);
     ngx_init_array(cscf->listen, cf->pool, 5, sizeof(ngx_http_listen_t),
@@ -1326,6 +1342,8 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
                               prev->client_header_timeout, 60000);
     ngx_conf_merge_size_value(conf->client_header_buffer_size,
                               prev->client_header_buffer_size, 1024);
+    ngx_conf_merge_bufs_value(conf->client_large_buffers,
+                              prev->client_large_buffers, 4, ngx_pagesize);
     ngx_conf_merge_value(conf->large_client_header,
                          prev->large_client_header, 1);
     ngx_conf_merge_unsigned_value(conf->restrict_host_names,
@@ -1543,7 +1561,7 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    ls->port = port;
+    ls->port = (in_port_t) port;
 
     ls->addr = inet_addr((const char *) addr);
     if (ls->addr == INADDR_NONE) {

@@ -45,6 +45,7 @@ static char *ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd,
 
 static void *ngx_event_create_conf(ngx_cycle_t *cycle);
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf);
+static char *ngx_accept_mutex_check(ngx_conf_t *cf, void *post, void *data);
 
 
 static ngx_uint_t                 ngx_event_max_module;
@@ -113,6 +114,9 @@ ngx_module_t  ngx_events_module = {
 
 static ngx_str_t  event_core_name = ngx_string("event_core");
 
+static ngx_conf_post_t  ngx_accept_mutex_post = { ngx_accept_mutex_check } ;
+
+
 static ngx_command_t  ngx_event_core_commands[] = {
 
     { ngx_string("connections"),
@@ -141,7 +145,7 @@ static ngx_command_t  ngx_event_core_commands[] = {
       ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_event_conf_t, accept_mutex),
-      NULL },
+      &ngx_accept_mutex_post },
 
     { ngx_string("accept_mutex_delay"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
@@ -773,6 +777,23 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
             return NGX_CONF_ERROR;
         }
     }
+#endif
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_accept_mutex_check(ngx_conf_t *cf, void *post, void *data)
+{
+#if !(NGX_HAVE_ATOMIC_OPS)
+
+    ngx_flag_t *fp = data;
+
+    *fp = 0;
+
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "\"accept_mutex\" is not supported, ignored");
+
 #endif
 
     return NGX_CONF_OK;

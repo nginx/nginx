@@ -8,6 +8,8 @@
 
 #if ( __i386__ || __amd64__ )
 
+#define NGX_HAVE_ATOMIC_OPS  1
+
 typedef volatile uint32_t  ngx_atomic_t;
 
 #if (NGX_SMP)
@@ -33,6 +35,8 @@ static ngx_inline uint32_t ngx_atomic_inc(ngx_atomic_t *value)
 }
 
 
+#if 0
+
 static ngx_inline uint32_t ngx_atomic_dec(ngx_atomic_t *value)
 {
     uint32_t  old;
@@ -47,6 +51,8 @@ static ngx_inline uint32_t ngx_atomic_dec(ngx_atomic_t *value)
 
     return old;
 }
+
+#endif
 
 
 static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
@@ -69,6 +75,8 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 
 
 #elif ( __sparc__ )
+
+#define NGX_HAVE_ATOMIC_OPS  1
 
 typedef volatile uint32_t  ngx_atomic_t;
 
@@ -99,11 +107,6 @@ static ngx_inline uint32_t ngx_atomic_inc(ngx_atomic_t *value)
 }
 
 
-/* STUB */
-#define ngx_atomic_dec(x)   (*(x))--;
-/**/
-
-
 static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
                                               ngx_atomic_t old,
                                               ngx_atomic_t set)
@@ -121,13 +124,18 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 
 #else
 
+#define NGX_HAVE_ATOMIC_OPS  0
+
 typedef volatile uint32_t  ngx_atomic_t;
 
-/* STUB */
-#define ngx_atomic_inc(x)   ++(*(x));
-#define ngx_atomic_dec(x)   --(*(x));
-#define ngx_atomic_cmp_set(lock, old, set)   1
-/**/
+#define ngx_atomic_inc(x)  ++(*(x));
+
+static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
+                                              ngx_atomic_t old,
+                                              ngx_atomic_t set)
+{
+     return 1;
+}
 
 #endif
 

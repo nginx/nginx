@@ -66,6 +66,8 @@ typedef struct {
     size_t                request_pool_size;
     size_t                client_header_buffer_size;
 
+    ngx_bufs_t            client_large_buffers;
+
     ngx_msec_t            post_accept_timeout;
     ngx_msec_t            client_header_timeout;
 

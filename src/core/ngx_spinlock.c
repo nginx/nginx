@@ -5,6 +5,9 @@
 
 void ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin)
 {
+
+#if (NGX_HAVE_ATOMIC_OPS)
+
     ngx_uint_t  tries;
 
     tries = 0;
@@ -26,4 +29,15 @@ void ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin)
             }
         }
     }
+
+#else
+
+#if (NGX_THREADS)
+
+#error ngx_spinlock() or ngx_atomic_cmp_set() are not defined !
+
+#endif
+
+#endif
+
 }
