@@ -67,6 +67,10 @@ int main(int argc, char *const *argv)
 
 #endif
 
+    if (ngx_os_init(&ngx_log) == NGX_ERROR) {
+        exit(1);
+    }
+
     ngx_init_array(ngx_listening_sockets, ngx_pool, 10, sizeof(ngx_listen_t),
                    1);
 

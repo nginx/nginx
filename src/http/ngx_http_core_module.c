@@ -568,9 +568,9 @@ int ngx_http_close_request(ngx_http_request_t *r, int error)
         c->write->timer_set = 0;
     }
 
-    ngx_log_debug(c->log, "http closed");
+    ngx_log_debug(c->log, "http request closed");
 
-    return NGX_ERROR;  /* to close connection */
+    return 0;
 }
 
 

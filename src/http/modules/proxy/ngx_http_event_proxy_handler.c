@@ -481,7 +481,7 @@ static int ngx_http_proxy_process_upstream(ngx_http_proxy_ctx_t *p,
 
 static int ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
 {
-    int                         rc, event;
+    int                         rc, event, instance;
     struct sockaddr_in         *addr;
     ngx_err_t                   err;
     ngx_socket_t                s;
@@ -590,6 +590,8 @@ static int ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     rev = &ngx_read_events[s];
     wev = &ngx_write_events[s];
 
+    instance = rev->instance;
+
     ngx_memzero(c, sizeof(ngx_connection_t));
     ngx_memzero(rev, sizeof(ngx_event_t));
     ngx_memzero(wev, sizeof(ngx_event_t));
@@ -598,7 +600,9 @@ static int ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     rev->data = wev->data = c;
     c->read = rev;
     c->write = wev;
-    rev->first = wev->first = 1;
+
+    rev->instance = wev->instance = !instance;
+
     rev->log = wev->log = c->log = p->log;
     c->fd = s;
     wev->close_handler = rev->close_handler = ngx_event_close_connection;
@@ -1002,7 +1006,7 @@ static int ngx_http_proxy_process_upstream_headers(ngx_http_proxy_ctx_t *p)
     r = p->request;
 
     for ( ;; ) {
-        rc = ngx_read_http_header_line(r, p->header_in);
+        rc = ngx_parse_http_header_line(r, p->header_in);
 
         /* a header line has been parsed successfully */
 

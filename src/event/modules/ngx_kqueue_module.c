@@ -141,7 +141,7 @@ int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
     if (nchanges > 0
         && ev->index < nchanges
-        && change_list[ev->index].udata == ev)
+        && (void *) ((uintptr_t) change_list[ev->index].udata & ~1) == ev)
     {
 #if (NGX_DEBUG_EVENT)
         ngx_connection_t *c = (ngx_connection_t *) ev->data;
@@ -159,8 +159,9 @@ int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_OK;
     }
 
-    /* when a socket is closed kqueue automatically deletes its filters 
-       so we do not need to delete a event explicity before a socket closing */
+    /* when the file descriptor is closed a kqueue automatically deletes
+       its filters so we do not need to delete explicity the event
+       before the closing the file descriptor */
 
     if (flags & NGX_CLOSE_EVENT) {
         return NGX_OK;
@@ -200,7 +201,7 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
     change_list[nchanges].ident = c->fd;
     change_list[nchanges].filter = filter;
     change_list[nchanges].flags = flags;
-    change_list[nchanges].udata = ev;
+    change_list[nchanges].udata = (void *) ((uintptr_t) ev | ev->instance);
 
 #if (HAVE_LOWAT_EVENT)
 
@@ -230,7 +231,7 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 
 int ngx_kqueue_process_events(ngx_log_t *log)
 {
-    int              events, i;
+    int              events, instance, i;
     ngx_msec_t       timer, delta;
     ngx_event_t      *ev;
     struct timeval   tv;
@@ -310,12 +311,15 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         }
 
         ev = (ngx_event_t *) event_list[i].udata;
+        instance = (uintptr_t) ev & 1;
+        ev = (void *) ((uintptr_t) ev & ~1);
 
-        /* It's a stale event from a socket
+        /* It's a stale event from a file descriptor
            that was just closed in this iteration */
 
-        if (!ev->active) {
-           continue;
+        if (ev->active == 0 || ev->instance != instance) {
+            ngx_log_debug(log, "stale kevent");
+            continue;
         }
 
         switch (event_list[i].filter) {
@@ -323,28 +327,6 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         case EVFILT_READ:
         case EVFILT_WRITE:
 
-            if (ev->first) {
-                if (nchanges > 0
-                    && ev->index < nchanges
-                    && change_list[ev->index].udata == ev) {
-
-                    /* It's a stale event from a socket that was just closed
-                       in this iteration and during processing another socket
-                       was opened with the same number by accept() or socket()
-                       and its event has been added the event to the change_list
-                       but has not been passed to a kernel.  Nevertheless
-                       there's small chance that ngx_kqueue_set_event() has
-                       flushed the new event if the change_list was filled up.
-                       In this very rare case we would get EAGAIN while
-                       a reading or a writing */
-
-                    continue;
-
-                } else {
-                    ev->first = 0;
-                }
-            }
- 
             ev->available = event_list[i].data;
 
             if (event_list[i].flags & EV_EOF) {

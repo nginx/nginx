@@ -3,7 +3,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-int ngx_read_http_request_line(ngx_http_request_t *r)
+int ngx_parse_http_request_line(ngx_http_request_t *r)
 {
     char   ch;
     char  *p;
@@ -326,7 +326,7 @@ int ngx_read_http_request_line(ngx_http_request_t *r)
     }
 }
 
-int ngx_read_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
+int ngx_parse_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
 {
     char   c, ch;
     char  *p;

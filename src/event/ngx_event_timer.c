@@ -45,17 +45,14 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 
 #if (NGX_DEBUG_EVENT)
     ngx_connection_t *c = (ngx_connection_t *) ev->data;
-    ngx_log_debug(ev->log, "set timer: %d:%d" _ c->fd _ timer);
+    ngx_log_debug(ev->log, "set timer: %d:%d, slot: %d" _
+                  c->fd _ timer _ ngx_timer_cur_queue);
 #endif
 
     if (ev->timer_next || ev->timer_prev) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "timer already set");
         return;
     }
-
-#if (NGX_DEBUG_EVENT)
-    ngx_log_debug(ev->log, "timer slot: %d" _ ngx_timer_cur_queue);
-#endif
 
     for (e = ngx_timer_queue[ngx_timer_cur_queue].timer_next;
          e != &ngx_timer_queue[ngx_timer_cur_queue] && timer > e->timer_delta;

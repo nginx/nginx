@@ -11,57 +11,76 @@ extern int   __isthreaded;
 
 typedef int  ngx_tid_t;
 
-#define NGX_MAX_THREADS  10
-
 
 static inline int ngx_gettid();
 
 
-static char        *stacks_start;
-static char        *stacks_end;
-static size_t       stack_size;
-static char        *last_stack;
-static int          last_thread;
-
-static ngx_log_t   *log;
-
-static ngx_tid_t    tids[NGX_MAX_THREADS];
-
+static char        *usrstack;
 static int          red_zone = 4096;
 
+static size_t       stack_size;
+static size_t       usable_stack_size;
+static char        *last_stack;
+
+static int          threads;
+static int          nthreads;
+static ngx_tid_t   *tids;
 
 /* the thread-safe errno */
 
-static int   errnos[NGX_MAX_THREADS];
+static int   errno0;   /* the main thread's errno */
+static int  *errnos;
 
 int *__error()
 {
-    return &errnos[ngx_gettid()];
+    int  tid;
+
+    tid = ngx_gettid();
+
+    return tid ? &errnos[tid - 1] : &errno0;
 }
 
 
-int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg)
+int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
+                      ngx_log_t *log)
 {
     int         id, err;
-    char       *stack_top;
+    char       *stack, *stack_top;
 
-    last_stack += stack_size;
-    stack_top = last_stack - red_zone;
-
-    if (stack_top > stacks_end) {
-        ngx_log_error(NGX_LOG_CRIT, log, 0, "no more threads allocated");
+    if (threads >= nthreads) {
+        ngx_log_error(NGX_LOG_CRIT, log, 0,
+                      "no more than %d threads can be created", nthreads);
         return NGX_ERROR;
     }
 
-#if 0
-    id = rfork(RFFDG|RFCFDG);
-#elif 0
-    id = rfork_thread(RFFDG|RFCFDG, stack_top, func, arg);
-#elif 0
-    id = rfork_thread(RFPROC|RFMEM, stack_top, func, arg);
-#else
+    last_stack -= stack_size;
+    stack = mmap(last_stack, usable_stack_size, PROT_READ|PROT_WRITE,
+                 MAP_STACK, -1, 0);
+    if (stack == MAP_FAILED) {
+        ngx_log_error(NGX_LOG_ALERT, log, errno,
+                      "mmap(%08X:%d, MAP_STACK) thread stack failed",
+                      last_stack, usable_stack_size);
+        return NGX_ERROR;
+    }
+
+    if (stack != last_stack) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "stack address was changed");
+    }
+
+    stack_top = stack + usable_stack_size;
+
+printf("stack: %08X-%08X\n", stack, stack_top);
+
+#if 1
     id = rfork_thread(RFPROC|RFTHREAD|RFMEM, stack_top, func, arg);
+#elif 1
+    id = rfork_thread(RFPROC|RFMEM, stack_top, func, arg);
+#elif 1
+    id = rfork_thread(RFFDG|RFCFDG, stack_top, func, arg);
+#else
+    id = rfork(RFFDG|RFCFDG);
 #endif
+
     err = errno;
 
     if (id == -1) {
@@ -69,7 +88,8 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg)
 
     } else {
         *tid = id;
-        tids[last_thread++] = id;
+        threads = (usrstack - stack_top) / stack_size;
+        tids[threads] = id;
 
         /* allow the spinlock in libc malloc() */
         __isthreaded = 1;
@@ -79,14 +99,12 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg)
 }
 
 
-int ngx_init_thread_env(int n, size_t size, ngx_log_t *lg)
+int ngx_init_thread_env(int n, size_t size, ngx_log_t *log)
 {
-    int    len, i;
-    char  *usrstack, *zone;
+    int    len;
+    char  *rz, *zone;
 
-    log = lg;
-
-    /* create the thread stacks */
+    nthreads = n;
 
     len = 4;
     if (sysctlbyname("kern.usrstack", &usrstack, &len, NULL, 0) == -1) {
@@ -96,41 +114,37 @@ int ngx_init_thread_env(int n, size_t size, ngx_log_t *lg)
     }
 
 printf("usrstack: %08X\n", usrstack);
-printf("red zone: %08X\n", usrstack - (size + red_zone));
 
-#if 1
     /* red zone */
-    zone = mmap(usrstack - (size + red_zone), red_zone,
-                PROT_NONE, MAP_ANON, -1, 0);
+    rz = usrstack - (size + red_zone);
+
+printf("red zone: %08X\n", rz);
+
+    zone = mmap(rz, red_zone, PROT_NONE, MAP_ANON, -1, 0);
     if (zone == MAP_FAILED) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
-                      "mmap(%d, PROT_NONE, MAP_ANON) failed", red_zone);
+                      "mmap(%08X:%d, PROT_NONE, MAP_ANON) red zone failed",
+                      rz, red_zone);
         return NGX_ERROR;
     }
-#else
-    zone = usrstack - (size + red_zone);
-#endif
 
-    last_stack = zone + red_zone;
-
-    for (i = 0; i < n; i++) {
-        last_stack -= size + red_zone;
-printf("stack: %08X\n", last_stack);
-        last_stack = mmap(last_stack, size, PROT_READ|PROT_WRITE,
-                          MAP_STACK, -1, 0);
-        if (last_stack == MAP_FAILED) {
-            ngx_log_error(NGX_LOG_ALERT, log, errno,
-                          "mmap(%d, MAP_STACK) failed", size);
-            return NGX_ERROR;
-        }
+    if (zone != rz) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "red zone address was changed");
     }
 
-    stacks_start = last_stack;
-    stack_size = size + red_zone;
-    stacks_end = stacks_start + n * stack_size;
+    /* create the thread errno array */
+    ngx_test_null(errnos, ngx_calloc(n * sizeof(int), log), NGX_ERROR);
+
+    /* create the thread tid array */
+    ngx_test_null(tids, ngx_calloc((n + 1) * sizeof(ngx_tid_t), log),
+                  NGX_ERROR);
 
     tids[0] = ngx_getpid();
-    last_thread = 1;
+    threads = 1;
+
+    last_stack = zone + red_zone;
+    usable_stack_size = size;
+    stack_size = size + red_zone;
 
     return NGX_OK;
 }
@@ -138,7 +152,18 @@ printf("stack: %08X\n", last_stack);
 
 ngx_tid_t ngx_thread_self()
 {
-    return tids[ngx_gettid()];
+    int        tid;
+    ngx_tid_t  pid;
+
+    tid = ngx_gettid();
+
+    if (tids[tid] == 0) {
+        pid = ngx_getpid();
+        tids[tid] = pid;
+        return pid;
+    }
+
+    return tids[tid];
 }
 
 
@@ -146,7 +171,11 @@ static inline int ngx_gettid()
 {   
     char  *sp;
 
+    if (stack_size == 0) {
+        return 0;
+    }
+
     __asm__ ("mov %%esp, %0" : "=q" (sp));
 
-    return (sp > stacks_end) ? 0 : ((sp - stacks_start) / stack_size  + 1);
+    return (usrstack - sp) / stack_size;
 }

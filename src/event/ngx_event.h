@@ -63,7 +63,9 @@ struct ngx_event_s {
 #endif
     unsigned         write:1;
 
-    unsigned         first:1;
+    unsigned         instance:1;  /* used to detect stale events in kqueue,
+                                     rt signals and epoll */
+
     unsigned         active:1;
     unsigned         ready:1;
     unsigned         timedout:1;
@@ -113,6 +115,7 @@ struct ngx_event_s {
 #endif
 #endif
 };
+
 
 typedef enum {
     NGX_SELECT_EVENT_N = 0,

@@ -16,6 +16,7 @@
 
 int ngx_event_accept(ngx_event_t *ev)
 {
+    int                instance;
     socklen_t          len;
     struct sockaddr   *sa;
     ngx_err_t          err;
@@ -95,6 +96,8 @@ int ngx_event_accept(ngx_event_t *ev)
         wev = &ngx_write_events[s];
         c = &ngx_connections[s];
 
+        instance = rev->instance;
+
         ngx_memzero(rev, sizeof(ngx_event_t));
         ngx_memzero(wev, sizeof(ngx_event_t));
         ngx_memzero(c, sizeof(ngx_connection_t));
@@ -108,6 +111,8 @@ int ngx_event_accept(ngx_event_t *ev)
         c->addr_text_max_len = ls->addr_text_max_len;
         c->post_accept_timeout = ls->post_accept_timeout;
 
+        rev->instance = wev->instance = !instance;
+
         rev->index = wev->index = NGX_INVALID_INDEX;
 
         rev->data = wev->data = c;
@@ -117,7 +122,6 @@ int ngx_event_accept(ngx_event_t *ev)
         c->fd = s;
         c->unexpected_eof = 1;
         wev->write = 1;
-        rev->first = wev->first = 1;
 
 #if (USE_KQUEUE)
         wev->ready = 1;
