@@ -23,40 +23,55 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     s = respawn >= 0 ? respawn : ngx_last_process;
 
 
-    /* Solaris 9 still has no AF_LOCAL */
+    if (respawn != NGX_PROCESS_DETACHED) {
 
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_processes[s].channel) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "socketpair() failed while spawning \"%s\"", name);
-        return NGX_ERROR;
+        /* Solaris 9 still has no AF_LOCAL */
+
+        if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_processes[s].channel) == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "socketpair() failed while spawning \"%s\"", name);
+            return NGX_ERROR;
+        }
+
+        if (ngx_nonblocking(ngx_processes[s].channel[0]) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          ngx_nonblocking_n " failed while spawning \"%s\"",
+                          name);
+            ngx_close_channel(ngx_processes[s].channel, cycle->log);
+            return NGX_ERROR;
+        }
+
+        if (ngx_nonblocking(ngx_processes[s].channel[1]) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          ngx_nonblocking_n " failed while spawning \"%s\"",
+                          name);
+            ngx_close_channel(ngx_processes[s].channel, cycle->log);
+            return NGX_ERROR;
+        }
+
+        on = 1;
+        if (ioctl(ngx_processes[s].channel[0], FIOASYNC, &on) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "ioctl(FIOASYNC) failed while spawning \"%s\"", name);
+            ngx_close_channel(ngx_processes[s].channel, cycle->log);
+            return NGX_ERROR;
+        }
+
+        if (fcntl(ngx_processes[s].channel[0], F_SETOWN, ngx_pid) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "fcntl(F_SETOWN) failed while spawning \"%s\"", name);
+            ngx_close_channel(ngx_processes[s].channel, cycle->log);
+            return NGX_ERROR;
+        }
+
+        ngx_channel = ngx_processes[s].channel[1];
+
+    } else {
+        ngx_processes[s].channel[0] = -1;
+        ngx_processes[s].channel[1] = -1;
     }
 
-    if (ngx_nonblocking(ngx_processes[s].channel[0]) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      ngx_nonblocking_n " failed while spawning \"%s\"", name);
-        return NGX_ERROR;
-    }
-
-    if (ngx_nonblocking(ngx_processes[s].channel[1]) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      ngx_nonblocking_n " failed while spawning \"%s\"", name);
-        return NGX_ERROR;
-    }
-
-    on = 1;
-    if (ioctl(ngx_processes[s].channel[0], FIOASYNC, &on) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "ioctl(FIOASYNC) failed while spawning \"%s\"", name);
-        return NGX_ERROR;
-    }
-
-    if (fcntl(ngx_processes[s].channel[0], F_SETOWN, ngx_pid) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "fcntl(F_SETOWN) failed while spawning \"%s\"", name);
-        return NGX_ERROR;
-    }
-
-    ngx_channel = ngx_processes[s].channel[1];
     ngx_process_slot = s;
 
 
@@ -67,6 +82,7 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     case -1:
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "fork() failed while spawning \"%s\"", name);
+        ngx_close_channel(ngx_processes[s].channel, cycle->log);
         return NGX_ERROR;
 
     case 0:
@@ -223,4 +239,16 @@ void ngx_process_get_status()
             ngx_processes[i].respawn = 0;
         }
     }
+}
+
+
+void ngx_close_channel(ngx_fd_t *fd, ngx_log_t *log)
+{
+    if (close(fd[0]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() failed");
+    } 
+
+    if (close(fd[1]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() failed");
+    } 
 }

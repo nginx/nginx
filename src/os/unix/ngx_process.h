@@ -47,6 +47,8 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
                             char *name, ngx_int_t respawn);
 ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 void ngx_process_get_status(void);
+void ngx_close_channel(ngx_fd_t *fd, ngx_log_t *log);
+
 
 extern ngx_pid_t      ngx_pid;
 extern ngx_socket_t   ngx_channel;

@@ -235,7 +235,7 @@ HTPP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
 
 
 HTTP_CHARSET_FILTER_MODULE=ngx_http_charset_filter_module
-HTTP_CHARSET_FILTER_SRCS=src/http/modules/ngx_http_charset_filter.c
+HTTP_CHARSET_SRCS=src/http/modules/ngx_http_charset_filter.c
 
 
 HTTP_REWRITE_MODULE=ngx_http_rewrite_module
