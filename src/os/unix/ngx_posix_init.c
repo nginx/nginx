@@ -99,7 +99,10 @@ int ngx_posix_init(ngx_log_t *log)
 void ngx_signal_handler(int signo)
 {
     struct timeval   tv;
+    ngx_err_t        err;
     ngx_signal_t    *sig;
+
+    err = ngx_errno;
 
     for (sig = signals; sig->signo != 0; sig++) {
         if (sig->signo == signo) {
@@ -141,6 +144,8 @@ void ngx_signal_handler(int signo)
         ngx_change_binary = 1;
         break;
     }
+
+    ngx_set_errno(err);
 }
 
 

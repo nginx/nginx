@@ -173,11 +173,6 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
                         continue;
                     }
 
-                    ngx_log_error(NGX_LOG_INFO, log, 0,
-                                   "%X, %X",
-                                   *(int *) ls[i].sockaddr,
-                                   *(int *) nls[n].sockaddr);
-
                     if (ngx_memcmp(nls[n].sockaddr,
                                    ls[i].sockaddr, ls[i].socklen) == 0)
                     {

@@ -2,96 +2,61 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-/* STUB */
-#include <nginx.h>
 
 
 ngx_os_io_t            ngx_io;
 
 
-ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle, char **envp)
+ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
-    char                *p, *v;
-    ngx_socket_t         s;
+    ngx_int_t            i;
     ngx_listening_t     *ls;
     struct sockaddr_in  *addr_in;
 
-    for ( /* void */ ; *envp; envp++) {
-        if (ngx_strncmp(*envp, NGINX_VAR, NGINX_VAR_LEN) != 0) {
+    ls = cycle->listening.elts;
+    for (i = 0; i < cycle->listening.nelts; i++) {
+
+        /* AF_INET only */
+
+        ls[i].sockaddr = ngx_palloc(cycle->pool, sizeof(struct sockaddr_in));
+        if (ls[i].sockaddr == NULL) {
+            return NGX_ERROR;
+        }
+
+        ls[i].socklen = sizeof(struct sockaddr_in);
+        if (getsockname(ls[i].fd, ls[i].sockaddr, &ls[i].socklen) == -1) {
+            ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
+                          "getsockname() of the inherited "
+                          "socket #%d failed", ls[i].fd);
+            ls[i].ignore = 1;
             continue;
         }
 
-        ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
-                      "using inherited sockets from \"%s\"", *envp);
+        addr_in = (struct sockaddr_in *) ls[i].sockaddr;
 
-        ngx_init_array(cycle->listening, cycle->pool,
-                       10, sizeof(ngx_listening_t), NGX_ERROR);
+        if (addr_in->sin_family != AF_INET) {
+            ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
+                          "the inherited socket #%d has "
+                          "unsupported family", ls[i].fd);
+            ls[i].ignore = 1;
+            continue;
+        }
+        ls[i].addr_text_max_len = INET_ADDRSTRLEN;
 
-        for (p = *envp + NGINX_VAR_LEN, v = p; *p; p++) {
-            if (*p == ':' || *p == ';') {
-                s = ngx_atoi(v, p - v);
-                if (s == NGX_ERROR) {
-                    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                                  "invalid socket number \"%s\" "
-                                  "in NGINX enviroment variable, "
-                                  "ignoring the rest of the variable", v);
-                    break;
-                }
-                v = p + 1;
-
-                if (!(ls = ngx_push_array(&cycle->listening))) {
-                    return NGX_ERROR;
-                }
-
-                ls->fd = s;
-
-                /* AF_INET only */
-
-                ls->sockaddr = ngx_palloc(cycle->pool,
-                                          sizeof(struct sockaddr_in));
-                if (ls->sockaddr == NULL) {
-                    return NGX_ERROR;
-                }
-
-                ls->socklen = sizeof(struct sockaddr_in);
-                if (getsockname(s, ls->sockaddr, &ls->socklen) == -1) {
-                    ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
-                                  "getsockname() of the inherited "
-                                  "socket #%d failed", s);
-                    ls->ignore = 1;
-                    continue;
-                }
-
-                addr_in = (struct sockaddr_in *) ls->sockaddr;
-
-                if (addr_in->sin_family != AF_INET) {
-                    ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
-                                  "the inherited socket #%d has "
-                                  "unsupported family", s);
-                    ls->ignore = 1;
-                    continue;
-                }
-                ls->addr_text_max_len = INET_ADDRSTRLEN;
-
-                ls->addr_text.data = ngx_palloc(cycle->pool,
-                                                ls->addr_text_max_len);
-                if (ls->addr_text.data == NULL) {
-                    return NGX_ERROR;
-                }
-
-                addr_in->sin_len = 0;
-
-                ls->family = addr_in->sin_family;
-                ls->addr_text.len = ngx_sock_ntop(ls->family, ls->sockaddr,
-                                                  ls->addr_text.data,
-                                                  ls->addr_text_max_len);
-                if (ls->addr_text.len == 0) {
-                    return NGX_ERROR;
-                }
-            }
+        ls[i].addr_text.data = ngx_palloc(cycle->pool, ls[i].addr_text_max_len);
+        if (ls[i].addr_text.data == NULL) {
+            return NGX_ERROR;
         }
 
-        break;
+        addr_in->sin_len = 0;
+
+        ls[i].family = addr_in->sin_family;
+        ls[i].addr_text.len = ngx_sock_ntop(ls[i].family, ls[i].sockaddr,
+                                            ls[i].addr_text.data,
+                                            ls[i].addr_text_max_len);
+        if (ls[i].addr_text.len == 0) {
+            return NGX_ERROR;
+        }
     }
 
     return NGX_OK;

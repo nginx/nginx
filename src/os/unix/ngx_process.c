@@ -211,25 +211,6 @@ void ngx_respawn_processes(ngx_cycle_t *cycle)
 }
 
 
-#if 0
-void ngx_sigchld_handler(int signo)
-{
-    int              status;
-    char            *process;
-    ngx_pid_t        pid;
-    ngx_err_t        err;
-    ngx_uint_t       i, one;
-    struct timeval   tv;
-
-    ngx_gettimeofday(&tv);
-    ngx_time_update(tv.tv_sec);
-
-    ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
-                  "signal #%d (SIGCHLD) received", signo);
-}
-#endif
-
-
 void ngx_process_get_status()
 {
     int              status;

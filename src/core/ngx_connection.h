@@ -93,7 +93,7 @@ struct ngx_connection_s {
 };
 
 
-ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle, char **envp);
+ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);
 ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle);
 void ngx_close_listening_sockets(ngx_cycle_t *cycle);
 
