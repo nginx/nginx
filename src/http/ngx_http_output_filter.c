@@ -58,6 +58,10 @@ ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_output_chain_ctx_t         *ctx;
     ngx_http_output_filter_conf_t  *conf;
 
+    if (r->connection->write->error) {
+        return NGX_ERROR;
+    }
+
     ctx = ngx_http_get_module_ctx(r->main ? r->main : r,
                                             ngx_http_output_filter_module);
 

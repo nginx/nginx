@@ -404,7 +404,7 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
         }
 #endif
 
-        if (event_list[i].revents & (POLLERR|POLLNVAL)) {
+        if (event_list[i].revents & POLLNVAL) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "poll() error fd:%d ev:%04X rev:%04X",
                           event_list[i].fd,

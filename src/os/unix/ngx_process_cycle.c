@@ -273,7 +273,9 @@ void ngx_single_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
     ngx_uint_t  i;
 
+#if 0
     ngx_setproctitle("single worker process");
+#endif
 
     ngx_init_temp_number();
 

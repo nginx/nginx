@@ -591,15 +591,15 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                            ctx->in_hunk, ctx->in_hunk->pos);
 
 
-#if 0
-            if (!ctx->redo) {
+            if (ctx->zstream.next_in) {
                 ctx->in_hunk->pos = ctx->zstream.next_in;
-                ctx->out_hunk->last = ctx->zstream.next_out;
+
+                if (ctx->zstream.avail_in == 0) {
+                    ctx->zstream.next_in = NULL;
+                }
             }
-#else
-            ctx->in_hunk->pos = ctx->zstream.next_in;
+
             ctx->out_hunk->last = ctx->zstream.next_out;
-#endif
 
             if (ctx->zstream.avail_out == 0) {
                 ngx_alloc_link_and_set_hunk(cl, ctx->out_hunk, r->pool,
@@ -626,9 +626,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 break;
             }
 
-            if (ctx->flush == Z_FINISH) {
-
-                /* rc == Z_STREAM_END */
+            if (rc == Z_STREAM_END) {
 
                 ctx->zin = ctx->zstream.total_in;
                 ctx->zout = 10 + ctx->zstream.total_out + 8;
@@ -641,8 +639,6 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 }
 
                 ngx_pfree(r->pool, ctx->preallocated);
-
-                ctx->flush = Z_NO_FLUSH;
 
                 ngx_alloc_link_and_set_hunk(cl, ctx->out_hunk, r->pool,
                                             ngx_http_gzip_error(ctx));
@@ -716,12 +712,6 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return last;
         }
 
-#if 0
-        if (ctx->out == NULL && last != NGX_NONE) {
-            return last;
-        }
-#endif
-
         last = ngx_http_next_body_filter(r, ctx->out);
 
         if (last == NGX_ERROR) {
@@ -731,6 +721,10 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ngx_chain_update_chains(&ctx->free, &ctx->busy, &ctx->out,
                                 (ngx_hunk_tag_t) &ngx_http_gzip_filter_module);
         ctx->last_out = &ctx->out;
+
+        if (ctx->done) {
+            return last;
+        }
     }
 }
 
