@@ -46,7 +46,7 @@ typedef struct {
 ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,
                             char *name, ngx_int_t respawn);
-ngx_int_t ngx_exec(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
+ngx_pid_t ngx_exec(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signo);
 void ngx_respawn_processes(ngx_cycle_t *cycle);
 void ngx_process_get_status(void);

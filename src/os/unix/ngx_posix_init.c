@@ -42,6 +42,8 @@ ngx_signal_t  signals[] = {
       "SIG" ngx_value(NGX_CHANGEBIN_SIGNAL),
       ngx_signal_handler },
 
+    { SIGINT, "SIGINT", ngx_signal_handler },
+
     { SIGCHLD, "SIGCHLD", ngx_signal_handler },
 
     { SIGPIPE, "SIGPIPE, SIG_IGN", SIG_IGN },
@@ -93,10 +95,12 @@ void ngx_signal_handler(int signo)
 {
     char            *action;
     struct timeval   tv;
+    ngx_int_t        ignore;
     ngx_err_t        err;
     ngx_signal_t    *sig;
 
     ngx_signal = 1;
+    ignore = 0;
 
     err = ngx_errno;
 
@@ -138,11 +142,31 @@ void ngx_signal_handler(int signo)
             break;
 
         case ngx_signal_value(NGX_REOPEN_SIGNAL):
-            ngx_reopen = 1;
-            action = ", reopen logs";
-            break;
+            if (ngx_noaccept) {
+                action = ", ignoring";
+
+            } else {
+                ngx_reopen = 1;
+                action = ", reopen logs";
+                break;
+            }
 
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
+            if ((ngx_inherited && getppid() > 1)
+                || (!ngx_inherited && ngx_new_binary > 0))
+            {
+                /*
+                 * Ignore the signal in the new binary if its parent is
+                 * not the init process, i.e. the old binary's process
+                 * is still running.  Or ingore the signal in the old binary's
+                 * process if the new binary's process is already running.
+                 */
+
+                action = ", ignoring";
+                ignore = 1;
+                break;
+            }
+
             ngx_change_binary = 1;
             action = ", changing binary";
             break;
@@ -188,6 +212,13 @@ void ngx_signal_handler(int signo)
 
     ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
                   "signal %d (%s) received%s", signo, sig->signame, action);
+
+    if (ignore) {
+        ngx_log_error(NGX_LOG_CRIT, ngx_cycle->log, 0,
+                      "the changing binary signal is ignored: "
+                      "you should shutdown or terminate "
+                      "before either old or new binary's process");
+    }
 
     if (signo == SIGCHLD) {
         ngx_process_get_status();

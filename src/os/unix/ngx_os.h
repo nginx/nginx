@@ -50,7 +50,9 @@ extern int          ngx_inherited_nonblocking;
 
 
 extern ngx_int_t    ngx_process;
+extern ngx_pid_t    ngx_new_binary;
 
+extern ngx_int_t    ngx_inherited;
 extern ngx_int_t    ngx_signal;
 extern ngx_int_t    ngx_reap;
 extern ngx_int_t    ngx_quit;

@@ -85,17 +85,10 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
 }
 
 
-ngx_int_t ngx_exec(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx)
+ngx_pid_t ngx_exec(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx)
 {
-    if (ngx_spawn_process(cycle, ngx_exec_proc, ctx, ctx->name,
-                                            NGX_PROCESS_DETACHED) == NGX_ERROR)
-    {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                      "can not spawn %s", ctx->name);
-        return NGX_ERROR;
-    }
-
-    return NGX_OK;
+    return ngx_spawn_process(cycle, ngx_exec_proc, ctx, ctx->name,
+                             NGX_PROCESS_DETACHED);
 }
 
 
@@ -154,6 +147,9 @@ void ngx_respawn_processes(ngx_cycle_t *cycle)
     ngx_uint_t  i;
 
     for (i = 0; i < ngx_last_process; i++) {
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                       "proc table " PID_T_FMT, ngx_processes[i].pid);
+
         if (ngx_processes[i].exiting || !ngx_processes[i].exited) {
             continue;
         }
