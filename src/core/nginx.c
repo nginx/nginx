@@ -268,6 +268,8 @@ ngx_log_debug(log, "REOPEN: %d:%d:%s" _ fd _ file[i].fd _ file[i].name.data);
 
                         file[i].fd = fd;
                     }
+
+                    rotate = 0;
                 }
 
                 if (restart) {
