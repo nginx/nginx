@@ -1,4 +1,5 @@
 
+#include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_config_command.h>
 #include <ngx_http.h>
@@ -15,6 +16,127 @@ int (*ngx_http_top_header_filter) (ngx_http_request_t *r);
 void **ngx_srv_conf;
 void **ngx_loc_conf;
 
+#if 0
+void *ngx_http_block(ngx_conf_t *cf)
+{
+    ngx_http_conf_ctx_t  *ctx;
+
+    ngx_test_null(ctx,
+                  ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
+                  NGX_ERROR);
+
+    /* null server config */
+    ngx_test_null(ctx->srv_conf,
+                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_max_module),
+                  NGX_ERROR);
+
+    /* null location config */
+    ngx_test_null(ctx->loc_conf,
+                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_max_module),
+                  NGX_ERROR);
+
+    for (i = 0; modules[i]; i++) {
+        if (modules[i]->create_srv_conf)
+            ngx_test_null(ctx->srv_conf[i],
+                          modules[i]->create_srv_conf(cf->pool),
+                          NGX_ERROR);
+
+        if (modules[i]->create_loc_conf)
+            ngx_test_null(ctx->loc_conf[i],
+                          modules[i]->create_loc_conf(cf->pool),
+                          NGX_ERROR);
+    }
+
+    cf->ctx = ctx;
+    return ngx_conf_parse(cf);
+}
+
+void *ngx_server_block(ngx_conf_t *cf)
+{
+    ngx_http_conf_ctx_t       *ctx, *prev;
+    ngx_http_core_loc_conf_t  *loc_conf;
+
+    ngx_test_null(ctx,
+                  ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
+                  NGX_ERROR);
+
+    /* server config */
+    ngx_test_null(ctx->srv_conf,
+                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_max_module),
+                  NGX_ERROR);
+
+    /* server location config */
+    ngx_test_null(ctx->loc_conf,
+                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_max_module),
+                  NGX_ERROR);
+
+
+    for (i = 0; modules[i]; i++) {
+        if (modules[i]->create_srv_conf)
+            ngx_test_null(ctx->srv_conf[i],
+                          modules[i]->create_srv_conf(cf->pool),
+                          NGX_ERROR);
+
+        if (modules[i]->create_loc_conf)
+            ngx_test_null(ctx->loc_conf[i],
+                          modules[i]->create_loc_conf(cf->pool),
+                          NGX_ERROR);
+    }
+
+    prev = cf->ctx;
+    cf->ctx = ctx;
+    rc = ngx_conf_parse(cf);
+    cf->ctx = prev;
+
+    if (loc == NULL)
+        return NULL;
+
+    for (i = 0; modules[i]; i++) {
+        if (modules[i]->merge_srv_conf)
+            if (modules[i]->merge_srv_conf(cf->pool,
+                                           prev->srv_conf, ctx->srv_conf)
+                                                                  == NGX_ERROR)
+                return NGX_ERROR;
+
+        if (modules[i]->merge_loc_conf)
+            if (modules[i]->merge_loc_conf(cf->pool,
+                                           prev->loc_conf, ctx->loc_conf)
+                                                                  == NGX_ERROR)
+                return NGX_ERROR;
+    }
+
+    return (void *) 1;
+}
+
+void *ngx_location_block(ngx_conf_t *cf)
+{
+
+    ngx_test_null(ctx,
+                  ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
+                  NGX_ERROR);
+
+    ctx->srv_conf = cf->ctx->srv_conf;
+
+    ngx_test_null(ctx->loc_conf,
+                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_max_module),
+                  NGX_ERROR);
+
+    for (i = 0; modules[i]; i++) {
+        if (modules[i]->create_loc_conf)
+            ngx_test_null(ctx->loc_conf[i],
+                          modules[i]->create_loc_conf(cf->pool),
+                          NGX_ERROR);
+
+        if (ngx_http_core_module.index == i)
+            ctx->loc_conf[i].location = cf->args[0];
+    }
+
+    push
+
+    return ngx_conf_parse(cf);
+}
+
+#endif
 
 int ngx_http_config_modules(ngx_pool_t *pool, ngx_http_module_t **modules)
 {

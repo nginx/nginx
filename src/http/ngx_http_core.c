@@ -278,6 +278,59 @@ int ngx_http_internal_redirect(ngx_http_request_t *r, ngx_str_t uri)
 }
 
 
+#if 0
+
+
+    {"http", ngx_http_enter_container, 0,
+     NGX_GLOBAL_CONF, NGX_CONF_CONTAINER},
+
+    {"server", ngx_http_enter_server_container, 0,
+     NGX_HTTP_CONF, NGX_CONF_CONTAINER],
+
+    {"location", ngx_http_enter_location_container, 0,
+     NGX_HTTP_SRV_CONF, NGX_CONF_CONTAINER|NGX_CONF_TAKE1}
+
+
+int ngx_http_enter_container()
+{
+     create_srv_conf(null_srv_conf)
+     create_loc_conf(null_loc_conf)
+}
+
+int ngx_http_exit_container()
+{
+     nothing ?
+}
+
+
+int ngx_http_enter_server_container()
+{
+     create_srv_conf()
+     create_loc_conf(NULL)
+}
+
+int ngx_http_exit_server_container()
+{
+     merge_srv_conf(srv_conf, null_srv_conf)
+     merge_loc_conf(loc_conf, null_loc_conf)
+
+     iterate check_loc_conf_is_set and merge_loc_conf()
+}
+
+int ngx_http_enter_location_container()
+{
+     create_loc_conf(loc)
+
+     push to array
+}
+
+int ngx_http_exit_location_container()
+{
+}
+
+#endif
+
+
 static void *ngx_http_core_create_srv_conf(ngx_pool_t *pool)
 {
     ngx_http_core_srv_conf_t *conf;
