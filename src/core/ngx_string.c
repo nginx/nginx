@@ -28,6 +28,20 @@ u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n)
 }
 
 
+u_char *ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
+{
+    u_char  *dst;
+
+    if (!(dst = ngx_palloc(pool, src->len))) {
+        return NULL;
+    }
+
+    ngx_memcpy(dst, src->data, src->len);
+
+    return dst;
+}
+
+
 /*
  * supported formats:
  *    %[0][width][x][X]O        off_t
@@ -602,12 +616,13 @@ ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
 }
 
 
-ngx_uint_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
-                          ngx_uint_t type)
+uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 {
     ngx_uint_t        i, n;
     uint32_t         *escape;
     static u_char     hex[] = "0123456789abcdef";
+
+                      /* " ", "%", "?", %00-%1F, %7F-%FF */
 
     static uint32_t   uri[] =
         { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
@@ -625,6 +640,27 @@ ngx_uint_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
           0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
           0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
           0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */ };
+
+                      /* " ", "%", "+", "?", %00-%1F, %7F-%FF */
+
+    static uint32_t   args[] =
+        { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+
+                      /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+          0x80000821, /* 1000 0000 0000 0000  0000 1000 0010 0001 */
+
+                      /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+          0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+
+                      /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+          0x80000000, /* 1000 0000 0000 0000  0000 0000 0000 0000 */
+
+          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+          0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */ };
+
+                      /* " ", """, "%", "'", %00-%1F, %7F-%FF */
 
     static uint32_t   html[] =
         { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
@@ -644,11 +680,16 @@ ngx_uint_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
           0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */ };
 
 
-    if (type == NGX_ESCAPE_HTML) {
+    switch (type) {
+    case NGX_ESCAPE_HTML:
         escape = html;
-
-    } else {
+        break;
+    case NGX_ESCAPE_ARGS:
+        escape = args;
+        break;
+    default:
         escape = uri;
+        break;
     }
 
     if (dst == NULL) {
@@ -664,7 +705,7 @@ ngx_uint_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
             src++;
         }
 
-        return n;
+        return (uintptr_t) n;
     }
 
     for (i = 0; i < size; i++) {
@@ -679,5 +720,5 @@ ngx_uint_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
         }
     }
 
-    return 0;
+    return (uintptr_t) dst;
 }

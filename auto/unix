@@ -94,8 +94,8 @@ ngx_feature_name="NGX_HAVE_STRERROR_R"
 ngx_feature_run=yes
 ngx_feature_incs="#include <string.h>"
 ngx_feature_libs=
-ngx_feature_test="char buf[32]; int n; n = strerror_r(1, buf, 32);
-                  if (n > 32) return 1;"
+ngx_feature_test="char buf[1024]; long n; n = strerror_r(1, buf, 1024);
+                  if (n < 0 || n > 1024) return 1;"
 . auto/feature
 
 
@@ -106,8 +106,8 @@ ngx_feature_name="NGX_HAVE_GNU_STRERROR_R"
 ngx_feature_run=yes
 ngx_feature_incs="#include <string.h>"
 ngx_feature_libs=
-ngx_feature_test="char buf[32]; int n; n = strerror_r(1, buf, 32);
-                  if (n < 32) return 1;"
+ngx_feature_test="char buf[1024]; long n; n = strerror_r(1, buf, 1024);
+                  if (n >= 0 && n < 1024) return 1;"
 . auto/feature
 
 

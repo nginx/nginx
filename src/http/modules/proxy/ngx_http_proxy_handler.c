@@ -36,6 +36,8 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
                                            ngx_http_proxy_upstream_conf_t *u);
 
+static char *ngx_http_proxy_set_x_var(ngx_conf_t *cf, ngx_command_t *cmd,
+                                      void *conf);
 static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data);
 
 static ngx_conf_post_t  ngx_http_proxy_lowat_post =
@@ -117,6 +119,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, set_x_real_ip),
+      NULL },
+
+    { ngx_string("proxy_set_x_var"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_proxy_set_x_var,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("proxy_add_x_forwarded_for"),
@@ -1063,9 +1072,9 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_proxy_loc_conf_t  *conf;
 
-    ngx_test_null(conf,
-                  ngx_pcalloc(cf->pool, sizeof(ngx_http_proxy_loc_conf_t)),
-                  NGX_CONF_ERROR);
+    if (!(conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_proxy_loc_conf_t)))) {
+        return NGX_CONF_ERROR;
+    }
 
     /*
      * set by ngx_pcalloc():
@@ -1078,6 +1087,7 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *    conf->peers = NULL;
      *    conf->cache_path = NULL;
      *    conf->temp_path = NULL;
+     *    conf->x_vars;
      *    conf->busy_lock = NULL;
      */
 
@@ -1305,6 +1315,8 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
         return NGX_CONF_ERROR;
     }
 
+    lcf->upstream->url = *url;
+
     if (ngx_strncasecmp(url->data + 7, "unix:", 5) == 0) {
 
 #if (NGX_HAVE_UNIX_DOMAIN)
@@ -1364,6 +1376,47 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *ngx_http_proxy_set_x_var(ngx_conf_t *cf, ngx_command_t *cmd,
+                                      void *conf)
+{
+    ngx_http_proxy_loc_conf_t *lcf = conf;
+
+    ngx_uint_t                  i, *index;
+    ngx_str_t                  *value;
+    ngx_http_variable_t        *var;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    if (lcf->x_vars.elts == NULL) {
+        if (ngx_array_init(&lcf->x_vars, cf->pool, 4,
+                           sizeof(ngx_http_variable_t *)) == NGX_ERROR)
+        {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+    value = cf->args->elts;
+
+    var = cmcf->variables.elts;
+    for (i = 0; i < cmcf->variables.nelts; i++) {
+        if (ngx_strcasecmp(var[i].name.data, value[1].data) == 0) {
+
+            if (!(index = ngx_array_push(&lcf->x_vars))) {
+                return NGX_CONF_ERROR;
+            }
+
+            *index = var[i].index;
+            return NGX_CONF_OK;
+        }
+    }
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "unknown variable name \"%V\"", &value[1]);
+    return NGX_CONF_ERROR;
 }
 
 

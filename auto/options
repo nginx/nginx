@@ -53,6 +53,7 @@ HTTP_ACCESS=YES
 HTTP_USERID=YES
 HTTP_AUTOINDEX=YES
 HTTP_STATUS=NO
+HTTP_GEO=YES
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
 HTTP_FASTCGI=YES
@@ -125,6 +126,7 @@ do
         --without-http_access_module)    HTTP_ACCESS=NO             ;;
         --without-http_autoindex_module) HTTP_AUTOINDEX=NO          ;;
         --without-http_status_module)    HTTP_STATUS=NO             ;;
+        --without-http_geo_module)       HTTP_GEO=NO                ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
         --without-http_fastcgi_module)   HTTP_FASTCGI=NO            ;;
@@ -198,6 +200,7 @@ cat << END
   --without-http_userid_module       disable ngx_http_userid_module
   --without-http_access_module       disable ngx_http_access_module
   --without-http_autoindex_module    disable ngx_http_autoindex_module
+  --without-http_geo_module          disable ngx_http_geo_module
   --without-http_rewrite_module      disable ngx_http_rewrite_module
   --without-http_proxy_module        disable ngx_http_proxy_module
   --without-http_fastcgi_module      disable ngx_http_fastcgi_module

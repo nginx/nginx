@@ -9,6 +9,103 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.17" date="03.02.2005">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_rewrite_module полностью переписан.
+Теперь можно делать редиректы, возвращать коды ошибок
+и проверять переменные и рефереры.
+Эти директивы можно использовать внутри location.
+Директива redirect упразднена.
+</para>
+<para lang="en">
+the ngx_http_rewrite_module was rewritten from the scratch.
+Now it is possible to redirect, to return the error codes,
+to check the variables and referrers. The directives can be used
+inside locations.
+The redirect directive was canceled.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_geo_module.
+</para>
+<para lang="en">
+the ngx_http_geo_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_set_x_var и fastcgi_set_var.
+</para>
+<para lang="en">
+the proxy_set_x_var and fastcgi_set_var directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+конфигурация location с модификатором "=" могла использоваться
+в другом location.
+</para>
+<para lang="en">
+the location configuration with "=" modifier may be used in another
+location.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+правильный тип ответа выставлялся только для запросов, у которых в расширении
+были только маленькие буквы.
+</para>
+<para lang="en">
+the correct content type was set only for requests that use small caps letters
+in extension.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если для location установлен proxy_pass или fastcgi_pass, и доступ
+к нему запрещался, а ошибка перенаправлялась на статическую страницу,
+то происходил segmentation fault.
+</para>
+<para lang="en">
+if the proxy_pass or fastcgi_pass directives were set in the location,
+and access was denied, and the error was redirected to a static page,
+then the segmentation fault occurred.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в проксированном ответе в заголовке "Location" передавался
+относительный URL, то к нему добавлялось имя хоста и слэш;
+ошибка появилась в 0.1.14.
+</para>
+<para lang="en">
+if in a proxied "Location" header was a relative URL,
+then a host name and a slash were added to them;
+bug appeared in 0.1.14.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на Linux в лог не записывался текст системной ошибки.
+</para>
+<para lang="en">
+the system error message was not logged on Linux.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.16" date="25.01.2005">
 
 <change type="bugfix">

@@ -37,13 +37,34 @@ typedef enum {
 
 
 typedef struct {
+    ngx_uint_t                 value;
+    ngx_str_t                  text;
+} ngx_http_variable_value_t;
+
+
+typedef struct ngx_http_variable_s  ngx_http_variable_t;
+
+typedef ngx_http_variable_value_t
+               *(*ngx_http_get_variable_pt) (ngx_http_request_t *r, void *var);
+
+
+struct ngx_http_variable_s {
+    ngx_str_t                  name;
+    ngx_uint_t                 index;
+    ngx_http_get_variable_pt   handler;
+    void                      *data;
+    ngx_uint_t                 uses;
+};
+
+
+typedef struct {
     ngx_array_t                handlers;
     ngx_int_t                  type;                /* NGX_OK, NGX_DECLINED */
 } ngx_http_phase_t;
 
 
 typedef struct {
-    ngx_array_t                servers; /* array of ngx_http_core_srv_conf_t */
+    ngx_array_t                servers;         /* ngx_http_core_srv_conf_t */
 
     ngx_http_phase_t           phases[NGX_HTTP_LAST_PHASE];
     ngx_array_t                index_handlers;
@@ -52,20 +73,22 @@ typedef struct {
     ngx_uint_t                 server_names_hash_threshold;
 
     size_t                     max_server_name_len;
+
+    ngx_array_t                variables;        /* ngx_http_variable_t */
 } ngx_http_core_main_conf_t;
 
 
 typedef struct {
     /*
-     * array of ngx_http_core_loc_conf_t, used in the translation handler
-     * and in the merge phase
+     * array of the ngx_http_core_loc_conf_t,
+     * used in the translation handler and in the merge phase
      */
     ngx_array_t                locations;
 
-    /* "listen", array of ngx_http_listen_t */
+    /* array of the ngx_http_listen_t, "listen" directive */
     ngx_array_t                listen;
 
-    /* "server_name", array of ngx_http_server_name_t */
+    /* array of the ngx_http_server_name_t, "server_name" directive */
     ngx_array_t                server_names;
 
     /* server ctx */
@@ -158,6 +181,8 @@ struct ngx_http_core_loc_conf_s {
     ngx_regex_t  *regex;
 #endif
 
+    unsigned      noname:1;   /* "if () {}" block */
+
     unsigned      exact_match:1;
     unsigned      noregex:1;
 
@@ -205,25 +230,31 @@ struct ngx_http_core_loc_conf_s {
 
     ngx_log_t    *err_log;
 
+#if 0
     ngx_http_core_loc_conf_t  *prev_location;
+#endif
 };
+
 
 
 extern ngx_http_module_t  ngx_http_core_module_ctx;
 extern ngx_module_t  ngx_http_core_module;
 
-extern int ngx_http_max_module;
+extern ngx_uint_t ngx_http_max_module;
 
 
 
 ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r);
-ngx_int_t ngx_http_core_translate_handler(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
 ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
                                      ngx_str_t *uri, ngx_str_t *args);
+
+ngx_http_variable_t *ngx_http_add_variable(ngx_conf_t *cf);
+ngx_http_variable_value_t *ngx_http_get_variable(ngx_http_request_t *r,
+                                                 ngx_uint_t index);
 
 
 typedef ngx_int_t (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);

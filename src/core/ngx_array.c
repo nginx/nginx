@@ -8,67 +8,130 @@
 #include <ngx_core.h>
 
 
-ngx_array_t *ngx_create_array(ngx_pool_t *p, ngx_uint_t n, size_t size)
+ngx_array_t *ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size)
 {
     ngx_array_t *a;
 
-    ngx_test_null(a, ngx_palloc(p, sizeof(ngx_array_t)), NULL);
+    if (!(a = ngx_palloc(p, sizeof(ngx_array_t)))) {
+        return NULL;
+    }
 
-    ngx_test_null(a->elts, ngx_palloc(p, n * size), NULL);
+    if (!(a->elts = ngx_palloc(p, n * size))) {
+        return NULL;
+    }
 
-    a->pool = p;
     a->nelts = 0;
-    a->nalloc = n;
     a->size = size;
+    a->nalloc = n;
+    a->pool = p;
 
     return a;
 }
 
 
-void ngx_destroy_array(ngx_array_t *a)
+void ngx_array_destroy(ngx_array_t *a)
 {
     ngx_pool_t  *p;
 
     p = a->pool;
 
-    if ((char *) a->elts + a->size * a->nalloc == p->last) {
+    if ((u_char *) a->elts + a->size * a->nalloc == p->last) {
         p->last -= a->size * a->nalloc;
     }
 
-    if ((char *) a + sizeof(ngx_array_t) == p->last) {
-        p->last = (char *) a;
+    if ((u_char *) a + sizeof(ngx_array_t) == p->last) {
+        p->last = (u_char *) a;
     }
 }
 
 
-void *ngx_push_array(ngx_array_t *a)
+void *ngx_array_push(ngx_array_t *a)
 {
     void        *elt, *new;
+    size_t       size;
     ngx_pool_t  *p;
 
-    /* array is full */
     if (a->nelts == a->nalloc) {
+
+        /* the array is full */
+
+        size = a->size * a->nalloc;
+
         p = a->pool;
 
-        /* array allocation is the last in the pool */
-        if ((char *) a->elts + a->size * a->nelts == p->last
-            && (unsigned) (p->end - p->last) >= a->size)
+        if ((u_char *) a->elts + size == p->last && p->last + a->size <= p->end)
         {
+            /*
+             * the array allocation is the last in the pool
+             * and there is space for new allocation
+             */
+
             p->last += a->size;
             a->nalloc++;
 
-        /* allocate new array */
         } else {
-            ngx_test_null(new, ngx_palloc(p, 2 * a->nalloc * a->size), NULL);
+            /* allocate a new array */
 
-            ngx_memcpy(new, a->elts, a->nalloc * a->size);
+            if (!(new = ngx_palloc(p, 2 * size))) {
+                return NULL;
+            }
+
+            ngx_memcpy(new, a->elts, size);
             a->elts = new;
             a->nalloc *= 2;
         }
     }
 
-    elt = (char *) a->elts + a->size * a->nelts;
+    elt = (u_char *) a->elts + a->size * a->nelts;
     a->nelts++;
+
+    return elt;
+}
+
+
+void *ngx_array_push_n(ngx_array_t *a, ngx_uint_t n)
+{
+    void        *elt, *new;
+    size_t       size;
+    ngx_uint_t   nalloc;
+    ngx_pool_t  *p;
+
+    size = n * a->size;
+
+    if (a->nelts + n > a->nalloc) {
+
+        /* the array is full */
+
+        p = a->pool;
+
+        if ((u_char *) a->elts + a->size * a->nalloc == p->last
+            && p->last + size <= p->end)
+        {
+            /*
+             * the array allocation is the last in the pool
+             * and there is space for new allocation
+             */
+
+            p->last += size;
+            a->nalloc += n;
+
+        } else {
+            /* allocate a new array */
+
+            nalloc = 2 * ((n >= a->nalloc) ? n : a->nalloc);
+
+            if (!(new = ngx_palloc(p, nalloc * a->size))) {
+                return NULL;
+            }
+
+            ngx_memcpy(new, a->elts, a->nelts * a->size);
+            a->elts = new;
+            a->nalloc = nalloc;
+        }
+    }
+
+    elt = (u_char *) a->elts + a->size * a->nelts;
+    a->nelts += n;
 
     return elt;
 }

@@ -87,7 +87,8 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                           ngx_fd_info_n " \"%s\" failed", filename->data);
         }
 
-        if (!(cf->conf_file->buffer = ngx_create_temp_buf(cf->pool, 1024))) {
+        cf->conf_file->buffer = ngx_create_temp_buf(cf->pool, ngx_pagesize);
+        if (cf->conf_file->buffer == NULL) {
             return NGX_CONF_ERROR;
         }
 

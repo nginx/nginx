@@ -16,8 +16,8 @@ ngx_pool_t *ngx_create_pool(size_t size, ngx_log_t *log)
        return NULL;
     }
 
-    p->last = (char *) p + sizeof(ngx_pool_t);
-    p->end = (char *) p + size;
+    p->last = (u_char *) p + sizeof(ngx_pool_t);
+    p->end = (u_char *) p + size;
     p->next = NULL;
     p->large = NULL;
     p->log = log;
@@ -70,12 +70,12 @@ void ngx_destroy_pool(ngx_pool_t *pool)
 
 void *ngx_palloc(ngx_pool_t *pool, size_t size)
 {
-    char              *m;
+    u_char            *m;
     ngx_pool_t        *p, *n;
     ngx_pool_large_t  *large, *last;
 
     if (size <= (size_t) NGX_MAX_ALLOC_FROM_POOL
-        && size <= (size_t) (pool->end - (char *) pool)
+        && size <= (size_t) (pool->end - (u_char *) pool)
                                      - (size_t) ngx_align(sizeof(ngx_pool_t)))
     {
         for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
@@ -94,7 +94,7 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
 
         /* allocate a new pool block */
 
-        if (!(n = ngx_create_pool((size_t) (p->end - (char *) p), p->log))) {
+        if (!(n = ngx_create_pool((size_t) (p->end - (u_char *) p), p->log))) {
             return NULL;
         }
 

@@ -26,7 +26,7 @@ static char *ngx_http_merge_locations(ngx_conf_t *cf,
                                       ngx_http_module_t *module,
                                       ngx_uint_t ctx_index);
 
-int         ngx_http_max_module;
+ngx_uint_t  ngx_http_max_module;
 
 ngx_uint_t  ngx_http_total_requests;
 uint64_t    ngx_http_total_sent;
@@ -89,18 +89,19 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
 
 #if (NGX_SUPPRESS_WARN)
-    /* MSVC thinks 'in_ports' may be used without having been initialized */
+    /* MSVC thinks "in_ports" may be used without having been initialized */
     ngx_memzero(&in_ports, sizeof(ngx_array_t));
 #endif
 
 
     /* the main http context */
 
-    ngx_test_null(ctx,
-                  ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
-                  NGX_CONF_ERROR);
+    if (!(ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)))) {
+        return NGX_CONF_ERROR;
+    }
 
     *(ngx_http_conf_ctx_t **) conf = ctx;
+
 
     /* count the number of the http modules and set up their indices */
 
@@ -113,24 +114,42 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_modules[m]->ctx_index = ngx_http_max_module++;
     }
 
-    /* the main http main_conf, it's the same in the all http contexts */
 
-    ngx_test_null(ctx->main_conf,
-                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
-                  NGX_CONF_ERROR);
+    /* the http main_conf context, it is the same in the all http contexts */
 
-    /* the http null srv_conf, it's used to merge the server{}s' srv_conf's */
-    ngx_test_null(ctx->srv_conf,
-                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
-                  NGX_CONF_ERROR);
-
-    /* the http null loc_conf, it's used to merge the server{}s' loc_conf's */
-    ngx_test_null(ctx->loc_conf,
-                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
-                  NGX_CONF_ERROR);
+    ctx->main_conf = ngx_pcalloc(cf->pool,
+                                 sizeof(void *) * ngx_http_max_module);
+    if (ctx->main_conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
 
-    /* create the main_conf, srv_conf and loc_conf in all http modules */
+    /*
+     * the http null srv_conf context, it is used to merge
+     * the server{}s' srv_conf's
+     */
+
+    ctx->srv_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
+    if (ctx->srv_conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+
+    /*
+     * the http null loc_conf context, it is used to merge
+     * the server{}s' loc_conf's
+     */
+
+    ctx->loc_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
+    if (ctx->loc_conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+
+    /*
+     * create the main_conf's, the null srv_conf's, and the null loc_conf's
+     * of the all http modules
+     */
 
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
@@ -147,20 +166,24 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (module->create_main_conf) {
-            ngx_test_null(ctx->main_conf[mi], module->create_main_conf(cf),
-                          NGX_CONF_ERROR);
+            if (!(ctx->main_conf[mi] = module->create_main_conf(cf))) {
+                return NGX_CONF_ERROR;
+            }
         }
 
         if (module->create_srv_conf) {
-            ngx_test_null(ctx->srv_conf[mi], module->create_srv_conf(cf),
-                          NGX_CONF_ERROR);
+            if (!(ctx->srv_conf[mi] = module->create_srv_conf(cf))) {
+                return NGX_CONF_ERROR;
+            }
         }
 
         if (module->create_loc_conf) {
-            ngx_test_null(ctx->loc_conf[mi], module->create_loc_conf(cf),
-                          NGX_CONF_ERROR);
+            if (!(ctx->loc_conf[mi] = module->create_loc_conf(cf))) {
+                return NGX_CONF_ERROR;
+            }
         }
     }
+
 
     /* parse inside the http{} block */
 
@@ -236,57 +259,59 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     *cf = pcf;
                     return rv;
                 }
-
-#if 0
-                clcfp = (ngx_http_core_loc_conf_t **) cscfp[s]->locations.elts;
-
-                for (l = 0; l < cscfp[s]->locations.nelts; l++) {
-                    rv = module->merge_loc_conf(cf,
-                                                cscfp[s]->ctx->loc_conf[mi],
-                                                clcfp[l]->loc_conf[mi]);
-                    if (rv != NGX_CONF_OK) {
-                        *cf = pcf;
-                        return rv;
-                    }
-                }
-#endif
             }
         }
     }
 
-    /* we needed "http"'s cf->ctx while merging configuration */
+
+    /* we needed http{}'s cf->ctx while the merging configuration */
     *cf = pcf;
+
 
     /* init lists of the handlers */
 
-    ngx_init_array(cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
-                   cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
-                   NGX_CONF_ERROR);
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt)) == NGX_ERROR)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     cmcf->phases[NGX_HTTP_REWRITE_PHASE].type = NGX_OK;
 
 
-    /* the special find config phase for single handler */
+    /* the special find config phase for a single handler */
 
-    ngx_init_array(cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers,
-                   cf->cycle->pool, 1, sizeof(ngx_http_handler_pt),
-                   NGX_CONF_ERROR);
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt)) == NGX_ERROR)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].type = NGX_OK;
 
-    ngx_test_null(h, ngx_push_array(
-                           &cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers),
-                  NGX_CONF_ERROR);
+    h = ngx_push_array(&cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
     *h = ngx_http_find_location_config;
 
 
-    ngx_init_array(cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
-                   cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
-                   NGX_CONF_ERROR);
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt)) == NGX_ERROR)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     cmcf->phases[NGX_HTTP_ACCESS_PHASE].type = NGX_DECLINED;
 
 
-    ngx_init_array(cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,
-                   cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
-                   NGX_CONF_ERROR);
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,
+                       cf->pool, 4, sizeof(ngx_http_handler_pt)) == NGX_ERROR)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     cmcf->phases[NGX_HTTP_CONTENT_PHASE].type = NGX_OK;
 
 

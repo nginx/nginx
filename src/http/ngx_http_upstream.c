@@ -664,13 +664,14 @@ static void ngx_http_upstream_process_header(ngx_event_t *rev)
 static void ngx_http_upstream_send_response(ngx_http_request_t *r,
                                             ngx_http_upstream_t *u)
 {
+    ngx_int_t                  rc;
     ngx_event_pipe_t          *p;
     ngx_http_core_loc_conf_t  *clcf;
 
+    rc = u->send_header(r);
 
-    if (u->send_header(r) == NGX_HTTP_INTERNAL_SERVER_ERROR) {
-        ngx_http_upstream_finalize_request(r, u,
-                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+    if (rc == NGX_ERROR || rc > NGX_OK) {
+        ngx_http_upstream_finalize_request(r, u, rc);
         return;
     }
 

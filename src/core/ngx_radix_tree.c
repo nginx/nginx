@@ -8,7 +8,7 @@
 #include <ngx_core.h>
 
 
-static void *ngx_radix_alloc(ngx_radix_tree_t *tree, size_t size);
+static void *ngx_radix_alloc(ngx_radix_tree_t *tree);
 
 
 ngx_radix_tree_t *ngx_radix_tree_create(ngx_pool_t *pool)
@@ -24,14 +24,14 @@ ngx_radix_tree_t *ngx_radix_tree_create(ngx_pool_t *pool)
     tree->start = NULL;
     tree->size = 0;
 
-    if (!(tree->root = ngx_radix_alloc(tree, sizeof(ngx_radix_node_t)))) {
+    if (!(tree->root = ngx_radix_alloc(tree))) {
         return NULL;
     }
 
-    tree->root->value = (uintptr_t) 0;
     tree->root->right = NULL;
     tree->root->left = NULL;
     tree->root->parent = NULL;
+    tree->root->value = NGX_RADIX_NO_VALUE;
 
     return tree;
 }
@@ -44,8 +44,9 @@ ngx_int_t ngx_radix32tree_insert(ngx_radix_tree_t *tree,
     ngx_radix_node_t  *node, *next;
 
     bit = 0x80000000;
+
     node = tree->root;
-    next = NULL;
+    next = tree->root;
 
     while (bit & mask) {
         if (key & bit) {
@@ -55,17 +56,16 @@ ngx_int_t ngx_radix32tree_insert(ngx_radix_tree_t *tree,
             next = node->left;
         }
 
-        bit >>= 1;
-
         if (next == NULL) {
             break;
         }
 
+        bit >>= 1;
         node = next;
     }
 
     if (next) {
-        if (node->value) {
+        if (node->value != NGX_RADIX_NO_VALUE) {
             return NGX_BUSY;
         }
 
@@ -74,14 +74,14 @@ ngx_int_t ngx_radix32tree_insert(ngx_radix_tree_t *tree,
     }
 
     while (bit & mask) {
-        if (!(next = ngx_radix_alloc(tree, sizeof(ngx_radix_node_t)))) {
+        if (!(next = ngx_radix_alloc(tree))) {
             return NGX_ERROR;
         }
 
-        next->value = value;
         next->right = NULL;
         next->left = NULL;
         next->parent = node;
+        next->value = NGX_RADIX_NO_VALUE;
 
         if (key & bit) {
             node->right = next;
@@ -93,6 +93,8 @@ ngx_int_t ngx_radix32tree_insert(ngx_radix_tree_t *tree,
         bit >>= 1;
         node = next;
     }
+
+    node->value = value;
 
     return NGX_OK;
 }
@@ -123,8 +125,12 @@ ngx_int_t ngx_radix32tree_delete(ngx_radix_tree_t *tree,
     }
 
     if (node->right || node->left) {
-        node->value = (uintptr_t) 0;
-        return NGX_OK;
+        if (node->value != NGX_RADIX_NO_VALUE) {
+            node->value = NGX_RADIX_NO_VALUE;
+            return NGX_OK;
+        }
+
+        return NGX_ERROR;
     }
 
     for ( ;; ) {
@@ -139,7 +145,11 @@ ngx_int_t ngx_radix32tree_delete(ngx_radix_tree_t *tree,
 
         node = node->parent;
 
-        if (node->right || node->left || node->value || node->parent == NULL) {
+        if (node->right
+            || node->left
+            || node->value != NGX_RADIX_NO_VALUE
+            || node->parent == NULL)
+        {
             break;
         }
     }
@@ -155,11 +165,11 @@ uintptr_t ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key)
     ngx_radix_node_t  *node;
 
     bit = 0x80000000;
-    value = (uintptr_t) 0;
+    value = NGX_RADIX_NO_VALUE;
     node = tree->root;
 
     while (node) {
-        if (node->value) {
+        if (node->value != NGX_RADIX_NO_VALUE) {
             value = node->value;
         }
 
@@ -177,7 +187,7 @@ uintptr_t ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key)
 }
 
 
-static void *ngx_radix_alloc(ngx_radix_tree_t *tree, size_t size)
+static void *ngx_radix_alloc(ngx_radix_tree_t *tree)
 {
     char  *p;
 
@@ -187,7 +197,7 @@ static void *ngx_radix_alloc(ngx_radix_tree_t *tree, size_t size)
         return p;
     }
 
-    if (tree->size < size) {
+    if (tree->size < sizeof(ngx_radix_node_t)) {
         if (!(tree->start = ngx_palloc(tree->pool, ngx_pagesize))) {
             return NULL;
         }
@@ -196,8 +206,8 @@ static void *ngx_radix_alloc(ngx_radix_tree_t *tree, size_t size)
     }
 
     p = tree->start;
-    tree->start += size;
-    tree->size -= size;
+    tree->start += sizeof(ngx_radix_node_t);
+    tree->size -= sizeof(ngx_radix_node_t);
 
     return p;
 }

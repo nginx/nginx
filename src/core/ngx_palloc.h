@@ -33,8 +33,8 @@ struct ngx_pool_large_s {
 
 
 struct ngx_pool_s {
-    char              *last;
-    char              *end;
+    u_char            *last;
+    u_char            *end;
     ngx_pool_t        *next;
     ngx_pool_large_t  *large;
     ngx_log_t         *log;

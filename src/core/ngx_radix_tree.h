@@ -12,6 +12,8 @@
 #include <ngx_core.h>
 
 
+#define NGX_RADIX_NO_VALUE   (uintptr_t) -1
+
 typedef struct ngx_radix_node_s  ngx_radix_node_t;
 
 struct ngx_radix_node_s {

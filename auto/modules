@@ -116,6 +116,12 @@ if [ $HTTP_STATUS = YES ]; then
     HTTP_SRCS="$HTTP_SRCS $HTTP_STATUS_SRCS"
 fi
 
+if [ $HTTP_GEO = YES ]; then
+    have=NGX_HTTP_GEO . auto/have
+    HTTP_MODULES="$HTTP_MODULES $HTTP_GEO_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_GEO_SRCS"
+fi
+
 if [ $HTTP_REWRITE = YES -a $USE_PCRE != DISABLED ]; then
     have=NGX_HTTP_REWRITE . auto/have
     USE_PCRE=YES

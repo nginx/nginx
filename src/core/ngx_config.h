@@ -105,7 +105,7 @@ typedef long               ngx_flag_t;
 
 #endif
 
-#define ngx_align(p)    (char *) ((NGX_ALIGN_CAST p + NGX_ALIGN) & ~NGX_ALIGN)
+#define ngx_align(p)    (u_char *) ((NGX_ALIGN_CAST p + NGX_ALIGN) & ~NGX_ALIGN)
 
 
 /* TODO: auto_conf: ngx_inline   inline __inline __inline__ */

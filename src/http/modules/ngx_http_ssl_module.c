@@ -73,7 +73,7 @@ static ngx_http_module_t  ngx_http_ssl_module_ctx = {
     ngx_http_ssl_merge_srv_conf,           /* merge server configuration */
 
     NULL,                                  /* create location configuration */
-    NULL,                                  /* merge location configuration */
+    NULL                                   /* merge location configuration */
 };
 
 

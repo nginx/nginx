@@ -893,8 +893,8 @@ static char *ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd,
 
     fmt->name = value[1];
 
-    if (!(fmt->ops = ngx_create_array(cf->pool, 20,
-                                      sizeof(ngx_http_log_op_t)))) {
+    if (!(fmt->ops = ngx_array_create(cf->pool, 20, sizeof(ngx_http_log_op_t))))
+    {
         return NGX_CONF_ERROR;
     }
 

@@ -21,14 +21,13 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_file.h \
            src/core/ngx_crc.h \
            src/core/ngx_rbtree.h \
+           src/core/ngx_radix_tree.h \
            src/core/ngx_times.h \
            src/core/ngx_connection.h \
            src/core/ngx_cycle.h \
            src/core/ngx_conf_file.h \
            src/core/ngx_garbage_collector.h"
 
-#           src/core/ngx_radix_tree.h \
-#           src/core/ngx_radix_tree.c \
 
 CORE_SRCS="src/core/nginx.c \
            src/core/ngx_log.c \
@@ -42,6 +41,7 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_inet.c \
            src/core/ngx_file.c \
            src/core/ngx_rbtree.c \
+           src/core/ngx_radix_tree.c \
            src/core/ngx_times.c \
            src/core/ngx_connection.c \
            src/core/ngx_cycle.c \
@@ -294,6 +294,10 @@ HTTP_AUTOINDEX_SRCS=src/http/modules/ngx_http_autoindex_handler.c
 
 HTTP_STATUS_MODULE=ngx_http_status_module
 HTTP_STATUS_SRCS=src/http/modules/ngx_http_status_handler.c
+
+
+HTTP_GEO_MODULE=ngx_http_geo_module
+HTTP_GEO_SRCS=src/http/modules/ngx_http_geo_module.c
 
 
 HTTP_REWRITE_MODULE=ngx_http_rewrite_module

@@ -20,6 +20,8 @@ typedef struct {
     ngx_str_t                       root;
     ngx_str_t                       index;
 
+    ngx_array_t                     vars;
+
     ngx_str_t                      *location;
 } ngx_http_fastcgi_loc_conf_t;
 
@@ -130,6 +132,8 @@ static void ngx_http_fastcgi_finalize_request(ngx_http_request_t *r,
 
 static char *ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
                                    void *conf);
+static char *ngx_http_fastcgi_set_var(ngx_conf_t *cf, ngx_command_t *cmd,
+                                      void *conf);
 static char *ngx_http_fastcgi_lowat_check(ngx_conf_t *cf, void *post,
                                           void *data);
 static void *ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf);
@@ -306,6 +310,13 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.next_upstream),
       &ngx_http_fastcgi_next_upstream_masks },
 
+    { ngx_string("fastcgi_set_var"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_fastcgi_set_var,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
     { ngx_string("fastcgi_params"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
       ngx_conf_set_bitmask_slot,
@@ -405,13 +416,17 @@ static ngx_int_t ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     ngx_buf_t                         *b;
     socklen_t                          slen;
     ngx_chain_t                       *cl, *body;
-    ngx_uint_t                         i, n, next;
+    ngx_uint_t                         i, n, next, *vindex;
     ngx_list_part_t                   *part;
     ngx_table_elt_t                   *header;
     struct sockaddr_in                 sin;
+    ngx_http_variable_t               *var;
+    ngx_http_variable_value_t         *value;
+    ngx_http_core_main_conf_t         *cmcf;
     ngx_http_fastcgi_header_t         *h;
     ngx_http_fastcgi_loc_conf_t       *flcf;
     ngx_http_fastcgi_begin_request_t  *br;
+
 
     flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
 
@@ -515,6 +530,23 @@ static ngx_int_t ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
     if (flcf->params & NGX_HTTP_FASTCGI_GATEWAY_INTERFACE) {
         len += 1 + 1 + sizeof("GATEWAY_INTERFACE") - 1 + sizeof("CGI/1.1") - 1;
+    }
+
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    var = cmcf->variables.elts;
+    vindex = flcf->vars.elts;
+
+    for (i = 0; i < flcf->vars.nelts; i++) {
+
+        if (!(value = ngx_http_get_variable(r, vindex[i]))) {
+            continue;
+        }
+
+        if (value->text.len) {
+            len += 1 + 1 + var[vindex[i]].name.len + value->text.len;
+        }
     }
 
 
@@ -847,6 +879,26 @@ static ngx_int_t ngx_http_fastcgi_create_request(ngx_http_request_t *r)
         b->last = ngx_cpymem(b->last, "GATEWAY_INTERFACE",
                              sizeof("GATEWAY_INTERFACE") - 1);
         b->last = ngx_cpymem(b->last, "CGI/1.1", sizeof("CGI/1.1") - 1);
+    }
+
+
+    for (i = 0; i < flcf->vars.nelts; i++) {
+
+        if (!(value = ngx_http_get_variable(r, vindex[i]))) {
+            continue;
+        }
+
+        if (value->text.len == 0) {
+            continue;
+        }
+
+        *b->last++ = (u_char) var[vindex[i]].name.len;
+        *b->last++ = (u_char) value->text.len;
+
+        b->last = ngx_cpymem(b->last, var[vindex[i]].name.data,
+                             var[vindex[i]].name.len);
+
+        b->last = ngx_cpymem(b->last, value->text.data, value->text.len);
     }
 
 
@@ -1763,13 +1815,58 @@ static char *ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 
     clcf->handler = ngx_http_fastcgi_handler;
 
+#if (NGX_PCRE)
     lcf->location = clcf->regex ? &ngx_http_fastcgi_uri: &clcf->name;
+#else
+    lcf->location = &clcf->name;
+#endif
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *ngx_http_fastcgi_set_var(ngx_conf_t *cf, ngx_command_t *cmd,
+                                      void *conf)
+{
+    ngx_http_fastcgi_loc_conf_t *lcf = conf;
+
+    ngx_uint_t                  i, *index;
+    ngx_str_t                  *value;
+    ngx_http_variable_t        *var;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    if (lcf->vars.elts == NULL) {
+        if (ngx_array_init(&lcf->vars, cf->pool, 4,
+                           sizeof(ngx_http_variable_t *)) == NGX_ERROR)
+        {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+    value = cf->args->elts;
+
+    var = cmcf->variables.elts;
+    for (i = 0; i < cmcf->variables.nelts; i++) {
+        if (ngx_strcasecmp(var[i].name.data, value[1].data) == 0) {
+
+            if (!(index = ngx_array_push(&lcf->vars))) {
+                return NGX_CONF_ERROR;
+            }
+
+            *index = var[i].index;
+            return NGX_CONF_OK;
+        }
+    }
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "unknown variable name \"%V\"", &value[1]);
+    return NGX_CONF_ERROR;
 }
 
 

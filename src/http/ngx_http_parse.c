@@ -229,6 +229,9 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             case '/':
                 r->complex_uri = 1;
                 break;
+            case '+':
+                r->plus_in_uri = 1;
+                break;
             case '?':
                 r->args_start = p + 1;
                 state = sw_uri;
@@ -268,6 +271,9 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->uri_ext = NULL;
                 state = sw_after_slash_in_uri;
                 break;
+            case '+':
+                r->plus_in_uri = 1;
+                break;
             case '%':
                 r->quoted_uri = 1;
                 state = sw_uri;
@@ -291,6 +297,9 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->uri_end = p;
                 r->http_minor = 9;
                 goto done;
+            case '+':
+                r->plus_in_uri = 1;
+                break;
             case ' ':
                 r->uri_end = p;
                 state = sw_http_09;

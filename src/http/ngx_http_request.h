@@ -298,6 +298,9 @@ struct ngx_http_request_s {
     ngx_int_t            phase_handler;
     ngx_http_handler_pt  content_handler;
 
+    ngx_uint_t           nvariables;
+    void               **variables;
+
     ngx_array_t          cleanup;
 
     /* used to learn the Apache compatible response length without a header */
@@ -313,14 +316,19 @@ struct ngx_http_request_s {
 
     unsigned             http_state:4;
 
-#if 0
-    /* URI is not started with '/' - "GET http://" */
-    unsigned             unusual_uri:1;
-#endif
     /* URI with "/." and on Win32 with "//" */
     unsigned             complex_uri:1;
+
     /* URI with "%" */
     unsigned             quoted_uri:1;
+
+    /* URI with "+" */
+    unsigned             plus_in_uri:1;
+
+    unsigned             uri_changed:1;
+    unsigned             uri_changes:4;
+
+    unsigned             low_case_exten:1;
     unsigned             header_timeout_set:1;
 
     unsigned             proxy:1;
