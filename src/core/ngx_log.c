@@ -47,7 +47,7 @@ static const char *err_levels[] = {
 };
 
 static const char *debug_levels[] = {
-    "debug_core", "debug_alloc", "debug_event", "debug_http"
+    "debug_core", "debug_alloc", "debug_mutex", "debug_event", "debug_http"
 };
 
 
@@ -279,10 +279,6 @@ ngx_log_t *ngx_log_init_errlog()
     ngx_log.file = &ngx_stderr;
     ngx_log.log_level = NGX_LOG_INFO;
 
-#if 0
-    /* STUB */ ngx_log.log_level = NGX_LOG_DEBUG;
-#endif
-
     return &ngx_log;
 }
 
@@ -302,10 +298,6 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
 
     ngx_test_null(log, ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)), NULL);
     ngx_test_null(log->file, ngx_conf_open_file(cycle, name), NULL);
-
-#if 0
-    /* STUB */ log->log_level = NGX_LOG_DEBUG | NGX_LOG_DEBUG_CORE | NGX_LOG_DEBUG_ALLOC | NGX_LOG_DEBUG_EVENT | NGX_LOG_DEBUG_HTTP;
-#endif
 
     return log;
 }

@@ -212,6 +212,8 @@ void ngx_event_accept(ngx_event_t *ev)
 
 #if (NGX_THREADS)
         if (*(rev->lock)) {
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                           "spinlock event " PTR_FMT " in accept", rev);
             ngx_spinlock(rev->lock, 1000);
             ngx_unlock(rev->lock);
         }

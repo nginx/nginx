@@ -656,7 +656,7 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
      * because another thread may reopen the same file descriptor
      * before we clean the connection
      */
-    
+
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_OK) {
 
         if (c->read->prev) {

@@ -68,6 +68,11 @@ void ngx_event_expire_timers(ngx_msec_t timer)
     ngx_event_t   *ev;
     ngx_rbtree_t  *node;
 
+    if (timer < 0) {
+        /* avoid the endless loop if the time goes backward for some reason */
+        timer = 0;
+    }
+
     for ( ;; ) {
 
         if (ngx_event_timer_rbtree == &ngx_event_timer_sentinel) {
@@ -99,6 +104,9 @@ void ngx_event_expire_timers(ngx_msec_t timer)
                  * been handling has expired timer.
                  */
 
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                               "event " PTR_FMT " is busy in expire timers",
+                               ev);
                 break;
             }
 #endif

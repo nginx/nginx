@@ -116,7 +116,7 @@ ngx_int_t ngx_mutex_lock(ngx_mutex_t *m)
         return NGX_OK;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0, "lock mutex " PTR_FMT, m);
+    ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0, "lock mutex " PTR_FMT, m);
 
     err = pthread_mutex_lock(&m->mutex);
 
@@ -126,7 +126,7 @@ ngx_int_t ngx_mutex_lock(ngx_mutex_t *m)
         return NGX_ERROR;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0,
                    "mutex " PTR_FMT " is locked", m);
 
     return NGX_OK;
@@ -141,7 +141,8 @@ ngx_int_t ngx_mutex_trylock(ngx_mutex_t *m)
         return NGX_OK;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0, "try lock mutex " PTR_FMT, m);
+    ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0,
+                   "try lock mutex " PTR_FMT, m);
 
     err = pthread_mutex_trylock(&m->mutex);
 
@@ -151,7 +152,7 @@ ngx_int_t ngx_mutex_trylock(ngx_mutex_t *m)
         return NGX_ERROR;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0,
                    "mutex " PTR_FMT " is locked", m);
 
     return NGX_OK;
@@ -166,7 +167,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
         return NGX_OK;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0, "unlock mutex " PTR_FMT, m);
+    ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0, "unlock mutex " PTR_FMT, m);
 
     err = pthread_mutex_unlock(&m->mutex);
 
@@ -176,7 +177,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
         return NGX_ERROR;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0,
                    "mutex " PTR_FMT " is unlocked", m);
 
     return NGX_OK;
@@ -239,7 +240,7 @@ ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->log, 0,
                    "cv " PTR_FMT " is waked up", cv);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0,
                    "mutex " PTR_FMT " is locked", m);
 
     return NGX_OK;

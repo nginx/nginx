@@ -16,10 +16,11 @@
 #define NGX_LOG_INFO              7
 #define NGX_LOG_DEBUG             8
 
-#define NGX_LOG_DEBUG_CORE        0x10
-#define NGX_LOG_DEBUG_ALLOC       0x20
-#define NGX_LOG_DEBUG_EVENT       0x40
-#define NGX_LOG_DEBUG_HTTP        0x80
+#define NGX_LOG_DEBUG_CORE        0x010
+#define NGX_LOG_DEBUG_ALLOC       0x020
+#define NGX_LOG_DEBUG_MUTEX       0x040
+#define NGX_LOG_DEBUG_EVENT       0x080
+#define NGX_LOG_DEBUG_HTTP        0x100
 
 #define NGX_LOG_DEBUG_FIRST       NGX_LOG_DEBUG_CORE
 #define NGX_LOG_DEBUG_LAST        NGX_LOG_DEBUG_HTTP

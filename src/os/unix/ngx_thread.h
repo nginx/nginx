@@ -27,6 +27,12 @@ typedef pthread_t  ngx_tid_t;
 #define TID_T_FMT           PTR_FMT
 
 
+#define ngx_thread_create_tls()  pthread_key_create(0, NULL)
+#define ngx_thread_create_tls_n  "pthread_key_create(0, NULL)"
+#define ngx_thread_get_tls()     pthread_getspecific(0)
+#define ngx_thread_set_tls(v)    pthread_setspecific(0, v)
+
+
 #define NGX_MUTEX_LIGHT     0
 
 typedef struct {
@@ -104,6 +110,12 @@ ngx_int_t ngx_cond_signal(ngx_cond_t *cv);
 #define ngx_thread_main()     1
 
 #endif
+
+
+typedef struct {
+    ngx_event_t  *event;
+} ngx_tls_t;
+
 
 
 #endif /* _NGX_THREAD_H_INCLUDED_ */

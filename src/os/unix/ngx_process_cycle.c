@@ -826,9 +826,10 @@ static void* ngx_worker_thread_cycle(void *data)
 {
     ngx_thread_t  *thr = data;
 
-    sigset_t        set;
-    ngx_err_t       err;
-    struct timeval  tv;
+    sigset_t          set;
+    ngx_err_t         err;
+    ngx_tls_t        *tls;
+    struct timeval    tv;
 
     thr->cv->tid = ngx_thread_self();
 
@@ -848,6 +849,19 @@ static void* ngx_worker_thread_cycle(void *data)
                    "thread " TID_T_FMT " started", ngx_thread_self());
 
     ngx_setthrtitle("worker thread");
+
+    if (!(tls = ngx_calloc(sizeof(ngx_tls_t), ngx_cycle->log))) {
+        return (void *) 1;
+    }
+
+    err = ngx_thread_create_tls();
+    if (err != 0) {
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, err,
+                      ngx_thread_create_tls_n " failed");
+        return (void *) 1;
+    }
+
+    ngx_thread_set_tls(tls);
 
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
         return (void *) 1;

@@ -15,6 +15,14 @@ typedef pid_t  ngx_tid_t;
 #define TID_T_FMT      PID_T_FMT
     
 
+extern void          **ngx_tls;
+
+#define ngx_thread_create_tls()  0
+#define ngx_thread_create_tls_n  ""
+#define ngx_thread_get_tls()     ngx_tls[ngx_gettid()]
+ngx_int_t ngx_thread_set_tls(void *value);
+
+
 #define NGX_MUTEX_LIGHT      1
 
 #define NGX_MUTEX_LOCK_BUSY  0x80000000

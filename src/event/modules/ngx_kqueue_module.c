@@ -369,7 +369,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
     for ( ;; ) {
         timer = ngx_event_find_timer();
 
-#if (NGX_THREADS0)
+#if (NGX_THREADS)
         if (timer == NGX_TIMER_ERROR) {
             return NGX_ERROR;
         }
