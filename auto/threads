@@ -30,6 +30,15 @@ case $USE_THREADS in
         CORE_LIBS="$CORE_LIBS -pthread"
     ;;
 
+    linuxthreads)
+        have=NGX_THREADS . auto/have
+        have=NGX_LINUXTHREADS . auto/have
+        CFLAGS="$CFLAGS -D_THREAD_SAFE"
+        CFLAGS="$CFLAGS -I /usr/local/include/pthread/linuxthreads"
+        CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
+        CORE_LIBS="$CORE_LIBS -L /usr/local/lib -llthread -llgcc_r"
+    ;;
+
     lc_r)
         have=NGX_THREADS . auto/have
         CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"

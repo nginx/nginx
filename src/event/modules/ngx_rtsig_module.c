@@ -363,6 +363,9 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
     if (signo == -1) {
         err = ngx_errno;
 
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, err,
+                       "rtsig signo:%d", signo);
+
         if (err == NGX_EAGAIN) {
 
             if (timer == NGX_TIMER_INFINITE) {
@@ -377,6 +380,9 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
 
     } else {
         err = 0;
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "rtsig signo:%d fd:%d band:%X",
+                       signo, si.si_fd, si.si_band);
     }
 
     ngx_gettimeofday(&tv);
@@ -398,9 +404,6 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "rtsig timer: %d, delta: %d", timer, (int) delta);
     }
-
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "rtsig signo:%d fd:%d band:%X", signo, si.si_fd, si.si_band);
 
     rtscf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_rtsig_module);
 

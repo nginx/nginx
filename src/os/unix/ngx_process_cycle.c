@@ -858,7 +858,7 @@ static void* ngx_worker_thread_cycle(void *data)
         return (void *) 1;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, ngx_errno,
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                    "thread " TID_T_FMT " started", ngx_thread_self());
 
     ngx_setthrtitle("worker thread");
