@@ -311,23 +311,6 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
 }
 
 
-static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_str_t  *value;
-
-    value = cf->args->elts;
-
-    if (value[1].len == 6 && ngx_strcmp(value[1].data, "stderr") == 0) {
-        cf->cycle->log->file = &ngx_stderr;
-
-    } else {
-        cf->cycle->log->file->name = value[1];
-    }
-
-    return ngx_set_error_log_levels(cf, cf->cycle->log);
-}
-
-
 char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
 {
     ngx_uint_t   i, n, d;
@@ -378,4 +361,21 @@ char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t  *value;
+
+    value = cf->args->elts;
+
+    if (value[1].len == 6 && ngx_strcmp(value[1].data, "stderr") == 0) {
+        cf->cycle->new_log->file = &ngx_stderr;
+
+    } else {
+        cf->cycle->new_log->file->name = value[1];
+    }
+
+    return ngx_set_error_log_levels(cf, cf->cycle->new_log);
 }

@@ -228,7 +228,17 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
         fd /= 4;
 #endif
 
-        ngx_del_event(&cycle->read_events[fd], NGX_READ_EVENT, NGX_CLOSE_EVENT);
+        if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
+            if (cycle->connections[fd].read->active) {
+                ngx_del_conn(&cycle->connections[fd], NGX_CLOSE_EVENT);
+            }
+
+        } else {
+            if (cycle->read_events[fd].active) {
+                ngx_del_event(&cycle->read_events[fd],
+                              NGX_READ_EVENT, NGX_CLOSE_EVENT);
+            }
+        }
 
         if (ngx_close_socket(ls[i].fd) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,

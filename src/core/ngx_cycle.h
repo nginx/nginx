@@ -9,7 +9,10 @@
 struct ngx_cycle_s {
     void           ****conf_ctx;
     ngx_pool_t        *pool;
+
     ngx_log_t         *log;
+    ngx_log_t         *new_log;
+
     ngx_array_t        listening;
     ngx_array_t        open_files;
     ngx_array_t        pathes;

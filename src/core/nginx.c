@@ -70,12 +70,14 @@ ngx_module_t  ngx_core_module = {
 };
 
 
-ngx_int_t  ngx_max_module;
+ngx_int_t   ngx_max_module;
 
-ngx_int_t  ngx_process;
-ngx_pid_t  ngx_pid;
-ngx_pid_t  ngx_new_binary;
-ngx_int_t  ngx_inherited;
+ngx_int_t   ngx_process;
+ngx_pid_t   ngx_pid;
+ngx_pid_t   ngx_new_binary;
+ngx_int_t   ngx_inherited;
+
+ngx_uint_t  ngx_test_config;
 
 
 int main(int argc, char *const *argv)
@@ -125,11 +127,6 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
-    ngx_max_module = 0;
-    for (i = 0; ngx_modules[i]; i++) {
-        ngx_modules[i]->index = ngx_max_module++;
-    }
-
     if (!(init_cycle.pool = ngx_create_pool(1024, log))) {
         return 1;
     }
@@ -138,9 +135,18 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
+    ngx_max_module = 0;
+    for (i = 0; ngx_modules[i]; i++) {
+        ngx_modules[i]->index = ngx_max_module++;
+    }
+
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         return 1;
+    }
+
+    if (ngx_test_config) {
+        return 0;
     }
 
     ngx_cycle = cycle;
@@ -275,6 +281,10 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
         }
 
         switch (ctx->argv[i][1]) {
+
+        case 't':
+            ngx_test_config = 1;
+            break;
 
         case 'c':
             if (ctx->argv[i + 1] == NULL) {

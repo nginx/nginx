@@ -273,7 +273,7 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "select expired timer");
 
-        ngx_event_expire_timers(0);
+        ngx_event_expire_timers(ngx_elapsed_msec - ngx_old_elapsed_msec);
     }
 
     ngx_old_elapsed_msec = ngx_elapsed_msec;

@@ -428,18 +428,22 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 
     err = ngx_socket_errno;
 
+    /*
+     * we do not need to disable the write event because
+     * that event has NGX_USE_CLEAR_EVENT type
+     */
+
     if (ev->write && (n >= 0 || err == NGX_EAGAIN)) {
         return;
     }
 
-    if (n > 0) {
-        if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && ev->active) {
-            if (ngx_del_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
-                ngx_http_proxy_finalize_request(p,
-                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
-            }
+    if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && ev->active) {
+        if (ngx_del_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
 
+    if (n > 0) {
         return;
     }
 
