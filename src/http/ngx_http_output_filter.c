@@ -58,15 +58,6 @@ ngx_module_t  ngx_http_output_filter_module = {
 
 #define next_filter  (*ngx_http_top_body_filter)
 
-#if 0
-static int (*next_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
-#endif
-
-
-#if 0
-#define next_filter  ngx_http_output_filter_module_ctx.next_output_body_filter
-#endif
-
 #define need_to_copy(r, hunk)                                             \
             (((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)                \
                && (hunk->type & NGX_HUNK_IN_MEMORY) == 0)                 \
@@ -159,6 +150,8 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
             return rc;
         }
 
+ngx_log_debug(r->connection->log, "HERE");
+
         /* NGX_OK */
         /* set our hunk free */
         ctx->hunk->pos = ctx->hunk->last = ctx->hunk->start;
@@ -211,6 +204,20 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
                 return rc;
             }
 #endif
+
+            if (ctx->incoming->hunk->type & NGX_HUNK_IN_MEMORY) {
+                size = ctx->incoming->hunk->last - ctx->incoming->hunk->pos;
+
+            } else {
+                size = ctx->incoming->hunk->file_last
+                                               - ctx->incoming->hunk->file_pos;
+            }
+
+            /* delete the completed hunk from the incoming chain */
+            if (size == 0) {
+                ctx->incoming = ctx->incoming->next;
+            }
+
             ctx->out.hunk = ctx->hunk;
             ctx->out.next = NULL;
 
@@ -226,18 +233,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
             /* repeat until we will have copied the whole first hunk from
                the chain ctx->incoming */
 
-            if (ctx->incoming->hunk->type & NGX_HUNK_IN_MEMORY) {
-                size = ctx->incoming->hunk->last - ctx->incoming->hunk->pos;
-
-            } else {
-                size = ctx->incoming->hunk->file_last
-                                               - ctx->incoming->hunk->file_pos;
-            }
-
         } while (size);
-
-    /* delete the completed hunk from the incoming chain */
-    ctx->incoming = ctx->incoming->next;
 
     /* repeat until we will have processed the whole chain ctx->incoming */
     } while (ctx->incoming);
@@ -275,6 +271,12 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
 
     } else {
         n = ngx_read_file(src->file, dst->pos, size, src->file_pos);
+
+if (n == 0) {
+ngx_log_debug(src->file->log, "READ: %qd:%qd %X:%X %X:%X" _
+              src->file_pos _ src->file_last _
+              dst->pos _ dst->last _ dst->start _ dst->end);
+}
 
         if (n == NGX_ERROR) {
             return n;

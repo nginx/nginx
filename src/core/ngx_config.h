@@ -50,6 +50,10 @@
 #endif
 
 
+#ifndef INFTIM    /* Linux */
+#define INFTIM    -1
+#endif
+
 #ifndef INADDR_NONE    /* Solaris */
 #define INADDR_NONE ((unsigned long) -1)
 #endif

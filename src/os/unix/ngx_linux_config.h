@@ -2,24 +2,34 @@
 #define _NGX_LINUX_CONFIG_H_INCLUDED_
 
 
+#define _XOPEN_SOURCE 500
+
+
 #include <unistd.h>
 #include <stddef.h>             /* offsetof */
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <string.h>
 #include <time.h>
+
+#define __USE_BSD
+#include <string.h>
+#undef  __USE_BSD
+
 #include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/wait.h>
-#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/select.h>
 #include <sys/uio.h>
+#include <sys/ioctl.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <netdb.h>
+
+
+typedef unsigned int   u_int;
+typedef unsigned char  u_char;
 
 
 #ifndef HAVE_SELECT

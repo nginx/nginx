@@ -6,22 +6,16 @@
 #include <stddef.h>             /* offsetof */
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <string.h>
-#include <time.h>
 #include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/wait.h>
-#include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <netdb.h>
-
 #include <osreldate.h>
 
 

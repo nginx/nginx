@@ -62,6 +62,8 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         size = ce->hunk->last - ce->hunk->pos;
 
+ngx_log_debug(c->log, "SIZE: %d" _ size);
+
         if (sent >= size) {
             sent -= size;
 
@@ -69,9 +71,11 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
                 ce->hunk->pos = ce->hunk->last;
             }
 
+#if 0
             if (ce->hunk->type & NGX_HUNK_FILE) {
                 ce->hunk->file_pos = ce->hunk->file_last;
             }
+#endif
 
             continue;
         }
@@ -80,9 +84,11 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
             ce->hunk->pos += sent;
         }
 
+#if 0
         if (ce->hunk->type & NGX_HUNK_FILE) {
             ce->hunk->file_pos += sent;
         }
+#endif
 
         break;
     }

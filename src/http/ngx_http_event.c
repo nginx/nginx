@@ -33,6 +33,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
 static void ngx_http_lingering_close_handler(ngx_event_t *ev);
+static void ngx_http_empty_handler(ngx_event_t *wev);
 
 static void ngx_http_header_parse_error(ngx_http_request_t *r, int parse_err);
 static size_t ngx_http_log_error(void *data, char *buf, size_t len);
@@ -1001,6 +1002,8 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     c = (ngx_connection_t *) r->connection;
     rev = c->read;
 
+    ngx_log_debug(c->log, "set http keepalive handler");
+
     ctx = (ngx_http_log_ctx_t *) c->log->data;
     ctx->action = "closing request";
     ngx_http_close_request(r, 0);
@@ -1061,10 +1064,15 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     rev->event_handler = ngx_http_keepalive_handler;
     wev = c->write;
 
-    if (wev->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {
-        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
-            ngx_http_close_connection(c);
-            return;
+    if (wev->active) {
+        if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
+            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+                ngx_http_close_connection(c);
+                return;
+            }
+
+        } else if ((ngx_event_flags & NGX_HAVE_AIO_EVENT) == 0) {
+            wev->event_handler = ngx_http_empty_handler;
         }
     }
 
@@ -1158,11 +1166,16 @@ static void ngx_http_set_lingering_close(ngx_http_request_t *r)
         rev->blocked = 0;
     }
 
-    if (c->write->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {
-        if (ngx_del_event(c->write, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
-            ngx_http_close_request(r, 0);
-            ngx_http_close_connection(c);
-            return;
+    if (c->write->active) {
+        if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
+            if (ngx_del_event(c->write, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+                ngx_http_close_request(r, 0);
+                ngx_http_close_connection(c);
+                return;
+            }
+
+        } else if ((ngx_event_flags & NGX_HAVE_AIO_EVENT) == 0) {
+            c->write->event_handler = ngx_http_empty_handler;
         }
     }
 
@@ -1259,6 +1272,14 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
 }
 
 
+static void ngx_http_empty_handler(ngx_event_t *wev)
+{
+    ngx_log_debug(wev->log, "http empty handler");
+
+    return;
+}
+
+
 void ngx_http_close_request(ngx_http_request_t *r, int error)
 {
     ngx_http_log_ctx_t  *ctx;
@@ -1306,17 +1327,22 @@ void ngx_http_close_connection(ngx_connection_t *c)
         c->read->timer_set = 0;
     }
 
-    if (c->read->active) {
-        ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
-    }
-
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
         c->write->timer_set = 0;
     }
 
-    if (c->write->active) {
-        ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
+    if (1) {
+        ngx_del_conn(c);
+
+    } else {
+        if (c->read->active) {
+            ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+        }
+
+        if (c->write->active) {
+            ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
+        }
     }
 
     if (ngx_close_socket(c->fd) == -1) {

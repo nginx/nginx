@@ -280,6 +280,7 @@ typedef struct {
 #define ngx_process_events   ngx_event_actions.process
 #define ngx_add_event        ngx_event_actions.add
 #define ngx_del_event        ngx_event_actions.del
+#define ngx_del_conn         ngx_event_actions.del_conn
 
 #if 0
 #define ngx_add_timer        ngx_event_actions.timer

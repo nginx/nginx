@@ -14,7 +14,7 @@ ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
     ngx_readv_chain,
     NULL,
-    ngx_freebsd_write_chain,
+    ngx_freebsd_sendfile_chain,
     NGX_HAVE_SENDFILE|NGX_HAVE_ZEROCOPY
 };
 
@@ -56,7 +56,7 @@ int ngx_os_init(ngx_log_t *log)
                   ngx_freebsd_kern_osreldate, __FreeBSD_version);
 
 
-#if HAVE_FREEBSD_SENDFILE
+#if (HAVE_FREEBSD_SENDFILE)
 
     /* The determination of the sendfile() nbytes bug is complex enough.
        There're two sendfile() syscalls: a new 393 has no bug while

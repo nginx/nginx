@@ -13,6 +13,7 @@ static int ngx_aio_init(ngx_log_t *log);
 static void ngx_aio_done(ngx_log_t *log);
 static int ngx_aio_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags);
+static int ngx_aio_del_connection(ngx_connection_t *c);
 static int ngx_aio_process_events(ngx_log_t *log);
 
 
@@ -39,7 +40,7 @@ ngx_event_module_t  ngx_aio_module_ctx = {
         NULL,                              /* enable an event */
         NULL,                              /* disable an event */
         NULL,                              /* add an connection */
-        NULL,                              /* delete an connection */
+        ngx_aio_del_connection,            /* delete an connection */
         ngx_aio_process_events,            /* process the events */
         ngx_aio_init,                      /* init the events */
         ngx_aio_done                       /* done the events */
@@ -91,6 +92,58 @@ static int ngx_aio_add_event(ngx_event_t *ev, int event, u_int flags)
 static int ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     return ngx_kqueue_module_ctx.actions.del(ev, event, flags);
+}
+
+
+static int ngx_aio_del_connection(ngx_connection_t *c)
+{
+    int  rc;
+
+    if (c->read->active || c->write->active) {
+        rc = aio_cancel(c->fd, NULL);
+        if (rc == -1) {
+            ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
+                          "aio_cancel() failed");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug(c->log, "aio_cancel: %d" _ rc);
+
+#if 0
+        rc = aio_error(&c->read->aiocb);
+        if (rc == -1) {
+            ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
+                          "aio_error() failed");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug(c->log, "aio_error: %d" _ rc);
+#endif
+    }
+
+#if 0
+    if (c->write->active) {
+        rc = aio_cancel(c->fd, &c->write->aiocb);
+        if (rc == -1) {
+            ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
+                          "aio_cancel() failed");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug(c->log, "aio_cancel: %d" _ rc);
+
+        rc = aio_error(&c->read->aiocb);
+        if (rc == -1) {
+            ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
+                          "aio_error() failed");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug(c->log, "aio_error: %d" _ rc);
+    }
+#endif
+
+    return NGX_OK;
 }
 
 

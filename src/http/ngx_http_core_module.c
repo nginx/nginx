@@ -319,7 +319,7 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcfp[i]->name.data);
     lcf = (ngx_http_core_loc_conf_t *)
                      ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
 
-    if (lcf->sendfile == 0) {
+    if ((ngx_io.flags & NGX_IO_SENDFILE) == 0 || lcf->sendfile == 0) {
         r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
     }
 

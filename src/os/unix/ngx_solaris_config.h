@@ -4,29 +4,24 @@
 
 #define SOLARIS  1
 
+#define _REENTRANT
 #define _FILE_OFFSET_BITS  64   /* must be before sys/types.h */
+
 
 #include <unistd.h>
 #include <stddef.h>             /* offsetof */
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <fcntl.h>
-#include <time.h>
 #include <signal.h>
-#include <string.h>
-#include <strings.h>            /* bzero() */
+#include <strings.h>
+
 #include <sys/types.h>
 #include <sys/filio.h>          /* FIONBIO */
 #include <sys/stropts.h>        /* INFTIM */
-#include <sys/mman.h>
-#include <sys/wait.h>
 #include <sys/socket.h>
-#include <sys/uio.h>
-#include <sys/resource.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <netdb.h>
 
 
 typedef uint32_t  u_int32_t;
