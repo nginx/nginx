@@ -1,6 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_event.h>
 
 
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
@@ -141,6 +142,18 @@ void ngx_process_get_status()
                           "waitpid() failed");
             return;
         }
+
+
+        if (ngx_accept_mutex_ptr) {
+
+            /*
+             * unlock the accept mutex if the abnormally exited process
+             * held it
+             */
+
+            ngx_atomic_cmp_set(ngx_accept_mutex_ptr, pid, 0);
+        }
+
 
         one = 1;
         process = "";

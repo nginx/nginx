@@ -16,6 +16,8 @@ sig_atomic_t  ngx_timer;
 
 #endif
 
+ngx_int_t     ngx_threaded;
+
 sig_atomic_t  ngx_terminate;
 sig_atomic_t  ngx_quit;
 

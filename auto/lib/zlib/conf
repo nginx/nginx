@@ -26,7 +26,8 @@ if [ $ZLIB != NONE ]; then
 
         *)
             LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
-            CORE_LIBS="$CORE_LIBS -L $ZLIB -lz"
+            CORE_LIBS="$CORE_LIBS $ZLIB/libz.a"
+            #CORE_LIBS="$CORE_LIBS -L $ZLIB -lz"
         ;;
 
     esac

@@ -65,6 +65,7 @@ struct ngx_event_s {
     unsigned char    write:1;
 
     /* used to detect the stale events in kqueue, rt signals and epoll */
+    unsigned char    use_instance:1;
     unsigned char    instance:1;
     unsigned char    returned_instance:1;
 
@@ -79,7 +80,7 @@ struct ngx_event_s {
     unsigned char    posted:1;
 
     /* the ready event; in aio mode 0 means that no operation can be posted */
-    unsigned char    ready:1;
+    unsigned short   ready:1;
 
     /* aio operation is complete */
     unsigned short   complete:1;
@@ -196,59 +197,65 @@ extern ngx_event_actions_t   ngx_event_actions;
  * The event filter requires to read/write the whole data -
  * select, poll, /dev/poll, kqueue, epoll.
  */
-#define NGX_USE_LEVEL_EVENT    0x00000001
+#define NGX_USE_LEVEL_EVENT      0x00000001
 
 /*
  * The event filter is deleted after a notification without an additional
  * syscall - select, poll, kqueue, epoll.
  */
-#define NGX_USE_ONESHOT_EVENT  0x00000002
+#define NGX_USE_ONESHOT_EVENT    0x00000002
 
 /*
  * The event filter notifies only the changes and an initial level -
  * kqueue, epoll.
  */
-#define NGX_USE_CLEAR_EVENT    0x00000004
+#define NGX_USE_CLEAR_EVENT      0x00000004
 
 /*
  * The event filter has kqueue features - the eof flag, errno,
  * available data, etc.
  */
-#define NGX_HAVE_KQUEUE_EVENT  0x00000008
+#define NGX_HAVE_KQUEUE_EVENT    0x00000008
 
 /*
  * The event filter supports low water mark - kqueue's NOTE_LOWAT.
  * kqueue in FreeBSD 4.1-4.2 has no NOTE_LOWAT so we need a separate flag.
  */
-#define NGX_HAVE_LOWAT_EVENT   0x00000010
+#define NGX_HAVE_LOWAT_EVENT     0x00000010
+
+/*
+ * The event filter allows to pass instance information to check stale events -
+ * kqueue, epoll, rt signals.
+ */
+#define NGX_HAVE_INSTANCE_EVENT  0x00000020
 
 /*
  * The event filter notifies only the changes (the edges)
  * but not an initial level - early epoll patches.
  */
-#define NGX_USE_EDGE_EVENT     0x00000020
+#define NGX_USE_EDGE_EVENT       0x00000040
 
 /*
  * No need to add or delete the event filters - rt signals.
  */
-#define NGX_USE_SIGIO_EVENT    0x00000040
+#define NGX_USE_SIGIO_EVENT      0x00000080
 
 /*
  * The alternative event method after the rt signals queue overflow.
  */
-#define NGX_OVERFLOW_EVENT     0x00000080
+#define NGX_OVERFLOW_EVENT       0x00000100
 
 /*
  * No need to add or delete the event filters - overlapped, aio_read,
  * aioread, io_submit.
  */
-#define NGX_USE_AIO_EVENT      0x00000100
+#define NGX_USE_AIO_EVENT        0x00000200
 
 /*
  * Need to add socket or handle only once - i/o completion port.
  * It also requires HAVE_AIO and NGX_USE_AIO_EVENT to be set.
  */
-#define NGX_USE_IOCP_EVENT     0x00000200
+#define NGX_USE_IOCP_EVENT       0x00000400
 
 
 
@@ -380,6 +387,8 @@ typedef struct {
     ngx_flag_t   multi_accept;
     ngx_flag_t   accept_mutex;
 
+    ngx_msec_t   accept_mutex_delay;
+
     u_char      *name;
 } ngx_event_conf_t;
 
@@ -395,14 +404,11 @@ typedef struct {
 
 
 
-extern ngx_thread_volatile ngx_event_t  *ngx_posted_events;
-#if (NGX_THREADS)
-extern ngx_mutex_t           *ngx_posted_events_mutex;
-#endif
-
 extern ngx_atomic_t          *ngx_accept_mutex_ptr;
 extern ngx_atomic_t          *ngx_accept_mutex;
 extern ngx_uint_t             ngx_accept_mutex_held;
+extern ngx_msec_t             ngx_accept_mutex_delay;
+
 
 #define ngx_accept_mutex_unlock()                                             \
            if (ngx_accept_mutex_held) {                                       \
@@ -437,6 +443,7 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
 
 
 #include <ngx_event_timer.h>
+#include <ngx_event_posted.h>
 #include <ngx_event_busy_lock.h>
 
 #if (WIN32)

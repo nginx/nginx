@@ -49,12 +49,8 @@ ngx_event_actions_t               ngx_event_actions;
 ngx_atomic_t                     *ngx_accept_mutex_ptr;
 ngx_atomic_t                     *ngx_accept_mutex;
 ngx_uint_t                        ngx_accept_mutex_held;
+ngx_msec_t                        ngx_accept_mutex_delay;
 
-
-ngx_thread_volatile ngx_event_t  *ngx_posted_events;
-#if (NGX_THREADS)
-ngx_mutex_t                      *ngx_posted_events_mutex;
-#endif
 
 
 static ngx_str_t  events_name = ngx_string("events");
@@ -112,6 +108,13 @@ static ngx_command_t  ngx_event_core_commands[] = {
       ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_event_conf_t, accept_mutex),
+      NULL },
+
+    { ngx_string("accept_mutex_delay"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      0,
+      offsetof(ngx_event_conf_t, accept_mutex_delay),
       NULL },
 
       ngx_null_command
@@ -186,10 +189,12 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
     if (ccf->worker_processes > 1 && ngx_accept_mutex_ptr) {
         ngx_accept_mutex = ngx_accept_mutex_ptr;
         ngx_accept_mutex_held = 1;
+        ngx_accept_mutex_delay = ecf->accept_mutex_delay;
     }
 
 #if (NGX_THREADS)
@@ -201,8 +206,6 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     if (ngx_event_timer_init(cycle->log) == NGX_ERROR) {
         return NGX_ERROR;
     }
-
-    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
     cycle->connection_n = ecf->connections;
 
@@ -525,6 +528,7 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
     ecf->use = NGX_CONF_UNSET;
     ecf->multi_accept = NGX_CONF_UNSET;
     ecf->accept_mutex = NGX_CONF_UNSET;
+    ecf->accept_mutex_delay = NGX_CONF_UNSET_MSEC;
     ecf->name = (void *) NGX_CONF_UNSET;
 
     return ecf;
@@ -598,6 +602,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ngx_conf_init_value(ecf->multi_accept, 0);
     ngx_conf_init_value(ecf->accept_mutex, 1);
+    ngx_conf_init_msec_value(ecf->accept_mutex_delay, 500);
 
     return NGX_CONF_OK;
 }

@@ -369,6 +369,9 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
 
 void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 {
+    int                    n;
+    char                   buf[1];
+    ngx_err_t              err;
     ngx_connection_t      *c;
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
@@ -376,15 +379,18 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
                    "http proxy check client, write event:%d", ev->write);
 
-    c = ev->data;
-    r = c->data;
-    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
-
 #if (HAVE_KQUEUE)
 
-    /* TODO: KEVENT_EVENT */
+    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
 
-    if (ev->kq_eof) {
+        if (!ev->kq_eof) {
+            return;
+        }
+
+        c = ev->data;
+        r = c->data;
+        p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
         ev->eof = 1;
 
         if (ev->kq_errno) {
@@ -407,16 +413,30 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
         if (p->upstream == NULL || p->upstream->peer.connection == NULL) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
         }
+
+        return;
     }
 
-#else
+#endif
+
+    c = ev->data;
+    r = c->data;
+    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
     n = recv(c->fd, buf, 1, MSG_PEEK);
 
     if (n > 0) {
-        /* TODO: delete level */
+        if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && ev->active) {
+            if (ngx_del_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+                ngx_http_proxy_finalize_request(p,
+                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
+            }
+        }
+
         return;
     }
+
+    ev->eof = 1;
 
     if (n == -1) {
         err = ngx_socket_errno;
@@ -426,9 +446,9 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 
         ev->error = 1;
 
-    } else if (n == 0) {
+    } else {
+        /* n == 0 */
         err = 0;
-        ev->eof = 1;
     }
 
     if (!p->cachable && p->upstream->peer.connection) {
@@ -439,14 +459,12 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
         return;
     }
 
-    ngx_log_error(NGX_LOG_INFO, ev->log, ev->err,
+    ngx_log_error(NGX_LOG_INFO, ev->log, err,
                   "client have closed prematurely connection");
 
     if (p->upstream == NULL || p->upstream->peer.connection == NULL) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
     }
-
-#endif
 }
 
 
@@ -870,7 +888,14 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
 
     ngx_conf_merge_size_value(conf->header_buffer_size,
                               prev->header_buffer_size, 4096);
+
     ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 8, 4096);
+
+    if (conf->bufs.num < 2) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "there must be at least 2 \"proxy_buffers\"");
+        return NGX_CONF_ERROR;
+    }
 
     size = conf->header_buffer_size;
     if (size < conf->bufs.size) {
@@ -889,6 +914,14 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
              "\"proxy_busy_buffers_size\" must be equal or bigger than "
              "maximum of the value of \"proxy_header_buffer_size\" and "
              "one of the \"proxy_buffers\"");
+
+        return NGX_CONF_ERROR;
+
+    } else if (conf->busy_buffers_size > (conf->bufs.num - 1) * conf->bufs.size)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+             "\"proxy_busy_buffers_size\" must be less than "
+             "the size of all \"proxy_buffers\" minus one buffer");
 
         return NGX_CONF_ERROR;
     }

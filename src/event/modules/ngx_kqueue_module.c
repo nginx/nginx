@@ -22,9 +22,6 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags);
 static int ngx_kqueue_process_events(ngx_cycle_t *cycle);
-#if (NGX_THREADS)
-static void ngx_kqueue_thread_handler(ngx_event_t *ev);
-#endif
 
 static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle);
 static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -71,9 +68,6 @@ ngx_event_module_t  ngx_kqueue_module_ctx = {
         NULL,                              /* add an connection */
         NULL,                              /* delete an connection */
         ngx_kqueue_process_events,         /* process the events */
-#if (NGX_THREADS0)
-        ngx_kqueue_thread_handler,         /* process an event by thread */
-#endif
         ngx_kqueue_init,                   /* init the events */
         ngx_kqueue_done                    /* done the events */
     }
@@ -161,6 +155,7 @@ static int ngx_kqueue_init(ngx_cycle_t *cycle)
 #if (HAVE_LOWAT_EVENT)
                      |NGX_HAVE_LOWAT_EVENT
 #endif
+                     |NGX_HAVE_INSTANCE_EVENT
                      |NGX_HAVE_KQUEUE_EVENT;
 
     return NGX_OK;
@@ -346,8 +341,8 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 {
     int                events;
-    ngx_int_t          i;
-    ngx_uint_t         instance;
+    ngx_int_t          i, instance;
+    ngx_uint_t         lock, expire;
     ngx_err_t          err;
     ngx_msec_t         timer;
     ngx_event_t       *ev;
@@ -364,23 +359,25 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
     /*
      * TODO: if timer is 0 and any worker thread is still busy
-     *       then set 1 second timeout
+     *       then set 500 ms timeout
      */
 
 #endif
 
     ngx_old_elapsed_msec = ngx_elapsed_msec;
+    expire = 1;
 
     if (ngx_accept_mutex) {
         if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
             return NGX_ERROR;
         }
 
-#if 1
-        if (ngx_accept_mutex_held == 0 && timer == 0) {
-            /* STUB */ timer = 500;
+        if (ngx_accept_mutex_held == 0
+            && (timer == 0 || timer > ngx_accept_mutex_delay))
+        {
+            timer = ngx_accept_mutex_delay;
+            expire = 0;
         }
-#endif
     }
 
     if (timer) {
@@ -390,6 +387,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
     } else {
         tp = NULL;
+        expire = 0;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -440,6 +438,8 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         ngx_accept_mutex_unlock();
         return NGX_ERROR;
     }
+
+    lock = 1;
 
     for (i = 0; i < events; i++) {
 
@@ -517,104 +517,47 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
             continue;
         }
 
-
-        if (ngx_threaded || ngx_accept_mutex_held) {
-
-            if (ev->accept) {
-                ngx_mutex_unlock(ngx_posted_events_mutex);
-
-                ev->event_handler(ev);
-
-                if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-                    ngx_accept_mutex_unlock();
-                    return NGX_ERROR;
-                }
-
-            } else {
-                ev->next = (ngx_event_t *) ngx_posted_events;
-                ngx_posted_events = ev;
-            }
-
+        if (!ngx_threaded && !ngx_accept_mutex_held) {
+            ev->event_handler(ev);
             continue;
         }
 
+        if (!ev->accept) {
+            ngx_post_event(ev);
+            continue;
+        }
+
+        ngx_mutex_unlock(ngx_posted_events_mutex);
+
         ev->event_handler(ev);
-    }
 
-    ngx_mutex_unlock(ngx_posted_events_mutex);
-
-    ngx_accept_mutex_unlock();
-
-    if (timer && delta) {
-        ngx_event_expire_timers((ngx_msec_t) delta);
-    }
-
-    if (ngx_threaded) {
-        return NGX_OK;
-    }
-
-    for ( ;; ) {
-
-        ev = (ngx_event_t *) ngx_posted_events;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                      "kevent: posted event " PTR_FMT, ev);
-
-        if (ev == NULL) {
+        if (i + 1 == events) {
+            lock = 0;
             break;
         }
 
-        ngx_posted_events = ev->next;
-
-        if ((!ev->posted && !ev->active)
-            || ev->instance != ev->returned_instance)
-        {
-            /*
-             * the stale event from a file descriptor
-             * that was just closed in this iteration
-             */
-
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                          "kevent: stale event " PTR_FMT, ev);
-            continue;
+        if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+            ngx_accept_mutex_unlock();
+            return NGX_ERROR;
         }
+    }
 
-        if (ev->posted) {
-            ev->posted = 0;
-        }
+    if (lock) {
+        ngx_mutex_unlock(ngx_posted_events_mutex);
+    }
 
-        ev->event_handler(ev);
+    ngx_accept_mutex_unlock();
+
+    if (expire && delta) {
+        ngx_event_expire_timers((ngx_msec_t) delta);
+    }
+
+    if (!ngx_threaded) {
+        ngx_event_process_posted(cycle);
     }
 
     return NGX_OK;
 }
-
-
-#if (NGX_THREADS)
-
-static void ngx_kqueue_thread_handler(ngx_event_t *ev)
-{
-    if ((!ev->posted && !ev->active)
-        || ev->instance != ev->returned_instance)
-    {
-        /*
-         * the stale event from a file descriptor
-         * that was just closed in this iteration
-         */
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                       "kevent: stale event " PTR_FMT, ev);
-        return;
-    }
-
-    if (ev->posted) {
-        ev->posted = 0;
-    }
-
-    ev->event_handler(ev);
-}
-
-#endif
 
 
 static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle)

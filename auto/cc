@@ -2,7 +2,7 @@
 case $CC in
 
     *gcc*)
-         # gcc 2.95.4, 3.3.2
+         # gcc 2.7.2.3, 2.95.4, 3.3.2, 3.4
 
          # optimization
          #CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"

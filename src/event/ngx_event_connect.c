@@ -11,7 +11,7 @@
 int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     int                  rc;
-    ngx_uint_t           instance;
+    ngx_uint_t           instance, rinstance, winstance;
     u_int                event;
     time_t               now;
     ngx_err_t            err;
@@ -156,10 +156,22 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 #endif
 
     instance = rev->instance;
+    rinstance = rev->returned_instance;
+    winstance = wev->returned_instance;
 
     ngx_memzero(c, sizeof(ngx_connection_t));
     ngx_memzero(rev, sizeof(ngx_event_t));
     ngx_memzero(wev, sizeof(ngx_event_t));
+
+    if (ngx_event_flags & NGX_HAVE_INSTANCE_EVENT) {
+        rev->use_instance = 1;
+        rev->instance = (u_char) !instance;
+        rev->returned_instance = (u_char) rinstance;
+
+        wev->use_instance = 1;
+        wev->instance = (u_char) !instance;
+        wev->returned_instance = (u_char) winstance;
+    }
 
     rev->index = NGX_INVALID_INDEX;
     wev->index = NGX_INVALID_INDEX;
@@ -170,9 +182,6 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     c->read = rev;
     c->write = wev;
     wev->write = 1;
-
-    rev->instance = (u_char) !instance;
-    wev->instance = (u_char) !instance;
 
     c->log = pc->log;
     rev->log = pc->log;

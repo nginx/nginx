@@ -218,11 +218,15 @@ void ngx_event_accept(ngx_event_t *ev)
         c->sockaddr = sa;
         c->socklen = len;
 
-        rev->instance = (u_char) !instance;
-        rev->returned_instance = (u_char) rinstance;
+        if (ngx_event_flags & NGX_HAVE_INSTANCE_EVENT) {
+            rev->use_instance = 1;
+            rev->instance = (u_char) !instance;
+            rev->returned_instance = (u_char) rinstance;
 
-        wev->instance = (u_char) !instance;
-        wev->returned_instance = (u_char) winstance;
+            wev->use_instance = 1;
+            wev->instance = (u_char) !instance;
+            wev->returned_instance = (u_char) winstance;
+        }
 
         rev->index = NGX_INVALID_INDEX;
         wev->index = NGX_INVALID_INDEX;
@@ -302,7 +306,9 @@ void ngx_event_accept(ngx_event_t *ev)
 
 ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 {
-    if (*ngx_accept_mutex == 0 && ngx_atomic_cmp_set(ngx_accept_mutex, 0, 1)) {
+    if (*ngx_accept_mutex == 0
+        && ngx_atomic_cmp_set(ngx_accept_mutex, 0, ngx_pid))
+    {
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "accept mutex locked");

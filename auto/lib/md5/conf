@@ -32,7 +32,8 @@ if [ $MD5 != NONE ]; then
 
         *)
             LINK_DEPS="$LINK_DEPS $MD5/libmd5.a"
-            CORE_LIBS="$CORE_LIBS -L $MD5 -lmd5"
+            CORE_LIBS="$CORE_LIBS $MD5/libmd5.a"
+            #CORE_LIBS="$CORE_LIBS -L $MD5 -lmd5"
         ;;
 
     esac
