@@ -18,7 +18,12 @@ time_t ngx_time()
 }
 
 
-/* TODO: remove strftime() */
+/* TODO:
+ *   cache ngx_tm_t
+ *   write own gmtime()
+ *   remove strftime()
+ *   we can remove localtime_r
+ */
 
 void ngx_time_update()
 {

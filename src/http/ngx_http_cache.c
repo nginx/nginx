@@ -5,6 +5,13 @@
 
 #include <md5.h>
 
+/* STUB */
+#if (WIN32)
+#define  MD5Init    MD5_Init
+#define  MD5Update  MD5_Update
+#define  MD5Final   MD5_Final
+#endif
+
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
 {

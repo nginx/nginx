@@ -164,6 +164,7 @@ static int ngx_iocp_process_events(ngx_log_t *log)
     ngx_err_t          err;
     ngx_msec_t         timer;
     ngx_event_t       *ev;
+    struct timeval     tv;
     ngx_epoch_msec_t   delta;
     ngx_event_ovlp_t  *ovlp;
 

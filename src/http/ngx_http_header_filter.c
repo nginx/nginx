@@ -287,13 +287,10 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     if (r->headers_out.content_type && r->headers_out.content_type->value.len) {
         h->last = ngx_cpymem(h->last, "Content-Type: ",
                              sizeof("Content-Type: ") - 1);
-#if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
         p = h->last;
-#endif
         h->last = ngx_cpymem(h->last, r->headers_out.content_type->value.data,
                              r->headers_out.content_type->value.len);
 
-#if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
         if (r->headers_out.charset.len) {
             h->last = ngx_cpymem(h->last, "; charset=",
                                  sizeof("; charset=") - 1);
@@ -302,7 +299,6 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 
             r->headers_out.content_type->value.len = h->last - p;
             r->headers_out.content_type->value.data = p;
-#endif
         }
 
         *(h->last++) = CR; *(h->last++) = LF;

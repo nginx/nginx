@@ -27,12 +27,6 @@ typedef FILETIME       ngx_mtime_t;
 #define ngx_localtime  GetLocalTime
 
 
-struct timeval {
-    long   tv_sec;
-    long   tv_usec;
-};
-
-
 void ngx_gettimeofday(struct timeval *tp);
 
 

@@ -52,6 +52,10 @@ int ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_close_file              CloseHandle
 #define ngx_close_file_n            "CloseHandle()"
 
+/* STUB */
+#define ngx_rename_file             MoveFile
+#define ngx_rename_file_n           "MoveFile()"
+
 #define ngx_mkdir(name)             CreateDirectory(name, NULL)
 #define ngx_mkdir_n                 "CreateDirectory()"
 
