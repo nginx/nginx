@@ -61,7 +61,7 @@ char *ngx_cpystrn(char *dst, char *src, size_t n);
 int ngx_rstrncmp(char *s1, char *s2, size_t n);
 int ngx_atoi(char *line, size_t n);
 
-void ngx_print_md5(char *text, u_char *md5);
+void ngx_md5_text(char *text, u_char *md5);
 
 
 #define  ngx_qsort                qsort

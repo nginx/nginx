@@ -140,6 +140,7 @@ struct ngx_http_proxy_ctx_s {
 
     ngx_hunk_t                   *header_in;
 
+    time_t                        busy_lock_time;
 
     unsigned                      accel:1;
 
@@ -188,7 +189,7 @@ int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p);
 
 size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len);
 void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc);
-void ngx_http_proxy_close_connection(ngx_connection_t *c);
+void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p);
 
 int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,

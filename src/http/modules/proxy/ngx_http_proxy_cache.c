@@ -216,6 +216,30 @@ static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p)
 }
 
 
+#if 0
+
+static void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
+{
+    rc = ngx_http_busy_lock(p->lcf->busy_lock, p->cache->ctx.md5);
+
+    if (rc == NGX_OK) {
+        ngx_http_proxy_request_upstream(p);
+    }
+
+    if (rc == NGX_AGAIN) {
+        if (p->busy_lock_time) {
+            ngx_add_timer(p->request->connection->read, 1000);
+            return;
+        }
+    }
+
+    rc == NGX_ERROR
+    check waitn
+}
+
+#endif
+
+
 int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p)
 {
     int                  rc, len, i;
@@ -428,10 +452,21 @@ int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p)
 
 int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p)
 {
+    ngx_event_pipe_t  *ep;
+
     if (p->cache == NULL) {
         return NGX_OK;
     }
 
+    ep = p->upstream->event_pipe;
+
+    if (p->cache->ctx.length == -1) {
+        /* TODO: test rc */
+        ngx_write_file(&ep->temp_file->file,
+                       (char *) &ep->read_length, sizeof(off_t),
+                       offsetof(ngx_http_cache_header_t, length));
+    }
+
     return ngx_http_cache_update_file(p->request, &p->cache->ctx,
-                               &p->upstream->event_pipe->temp_file->file.name);
+                                      &ep->temp_file->file.name);
 }

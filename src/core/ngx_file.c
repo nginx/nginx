@@ -119,7 +119,7 @@ void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
             break;
         }
 
-        ngx_log_debug(file->log, "temp: %s" _ file->name.data);
+        ngx_log_debug(file->log, "hashed path: %s" _ file->name.data);
 
         name -= level;
         file->name.data[pos - 1] = '/';
@@ -127,7 +127,7 @@ void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
         pos += level + 1;
     }
 
-    ngx_log_debug(file->log, "temp: %s" _ file->name.data);
+    ngx_log_debug(file->log, "hashed path: %s" _ file->name.data);
 }
 
 

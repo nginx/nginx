@@ -371,7 +371,8 @@ ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, int close)
 
         if (!rev->active && !rev->ready) {
             if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT)
-                                                                == NGX_ERROR) {
+                                                                  == NGX_ERROR)
+            {
                 return NGX_ERROR;
             }
 
@@ -380,7 +381,8 @@ ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, int close)
 
         if (rev->active && (rev->ready || close)) {
             if (ngx_del_event(rev, NGX_READ_EVENT, close ? NGX_CLOSE_EVENT : 0)
-                                                                == NGX_ERROR) {
+                                                                  == NGX_ERROR)
+            {
                 return NGX_ERROR;
             }
 
@@ -399,7 +401,8 @@ ngx_inline static int ngx_handle_level_read_event(ngx_event_t *rev)
     if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
         if (!rev->active && !rev->ready) {
             if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT)
-                                                                == NGX_ERROR) {
+                                                                  == NGX_ERROR)
+            {
                 return NGX_ERROR;
             }
 

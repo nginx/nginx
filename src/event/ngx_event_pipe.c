@@ -245,8 +245,10 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 p->upstream_eof = 1;
                 break;
             }
+
         }
 
+        p->read_length += n;
         cl = chain;
 
         while (cl && n > 0) {
@@ -402,6 +404,18 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
         for (cl = p->free; cl; cl = cl->next) {
 
+            if (cl->hunk->type & NGX_HUNK_TEMP_FILE) {
+                if (p->cachable || !p->cyclic_temp_file) {
+                    continue;
+                }
+
+                /* reset p->temp_offset if all hunks had been sent */
+
+                if (cl->hunk->file_last == p->temp_file->offset) {
+                    p->temp_file->offset = 0;
+                }
+            }
+
             /* TODO: free hunk if p->free_bufs && upstream done */
             /* add the free shadow raw hunk to p->free_raw_hunks */
 
@@ -416,6 +430,7 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             }
             cl->hunk->shadow = NULL;
 
+#if 0
             if (p->cyclic_temp_file && (cl->hunk->type & NGX_HUNK_TEMP_FILE)) {
 
                 /* reset p->temp_offset if all hunks had been sent */
@@ -424,6 +439,7 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                     p->temp_file->offset = 0;
                 }
             }
+#endif
         }
     }
 
@@ -518,11 +534,15 @@ ngx_log_debug(p->log, "size: %d" _ size);
         p->temp_file->offset += h->last - h->pos;
         h->file_last = p->temp_file->offset;
 
+        h->type |= NGX_HUNK_FILE|NGX_HUNK_TEMP_FILE;
+
+#if 0
         if (p->cachable) {
             h->type |= NGX_HUNK_FILE;
         } else {
             h->type |= NGX_HUNK_FILE|NGX_HUNK_TEMP_FILE;
         }
+#endif
 
         ngx_chain_add_link(p->out, p->last_out, cl);
 

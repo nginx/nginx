@@ -26,13 +26,8 @@ int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
     MD5Update(&md5, (u_char *) ctx->key.data, ctx->key.len);
     MD5Final(ctx->md5, &md5);
 
-    ngx_print_md5(
-                 ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len,
+    ngx_md5_text(ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len,
                  ctx->md5);
-#if 0
-    MD5End(&md5,
-           ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len);
-#endif
 
 ngx_log_debug(r->connection->log, "URL: %s, md5: %s" _ ctx->key.data _
               ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len);
@@ -90,6 +85,7 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
     ctx->buf->last += n;
 
     if (ctx->expires < ngx_time()) {
+ngx_log_debug(r->connection->log, "EXPIRED");
         return NGX_HTTP_CACHE_STALE;
     }
 

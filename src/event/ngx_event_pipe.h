@@ -54,6 +54,8 @@ struct ngx_event_pipe_s {
 
     size_t             busy_size;
 
+    off_t              read_length;
+
     off_t              max_temp_file_size;
     int                temp_file_write_size;
 

@@ -173,7 +173,6 @@ void ngx_event_expire_timers(ngx_msec_t timer)
             delta -= ev->timer_delta;
 
             ngx_del_timer(ev);
-            ev->timer_set = 0;
 
             if (ev->delayed) {
                 ev->delayed = 0;

@@ -8,22 +8,24 @@
 
 
 typedef struct {
-    char  *busy;
-    int    busy_n;
+    u_char  *busy_mask;
+    char    *busy;
+    int      busy_n;
 
-    int    waiting_n;
-    int    max_waiting;
+    int      waiting_n;
+    int      max_waiting;
 
-    int    conn_n;
-    int    max_conn;
+    int      conn_n;
+    int      max_conn;
 
-    int    timeout;
+    time_t   timeout;
 
  /* ngx_mutex_t  mutex; */
 
 } ngx_http_busy_lock_t;
 
 
+int ngx_http_busy_lock(ngx_http_busy_lock_t *bl, u_char *md5);
 char *ngx_http_set_busy_lock_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);
 
