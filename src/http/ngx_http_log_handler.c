@@ -137,7 +137,7 @@ ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
     { ngx_string("addr"), INET_ADDRSTRLEN - 1, NULL, NULL, ngx_http_log_addr },
     { ngx_string("conn"), NGX_INT32_LEN, NULL, NULL, ngx_http_log_connection },
     { ngx_string("pipe"), 1, NULL, NULL, ngx_http_log_pipe },
-    { ngx_string("time"), sizeof("28/Sep/1970:12:00:00") - 1,
+    { ngx_string("time"), sizeof("28/Sep/1970:12:00:00 +0600") - 1,
                           NULL, NULL, ngx_http_log_time },
     { ngx_string("msec"), NGX_TIME_T_LEN + 4, NULL, NULL, ngx_http_log_msec },
     { ngx_string("status"), 3, NULL, NULL, ngx_http_log_status },

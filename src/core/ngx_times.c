@@ -308,7 +308,6 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
                 mday -= 28;
             }
         }
-
 /*
  *  there is no "yday" in Win32 SYSTEMTIME
  *
@@ -316,7 +315,7 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
  *      yday += 31 + 28;
  *
  *      if ((year % 4 == 0) && (year % 100 || (year % 400 == 0))) {
- *           yday++;
+ *          yday++;
  *      }
  */
     }

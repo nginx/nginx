@@ -390,7 +390,7 @@ static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
     kev->ident = c->fd;
     kev->filter = filter;
     kev->flags = flags;
-    kev->udata = (void *) ((uintptr_t) ev | ev->instance);
+    kev->udata = NGX_KQUEUE_UDATA_T ((uintptr_t) ev | ev->instance);
 
     if (filter == EVFILT_VNODE) {
         kev->fflags = NOTE_DELETE|NOTE_WRITE|NOTE_EXTEND

@@ -216,7 +216,7 @@ static ngx_http_module_t  ngx_http_gzip_filter_module_ctx = {
     NULL,                                  /* merge server configuration */
 
     ngx_http_gzip_create_conf,             /* create location configuration */
-    ngx_http_gzip_merge_conf,              /* merge location configuration */
+    ngx_http_gzip_merge_conf               /* merge location configuration */
 };
 
 

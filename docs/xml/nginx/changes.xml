@@ -9,6 +9,41 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.19" date="16.02.2005">
+
+<change type="bugfix">
+<para lang="ru">
+если в запросе есть нуль, то для локальных запросов теперь возвращается
+ошибка 404.
+</para>
+<para lang="en">
+now, if request contains the zero, then the 404 error is returned
+for the local requests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался под NetBSD 2.0.
+</para>
+<para lang="en">
+nginx could not be built on NetBSD 2.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+во время чтения тела запроса клиента в SSL соединении мог произойти таймаут.
+</para>
+<para lang="en">
+the timeout may occur while reading of the the client request body
+via SSL connections.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.18" date="09.02.2005">
 
 <change type="workaround">

@@ -128,6 +128,11 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
+    /* TODO: Win32 */
+    if (r->zero_in_uri) {
+        return NGX_DECLINED;
+    }
+
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_autoindex_module);
 
     if (!alcf->enable) {

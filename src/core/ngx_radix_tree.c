@@ -12,7 +12,7 @@ static void *ngx_radix_alloc(ngx_radix_tree_t *tree);
 
 
 ngx_radix_tree_t *
-ngx_radix_tree_create(ngx_pool_t *pool, ngx_uint_t preallocate)
+ngx_radix_tree_create(ngx_pool_t *pool, ngx_int_t preallocate)
 {
     uint32_t           key, mask, inc;
     ngx_radix_tree_t  *tree;
@@ -35,12 +35,45 @@ ngx_radix_tree_create(ngx_pool_t *pool, ngx_uint_t preallocate)
     tree->root->parent = NULL;
     tree->root->value = NGX_RADIX_NO_VALUE;
 
+    if (preallocate == 0) {
+        return tree;
+    }
+
     /*
      * We preallocate the first nodes: 0, 1, 00, 01, 10, 11, 000, 001, etc.,
      * to increase the TLB hits even if for the first lookup iterations.
      * On the 32-bit platforms the 7 preallocated bits takes continuous 4K,
-     * 8 - 8K, 9 - 16K, etc.
+     * 8 - 8K, 9 - 16K, etc.  On the 64-bit platforms the 6 preallocated bits
+     * takes continuous 4K, 7 - 8K, 8 - 16K, etc.  There is no sense to
+     * to preallocate more than one page, because further preallocation
+     * distribute the only bit per page.  Instead, the random insertion
+     * may distribute several bits per page.
+     *
+     * Thus, by default we preallocate maximum
+     *     6 bits on amd64 (64-bit platform and 4K pages)
+     *     7 bits on i386 (32-bit platform and 4K pages)
+     *     7 bits on sparc64 in 64-bit mode (8K pages)
+     *     8 bits on sparc64 in 32-bit mode (8K pages)
      */
+
+    if (preallocate == -1) {
+        switch (ngx_pagesize / sizeof(ngx_radix_tree_t)) {
+
+        /* amd64 */
+        case 128:
+            preallocate = 6;
+            break;
+
+        /* i386, sparc64 */
+        case 256:
+            preallocate = 7;
+            break;
+
+        /* sparc64 in 32-bit mode */
+        default:
+            preallocate = 8;
+        }
+    }
 
     mask = 0;
     inc = 0x80000000;

@@ -87,6 +87,11 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
+    /* TODO: Win32 */
+    if (r->zero_in_uri) {
+        return NGX_DECLINED;
+    }
+
     if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
         return NGX_HTTP_NOT_ALLOWED;
     }

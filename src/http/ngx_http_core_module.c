@@ -415,6 +415,8 @@ ngx_http_handler(ngx_http_request_t *r)
 
     r->uri_changed = 1;
     r->uri_changes = 11;
+    r->phase = NGX_HTTP_REWRITE_PHASE;
+    r->phase_handler = 0;
 
     ngx_http_core_run_phases(r);
 }
@@ -447,11 +449,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
     for (/* void */; r->phase < NGX_HTTP_LAST_PHASE; r->phase++) {
 
-        if (r->phase == NGX_HTTP_FIND_CONFIG_PHASE && !r->uri_changed) {
-            continue;
-        }
-
-        if (r->phase == NGX_HTTP_FIND_CONFIG_PHASE + 1 && r->uri_changed) {
+        if (r->phase == NGX_HTTP_REWRITE_PHASE + 1 && r->uri_changed) {
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "uri changes: %d", r->uri_changes);
@@ -472,8 +470,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
                 return;
             }
 
-            r->uri_changed = 0;
-            r->phase = NGX_HTTP_REWRITE_PHASE;
+            r->phase = NGX_HTTP_FIND_CONFIG_PHASE;
         }
 
         if (r->phase == NGX_HTTP_CONTENT_PHASE && r->content_handler) {
@@ -525,7 +522,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
     /* no content handler was found */
 
-    if (r->uri.data[r->uri.len - 1] == '/') {
+    if (r->uri.data[r->uri.len - 1] == '/' && !r->zero_in_uri) {
 
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -549,6 +546,9 @@ ngx_http_find_location_config(ngx_http_request_t *r)
     ngx_int_t                  rc;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
+
+    r->content_handler = NULL;
+    r->uri_changed = 0;
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -954,10 +954,6 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
     r->loc_conf = cscf->ctx->loc_conf;
-
-    r->phase = 0;
-    r->phase_handler = 0;
-    r->content_handler = NULL;
 
     ngx_http_handler(r);
 

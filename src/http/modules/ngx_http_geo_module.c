@@ -10,9 +10,9 @@
 
 
 typedef struct {
-    ngx_radix_tree_t           *tree;
-    ngx_pool_t                 *pool;
-    ngx_array_t                 values;
+    ngx_radix_tree_t  *tree;
+    ngx_pool_t        *pool;
+    ngx_array_t        values;
 } ngx_http_geo_conf_t;
 
 
@@ -63,21 +63,31 @@ static ngx_http_variable_value_t  ngx_http_geo_null_value =
 
 /* AF_INET only */
 
-static ngx_http_variable_value_t *ngx_http_geo_variable(ngx_http_request_t *r,
-                                                        void *data)
+static ngx_http_variable_value_t *
+ngx_http_geo_variable(ngx_http_request_t *r, void *data)
 {
     ngx_radix_tree_t *tree = data;
 
-    struct sockaddr_in  *sin;
+    struct sockaddr_in         *sin;
+    ngx_http_variable_value_t  *var;
 
     sin = (struct sockaddr_in *) r->connection->sockaddr;
 
-    return (ngx_http_variable_value_t *)
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http geo started");
+
+    var  = (ngx_http_variable_value_t *)
                        ngx_radix32tree_find(tree, ntohl(sin->sin_addr.s_addr));
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http geo: %V %V", &r->connection->addr_text, &var->text);
+
+    return var;
 }
 
 
-static char *ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *
+ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                 *rv;
     ngx_str_t            *value;
@@ -91,7 +101,7 @@ static char *ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (!(tree = ngx_radix_tree_create(cf->pool, 8))) {
+    if (!(tree = ngx_radix_tree_create(cf->pool, -1))) {
         return NGX_CONF_ERROR;
     }
 
@@ -148,7 +158,8 @@ static char *ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 /* AF_INET only */
 
-static char *ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
+static char *
+ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
     ngx_int_t                   rc, n;
     ngx_uint_t                  i;

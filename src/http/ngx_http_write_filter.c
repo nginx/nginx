@@ -94,6 +94,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                           cl->buf->file_last);
 
             ngx_debug_point();
+            return NGX_ERROR;
         }
 #endif
 
@@ -144,6 +145,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                           cl->buf->file_last);
 
             ngx_debug_point();
+            return NGX_ERROR;
         }
 #endif
 

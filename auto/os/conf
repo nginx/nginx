@@ -123,4 +123,15 @@ if [ $NGX_PLATFORM != win32 ]; then
             . auto/feature
         fi
     fi
+
+    if [ NGX_SYSTEM != "NetBSD" ]; then
+
+        # NetBSD 2.0 incompatibly defines kevent.udata as "intptr_t"
+        cat << END >> $NGX_AUTO_CONFIG_H
+
+#define NGX_KQUEUE_UDATA_T  (void *)
+
+END
+
+     fi
 fi

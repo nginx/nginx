@@ -152,6 +152,11 @@ typedef struct {
     ngx_table_elt_t  *x_url;
 #endif
 
+#if (NGX_HTTP_HEADERS)
+    ngx_table_elt_t  *accept;
+    ngx_table_elt_t  *accept_language;
+#endif
+
     ngx_array_t       cookies;
 
     size_t            host_name_len;
@@ -324,6 +329,9 @@ struct ngx_http_request_s {
 
     /* URI with "+" */
     unsigned             plus_in_uri:1;
+
+    /* URI with "\0" or "%00" */
+    unsigned             zero_in_uri:1;
 
     unsigned             uri_changed:1;
     unsigned             uri_changes:4;

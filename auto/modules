@@ -162,9 +162,31 @@ if [ $HTTP_STUB_STATUS = YES ]; then
     HTTP_SRCS="$HTTP_SRCS src/http/modules/ngx_http_stub_status_module.c"
 fi
 
-if [ -r $NGX_OBJS/auto ]; then
-    . $NGX_OBJS/auto
+#if [ -r $NGX_OBJS/auto ]; then
+#    . $NGX_OBJS/auto
+#fi
+
+
+if test -n "$NGX_ADDONS"; then
+
+    echo configuring additional modules
+
+    for ngx_addon_dir in $NGX_ADDONS
+    do
+        echo "adding module in $ngx_addon_dir"
+
+        if test -f $ngx_addon_dir/config; then
+            . $ngx_addon_dir/config
+
+            echo " + $ngx_addon_name was configured"
+
+        else
+            echo "$0: error: no $ngx_addon_dir/config was found"
+            exit 1
+        fi
+    done
 fi
+
 
 modules="$CORE_MODULES $EVENT_MODULES"
 
@@ -174,7 +196,10 @@ if [ $HTTP = YES ]; then
              $HTTP_COPY_FILTER_MODULE \
              $HTTP_RANGE_BODY_FILTER_MODULE \
              $HTTP_NOT_MODIFIED_FILTER_MODULE"
+
+    NGX_ADDON_DEPS="$NGX_ADDON_DEPS \$(HTTP_DEPS)"
 fi
+
 
 IMAP_MODULES=$IMAP_MODULE
 

@@ -102,6 +102,8 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                               cl->buf->file_last);
 
                 ngx_debug_point();
+
+                return NGX_CHAIN_ERROR;
             }
 #endif
 

@@ -63,7 +63,7 @@ HTTP_STUB_STATUS=NO
 
 IMAP=NO
 
-NGX_MODULES=
+NGX_ADDONS=
 
 USE_PCRE=NO
 PCRE=NONE
@@ -139,7 +139,7 @@ do
 
         --with-imap)                     IMAP=YES                   ;;
 
-        --with-module=*)                 NGX_MODULES="$NGX_MODULES $values" ;;
+        --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
 
         --with-cc=*)                     CC="$value"                ;;
         --with-cpp=*)                    CPP="$value"               ;;

@@ -58,13 +58,13 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("Host"), offsetof(ngx_http_headers_in_t, host) },
     { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection) },
     { ngx_string("If-Modified-Since"),
-                         offsetof(ngx_http_headers_in_t, if_modified_since) },
+                 offsetof(ngx_http_headers_in_t, if_modified_since) },
     { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent) },
     { ngx_string("Referer"), offsetof(ngx_http_headers_in_t, referer) },
     { ngx_string("Content-Length"),
-                            offsetof(ngx_http_headers_in_t, content_length) },
+                 offsetof(ngx_http_headers_in_t, content_length) },
     { ngx_string("Content-Type"),
-                              offsetof(ngx_http_headers_in_t, content_type) },
+                 offsetof(ngx_http_headers_in_t, content_type) },
 
     { ngx_string("Range"), offsetof(ngx_http_headers_in_t, range) },
 #if 0
@@ -73,20 +73,27 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 
 #if (NGX_HTTP_GZIP)
     { ngx_string("Accept-Encoding"),
-                           offsetof(ngx_http_headers_in_t, accept_encoding) },
+                 offsetof(ngx_http_headers_in_t, accept_encoding) },
     { ngx_string("Via"), offsetof(ngx_http_headers_in_t, via) },
 #endif
 
     { ngx_string("Authorization"),
-                             offsetof(ngx_http_headers_in_t, authorization) },
+                 offsetof(ngx_http_headers_in_t, authorization) },
 
     { ngx_string("Keep-Alive"), offsetof(ngx_http_headers_in_t, keep_alive) },
 
 #if (NGX_HTTP_PROXY)
     { ngx_string("X-Forwarded-For"),
-                           offsetof(ngx_http_headers_in_t, x_forwarded_for) },
+                 offsetof(ngx_http_headers_in_t, x_forwarded_for) },
     { ngx_string("X-Real-IP"), offsetof(ngx_http_headers_in_t, x_real_ip) },
     { ngx_string("X-URL"), offsetof(ngx_http_headers_in_t, x_url) },
+#endif
+
+#if (NGX_HTTP_HEADERS)
+    { ngx_string("Accept"), offsetof(ngx_http_headers_in_t, accept) },
+    { ngx_string("Accept-Language"),
+                 offsetof(ngx_http_headers_in_t, accept_language) },
+    { ngx_string("Via"), offsetof(ngx_http_headers_in_t, via) },
 #endif
 
     { ngx_null_string, 0 }
