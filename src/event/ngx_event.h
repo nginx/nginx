@@ -20,6 +20,8 @@ struct ngx_event_s {
     void            *context;
     char            *action;
 
+    int              index;
+
     ngx_event_t     *prev;     /* queue in select(), poll(), mutex(),        */
     ngx_event_t     *next;     /*   aio_read(), aio_write()                  */
 

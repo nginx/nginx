@@ -1,5 +1,6 @@
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_types.h>
 #include <ngx_string.h>
 #include <ngx_log.h>
@@ -20,7 +21,7 @@ ngx_event_t         *ngx_read_events, *ngx_write_events;
 
 #if !(USE_KQUEUE)
 
-#if 0
+#if 1
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
 #else
 ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
@@ -29,7 +30,7 @@ ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
 ngx_event_actions_t  ngx_event_actions;
 
 /* ngx_event_type_e order */
-static void (*ngx_event_init[]) (int max_connections, ngx_log_t *log) = {
+static int (*ngx_event_init[]) (int max_connections, ngx_log_t *log) = {
     ngx_select_init,
 #if (HAVE_POLL)
     ngx_poll_init,
@@ -50,7 +51,8 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
     /* STUB */
     int max_connections = 512;
 
-    ngx_init_events(max_connections, log);
+    if (ngx_init_events(max_connections, log) == NGX_ERROR)
+        exit(1);
 
     ngx_connections = ngx_alloc(sizeof(ngx_connection_t)
                                                        * max_connections, log);

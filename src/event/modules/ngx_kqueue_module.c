@@ -27,7 +27,7 @@ static int              nchanges, nevents;
 
 static ngx_event_t      timer_queue;
 
-void ngx_kqueue_init(int max_connections, ngx_log_t *log)
+int ngx_kqueue_init(int max_connections, ngx_log_t *log)
 {
     int size = sizeof(struct kevent) * 512;
 
@@ -38,11 +38,11 @@ void ngx_kqueue_init(int max_connections, ngx_log_t *log)
 
     if (kq == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "kqueue() failed");
-        exit(1);
+        return NGX_ERROR;
     }
 
-    change_list = ngx_alloc(size, log);
-    event_list = ngx_alloc(size, log);
+    ngx_test_null(change_list, ngx_alloc(size, log), NGX_ERROR);
+    ngx_test_null(event_list, ngx_alloc(size, log), NGX_ERROR);
 
     timer_queue.timer_prev = &timer_queue;
     timer_queue.timer_next = &timer_queue;
@@ -53,6 +53,8 @@ void ngx_kqueue_init(int max_connections, ngx_log_t *log)
     ngx_event_actions.timer = ngx_kqueue_add_timer;
     ngx_event_actions.process = ngx_kqueue_process_events;
 #endif
+
+    return NGX_OK;
 }
 
 int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
@@ -77,7 +79,7 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 
     if (nchanges >= nevents) {
         ngx_log_error(NGX_LOG_WARN, ev->log, 0,
-                      "ngx_kqueue_set_event: change list is filled up");
+                      "kqueue change list is filled up");
 
         if (kevent(kq, change_list, nchanges, NULL, 0, &ts) == -1) {
             ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, "kevent failed");

@@ -6,7 +6,7 @@
 #include <ngx_log.h>
 #include <ngx_event.h>
 
-void ngx_select_init(int max_connections, ngx_log_t *log);
+int ngx_select_init(int max_connections, ngx_log_t *log);
 int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags);
 int ngx_select_del_event(ngx_event_t *ev, int event);
 int ngx_select_set_event(ngx_event_t *ev, int filter, u_int flags);

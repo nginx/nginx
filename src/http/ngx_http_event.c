@@ -491,7 +491,7 @@ static int ngx_http_handler(ngx_http_request_t *r)
     r->connection->read->event_handler = ngx_http_block_read;
 
     /* STUB: should find handler */
-#if 0
+#if 1
     r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
 #endif
     rc = ngx_http_set_default_handler(r);
