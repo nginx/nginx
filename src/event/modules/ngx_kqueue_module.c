@@ -122,10 +122,11 @@ ngx_log_debug(cycle->log, "EV: %d" _ kcf->events);
             ngx_free(change_list);
         }
 
-        ngx_test_null(change_list,
-                      ngx_alloc(kcf->changes * sizeof(struct kevent),
-                                cycle->log),
-                      NGX_ERROR);
+        change_list = ngx_alloc(kcf->changes * sizeof(struct kevent),
+                                cycle->log);
+        if (change_list == NULL) {
+            return NGX_ERROR;
+        }
     }
 
     max_changes = kcf->changes;
@@ -135,10 +136,11 @@ ngx_log_debug(cycle->log, "EV: %d" _ kcf->events);
             ngx_free(event_list);
         }
 
-        ngx_test_null(event_list,
-                      ngx_alloc(kcf->events * sizeof(struct kevent),
-                                cycle->log),
-                      NGX_ERROR);
+        event_list = ngx_alloc(kcf->events * sizeof(struct kevent),
+                                cycle->log);
+        if (event_list == NULL) {
+            return NGX_ERROR;
+        }
     }
 
     nevents = kcf->events;
@@ -371,9 +373,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         tp = NULL;
     }
 
-#if (NGX_DEBUG_EVENT)
-    ngx_log_debug(log, "kevent timer: %d" _ timer);
-#endif
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "kevent timer: %d", timer);
 
     events = kevent(ngx_kqueue, change_list, nchanges, event_list, nevents, tp);
 

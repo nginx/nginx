@@ -323,7 +323,7 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         d = NGX_LOG_DEBUG_FIRST;
-        for (n = 0; n < /* STUB */ 3; n++) {
+        for (n = 0; n < /* STUB */ 4; n++) {
             if (ngx_strcmp(value[i].data, debug_levels[n]) == 0) {
                 if (cf->cycle->log->log_level & ~NGX_LOG_DEBUG_ALL) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -333,9 +333,9 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 }
 
                 cf->cycle->log->log_level |= d;
-                d <<= 1;
-                continue;
             }
+
+            d <<= 1;
         }
 
 

@@ -23,7 +23,11 @@ extern ngx_module_t ngx_devpoll_module;
 
 static int ngx_event_init(ngx_cycle_t *cycle);
 static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+static char *ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd,
+                                   void *conf);
 static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
 static void *ngx_event_create_conf(ngx_cycle_t *cycle);
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf);
 
@@ -40,14 +44,14 @@ static ngx_str_t  events_name = ngx_string("events");
 
 static ngx_command_t  ngx_events_commands[] = {
 
-    {ngx_string("events"),
-     NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
-     ngx_events_block,
-     0,
-     0,
-     NULL},
+    { ngx_string("events"),
+      NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+      ngx_events_block,
+      0,
+      0,
+      NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 
@@ -65,28 +69,21 @@ static ngx_str_t  event_core_name = ngx_string("event_core");
 
 static ngx_command_t  ngx_event_core_commands[] = {
 
-    {ngx_string("connections"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_event_conf_t, connections),
-     NULL},
+    { ngx_string("connections"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_event_connections,
+      0,
+      0,
+      NULL },
 
-    {ngx_string("use"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_event_use,
-     0,
-     0,
-     NULL},
+    { ngx_string("use"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_event_use,
+      0,
+      0,
+      NULL },
 
-    {ngx_string("timer_queues"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_event_conf_t, timer_queues),
-     NULL},
-
-    ngx_null_command
+      ngx_null_command
 };
 
 
@@ -121,10 +118,13 @@ static int ngx_event_init(ngx_cycle_t *cycle)
     ngx_iocp_conf_t     *iocpcf;
 #endif
 
-    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
-ngx_log_debug(cycle->log, "CONN: %d" _ ecf->connections);
-ngx_log_debug(cycle->log, "TYPE: %d" _ ecf->use);
+    if (cycle->old_cycle == NULL) {
+        ngx_event_timer_init(cycle);
+    }
+
+
+    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
     cycle->connection_n = ecf->connections;
 
@@ -142,29 +142,28 @@ ngx_log_debug(cycle->log, "TYPE: %d" _ ecf->use);
         }
     }
 
-    if (cycle->old_cycle && cycle->old_cycle->connection_n < ecf->connections) {
-        /* TODO: push into delayed array and temporary pool */
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "NOT READY: connections");
-        exit(1);
+    cycle->connections = ngx_alloc(sizeof(ngx_connection_t) * ecf->connections,
+                                   cycle->log);
+    if (cycle->connections == NULL) {
+        return NGX_ERROR;
     }
-
-    ngx_test_null(cycle->connections,
-                  ngx_alloc(sizeof(ngx_connection_t) * ecf->connections,
-                            cycle->log),
-                  NGX_ERROR);
 
     c = cycle->connections;
     for (i = 0; i < cycle->connection_n; i++) {
         c[i].fd = -1;
     }
 
-    ngx_test_null(cycle->read_events,
-                  ngx_alloc(sizeof(ngx_event_t) * ecf->connections, cycle->log),
-                  NGX_ERROR);
+    cycle->read_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
+                                   cycle->log);
+    if (cycle->read_events == NULL) {
+        return NGX_ERROR;
+    }
 
-    ngx_test_null(cycle->write_events,
-                  ngx_alloc(sizeof(ngx_event_t) * ecf->connections, cycle->log),
-                  NGX_ERROR);
+    cycle->write_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
+                                   cycle->log);
+    if (cycle->write_events == NULL) {
+        return NGX_ERROR;
+    }
 
     /* for each listening socket */
 
@@ -200,6 +199,9 @@ ngx_log_debug(cycle->log, "TYPE: %d" _ ecf->use);
         /* required by iocp in "c->write->active = 1" */
         c->write = wev;
 
+        /* required by poll */
+        wev->index = NGX_INVALID_INDEX;
+
         rev->log = c->log;
         rev->data = c;
         rev->index = NGX_INVALID_INDEX;
@@ -210,11 +212,13 @@ ngx_log_debug(cycle->log, "TYPE: %d" _ ecf->use);
         rev->deferred_accept = s[i].deferred_accept;
 #endif
 
-        /* required by poll */
-        wev->index = NGX_INVALID_INDEX;
-
-        if ((ngx_event_flags & NGX_USE_IOCP_EVENT) == 0) {
+        if (!(ngx_event_flags & NGX_USE_IOCP_EVENT)) {
             if (s[i].remain) {
+
+                /*
+                 * delete the old accept events that were bound to
+                 * the old cycle read events array
+                 */
 
                 if (ngx_del_event(&cycle->old_cycle->read_events[fd],
                                              NGX_READ_EVENT, 0) == NGX_ERROR) {
@@ -327,19 +331,53 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+static char *ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd,
+                                   void *conf)
+{
+    ngx_event_conf_t  *ecf = conf;
+
+    ngx_str_t  *value;
+
+    if (ecf->connections != NGX_CONF_UNSET) {
+        return "is duplicate" ;
+    }
+
+    value = cf->args->elts;
+    ecf->connections = ngx_atoi(value[1].data, value[1].len);
+    if (ecf->connections == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid number \"%s\"", value[1].data);
+
+        return NGX_CONF_ERROR;
+    }
+
+    cf->cycle->connection_n = ecf->connections;
+
+    return NGX_CONF_OK;
+}
+
+
 static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_event_conf_t  *ecf = conf;
 
     int                   m;
-    ngx_str_t            *args;
+    ngx_str_t            *value;
+    ngx_event_conf_t     *old_ecf;
     ngx_event_module_t   *module;
 
     if (ecf->use != NGX_CONF_UNSET) {
         return "is duplicate" ;
     }
 
-    args = cf->args->elts;
+    value = cf->args->elts;
+
+    if (cf->cycle->old_cycle) {
+        old_ecf = ngx_event_get_conf(cf->cycle->old_cycle->conf_ctx,
+                                     ngx_event_core_module);
+    } else {
+        old_ecf = NULL;
+    }
 
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
@@ -347,15 +385,31 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         module = ngx_modules[m]->ctx;
-        if (module->name->len == args[1].len) {
-            if (ngx_strcmp(module->name->data, args[1].data) == 0) {
+        if (module->name->len == value[1].len) {
+            if (ngx_strcmp(module->name->data, value[1].data) == 0) {
                 ecf->use = ngx_modules[m]->ctx_index;
+                ecf->name = module->name->data;
+
+                if (old_ecf && old_ecf->use != ecf->use) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                        "the \"%s\" event type must be the same as "
+                        "in previous configuration - \"%s\" "
+                        "and it can not be changed on the fly, "
+                        "to change it you need to stop server "
+                        "and start it again",
+                        value[1].data, old_ecf->name);
+                    return NGX_CONF_ERROR;
+                }
+
                 return NGX_CONF_OK;
             }
         }
     }
 
-    return "invalid event type";
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "invalid event type \"%s\"", value[1].data);
+
+    return NGX_CONF_ERROR;
 }
 
 
@@ -369,6 +423,7 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
     ecf->connections = NGX_CONF_UNSET;
     ecf->timer_queues = NGX_CONF_UNSET;
     ecf->use = NGX_CONF_UNSET;
+    ecf->name = (void *) NGX_CONF_UNSET;
 
     return ecf;
 }
@@ -382,11 +437,13 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ngx_conf_init_value(ecf->connections, DEFAULT_CONNECTIONS);
     ngx_conf_init_value(ecf->use, ngx_kqueue_module.ctx_index);
+    ngx_conf_init_ptr_value(ecf->name, ngx_kqueue_module_ctx.name->data);
 
 #elif (HAVE_DEVPOLL)
 
     ngx_conf_init_value(ecf->connections, DEFAULT_CONNECTIONS);
     ngx_conf_init_value(ecf->use, ngx_devpoll_module.ctx_index);
+    ngx_conf_init_ptr_value(ecf->name, ngx_devpoll_module_ctx.name->data);
 
 #else /* HAVE_SELECT */
 
@@ -394,8 +451,11 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
           FD_SETSIZE < DEFAULT_CONNECTIONS ? FD_SETSIZE : DEFAULT_CONNECTIONS);
 
     ngx_conf_init_value(ecf->use, ngx_select_module.ctx_index);
+    ngx_conf_init_ptr_value(ecf->name, ngx_select_module_ctx.name->data);
 
 #endif
+
+    cycle->connection_n = ecf->connections;
 
     ngx_conf_init_value(ecf->timer_queues, 10);
 

@@ -179,6 +179,11 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
         conf = default;                                                      \
     }
 
+#define ngx_conf_init_ptr_value(conf, default)                               \
+    if (conf == (void *) NGX_CONF_UNSET) {                                   \
+        conf = default;                                                      \
+    }
+
 #define ngx_conf_init_unsigned_value(conf, default)                          \
     if (conf == (unsigned) NGX_CONF_UNSET) {                                 \
         conf = default;                                                      \

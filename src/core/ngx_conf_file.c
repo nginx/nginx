@@ -230,7 +230,7 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
 
                     } else {
                         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                      "\"%s\" directive %s in %s:%d",
+                                      "the \"%s\" directive %s in %s:%d",
                                       name->data, rv,
                                       cf->conf_file->file.name.data,
                                       cf->conf_file->line);

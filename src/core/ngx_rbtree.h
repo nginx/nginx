@@ -23,14 +23,14 @@ void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
                        ngx_rbtree_t *node);
 
 
-ngx_inline static ngx_rbtree_t *ngx_rbtree_min(ngx_rbtree_t *root,
+ngx_inline static ngx_rbtree_t *ngx_rbtree_min(ngx_rbtree_t *node,
                                                ngx_rbtree_t *sentinel)
 {
-   while (root->left != sentinel) {
-       root = root->left;
+   while (node->left != sentinel) {
+       node = node->left;
    }
 
-   return root;
+   return node;
 }
 
 

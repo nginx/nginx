@@ -24,14 +24,14 @@ static ngx_str_t  core_name = ngx_string("core");
 
 static ngx_command_t  ngx_core_commands[] = {
 
-    {ngx_string("daemon"),
-     NGX_MAIN_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_core_flag_slot,
-     0,
-     offsetof(ngx_core_conf_t, daemon),
-     NULL},
+    { ngx_string("daemon"),
+      NGX_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_core_flag_slot,
+      0,
+      offsetof(ngx_core_conf_t, daemon),
+      NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 
@@ -238,6 +238,7 @@ ngx_log_debug(log, "REOPEN: %d:%d:%s" _ fd _ file[i].fd _ file[i].name.data);
 static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 {
     int               i, n, failed;
+    ngx_fd_t          fd;
     ngx_str_t         conf_file;
     ngx_conf_t        conf;
     ngx_pool_t       *pool;
@@ -390,6 +391,26 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
                     if (ngx_memcmp(nls[n].sockaddr,
                                    ls[i].sockaddr, ls[i].socklen) == 0)
                     {
+                        fd = ls[i].fd;
+#if (WIN32)
+                        /*
+                         * Winsock assignes a socket number divisible by 4 so
+                         * to find a connection we divide a socket number by 4.
+                         */
+
+                        fd /= 4;
+#endif
+                        if (fd >= cycle->connection_n) {
+                            ngx_log_error(NGX_LOG_EMERG, log, 0,
+                                        "%d connections is not enough to hold "
+                                        "an open listening socket on %s, "
+                                        "required at least %d connections",
+                                        cycle->connection_n,
+                                        ls[i].addr_text.data, fd);
+                            failed = 1;
+                            break;
+                        }
+
                         nls[n].fd = ls[i].fd;
                         nls[i].remain = 1;
                         ls[i].remain = 1;
@@ -409,8 +430,10 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
             }
         }
 
-        if (ngx_open_listening_sockets(cycle, log) == NGX_ERROR) {
-            failed = 1;
+        if (!failed) {
+            if (ngx_open_listening_sockets(cycle, log) == NGX_ERROR) {
+                failed = 1;
+            }
         }
     }
 
@@ -583,7 +606,7 @@ static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log)
 
             if (s == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              ngx_socket_n " %s falied", ls[i].addr_text.data);
+                              ngx_socket_n " %s failed", ls[i].addr_text.data);
                 return NGX_ERROR;
             }
 

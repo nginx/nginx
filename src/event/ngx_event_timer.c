@@ -10,6 +10,10 @@ ngx_rbtree_t   ngx_event_timer_sentinel;
 
 int ngx_event_timer_init(ngx_cycle_t *cycle)
 {
+    if (cycle->old_cycle) {
+        return NGX_OK;
+    }
+
     ngx_event_timer_rbtree = &ngx_event_timer_sentinel;
     ngx_event_timer_sentinel.left = &ngx_event_timer_sentinel;
     ngx_event_timer_sentinel.right = &ngx_event_timer_sentinel;
