@@ -643,7 +643,11 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
             rev = c->read;
 
-            if (overflow_list[i].revents & (POLLIN|POLLERR|POLLHUP|POLLNVAL)) {
+            if (rev->active
+                && rev->event_handler
+                && (overflow_list[i].revents
+                                          & (POLLIN|POLLERR|POLLHUP|POLLNVAL)))
+            {
                 tested++;
 
                 if (ngx_threaded) {
@@ -658,7 +662,11 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
             wev = c->write;
 
-            if (overflow_list[i].revents & (POLLOUT|POLLERR|POLLHUP|POLLNVAL)) {
+            if (wev->active
+                && wev->event_handler
+                && (overflow_list[i].revents
+                                         & (POLLOUT|POLLERR|POLLHUP|POLLNVAL)))
+            {
                 tested++;
 
                 if (ngx_threaded) {
