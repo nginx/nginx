@@ -98,7 +98,6 @@ ngx_module_t  ngx_http_index_module = {
 int ngx_http_index_handler(ngx_http_request_t *r)
 {
     char                       *name;
-    uint32_t                    crc;
     size_t                      len;
     ngx_fd_t                    fd;
     ngx_int_t                   rc;
@@ -108,6 +107,9 @@ int ngx_http_index_handler(ngx_http_request_t *r)
     ngx_http_index_ctx_t       *ctx;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_index_loc_conf_t  *ilcf;
+#if (NGX_HTTP_CACHE)
+    uint32_t                    crc;
+#endif
 
     if (r->uri.data[r->uri.len - 1] != '/') {
         return NGX_DECLINED;

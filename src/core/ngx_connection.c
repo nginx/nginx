@@ -252,7 +252,9 @@ ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
 #if !(WIN32)
         || err == NGX_EPIPE
 #endif
-        || err == NGX_ENOTCONN)
+        || err == NGX_ENOTCONN
+        || err == NGX_ECONNREFUSED
+        || err == NGX_EHOSTUNREACH)
     {
 
         switch (c->log_error) {

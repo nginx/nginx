@@ -41,6 +41,7 @@ typedef struct {
     ngx_str_t                        port_text;
     ngx_str_t                       *location;
     int                              port;
+    unsigned                         default_port:1;
 } ngx_http_proxy_upstream_conf_t;
 
 
@@ -60,6 +61,7 @@ typedef struct {
 
     ngx_flag_t                       cache;
 
+    ngx_flag_t                       preserve_host;
     ngx_flag_t                       set_x_real_ip;
     ngx_flag_t                       add_x_forwarded_for;
 

@@ -19,7 +19,12 @@ case $PLATFORM in
         cp auto/lib/pcre/patch.config.in $PCRE
         cp auto/lib/pcre/$makefile $PCRE
 
-        echo "$PCRE/pcre.lib:"                                    >> $MAKEFILE
+        echo "$PCRE/pcre.h:"                                      >> $MAKEFILE
+        echo "	cd $PCRE"                                         >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile pcre.h"                     >> $MAKEFILE
+        echo "	cd ..\\..\\.."                                    >> $MAKEFILE
+        echo                                                      >> $MAKEFILE
+        echo "$PCRE/pcre.lib:	$PCRE/pcre.h"                     >> $MAKEFILE
         echo "	cd $PCRE"                                         >> $MAKEFILE
         echo "	\$(MAKE) -f $makefile CPU_OPT=$CPU_OPT LIBC=$LIBC">> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE

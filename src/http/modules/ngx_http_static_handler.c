@@ -61,7 +61,6 @@ ngx_module_t  ngx_http_static_module = {
 static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
 {
     char                        *last;
-    uint32_t                     file_crc, redirect_crc;
     ngx_fd_t                     fd;
     ngx_int_t                    rc;
     ngx_uint_t                   level;
@@ -71,11 +70,14 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     ngx_hunk_t                  *h;
     ngx_chain_t                  out;
     ngx_file_info_t              fi;
-    ngx_http_cache_t            *file, *redirect;
     ngx_http_cleanup_t          *file_cleanup, *redirect_cleanup;
     ngx_http_log_ctx_t          *ctx;
     ngx_http_core_loc_conf_t    *clcf;
     ngx_http_static_loc_conf_t  *slcf;
+#if (NGX_HTTP_CACHE)
+    uint32_t                     file_crc, redirect_crc;
+    ngx_http_cache_t            *file, *redirect;
+#endif
 
     if (r->uri.data[r->uri.len - 1] == '/') {
         return NGX_DECLINED;

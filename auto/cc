@@ -86,9 +86,17 @@ case $CC in
          # optimization
          CFLAGS="$CFLAGS -O"
          # inline functions declared with __inline
-         CFLAGS="$CFLAGS -Ob1"
+         #CFLAGS="$CFLAGS -Ob1"
          # inline any function, at the compiler's discretion
-         #CFLAGS="$CFLAGS -Ob2"
+         CFLAGS="$CFLAGS -Ob2"
+
+         # single-file IP optimizations
+         #IPO="-ip"
+         # multi-file IP optimizations 
+         IPO="-ipo -ipo_obj"
+         CFLAGS="$CFLAGS $IPO"
+         CORE_LINK="$CORE_LINK $IPO"
+         CORE_LINK="$CORE_LINK -opt_report_file=$OBJS/opt_report_file"
 
          case $CPU in
              pentium)
@@ -110,15 +118,15 @@ case $CC in
          CFLAGS="$CFLAGS $CPU_OPT"
 
          if [ ".$PCRE_OPT" = "." ]; then
-             PCRE_OPT="-O $CPU_OPT"
+             PCRE_OPT="-O $IPO $CPU_OPT"
          fi
 
          if [ ".$MD5_OPT" = "." ]; then
-             MD5_OPT="-O $CPU_OPT"
+             MD5_OPT="-O $IPO $CPU_OPT"
          fi
 
          if [ ".$ZLIB_OPT" = "." ]; then
-             ZLIB_OPT="-O $CPU_OPT"
+             ZLIB_OPT="-O $IPO $CPU_OPT"
          fi
 
          # warnings
@@ -126,6 +134,9 @@ case $CC in
 
          # stop on warning
          CFLAGS="$CFLAGS -Werror"
+
+         # debug
+         CFLAGS="$CFLAGS -g"
 
          have=HAVE_C99_VARIADIC_MACROS . auto/have
 

@@ -9,7 +9,8 @@ if [ $PCRE != NONE ]; then
         cl)
             have=HAVE_PCRE . auto/have
             have=PCRE_STATIC . auto/have
-            CORE_DEPS="$CORE_DEPS $PCRE/pcre.lib"
+            CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
+            LINK_DEPS="$LINK_DEPS $PCRE/pcre.lib"
             CORE_LIBS="$CORE_LIBS pcre.lib"
             CORE_LINK="$CORE_LINK -libpath:$PCRE"
         ;;
@@ -17,8 +18,22 @@ if [ $PCRE != NONE ]; then
         wcl386)
             have=HAVE_PCRE . auto/have
             have=PCRE_STATIC . auto/have
-            CORE_DEPS="$CORE_DEPS $PCRE/pcre.lib"
+            CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
+            LINK_DEPS="$LINK_DEPS $PCRE/pcre.lib"
             CORE_LIBS="$CORE_LIBS $PCRE/pcre.lib"
+        ;;
+
+        *icc)
+            have=HAVE_PCRE . auto/have
+            CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
+
+            LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre.a"
+
+            # to allow -ipo optimization we link with the *.o but not library
+            CORE_LIBS="$CORE_LIBS $PCRE/maketables.o"
+            CORE_LIBS="$CORE_LIBS $PCRE/get.o"
+            CORE_LIBS="$CORE_LIBS $PCRE/study.o"
+            CORE_LIBS="$CORE_LIBS $PCRE/pcre.o"
         ;;
 
         *)

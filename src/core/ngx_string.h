@@ -20,11 +20,6 @@ typedef struct {
 
 #define ngx_strncasecmp           strnicmp
 #define ngx_strcasecmp            stricmp
-#define ngx_strncmp               strncmp
-#define ngx_strcmp                strcmp
-
-#define ngx_strstr                strstr
-#define ngx_strlen                strlen
 
 #define ngx_snprintf              _snprintf
 #define ngx_vsnprintf             _vsnprintf
@@ -33,20 +28,26 @@ typedef struct {
 
 #define ngx_strncasecmp           strncasecmp
 #define ngx_strcasecmp            strcasecmp
-#define ngx_strncmp               strncmp
-#define ngx_strcmp                strcmp
-
-#define ngx_strstr                strstr
-#define ngx_strlen                strlen
 
 #define ngx_snprintf              snprintf
 #define ngx_vsnprintf             vsnprintf
 
 #endif
 
+
+#define ngx_strncmp               strncmp
+
+/* msvc and icc compile strcmp() to inline loop */
+#define ngx_strcmp                strcmp
+
+#define ngx_strstr                strstr
+#define ngx_strlen                strlen
+
 /*
  * msvc and icc compile memset() to inline "rep stos"
  * while ZeroMemory and bzero are calls.
+ *
+ * icc can also inline mov's of a zeroed register for small blocks.
  */
 #define ngx_memzero(buf, n)       memset(buf, 0, n)
 

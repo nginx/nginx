@@ -225,8 +225,6 @@ HTTP_REWRITE_SRCS=src/http/modules/ngx_http_rewrite_handler.c
 
 HTTP_GZIP_FILTER_MODULE=ngx_http_gzip_filter_module
 HTTP_GZIP_SRCS=src/http/modules/ngx_http_gzip_filter.c
-HTTP_GZIP_UNIX_LIBS=-lz
-HTTP_GZIP_WIN_LIBS=zlib.lib
 
 
 HTTP_SSI_FILTER_MODULE=ngx_http_ssi_filter_module

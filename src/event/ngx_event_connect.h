@@ -47,6 +47,7 @@ typedef struct {
     ngx_log_t         *log;
 
     unsigned           cached:1;
+    unsigned           log_error:2;  /* ngx_connection_log_error_e */
 } ngx_peer_connection_t;
 
 

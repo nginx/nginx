@@ -15,6 +15,21 @@ if [ $ZLIB != NONE ]; then
             CORE_LIBS="$CORE_LIBS $ZLIB/zlib.lib"
         ;;
 
+        *icc)
+            LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
+
+            # to allow -ipo optimization we link with the *.o but not library
+            CORE_LIBS="$CORE_LIBS $ZLIB/adler32.o"
+            CORE_LIBS="$CORE_LIBS $ZLIB/crc32.o"
+            CORE_LIBS="$CORE_LIBS $ZLIB/deflate.o"
+            CORE_LIBS="$CORE_LIBS $ZLIB/trees.o"
+            CORE_LIBS="$CORE_LIBS $ZLIB/zutil.o"
+
+            if [ $ZLIB_ASM != NO ]; then
+                CORE_LIBS="$CORE_LIBS $ZLIB/match.o"
+            fi
+        ;;
+
         *)
             LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
             CORE_LIBS="$CORE_LIBS -L $ZLIB -lz"

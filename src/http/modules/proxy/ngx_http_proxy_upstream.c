@@ -57,6 +57,7 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
 
     p->upstream = u;
 
+    u->peer.log_error = NGX_ERROR_ERR;
     u->peer.peers = p->lcf->peers;
     u->peer.tries = p->lcf->peers->number;
 
@@ -113,21 +114,29 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
           + r->uri.len - uc->location->len
           + 1 + r->args.len                                  /* 1 is for "?" */
           + sizeof(http_version) - 1
-          + sizeof(host_header) - 1 + uc->host_header.len + 2
-                                                          /* 2 is for "\r\n" */
           + sizeof(connection_close_header) - 1
           + 2;                          /* 2 is for "\r\n" at the header end */
 
-    if (p->lcf->set_x_real_ip) {
-                                                          /* 2 is for "\r\n" */
+
+    if (p->lcf->preserve_host) {
+        len += sizeof(host_header) - 1
+               + r->headers_in.host_name_len
+               + 1                                           /* 1 is for ":" */
+               + uc->port_text.len
+               + 2;                                       /* 2 is for "\r\n" */
+    } else {                                              /* 2 is for "\r\n" */
+        len += sizeof(host_header) - 1 + uc->host_header.len + 2;
+    }
+
+
+    if (p->lcf->set_x_real_ip) {                          /* 2 is for "\r\n" */
         len += sizeof(x_real_ip_header) - 1 + INET_ADDRSTRLEN - 1 + 2;
     }
 
 
     if (p->lcf->add_x_forwarded_for) {
         if (r->headers_in.x_forwarded_for) {
-            len += r->headers_in.x_forwarded_for->key.len
-                   + 2                                      /* 2 is ofr ": " */
+            len += sizeof(x_forwarded_for_header) - 1
                    + r->headers_in.x_forwarded_for->value.len
                    + 2                                      /* 2 is ofr ", " */
                    + INET_ADDRSTRLEN - 1
@@ -179,17 +188,31 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     h->last = ngx_cpymem(h->last, http_version, sizeof(http_version) - 1);
 
 
-    /* the "Host" header */
-
-    h->last = ngx_cpymem(h->last, host_header, sizeof(host_header) - 1);
-    h->last = ngx_cpymem(h->last, uc->host_header.data, uc->host_header.len);
-    *(h->last++) = CR; *(h->last++) = LF;
-
-
     /* the "Connection: close" header */
 
     h->last = ngx_cpymem(h->last, connection_close_header,
                          sizeof(connection_close_header) - 1);
+
+
+    /* the "Host" header */
+
+    h->last = ngx_cpymem(h->last, host_header, sizeof(host_header) - 1);
+
+    if (p->lcf->preserve_host) {
+        h->last = ngx_cpymem(h->last, r->headers_in.host->value.data,
+                             r->headers_in.host_name_len);
+
+        if (!uc->default_port) {
+            *(h->last++) = ':';
+            h->last = ngx_cpymem(h->last, uc->port_text.data,
+                                 uc->port_text.len);
+        }
+
+    } else {
+        h->last = ngx_cpymem(h->last, uc->host_header.data,
+                             uc->host_header.len);
+    }
+    *(h->last++) = CR; *(h->last++) = LF;
 
 
     /* the "X-Real-IP" header */
@@ -207,11 +230,8 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     if (p->lcf->add_x_forwarded_for) {
         if (r->headers_in.x_forwarded_for) {
-            h->last = ngx_cpymem(h->last,
-                                 r->headers_in.x_forwarded_for->key.data,
-                                 r->headers_in.x_forwarded_for->key.len);
-
-            *(h->last++) = ':'; *(h->last++) = ' ';
+            h->last = ngx_cpymem(h->last, x_forwarded_for_header,
+                                 sizeof(x_forwarded_for_header) - 1);
 
             h->last = ngx_cpymem(h->last,
                                  r->headers_in.x_forwarded_for->value.data,
@@ -416,7 +436,10 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
 
 void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
 {
-    int  rc, ft_type;
+    ngx_int_t  rc;
+#if (NGX_HTTP_CACHE)
+    ngx_int_t  ft_type;
+#endif
 
     if (p->busy_lock.time == 0) {
         p->busy_lock.event = p->request->connection->read;
@@ -436,6 +459,8 @@ void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
 
     ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
 
+#if (NGX_HTTP_CACHE)
+
     if (rc == NGX_DONE) {
         ft_type = NGX_HTTP_PROXY_FT_BUSY_LOCK;
 
@@ -443,8 +468,6 @@ void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
         /* rc == NGX_ERROR */
         ft_type = NGX_HTTP_PROXY_FT_MAX_WAITING;
     }
-
-#if (NGX_HTTP_CACHE)
 
     if (p->stale && (p->lcf->use_stale & ft_type)) {
         ngx_http_proxy_finalize_request(p,
@@ -1067,12 +1090,12 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->pool = r->pool;
     ep->log = r->connection->log;
 
+    ep->cachable = p->cachable;
+
     if (!(ep->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t)))) {
         ngx_http_proxy_finalize_request(p, 0);
         return;
     }
-
-    ep->cachable = p->cachable;
 
     ep->temp_file->file.fd = NGX_INVALID_FILE;
     ep->temp_file->file.log = r->connection->log;

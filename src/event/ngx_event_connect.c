@@ -179,6 +179,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     c->fd = s;
 
+    c->log_error = pc->log_error;
+
     pc->connection = c;
 
     /*
@@ -212,10 +214,10 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     if (rc == -1) {
         err = ngx_socket_errno;
 
-        /* Winsock returns WSAEWOULDBLOCK */
+        /* Winsock returns WSAEWOULDBLOCK (NGX_EAGAIN) */
 
         if (err != NGX_EINPROGRESS && err != NGX_EAGAIN) {
-            ngx_log_error(NGX_LOG_ERR, pc->log, err, "connect() failed");
+            ngx_connection_error(c, err, "connect() failed");
 
             if (ngx_close_socket(s) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,

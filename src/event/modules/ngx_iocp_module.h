@@ -4,7 +4,7 @@
 
 typedef struct {
     int  threads;
-    int  acceptex;
+    int  post_acceptex;
     int  acceptex_read;
 } ngx_iocp_conf_t;
 

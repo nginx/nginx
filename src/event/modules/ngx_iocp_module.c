@@ -30,11 +30,11 @@ static ngx_command_t  ngx_iocp_commands[] = {
      offsetof(ngx_iocp_conf_t, threads),
      NULL},
 
-    {ngx_string("acceptex"),
+    {ngx_string("post_acceptex"),
      NGX_EVENT_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_num_slot,
      0,
-     offsetof(ngx_iocp_conf_t, acceptex),
+     offsetof(ngx_iocp_conf_t, post_acceptex),
      NULL},
 
     {ngx_string("acceptex_read"),
@@ -266,7 +266,7 @@ static void *ngx_iocp_create_conf(ngx_cycle_t *cycle)
                   NGX_CONF_ERROR);
 
     cf->threads = NGX_CONF_UNSET;
-    cf->acceptex = NGX_CONF_UNSET;
+    cf->post_acceptex = NGX_CONF_UNSET;
     cf->acceptex_read = NGX_CONF_UNSET;
 
     return cf;
@@ -278,7 +278,7 @@ static char *ngx_iocp_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_iocp_conf_t *cf = conf;
 
     ngx_conf_init_value(cf->threads, 0);
-    ngx_conf_init_value(cf->acceptex, 10);
+    ngx_conf_init_value(cf->post_acceptex, 10);
     ngx_conf_init_value(cf->acceptex_read, 1);
 
     return NGX_CONF_OK;

@@ -264,7 +264,9 @@ static int ngx_event_init(ngx_cycle_t *cycle)
             }
 
             iocpcf = ngx_event_get_conf(cycle->conf_ctx, ngx_iocp_module);
-            if (ngx_event_post_acceptex(&s[i], iocpcf->acceptex) == NGX_ERROR) {
+            if (ngx_event_post_acceptex(&s[i], iocpcf->post_acceptex)
+                                                                  == NGX_ERROR)
+            {
                 return NGX_ERROR;
             }
 
