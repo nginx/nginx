@@ -8,10 +8,16 @@ case $CC in
          #CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"
 
          case $CPU in
+             pentium)
+                 # optimize for Pentium and Athlon
+                 CPU_OPT="-march=pentium"
+             ;;
+
              pentiumpro)
                  # optimize for Pentium Pro, Pentium II and Pentium III
                  CPU_OPT="-march=pentiumpro"
              ;;
+
              pentium4)
                  # optimize for Pentium 4, gcc 3.x
                  CPU_OPT="-march=pentium4"
@@ -85,10 +91,16 @@ case $CC in
          #CFLAGS="$CFLAGS -Ob2"
 
          case $CPU in
+             pentium)
+                 # optimize for Pentium and Athlon
+                 CPU_OPT="-march=pentium"
+             ;;
+
              pentiumpro)
                  # optimize for Pentium Pro, Pentium II and Pentium III
                  CPU_OPT="-mcpu=pentiumpro -march=pentiumpro"
              ;;
+
              pentium4)
                  # optimize for Pentium 4, default
                  CPU_OPT="-march=pentium4"
@@ -148,9 +160,15 @@ case $CC in
 
          case $CPU in
              pentiumpro)
+                 # optimize for Pentium and Athlon
+                 CPU_OPT="-G5"
+             ;;
+
+             pentiumpro)
                  # optimize for Pentium Pro, Pentium II and Pentium III
                  CPU_OPT="-G6"
              ;;
+
              pentium4)
                  # optimize for Pentium 4
                  #CPU_OPT="-G7"
@@ -218,6 +236,14 @@ case $CC in
          CFLAGS="$CFLAGS -s"
 
          case $CPU in
+             pentium)
+                 # optimize for Pentium and Athlon
+                 # register-based arguments passing conventions
+                 CPU_OPT="-5r"
+                 # stack-based arguments passing conventions
+                 #CPU_OPT="-5s"
+             ;;
+
              pentiumpro)
                  # optimize for Pentium Pro, Pentium II and Pentium III
                  # register-based arguments passing conventions

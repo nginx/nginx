@@ -1485,11 +1485,15 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
             continue;
         }
 
+#if (NGX_HTTP_CACHE)
+
         if (cleanup[i].cache) {
             ngx_http_cache_unlock(cleanup[i].data.cache.hash,
                                   cleanup[i].data.cache.cache, log);
             continue;
         }
+
+#endif
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "http cleanup fd: %d",
                        cleanup[i].data.file.fd);

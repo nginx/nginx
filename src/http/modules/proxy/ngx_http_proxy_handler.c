@@ -81,6 +81,20 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, send_timeout),
       NULL },
 
+    { ngx_string("proxy_set_x_real_ip"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, set_x_real_ip),
+      NULL },
+
+    { ngx_string("proxy_add_x_forwarded_for"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, add_x_forwarded_for),
+      NULL },
+
     { ngx_string("proxy_header_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
@@ -109,12 +123,16 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, busy_buffers_size),
       NULL },
 
+#if (NGX_HTTP_FILE_CACHE)
+
     { ngx_string("proxy_cache_path"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1234,
       ngx_conf_set_path_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, cache_path),
       ngx_garbage_collector_http_cache_handler },
+
+#endif
 
     { ngx_string("proxy_temp_path"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1234,
@@ -311,6 +329,7 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
 
     ngx_memzero(p->state, sizeof(ngx_http_proxy_state_t));
 
+#if (NGX_HTTP_FILE_CACHE)
 
     if (!p->lcf->cache
         || (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD))
@@ -337,6 +356,14 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
     }
 
     return ngx_http_proxy_get_cached_response(p);
+
+#else
+
+    p->state->cache_state = NGX_HTTP_PROXY_CACHE_PASS;
+
+    return ngx_http_proxy_request_upstream(p);
+
+#endif
 }
 
 
@@ -404,12 +431,20 @@ void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
         rev->timedout = 0;
         p->busy_lock.time++;
         p->state->bl_time = p->busy_lock.time;
+
+#if (NGX_HTTP_FILE_CACHE)
+
         if (p->state->cache_state < NGX_HTTP_PROXY_CACHE_MISS) {
             ngx_http_proxy_upstream_busy_lock(p);
 
         } else {
             ngx_http_proxy_cache_busy_lock(p);
         }
+#else
+
+        ngx_http_proxy_upstream_busy_lock(p);
+
+#endif
 
         return;
     }
@@ -738,6 +773,10 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->request_buffer_size = NGX_CONF_UNSET;
     conf->connect_timeout = NGX_CONF_UNSET;
     conf->send_timeout = NGX_CONF_UNSET;
+
+    conf->set_x_real_ip = NGX_CONF_UNSET;
+    conf->add_x_forwarded_for = NGX_CONF_UNSET;
+
     conf->header_buffer_size = NGX_CONF_UNSET;
     conf->read_timeout = NGX_CONF_UNSET;
     conf->busy_buffers_size = NGX_CONF_UNSET;
@@ -776,6 +815,11 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_msec_value(conf->connect_timeout,
                               prev->connect_timeout, 60000);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 30000);
+
+    ngx_conf_merge_value(conf->set_x_real_ip, prev->set_x_real_ip, 0);
+    ngx_conf_merge_value(conf->add_x_forwarded_for,
+                         prev->add_x_forwarded_for, 0);
+
     ngx_conf_merge_size_value(conf->header_buffer_size,
                               prev->header_buffer_size, 4096);
     ngx_conf_merge_msec_value(conf->read_timeout, prev->read_timeout, 30000);

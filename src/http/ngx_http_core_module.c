@@ -211,12 +211,16 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+#if (NGX_HTTP_CACHE)
+
     { ngx_string("open_file_cache"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE4,
       ngx_http_set_cache_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, open_files),
       NULL },
+
+#endif
 
       ngx_null_command
 };

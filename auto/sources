@@ -166,8 +166,9 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
 
 HTTP_MODULES="ngx_http_module \
             ngx_http_core_module \
-            ngx_http_log_module \
-            ngx_http_cache_module"
+            ngx_http_log_module"
+
+HTTP_FILE_CACHE_MODULE=ngx_http_cache_module
 
 HTTP_FILTER_MODULES="ngx_http_write_filter_module \
             ngx_http_output_filter_module \
@@ -196,9 +197,6 @@ HTTP_SRCS="src/http/ngx_http.c \
             src/http/ngx_http_core_module.c \
             src/http/ngx_http_special_response.c \
             src/http/ngx_http_request.c \
-            src/http/ngx_http_cache.c \
-            src/http/ngx_http_file_cache.c \
-            src/http/ngx_http_busy_lock.c \
             src/http/ngx_http_parse.c \
             src/http/ngx_http_headers.c \
             src/http/ngx_http_header_filter.c \
@@ -213,6 +211,12 @@ HTTP_SRCS="src/http/ngx_http.c \
             src/http/modules/ngx_http_range_filter.c \
             src/http/modules/ngx_http_charset_filter.c \
             src/http/modules/ngx_http_not_modified_filter.c"
+
+# STUB
+HTTP_SRCS="$HTTP_SRCS src/http/ngx_http_busy_lock.c"
+
+HTPP_CACHE_SRCS=src/http/ngx_http_cache.c
+HTPP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
 
 
 HTTP_REWRITE_MODULE=ngx_http_rewrite_module
@@ -234,6 +238,8 @@ HTTP_PROXY_INCS="-I src/http/modules/proxy"
 HTTP_PROXY_DEPS=src/http/modules/proxy/ngx_http_proxy_handler.h
 HTTP_PROXY_SRCS="src/http/modules/proxy/ngx_http_proxy_handler.c \
             src/http/modules/proxy/ngx_http_proxy_upstream.c \
-            src/http/modules/proxy/ngx_http_proxy_cache.c \
             src/http/modules/proxy/ngx_http_proxy_parse.c \
             src/http/modules/proxy/ngx_http_proxy_header.c"
+
+# STUB
+#            src/http/modules/proxy/ngx_http_proxy_cache.c \

@@ -93,14 +93,21 @@ typedef struct {
     ngx_table_elt_t  *if_modified_since;
     ngx_table_elt_t  *user_agent;
     ngx_table_elt_t  *referer;
-
     ngx_table_elt_t  *content_length;
-    ngx_table_elt_t  *accept_encoding;
+
     ngx_table_elt_t  *range;
+
+#if (NGX_HTTP_GZIP)
+    ngx_table_elt_t  *accept_encoding;
+#endif
 
     ngx_table_elt_t  *authorization;
 
     ngx_table_elt_t  *keep_alive;
+
+#if (NGX_HTTP_PROXY)
+    ngx_table_elt_t  *x_forwarded_for;
+#endif
 
     size_t            host_name_len;
     ssize_t           content_length_n;

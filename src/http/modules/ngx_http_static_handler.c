@@ -18,12 +18,16 @@ static ngx_int_t ngx_http_static_init(ngx_cycle_t *cycle);
 
 static ngx_command_t  ngx_http_static_commands[] = {
 
+#if (NGX_HTTP_CACHE)
+
     { ngx_string("redirect_cache"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE3,
       ngx_http_set_cache_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_static_loc_conf_t, redirect_cache),
       NULL },
+
+#endif
 
       ngx_null_command
 };
@@ -87,6 +91,8 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         return rc;
     }
 
+#if (NGX_HTTP_CACHE)
+
     /*
      * there is a valid cached open file, i.e by the index handler,
      * and it should be already registered in r->cleanup
@@ -95,6 +101,8 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     if (r->cache && !r->cache->expired) {
         return ngx_http_send_cached(r);
     }
+
+#endif
 
     log = r->connection->log;
 
@@ -138,6 +146,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         redirect_cleanup = NULL;
     }
 
+#if (NGX_HTTP_CACHE)
 
     /* look up an open files cache */
 
@@ -192,6 +201,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         redirect = NULL;
     }
 
+#endif
 
     /* open file */
 
@@ -302,6 +312,8 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
 
         r->headers_out.location->value = location;
 
+#if (NGX_HTTP_CACHE)
+
         if (slcf->redirect_cache) {
             if (redirect) {
                 if (location.len == redirect->data.value.len
@@ -345,6 +357,8 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
 
         }
 
+#endif
+
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
 
@@ -364,6 +378,8 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
 
 #endif
 
+
+#if (NGX_HTTP_CACHE)
 
     if (clcf->open_files) {
 
@@ -416,6 +432,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         return ngx_http_send_cached(r);
     }
 
+#endif
 
     ctx = log->data;
     ctx->action = "sending response to client";

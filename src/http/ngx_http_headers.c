@@ -29,6 +29,11 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 
     { ngx_string("Keep-Alive"), offsetof(ngx_http_headers_in_t, keep_alive) },
 
+#if (NGX_HTTP_PROXY)
+    { ngx_string("X-Forwarded-For"),
+                           offsetof(ngx_http_headers_in_t, x_forwarded_for) },
+#endif
+
     { ngx_null_string, 0 }
 };
 

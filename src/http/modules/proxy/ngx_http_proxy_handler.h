@@ -56,19 +56,22 @@ typedef struct {
 
     ssize_t                          max_temp_file_size;
     ssize_t                          temp_file_write_size;
-    int                              cyclic_temp_file;
+    ngx_flag_t                       cyclic_temp_file;
 
-    int                              cache;
+    ngx_flag_t                       cache;
 
-    int                              pass_server;
-    int                              pass_x_accel_expires;
+    ngx_flag_t                       set_x_real_ip;
+    ngx_flag_t                       add_x_forwarded_for;
 
-    int                              ignore_expires;
+    ngx_flag_t                       pass_server;
+    ngx_flag_t                       pass_x_accel_expires;
+
+    ngx_flag_t                       ignore_expires;
     int                              lm_factor;
     time_t                           default_expires;
 
-    int                              next_upstream;
-    int                              use_stale;
+    u_int                            next_upstream;
+    u_int                            use_stale;
 
     ngx_path_t                      *cache_path;
     ngx_path_t                      *temp_path;
@@ -194,26 +197,31 @@ typedef struct {
 #define NGX_HTTP_PROXY_PARSE_NO_HEADER       20
 
 
-#define NGX_HTTP_PROXY_FT_ERROR              2
-#define NGX_HTTP_PROXY_FT_TIMEOUT            4
-#define NGX_HTTP_PROXY_FT_INVALID_HEADER     8
-#define NGX_HTTP_PROXY_FT_HTTP_500           16
-#define NGX_HTTP_PROXY_FT_HTTP_404           32
-#define NGX_HTTP_PROXY_FT_BUSY_LOCK          64
-#define NGX_HTTP_PROXY_FT_MAX_WAITING        128
+#define NGX_HTTP_PROXY_FT_ERROR              0x02
+#define NGX_HTTP_PROXY_FT_TIMEOUT            0x04
+#define NGX_HTTP_PROXY_FT_INVALID_HEADER     0x08
+#define NGX_HTTP_PROXY_FT_HTTP_500           0x10
+#define NGX_HTTP_PROXY_FT_HTTP_404           0x20
+#define NGX_HTTP_PROXY_FT_BUSY_LOCK          0x40
+#define NGX_HTTP_PROXY_FT_MAX_WAITING        0x80
 
 
 int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p);
+
+#if (NGX_HTTP_FILE_CACHE)
 
 int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p);
 
+void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p);
+
+#endif
+
 void ngx_http_proxy_check_broken_connection(ngx_event_t *wev);
 
 void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev);
-void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p);
 void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p);
 
 size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len);

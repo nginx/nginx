@@ -40,17 +40,31 @@ case $PLATFORM in
         done=YES
     ;;
 
+    # FreeBSD: i386
+    # Linux: i686
 
     *:i386 | *:i686)
-        if [ $ZLIB_ASM = pentiumpro ]; then
-            echo "	cd $ZLIB \\"                              >> $MAKEFILE
-            echo "	&& cp contrib/asm686/match.S . \\"        >> $MAKEFILE
-            echo "	&& CC=$CC CFLAGS=\"$ZLIB_OPT -DASMV\" \\" >> $MAKEFILE
-            echo "		./configure \\"                   >> $MAKEFILE
-            echo "	&& \$(MAKE) OBJA=match.o libz.a"          >> $MAKEFILE
+        case $ZLIB_ASM in
+            pentium)
+                echo "	cd $ZLIB \\"                              >> $MAKEFILE
+                echo "	&& cp contrib/asm586/match.S . \\"        >> $MAKEFILE
+                echo "	&& CC=$CC CFLAGS=\"$ZLIB_OPT -DASMV\" \\" >> $MAKEFILE
+                echo "		./configure \\"                   >> $MAKEFILE
+                echo "	&& \$(MAKE) OBJA=match.o libz.a"          >> $MAKEFILE
 
-            done=YES
-        fi
+                done=YES
+            ;;
+
+            pentiumpro)
+                echo "	cd $ZLIB \\"                              >> $MAKEFILE
+                echo "	&& cp contrib/asm686/match.S . \\"        >> $MAKEFILE
+                echo "	&& CC=$CC CFLAGS=\"$ZLIB_OPT -DASMV\" \\" >> $MAKEFILE
+                echo "		./configure \\"                   >> $MAKEFILE
+                echo "	&& \$(MAKE) OBJA=match.o libz.a"          >> $MAKEFILE
+
+                done=YES
+            ;;
+        esac
     ;;
 
 esac

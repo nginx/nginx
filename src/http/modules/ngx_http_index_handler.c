@@ -46,12 +46,16 @@ static ngx_command_t  ngx_http_index_commands[] = {
       0,
       NULL },
 
+#if (NGX_HTTP_CACHE)
+
     { ngx_string("index_cache"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE3,
       ngx_http_set_cache_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_index_loc_conf_t, index_cache),
       NULL },
+
+#endif
 
       ngx_null_command
 };
@@ -125,6 +129,8 @@ int ngx_http_index_handler(ngx_http_request_t *r)
                             sizeof(ngx_http_index_ctx_t),
                             NGX_HTTP_INTERNAL_SERVER_ERROR);
 
+#if (NGX_HTTP_CACHE)
+
         if (ilcf->index_cache) {
             ctx->cache = ngx_http_cache_get(ilcf->index_cache, NULL,
                                             &r->uri, &crc);
@@ -149,10 +155,9 @@ int ngx_http_index_handler(ngx_http_request_t *r)
 
                 return ngx_http_internal_redirect(r, &ctx->redirect, NULL);
             }
-
-        } else {
-            ctx->cache = NULL;
         }
+
+#endif
 
         len = clcf->doc_root.len + r->uri.len + ilcf->max_index_len;
         if (!(ctx->path.data = ngx_palloc(r->pool, len))) {
@@ -237,6 +242,8 @@ int ngx_http_index_handler(ngx_http_request_t *r)
         /**/
 
 
+#if (NGX_HTTP_CACHE)
+
         if (ilcf->index_cache) {
 
             if (ctx->cache) {
@@ -270,6 +277,8 @@ int ngx_http_index_handler(ngx_http_request_t *r)
                 ngx_http_cache_unlock(ilcf->index_cache, ctx->cache, log);
             }
         }
+
+#endif
 
         return ngx_http_internal_redirect(r, &ctx->redirect, NULL);
     }

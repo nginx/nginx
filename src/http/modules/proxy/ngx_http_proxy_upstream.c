@@ -38,6 +38,8 @@ static char *upstream_header_errors[] = {
 
 static char  http_version[] = " HTTP/1.0" CRLF;
 static char  host_header[] = "Host: ";
+static char  x_real_ip_header[] = "X-Real-IP: ";
+static char  x_forwarded_for_header[] = "X-Forwarded-For: ";
 static char  connection_close_header[] = "Connection: close" CRLF;
 
 
@@ -116,6 +118,27 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
           + sizeof(connection_close_header) - 1
           + 2;                          /* 2 is for "\r\n" at the header end */
 
+    if (p->lcf->set_x_real_ip) {
+                                                          /* 2 is for "\r\n" */
+        len += sizeof(x_real_ip_header) - 1 + INET_ADDRSTRLEN - 1 + 2;
+    }
+
+
+    if (p->lcf->add_x_forwarded_for) {
+        if (r->headers_in.x_forwarded_for) {
+            len += r->headers_in.x_forwarded_for->key.len
+                   + 2                                      /* 2 is ofr ": " */
+                   + r->headers_in.x_forwarded_for->value.len
+                   + 2                                      /* 2 is ofr ", " */
+                   + INET_ADDRSTRLEN - 1
+                   + 2;                                   /* 2 is for "\r\n" */
+        } else {
+            len += sizeof(x_forwarded_for_header) - 1 + INET_ADDRSTRLEN - 1 + 2;
+                                                          /* 2 is for "\r\n" */
+        }
+    }
+
+
     header = (ngx_table_elt_t *) r->headers_in.headers->elts;
     for (i = 0; i < r->headers_in.headers->nelts; i++) {
 
@@ -156,17 +179,55 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     h->last = ngx_cpymem(h->last, http_version, sizeof(http_version) - 1);
 
 
-    /* "Host" header */
+    /* the "Host" header */
 
     h->last = ngx_cpymem(h->last, host_header, sizeof(host_header) - 1);
     h->last = ngx_cpymem(h->last, uc->host_header.data, uc->host_header.len);
     *(h->last++) = CR; *(h->last++) = LF;
 
 
-    /* "Connection: close" header */
+    /* the "Connection: close" header */
 
     h->last = ngx_cpymem(h->last, connection_close_header,
                          sizeof(connection_close_header) - 1);
+
+
+    /* the "X-Real-IP" header */
+
+    if (p->lcf->set_x_real_ip) {
+        h->last = ngx_cpymem(h->last, x_real_ip_header,
+                             sizeof(x_real_ip_header) - 1);
+        h->last = ngx_cpymem(h->last, r->connection->addr_text.data,
+                             r->connection->addr_text.len);
+        *(h->last++) = CR; *(h->last++) = LF;
+    }
+
+
+    /* the "X-Forwarded-For" header */
+
+    if (p->lcf->add_x_forwarded_for) {
+        if (r->headers_in.x_forwarded_for) {
+            h->last = ngx_cpymem(h->last,
+                                 r->headers_in.x_forwarded_for->key.data,
+                                 r->headers_in.x_forwarded_for->key.len);
+
+            *(h->last++) = ':'; *(h->last++) = ' ';
+
+            h->last = ngx_cpymem(h->last,
+                                 r->headers_in.x_forwarded_for->value.data,
+                                 r->headers_in.x_forwarded_for->value.len);
+
+            *(h->last++) = ','; *(h->last++) = ' ';
+
+        } else {
+            h->last = ngx_cpymem(h->last, x_forwarded_for_header,
+                                 sizeof(x_forwarded_for_header) - 1);
+        }
+
+        h->last = ngx_cpymem(h->last, r->connection->addr_text.data,
+                             r->connection->addr_text.len);
+        *(h->last++) = CR; *(h->last++) = LF;
+    }
 
 
     for (i = 0; i < r->headers_in.headers->nelts; i++) {
@@ -180,6 +241,12 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
         }
 
         if (&header[i] == r->headers_in.keep_alive) {
+            continue;
+        }
+
+        if (&header[i] == r->headers_in.x_forwarded_for
+            && p->lcf->add_x_forwarded_for)
+        {
             continue;
         }
 
@@ -377,11 +444,15 @@ void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
         ft_type = NGX_HTTP_PROXY_FT_MAX_WAITING;
     }
 
+#if (NGX_HTTP_CACHE)
+
     if (p->stale && (p->lcf->use_stale & ft_type)) {
         ngx_http_proxy_finalize_request(p,
                                         ngx_http_proxy_send_cached_response(p));
         return;
     }
+
+#endif
 
     p->state->status = NGX_HTTP_SERVICE_UNAVAILABLE;
     ngx_http_proxy_finalize_request(p, NGX_HTTP_SERVICE_UNAVAILABLE);
@@ -692,6 +763,8 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
             return;
         }
 
+#if (NGX_HTTP_CACHE)
+
         if (p->upstream->peer.tries == 0
             && p->stale
             && (p->lcf->use_stale & NGX_HTTP_PROXY_FT_HTTP_500))
@@ -701,6 +774,8 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
 
             return;
         }
+
+#endif
     }
 
     if (p->status == NGX_HTTP_NOT_FOUND
@@ -841,9 +916,13 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
 
             /* TODO: hook to process the upstream header */
 
+#if (NGX_HTTP_CACHE)
+
             if (p->cachable) {
                 p->cachable = ngx_http_proxy_is_cachable(p);
             }
+
+#endif
 
             ngx_http_proxy_send_response(p);
             return;
@@ -1118,6 +1197,9 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
     }
 
     if (p->upstream->peer.connection) {
+
+#if (NGX_HTTP_FILE_CACHE)
+
         if (ep->upstream_done && p->cachable) {
             if (ngx_http_proxy_update_cache(p) == NGX_ERROR) {
                 ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
@@ -1135,6 +1217,8 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
                 return;
             }
         }
+
+#endif
 
         if (ep->upstream_done || ep->upstream_eof || ep->upstream_error) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0,
@@ -1214,11 +1298,16 @@ static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p, int ft_type)
 
         if (p->upstream->peer.tries == 0 || !(p->lcf->next_upstream & ft_type))
         {
+
+#if (NGX_HTTP_CACHE)
+
             if (p->stale && (p->lcf->use_stale & ft_type)) {
                 ngx_http_proxy_finalize_request(p,
                                        ngx_http_proxy_send_cached_response(p));
                 return;
             }
+
+#endif
 
             ngx_http_proxy_finalize_request(p, status);
             return;
