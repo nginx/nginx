@@ -152,9 +152,10 @@ static ngx_str_t error_pages[] = {
 
 int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
-    int           err, rc;
-    ngx_hunk_t   *h;
-    ngx_chain_t  *out, **ll, *cl;
+    int                        err, rc;
+    ngx_hunk_t                *h;
+    ngx_chain_t               *out, **ll, *cl;
+    ngx_http_core_loc_conf_t  *clcf;
 
     r->headers_out.status = error;
 
@@ -238,7 +239,9 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     ngx_alloc_link_and_set_hunk(cl, h, r->pool, NGX_ERROR);
     ngx_chain_add_link(out, ll, cl);
 
-    if (/* STUB: "msie_padding on/off" */ 1
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->msie_padding
         && r->http_version >= NGX_HTTP_VERSION_10
         && error >= NGX_HTTP_BAD_REQUEST
         && error != NGX_HTTP_REQUEST_URI_TOO_LARGE

@@ -188,8 +188,6 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
 
     /* STUB */ p->accel = 1;
 
-    p->host_header = p->upstream.peers->peers[0].host;
-
     ngx_test_null(p->request_hunks, ngx_http_proxy_create_request(p),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
@@ -220,7 +218,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
           + r->uri.len - p->location_len
           + 1 + r->args.len                                  /* 1 is for "?" */
           + sizeof(http_version) - 1
-          + sizeof(host_header) - 1 + p->host_header.len + 2
+          + sizeof(host_header) - 1 + p->lcf->upstream->host_header.len + 2
                                                           /* 2 is for "\r\n" */
           + sizeof(connection_close_header) - 1
           + 2;                          /* 2 is for "\r\n" at the header end */
@@ -268,7 +266,8 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     /* the "Host" header */
 
     h->last = ngx_cpymem(h->last, host_header, sizeof(host_header) - 1);
-    h->last = ngx_cpymem(h->last, p->host_header.data, p->host_header.len);
+    h->last = ngx_cpymem(h->last, p->lcf->upstream->host_header.data,
+                         p->lcf->upstream->host_header.len);
     *(h->last++) = CR; *(h->last++) = LF;
 
 

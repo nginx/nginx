@@ -73,7 +73,6 @@ struct ngx_http_proxy_ctx_s {
     int                         method;
     ngx_str_t                   uri;
     int                         location_len;
-    ngx_str_t                   host_header;
 
     ngx_event_pipe_t           *event_pipe;
 

@@ -50,12 +50,19 @@ static int ngx_http_gzip_filter_init(ngx_cycle_t *cycle);
 static void *ngx_http_gzip_create_conf(ngx_conf_t *cf);
 static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
                                       void *parent, void *child);
-static char *ngx_http_gzip_set_window(ngx_conf_t *cf, ngx_command_t *cmd,
-                                      void *conf);
-static char *ngx_http_gzip_set_hash(ngx_conf_t *cf, ngx_command_t *cmd,
-                                    void *conf);
+static char *ngx_http_gzip_set_window(ngx_conf_t *cf, void *post, void *data);
+static char *ngx_http_gzip_set_hash(ngx_conf_t *cf, void *post, void *data);
 
-static ngx_conf_bounds_t ngx_http_gzip_comp_level_bounds;
+
+static ngx_conf_num_bounds_t  ngx_http_gzip_comp_level_bounds = {
+    ngx_conf_check_num_bounds, 1, 9
+};
+
+static ngx_conf_post_handler_pt  ngx_http_gzip_set_window_p =
+                                                      ngx_http_gzip_set_window;
+static ngx_conf_post_handler_pt  ngx_http_gzip_set_hash_p =
+                                                        ngx_http_gzip_set_hash;
+
 
 
 static ngx_command_t  ngx_http_gzip_filter_commands[] = {
@@ -83,17 +90,17 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
 
     {ngx_string("gzip_window"),
      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-     ngx_http_gzip_set_window,
+     ngx_conf_set_size_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_gzip_conf_t, wbits),
-     NULL},
+     &ngx_http_gzip_set_window_p},
 
     {ngx_string("gzip_hash"),
      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-     ngx_http_gzip_set_hash,
+     ngx_conf_set_size_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_gzip_conf_t, memlevel),
-     NULL},
+     &ngx_http_gzip_set_hash_p},
 
     {ngx_string("gzip_no_buffer"),
      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -128,12 +135,7 @@ ngx_module_t  ngx_http_gzip_filter_module = {
 };
 
 
-static ngx_conf_bounds_t ngx_http_gzip_comp_level_bounds = {
-    ngx_conf_check_num_bounds, { { 1, 9 } }
-};
-
-
-static u_char gzheader[10] = { 0x1f, 0x8b, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3 };
+static u_char  gzheader[10] = { 0x1f, 0x8b, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3 };
 
 #if (HAVE_LITTLE_ENDIAN)
 
@@ -240,8 +242,8 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         /*
          * We preallocate a memory for zlib in one hunk (200K-400K), this
-         * dicreases number of malloc() and free() calls and probably
-         * syscalls.
+         * dicreases a number of malloc() and free() calls and also probably
+         * dicreases a number of syscalls.
          * Besides we free() this memory as soon as the gzipping will complete
          * and do not wait while a whole response will be sent to a client.
          *
@@ -591,28 +593,21 @@ static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
 }
 
 
-static char *ngx_http_gzip_set_window(ngx_conf_t *cf, ngx_command_t *cmd,
-                                      void *conf)
+static char *ngx_http_gzip_set_window(ngx_conf_t *cf, void *post, void *data)
 {
-    ngx_http_gzip_conf_t *lcf = conf;
+    int *np = data;
 
-    int    wbits, wsize;
-    char  *rv;
+    int  wbits, wsize;
 
 
-    rv = ngx_conf_set_size_slot(cf, cmd, conf);
-    if (rv) {
-        return rv;
-    }
-
-ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "WBITS: %d", lcf->wbits);
+ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "WBITS: %d", *np);
 
     wbits = 15;
     for (wsize = 32 * 1024; wsize > 256; wsize >>= 1) {
 
-        if (wsize == lcf->wbits) {
-            lcf->wbits = wbits;
-ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "WBITS: %d", lcf->wbits);
+        if (wsize == *np) {
+            *np = wbits;
+ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "WBITS: %d", *np);
             return NULL;
         }
 
@@ -623,28 +618,21 @@ ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "WBITS: %d", lcf->wbits);
 }
 
 
-static char *ngx_http_gzip_set_hash(ngx_conf_t *cf, ngx_command_t *cmd,
-                                    void *conf)
+static char *ngx_http_gzip_set_hash(ngx_conf_t *cf, void *post, void *data)
 {
-    ngx_http_gzip_conf_t *lcf = conf;
+    int *np = data;
 
-    int    memlevel, hsize;
-    char  *rv;
+    int  memlevel, hsize;
 
 
-    rv = ngx_conf_set_size_slot(cf, cmd, conf);
-    if (rv) {
-        return rv;
-    }
-
-ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "MEMLEVEL: %d", lcf->memlevel);
+ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "MEMLEVEL: %d", *np);
 
     memlevel = 9;
     for (hsize = 128 * 1024; hsize > 256; hsize >>= 1) {
 
-        if (hsize == lcf->memlevel) {
-            lcf->memlevel = memlevel;
-ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "MEMLEVEL: %d", lcf->memlevel);
+        if (hsize == *np) {
+            *np = memlevel;
+ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "MEMLEVEL: %d", *np);
             return NULL;
         }
 

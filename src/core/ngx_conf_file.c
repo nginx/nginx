@@ -596,8 +596,9 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int        *np;
-    ngx_str_t  *value;
+    int              *np;
+    ngx_str_t        *value;
+    ngx_conf_post_t  *post;
 
 
     np = (int *) (p + cmd->offset);
@@ -612,8 +613,9 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "invalid number";
     }
 
-    if (cmd->bounds) {
-        return cmd->bounds->check(cf, cmd->bounds, np);
+    if (cmd->post) {
+        post = cmd->post;
+        return post->post_handler(cf, post, np);
     }
 
     return NGX_CONF_OK;
@@ -624,8 +626,9 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int        *np;
-    ngx_str_t  *value;
+    int              *np;
+    ngx_str_t        *value;
+    ngx_conf_post_t  *post;
 
 
     np = (int *) (p + cmd->offset);
@@ -640,8 +643,9 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "invalid value";
     }
 
-    if (cmd->bounds) {
-        return cmd->bounds->check(cf, cmd->bounds, np);
+    if (cmd->post) {
+        post = cmd->post;
+        return post->post_handler(cf, post, np);
     }
 
     return NGX_CONF_OK;
@@ -652,10 +656,9 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int         size, total, len, scale, *np;
-    u_int       max, i;
-    char        last, *start;
-    ngx_str_t  *value;
+    int              *np;
+    ngx_str_t        *value;
+    ngx_conf_post_t  *post;
 
 
     np = (int *) (p + cmd->offset);
@@ -674,8 +677,9 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "value must be less than 597 hours";
     }
 
-    if (cmd->bounds) {
-        return cmd->bounds->check(cf, cmd->bounds, np);
+    if (cmd->post) {
+        post = cmd->post;
+        return post->post_handler(cf, post, np);
     }
 
     return NGX_CONF_OK;
@@ -686,10 +690,9 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int         size, total, len, scale, *np;
-    u_int       max, i;
-    char        last, *start;
-    ngx_str_t  *value;
+    int              *np;
+    ngx_str_t        *value;
+    ngx_conf_post_t  *post;
 
 
     np = (int *) (p + cmd->offset);
@@ -708,8 +711,9 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "value must be less than 68 years";
     }
 
-    if (cmd->bounds) {
-        return cmd->bounds->check(cf, cmd->bounds, np);
+    if (cmd->post) {
+        post = cmd->post;
+        return post->post_handler(cf, post, np);
     }
 
     return NGX_CONF_OK;
@@ -751,14 +755,13 @@ char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_check_num_bounds(ngx_conf_t *cf, ngx_conf_bounds_t *bounds,
-                                void *conf)
+char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data)
 {
-    int *num = conf;
+    ngx_conf_num_bounds_t *bounds = post;
+    int *np = data;
 
-    if (*num >= bounds->type.num.low && *num <= bounds->type.num.high) {
+    if (*np >= bounds->low && (u_int) *np <= (u_int) bounds->high) {
         return NGX_CONF_OK;
-
     }
 
     return "invalid value";

@@ -51,34 +51,13 @@
 #define NGX_CONF_MODULE      0x464E4F43  /* "CONF" */
 
 
-typedef struct ngx_conf_bounds_s ngx_conf_bounds_t;
-
-struct ngx_conf_bounds_s {
-    char     *(*check)(ngx_conf_t *cf, ngx_conf_bounds_t *bounds, void *conf);
-
-    union {
-        struct {
-           int  low;
-           int  high;
-        } num;
-
-        struct num {
-           int  low_num;
-           int  high_num;
-           int  low_size;
-           int  high_size;
-        } bufs;
-   } type;
-};
-
-
 struct ngx_command_s {
-    ngx_str_t           name;
-    int                 type;
-    char             *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-    int                 conf;
-    int                 offset;
-    ngx_conf_bounds_t  *bounds;
+    ngx_str_t     name;
+    int           type;
+    char       *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+    int           conf;
+    int           offset;
+    void         *post;
 };
 
 #define ngx_null_command   { ngx_null_string, 0, NULL, 0, 0, NULL }
@@ -154,6 +133,24 @@ struct ngx_conf_s {
     ngx_conf_handler_pt   handler;
     char                 *handler_conf;
 };
+
+
+typedef char *(*ngx_conf_post_handler_pt) (ngx_conf_t *cf,
+                                           void *data, void *conf);
+
+typedef struct {
+    ngx_conf_post_handler_pt  post_handler;
+} ngx_conf_post_t;
+
+
+typedef struct {
+    ngx_conf_post_handler_pt  post_handler;
+    int                       low;
+    int                       high;
+} ngx_conf_num_bounds_t;
+
+
+char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 
 
 #define ngx_get_conf(conf_ctx, module)  conf_ctx[module.index]
@@ -239,9 +236,6 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);
-
-char *ngx_conf_check_num_bounds(ngx_conf_t *cf, ngx_conf_bounds_t *bounds,
-                                void *conf);
 
 
 extern ngx_module_t     *ngx_modules[];

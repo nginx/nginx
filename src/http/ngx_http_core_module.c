@@ -165,6 +165,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
      offsetof(ngx_http_core_loc_conf_t, lingering_timeout),
      NULL},
 
+    {ngx_string("msie_padding"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_flag_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_core_loc_conf_t, msie_padding),
+     NULL},
+
     {ngx_string("error_log"),
      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_set_error_log,
@@ -843,6 +850,8 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->lingering_time = NGX_CONF_UNSET;
     lcf->lingering_timeout = NGX_CONF_UNSET;
 
+    lcf->msie_padding = NGX_CONF_UNSET;
+
     return lcf;
 }
 
@@ -915,6 +924,8 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                               prev->lingering_time, 30000);
     ngx_conf_merge_msec_value(conf->lingering_timeout,
                               prev->lingering_timeout, 5000);
+
+    ngx_conf_merge_value(conf->msie_padding, prev->msie_padding, 1);
 
     return NGX_CONF_OK;
 }
