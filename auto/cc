@@ -62,6 +62,9 @@ case $CC in
          # debug
          CFLAGS="$CFLAGS -g"
 
+         # DragonFly's gcc3 generate DWARF
+         CFLAGS="$CFLAGS -g -gstabs"
+
          have=HAVE_GCC_VARIADIC_MACROS . auto/have
 
          if [ ".$CPP" = "." ]; then
@@ -70,10 +73,11 @@ case $CC in
 
          LINK="\$(CC)"
 
-         OBJEXT=o
-         COMPILEONLY="-c"
+         INCOPT="-I "
+         COMPOPT="-c"
          OBJOUT="-o "
          BINOUT="-o "
+         OBJEXT="o"
 
          CC_STRONG="$CC -Wall -Werror"
     ;;
@@ -142,10 +146,11 @@ case $CC in
 
          LINK="\$(CC)"
 
-         OBJEXT=o
-         COMPILEONLY="-c"
+         INCOPT="-I "
+         COMPOPT="-c"
          OBJOUT="-o "
          BINOUT="-o "
+         OBJEXT="o"
 
          CC_STRONG="$CC -w1 -Werror"
     ;;
@@ -170,7 +175,7 @@ case $CC in
          CFLAGS="$CFLAGS -Gs"
 
          case $CPU in
-             pentiumpro)
+             pentium)
                  # optimize for Pentium and Athlon
                  CPU_OPT="-G5"
              ;;
@@ -220,13 +225,13 @@ case $CC in
          BUILDPCH="-Ycngx_config.h"
          USEPCH="-Yungx_config.h"
 
-         OBJEXT=obj
-         COMPILEONLY="-c"
+         INCOPT="-I "
+         COMPOPT="-c"
          OBJOUT="-Fo"
          BINOUT="-Fe"
-         BINEXT=.exe
-
-         CC_STRONG="$CC -W3 -WX"
+         OBJEXT="obj"
+         BINEXT=".exe"
+         #DIRSEP='\\'
     ;;
 
 
@@ -296,15 +301,64 @@ case $CC in
          # link flags
          CORE_LINK="$CORE_LINK -l=nt"
 
-         OBJEXT=obj
-         COMPILEONLY="-c"
+         INCOPT="-i="
+         COMPOPT="-c"
          OBJOUT="-fo"
          BINOUT="-fe="
-         BINEXT=.exe
+         OBJEXT="obj"
+         BINEXT=".exe"
+         DIRSEP='\\'
 
-         INC_EQ=YES
-         MAKE_BS=YES
          MAKE_SL=YES
+    ;;
+
+
+    bcc32)
+         # Borland C++ 5.5
+
+         # optimization
+
+         # maximize speed
+         CFLAGS="$CFLAGS -O2"
+
+         case $CPU in
+             pentium)
+                 # optimize for Pentium and Athlon
+                 CPU_OPT="-5"
+             ;;
+
+             pentiumpro)
+                 # optimize for Pentium Pro, Pentium II and Pentium III
+                 CPU_OPT="-6"
+             ;;
+         esac
+
+         CFLAGS="$CFLAGS $CPU_OPT"
+
+         # multithreaded
+         CFLAGS="$CFLAGS -tWM"
+
+         # stop on warning
+         CFLAGS="$CFLAGS -w!"
+
+         # disable logo
+         CFLAGS="$CFLAGS -q"
+
+         # precompiled headers
+         CORE_DEPS="$CORE_DEPS $OBJS\\ngx_config.csm"
+         PCH="$OBJS\\ngx_config.csm"
+         BUILDPCH="-H=$OBJS\\ngx_config.csm"
+         USEPCH="-Hu -H=$OBJS\\ngx_config.csm"
+
+         LINK="\$(CC)"
+
+         INCOPT="-I"
+         COMPOPT="-c"
+         OBJOUT="-o" 
+         BINOUT="-e"
+         OBJEXT="obj"
+         BINEXT=".exe"
+         DIRSEP='\\'
     ;;
 
 esac

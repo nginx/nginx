@@ -3,10 +3,17 @@ case "$CC" in
 
     cl)
         makefile=makefile.msvc
+        opt="CPU_OPT=$CPU_OPT LIBC=$LIBC MD5_ASM=$MD5_ASM"
     ;;
 
     wcl386)
         makefile=makefile.owc
+        opt="CPU_OPT=$CPU_OPT"
+    ;;
+
+    bcc32)
+        makefile=makefile.bcc
+        opt="-DCPU_OPT=$CPU_OPT -DMD5_ASM=$MD5_ASM"
     ;;
 
 esac
@@ -15,7 +22,8 @@ esac
 case $PLATFORM in
 
     win32)
-        echo "$MD5/md5.lib:"                                      >> $MAKEFILE
+        line=`echo $MD5/md5.lib: | sed -e "s/\//$DIRSEP/g"`
+        echo "$line"                                              >> $MAKEFILE
     ;;
 
     *)
@@ -31,11 +39,11 @@ done=NO
 case $PLATFORM in
 
     win32)
+        md5=`echo $MD5 | sed -e "s/\//$DIRSEP/g"`
 
         cp auto/lib/md5/$makefile $MD5
-        echo "	cd $MD5"                                          >> $MAKEFILE
-        echo $ngx_n "	\$(MAKE) -f $makefile" $ngx_c             >> $MAKEFILE
-        echo " CPU_OPT=$CPU_OPT LIBC=$LIBC MD5_ASM=$MD5_ASM"      >> $MAKEFILE
+        echo "	cd $md5"                                          >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile $opt"                       >> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
 
         done=YES

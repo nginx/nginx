@@ -21,13 +21,14 @@ static ngx_inline uint32_t ngx_atomic_inc(ngx_atomic_t *value)
 {
     uint32_t  old;
 
+    old = 1;
+
     __asm__ volatile (
 
-    "   movl   $1, %0;   "
         NGX_SMP_LOCK
     "   xaddl  %0, %1;   "
 
-    : "=a" (old) : "m" (*value));
+    : "=q" (old) : "m" (*value));
 
     return old;
 }
@@ -37,13 +38,14 @@ static ngx_inline uint32_t ngx_atomic_dec(ngx_atomic_t *value)
 {
     uint32_t  old;
 
+    old = (uint32_t) -1;
+
     __asm__ volatile (
 
-    "   movl   $-1, %0;  "
         NGX_SMP_LOCK
     "   xaddl  %0, %1;   "
 
-    : "=a" (old) : "m" (*value));
+    : "=q" (old) : "m" (*value));
 
     return old;
 }
@@ -62,7 +64,7 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
     "   setz      %%al;     "
     "   movzbl    %%al, %0; "
 
-    : "=a" (res) : "m" (*lock), "a" (old), "q" (set));
+    : "+a" (res) : "m" (*lock), "a" (old), "q" (set));
 
     return res;
 }

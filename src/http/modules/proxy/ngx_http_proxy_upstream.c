@@ -46,7 +46,9 @@ static char  connection_close_header[] = "Connection: close" CRLF;
 int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
 {
     int                         rc;
+    ngx_temp_file_t            *tf;
     ngx_http_request_t         *r;
+    ngx_http_request_body_t    *rb;
     ngx_http_proxy_upstream_t  *u;
 
     r = p->request;
@@ -63,29 +65,40 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
 
     u->method = r->method;
 
+    if (!(rb = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t)))) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    r->request_body = rb;
+
     if (r->headers_in.content_length_n > 0) {
-        if (!(r->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t)))) {
+
+        if (!(tf = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t)))) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        r->temp_file->file.fd = NGX_INVALID_FILE;
-        r->temp_file->file.log = r->connection->log;
-        r->temp_file->path = p->lcf->temp_path;
-        r->temp_file->pool = r->pool;
-        r->temp_file->warn = "a client request body is buffered "
-                             "to a temporary file";
-        /* r->temp_file->persistent = 0; */
+        tf->file.fd = NGX_INVALID_FILE;
+        tf->file.log = r->connection->log;
+        tf->path = p->lcf->temp_path;
+        tf->pool = r->pool;
+        tf->warn = "a client request body is buffered to a temporary file";
+        /* tf->persistent = 0; */
 
-        r->request_body_handler = ngx_http_proxy_init_upstream;
-        r->data = p;
+        rb->buf_size = p->lcf->request_buffer_size;
+        rb->handler = ngx_http_proxy_init_upstream;
+        rb->data = p;
+        /* rb->bufs = NULL; */
+        /* rb->buf = NULL; */
+        /* rb->rest = 0; */
 
-        rc = ngx_http_read_client_request_body(r, p->lcf->request_buffer_size);
+        rb->temp_file = tf;
+
+        rc = ngx_http_read_client_request_body(r);
 
         if (rc == NGX_AGAIN) {
             return NGX_DONE;
         }
 
-        if (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_ERROR) {
+        if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
             return rc;
         }
     }
@@ -118,7 +131,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
           + 2;                          /* 2 is for "\r\n" at the header end */
 
 
-    if (p->lcf->preserve_host) {
+    if (p->lcf->preserve_host && r->headers_in.host) {
         len += sizeof(host_header) - 1
                + r->headers_in.host_name_len
                + 1                                           /* 1 is for ":" */
@@ -339,11 +352,11 @@ static void ngx_http_proxy_init_upstream(void *data)
         return;
     }
 
-    if (r->request_hunks) {
-        cl->next = r->request_hunks;
+    if (r->request_body->bufs) {
+        cl->next = r->request_body->bufs;
     }
 
-    r->request_hunks = cl;
+    r->request_body->bufs = cl;
 
     if (!(ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_proxy_log_ctx_t)))) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -380,7 +393,11 @@ static void ngx_http_proxy_init_upstream(void *data)
     output->filter_ctx = writer;
     writer->pool = r->pool;
 
+#if 0
+    if (p->lcf->busy_lock && p->busy_lock == NULL) {
+#else
     if (p->lcf->busy_lock && !p->busy_locked) {
+#endif
         ngx_http_proxy_upstream_busy_lock(p);
     } else {
         ngx_http_proxy_connect(p);
@@ -393,16 +410,16 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
     ngx_chain_t             *cl;
     ngx_output_chain_ctx_t  *output;
 
-    output = p->upstream->output_chain_ctx;
-
     /* reinit the request chain */
 
-    for (cl = p->request->request_hunks; cl; cl = cl->next) {
+    for (cl = p->request->request_body->bufs; cl; cl = cl->next) {
         cl->hunk->pos = cl->hunk->start;
         cl->hunk->file_pos = 0;
     }
 
     /* reinit the ngx_output_chain() context */
+
+    output = p->upstream->output_chain_ctx;
 
     output->hunk = NULL;
     output->in = NULL;
@@ -433,6 +450,56 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
     p->status_count = 0;
 }
 
+
+#if 0
+
+void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
+{
+    ngx_int_t  rc;
+
+    rc = ngx_event_busy_lock(p->lcf->busy_lock, p->busy_lock);
+
+    if (rc == NGX_AGAIN) {
+        return;
+    }
+
+    if (rc == NGX_OK) {
+        ngx_http_proxy_connect(p);
+        return;
+    }
+
+    if (rc == NGX_ERROR) {
+        p->state->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    /* rc == NGX_BUSY */
+
+#if (NGX_HTTP_CACHE)
+
+    if (p->busy_lock->timer) {
+        ft_type = NGX_HTTP_PROXY_FT_MAX_WAITING;
+    } else {
+        ft_type = NGX_HTTP_PROXY_FT_BUSY_LOCK;
+    }
+
+    if (p->stale && (p->lcf->use_stale & ft_type)) {
+        ngx_http_proxy_finalize_request(p,
+                                        ngx_http_proxy_send_cached_response(p));
+        return;
+    }
+
+#endif
+
+    p->state->status = NGX_HTTP_SERVICE_UNAVAILABLE;
+    ngx_http_proxy_finalize_request(p, NGX_HTTP_SERVICE_UNAVAILABLE);
+}
+
+#endif
+
+
+#if 1
 
 void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
 {
@@ -480,6 +547,8 @@ void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
     p->state->status = NGX_HTTP_SERVICE_UNAVAILABLE;
     ngx_http_proxy_finalize_request(p, NGX_HTTP_SERVICE_UNAVAILABLE);
 }
+
+#endif
 
 
 static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
@@ -530,17 +599,17 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         ngx_http_proxy_reinit_upstream(p);
     }
 
-    if (r->request_body_hunk) {
+    if (r->request_body->buf) {
         if (!(output->free = ngx_alloc_chain_link(r->pool))) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
 
-        output->free->hunk = r->request_body_hunk;
+        output->free->hunk = r->request_body->buf;
         output->free->next = NULL;
         output->hunks = 1;
 
-        r->request_body_hunk->pos = r->request_body_hunk->start;
+        r->request_body->buf->pos = r->request_body->buf->start;
     }
 
     p->request_sent = 0;
@@ -590,7 +659,8 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
     p->action = "sending request to upstream";
 
     rc = ngx_output_chain(p->upstream->output_chain_ctx,
-                          p->request_sent ? NULL : p->request->request_hunks);
+                          p->request_sent ? NULL:
+                                            p->request->request_body->bufs);
 
     if (rc == NGX_ERROR) {
         ngx_http_proxy_next_upstream(p, NGX_HTTP_PROXY_FT_ERROR);

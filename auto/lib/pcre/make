@@ -3,10 +3,17 @@ case "$CC" in
 
     cl)
         makefile=makefile.msvc
+        opt="CPU_OPT=$CPU_OPT LIBC=$LIBC"
     ;;
 
     wcl386)
         makefile=makefile.owc
+        opt="CPU_OPT=$CPU_OPT"
+    ;;
+
+    bcc32)
+        makefile=makefile.bcc
+        opt="-DCPU_OPT=$CPU_OPT"
     ;;
 
 esac
@@ -19,14 +26,21 @@ case $PLATFORM in
         cp auto/lib/pcre/patch.config.in $PCRE
         cp auto/lib/pcre/$makefile $PCRE
 
-        echo "$PCRE/pcre.h:"                                      >> $MAKEFILE
-        echo "	cd $PCRE"                                         >> $MAKEFILE
+        pcre=`echo $PCRE | sed -e "s/\//$DIRSEP/g"`
+        line=`echo $PCRE/pcre.h: | sed -e "s/\//$DIRSEP/g"`
+
+        echo "$line"                                              >> $MAKEFILE
+        echo "	cd $pcre"                                         >> $MAKEFILE
         echo "	\$(MAKE) -f $makefile pcre.h"                     >> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
         echo                                                      >> $MAKEFILE
-        echo "$PCRE/pcre.lib:	$PCRE/pcre.h"                     >> $MAKEFILE
-        echo "	cd $PCRE"                                         >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile CPU_OPT=$CPU_OPT LIBC=$LIBC">> $MAKEFILE
+
+        line="$PCRE/pcre.lib:	$PCRE/pcre.h"
+        line=`echo $line | sed -e "s/\//$DIRSEP/g"`
+
+        echo "$line"                                              >> $MAKEFILE
+        echo "	cd $pcre"                                         >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile $opt"                       >> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
     ;;
 

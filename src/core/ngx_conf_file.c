@@ -556,7 +556,7 @@ void ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
                             " (%d: ", err);
         len += ngx_strerror_r(err, errstr + len, sizeof(errstr) - len - 1);
         errstr[len++] = ')';
-        errstr[len++] = '\0';
+        errstr[len] = '\0';
     }
 
     ngx_log_error(level, cf->log, 0, "%s in %s:%d",

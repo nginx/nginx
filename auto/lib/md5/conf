@@ -10,17 +10,11 @@ if [ $MD5 != NONE ]; then
         OPENSSL_MD5=NO
     fi
 
-    CORE_INCS="$CORE_INCS -I $MD5"
+    CORE_INCS="$CORE_INCS $MD5"
 
     case "$CC" in
 
-        cl)
-            LINK_DEPS="$LINK_DEPS $MD5/md5.lib"
-            CORE_LIBS="$CORE_LIBS md5.lib"
-            CORE_LINK="$CORE_LINK -libpath:$MD5"
-        ;;
-
-        wcl386)
+        cl | wcl386 | bcc32)
             LINK_DEPS="$LINK_DEPS $MD5/md5.lib"
             CORE_LIBS="$CORE_LIBS $MD5/md5.lib"
         ;;

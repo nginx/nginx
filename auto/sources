@@ -1,7 +1,7 @@
 
 CORE_MODULES="ngx_core_module ngx_errlog_module"
 
-CORE_INCS="-I src/core"
+CORE_INCS="src/core"
 
 CORE_DEPS="src/core/nginx.h \
             src/core/ngx_config.h \
@@ -48,7 +48,7 @@ REGEX_SRCS=src/core/ngx_regex.c
 
 EVENT_MODULES="ngx_events_module ngx_event_core_module"
 
-EVENT_INCS="-I src/event -I src/event/modules"
+EVENT_INCS="src/event src/event/modules"
 
 EVENT_DEPS="src/event/ngx_event.h \
             src/event/ngx_event_timer.h \
@@ -93,7 +93,7 @@ AIO_SRCS="src/event/modules/ngx_aio_module.c \
           src/os/unix/ngx_aio_write_chain.c"
 
 
-UNIX_INCS="$CORE_INCS $EVENT_INCS -I src/os/unix"
+UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"
 
 UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_time.h \
@@ -135,7 +135,7 @@ SOLARIS_SRCS=src/os/unix/ngx_solaris_init.c
 SOLARIS_SENDFILEV_SRCS=src/os/unix/ngx_solaris_sendfilev_chain.c
 
 
-WIN32_INCS="$CORE_INCS $EVENT_INCS -I src/os/win32"
+WIN32_INCS="$CORE_INCS $EVENT_INCS src/os/win32"
 
 WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_win32_config.h \
@@ -182,7 +182,7 @@ HTTP_NOT_MODIFIED_FILTER_MODULE=ngx_http_not_modified_filter_module
 HTTP_STATIC_MODULE=ngx_http_static_module
 HTTP_INDEX_MODULE=ngx_http_index_module
 
-HTTP_INCS="-I src/http -I src/http/modules"
+HTTP_INCS="src/http src/http/modules"
 
 HTTP_DEPS="src/http/ngx_http.h \
             src/http/ngx_http_request.h \
@@ -232,7 +232,7 @@ HTTP_SSI_SRCS=src/http/modules/ngx_http_ssi_filter.c
 
 
 HTTP_PROXY_MODULE=ngx_http_proxy_module
-HTTP_PROXY_INCS="-I src/http/modules/proxy"
+HTTP_PROXY_INCS="src/http/modules/proxy"
 HTTP_PROXY_DEPS=src/http/modules/proxy/ngx_http_proxy_handler.h
 HTTP_PROXY_SRCS="src/http/modules/proxy/ngx_http_proxy_handler.c \
             src/http/modules/proxy/ngx_http_proxy_upstream.c \

@@ -76,8 +76,7 @@ void ngx_http_close_request(ngx_http_request_t *r, int error);
 void ngx_http_close_connection(ngx_connection_t *c);
 
 
-ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
-                                            size_t request_buffer_size);
+ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r);
 
 int ngx_http_send_header(ngx_http_request_t *r);
 int ngx_http_special_response_handler(ngx_http_request_t *r, int error);

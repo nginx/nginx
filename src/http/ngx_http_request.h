@@ -117,18 +117,6 @@ typedef struct {
 
 
 typedef struct {
-    ngx_chain_t       chain[4];
-    ngx_hunk_t       *header_out;
-    ngx_hunk_t       *hunk;
-    ngx_hunk_t       *file_hunk;
-    ngx_file_t        temp_file;
-    ngx_path_t       *temp_path;
-    off_t             offset;
-    u_char           *header_in_pos;
-} ngx_http_request_body_t;
-
-
-typedef struct {
     off_t             start;
     off_t             end;
     ngx_str_t         content_range;
@@ -138,7 +126,7 @@ typedef struct {
 typedef struct {
     ngx_table_t       headers;   /* it must be first field */
 
-    int               status;
+    ngx_uint_t        status;
     ngx_str_t         status_line;
 
     ngx_table_elt_t  *server;
@@ -159,6 +147,17 @@ typedef struct {
     time_t            date_time;
     time_t            last_modified_time;
 } ngx_http_headers_out_t;
+
+
+typedef struct {
+    ngx_temp_file_t   *temp_file;
+    ngx_chain_t       *bufs;
+    ngx_hunk_t        *buf;
+    size_t             rest;
+    size_t             buf_size;
+    void             (*handler) (void *data); 
+    void              *data;
+} ngx_http_request_body_t;
 
 
 struct ngx_http_cleanup_s {
@@ -191,14 +190,24 @@ struct ngx_http_request_s {
 
     ngx_http_cache_t         *cache;
 
-    ngx_file_t           file;
+    ngx_file_t                file;
 
     ngx_pool_t               *pool;
     ngx_hunk_t               *header_in;
-    ngx_http_request_body_t  *request_body;
 
     ngx_http_headers_in_t     headers_in;
     ngx_http_headers_out_t    headers_out;
+
+    ngx_http_request_body_t  *request_body;
+
+#if 0
+    ngx_temp_file_t     *temp_file;
+    ngx_chain_t         *request_hunks;
+    ngx_hunk_t          *request_body_hunk;
+    size_t               remaining_body_len;
+    void               (*request_body_handler) (void *data); 
+    void                *data;
+#endif
 
     time_t               lingering_time;
 
@@ -225,15 +234,9 @@ struct ngx_http_request_s {
     ngx_int_t            phase_handler;
     ngx_http_handler_pt  content_handler;
 
-    ngx_temp_file_t     *temp_file;
-    ngx_chain_t         *request_hunks;
-    ngx_hunk_t          *request_body_hunk;
-    size_t               remaining_body_len;
-    void               (*request_body_handler) (void *data); 
-    void                *data;
-
     ngx_array_t          cleanup;
 
+    /* used to learn the Apache compatible response length without a header */
     size_t               header_size;
 
     u_char              *discarded_buffer;

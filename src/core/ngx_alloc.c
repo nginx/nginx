@@ -90,8 +90,6 @@ void ngx_destroy_pool(ngx_pool_t *pool)
             break;
         }
     }
-
-    pool = NULL;
 }
 
 

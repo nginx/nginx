@@ -18,14 +18,9 @@ if [ $MAKE_SL = YES ]; then
     echo                                                          >> $MAKEFILE
 fi
 
-all_inc="$CORE_INCS -I $OBJS $HTTP_INCS"
-if [ $INC_EQ = YES ]; then
-    all_inc=`echo $all_inc | sed -e "s/-I /-i=/g"`
-fi
-
-if [ $MAKE_BS = YES ]; then
-    all_inc=`echo $all_inc | sed -e "s/\//\\\\\\/g"`
-fi
+all_inc="$CORE_INCS $OBJS $HTTP_INCS"
+all_inc=`echo " $all_inc" | sed -e "s/ \([^ ]\)/ $INCOPT\1/g"`
+all_inc=`echo $all_inc | sed -e "s/\//$DIRSEP/g"`
 
 echo "ALL_INCS = $all_inc"                                        >> $MAKEFILE
 echo                                                              >> $MAKEFILE
@@ -41,9 +36,7 @@ fi
 
 for dep in $CORE_DEPS
 do
-    if [ $MAKE_BS = YES ]; then
-        dep=`echo $dep | sed -e "s/\//\\\\\\/g"`
-    fi
+    dep=`echo $dep | sed -e "s/\//$DIRSEP/g"`
 
     if [ $MAKE_SL = YES ]; then
         echo $ngx_n " $dep" $ngx_c                                >> $MAKEFILE
@@ -60,14 +53,8 @@ if [ $MAKE_SL = YES ]; then
     echo                                                          >> $MAKEFILE
 fi
 
-inc="$CORE_INCS -I $OBJS"
-if [ $INC_EQ = YES ]; then
-    inc=`echo $inc | sed -e "s/-I /-i=/g"`
-fi
-
-if [ $MAKE_BS = YES ]; then
-    inc=`echo $inc | sed -e "s/\//\\\\\\/g"`
-fi
+inc="$CORE_INCS $OBJS"
+inc=`echo " $inc" | sed -e "s/ \([^ ]\)/ $INCOPT\1/g" -e "s/\//$DIRSEP/g"`
 
 echo "CORE_INCS = $inc"                                           >> $MAKEFILE
 echo                                                              >> $MAKEFILE
@@ -83,9 +70,7 @@ fi
 
 for dep in $HTTP_DEPS
 do
-    if [ $MAKE_BS = YES ]; then
-        dep=`echo $dep | sed -e "s/\//\\\\\\/g"`
-    fi
+    dep=`echo $dep | sed -e "s/\//$DIRSEP/g"`
 
     if [ $MAKE_SL = YES ]; then
         echo $ngx_n " $dep" $ngx_c                                >> $MAKEFILE
@@ -102,14 +87,8 @@ if [ $MAKE_SL = YES ]; then
     echo                                                          >> $MAKEFILE
 fi
 
-inc="$HTTP_INCS -I $OBJS"
-if [ $INC_EQ = YES ]; then
-    inc=`echo $inc | sed -e "s/-I /-i=/g"`
-fi
-
-if [ $MAKE_BS = YES ]; then
-    inc=`echo $inc | sed -e "s/\//\\\\\\/g"`
-fi
+inc="$HTTP_INCS $OBJS"
+inc=`echo " $inc" | sed -e "s/ \([^ ]\)/ $INCOPT\1/g" -e "s/\//$DIRSEP/g"`
 
 echo "HTTP_INCS = $inc"                                           >> $MAKEFILE
 echo                                                              >> $MAKEFILE
@@ -129,11 +108,7 @@ fi
 for src in $CORE_SRCS $HTTP_SRCS
 do
     obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
-    obj="$OBJS/$obj"
-
-    if [ $MAKE_BS = YES ]; then
-        obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
-    fi
+    obj=`echo $OBJS/$obj | sed -e "s/\//$DIRSEP/g"`
 
     if [ $MAKE_SL = YES ]; then
         echo $ngx_n " $obj" $ngx_c                                >> $MAKEFILE
@@ -145,10 +120,7 @@ done
 for src in $NGX_MODULES_C $LINK_DEPS
 do
     obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
-
-    if [ $MAKE_BS = YES ]; then
-        obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
-    fi
+    obj=`echo $obj | sed -e "s/\//$DIRSEP/g"`
 
     if [ $MAKE_SL = YES ]; then
         echo $ngx_n " $obj" $ngx_c                                >> $MAKEFILE
@@ -173,11 +145,7 @@ fi
 for src in $CORE_SRCS $HTTP_SRCS
 do
     obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
-    obj="$OBJS/$obj"
-
-    if [ $MAKE_BS = YES ]; then
-        obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
-    fi
+    obj=`echo $OBJS/$obj | sed -e "s/\//$DIRSEP/g"`
 
     if [ $MAKE_SL = YES ]; then
         echo $ngx_n " $obj" $ngx_c                                >> $MAKEFILE
@@ -189,22 +157,18 @@ done
 
 # nginx build ngx_modules.c and libs
 
-obj=`echo $NGX_MODULES_C | sed -e "s/\.c\$/.$OBJEXT/"`
-libs=`echo $CORE_LIBS | sed -e "s/\.c\$/.$OBJEXT/"`
-src=$NGX_MODULES_C
-if [ $MAKE_BS = YES ]; then
-    obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
-    src=`echo $src | sed -e "s/\//\\\\\\/g"`
-    libs=`echo $libs | sed -e "s/\//\\\\\\/g"`
-fi
+obj=`echo $NGX_MODULES_C | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\//$DIRSEP/g"`
+src=`echo $NGX_MODULES_C | sed -e "s/\//$DIRSEP/g"`
+libs=`echo $CORE_LIBS | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\//$DIRSEP/g"`
+link=`echo $CORE_LINK | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\//$DIRSEP/g"`
 
 if [ $MAKE_SL = YES ]; then
     echo " $obj $libs $CORE_LINK"                                 >> $MAKEFILE
     echo                                                          >> $MAKEFILE
 else
     echo "	$obj \\"                                          >> $MAKEFILE
-    echo "	$CORE_LIBS \\"                                    >> $MAKEFILE
-    echo "	$CORE_LINK"                                       >> $MAKEFILE
+    echo "	$libs \\"                                         >> $MAKEFILE
+    echo "	$link"                                            >> $MAKEFILE
     echo                                                          >> $MAKEFILE
 fi
 
@@ -221,13 +185,13 @@ fi
 
 if [ $MAKE_SL = YES ]; then
     echo "$obj: $NGX_MODULES_C $deps"                             >> $MAKEFILE
-    echo $ngx_n "	\$(CC) $COMPILEONLY $args" $ngx_c         >> $MAKEFILE
+    echo $ngx_n "	\$(CC) $COMPOPT $args" $ngx_c             >> $MAKEFILE
     echo " $OBJOUT$obj $src"                                      >> $MAKEFILE
     echo                                                          >> $MAKEFILE
 else
     echo "$obj: \\"                                               >> $MAKEFILE
     echo "	$NGX_MODULES_C $deps"                             >> $MAKEFILE
-    echo "	\$(CC) $COMPILEONLY $args \\"                     >> $MAKEFILE
+    echo "	\$(CC) $COMPOPT $args \\"                         >> $MAKEFILE
     echo "		$OBJOUT$obj \\"                           >> $MAKEFILE
     echo "		$src"                                     >> $MAKEFILE
     echo                                                          >> $MAKEFILE
@@ -239,21 +203,17 @@ fi
 for src in $CORE_SRCS
 do
     obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
-    obj="$OBJS/$obj"
-
-    if [ $MAKE_BS = YES ]; then
-        obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
-        src=`echo $src | sed -e "s/\//\\\\\\/g"`
-    fi
+    obj=`echo $OBJS/$obj | sed -e "s/\//$DIRSEP/g"`
+    src=`echo $src | sed -e "s/\//$DIRSEP/g"`
 
     if [ $MAKE_SL = YES ]; then
         echo "$obj: $src $deps"                                   >> $MAKEFILE
-        echo "	\$(CC) $COMPILEONLY $args $OBJOUT$obj $src"       >> $MAKEFILE
+        echo "	\$(CC) $COMPOPT $args $OBJOUT$obj $src"           >> $MAKEFILE
         echo                                                      >> $MAKEFILE
     else
         echo "$obj: \\"                                           >> $MAKEFILE
         echo "	$src $deps"                                       >> $MAKEFILE
-        echo "	\$(CC) $COMPILEONLY $args \\"                     >> $MAKEFILE
+        echo "	\$(CC) $COMPOPT $args \\"                         >> $MAKEFILE
         echo "		$OBJOUT$obj \\"                           >> $MAKEFILE
         echo "		$src"                                     >> $MAKEFILE
         echo                                                      >> $MAKEFILE
@@ -274,21 +234,17 @@ fi
 for src in $HTTP_SRCS
 do
     obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
-    obj="$OBJS/$obj"
-
-    if [ $MAKE_BS = YES ]; then
-        obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
-        src=`echo $src | sed -e "s/\//\\\\\\/g"`
-    fi
+    obj=`echo $OBJS/$obj | sed -e "s/\//$DIRSEP/g"`
+    src=`echo $src | sed -e "s/\//$DIRSEP/g"`
 
     if [ $MAKE_SL = YES ]; then
         echo "$obj: $src $deps"                                   >> $MAKEFILE
-        echo "	\$(CC) $COMPILEONLY $args $OBJOUT$obj $src"       >> $MAKEFILE
+        echo "	\$(CC) $COMPOPT $args $OBJOUT$obj $src"           >> $MAKEFILE
         echo                                                      >> $MAKEFILE
     else
         echo "$obj: \\"                                           >> $MAKEFILE
         echo "	$src $deps"                                       >> $MAKEFILE
-        echo "	\$(CC) $COMPILEONLY $args \\"                     >> $MAKEFILE
+        echo "	\$(CC) $COMPOPT $args \\"                         >> $MAKEFILE
         echo "		$OBJOUT$obj \\"                           >> $MAKEFILE
         echo "		$src"                                     >> $MAKEFILE
         echo                                                      >> $MAKEFILE
@@ -302,13 +258,10 @@ if [ $PCH != NO ]; then
     echo "#include <ngx_config.h>" > $OBJS/pch.c
 
     pch="$PCH:	src/core/ngx_config.h $OS_CONFIG $OBJS/ngx_auto_config.h"
-    src="\$(CC) \$(CFLAGS) $BUILDPCH $COMPILEONLY \$(ALL_INCS)"
+    pch=`echo $pch | sed -e "s/\//$DIRSEP/g"`
+    src="\$(CC) \$(CFLAGS) $BUILDPCH $COMPOPT \$(ALL_INCS)"
     src="$src $OBJOUT$OBJS/pch.obj $OBJS/pch.c"
-
-    if [ $MAKE_BS = YES ]; then
-        pch=`echo $pch | sed -e "s/\//\\\\\\/g"`
-        src=`echo $src | sed -e "s/\//\\\\\\/g"`
-    fi
+    src=`echo $src | sed -e "s/\//$DIRSEP/g"`
 
     echo "$pch"                                                   >> $MAKEFILE
     echo "	$src"                                             >> $MAKEFILE

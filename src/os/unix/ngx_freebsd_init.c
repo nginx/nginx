@@ -106,9 +106,16 @@ int ngx_os_init(ngx_log_t *log)
 
     version = ngx_freebsd_kern_osreldate;
 
+#ifdef __DragonFly_version
+    ngx_log_error(NGX_LOG_INFO, log, 0,
+                  "kern.osreldate: %d, built on %d",
+                  version, __DragonFly_version);
+#else
     ngx_log_error(NGX_LOG_INFO, log, 0,
                   "kern.osreldate: %d, built on %d",
                   version, __FreeBSD_version);
+#endif
+
 
 
 #if (HAVE_SENDFILE)

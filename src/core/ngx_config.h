@@ -9,16 +9,22 @@
 #endif
 
 
-#if defined __FreeBSD__
+#if defined __DragonFly__ && !defined(__FreeBSD__)
+#define __FreeBSD__        4
+#define __FreeBSD_version  480101
+#endif
+
+
+#if defined (__FreeBSD__)
 #include <ngx_freebsd_config.h>
 
 
-#elif defined __linux__
+#elif defined (__linux__)
 #include <ngx_linux_config.h>
 
 
        /* Solaris */
-#elif defined(sun) && (defined(__svr4__) || defined(__SVR4))
+#elif defined (sun) && (defined (__svr4__) || defined (__SVR4))
 #include <ngx_solaris_config.h>
 
 

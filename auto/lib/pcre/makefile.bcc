@@ -1,0 +1,17 @@
+
+CFLAGS =	-q -O2 -tWM $(CPU_OPT)
+PCREFLAGS =	-DPCRE_STATIC -DPOSIX_MALLOC_THRESHOLD=10
+
+
+pcre.lib:	pcre.h
+	bcc32 -q -edftables dftables.c
+
+	dftables > chartables.c
+
+	bcc32 -c $(CFLAGS) $(PCREFLAGS) maketables.c get.c study.c pcre.c
+
+	tlib pcre.lib +maketables.obj +get.obj +study.obj +pcre.obj
+
+pcre.h:
+	patch -o pcre.h pcre.in patch.pcre.in
+	patch -o config.h config.in patch.config.in

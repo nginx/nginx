@@ -422,14 +422,19 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
 int ngx_http_find_location_config(ngx_http_request_t *r)
 {
     int                           rc;
-    ngx_uint_t                    i, exact;
+    ngx_uint_t                    i;
     ngx_str_t                     *auto_redirect;
     ngx_http_core_loc_conf_t      *clcf, **clcfp;
     ngx_http_core_srv_conf_t      *cscf;
+#if (HAVE_PCRE)
+    ngx_uint_t                    exact;
+#endif
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
     auto_redirect = NULL;
+#if (HAVE_PCRE)
     exact = 0;
+#endif
 
     clcfp = cscf->locations.elts;
     for (i = 0; i < cscf->locations.nelts; i++) {
@@ -473,7 +478,9 @@ int ngx_http_find_location_config(ngx_http_request_t *r)
             r->connection->log->log_level = clcf->err_log->log_level;
 
             if (clcfp[i]->exact_match && r->uri.len == clcfp[i]->name.len) {
+#if (HAVE_PCRE)
                 exact = 1;
+#endif
                 break;
             }
         }
@@ -751,14 +758,12 @@ static int ngx_http_core_init(ngx_cycle_t *cycle)
 {
 #if 0
     ngx_http_handler_pt        *h;
-#endif
     ngx_http_conf_ctx_t        *ctx;
     ngx_http_core_main_conf_t  *cmcf;
 
     ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
 
-#if 0
     ngx_test_null(h, ngx_push_array(
                              &cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers),
                   NGX_ERROR);
@@ -775,7 +780,7 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     char                        *rv;
     ngx_http_module_t           *module;
     ngx_conf_t                   pcf;
-    ngx_http_conf_ctx_t         *ctx, *hctx, *pctx;
+    ngx_http_conf_ctx_t         *ctx, *hctx;
     ngx_http_core_main_conf_t   *cmcf;
     ngx_http_core_srv_conf_t    *cscf, **cscfp;
 
@@ -830,7 +835,9 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     /* parse inside server{} */
 
     pcf = *cf;
+#if 0
     pctx = cf->ctx;
+#endif
     cf->ctx = ctx;
     cf->cmd_type = NGX_HTTP_SRV_CONF;
     rv = ngx_conf_parse(cf, NULL);

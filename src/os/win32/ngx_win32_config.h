@@ -47,6 +47,24 @@
 #pragma disable_message(202)
 #endif
 
+
+#ifdef __BORLANDC__
+/* the end of the precompiled headers */
+#pragma hdrstop
+
+#pragma warn -8027
+#pragma warn -8057
+#pragma warn -8060
+
+/* STUB */
+#pragma warn -8004
+#pragma warn -8008
+#pragma warn -8065
+#pragma warn -8066
+#pragma warn -8075
+#endif
+
+
 #include <ngx_auto_config.h>
 
 

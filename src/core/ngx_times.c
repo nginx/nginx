@@ -171,7 +171,12 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
     mon += 2;
 
     if (yday >= 306) {
-        yday -= 306;
+        /*
+         * yday is not used in Win32 SYSTEMTIME
+         *
+         * yday -= 306;
+         */
+
         year++;
         mon -= 12;
 
@@ -194,12 +199,16 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
             }
         }
 
-    } else {
-        yday += 31 + 28;
-
-        if ((year % 4 == 0) && (year % 100 || (year % 400 == 0))) {
-             yday++;
-        }
+/*
+ *  yday is not used in Win32 SYSTEMTIME
+ *
+ *  } else {
+ *      yday += 31 + 28;
+ *
+ *      if ((year % 4 == 0) && (year % 100 || (year % 400 == 0))) {
+ *           yday++;
+ *      }
+ */
     }
 
     tp->ngx_tm_sec = (ngx_tm_sec_t) sec;

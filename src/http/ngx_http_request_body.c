@@ -9,12 +9,12 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev);
 static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
 
 
-ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
-                                            size_t request_buffer_size)
+ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r)
 {
     ssize_t       size;
     ngx_hunk_t   *h;
     ngx_chain_t  *cl;
+
 
     size = r->header_in->last - r->header_in->pos;
 
@@ -22,13 +22,15 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
 
         /* there is the pre-read part of the request body */
 
-        ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
+        ngx_test_null(h, ngx_calloc_hunk(r->pool),
+                      NGX_HTTP_INTERNAL_SERVER_ERROR);
 
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
         h->start = h->pos = r->header_in->pos;
         h->end = h->last = r->header_in->last;
 
-        ngx_alloc_link_and_set_hunk(r->request_hunks, h, r->pool, NGX_ERROR);
+        ngx_alloc_link_and_set_hunk(r->request_body->bufs, h, r->pool,
+                                    NGX_HTTP_INTERNAL_SERVER_ERROR);
 
         if (size >= r->headers_in.content_length_n) {
 
@@ -42,28 +44,28 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
     }
 
 
-    r->remaining_body_len = r->headers_in.content_length_n - size;
+    r->request_body->rest = r->headers_in.content_length_n - size;
 
-    if (r->remaining_body_len
-                            < request_buffer_size + (request_buffer_size >> 2))
+    if (r->request_body->rest
+                < r->request_body->buf_size + (r->request_body->buf_size >> 2))
     {
-        size = r->remaining_body_len;
+        size = r->request_body->rest;
 
     } else {
-        size = request_buffer_size;
+        size = r->request_body->buf_size;
     }
 
-    ngx_test_null(r->request_body_hunk, ngx_create_temp_hunk(r->pool, size),
-                  NGX_ERROR);
+    ngx_test_null(r->request_body->buf, ngx_create_temp_hunk(r->pool, size),
+                  NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    ngx_alloc_link_and_set_hunk(cl, r->request_body_hunk, r->pool,
-                                NGX_ERROR);
+    ngx_alloc_link_and_set_hunk(cl, r->request_body->buf, r->pool,
+                                NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    if (r->request_hunks) {
-        r->request_hunks->next = cl;
+    if (r->request_body->bufs) {
+        r->request_body->bufs->next = cl;
 
     } else {
-        r->request_hunks = cl;
+        r->request_body->bufs = cl;
     }
 
     r->connection->read->event_handler =
@@ -104,10 +106,10 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
                    "http read client request body");
 
     for ( ;; ) {
-        if (r->request_body_hunk->last == r->request_body_hunk->end) {
-            n = ngx_write_chain_to_temp_file(r->temp_file,
-                               r->request_hunks->next ? r->request_hunks->next:
-                                                        r->request_hunks);
+        if (r->request_body->buf->last == r->request_body->buf->end) {
+            n = ngx_write_chain_to_temp_file(r->request_body->temp_file,
+                     r->request_body->bufs->next ? r->request_body->bufs->next:
+                                                   r->request_body->bufs);
 
             /* TODO: n == 0 or not complete and level event */
 
@@ -115,19 +117,19 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
-            r->temp_file->offset += n;
+            r->request_body->temp_file->offset += n;
 
-            r->request_body_hunk->pos = r->request_body_hunk->start;
-            r->request_body_hunk->last = r->request_body_hunk->start;
+            r->request_body->buf->pos = r->request_body->buf->start;
+            r->request_body->buf->last = r->request_body->buf->start;
         }
 
-        size = r->request_body_hunk->end - r->request_body_hunk->last;
+        size = r->request_body->buf->end - r->request_body->buf->last;
 
-        if (size > r->remaining_body_len) {
-            size = r->remaining_body_len;
+        if (size > r->request_body->rest) {
+            size = r->request_body->rest;
         }
 
-        n = ngx_recv(c, r->request_body_hunk->last, size);
+        n = ngx_recv(c, r->request_body->buf->last, size);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http client request body recv " SIZE_T_FMT, n);
@@ -153,32 +155,32 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
             return NGX_HTTP_BAD_REQUEST;
         }
 
-        r->request_body_hunk->last += n;
-        r->remaining_body_len -= n;
+        r->request_body->buf->last += n;
+        r->request_body->rest -= n;
 
-        if (r->remaining_body_len == 0) {
+        if (r->request_body->rest == 0) {
             break;
         }
 
-        if (r->request_body_hunk->last < r->request_body_hunk->end) {
+        if (r->request_body->buf->last < r->request_body->buf->end) {
             break;
         }
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http client request body left " SIZE_T_FMT,
-                   r->remaining_body_len);
+                   "http client request body rest " SIZE_T_FMT,
+                   r->request_body->rest);
 
-    if (r->remaining_body_len) {
+    if (r->request_body->rest) {
         return NGX_AGAIN;
     }
 
-    if (r->temp_file->file.fd != NGX_INVALID_FILE) {
+    if (r->request_body->temp_file->file.fd != NGX_INVALID_FILE) {
 
         /* save the last part */
-        n = ngx_write_chain_to_temp_file(r->temp_file,
-                               r->request_hunks->next ? r->request_hunks->next:
-                                                        r->request_hunks);
+        n = ngx_write_chain_to_temp_file(r->request_body->temp_file,
+                     r->request_body->bufs->next ? r->request_body->bufs->next:
+                                                   r->request_body->bufs);
 
         /* TODO: n == 0 or not complete and level event */
 
@@ -193,18 +195,18 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 
         h->type = NGX_HUNK_FILE;
         h->file_pos = 0;
-        h->file_last = r->temp_file->file.offset;
-        h->file = &r->temp_file->file;
+        h->file_last = r->request_body->temp_file->file.offset;
+        h->file = &r->request_body->temp_file->file;
 
-        if (r->request_hunks->next) {
-            r->request_hunks->next->hunk = h;
+        if (r->request_body->bufs->next) {
+            r->request_body->bufs->next->hunk = h;
 
         } else {
-            r->request_hunks->hunk = h;
+            r->request_body->bufs->hunk = h;
         }
     }
 
-    r->request_body_handler(r->data);
+    r->request_body->handler(r->request_body->data);
 
     return NGX_OK;
 }
