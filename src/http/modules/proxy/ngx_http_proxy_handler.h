@@ -52,6 +52,7 @@ struct ngx_http_proxy_ctx_s {
     int                         location_len;
     ngx_str_t                   host_header;
 
+    /* used to parse an upstream HTTP header */
     char                       *status_start;
     char                       *status_end;
     int                         status_count;
@@ -61,7 +62,7 @@ struct ngx_http_proxy_ctx_s {
 };
 
 
-#define NGX_HTTP_PROXY_PARSE_NO_HEADER  10
+#define NGX_HTTP_PROXY_PARSE_NO_HEADER  20
 
 
 #endif /* _NGX_HTTP_PROXY_HANDLER_H_INCLUDED_ */
