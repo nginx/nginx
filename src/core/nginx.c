@@ -39,6 +39,9 @@ ngx_array_t  *ngx_listening_sockets;
 
 int main(int argc, char *const *argv)
 {
+    ngx_str_t   conf_file;
+    ngx_conf_t  conf;
+
     /* STUB */
     ngx_log.log_level = NGX_LOG_DEBUG;
 
@@ -52,6 +55,19 @@ int main(int argc, char *const *argv)
     ngx_init_sockets(&ngx_log);
 
     /* TODO: read config */
+
+#if 1
+    ngx_memzero(&conf, sizeof(ngx_conf_t));
+    ngx_test_null(conf.args,
+                  ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)), 1);
+    conf.pool = ngx_pool;
+    conf.log = &ngx_log;
+
+    conf_file.len = sizeof("nginx.conf") - 1;
+    conf_file.data = "nginx.conf";
+
+    ngx_conf_parse(&conf, &conf_file);
+#endif
 
     ngx_test_null(ngx_listening_sockets,
                   ngx_create_array(ngx_pool, 10, sizeof(ngx_listen_t)), 1);

@@ -19,6 +19,10 @@
 #define NGX_CONF_UNSET    -1
 
 
+#define NGX_BLOCK_DONE     1
+#define NGX_FILE_DONE      2
+
+
 typedef struct {
     ngx_file_t   file;
     ngx_hunk_t  *hunk;

@@ -29,9 +29,6 @@ static ngx_event_t  **ready_index;
 static ngx_event_t    timer_queue;
 /* */
 
-static fd_set *ngx_select_get_fd_set(ngx_socket_t fd, int event,
-                                     ngx_log_t *log);
-
 int ngx_select_init(int max_connections, ngx_log_t *log)
 {
     if (max_connections > FD_SETSIZE) {

@@ -61,6 +61,22 @@ int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
 
+#if 1
+    if (nchanges > 0
+        && ev->index < nchanges
+        && change_list[ev->index].udata == ev)
+    {
+        /* DEBUG */
+        ngx_connection_t *c = (ngx_connection_t *) ev->data;
+        ngx_log_debug(ev->log, "kqueue add event: %d: ft:%d" _ c->fd _ event);
+
+        change_list[ev->index].filter = event;
+        change_list[ev->index].flags = flags;
+
+        return NGX_OK;
+    }
+#endif
+
     return ngx_kqueue_set_event(ev, event, EV_ADD | flags);
 }
 
@@ -69,12 +85,13 @@ int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t *e;
 
-    if (nchanges > 0 && ev->index < nchanges
+    if (nchanges > 0
+        && ev->index < nchanges
         && change_list[ev->index].udata == ev)
     {
-        ngx_connection_t *cn = (ngx_connection_t *) ev->data;
-        ngx_log_debug(ev->log, "kqueue del event: %d: ft:%d" _
-                      cn->fd _ event);
+        /* DEBUG */
+        ngx_connection_t *c = (ngx_connection_t *) ev->data;
+        ngx_log_debug(ev->log, "kqueue del event: %d: ft:%d" _ c->fd _ event);
 
         if (ev->index < --nchanges) {
             e = (ngx_event_t *) change_list[nchanges].udata;
@@ -95,12 +112,12 @@ int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 {
     struct timespec   ts;
-    ngx_connection_t *cn;
+    ngx_connection_t *c;
 
-    cn = (ngx_connection_t *) ev->data;
+    c = (ngx_connection_t *) ev->data;
 
     ngx_log_debug(ev->log, "kqueue set event: %d: ft:%d f:%08x" _
-                  cn->fd _ filter _ flags);
+                  c->fd _ filter _ flags);
 
     if (nchanges >= nevents) {
         ngx_log_error(NGX_LOG_WARN, ev->log, 0,
@@ -116,14 +133,16 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
         nchanges = 0;
     }
 
-    change_list[nchanges].ident = cn->fd;
+    change_list[nchanges].ident = c->fd;
     change_list[nchanges].filter = filter;
     change_list[nchanges].flags = flags;
     change_list[nchanges].fflags = 0;
     change_list[nchanges].data = 0;
     change_list[nchanges].udata = ev;
 
+#if 0
     if (flags == EV_ADD)
+#endif
         ev->index = nchanges;
 
     nchanges++;
@@ -140,10 +159,6 @@ int ngx_kqueue_process_events(ngx_log_t *log)
     struct timeval   tv;
     struct timespec  ts, *tp;
 
-    timer = 0;
-    delta = 0;
-    tp = NULL;
-
     if (timer_queue.timer_next != &timer_queue) {
         timer = timer_queue.timer_next->timer_delta;
         ts.tv_sec = timer / 1000;
@@ -151,6 +166,11 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         tp = &ts;
         gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+
+    } else {
+        timer = 0;
+        delta = 0;
+        tp = NULL;
     }
 
     ngx_log_debug(log, "kevent timer: %d" _ timer);

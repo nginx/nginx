@@ -1,7 +1,3 @@
-/*
-   TODO: Win32 inet_ntoa
-         ngx_inet_ntop
-*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>

@@ -12,9 +12,9 @@ static int argument_number[] = {
     NGX_CONF_TAKE2
 };
 
-#if 0
+#if 1
 
-int ngx_conf_parse(ngx_conf_t *cf, char *filename)
+int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
     int    rc;
     char  *error;
@@ -23,22 +23,34 @@ int ngx_conf_parse(ngx_conf_t *cf, char *filename)
 
     if (filename) {
 
-        fd = ngx_open_file(filename, NGX_FILE_RDONLY);
+        fd = ngx_open_file(filename->data, NGX_FILE_RDONLY);
         if (fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
-                          "ngx_conf_open: "
-                          ngx_open_file_n " %s failed", filename);
+                          "ngx_conf_file: "
+                          ngx_open_file_n " %s failed", filename->data);
             return NGX_ERROR;
         }
 
-        prev = cf->file;
-        ngx_test_null(cf->file, ngx_palloc(cf->pool, sizeof(ngx_conf_file_t)),
+        prev = cf->conf_file;
+        ngx_test_null(cf->conf_file,
+                      ngx_palloc(cf->pool, sizeof(ngx_conf_file_t)),
                       NGX_ERROR);
 
-        cf->file->fd = fd;
-        cf->file->name = filename;
-        cf->file->line = 1;
-        cf->file->pos = 0;
+        if (ngx_stat_fd(fd, &cf->conf_file->file.info) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
+                          "ngx_conf_file: "
+                          ngx_stat_fd_n " %s failed", filename->data);
+        }
+
+        ngx_test_null(cf->conf_file->hunk,
+                      ngx_create_temp_hunk(cf->pool, 1024, 0, 0),
+                      NGX_ERROR);
+
+        cf->conf_file->file.fd = fd;
+        cf->conf_file->file.name.len = filename->len;
+        cf->conf_file->file.name.data = filename->data;
+        cf->conf_file->file.log = cf->log;;
+        cf->conf_file->line = 1;
     }
 
     for ( ;; ) {
@@ -56,13 +68,14 @@ int ngx_conf_parse(ngx_conf_t *cf, char *filename)
 
         if (cf->handler) {
 
-            if (*(cf->handler)(cf) == NGX_ERROR) {
+            if ((*cf->handler)(cf) == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
             continue;
         }
 
+#if 0
         cmd = ngx_conf_find_token(cf);
         if (cmd == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
@@ -71,7 +84,7 @@ int ngx_conf_parse(ngx_conf_t *cf, char *filename)
             return NGX_ERROR;
         }
 
-        if (cmd->type & argument_number[cf->args->nelts]) {
+        if (cmd->type & argument_number[cf->args->nelts - 1]) {
             error = cmd->set(cf, cmd->offset, cf->args);
 
             if (error) {
@@ -81,6 +94,7 @@ int ngx_conf_parse(ngx_conf_t *cf, char *filename)
                 return NGX_ERROR;
             }
         }
+#endif
 
 #if 0
         if (cmd->type == NGX_CONF_CONTAINER) {
@@ -133,32 +147,36 @@ int ngx_conf_parse(ngx_conf_t *cf, char *filename)
                           cf->name, cf->file->name, cf->file->line);
             return NGX_ERROR;
         }
-    }
 #endif
+    }
 
     if (filename) {
-        cf->file = prev;
+        cf->conf_file = prev;
 
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ERR, cf->log, ngx_errno,
-                          ngx_close_file_n " %s failed", cf->name);
+                          ngx_close_file_n " %s failed",
+                          cf->conf_file->file.name.data);
             return NGX_ERROR;
         }
     }
 
     return NGX_OK;
-}    
+}
 
 #endif
 
-#if 0
+#if 1
 
 int ngx_conf_read_token(ngx_conf_t *cf)
 {
     char        *start, ch, *src, *dst;
-    int          n, need_space, last_space, len, quoted, s_quoted, d_quoted;
+    int          found, need_space, last_space, len, quoted, s_quoted, d_quoted;
+    ssize_t      n;
+    ngx_str_t   *word;
     ngx_hunk_t  *h;
 
+    found = 0;
     need_space = 0;
     last_space = 1;
     len = 0;
@@ -167,14 +185,21 @@ int ngx_conf_read_token(ngx_conf_t *cf)
     cf->args->nelts = 0;
     h = cf->conf_file->hunk;
 
-    for (start = h->pos.mem; /* end_of_file */ ; h->pos.mem++) {
+ngx_log_debug(cf->log, "TOKEN START");
+
+    for (start = h->pos.mem; /* void */ ; /* void */) {
 
         if (h->pos.mem >= h->last.mem) {
+            if (cf->conf_file->file.offset
+                                  >= ngx_file_size(cf->conf_file->file.info)) {
+                return NGX_FILE_DONE;
+            }
+
             if (h->pos.mem - start) {
                 ngx_memcpy(h->start, start, h->pos.mem - start);
             }
 
-            n = ngx_read_file(cf->conf_file->file,
+            n = ngx_read_file(&cf->conf_file->file,
                               h->start + (h->pos.mem - start),
                               h->end - (h->start + (h->pos.mem - start)),
                               cf->conf_file->file.offset);
@@ -188,10 +213,28 @@ int ngx_conf_read_token(ngx_conf_t *cf)
             h->last.mem = h->pos.mem + n;
         }
 
-        ch = *h->pos.mem;
+        ch = *h->pos.mem++;
+
+ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
+              last_space _ need_space _
+              quoted _ s_quoted _ d_quoted _ ch);
 
         if (ch == LF) {
             cf->conf_file->line++;
+        }
+
+        if (need_space) {
+            if (ch == ' ' || ch == '\t' || ch == CR || ch == LF) {
+                last_space = 1;
+                need_space = 0;
+                continue;
+            }
+
+            if (ch == ';' || ch == '{') {
+                return NGX_OK;
+            }
+
+            return NGX_ERROR;
         }
 
         if (quoted) {
@@ -202,86 +245,93 @@ int ngx_conf_read_token(ngx_conf_t *cf)
         len++;
 
         if (last_space) {
-            start = h->pos.mem;
-
             if (ch == ' ' || ch == '\t' || ch == CR || ch == LF) {
+                len = 0;
+                continue;
+            }
+
+            start = h->pos.mem - 1;
+
+            switch (ch) {
+
+            case '\\':
+                quoted = 1;
+                last_space = 0;
+                continue;
+
+            case '"':
                 start++;
+                len--;
+                d_quoted = 1;
+                last_space = 0;
                 continue;
-            }
-        }
 
-        if (ch = '\\') {
-            quoted = 1;
-            continue;
-        }
-
-        if (d_quoted) {
-
-            if (ch == '"') {
-                d_quoted = 0;
-                need_space = 1;
-                last_space = 1;
+            case '\'':
+                start++;
+                len--;
+                s_quoted = 1;
+                last_space = 0;
                 continue;
-            }
 
-        } else if (s_quoted) {
-
-            if (ch == '\'') {
-                s_quoted = 0;
-                need_space = 1;
-                last_space = 1;
-                continue;
+            default:
+                last_space = 0;
             }
 
         } else {
+            if (ch == '\\') {
+                quoted = 1;
+                continue;
+            }
 
-            if (ch == ' ' || ch == '\t' || ch == CR || ch == LF) {
+            if (d_quoted) {
+                if (ch == '"') {
+                    len--;
+                    d_quoted = 0;
+                    need_space = 1;
+                    found = 1;
+                }
+
+            } else if (s_quoted) {
+                if (ch == '\'') {
+                    len--;
+                    s_quoted = 0;
+                    need_space = 1;
+                    found = 1;
+                }
+
+            } else if (ch == ' ' || ch == '\t' || ch == CR || ch == LF
+                       || ch == ';' || ch == '{') {
+                len--;
+                last_space = 1;
+                found = 1;
+            }
+
+            if (found) {
                 ngx_test_null(word, ngx_push_array(cf->args), NGX_ERROR);
-                ngx_test_null(word->data, ngx_palloc(cf->temp_pool, len + 1),
+                ngx_test_null(word->data, ngx_palloc(cf->pool, len + 1),
                               NGX_ERROR);
                 word->len = len;
 
-                for (dst = word->data, src = start; src < h->pos; /* void */) {
-                    if (*src == '\\')
+                for (dst = word->data, src = start;
+                     src < h->pos.mem - 1;
+                     /* void */)
+                {
+                    if (*src == '\\') {
                         src++;
+                    }
                     *dst++ = *src++;
                 }
                 *dst = '\0';
 
-                need_space = 0;
-                last_space = 1;
-                continue;
-            }
+ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 
-            if (need_space) {
-                return NGX_ERROR;
-            }
-
-            if (ch == ';') {
-                return NGX_OK;
-            }
-
-            if (ch == '{') {
-                return NGX_OK;
-            }
-
-            if (ch == '}') {
-                return NGX_BLOCK_DONE;
-            }
-
-            if (last_space) {
-                if (ch == '"') {
-                    d_quoted = 1;
-                    continue;
+                if (ch == ';' || ch == '{') {
+                    return NGX_OK;
                 }
 
-                if (ch == '\'') {
-                    s_quoted = 1;
-                    continue;
-                }
+                found = 0;
+                len = 0;
             }
-
-            last_space = 0;
         }
     }
 }

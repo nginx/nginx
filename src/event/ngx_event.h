@@ -22,7 +22,7 @@ struct ngx_event_s {
     void            *context;
     char            *action;
 
-    int              index;
+    unsigned int     index;
 
     ngx_event_t     *prev;     /* queue in mutex(), aio_read(), aio_write()  */
     ngx_event_t     *next;     /*                                            */
@@ -119,6 +119,14 @@ NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
 #if (HAVE_CLEAR_EVENT)
 #define NGX_CLEAR_EVENT    EV_CLEAR
 #endif
+
+#elif (HAVE_POLL)
+
+#define NGX_READ_EVENT     POLLIN
+#define NGX_WRITE_EVENT    POLLOUT
+
+#define NGX_LEVEL_EVENT    0
+#define NGX_ONESHOT_EVENT  1
 
 #else
 

@@ -12,6 +12,9 @@
 #include <ngx_event_accept.h>
 
 #include <ngx_select_module.h>
+#if (HAVE_POLL)
+#include <ngx_poll_module.h>
+#endif
 #if (HAVE_KQUEUE)
 #include <ngx_kqueue_module.h>
 #endif
@@ -23,11 +26,15 @@ ngx_event_t         *ngx_read_events, *ngx_write_events;
 #if !(USE_KQUEUE)
 
 #if (HAVE_KQUEUE)
-#if 1
+
+#if 0
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
+#elif 1
+ngx_event_type_e     ngx_event_type = NGX_POLL_EVENT;
 #else
 ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
 #endif
+
 #else
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
 #endif
@@ -51,7 +58,10 @@ static int (*ngx_event_init[]) (int max_connections, ngx_log_t *log) = {
 void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
 {
     int  i, fd;
-    ngx_listen_t *s;
+
+    ngx_listen_t      *s;
+    ngx_event_t       *ev;
+    ngx_connection_t  *c;
 
     /* STUB */
     int max_connections = 512;
@@ -69,6 +79,9 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
     for (i = 0; i < ls->nelts; i++) {
 
         fd = s[i].fd;
+
+        c = &ngx_connections[fd];
+        ev = &ngx_read_events[fd];
 
         ngx_memzero(&ngx_connections[fd], sizeof(ngx_connection_t));
         ngx_memzero(&ngx_read_events[fd], sizeof(ngx_event_t));
@@ -89,6 +102,7 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
                       ngx_palloc(pool, sizeof(ngx_log_t)), /* void */ ; );
         ngx_memcpy(ngx_read_events[fd].log, ngx_connections[fd].log,
                    sizeof(ngx_log_t));
+        c->read = ev;
         ngx_read_events[fd].data = &ngx_connections[fd];
         ngx_read_events[fd].event_handler = &ngx_event_accept;
         ngx_read_events[fd].listening = 1;

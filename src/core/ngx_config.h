@@ -9,6 +9,8 @@
    ngx_inline inline __inline __inline__
 */
 
+/* STUB */
+#undef  FD_SETSIZE
 #define FD_SETSIZE  1024
 
 
@@ -84,6 +86,11 @@
 #include <sys/uio.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#ifndef HAVE_POLL
+#define HAVE_POLL  1
+#include <poll.h>
+#endif
 
 #define ngx_inline   inline
 

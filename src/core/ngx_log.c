@@ -13,6 +13,7 @@
 #include <ngx_config.h>
 #include <ngx_errno.h>
 #include <ngx_time.h>
+#include <ngx_process.h>
 #include <ngx_string.h>
 #include <ngx_log.h>
 
@@ -44,12 +45,9 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
                         " [%s] ", err_levels[level]);
 
+    /* pid#tid */
     len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-#if (WIN32)
-                        "%d#%d: ", 0, 0);
-#else
-                        "%d#%d: ", getpid(), 0);
-#endif
+                        "%d#%d: ", ngx_getpid(), 0);
 
 #if (HAVE_VARIADIC_MACROS)
     va_start(args, fmt);
@@ -60,12 +58,14 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 #endif
 
     if (err) {
-        if ((unsigned) err < 0x80000000)
+#if (WIN32)
+        if ((unsigned) err >= 0x80000000)
             len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                            " (%d: ", err);
+                                " (%X: ", err);
         else
+#endif
             len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                            " (%X: ", err);
+                                " (%d: ", err);
 
         len += ngx_strerror_r(err, errstr + len, sizeof(errstr) - len - 1);
         if (len < sizeof(errstr) - 2) {
@@ -75,16 +75,26 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
         }
     }
 
-    if (level != NGX_LOG_DEBUG && log->handler)
+    if (level != NGX_LOG_DEBUG && log->handler) {
         len += log->handler(log->data, errstr + len, sizeof(errstr) - len - 1);
+    }
 
-    if (len > sizeof(errstr) - 2)
+    if (len > sizeof(errstr) - 2) {
         len = sizeof(errstr) - 2;
-    errstr[len] = '\n';
-    errstr[len + 1] = '\0';
+    }
 
+#if (WIN32)
+    errstr[len++] = '\r';
+#endif
+    errstr[len++] = '\n';
+
+    write(2, errstr, len);
+
+#if 0
+    errstr[len] = '\0';
     fputs(errstr, stderr);
     fflush(stderr);
+#endif
 }
 
 #if !(HAVE_VARIADIC_MACROS)
