@@ -241,7 +241,7 @@ case $CC in
 
 
     wcl386)
-         # Open Watcom 1.0
+         # Open Watcom C 1.0
 
          # optimization
 
@@ -294,6 +294,9 @@ case $CC in
 
          # quiet
          CFLAGS="$CFLAGS -zq"
+
+         # Open Watcom C 1.2
+         have=HAVE_C99_VARIADIC_MACROS . auto/have
 
          # precompiled headers
          CORE_DEPS="$CORE_DEPS $OBJS\\ngx_config.pch"

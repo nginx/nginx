@@ -70,7 +70,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                            last;
     off_t                          size, flush;
-    ngx_chain_t                   *cl, **ll, *chain;
+    ngx_chain_t                   *cl, *ln, **ll, *chain;
     ngx_http_write_filter_ctx_t   *ctx;
     ngx_http_write_filter_conf_t  *conf;
 
@@ -105,8 +105,8 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     /* add the new chain to the existent one */
 
-    for (/* void */; in; in = in->next) {
-        ngx_alloc_link_and_set_hunk(cl, in->hunk, r->pool, NGX_ERROR);
+    for (ln = in; ln; ln = ln->next) {
+        ngx_alloc_link_and_set_hunk(cl, ln->hunk, r->pool, NGX_ERROR);
         *ll = cl;
         ll = &cl->next;
 
@@ -129,11 +129,12 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                         ngx_http_write_filter_module);
 
     /*
-     * avoid the output if there is no last hunk, no flush point and
-     * the size of the hunks is smaller than "postpone_output" directive
+     * avoid the output if there is no last hunk, no flush point,
+     * there are the incoming hunks and the size of all hunks
+     * is smaller than "postpone_output" directive
      */
 
-    if (!last && flush == 0 && size < (off_t) conf->postpone_output) {
+    if (!last && flush == 0 && in && size < (off_t) conf->postpone_output) {
         return NGX_OK;
     }
 
@@ -142,6 +143,8 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (size == 0) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "the http output chain is empty");
         return NGX_OK;
     }
 

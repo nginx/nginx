@@ -1202,6 +1202,11 @@ static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
             if (u->port_text.len > 0) {
                 u->port = ngx_atoi(u->port_text.data, u->port_text.len);
                 if (u->port > 0) {
+
+                    if (u->port == 80) {
+                        u->default_port = 1;
+                    }
+
                     u->port = htons((u_short) u->port);
                     return NULL;
                 }
