@@ -15,6 +15,8 @@ typedef struct {
     ngx_chain_t  *out;
 
     ngx_hunk_t   *hunk;
+    int           last_hunk;
+    ngx_array_t  *hunks;
 
     ngx_http_proxy_header_in_t  *header_in;
 } ngx_http_proxy_ctx_t;

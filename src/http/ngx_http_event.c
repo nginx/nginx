@@ -495,6 +495,9 @@ static int ngx_http_event_handler(ngx_http_request_t *r)
 
     rc = ngx_http_handler(r);
 
+    if (rc == NGX_WAITING)
+        return rc;
+
     /* transfer not completed */
     if (rc == NGX_AGAIN) {
 #if (HAVE_CLEAR_EVENT)
