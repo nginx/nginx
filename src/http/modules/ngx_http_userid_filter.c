@@ -284,9 +284,6 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
 
     /* TODO: mutex for sequencers */
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "service: %d", r->in_addr);
-
     if (conf->enable == NGX_HTTP_USERID_V1) {
         if (conf->service == NGX_CONF_UNSET) {
             ctx->uid_set[0] = 0;

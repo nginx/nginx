@@ -14,7 +14,7 @@
 static void ngx_http_phase_event_handler(ngx_event_t *rev);
 static void ngx_http_run_phases(ngx_http_request_t *r);
 static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
-                                        ngx_array_t *locations);
+                                        ngx_array_t *locations, size_t len);
 
 static void *ngx_http_core_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf);
@@ -486,7 +486,7 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
-    rc = ngx_http_find_location(r, &cscf->locations);
+    rc = ngx_http_find_location(r, &cscf->locations, 0);
 
     if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
         return rc;
@@ -551,7 +551,7 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
 
 
 static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
-                                        ngx_array_t *locations)
+                                        ngx_array_t *locations, size_t len)
 {
     ngx_int_t                  n, rc;
     ngx_uint_t                 i, found;
@@ -604,14 +604,7 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
                 return NGX_HTTP_LOCATION_EXACT;
             }
 
-            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-#if 0
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "p:%d c:%d", clcf->name.len, clcfp[i]->name.len);
-#endif
-
-            if (clcf->name.len > clcfp[i]->name.len) {
+            if (len > clcfp[i]->name.len) {
                 /* the previous match is longer */
                 break;
             }
@@ -625,7 +618,7 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
         if (clcf->locations.nelts) {
-            rc = ngx_http_find_location(r, &clcf->locations);
+            rc = ngx_http_find_location(r, &clcf->locations, len);
 
             if (rc != NGX_OK) {
                 return rc;
@@ -1628,6 +1621,10 @@ static char *ngx_set_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     lcf->alias = alias;
     lcf->root = value[1];
+
+    if (!alias && lcf->root.data[lcf->root.len - 1] == '/') {
+        lcf->root.len--;
+    }
 
     return NGX_CONF_OK;
 }
