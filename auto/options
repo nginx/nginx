@@ -21,7 +21,7 @@ HTTP_SSI=YES
 HTTP_PROXY=YES
 
 USE_PCRE=NO
-PCRE=NO
+PCRE=NONE
 
 USE_MD5=NO
 MD5=NONE
@@ -58,7 +58,7 @@ do
 
         --with-cc=*)                     CC="$value"                ;;
 
-        --without-pcre)                  PCRE=NONE                  ;;
+        --without-pcre)                  USE_PCRE=NO                ;;
         --with-pcre=*)                   PCRE="$value"              ;;
         --with-md5=*)                    MD5="$value"               ;;
         --with-zlib=*)                   ZLIB="$value"              ;;

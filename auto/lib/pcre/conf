@@ -5,14 +5,11 @@ if [ $PCRE != NONE ]; then
     CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
 
     if [ "$PLATFORM" = "win32" ]; then
-        #CFLAGS="$CFLAGS -D PCRE_STATIC -D HAVE_PCRE=1"
         have=HAVE_PCRE . auto/have
         have=PCRE_STATIC . auto/have
-
         CORE_LIBS="$CORE_LIBS pcre.lib"
         CORE_LINK="$CORE_LINK -libpath:$PCRE"
     else
-        #CFLAGS="$CFLAGS -D HAVE_PCRE=1"
         have=HAVE_PCRE . auto/have
         CORE_DEPS="$CORE_DEPS $PCRE/.libs/libpcre.a"
         CORE_LIBS="$CORE_LIBS -L $PCRE/.libs -lpcre"
@@ -29,7 +26,12 @@ else
 
 
     if [ $ngx_found = yes ]; then
+        have=HAVE_PCRE . auto/have
+
+        CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
+        CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
         CORE_LIBS="$CORE_LIBS $ngx_libs"
+
         PCRE=YES
     else
         PCRE=NO
