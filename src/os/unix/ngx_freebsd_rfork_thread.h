@@ -13,14 +13,6 @@ typedef pid_t  ngx_tid_t;
 #define ngx_log_tid    0
 
 #define TID_T_FMT      PID_T_FMT
-    
-
-extern void          **ngx_tls;
-
-#define ngx_thread_create_tls()  0
-#define ngx_thread_create_tls_n  ""
-#define ngx_thread_get_tls()     ngx_tls[ngx_gettid()]
-ngx_int_t ngx_thread_set_tls(void *value);
 
 
 #define NGX_MUTEX_LIGHT      1
@@ -85,6 +77,29 @@ static inline int ngx_gettid()
 
 
 ngx_tid_t ngx_thread_self();
+
+
+typedef ngx_uint_t               ngx_tls_key_t;
+
+#define NGX_THREAD_KEYS_MAX      16
+
+extern void    **ngx_tls;
+
+ngx_int_t ngx_thread_key_create(ngx_tls_key_t *key);
+#define ngx_thread_key_create_n  "the tls key creation"
+
+ngx_int_t ngx_thread_set_tls(ngx_tls_key_t key, void *value);
+#define ngx_thread_set_tls_n     "the tls key setting"
+
+
+static void *ngx_thread_get_tls(ngx_tls_key_t key)
+{   
+    if (key >= NGX_THREAD_KEYS_MAX) {
+        return NULL;
+    }
+
+    return ngx_tls[key * NGX_THREAD_KEYS_MAX + ngx_gettid()];
+}
 
 
 #define ngx_mutex_trylock(m)  ngx_mutex_dolock(m, 1)

@@ -73,10 +73,7 @@ void ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
 
 ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 {
-    ngx_tls_t    *tls;
     ngx_event_t  *ev;
-
-    tls = ngx_thread_get_tls();
 
     for ( ;; ) {
 
@@ -135,8 +132,6 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
             ev->posted_available = 0;
 
             ngx_mutex_unlock(ngx_posted_events_mutex);
-
-            tls->event = ev;
 
             ev->event_handler(ev);
 

@@ -41,9 +41,7 @@ struct ngx_event_s {
     unsigned         oneshot:1;
 
     /* used to detect the stale events in kqueue, rt signals and epoll */
-    unsigned         use_instance:1;
     unsigned         instance:1;
-    unsigned         returned_instance:1;
 
     /*
      * the event was passed or would be passed to a kernel;
@@ -75,6 +73,10 @@ struct ngx_event_s {
 
     /* the pending eof reported by kqueue or in aio chain operation */
     unsigned         pending_eof:1;
+
+#if !(NGX_THREADS)
+    unsigned         posted_ready:1;
+#endif
 
 #if (WIN32)
     /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was succesfull */
@@ -244,39 +246,32 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_HAVE_LOWAT_EVENT     0x00000010
 
 /*
- * The event filter allows to pass instance information to check stale events -
- * kqueue, epoll, rt signals.
- */
-#define NGX_HAVE_INSTANCE_EVENT  0x00000020
-
-/*
  * The event filter requires to do i/o operation until EAGAIN -
  * epoll, rt signals.
  */
-#define NGX_HAVE_GREEDY_EVENT    0x00000040
+#define NGX_HAVE_GREEDY_EVENT    0x00000020
 
 /*
- * The event filter notifies only the changes (the edges)
- * but not an initial level - early epoll patches.
+ * The event filter is epoll,
  */
-#define NGX_USE_EDGE_EVENT       0x00000080
+#define NGX_USE_EPOLL_EVENT      0x00000040
 
 /*
  * No need to add or delete the event filters - rt signals.
  */
-#define NGX_USE_RTSIG_EVENT      0x00000100
+#define NGX_USE_RTSIG_EVENT      0x00000080
 
 /*
  * No need to add or delete the event filters - overlapped, aio_read,
  * aioread, io_submit.
  */
-#define NGX_USE_AIO_EVENT        0x00000200
+#define NGX_USE_AIO_EVENT        0x00000100
 
 /*
  * Need to add socket or handle only once - i/o completion port.
  * It also requires HAVE_AIO and NGX_USE_AIO_EVENT to be set.
  */
-#define NGX_USE_IOCP_EVENT       0x00000400
+#define NGX_USE_IOCP_EVENT       0x00000200
 
 
 

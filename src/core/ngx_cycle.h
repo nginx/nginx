@@ -49,6 +49,11 @@ typedef struct {
 } ngx_core_conf_t;
 
 
+typedef struct {
+     ngx_pool_t  *pool;   /* pcre's malloc() pool */
+} ngx_core_tls_t;
+
+
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
 ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle);
 void ngx_delete_pidfile(ngx_cycle_t *cycle);
@@ -60,6 +65,9 @@ extern volatile ngx_cycle_t  *ngx_cycle;
 extern ngx_array_t            ngx_old_cycles;
 extern ngx_module_t           ngx_core_module;
 extern ngx_uint_t             ngx_test_config;
+#if (NGX_THREADS)
+extern ngx_tls_key_t          ngx_core_tls_key;
+#endif
 
 
 #endif /* _NGX_CYCLE_H_INCLUDED_ */

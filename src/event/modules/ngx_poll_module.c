@@ -14,6 +14,7 @@ static void ngx_poll_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags);
 static ngx_int_t ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags);
 static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle);
+static char *ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
 static struct pollfd  *event_list;
@@ -31,7 +32,7 @@ static ngx_str_t    poll_name = ngx_string("poll");
 ngx_event_module_t  ngx_poll_module_ctx = {
     &poll_name,
     NULL,                                  /* create configuration */
-    NULL,                                  /* init configuration */
+    ngx_poll_init_conf,                    /* init configuration */
 
     {
         ngx_poll_add_event,                /* add an event */
@@ -576,4 +577,28 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
     }
 
     return nready;
+}
+
+
+static char *ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf)
+{
+    ngx_event_conf_t  *ecf;
+
+    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
+
+    if (ecf->use != ngx_poll_module.ctx_index) {
+        return NGX_CONF_OK;
+    }
+
+#if (NGX_THREADS)
+
+    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                  "poll() is not supported in the threaded mode");
+    return NGX_CONF_ERROR;
+
+#else
+
+    return NGX_CONF_OK;
+
+#endif
 }

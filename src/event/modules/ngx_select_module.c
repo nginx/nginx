@@ -15,7 +15,6 @@ static void ngx_select_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_select_add_event(ngx_event_t *ev, int event, u_int flags);
 static ngx_int_t ngx_select_del_event(ngx_event_t *ev, int event, u_int flags);
 static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle);
-
 static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
@@ -605,5 +604,11 @@ static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
     }
 #endif
 
+#if (NGX_THREADS)
+    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                  "select() is not supported in the threaded mode");
+    return NGX_CONF_ERROR;
+#else
     return NGX_CONF_OK;
+#endif
 }

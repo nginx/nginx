@@ -11,7 +11,7 @@
 int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     int                  rc;
-    ngx_uint_t           instance, rinstance, winstance;
+    ngx_uint_t           instance;
     u_int                event;
     time_t               now;
     ngx_err_t            err;
@@ -30,11 +30,17 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
         /* cached connection */
 
-        pc->connection = pc->peers->cached[pc->peers->last_cached];
+        c = pc->peers->cached[pc->peers->last_cached];
         pc->peers->last_cached--;
 
         /* ngx_unlock_mutex(pc->peers->mutex); */
 
+#if (NGX_THREADS)
+        c->read->lock = c->read->own_lock;
+        c->write->lock = c->write->own_lock;
+#endif
+
+        pc->connection = c;
         pc->cached = 1;
         return NGX_OK;
     }
@@ -180,8 +186,6 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 #endif
 
     instance = rev->instance;
-    rinstance = rev->returned_instance;
-    winstance = wev->returned_instance;
 
 #if (NGX_THREADS)
 
@@ -198,15 +202,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_memzero(rev, sizeof(ngx_event_t));
     ngx_memzero(wev, sizeof(ngx_event_t));
 
-    if (ngx_event_flags & NGX_HAVE_INSTANCE_EVENT) {
-        rev->use_instance = 1;
-        rev->instance = (u_char) !instance;
-        rev->returned_instance = (u_char) rinstance;
-
-        wev->use_instance = 1;
-        wev->instance = (u_char) !instance;
-        wev->returned_instance = (u_char) winstance;
-    }
+    rev->instance = !instance;
+    wev->instance = !instance;
 
     rev->index = NGX_INVALID_INDEX;
     wev->index = NGX_INVALID_INDEX;

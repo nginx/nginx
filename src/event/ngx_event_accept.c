@@ -16,7 +16,7 @@ static size_t ngx_accept_log_error(void *data, char *buf, size_t len);
 
 void ngx_event_accept(ngx_event_t *ev)
 {
-    ngx_uint_t             instance, rinstance, winstance, accepted;
+    ngx_uint_t             instance, accepted;
     socklen_t              len;
     struct sockaddr       *sa;
     ngx_err_t              err;
@@ -30,7 +30,7 @@ void ngx_event_accept(ngx_event_t *ev)
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
-    if (ngx_event_flags & (NGX_USE_EDGE_EVENT|NGX_USE_RTSIG_EVENT)) {
+    if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         ev->available = 1;
 
     } else if (!(ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)) {
@@ -94,8 +94,7 @@ void ngx_event_accept(ngx_event_t *ev)
             err = ngx_socket_errno;
 
             if (err == NGX_EAGAIN) {
-                if (!(ngx_event_flags
-                      & (NGX_USE_EDGE_EVENT|NGX_USE_RTSIG_EVENT)))
+                if (!(ngx_event_flags & NGX_USE_RTSIG_EVENT))
                 {
                     ngx_log_error(NGX_LOG_NOTICE, log, err,
                                   "EAGAIN after %d accepted connection(s)",
@@ -207,8 +206,6 @@ void ngx_event_accept(ngx_event_t *ev)
 #endif
 
         instance = rev->instance;
-        rinstance = rev->returned_instance;
-        winstance = wev->returned_instance;
 
 #if (NGX_THREADS)
 
@@ -231,15 +228,8 @@ void ngx_event_accept(ngx_event_t *ev)
         c->sockaddr = sa;
         c->socklen = len;
 
-        if (ngx_event_flags & NGX_HAVE_INSTANCE_EVENT) {
-            rev->use_instance = 1;
-            rev->instance = (u_char) !instance;
-            rev->returned_instance = (u_char) rinstance;
-
-            wev->use_instance = 1;
-            wev->instance = (u_char) !instance;
-            wev->returned_instance = (u_char) winstance;
-        }
+        rev->instance = !instance;
+        wev->instance = !instance;
 
         rev->index = NGX_INVALID_INDEX;
         wev->index = NGX_INVALID_INDEX;
@@ -256,19 +246,13 @@ void ngx_event_accept(ngx_event_t *ev)
         wev->write = 1;
         wev->ready = 1;
 
-        if (ngx_event_flags
-            & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT|NGX_USE_RTSIG_EVENT))
-        {
+        if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_RTSIG_EVENT)) {
             /* epoll, rtsig, aio, iocp */
             rev->ready = 1;
         }
 
         if (ev->deferred_accept) {
             rev->ready = 1;
-        }
-
-        if (rev->ready) {
-            rev->returned_instance = rev->instance;
         }
 
         c->ctx = ls->ctx;
@@ -318,7 +302,7 @@ void ngx_event_accept(ngx_event_t *ev)
         }
 #endif
 
-        if (ngx_add_conn) {
+        if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
             if (ngx_add_conn(c) == NGX_ERROR) {
                 if (ngx_close_socket(s) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,

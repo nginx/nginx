@@ -136,7 +136,6 @@ void ngx_event_expire_timers(ngx_msec_t timer)
                 }
 
                 ev->posted_timedout = 1;
-                ev->returned_instance = ev->instance;
                 ngx_post_event(ev);
 
                 ngx_mutex_unlock(ngx_posted_events_mutex);

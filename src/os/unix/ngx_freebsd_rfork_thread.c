@@ -30,18 +30,20 @@
  */
 
 
-char                *ngx_freebsd_kern_usrstack;
-size_t               ngx_thread_stack_size;
+char                 *ngx_freebsd_kern_usrstack;
+size_t                ngx_thread_stack_size;
 
 
-static size_t        rz_size;
-static size_t        usable_stack_size;
-static char         *last_stack;
+static size_t         rz_size;
+static size_t         usable_stack_size;
+static char          *last_stack;
 
-static ngx_uint_t    nthreads;
-static ngx_uint_t    max_threads;
-static ngx_tid_t    *tids;      /* the threads tids array */
-void               **ngx_tls;   /* the threads tls's array */
+static ngx_uint_t     nthreads;
+static ngx_uint_t     max_threads;
+
+static ngx_uint_t     nkeys;
+static ngx_tid_t     *tids;      /* the threads tids array */
+void                **ngx_tls;   /* the threads tls's array */
 
 /* the thread-safe libc errno */
 
@@ -236,7 +238,9 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 
     /* create the threads tls's array */
 
-    if (!(ngx_tls = ngx_calloc((n + 1) * sizeof(void *), cycle->log))) {
+    ngx_tls = ngx_calloc(NGX_THREAD_KEYS_MAX * (n + 1) * sizeof(void *),
+                         cycle->log);
+    if (ngx_tls == NULL) {
         return NGX_ERROR;
     }
 
@@ -270,11 +274,26 @@ ngx_tid_t ngx_thread_self()
 }
 
 
-ngx_int_t ngx_thread_set_tls(void *value)
+ngx_int_t ngx_thread_key_create(ngx_tls_key_t *key)
 {
-    ngx_tls[ngx_gettid()] = value;
+    if (nkeys >= NGX_THREAD_KEYS_MAX) {
+        return NGX_ENOMEM;
+    }
 
-    return NGX_OK;
+    *key = nkeys++;
+
+    return 0;
+}
+
+
+ngx_int_t ngx_thread_set_tls(ngx_tls_key_t key, void *value)
+{
+    if (key >= NGX_THREAD_KEYS_MAX) {
+        return NGX_EINVAL;
+    }
+
+    ngx_tls[key * NGX_THREAD_KEYS_MAX + ngx_gettid()] = value;
+    return 0;
 }
 
 

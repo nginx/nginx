@@ -526,6 +526,7 @@ static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     sigset_t           set;
+    ngx_err_t          err;
     ngx_int_t          n;
     ngx_uint_t         i;
     ngx_listening_t   *ls;
@@ -633,6 +634,14 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         if (ngx_init_threads(ngx_threads_n,
                                    ccf->thread_stack_size, cycle) == NGX_ERROR)
         {
+            /* fatal */
+            exit(2);
+        }
+
+        err = ngx_thread_key_create(&ngx_core_tls_key);
+        if (err != 0) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
+                          ngx_thread_key_create_n " failed");
             /* fatal */
             exit(2);
         }
@@ -829,7 +838,7 @@ static void* ngx_worker_thread_cycle(void *data)
 
     sigset_t          set;
     ngx_err_t         err;
-    ngx_tls_t        *tls;
+    ngx_core_tls_t   *tls;
     ngx_cycle_t      *cycle;
     struct timeval    tv;
 
@@ -854,18 +863,16 @@ static void* ngx_worker_thread_cycle(void *data)
 
     ngx_setthrtitle("worker thread");
 
-    if (!(tls = ngx_calloc(sizeof(ngx_tls_t), cycle->log))) {
+    if (!(tls = ngx_calloc(sizeof(ngx_core_tls_t), cycle->log))) {
         return (void *) 1;
     }
 
-    err = ngx_thread_create_tls();
+    err = ngx_thread_set_tls(ngx_core_tls_key, tls);
     if (err != 0) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
-                      ngx_thread_create_tls_n " failed");
+                      ngx_thread_set_tls_n " failed");
         return (void *) 1;
     }
-
-    ngx_thread_set_tls(tls);
 
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
         return (void *) 1;
@@ -883,7 +890,7 @@ static void* ngx_worker_thread_cycle(void *data)
 
             ngx_mutex_unlock(ngx_posted_events_mutex);
 
-            ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, ngx_errno,
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                            "thread %d is done", ngx_thread_self());
 
             return (void *) 0;
@@ -899,8 +906,10 @@ static void* ngx_worker_thread_cycle(void *data)
             return (void *) 1;
         }
 
-        if (ngx_process_changes(cycle, 1) == NGX_ERROR) {
-            return (void *) 1;
+        if (ngx_process_changes) {
+            if (ngx_process_changes(cycle, 1) == NGX_ERROR) {
+                return (void *) 1;
+            }
         }
     }
 }

@@ -60,6 +60,7 @@ ngx_event_module_t  ngx_iocp_module_ctx = {
         NULL,                              /* disable an event */
         NULL,                              /* add an connection */
         ngx_iocp_del_connection,           /* delete an connection */
+        NULL,                              /* process the changes */
         ngx_iocp_process_events,           /* process the events */
         ngx_iocp_init,                     /* init the events */
         ngx_iocp_done                      /* done the events */
@@ -73,7 +74,7 @@ ngx_module_t  ngx_iocp_module = {
     ngx_iocp_commands,                     /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
     NULL,                                  /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 

@@ -16,20 +16,22 @@
 #else /* use pthreads */
 
 #include <pthread.h>
-#include <pthread_np.h>
 
-typedef pthread_t  ngx_tid_t;
+typedef pthread_t                    ngx_tid_t;
 
-#define ngx_thread_self()   pthread_self()
-#define ngx_log_tid         (int) ngx_thread_self()
+#define ngx_thread_self()            pthread_self()
+#define ngx_log_tid                  (int) ngx_thread_self()
 
-#define TID_T_FMT           PTR_FMT
+#define TID_T_FMT                    PTR_FMT
 
 
-#define ngx_thread_create_tls()  pthread_key_create(0, NULL)
-#define ngx_thread_create_tls_n  "pthread_key_create(0, NULL)"
-#define ngx_thread_get_tls()     pthread_getspecific(0)
-#define ngx_thread_set_tls(v)    pthread_setspecific(0, v)
+typedef pthread_key_t                ngx_tls_key_t;
+
+#define ngx_thread_key_create(key)   pthread_key_create(key, NULL)
+#define ngx_thread_key_create_n      "pthread_key_create()"
+#define ngx_thread_set_tls           pthread_setspecific
+#define ngx_thread_set_tls_n         "pthread_setspecific()"
+#define ngx_thread_get_tls           pthread_getspecific
 
 
 #define NGX_MUTEX_LIGHT     0
@@ -109,11 +111,6 @@ ngx_int_t ngx_cond_signal(ngx_cond_t *cv);
 #define ngx_thread_main()     1
 
 #endif
-
-
-typedef struct {
-    ngx_event_t  *event;
-} ngx_tls_t;
 
 
 

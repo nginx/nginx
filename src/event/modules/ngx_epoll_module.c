@@ -75,7 +75,7 @@ static void ngx_epoll_done(ngx_cycle_t *cycle);
 static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_epoll_add_connection(ngx_connection_t *c);
-static int ngx_epoll_del_connection(ngx_connection_t *c);
+static int ngx_epoll_del_connection(ngx_connection_t *c, u_int flags);
 static int ngx_epoll_process_events(ngx_cycle_t *cycle);
 
 static void *ngx_epoll_create_conf(ngx_cycle_t *cycle);
@@ -111,8 +111,8 @@ ngx_event_module_t  ngx_epoll_module_ctx = {
         ngx_epoll_del_event,             /* delete an event */
         ngx_epoll_add_event,             /* enable an event */
         ngx_epoll_del_event,             /* disable an event */
-        NULL,                            /* add an connection */
-        NULL,                            /* delete an connection */
+        ngx_epoll_add_connection,        /* add an connection */
+        ngx_epoll_del_connection,        /* delete an connection */
         NULL,                            /* process the changes */
         ngx_epoll_process_events,        /* process the events */
         ngx_epoll_init,                  /* init the events */
@@ -124,9 +124,9 @@ ngx_module_t  ngx_epoll_module = {
     NGX_MODULE,
     &ngx_epoll_module_ctx,               /* module context */
     ngx_epoll_commands,                  /* module directives */
-    NGX_EVENT_MODULE,                      /* module type */
-    NULL,                                  /* init module */
-    NULL                                   /* init process */
+    NGX_EVENT_MODULE,                    /* module type */
+    NULL,                                /* init module */
+    NULL                                 /* init process */
 };
 
 
@@ -174,7 +174,7 @@ static int ngx_epoll_init(ngx_cycle_t *cycle)
     ngx_event_flags = NGX_USE_LEVEL_EVENT
 #endif
                       |NGX_HAVE_GREEDY_EVENT
-                      |NGX_HAVE_INSTANCE_EVENT;
+                      |NGX_USE_EPOLL_EVENT;
 
     return NGX_OK;
 }
@@ -306,7 +306,6 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-#if 0
 static int ngx_epoll_add_connection(ngx_connection_t *c)
 {
     struct epoll_event  ee;
@@ -330,14 +329,41 @@ static int ngx_epoll_add_connection(ngx_connection_t *c)
 }
 
 
-static int ngx_epoll_del_connection(ngx_connection_t *c)
+static int ngx_epoll_del_connection(ngx_connection_t *c, u_int flags)
 {
+    int                  op;
+    struct epoll_event   ee;
+
+    /*
+     * when the file descriptor is closed the epoll automatically deletes
+     * it from its queue so we do not need to delete explicity the event
+     * before the closing the file descriptor
+     */
+
+    if (flags & NGX_CLOSE_EVENT) {
+        c->read->active = 0;
+        c->write->active = 0;
+        return NGX_OK;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "epoll del connection: fd:%d", c->fd);
+
+    op = EPOLL_CTL_DEL;
+    ee.events = 0;
+    ee.data.ptr = NULL;
+
+    if (epoll_ctl(ep, op, c->fd, &ee) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
+                      "epoll_ctl(%d, %d) failed", op, c->fd);
+        return NGX_ERROR;
+    }
+
     c->read->active = 0;
     c->write->active = 0;
 
     return NGX_OK;
 }
-#endif
 
 
 int ngx_epoll_process_events(ngx_cycle_t *cycle)
@@ -349,12 +375,26 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     ngx_err_t          err;
     ngx_log_t         *log;
     ngx_msec_t         timer;
+    ngx_event_t       *rev, *wev;
     struct timeval     tv;
     ngx_connection_t  *c;
     ngx_epoch_msec_t   delta;
 
     for ( ;; ) { 
         timer = ngx_event_find_timer();
+
+#if (NGX_THREADS)
+
+        if (timer == NGX_TIMER_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (timer == NGX_TIMER_INFINITE || timer > 500) {
+            timer = 500;
+            break;
+        }
+
+#endif
 
         if (timer != 0) {
             break;
@@ -365,6 +405,10 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
 
         ngx_event_expire_timers((ngx_msec_t)
                                     (ngx_elapsed_msec - ngx_old_elapsed_msec));
+
+        if (ngx_posted_events && ngx_threaded) {
+            ngx_wakeup_worker_thread(cycle);
+        }
     }
 
     /* NGX_TIMER_INFINITE == INFTIM */
@@ -438,12 +482,18 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-        ngx_accept_mutex_unlock();
-        return NGX_ERROR;
+    if (events > 0) {
+        if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+            ngx_accept_mutex_unlock();
+            return NGX_ERROR;
+        } 
+
+        lock = 1;
+
+    } else {
+        lock =0;
     }
 
-    lock = 1;
     log = cycle->log;
 
     for (i = 0; i < events; i++) {
@@ -452,15 +502,9 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         instance = (uintptr_t) c & 1;
         c = (ngx_connection_t *) ((uintptr_t) c & (uintptr_t) ~1);
 
-        if (event_list[i].events & EPOLLIN) {
-            c->read->returned_instance = instance;
-        }
+        rev = c->read;
 
-        if (event_list[i].events & EPOLLOUT) {
-            c->write->returned_instance = instance;
-        }
-
-        if (c->read->instance != instance) {
+        if (c->fd == -1 || rev->instance != instance) {
 
             /*
              * the stale event from a file descriptor
@@ -492,16 +536,24 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
                           c->fd, event_list[i].events);
         }
 
-        if ((event_list[i].events & (EPOLLOUT|EPOLLERR|EPOLLHUP))
-            && c->write->active)
-        {
-            c->write->ready = 1;
+        wev = c->write;
 
-            if (!ngx_threaded && !ngx_accept_mutex_held) {
-                c->write->event_handler(c->write);
+        if ((event_list[i].events & (EPOLLOUT|EPOLLERR|EPOLLHUP))
+            && wev->active)
+        {
+            if (ngx_threaded) {
+                wev->posted_ready = 1;
+                ngx_post_event(wev);
 
             } else {
-                ngx_post_event(c->write);
+                wev->ready = 1;
+
+                if (!ngx_accept_mutex_held) {
+                    wev->event_handler(wev);
+
+                } else {
+                    ngx_post_event(wev);
+                }
             }
         }
 
@@ -512,21 +564,29 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
          */
 
         if ((event_list[i].events & (EPOLLIN|EPOLLERR|EPOLLHUP))
-            && c->read->active)
+            && rev->active)
         {
-            c->read->ready = 1;
+            if (ngx_threaded && !rev->accept) {
+                rev->posted_ready = 1;
+
+                ngx_post_event(rev);
+
+                continue;
+            }
+
+            rev->ready = 1;
 
             if (!ngx_threaded && !ngx_accept_mutex_held) {
-                c->read->event_handler(c->read);
+                rev->event_handler(rev);
 
-            } else if (!c->read->accept) {
-                ngx_post_event(c->read);
+            } else if (!rev->accept) {
+                ngx_post_event(rev);
 
             } else if (ngx_accept_disabled <= 0) {
 
                 ngx_mutex_unlock(ngx_posted_events_mutex);
 
-                c->read->event_handler(c->read);
+                rev->event_handler(rev);
 
                 if (ngx_accept_disabled > 0) {
                     ngx_accept_mutex_unlock();
@@ -560,8 +620,13 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
-    if (!ngx_threaded) {
-        ngx_event_process_posted(cycle);
+    if (ngx_posted_events) {
+        if (ngx_threaded) {
+            ngx_wakeup_worker_thread(cycle);
+
+        } else {
+            ngx_event_process_posted(cycle);
+        }
     }
 
     return NGX_OK;

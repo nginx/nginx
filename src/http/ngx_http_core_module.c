@@ -456,7 +456,7 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t      *clcf, **clcfp;
     ngx_http_core_srv_conf_t      *cscf;
 #if (HAVE_PCRE)
-    ngx_uint_t                    exact;
+    ngx_uint_t                     exact;
 #endif
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);

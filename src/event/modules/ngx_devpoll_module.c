@@ -322,6 +322,7 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
     ngx_msec_t          timer;
     ngx_err_t           err;
     ngx_cycle_t       **old_cycle;
+    ngx_event_t        *rev, *wev;
     ngx_connection_t   *c;
     ngx_epoch_msec_t    delta;
     struct dvpoll       dvp;
@@ -476,16 +477,16 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
                           event_list[i].events, event_list[i].revents);
         }
 
-        if ((event_list[i].events & (POLLOUT|POLLERR|POLLHUP))
-            && c->write->active)
-        {
-            c->write->ready = 1;
+        wev = c->write;
+
+        if ((event_list[i].events & (POLLOUT|POLLERR|POLLHUP)) && wev->active) {
+            wev->ready = 1;
 
             if (!ngx_threaded && !ngx_accept_mutex_held) {
-                c->write->event_handler(c->write);
+                wev->event_handler(wev);
 
             } else {
-                ngx_post_event(c->write);
+                ngx_post_event(wev);
             }
         }
 
@@ -495,21 +496,21 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
          * if the accept event is the last one.
          */
 
-        if ((event_list[i].events & (POLLIN|POLLERR|POLLHUP))
-            && c->read->active)
-        {
-            c->read->ready = 1;
+        rev = c->read;
+
+        if ((event_list[i].events & (POLLIN|POLLERR|POLLHUP)) && rev->active) {
+            rev->ready = 1;
 
             if (!ngx_threaded && !ngx_accept_mutex_held) {
-                c->read->event_handler(c->read);
+                rev->event_handler(rev);
 
-            } else if (!c->read->accept) {
-                ngx_post_event(c->read);
+            } else if (!rev->accept) {
+                ngx_post_event(rev);
 
             } else if (ngx_accept_disabled <= 0) {
                 ngx_mutex_unlock(ngx_posted_events_mutex);
 
-                c->read->event_handler(c->read);
+                c->read->event_handler(rev);
 
                 if (ngx_accept_disabled > 0) { 
                     ngx_accept_mutex_unlock();

@@ -421,6 +421,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         timer = ngx_event_find_timer();
 
 #if (NGX_THREADS)
+
         if (timer == NGX_TIMER_ERROR) {
             return NGX_ERROR;
         }
@@ -442,7 +443,9 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         ngx_event_expire_timers((ngx_msec_t)
                                     (ngx_elapsed_msec - ngx_old_elapsed_msec));
 
-        /* TODO: if ngx_threaded then wake up the worker thread */
+        if (ngx_posted_events && ngx_threaded) {
+            ngx_wakeup_worker_thread(cycle);
+        }
     }
 
     ngx_old_elapsed_msec = ngx_elapsed_msec;

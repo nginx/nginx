@@ -15,6 +15,10 @@ static ngx_event_t     ngx_cleaner_event;
 
 ngx_uint_t             ngx_test_config;
 
+#if (NGX_THREADS)
+ngx_tls_key_t          ngx_core_tls_key;
+#endif
+
 
 /* STUB NAME */
 static ngx_connection_t  dumb;

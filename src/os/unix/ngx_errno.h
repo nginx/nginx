@@ -12,10 +12,12 @@ typedef int               ngx_err_t;
 #define NGX_ESRCH         ESRCH
 #define NGX_EINTR         EINTR
 #define NGX_ECHILD        ECHILD
+#define NGX_ENOMEM        ENOMEM
 #define NGX_EACCES        EACCES
 #define NGX_EBUSY         EBUSY
 #define NGX_EEXIST        EEXIST
 #define NGX_ENOTDIR       ENOTDIR
+#define NGX_EINVAL        EINVAL
 #define NGX_EPIPE         EPIPE
 #define NGX_EAGAIN        EWOULDBLOCK
 #define NGX_EINPROGRESS   EINPROGRESS
