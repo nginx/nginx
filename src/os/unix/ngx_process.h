@@ -9,6 +9,7 @@ typedef void (*ngx_spawn_proc_pt) (ngx_cycle_t *cycle, void *data);
 typedef struct {
     ngx_pid_t           pid;
     int                 status;
+    ngx_socket_t        channel[2];
 
     ngx_spawn_proc_pt   proc;
     void               *data;
@@ -48,7 +49,8 @@ ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 void ngx_process_get_status(void);
 
 extern ngx_pid_t      ngx_pid;
-extern ngx_uint_t     ngx_last_process;
+extern ngx_int_t      ngx_last_process;
+extern ngx_socket_t   ngx_channel;
 extern ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
 
 

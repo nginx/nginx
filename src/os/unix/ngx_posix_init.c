@@ -46,6 +46,8 @@ ngx_signal_t  signals[] = {
 
     { SIGINT, "SIGINT", ngx_signal_handler },
 
+    { SIGIO, "SIGIO", ngx_signal_handler },
+
     { SIGCHLD, "SIGCHLD", ngx_signal_handler },
 
     { SIGPIPE, "SIGPIPE, SIG_IGN", SIG_IGN },
@@ -172,9 +174,13 @@ void ngx_signal_handler(int signo)
         case SIGALRM:
             if (!ngx_terminate) {
                 ngx_timer = 1;
-                action = ", shutting down old worker process";
+                action = ", shutting down old worker processes";
             }
 
+            break;
+
+        case SIGIO:
+            ngx_sigio = 1;
             break;
 
         case SIGCHLD:
@@ -206,6 +212,7 @@ void ngx_signal_handler(int signo)
         case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
         case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
+        case SIGIO:
             action = ", ignoring";
             break;
         }

@@ -6,7 +6,8 @@
 
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
 
-ngx_uint_t     ngx_last_process;
+ngx_int_t      ngx_last_process;
+ngx_socket_t   ngx_channel;
 ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
 
 
@@ -14,17 +15,44 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,
                             char *name, ngx_int_t respawn)
 {
+    u_long     on;
     ngx_pid_t  pid;
+    ngx_int_t  s;
+
+    s = respawn >= 0 ? respawn : ngx_last_process;
+
+
+    /* Solaris 9 still has no AF_LOCAL */
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_processes[s].channel) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "socketpair() failed while spawning \"%s\"", name);
+        return NGX_ERROR;
+    }
+
+    on = 1;
+    if (ioctl(ngx_processes[s].channel[0], FIOASYNC, &on) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "ioctl(FIOASYNC) failed while spawning \"%s\"", name);
+        return NGX_ERROR;
+    }
+
+    if (fcntl(ngx_processes[s].channel[0], F_SETOWN, ngx_pid) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "fcntl(F_SETOWN) failed while spawning \"%s\"", name);
+        return NGX_ERROR;
+    }
+
+    ngx_channel = ngx_processes[s].channel[1];
+
 
     pid = fork();
 
-    if (pid == -1) {
+    switch (pid) {
+
+    case -1:
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "fork() failed while spawning \"%s\"", name);
-    }
-
-    switch (pid) {
-    case -1:
         return NGX_ERROR;
 
     case 0:
@@ -39,37 +67,36 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                    "spawn %s: " PID_T_FMT, name, pid);
 
+    ngx_processes[s].pid = pid;
+    ngx_processes[s].exited = 0;
+
     if (respawn >= 0) {
-        ngx_processes[respawn].pid = pid;
-        ngx_processes[respawn].exited = 0;
         return pid;
     }
 
-    ngx_processes[ngx_last_process].pid = pid;
-    ngx_processes[ngx_last_process].proc = proc;
-    ngx_processes[ngx_last_process].data = data;
-    ngx_processes[ngx_last_process].name = name;
-    ngx_processes[ngx_last_process].exited = 0;
-    ngx_processes[ngx_last_process].exiting = 0;
+    ngx_processes[s].proc = proc;
+    ngx_processes[s].data = data;
+    ngx_processes[s].name = name;
+    ngx_processes[s].exiting = 0;
 
     switch (respawn) {
 
     case NGX_PROCESS_RESPAWN:
-        ngx_processes[ngx_last_process].respawn = 1;
-        ngx_processes[ngx_last_process].just_respawn = 0;
-        ngx_processes[ngx_last_process].detached = 0;
+        ngx_processes[s].respawn = 1;
+        ngx_processes[s].just_respawn = 0;
+        ngx_processes[s].detached = 0;
         break;
 
     case NGX_PROCESS_JUST_RESPAWN:
-        ngx_processes[ngx_last_process].respawn = 1;
-        ngx_processes[ngx_last_process].just_respawn = 1;
-        ngx_processes[ngx_last_process].detached = 0;
+        ngx_processes[s].respawn = 1;
+        ngx_processes[s].just_respawn = 1;
+        ngx_processes[s].detached = 0;
         break;
 
     case NGX_PROCESS_DETACHED:
-        ngx_processes[ngx_last_process].respawn = 0;
-        ngx_processes[ngx_last_process].just_respawn = 0;
-        ngx_processes[ngx_last_process].detached = 1;
+        ngx_processes[s].respawn = 0;
+        ngx_processes[s].just_respawn = 0;
+        ngx_processes[s].detached = 1;
         break;
     }
 
@@ -106,7 +133,8 @@ void ngx_process_get_status()
     char            *process;
     ngx_pid_t        pid;
     ngx_err_t        err;
-    ngx_uint_t       i, one;
+    ngx_int_t        i;
+    ngx_uint_t       one;
     struct timeval   tv;
     one = 0;
 

@@ -628,7 +628,7 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
 
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 {
-    ngx_event_conf_t *ecf = conf;
+    ngx_event_conf_t  *ecf = conf;
 
 #if (HAVE_KQUEUE)
 
@@ -649,6 +649,8 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_ptr_value(ecf->name, ngx_epoll_module_ctx.name->data);
 
 #elif (HAVE_RTSIG)
+
+    ngx_core_conf_t  *ccf;
 
     ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
     ngx_conf_init_value(ecf->use, ngx_rtsig_module.ctx_index);
@@ -700,6 +702,19 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(ecf->multi_accept, 0);
     ngx_conf_init_value(ecf->accept_mutex, 1);
     ngx_conf_init_msec_value(ecf->accept_mutex_delay, 500);
+
+#if (HAVE_RTSIG)
+    if (ecf->use == ngx_rtsig_module.ctx_index && ecf->accept_mutex == 0) {
+        ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
+                                               ngx_core_module);
+        if (ccf->worker_processes) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "the \"rtsig\" method requires "
+                          "\"accept_mutex\" to be on");
+            return NGX_CONF_ERROR;
+        }
+    }
+#endif
 
     return NGX_CONF_OK;
 }

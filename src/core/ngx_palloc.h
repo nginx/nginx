@@ -26,8 +26,6 @@ struct ngx_pool_large_s {
 };
 
 
-typedef struct ngx_pool_s        ngx_pool_t;
-
 struct ngx_pool_s {
     char              *last;
     char              *end;

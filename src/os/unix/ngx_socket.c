@@ -19,7 +19,9 @@
 
 int ngx_nonblocking(ngx_socket_t s)
 {
-    unsigned long  nb = 1;
+    u_long  nb;
+
+    nb = 1;
 
     return ioctl(s, FIONBIO, &nb);
 }
@@ -27,7 +29,9 @@ int ngx_nonblocking(ngx_socket_t s)
 
 int ngx_blocking(ngx_socket_t s)
 {
-    unsigned long  nb = 0;
+    u_long  nb;
+
+    nb = 0;
 
     return ioctl(s, FIONBIO, &nb);
 }

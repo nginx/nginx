@@ -277,11 +277,11 @@ extern ngx_event_actions_t   ngx_event_actions;
  */
 
 #define NGX_CLOSE_EVENT    1
+#define NGX_DISABLE_EVENT  2
 
 
 /* these flags have a meaning only for kqueue */
 #define NGX_LOWAT_EVENT    0
-#define NGX_DISABLE_EVENT  0
 #define NGX_VNODE_EVENT    0
 
 

@@ -11,6 +11,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo);
 static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
+static void ngx_channel_handler(ngx_event_t *ev);
 #if (NGX_THREADS)
 static int ngx_worker_thread_cycle(void *data);
 #endif
@@ -22,6 +23,7 @@ ngx_uint_t    ngx_threaded;
 
 sig_atomic_t  ngx_reap;
 sig_atomic_t  ngx_timer;
+sig_atomic_t  ngx_sigio;
 sig_atomic_t  ngx_terminate;
 sig_atomic_t  ngx_quit;
 ngx_uint_t    ngx_exiting;
@@ -45,8 +47,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     char              *title;
     u_char            *p;
     size_t             size;
-    ngx_int_t          n;
-    ngx_uint_t         i;
+    ngx_int_t          n, i;
     sigset_t           set;
     struct timeval     tv;
     struct itimerval   itv;
@@ -57,6 +58,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     sigemptyset(&set);
     sigaddset(&set, SIGCHLD);
     sigaddset(&set, SIGALRM);
+    sigaddset(&set, SIGIO);
     sigaddset(&set, SIGINT);
     sigaddset(&set, ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
     sigaddset(&set, ngx_signal_value(NGX_REOPEN_SIGNAL));
@@ -360,8 +362,31 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
 
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 {
-    ngx_uint_t  i;
-    ngx_err_t   err;
+    ngx_int_t      i;
+    ngx_err_t      err;
+    ngx_channel_t  ch;
+
+
+    switch (signo) {
+
+    case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
+        ch.command = NGX_CMD_QUIT;
+        break;
+
+    case ngx_signal_value(NGX_TERMINATE_SIGNAL):
+        ch.command = NGX_CMD_TERMINATE;
+        break;
+
+    case ngx_signal_value(NGX_REOPEN_SIGNAL):
+        ch.command = NGX_CMD_REOPEN;
+        break;
+
+    default:
+        ch.command = 0;
+    }
+
+    ch.fd = -1;
+
 
     for (i = 0; i < ngx_last_process; i++) {
 
@@ -378,6 +403,18 @@ static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
             && signo == ngx_signal_value(NGX_SHUTDOWN_SIGNAL))
         {
             continue;
+        }
+
+        if (ch.command) {
+            if (ngx_write_channel(ngx_processes[i].channel[0],
+                           &ch, sizeof(ngx_channel_t), cycle->log) == NGX_OK)
+            {
+                if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
+                    ngx_processes[i].exiting = 1;
+                }
+
+                continue;
+            }
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
@@ -420,21 +457,22 @@ static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
-    sigset_t          set;
-    ngx_uint_t        i;
-    ngx_listening_t  *ls;
-    ngx_core_conf_t  *ccf;
+    sigset_t           set;
+    ngx_int_t          n;
+    ngx_uint_t         i;
+    ngx_listening_t   *ls;
+    ngx_core_conf_t   *ccf;
+    ngx_connection_t  *c;
 #if (NGX_THREADS)
-    ngx_tid_t         tid;
+    ngx_tid_t          tid;
 #endif
 
     ngx_process = NGX_PROCESS_WORKER;
-    ngx_last_process = 0;
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ccf->group != (gid_t) NGX_CONF_UNSET) {
-        if (setuid(ccf->group) == -1) {
+        if (setgid(ccf->group) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "setgid(%d) failed", ccf->group);
             /* fatal */
@@ -442,7 +480,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
     }
 
-    if (ccf->user != (uid_t) NGX_CONF_UNSET && geteuid() == 0) {
+    if (ccf->user != (uid_t) NGX_CONF_UNSET) {
         if (setuid(ccf->user) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "setuid(%d) failed", ccf->user);
@@ -486,6 +524,59 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
                 /* fatal */
                 exit(2);
             }
+        }
+    }
+
+    for (n = 0; n < ngx_last_process; n++) {
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                       "close channel %d", ngx_processes[n].channel[1]);
+
+        if (close(ngx_processes[n].channel[1]) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "close() failed");
+        }
+    }
+
+    if (close(ngx_processes[ngx_last_process].channel[0]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "close() failed");
+    }
+
+#if 0
+    ngx_last_process = 0;
+#endif
+
+    c = &cycle->connections[ngx_channel];
+    ngx_memzero(c, sizeof(ngx_connection_t));
+
+    c->fd = ngx_channel;
+    c->pool = cycle->pool;
+    c->read = &cycle->read_events[ngx_channel];
+    c->write = &cycle->write_events[ngx_channel];
+
+    ngx_memzero(c->read, sizeof(ngx_event_t));
+    ngx_memzero(c->write, sizeof(ngx_event_t));
+
+    c->log = cycle->log;
+    c->read->log = cycle->log;
+    c->write->log = cycle->log;
+    c->read->index = NGX_INVALID_INDEX;
+    c->write->index = NGX_INVALID_INDEX;
+    c->read->data = c;
+    c->write->data = c;
+    c->read->event_handler = ngx_channel_handler;
+
+    if (ngx_add_conn) {
+        if (ngx_add_conn(c) == NGX_ERROR) {
+            /* fatal */
+            exit(2);
+        }
+
+    } else {
+        if (ngx_add_event(c->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
+            /* fatal */
+            exit(2);
         }
     }
 
@@ -555,6 +646,37 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 }
 
 
+static void ngx_channel_handler(ngx_event_t *ev)
+{
+    ngx_int_t          n;
+    ngx_channel_t      ch;
+    ngx_connection_t  *c;
+
+    c = ev->data;
+
+    n = ngx_read_channel(c->fd, &ch, sizeof(ngx_channel_t), ev->log);
+
+    if (n <= 0) {
+        return;
+    }
+
+    switch (ch.command) {
+
+    case NGX_CMD_QUIT:
+        ngx_quit = 1;
+        break;
+
+    case NGX_CMD_TERMINATE:
+        ngx_terminate = 1;
+        break;
+
+    case NGX_CMD_REOPEN:
+        ngx_reopen = 1;
+        break;
+    }
+}
+
+
 #if (NGX_THREADS)
 
 int ngx_worker_thread_cycle(void *data)
@@ -597,3 +719,159 @@ int ngx_worker_thread_cycle(void *data)
 }
 
 #endif
+
+
+ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
+                            ngx_log_t *log) 
+{
+    ssize_t          n;
+    ngx_err_t        err;
+    struct iovec     iov[1];
+    struct msghdr    msg;
+    struct cmsghdr   cm;
+
+#if (HAVE_MSGHDR_MSG_CONTROL)
+
+    if (ch->fd == -1) {
+        msg.msg_control = NULL;
+        msg.msg_controllen = 0;
+
+    } else {
+        msg.msg_control = &cm;
+        msg.msg_controllen = sizeof(struct cmsghdr) +  sizeof(int);
+
+        cm.cmsg_len = sizeof(struct cmsghdr) +  sizeof(int);
+        cm.cmsg_level = SOL_SOCKET; 
+        cm.cmsg_type = SCM_RIGHTS;
+        *((int *) ((char *) &cm + sizeof(struct cmsghdr))) = ch->fd;
+    }
+
+#else
+
+    if (ch->fd == -1) {
+        msg.msg_accrights = NULL;
+        msg.msg_accrightslen = 0;
+
+    } else {
+        msg.msg_accrights = (caddr_t) &ch->fd;
+        msg.msg_accrightslen = sizeof(int);
+    }
+
+#endif
+
+    iov[0].iov_base = (char *) ch;
+    iov[0].iov_len = size;
+
+    msg.msg_name = NULL;
+    msg.msg_namelen = 0;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 1;
+
+    n = sendmsg(s, &msg, MSG_DONTWAIT);
+
+    if (n == -1) {
+        err = ngx_errno;
+        if (err == NGX_EAGAIN) {
+            return NGX_AGAIN;
+        }
+
+        ngx_log_error(NGX_LOG_ALERT, log, err, "sendmsg() failed");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
+                           ngx_log_t *log)
+{   
+    int              fd;
+    ssize_t          n;
+    ngx_err_t        err;
+    struct iovec     iov[1];
+    struct msghdr    msg;
+    struct cmsghdr  *cm;
+
+    iov[0].iov_base = (char *) ch;
+    iov[0].iov_len = size;
+
+    msg.msg_name = NULL;
+    msg.msg_namelen = 0;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 1;
+
+#if (HAVE_MSGHDR_MSG_CONTROL)
+    msg.msg_control = &cm;
+    msg.msg_controllen = sizeof(struct cmsghdr) +  sizeof(int);
+#else
+    msg.msg_accrights = (caddr_t) &fd;
+    msg.msg_accrightslen = sizeof(int);
+#endif
+
+    n = recvmsg(s, &msg, MSG_DONTWAIT);
+
+    if (n == -1) {
+        err = ngx_errno;
+        if (err == NGX_EAGAIN) {
+            return NGX_AGAIN;
+        }
+
+        ngx_log_error(NGX_LOG_ALERT, log, err, "recvmsg() failed");
+        return NGX_ERROR;
+    }
+
+    if ((size_t) n < sizeof(ngx_channel_t)) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      "recvmsg() returned not enough data");
+        return NGX_ERROR;
+    }
+
+#if (HAVE_MSGHDR_MSG_CONTROL)
+
+    if (ch->command == NGX_CMD_OPEN_CHANNEL) {
+        cm = msg.msg_control;
+
+        if (cm == NULL) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0, 
+                          "recvmsg() returned no ancillary data");
+            return NGX_ERROR;
+        }
+
+        if (cm->cmsg_len < sizeof(struct cmsghdr) + sizeof(int)) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "recvmsg() returned too small ancillary data");
+            return NGX_ERROR;
+        }
+
+        if (cm->cmsg_level != SOL_SOCKET || cm->cmsg_type != SCM_RIGHTS) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "recvmsg() returned invalid ancillary data "
+                          "level %d or type %d", cm->cmsg_level, cm->cmsg_type);
+            return NGX_ERROR;
+        }
+
+        ch->fd = *((int *) ((char *) cm + sizeof(struct cmsghdr)));
+    }
+
+    if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      "recvmsg() truncated data");
+    }
+
+#else
+
+    if (ch->command == NGX_CMD_OPEN_CHANNEL) {
+        if (msg.msg_accrightslen != sizeof(int)) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0, 
+                          "recvmsg() returned no ancillary data");
+            return NGX_ERROR;
+        }
+
+        ch->fd = fd;
+    }
+
+#endif
+
+    return n;
+}

@@ -77,3 +77,6 @@ ngx_func_test="prctl(PR_SET_DUMPABLE, 1, 0, 0, 0)"
 if [ $ngx_found = yes ]; then
     have=HAVE_PR_SET_DUMPABLE . auto/have
 fi
+
+
+have=HAVE_MSGHDR_MSG_CONTROL . auto/have
