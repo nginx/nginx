@@ -183,6 +183,7 @@ static int ngx_http_init_request(ngx_event_t *rev)
 static int ngx_http_process_request(ngx_event_t *rev)
 {
     int                  n, rc;
+    ngx_event_t         *wev;
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
     ngx_http_log_ctx_t  *lcx;
@@ -260,8 +261,15 @@ static int ngx_http_process_request(ngx_event_t *rev)
             return ngx_http_finalize_request(r, rc);
         }
 
-        lcx = r->connection->log->data;
+        lcx = c->log->data;
         lcx->action = "processing client request";
+
+#if 0
+        wev = c->write;
+        ngx_add_timer(wev, 5000);
+        wev->delayed = 1;
+        wev->timer_set = 1;
+#endif
 
         rc = ngx_http_handler(r);
 
@@ -657,13 +665,18 @@ int ngx_http_finalize_request(ngx_http_request_t *r, int error)
     /* NGX_AGAIN: a handler has done its work
                   but the transfer is still not completed */
 
+    wev = r->connection->write;
+    wev->event_handler = ngx_http_writer;
+
+    if (wev->delayed && wev->ready) {
+        return NGX_AGAIN;
+    }
+
     lcf = (ngx_http_core_loc_conf_t *)
                         ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                                      ngx_http_core_module_ctx);
-    wev = r->connection->write;
-    wev->event_handler = ngx_http_writer;
-    wev->timer_set = 1;
     ngx_add_timer(wev, lcf->send_timeout);
+    wev->timer_set = 1;
 
 #if (USE_KQUEUE)
 

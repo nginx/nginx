@@ -69,6 +69,7 @@ struct ngx_event_s {
     unsigned         timedout:1;
     unsigned         blocked:1;
     unsigned         timer_set:1;
+    unsigned         delayed:1;
 
     unsigned         process:1;
     unsigned         read_discarded:1;

@@ -20,12 +20,20 @@ typedef int (*ngx_event_proxy_output_filter_pt)(void *data, ngx_hunk_t *hunk);
 struct ngx_event_proxy_s {
     ngx_chain_t       *read_hunks;
     ngx_chain_t       *last_read_hunk;
+
+    ngx_chain_t       *shadow_hunks;
+
     ngx_chain_t       *in_hunks;
     ngx_chain_t       *last_in_hunk;
-    ngx_chain_t       *shadow_hunks;
+
     ngx_chain_t       *out_hunks;
     ngx_chain_t       *last_out_hunk;
+
     ngx_chain_t       *free_hunks;
+#if 0
+    ngx_chain_t       *last_free_hunk;
+#endif
+
     ngx_hunk_t        *busy_hunk;
 
     ngx_event_proxy_input_filter_pt   input_filter;
@@ -38,8 +46,8 @@ struct ngx_event_proxy_s {
     unsigned           block_upstream:1;
     unsigned           upstream_eof:1;
     unsigned           upstream_error:1;
-    unsigned           client_eof:1;
-    unsigned           client_error:1;
+    unsigned           downstream_eof:1;
+    unsigned           downstream_error:1;
 
     int                level;
 
@@ -48,14 +56,20 @@ struct ngx_event_proxy_s {
     int                max_block_size;
 
     off_t              temp_offset;
-    off_t              max_temp_size;
-    int                file_block_size;
+    off_t              max_temp_file_size;
+    int                temp_file_write_size;
 
     ngx_connection_t  *upstream;
-    ngx_connection_t  *client;
+    ngx_connection_t  *downstream;
 
     ngx_pool_t        *pool;
     ngx_log_t         *log;
+
+    ngx_chain_t       *preread_hunks;
+#if 0
+    ngx_chain_t       *last_preread_hunk;
+#endif
+    int                preread_size;
 
     ngx_file_t        *temp_file;
     ngx_path_t        *temp_path;
@@ -66,7 +80,7 @@ struct ngx_event_proxy_s {
 
 
 int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p);
-int ngx_event_proxy_write_to_client(ngx_event_proxy_t *p);
+int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p);
 int ngx_event_proxy_write_chain_to_temp_file(ngx_event_proxy_t *p);
 
 

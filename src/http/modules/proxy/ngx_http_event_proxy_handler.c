@@ -721,6 +721,11 @@ static int ngx_http_proxy_init_upstream(ngx_http_proxy_ctx_t *p)
     r = p->request;
 
     ngx_test_null(p->header_in,
+                  ngx_create_temp_hunk(r->pool, p->lcf->header_size, 0, 0),
+                  NGX_ERROR);
+
+#if 0
+    ngx_test_null(p->header_in,
                   ngx_create_temp_hunk(r->pool,
                                        p->lcf->header_size
                                                   - sizeof(ngx_cache_header_t),
@@ -729,6 +734,7 @@ static int ngx_http_proxy_init_upstream(ngx_http_proxy_ctx_t *p)
                   NGX_ERROR);
 
     p->header_in->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
+#endif
 
 #if 0
     ngx_test_null(p->headers_in,
@@ -757,6 +763,7 @@ static int ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
 {
     int                  i, n, rc;
     ngx_event_t         *rev;
+    ngx_chain_t         *temp;
     ngx_table_elt_t     *ch, *ph;
     ngx_event_proxy_t   *ep;
     ngx_http_request_t  *r;
@@ -846,7 +853,9 @@ static int ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
         rc = ngx_http_send_header(r);
 
 #if 1
+#if 0
         rc = ngx_http_output_filter(r, p->header_in);
+#endif
 
         ngx_test_null(ep, ngx_pcalloc(r->pool, sizeof(ngx_event_proxy_t)),
                       NGX_ERROR);
@@ -856,9 +865,8 @@ static int ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
         ep->output_data = r;
         ep->block_size = p->lcf->block_size;
         ep->max_block_size = p->lcf->max_block_size;
-        ep->file_block_size = p->lcf->file_block_size;
         ep->upstream = p->connection;
-        ep->client = r->connection;
+        ep->downstream = r->connection;
         ep->pool = r->pool;
         ep->log = p->log;
         ep->temp_path = p->lcf->temp_path;
@@ -871,9 +879,20 @@ static int ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
         ep->number = 10;
         ep->random = 5;
 
-        ep->max_temp_size = p->lcf->max_temp_file_size;
+        ep->max_temp_file_size = p->lcf->max_temp_file_size;
+        ep->temp_file_write_size = p->lcf->temp_file_write_size;
         ep->temp_file_warn = "an upstream response is buffered "
                              "to a temporary file";
+
+        ngx_test_null(ep->preread_hunks, ngx_alloc_chain_entry(r->pool),
+                      NGX_ERROR);
+        ep->preread_hunks->hunk = p->header_in;
+        ep->preread_hunks->next = NULL;
+#if 0
+        ep->last_preread_hunk = ep->preread_hunks;
+#endif
+
+        ep->preread_size = p->header_in->last - p->header_in->pos;
 
         p->event_proxy = ep;
 
@@ -1100,7 +1119,7 @@ static int ngx_http_proxy_read_upstream_body(ngx_http_proxy_ctx_t *p)
 
 static int ngx_http_proxy_write_upstream_body(ngx_http_proxy_ctx_t *p)
 {
-    return ngx_event_proxy_write_to_client(p->event_proxy);
+    return ngx_event_proxy_write_to_downstream(p->event_proxy);
 }
 
 
@@ -1762,18 +1781,18 @@ static void *ngx_http_proxy_create_loc_conf(ngx_pool_t *pool)
     conf->connect_timeout = 10000;
     conf->send_timeout = 10000;
     conf->read_timeout = 10000;
-    conf->header_size = 1024;
+    conf->header_size = 2048;
 
-#if 0
+#if 1
     conf->block_size = 4096;
     conf->max_block_size = 4096 * 3;
     conf->max_temp_file_size = 4096 * 5;
-    conf->file_block_size = 4096 * 2;
+    conf->temp_file_write_size = 4096 * 2;
 #else
     conf->block_size = 2048;
     conf->max_block_size = 4096 * 6;
     conf->max_temp_file_size = 4096 * 5;
-    conf->file_block_size = 4096 * 5;
+    conf->temp_file_write_size = 4096 * 5;
 #endif
 
     ngx_test_null(conf->temp_path, ngx_pcalloc(pool, sizeof(ngx_path_t)), NULL);
