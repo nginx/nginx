@@ -168,7 +168,7 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 #define ngx_log_copy_log(new, old)    ngx_memcpy(new, old, sizeof(ngx_log_t))
 
 ngx_log_t *ngx_log_init_errlog();
-ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle);
+ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name);
 
 
 extern ngx_module_t  ngx_errlog_module;

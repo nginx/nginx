@@ -34,6 +34,10 @@ typedef struct {
 
 int ngx_os_init(ngx_log_t *log);
 
+#if !(WIN32)
+int ngx_daemon(ngx_log_t *log);
+#endif
+
 
 extern ngx_os_io_t  ngx_os_io;
 extern int          ngx_max_sockets;

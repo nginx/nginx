@@ -18,9 +18,9 @@ typedef struct ngx_file_s        ngx_file_t;
 typedef struct ngx_event_s       ngx_event_t;
 typedef struct ngx_connection_s  ngx_connection_t;
 
+#include <ngx_string.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
-#include <ngx_string.h>
 #include <ngx_hunk.h>
 #include <ngx_array.h>
 #include <ngx_table.h>

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stddef.h>             /* offsetof */
 #include <stdlib.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <signal.h>

@@ -126,6 +126,8 @@ static void ngx_poll_done(ngx_cycle_t *cycle)
     ngx_free(ready_index);
 
     event_list = NULL;
+    event_index = NULL;
+    ready_index = NULL;
 }
 
 

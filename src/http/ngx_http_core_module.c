@@ -1061,10 +1061,9 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    ngx_test_null(lcf->err_log, ngx_log_create_errlog(cf->cycle),
+    ngx_test_null(lcf->err_log,
+                  ngx_log_create_errlog(cf->cycle, &value[1]),
                   NGX_CONF_ERROR);
-
-    lcf->err_log->file->name = value[1];
 
     return NGX_CONF_OK;
 }

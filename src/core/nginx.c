@@ -61,7 +61,20 @@ int main(int argc, char *const *argv)
 
     ngx_cycle = cycle;
 
-    /* daemon */
+#if !(WIN32)
+
+    if (0) {
+        if (ngx_daemon(cycle->log) == NGX_ERROR) {
+            return 1;
+        }
+    }
+
+    if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "dup2(STDERR) failed");
+        return 1;
+    }
+
+#endif
 
     /* life cycle */
 
@@ -154,7 +167,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     cycle->open_files.nalloc = n;
     cycle->open_files.pool = pool;
 
-    cycle->log = ngx_log_create_errlog(cycle);
+    cycle->log = ngx_log_create_errlog(cycle, NULL);
     if (cycle->log == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
