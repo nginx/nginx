@@ -128,7 +128,7 @@ void ngx_md5_text(u_char *text, u_char *md5)
 }
 
 
-void ngx_encode_base64(ngx_str_t *src, ngx_str_t *dst)
+void ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src)
 {
     u_char         *d, *s;
     size_t          len;
@@ -168,7 +168,7 @@ void ngx_encode_base64(ngx_str_t *src, ngx_str_t *dst)
 }
 
 
-ngx_int_t ngx_decode_base64(ngx_str_t *src, ngx_str_t *dst)
+ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
 {
     size_t          len;
     u_char         *d, *s;
@@ -231,54 +231,55 @@ ngx_int_t ngx_decode_base64(ngx_str_t *src, ngx_str_t *dst)
 }
 
 
-#if 0
-char *ngx_psprintf(ngx_pool_t *p, const char *fmt, ...)
+ngx_int_t ngx_escape_uri(u_char *dst, u_char *src, size_t size)
 {
-    va_list    args;
+    ngx_int_t         n;
+    ngx_uint_t        i;
+    static u_char     hex[] = "0123456789abcdef";
+    static uint32_t   escape[] =
+        { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
 
-    va_start(args, fmt);
+                      /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+          0x80000021, /* 1000 0000 0000 0000  0000 0000 0010 0001 */
 
-    while (*fmt) {
-         switch(*fmt++) {
-         case '%':
-             switch(*fmt++) {
-             case 's':
-                 s = va_arg(args, char *);
-                 n += ngx_strlen(s);
-                 break;
+                      /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+          0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 
-             default:
-                 n++;
-         }
-         default:
-             n++;
-         }
+                      /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+          0x80000000, /* 1000 0000 0000 0000  0000 0000 0000 0000 */
+
+          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+          0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */ };
+
+    if (dst == NULL) {
+
+        /* find the number of the characters to be escaped */
+
+        n  = 0;
+
+        for (i = 0; i < size; i++) {
+            if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
+                n++;
+            }
+            src++;
+        }
+
+        return n;
     }
 
-    str = ngx_palloc(p, n);
+    for (i = 0; i < size; i++) {
+        if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
+            *dst++ = '%';
+            *dst++ = hex[*src >> 4];
+            *dst++ = hex[*src & 0xf];
+            src++;
 
-    va_start(args, fmt);
-
-    for (i = 0; i < n; i++) {
-         switch(*fmt++) {
-         case '%':
-             switch(*fmt++) {
-             case 's':
-                 s = va_arg(args, char *);
-                 while (str[i++] = s);
-                 break;
-
-             default:
-                 n++;
-         }
-         default:
-             str[i] = *fmt;
-         }
+        } else {
+            *dst++ = *src++;
+        }
     }
 
-    len += ngx_vsnprintf(errstr + len, sizeof(errstr) - len - 1, fmt, args);
-
-    va_end(args);
-
+    return NGX_OK;
 }
-#endif

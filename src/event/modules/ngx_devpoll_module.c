@@ -202,13 +202,7 @@ static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
 #endif
 
 #if (NGX_READ_EVENT != POLLIN)
-    if (event == NGX_READ_EVENT) {
-        event = POLLOUT;
-#if (NGX_WRITE_EVENT != POLLOUT)
-    } else {
-        event = POLLIN;
-#endif
-    }
+    event = (event == NGX_READ_EVENT) ? POLLIN : POLLOUT;
 #endif
 
 #if (NGX_DEBUG)
@@ -218,6 +212,7 @@ static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
 #endif
 
     ev->active = 1;
+
     return ngx_devpoll_set_event(ev, event, 0);
 }
 
@@ -228,6 +223,10 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
     ngx_connection_t  *c;
 
     c = ev->data;
+
+#if (NGX_READ_EVENT != POLLIN)
+    event = (event == NGX_READ_EVENT) ? POLLIN : POLLOUT;
+#endif
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "devpoll del event: fd:%d ev:%04X", c->fd, event);
@@ -242,13 +241,9 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_OK;
     }
 
-    /* we need to restore the second event if it exists */
+    /* restore the paired event if it exists */
 
-    if (event == NGX_READ_EVENT) {
-        if (ev->accept) {
-            return NGX_OK;
-        }
-
+    if (event == POLLIN) {
         e = c->write;
         event = POLLOUT;
 
@@ -257,7 +252,7 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
         event = POLLIN;
     }
 
-    if (e) {
+    if (e && e->active) {
         return ngx_devpoll_set_event(e, event, 0);
     }
 
@@ -273,7 +268,7 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
     c = ev->data;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "devpoll fd:%d ev:%d fl:%d", c->fd, event, flags);
+                   "devpoll fd:%d ev:%04X fl:%04X", c->fd, event, flags);
 
     if (nchanges >= max_changes) {
         ngx_log_error(NGX_LOG_WARN, ev->log, 0,

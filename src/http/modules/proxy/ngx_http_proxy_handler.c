@@ -29,6 +29,11 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
                                            ngx_http_proxy_upstream_conf_t *u);
 
+static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data);
+
+static ngx_conf_post_t  ngx_http_proxy_lowat_post =
+                                               { ngx_http_proxy_lowat_check } ;
+
 
 static ngx_conf_bitmask_t  next_upstream_masks[] = {
     { ngx_string("error"), NGX_HTTP_PROXY_FT_ERROR },
@@ -78,6 +83,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, send_timeout),
       NULL },
+
+    { ngx_string("proxy_send_lowat"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, send_lowat),
+      &ngx_http_proxy_lowat_post },
 
     { ngx_string("proxy_preserve_host"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -877,6 +889,7 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     conf->connect_timeout = NGX_CONF_UNSET_MSEC;
     conf->send_timeout = NGX_CONF_UNSET_MSEC;
+    conf->send_lowat = NGX_CONF_UNSET_SIZE;
 
     conf->preserve_host = NGX_CONF_UNSET;
     conf->set_x_real_ip = NGX_CONF_UNSET;
@@ -920,6 +933,7 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_msec_value(conf->connect_timeout,
                               prev->connect_timeout, 60000);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 60000);
+    ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
 
     ngx_conf_merge_value(conf->preserve_host, prev->preserve_host, 0);
     ngx_conf_merge_value(conf->set_x_real_ip, prev->set_x_real_ip, 0);
@@ -1073,17 +1087,21 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     value = cf->args->elts;
 
     if (ngx_strncasecmp(value[1].data, "http://", 7) != 0) {
-        return "invalid URL prefix";
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid URL prefix");
+        return NGX_CONF_ERROR;
     }
 
-    ngx_test_null(lcf->upstream,
-                  ngx_pcalloc(cf->pool, sizeof(ngx_http_proxy_upstream_conf_t)),
-                  NGX_CONF_ERROR);
+    lcf->upstream = ngx_pcalloc(cf->pool,
+                                sizeof(ngx_http_proxy_upstream_conf_t));
+    if (lcf->upstream == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     lcf->upstream->url.len = value[1].len;
     if (!(lcf->upstream->url.data = ngx_palloc(cf->pool, value[1].len + 1))) {
         return NGX_CONF_ERROR;
     }
+
     ngx_cpystrn(lcf->upstream->url.data, value[1].data, value[1].len + 1);
 
     value[1].data += 7;
@@ -1092,11 +1110,14 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     err = ngx_http_proxy_parse_upstream(&value[1], lcf->upstream);
 
     if (err) {
-        return err;
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, err);
+        return NGX_CONF_ERROR;
     }
 
-    ngx_test_null(host, ngx_palloc(cf->pool, lcf->upstream->host.len + 1),
-                  NGX_CONF_ERROR);
+    if (!(host = ngx_palloc(cf->pool, lcf->upstream->host.len + 1))) {
+        return NGX_CONF_ERROR;
+    }
+
     ngx_cpystrn(host, lcf->upstream->host.data, lcf->upstream->host.len + 1);
 
     /* AF_INET only */
@@ -1115,11 +1136,12 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 
         /* MP: ngx_shared_palloc() */
 
-        ngx_test_null(lcf->peers,
-                      ngx_pcalloc(cf->pool,
-                                  sizeof(ngx_peers_t)
-                                  + sizeof(ngx_peer_t) * (i - 1)),
-                      NGX_CONF_ERROR);
+        lcf->peers = ngx_pcalloc(cf->pool,
+                           sizeof(ngx_peers_t) + sizeof(ngx_peer_t) * (i - 1));
+
+        if (lcf->peers == NULL) {
+            return NGX_CONF_ERROR;
+        }
 
         lcf->peers->number = i;
 
@@ -1130,9 +1152,12 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
             lcf->peers->peers[i].port = lcf->upstream->port;
 
             len = INET_ADDRSTRLEN + lcf->upstream->port_text.len + 1;
-            ngx_test_null(lcf->peers->peers[i].addr_port_text.data,
-                          ngx_palloc(cf->pool, len),
-                          NGX_CONF_ERROR);
+
+            lcf->peers->peers[i].addr_port_text.data =
+                                                     ngx_palloc(cf->pool, len);
+            if (lcf->peers->peers[i].addr_port_text.data == NULL) {
+                return NGX_CONF_ERROR;
+            }
 
             len = ngx_inet_ntop(AF_INET,
                                 &lcf->peers->peers[i].addr,
@@ -1153,8 +1178,9 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 
         /* MP: ngx_shared_palloc() */
 
-        ngx_test_null(lcf->peers, ngx_pcalloc(cf->pool, sizeof(ngx_peers_t)),
-                      NGX_CONF_ERROR);
+        if (!(lcf->peers = ngx_pcalloc(cf->pool, sizeof(ngx_peers_t)))) {
+            return NGX_CONF_ERROR;
+        }
 
         lcf->peers->number = 1;
 
@@ -1165,9 +1191,11 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 
         len = lcf->upstream->host.len + lcf->upstream->port_text.len + 1;
 
-        ngx_test_null(lcf->peers->peers[0].addr_port_text.data,
-                      ngx_palloc(cf->pool, len + 1),
-                      NGX_CONF_ERROR);
+        lcf->peers->peers[0].addr_port_text.data =
+                                                 ngx_palloc(cf->pool, len + 1);
+        if (lcf->peers->peers[0].addr_port_text.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
 
         len = lcf->upstream->host.len;
 
@@ -1277,4 +1305,35 @@ static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
     }
 
     return "invalid port in upstream URL";
+}
+
+
+static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data)
+{
+#if __FreeBSD__
+
+    ssize_t *np = data;
+
+    if (*np >= ngx_freebsd_net_inet_tcp_sendspace) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"proxy_send_lowat\" must be less than %d "
+                           "(sysctl net.inet.tcp.sendspace)",
+                           ngx_freebsd_net_inet_tcp_sendspace);
+
+        return NGX_CONF_ERROR;
+    }
+
+
+#else
+
+#if 0
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "\"proxy_send_lowat\" is not supported, ignored");
+
+    *np = 0;
+#endif
+
+#endif
+
+    return NGX_CONF_OK;
 }

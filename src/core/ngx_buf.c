@@ -152,7 +152,8 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
             continue;
         }
 
-        (*busy)->buf->pos = (*busy)->buf->last = (*busy)->buf->start;
+        (*busy)->buf->pos = (*busy)->buf->start;
+        (*busy)->buf->last = (*busy)->buf->start;
 
         tl = *busy;
         *busy = (*busy)->next;

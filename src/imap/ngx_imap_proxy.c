@@ -333,8 +333,7 @@ static void ngx_imap_proxy_handler(ngx_event_t *ev)
                 }
 
                 if (n == NGX_AGAIN || n < (ssize_t) size) {
-                    dst->write->available = 0;
-                    if (ngx_handle_write_event(dst->write, NGX_LOWAT_EVENT)
+                    if (ngx_handle_write_event(dst->write, /* TODO: LOWAT */ 0)
                                                                   == NGX_ERROR)
                     {
                         ngx_imap_proxy_close_session(s);

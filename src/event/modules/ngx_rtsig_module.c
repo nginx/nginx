@@ -131,10 +131,6 @@ static ngx_int_t ngx_rtsig_init(ngx_cycle_t *cycle)
 {
     ngx_rtsig_conf_t  *rtscf;
 
-    if (ngx_poll_module_ctx.actions.init(cycle) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
     rtscf = ngx_event_get_conf(cycle->conf_ctx, ngx_rtsig_module);
 
     sigemptyset(&set);
@@ -170,7 +166,9 @@ static ngx_int_t ngx_rtsig_init(ngx_cycle_t *cycle)
 
 static void ngx_rtsig_done(ngx_cycle_t *cycle)
 {
-    ngx_poll_module_ctx.actions.done(cycle);
+    ngx_free(overflow_list);
+
+    overflow_list = NULL;
 }
 
 
@@ -697,7 +695,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
                  * the new overflow.
                  *
                  * Learn the /proc/sys/kernel/rtsig-max value because
-                 * it can be changed sisnce the last checking.
+                 * it can be changed since the last checking.
                  */
 
                 name[0] = CTL_KERN;

@@ -307,8 +307,10 @@ struct ngx_http_request_s {
     /* URI is not started with '/' - "GET http://" */
     unsigned             unusual_uri:1;
 #endif
-    /* URI with "/.", "%" and on Win32 with "//" */
+    /* URI with "/." and on Win32 with "//" */
     unsigned             complex_uri:1;
+    /* URI with "%" */
+    unsigned             quoted_uri:1;
     unsigned             header_timeout_set:1;
 
     unsigned             proxy:1;
@@ -319,9 +321,6 @@ struct ngx_http_request_s {
     unsigned             cachable:1;
 #endif
     unsigned             pipeline:1;
-
-    /* can we use sendfile ? */
-    unsigned             sendfile:1;
 
     unsigned             plain_http:1;
     unsigned             chunked:1;

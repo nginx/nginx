@@ -615,6 +615,9 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
     ngx_uint_t        i;
     ngx_list_part_t  *part;
     ngx_open_file_t  *file;
+#if !(WIN32)
+    ngx_file_info_t   fi;
+#endif
 
     part = &cycle->open_files.part;
     file = part->elts;
@@ -670,6 +673,35 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
                     ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                                   ngx_close_file_n " \"%s\" failed",
                                   file[i].name.data);
+                }
+            }
+
+            if (ngx_file_info((const char *) file[i].name.data, &fi) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              ngx_file_info_n " \"%s\" failed",
+                              file[i].name.data);
+
+                if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                                  ngx_close_file_n " \"%s\" failed",
+                                  file[i].name.data);
+                }
+            }
+
+            if ((fi.st_mode & (S_IRUSR|S_IWUSR)) != (S_IRUSR|S_IWUSR)) {
+
+                fi.st_mode |= (S_IRUSR|S_IWUSR);
+
+                if (chmod((const char *) file[i].name.data, fi.st_mode) == -1) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                                  "chmod \"%s\" failed",
+                                  file[i].name.data);
+
+                    if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+                        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                                      ngx_close_file_n " \"%s\" failed",
+                                      file[i].name.data);
+                    }
                 }
             }
         }

@@ -150,6 +150,7 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
     len = sizeof("HTTP/1.x ") - 1 + 2 + 2;
 
     /* status line */
+
     if (r->headers_out.status_line.len) {
         len += r->headers_out.status_line.len;
 #if (NGX_SUPPRESS_WARN)

@@ -164,23 +164,25 @@ static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
         return NGX_ERROR;
     }
 
-    /*
-     * we do not set r->headers_out.location to avoid the handling
-     * the local redirects without a host name by ngx_http_header_filter()
-     */
-
-#if 0
-    r->headers_out.location = location;
-#endif
-
     if (uc->url.len > loc->value.len
         || ngx_rstrncmp(loc->value.data, uc->url.data, uc->url.len) != 0)
     {
+
+       /*
+        * we do not set r->headers_out.location here to avoid the handling
+        * the local redirects without a host name by ngx_http_header_filter()
+        */
+
         *location = *loc;
         return NGX_OK;
     }
 
     /* TODO: proxy_reverse */
+
+    r->headers_out.location = location;
+
+    location->key.len = 0;
+    location->key.data = NULL;
 
     location->value.len = uc->location->len
                                           + (loc->value.len - uc->url.len) + 1;

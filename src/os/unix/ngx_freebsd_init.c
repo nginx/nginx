@@ -193,6 +193,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
         ngx_ncpu = ngx_freebsd_hw_ncpu;
     }
 
+
     return ngx_posix_init(log);
 }
 
@@ -220,6 +221,7 @@ void ngx_os_status(ngx_log_t *log)
                           sysctls[i].name, *sysctls[i].value);
         }
     }
+
 
     ngx_posix_status(log);
 }

@@ -120,7 +120,12 @@ struct ngx_connection_s {
     unsigned            single_connection:1;
     unsigned            unexpected_eof:1;
     unsigned            timedout:1;
+
+    unsigned            sendfile:1;
+    unsigned            sndlowat:1;
+    unsigned            tcp_nodelay:1;
     signed              tcp_nopush:2;
+
 #if (HAVE_IOCP)
     unsigned            accept_context_updated:1;
 #endif

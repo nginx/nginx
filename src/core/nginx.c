@@ -11,7 +11,8 @@
 
 
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
-static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle);
+static ngx_int_t ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv);
+static ngx_int_t ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv);
 static void *ngx_core_module_create_conf(ngx_cycle_t *cycle);
 static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf);
 static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -96,13 +97,12 @@ ngx_module_t  ngx_core_module = {
 ngx_uint_t  ngx_max_module;
 
 
-int main(int argc, char *const *argv)
+int main(int argc, char *const *argv, char *const *envp)
 {
-    ngx_int_t          i;
-    ngx_log_t         *log;
-    ngx_cycle_t       *cycle, init_cycle;
-    ngx_core_conf_t   *ccf;
-    ngx_master_ctx_t   ctx;
+    ngx_int_t         i;
+    ngx_log_t        *log;
+    ngx_cycle_t      *cycle, init_cycle;
+    ngx_core_conf_t  *ccf;
 
 #if defined __FreeBSD__
     ngx_debug_init();
@@ -132,15 +132,15 @@ int main(int argc, char *const *argv)
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
 
-    ngx_memzero(&ctx, sizeof(ngx_master_ctx_t));
-    ctx.argc = argc;
-    ctx.argv = argv;
-
     if (!(init_cycle.pool = ngx_create_pool(1024, log))) {
         return 1;
     }
 
-    if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
+    if (ngx_getopt(&init_cycle, argc, argv) == NGX_ERROR) {
+        return 1;
+    }
+
+    if (ngx_save_argv(&init_cycle, argc, argv) == NGX_ERROR) {
         return 1;
     }
 
@@ -219,10 +219,10 @@ int main(int argc, char *const *argv)
 #endif
 
     if (ngx_process == NGX_PROCESS_MASTER) {
-        ngx_master_process_cycle(cycle, &ctx);
+        ngx_master_process_cycle(cycle);
 
     } else {
-        ngx_single_process_cycle(cycle, &ctx);
+        ngx_single_process_cycle(cycle);
     }
 
     return 0;
@@ -276,7 +276,7 @@ static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 
 ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 {
-    char             *env[2], *var, *p;
+    char             *env[3], *var, *p;
     ngx_uint_t        i;
     ngx_pid_t         pid;
     ngx_exec_ctx_t    ctx;
@@ -300,7 +300,25 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0, "inherited: %s", var);
 
     env[0] = var;
+
+#if (NGX_SETPROCTITLE_USES_ENV)
+
+    /* allocate spare 300 bytes for the new binary process title */
+
+    env[1] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+             "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+             "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+             "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+             "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+
+    env[2] = NULL;
+
+#else
+
     env[1] = NULL;
+
+#endif
+
     ctx.envp = (char *const *) &env;
 
     pid = ngx_execute(cycle, &ctx);
@@ -311,38 +329,38 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 }
 
 
-static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
+static ngx_int_t ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
 {
     ngx_int_t  i;
 
-    for (i = 1; i < ctx->argc; i++) {
-        if (ctx->argv[i][0] != '-') {
+    for (i = 1; i < argc; i++) {
+        if (argv[i][0] != '-') {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "invalid option: \"%s\"", ctx->argv[i]);
+                          "invalid option: \"%s\"", argv[i]);
             return NGX_ERROR;
         }
 
-        switch (ctx->argv[i][1]) {
+        switch (argv[i][1]) {
 
         case 't':
             ngx_test_config = 1;
             break;
 
         case 'c':
-            if (ctx->argv[i + 1] == NULL) {
+            if (argv[i + 1] == NULL) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                               "the option: \"%s\" requires file name",
-                              ctx->argv[i]);
+                              argv[i]);
                 return NGX_ERROR;
             }
 
-            cycle->conf_file.data = (u_char *) ctx->argv[++i];
+            cycle->conf_file.data = (u_char *) argv[++i];
             cycle->conf_file.len = ngx_strlen(cycle->conf_file.data);
             break;
 
         default:
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "invalid option: \"%s\"", ctx->argv[i]);
+                          "invalid option: \"%s\"", argv[i]);
             return NGX_ERROR;
         }
     }
@@ -355,6 +373,43 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
     if (ngx_conf_full_name(cycle, &cycle->conf_file) == NGX_ERROR) {
         return NGX_ERROR;
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
+{
+    size_t     len;
+    ngx_int_t  i;
+
+    ngx_os_argv = (char **) argv;
+
+    ngx_argc = argc;
+
+#if __FreeBSD__
+
+    ngx_argv = (char **) argv;
+
+#else
+
+    if (!(ngx_argv = ngx_alloc((argc + 1) * sizeof(char *), cycle->log))) {
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < argc; i++) {
+        len = ngx_strlen(argv[i]) + 1;
+
+        if (!(ngx_argv[i] = ngx_alloc(len, cycle->log))) {
+            return NGX_ERROR;
+        }
+
+        ngx_cpystrn((u_char *) ngx_argv[i], (u_char *) argv[i], len);
+    }
+
+    ngx_argv[i] = NULL;
+
+#endif
 
     return NGX_OK;
 }
@@ -407,6 +462,7 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #if !(WIN32)
 
+#if 0
     if (ccf->user == (uid_t) NGX_CONF_UNSET) {
 
         pwd = getpwnam("nobody");
@@ -427,10 +483,11 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
         ccf->group = grp->gr_gid;
     }
+#endif
 
     if (ccf->pid.len == 0) {
         ccf->pid.len = sizeof(NGX_PID_PATH) - 1;
-        ccf->pid.data = NGX_PID_PATH;
+        ccf->pid.data = (u_char *) NGX_PID_PATH;
     }
 
     if (ngx_conf_full_name(cycle, &ccf->pid) == NGX_ERROR) {
@@ -478,7 +535,7 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     pwd = getpwnam((const char *) value[1].data);
     if (pwd == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
-                           "getpwnam(%s) failed", value[1].data);
+                           "getpwnam(\"%s\") failed", value[1].data);
         return NGX_CONF_ERROR;
     }
 
@@ -491,7 +548,7 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     grp = getgrnam((const char *) value[2].data);
     if (grp == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
-                           "getgrnam(%s) failed", value[1].data);
+                           "getgrnam(\"%s\") failed", value[2].data);
         return NGX_CONF_ERROR;
     }
 

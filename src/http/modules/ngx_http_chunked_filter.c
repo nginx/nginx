@@ -83,10 +83,12 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
 
         size += ngx_buf_size(cl->buf);
 
-        ngx_test_null(tl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
-        tl->buf = cl->buf;
-        *ll = tl;
-        ll = &tl->next;
+        if (cl->buf->flush || ngx_buf_in_memory(cl->buf) || cl->buf->in_file) {
+            ngx_test_null(tl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
+            tl->buf = cl->buf;
+            *ll = tl;
+            ll = &tl->next;
+        }
 
         if (cl->next == NULL) {
             break;

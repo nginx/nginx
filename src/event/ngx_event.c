@@ -461,6 +461,39 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 }
 
 
+ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat)
+{
+    int  sndlowat;
+
+#if (HAVE_LOWAT_EVENT)
+
+    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+        c->write->available = lowat;
+        return NGX_OK;
+    }
+
+#endif
+    
+    if (lowat == 0 || c->sndlowat) {
+        return NGX_OK;
+    }
+
+    sndlowat = (int) lowat;
+
+    if (setsockopt(c->fd, SOL_SOCKET, SO_SNDLOWAT,
+                                  (const void *) &sndlowat, sizeof(int)) == -1)
+    {
+        ngx_connection_error(c, ngx_socket_errno,
+                             "setsockopt(SO_SNDLOWAT) failed");
+        return NGX_ERROR;
+    }
+
+    c->sndlowat = 1;
+
+    return NGX_OK;
+}
+
+
 static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     int                    m;

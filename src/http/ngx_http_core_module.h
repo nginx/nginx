@@ -172,6 +172,7 @@ struct ngx_http_core_loc_conf_s {
 
     ngx_flag_t    sendfile;                /* sendfile */
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */
+    ngx_flag_t    tcp_nodelay;             /* tcp_nodelay */
     ngx_flag_t    reset_timedout_connection; /* reset_timedout_connection */
     ngx_flag_t    msie_padding;            /* msie_padding */
 

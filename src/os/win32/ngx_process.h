@@ -32,8 +32,11 @@ ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 #define ngx_sched_yield()  Sleep(0)
 
 
+extern int            ngx_argc;
+extern char         **ngx_argv;
+extern char         **ngx_os_argv;
 
-extern ngx_pid_t     ngx_pid;
+extern ngx_pid_t      ngx_pid;
 
 
 #endif /* _NGX_PROCESS_H_INCLUDED_ */

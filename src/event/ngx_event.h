@@ -207,7 +207,7 @@ typedef struct {
     ngx_int_t  (*add_conn)(ngx_connection_t *c);
     ngx_int_t  (*del_conn)(ngx_connection_t *c, u_int flags);
 
-    ngx_int_t  (*process_changes)(ngx_cycle_t *cycle, ngx_uint_t try);
+    ngx_int_t  (*process_changes)(ngx_cycle_t *cycle, ngx_uint_t nowait);
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle);
 
     ngx_int_t  (*init)(ngx_cycle_t *cycle);
@@ -479,6 +479,9 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
 #endif
 
 
+ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
+
+
 /* used in ngx_log_debugX() */
 #define ngx_event_ident(p)  ((ngx_connection_t *) (p))->fd
 
@@ -497,7 +500,7 @@ ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, u_int flags)
 {
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
-        /* kqueue */
+        /* kqueue, epoll */
 
         if (!rev->active && !rev->ready) {
             if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT)
@@ -531,7 +534,7 @@ ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, u_int flags)
         }
     }
 
-    /* aio, iocp, epoll, rtsig */
+    /* aio, iocp, rtsig */
 
     return NGX_OK;
 }
@@ -563,14 +566,25 @@ ngx_inline static int ngx_handle_level_read_event(ngx_event_t *rev)
 }
 
 
-ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, u_int flags)
+ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 {
+    ngx_connection_t  *c;
+
+    if (lowat) {
+        c = wev->data;
+
+        if (ngx_send_lowat(c, lowat) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+    }
+
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
-        /* kqueue */
+        /* kqueue, epoll */
 
         if (!wev->active && !wev->ready) {
-            if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_CLEAR_EVENT|flags)
+            if (ngx_add_event(wev, NGX_WRITE_EVENT,
+                              NGX_CLEAR_EVENT | (lowat ? NGX_LOWAT_EVENT : 0))
                                                                   == NGX_ERROR)
             {
                 return NGX_ERROR;
@@ -602,7 +616,7 @@ ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, u_int flags)
         }
     }
 
-    /* aio, iocp, epoll, rtsig */
+    /* aio, iocp, rtsig */
 
     return NGX_OK;
 }

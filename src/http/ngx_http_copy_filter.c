@@ -79,7 +79,7 @@ ngx_int_t ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ngx_http_create_ctx(r, ctx, ngx_http_copy_filter_module,
                             sizeof(ngx_output_chain_ctx_t), NGX_ERROR);
 
-        ctx->sendfile = r->sendfile;
+        ctx->sendfile = r->connection->sendfile;
         ctx->need_in_memory = r->filter_need_in_memory;
         ctx->need_in_temp = r->filter_need_temporary;
 

@@ -60,6 +60,7 @@ typedef struct {
  * icc may also inline several mov's of a zeroed register for small blocks.
  */
 #define ngx_memzero(buf, n)       memset(buf, 0, n)
+#define ngx_memset(buf, c, n)     memset(buf, c, n)
 
 /* msvc and icc compile memcpy() to the inline "rep movs" */
 #define ngx_memcpy(dst, src, n)   memcpy(dst, src, n)
@@ -80,8 +81,9 @@ void ngx_md5_text(u_char *text, u_char *md5);
 #define ngx_base64_encoded_length(len)  (((len + 2) / 3) * 4)
 #define ngx_base64_decoded_length(len)  (((len + 3) / 4) * 3)
 
-void ngx_encode_base64(ngx_str_t *src, ngx_str_t *dst);
-ngx_int_t ngx_decode_base64(ngx_str_t *src, ngx_str_t *dst);
+void ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src);
+ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src);
+ngx_int_t ngx_escape_uri(u_char *dst, u_char *src, size_t size);
 
 
 #define  ngx_qsort                qsort

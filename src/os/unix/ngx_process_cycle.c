@@ -14,7 +14,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
                                        ngx_int_t type);
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo);
 static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle);
-static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
+static void ngx_master_exit(ngx_cycle_t *cycle);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static void ngx_channel_handler(ngx_event_t *ev);
 #if (NGX_THREADS)
@@ -55,7 +55,7 @@ ngx_int_t              ngx_threads_n;
 u_char  master_process[] = "master process";
 
 
-void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
+void ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
     char              *title;
     u_char            *p;
@@ -90,16 +90,16 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
     size = sizeof(master_process);
 
-    for (i = 0; i < ctx->argc; i++) {
-        size += ngx_strlen(ctx->argv[i]) + 1;
+    for (i = 0; i < ngx_argc; i++) {
+        size += ngx_strlen(ngx_argv[i]) + 1;
     }
 
     title = ngx_palloc(cycle->pool, size);
 
     p = ngx_cpymem(title, master_process, sizeof(master_process) - 1);
-    for (i = 0; i < ctx->argc; i++) {
+    for (i = 0; i < ngx_argc; i++) {
         *p++ = ' ';
-        p = ngx_cpystrn(p, (u_char *) ctx->argv[i], size);
+        p = ngx_cpystrn(p, (u_char *) ngx_argv[i], size);
     }
 
     ngx_setproctitle(title);
@@ -149,7 +149,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
         }
 
         if (!live && (ngx_terminate || ngx_quit)) {
-            ngx_master_exit(cycle, ctx);
+            ngx_master_exit(cycle);
         }
 
         if (ngx_terminate) {
@@ -231,7 +231,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
         if (ngx_change_binary) {
             ngx_change_binary = 0;
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "changing binary");
-            ngx_new_binary = ngx_exec_new_binary(cycle, ctx->argv);
+            ngx_new_binary = ngx_exec_new_binary(cycle, ngx_argv);
         }
 
         if (ngx_noaccept) {
@@ -244,13 +244,9 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 }
 
 
-void ngx_single_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
+void ngx_single_process_cycle(ngx_cycle_t *cycle)
 {
     ngx_uint_t  i;
-
-#if 0
-    ngx_setproctitle("single worker process");
-#endif
 
     ngx_init_temp_number();
 
@@ -269,7 +265,7 @@ void ngx_single_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
         ngx_process_events(cycle);
 
         if (ngx_terminate || ngx_quit) {
-            ngx_master_exit(cycle, ctx);
+            ngx_master_exit(cycle);
         }
 
         if (ngx_reconfigure) {
@@ -547,7 +543,7 @@ static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
+static void ngx_master_exit(ngx_cycle_t *cycle)
 {
     ngx_delete_pidfile(cycle);
 

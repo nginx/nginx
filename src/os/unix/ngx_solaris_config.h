@@ -40,10 +40,10 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>        /* TCP_NODELAY */
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include <sys/sendfile.h>
 #include <sys/systeminfo.h>
 #include <limits.h>             /* IOV_MAX */
 #include <inttypes.h>
@@ -64,6 +64,11 @@
 #endif
 
 
+#if (HAVE_SENDFILE)
+#include <sys/sendfile.h>
+#endif
+
+
 #if (HAVE_AIO)
 #include <aio.h>
 #endif
@@ -80,7 +85,16 @@
 #endif
 
 
-#define ngx_setproctitle(title)
+#ifndef HAVE_SO_SNDLOWAT
+/* setsockopt(SO_SNDLOWAT) returns error "Option not supported by protocol" */
+#define HAVE_SO_SNDLOWAT         0
+#endif
+
+
+#ifndef NGX_SETPROCTITLE_USES_ENV
+#define NGX_SETPROCTITLE_USES_ENV  1
+#define NGX_SETPROCTITLE_PAD       ' '
+#endif
 
 
 #endif /* _NGX_SOLARIS_CONFIG_H_INCLUDED_ */

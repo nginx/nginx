@@ -54,6 +54,7 @@ typedef struct {
 
 
 typedef struct {
+    size_t                           send_lowat;
     size_t                           header_buffer_size;
     size_t                           busy_buffers_size;
     size_t                           max_temp_file_size;

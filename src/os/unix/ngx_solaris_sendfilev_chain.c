@@ -32,6 +32,10 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
         return in;
     }
 
+    if (!c->sendfile) {
+        return ngx_writev_chain(c, in, limit);
+    }
+
     send = 0;
     complete = 0;
 

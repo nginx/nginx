@@ -155,6 +155,9 @@ int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p)
             case ' ':
                 state = sw_status_text;
                 break;
+            case '.':                    /* IIS may send 403.1, 403.2, etc */
+                state = sw_status_text;
+                break;
             case CR:
                 state = sw_almost_done;
                 break;

@@ -39,13 +39,13 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>        /* TCP_NODELAY, TCP_CORK */
 #include <arpa/inet.h>
 #include <netdb.h>
 
 #include <time.h>               /* tzset() */
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
-#include <netinet/tcp.h>        /* TCP_CORK */
 
 
 #include <ngx_auto_config.h>
@@ -94,8 +94,10 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #define HAVE_SELECT_CHANGE_TIMEOUT   1
 #endif
 
-
-#define ngx_setproctitle(title)
+#ifndef NGX_SETPROCTITLE_USES_ENV
+#define NGX_SETPROCTITLE_USES_ENV    1
+#define NGX_SETPROCTITLE_PAD         '\0' 
+#endif
 
 
 #endif /* _NGX_LINUX_CONFIG_H_INCLUDED_ */

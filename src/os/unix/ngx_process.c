@@ -12,10 +12,15 @@
 
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
 
-ngx_int_t      ngx_process_slot;
-ngx_socket_t   ngx_channel;
-ngx_int_t      ngx_last_process;
-ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
+
+int              ngx_argc;
+char           **ngx_argv;
+char           **ngx_os_argv;
+
+ngx_int_t        ngx_process_slot;
+ngx_socket_t     ngx_channel;
+ngx_int_t        ngx_last_process;
+ngx_process_t    ngx_processes[NGX_MAX_PROCESSES];
 
 
 ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
@@ -231,8 +236,23 @@ void ngx_process_get_status()
                 return;
             }
 
+#if (SOLARIS)
+
+            /*
+             * Solaris always calls the signal handler for each exited process
+             * despite waitpid() may be already called for this process
+             */
+
+            if (err == NGX_ECHILD) {
+                ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, errno,
+                              "waitpid() failed");
+            }
+
+#endif
+
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, errno,
                           "waitpid() failed");
+
             return;
         }
 

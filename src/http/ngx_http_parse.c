@@ -217,8 +217,11 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 state = sw_http_09;
                 break;
             case '.':
-            case '%':
                 r->complex_uri = 1;
+                state = sw_uri;
+                break;
+            case '%':
+                r->quoted_uri = 1;
                 state = sw_uri;
                 break;
             case '/':
@@ -259,7 +262,7 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 state = sw_after_slash_in_uri;
                 break;
             case '%':
-                r->complex_uri = 1;
+                r->quoted_uri = 1;
                 state = sw_uri;
                 break;
             case '?':
@@ -522,7 +525,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                 break;
             }
 
-            /* IIS can send duplicate "HTTP/1.1 ..." lines */
+            /* IIS may send the duplicate "HTTP/1.1 ..." lines */
             if (ch == '/'
                 && r->proxy
                 && p - r->header_start == 5

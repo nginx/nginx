@@ -36,3 +36,29 @@ else
     ngx_n=
     ngx_c='\c'
 fi
+
+
+
+if test ! -f Makefile; then
+
+    cat << END > Makefile
+
+build:
+	\$(MAKE) -f $OBJS/Makefile
+
+install:
+	\$(MAKE) -f $OBJS/Makefile install
+
+clean:
+	rm -rf Makefile $OBJS
+
+upgrade:
+	$SBIN_PATH -t
+	kill -USR2 \`cat $PID_PATH\`
+	sleep 1
+	test -f $PID_PATH.newbin
+	kill -WINCH \`cat $PID_PATH\`
+
+END
+
+fi

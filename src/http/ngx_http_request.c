@@ -550,7 +550,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
                 return;
             }
 
-            if (r->complex_uri) {
+            if (r->complex_uri || r->quoted_uri) {
                 rc = ngx_http_parse_complex_uri(r);
 
                 if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
@@ -1318,8 +1318,7 @@ static void ngx_http_set_write_handler(ngx_http_request_t *r)
         ngx_add_timer(wev, clcf->send_timeout);
     }
 
-    wev->available = clcf->send_lowat;
-    if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
+    if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
         ngx_http_close_request(r, 0);
         ngx_http_close_connection(r->connection);
     }
@@ -1354,9 +1353,7 @@ void ngx_http_writer(ngx_event_t *wev)
                                                 ngx_http_core_module);
             ngx_add_timer(wev, clcf->send_timeout);
 
-            wev->available = clcf->send_lowat;
-
-            if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
+            if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
                 ngx_http_close_request(r, 0);
                 ngx_http_close_connection(r->connection);
             }
@@ -1371,9 +1368,8 @@ void ngx_http_writer(ngx_event_t *wev)
 
             clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                                 ngx_http_core_module);
-            wev->available = clcf->send_lowat;
 
-            if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
+            if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
                 ngx_http_close_request(r, 0);
                 ngx_http_close_connection(r->connection);
             }
@@ -1394,9 +1390,7 @@ void ngx_http_writer(ngx_event_t *wev)
             ngx_add_timer(wev, clcf->send_timeout);
         }
 
-        wev->available = clcf->send_lowat;
-
-        if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
+        if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
             ngx_http_close_request(r, 0);
             ngx_http_close_connection(r->connection);
         }
@@ -1541,6 +1535,7 @@ static ngx_int_t ngx_http_read_discarded_body(ngx_http_request_t *r)
 
 static void ngx_http_set_keepalive(ngx_http_request_t *r)
 {
+    int                        tcp_nodelay;
     ngx_int_t                  i;
     ngx_buf_t                 *b, *f;
     ngx_event_t               *rev, *wev;
@@ -1684,7 +1679,26 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
             ngx_http_close_connection(c);
             return;
         }
+
         c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
+
+    } else {
+        if (clcf->tcp_nodelay && !c->tcp_nodelay) {
+            tcp_nodelay = 1;
+
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "tcp_nodelay");
+
+            if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
+                               (const void *) &tcp_nodelay, sizeof(int)) == -1)
+            {
+                ngx_connection_error(c, ngx_socket_errno,
+                                     "setsockopt(TCP_NODELAY) failed");
+                ngx_http_close_connection(c);
+                return;
+            }
+
+            c->tcp_nodelay = 1;
+        }
     }
 
 #if 0
@@ -2054,6 +2068,18 @@ void ngx_http_close_connection(ngx_connection_t *c)
 {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "close http connection: %d", c->fd);
+
+#if (NGX_OPENSSL)
+
+    if (c->ssl) {
+        if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
+            c->read->event_handler = ngx_ssl_close_handler;
+            c->write->event_handler = ngx_ssl_close_handler;
+            return;
+        }
+    }
+
+#endif
 
 #if (NGX_STAT_STUB)
     (*ngx_stat_active)--;

@@ -30,7 +30,8 @@ ngx_os_io_t ngx_os_io = {
 
 ngx_int_t ngx_os_init(ngx_log_t *log)
 {
-    int  name[2], len;
+    int     name[2];
+    size_t  len;
 
     name[0] = CTL_KERN;
     name[1] = KERN_OSTYPE;
@@ -63,6 +64,8 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
 
     }
 
+    ngx_init_setproctitle(log);
+
 
     return ngx_posix_init(log);
 }
@@ -75,6 +78,7 @@ void ngx_os_status(ngx_log_t *log)
 
     ngx_log_error(NGX_LOG_INFO, log, 0, "sysctl(KERN_RTSIGMAX): %d",
                   ngx_linux_rtsig_max);
+
 
     ngx_posix_status(log);
 }

@@ -72,6 +72,13 @@ ngx_int_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
         return n;
     }
 
+    if (!SSL_is_init_finished(c->ssl->ssl)) {
+        handshake = "in SSL handshake";
+
+    } else {
+        handshake = "";
+    }
+
     sslerr = SSL_get_error(c->ssl->ssl, n);
 
     err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
@@ -89,13 +96,6 @@ ngx_int_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 #if 0
         return NGX_AGAIN;
 #endif
-    }
-
-    if (!SSL_is_init_finished(c->ssl->ssl)) {
-        handshake = "in SSL handshake";
-
-    } else {
-        handshake = "";
     }
 
     c->ssl->no_rcv_shut = 1;
@@ -240,8 +240,9 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
 
 static ngx_int_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 {
-    int        n, sslerr;
-    ngx_err_t  err;
+    int         n, sslerr;
+    ngx_err_t   err;
+    char       *handshake;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL to write: %d", size);
 
@@ -265,13 +266,21 @@ static ngx_int_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     }
 
     if (sslerr == SSL_ERROR_WANT_READ) {
+
+        if (!SSL_is_init_finished(c->ssl->ssl)) {
+            handshake = "in SSL handshake";
+
+        } else {
+            handshake = "";
+        }
+
         ngx_log_error(NGX_LOG_ALERT, c->log, err,
                       "SSL wants to read%s", handshake);
         return NGX_ERROR;
 #if 0
         return NGX_AGAIN;
-    }
 #endif
+    }
 
     c->ssl->no_rcv_shut = 1;
 

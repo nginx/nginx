@@ -257,7 +257,7 @@ static ngx_int_t ngx_http_userid_get_uid(ngx_http_request_t *r,
             src.data = start;
             dst.data = (u_char *) ctx->uid_got;
 
-            if (ngx_decode_base64(&src, &dst) == NGX_ERROR) {
+            if (ngx_decode_base64(&dst, &src) == NGX_ERROR) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "client sent invalid userid cookie \"%s\"",
                               cookies[i]->value.data);
@@ -358,7 +358,7 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
     src.data = (u_char *) ctx->uid_set;
     dst.data = p;
 
-    ngx_encode_base64(&src, &dst);
+    ngx_encode_base64(&dst, &src);
 
     p += dst.len;
 

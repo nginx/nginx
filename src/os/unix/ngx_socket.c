@@ -16,7 +16,7 @@
  * ioctl() and fcntl() are syscalls on at least FreeBSD 2.x, Linux 2.2
  * and Solaris 7.
  *
- * ioctl() in Linux 2.4 and 2.6 uses BKL, however fcntl(F_SETFL) uses it too.
+ * ioctl() in Linux 2.4 and 2.6 uses BKL, however, fcntl(F_SETFL) uses it too.
  */
 
 

@@ -228,8 +228,15 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
         src->pos += size;
         dst->last += size;
 
-        if (src->in_file) {
+        if (src->in_file && sendfile) {
+            dst->in_file = 1;
+            dst->file = src->file;
+            dst->file_pos = src->file_pos;
             src->file_pos += size;
+            dst->file_last = src->file_pos;
+
+        } else {
+            dst->in_file = 0;
         }
 
         if (src->last_buf && src->pos == src->last) {
@@ -258,11 +265,18 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
             }
         }
 
-        src->file_pos += n;
         dst->last += n;
 
-        if (!sendfile) {
+        if (sendfile) {
+            dst->in_file = 1;
+            dst->file = src->file;
+            dst->file_pos = src->file_pos;
+            src->file_pos += size;
+            dst->file_last = src->file_pos;
+
+        } else {
             dst->in_file = 0;
+            src->file_pos += n;
         }
 
         if (src->last_buf && src->file_pos == src->file_last) {

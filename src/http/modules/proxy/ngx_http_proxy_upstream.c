@@ -115,6 +115,7 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
 static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 {
     size_t                           len;
+    ngx_int_t                        escape;
     ngx_uint_t                       i;
     ngx_buf_t                       *b;
     ngx_chain_t                     *chain;
@@ -133,13 +134,19 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
         len = r->method_name.len;
     }
 
+    if (r->quoted_uri) {
+        escape = 2 * ngx_escape_uri(NULL, r->uri.data + uc->location->len,
+                                    r->uri.len - uc->location->len);
+    } else {
+        escape = 0;
+    }
+
     len += uc->uri.len
-           + r->uri.len - uc->location->len
+           + r->uri.len - uc->location->len + escape
            + 1 + r->args.len                                 /* 1 is for "?" */
            + sizeof(http_version) - 1
            + sizeof(connection_close_header) - 1
            + 2;                         /* 2 is for "\r\n" at the header end */
-
 
     if (p->lcf->preserve_host && r->headers_in.host) {
         len += sizeof(host_header) - 1
@@ -218,9 +225,16 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     b->last = ngx_cpymem(b->last, uc->uri.data, uc->uri.len);
 
-    b->last = ngx_cpymem(b->last,
-                         r->uri.data + uc->location->len,
-                         r->uri.len - uc->location->len);
+    if (escape) {
+        ngx_escape_uri(b->last, r->uri.data + uc->location->len,
+                       r->uri.len - uc->location->len);
+        b->last += r->uri.len - uc->location->len + escape;
+
+    } else {
+        b->last = ngx_cpymem(b->last,
+                             r->uri.data + uc->location->len,
+                             r->uri.len - uc->location->len);
+    }
 
     if (r->args.len > 0) {
         *(b->last++) = '?';
@@ -422,7 +436,7 @@ static void ngx_http_proxy_init_upstream(void *data)
 
     p->upstream->output_chain_ctx = output;
 
-    output->sendfile = r->sendfile;
+    output->sendfile = r->connection->sendfile;
     output->pool = r->pool;
     output->bufs.num = 1;
     output->tag = (ngx_buf_tag_t) &ngx_http_proxy_module;
@@ -737,8 +751,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, p->lcf->send_timeout);
 
-        c->write->available = /* STUB: lowat */ 0;
-        if (ngx_handle_write_event(c->write, NGX_LOWAT_EVENT) == NGX_ERROR) {
+        if (ngx_handle_write_event(c->write, p->lcf->send_lowat) == NGX_ERROR) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
@@ -1172,6 +1185,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     r = p->request;
 
     r->headers_out.status = p->upstream->status;
+    r->headers_out.status_line = p->upstream->status_line;
 
 #if 0
     r->headers_out.content_length_n = -1;
@@ -1298,11 +1312,10 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
          */
 
         ep->cyclic_temp_file = 1;
-        r->sendfile = 0;
+        r->connection->sendfile = 0;
 
     } else {
         ep->cyclic_temp_file = 0;
-        r->sendfile = 1;
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);

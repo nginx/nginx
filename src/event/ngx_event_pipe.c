@@ -64,8 +64,7 @@ ngx_int_t ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
 
     if (p->downstream->fd != -1) {
         wev = p->downstream->write;
-        wev->available = p->send_lowat;
-        if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
+        if (ngx_handle_write_event(wev, p->send_lowat) == NGX_ERROR) {
             return NGX_ABORT;
         }
 
@@ -302,16 +301,41 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0, "pipe buf");
     }
 
-    for (cl = p->in; cl; cl = cl->next) {
+    for (cl = p->busy; cl; cl = cl->next) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe buf in " PTR_FMT ", pos " PTR_FMT ", size: %d",
+                       "pipe buf busy " PTR_FMT ", pos " PTR_FMT ", size: %d",
                        cl->buf->start, cl->buf->pos,
                        cl->buf->last - cl->buf->pos);
     }
 
-    for (cl = p->busy; cl; cl = cl->next) {
+    for (cl = p->out; cl; cl = cl->next) {
+        if (cl->buf->in_file && cl->buf->temporary) {
+            ngx_log_debug5(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                           "pipe buf out shadow "
+                           PTR_FMT ", pos " PTR_FMT ", size: %d "
+                           "file: " OFF_T_FMT ", size: %d",
+                           cl->buf->start, cl->buf->pos,
+                           cl->buf->last - cl->buf->pos,
+                           cl->buf->file_pos,
+                           cl->buf->file_last - cl->buf->file_pos);
+
+        } else if (cl->buf->in_file) {
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                           "pipe buf out file " OFF_T_FMT ", size: %d",
+                           cl->buf->file_pos,
+                           cl->buf->file_last - cl->buf->file_pos);
+        } else {
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                           "pipe buf out " PTR_FMT ", pos " PTR_FMT
+                           ", size: %d",
+                           cl->buf->start, cl->buf->pos,
+                           cl->buf->last - cl->buf->pos);
+        }
+    }
+
+    for (cl = p->in; cl; cl = cl->next) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe buf busy " PTR_FMT ", pos " PTR_FMT ", size: %d",
+                       "pipe buf in " PTR_FMT ", pos " PTR_FMT ", size: %d",
                        cl->buf->start, cl->buf->pos,
                        cl->buf->last - cl->buf->pos);
     }
@@ -337,7 +361,9 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
         if (p->free_bufs) {
             for (cl = p->free_raw_bufs; cl; cl = cl->next) {
-                ngx_pfree(p->pool, cl->buf->start); 
+                if (cl->buf->shadow == NULL) {
+                    ngx_pfree(p->pool, cl->buf->start); 
+                }
             }
         }
     }
@@ -597,8 +623,11 @@ static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         ngx_chain_add_link(p->out, p->last_out, cl);
 
         if (b->last_shadow) {
-            b->shadow->last = b->shadow->pos = b->shadow->start;
+            b->shadow->pos = b->shadow->start;
+            b->shadow->last = b->shadow->start;
+
             ngx_alloc_link_and_set_buf(tl, b->shadow, p->pool, NGX_ABORT);
+
             *last_free = tl;
             last_free = &tl->next;
         }
@@ -650,28 +679,24 @@ ngx_inline static void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
 {
     ngx_buf_t  *b, *next;
 
-    if (buf->shadow == NULL) {
+    b = buf->shadow;
+
+    if (b == NULL) {
         return;
     }
-
-    b = buf->shadow;
 
     while (!b->last_shadow) {
         next = b->shadow;
 
-        b->in_file = 0;
-        b->temp_file = 0;
-        b->flush = 0;
-        b->zerocopy_busy = 0;
+        b->temporary = 0;
+        b->recycled = 0;
 
         b->shadow = NULL;
         b = next;
     }
 
-    b->in_file = 0;
-    b->temp_file = 0;
-    b->flush = 0;
-    b->zerocopy_busy = 0;
+    b->temporary = 0;
+    b->recycled = 0;
     b->last_shadow = 0;
 
     b->shadow = NULL;

@@ -57,7 +57,7 @@
 
 
 #define NGX_CONF_OK          NULL
-#define NGX_CONF_ERROR       (void *) -1
+#define NGX_CONF_ERROR       (char *) -1
 
 #define NGX_CONF_BLOCK_DONE  1
 #define NGX_CONF_FILE_DONE   2

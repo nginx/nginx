@@ -204,6 +204,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, tcp_nopush),
       NULL },
 
+    { ngx_string("tcp_nodelay"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, tcp_nodelay),
+      NULL },
+
     { ngx_string("send_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -505,11 +512,11 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
         r->connection->log->log_level = clcf->err_log->log_level;
     }
 
-    if (!(ngx_io.flags & NGX_IO_SENDFILE) || !clcf->sendfile) {
-        r->sendfile = 0;
+    if ((ngx_io.flags & NGX_IO_SENDFILE) && clcf->sendfile) {
+        r->connection->sendfile = 1;
 
     } else {
-        r->sendfile = 1;
+        r->connection->sendfile = 0;
     }
 
     if (!clcf->tcp_nopush) {
@@ -1387,6 +1394,7 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->tcp_nopush = NGX_CONF_UNSET;
+    lcf->tcp_nodelay = NGX_CONF_UNSET;
     lcf->send_timeout = NGX_CONF_UNSET_MSEC;
     lcf->send_lowat = NGX_CONF_UNSET_SIZE;
     lcf->postpone_output = NGX_CONF_UNSET_SIZE;
@@ -1477,6 +1485,7 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                               prev->client_body_timeout, 60000);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
+    ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 0);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 60000);
     ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
     ngx_conf_merge_size_value(conf->postpone_output, prev->postpone_output,
@@ -1795,9 +1804,9 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data)
 {
-#if (HAVE_LOWAT_EVENT)
-
     ssize_t *np = data;
+
+#if __FreeBSD__
 
     if (*np >= ngx_freebsd_net_inet_tcp_sendspace) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1808,10 +1817,12 @@ static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data)
         return NGX_CONF_ERROR;
     }
 
-#else
+#elif !(HAVE_SO_SNDLOWAT)
 
     ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                        "\"send_lowat\" is not supported, ignored");
+
+    *np = 0;
 
 #endif
 

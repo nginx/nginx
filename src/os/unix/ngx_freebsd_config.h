@@ -34,13 +34,13 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>        /* TCP_NODELAY, TCP_NOPUSH */
 #include <arpa/inet.h>
 #include <netdb.h>
 
 #include <libutil.h>            /* setproctitle() before 4.1 */
 #include <osreldate.h>
 #include <sys/sysctl.h>
-#include <netinet/tcp.h>        /* TCP_NOPUSH */
 
 
 #if __FreeBSD_version < 400017

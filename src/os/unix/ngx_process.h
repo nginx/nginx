@@ -56,6 +56,9 @@ void ngx_process_get_status(void);
 
 #define ngx_sched_yield()  sched_yield()
 
+extern int            ngx_argc;
+extern char         **ngx_argv;
+extern char         **ngx_os_argv;
 
 extern ngx_pid_t      ngx_pid;
 extern ngx_socket_t   ngx_channel;

@@ -12,21 +12,13 @@
 #include <ngx_core.h>
 
 
-typedef struct {
-     ngx_file_t    pid;
-     u_char       *name;
-     int           argc;
-     char *const  *argv;
-} ngx_master_ctx_t;
-
-
 #define NGX_PROCESS_SINGLE   0
 #define NGX_PROCESS_MASTER   1
 #define NGX_PROCESS_WORKER   2
 
 
-void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
-void ngx_single_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
+void ngx_master_process_cycle(ngx_cycle_t *cycle);
+void ngx_single_process_cycle(ngx_cycle_t *cycle);
 
 
 extern ngx_uint_t      ngx_process;
