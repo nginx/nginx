@@ -14,5 +14,3 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 
     return n;
 }
-
-

@@ -12,6 +12,13 @@
 #define FD_SETSIZE  1024
 
 
+/* auto_conf */
+#define NGX_ALIGN       (4 - 1)
+#define NGX_ALIGN_TYPE  unsigned
+
+#define ngx_align(p)    (char *) (((NGX_ALIGN_TYPE) p + NGX_ALIGN) & ~NGX_ALIGN)
+
+
 #ifdef _WIN32
 
 #define WIN32 1
@@ -25,9 +32,6 @@
 
 #define ngx_inline   __inline
 
-#define ngx_memzero  ZeroMemory
-
-#define ngx_close_socket closesocket
 
 #ifndef HAVE_INHERITED_NONBLOCK
 #define HAVE_INHERITED_NONBLOCK  1
@@ -66,9 +70,6 @@
 
 #define ngx_inline   inline
 
-#define ngx_memzero  bzero
-
-#define ngx_close_socket close
 
 #endif /* POSIX */
 

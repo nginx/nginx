@@ -110,7 +110,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
             }
             break;
 
-        /* check dot after slash */
+        /* check "/." or "//" */
         case sw_after_slash_in_uri:
             switch (ch) {
             case CR:
@@ -132,8 +132,9 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 state = sw_uri;
                 break;
             case '/':
+#if (WIN32)
                 r->complex_uri = 1;
-                state = sw_uri;
+#endif
                 break;
             case '?':
                 r->args_start = p;

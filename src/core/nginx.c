@@ -32,6 +32,8 @@ ngx_log_t     ngx_log;
 ngx_pool_t   *ngx_pool;
 
 
+int ngx_connection_counter;
+
 ngx_array_t  *ngx_listening_sockets;
 
 
@@ -43,7 +45,9 @@ int main(int argc, char *const *argv)
     ngx_pool = ngx_create_pool(16 * 1024, &ngx_log);
     /* */
 
+#if !(WIN32)
     ngx_set_signals(&ngx_log);
+#endif
 
     ngx_init_sockets(&ngx_log);
 
@@ -73,6 +77,7 @@ int main(int argc, char *const *argv)
     return 0;
 }
 
+#if !(WIN32)
 static void ngx_set_signals(ngx_log_t *log)
 {
     struct sigaction sa;
@@ -86,6 +91,7 @@ static void ngx_set_signals(ngx_log_t *log)
         exit(1);
     }
 }
+#endif
 
 static void ngx_open_listening_sockets(ngx_log_t *log)
 {

@@ -6,16 +6,23 @@
 
 
 typedef struct {
-    int   len;
-    char *data;
+    size_t  len;
+    char   *data;
 } ngx_str_t;
 
 #if (WIN32)
+
+
+#define ngx_memzero               ZeroMemory
+
+#define strcasecmp                stricmp
 
 #define ngx_snprintf              _snprintf
 #define ngx_vsnprintf             _vsnprintf
 
 #else
+
+#define ngx_memzero               bzero
 
 #define ngx_snprintf              snprintf
 #define ngx_vsnprintf             vsnprintf

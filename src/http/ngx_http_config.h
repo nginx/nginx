@@ -10,6 +10,8 @@
 int ngx_http_config_modules(ngx_pool_t *pool, ngx_http_module_t **modules);
 
 
+extern int (*ngx_http_top_header_filter) (ngx_http_request_t *r);
+
 extern void **ngx_srv_conf;
 extern void **ngx_loc_conf;
 

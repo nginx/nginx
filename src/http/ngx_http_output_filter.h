@@ -15,7 +15,9 @@ typedef struct {
 } ngx_http_output_filter_conf_t;
 
 typedef struct {
+#if 0
     int         (*next_filter)(ngx_http_request_t *r, ngx_chain_t *ch);
+#endif
     ngx_hunk_t   *hunk;
     ngx_chain_t  *in;
     ngx_chain_t   out;

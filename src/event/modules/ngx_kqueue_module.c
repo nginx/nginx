@@ -16,12 +16,14 @@
 #endif
 
 
-
+/* should be per-thread */
 static int              kq;
 static struct kevent   *change_list, *event_list;
 static int              nchanges, nevents;
 
 static ngx_event_t      timer_queue;
+/* */
+
 
 int ngx_kqueue_init(int max_connections, ngx_log_t *log)
 {
@@ -53,6 +55,7 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
     return NGX_OK;
 }
 
+
 int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
@@ -60,21 +63,32 @@ int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
     return ngx_kqueue_set_event(ev, event, EV_ADD | flags);
 }
 
-int ngx_kqueue_del_event(ngx_event_t *ev, int event)
+
+int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t *e;
 
-    if (ev->index <= nchanges && change_list[ev->index].udata == ev) {
-        change_list[ev->index] = change_list[nchanges];
-        e = (ngx_event_t *) change_list[ev->index].udata;
-        e->index = ev->index;
-        nchanges--;
+    if (ev->index < nchanges && change_list[ev->index].udata == ev) {
+
+        ngx_connection_t *cn = (ngx_connection_t *) ev->data;
+        ngx_log_debug(ev->log, "kqueue del event: %d: ft:%d" _
+                      cn->fd _ event);
+
+        if (ev->index < --nchanges) {
+            e = (ngx_event_t *) change_list[nchanges].udata;
+            change_list[ev->index] = change_list[nchanges];
+            e->index = ev->index;
+        }
 
         return NGX_OK;
     }
 
+    if (flags & NGX_CLOSE_EVENT)
+        return NGX_OK;
+
     return ngx_kqueue_set_event(ev, event, EV_DELETE);
 }
+
 
 int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 {
@@ -110,13 +124,18 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
     return NGX_OK;
 }
 
+
 int ngx_kqueue_process_events(ngx_log_t *log)
 {
     int              events, i;
-    u_int            timer = 0, delta = 0;
+    u_int            timer, delta;
     ngx_event_t      *ev;
     struct timeval   tv;
-    struct timespec  ts, *tp = NULL;
+    struct timespec  ts, *tp;
+
+    timer = 0;
+    delta = 0;
+    tp = NULL;
 
     if (timer_queue.timer_next != &timer_queue) {
         timer = timer_queue.timer_next->timer_delta;
@@ -211,6 +230,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
 
     return NGX_OK;
 }
+
 
 void ngx_kqueue_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {

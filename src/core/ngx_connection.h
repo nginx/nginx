@@ -44,6 +44,8 @@ struct ngx_connection_s {
     ngx_hunk_t       *buffer;
     unsigned int      post_accept_timeout;
 
+    int               number;
+
     unsigned          unexpected_eof:1;
 };
 

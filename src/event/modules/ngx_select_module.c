@@ -8,24 +8,26 @@
 #include <ngx_event.h>
 #include <ngx_select_module.h>
 
-static fd_set       master_read_fd_set;
-static fd_set       master_write_fd_set;
-static fd_set       work_read_fd_set;
-static fd_set       work_write_fd_set;
+
+/* should be per-thread */
+static fd_set         master_read_fd_set;
+static fd_set         master_write_fd_set;
+static fd_set         work_read_fd_set;
+static fd_set         work_write_fd_set;
 
 #if (WIN32)
-static int          max_read;
-static int          max_write;
+static int            max_read;
+static int            max_write;
 #else
-static int          max_fd;
+static int            max_fd;
 #endif
 
-static int          nevents;
+static int            nevents;
 
 static ngx_event_t  **event_index;
 static ngx_event_t  **ready_index;
 static ngx_event_t    timer_queue;
-
+/* */
 
 static fd_set *ngx_select_get_fd_set(ngx_socket_t fd, int event,
                                      ngx_log_t *log);
@@ -121,12 +123,15 @@ int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
     return NGX_OK;
 }
 
-int ngx_select_del_event(ngx_event_t *ev, int event)
+int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_connection_t *c;
     c = (ngx_connection_t *) ev->data;
 
-    ngx_log_debug(c->log, "del event: %d" _ c->fd);
+    if (ev->index == NGX_INVALID_INDEX)
+        return NGX_OK;
+
+    ngx_log_debug(c->log, "del event: %d, %d" _ c->fd _ event);
 
 #if (WIN32)
     if (event == NGX_READ_EVENT) {
@@ -148,12 +153,12 @@ int ngx_select_del_event(ngx_event_t *ev, int event)
         max_fd = -1;
 #endif
 
-    nevents--;
-
-    if (ev->index < nevents) {
+    if (ev->index < --nevents) {
         event_index[ev->index] = event_index[nevents];
         event_index[ev->index]->index = ev->index;
     }
+
+    ev->index = NGX_INVALID_INDEX;
 
     return NGX_OK;
 }
@@ -162,7 +167,7 @@ int ngx_select_process_events(ngx_log_t *log)
 {
     int                i, ready, found, nready;
     u_int              timer, delta;
-    ngx_event_t       *ev, *nx;
+    ngx_event_t       *ev;
     ngx_connection_t  *c;
     struct timeval     tv, *tp;
 
@@ -195,6 +200,15 @@ int ngx_select_process_events(ngx_log_t *log)
     }
 #endif
 
+#if 1
+    /* DEBUG */
+    for (i = 0; i < nevents; i++) {
+        ev = event_index[i];
+        c = (ngx_connection_t *) ev->data;
+        ngx_log_debug(log, "select: %d" _ c->fd);
+    }
+#endif
+
     ngx_log_debug(log, "select timer: %d" _ timer);
 
 #if (WIN32)
@@ -222,17 +236,17 @@ int ngx_select_process_events(ngx_log_t *log)
 
     if (timer) {
         if (delta >= timer) {
-            for (ev = timer_queue.timer_next;
-                 ev != &timer_queue && delta >= ev->timer_delta;
-                 /* void */)
-            {
+            for ( ;; ) {
+                ev = timer_queue.timer_next;
+
+                if (ev == &timer_queue || delta < ev->timer_delta)
+                    break;
+
                 delta -= ev->timer_delta;
-                nx = ev->timer_next;
                 ngx_del_timer(ev);
                 ev->timedout = 1;
-                if (ev->event_handler(ev) == -1)
+                if (ev->event_handler(ev) == NGX_ERROR)
                     ev->close_handler(ev);
-                ev = nx;
             }
 
         } else {
@@ -249,15 +263,13 @@ int ngx_select_process_events(ngx_log_t *log)
 
         if (ev->write) {
             if (FD_ISSET(c->fd, &work_write_fd_set)) {
-                ngx_log_debug(log, "select write %d" _
-                              c->fd);
+                ngx_log_debug(log, "select write %d" _ c->fd);
                 found = 1;
             }
 
         } else {
             if (FD_ISSET(c->fd, &work_read_fd_set)) {
-                ngx_log_debug(log, "select read %d" _
-                              c->fd);
+                ngx_log_debug(log, "select read %d" _ c->fd);
                 found = 1;
             }
         }
@@ -274,13 +286,14 @@ int ngx_select_process_events(ngx_log_t *log)
 
         if (ev->oneshot) {
             ngx_del_timer(ev);
+
             if (ev->write)
-                ngx_select_del_event(ev, NGX_WRITE_EVENT);
+                ngx_select_del_event(ev, NGX_WRITE_EVENT, 0);
             else
-                ngx_select_del_event(ev, NGX_READ_EVENT);
+                ngx_select_del_event(ev, NGX_READ_EVENT, 0);
         }
 
-        if (ev->event_handler(ev) == -1)
+        if (ev->event_handler(ev) == NGX_ERROR)
             ev->close_handler(ev);
 
         ready--;

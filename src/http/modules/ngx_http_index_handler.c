@@ -16,7 +16,16 @@ static void *ngx_http_index_merge_conf(ngx_pool_t *p,
 static char *ngx_http_index_set_index(ngx_pool_t *p, void *conf,
                                       ngx_str_t *value);
 
-static ngx_command_t ngx_http_index_commands[];
+
+static ngx_command_t ngx_http_index_commands[] = {
+
+    {"index", ngx_http_index_set_index, NULL,
+     NGX_HTTP_LOC_CONF, NGX_CONF_ITERATE,
+     "set index files"},
+
+    {NULL}
+
+};
 
 
 ngx_http_module_t  ngx_http_index_module = {
@@ -30,17 +39,6 @@ ngx_http_module_t  ngx_http_index_module = {
     NULL,                                  /* translate handler */
 
     NULL,                                  /* init output body filter */
-};
-
-
-static ngx_command_t ngx_http_index_commands[] = {
-
-    {"index", ngx_http_index_set_index, NULL,
-     NGX_HTTP_LOC_CONF, NGX_CONF_ITERATE,
-     "set index files"},
-
-    {NULL}
-
 };
 
 
@@ -71,10 +69,14 @@ int ngx_http_index_handler(ngx_http_request_t *r)
         ngx_memcpy(file, index[i].data, index[i].len + 1);
 
         fd = ngx_open_file(name, NGX_FILE_RDONLY);
-        if (fd == -1) {
+        if (fd == NGX_INVALID_FILE) {
             err = ngx_errno;
             if (err == NGX_ENOENT)
                 continue;
+#if (WIN32)
+            if (err == ERROR_PATH_NOT_FOUND)
+                continue;
+#endif
 
             ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
                           ngx_open_file_n " %s failed", name);
@@ -82,9 +84,9 @@ int ngx_http_index_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        r->filename.len = r->server->doc_root_len + r->uri.len + index[i].len;
-        r->filename.data = name; 
-        r->fd = fd; 
+        r->file.name.len = r->server->doc_root_len + r->uri.len + index[i].len;
+        r->file.name.data = name; 
+        r->file.fd = fd; 
 
         loc.len = r->uri.len + index[i].len;
         return ngx_http_internal_redirect(r, loc);

@@ -3,6 +3,7 @@
 
 #include <ngx_errno.h>
 #include <ngx_log.h>
+#include <ngx_string.h>
 #include <ngx_alloc.h>
 
 
@@ -15,7 +16,7 @@ void *ngx_alloc(size_t size, ngx_log_t *log)
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "malloc() %d bytes failed", size);
 
-    ngx_log_debug(log, "malloc: %x:%d" _ p _ size);
+    ngx_log_debug(log, "malloc: %08x:%d" _ p _ size);
 
     return p;
 }
@@ -52,12 +53,12 @@ void ngx_destroy_pool(ngx_pool_t *pool)
     ngx_pool_large_t  *l;
 
     for (l = pool->large; l; l = l->next) {
-        ngx_log_debug(pool->log, "free: %x" _ l->alloc);
+        ngx_log_debug(pool->log, "free: %08x" _ l->alloc);
         free(l->alloc);
     }
 
     for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
-        ngx_log_debug(pool->log, "free: %x" _ p);
+        ngx_log_debug(pool->log, "free: %08x" _ p);
         free(p);
 
         if (n == NULL)
@@ -74,9 +75,10 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
     if (size <= NGX_MAX_ALLOC_FROM_POOL) {
 
         for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
-            if ((size_t) (p->end - p->last) >= size) {
-                m = p->last;
-                p->last += size;
+            if ((size_t) (p->end - ngx_align(p->last)) >= size) {
+                m = ngx_align(p->last);
+                p->last = ngx_align(p->last);
+                p->last += size ;
 
                 return m;
             }

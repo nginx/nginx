@@ -6,6 +6,9 @@
 #include <sys/stat.h>
 
 typedef int                      ngx_fd_t;
+#define NGX_INVALID_FILE         -1
+#define NGX_FILE_ERROR           -1
+
 typedef struct stat              ngx_file_info_t;
 
 
@@ -27,6 +30,7 @@ typedef struct stat              ngx_file_info_t;
 #define ngx_stat_fd_n            "fstat()"
 
 #define ngx_is_dir(sb)           (S_ISDIR(sb.st_mode))
+#define ngx_is_file(sb)          (S_ISREG(sb.st_mode))
 #define ngx_file_size(sb)        sb.st_size
 #define ngx_file_mtime(sb)       sb.st_mtime
 

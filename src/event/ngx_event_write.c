@@ -98,8 +98,7 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *c, ngx_chain_t *in,
                                   (ngx_iovec_t *) trailer->elts, trailer->nelts,
                                   &sent, c->log);
             } else {
-                rc = ngx_sendv(c, (ngx_iovec_t *) header->elts,
-                               header->nelts);
+                rc = ngx_sendv(c, (ngx_iovec_t *) header->elts, header->nelts);
 
                 sent = rc > 0 ? rc: 0;
 

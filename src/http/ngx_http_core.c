@@ -18,7 +18,16 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool);
 static int ngx_http_core_translate_handler(ngx_http_request_t *r);
 
 
-static ngx_command_t ngx_http_core_commands[];
+static ngx_command_t ngx_http_core_commands[] = {
+
+    {"send_timeout", ngx_conf_set_time_slot,
+     offsetof(ngx_http_core_loc_conf_t, send_timeout),
+     NGX_HTTP_LOC_CONF, NGX_CONF_TAKE1,
+     "set timeout for sending response"},
+
+    {NULL}
+
+};
 
 
 ngx_http_module_t  ngx_http_core_module = {
@@ -32,18 +41,6 @@ ngx_http_module_t  ngx_http_core_module = {
     ngx_http_core_translate_handler,       /* translate handler */
 
     NULL                                   /* init output body filter */
-};
-
-
-static ngx_command_t ngx_http_core_commands[] = {
-
-    {"send_timeout", ngx_conf_set_time_slot,
-     offsetof(ngx_http_core_loc_conf_t, send_timeout),
-     NGX_HTTP_LOC_CONF, NGX_CONF_TAKE1,
-     "set timeout for sending response"},
-
-    {NULL}
-
 };
 
 
@@ -95,22 +92,54 @@ static int ngx_http_core_translate_handler(ngx_http_request_t *r)
         return NGX_OK;
     }
 
-    r->filename.len = r->server->doc_root_len + r->uri.len + 2;
+    r->file.name.len = r->server->doc_root_len + r->uri.len + 2;
 
-    ngx_test_null(r->filename.data,
-                  ngx_palloc(r->pool, r->filename.len + 1),
+    ngx_test_null(r->file.name.data,
+                  ngx_palloc(r->pool, r->file.name.len + 1),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    loc = ngx_cpystrn(r->filename.data, r->server->doc_root,
+    loc = ngx_cpystrn(r->file.name.data, r->server->doc_root,
                       r->server->doc_root_len);
     last = ngx_cpystrn(loc, r->uri.data, r->uri.len + 1);
 
-    ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->filename.data);
+    ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _
+                  r->file.name.data);
 
-    if (ngx_file_type(r->filename.data, &r->fileinfo) == -1) {
+#if (WIN32)
+
+    /* There is no way to open file or directory in Win32 with
+       one syscall: CreateFile() returns ERROR_ACCESS_DENIED on directory,
+       so we need to check its type before opening */
+
+#if 0 /* OLD: ngx_file_type() is to be removed */
+    if (ngx_file_type(r->file.name.data, &r->file.info) == -1) {
+#endif
+
+    r->file.info.dwFileAttributes = GetFileAttributes(r->file.name.data);
+    if (r->file.info.dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
         err = ngx_errno;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                      ngx_file_type_n " %s failed", r->filename.data);
+                      "ngx_http_core_translate_handler: "
+                      ngx_file_type_n " %s failed", r->file.name.data);
+
+        if (err == ERROR_FILE_NOT_FOUND)
+            return NGX_HTTP_NOT_FOUND;
+        else if (err == ERROR_PATH_NOT_FOUND)
+            return NGX_HTTP_NOT_FOUND;
+        else
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+#else
+
+    if (r->file.fd == NGX_INVALID_FILE)
+        r->file.fd = ngx_open_file(r->file.name.data, NGX_FILE_RDONLY);
+
+    if (r->file.fd == NGX_INVALID_FILE) {
+        err = ngx_errno;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                      "ngx_http_static_handler: "
+                      ngx_open_file_n " %s failed", r->file.name.data);
 
         if (err == NGX_ENOENT)
             return NGX_HTTP_NOT_FOUND;
@@ -118,8 +147,33 @@ static int ngx_http_core_translate_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (ngx_is_dir(r->fileinfo)) {
-        ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->filename.data);
+    if (!r->file.info_valid) {
+        if (ngx_stat_fd(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                          "ngx_http_static_handler: "
+                          ngx_stat_fd_n " %s failed", r->file.name.data);
+
+            if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR)
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                              "ngx_http_static_handler: "
+                              ngx_close_file_n " %s failed", r->file.name.data);
+
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        r->file.info_valid = 1;
+    }
+#endif
+
+    if (ngx_is_dir(r->file.info)) {
+        ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
+
+#if !(WIN32)
+        if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR)
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                          "ngx_http_static_handler: "
+                          ngx_close_file_n " %s failed", r->file.name.data);
+#endif
 
         /* BROKEN: need to include server name */
 
@@ -144,6 +198,11 @@ static int ngx_http_core_translate_handler(ngx_http_request_t *r)
 }
 
 
+int ngx_http_send_header(ngx_http_request_t *r)
+{
+    return (*ngx_http_top_header_filter)(r);
+}
+
 
 int ngx_http_redirect(ngx_http_request_t *r, int redirect)
 {
@@ -162,17 +221,27 @@ int ngx_http_error(ngx_http_request_t *r, int error)
 
     /* log request */
 
+    ngx_http_special_response(r, error);
     return ngx_http_close_request(r);
 }
 
 
 int ngx_http_close_request(ngx_http_request_t *r)
 {
-    ngx_assert((r->fd != -1), /* void */; , r->connection->log,
-               "file already closed");
+    ngx_log_debug(r->connection->log, "CLOSE#: %d" _ r->file.fd);
 
-    if (r->fd != -1) {
-        if (ngx_close_file(r->fd) == -1)
+    ngx_http_log_handler(r);
+
+    ngx_assert((r->file.fd != NGX_INVALID_FILE), /* void */ ; ,
+               r->connection->log, "file already closed");
+
+    if (r->file.fd != NGX_INVALID_FILE) {
+/* STUB WIN32 */
+#if (WIN32)
+        if (ngx_close_file(r->file.fd) == 0)
+#else
+        if (ngx_close_file(r->file.fd) == -1)
+#endif
             ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
                           ngx_close_file_n " failed");
     }

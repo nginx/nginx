@@ -9,7 +9,7 @@
 #include <ngx_http.h>
 
 
-#if 0
+static int ngx_http_header_filter(ngx_http_request_t *r);
 
 ngx_http_module_t  ngx_http_header_filter_module = {
     NGX_HTTP_MODULE,
@@ -21,33 +21,40 @@ ngx_http_module_t  ngx_http_header_filter_module = {
     NULL,                                  /* init module */
     NULL,                                  /* translate handler */
 
-    ngx_http_header_filter_init            /* init output header filter */
-    NULL                                   /* init output body filter */
+    ngx_http_header_filter,                /* output header filter */
+    NULL,                                  /* next output header filter */
+    NULL,                                  /* output body filter */
+    NULL                                   /* next output body filter */
 };
-
-#endif
 
 
 static char server_string[] = "Server: " NGINX_VER CRLF;
 
 
 static ngx_str_t http_codes[] = {
+
     { 6,  "200 OK" },
 
     { 21, "301 Moved Permanently" },
+    { 21, "302 Moved Temporarily" },
+    { 0,  NULL },
+    { 16, "304 Not Modified" },
 
     { 15, "400 Bad Request" },
     { 0,  NULL },
     { 0,  NULL },
     { 13, "403 Forbidden" },
-    { 13, "404 Not Found" }
+    { 13, "404 Not Found" },
+
+    { 25, "500 Internal Server Error" }
 };
 
 
 
-int ngx_http_header_filter(ngx_http_request_t *r)
+static int ngx_http_header_filter(ngx_http_request_t *r)
 {
     int  len, status, i;
+    time_t            ims;
     ngx_hunk_t       *h;
     ngx_chain_t      *ch;
     ngx_table_elt_t  *header;
@@ -55,9 +62,29 @@ int ngx_http_header_filter(ngx_http_request_t *r)
     if (r->http_version < NGX_HTTP_VERSION_10)
         return NGX_OK;
 
-    /* 9 is for "HTTP/1.1 ", 2 is for trailing "\r\n"
+    /* 9 is for "HTTP/1.x ", 2 is for trailing "\r\n"
        and 2 is for end of header */
     len = 9 + 2 + 2;
+
+    if (r->headers_in.if_modified_since && r->headers_out.status == NGX_HTTP_OK)
+    {
+        /* TODO: check LM header */
+        if (r->headers_out.last_modified_time) {
+            ims = ngx_http_parse_time(
+                                  r->headers_in.if_modified_since->value.data,
+                                  r->headers_in.if_modified_since->value.len);
+
+            ngx_log_debug(r->connection->log, "%d %d" _
+                          ims _ r->headers_out.last_modified_time);
+
+            if (ims != NGX_ERROR && ims >= r->headers_out.last_modified_time) {
+                r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
+                r->headers_out.content_length = -1;
+                r->headers_out.content_type->key.len = 0;
+                r->header_only = 1;
+            }
+        }
+    }
 
     /* status line */
     if (r->headers_out.status_line.len) {
@@ -69,8 +96,12 @@ int ngx_http_header_filter(ngx_http_request_t *r)
         else if (r->headers_out.status < NGX_HTTP_BAD_REQUEST)
             status = r->headers_out.status - NGX_HTTP_MOVED_PERMANENTLY + 1;
 
+        else if (r->headers_out.status < NGX_HTTP_INTERNAL_SERVER_ERROR)
+            status = r->headers_out.status - NGX_HTTP_BAD_REQUEST + 1 + 4;
+
         else
-            status = r->headers_out.status - NGX_HTTP_BAD_REQUEST + 1 + 1;
+            status = r->headers_out.status
+                                 - NGX_HTTP_INTERNAL_SERVER_ERROR + 1 + 4 + 5;
 
         len += http_codes[status].len;
     }
@@ -99,6 +130,14 @@ int ngx_http_header_filter(ngx_http_request_t *r)
         len += r->headers_out.content_type.len + 16;
 #endif
 
+    if (r->headers_out.last_modified && r->headers_out.last_modified->key.len) {
+        len += r->headers_out.last_modified->key.len
+               + r->headers_out.last_modified->value.len + 2;
+    } else if (r->headers_out.last_modified_time != -1) {
+        /* "Last-Modified: ... \r\n"; */
+        len += 46;
+    }
+
     if (r->keepalive)
         len += 24;
     else
@@ -114,7 +153,7 @@ int ngx_http_header_filter(ngx_http_request_t *r)
 
     ngx_test_null(h, ngx_create_temp_hunk(r->pool, len, 0, 64), NGX_ERROR);
 
-    /* "HTTP/1.1 " */
+    /* "HTTP/1.x " */
     ngx_memcpy(h->last.mem, "HTTP/1.1 ", 9);
     h->last.mem += 9;
 
@@ -159,6 +198,17 @@ int ngx_http_header_filter(ngx_http_request_t *r)
     }
 #endif
 
+    if (!(r->headers_out.last_modified
+          && r->headers_out.last_modified->key.len)
+        && r->headers_out.last_modified_time != -1)
+    {
+        ngx_memcpy(h->last.mem, "Last-Modified: ", 15);
+        h->last.mem += 15;
+        h->last.mem += ngx_http_get_time(h->last.mem,
+                                         r->headers_out.last_modified_time);
+        *(h->last.mem++) = CR; *(h->last.mem++) = LF;
+    }
+
     if (r->keepalive) {
         ngx_memcpy(h->last.mem, "Connection: keep-alive" CRLF, 24);
         h->last.mem += 24;
@@ -181,8 +231,16 @@ int ngx_http_header_filter(ngx_http_request_t *r)
         *(h->last.mem++) = CR; *(h->last.mem++) = LF;
     }
 
+    /* STUB */
+    *(h->last.mem) = '\0';
+    ngx_log_debug(r->connection->log, "%s\n" _ h->pos.mem);
+    /**/
+
     /* end of HTTP header */
     *(h->last.mem++) = CR; *(h->last.mem++) = LF;
+
+    if (r->header_only)
+        h->type |= NGX_HUNK_LAST;
 
     ngx_test_null(ch, ngx_palloc(r->pool, sizeof(ngx_chain_t)), NGX_ERROR);
 

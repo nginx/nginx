@@ -32,11 +32,13 @@
 
 #define NGX_HTTP_OK                     200
 #define NGX_HTTP_SPECIAL_RESPONSE       300
-#define NGX_HTTP_MOVED_PERMANENTLY      302
+#define NGX_HTTP_MOVED_PERMANENTLY      301
+#define NGX_HTTP_MOVED_TEMPORARILY      302
+#define NGX_HTTP_NOT_MODIFIED           304
 #define NGX_HTTP_BAD_REQUEST            400
 #define NGX_HTTP_NOT_FOUND              404
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE  414
-#define NGX_HTTP_INTERNAL_SERVER_ERROR  503
+#define NGX_HTTP_INTERNAL_SERVER_ERROR  500
 
 
 #define NGX_HTTP_STATIC_HANDLER     0
@@ -59,20 +61,24 @@ typedef struct {
     time_t         lingering_time;
 } ngx_http_server_t;
 
+
 typedef struct {
     int    len;
     char  *data;
     int    offset;
 } ngx_http_header_t;
 
+
 typedef struct {
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
+    ngx_table_elt_t  *if_modified_since;
     ngx_table_elt_t  *user_agent;
     ngx_table_elt_t  *accept_encoding;
 
     ngx_table_t      *headers;
 } ngx_http_headers_in_t;
+
 
 typedef struct {
     int               status;
@@ -93,12 +99,18 @@ typedef struct {
     time_t            last_modified_time;
 } ngx_http_headers_out_t;
 
+
 typedef struct ngx_http_request_s ngx_http_request_t;
 
 struct ngx_http_request_s {
-    ngx_str_t  filename;
+    ngx_file_t  file;
 
+#if 0
+    ngx_str_t   filename;
+    ngx_file_info_t fileinfo;
     ngx_fd_t  fd;
+    int    filename_len;
+#endif
 
     void  **ctx;
     void  **loc_conf;
@@ -110,10 +122,7 @@ struct ngx_http_request_s {
     ngx_http_headers_in_t   headers_in;
     ngx_http_headers_out_t  headers_out;
 
-    int    filename_len;
     int  (*handler)(ngx_http_request_t *r);
-
-    ngx_file_info_t fileinfo;
 
     int    method;
 
@@ -146,7 +155,7 @@ struct ngx_http_request_s {
 
     unsigned  header_only:1;
     unsigned  unusual_uri:1;  /* URI is not started with '/' - "GET http://" */
-    unsigned  complex_uri:1;  /* URI with "./" or with "//" */
+    unsigned  complex_uri:1;  /* URI with "/." or with "//" (WIN32) */
 
     int    state;
     char  *uri_start;
@@ -162,6 +171,7 @@ struct ngx_http_request_s {
     int  (*state_handler)(ngx_http_request_t *r);
 #endif
 };
+
 
 typedef struct {
     char  *action;
@@ -181,9 +191,19 @@ typedef struct {
 
     int             (*translate_handler)(ngx_http_request_t *r);
 
-    int             (*init_output_body_filter)(int (**next_filter)
+    int             (*output_header_filter) (ngx_http_request_t *r);
+    int             (*next_output_header_filter) (ngx_http_request_t *r);
+
+    int             (*output_body_filter)();
+    int             (*next_output_body_filter)
+                                      (ngx_http_request_t *r, ngx_chain_t *ch);
+
+#if 0
+    int             (*next_output_body_filter)(int (**next_filter)
                                      (ngx_http_request_t *r, ngx_chain_t *ch));
+#endif
 } ngx_http_module_t;
+
 
 #define NGX_HTTP_MODULE  0
 
@@ -204,8 +224,12 @@ typedef struct {
 
 /* STUB */
 int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log);
+/**/
 
 int ngx_http_init_connection(ngx_connection_t *c);
+
+
+int ngx_http_discard_body(ngx_http_request_t *r);
 
 
 extern int ngx_max_module;

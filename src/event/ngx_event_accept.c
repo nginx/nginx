@@ -1,4 +1,6 @@
 
+#include <nginx.h>
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_types.h>
@@ -11,11 +13,12 @@
 
 int ngx_event_accept(ngx_event_t *ev)
 {
-    ngx_err_t           err;
-    ngx_socket_t        s;
-    struct sockaddr_in  addr;
-    int addrlen = sizeof(struct sockaddr_in);
-    ngx_connection_t *cn = (ngx_connection_t *) ev->data;
+    ngx_err_t          err;
+    ngx_socket_t       s;
+    ngx_event_t       *rev, *wev;
+    ngx_connection_t  *c, *ac;
+
+    ac = (ngx_connection_t *) ev->data;
             
     ngx_log_debug(ev->log, "ngx_event_accept: accept ready: %d" _
                   ev->available);
@@ -23,22 +26,20 @@ int ngx_event_accept(ngx_event_t *ev)
     ev->ready = 0;
   
     do {
-        if ((s = accept(cn->fd, cn->sockaddr, &cn->socklen)) == -1) {
+        if ((s = accept(ac->fd, ac->sockaddr, &ac->socklen)) == -1) {
             err = ngx_socket_errno;
             if (err == NGX_EAGAIN) {
                 ngx_log_error(NGX_LOG_INFO, ev->log, err,
                              "ngx_event_accept: EAGAIN while accept %s",
-                             cn->addr_text);
+                             ac->addr_text);
                 return NGX_OK;
             }
 
             ngx_log_error(NGX_LOG_ERR, ev->log, err,
-                         "ngx_event_accept: accept %s failed", cn->addr_text);
+                         "ngx_event_accept: accept %s failed", ac->addr_text);
             /* if we return NGX_ERROR listen socket would be closed */
             return NGX_OK;
         }
-
-        ngx_log_debug(ev->log, "ngx_event_accept: accept: %d" _ s);
 
 #if !(HAVE_INHERITED_NONBLOCK)
         if (ngx_nonblocking(s) == -1)
@@ -46,46 +47,52 @@ int ngx_event_accept(ngx_event_t *ev)
                           ngx_nonblocking_n "failed");
 #endif
 
-        ngx_memzero(&ngx_read_events[s], sizeof(ngx_event_t));
-        ngx_memzero(&ngx_write_events[s], sizeof(ngx_event_t));
-        ngx_memzero(&ngx_connections[s], sizeof(ngx_connection_t));
+        rev = &ngx_read_events[s];
+        wev = &ngx_write_events[s];
+        c = &ngx_connections[s];
 
-        ngx_connections[s].sockaddr = cn->sockaddr;
-        ngx_connections[s].family = cn->family;
-        ngx_connections[s].socklen = cn->socklen;
-        ngx_connections[s].addr = cn->addr;
-        ngx_connections[s].addr_text.len = cn->addr_text.len;
-        ngx_connections[s].post_accept_timeout = cn->post_accept_timeout;
+        ngx_memzero(rev, sizeof(ngx_event_t));
+        ngx_memzero(wev, sizeof(ngx_event_t));
+        ngx_memzero(c, sizeof(ngx_connection_t));
 
-        ngx_read_events[s].data = ngx_write_events[s].data
-                                                         = &ngx_connections[s];
-        ngx_connections[s].read = &ngx_read_events[s];
-        ngx_connections[s].write = &ngx_write_events[s];
+        c->sockaddr = ac->sockaddr;
+        c->family = ac->family;
+        c->socklen = ac->socklen;
+        c->addr = ac->addr;
+        c->addr_text.len = ac->addr_text.len;
+        c->post_accept_timeout = ac->post_accept_timeout;
 
-        ngx_connections[s].fd = s;
-        ngx_connections[s].unexpected_eof = 1;
-        ngx_write_events[s].write = 1;
-        ngx_write_events[s].ready = 1;
+        rev->index = wev->index = NGX_INVALID_INDEX;
 
-        ngx_write_events[s].timer = ngx_read_events[s].timer = 10000;
+        rev->data = wev->data = c;
+        c->read = rev;
+        c->write = wev;
 
-        ngx_write_events[s].timer_handler =
-            ngx_read_events[s].timer_handler = ngx_event_close_connection;
+        c->fd = s;
+        c->unexpected_eof = 1;
+        wev->write = 1;
+        wev->ready = 1;
 
-        ngx_write_events[s].close_handler =
-            ngx_read_events[s].close_handler = ngx_event_close_connection;
+        wev->timer = rev->timer = 10000;
+        wev->timer_handler = rev->timer_handler = ngx_event_close_connection;
+        wev->close_handler = rev->close_handler = ngx_event_close_connection;
 
-        ngx_connections[s].server = cn->server;
-        ngx_connections[s].servers = cn->servers;
-        ngx_connections[s].log =
-            ngx_read_events[s].log = ngx_write_events[s].log = ev->log;
+        c->server = ac->server;
+        c->servers = ac->servers;
+        c->log = rev->log = wev->log = ev->log;
+
+        /* STUB: x86: SP: xadd, MT: lock xadd, MP: lock xadd, shared */
+        c->number = ngx_connection_counter++;
+
+        ngx_log_debug(ev->log, "ngx_event_accept: accept: %d, %d" _
+                                s _ c->number);
 
 #if (HAVE_DEFERRED_ACCEPT)
         if (ev->accept_filter)
-            ngx_read_events[s].ready = 1;
+            rev->ready = 1;
 #endif
 
-        cn->handler(&ngx_connections[s]);
+        ac->handler(c);
 
 #if (HAVE_KQUEUE)
 #if !(USE_KQUEUE)

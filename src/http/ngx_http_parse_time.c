@@ -1,7 +1,8 @@
 
-#include <time.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_types.h>
 
-#define NGX_ERROR  -1
 
 static int mday[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
@@ -16,6 +17,7 @@ time_t ngx_http_parse_time(char *value, size_t len)
         isoc      /* Tue Dec 10 23:50:13 2002    */
     } fmt;
 
+    fmt = 0;
     end = value + len;
 
     for (p = value; p < end; p++) {
@@ -182,31 +184,38 @@ time_t ngx_http_parse_time(char *value, size_t len)
                + (*(p + 2) - '0') * 10 + *(p + 3) - '0';
     }
 
+#if 0
     printf("%d.%d.%d %d:%d:%d\n", day, month + 1, year, hour, min, sec);
+#endif
 
-    if (hour > 23 || min > 60 || sec > 60)
+    if (hour > 23 || min > 59 || sec > 59)
          return NGX_ERROR;
 
     if (day == 29 && month == 1) {
         if ((year & 3) || ((year % 100 == 0) && (year % 400) != 0))
             return NGX_ERROR;
 
-    } else if (day > mday[month])
+    } else if (day > mday[month]) {
         return NGX_ERROR;
     }
 
     if (sizeof(time_t) <= 4 && year >= 2038)
         return NGX_ERROR;
 
+    /* shift new year to 1st March, needed for Gauss's formula */
     if (--month <= 0) {
        month += 12;
        year -= 1;
     }
-
-    return year / 4 - year / 100 + year / 400
-           + 367 * month / 12 + day + year * 365 - 719499;
+           /* Gauss's formula for days from 1 March 1 BC */
+    return (365 * year + year / 4 - year / 100 + year / 400
+                                               + 367 * month / 12 + day - 31
+           /* 719527 days are between 1 March 1 BC and 1 March 1970,
+              31 and 28 days in Jan and Feb 1970  */
+            - 719527 + 31 + 28) * 86400 + hour * 3600 + min * 60 + sec;
 }
 
+#if 0
 char zero[] = "Sun, 01 Jan 1970 08:49:30";
 char one[]  = "Sunday, 11-Dec-02 08:49:30";
 char two[]  = "Sun Mar 1 08:49:37 2000";
@@ -228,3 +237,5 @@ main()
     rc = ngx_http_parse_time(thr, sizeof(thr) - 1);
     printf("rc: %d\n", rc);
 }
+
+#endif

@@ -10,6 +10,8 @@
 #include <ngx_alloc.h>
 #include <ngx_array.h>
 
+#define NGX_INVALID_INDEX  0x80000000
+
 typedef struct ngx_event_s       ngx_event_t;
 
 struct ngx_event_s {
@@ -79,7 +81,7 @@ typedef enum {
 
 typedef struct {
     int  (*add)(ngx_event_t *ev, int event, u_int flags);
-    int  (*del)(ngx_event_t *ev, int event);
+    int  (*del)(ngx_event_t *ev, int event, u_int flags);
     void (*timer)(ngx_event_t *ev, ngx_msec_t timer);
     int  (*process)(ngx_log_t *log);
     int  (*read)(ngx_event_t *ev, char *buf, size_t size);
@@ -96,7 +98,11 @@ NGX_ONESHOT_EVENT          select, poll, kqueue
 NGX_CLEAR_EVENT            kqueue
 NGX_AIO_EVENT              overlapped, aio_read, aioread
                                 no need to add or delete events
+
+NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
 */
+
+#define NGX_CLOSE_EVENT    1
 
 #if (HAVE_KQUEUE)
 
@@ -124,15 +130,12 @@ NGX_AIO_EVENT              overlapped, aio_read, aioread
 
 #endif
 
-
 #if (USE_KQUEUE)
 
 #define ngx_init_events      ngx_kqueue_init
 #define ngx_process_events   ngx_kqueue_process_events
-#define ngx_kqueue_add_event(ev, event)                                       \
-            ngx_kqueue_set_event(ev, event, EV_ADD | flags)
-#define ngx_kqueue_del_event(ev, event)                                       \
-            ngx_kqueue_set_event(ev, event, EV_DELETE)
+#define ngx_add_event        ngx_kqueue_add_event
+#define ngx_del_event        ngx_kqueue_add_event
 #define ngx_add_timer        ngx_kqueue_add_timer
 #define ngx_event_recv       ngx_event_recv_core
 

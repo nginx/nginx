@@ -309,7 +309,9 @@ static int ngx_http_proxy_read_response_header(ngx_event_t *ev)
 
     if (n == 0) {
         ngx_log_debug(c->log, "CLOSE proxy");
-        ngx_del_event(ev, NGX_READ_EVENT);
+#if 0
+        ngx_del_event(ev, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+#endif
         ngx_event_close_connection(ev);
 
         p->hunk_n = 0;
@@ -439,7 +441,9 @@ static int ngx_http_proxy_read_response_body(ngx_event_t *ev)
 
     if (n == 0) {
         ngx_log_debug(c->log, "CLOSE proxy");
-        ngx_del_event(ev, NGX_READ_EVENT);
+#if 0
+        ngx_del_event(ev, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+#endif
         ngx_event_close_connection(ev);
 
         p->hunk_n = 0;

@@ -21,5 +21,8 @@ typedef FILETIME       ngx_mtime_t;
 #define ngx_localtime  GetLocalTime
 #define ngx_msec       GetTickCount
 
+/* STUB */
+#define ngx_time()  time(NULL)
+
 
 #endif /* _NGX_TIME_H_INCLUDED_ */

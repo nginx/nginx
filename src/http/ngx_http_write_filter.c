@@ -9,22 +9,9 @@
 #include <ngx_http_write_filter.h>
 
 
-static ngx_command_t ngx_http_write_filter_commands[];
+int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in);
 
 static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool);
-
-ngx_http_module_t  ngx_http_write_filter_module = {
-    NGX_HTTP_MODULE,
-
-    NULL,                                  /* create server config */
-    ngx_http_write_filter_create_conf,     /* create location config */
-    ngx_http_write_filter_commands,        /* module directives */
-
-    NULL,                                  /* init module */
-    NULL,                                  /* translate handler */
-
-    NULL                                   /* init output body filter */
-};
 
 
 static ngx_command_t ngx_http_write_filter_commands[] = {
@@ -36,6 +23,23 @@ static ngx_command_t ngx_http_write_filter_commands[] = {
 
     {NULL}
 
+};
+
+
+ngx_http_module_t  ngx_http_write_filter_module = {
+    NGX_HTTP_MODULE,
+
+    NULL,                                  /* create server config */
+    ngx_http_write_filter_create_conf,     /* create location config */
+    ngx_http_write_filter_commands,        /* module directives */
+
+    NULL,                                  /* init module */
+    NULL,                                  /* translate handler */
+
+    NULL,                                  /* output header filter */
+    NULL,                                  /* next output header filter */
+    ngx_http_write_filter,                 /* output body filter */
+    NULL,                                  /* next output body filter */
 };
 
 
@@ -69,7 +73,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                       ch->hunk->type _ ch->hunk->pos.file _
                       ch->hunk->last.file - ch->hunk->pos.file);
 
-        if (ch->hunk->type & NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)
+        if (ch->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED))
             flush = size;
 
         if (ch->hunk->type & NGX_HUNK_LAST)
@@ -90,7 +94,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                       ch->hunk->type _ ch->hunk->pos.file _
                       ch->hunk->last.file - ch->hunk->pos.file);
 
-        if (ch->hunk->type & NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)
+        if (ch->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED))
             flush = size;
 
         if (ch->hunk->type & NGX_HUNK_LAST)
@@ -100,6 +104,8 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     conf = (ngx_http_write_filter_conf_t *)
                    ngx_get_module_loc_conf(r->main ? r->main : r,
                                                 ngx_http_write_filter_module);
+
+    ngx_log_debug(r->connection->log, "l:%d f:%d" _ last _ flush);
 
     if (!last && flush == 0 && size < conf->buffer_output)
         return NGX_OK;

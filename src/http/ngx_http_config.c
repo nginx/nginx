@@ -9,6 +9,8 @@
 
 int ngx_max_module;
 
+int (*ngx_http_top_header_filter) (ngx_http_request_t *r);
+
 /* STUB: gobal srv and loc conf */
 void **ngx_srv_conf;
 void **ngx_loc_conf;
@@ -53,13 +55,27 @@ int ngx_http_init_modules(ngx_pool_t *pool, ngx_http_module_t **modules)
 int ngx_http_init_filters(ngx_pool_t *pool, ngx_http_module_t **modules)
 {
     int i;
-    int (*filter)(ngx_http_request_t *r, ngx_chain_t *ch);
+    int (*ohf)(ngx_http_request_t *r);
+    int (*obf)(ngx_http_request_t *r, ngx_chain_t *ch);
 
-    filter = ngx_http_write_filter;
+    ohf = NULL;
 
     for (i = 0; modules[i]; i++) {
-        if (modules[i]->init_output_body_filter)
-            modules[i]->init_output_body_filter(&filter);
+        if (modules[i]->output_header_filter) {
+            modules[i]->next_output_header_filter = ohf;
+            ohf = modules[i]->output_header_filter;
+        }
+    }
+
+    ngx_http_top_header_filter = ohf;
+
+    obf = NULL;
+
+    for (i = 0; modules[i]; i++) {
+        if (modules[i]->output_body_filter) {
+            modules[i]->next_output_body_filter = obf;
+            obf = modules[i]->output_body_filter;
+        }
     }
 }
 
