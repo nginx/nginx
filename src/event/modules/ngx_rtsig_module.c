@@ -48,7 +48,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle);
 static void *ngx_rtsig_create_conf(ngx_cycle_t *cycle);
 static char *ngx_rtsig_init_conf(ngx_cycle_t *cycle, void *conf);
 static char *ngx_check_ngx_overflow_threshold_bounds(ngx_conf_t *cf,
-                                                     void *post, void *data);
+    void *post, void *data);
 
 
 static sigset_t        set;
@@ -65,35 +65,35 @@ static ngx_conf_num_bounds_t  ngx_overflow_threshold_bounds = {
 
 static ngx_command_t  ngx_rtsig_commands[] = {
 
-    {ngx_string("rtsig_signo"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_rtsig_conf_t, signo),
-     NULL},
+    { ngx_string("rtsig_signo"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_rtsig_conf_t, signo),
+      NULL },
 
-    {ngx_string("rtsig_overflow_events"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_rtsig_conf_t, overflow_events),
-     NULL},
+    { ngx_string("rtsig_overflow_events"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_rtsig_conf_t, overflow_events),
+      NULL },
 
-    {ngx_string("rtsig_overflow_test"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_rtsig_conf_t, overflow_test),
-     NULL},
+    { ngx_string("rtsig_overflow_test"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_rtsig_conf_t, overflow_test),
+      NULL },
 
-    {ngx_string("rtsig_overflow_threshold"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_rtsig_conf_t, overflow_threshold),
-     &ngx_overflow_threshold_bounds},
+    { ngx_string("rtsig_overflow_threshold"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_rtsig_conf_t, overflow_threshold),
+      &ngx_overflow_threshold_bounds },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 
@@ -121,13 +121,14 @@ ngx_module_t  ngx_rtsig_module = {
     NGX_MODULE,
     &ngx_rtsig_module_ctx,               /* module context */
     ngx_rtsig_commands,                  /* module directives */
-    NGX_EVENT_MODULE,                      /* module type */
-    NULL,                                  /* init module */
-    NULL                                   /* init process */
+    NGX_EVENT_MODULE,                    /* module type */
+    NULL,                                /* init module */
+    NULL                                 /* init process */
 };
 
 
-static ngx_int_t ngx_rtsig_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_rtsig_init(ngx_cycle_t *cycle)
 {
     ngx_rtsig_conf_t  *rtscf;
 
@@ -164,7 +165,8 @@ static ngx_int_t ngx_rtsig_init(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_rtsig_done(ngx_cycle_t *cycle)
+static void
+ngx_rtsig_done(ngx_cycle_t *cycle)
 {
     ngx_free(overflow_list);
 
@@ -172,7 +174,8 @@ static void ngx_rtsig_done(ngx_cycle_t *cycle)
 }
 
 
-static ngx_int_t ngx_rtsig_add_connection(ngx_connection_t *c)
+static ngx_int_t
+ngx_rtsig_add_connection(ngx_connection_t *c)
 {
     int                signo;
     ngx_rtsig_conf_t  *rtscf;
@@ -232,7 +235,8 @@ static ngx_int_t ngx_rtsig_add_connection(ngx_connection_t *c)
 }
 
 
-static ngx_int_t ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags)
+static ngx_int_t
+ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags)
 {
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "rtsig del connection: fd:%d", c->fd);
@@ -266,7 +270,8 @@ static ngx_int_t ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags)
 }
 
 
-ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_rtsig_process_events(ngx_cycle_t *cycle)
 {
     int                 signo;
     ngx_int_t           instance, i;
@@ -562,7 +567,8 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
 
 /* TODO: old cylces */
 
-static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 {
     int                name[2], rtsig_max, rtsig_nr, events, ready;
     size_t             len;
@@ -766,7 +772,8 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_rtsig_create_conf(ngx_cycle_t *cycle)
+static void *
+ngx_rtsig_create_conf(ngx_cycle_t *cycle)
 {
     ngx_rtsig_conf_t  *rtscf;
 
@@ -782,7 +789,8 @@ static void *ngx_rtsig_create_conf(ngx_cycle_t *cycle)
 }
 
 
-static char *ngx_rtsig_init_conf(ngx_cycle_t *cycle, void *conf)
+static char *
+ngx_rtsig_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_rtsig_conf_t  *rtscf = conf;
 
@@ -797,7 +805,8 @@ static char *ngx_rtsig_init_conf(ngx_cycle_t *cycle, void *conf)
 }
 
 
-static char *ngx_check_ngx_overflow_threshold_bounds(ngx_conf_t *cf,
+static char *
+ngx_check_ngx_overflow_threshold_bounds(ngx_conf_t *cf,
                                                      void *post, void *data)
 {
     if (ngx_linux_rtsig_max) {

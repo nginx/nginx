@@ -51,6 +51,22 @@ static char error_400_page[] =
 ;
 
 
+static char error_401_page[] =
+"<html>" CRLF
+"<head><title>401 Unauthorized</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>401 Unauthorized</h1></center>" CRLF
+;
+
+
+static char error_402_page[] =
+"<html>" CRLF
+"<head><title>402 Payment Required</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>402 Payment Required</h1></center>" CRLF
+;
+
+
 static char error_403_page[] =
 "<html>" CRLF
 "<head><title>403 Forbidden</title></head>" CRLF
@@ -75,11 +91,27 @@ static char error_405_page[] =
 ;
 
 
+static char error_406_page[] =
+"<html>" CRLF
+"<head><title>406 Not Acceptable</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>406 Not Acceptable</h1></center>" CRLF
+;
+
+
 static char error_408_page[] =
 "<html>" CRLF
 "<head><title>408 Request Time-out</title></head>" CRLF
 "<body bgcolor=\"white\">" CRLF
 "<center><h1>408 Request Time-out</h1></center>" CRLF
+;
+
+
+static char error_410_page[] =
+"<html>" CRLF
+"<head><title>410 Gone</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>410 Gone</h1></center>" CRLF
 ;
 
 
@@ -158,22 +190,25 @@ static char error_504_page[] =
 
 
 static ngx_str_t error_pages[] = {
- /* ngx_null_string, */          /* 300 */
+
+    /* ngx_null_string, */       /* 300 */
     ngx_string(error_301_page),
     ngx_string(error_302_page),
     ngx_null_string,             /* 303 */
 
+#define NGX_HTTP_LEVEL_300  3
+
     ngx_string(error_400_page),
-    ngx_null_string,             /* 401 */
-    ngx_null_string,             /* 402 */
+    ngx_string(error_401_page),
+    ngx_string(error_402_page),
     ngx_string(error_403_page),
     ngx_string(error_404_page),
     ngx_string(error_405_page),
-    ngx_null_string,             /* 406 */
+    ngx_string(error_406_page),
     ngx_null_string,             /* 407 */
     ngx_string(error_408_page),
     ngx_null_string,             /* 409 */
-    ngx_null_string,             /* 410 */
+    ngx_string(error_410_page),
     ngx_null_string,             /* 411 */
     ngx_null_string,             /* 412 */
     ngx_string(error_413_page),
@@ -181,9 +216,11 @@ static ngx_str_t error_pages[] = {
     ngx_null_string,             /* 415 */
     ngx_string(error_416_page),
 
+#define NGX_HTTP_LEVEL_400  17
+
     ngx_string(error_497_page),  /* 497, http to https */
     ngx_string(error_404_page),  /* 498, invalid host name */
-    ngx_null_string,             /* 499, client closed connection */
+    ngx_null_string,             /* 499, client had closed connection */
 
     ngx_string(error_500_page),
     ngx_string(error_501_page),
@@ -259,12 +296,12 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 
     } else if (error < NGX_HTTP_NGX_CODES) {
         /* 4XX */
-        err = error - NGX_HTTP_BAD_REQUEST + 3;
+        err = error - NGX_HTTP_BAD_REQUEST + NGX_HTTP_LEVEL_300;
 
     } else {
         /* 49X, 5XX */
-        err = error - NGX_HTTP_NGX_CODES + 3 + 17;
-
+        err = error - NGX_HTTP_NGX_CODES + NGX_HTTP_LEVEL_300
+                                         + NGX_HTTP_LEVEL_400;
         switch (error) {
             case NGX_HTTP_TO_HTTPS:
                 r->headers_out.status = NGX_HTTP_BAD_REQUEST;

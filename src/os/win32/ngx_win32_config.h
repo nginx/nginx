@@ -40,8 +40,10 @@
 
 /* disable some "-W4" level warnings */
 
-/* disable warnings about some 'type cast */
+/* 'type cast': from function pointer to data pointer */
 #pragma warning(disable:4054)
+
+/* 'type cast': from data pointer to function pointer */
 #pragma warning(disable:4055)
 
 /* unreferenced formal parameter */
@@ -56,34 +58,48 @@
 /* assignment within conditional expression */
 #pragma warning(disable:4706)
 
-/* disable "function 'ngx_handle_write_event' not inlined" */
+/* function 'ngx_handle_write_event' not inlined */
 #pragma warning(disable:4710)
 
 #endif
 
 
 #ifdef __WATCOMC__
+
 /* unreachable code */
 #pragma disable_message(201)
-/* disable "Symbol 'ngx_rbtree_min' has been defined, but not referenced" */
+
+/* symbol 'ngx_rbtree_min' has been defined, but not referenced */
 #pragma disable_message(202)
+
 #endif
 
 
 #ifdef __BORLANDC__
+
 /* the end of the precompiled headers */
 #pragma hdrstop
 
+/*
+ * 'fd' is assigned a value that is never used in function ngx_event_init_conf
+ */
+#pragma warn -8004
+
+/* condition is always false */
+#pragma warn -8008
+
+/* functions containing (for|while|some if) are not expanded inline */
 #pragma warn -8027
+
+/* unreferenced formal parameter */
 #pragma warn -8057
+
+/* assignment within conditional expression */
 #pragma warn -8060
 
-/* STUB */
-#pragma warn -8004
-#pragma warn -8008
-#pragma warn -8065
+/* unreachable code */
 #pragma warn -8066
-#pragma warn -8075
+
 #endif
 
 
@@ -96,7 +112,8 @@
 #ifdef _MSC_VER
 typedef unsigned __int32  uint32_t;
 typedef __int32           int32_t;
-#else /* __WATCOMC__ */
+
+#else /* __WATCOMC__ and __BORLANDC__ */
 typedef unsigned int      uint32_t;
 typedef int               int32_t;
 #endif

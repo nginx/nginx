@@ -8,7 +8,8 @@
 #include <ngx_core.h>
 
 
-ngx_buf_t *ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
+ngx_buf_t *
+ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
 {
     ngx_buf_t *b;
 
@@ -20,28 +21,28 @@ ngx_buf_t *ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
         return NULL;
     }
 
+    /*
+     * set by ngx_calloc_buf():
+     *
+     *     b->file_pos = 0;
+     *     b->file_last = 0;
+     *     b->file = NULL;
+     *     b->shadow = NULL;
+     *     b->tag = 0;
+     *
+     */
+
     b->pos = b->start;
     b->last = b->start;
     b->end = b->last + size;
     b->temporary = 1;
 
-    /*
-
-    b->file_pos = 0;
-    b->file_last = 0;
-
-    b->file = NULL;
-    b->shadow = NULL;
-
-    b->tag = 0;
-
-     */
-
     return b;
 }
 
 
-ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
+ngx_chain_t *
+ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
 {
     u_char       *p;
     ngx_int_t     i;
@@ -59,6 +60,17 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
             return NULL;
         }
 
+        /*
+         * set by ngx_calloc_buf():
+         *
+         *     b->file_pos = 0;
+         *     b->file_last = 0;
+         *     b->file = NULL;
+         *     b->shadow = NULL;
+         *     b->tag = 0;
+         *
+         */
+
         b->pos = p;
         b->last = p;
         b->temporary = 1;
@@ -66,15 +78,6 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
         b->start = p;
         p += bufs->size;
         b->end = p;
-
-        /*
-        b->file_pos = 0;
-        b->file_last = 0;
-
-        b->file = NULL;
-        b->shadow = NULL;
-        b->tag = 0;
-        */
 
         if (!(cl = ngx_alloc_chain_link(pool))) {
             return NULL;
@@ -91,8 +94,8 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
 }
 
 
-ngx_int_t ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
-                             ngx_chain_t *in)
+ngx_int_t
+ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in)
 {
     ngx_chain_t  *cl, **ll;
 
@@ -117,20 +120,19 @@ ngx_int_t ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
 }
 
 
-void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
-                             ngx_chain_t **out, ngx_buf_tag_t tag)
+void
+ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
+    ngx_chain_t **out, ngx_buf_tag_t tag)
 {
-    ngx_chain_t  *tl;
+    ngx_chain_t  *cl;
 
     if (*busy == NULL) {
         *busy = *out;
 
     } else {
-        for (tl = *busy; tl->next; tl = tl->next) {
-            /* void */;
-        }
+        for (cl = *busy; cl->next; cl = cl->next) { /* void */ }
 
-        tl->next = *out;
+        cl->next = *out;
     }
 
     *out = NULL;
@@ -154,9 +156,9 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
         (*busy)->buf->pos = (*busy)->buf->start;
         (*busy)->buf->last = (*busy)->buf->start;
 
-        tl = *busy;
-        *busy = (*busy)->next;
-        tl->next = *free;
-        *free = tl;
+        cl = *busy;
+        *busy = cl->next;
+        cl->next = *free;
+        *free = cl;
     }
 }

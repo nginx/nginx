@@ -13,18 +13,13 @@
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static int ngx_cmp_server_names(const void *one, const void *two);
 static ngx_int_t ngx_http_add_address(ngx_conf_t *cf,
-                                      ngx_http_in_port_t *in_port,
-                                      ngx_http_listen_t *lscf,
-                                      ngx_http_core_srv_conf_t *cscf);
+    ngx_http_in_port_t *in_port, ngx_http_listen_t *lscf,
+    ngx_http_core_srv_conf_t *cscf);
 static ngx_int_t ngx_http_add_names(ngx_conf_t *cf,
-                                    ngx_http_in_addr_t *in_addr,
-                                    ngx_http_core_srv_conf_t *cscf);
-
+    ngx_http_in_addr_t *in_addr, ngx_http_core_srv_conf_t *cscf);
 static char *ngx_http_merge_locations(ngx_conf_t *cf,
-                                      ngx_array_t *locations,
-                                      void **loc_conf,
-                                      ngx_http_module_t *module,
-                                      ngx_uint_t ctx_index);
+    ngx_array_t *locations, void **loc_conf, ngx_http_module_t *module,
+    ngx_uint_t ctx_index);
 
 ngx_uint_t  ngx_http_max_module;
 
@@ -38,14 +33,14 @@ ngx_int_t  (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
 static ngx_command_t  ngx_http_commands[] = {
 
-    {ngx_string("http"),
-     NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
-     ngx_http_block,
-     0,
-     0,
-     NULL},
+    { ngx_string("http"),
+      NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+      ngx_http_block,
+      0,
+      0,
+      NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
     
@@ -62,11 +57,12 @@ ngx_module_t  ngx_http_module = {
     ngx_http_commands,                     /* module directives */
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
-static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *
+ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                        *rv;
     ngx_uint_t                   mi, m, s, l, p, a, n;
@@ -686,7 +682,8 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-static int ngx_cmp_server_names(const void *one, const void *two)
+static int
+ngx_cmp_server_names(const void *one, const void *two)
 {
     ngx_http_server_name_t *first = (ngx_http_server_name_t *) one;
     ngx_http_server_name_t *second = (ngx_http_server_name_t *) two;
@@ -700,10 +697,9 @@ static int ngx_cmp_server_names(const void *one, const void *two)
  * configurations to the port (in_port)
  */
 
-static ngx_int_t ngx_http_add_address(ngx_conf_t *cf,
-                                      ngx_http_in_port_t *in_port,
-                                      ngx_http_listen_t *lscf,
-                                      ngx_http_core_srv_conf_t *cscf)
+static ngx_int_t
+ngx_http_add_address(ngx_conf_t *cf, ngx_http_in_port_t *in_port,
+    ngx_http_listen_t *lscf, ngx_http_core_srv_conf_t *cscf)
 {
     ngx_http_in_addr_t  *in_addr;
 
@@ -744,9 +740,9 @@ static ngx_int_t ngx_http_add_address(ngx_conf_t *cf,
  * configurations to the address:port (in_addr)
  */
 
-static ngx_int_t ngx_http_add_names(ngx_conf_t *cf,
-                                    ngx_http_in_addr_t *in_addr,
-                                    ngx_http_core_srv_conf_t *cscf)
+static ngx_int_t
+ngx_http_add_names(ngx_conf_t *cf, ngx_http_in_addr_t *in_addr,
+    ngx_http_core_srv_conf_t *cscf)
 {
     ngx_uint_t               i, n;
     ngx_array_t             *array;
@@ -800,11 +796,9 @@ static ngx_int_t ngx_http_add_names(ngx_conf_t *cf,
 }
 
 
-static char *ngx_http_merge_locations(ngx_conf_t *cf,
-                                      ngx_array_t *locations,
-                                      void **loc_conf,
-                                      ngx_http_module_t *module,
-                                      ngx_uint_t ctx_index)
+static char *
+ngx_http_merge_locations(ngx_conf_t *cf, ngx_array_t *locations,
+    void **loc_conf, ngx_http_module_t *module, ngx_uint_t ctx_index)
 {
     char                       *rv;
     ngx_uint_t                  i;

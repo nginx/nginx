@@ -44,8 +44,8 @@ ngx_module_t  ngx_http_write_filter_module = {
 
 ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    int                           last;
-    off_t                         size, flush, sent;
+    off_t                         size, sent;
+    ngx_uint_t                    last, flush;
     ngx_chain_t                  *cl, *ln, **ll, *chain;
     ngx_connection_t             *c;
     ngx_http_core_loc_conf_t     *clcf;
@@ -101,7 +101,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         size += ngx_buf_size(cl->buf);
 
         if (cl->buf->flush || cl->buf->recycled) {
-            flush = size;
+            flush = 1;
         }
 
         if (cl->buf->last_buf) {
@@ -152,7 +152,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         size += ngx_buf_size(cl->buf);
 
         if (cl->buf->flush || cl->buf->recycled) {
-            flush = size;
+            flush = 1;
         }
 
         if (cl->buf->last_buf) {
@@ -165,7 +165,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     c = r->connection;
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http write filter: l:%d f:%O s:%O", last, flush, size);
+                   "http write filter: l:%d f:%d s:%O", last, flush, size);
 
     clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                         ngx_http_core_module);
@@ -176,7 +176,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
      * is smaller than "postpone_output" directive
      */
 
-    if (!last && flush == 0 && in && size < (off_t) clcf->postpone_output) {
+    if (!last && !flush && in && size < (off_t) clcf->postpone_output) {
         return NGX_OK;
     }
 
@@ -186,6 +186,11 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (size == 0 && !c->buffered) {
         if (last) {
+            return NGX_OK;
+        }
+
+        if (flush) {
+            while ((ctx->out = ctx->out->next)) { /* void */ }
             return NGX_OK;
         }
 

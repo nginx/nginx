@@ -29,6 +29,7 @@ typedef struct ngx_http_in_addr_s  ngx_http_in_addr_t;
 #include <ngx_http_busy_lock.h>
 #include <ngx_http_log_handler.h>
 #include <ngx_http_core_module.h>
+#include <ngx_http_variables.h>
 
 #if (NGX_HTTP_SSL)
 #include <ngx_http_ssl_module.h>
@@ -41,9 +42,9 @@ struct ngx_http_log_ctx_s {
 };
 
 
-#define ngx_http_get_module_ctx(r, module)       r->ctx[module.ctx_index]
+#define ngx_http_get_module_ctx(r, module)     (r)->ctx[module.ctx_index]
 #define ngx_http_get_module_err_ctx(r, module)                                \
-         (r->err_ctx ? r->err_ctx[module.ctx_index] : r->ctx[module.ctx_index])
+    ((r)->err_ctx ? (r)->err_ctx[module.ctx_index] : (r)->ctx[module.ctx_index])
 
 /* STUB */
 #define ngx_http_create_ctx(r, cx, module, size, error)                       \
@@ -53,11 +54,9 @@ struct ngx_http_log_ctx_s {
             } while (0)
 /**/
 
-#define ngx_http_set_ctx(r, c, module)                                        \
-            r->ctx[module.ctx_index] = c;
+#define ngx_http_set_ctx(r, c, module)         r->ctx[module.ctx_index] = c;
 
-#define ngx_http_delete_ctx(r, module)                                        \
-            r->ctx[module.ctx_index] = NULL;
+#define ngx_http_delete_ctx(r, module)         r->ctx[module.ctx_index] = NULL;
 
 
 void ngx_http_init_connection(ngx_connection_t *c);
@@ -79,10 +78,11 @@ void ngx_http_close_connection(ngx_connection_t *c);
 
 
 ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
-                                 ngx_http_client_body_handler_pt post_handler);
+    ngx_http_client_body_handler_pt post_handler);
 
 ngx_int_t ngx_http_send_header(ngx_http_request_t *r);
-ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error);
+ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r,
+    ngx_int_t error);
 
 
 time_t ngx_http_parse_time(u_char *value, size_t len);

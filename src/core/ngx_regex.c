@@ -15,7 +15,7 @@ static void ngx_regex_free(void *p);
 static ngx_pool_t  *ngx_pcre_pool;
 
 
-void ngx_regex_init()
+void ngx_regex_init(void)
 {
     pcre_malloc = ngx_regex_malloc;
     pcre_free = ngx_regex_free;

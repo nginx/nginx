@@ -72,10 +72,10 @@ struct ngx_log_s {
 #define NGX_HAVE_VARIADIC_MACROS  1
 
 #define ngx_log_error(level, log, args...)                                    \
-        if (log->log_level >= level) ngx_log_error_core(level, log, args)
+    if (log->log_level >= level) ngx_log_error_core(level, log, args)
 
 void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
-                        const char *fmt, ...);
+    const char *fmt, ...);
 
 #define ngx_log_debug(level, log, args...)                                    \
     if (log->log_level & level)                                               \
@@ -88,10 +88,10 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 #define NGX_HAVE_VARIADIC_MACROS  1
 
 #define ngx_log_error(level, log, ...)                                        \
-        if (log->log_level >= level) ngx_log_error_core(level, log, __VA_ARGS__)
+    if (log->log_level >= level) ngx_log_error_core(level, log, __VA_ARGS__)
 
 void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
-                        const char *fmt, ...);
+    const char *fmt, ...);
 
 #define ngx_log_debug(level, log, ...)                                        \
     if (log->log_level & level)                                               \
@@ -104,9 +104,9 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 #define NGX_HAVE_VARIADIC_MACROS  0
 
 void ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
-                   const char *fmt, ...);
+    const char *fmt, ...);
 void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
-                        const char *fmt, va_list args);
+    const char *fmt, va_list args);
 void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...);
 
 
@@ -195,10 +195,9 @@ void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...);
 #define ngx_log_alloc_log(pool, log)  ngx_palloc(pool, log, sizeof(ngx_log_t))
 #define ngx_log_copy_log(new, old)    ngx_memcpy(new, old, sizeof(ngx_log_t))
 
-ngx_log_t *ngx_log_init();
+ngx_log_t *ngx_log_init(void);
 ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args);
 char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log);
-
 
 
 extern ngx_module_t  ngx_errlog_module;

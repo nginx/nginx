@@ -540,7 +540,7 @@ ngx_http_rewrite_var_code(ngx_http_rewrite_engine_t *e)
 
     e->ip += sizeof(ngx_http_rewrite_var_code_t);
 
-    if (!(value = ngx_http_get_variable(e->request, code->index))) {
+    if (!(value = ngx_http_get_indexed_variable(e->request, code->index))) {
         *e->sp = (uintptr_t) 0;
         return;
     }
@@ -696,6 +696,10 @@ ngx_http_rewrite_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->referers == NULL) {
         conf->referers = prev->referers;
         ngx_conf_merge_value(conf->no_referer, prev->no_referer, 0);
+    }
+
+    if (conf->no_referer == NGX_CONF_UNSET) {
+        conf->no_referer = 0;
     }
 
     if (conf->codes == NULL) {
@@ -1025,12 +1029,12 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     char                         *rv;
     u_char                       *elts;
     ngx_str_t                    *value;
+    ngx_int_t                     index;
     ngx_uint_t                    i;
     ngx_conf_t                    save;
     ngx_http_rewrite_code_pt     *code;
     ngx_http_module_t            *module;
     ngx_http_conf_ctx_t          *ctx, *pctx;
-    ngx_http_variable_t          *var;
     ngx_http_core_loc_conf_t     *clcf, *pclcf, **clcfp;
     ngx_http_core_main_conf_t    *cmcf;
     ngx_http_rewrite_if_code_t   *if_code;
@@ -1119,23 +1123,11 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         *code = ngx_http_rewrite_invalid_referer_code;
 
     } else {
-
         cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
-        var = cmcf->variables.elts;
-        for (i = 0; i < cmcf->variables.nelts; i++) {
-            if (var[i].name.len != value[1].len) {
-                continue;
-            }
+        index = ngx_http_get_variable_index(cmcf, &value[1]);
 
-            if (ngx_strncasecmp(var[i].name.data, value[1].data,
-                                var[i].name.len) == 0)
-            {
-                break;
-            }
-        }
-
-        if (i == cmcf->variables.nelts) {
+        if (index == -1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "unknown variable name \"%V\"", &value[1]);
             return NGX_CONF_ERROR;
@@ -1148,7 +1140,7 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         var_code->code = ngx_http_rewrite_var_code;
-        var_code->index = var[i].index;
+        var_code->index = index;
     }
 
     if_code = ngx_array_push_n(lcf->codes, sizeof(ngx_http_rewrite_if_code_t));

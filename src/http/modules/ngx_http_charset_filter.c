@@ -456,10 +456,10 @@ static void *ngx_http_charset_create_main_conf(ngx_conf_t *cf)
         return NGX_CONF_ERROR;
     }
 
-    ngx_init_array(mcf->charsets, cf->pool, 5, sizeof(ngx_http_charset_t),
+    ngx_init_array(mcf->charsets, cf->pool, 2, sizeof(ngx_http_charset_t),
                    NGX_CONF_ERROR);
 
-    ngx_init_array(mcf->tables, cf->pool, 10, sizeof(ngx_http_charset_tables_t),
+    ngx_init_array(mcf->tables, cf->pool, 4, sizeof(ngx_http_charset_tables_t),
                    NGX_CONF_ERROR);
 
     return mcf;

@@ -127,7 +127,7 @@ static char *ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_http_access_rule_t  *rule;
 
     if (alcf->rules == NULL) {
-        alcf->rules = ngx_create_array(cf->pool, 5,
+        alcf->rules = ngx_create_array(cf->pool, 4,
                                        sizeof(ngx_http_access_rule_t));
         if (alcf->rules == NULL) {
             return NGX_CONF_ERROR;

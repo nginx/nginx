@@ -238,6 +238,7 @@ HTTP_DEPS="src/http/ngx_http.h \
            src/http/ngx_http_config.h \
            src/http/ngx_http_core_module.h \
            src/http/ngx_http_cache.h \
+           src/http/ngx_http_variables.h \
            src/http/ngx_http_upstream.h \
            src/http/ngx_http_busy_lock.h \
            src/http/ngx_http_log_handler.h"
@@ -252,6 +253,7 @@ HTTP_SRCS="src/http/ngx_http.c \
            src/http/ngx_http_copy_filter.c \
            src/http/ngx_http_log_handler.c \
            src/http/ngx_http_request_body.c \
+           src/http/ngx_http_variables.c \
            src/http/ngx_http_upstream.c \
            src/http/ngx_http_parse_time.c \
            src/http/modules/ngx_http_static_handler.c \

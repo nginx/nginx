@@ -205,7 +205,7 @@ void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...)
 #endif
 
 
-ngx_log_t *ngx_log_init()
+ngx_log_t *ngx_log_init(void)
 {
     ngx_log.file = &ngx_stderr;
     ngx_log.log_level = NGX_LOG_NOTICE;

@@ -73,7 +73,7 @@ ngx_module_t  ngx_http_range_header_filter_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_range_header_filter_init,     /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -97,7 +97,7 @@ ngx_module_t  ngx_http_range_body_filter_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_range_body_filter_init,       /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -144,7 +144,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    if (ngx_array_init(&r->headers_out.ranges, r->pool, 5,
+    if (ngx_array_init(&r->headers_out.ranges, r->pool, 2,
                                         sizeof(ngx_http_range_t)) == NGX_ERROR)
     {
         return NGX_ERROR;

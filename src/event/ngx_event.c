@@ -715,7 +715,7 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
     ecf->name = (void *) NGX_CONF_UNSET;
 
 #if (NGX_DEBUG)
-    ngx_init_array(ecf->debug_connection, cycle->pool, 5, sizeof(in_addr_t),
+    ngx_init_array(ecf->debug_connection, cycle->pool, 4, sizeof(in_addr_t),
                    NGX_CONF_ERROR);
 #endif
 

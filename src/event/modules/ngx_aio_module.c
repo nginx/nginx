@@ -14,12 +14,12 @@
 #endif
 
 
-static int ngx_aio_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_aio_init(ngx_cycle_t *cycle);
 static void ngx_aio_done(ngx_cycle_t *cycle);
-static int ngx_aio_add_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_aio_del_connection(ngx_connection_t *c, u_int flags);
-static int ngx_aio_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_aio_add_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_aio_del_connection(ngx_connection_t *c, u_int flags);
+static ngx_int_t ngx_aio_process_events(ngx_cycle_t *cycle);
 
 
 ngx_os_io_t ngx_os_aio = {
@@ -66,7 +66,8 @@ ngx_module_t  ngx_aio_module = {
 
 #if (NGX_HAVE_KQUEUE)
 
-static int ngx_aio_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_aio_init(ngx_cycle_t *cycle)
 {
     if (ngx_kqueue_module_ctx.actions.init(cycle) == NGX_ERROR) {
         return NGX_ERROR;
@@ -82,27 +83,31 @@ static int ngx_aio_init(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_aio_done(ngx_cycle_t *cycle)
+static void
+ngx_aio_done(ngx_cycle_t *cycle)
 {
     ngx_kqueue_module_ctx.actions.done(cycle);
 }
 
 
-/* The event adding and deleting are needed for the listening sockets */
+/* the event adding and deleting are needed for the listening sockets */
 
-static int ngx_aio_add_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_aio_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     return ngx_kqueue_module_ctx.actions.add(ev, event, flags);
 }
 
 
-static int ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     return ngx_kqueue_module_ctx.actions.del(ev, event, flags);
 }
 
 
-static int ngx_aio_del_connection(ngx_connection_t *c, u_int flags)
+static ngx_int_t
+ngx_aio_del_connection(ngx_connection_t *c, u_int flags)
 {
     int  rc;
 
@@ -147,7 +152,8 @@ static int ngx_aio_del_connection(ngx_connection_t *c, u_int flags)
 }
 
 
-static int ngx_aio_process_events(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_aio_process_events(ngx_cycle_t *cycle)
 {
     return ngx_kqueue_module_ctx.actions.process_events(cycle);
 }

@@ -40,8 +40,9 @@ CFLAGS="$CFLAGS $CPU_OPT"
 
 # warnings
 
-#CFLAGS="$CFLAGS -w3"
+# maximum level
 CFLAGS="$CFLAGS -wx"
+#CFLAGS="$CFLAGS -w3"
 
 # stop on warning
 CFLAGS="$CFLAGS -we"

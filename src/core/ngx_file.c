@@ -169,7 +169,7 @@ ngx_create_path(ngx_file_t *file, ngx_path_t *path)
 
 
 void
-ngx_init_temp_number()
+ngx_init_temp_number(void)
 {
     ngx_temp_number = 0;
     ngx_random = 123456;

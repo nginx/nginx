@@ -48,9 +48,10 @@ typedef struct {
 #define NGX_HTTP_LOC_CONF_OFFSET   offsetof(ngx_http_conf_ctx_t, loc_conf)
 
 
-#define ngx_http_get_module_main_conf(r, module) r->main_conf[module.ctx_index]
-#define ngx_http_get_module_srv_conf(r, module)  r->srv_conf[module.ctx_index]
-#define ngx_http_get_module_loc_conf(r, module)  r->loc_conf[module.ctx_index]
+#define ngx_http_get_module_main_conf(r, module)                             \
+    (r)->main_conf[module.ctx_index]
+#define ngx_http_get_module_srv_conf(r, module)  (r)->srv_conf[module.ctx_index]
+#define ngx_http_get_module_loc_conf(r, module)  (r)->loc_conf[module.ctx_index]
 
 /*
  * ngx_http_conf_get_module_srv_conf() and ngx_http_conf_get_module_loc_conf()

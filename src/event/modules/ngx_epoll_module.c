@@ -70,13 +70,13 @@ typedef struct {
 } ngx_epoll_conf_t;
 
 
-static int ngx_epoll_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_epoll_init(ngx_cycle_t *cycle);
 static void ngx_epoll_done(ngx_cycle_t *cycle);
-static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_epoll_add_connection(ngx_connection_t *c);
-static int ngx_epoll_del_connection(ngx_connection_t *c, u_int flags);
-static int ngx_epoll_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_epoll_add_connection(ngx_connection_t *c);
+static ngx_int_t ngx_epoll_del_connection(ngx_connection_t *c, u_int flags);
+static ngx_int_t ngx_epoll_process_events(ngx_cycle_t *cycle);
 
 static void *ngx_epoll_create_conf(ngx_cycle_t *cycle);
 static char *ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -90,14 +90,14 @@ static ngx_str_t      epoll_name = ngx_string("epoll");
 
 static ngx_command_t  ngx_epoll_commands[] = {
 
-    {ngx_string("epoll_events"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_epoll_conf_t, events),
-     NULL},
+    { ngx_string("epoll_events"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_epoll_conf_t, events),
+      NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 
@@ -130,7 +130,8 @@ ngx_module_t  ngx_epoll_module = {
 };
 
 
-static int ngx_epoll_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_epoll_init(ngx_cycle_t *cycle)
 {
     size_t             n;
     ngx_event_conf_t  *ecf;
@@ -180,7 +181,8 @@ static int ngx_epoll_init(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_epoll_done(ngx_cycle_t *cycle)
+static void
+ngx_epoll_done(ngx_cycle_t *cycle)
 {
     if (close(ep) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -196,7 +198,8 @@ static void ngx_epoll_done(ngx_cycle_t *cycle)
 }
 
 
-static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     int                  op;
     uint32_t             events, prev;
@@ -253,7 +256,8 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     int                  op;
     uint32_t             prev;
@@ -310,7 +314,8 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_epoll_add_connection(ngx_connection_t *c)
+static ngx_int_t
+ngx_epoll_add_connection(ngx_connection_t *c)
 {
     struct epoll_event  ee;
 
@@ -333,7 +338,8 @@ static int ngx_epoll_add_connection(ngx_connection_t *c)
 }
 
 
-static int ngx_epoll_del_connection(ngx_connection_t *c, u_int flags)
+static ngx_int_t
+ngx_epoll_del_connection(ngx_connection_t *c, u_int flags)
 {
     int                  op;
     struct epoll_event   ee;
@@ -370,7 +376,8 @@ static int ngx_epoll_del_connection(ngx_connection_t *c, u_int flags)
 }
 
 
-int ngx_epoll_process_events(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_epoll_process_events(ngx_cycle_t *cycle)
 {
     int                events;
     size_t             n;
@@ -651,7 +658,8 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_epoll_create_conf(ngx_cycle_t *cycle)
+static void *
+ngx_epoll_create_conf(ngx_cycle_t *cycle)
 {
     ngx_epoll_conf_t  *epcf;
 
@@ -664,7 +672,8 @@ static void *ngx_epoll_create_conf(ngx_cycle_t *cycle)
 }
 
 
-static char *ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf)
+static char *
+ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_epoll_conf_t *epcf = conf;
 

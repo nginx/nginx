@@ -119,8 +119,8 @@ ngx_module_t  ngx_core_module = {
 ngx_uint_t  ngx_max_module;
 
 
-
-int main(int argc, char *const *argv)
+int
+main(int argc, char *const *argv)
 {
     ngx_int_t         i;
     ngx_log_t        *log;
@@ -252,7 +252,8 @@ int main(int argc, char *const *argv)
 }
 
 
-static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
     u_char              *p, *v, *inherited;
     ngx_socket_t         s;
@@ -407,7 +408,8 @@ static ngx_int_t ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
 }
 
 
-static ngx_int_t ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
+static ngx_int_t
+ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 {
     size_t     len;
     ngx_int_t  i;
@@ -444,7 +446,8 @@ static ngx_int_t ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 }
 
 
-static void *ngx_core_module_create_conf(ngx_cycle_t *cycle)
+static void *
+ngx_core_module_create_conf(ngx_cycle_t *cycle)
 {
     ngx_core_conf_t  *ccf;
 
@@ -475,7 +478,8 @@ static void *ngx_core_module_create_conf(ngx_cycle_t *cycle)
 }
 
 
-static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
+static char *
+ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_core_conf_t  *ccf = conf;
 
@@ -543,7 +547,8 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 }
 
 
-static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *
+ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
 #if (NGX_WIN32)
 
@@ -603,7 +608,8 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-static char *ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *
+ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_core_conf_t  *ccf = conf;
 

@@ -55,6 +55,7 @@ static char *ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 static char *ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data);
+static ngx_int_t ngx_http_core_init(ngx_cycle_t *cycle);
 
 static ngx_conf_post_t  ngx_http_core_lowat_post =
                                                  { ngx_http_core_lowat_check };
@@ -355,7 +356,7 @@ ngx_module_t  ngx_http_core_module = {
     &ngx_http_core_module_ctx,             /* module context */
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
-    NULL,                                  /* init module */
+    ngx_http_core_init,                    /* init module */
     NULL                                   /* init process */
 };
 
@@ -984,54 +985,6 @@ ngx_http_delay_handler(ngx_http_request_t *r)
 #endif
 
 
-ngx_http_variable_t *
-ngx_http_add_variable(ngx_conf_t *cf)
-{
-    ngx_http_variable_t        *var;
-    ngx_http_core_main_conf_t  *cmcf;
-
-    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
-
-    if (cmcf->variables.elts == NULL) {
-        if (ngx_array_init(&cmcf->variables, cf->pool, 5,
-                           sizeof(ngx_http_variable_t)) == NGX_ERROR)
-        {
-            return NULL;
-        }
-    }
-
-    if (!(var = ngx_array_push(&cmcf->variables))) {
-        return NULL;
-    }
-
-    var->index = cmcf->variables.nelts - 1;
-
-    return var;
-}
-
-
-ngx_http_variable_value_t *
-ngx_http_get_variable(ngx_http_request_t *r, ngx_uint_t index)
-{
-    ngx_http_variable_t        *v;
-    ngx_http_core_main_conf_t  *cmcf;
-
-    /* TODO: cached variables */
-
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-
-    if (cmcf->variables.elts == NULL || cmcf->variables.nelts <= index) {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                      "unknown variable index: %d", index);
-        return NULL;
-    }
-
-    v = cmcf->variables.elts;    
-
-    return v[index].handler(r, v[index].data);
-}
-
-
 static char *
 ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
@@ -1381,7 +1334,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         }
 
         for (i = 0; i < NGX_HTTP_TYPES_HASH_PRIME; i++) {
-            if (ngx_array_init(&lcf->types[i], cf->pool, 5,
+            if (ngx_array_init(&lcf->types[i], cf->pool, 4,
                                          sizeof(ngx_http_type_t)) == NGX_ERROR)
             {
                 return NGX_CONF_ERROR;
@@ -1415,7 +1368,7 @@ ngx_http_core_create_main_conf(ngx_conf_t *cf)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_array_init(&cmcf->servers, cf->pool, 5,
+    if (ngx_array_init(&cmcf->servers, cf->pool, 4,
                        sizeof(ngx_http_core_srv_conf_t *)) == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
@@ -1460,19 +1413,19 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
      *     conf->client_large_buffers.num = 0;
      */
 
-    if (ngx_array_init(&cscf->locations, cf->pool, 5, sizeof(void *))
+    if (ngx_array_init(&cscf->locations, cf->pool, 4, sizeof(void *))
                                                                   == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_array_init(&cscf->listen, cf->pool, 5, sizeof(ngx_http_listen_t))
+    if (ngx_array_init(&cscf->listen, cf->pool, 4, sizeof(ngx_http_listen_t))
                                                                   == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_array_init(&cscf->server_names, cf->pool, 5,
+    if (ngx_array_init(&cscf->server_names, cf->pool, 4,
                        sizeof(ngx_http_server_name_t)) == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
@@ -1654,7 +1607,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
             }
 
             for (i = 0; i < NGX_HTTP_TYPES_HASH_PRIME; i++) {
-                if (ngx_array_init(&conf->types[i], cf->pool, 5,
+                if (ngx_array_init(&conf->types[i], cf->pool, 4,
                                    sizeof(ngx_http_type_t)) == NGX_ERROR)
                 {
                     return NGX_CONF_ERROR;
@@ -2062,4 +2015,11 @@ ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data)
 #endif
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_core_init(ngx_cycle_t *cycle)
+{
+    return ngx_http_core_variables_init(cycle);
 }

@@ -93,7 +93,6 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("Accept"), offsetof(ngx_http_headers_in_t, accept) },
     { ngx_string("Accept-Language"),
                  offsetof(ngx_http_headers_in_t, accept_language) },
-    { ngx_string("Via"), offsetof(ngx_http_headers_in_t, via) },
 #endif
 
     { ngx_null_string, 0 }
@@ -394,7 +393,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         return;
     }
 
-    if (ngx_array_init(&r->cleanup, r->pool, 5, sizeof(ngx_http_cleanup_t))
+    if (ngx_array_init(&r->cleanup, r->pool, 4, sizeof(ngx_http_cleanup_t))
                                                                   == NGX_ERROR)
     { 
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -642,7 +641,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             }
 
 
-            if (ngx_array_init(&r->headers_in.cookies, r->pool, 5,
+            if (ngx_array_init(&r->headers_in.cookies, r->pool, 2,
                                        sizeof(ngx_table_elt_t *)) == NGX_ERROR)
             {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);

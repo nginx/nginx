@@ -34,7 +34,7 @@ ngx_module_t  ngx_http_header_filter_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_header_filter_init,           /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -50,47 +50,68 @@ static ngx_str_t http_codes[] = {
     ngx_null_string,  /* "204 No Content" */
     ngx_null_string,  /* "205 Reset Content" */
     ngx_string("206 Partial Content"),
-    ngx_null_string,  /* "207 Multi-Status" */
 
-#if 0
-    ngx_null_string,  /* "300 Multiple Choices" */
-#endif
+    /* ngx_null_string, */  /* "207 Multi-Status" */
+
+#define NGX_HTTP_LEVEL_200  7
+
+    /* ngx_null_string, */  /* "300 Multiple Choices" */
 
     ngx_string("301 Moved Permanently"),
-#if 0
     ngx_string("302 Moved Temporarily"),
-#else
-    ngx_string("302 Found"),
-#endif
     ngx_null_string,  /* "303 See Other" */
     ngx_string("304 Not Modified"),
 
+    /* ngx_null_string, */  /* "305 Use Proxy" */
+    /* ngx_null_string, */  /* "306 unused" */
+    /* ngx_null_string, */  /* "307 Temporary Redirect" */
+
+#define NGX_HTTP_LEVEL_300  4
+
     ngx_string("400 Bad Request"),
     ngx_string("401 Unauthorized"),
-    ngx_null_string,  /* "402 Payment Required" */
+    ngx_string("402 Payment Required"),
     ngx_string("403 Forbidden"),
     ngx_string("404 Not Found"),
     ngx_string("405 Not Allowed"),
-    ngx_null_string,  /* "406 Not Acceptable" */
+    ngx_string("406 Not Acceptable"),
     ngx_null_string,  /* "407 Proxy Authentication Required" */
     ngx_string("408 Request Time-out"),
     ngx_null_string,  /* "409 Conflict" */
-    ngx_null_string,  /* "410 Gone" */
+    ngx_string("410 Gone"),
     ngx_string("411 Length Required"),
     ngx_null_string,  /* "412 Precondition Failed" */
     ngx_string("413 Request Entity Too Large"),
-    ngx_null_string,  /* "414 Request-URI Too Large" but we never send it
+    ngx_null_string,  /* "414 Request-URI Too Large", but we never send it
                        * because we treat such requests as the HTTP/0.9
                        * requests and send only a body without a header
                        */
     ngx_null_string,  /* "415 Unsupported Media Type" */
     ngx_string("416 Requested Range Not Satisfiable"),
 
+    /* ngx_null_string, */  /* "417 Expectation Failed" */
+    /* ngx_null_string, */  /* "418 unused" */
+    /* ngx_null_string, */  /* "419 unused" */
+    /* ngx_null_string, */  /* "420 unused" */
+    /* ngx_null_string, */  /* "421 unused" */
+    /* ngx_null_string, */  /* "422 Unprocessable Entity" */
+    /* ngx_null_string, */  /* "423 Locked" */
+    /* ngx_null_string, */  /* "424 Failed Dependency" */
+
+#define NGX_HTTP_LEVEL_400  17
+
     ngx_string("500 Internal Server Error"),
     ngx_string("501 Method Not Implemented"),
     ngx_string("502 Bad Gateway"),
     ngx_string("503 Service Temporarily Unavailable"),
     ngx_string("504 Gateway Time-out")
+
+    /* ngx_null_string, */  /* "505 HTTP Version Not Supported" */
+    /* ngx_null_string, */  /* "506 Variant Also Negotiates" */
+    /* ngx_null_string, */  /* "507 Insufficient Storage" */
+    /* ngx_null_string, */  /* "508 unused" */
+    /* ngx_null_string, */  /* "509 unused" */
+    /* ngx_null_string, */  /* "510 Not Extended" */
 };
 
 
@@ -98,19 +119,19 @@ ngx_http_header_t  ngx_http_headers_out[] = {
     { ngx_string("Server"), offsetof(ngx_http_headers_out_t, server) },
     { ngx_string("Date"), offsetof(ngx_http_headers_out_t, date) },
     { ngx_string("Content-Type"),
-                             offsetof(ngx_http_headers_out_t, content_type) },
+                 offsetof(ngx_http_headers_out_t, content_type) },
     { ngx_string("Content-Length"),
-                           offsetof(ngx_http_headers_out_t, content_length) },
+                 offsetof(ngx_http_headers_out_t, content_length) },
     { ngx_string("Content-Encoding"),
-                         offsetof(ngx_http_headers_out_t, content_encoding) },
+                 offsetof(ngx_http_headers_out_t, content_encoding) },
     { ngx_string("Location"), offsetof(ngx_http_headers_out_t, location) },
     { ngx_string("Last-Modified"),
-                            offsetof(ngx_http_headers_out_t, last_modified) },
+                 offsetof(ngx_http_headers_out_t, last_modified) },
     { ngx_string("Accept-Ranges"),
-                            offsetof(ngx_http_headers_out_t, accept_ranges) },
+                 offsetof(ngx_http_headers_out_t, accept_ranges) },
     { ngx_string("Expires"), offsetof(ngx_http_headers_out_t, expires) },
     { ngx_string("Cache-Control"),
-                            offsetof(ngx_http_headers_out_t, cache_control) },
+                 offsetof(ngx_http_headers_out_t, cache_control) },
     { ngx_string("ETag"), offsetof(ngx_http_headers_out_t, etag) },
 
     { ngx_null_string, 0 }
@@ -167,7 +188,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
         } else if (r->headers_out.status < NGX_HTTP_BAD_REQUEST) {
             /* 3XX */
-            status = r->headers_out.status - NGX_HTTP_MOVED_PERMANENTLY + 8;
+            status = r->headers_out.status - NGX_HTTP_MOVED_PERMANENTLY
+                                           + NGX_HTTP_LEVEL_200;
 
             if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED) {
                 r->header_only = 1;
@@ -175,12 +197,16 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
         } else if (r->headers_out.status < NGX_HTTP_INTERNAL_SERVER_ERROR) {
             /* 4XX */
-            status = r->headers_out.status - NGX_HTTP_BAD_REQUEST + 8 + 4;
+            status = r->headers_out.status - NGX_HTTP_BAD_REQUEST
+                                           + NGX_HTTP_LEVEL_200
+                                           + NGX_HTTP_LEVEL_300;
 
         } else {
             /* 5XX */
-            status = r->headers_out.status
-                                 - NGX_HTTP_INTERNAL_SERVER_ERROR + 8 + 4 + 17;
+            status = r->headers_out.status - NGX_HTTP_INTERNAL_SERVER_ERROR
+                                           + NGX_HTTP_LEVEL_200
+                                           + NGX_HTTP_LEVEL_300
+                                           + NGX_HTTP_LEVEL_400;
         }
 
         len += http_codes[status].len;

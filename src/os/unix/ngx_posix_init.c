@@ -28,7 +28,7 @@ ngx_os_io_t ngx_os_io = {
 };
 
 
-int ngx_os_init(ngx_log_t *log)
+ngx_int_t ngx_os_init(ngx_log_t *log)
 {
     return ngx_posix_init(log);
 }
@@ -282,7 +282,7 @@ void ngx_signal_handler(int signo)
 }
 
 
-int ngx_posix_post_conf_init(ngx_log_t *log)
+ngx_int_t ngx_posix_post_conf_init(ngx_log_t *log)
 {
     ngx_fd_t  pp[2];
 

@@ -20,12 +20,13 @@
 static ngx_inline ngx_int_t
     ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf);
 static ngx_int_t ngx_output_chain_add_copy(ngx_pool_t *pool,
-                                          ngx_chain_t **chain, ngx_chain_t *in);
+    ngx_chain_t **chain, ngx_chain_t *in);
 static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
-                                           ngx_uint_t sendfile);
+    ngx_uint_t sendfile);
 
 
-ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
+ngx_int_t
+ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 {
     int           rc, last;
     off_t         bsize;
@@ -62,9 +63,9 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
         }
     }
 
-    last = NGX_NONE;
     out = NULL;
     last_out = &out;
+    last = NGX_NONE;
 
     for ( ;; ) {
 
@@ -212,7 +213,7 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
 
 static ngx_inline ngx_int_t
-    ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
+ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
 {
     ngx_uint_t  sendfile;
 
@@ -251,8 +252,9 @@ static ngx_inline ngx_int_t
 }
 
 
-static ngx_int_t ngx_output_chain_add_copy(ngx_pool_t *pool,
-                                           ngx_chain_t **chain, ngx_chain_t *in)
+static ngx_int_t
+ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
+    ngx_chain_t *in)
 {
     ngx_chain_t  *cl, **ll;
 #if (NGX_SENDFILE_LIMIT)
@@ -316,8 +318,8 @@ static ngx_int_t ngx_output_chain_add_copy(ngx_pool_t *pool,
 }
 
 
-static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
-                                           ngx_uint_t sendfile)
+static ngx_int_t
+ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src, ngx_uint_t sendfile)
 {
     off_t    size;
     ssize_t  n;
@@ -408,13 +410,13 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
 }
 
 
-ngx_int_t ngx_chain_writer(void *data, ngx_chain_t *in)
+ngx_int_t
+ngx_chain_writer(void *data, ngx_chain_t *in)
 {
     ngx_chain_writer_ctx_t *ctx = data;
 
     off_t         size;
     ngx_chain_t  *cl;
-
 
     for (size = 0; in; in = in->next) {
 
@@ -444,7 +446,6 @@ ngx_int_t ngx_chain_writer(void *data, ngx_chain_t *in)
     for (cl = ctx->out; cl; cl = cl->next) {
 
 #if 1
-
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
             ngx_debug_point();
         }

@@ -46,7 +46,7 @@ ngx_radix_tree_create(ngx_pool_t *pool, ngx_int_t preallocate)
      * 8 - 8K, 9 - 16K, etc.  On the 64-bit platforms the 6 preallocated bits
      * takes continuous 4K, 7 - 8K, 8 - 16K, etc.  There is no sense to
      * to preallocate more than one page, because further preallocation
-     * distribute the only bit per page.  Instead, the random insertion
+     * distributes the only bit per page.  Instead, the random insertion
      * may distribute several bits per page.
      *
      * Thus, by default we preallocate maximum

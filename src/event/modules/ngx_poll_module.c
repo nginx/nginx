@@ -60,7 +60,8 @@ ngx_module_t  ngx_poll_module = {
 
 
 
-static ngx_int_t ngx_poll_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_poll_init(ngx_cycle_t *cycle)
 {
     struct pollfd   *list;
 
@@ -106,7 +107,8 @@ static ngx_int_t ngx_poll_init(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_poll_done(ngx_cycle_t *cycle)
+static void
+ngx_poll_done(ngx_cycle_t *cycle)
 {
     ngx_free(event_list);
 #if 0
@@ -120,7 +122,8 @@ static void ngx_poll_done(ngx_cycle_t *cycle)
 }
 
 
-static ngx_int_t ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t       *e;
     ngx_connection_t  *c;
@@ -173,7 +176,8 @@ static ngx_int_t ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static ngx_int_t ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_uint_t          i;
     ngx_cycle_t       **cycle;
@@ -260,7 +264,8 @@ static ngx_int_t ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_poll_process_events(ngx_cycle_t *cycle)
 {
     int                 ready, revents;
     ngx_int_t           i, nready;
@@ -590,7 +595,8 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
 }
 
 
-static char *ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf)
+static char *
+ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_event_conf_t  *ecf;
 

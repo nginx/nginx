@@ -9,6 +9,52 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.24" date="04.03.2005">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_filter_module поддерживает переменные
+QUERY_STRING и DOCUMENT_URI.
+</para>
+<para lang="en">
+the ngx_http_ssi_filter_module supports the QUERY_STRING and DOCUMENT_URI
+variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_autoindex_module мог выдавать ответ 404
+на существующий каталог, если этот каталог был указан как alias.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module may some times return the 404 response
+for existent directory, if this directory was used in "alias" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_ssi_filter_module неправильно работал при больших
+ответах.
+</para>
+<para lang="en">
+the ngx_http_ssi_filter_module ran incorrectly for large responses.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+отсутствие строки заголовка "Referer" всегда считалось правильным referrer'ом.
+</para>
+<para lang="en">
+the lack of the "Referer" header line was always accounted as valid referrer.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.23" date="01.03.2005">
 
 <change type="feature">

@@ -106,11 +106,11 @@ typedef struct {
 #define ngx_buf_in_memory(b)        (b->temporary || b->memory || b->mmap)
 #define ngx_buf_in_memory_only(b)   (ngx_buf_in_memory(b) && !b->in_file)
 #define ngx_buf_special(b)                                                   \
-        ((b->flush || b->last_buf) && !ngx_buf_in_memory(b) && !b->in_file)
+    ((b->flush || b->last_buf) && !ngx_buf_in_memory(b) && !b->in_file)
 
 #define ngx_buf_size(b)                                                      \
-        (ngx_buf_in_memory(b) ? (off_t) (b->last - b->pos):                  \
-                                (b->file_last - b->file_pos))
+    (ngx_buf_in_memory(b) ? (off_t) (b->last - b->pos):                      \
+                            (b->file_last - b->file_pos))
 
 ngx_buf_t *ngx_create_temp_buf(ngx_pool_t *pool, size_t size);
 ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
@@ -124,29 +124,29 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
 
 
 #define ngx_alloc_link_and_set_buf(chain, b, pool, error)                    \
-            do {                                                             \
-                ngx_test_null(chain, ngx_alloc_chain_link(pool), error);     \
-                chain->buf = b;                                              \
-                chain->next = NULL;                                          \
-            } while (0);
+    do {                                                                     \
+        ngx_test_null(chain, ngx_alloc_chain_link(pool), error);             \
+        chain->buf = b;                                                      \
+        chain->next = NULL;                                                  \
+    } while (0);
 
 
 #define ngx_chain_add_link(chain, last, cl)                                  \
-            if (chain) {                                                     \
-                *last = cl;                                                  \
-            } else {                                                         \
-                chain = cl;                                                  \
-            }                                                                \
-            last = &cl->next
+    if (chain) {                                                             \
+        *last = cl;                                                          \
+    } else {                                                                 \
+        chain = cl;                                                          \
+    }                                                                        \
+    last = &cl->next
 
 
 ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in);
 ngx_int_t ngx_chain_writer(void *ctx, ngx_chain_t *in);
 
 ngx_int_t ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
-                             ngx_chain_t *in);
+    ngx_chain_t *in);
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
-                             ngx_chain_t **out, ngx_buf_tag_t tag);
+    ngx_chain_t **out, ngx_buf_tag_t tag);
 
 
 #endif /* _NGX_BUF_H_INCLUDED_ */

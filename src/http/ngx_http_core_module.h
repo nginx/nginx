@@ -37,27 +37,6 @@ typedef enum {
 
 
 typedef struct {
-    ngx_uint_t                 value;
-    ngx_str_t                  text;
-} ngx_http_variable_value_t;
-
-
-typedef struct ngx_http_variable_s  ngx_http_variable_t;
-
-typedef ngx_http_variable_value_t
-               *(*ngx_http_get_variable_pt) (ngx_http_request_t *r, void *var);
-
-
-struct ngx_http_variable_s {
-    ngx_str_t                  name;
-    ngx_uint_t                 index;
-    ngx_http_get_variable_pt   handler;
-    void                      *data;
-    ngx_uint_t                 uses;
-};
-
-
-typedef struct {
     ngx_array_t                handlers;
     ngx_int_t                  type;                /* NGX_OK, NGX_DECLINED */
 } ngx_http_phase_t;
@@ -250,16 +229,12 @@ ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
 ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
-                                     ngx_str_t *uri, ngx_str_t *args);
-
-ngx_http_variable_t *ngx_http_add_variable(ngx_conf_t *cf);
-ngx_http_variable_value_t *ngx_http_get_variable(ngx_http_request_t *r,
-                                                 ngx_uint_t index);
+    ngx_str_t *uri, ngx_str_t *args);
 
 
 typedef ngx_int_t (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);
 typedef ngx_int_t (*ngx_http_output_body_filter_pt)
-                                   (ngx_http_request_t *r, ngx_chain_t *chain);
+    (ngx_http_request_t *r, ngx_chain_t *chain);
 
 
 ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);

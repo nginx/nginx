@@ -40,12 +40,12 @@ typedef struct {
 
 
 static int ngx_http_autoindex_cmp_entries(const void *one, const void *two);
-static ngx_int_t ngx_http_autoindex_error(ngx_http_request_t *r, ngx_dir_t *dir,
-                                          u_char *name);
+static ngx_int_t ngx_http_autoindex_error(ngx_http_request_t *r,
+    ngx_dir_t *dir, u_char *name);
 static ngx_int_t ngx_http_autoindex_init(ngx_cycle_t *cycle);
 static void *ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_autoindex_merge_loc_conf(ngx_conf_t *cf,
-                                               void *parent, void *child);
+    void *parent, void *child);
 
 
 static ngx_command_t  ngx_http_autoindex_commands[] = {
@@ -81,7 +81,7 @@ ngx_module_t  ngx_http_autoindex_module = {
     ngx_http_autoindex_commands,           /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_autoindex_init,               /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -103,7 +103,8 @@ static u_char tail[] =
 ;
 
 
-static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
+static ngx_int_t
+ngx_http_autoindex_handler(ngx_http_request_t *r)
 {
     u_char                         *last;
     size_t                          len;
@@ -146,7 +147,7 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     if (clcf->alias) {
         dname.data = ngx_palloc(pool, clcf->root.len + r->uri.len
-                                                     + NGX_DIR_MASK_LEN
+                                                     + NGX_DIR_MASK_LEN + 1
                                                      - clcf->name.len);
         if (dname.data == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -154,7 +155,7 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
     
         last = ngx_cpymem(dname.data, clcf->root.data, clcf->root.len);
         last = ngx_cpystrn(last, r->uri.data + clcf->name.len,
-                           r->uri.len - clcf->name.len);
+                           r->uri.len - clcf->name.len + 1);
 
     } else {
         dname.data = ngx_palloc(pool, clcf->root.len + r->uri.len
@@ -165,7 +166,6 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         last = ngx_cpymem(dname.data, clcf->root.data, clcf->root.len);
         last = ngx_cpystrn(last, r->uri.data, r->uri.len);
-
     }
 
     dname.len = last - dname.data;
@@ -445,7 +445,8 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_autoindex_cmp_entries(const void *one, const void *two)
+static int
+ngx_http_autoindex_cmp_entries(const void *one, const void *two)
 {
     ngx_http_autoindex_entry_t *first = (ngx_http_autoindex_entry_t *) one;
     ngx_http_autoindex_entry_t *second = (ngx_http_autoindex_entry_t *) two;
@@ -466,8 +467,8 @@ static int ngx_http_autoindex_cmp_entries(const void *one, const void *two)
 
 #if 0
 
-static ngx_buf_t *ngx_http_autoindex_alloc(ngx_http_autoindex_ctx_t *ctx,
-                                           size_t size)
+static ngx_buf_t *
+ngx_http_autoindex_alloc(ngx_http_autoindex_ctx_t *ctx, size_t size)
 {
     ngx_chain_t  *cl;
 
@@ -500,8 +501,8 @@ static ngx_buf_t *ngx_http_autoindex_alloc(ngx_http_autoindex_ctx_t *ctx,
 #endif
 
 
-static ngx_int_t ngx_http_autoindex_error(ngx_http_request_t *r, ngx_dir_t *dir,
-                                          u_char *name)
+static ngx_int_t
+ngx_http_autoindex_error(ngx_http_request_t *r, ngx_dir_t *dir, u_char *name)
 {
     if (ngx_close_dir(dir) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
@@ -512,7 +513,8 @@ static ngx_int_t ngx_http_autoindex_error(ngx_http_request_t *r, ngx_dir_t *dir,
 }
 
 
-static ngx_int_t ngx_http_autoindex_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_http_autoindex_init(ngx_cycle_t *cycle)
 {
     ngx_http_handler_pt        *h;
     ngx_http_core_main_conf_t  *cmcf;
@@ -530,7 +532,8 @@ static ngx_int_t ngx_http_autoindex_init(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf)
+static void *
+ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_autoindex_loc_conf_t  *conf;
 
@@ -545,8 +548,8 @@ static void *ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf)
 }
 
 
-static char *ngx_http_autoindex_merge_loc_conf(ngx_conf_t *cf,
-                                               void *parent, void *child)
+static char *
+ngx_http_autoindex_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_autoindex_loc_conf_t *prev = parent;
     ngx_http_autoindex_loc_conf_t *conf = child;

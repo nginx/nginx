@@ -92,20 +92,13 @@ typedef long               ngx_flag_t;
 
 
 #if (NGX_SOLARIS)
-
-/* TODO: auto_conf */
-#define NGX_ALIGN       (_MAX_ALIGNMENT - 1)         /* platform word */
-#define NGX_ALIGN_CAST  (unsigned long)              /* size of the pointer */
-
+#define NGX_ALIGN       (_MAX_ALIGNMENT - 1)
 #else
-
 /* TODO: auto_conf */
 #define NGX_ALIGN       (sizeof(unsigned long) - 1)  /* platform word */
-#define NGX_ALIGN_CAST  (unsigned long)              /* size of the pointer */
-
 #endif
 
-#define ngx_align(p)    (u_char *) ((NGX_ALIGN_CAST p + NGX_ALIGN) & ~NGX_ALIGN)
+#define ngx_align(p)    (u_char *) (((uintptr_t) p + NGX_ALIGN) & ~NGX_ALIGN)
 
 
 /* TODO: auto_conf: ngx_inline   inline __inline __inline__ */

@@ -30,7 +30,7 @@ ngx_module_t  ngx_conf_module = {
     ngx_conf_commands,                     /* module directives */
     NGX_CONF_MODULE,                       /* module type */
     NULL,                                  /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 

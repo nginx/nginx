@@ -174,9 +174,10 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
                                 ngx_pool_t *pool)
 {
-    int         rc, collision;
-    u_int       num;
-    u_char     *name;
+    u_char             *name;
+    ngx_int_t           rc;
+    ngx_uint_t          collision;
+    ngx_atomic_uint_t   num;
 
     if (!(name = ngx_palloc(pool, to->len + 1 + 10 + 1 + sizeof("DELETE")))) {
         return NGX_ERROR;
@@ -188,18 +189,19 @@ ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
 
     /* mutex_lock() (per cache or single ?) */
 
-    do {
+    for ( ;; ) {
         num = ngx_next_temp_number(collision);
 
-        ngx_sprintf(name + to->len, ".%010u.DELETE", num);
+        ngx_sprintf(name + to->len, ".%0muA.DELETE", num);
 
-        if (MoveFile((const char *) to->data, (const char *) name) == 0) {
-            collision = 1;
-            ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno,
-                          "MoveFile() failed");
+        if (MoveFile((const char *) to->data, (const char *) name) != 0) {
+            break;
         }
 
-    } while (collision);
+        collision = 1;
+
+        ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno, "MoveFile() failed");
+    }
 
     if (MoveFile((const char *) from->data, (const char *) to->data) == 0) {
         rc = NGX_ERROR;

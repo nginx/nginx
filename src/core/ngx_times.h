@@ -12,7 +12,7 @@
 #include <ngx_core.h>
 
 
-void ngx_time_init();
+void ngx_time_init(void);
 void ngx_time_update(time_t s);
 u_char *ngx_http_time(u_char *buf, time_t t);
 u_char *ngx_http_cookie_time(u_char *buf, time_t t);

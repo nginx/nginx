@@ -10,7 +10,7 @@
 
 
 
-ngx_int_t ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level)
+ngx_int_t ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, ngx_int_t level)
 {
     int         rc;
     u_char     *last;

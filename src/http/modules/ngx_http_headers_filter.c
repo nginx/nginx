@@ -59,7 +59,7 @@ ngx_module_t  ngx_http_headers_filter_module = {
     ngx_http_headers_filter_commands,      /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_headers_filter_init,          /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 

@@ -190,7 +190,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
         for (i = 0; i < p->lcf->x_vars->nelts; i++) {
 
-            if (!(value = ngx_http_get_variable(r, index[i]))) {
+            if (!(value = ngx_http_get_indexed_variable(r, index[i]))) {
                 continue;
             }
 
@@ -379,7 +379,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     if (p->lcf->x_vars) {
         for (i = 0; i < p->lcf->x_vars->nelts; i++) {
 
-            if (!(value = ngx_http_get_variable(r, index[i]))) {
+            if (!(value = ngx_http_get_indexed_variable(r, index[i]))) {
                 continue;
             }
 

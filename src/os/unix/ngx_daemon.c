@@ -8,7 +8,7 @@
 #include <ngx_core.h>
 
 
-int ngx_daemon(ngx_log_t *log)
+ngx_int_t ngx_daemon(ngx_log_t *log)
 {
     int  fd;
 

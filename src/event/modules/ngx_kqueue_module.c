@@ -24,7 +24,7 @@ static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags);
 static ngx_int_t ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try);
 static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle);
 static ngx_inline void ngx_kqueue_dump_event(ngx_log_t *log,
-                                             struct kevent *kev);
+    struct kevent *kev);
 
 static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle);
 static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -55,21 +55,21 @@ static ngx_str_t      kqueue_name = ngx_string("kqueue");
 
 static ngx_command_t  ngx_kqueue_commands[] = {
 
-    {ngx_string("kqueue_changes"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_kqueue_conf_t, changes),
-     NULL},
+    { ngx_string("kqueue_changes"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_kqueue_conf_t, changes),
+      NULL },
 
-    {ngx_string("kqueue_events"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_kqueue_conf_t, events),
-     NULL},
+    { ngx_string("kqueue_events"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_kqueue_conf_t, events),
+      NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 
@@ -104,7 +104,8 @@ ngx_module_t  ngx_kqueue_module = {
 
 
 
-static ngx_int_t ngx_kqueue_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_kqueue_init(ngx_cycle_t *cycle)
 {
     struct timespec     ts;
     ngx_kqueue_conf_t  *kcf;
@@ -203,7 +204,8 @@ static ngx_int_t ngx_kqueue_init(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_kqueue_done(ngx_cycle_t *cycle)
+static void
+ngx_kqueue_done(ngx_cycle_t *cycle)
 {
     if (close(ngx_kqueue) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -231,7 +233,8 @@ static void ngx_kqueue_done(ngx_cycle_t *cycle)
 }
 
 
-static ngx_int_t ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_int_t          rc;
     ngx_event_t       *e;
@@ -295,7 +298,8 @@ static ngx_int_t ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_int_t     rc;
     ngx_event_t  *e;
@@ -358,7 +362,8 @@ static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
+static ngx_int_t
+ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 {
     struct kevent     *kev;
     struct timespec    ts;
@@ -425,7 +430,8 @@ static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 }
 
 
-static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_kqueue_process_events(ngx_cycle_t *cycle)
 {
     int                events, n;
     ngx_int_t          i, instance;
@@ -715,7 +721,8 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 }
 
 
-static ngx_int_t ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try)
+static ngx_int_t
+ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try)
 {
     int               n;
     ngx_int_t         rc;
@@ -772,7 +779,8 @@ static ngx_int_t ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try)
 }
 
 
-static ngx_inline void ngx_kqueue_dump_event(ngx_log_t *log, struct kevent *kev)
+static ngx_inline void
+ngx_kqueue_dump_event(ngx_log_t *log, struct kevent *kev)
 {
     ngx_log_debug6(NGX_LOG_DEBUG_EVENT, log, 0,
                    (kev->ident > 0x8000000 && kev->ident != (unsigned) -1) ?
@@ -784,7 +792,8 @@ static ngx_inline void ngx_kqueue_dump_event(ngx_log_t *log, struct kevent *kev)
 }
 
 
-static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle)
+static void *
+ngx_kqueue_create_conf(ngx_cycle_t *cycle)
 {
     ngx_kqueue_conf_t  *kcf;
 
@@ -798,7 +807,8 @@ static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle)
 }
 
 
-static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf)
+static char *
+ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_kqueue_conf_t *kcf = conf;
 

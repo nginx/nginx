@@ -31,12 +31,12 @@ typedef struct {
 } ngx_devpoll_conf_t;
 
 
-static int ngx_devpoll_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_devpoll_init(ngx_cycle_t *cycle);
 static void ngx_devpoll_done(ngx_cycle_t *cycle);
-static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_devpoll_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_devpoll_process_events(ngx_cycle_t *cycle);
 
 static void *ngx_devpoll_create_conf(ngx_cycle_t *cycle);
 static char *ngx_devpoll_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -52,21 +52,21 @@ static ngx_str_t      devpoll_name = ngx_string("/dev/poll");
 
 static ngx_command_t  ngx_devpoll_commands[] = {
 
-    {ngx_string("devpoll_changes"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_devpoll_conf_t, changes),
-     NULL},
+    { ngx_string("devpoll_changes"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_devpoll_conf_t, changes),
+      NULL },
 
-    {ngx_string("devpoll_events"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_devpoll_conf_t, events),
-     NULL},
+    { ngx_string("devpoll_events"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_devpoll_conf_t, events),
+      NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 
@@ -100,7 +100,8 @@ ngx_module_t  ngx_devpoll_module = {
 };
 
 
-static int ngx_devpoll_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_devpoll_init(ngx_cycle_t *cycle)
 {
     size_t               n;
     ngx_devpoll_conf_t  *dpcf;
@@ -173,7 +174,8 @@ static int ngx_devpoll_init(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_devpoll_done(ngx_cycle_t *cycle)
+static void
+ngx_devpoll_done(ngx_cycle_t *cycle)
 {
     if (close(dp) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -195,7 +197,8 @@ static void ngx_devpoll_done(ngx_cycle_t *cycle)
 }
 
 
-static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
 #if (NGX_DEBUG)
     ngx_connection_t *c;
@@ -217,7 +220,8 @@ static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t       *e;
     ngx_connection_t  *c;
@@ -260,7 +264,8 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 {
     size_t             n;
     ngx_connection_t  *c;
@@ -308,7 +313,8 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-int ngx_devpoll_process_events(ngx_cycle_t *cycle)
+ngx_int_t
+ngx_devpoll_process_events(ngx_cycle_t *cycle)
 {
     int                 events, revents;
     ngx_int_t           i;
@@ -569,7 +575,8 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_devpoll_create_conf(ngx_cycle_t *cycle)
+static void *
+ngx_devpoll_create_conf(ngx_cycle_t *cycle)
 {
     ngx_devpoll_conf_t  *dpcf;
 
@@ -583,7 +590,8 @@ static void *ngx_devpoll_create_conf(ngx_cycle_t *cycle)
 }
 
 
-static char *ngx_devpoll_init_conf(ngx_cycle_t *cycle, void *conf)
+static char *
+ngx_devpoll_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_devpoll_conf_t *dpcf = conf;
 

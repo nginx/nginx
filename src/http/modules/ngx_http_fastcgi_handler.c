@@ -599,7 +599,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
         for (i = 0; i < flcf->vars->nelts; i++) {
 
-            if (!(value = ngx_http_get_variable(r, vindex[i]))) {
+            if (!(value = ngx_http_get_indexed_variable(r, vindex[i]))) {
                 continue;
             }
 
@@ -998,7 +998,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     if (flcf->vars) {
         for (i = 0; i < flcf->vars->nelts; i++) {
 
-            if (!(value = ngx_http_get_variable(r, vindex[i]))) {
+            if (!(value = ngx_http_get_indexed_variable(r, vindex[i]))) {
                 continue;
             }
 
