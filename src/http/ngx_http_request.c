@@ -188,9 +188,10 @@ static void ngx_http_init_request(ngx_event_t *rev)
     if (in_port->addrs.nelts > 1) {
 
         /*
-         * There are the several addresses on this port and one of them
-         * is "*:port" so getsockname() is needed to determine
+         * There are several addresses on this port and one of them
+         * is the "*:port" wildcard so getsockname() is needed to determine
          * the server address.
+         *
          * AcceptEx() already gave this address.
          */
 
@@ -297,6 +298,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         ngx_http_close_connection(c);
         return;
     }
+
     /*
      * set by ngx_pcalloc():
      *
