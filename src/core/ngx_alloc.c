@@ -20,6 +20,7 @@ void *ngx_alloc(size_t size, ngx_log_t *log)
     return p;
 }
 
+
 void *ngx_calloc(size_t size, ngx_log_t *log)
 {
     void *p;
@@ -31,6 +32,7 @@ void *ngx_calloc(size_t size, ngx_log_t *log)
 
     return p;
 }
+
 
 ngx_pool_t *ngx_create_pool(size_t size, ngx_log_t *log)
 {
@@ -47,6 +49,7 @@ ngx_pool_t *ngx_create_pool(size_t size, ngx_log_t *log)
     return p;
 }
 
+
 void ngx_destroy_pool(ngx_pool_t *pool)
 {
     ngx_pool_t        *p, *n;
@@ -56,7 +59,9 @@ void ngx_destroy_pool(ngx_pool_t *pool)
 #if (NGX_DEBUG_ALLOC)
         ngx_log_debug(pool->log, "free: %08x" _ l->alloc);
 #endif
-        free(l->alloc);
+        if (l->alloc) {
+            free(l->alloc);
+        }
     }
 
     /*
@@ -85,6 +90,7 @@ void ngx_destroy_pool(ngx_pool_t *pool)
     pool = NULL;
 }
 
+
 void *ngx_palloc(ngx_pool_t *pool, size_t size)
 {
     char              *m;
@@ -107,52 +113,70 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
             }
         }
 
-        /* alloc new pool block */
+        /* alloc a new pool block */
+
         ngx_test_null(n, ngx_create_pool(p->end - (char *) p, p->log), NULL);
         p->next = n;
         m = n->last;
         n->last += size;
+
         return m;
+    }
 
-    /* alloc large block */
-    } else {
-        large = NULL;
-        last = NULL;
+    /* alloc a large block */
 
-        if (pool->large) {
-            for (last = pool->large; /* void */; last = last->next) {
-                if (last->alloc == NULL) {
-                    large = last;
-                    last = NULL;
-                    break;
-                }
+    large = NULL;
+    last = NULL;
 
-                if (last->next == NULL) {
-                    break;
-                }
+    if (pool->large) {
+        for (last = pool->large; /* void */; last = last->next) {
+            if (last->alloc == NULL) {
+                large = last;
+                last = NULL;
+                break;
+            }
+
+            if (last->next == NULL) {
+                break;
             }
         }
+    }
 
-        if (large == NULL) {
-            ngx_test_null(large, ngx_palloc(pool, sizeof(ngx_pool_large_t)),
-                          NULL);
-            large->next = NULL;
+    if (large == NULL) {
+        ngx_test_null(large, ngx_palloc(pool, sizeof(ngx_pool_large_t)), NULL);
+        large->next = NULL;
+    }
+
+    ngx_test_null(p, ngx_alloc(size, pool->log), NULL);
+
+    if (pool->large == NULL) {
+        pool->large = large;
+
+    } else if (last) {
+        last->next = large;
+    }
+
+    large->alloc = p;
+
+    return p;
+}
+
+
+void ngx_pfree(ngx_pool_t *pool, void *p)
+{
+    ngx_pool_large_t  *l;
+
+    for (l = pool->large; l; l = l->next) {
+        if (p == l->alloc) {
+#if (NGX_DEBUG_ALLOC)
+            ngx_log_debug(pool->log, "free: %08x" _ l->alloc);
+#endif
+            free(l->alloc);
+            l->alloc = NULL;
         }
-
-        ngx_test_null(p, ngx_alloc(size, pool->log), NULL);
-
-        if (pool->large == NULL) {
-            pool->large = large;
-
-        } else if (last) {
-            last->next = large;
-        }
-
-        large->alloc = p;
-
-        return p;
     }
 }
+
 
 void *ngx_pcalloc(ngx_pool_t *pool, size_t size)
 {

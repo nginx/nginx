@@ -1200,7 +1200,6 @@ static size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len)
 
 static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 {
-    int                         i;
     ngx_http_proxy_loc_conf_t  *conf;
 
     ngx_test_null(conf,

@@ -7,6 +7,7 @@
 
 
 typedef unsigned __int32            u_int32_t;
+typedef __int64                     int64_t;
 
 typedef int                         ssize_t;
 typedef long                        time_t;

@@ -203,5 +203,5 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         path->level[i++] = 0;
     }
 
-    return NULL;
+    return NGX_CONF_OK;
 }

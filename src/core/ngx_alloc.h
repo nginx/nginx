@@ -6,9 +6,10 @@
 #include <ngx_core.h>
 
 
-/* NGX_MAX_ALLOC_FROM_POOL should be (PAGE_SIZE - 1), i.e. 4095 on x86.
-   On FreeBSD 5.x it allows to use zero copy send.
-   On Windows NT it decreases number of locked pages in kernel.
+/*
+ * NGX_MAX_ALLOC_FROM_POOL should be (PAGE_SIZE - 1), i.e. 4095 on x86.
+ * On FreeBSD 5.x it allows to use zero copy send.
+ * On Windows NT it decreases number of locked pages in kernel.
  */
 #define NGX_MAX_ALLOC_FROM_POOL 4095
 
@@ -44,6 +45,8 @@ void ngx_destroy_pool(ngx_pool_t *pool);
 
 void *ngx_palloc(ngx_pool_t *pool, size_t size);
 void *ngx_pcalloc(ngx_pool_t *pool, size_t size);
+void ngx_pfree(ngx_pool_t *pool, void *p);
+
 
 #define ngx_free   free
 

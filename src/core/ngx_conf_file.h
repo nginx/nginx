@@ -52,17 +52,37 @@
 #define NGX_CONF_MODULE      0x464E4F43  /* "CONF" */
 
 
+typedef struct ngx_conf_bounds_s ngx_conf_bounds_t;
 
-struct ngx_command_s {
-    ngx_str_t  name;
-    int        type;
-    char    *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-    int        conf;
-    int        offset;
-    void      *bounds;
+struct ngx_conf_bounds_s {
+    char     *(*check)(ngx_conf_t *cf, ngx_conf_bounds_t *bounds, void *conf);
+
+    union {
+        struct {
+           int  low;
+           int  high;
+        } num;
+
+        struct num {
+           int  low_num;
+           int  high_num;
+           int  low_size;
+           int  high_size;
+        } bufs;
+   } type;
 };
 
-#define ngx_null_command   {ngx_null_string, 0, NULL, 0, 0, NULL}
+
+struct ngx_command_s {
+    ngx_str_t           name;
+    int                 type;
+    char             *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+    int                 conf;
+    int                 offset;
+    ngx_conf_bounds_t  *bounds;
+};
+
+#define ngx_null_command   { ngx_null_string, 0, NULL, 0, 0, NULL }
 
 
 struct ngx_open_file_s {
@@ -220,6 +240,9 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);
+
+char *ngx_conf_check_num_bounds(ngx_conf_t *cf, ngx_conf_bounds_t *bounds,
+                                void *conf);
 
 
 extern ngx_module_t     *ngx_modules[];

@@ -546,6 +546,7 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     int         flag;
     ngx_str_t  *value;
 
+
     if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
         return "is duplicate";
     }
@@ -596,23 +597,25 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int         num, len;
+    int        *np;
     ngx_str_t  *value;
 
-    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
+
+    np = (int *) (p + cmd->offset);
+
+    if (*np != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
     value = (ngx_str_t *) cf->args->elts;
-
-    len = value[1].len;
-
-    num = ngx_atoi(value[1].data, len);
-    if (num == NGX_ERROR) {
+    *np = ngx_atoi(value[1].data, value[1].len);
+    if (*np == NGX_ERROR) {
         return "invalid number";
     }
 
-    *(int *) (p + cmd->offset) = num;
+    if (cmd->bounds) {
+        return cmd->bounds->check(cf, cmd->bounds, np);
+    }
 
     return NGX_CONF_OK;
 }
@@ -622,11 +625,14 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int         size, len, scale;
+    int         size, len, scale, *np;
     char        last;
     ngx_str_t  *value;
 
-    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
+
+    np = (int *) (p + cmd->offset);
+
+    if (*np != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -658,8 +664,11 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     size *= scale;
+    *np = size;
 
-    *(int *) (p + cmd->offset) = size;
+    if (cmd->bounds) {
+        return cmd->bounds->check(cf, cmd->bounds, np);
+    }
 
     return NGX_CONF_OK;
 }
@@ -669,12 +678,15 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int         size, total, len, scale;
+    int         size, total, len, scale, *np;
     u_int       max, i;
     char        last, *start;
     ngx_str_t  *value;
 
-    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
+
+    np = (int *) (p + cmd->offset);
+
+    if (*np != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -756,7 +768,11 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         start = &value[1].data[i + 1];
     }
 
-    *(int *) (p + cmd->offset) = total;
+    *np = total;
+
+    if (cmd->bounds) {
+        return cmd->bounds->check(cf, cmd->bounds, np);
+    }
 
     return NGX_CONF_OK;
 }
@@ -766,12 +782,15 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int         size, total, len, scale;
+    int         size, total, len, scale, *np;
     u_int       max, i;
     char        last, *start;
     ngx_str_t  *value;
 
-    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
+
+    np = (int *) (p + cmd->offset);
+
+    if (*np != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -865,7 +884,11 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         start = &value[1].data[i + 1];
     }
 
-    *(int *) (p + cmd->offset) = total;
+    *np = total;
+
+    if (cmd->bounds) {
+        return cmd->bounds->check(cf, cmd->bounds, np);
+    }
 
     return NGX_CONF_OK;
 }
@@ -928,4 +951,18 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     return "unsupported on this platform";
+}
+
+
+char *ngx_conf_check_num_bounds(ngx_conf_t *cf, ngx_conf_bounds_t *bounds,
+                                void *conf)
+{
+    int *num = conf;
+
+    if (*num >= bounds->type.num.low && *num <= bounds->type.num.high) {
+        return NGX_CONF_OK;
+
+    }
+
+    return "invalid value";
 }
