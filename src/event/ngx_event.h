@@ -45,13 +45,20 @@ struct ngx_event_s {
     /*
      * kqueue only:
      *   accept:     number of sockets that wait to be accepted
-     *   read:       bytes to read
-     *   write:      available space in buffer
+     *   read:       bytes to read when event is ready
+     *               or lowat when event is set with NGX_LOWAT_EVENT flag
+     *   write:      available space in buffer when event is ready
+     *               or lowat when event is set with NGX_LOWAT_EVENT flag
      *
      * otherwise:
      *   accept:     1 if accept many, 0 otherwise
      */
+
+#if (HAVE_KQUEUE)
     int              available;
+#else
+    unsigned         available:1;
+#endif
 
     unsigned         oneshot:1;
 
@@ -102,10 +109,6 @@ struct ngx_event_s {
 #if (HAVE_KQUEUE)
     /* the pending errno reported by kqueue */
     int              kq_errno;
-#endif
-
-#if (HAVE_LOWAT_EVENT) /* kqueue's NOTE_LOWAT */
-    int              lowat;
 #endif
 
 
@@ -224,7 +227,11 @@ extern ngx_event_actions_t   ngx_event_actions;
  * /dev/poll:  we need to flush POLLREMOVE event before closing file
  */
 
-#define NGX_CLOSE_EVENT         1
+#define NGX_CLOSE_EVENT    1
+
+
+/* this flag has meaning only for kqueue */
+#define NGX_LOWAT_EVENT    0
 
 
 #if (HAVE_KQUEUE)
@@ -233,13 +240,17 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_WRITE_EVENT    EVFILT_WRITE
 
 /*
- * NGX_CLOSE_EVENT is the module flag and it would not go into a kernel
- * so we need to choose the value that would not interfere with any existent
- * and future flags.  kqueue has such values - EV_FLAG1, EV_EOF and EV_ERROR.
- * They are reserved and cleared on a kernel entrance.
+ * NGX_CLOSE_EVENT and NGX_LOWAT_EVENT are the module flags and they would
+ * not go into a kernel so we need to choose the value that would not interfere
+ * with any existent and future kqueue flags.  kqueue has such values -
+ * EV_FLAG1, EV_EOF and EV_ERROR.  They are reserved and cleared on a kernel
+ * entrance.
  */
 #undef  NGX_CLOSE_EVENT
-#define NGX_CLOSE_EVENT    EV_FLAG1
+#define NGX_CLOSE_EVENT    EV_EOF
+
+#undef  NGX_LOWAT_EVENT
+#define NGX_LOWAT_EVENT    EV_FLAG1
 
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  EV_ONESHOT
@@ -351,7 +362,7 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
 
 
 
-ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, int close)
+ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, int flags)
 {
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
@@ -380,10 +391,8 @@ ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, int close)
             return NGX_OK;
         }
 
-        if (rev->active && (rev->ready || close)) {
-            if (ngx_del_event(rev, NGX_READ_EVENT, close ? NGX_CLOSE_EVENT : 0)
-                                                                  == NGX_ERROR)
-            {
+        if (rev->active && (rev->ready || (flags & NGX_CLOSE_EVENT))) {
+            if (ngx_del_event(rev, NGX_READ_EVENT, flags) == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
@@ -423,21 +432,14 @@ ngx_inline static int ngx_handle_level_read_event(ngx_event_t *rev)
 }
 
 
-ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, int lowat)
+ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, int flags)
 {
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
         /* kqueue */
 
-#if (HAVE_LOWAT_EVENT) /* kqueue's NOTE_LOWAT */
-
-        if (ngx_event_flags & NGX_HAVE_LOWAT_EVENT) {
-            wev->lowat = lowat;
-        }
-
-#endif
         if (!wev->active && !wev->ready) {
-            if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_CLEAR_EVENT)
+            if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_CLEAR_EVENT|flags)
                                                                 == NGX_ERROR) {
                 return NGX_ERROR;
             }

@@ -34,7 +34,7 @@
 #define OFF_FMT    "%lld"
 #define SIZE_FMT   "%d"
 #define SIZEX_FMT  "%x"
-#define TIME_FMT   "%lu"
+#define TIME_FMT   "%ld"
 #define PID_FMT    "%d"
 #define RLIM_FMT   "%lu"
 

@@ -664,6 +664,10 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
         return n;
     }
 
+    if (!rev->ready) {
+        return NGX_AGAIN;
+    }
+
     n = ngx_recv(r->connection, r->header_in->last,
                  r->header_in->end - r->header_in->last);
 
@@ -853,7 +857,8 @@ static void ngx_http_set_write_handler(ngx_http_request_t *r)
                                         ngx_http_core_module);
     ngx_add_timer(wev, clcf->send_timeout);
 
-    if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
+    wev->available = clcf->send_lowat;
+    if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
         ngx_http_close_request(r, 0);
         ngx_http_close_connection(r->connection);
     }

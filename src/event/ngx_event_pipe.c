@@ -19,6 +19,7 @@ static int ngx_event_pipe_drain_chains(ngx_event_pipe_t *p);
 
 int ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
 {
+    int           flags;
     ngx_event_t  *rev, *wev;
 
     for ( ;; ) {
@@ -45,7 +46,9 @@ int ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
     if (p->upstream->fd != -1) {
         rev = p->upstream->read;
 
-        if (ngx_handle_read_event(rev, (rev->eof || rev->error)) == NGX_ERROR) {
+        flags = (rev->eof || rev->error) ? NGX_CLOSE_EVENT : 0;
+
+        if (ngx_handle_read_event(rev, flags) == NGX_ERROR) {
             return NGX_ABORT;
         }
 
@@ -54,12 +57,10 @@ int ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
         }
     }
 
-ngx_log_debug(p->log, "DOWN: %d" _ p->downstream->fd);
-
     if (p->downstream->fd != -1) {
         wev = p->downstream->write;
-
-        if (ngx_handle_write_event(wev, p->send_lowat) == NGX_ERROR) {
+        wev->available = p->send_lowat;
+        if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
             return NGX_ABORT;
         }
 

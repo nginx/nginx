@@ -107,6 +107,13 @@ int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
     ctx->date = h->date;
     ctx->length = h->length;
 
+    if (h->key_len > (size_t) (ctx->buf->last - ctx->buf->pos)) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "cache file \"%s\" is probably invalid",
+                      ctx->file.name.data);
+        return NGX_DECLINED;
+    }
+
     if (h->key_len != ctx->key.len
         || ngx_strncmp(h->key, ctx->key.data, h->key_len) != 0)
     {

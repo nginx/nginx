@@ -49,6 +49,12 @@
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE     414
 #define NGX_HTTP_RANGE_NOT_SATISFIABLE     416
 
+/*
+ * HTTP does not define a code for the case when a client closed a connection
+ * while we are processing request so we introduce own code to log this case
+ */
+#define NGX_HTTP_CLIENT_CLOSED_REQUEST     420
+
 #define NGX_HTTP_INTERNAL_SERVER_ERROR     500
 #define NGX_HTTP_NOT_IMPLEMENTED           501
 #define NGX_HTTP_BAD_GATEWAY               502

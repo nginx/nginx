@@ -33,11 +33,13 @@ typedef u_int32_t  uintptr_t;
 #endif
 
 
+/* TODO: autoconf ??? */
 #if __FreeBSD_version < 330002  /* exactly */
 typedef uint32_t   socklen_t;
 #endif
 
 
+/* TODO: autoconf */
 #if (i386)
 
 #define OFF_FMT    "%lld"
@@ -52,7 +54,7 @@ typedef uint32_t   socklen_t;
 
 #endif
 
-#define TIME_FMT   "%lu"
+#define TIME_FMT   "%ld"
 #define PID_FMT    "%d"
 #define RLIM_FMT   "%lld"
 
@@ -91,8 +93,8 @@ typedef uint32_t   socklen_t;
 
 
 /* STUB */
-#define HAVE_PREAD         1
-#define HAVE_PWRITE        1
+#define HAVE_PREAD         0
+#define HAVE_PWRITE        0
 #define HAVE_LOCALTIME_R   1
 
 

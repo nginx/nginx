@@ -283,8 +283,28 @@ void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
         p->cache->ctx.file.info_valid = 1;
     }
 
-
     if (rc == NGX_AGAIN) {
+
+        if ((ngx_event_flags & (NGX_USE_CLEAR_EVENT|NGX_HAVE_KQUEUE_EVENT))
+            && !p->request->connection->write->active)
+        {
+            /*
+             * kqueue allows to detect when client closes prematurely
+             * connection
+             */
+
+            p->request->connection->write->event_handler =
+                                        ngx_http_proxy_check_broken_connection;
+
+            if (ngx_add_event(p->request->connection->write, NGX_WRITE_EVENT,
+                                                NGX_CLEAR_EVENT) == NGX_ERROR)
+            {
+                ngx_http_proxy_finalize_request(p,
+                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
+        }
+
         return;
     }
 

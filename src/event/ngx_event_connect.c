@@ -260,6 +260,8 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
         return NGX_AGAIN;
     }
 
+ngx_log_debug(pc->log, "CONNECTED");
+
     wev->ready = 1;
 
     return NGX_OK;

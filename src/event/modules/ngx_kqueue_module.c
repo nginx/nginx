@@ -285,9 +285,9 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 
 #if (HAVE_LOWAT_EVENT)
 
-    if ((flags & EV_ADD) && ev->lowat > 0) {
+    if (flags & NGX_LOWAT_EVENT) {
         change_list[nchanges].fflags = NOTE_LOWAT;
-        change_list[nchanges].data = ev->lowat;
+        change_list[nchanges].data = ev->available;
 
     } else {
         change_list[nchanges].fflags = 0;

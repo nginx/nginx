@@ -103,6 +103,10 @@ ngx_log_debug(bc->event->log, "BUSYLOCK: %d" _ rc);
 void ngx_http_busy_unlock(ngx_http_busy_lock_t *bl,
                           ngx_http_busy_lock_ctx_t *bc)
 {
+    if (bl == NULL) {
+        return;
+    }
+
     if (bl->md5) {
         bl->md5_mask[bc->slot / 8] &= ~(1 << (bc->slot & 7));
         bl->cachable--;

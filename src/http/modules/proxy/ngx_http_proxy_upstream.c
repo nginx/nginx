@@ -19,7 +19,6 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev);
 static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev);
 static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *);
 static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p);
-static void ngx_http_proxy_check_broken_connection(ngx_event_t *wev);
 static void ngx_http_proxy_process_body(ngx_event_t *ev);
 static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p, int ft_type);
 
@@ -502,8 +501,8 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, p->lcf->send_timeout);
 
-        if (ngx_handle_write_event(c->write, /* STUB: lowat */ 0) == NGX_ERROR)
-        {
+        c->write->available = /* STUB: lowat */ 0;
+        if (ngx_handle_write_event(c->write, NGX_LOWAT_EVENT) == NGX_ERROR) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
@@ -525,6 +524,8 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
         c->tcp_nopush = 0;
         return;
     }
+
+    ngx_add_timer(c->read, p->lcf->read_timeout);
 
 #if 0
     if (c->read->ready) {
@@ -566,9 +567,11 @@ static void ngx_http_proxy_send_request_handler(ngx_event_t *wev)
         return;
     }
 
-    if (p->request->connection->write->eof) {
-        ngx_http_proxy_close_connection(p);
-        ngx_http_close_connection(p->request->connection);
+    if (p->request->connection->write->eof
+        && (!p->cachable || !p->request_sent))
+    {
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        return;
     }
 
     ngx_http_proxy_send_request(p);
@@ -868,7 +871,9 @@ static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
                  p->header_in->end - p->header_in->last);
 
     if (n == NGX_AGAIN) {
+#if 0
         ngx_add_timer(rev, p->lcf->read_timeout);
+#endif
 
         if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -1042,45 +1047,6 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 }
 
 
-static void ngx_http_proxy_check_broken_connection(ngx_event_t *wev)
-{
-    ngx_connection_t      *c;
-    ngx_http_request_t    *r;
-    ngx_http_proxy_ctx_t  *p;
-
-    ngx_log_debug(wev->log, "http proxy check client");
-
-    c = wev->data;
-    r = c->data;
-    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
-
-#if (HAVE_KQUEUE)
-    if (wev->kq_eof) {
-        wev->eof = 1;
-
-        if (wev->kq_errno) {
-            wev->error = 1;
-        }
-
-        if (!p->cachable && p->upstream->peer.connection) {
-            ngx_log_error(NGX_LOG_INFO, wev->log, wev->kq_errno,
-                          "client closed prematurely connection, "
-                          "so upstream connection is closed too");
-            ngx_http_proxy_close_connection(p);
-
-        } else {
-            ngx_log_error(NGX_LOG_INFO, wev->log, wev->kq_errno,
-                          "client closed prematurely connection");
-        }
- 
-        if (p->upstream->peer.connection == NULL) {
-            ngx_http_close_connection(c);
-        }
-    }
-#endif
-}
-
-
 static void ngx_http_proxy_process_body(ngx_event_t *ev)
 {
     ngx_connection_t      *c;
@@ -1213,6 +1179,11 @@ ngx_log_debug(p->request->connection->log, "next upstream: %d" _ ft_type);
 
     if (p->upstream->peer.connection) {
         ngx_http_proxy_close_connection(p);
+    }
+
+    if (p->request->connection->write->eof) {
+        ngx_http_proxy_finalize_request(p, status ? status:
+                                           NGX_HTTP_CLIENT_CLOSED_REQUEST);
     }
 
     if (status) {

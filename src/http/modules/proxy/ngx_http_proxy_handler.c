@@ -338,6 +338,45 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
 }
 
 
+void ngx_http_proxy_check_broken_connection(ngx_event_t *wev)
+{
+    ngx_connection_t      *c;
+    ngx_http_request_t    *r;
+    ngx_http_proxy_ctx_t  *p;
+
+    ngx_log_debug(wev->log, "http proxy check client");
+
+    c = wev->data;
+    r = c->data;
+    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
+#if (HAVE_KQUEUE)
+    if (wev->kq_eof) {
+        wev->eof = 1;
+
+        if (wev->kq_errno) {
+            wev->error = 1;
+        }
+
+        if (!p->cachable && p->upstream->peer.connection) {
+            ngx_log_error(NGX_LOG_INFO, wev->log, wev->kq_errno,
+                          "client closed prematurely connection, "
+                          "so upstream connection is closed too");
+            ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+            return;
+        }
+
+        ngx_log_error(NGX_LOG_INFO, wev->log, wev->kq_errno,
+                      "client closed prematurely connection");
+
+        if (p->upstream == NULL || p->upstream->peer.connection == NULL) {
+            ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        }
+    }
+#endif
+}
+
+
 void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
 {
     ngx_connection_t      *c;
@@ -350,6 +389,12 @@ void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
     r = c->data;
     p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
     p->action = "waiting upstream in busy lock";
+
+    if (p->request->connection->write->eof) {
+        ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        return;
+    }
 
     if (rev->timedout) {
         rev->timedout = 0;
@@ -369,14 +414,15 @@ void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
 
     /*
      * TODO: kevent() notify about error, otherwise we need to
-     * call ngx_peek(): recv(MGS_PEEK) to get errno. THINK about aio
+     * call ngx_peek(): recv(MSG_PEEK) to get errno. THINK about aio
      * if there's no error we need to disable event.
      */
 
+#if 0
 #if (HAVE_KQUEUE)
 
     if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && rev->kq_eof) {
-        p->lcf->busy_lock->waiting--;
+        ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
 
         ngx_del_timer(rev);
 
@@ -388,12 +434,11 @@ void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
             return;
         }
 
-        /* we have not HTTP code for the case when a client cancels a request */
-
-        ngx_http_proxy_finalize_request(p, 0);
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
         return;
     }
 
+#endif
 #endif
 
 }
