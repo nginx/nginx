@@ -10,6 +10,7 @@ typedef int               ngx_err_t;
 #define NGX_ENOENT        ENOENT
 #define NGX_EINTR         EINTR
 #define NGX_EAGAIN        EWOULDBLOCK
+#define NGX_EINPROGRESS   EINPROGRESS
 #define NGX_EADDRINUSE    EADDRINUSE
 #define NGX_ETIMEDOUT     ETIMEDOUT
 

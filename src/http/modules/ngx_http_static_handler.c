@@ -58,25 +58,25 @@ int ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    r->headers_out->status = NGX_HTTP_OK;
-    r->headers_out->content_length = ngx_file_size(r->fileinfo);
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length = ngx_file_size(r->fileinfo);
 /*
-    r->headers_out->last_modified = ngx_file_mtime(r->fileinfo);
+    r->headers_out.last_modified = ngx_file_mtime(r->fileinfo);
 */
 
     /* STUB */
     if (r->exten) {
         if (strcasecmp(r->exten, "html") == 0)
-            r->headers_out->content_type = "text/html; charset=koi8-r";
+            r->headers_out.content_type = "text/html; charset=koi8-r";
         else if (strcasecmp(r->exten, "gif") == 0)
-            r->headers_out->content_type = "image/gif";
+            r->headers_out.content_type = "image/gif";
         else if (strcasecmp(r->exten, "jpg") == 0)
-            r->headers_out->content_type = "image/jpeg";
+            r->headers_out.content_type = "image/jpeg";
         else if (strcasecmp(r->exten, "pdf") == 0)
-            r->headers_out->content_type = "application/pdf";
+            r->headers_out.content_type = "application/pdf";
 
     } else {
-        r->headers_out->content_type = "text/html; charset=koi8-r";
+        r->headers_out.content_type = "text/html; charset=koi8-r";
     }
 
     /* STUB */

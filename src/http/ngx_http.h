@@ -4,6 +4,8 @@
 
 #include <ngx_config.h>
 #include <ngx_types.h>
+#include <ngx_string.h>
+#include <ngx_table.h>
 #include <ngx_hunk.h>
 #include <ngx_files.h>
 #include <ngx_connection.h>
@@ -56,6 +58,21 @@ typedef struct {
 } ngx_http_server_t;
 
 typedef struct {
+    int    len;
+    char  *data;
+    int    offset;
+} ngx_http_header_t;
+
+typedef struct {
+    ngx_table_elt_t  *host;
+    ngx_table_elt_t  *connection;
+    ngx_table_elt_t  *user_agent;
+    ngx_table_elt_t  *accept_encoding;
+
+    ngx_table_t      *headers;
+} ngx_http_headers_in_t;
+
+typedef struct {
     int     status;
     int     connection;
     off_t   content_length;
@@ -82,10 +99,8 @@ struct ngx_http_request_s {
     ngx_pool_t  *pool;
     ngx_hunk_t  *header_in;
 
-/*
-    ngx_http_headers_in_t *headers_in;
-*/
-    ngx_http_headers_out_t *headers_out;
+    ngx_http_headers_in_t   headers_in;
+    ngx_http_headers_out_t  headers_out;
 
     int    filename_len;
     int  (*handler)(ngx_http_request_t *r);
@@ -162,10 +177,10 @@ typedef struct {
 #define ngx_get_module_loc_conf(r, module)  r->loc_conf[module.index]
 #define ngx_get_module_ctx(r, module)  r->ctx[module.index]
 
-#define ngx_http_create_ctx(r, ctx, module, size)                             \
+#define ngx_http_create_ctx(r, cx, module, size)                              \
             do {                                                              \
-               ngx_test_null(ctx, ngx_pcalloc(r->pool, size), NGX_ERROR);     \
-               r->ctx[module.index] = ctx;                                    \
+               ngx_test_null(cx, ngx_pcalloc(r->pool, size), NGX_ERROR);      \
+               r->ctx[module.index] = cx;                                     \
             } while (0)
 
 

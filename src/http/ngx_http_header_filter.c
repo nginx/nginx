@@ -29,7 +29,7 @@ int ngx_http_header_filter(ngx_http_request_t *r)
     ngx_test_null(h, ngx_create_temp_hunk(r->pool, 1024, 0, 64),
                   NGX_ERROR);
 
-    status = r->headers_out->status - NGX_HTTP_OK;
+    status = r->headers_out.status - NGX_HTTP_OK;
 
     ngx_memcpy(h->last.mem, "HTTP/1.1 ", 9);
     h->last.mem += 9;
@@ -43,28 +43,26 @@ int ngx_http_header_filter(ngx_http_request_t *r)
     h->last.mem += 24;
 #endif
 
-/*
     ngx_memcpy(h->last.mem, "Date: ", 6);
     h->last.mem += 6;
     h->last.mem += ngx_http_get_time(h->last.mem, time(NULL));
     *(h->last.mem++) = CR; *(h->last.mem++) = LF;
-*/
 
     /* 2^64 is 20 characters  */
-    if (r->headers_out->content_length)
+    if (r->headers_out.content_length)
         h->last.mem += ngx_snprintf(h->last.mem, 49, "Content-Length: %d" CRLF,
-                                    r->headers_out->content_length);
+                                    r->headers_out.content_length);
 
     /* check */
 
-    if (r->headers_out->content_type)
+    if (r->headers_out.content_type)
         h->last.mem += ngx_snprintf(h->last.mem, 100, "Content-Type: %s" CRLF,
-                                    r->headers_out->content_type);
+                                    r->headers_out.content_type);
 
     ngx_memcpy(h->last.mem, "Server: ", 8);
     h->last.mem += 8;
-    if (r->headers_out->server) {
-        h->last.mem = ngx_cpystrn(h->last.mem, r->headers_out->server,
+    if (r->headers_out.server) {
+        h->last.mem = ngx_cpystrn(h->last.mem, r->headers_out.server,
                                   h->end - h->last.mem);
         /* check space */
 

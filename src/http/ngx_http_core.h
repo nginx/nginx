@@ -6,8 +6,16 @@
 
 
 typedef struct {
-    time_t  send_timeout;
+    int dummy;
 } ngx_http_core_conf_t;
+
+typedef struct {
+    int dummy;
+} ngx_http_core_srv_conf_t;
+
+typedef struct {
+    time_t  send_timeout;
+} ngx_http_core_loc_conf_t;
 
 
 extern ngx_http_module_t  ngx_http_core_module;

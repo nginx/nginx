@@ -90,7 +90,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
                 ctx->out.hunk = ctx->hunk;
 
                 rc = ngx_http_output_filter_copy_hunk(ctx->hunk, ctx->in->hunk);
-#if (NGX_FILE_AIO)
+#if (NGX_FILE_AIO_READ)
                 if (rc == NGX_AGAIN)
                     return rc;
 #endif
@@ -178,7 +178,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
                             rc = ngx_http_output_filter_copy_hunk(ctx->hunk,
                                                                   hunk);
-#if (NGX_FILE_AIO)
+#if (NGX_FILE_AIO_READ)
                             if (rc == NGX_AGAIN) {
                                 /* add hunk to input chain */
                                 ngx_add_hunk_to_chain(ctx->in, hunk, r->pool,
@@ -243,7 +243,7 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
         if (n == NGX_ERROR) {
             return n;
 
-#if (NGX_FILE_AIO)
+#if (NGX_FILE_AIO_READ)
         } else if (n == NGX_AGAIN) {
             return n;
 #endif

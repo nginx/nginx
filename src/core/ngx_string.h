@@ -5,6 +5,11 @@
 #include <ngx_config.h>
 
 
+typedef struct {
+    int   len;
+    char *data;
+} ngx_str_t;
+
 #if (WIN32)
 
 #define ngx_snprintf              _snprintf

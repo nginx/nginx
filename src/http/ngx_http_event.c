@@ -9,6 +9,8 @@
 #include <ngx_files.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
+#include <ngx_array.h>
+#include <ngx_table.h>
 #include <ngx_hunk.h>
 #include <ngx_connection.h>
 #include <ngx_http.h>
@@ -19,6 +21,7 @@
 #include <ngx_http_output_filter.h>
 int ngx_http_static_handler(ngx_http_request_t *r);
 int ngx_http_index_handler(ngx_http_request_t *r);
+int ngx_http_proxy_handler(ngx_http_request_t *r);
 /* */
 
 int ngx_http_init_connection(ngx_connection_t *c);
@@ -59,6 +62,15 @@ static char *header_errors[] = {
     "client %s sent HEAD method in HTTP/0.9 request"
 };
 
+
+static ngx_http_header_t headers_in[] = {
+    { 4, "Host", offsetof(ngx_http_headers_in_t, host) },
+    { 10, "Connection", offsetof(ngx_http_headers_in_t, connection) },
+
+    { 10, "User-Agent", offsetof(ngx_http_headers_in_t, user_agent) },
+
+    { 0, NULL, 0 }
+};
 
 
 int ngx_http_init_connection(ngx_connection_t *c)
@@ -292,6 +304,8 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
 
         /* TODO: check too long URI - no space for header, compact buffer */
 
+        r->headers_in.headers = ngx_create_table(r->pool, 10);
+
         r->state_handler = ngx_http_process_request_header;
         ctx = r->connection->log->data;
         ctx->action = "reading client request headers";
@@ -355,11 +369,31 @@ static int ngx_http_process_request_header(ngx_http_request_t *r)
 
 static int ngx_http_process_request_header_line(ngx_http_request_t *r)
 {
-    /* STUB */
-    *r->header_name_end = '\0';
-    *r->header_end = '\0';
+    int  i;
+    ngx_table_elt_t *h;
+
+    ngx_test_null(h, ngx_push_array(r->headers_in.headers), NGX_ERROR);
+
+    h->key.len = r->header_name_end - r->header_name_start;
+    ngx_test_null(h->key.data, ngx_palloc(r->pool, h->key.len + 1), NGX_ERROR);
+    ngx_cpystrn(h->key.data, r->header_name_start, h->key.len + 1);
+
+    h->value.len = r->header_end - r->header_start;
+    ngx_test_null(h->value.data, ngx_palloc(r->pool, h->value.len + 1),
+                  NGX_ERROR);
+    ngx_cpystrn(h->value.data, r->header_start, h->value.len + 1);
+
+    for (i = 0; headers_in[i].len != 0; i++) {
+        if (headers_in[i].len == h->key.len) {
+            if (strcasecmp(headers_in[i].data, h->key.data) == 0) {
+                *((ngx_table_elt_t **)
+                    ((char *) &r->headers_in + headers_in[i].offset)) = h;
+            }
+        }
+    }
+
     ngx_log_debug(r->connection->log, "HTTP header: '%s: %s'" _
-                  r->header_name_start _ r->header_start);
+                  h->key.data _ h->value.data);
 
     return NGX_OK;
 }
@@ -445,6 +479,10 @@ static int ngx_http_event_handler(ngx_http_request_t *r)
 {
     int rc;
     ngx_msec_t  timeout;
+
+    ngx_log_debug(r->connection->log, "UA: '%s: %s'" _
+                  r->headers_in.user_agent->key.data _
+                  r->headers_in.user_agent->value.data);
 
     rc = ngx_http_handler(r);
 
@@ -545,9 +583,17 @@ static int ngx_http_set_default_handler(ngx_http_request_t *r)
     int   err, rc;
     char *name, *loc, *file;
 
+#if 0
+    /* STUB */
+    r->handler = ngx_http_proxy_handler;
+    return NGX_OK;
+#endif
+
+/*  NO NEEDED
     ngx_test_null(r->headers_out,
                   ngx_pcalloc(r->pool, sizeof(ngx_http_headers_out_t)),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
+*/
 
     if (*(r->uri_end - 1) == '/') {
         r->handler = ngx_http_index_handler;
@@ -583,7 +629,7 @@ static int ngx_http_set_default_handler(ngx_http_request_t *r)
         ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->filename);
         *file++ = '/';
         *file = '\0';
-        r->headers_out->location = r->location;
+        r->headers_out.location = r->location;
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
 
@@ -605,10 +651,10 @@ static int ngx_http_block_read(ngx_event_t *ev)
 static int ngx_http_writer(ngx_event_t *ev)
 {
     int rc;
-    ngx_msec_t             timeout;
-    ngx_connection_t      *c;
-    ngx_http_request_t    *r;
-    ngx_http_core_conf_t  *conf;
+    ngx_msec_t                 timeout;
+    ngx_connection_t          *c;
+    ngx_http_request_t        *r;
+    ngx_http_core_loc_conf_t  *conf;
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
@@ -622,7 +668,7 @@ static int ngx_http_writer(ngx_event_t *ev)
     if (rc == NGX_AGAIN) {
 
         if (c->sent > 0) {
-            conf = (ngx_http_core_conf_t *)
+            conf = (ngx_http_core_loc_conf_t *)
                         ngx_get_module_loc_conf(r->main ? r->main : r,
                                                 ngx_http_core_module);
 
