@@ -12,7 +12,6 @@ ngx_inline static void ngx_add_after_partially_filled_hunk(ngx_chain_t **chain,
                                                            ngx_chain_t *ce);
 
 
-
 int ngx_event_proxy(ngx_event_proxy_t *p, int do_write)
 {
     for ( ;; ) {
@@ -105,6 +104,7 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
 
                 chain = p->free_raw_hunks;
                 p->free_raw_hunks = NULL;
+ngx_log_debug(p->log, "FREE: %08X:%d" _ chain->hunk->pos _ chain->hunk->end - chain->hunk->last);
 
             } else if (p->hunks < p->bufs.num) {
 
@@ -173,6 +173,8 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
 
             ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
+            p->free_raw_hunks = chain;
+
             if (n == NGX_ERROR) {
                 p->upstream_error = 1;
                 return NGX_ERROR;
@@ -186,15 +188,15 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
             p->read = 1;
 
             if (n == 0) {
-                p->free_raw_hunks = chain;
                 p->upstream_eof = 1;
-
                 break;
             }
 
         }
 
-        for (ce = chain; ce && n > 0; ce = ce->next) {
+        ce = chain;
+
+        while (ce && n > 0) {
 
             ngx_remove_shadow_links(ce->hunk);
 
@@ -208,16 +210,17 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
                 }
 
                 n -= size;
-
-                chain = ce->next;
+                ce = ce->next;
 
             } else {
+ngx_log_debug(p->log, "PART: %08X:%d:%d" _ ce->hunk->pos _ ce->hunk->last - ce->hunk->pos _ n);
                 ce->hunk->last += n;
+ngx_log_debug(p->log, "PART: %08X:%d" _ ce->hunk->pos _ ce->hunk->end - ce->hunk->last);
                 n = 0;
             }
         }
 
-        p->free_raw_hunks = chain;
+        p->free_raw_hunks = ce;
     }
 
     if ((p->upstream_eof || p->upstream_error) && p->free_raw_hunks) {
@@ -290,7 +293,8 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
         rc = p->output_filter(p->output_ctx, out->hunk);
 
         if (rc == NGX_ERROR) {
-            /* TODO */
+            p->downstream_error = 1;
+            return NGX_ERROR;
         }
 
         ngx_chain_update_chains(&p->free, &p->busy, &out);
@@ -305,13 +309,15 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
         /* add the free shadow raw hunks to p->free_raw_hunks */
 
         for (ce = p->free; ce; ce = ce->next) {
+ngx_log_debug(p->log, "SHADOW %08X" _ ce->hunk->shadow);
             if (ce->hunk->type & NGX_HUNK_LAST_SHADOW) {
                 h = ce->hunk->shadow;
                 /* THINK NEEDED ??? */ h->pos = h->last = h->start;
                 h->shadow = NULL;
-                ngx_alloc_ce_and_set_hunk(te, ce->hunk->shadow, p->pool,
-                                          NGX_ABORT);
+                ngx_alloc_ce_and_set_hunk(te, h, p->pool, NGX_ABORT);
                 ngx_add_after_partially_filled_hunk(&p->free_raw_hunks, te);
+
+ngx_log_debug(p->log, "RAW %08X" _ h->pos);
 
                 ce->hunk->type &= ~NGX_HUNK_LAST_SHADOW;
             }
@@ -326,7 +332,17 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
 
     }
 
-    if (p->upstream_done && p->in == NULL && p->out == NULL) {
+    ngx_log_debug(p->log, "STATE %d:%d:%d:%X:%X" _
+                  p->upstream_eof _
+                  p->upstream_error _
+                  p->upstream_done _
+                  p->in _
+                  p->out
+                 );
+
+    if ((p->upstream_eof || p->upstream_error || p->upstream_done)
+        && p->in == NULL && p->out == NULL)
+    {
         p->downstream_done = 1;
     }
 
@@ -365,17 +381,25 @@ static int ngx_event_proxy_write_chain_to_temp_file(ngx_event_proxy_t *p)
         ce = p->in;
 
         do {
-            size += ce->hunk->last - ce->hunk->pos;
-            if (size >= p->temp_file_write_size) {
+            if (size + ce->hunk->last - ce->hunk->pos
+                                                    >= p->temp_file_write_size)
+            {
                 break;
             }
+            size += ce->hunk->last - ce->hunk->pos;
             ce = ce->next;
 
         } while (ce);
 
-        in = ce->next;
-        last = &ce->next;
-        ce->next = NULL;
+        if (ce) {
+           in = ce->next;
+           last = &ce->next;
+           ce->next = NULL;
+
+        } else {
+           in = NULL;
+           last = &p->in;
+        }
 
     } else {
         in = NULL;

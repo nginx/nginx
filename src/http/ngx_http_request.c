@@ -59,6 +59,7 @@ static ngx_http_header_t headers_in[] = {
 #endif
 
     { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent) },
+    { ngx_string("Keep-Alive"), offsetof(ngx_http_headers_in_t, keep_alive) },
 
     { ngx_null_string, 0 }
 };

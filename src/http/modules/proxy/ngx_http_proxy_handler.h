@@ -77,6 +77,7 @@ struct ngx_http_proxy_ctx_s {
     ngx_event_proxy_t          *event_proxy;
 
     unsigned                    accel:1;
+    unsigned                    cachable:1;
     unsigned                    fatal_error:1;
     unsigned                    header_sent:1;
 

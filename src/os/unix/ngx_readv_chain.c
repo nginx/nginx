@@ -21,7 +21,7 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *entry)
 
     while (entry) {
         ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
-        iov->iov_base = entry->hunk->pos;
+        iov->iov_base = entry->hunk->last;
         iov->iov_len = entry->hunk->end - entry->hunk->last;
         entry = entry->next;
     }

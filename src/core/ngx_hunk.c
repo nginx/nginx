@@ -144,16 +144,31 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
     *out = NULL;
 
     while (*busy) {
-        if ((*busy)->hunk->pos != (*busy)->hunk->last) {
+        if (ngx_hunk_size((*busy)->hunk) > 0) {
             break;
         }
+#if 0
+        if ((*busy)->hunk->type & NGX_HUNK_IN_MEMORY) {
+            if ((*busy)->hunk->pos != (*busy)->hunk->last) {
+                break;
+            }
+
+        } else {
+            if ((*busy)->hunk->file_pos != (*busy)->hunk->file_last) {
+                break;
+            }
+        }
+#endif
 
 #if (HAVE_WRITE_ZEROCOPY)
         if ((*busy)->hunk->type & NGX_HUNK_ZEROCOPY_BUSY) {
             break;
         }
 #endif
-        if (((*busy)->hunk->type & NGX_HUNK_TEMP) == 0) {
+
+        /* TODO: change to hunk->tag */
+
+        if (!((*busy)->hunk->type & NGX_HUNK_TEMP)) {
             *busy = (*busy)->next;
             continue;
         }

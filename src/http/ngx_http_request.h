@@ -75,6 +75,7 @@ typedef struct {
     ngx_table_elt_t  *accept_encoding;
 
     ngx_table_elt_t  *user_agent;
+    ngx_table_elt_t  *keep_alive;
 
     ngx_table_t      *headers;
 } ngx_http_headers_in_t;

@@ -17,8 +17,7 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev);
 static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev);
 static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *);
 static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p);
-static void ngx_http_proxy_process_upstream(ngx_event_t *rev);
-static void ngx_http_proxy_process_downstream(ngx_event_t *wev);
+static void ngx_http_proxy_process_body(ngx_event_t *ev);
 
 static int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p);
 static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p);
@@ -235,7 +234,9 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
             continue;
         }
 
-        /* TODO: delete "Keep-Alive" header */
+        if (&header[i] == r->headers_in.keep_alive) {
+            continue;
+        }
 
         h->last = ngx_cpymem(h->last, header[i].key.data, header[i].key.len);
 
@@ -741,6 +742,8 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
     ep->preread_size = p->header_in->last - p->header_in->pos;
 
+    /* STUB */ ep->cachable = 0;
+
     p->event_proxy = ep;
 
 #if 0
@@ -748,83 +751,81 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     lcx->action = "reading an upstream";
 #endif
 
-    p->upstream.connection->read->event_handler =
-                                               ngx_http_proxy_process_upstream;
-    r->connection->write->event_handler =
-                                             ngx_http_proxy_process_downstream;
+    p->upstream.connection->read->event_handler = ngx_http_proxy_process_body;
+    r->connection->write->event_handler = ngx_http_proxy_process_body;
 
-    ngx_http_proxy_process_upstream(p->upstream.connection->read);
+    ngx_http_proxy_process_body(p->upstream.connection->read);
 
     return;
 }
 
 
-static void ngx_http_proxy_process_upstream(ngx_event_t *rev)
-{
-    ngx_connection_t      *c;
-    ngx_http_proxy_ctx_t  *p;
-
-    c = rev->data;
-    p = c->data;
-
-    ngx_log_debug(rev->log, "http proxy process upstream");
-
-    if (rev->timedout) {
-        ngx_http_proxy_close_connection(c);
-        p->upstream.connection = NULL;
-        return;
-    }
-
-    if (ngx_event_proxy(p->event_proxy, 0) == NGX_ABORT) {
-        ngx_http_proxy_finalize_request(p, 0);
-        return;
-    }
-
-    if (p->event_proxy->upstream_eof
-        || p->event_proxy->upstream_error
-        || p->event_proxy->upstream_done)
-    {
-        ngx_http_proxy_close_connection(c);
-        p->upstream.connection = NULL;
-        return;
-    }
-
-    return;
-}
-
-
-static void ngx_http_proxy_process_downstream(ngx_event_t *wev)
+static void ngx_http_proxy_process_body(ngx_event_t *ev)
 {
     ngx_connection_t      *c;
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
+    ngx_event_proxy_t     *ep;
 
-    c = wev->data;
-    r = c->data;
-    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+    c = ev->data;
+
+    if (ev->write) {
+        ngx_log_debug(ev->log, "http proxy process downstream");
+        r = c->data;
+        p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
+    } else {
+        ngx_log_debug(ev->log, "http proxy process upstream");
+        p = c->data;
+        r = p->request;
+    }
+
+    ep = p->event_proxy;
+
+    if (ev->timedout) {
+        if (ev->write) {
+            ep->downstream_error = 1;
+
+        } else {
+            ep->upstream_error = 1;
+        }
+
+    } else {
+        if (ngx_event_proxy(ep, ev->write) == NGX_ABORT) {
+            ngx_http_proxy_finalize_request(p, 0);
+            return;
+        }
+    }
+
+    if (p->upstream.connection) {
+        if (ep->upstream_done) {
+            /* TODO: update cache */
+
+        } else if (ep->upstream_eof) {
+            /* TODO: check length & update cache */
+        }
+
+        if (ep->upstream_done || ep->upstream_eof || ep->upstream_error) {
+            ngx_http_proxy_close_connection(c);
+            p->upstream.connection = NULL;
+        }
+    }
+
+    if (ep->downstream_done) {
+        ngx_log_debug(ev->log, "http proxy downstream done");
+        ngx_http_proxy_finalize_request(p, r->main ? 0 : ngx_http_send_last(r));
+        return;
+    }
+
+    if (ep->downstream_error) {
+        if (!p->cachable && p->upstream.connection) {
+            ngx_http_proxy_close_connection(c);
+            p->upstream.connection = NULL;
+        }
  
-    ngx_log_debug(wev->log, "http proxy process downstream");
-
-    if (wev->timedout) {
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    if (ngx_event_proxy(p->event_proxy, 1) == NGX_ABORT) {
-        ngx_http_proxy_finalize_request(p, 0);
-        return;
-    }
-
-    if (p->event_proxy->downstream_done) {
-ngx_log_debug(wev->log, "http proxy downstream done");
-        ngx_http_proxy_finalize_request(p, r->main ? 0:
-                                           ngx_http_send_last(p->request));
-        return;
-    }
-
-    if (p->event_proxy->downstream_error) {
-        ngx_http_close_connection(c);
-        return;
+        if (p->upstream.connection == NULL) {
+            ngx_http_close_connection(c);
+        }
     }
 
     return;
@@ -1151,7 +1152,7 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->bufs.num = 10;
     conf->bufs.size = 4096;
     conf->max_busy_len = 8192 + 4096;
-    conf->max_temp_file_size = 4096 * 5;
+    conf->max_temp_file_size = 4096 * 6;
     conf->temp_file_write_size = 4096 * 2;
 
     ngx_test_null(conf->temp_path, ngx_pcalloc(cf->pool, sizeof(ngx_path_t)),
