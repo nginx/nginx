@@ -797,6 +797,12 @@ ngx_log_debug(r->connection->log, "S: %d UN: '%x:%c', URI: '%c'" _
         case sw_quoted_second:
             if (ch >= '0' && ch <= '9') {
                 ch = (decoded << 4) + ch - '0';
+                if (ch == '%') {
+                    state = sw_usual;
+                    *u++ = ch;
+                    ch = *p++;
+                    break;
+                }
                 state = quoted_state;
                 break;
             }
@@ -804,6 +810,12 @@ ngx_log_debug(r->connection->log, "S: %d UN: '%x:%c', URI: '%c'" _
             c = ch | 0x20;
             if (c >= 'a' && c <= 'f') {
                 ch = (decoded << 4) + c - 'a' + 10;
+                if (ch == '%') {
+                    state = sw_usual;
+                    *u++ = ch;
+                    ch = *p++;
+                    break;
+                }
                 state = quoted_state;
                 break;
             }
