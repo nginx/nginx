@@ -35,6 +35,24 @@ void ngx_time_update()
     ngx_cached_http_time.data = cached_http_time;
     ngx_cached_http_log_time.data = cached_http_log_time;
 
+#if 0
+
+    days = sec / 86400;
+    days = days - 31 - 28 + 719527;
+
+    year = days * 400 / (365 * 400 + 100 - 4 + 1);
+    yday = days - (365 * year + year / 4 - year / 100 + year / 400);
+
+    month = (yday + 30) * 12 / 367;
+    mday = yday - (month * 367 / 12 - 31);
+
+    if (++month > 11) {
+        month -= 12;
+        year++;
+    }
+
+#endif
+
     tp = gmtime(&ngx_cached_time);
 
     ngx_cached_http_time.len = strftime(ngx_cached_http_time.data,

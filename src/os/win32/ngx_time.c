@@ -15,7 +15,7 @@ void ngx_gettimeofday(struct timeval *tp)
      * of 100-nanosecond intervals that have elapsed since
      * 12:00 A.M. January 1, 1601 (UTC).
      *
-     * Between January 1, 1970 (Epoch) and January 1, 1601 there are
+     * Between January 1, 1970 (Epoch) and January 1, 1601 there were
      * 134744 days,
      * 11644473600 seconds or
      * 11644473600,000,000,0 100-nanosecond intervals.
