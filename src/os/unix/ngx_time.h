@@ -35,6 +35,18 @@ typedef struct tm      ngx_tm_t;
 #define ngx_tm_wday_t  int
 
 
+#if (SOLARIS)
+#define HAVE_TIMEZONE  1
+
+#define ngx_timezone() (-((daylight) ? altzone : timezone) / 60)
+
+#elif defined __linux__
+#define HAVE_TIMEZONE  1
+
+#define ngx_timezone() (- timezone / 60 + daylight * 60)
+
+#endif
+
 
 void ngx_localtime(ngx_tm_t *tm);
 

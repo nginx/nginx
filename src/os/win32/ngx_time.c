@@ -29,3 +29,15 @@ void ngx_gettimeofday(struct timeval *tp)
     tp->tv_sec = (long) (intervals / 10000000);
     tp->tv_usec = (long) ((intervals % 10000000) / 10);
 }
+
+
+ngx_int_t ngx_timezone(void)
+{
+    TIME_ZONE_INFORMATION  tz;
+
+    if (GetTimeZoneInformation(&tz) != TIME_ZONE_ID_INVALID) {
+        return -tz.Bias;
+    }
+
+    return 0;
+}

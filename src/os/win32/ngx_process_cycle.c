@@ -34,6 +34,8 @@ sig_atomic_t  ngx_change_binary;
 
 void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
+    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "master mode is not supported");
+
     exit(2);
 }
 

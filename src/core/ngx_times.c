@@ -86,11 +86,8 @@ ngx_int_t ngx_time_mutex_init(ngx_log_t *log)
 
 void ngx_time_update(time_t s)
 {
-    char                   *p;
-    ngx_tm_t                tm;
-#if (WIN32)
-    TIME_ZONE_INFORMATION   tz;
-#endif
+    u_char    *p;
+    ngx_tm_t   tm;
 
     if (ngx_cached_time == s) {
         return;
@@ -113,7 +110,7 @@ void ngx_time_update(time_t s)
         p = cached_http_time0;
     }
 
-    ngx_snprintf(p, sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
+    ngx_snprintf((char *) p, sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
                  "%s, %02d %s %4d %02d:%02d:%02d GMT",
                  week[ngx_cached_gmtime.ngx_tm_wday],
                  ngx_cached_gmtime.ngx_tm_mday,
@@ -126,27 +123,9 @@ void ngx_time_update(time_t s)
     ngx_cached_http_time.data = p;
 
 
-#if (WIN32)
+#if (HAVE_TIMEZONE)
 
-    /*
-     * we do not use GetLocalTime() because it does not return GMT offset,
-     * and our ngx_gmtime() is fast enough
-     */
-
-    if (GetTimeZoneInformation(&tz) != TIME_ZONE_ID_INVALID) {
-        ngx_gmtoff = - tz.Bias;
-    }
-
-    ngx_gmtime(ngx_cached_time + ngx_gmtoff * 60, &tm);
-
-#elif (SOLARIS)
-
-    ngx_gmtoff = (daylight) ? - altzone / 60: - timezone / 60;
-    ngx_gmtime(ngx_cached_time + ngx_gmtoff * 60, &tm);
-
-#elif defined __linux__
-
-    ngx_gmtoff = - timezone / 60 + daylight * 60;
+    ngx_gmtoff = ngx_timezone();
     ngx_gmtime(ngx_cached_time + ngx_gmtoff * 60, &tm);
 
 #else
@@ -163,7 +142,7 @@ void ngx_time_update(time_t s)
         p = cached_err_log_time0;
     }
 
-    ngx_snprintf(p, sizeof("1970/09/28 12:00:00"),
+    ngx_snprintf((char *) p, sizeof("1970/09/28 12:00:00"),
                  "%4d/%02d/%02d %02d:%02d:%02d",
                  tm.ngx_tm_year, tm.ngx_tm_mon,
                  tm.ngx_tm_mday, tm.ngx_tm_hour,
@@ -178,7 +157,7 @@ void ngx_time_update(time_t s)
         p = cached_http_log_time0;
     }
 
-    ngx_snprintf(p, sizeof("28/Sep/1970:12:00:00 +0600"),
+    ngx_snprintf((char *) p, sizeof("28/Sep/1970:12:00:00 +0600"),
                  "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
                  tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
                  tm.ngx_tm_year, tm.ngx_tm_hour,
@@ -243,7 +222,7 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
 
     if (yday >= 306) {
         /*
-         * yday is not used in Win32 SYSTEMTIME
+         * there is no "yday" in Win32 SYSTEMTIME
          *
          * yday -= 306;
          */
@@ -271,7 +250,7 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
         }
 
 /*
- *  yday is not used in Win32 SYSTEMTIME
+ *  there is no "yday" in Win32 SYSTEMTIME
  *
  *  } else {
  *      yday += 31 + 28;
