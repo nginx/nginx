@@ -1,3 +1,7 @@
+/*
+   TODO Win32 inet_ntoa
+        ngx_inet_ntop
+*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>
@@ -36,7 +40,7 @@ static int ngx_http_handler(ngx_http_request_t *r);
 static int ngx_http_set_default_handler(ngx_http_request_t *r);
 
 static int ngx_http_writer(ngx_event_t *ev);
-
+static int ngx_http_keepalive_handler(ngx_event_t *ev);
 static int ngx_http_lingering_close(ngx_event_t *ev);
 
 static int ngx_http_special_response(ngx_http_request_t *r, int error);
@@ -47,13 +51,11 @@ static int ngx_http_close_request(ngx_http_request_t *r);
 static size_t ngx_http_log_error(void *data, char *buf, size_t len);
 
 
-/* STUB */
-static int ngx_http_writer(ngx_event_t *ev);
-
 
 static char *header_errors[] = {
     "client %s sent invalid method",
     "client %s sent invalid request",
+    "client %s sent too long URI",
     "client %s sent HEAD method in HTTP/0.9 request"
 };
 
@@ -68,8 +70,9 @@ int ngx_http_init_connection(ngx_connection_t *c)
     ev = c->read;
     ev->event_handler = ngx_http_init_request;
 
-    /* TODO: connection's pool size */
-    ngx_test_null(c->pool, ngx_create_pool(1024, ev->log), NGX_ERROR);
+    ngx_test_null(c->pool,
+                  ngx_create_pool(srv->connection_pool_size, ev->log),
+                  NGX_ERROR);
 
     ngx_test_null(addr, ngx_palloc(c->pool, c->socklen), NGX_ERROR);
     ngx_memcpy(addr, c->sockaddr, c->socklen);
@@ -78,10 +81,7 @@ int ngx_http_init_connection(ngx_connection_t *c)
     ngx_test_null(c->addr_text, ngx_palloc(c->pool, c->addr_textlen),
                   NGX_ERROR);
 #if (WIN32)
-/*
     c->addr_text = inet_ntoa((struct in_addr) ((char *)c->sockaddr + c->addr));
-*/
-    c->addr_text = NULL;
 #else
     inet_ntop(c->family, (char *)c->sockaddr + c->addr,
               c->addr_text, c->addr_textlen);
@@ -121,7 +121,7 @@ int ngx_http_init_connection(ngx_connection_t *c)
 }
 
 
-int ngx_http_init_request(ngx_event_t *ev)
+static int ngx_http_init_request(ngx_event_t *ev)
 {
     ngx_connection_t    *c;
     ngx_http_server_t   *srv;
@@ -130,12 +130,22 @@ int ngx_http_init_request(ngx_event_t *ev)
     c = (ngx_connection_t *) ev->data;
     srv = (ngx_http_server_t *) c->server;
 
+    if (c->buffer == NULL) {
+        ngx_test_null(c->buffer,
+                      ngx_create_temp_hunk(c->pool, srv->header_buffer_size,
+                                           0, 0),
+                      NGX_ERROR);
+    } else {
+        c->buffer->pos.mem = c->buffer->last.mem = c->buffer->start;
+    }
+
     ngx_test_null(r, ngx_pcalloc(c->pool, sizeof(ngx_http_request_t)),
                   NGX_ERROR);
 
     c->data = r;
     r->connection = c;
     r->server = srv;
+    r->header_in = c->buffer;
 
     r->srv_conf = ngx_srv_conf;
     r->loc_conf = ngx_loc_conf;
@@ -146,13 +156,10 @@ int ngx_http_init_request(ngx_event_t *ev)
     ngx_test_null(r->ctx, ngx_pcalloc(r->pool, sizeof(void *) * ngx_max_module),
                   ngx_http_close_request(r));
 
-    ngx_test_null(r->header_in,
-                  ngx_create_temp_hunk(r->pool, srv->header_buffer_size, 0, 0),
-                  ngx_http_close_request(r));
-
     ev->event_handler = ngx_http_process_request;
     r->state_handler = ngx_http_process_request_line;
     r->process_header = 1;
+    r->header_timeout = 1;
 
     return ngx_http_process_request(ev);
 }
@@ -163,6 +170,7 @@ static int ngx_http_process_request(ngx_event_t *ev)
     int n, rc;
     ngx_connection_t *c ;
     ngx_http_request_t *r;
+    ngx_http_log_ctx_t  *ctx;
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
@@ -173,8 +181,8 @@ static int ngx_http_process_request(ngx_event_t *ev)
                        r->header_in->end - r->header_in->last.mem);
 
     if (n == NGX_AGAIN) {
-        if (!r->header_timeout) {
-            r->header_timeout = 1;
+        if (r->header_timeout) {
+            r->header_timeout = 0;
             ngx_del_timer(ev);
             ngx_add_timer(ev, r->server->header_timeout);
         }
@@ -210,14 +218,15 @@ static int ngx_http_process_request(ngx_event_t *ev)
     } while (r->process_header
              && r->header_in->pos.mem < r->header_in->last.mem);
 
-    if (!r->header_timeout) {
-        r->header_timeout = 1;
+    if (r->header_timeout) {
+        r->header_timeout = 0;
         ngx_del_timer(ev);
         ngx_add_timer(ev, r->server->header_timeout);
     }
 
     return rc;
 }
+
 
 static int ngx_http_process_request_line(ngx_http_request_t *r)
 {
@@ -238,6 +247,8 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
         if (r->http_version == 9)
             return ngx_http_handler(r);
 
+        /* TODO: check too long URI - no space for header, compact buffer */
+
         r->state_handler = ngx_http_process_request_header;
         ctx = r->connection->log->data;
         ctx->action = "reading client request headers";
@@ -245,14 +256,25 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    if (r->header_in->last.mem >= r->header_in->end) {
+        rc == NGX_HTTP_PARSE_TOO_LONG_URI;
+
+    } else if (rc == NGX_AGAIN) {
+        return NGX_AGAIN;
+    }
+
     ctx = r->connection->log->data;
     r->connection->log->handler = NULL;
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                  header_errors[rc - NGX_HTTP_INVALID_METHOD], ctx->client);
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  header_errors[rc - NGX_HTTP_PARSE_INVALID_METHOD],
+                  ctx->client);
     r->connection->log->handler = ngx_http_log_error;
 
-    return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
+    return ngx_http_error(r, (rc == NGX_HTTP_PARSE_TOO_LONG_URI) ?
+                                 NGX_HTTP_REQUEST_URI_TOO_LARGE:
+                                 NGX_HTTP_BAD_REQUEST);
 }
+
 
 static int ngx_http_process_request_header(ngx_http_request_t *r)
 {
@@ -262,21 +284,23 @@ static int ngx_http_process_request_header(ngx_http_request_t *r)
     for ( ;; ) {
         rc = ngx_read_http_header_line(r);
 
+        /* TODO: check too long header, compact buffer */
+
         if (rc == NGX_OK) {
             if (ngx_http_process_request_header_line(r) == NGX_ERROR)
                 return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
 
-        } else if (rc == NGX_HTTP_HEADER_DONE) {
+        } else if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
             ngx_log_debug(r->connection->log, "HTTP header done");
             return ngx_http_handler(r);
 
         } else if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
 
-        } else if (rc == NGX_HTTP_INVALID_HEADER) {
+        } else if (rc == NGX_HTTP_PARSE_INVALID_HEADER) {
             ctx = r->connection->log->data;
             r->connection->log->handler = NULL;
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "client %s sent invalid header", ctx->client);
             r->connection->log->handler = ngx_http_log_error;
 
@@ -284,6 +308,7 @@ static int ngx_http_process_request_header(ngx_http_request_t *r)
         }
     }
 }
+
 
 static int ngx_http_process_request_header_line(ngx_http_request_t *r)
 {
@@ -296,13 +321,8 @@ static int ngx_http_process_request_header_line(ngx_http_request_t *r)
     return NGX_OK;
 }
 
-static int ngx_http_block_read(ngx_event_t *ev)
-{
-    ngx_log_debug(ev->log, "http read blocked");
 
-    ngx_del_event(ev, NGX_READ_EVENT);
-    ev->blocked = 1;
-}
+/* ******************** */
 
 void ngx_http_discard_body(ngx_http_request_t *r)
 {
@@ -375,13 +395,15 @@ static int ngx_http_discarded_read(ngx_event_t *ev)
     return n;
 }
 
+/* ******************** */
+
 static int ngx_http_handler(ngx_http_request_t *r)
 {
     int  rc;
     ngx_msec_t  timeout;
 
     ngx_del_timer(r->connection->read);
-    r->header_timeout = 1;
+    r->header_timeout = 0;
 
     r->process_header = 0;
     r->state_handler = NULL;
@@ -408,7 +430,6 @@ static int ngx_http_handler(ngx_http_request_t *r)
         if (ngx_add_event(r->connection->write, NGX_WRITE_EVENT,
                           NGX_ONESHOT_EVENT) == NGX_ERROR) {
 #endif
-            /* log http request */
             return ngx_http_close_request(r);
         }
 
@@ -458,49 +479,6 @@ static int ngx_http_handler(ngx_http_request_t *r)
             return ngx_http_close_request(r);
         }
     }
-}
-
-static int ngx_http_lingering_close(ngx_event_t *ev)
-{
-    ssize_t  n;
-    ngx_msec_t   timer;
-    ngx_connection_t    *c;
-    ngx_http_request_t  *r;
-
-    c = (ngx_connection_t *) ev->data;
-    r = (ngx_http_request_t *) c->data;
-
-    ngx_log_debug(ev->log, "http lingering close");
-
-    if (ev->timedout)
-        return NGX_DONE;
-
-    /* STUB */
-    timer = r->lingering_time - ngx_time();
-    if (timer <= 0)
-        return NGX_DONE;
-
-    if (r->discarded_buffer == NULL)
-        ngx_test_null(r->discarded_buffer,
-                      ngx_palloc(r->pool, r->server->discarded_buffer_size),
-                      NGX_ERROR);
-
-    n = ngx_event_recv(c, r->discarded_buffer,
-                       r->server->discarded_buffer_size);
-
-    if (n == NGX_ERROR)
-        return NGX_ERROR;
-
-    if (n == 0)
-        return NGX_DONE;
-
-    if (timer > LINGERING_TIMEOUT)
-        timer = LINGERING_TIMEOUT;
-
-    ngx_del_timer(ev);
-    ngx_add_timer(ev, timer * 1000);
-
-    return NGX_OK;
 }
 
 int ngx_http_internal_redirect(ngx_http_request_t *r, char *uri)
@@ -563,6 +541,15 @@ static int ngx_http_set_default_handler(ngx_http_request_t *r)
     r->handler = ngx_http_static_handler;
 
     return NGX_OK;
+}
+
+
+static int ngx_http_block_read(ngx_event_t *ev)
+{
+    ngx_log_debug(ev->log, "http read blocked");
+
+    ngx_del_event(ev, NGX_READ_EVENT);
+    ev->blocked = 1;
 }
 
 
@@ -644,6 +631,11 @@ static int ngx_http_keepalive_handler(ngx_event_t *ev)
     ngx_connection_t    *c;
     ngx_http_log_ctx_t  *ctx;
 
+    ngx_log_debug(ev->log, "http keepalive");
+
+    if (ev->timedout)
+        return NGX_DONE;
+
     if (closed)
         /* NGX_LOG_INFO or even silent */
         return NGX_ERROR;
@@ -658,6 +650,49 @@ static int ngx_http_keepalive_handler(ngx_event_t *ev)
 }
 
 #endif
+
+static int ngx_http_lingering_close(ngx_event_t *ev)
+{
+    ssize_t  n;
+    ngx_msec_t   timer;
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
+
+    c = (ngx_connection_t *) ev->data;
+    r = (ngx_http_request_t *) c->data;
+
+    ngx_log_debug(ev->log, "http lingering close");
+
+    if (ev->timedout)
+        return NGX_DONE;
+
+    /* STUB */
+    timer = r->lingering_time - ngx_time();
+    if (timer <= 0)
+        return NGX_DONE;
+
+    if (r->discarded_buffer == NULL)
+        ngx_test_null(r->discarded_buffer,
+                      ngx_palloc(r->pool, r->server->discarded_buffer_size),
+                      NGX_ERROR);
+
+    n = ngx_event_recv(c, r->discarded_buffer,
+                       r->server->discarded_buffer_size);
+
+    if (n == NGX_ERROR)
+        return NGX_ERROR;
+
+    if (n == 0)
+        return NGX_DONE;
+
+    if (timer > LINGERING_TIMEOUT)
+        timer = LINGERING_TIMEOUT;
+
+    ngx_del_timer(ev);
+    ngx_add_timer(ev, timer * 1000);
+
+    return NGX_OK;
+}
 
 
 static int ngx_http_special_response(ngx_http_request_t *r, int error)

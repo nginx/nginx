@@ -18,11 +18,12 @@
 #define NGX_HTTP_CONN_KEEP_ALIVE  1
 
 
-#define NGX_HTTP_HEADER_DONE            1
-#define NGX_HTTP_INVALID_METHOD         10
-#define NGX_HTTP_INVALID_REQUEST        11
-#define NGX_HTTP_INVALID_HEAD           12
-#define NGX_HTTP_INVALID_HEADER         13
+#define NGX_HTTP_PARSE_HEADER_DONE      1
+#define NGX_HTTP_PARSE_INVALID_METHOD   10
+#define NGX_HTTP_PARSE_INVALID_REQUEST  11
+#define NGX_HTTP_PARSE_TOO_LONG_URI     12
+#define NGX_HTTP_PARSE_INVALID_HEAD     13
+#define NGX_HTTP_PARSE_INVALID_HEADER   14
 
 
 #define NGX_HTTP_OK                     200
@@ -30,6 +31,7 @@
 #define NGX_HTTP_MOVED_PERMANENTLY      302
 #define NGX_HTTP_BAD_REQUEST            400
 #define NGX_HTTP_NOT_FOUND              404
+#define NGX_HTTP_REQUEST_URI_TOO_LARGE  414
 #define NGX_HTTP_INTERNAL_SERVER_ERROR  503
 
 
@@ -116,8 +118,10 @@ struct ngx_http_request_s {
     unsigned  keepalive:1;
     unsigned  lingering_close:1;
 
-    unsigned  header_timeout:1;
     unsigned  process_header:1;
+    unsigned  header_timeout:1;
+
+    unsigned  logging:1;
 
     unsigned  header_only:1;
     unsigned  unusual_uri:1;

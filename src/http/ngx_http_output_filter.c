@@ -65,9 +65,6 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
         ctx->next_filter = ngx_http_output_next_filter;
     }
 
-    ngx_log_debug(r->connection->log, "HUNK: x%x CTX-IN: x%x CTX->HUNK: x%x" _
-                  hunk _ ctx->in _ ctx->hunk);
-
     if (hunk && (hunk->type & NGX_HUNK_LAST))
         ctx->last = 1;
 

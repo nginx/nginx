@@ -32,7 +32,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
        state, p, r->header_in->last, ch, p);
 */
 
-        /* GCC 2.95.2 and VC 6.0 compiles switch as jump table */
+        /* GCC 2.95.2 and VC 6.0 compiles this switch as jump table */
 
         switch (state) {
 
@@ -44,7 +44,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                     return NGX_AGAIN;
 
                 if (*p != 'E' || *(p + 1) != 'T')
-                    return NGX_HTTP_INVALID_METHOD;
+                    return NGX_HTTP_PARSE_INVALID_METHOD;
 
                 r->method = NGX_HTTP_GET;
                 p += 2;
@@ -55,7 +55,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                     return NGX_AGAIN;
 
                 if (*p != 'E' || *(p + 1) != 'A' || *(p + 2) != 'D')
-                    return NGX_HTTP_INVALID_METHOD;
+                    return NGX_HTTP_PARSE_INVALID_METHOD;
 
                 r->method = NGX_HTTP_HEAD;
                 p += 3;
@@ -66,14 +66,14 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                     return NGX_AGAIN;
 
                 if (*p != 'O' || *(p + 1) != 'S' || *(p + 2) != 'T')
-                    return NGX_HTTP_INVALID_METHOD;
+                    return NGX_HTTP_PARSE_INVALID_METHOD;
 
                 r->method = NGX_HTTP_POST;
                 p += 3;
                 break;
 
             default:
-                return NGX_HTTP_INVALID_METHOD;
+                return NGX_HTTP_PARSE_INVALID_METHOD;
             }
 
             state = sw_space_after_method;
@@ -86,7 +86,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 state = sw_spaces_before_uri;
                 break;
             default:
-                return NGX_HTTP_INVALID_METHOD;
+                return NGX_HTTP_PARSE_INVALID_METHOD;
             }
             break;
 
@@ -210,7 +210,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 state = sw_http_version;
                 break;
             default:
-                return NGX_HTTP_INVALID_REQUEST;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
 
@@ -223,7 +223,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
             }
 
             if (ch != 'T' || *p != 'T' || *(p + 1) != 'P' || *(p + 2) != '/')
-                return NGX_HTTP_INVALID_REQUEST;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
 
             p += 3;
             state = sw_first_major_digit;
@@ -232,7 +232,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
         /* first digit of major HTTP version */
         case sw_first_major_digit:
             if (ch < '1' || ch > '9')
-                return NGX_HTTP_INVALID_REQUEST;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
 
             r->http_major = ch - '0';
             state = sw_major_digit;
@@ -246,7 +246,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
             }
 
             if (ch < '0' || ch > '9')
-                return NGX_HTTP_INVALID_REQUEST;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
 
             r->http_major = r->http_major * 10 + ch - '0';
             break;
@@ -254,7 +254,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
         /* first digit of minor HTTP version */
         case sw_first_minor_digit:
             if (ch < '0' || ch > '9')
-                return NGX_HTTP_INVALID_REQUEST;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
 
             r->http_minor = ch - '0';
 
@@ -274,7 +274,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
             }
 
             if (ch < '0' || ch > '9')
-                return NGX_HTTP_INVALID_REQUEST;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
 
             r->http_minor = r->http_minor * 10 + ch - '0';
             break;
@@ -286,7 +286,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 state = sw_done;
                 break;
             default:
-                return NGX_HTTP_INVALID_REQUEST;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
         }
@@ -298,7 +298,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
         r->http_version = r->http_major * 1000 + r->http_minor;
         r->state = sw_start;
         if (r->http_version == 9 && r->method == NGX_HTTP_HEAD)
-            return NGX_HTTP_INVALID_HEAD;
+            return NGX_HTTP_PARSE_INVALID_HEAD;
         else
             return NGX_OK;
     } else {
@@ -358,7 +358,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 if (ch >= '0' && ch <= '9')
                     break;
 
-                return NGX_HTTP_INVALID_HEADER;
+                return NGX_HTTP_PARSE_INVALID_HEADER;
 
             }
             break;
@@ -381,7 +381,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
             if (ch >= '0' && ch <= '9')
                 break;
 
-            return NGX_HTTP_INVALID_HEADER;
+            return NGX_HTTP_PARSE_INVALID_HEADER;
 
         /* space* before header value */
         case sw_space_before_value:
@@ -445,7 +445,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 state = sw_done;
                 break;
             default:
-                return NGX_HTTP_INVALID_HEADER;
+                return NGX_HTTP_PARSE_INVALID_HEADER;
             }
             break;
 
@@ -456,7 +456,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 state = sw_header_done;
                 break;
             default:
-                return NGX_HTTP_INVALID_HEADER;
+                return NGX_HTTP_PARSE_INVALID_HEADER;
             }
             break;
         }
@@ -469,7 +469,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
         return NGX_OK;
     } else if (state == sw_header_done) {
         r->state = sw_start;
-        return NGX_HTTP_HEADER_DONE;
+        return NGX_HTTP_PARSE_HEADER_DONE;
     } else {
         r->state = state;
         return NGX_AGAIN;
