@@ -108,7 +108,7 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
             if (te->next == NULL) {
                 te->next = *out;
                 break;
-            }   
+            }
         }
     }
 

@@ -7,7 +7,7 @@
 ngx_inline static uint32_t ngx_crc(char *data, size_t len)
 {
     uint32_t  sum;
-    
+
     for (sum = 0; len; len--) {
         /*
          * gcc 2.95.2 x86 and icc 7.1.006 compile that operator

@@ -199,7 +199,14 @@ void ngx_event_accept(ngx_event_t *ev)
         rev->log = log;
         wev->log = log;
 
-        /* TODO: x86: MT: lock xadd, MP: lock xadd, shared */
+        /*
+         * In the multithreaded model the connection counter is updated by
+         * the main thread only that accept()s connections.
+         *
+         * TODO: MP: - allocated in a shared memory
+         *           - atomic increment (x86: lock xadd)
+         *             or protection by critical section or mutex
+         */
         c->number = ngx_connection_counter++;
 
         ngx_log_debug(ev->log, "accept: %d, %d" _ s _ c->number);

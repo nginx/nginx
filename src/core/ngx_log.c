@@ -22,7 +22,7 @@ static ngx_str_t  errlog_name = ngx_string("errlog");
 static ngx_command_t  ngx_errlog_commands[] = {
 
     {ngx_string("error_log"),
-     NGX_MAIN_CONF|NGX_CONF_TAKE12,
+     NGX_MAIN_CONF|NGX_CONF_1MORE,
      ngx_set_error_log,
      0,
      0,
@@ -50,6 +50,11 @@ static const char *err_levels[] = {
     "stderr", "emerg", "alert", "crit", "error",
     "warn", "notice", "info", "debug"
 };
+
+static const char *debug_levels[] = {
+    "debug", "debug_alloc", "debug_event", "debug_http"
+};
+
 
 #if (HAVE_VARIADIC_MACROS)
 void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
@@ -262,9 +267,18 @@ ngx_log_t *ngx_log_init_errlog()
 }
 
 
-ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name)
+ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
 {
     ngx_log_t  *log;
+    ngx_str_t  *value, *name;
+
+    if (args) {
+        value = args->elts;
+        name = &value[1];
+
+    } else {
+        name = NULL;
+    }
 
     ngx_test_null(log, ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)), NULL);
     ngx_test_null(log->file, ngx_conf_open_file(cycle, name), NULL);
@@ -279,7 +293,7 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name)
 
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_int_t   i;
+    ngx_int_t   i, n, d;
     ngx_str_t  *value;
 
     value = cf->args->elts;
@@ -291,16 +305,43 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         cf->cycle->log->file->name = value[1];
     }
 
-    if (cf->args->nelts == 3) {
-        for (i = 1; i <= /* STUB ??? */ NGX_LOG_DEBUG; i++) {
-            if (ngx_strcmp(value[2].data, err_levels[i]) == 0) {
-                cf->cycle->log->log_level = i;
-                break;
+    for (i = 2; i < cf->args->nelts; i++) {
+
+        for (n = 1; n < NGX_LOG_DEBUG; n++) {
+            if (ngx_strcmp(value[i].data, err_levels[n]) == 0) {
+
+                if (cf->cycle->log->log_level != 0) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "invalid log level \"%s\"",
+                                       value[i].data);
+                    return NGX_CONF_ERROR;
+                }
+
+                cf->cycle->log->log_level = n;
+                continue;
             }
         }
-        if (i > NGX_LOG_DEBUG) {
+
+        d = NGX_LOG_DEBUG_FIRST;
+        for (n = 0; n < /* STUB */ 3; n++) {
+            if (ngx_strcmp(value[i].data, debug_levels[n]) == 0) {
+                if (cf->cycle->log->log_level & ~NGX_LOG_DEBUG_ALL) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "invalid log level \"%s\"",
+                                       value[i].data);
+                    return NGX_CONF_ERROR;
+                }
+
+                cf->cycle->log->log_level |= d;
+                d <<= 1;
+                continue;
+            }
+        }
+
+
+        if (cf->cycle->log->log_level == 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid log level \"%s\"", value[2].data);
+                               "invalid log level \"%s\"", value[i].data);
             return NGX_CONF_ERROR;
         }
     }

@@ -23,7 +23,7 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
         if (&h[i] == headers_in->connection) {
             continue;
         }
-    
+
         if (p->accel) {
             if (&h[i] == headers_in->date
                 || &h[i] == headers_in->accept_ranges) {
@@ -34,12 +34,12 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
                 && !p->lcf->pass_x_accel_expires)
             {
                 continue;
-            } 
-    
+            }
+
             if (&h[i] == headers_in->server && !p->lcf->pass_server) {
                 continue;
-            } 
-    
+            }
+
             if (&h[i] == headers_in->location) {
                 if (ngx_http_proxy_rewrite_location_header(p, &h[i])
                                                                   == NGX_ERROR)
@@ -48,9 +48,9 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
                 }
 
                 continue;
-            } 
+            }
         }
-    
+
         if (&h[i] == headers_in->content_type) {
             r->headers_out.content_type = &h[i];
             r->headers_out.content_type->key.len = 0;
@@ -61,9 +61,9 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
         {
             return NGX_ERROR;
         }
-    
+
         *ho = h[i];
-    
+
         /*
          * ngx_http_header_filter() does not handle specially
          * the following headers if they are set:
@@ -122,7 +122,7 @@ static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
     r->headers_out.location->value.len = uc->location->len
                                          + (loc->value.len - uc->url.len) + 1;
     r->headers_out.location->value.data =
-                       ngx_palloc(r->pool, r->headers_out.location->value.len); 
+                       ngx_palloc(r->pool, r->headers_out.location->value.len);
 
     if (r->headers_out.location->value.data == NULL) {
         return NGX_ERROR;

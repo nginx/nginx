@@ -17,7 +17,7 @@ struct ngx_gc_s {
 };
 
 
-int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name, 
+int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
                                        ngx_dir_t *dir);
 
 

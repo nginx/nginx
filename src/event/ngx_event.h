@@ -36,9 +36,11 @@ struct ngx_event_s {
     /*
      * The inline of "ngx_rbtree_t  rbtree;".
      *
-     * It allows to pack rbtree_color and variuos event bit flags into
-     * the single int.  We also use "unsigned char" and then "usigned short"
-     * because otherwise MSVC 6.0 uses an additional int for bit flags.
+     * It allows to pack the rbtree_color and the variuos event bit flags into
+     * the single "int".  We also use "unsigned char" and then "usigned short"
+     * because otherwise MSVC 6.0 uses an additional "int" for the bit flags.
+     * We use "char rbtree_color" instead of "unsigned int rbtree_color:1"
+     * because it preserves the bits order on the big endian platforms.
      */
 
     ngx_int_t        rbtree_key;

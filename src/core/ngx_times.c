@@ -116,11 +116,11 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
     t %= 86400;
     hour = t / 3600;
     t %= 3600;
-    min = t / 60; 
+    min = t / 60;
     sec = t % 60;
 
     /* the algorithm based on Gauss's formula */
-    
+
     days = days - (31 + 28) + 719527;
 
     year = days * 400 / (365 * 400 + 100 - 4 + 1);

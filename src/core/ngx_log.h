@@ -16,7 +16,13 @@
 #define NGX_LOG_INFO            7
 #define NGX_LOG_DEBUG           8
 
-#define NGX_LOG_DEBUG_HTTP   0x80
+#define NGX_LOG_DEBUG_ALLOC     0x10
+#define NGX_LOG_DEBUG_EVENT     0x20
+#define NGX_LOG_DEBUG_HTTP      0x40
+
+#define NGX_LOG_DEBUG_FIRST     NGX_LOG_DEBUG
+#define NGX_LOG_DEBUG_LAST      NGX_LOG_DEBUG_HTTP
+#define NGX_LOG_DEBUG_ALL       0xfffffff8
 
 
 /*
@@ -212,7 +218,7 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 #define ngx_log_copy_log(new, old)    ngx_memcpy(new, old, sizeof(ngx_log_t))
 
 ngx_log_t *ngx_log_init_errlog();
-ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name);
+ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args);
 
 
 extern ngx_module_t  ngx_errlog_module;

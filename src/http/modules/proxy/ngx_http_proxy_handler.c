@@ -384,7 +384,7 @@ void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
     ngx_connection_t      *c;
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
-    
+
     ngx_log_debug(rev->log, "busy lock");
 
     c = rev->data;
@@ -594,7 +594,7 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf(buf, NGX_TIME_LEN, TIME_T_FMT, p->state->expired);
+        buf += ngx_snprintf(buf, NGX_TIME_T_LEN, TIME_T_FMT, p->state->expired);
     }
 
     *buf++ = '/';
@@ -603,7 +603,7 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf(buf, NGX_TIME_LEN, TIME_T_FMT, p->state->bl_time);
+        buf += ngx_snprintf(buf, NGX_TIME_T_LEN, TIME_T_FMT, p->state->bl_time);
     }
 
     *buf++ = '/';
@@ -635,7 +635,7 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf(buf, NGX_TIME_LEN, TIME_T_FMT, p->state->expires);
+        buf += ngx_snprintf(buf, NGX_TIME_T_LEN, TIME_T_FMT, p->state->expires);
     }
 
     *buf++ = ' ';

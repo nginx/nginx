@@ -158,8 +158,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.content_length == NULL) {
         if (r->headers_out.content_length_n >= 0) {
-                                           /* 2^64 */
-            len += sizeof("Content-Length: 18446744073709551616" CRLF) - 1;
+            len += sizeof("Content-Length: ") - 1 + NGX_OFF_T_LEN + 2;
         }
     }
 
@@ -238,49 +237,18 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 
     if (!(r->headers_out.date && r->headers_out.date->key.len)) {
         h->last = ngx_cpymem(h->last, "Date: ", sizeof("Date: ") - 1);
-#if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
-        p = h->last;
-#endif
         h->last = ngx_cpymem(h->last, ngx_cached_http_time.data,
                              ngx_cached_http_time.len);
-
-#if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
-        r->headers_out.date = ngx_palloc(r->pool, sizeof(ngx_table_elt_t));
-        if (r->headers_out.date == NULL) {
-            return NGX_ERROR;
-        }
-
-        r->headers_out.date->key.len = 0;
-        r->headers_out.date->key.data = NULL;
-        r->headers_out.date->value.len = h->last - p;
-        r->headers_out.date->value.data = p;
-#endif
 
         *(h->last++) = CR; *(h->last++) = LF;
     }
 
     if (r->headers_out.content_length == NULL) {
         if (r->headers_out.content_length_n >= 0) {
-#if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
-            p = h->last + sizeof("Content-Length: ") - 1;
-#endif
-            h->last += ngx_snprintf(h->last,        /* 2^64 */
-                            sizeof("Content-Length: 18446744073709551616" CRLF),
-                            "Content-Length: " OFF_T_FMT CRLF,
-                            r->headers_out.content_length_n);
-
-#if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
-            r->headers_out.content_length = ngx_palloc(r->pool,
-                                                       sizeof(ngx_table_elt_t));
-            if (r->headers_out.content_length == NULL) {
-                return NGX_ERROR;
-            }
-
-            r->headers_out.content_length->key.len = 0;
-            r->headers_out.content_length->key.data = NULL;
-            r->headers_out.content_length->value.len = h->last - p - 2;
-            r->headers_out.content_length->value.data = p;
-#endif
+            h->last += ngx_snprintf(h->last,
+                                sizeof("Content-Length: ") + NGX_OFF_T_LEN + 2,
+                                "Content-Length: " OFF_T_FMT CRLF,
+                                r->headers_out.content_length_n);
         }
     }
 
@@ -332,23 +300,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     {
         h->last = ngx_cpymem(h->last, "Last-Modified: ",
                              sizeof("Last-Modified: ") - 1);
-#if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
-        p = h->last;
-#endif
         h->last += ngx_http_time(h->last, r->headers_out.last_modified_time);
-
-#if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
-        r->headers_out.last_modified = ngx_palloc(r->pool,
-                                                  sizeof(ngx_table_elt_t));
-        if (r->headers_out.last_modified == NULL) {
-            return NGX_ERROR;
-        }
-
-        r->headers_out.last_modified->key.len = 0;
-        r->headers_out.last_modified->key.data = NULL;
-        r->headers_out.last_modified->value.len = h->last - p;
-        r->headers_out.last_modified->value.data = p;
-#endif
 
         *(h->last++) = CR; *(h->last++) = LF;
     }

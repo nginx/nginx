@@ -1354,12 +1354,14 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
+#if 0
     ngx_str_t  *value;
 
     value = cf->args->elts;
+#endif
 
     ngx_test_null(lcf->err_log,
-                  ngx_log_create_errlog(cf->cycle, &value[1]),
+                  ngx_log_create_errlog(cf->cycle, cf->args),
                   NGX_CONF_ERROR);
 
     return NGX_CONF_OK;

@@ -21,10 +21,15 @@ static char *ngx_http_log_length(ngx_http_request_t *r, char *buf,
                                  uintptr_t data);
 static char *ngx_http_log_header_in(ngx_http_request_t *r, char *buf,
                                     uintptr_t data);
+static char *ngx_http_log_connection_header_out(ngx_http_request_t *r,
+                                                char *buf, uintptr_t data);
+static char *ngx_http_log_transfer_encoding_header_out(ngx_http_request_t *r,
+                                                       char *buf,
+                                                       uintptr_t data);
 static char *ngx_http_log_unknown_header_in(ngx_http_request_t *r, char *buf,
                                             uintptr_t data);
 static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
-                                    uintptr_t data);
+                                     uintptr_t data);
 static char *ngx_http_log_unknown_header_out(ngx_http_request_t *r, char *buf,
                                              uintptr_t data);
 
@@ -104,7 +109,7 @@ ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
                           ngx_http_log_time },
     { ngx_string("request"), 0, ngx_http_log_request },
     { ngx_string("status"), 3, ngx_http_log_status },
-    { ngx_string("length"), NGX_OFF_LEN, ngx_http_log_length },
+    { ngx_string("length"), NGX_OFF_T_LEN, ngx_http_log_length },
     { ngx_string("i"), NGX_HTTP_LOG_ARG, ngx_http_log_header_in },
     { ngx_string("o"), NGX_HTTP_LOG_ARG, ngx_http_log_header_out },
     { ngx_null_string, 0, NULL }
@@ -212,18 +217,6 @@ static char *ngx_http_log_time(ngx_http_request_t *r, char *buf, uintptr_t data)
 {
     return ngx_cpymem(buf, ngx_cached_http_log_time.data,
                       ngx_cached_http_log_time.len);
-
-#if 0
-    ngx_tm_t  tm;
-
-    ngx_localtime(&tm);
-
-    return buf + ngx_snprintf(buf, sizeof("28/Sep/1970:12:00:00"),
-                              "%02d/%s/%d:%02d:%02d:%02d",
-                              tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
-                              tm.ngx_tm_year,
-                              tm.ngx_tm_hour, tm.ngx_tm_min, tm.ngx_tm_sec);
-#endif
 }
 
 
@@ -250,7 +243,7 @@ static char *ngx_http_log_status(ngx_http_request_t *r, char *buf,
 static char *ngx_http_log_length(ngx_http_request_t *r, char *buf,
                                  uintptr_t data)
 {
-    return buf + ngx_snprintf(buf, NGX_OFF_LEN + 1, OFF_T_FMT,
+    return buf + ngx_snprintf(buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
                               r->connection->sent);
 }
 
@@ -357,17 +350,72 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
     ngx_http_log_op_t  *op;
 
     if (r) {
+
+        /* run-time execution */
+
+        if (r->http_version < NGX_HTTP_VERSION_10) {
+            if (buf) {
+                *buf = '-';
+            }
+
+            return buf + 1;
+        }
+
         h = *(ngx_table_elt_t **) ((char *) &r->headers_out + data);
 
         if (h == NULL) {
 
-            /* no header */
+            /*
+             * No header pointer was found.
+             * However, some headers: "Date", "Server", "Content-Length",
+             * and "Last-Modified" have a special handling in the header filter
+             * but we do not set up their pointers in the filter because
+             * they are too seldom needed to be logged.
+             */
+
+            if (data == offsetof(ngx_http_headers_out_t, date)) {
+                if (buf == NULL) {
+                    return (char *) ngx_cached_http_time.len;
+                }
+                return ngx_cpymem(buf, ngx_cached_http_time.data,
+                                  ngx_cached_http_time.len);
+            }
 
             if (data == offsetof(ngx_http_headers_out_t, server)) {
                 if (buf == NULL) {
                     return (char *) (sizeof(NGINX_VER) - 1);
                 }
                 return ngx_cpymem(buf, NGINX_VER, sizeof(NGINX_VER) - 1);
+            }
+
+            if (data == offsetof(ngx_http_headers_out_t, content_length)) {
+                if (r->headers_out.content_length_n == -1) {
+                    if (buf) {
+                        *buf = '-';
+                    }
+                    return buf + 1;
+                }
+
+                if (buf == NULL) {
+                    return (char *) NGX_OFF_T_LEN;
+                }
+                return buf + ngx_snprintf(buf, NGX_OFF_T_LEN + 2, OFF_T_FMT,
+                                          r->headers_out.content_length_n);
+            }
+
+            if (data == offsetof(ngx_http_headers_out_t, last_modified)) {
+                if (r->headers_out.last_modified_time == -1) {
+                    if (buf) {
+                        *buf = '-';
+                    }
+                    return buf + 1;
+                }
+
+                if (buf == NULL) {
+                    return (char *) sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1;
+                }
+                return buf + ngx_http_time(buf,
+                                           r->headers_out.last_modified_time);
             }
 
             if (buf) {
@@ -406,10 +454,60 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
         }
     }
 
+    if (s->len == sizeof("Connection") - 1
+        && ngx_strncasecmp(s->data, "Connection", s->len) == 0)
+    {
+        op->op = ngx_http_log_connection_header_out;
+        op->data = NULL;
+        return NULL;
+    }
+
+    if (s->len == sizeof("Transfer-Encoding") - 1
+        && ngx_strncasecmp(s->data, "Transfer-Encoding", s->len) == 0) {
+        op->op = ngx_http_log_transfer_encoding_header_out;
+        op->data = NULL;
+        return NULL;
+    }
+
     op->op = ngx_http_log_unknown_header_out;
     op->data = (uintptr_t) s;
 
     return NULL;
+}
+
+
+static char *ngx_http_log_connection_header_out(ngx_http_request_t *r,
+                                                char *buf, uintptr_t data)
+{
+    if (buf == NULL) {
+        return (char *) ((r->keepalive) ? sizeof("keep-alive") - 1:
+                                          sizeof("close") - 1);
+    }
+
+    if (r->keepalive) {
+        return ngx_cpymem(buf, "keep-alive", sizeof("keep-alive") - 1);
+
+    } else {
+        return ngx_cpymem(buf, "close", sizeof("close") - 1);
+    }
+}
+
+
+static char *ngx_http_log_transfer_encoding_header_out(ngx_http_request_t *r,
+                                                       char *buf,
+                                                       uintptr_t data)
+{
+    if (buf == NULL) {
+        return (char *) ((r->chunked) ? sizeof("chunked") - 1 : 1);
+    }
+
+    if (r->chunked) {
+        return ngx_cpymem(buf, "chunked", sizeof("chunked") - 1);
+    }
+
+    *buf = '-';
+
+    return buf + 1;
 }
 
 
