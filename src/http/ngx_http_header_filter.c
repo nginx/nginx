@@ -89,6 +89,28 @@ static ngx_str_t http_codes[] = {
 };
 
 
+ngx_http_header_t  ngx_http_headers_out[] = {
+    { ngx_string("Server"), offsetof(ngx_http_headers_out_t, server) },
+    { ngx_string("Date"), offsetof(ngx_http_headers_out_t, date) },
+    { ngx_string("Content-Type"),
+                             offsetof(ngx_http_headers_out_t, content_type) },
+    { ngx_string("Content-Length"),
+                           offsetof(ngx_http_headers_out_t, content_length) },
+    { ngx_string("Content-Encoding"),
+                         offsetof(ngx_http_headers_out_t, content_encoding) },
+    { ngx_string("Location"), offsetof(ngx_http_headers_out_t, location) },
+    { ngx_string("Last-Modified"),
+                            offsetof(ngx_http_headers_out_t, last_modified) },
+    { ngx_string("Accept-Ranges"),
+                            offsetof(ngx_http_headers_out_t, accept_ranges) },
+    { ngx_string("Expires"), offsetof(ngx_http_headers_out_t, expires) },
+    { ngx_string("Cache-Control"),
+                            offsetof(ngx_http_headers_out_t, cache_control) },
+    { ngx_string("ETag"), offsetof(ngx_http_headers_out_t, etag) },
+
+    { ngx_null_string, 0 }
+};
+
 
 static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
 {

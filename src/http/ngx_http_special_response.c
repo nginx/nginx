@@ -282,9 +282,8 @@ ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error)
             msie_padding = 1;
         }
 
-        if (!(r->headers_out.content_type =
-                                       ngx_push_list(&r->headers_out.headers)))
-        {
+        r->headers_out.content_type = ngx_list_push(&r->headers_out.headers);
+        if (r->headers_out.content_type == NULL) {
             return NGX_ERROR;
         }
 

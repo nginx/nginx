@@ -12,13 +12,31 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
                                ngx_http_proxy_headers_in_t *headers_in)
 {
     ngx_uint_t           i;
+    ngx_list_part_t     *part;
     ngx_table_elt_t     *ho, *h;
     ngx_http_request_t  *r;
 
     r = p->request;
 
+    part = &headers_in->headers.part;
+    h = part->elts;
+
+#if 0
     h = headers_in->headers.elts;
     for (i = 0; i < headers_in->headers.nelts; i++) {
+#endif
+
+    for (i = 0 ; /* void */; i++) {
+  
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+  
+            part = part->next;
+            h = part->elts;
+            i = 0;
+        }
 
         /* ignore some headers */
 
@@ -69,8 +87,7 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
 
         /* copy some header pointers and set up r->headers_out */
 
-        if (!(ho = ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
-        {
+        if (!(ho = ngx_list_push(&r->headers_out.headers))) {
             return NGX_ERROR;
         }
 
@@ -138,8 +155,7 @@ static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
     r = p->request;
     uc = p->lcf->upstream;
 
-    location = ngx_http_add_header(&r->headers_out, ngx_http_headers_out);
-    if (location == NULL) {
+    if (!(location = ngx_list_push(&r->headers_out.headers))) {
         return NGX_ERROR;
     }
 

@@ -3,7 +3,7 @@
 #include <ngx_core.h>
 
 
-void *ngx_push_list(ngx_list_t *l)
+void *ngx_list_push(ngx_list_t *l)
 {
     void             *elt;
     ngx_list_part_t  *last;

@@ -123,7 +123,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
         || ngx_strncasecmp(r->headers_in.range->value.data, "bytes=", 6) != 0)
     {
 
-        r->headers_out.accept_ranges = ngx_push_list(&r->headers_out.headers);
+        r->headers_out.accept_ranges = ngx_list_push(&r->headers_out.headers);
         if (r->headers_out.accept_ranges == NULL) {
             return NGX_ERROR;
         }
@@ -244,7 +244,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
         r->headers_out.status = rc;
         r->headers_out.ranges.nelts = 0;
 
-        r->headers_out.content_range = ngx_push_list(&r->headers_out.headers);
+        r->headers_out.content_range = ngx_list_push(&r->headers_out.headers);
         if (r->headers_out.content_range == NULL) {
             return NGX_ERROR;
         }
@@ -277,7 +277,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
         if (r->headers_out.ranges.nelts == 1) {
 
             r->headers_out.content_range =
-                                        ngx_push_list(&r->headers_out.headers);
+                                        ngx_list_push(&r->headers_out.headers);
             if (r->headers_out.content_range == NULL) {
                 return NGX_ERROR;
             }

@@ -531,8 +531,8 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
 
 
     if (rc == NGX_HTTP_LOCATION_AUTO_REDIRECT) {
-        if (!(r->headers_out.location = ngx_push_list(&r->headers_out.headers)))
-        {
+        r->headers_out.location = ngx_list_push(&r->headers_out.headers);
+        if (r->headers_out.location == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
@@ -673,8 +673,8 @@ ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r)
     ngx_http_type_t           *type;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (!(r->headers_out.content_type = ngx_push_list(&r->headers_out.headers)))
-    {
+    r->headers_out.content_type = ngx_list_push(&r->headers_out.headers);
+    if (r->headers_out.content_type == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 

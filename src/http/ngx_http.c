@@ -500,13 +500,16 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         in_addr = in_port[p].addrs.elts;
         while (a < in_port[p].addrs.nelts) {
 
-            ngx_test_null(ls, ngx_push_array(&cf->cycle->listening),
-                          NGX_CONF_ERROR);
+            if (!(ls = ngx_push_array(&cf->cycle->listening))) {
+                return NGX_CONF_ERROR;
+            }
+
             ngx_memzero(ls, sizeof(ngx_listening_t));
 
-            ngx_test_null(addr_in,
-                          ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in)),
-                          NGX_CONF_ERROR);
+            addr_in = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
+            if (addr_in == NULL) {
+                return NGX_CONF_ERROR;
+            }
 
 #if (HAVE_SIN_LEN)
             addr_in->sin_len = sizeof(struct sockaddr_in);
@@ -515,17 +518,18 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             addr_in->sin_addr.s_addr = in_addr[a].addr;
             addr_in->sin_port = htons((u_short) in_port[p].port);
 
-            ngx_test_null(ls->addr_text.data,
-                          ngx_palloc(cf->pool, INET_ADDRSTRLEN + 6),
-                          NGX_CONF_ERROR);
+            ls->addr_text.data = ngx_palloc(cf->pool, INET_ADDRSTRLEN + 6);
+            if (ls->addr_text.data == NULL) {
+                return NGX_CONF_ERROR;
+            }
 
-            ls->addr_text.len =
-                        ngx_snprintf((char *) ls->addr_text.data
-                                     + ngx_inet_ntop(AF_INET,
-                                                     &in_addr[a].addr,
-                                                     ls->addr_text.data,
-                                                     INET_ADDRSTRLEN),
-                                     6, ":%d", in_port[p].port);
+            ls->addr_text.len = ngx_inet_ntop(AF_INET, &in_addr[a].addr,
+                                              ls->addr_text.data,
+                                              INET_ADDRSTRLEN),
+
+            ls->addr_text.len += ngx_snprintf((char *) ls->addr_text.data
+                                                           + ls->addr_text.len,
+                                               6, ":%d", in_port[p].port);
 
             ls->fd = (ngx_socket_t) -1;
             ls->family = AF_INET;

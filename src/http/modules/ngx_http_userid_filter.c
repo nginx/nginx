@@ -381,7 +381,7 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "uid cookie: \"%s\"", cookie);
 
-    if (!(set_cookie = ngx_push_list(&r->headers_out.headers))) {
+    if (!(set_cookie = ngx_list_push(&r->headers_out.headers))) {
         return NGX_ERROR;
     }
 

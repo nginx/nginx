@@ -49,6 +49,41 @@ static char *client_header_errors[] = {
 };
 
 
+ngx_http_header_t  ngx_http_headers_in[] = {
+    { ngx_string("Host"), offsetof(ngx_http_headers_in_t, host) },
+    { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection) },
+    { ngx_string("If-Modified-Since"),
+                         offsetof(ngx_http_headers_in_t, if_modified_since) },
+    { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent) },
+    { ngx_string("Referer"), offsetof(ngx_http_headers_in_t, referer) },
+    { ngx_string("Content-Length"),
+                            offsetof(ngx_http_headers_in_t, content_length) },
+
+    { ngx_string("Range"), offsetof(ngx_http_headers_in_t, range) },
+#if 0
+    { ngx_string("If-Range"), offsetof(ngx_http_headers_in_t, if_range) },
+#endif
+
+#if (NGX_HTTP_GZIP)
+    { ngx_string("Accept-Encoding"),
+                           offsetof(ngx_http_headers_in_t, accept_encoding) },
+    { ngx_string("Via"), offsetof(ngx_http_headers_in_t, via) },
+#endif
+
+    { ngx_string("Authorization"),
+                             offsetof(ngx_http_headers_in_t, authorization) },
+
+    { ngx_string("Keep-Alive"), offsetof(ngx_http_headers_in_t, keep_alive) },
+
+#if (NGX_HTTP_PROXY)
+    { ngx_string("X-Forwarded-For"),
+                           offsetof(ngx_http_headers_in_t, x_forwarded_for) },
+#endif
+    
+    { ngx_null_string, 0 }
+};
+
+
 #if 0
 static void ngx_http_dummy(ngx_event_t *wev)
 {
@@ -310,30 +345,13 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->cleanup.pool = r->pool;
 
 
-    if (ngx_init_list(&r->headers_out.headers, r->pool, 2,
+    if (ngx_list_init(&r->headers_out.headers, r->pool, 20,
                                          sizeof(ngx_table_elt_t)) == NGX_ERROR)
     {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         ngx_http_close_connection(c);
         return;
     }
-
-
-#if 0
-    /* init the r->headers_out.headers table */
-
-    r->headers_out.headers.elts = ngx_pcalloc(r->pool,
-                                              20 * sizeof(ngx_table_elt_t));
-    if (r->headers_out.headers.elts == NULL) {
-        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        ngx_http_close_connection(c);
-        return;
-    }
-    /* r->headers_out.headers.nelts = 0; */
-    r->headers_out.headers.nalloc = 20;
-    r->headers_out.headers.size = sizeof(ngx_table_elt_t);
-    r->headers_out.headers.pool = r->pool;
-#endif
 
 
     r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
@@ -619,7 +637,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         }
 
 
-        if (ngx_init_list(&r->headers_in.headers, r->pool, 2,
+        if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
                                          sizeof(ngx_table_elt_t)) == NGX_ERROR)
         {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -628,7 +646,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         }
 
 
-        if (ngx_init_array0(&r->headers_in.cookies, r->pool, 5,
+        if (ngx_array_init(&r->headers_in.cookies, r->pool, 5,
                                        sizeof(ngx_table_elt_t *)) == NGX_ERROR)
         {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -772,7 +790,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
             r->headers_n++;
 
-            if (!(h = ngx_push_list(&r->headers_in.headers))) {
+            if (!(h = ngx_list_push(&r->headers_in.headers))) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 ngx_http_close_connection(c);
                 return;

@@ -600,7 +600,7 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         }
     }
 
-    if (!(file = ngx_push_list(&cycle->open_files))) {
+    if (!(file = ngx_list_push(&cycle->open_files))) {
         return NULL;
     }
 

@@ -954,20 +954,22 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
 
     /* init or reinit the p->upstream->headers_in.headers table */
 
-    if (p->upstream->headers_in.headers.elts) {
-        p->upstream->headers_in.headers.nelts = 0;
+    if (p->upstream->headers_in.headers.part.elts) {
+        p->upstream->headers_in.headers.part.nelts = 0;
+        p->upstream->headers_in.headers.part.next = NULL;
+        p->upstream->headers_in.headers.last =
+                                         &p->upstream->headers_in.headers.part;
+
+        ngx_memzero(&p->upstream->headers_in.date,
+                    sizeof(ngx_http_proxy_headers_in_t) - sizeof(ngx_list_t));
 
     } else {
-        p->upstream->headers_in.headers.elts = ngx_pcalloc(p->request->pool,
-                                                 20 * sizeof(ngx_table_elt_t));
-        if (p->upstream->headers_in.headers.elts == NULL) {
+        if (ngx_list_init(&p->upstream->headers_in.headers, p->request->pool,
+                                     20, sizeof(ngx_table_elt_t)) == NGX_ERROR)
+        {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
-        /* p->upstream->headers_in.headers.nelts = 0; */
-        p->upstream->headers_in.headers.nalloc = 20;
-        p->upstream->headers_in.headers.size = sizeof(ngx_table_elt_t);
-        p->upstream->headers_in.headers.pool = p->request->pool;
     }
 
 
@@ -1025,9 +1027,7 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
 
             /* a header line has been parsed successfully */
 
-            h = ngx_http_add_header(&p->upstream->headers_in,
-                                    ngx_http_proxy_headers_in);
-            if (h == NULL) {
+            if (!(h = ngx_list_push(&p->upstream->headers_in.headers))) {
                 ngx_http_proxy_finalize_request(p,
                                                 NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;

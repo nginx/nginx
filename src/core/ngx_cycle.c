@@ -81,7 +81,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         n = 20;
     }
 
-    if (ngx_init_list(&cycle->open_files, pool, n, sizeof(ngx_open_file_t))
+    if (ngx_list_init(&cycle->open_files, pool, n, sizeof(ngx_open_file_t))
                                                                   == NGX_ERROR)
     {
         ngx_destroy_pool(pool);

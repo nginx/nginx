@@ -297,7 +297,7 @@ static ngx_int_t ngx_http_gzip_header_filter(ngx_http_request_t *r)
                         sizeof(ngx_http_gzip_ctx_t), NGX_ERROR);
     ctx->request = r;
 
-    r->headers_out.content_encoding = ngx_push_list(&r->headers_out.headers);
+    r->headers_out.content_encoding = ngx_list_push(&r->headers_out.headers);
     if (r->headers_out.content_encoding == NULL) {
         return NGX_ERROR;
     }

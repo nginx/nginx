@@ -160,9 +160,6 @@ typedef struct {
 
 typedef struct {
     ngx_list_t        headers;
-#if 0
-    ngx_table_t       headers;   /* it must be first field */
-#endif
 
     ngx_uint_t        status;
     ngx_str_t         status_line;
