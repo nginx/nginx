@@ -129,7 +129,6 @@ void ngx_event_accept(ngx_event_t *ev)
 
 #if (NGX_STAT_STUB)
         (*ngx_stat_accepted)++;
-        (*ngx_stat_active)++;
 #endif
 
         ngx_accept_disabled = (ngx_uint_t) s + NGX_ACCEPT_THRESHOLD
@@ -149,6 +148,10 @@ void ngx_event_accept(ngx_event_t *ev)
             ngx_destroy_pool(pool);
             return;
         }
+
+#if (NGX_STAT_STUB)
+        (*ngx_stat_active)++;
+#endif
 
         /* set a blocking mode for aio and non-blocking mode for the others */
 

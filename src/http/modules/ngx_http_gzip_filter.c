@@ -440,9 +440,8 @@ static ngx_int_t ngx_http_gzip_body_filter(ngx_http_request_t *r,
          * Besides we free this memory as soon as the gzipping will complete
          * and do not wait while a whole response will be sent to a client.
          *
-         * 8K is for zlib deflate_state (~6K).
-         *
-         * TODO: 64-bit, autoconf of deflate_state size
+         * 8K is for zlib deflate_state.  It takes 5816 bytes on x86
+         * and 5920 bytes on amd64.
          */
 
         ctx->allocated = 8192 + (1 << (wbits + 2)) + (1 << (memlevel + 9));
@@ -804,8 +803,9 @@ static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
     if (alloc % 512 != 0) {
 
         /*
-         * allocate the zlib deflate_state, it takes about 6K on x86,
-         * we allocate 8K
+         * The zlib deflate_state allocation, it takes 5816 bytes on x86
+         * and 5920 bytes on amd64.
+         * We allocate 8K.
          */
 
         alloc = (alloc + ngx_pagesize - 1) & ~(ngx_pagesize - 1);
