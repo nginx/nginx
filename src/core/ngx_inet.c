@@ -170,6 +170,7 @@ size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len)
 
 ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr)
 {
+    ngx_int_t         m;
     ngx_uint_t        i;
     ngx_inet_cidr_t  *in_cidr;
 
@@ -192,10 +193,20 @@ ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr)
         return NGX_ERROR;
     }
 
-    in_cidr->mask = ngx_atoi(&text->data[i + 1], text->len - (i + 1));
-    if (in_cidr->mask == (in_addr_t) NGX_ERROR) {
+    m = ngx_atoi(&text->data[i + 1], text->len - (i + 1));
+    if (m == NGX_ERROR) {
         return NGX_ERROR;
     }
+
+    if (m == 0) {
+
+        /* the x86 compilers use the shl instruction that shifts by modulo 32 */
+
+        in_cidr->mask = 0;
+        return NGX_OK;
+    }
+
+    in_cidr->mask = (ngx_uint_t) (0 - (1 << (32 - m)));
 
     return NGX_OK;
 }

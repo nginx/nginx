@@ -20,8 +20,12 @@ typedef struct {
 
 typedef enum {
     NGX_HTTP_REWRITE_PHASE = 0,
+
     NGX_HTTP_FIND_CONFIG_PHASE,
+
+    NGX_HTTP_ACCESS_PHASE,
     NGX_HTTP_CONTENT_PHASE,
+
     NGX_HTTP_LAST_PHASE
 } ngx_http_phases;
 

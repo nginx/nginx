@@ -46,6 +46,7 @@ ngx_module_t  ngx_http_status_module = {
 
 static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
 {
+    u_char               ch;
     size_t               len;
     ngx_int_t            rc;
     ngx_uint_t           i, dash;
@@ -93,10 +94,19 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
         rq = c[i].data;
         if (rq && rq->signature == NGX_HTTP_MODULE) {
 
+                   /* STUB: should be NGX_PID_T_LEN */
+            len += NGX_INT64_LEN                       /* pid */
+                   + 1 + NGX_INT32_LEN                 /* connection */
+                   + 1 + 1                             /* state */
+                   + 1 + c[i].addr_text.len
+                   + 1 + rq->server_name->len
+                   + 2;                                /* "\r\n" */
+
             if (rq->request_line.len) {
-                len += NGX_INT32_LEN + 1 + rq->request_line.len + 2 + 2;
-                dash = 0;
+                len += 1 + rq->request_line.len + 2;
             }
+
+            dash = 0;
 
             continue;
         }
@@ -117,27 +127,59 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
         rq = c[i].data;
         if (rq && rq->signature == NGX_HTTP_MODULE) {
 
-#if 0
+            b->last += ngx_snprintf((char *) b->last,
+                                    /* STUB: should be NGX_PID_T_LEN */
+                                    NGX_INT64_LEN + NGX_INT32_LEN,
+                                    PID_T_FMT " %u", ngx_pid, i);
+
             switch (rq->http_state) {
             case NGX_HTTP_INITING_REQUEST_STATE:
+                ch = 'I';
+                break;
+
+            case NGX_HTTP_READING_REQUEST_STATE:
+                ch = 'R';
+                break;
+
+            case NGX_HTTP_PROCESS_REQUEST_STATE:
+                ch = 'P';
+                break;
+
+            case NGX_HTTP_WRITING_REQUEST_STATE:
+                ch = 'W';
+                break;
 
             case NGX_HTTP_KEEPALIVE_STATE:
+                ch = 'K';
+                break;
+
+            default:
+                ch = '?';
             }
-#endif
+
+            *(b->last++) = ' ';
+            *(b->last++) = ch;
+
+            *(b->last++) = ' ';
+            b->last = ngx_cpymem(b->last, c[i].addr_text.data,
+                                 c[i].addr_text.len);
+
+            *(b->last++) = ' ';
+            b->last = ngx_cpymem(b->last, rq->server_name->data,
+                                 rq->server_name->len);
 
             if (rq->request_line.len) {
-                b->last += ngx_snprintf((char *) b->last, NGX_INT32_LEN,
-                                        "%u", i);
                 *(b->last++) = ' ';
-
                 *(b->last++) = '"';
                 b->last = ngx_cpymem(b->last, r->request_line.data,
                                      r->request_line.len);
                 *(b->last++) = '"';
 
-                *(b->last++) = CR; *(b->last++) = LF;
-                dash = 0;
             }
+
+            *(b->last++) = CR; *(b->last++) = LF;
+
+            dash = 0;
 
             continue;
         }

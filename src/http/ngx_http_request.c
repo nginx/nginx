@@ -159,10 +159,12 @@ static void ngx_http_init_request(ngx_event_t *rev)
             ngx_http_close_connection(c);
             return;
         }
+
+        c->data = r;
     }
 
+    c->sent = 0;
     r->signature = NGX_HTTP_MODULE;
-    r->http_state = NGX_HTTP_INITING_REQUEST_STATE;
 
     /* find the server configuration for the address:port */
 
@@ -288,8 +290,6 @@ static void ngx_http_init_request(ngx_event_t *rev)
         return;
     }
 
-    c->sent = 0;
-    c->data = r;
     r->connection = c;
     r->pipeline = c->pipeline;
     r->header_in = c->buffer;
@@ -300,6 +300,8 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->headers_in.keep_alive_n = -1;
     r->headers_out.content_length_n = -1;
     r->headers_out.last_modified_time = -1;
+
+    r->http_state = NGX_HTTP_READING_REQUEST_STATE;
 
     rev->event_handler = ngx_http_process_request_line;
     ngx_http_process_request_line(rev);
@@ -711,6 +713,8 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http header done");
 
+            r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
+
             rc = ngx_http_process_request_header(r);
 
             if (rc != NGX_OK) {
@@ -1054,6 +1058,8 @@ static void ngx_http_set_write_handler(ngx_http_request_t *r)
     if (wev->ready && wev->delayed) {
         return;
     }
+
+    r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
     clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                         ngx_http_core_module);

@@ -230,6 +230,8 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cmcf->phases[NGX_HTTP_REWRITE_PHASE].type = NGX_OK;
 
 
+    /* the special find config phase for single handler */
+
     ngx_init_array(cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers,
                    cf->cycle->pool, 1, sizeof(ngx_http_handler_pt),
                    NGX_CONF_ERROR);
@@ -239,6 +241,12 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            &cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers),
                   NGX_CONF_ERROR);
     *h = ngx_http_find_location_config;
+
+
+    ngx_init_array(cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
+                   cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
+                   NGX_CONF_ERROR);
+    cmcf->phases[NGX_HTTP_ACCESS_PHASE].type = NGX_DECLINED;
 
 
     ngx_init_array(cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,

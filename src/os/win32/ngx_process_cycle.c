@@ -15,6 +15,8 @@ sig_atomic_t  ngx_timer;
 ngx_uint_t    ngx_process;
 ngx_pid_t     ngx_pid;
 ngx_uint_t    ngx_threaded;
+ngx_uint_t    ngx_inherited;
+
 
 sig_atomic_t  ngx_terminate;
 sig_atomic_t  ngx_quit;
