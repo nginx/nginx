@@ -15,12 +15,13 @@ typedef struct {
     ngx_flag_t   enable;
     ngx_str_t    certificate;
     ngx_str_t    certificate_key;
+
+    SSL_CTX     *ssl_ctx;
 } ngx_http_ssl_srv_conf_t;
 
 
 typedef struct {
     SSL       *ssl;
-    SSL_CTX   *ssl_ctx;
 
     unsigned   accepted;
 } ngx_http_ssl_ctx_t;
@@ -86,10 +87,11 @@ ngx_module_t  ngx_http_ssl_filter_module = {
 };
 
 
-ngx_int_t ngx_http_ssl_read(ngx_http_request_t *r)
+ngx_int_t ngx_http_ssl_read(ngx_http_request_t *r, u_char *buf, size_t n)
 {
     int                  rc;
     ngx_http_ssl_ctx_t  *ctx;
+    ngx_http_log_ctx_t  *log_ctx;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssl_filter_module);
 
@@ -101,44 +103,108 @@ ngx_int_t ngx_http_ssl_read(ngx_http_request_t *r)
         }
     }
 
-    if (!ctx->accepted) {
-        rc = SSL_accept(ctx->ssl);
+    rc = SSL_read(ctx->ssl, buf, n);
 
-        if (rc != 1) {
-            rc = SSL_get_error(ctx->ssl, rc);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "SSL_read: %d", rc);
 
-            if (rc == SSL_ERROR_WANT_READ || rc == SSL_ERROR_WANT_WRITE) {
-                return NGX_AGAIN;
-            }
+    if (rc > 0) {
+       return rc;
+    }
 
-            if (rc == SSL_ERROR_ZERO_RETURN) {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                               "client closed connection while SSL handshake");
+    rc = SSL_get_error(ctx->ssl, rc);
 
-                ngx_http_ssl_close_request(ctx->ssl, SSL_RECEIVED_SHUTDOWN);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "SSL_get_error: %d", rc);
 
-                return NGX_ERROR;
-            }
+    if (rc == SSL_ERROR_WANT_READ) {
+        return NGX_AGAIN;
+    }
 
-            if (ERR_GET_REASON(ERR_peek_error()) == SSL_R_HTTP_REQUEST) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                               "client sent HTTP request to HTTPS port");
+#if 0
+    if (rc == SSL_ERROR_WANT_WRITE) {
+        return NGX_AGAIN;
+    }
+#endif
 
-                ngx_http_ssl_close_request(ctx->ssl,
-                                      SSL_SENT_SHUTDOWN|SSL_RECEIVED_SHUTDOWN);
+    if (!SSL_is_init_finished(ctx->ssl)) {
+        log_ctx = (ngx_http_log_ctx_t *) r->connection->log->data;
+        log_ctx->action = "SSL handshake";
+    }
 
-                return NGX_OK;
-            }
+    if (rc == SSL_ERROR_ZERO_RETURN) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                       "client closed connection");
 
-            ngx_http_ssl_error(NGX_LOG_ALERT, r->connection->log, rc,
-                               "SSL_accept() failed");
+        SSL_set_shutdown(ctx->ssl, SSL_RECEIVED_SHUTDOWN);
 
-            ngx_http_ssl_close_request(ctx->ssl, SSL_RECEIVED_SHUTDOWN);
+        return NGX_SSL_ERROR;
+    }
 
-            return NGX_ERROR;
+    if (ERR_GET_REASON(ERR_peek_error()) == SSL_R_HTTP_REQUEST) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                       "client sent plain HTTP request to HTTPS port");
+
+        SSL_set_shutdown(ctx->ssl,
+                         SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN);
+
+        return NGX_SSL_HTTP_ERROR;
+    }
+
+    ngx_http_ssl_error(NGX_LOG_ALERT, r->connection->log, rc,
+                       "SSL_accept() failed");
+
+    SSL_set_shutdown(ctx->ssl, SSL_RECEIVED_SHUTDOWN);
+
+    return NGX_SSL_ERROR;
+}
+
+
+ngx_int_t ngx_http_ssl_write(ngx_http_request_t *r, ngx_chain_t *in,
+                             off_t limit)
+{
+    int                  rc;
+    size_t               send, size;
+    ngx_http_ssl_ctx_t  *ctx;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_ssl_filter_module);
+
+    if (in == NULL) {
+        rc = SSL_shutdown(ctx->ssl);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "SSL_shutdown: %d", rc);
+
+        if (rc == 1) {
+            return NGX_OK;
         }
 
-        ctx->accepted = 1;
+        rc = SSL_get_error(ctx->ssl, rc);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "SSL_get_error: %d", rc);
+
+        if (rc == SSL_ERROR_WANT_WRITE) {
+            return NGX_AGAIN;
+        }
+
+        return NGX_ERROR;
+    }
+
+    send = 0;
+
+    for (/* void */; in; in = in->next) {
+        if (ngx_buf_special(in->buf)) {
+            continue;
+        }
+
+        size = in->buf->last - in->buf->pos;
+
+        if (send + size > limit) {
+            size = limit - send;
+        }
+
+        rc = SSL_write(ctx->ssl, in->buf->pos, size);
     }
 
     return NGX_OK;
@@ -153,32 +219,9 @@ static ngx_http_ssl_ctx_t *ngx_http_ssl_create_ctx(ngx_http_request_t *r)
     ngx_http_create_ctx(r, ctx, ngx_http_ssl_filter_module,
                         sizeof(ngx_http_ssl_ctx_t), NULL);
 
-    /* TODO: configure methods */
-    ctx->ssl_ctx = SSL_CTX_new(SSLv23_server_method());
-
-    if (ctx->ssl_ctx == NULL) {
-        ngx_http_ssl_error(NGX_LOG_ALERT, r->connection->log, 0,
-                           "SSL_CTX_new() failed");
-        return NULL;
-    }
-
     scf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_filter_module);
 
-    if (SSL_CTX_use_certificate_file(ctx->ssl_ctx, scf->certificate.data,
-                                     SSL_FILETYPE_PEM) == 0) {
-        ngx_http_ssl_error(NGX_LOG_ALERT, r->connection->log, 0,
-                           "SSL_CTX_use_certificate_file() failed");
-        return NULL;
-    }
-
-    if (SSL_CTX_use_PrivateKey_file(ctx->ssl_ctx, scf->certificate_key.data,
-                                    SSL_FILETYPE_PEM) == 0) {
-        ngx_http_ssl_error(NGX_LOG_ALERT, r->connection->log, 0,
-                           "SSL_CTX_use_PrivateKey_file() failed");
-        return NULL;
-    }
-
-    ctx->ssl = SSL_new(ctx->ssl_ctx);
+    ctx->ssl = SSL_new(scf->ssl_ctx);
 
     if (ctx->ssl == NULL) {
         ngx_http_ssl_error(NGX_LOG_ALERT, r->connection->log, 0,
@@ -192,14 +235,16 @@ static ngx_http_ssl_ctx_t *ngx_http_ssl_create_ctx(ngx_http_request_t *r)
         return NULL;
     }
 
+    SSL_set_accept_state(ctx->ssl);
+
     return ctx;
 }
 
 
-void ngx_http_ssl_close_request(SSL *ssl, int mode)
+void ngx_http_ssl_close_connection(SSL *ssl, ngx_log_t *log)
 {
-    SSL_set_shutdown(ssl, mode);
-    SSL_shutdown(ssl);
+    int  rc;
+
     SSL_free(ssl);
 }
 
@@ -257,15 +302,41 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key,
                              NGX_DEFLAUT_CERTIFICATE_KEY);
 
+    /* STUB: where to move ??? */
+    SSL_library_init();
+    SSL_load_error_strings();
+
+    /* TODO: inherit ssl_ctx */
+
+    /* TODO: configure methods */
+
+    conf->ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+
+    if (conf->ssl_ctx == NULL) {
+        ngx_http_ssl_error(NGX_LOG_EMERG, cf->log, 0, "SSL_CTX_new() failed");
+        return NGX_CONF_ERROR;
+    }
+
+    if (SSL_CTX_use_certificate_file(conf->ssl_ctx, conf->certificate.data,
+                                     SSL_FILETYPE_PEM) == 0) {
+        ngx_http_ssl_error(NGX_LOG_EMERG, cf->log, 0,
+                           "SSL_CTX_use_certificate_file() failed");
+        return NGX_CONF_ERROR;
+    }
+
+    if (SSL_CTX_use_PrivateKey_file(conf->ssl_ctx, conf->certificate_key.data,
+                                    SSL_FILETYPE_PEM) == 0) {
+        ngx_http_ssl_error(NGX_LOG_EMERG, cf->log, 0,
+                           "SSL_CTX_use_PrivateKey_file() failed");
+        return NGX_CONF_ERROR;
+    }
+
     return NGX_CONF_OK;
 }
 
 
 static ngx_int_t ngx_http_ssl_filter_init(ngx_cycle_t *cycle)
 {
-    SSL_library_init();
-    SSL_load_error_strings();
-
 #if 0
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_ssl_header_filter;

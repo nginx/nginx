@@ -250,6 +250,7 @@ HTTP_GZIP_SRCS=src/http/modules/ngx_http_gzip_filter.c
 
 
 HTTP_SSL_FILTER_MODULE=ngx_http_ssl_filter_module
+HTTP_SSL_DEPS=src/http/modules/ngx_http_ssl_filter.h
 HTTP_SSL_SRCS=src/http/modules/ngx_http_ssl_filter.c
 
 

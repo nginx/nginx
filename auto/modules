@@ -61,6 +61,7 @@ fi
 if [ $HTTP_SSL = YES ]; then
     have=NGX_HTTP_SSL . auto/have
     HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_SSL_FILTER_MODULE"
+    HTTP_DEPS="$HTTP_DEPS $HTTP_SSL_DEPS"
     HTTP_SRCS="$HTTP_SRCS $HTTP_SSL_SRCS"
     # STUB: move to auto/libs/ssl
     CORE_LIBS="$CORE_LIBS -lssl -lcrypto"

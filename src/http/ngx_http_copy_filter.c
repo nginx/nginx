@@ -87,7 +87,7 @@ ngx_int_t ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     }
 
-    return  ngx_output_chain(ctx, in);
+    return ngx_output_chain(ctx, in);
 }
 
 
