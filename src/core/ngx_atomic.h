@@ -6,6 +6,7 @@
 #include <ngx_core.h>
 
 
+/* STUB */
 #define ngx_atomic_inc(x)   x++;
 #define ngx_atomic_dec(x)   x--;
 

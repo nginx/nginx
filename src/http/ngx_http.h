@@ -89,12 +89,6 @@ extern ngx_module_t  ngx_http_module;
 
 extern int         ngx_max_module;
 
-extern ngx_uint_t  ngx_http_reading_state;
-extern ngx_uint_t  ngx_http_processing_state;
-extern ngx_uint_t  ngx_http_writing_state;
-extern ngx_uint_t  ngx_http_lingering_close_state;
-extern ngx_uint_t  ngx_http_keepalive_state;
-
 extern ngx_uint_t  ngx_http_total_requests;
 extern uint64_t    ngx_http_total_sent;
 

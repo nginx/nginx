@@ -123,7 +123,7 @@ void ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
 void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
                        ngx_rbtree_t *node)
 {
-    ngx_int_t      red;
+    ngx_int_t      is_red;
     ngx_rbtree_t  *subst, *temp, *w;
 
     /* a binary tree delete */
@@ -152,7 +152,7 @@ void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
         return;
     }
 
-    red = ngx_rbt_is_red(subst);
+    is_red = ngx_rbt_is_red(subst);
 
     if (subst == subst->parent->left) {
         subst->parent->left = temp;
@@ -199,7 +199,7 @@ void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
         }
     }
 
-    if (red) {
+    if (is_red) {
         return;
     }
 
@@ -246,7 +246,7 @@ void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
                 w = temp->parent->left;
             }
 
-            if (ngx_rbt_is_black(w->right) && ngx_rbt_is_black(w->left)) {
+            if (ngx_rbt_is_black(w->left) && ngx_rbt_is_black(w->right)) {
                 ngx_rbt_red(w);
                 temp = temp->parent;
 

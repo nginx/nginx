@@ -107,8 +107,6 @@ void ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 #endif
-
-    ngx_atomic_inc(ngx_http_reading_state);
 }
 
 
@@ -129,7 +127,6 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
-        ngx_atomic_dec(ngx_http_reading_state);
         ngx_http_close_connection(c);
         return;
     }

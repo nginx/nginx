@@ -286,10 +286,9 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 
     c = ev->data;
 
-#if (NGX_DEBUG_EVENT)
-    ngx_log_debug(ev->log, "kqueue set event: %d: ft:%d fl:%08x" _
-                  c->fd _ filter _ flags);
-#endif
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "kevent set event: %d: ft:%d fl:%04X",
+                   c->fd, filter, flags);
 
     if (nchanges >= max_changes) {
         ngx_log_error(NGX_LOG_WARN, ev->log, 0,

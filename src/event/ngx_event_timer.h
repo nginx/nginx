@@ -16,7 +16,7 @@
  * 100 msec - 13 years 8 months
  */
 
-#define NGX_TIMER_RESOLUTION  50
+#define NGX_TIMER_RESOLUTION  1
 
 
 #if 0
@@ -36,6 +36,9 @@ extern ngx_rbtree_t   ngx_event_timer_sentinel;
 
 ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
 {
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "event timer del: %d", ev->rbtree_key);
+
     ngx_rbtree_delete(&ngx_event_timer_rbtree, &ngx_event_timer_sentinel,
                       (ngx_rbtree_t *) &ev->rbtree_key);
 
@@ -55,6 +58,9 @@ ngx_inline static void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 #if 0
                              (ngx_elapsed_msec + timer) / NGX_TIMER_RESOLUTION;
 #endif
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "event timer add: %d", ev->rbtree_key);
 
     ngx_rbtree_insert(&ngx_event_timer_rbtree, &ngx_event_timer_sentinel,
                       (ngx_rbtree_t *) &ev->rbtree_key);
