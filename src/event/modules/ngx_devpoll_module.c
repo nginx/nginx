@@ -245,6 +245,10 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
     /* we need to restore the second event if it exists */
 
     if (event == NGX_READ_EVENT) {
+        if (ev->accept) {
+            return NGX_OK;
+        }
+
         e = c->write;
         event = POLLOUT;
 
