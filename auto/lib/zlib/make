@@ -1,0 +1,19 @@
+
+echo "$ZLIB/libz.a:"                                     >> $MAKEFILE
+
+case $PLATFORM in
+
+    *:i386)
+        echo "	cd $ZLIB \\"                             >> $MAKEFILE
+        echo "	&& cp contrib/asm686/match.S . \\"       >> $MAKEFILE
+        echo "	&& CFLAGS=\"-O3 -DASMV\" ./configure \\" >> $MAKEFILE
+        echo "	&& \$(MAKE) OBJA=match.o"                >> $MAKEFILE
+    ;;
+
+    *)
+        echo "	cd $ZLIB && ./configure && \$(MAKE)"     >> $MAKEFILE
+    ;;
+
+esac
+
+echo                                                     >> $MAKEFILE

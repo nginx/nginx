@@ -1,0 +1,7 @@
+
+echo "$PCRE/.libs/libpcre.a:"                            >> $MAKEFILE
+echo "	cd $PCRE \\"                                     >> $MAKEFILE
+echo "	&& ./configure --disable-shared \\"              >> $MAKEFILE
+echo "	&& \$(MAKE)"                                     >> $MAKEFILE
+echo                                                     >> $MAKEFILE
+

@@ -2,11 +2,7 @@
 if [ "$PLATFORM" != "win32" ]; then
 
     if [ $PCRE != NO ]; then
-        echo "$PCRE/.libs/libpcre.a:"                            >> $MAKEFILE
-        echo "	cd $PCRE \\"                                     >> $MAKEFILE
-        echo "	&& ./configure --disable-shared \\"              >> $MAKEFILE
-        echo "	&& \$(MAKE)"                                     >> $MAKEFILE
-        echo                                                     >> $MAKEFILE
+        . auto/lib/pcre/make
     fi
 
 
@@ -16,24 +12,7 @@ if [ "$PLATFORM" != "win32" ]; then
 
 
     if [ $ZLIB != NO ]; then
-        echo "$ZLIB/libz.a:"                                     >> $MAKEFILE
-
-        case $PLATFORM in
-
-            *:i386)
-                echo "	cd $ZLIB \\"                             >> $MAKEFILE
-                echo "	&& cp contrib/asm686/match.S . \\"       >> $MAKEFILE
-                echo "	&& CFLAGS=\"-O3 -DASMV\" ./configure \\" >> $MAKEFILE
-                echo "	&& \$(MAKE) OBJA=match.o"                >> $MAKEFILE
-            ;;
-
-            *)
-                echo "	cd $ZLIB && ./configure && \$(MAKE)"     >> $MAKEFILE
-            ;;
-
-        esac
-
-        echo                                                     >> $MAKEFILE
+        . auto/lib/zlib/make
     fi
 
 fi
