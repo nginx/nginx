@@ -61,6 +61,7 @@ typedef struct {
     ngx_http_proxy_upstreams_t     *upstreams;
     ngx_http_proxy_upstream_url_t  *upstream_url;
 
+    int   client_request_buffer_size;
     int   rcvbuf;
     int   conn_pool_size;
     int   connect_timeout;
@@ -99,6 +100,7 @@ typedef struct ngx_http_proxy_ctx_s  ngx_http_proxy_ctx_t;
 struct ngx_http_proxy_ctx_s {
     ngx_event_proxy_t  *event_proxy;
 
+
     ngx_chain_t   *in_hunks;
     ngx_chain_t   *last_in_hunk;
 
@@ -109,7 +111,11 @@ struct ngx_http_proxy_ctx_s {
 
     ngx_chain_t   *free_hunks;
 
+
     ngx_chain_t   *request_hunks;
+
+    ngx_hunk_t    *client_request_hunk;
+    ngx_hunk_t    *client_first_part_hunk;
 
     ngx_connection_t               *connection;
     ngx_http_request_t             *request;

@@ -47,7 +47,8 @@ static char *header_errors[] = {
 
     "client %s sent invalid header, URL: %s",
     "client %s sent too long header line, URL: %s",
-    "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s"
+    "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s",
+    "client %s sent invalid \"Content-Length\" header, URL: %s"
 };
 
 
@@ -57,6 +58,8 @@ static ngx_http_header_t headers_in[] = {
     { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection) },
     { ngx_string("If-Modified-Since"), 
                          offsetof(ngx_http_headers_in_t, if_modified_since) },
+    { ngx_string("Content-Length"), 
+                            offsetof(ngx_http_headers_in_t, content_length) },
 
     { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent) },
 
@@ -169,6 +172,7 @@ static int ngx_http_init_request(ngx_event_t *rev)
     r->srv_conf = ctx->srv_conf;
     r->loc_conf = ctx->loc_conf;
 
+    r->headers_in.content_length_n = -1;
     r->headers_out.headers = ngx_create_table(r->pool, 10);
     r->headers_out.content_length = -1;
     r->headers_out.last_modified_time = -1;
@@ -531,6 +535,17 @@ static int ngx_http_process_request_headers(ngx_http_request_t *r)
                 r->headers_in.host_name_len = 0;
             }
 
+            if (r->headers_in.content_length) {
+                r->headers_in.content_length_n =
+                             ngx_atoi(r->headers_in.content_length->value.data,
+                                      r->headers_in.content_length->value.len);
+                if (r->headers_in.content_length_n == NGX_ERROR) {
+                    ngx_http_header_parse_error(r,
+                                             NGX_HTTP_PARSE_INVALID_CL_HEADER);
+                    return NGX_HTTP_BAD_REQUEST;
+                }
+            }
+
             r->state_handler = NULL;
             return NGX_OK;
 
@@ -815,7 +830,7 @@ int ngx_http_discard_body(ngx_http_request_t *r)
         ev->timer_set = 0;
     }
 
-    if (r->client_content_length) {
+    if (r->headers_in.content_length_n) {
         ev->event_handler = ngx_http_read_discarded_body;
         /* if blocked - read */
         /* else add timer */
@@ -852,7 +867,7 @@ static int ngx_http_read_discarded_body(ngx_event_t *ev)
                       NGX_ERROR);
     }
 
-    size = r->client_content_length;
+    size = r->headers_in.content_length_n;
     if (size > lcf->discarded_buffer_size) {
         size = lcf->discarded_buffer_size;
     }
@@ -866,7 +881,7 @@ static int ngx_http_read_discarded_body(ngx_event_t *ev)
         return NGX_OK;
     }
 
-    r->client_content_length -= n;
+    r->headers_in.content_length_n -= n;
     /* XXX: what if r->client_content_length == 0 ? */
     return NGX_OK;
 }

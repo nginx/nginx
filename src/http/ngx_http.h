@@ -27,14 +27,15 @@
 #define NGX_HTTP_CONN_KEEP_ALIVE  1
 
 
-#define NGX_HTTP_PARSE_HEADER_DONE      1
-#define NGX_HTTP_PARSE_INVALID_METHOD   10
-#define NGX_HTTP_PARSE_INVALID_REQUEST  11
-#define NGX_HTTP_PARSE_TOO_LONG_URI     12
-#define NGX_HTTP_PARSE_INVALID_HEAD     13
-#define NGX_HTTP_PARSE_INVALID_HEADER   14
-#define NGX_HTTP_PARSE_TOO_LONG_HEADER  15
-#define NGX_HTTP_PARSE_NO_HOST_HEADER   16
+#define NGX_HTTP_PARSE_HEADER_DONE        1
+#define NGX_HTTP_PARSE_INVALID_METHOD     10
+#define NGX_HTTP_PARSE_INVALID_REQUEST    11
+#define NGX_HTTP_PARSE_TOO_LONG_URI       12
+#define NGX_HTTP_PARSE_INVALID_HEAD       13
+#define NGX_HTTP_PARSE_INVALID_HEADER     14
+#define NGX_HTTP_PARSE_TOO_LONG_HEADER    15
+#define NGX_HTTP_PARSE_NO_HOST_HEADER     16
+#define NGX_HTTP_PARSE_INVALID_CL_HEADER  17
 
 
 #define NGX_HTTP_OK                     200
@@ -70,10 +71,12 @@ typedef struct {
 
 typedef struct {
     size_t            host_name_len;
+    ssize_t           content_length_n;
 
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
     ngx_table_elt_t  *if_modified_since;
+    ngx_table_elt_t  *content_length;
     ngx_table_elt_t  *accept_encoding;
 
     ngx_table_elt_t  *user_agent;
@@ -141,7 +144,6 @@ struct ngx_http_request_s {
 
     int         filter;
 
-    ssize_t     client_content_length;
     char       *discarded_buffer;
 
     ngx_str_t   path;
