@@ -184,7 +184,13 @@ struct ngx_http_proxy_ctx_s {
     ngx_http_proxy_state_t       *state;
     ngx_array_t                   states;    /* of ngx_http_proxy_state_t */
 
-    u_char                       *action;
+    /*
+     * we declare "action" as "char *" because the actions are usually
+     * the static strings and in the "u_char *" case we have to override
+     * all the time their types
+     */
+
+    char                         *action;
     ngx_http_log_ctx_t           *saved_ctx;
     ngx_log_handler_pt            saved_handler;
 };

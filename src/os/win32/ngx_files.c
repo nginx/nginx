@@ -132,7 +132,7 @@ ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
                                 off_t offset, ngx_pool_t *pool)
 {
-    char     *buf, *prev;
+    u_char   *buf, *prev;
     size_t    size;
     ssize_t   total, n;
 
@@ -169,7 +169,7 @@ int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 {
     int         rc, collision;
     u_int       num;
-    char       *name;
+    u_char     *name;
 
     if (!(name = ngx_palloc(pool, to->len + 1 + 10 + 1 + sizeof("DELETE")))) {
         return NGX_ERROR;
@@ -184,10 +184,10 @@ int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
     do {
         num = ngx_next_temp_number(collision);
 
-        ngx_snprintf(name + to->len, 1 + 10 + 1 + sizeof("DELETE"),
+        ngx_snprintf((char *) name + to->len, 1 + 10 + 1 + sizeof("DELETE"),
                      ".%010u.DELETE", num);
 
-        if (MoveFile(to->data, name) == 0) {
+        if (MoveFile((const char *) to->data, (const char *) name) == 0) {
             collision = 1;
             ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno,
                           "MoveFile() failed");
@@ -195,7 +195,7 @@ int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 
     } while (collision);
 
-    if (MoveFile(from->data, to->data) == 0) {
+    if (MoveFile((const char *) from->data, (const char *) to->data) == 0) {
         rc = NGX_ERROR;
 
     } else {
@@ -203,7 +203,7 @@ int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
     }
 
     if (ngx_win32_version >= NGX_WIN_NT) {
-        if (DeleteFile(name) == 0) {
+        if (DeleteFile((const char *) name) == 0) {
             ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno,
                           "DeleteFile() failed");
         }
@@ -247,11 +247,11 @@ int ngx_file_info(char *file, ngx_file_info_t *sb)
 #endif
 
 
-int ngx_file_info(char *file, ngx_file_info_t *sb)
+int ngx_file_info(u_char *file, ngx_file_info_t *sb)
 {
     /* Win95 */
 
-    sb->dwFileAttributes = GetFileAttributes(file);
+    sb->dwFileAttributes = GetFileAttributes((const char *) file);
 
     if (sb->dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
         return NGX_ERROR;
@@ -265,7 +265,7 @@ int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
     ngx_cpystrn(name->data + name->len, NGX_DIR_MASK, NGX_DIR_MASK_LEN + 1);
 
-    dir->dir = FindFirstFile(name->data, &dir->fd);
+    dir->dir = FindFirstFile((const char *) name->data, &dir->fd);
     
     if (dir->dir == INVALID_HANDLE_VALUE) {
         return NGX_ERROR; 

@@ -217,9 +217,9 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
     }
 
     r->headers_out.content_encoding->key.len = sizeof("Content-Encoding") - 1;
-    r->headers_out.content_encoding->key.data = "Content-Encoding";
+    r->headers_out.content_encoding->key.data = (u_char *) "Content-Encoding";
     r->headers_out.content_encoding->value.len = sizeof("gzip") - 1;
-    r->headers_out.content_encoding->value.data = "gzip";
+    r->headers_out.content_encoding->value.data = (u_char *) "gzip";
 
     ctx->length = r->headers_out.content_length_n;
     r->headers_out.content_length_n = -1;

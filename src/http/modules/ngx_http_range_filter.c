@@ -108,9 +108,9 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
         }
 
         r->headers_out.accept_ranges->key.len = sizeof("Accept-Ranges") - 1;
-        r->headers_out.accept_ranges->key.data = "Accept-Ranges";
+        r->headers_out.accept_ranges->key.data = (u_char *) "Accept-Ranges";
         r->headers_out.accept_ranges->value.len = sizeof("bytes") - 1;
-        r->headers_out.accept_ranges->value.data = "bytes";
+        r->headers_out.accept_ranges->value.data = (u_char *) "bytes";
 
         return ngx_http_next_header_filter(r);
     }
@@ -230,7 +230,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
         }
 
         r->headers_out.content_range->key.len = sizeof("Content-Range") - 1;
-        r->headers_out.content_range->key.data = "Content-Range";
+        r->headers_out.content_range->key.data = (u_char *) "Content-Range";
 
         ngx_test_null(r->headers_out.content_range->value.data,
                       ngx_palloc(r->pool, 8 + 20 + 1),
@@ -261,7 +261,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
             }
 
             r->headers_out.content_range->key.len = sizeof("Content-Range") - 1;
-            r->headers_out.content_range->key.data = "Content-Range";
+            r->headers_out.content_range->key.data = (u_char *) "Content-Range";
 
             ngx_test_null(r->headers_out.content_range->value.data,
                           ngx_palloc(r->pool, 6 + 20 + 1 + 20 + 1 + 20 + 1),

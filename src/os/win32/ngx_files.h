@@ -59,7 +59,7 @@ int ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_close_file_n            "CloseHandle()"
 
 
-#define ngx_delete_file             DeleteFile
+#define ngx_delete_file(name)       DeleteFile((const char *) name)
 #define ngx_delete_file_n           "DeleteFile()"
 
 
@@ -68,7 +68,7 @@ int ngx_file_append_mode(ngx_fd_t fd);
 int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool);
 
 
-int ngx_file_info(char *filename, ngx_file_info_t *fi);
+int ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 #define ngx_file_info_n             "GetFileAttributesEx()"
 
 
@@ -94,7 +94,7 @@ int ngx_file_info(char *filename, ngx_file_info_t *fi);
                                           - 116444736000000000) / 10000000)
 
 
-#define NGX_DIR_MASK                "/*"
+#define NGX_DIR_MASK                (u_char *) "/*"
 #define NGX_DIR_MASK_LEN            2
 
 
@@ -110,11 +110,11 @@ int ngx_read_dir(ngx_dir_t *dir);
 #define ngx_close_dir_n             "FindClose()"
 
 
-#define ngx_create_dir(name)        CreateDirectory(name, NULL)
+#define ngx_create_dir(name)        CreateDirectory((const char *) name, NULL)
 #define ngx_create_dir_n            "CreateDirectory()"
 
 
-#define ngx_delete_dir              RemoveDirectory
+#define ngx_delete_dir(name)        RemoveDirectory((const char *) name)
 #define ngx_delete_dir_n            "RemoveDirectory()"
 
 

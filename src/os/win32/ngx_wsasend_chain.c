@@ -7,7 +7,7 @@
 ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int           rc;
-    char         *prev;
+    u_char       *prev;
     size_t        size;
     u_long        sent;
     LPWSABUF      wsabuf;
@@ -42,7 +42,7 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         } else {
             ngx_test_null(wsabuf, ngx_push_array(&wsabufs), NGX_CHAIN_ERROR);
-            wsabuf->buf = cl->hunk->pos;
+            wsabuf->buf = (char *) cl->hunk->pos;
             wsabuf->len = cl->hunk->last - cl->hunk->pos;
             prev = cl->hunk->last;
         }
@@ -102,7 +102,7 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
 ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int               rc;
-    char             *prev;
+    u_char           *prev;
     size_t            size;
     u_long            sent;
     LPWSABUF          wsabuf;
@@ -143,7 +143,7 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
             } else {
                 ngx_test_null(wsabuf, ngx_push_array(&wsabufs),
                               NGX_CHAIN_ERROR);
-                wsabuf->buf = cl->hunk->pos;
+                wsabuf->buf = (char *) cl->hunk->pos;
                 wsabuf->len = cl->hunk->last - cl->hunk->pos;
                 prev = cl->hunk->last;
             }

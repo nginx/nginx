@@ -101,12 +101,12 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (cl->hunk->type & NGX_HUNK_LAST) {
         cl->hunk->type &= ~NGX_HUNK_LAST;
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_MEMORY|NGX_HUNK_LAST;
-        h->pos = CRLF "0" CRLF CRLF;
+        h->pos = (u_char *) CRLF "0" CRLF CRLF;
         h->last = h->pos + 7;
 
     } else {
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_MEMORY;
-        h->pos = CRLF;
+        h->pos = (u_char *) CRLF;
         h->last = h->pos + 2;
     }
 

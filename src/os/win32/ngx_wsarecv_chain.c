@@ -7,7 +7,7 @@
 ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
     int           rc;
-    char         *prev;
+    u_char       *prev;
     u_long        bytes, flags;
     size_t        size;
     WSABUF       *wsabuf;
@@ -31,7 +31,7 @@ ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
         } else {
             ngx_test_null(wsabuf, ngx_push_array(&io), NGX_ERROR);
-            wsabuf->buf = chain->hunk->last;
+            wsabuf->buf = (char *) chain->hunk->last;
             wsabuf->len = chain->hunk->end - chain->hunk->last;
         }
 

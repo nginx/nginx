@@ -305,7 +305,7 @@ static void ngx_http_proxy_init_upstream(void *data)
     ngx_http_request_t        *r;
     ngx_output_chain_ctx_t    *output;
     ngx_chain_writer_ctx_t    *writer;
-    ngx_http_proxy_log_ctx_t  *lctx;
+    ngx_http_proxy_log_ctx_t  *ctx;
 
     r = p->request;
 
@@ -345,17 +345,17 @@ static void ngx_http_proxy_init_upstream(void *data)
 
     r->request_hunks = cl;
 
-    if (!(lctx = ngx_pcalloc(r->pool, sizeof(ngx_http_proxy_log_ctx_t)))) {
+    if (!(ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_proxy_log_ctx_t)))) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
-    lctx->connection = r->connection->number;
-    lctx->proxy = p;
+    ctx->connection = r->connection->number;
+    ctx->proxy = p;
 
     p->upstream->peer.log = r->connection->log;
     p->saved_ctx = r->connection->log->data;
     p->saved_handler = r->connection->log->handler;
-    r->connection->log->data = lctx;
+    r->connection->log->data = ctx;
     r->connection->log->handler = ngx_http_proxy_log_error;
     p->action = "connecting to upstream";
 
@@ -378,7 +378,6 @@ static void ngx_http_proxy_init_upstream(void *data)
     }
 
     output->output_ctx = writer;
-
     writer->pool = r->pool;
 
     if (p->lcf->busy_lock && !p->busy_locked) {
@@ -393,6 +392,7 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
 {
     ngx_chain_t             *cl;
     ngx_output_chain_ctx_t  *output;
+    ngx_chain_writer_ctx_t  *writer;
 
     output = p->upstream->output_chain_ctx;
 
@@ -402,7 +402,7 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
         cl->hunk->pos = cl->hunk->start;
     }
 
-    /* reinit ngx_output_chain() context */
+    /* reinit the ngx_output_chain() context */
 
     output->hunk = NULL;
     output->in = NULL;
@@ -488,6 +488,7 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     ngx_connection_t        *c;
     ngx_http_request_t      *r;
     ngx_output_chain_ctx_t  *output;
+    ngx_chain_writer_ctx_t  *writer;
 
     p->action = "connecting to upstream";
 
@@ -517,13 +518,17 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     c->pool = r->pool;
     c->read->log = c->write->log = c->log = r->connection->log;
 
+    /* init or reinit the ngx_output_chain() and ngx_chain_writer() contexts */
+
     output = p->upstream->output_chain_ctx;
+    writer = output->output_ctx;
+    writer->out = NULL;
+    writer->last = &writer->out;
+    writer->connection = c;
 
     if (p->upstream->peer.tries > 1 && p->request_sent) {
         ngx_http_proxy_reinit_upstream(p);
     }
-
-    /* init or reinit ngx_output_chain() context */
 
     if (r->request_body_hunk) {
         if (!(output->free = ngx_alloc_chain_link(r->pool))) {
@@ -563,9 +568,8 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
 
 static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
 {
-    int                      rc;
-    ngx_connection_t        *c;
-    ngx_chain_writer_ctx_t  *writer;
+    int                rc;
+    ngx_connection_t  *c;
 
     c = p->upstream->peer.connection;
 
@@ -585,11 +589,6 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
 #endif
 
     p->action = "sending request to upstream";
-
-    writer = p->upstream->output_chain_ctx->output_ctx;
-    writer->out = NULL;
-    writer->last = &writer->out;
-    writer->connection = c;
 
     rc = ngx_output_chain(p->upstream->output_chain_ctx,
                           p->request_sent ? NULL : p->request->request_hunks);

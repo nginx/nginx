@@ -212,7 +212,7 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
             conf.data = prev.data;                                           \
         } else {                                                             \
             conf.len = sizeof(default) - 1;                                  \
-            conf.data = default;                                             \
+            conf.data = (u_char *) default;                                  \
         }                                                                    \
     }
 

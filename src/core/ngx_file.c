@@ -57,24 +57,10 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
         ngx_create_hashed_filename(file, path);
 
 #if 0
-#if (WIN32)
-        file->fd = CreateFile(file->name.data,
-                        GENERIC_READ|GENERIC_WRITE,
-                        FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
-                        NULL,
-                        CREATE_NEW,
-                        persistent ? 0:
-                            FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE,
-                        NULL);
-#else
-        file->fd = open(file->name.data, O_CREAT|O_EXCL|O_WRONLY, 0600);
-#endif
-#endif
-
-#if 0
         file->fd = ngx_open_tempfile(file->name.data, persistent);
-#endif
+#else
         file->fd = ngx_open_tempfile(file->name.data, 1);
+#endif
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, file->log, 0,
                        "temp fd:%d", file->fd);

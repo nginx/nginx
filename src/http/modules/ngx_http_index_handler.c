@@ -21,7 +21,7 @@ typedef struct {
 } ngx_http_index_ctx_t;
 
 
-#define NGX_HTTP_DEFAULT_INDEX   "index.html"
+#define NGX_HTTP_DEFAULT_INDEX   (u_char *) "index.html"
 
 
 static ngx_int_t ngx_http_index_test_dir(ngx_http_request_t *r,

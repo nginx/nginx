@@ -23,7 +23,14 @@ typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 
 typedef struct {
     u_int     connection;
-    u_char   *action;
+
+    /*
+     * we declare "action" as "char *" because the actions are usually
+     * the static strings and in the "u_char *" case we have to override
+     * all the time their types
+     */
+
+    char     *action;
     u_char   *client;
     u_char   *url;
 } ngx_http_log_ctx_t;

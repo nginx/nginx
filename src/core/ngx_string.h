@@ -18,8 +18,10 @@ typedef struct {
 
 #if (WIN32)
 
-#define ngx_strncasecmp           strnicmp
-#define ngx_strcasecmp            stricmp
+#define ngx_strncasecmp(s1, s2, n)                                           \
+                          strnicmp((const char *) s1, (const char *) s2, n)
+#define ngx_strcasecmp(s1, s2)                                               \
+                          stricmp((const char *) s1, (const char *) s2)
 
 #define ngx_snprintf              _snprintf
 #define ngx_vsnprintf             _vsnprintf

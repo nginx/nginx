@@ -1073,7 +1073,7 @@ static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
                 u->default_port = 1;
                 u->port = htons(80);
                 u->port_text.len = 2;
-                u->port_text.data = "80";
+                u->port_text.data = (u_char *) "80";
                 return NULL;
             }
 
@@ -1097,14 +1097,14 @@ static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
 
     u->host_header.len = i;
 
-    u->uri.data = "/";
+    u->uri.data = (u_char *) "/";
     u->uri.len = 1;
 
     if (u->port_text.data == NULL) {
         u->default_port = 1;
         u->port = htons(80);
         u->port_text.len = 2;
-        u->port_text.data = "80";
+        u->port_text.data = (u_char *) "80";
         return NULL;
     }
 

@@ -61,7 +61,7 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
         if (prev == NULL) {                                                  \
             ngx_test_null(conf, ngx_palloc(pool, sizeof(ngx_path_t)), NULL); \
             conf->name.len = sizeof(path) - 1;                               \
-            conf->name.data = path;                                          \
+            conf->name.data = (u_char *) path;                               \
             conf->level[0] = l1;                                             \
             conf->level[1] = l2;                                             \
             conf->level[2] = l3;                                             \

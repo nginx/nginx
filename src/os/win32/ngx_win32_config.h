@@ -27,6 +27,7 @@
 #ifdef _MSC_VER
 #pragma warning(default:4201)
 
+
 /* disable some "-W4" level warnings */
 
 #pragma warning(disable:4054)
@@ -49,7 +50,7 @@
 #include <ngx_auto_config.h>
 
 
-#define ngx_inline   __inline
+#define ngx_inlie         __inline
 
 
 #ifdef _MSC_VER
