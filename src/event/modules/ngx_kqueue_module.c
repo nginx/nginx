@@ -57,7 +57,7 @@ ngx_event_module_t  ngx_kqueue_module_ctx = {
     ngx_kqueue_create_conf,                /* create configuration */
     ngx_kqueue_init_conf,                  /* init configuration */
 
-    { 
+    {
         ngx_kqueue_add_event,              /* add an event */
         ngx_kqueue_del_event,              /* delete an event */
         ngx_kqueue_add_event,              /* enable an event */

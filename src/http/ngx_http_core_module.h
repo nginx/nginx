@@ -18,13 +18,8 @@ typedef struct {
 
 
 typedef struct {
-    int          post_accept_timeout;
     int          connection_pool_size;
-    int          request_pool_size;
-    int          client_header_timeout;
-    int          client_header_buffer_size;
-    int          large_client_header;
-    int          url_in_error_log;
+    int          post_accept_timeout;
 
     ngx_array_t  servers;      /* array of ngx_http_core_srv_conf_t */
 } ngx_http_core_main_conf_t;
@@ -40,6 +35,11 @@ typedef struct {
                                   array of ngx_http_server_name_t */
 
     ngx_http_conf_ctx_t *ctx;  /* server ctx */
+
+    size_t       request_pool_size;
+    ngx_msec_t   client_header_timeout;
+    size_t       client_header_buffer_size;
+    int          large_client_header;
 } ngx_http_core_srv_conf_t;
 
 

@@ -17,9 +17,6 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
     ce = in;
 
     while (ce) {
-
-ngx_log_debug(c->log, "aio_write ce: %x" _ ce->hunk->pos);
-
         buf = prev = ce->hunk->pos;
         size = 0;
 
@@ -32,7 +29,9 @@ ngx_log_debug(c->log, "aio_write ce: %x" _ ce->hunk->pos);
 
         rc = ngx_aio_write(c, buf, size);
 
-ngx_log_debug(c->log, "aio_write rc: %d" _ rc);
+#if (NGX_DEBUG_WRITE_CHAIN)
+        ngx_log_debug(c->log, "aio_write rc: %d" _ rc);
+#endif
 
         if (rc > 0) {
             sent += rc;
@@ -52,31 +51,14 @@ ngx_log_debug(c->log, "aio_write rc: %d" _ rc);
 
     for (ce = in; ce; ce = ce->next) {
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-        ngx_log_debug(c->log, "write chain: %x %qx %qd" _
-                      ce->hunk->type _
-                      ce->hunk->file_pos _
-                      ce->hunk->file_last - ce->hunk->file_pos);
-#endif
+        if (sent >= ce->hunk->last - ce->hunk->pos) {
+            sent -= ce->hunk->last - ce->hunk->pos;
+            ce->hunk->pos = ce->hunk->last;
 
-        if (sent >= ce->hunk->file_last - ce->hunk->file_pos) {
-            sent -= ce->hunk->file_last - ce->hunk->file_pos;
-            ce->hunk->file_pos = ce->hunk->file_last;
-
-#if (NGX_DEBUG_WRITE_CHAIN)
-            ngx_log_debug(c->log, "write chain done: %qx %qd" _
-                          ce->hunk->file_pos _ sent);
-#endif
             continue;
         }
 
-        ce->hunk->file_pos += sent;
-
-#if (NGX_DEBUG_WRITE_CHAIN)
-        ngx_log_debug(c->log, "write chain rest: %qx %qd" _
-                      ce->hunk->file_pos _
-                      ce->hunk->file_last - ce->hunk->file_pos);
-#endif
+        ce->hunk->pos += sent;
 
         break;
     }

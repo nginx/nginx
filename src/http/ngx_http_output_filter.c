@@ -150,8 +150,6 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
             return rc;
         }
 
-ngx_log_debug(r->connection->log, "HERE");
-
         /* NGX_OK */
         /* set our hunk free */
         ctx->hunk->pos = ctx->hunk->last = ctx->hunk->start;

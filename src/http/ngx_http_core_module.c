@@ -49,13 +49,6 @@ static ngx_command_t  ngx_http_core_commands[] = {
      0,
      NULL,},
 
-    {ngx_string("post_accept_timeout"),
-     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_msec_slot,
-     NGX_HTTP_MAIN_CONF_OFFSET,
-     offsetof(ngx_http_core_main_conf_t, post_accept_timeout),
-     NULL},
-
     {ngx_string("connection_pool_size"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
@@ -63,32 +56,39 @@ static ngx_command_t  ngx_http_core_commands[] = {
      offsetof(ngx_http_core_main_conf_t, connection_pool_size),
      NULL},
 
-    {ngx_string("request_pool_size"),
-     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_size_slot,
-     NGX_HTTP_MAIN_CONF_OFFSET,
-     offsetof(ngx_http_core_main_conf_t, request_pool_size),
-     NULL},
-
-    {ngx_string("client_header_timeout"),
+    {ngx_string("post_accept_timeout"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
      NGX_HTTP_MAIN_CONF_OFFSET,
-     offsetof(ngx_http_core_main_conf_t, client_header_timeout),
+     offsetof(ngx_http_core_main_conf_t, post_accept_timeout),
+     NULL},
+
+    {ngx_string("request_pool_size"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_size_slot,
+     NGX_HTTP_SRV_CONF_OFFSET,
+     offsetof(ngx_http_core_srv_conf_t, request_pool_size),
+     NULL},
+
+    {ngx_string("client_header_timeout"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_msec_slot,
+     NGX_HTTP_SRV_CONF_OFFSET,
+     offsetof(ngx_http_core_srv_conf_t, client_header_timeout),
      NULL},
 
     {ngx_string("client_header_buffer_size"),
-     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
-     NGX_HTTP_MAIN_CONF_OFFSET,
-     offsetof(ngx_http_core_main_conf_t, client_header_buffer_size),
+     NGX_HTTP_SRV_CONF_OFFSET,
+     offsetof(ngx_http_core_srv_conf_t, client_header_buffer_size),
      NULL},
 
     {ngx_string("large_client_header"),
-     NGX_HTTP_MAIN_CONF|NGX_CONF_FLAG,
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
      ngx_conf_set_flag_slot,
-     NGX_HTTP_MAIN_CONF_OFFSET,
-     offsetof(ngx_http_core_main_conf_t, large_client_header),
+     NGX_HTTP_SRV_CONF_OFFSET,
+     offsetof(ngx_http_core_srv_conf_t, large_client_header),
      NULL},
 
     {ngx_string("location"),
@@ -814,12 +814,8 @@ static void *ngx_http_core_create_main_conf(ngx_pool_t *pool)
                   ngx_palloc(pool, sizeof(ngx_http_core_main_conf_t)), 
                   NGX_CONF_ERROR);
 
-    cmcf->post_accept_timeout = NGX_CONF_UNSET;
     cmcf->connection_pool_size = NGX_CONF_UNSET;
-    cmcf->request_pool_size = NGX_CONF_UNSET;
-    cmcf->client_header_timeout = NGX_CONF_UNSET;
-    cmcf->client_header_buffer_size = NGX_CONF_UNSET;
-    cmcf->large_client_header = NGX_CONF_UNSET;
+    cmcf->post_accept_timeout = NGX_CONF_UNSET;
 
     ngx_init_array(cmcf->servers, pool, 5, sizeof(ngx_http_core_srv_conf_t *),
                    NGX_CONF_ERROR);
@@ -832,12 +828,8 @@ static char *ngx_http_core_init_main_conf(ngx_pool_t *pool, void *conf)
 {
     ngx_http_core_main_conf_t *cmcf = (ngx_http_core_main_conf_t *) conf;
 
-    ngx_conf_init_msec_value(cmcf->post_accept_timeout, 30000);
     ngx_conf_init_size_value(cmcf->connection_pool_size, 16384);
-    ngx_conf_init_size_value(cmcf->request_pool_size, 16384);
-    ngx_conf_init_msec_value(cmcf->client_header_timeout, 60000);
-    ngx_conf_init_size_value(cmcf->client_header_buffer_size, 1024);
-    ngx_conf_init_value(cmcf->large_client_header, 1);
+    ngx_conf_init_msec_value(cmcf->post_accept_timeout, 30000);
 
     return NGX_CONF_OK;
 }
@@ -856,6 +848,11 @@ static void *ngx_http_core_create_srv_conf(ngx_pool_t *pool)
                    NGX_CONF_ERROR);
     ngx_init_array(cscf->server_names, pool, 5, sizeof(ngx_http_server_name_t),
                    NGX_CONF_ERROR);
+
+    cscf->request_pool_size = NGX_CONF_UNSET;
+    cscf->client_header_timeout = NGX_CONF_UNSET;
+    cscf->client_header_buffer_size = NGX_CONF_UNSET;
+    cscf->large_client_header = NGX_CONF_UNSET;
 
     return cscf;
 }
@@ -894,6 +891,15 @@ static char *ngx_http_core_merge_srv_conf(ngx_pool_t *pool,
         n->name.len = ngx_strlen(n->name.data);
         n->core_srv_conf = conf;
     }
+
+    ngx_conf_merge_size_value(conf->request_pool_size,
+                              prev->request_pool_size, 16384);
+    ngx_conf_merge_msec_value(conf->client_header_timeout,
+                              prev->client_header_timeout, 60000);
+    ngx_conf_merge_size_value(conf->client_header_buffer_size,
+                              prev->client_header_buffer_size, 1024);
+    ngx_conf_merge_value(conf->large_client_header,
+                         prev->large_client_header, 1);
 
     return NGX_CONF_OK;
 }
@@ -984,17 +990,15 @@ static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
     }
 
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
-
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 10000);
-
     ngx_conf_merge_size_value(conf->discarded_buffer_size,
                               prev->discarded_buffer_size, 1500);
-    ngx_conf_merge_msec_value(conf->keepalive_timeout, prev->keepalive_timeout,
-                              70000);
-    ngx_conf_merge_msec_value(conf->lingering_time, prev->lingering_time,
-                              30000);
-    ngx_conf_merge_msec_value(conf->lingering_timeout, prev->lingering_timeout,
-                              5000);
+    ngx_conf_merge_msec_value(conf->keepalive_timeout,
+                              prev->keepalive_timeout, 70000);
+    ngx_conf_merge_msec_value(conf->lingering_time,
+                              prev->lingering_time, 30000);
+    ngx_conf_merge_msec_value(conf->lingering_timeout,
+                              prev->lingering_timeout, 5000);
 
     return NGX_CONF_OK;
 }

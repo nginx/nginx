@@ -462,12 +462,12 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
             ls->addr = offsetof(struct sockaddr_in, sin_addr);
             ls->addr_text_max_len = INET_ADDRSTRLEN;
             ls->backlog = -1;
-            ls->post_accept_timeout = cmcf->post_accept_timeout;
             ls->nonblocking = 1;
 
             ls->handler = ngx_http_init_connection;
             ls->log = cf->log;
             ls->pool_size = cmcf->connection_pool_size;
+            ls->post_accept_timeout = cmcf->post_accept_timeout;
             ls->ctx = ctx;
 
             if (in_port[p].addrs.nelts > 1) {

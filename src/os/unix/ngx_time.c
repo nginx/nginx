@@ -28,7 +28,7 @@ typedef struct {
     time_t sec;
     tm;
     http_time_len;
-    http_time[n];    
+    http_time[n];
 };
 
 volatile *ngx_time_p;

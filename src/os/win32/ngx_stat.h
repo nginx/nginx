@@ -14,7 +14,7 @@ typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
 
 #define ngx_file_type_n          "GetFileAttributes"
 
-#define ngx_is_dir(fi)          (fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) 
+#define ngx_is_dir(fi)          (fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 
 #define ngx_stat_n               "GetFileAttributes"
 
