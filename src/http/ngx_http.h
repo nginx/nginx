@@ -122,14 +122,15 @@ struct ngx_http_request_s {
     unsigned  logging:1;
 
     unsigned  header_only:1;
-    unsigned  unusual_uri:1;
-    unsigned  complex_uri:1;
+    unsigned  unusual_uri:1;  /* URI is not started with '/' - "GET http://" */
+    unsigned  complex_uri:1;  /* URI with "./" or with "//" */
 
     int    state;
     char  *uri_start;
     char  *uri_end;
     char  *uri_ext;
     char  *args_start;
+    char  *request_end;
     char  *header_name_start;
     char  *header_name_end;
     char  *header_start;

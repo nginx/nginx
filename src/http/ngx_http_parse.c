@@ -32,7 +32,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
        state, p, r->header_in->last, ch, p);
 */
 
-        /* GCC 2.95.2 and VC 6.0 compiles this switch as jump table */
+        /* GCC 2.95.2 and VC 6.0 compile this switch as jump table */
 
         switch (state) {
 
@@ -257,7 +257,6 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
 
             r->http_minor = ch - '0';
-
             state = sw_minor_digit;
             break;
 
@@ -281,6 +280,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
 
         /* end of request line */
         case sw_almost_done:
+            r->request_end = p - 2;
             switch (ch) {
             case LF:
                 state = sw_done;
@@ -295,6 +295,8 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
     r->header_in->pos.mem = p;
 
     if (state == sw_done) {
+        if (r->request_end == NULL)
+            r->request_end = p - 1;
         r->http_version = r->http_major * 1000 + r->http_minor;
         r->state = sw_start;
         if (r->http_version == 9 && r->method == NGX_HTTP_HEAD)

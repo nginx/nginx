@@ -14,8 +14,12 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #endif
 
 struct ngx_connection_s {
-    ngx_socket_t      fd;
+    ngx_socket_t     fd;
     void            *data;
+
+    /* STUB */
+    ngx_array_t     *requests;
+    int              requests_len;
 
 #ifdef NGX_EVENT
     ngx_event_t      *read;

@@ -47,6 +47,7 @@ static int ngx_http_redirect(ngx_http_request_t *r, int redirect);
 static int ngx_http_error(ngx_http_request_t *r, int error);
 
 static int ngx_http_close_request(ngx_http_request_t *r);
+static int ngx_http_close_connection(ngx_event_t *ev);
 static size_t ngx_http_log_error(void *data, char *buf, size_t len);
 
 
@@ -69,11 +70,18 @@ int ngx_http_init_connection(ngx_connection_t *c)
 
     ev = c->read;
     ev->event_handler = ngx_http_init_request;
+
     srv = (ngx_http_server_t *) c->server;
 
     ngx_test_null(c->pool,
                   ngx_create_pool(srv->connection_pool_size, ev->log),
                   NGX_ERROR);
+
+    ngx_test_null(c->requests, ngx_create_array(c->pool, 10, sizeof(char *)),
+                  NGX_ERROR);
+
+    ev->close_handler = ngx_http_close_connection;
+    c->write->close_handler = ngx_http_close_connection;
 
     ngx_test_null(addr, ngx_palloc(c->pool, c->socklen), NGX_ERROR);
     ngx_memcpy(addr, c->sockaddr, c->socklen);
@@ -240,16 +248,34 @@ static int ngx_http_process_request(ngx_event_t *ev)
 
 static int ngx_http_process_request_line(ngx_http_request_t *r)
 {
-    int rc;
+    int     rc, len;
+    char  **request;
+    ngx_connection_t    *c;
     ngx_http_log_ctx_t  *ctx;
 
     rc = ngx_read_http_request_line(r);
+
+    c = r->connection;
 
     if (rc == NGX_OK) {
         ngx_test_null(r->uri,
                       ngx_palloc(r->pool, r->uri_end - r->uri_start + 1), 
                       ngx_http_close_request(r));
         ngx_cpystrn(r->uri, r->uri_start, r->uri_end - r->uri_start + 1);
+
+        ngx_test_null(request, ngx_push_array(c->requests),
+                      ngx_http_close_request(r));
+
+        if (r->request_end)
+            len = r->request_end - r->header_in->start + 1;
+        else
+            len = 1;
+        c->requests_len += len;
+        ngx_test_null(*request, ngx_palloc(c->pool, len),
+                      ngx_http_close_request(r));
+        ngx_cpystrn(*request, r->header_in->start, len);
+
+        ngx_log_debug(c->log, "REQ: '%s'" _ *request);
 
         if (r->uri_ext) {
             ngx_test_null(r->exten,
@@ -859,6 +885,42 @@ static int ngx_http_close_request(ngx_http_request_t *r)
     ngx_del_timer(r->connection->write);
 
     return NGX_DONE;
+}
+
+
+static int ngx_http_close_connection(ngx_event_t *ev)
+{
+    int    i, len;
+    char **requests, *requests_line, *prev, *new;
+    ngx_connection_t *c = (ngx_connection_t *) ev->data;
+
+    if (c->requests->nelts > 1) {
+        len = c->requests_len + c->requests->nelts * 2 - 1;
+
+        ngx_test_null(requests_line, ngx_palloc(c->pool, len),
+                      ngx_event_close_connection(ev));
+
+        requests = (char **) c->requests->elts;
+        prev = requests_line;
+        new = ngx_cpystrn(prev, requests[0], len);
+        len -= new - prev;
+        prev = new;
+
+        for (i = 1; i < c->requests->nelts; i++) { 
+            new = ngx_cpystrn(prev, ", ", len);
+            new = ngx_cpystrn(new, requests[i], len);
+            len -= new - prev;
+            prev = new;
+        }
+
+    } else {
+        requests_line = * (char **) c->requests->elts;
+    }
+
+    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                  "REQUESTS: %d, '%s'", c->requests->nelts, requests_line);
+
+    return ngx_event_close_connection(ev);
 }
 
 

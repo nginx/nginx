@@ -2,10 +2,6 @@
  * Copyright (C) 2002 Igor Sysoev, http://sysoev.ru
  */
 
-/*
-    NEED ? : unify change_list and event_list:
-       event_list = change_list;
-*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>
@@ -66,6 +62,17 @@ int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 
 int ngx_kqueue_del_event(ngx_event_t *ev, int event)
 {
+    ngx_event_t *e;
+
+    if (ev->index <= nchanges && change_list[ev->index].udata == ev) {
+        change_list[ev->index] = change_list[nchanges];
+        e = (ngx_event_t *) change_list[ev->index].udata;
+        e->index = ev->index;
+        nchanges--;
+
+        return NGX_OK;
+    }
+
     return ngx_kqueue_set_event(ev, event, EV_DELETE);
 }
 
@@ -94,6 +101,10 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
     change_list[nchanges].fflags = 0;
     change_list[nchanges].data = 0;
     change_list[nchanges].udata = ev;
+
+    if (flags == EV_ADD)
+        ev->index = nchanges;
+
     nchanges++;
 
     return NGX_OK;
