@@ -22,7 +22,6 @@
 #define NGX_CONF_TAKE7       0x00000080
 #define NGX_CONF_TAKE8       0x00000100
 #define NGX_CONF_TAKE9       0x00000200
-#define NGX_CONF_TAKE10      0x00000400
 
 #define NGX_CONF_TAKE1234    (NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3   \
                               |NGX_CONF_TAKE4)

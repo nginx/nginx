@@ -19,7 +19,6 @@ static int argument_number[] = {
     NGX_CONF_TAKE7,
     NGX_CONF_TAKE8,
     NGX_CONF_TAKE9,
-    NGX_CONF_TAKE10
 };
 
 static int ngx_conf_read_token(ngx_conf_t *cf);
@@ -625,46 +624,21 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int         size, len, scale, *np;
-    char        last;
+    int        *np;
     ngx_str_t  *value;
 
 
     np = (int *) (p + cmd->offset);
-
     if (*np != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
     value = (ngx_str_t *) cf->args->elts;
 
-    len = value[1].len;
-    last = value[1].data[len - 1];
-
-    switch (last) {
-    case 'K':
-    case 'k':
-        len--;
-        scale = 1024;
-        break;
-
-    case 'M':
-    case 'm':
-        len--;
-        scale = 1024 * 1024;
-        break;
-
-    default:
-        scale = 1;
-    }
-
-    size = ngx_atoi(value[1].data, len);
-    if (size == NGX_ERROR) {
+    *np = ngx_parse_size(&value[1]);
+    if (*np == NGX_ERROR) {
         return "invalid value";
     }
-
-    size *= scale;
-    *np = size;
 
     if (cmd->bounds) {
         return cmd->bounds->check(cf, cmd->bounds, np);
@@ -685,90 +659,20 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     np = (int *) (p + cmd->offset);
-
     if (*np != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
     value = (ngx_str_t *) cf->args->elts;
-    start = value[1].data;
-    len = 0;
-    total = 0;
 
-    for (i = 0; /* void */ ; i++) {
-
-        if (i < value[1].len) {
-            if (value[1].data[i] != ' ') {
-                len++;
-                continue;
-            }
-
-            if (value[1].data[i] == ' ' && len == 0) {
-                start = &value[1].data[i + 1];
-                continue;
-            }
-        }
-
-        if (len == 0) {
-            break;
-        }
-
-        last = value[1].data[i - 1];
-
-        switch (last) {
-        case 'm':
-            len--;
-            max = 35791;
-            scale = 1000 * 60;
-            break;
-
-        case 'h':
-            len--;
-            max = 596;
-            scale = 1000 * 60 * 60;
-            break;
-
-        case 'd':
-            len--;
-            max = 24;
-            scale = 1000 * 60 * 60 * 24;
-            break;
-
-        case 's':
-            len--;
-            if (value[1].data[i - 2] == 'm') {
-                len--;
-                max = 2147483647;
-                scale = 1;
-                break;
-            }
-            /* fall thru */
-
-        default:
-            max = 2147483;
-            scale = 1000;
-        }
-
-        size = ngx_atoi(start, len);
-        if (size < 0) {
-            return "invalid value";
-        }
-
-        if ((u_int) size > max) {
-            return "value must be less than 597 hours";
-        }
-
-        total += size * scale;
-
-        if (i >= value[1].len) {
-            break;
-        }
-
-        len = 0;
-        start = &value[1].data[i + 1];
+    *np = ngx_parse_time(&value[1], 0);
+    if (*np == NGX_ERROR) {
+        return "invalid value";
     }
 
-    *np = total;
+    if (*np == NGX_PARSE_LARGE_TIME) {
+        return "value must be less than 597 hours";
+    }
 
     if (cmd->bounds) {
         return cmd->bounds->check(cf, cmd->bounds, np);
@@ -789,102 +693,20 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     np = (int *) (p + cmd->offset);
-
     if (*np != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
     value = (ngx_str_t *) cf->args->elts;
-    start = value[1].data;
-    len = 0;
-    total = 0;
 
-    for (i = 0; /* void */ ; i++) {
-
-        if (i < value[1].len) {
-            if (value[1].data[i] != ' ') {
-                len++;
-                continue;
-            }
-
-            if (value[1].data[i] == ' ' && len == 0) {
-                start = &value[1].data[i + 1];
-                continue;
-            }
-        }
-
-        if (len == 0) {
-            break;
-        }
-
-        last = value[1].data[i - 1];
-
-        switch (last) {
-        case 'm':
-            len--;
-            max = 35791394;
-            scale = 60;
-            break;
-
-        case 'h':
-            len--;
-            max = 596523;
-            scale = 60 * 60;
-            break;
-
-        case 'd':
-            len--;
-            max = 24855;
-            scale = 60 * 60 * 24;
-            break;
-
-        case 'w':
-            len--;
-            max = 3550;
-            scale = 60 * 60 * 24 * 7;
-            break;
-
-        case 'M':
-            len--;
-            max = 828;
-            scale = 60 * 60 * 24 * 30;
-            break;
-
-        case 'y':
-            len--;
-            max = 68;
-            scale = 60 * 60 * 24 * 365;
-            break;
-
-        case 's':
-            len--;
-            /* fall thru */
-
-        default:
-            max = 2147483647;
-            scale = 1;
-        }
-
-        size = ngx_atoi(start, len);
-        if (size < 0) {
-            return "invalid value";
-        }
-
-        if ((u_int) size > max) {
-            return "value must be less than 68 years";
-        }
-
-        total += size * scale;
-
-        if (i >= value[1].len) {
-            break;
-        }
-
-        len = 0;
-        start = &value[1].data[i + 1];
+    *np = ngx_parse_time(&value[1], 1);
+    if (*np == NGX_ERROR) {
+        return "invalid value";
     }
 
-    *np = total;
+    if (*np == NGX_PARSE_LARGE_TIME) {
+        return "value must be less than 68 years";
+    }
 
     if (cmd->bounds) {
         return cmd->bounds->check(cf, cmd->bounds, np);
@@ -898,14 +720,11 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int          len, scale;
-    char         last;
     ngx_str_t   *value;
     ngx_bufs_t  *bufs;
 
 
     bufs = (ngx_bufs_t *) (p + cmd->offset);
-
     if (bufs->num) {
         return "is duplicate";
     }
@@ -917,32 +736,10 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "invalid value";
     }
 
-    len = value[2].len;
-    last = value[2].data[len - 1];
-
-    switch (last) {
-    case 'K':
-    case 'k':
-        len--;
-        scale = 1024;
-        break;
-
-    case 'M':
-    case 'm':
-        len--;
-        scale = 1024 * 1024;
-        break;
-
-    default:
-        scale = 1;
-    }
-
-    bufs->size = ngx_atoi(value[2].data, len);
+    bufs->size = ngx_parse_size(&value[2]);
     if (bufs->size == NGX_ERROR || bufs->size == 0) {
         return "invalid value";
     }
-
-    bufs->size *= scale;
 
     return NGX_CONF_OK;
 }

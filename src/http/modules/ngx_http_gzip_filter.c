@@ -247,7 +247,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
          *
          * 8K is for zlib deflate_state (~6K).
          *
-         * TODO: 64-bit, round to PAGE_SIZE
+         * TODO: 64-bit, round to PAGE_SIZE, autoconf of deflate_state size
          */
 
         ctx->allocated = 8192 + (1 << (wbits + 2)) + (1 << (memlevel + 9));
