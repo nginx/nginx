@@ -277,14 +277,22 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
         expire = 0;
 
     } else {
-        timer = ngx_event_find_timer();
+        for ( ;; ) {
+            timer = ngx_event_find_timer();
 
-        if (timer == -1) {
-            timer = 0;
-            expire = 1;
+            if (timer != 0) {
+                break;
+            }
 
-        } else if (timer == 0) {
-            timer = (ngx_msec_t) INFTIM;
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                           "poll expired timer");
+
+            ngx_event_expire_timers(0);
+        }
+
+        /* NGX_TIMER_INFINITE == INFTIM */
+
+        if (timer == NGX_TIMER_INFINITE) {
             expire = 0;
 
         } else {
@@ -308,7 +316,7 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
         }
 
         if (ngx_accept_mutex_held == 0 
-            && (timer == (ngx_msec_t) INFTIM || timer > ngx_accept_mutex_delay))
+            && (timer == NGX_TIMER_INFINITE || timer > ngx_accept_mutex_delay))
         {
             timer = ngx_accept_mutex_delay;
             expire = 0;
@@ -341,7 +349,7 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    if (timer != (ngx_msec_t) INFTIM) {
+    if (timer != NGX_TIMER_INFINITE) {
         delta = ngx_elapsed_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,

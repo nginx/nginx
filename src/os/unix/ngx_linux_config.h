@@ -93,4 +93,8 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #define ngx_setproctitle(title)
 
 
+/* STUB */
+#define HAVE_LITTLE_ENDIAN  1
+
+
 #endif /* _NGX_LINUX_CONFIG_H_INCLUDED_ */

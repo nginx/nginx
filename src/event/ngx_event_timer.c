@@ -40,7 +40,7 @@ ngx_msec_t ngx_event_find_timer(void)
     ngx_rbtree_t  *node;
 
     if (ngx_event_timer_rbtree == &ngx_event_timer_sentinel) {
-        return 0;
+        return NGX_TIMER_INFINITE;
     }
 
     if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
@@ -59,7 +59,7 @@ ngx_msec_t ngx_event_find_timer(void)
                          (node->key * NGX_TIMER_RESOLUTION - ngx_elapsed_msec);
 #endif
 
-    return timer > 0 ? timer: -1 ;
+    return timer > 0 ? timer: 0 ;
 }
 
 
@@ -83,7 +83,7 @@ void ngx_event_expire_timers(ngx_msec_t timer)
 
         ngx_mutex_unlock(ngx_event_timer_mutex);
 
-        if ((ngx_msec_t) node->key <= (ngx_msec_t)
+        if (node->key <= (ngx_msec_t)
                          (ngx_old_elapsed_msec + timer) / NGX_TIMER_RESOLUTION)
         {
             ev = (ngx_event_t *)

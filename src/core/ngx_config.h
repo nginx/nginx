@@ -101,11 +101,6 @@ typedef int    ngx_flag_t;
 #define ngx_inline   inline
 #endif
 
-
-#ifndef INFTIM  /* Linux */
-#define INFTIM  -1
-#endif
-
 #ifndef INADDR_NONE  /* Solaris */
 #define INADDR_NONE  ((unsigned int) -1)
 #endif

@@ -192,6 +192,7 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
 {
     int                 signo;
     ngx_int_t           instance, i;
+    ngx_uint_t          expire;
     size_t              n;
     ngx_msec_t          timer;
     ngx_err_t           err;
@@ -199,21 +200,49 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
     struct timeval      tv;
     struct timespec     ts, *tp;
     struct sigaction    sa;
-    ngx_connection_t   *c;
     ngx_epoch_msec_t    delta;
+    ngx_connection_t   *c;
     ngx_rtsig_conf_t   *rtscf;
 
-    timer = ngx_event_find_timer();
-    ngx_old_elapsed_msec = ngx_elapsed_msec;
+    for ( ;; ) {
+        timer = ngx_event_find_timer();
 
-    if (timer) {
+        if (timer != 0) {
+            break;
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "rtsig expired timer");
+
+        ngx_event_expire_timers(0);
+    }
+
+    expire = 1;
+
+    if (ngx_accept_mutex) {
+        if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (ngx_accept_mutex_held == 0
+            && (timer == NGX_TIMER_INFINITE || timer > ngx_accept_mutex_delay))
+        {
+            timer = ngx_accept_mutex_delay;
+            expire = 0;
+        }
+    }
+
+    if (timer == NGX_TIMER_INFINITE) {
+        tp = NULL;
+        expire = 0;
+
+    } else {
         ts.tv_sec = timer / 1000;
         ts.tv_nsec = (timer % 1000) * 1000000;
         tp = &ts;
-
-    } else {
-        tp = NULL;
     }
+
+    ngx_old_elapsed_msec = ngx_elapsed_msec;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "rtsig timer: %d", timer);
@@ -237,10 +266,11 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
     if (err) {
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
                       cycle->log, err, "sigtimedwait() failed");
+        ngx_accept_mutex_unlock();
         return NGX_ERROR;
     }
 
-    if (timer) {
+    if (timer != NGX_TIMER_INFINITE) {
         delta = ngx_elapsed_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -263,18 +293,50 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
         if (si.si_band & (POLLIN|POLLHUP|POLLERR)) {
             if (c->read->active) {
                 c->read->ready = 1;
-                c->read->event_handler(c->read);
+
+                if (!ngx_threaded && !ngx_accept_mutex_held) {
+                    c->read->event_handler(c->read);
+
+                } else if (c->read->accept) {
+                    c->read->event_handler(c->read);
+
+                } else {
+                    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+                        ngx_accept_mutex_unlock();
+                        return NGX_ERROR;
+                    }
+
+                    ngx_post_event(c->read); 
+
+                    ngx_mutex_unlock(ngx_posted_events_mutex);
+                }
             }
         }
 
         if (si.si_band & (POLLOUT|POLLHUP|POLLERR)) {
             if (c->write->active) {
                 c->write->ready = 1;
-                c->write->event_handler(c->write);
+
+                if (!ngx_threaded && !ngx_accept_mutex_held) {
+                    c->write->event_handler(c->write);
+
+                } else {
+
+                    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+                        ngx_accept_mutex_unlock();
+                        return NGX_ERROR;
+                    }
+
+                    ngx_post_event(c->write);
+
+                    ngx_mutex_unlock(ngx_posted_events_mutex);
+                }
             }
         }
 
     } else if (signo == SIGIO) {
+        ngx_accept_mutex_unlock();
+
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "signal queue overflowed: "
                       "SIGIO, fd:%d, band:%X", si.si_fd, si.si_band);
@@ -300,11 +362,19 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
     } else {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                       "sigtimedwait() returned unexpected signal: %d", signo);
+        ngx_accept_mutex_unlock();
         return NGX_ERROR;
     }
 
-    if (timer != (ngx_msec_t) -1 && delta) {
+
+    ngx_accept_mutex_unlock();
+
+    if (expire && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);
+    }
+
+    if (!ngx_threaded) {
+        ngx_event_process_posted(cycle);
     }
 
     return NGX_OK;

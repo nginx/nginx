@@ -353,19 +353,33 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
     struct timeval     tv;
     struct timespec    ts, *tp;
 
-    timer = ngx_event_find_timer();
+    for ( ;; ) {
+        timer = ngx_event_find_timer();
 
 #if (NGX_THREADS)
-    if (timer == NGX_TIMER_ERROR) {
-        return NGX_ERROR;
-    }
+        if (timer == NGX_TIMER_ERROR) {
+            return NGX_ERROR;
+        }
 
-    /*
-     * TODO: if timer is 0 and any worker thread is still busy
-     *       then set 500 ms timeout
-     */
+         /*
+          * TODO: if timer is NGX_TIMER_INFINITE and any worker thread
+          *       is still busy then set the configurable 500ms timeout
+          *       to wake up another worker thread
+          */
 
 #endif
+
+        if (timer != 0) {
+            break;
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "kevent expired timer");
+
+        ngx_event_expire_timers(0);
+
+        /* TODO: if ngx_threaded then wake up the worker thread */
+    }
 
     ngx_old_elapsed_msec = ngx_elapsed_msec;
     expire = 1;
@@ -376,26 +390,21 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         }
 
         if (ngx_accept_mutex_held == 0
-            && (timer == 0 || timer > ngx_accept_mutex_delay))
+            && (timer == NGX_TIMER_INFINITE || timer > ngx_accept_mutex_delay))
         {
             timer = ngx_accept_mutex_delay;
             expire = 0;
         }
     }
 
-    if (timer == -1) {
-        ts.tv_sec = 0;
-        ts.tv_nsec = 0;
-        tp = &ts;
+    if (timer == NGX_TIMER_INFINITE) {
+        tp = NULL;
+        expire = 0;
 
-    } else if (timer) {
+    } else {
         ts.tv_sec = timer / 1000;
         ts.tv_nsec = (timer % 1000) * 1000000;
         tp = &ts;
-
-    } else {
-        tp = NULL;
-        expire = 0;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -427,7 +436,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    if (timer) {
+    if (timer != NGX_TIMER_INFINITE) {
         delta = ngx_elapsed_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -549,6 +558,8 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
     }
 
     ngx_accept_mutex_unlock();
+
+    /* TODO: wake up worker thread */
 
     if (expire && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);

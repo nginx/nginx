@@ -26,7 +26,6 @@
 #include <sys/socket.h>
 #include <sys/sendfile.h>
 #include <sys/filio.h>          /* FIONBIO */
-#include <sys/stropts.h>        /* INFTIM */
 #include <sys/systeminfo.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -73,6 +72,10 @@
 
 
 #define ngx_setproctitle(title)
+
+
+/* STUB */
+#define HAVE_LITTLE_ENDIAN  1
 
 
 #endif /* _NGX_SOLARIS_CONFIG_H_INCLUDED_ */

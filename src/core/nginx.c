@@ -277,6 +277,13 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
         switch (ctx->argv[i][1]) {
 
         case 'c':
+            if (ctx->argv[i + 1] == NULL) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                              "the option: \"%s\" requires file name",
+                              ctx->argv[i]);
+                return NGX_ERROR;
+            }
+
             cycle->conf_file.data = (u_char *) ctx->argv[++i];
             cycle->conf_file.len = ngx_strlen(cycle->conf_file.data);
             break;

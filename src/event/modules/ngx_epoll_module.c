@@ -353,20 +353,29 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     ngx_connection_t  *c;
     ngx_epoch_msec_t   delta;
 
-    timer = ngx_event_find_timer();
-    ngx_old_elapsed_msec = ngx_elapsed_msec;
+    for ( ;; ) { 
+        timer = ngx_event_find_timer();
 
-    if (timer == -1) {
-        timer = 0;
-        expire = 1;
+        if (timer != 0) {
+            break;
+        }
 
-    } else if (timer == 0) {
-        timer = (ngx_msec_t) -1;
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "epoll expired timer");
+
+        ngx_event_expire_timers(0);
+    }
+
+    /* NGX_TIMER_INFINITE == INFTIM */
+
+    if (timer == NGX_TIMER_INFINITE) {
         expire = 0;
 
     } else {
         expire = 1;
     }
+
+    ngx_old_elapsed_msec = ngx_elapsed_msec;
 
     if (ngx_accept_mutex) {
         if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
@@ -374,7 +383,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         }
 
         if (ngx_accept_mutex_held == 0
-            && (timer == -1 || timer > ngx_accept_mutex_delay))
+            && (timer == NGX_TIMER_INFINITE || timer > ngx_accept_mutex_delay))
         {
             timer = ngx_accept_mutex_delay;
             expire = 0;
@@ -398,7 +407,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     delta = ngx_elapsed_msec;
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
-    if (timer != (ngx_msec_t) -1) {
+    if (timer != NGX_TIMER_INFINITE) {
         delta = ngx_elapsed_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,

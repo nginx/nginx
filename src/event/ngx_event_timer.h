@@ -7,7 +7,8 @@
 #include <ngx_event.h>
 
 
-#define NGX_TIMER_ERROR  (ngx_msec_t) -1
+#define NGX_TIMER_INFINITE  -1
+#define NGX_TIMER_ERROR     -2
 
 /*
  * 32 bit timer key value resolution

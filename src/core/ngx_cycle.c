@@ -23,7 +23,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void               *rv;
     ngx_uint_t          i, n, failed;
-    ngx_log_t          *log;
+    ngx_log_t          *log, *new_log;
     ngx_conf_t          conf;
     ngx_pool_t         *pool;
     ngx_cycle_t        *cycle, **old;
@@ -43,6 +43,9 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         return NULL;
     }
     cycle->pool = pool;
+
+    pool->log = log;
+    cycle->log = log;
 
     cycle->old_cycle = old_cycle;
     cycle->conf_file = old_cycle->conf_file;
@@ -71,7 +74,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->open_files.pool = pool;
 
 
-    if (!(cycle->log = ngx_log_create_errlog(cycle, NULL))) {
+    if (!(new_log = ngx_log_create_errlog(cycle, NULL))) {
         ngx_destroy_pool(pool);
         return NULL;
     }
@@ -129,12 +132,14 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.module_type = NGX_CORE_MODULE;
     conf.cmd_type = NGX_MAIN_CONF;
 
+    cycle->log = new_log;
 
     if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
         ngx_destroy_pool(pool);
         return NULL;
     }
 
+    cycle->log = log;
 
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_CORE_MODULE) {
@@ -203,6 +208,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
+    cycle->log = new_log;
+    pool->log = new_log;
 
     if (!failed) {
         if (old_cycle->listening.nelts) {

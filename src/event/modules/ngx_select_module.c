@@ -263,7 +263,19 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
     static ngx_epoch_msec_t   deltas = 0;
 #endif
 
-    timer = ngx_event_find_timer();
+    for ( ;; ) {
+        timer = ngx_event_find_timer();
+
+        if (timer != 0) {
+            break;
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "select expired timer");
+
+        ngx_event_expire_timers(0);
+    }
+
     ngx_old_elapsed_msec = ngx_elapsed_msec;
 
     expire = 1;
@@ -276,7 +288,7 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
         }
 
         if (ngx_accept_mutex_held == 0
-            && (timer == 0 || timer > ngx_accept_mutex_delay))
+            && (timer == NGX_TIMER_INFINITE || timer > ngx_accept_mutex_delay))
         {
             timer = ngx_accept_mutex_delay;
             expire = 0;
@@ -306,19 +318,14 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
     }
 #endif
 
-    if (timer == -1) {
-        tv.tv_sec = 0;
-        tv.tv_usec = 0;
-        tp = &tv;
+    if (timer == NGX_TIMER_INFINITE) {
+        tp = NULL;
+        expire = 0;
 
-    } else if (timer) {
+    } else {
         tv.tv_sec = timer / 1000;
         tv.tv_usec = (timer % 1000) * 1000;
         tp = &tv;
-
-    } else {
-        tp = NULL;
-        expire = 0;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -344,7 +351,7 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
 
 #if (HAVE_SELECT_CHANGE_TIMEOUT)
 
-    if (timer) {
+    if (timer != NGX_TIMER_INFINITE) {
         delta = timer - (tv.tv_sec * 1000 + tv.tv_usec / 1000);
 
         /*
@@ -383,7 +390,7 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
     delta = ngx_elapsed_msec;
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
-    if (timer) {
+    if (timer != NGX_TIMER_INFINITE) {
         delta = ngx_elapsed_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
