@@ -41,6 +41,8 @@ typedef struct {
 
     ngx_http_phase_t  phases[NGX_HTTP_LAST_PHASE];
     ngx_array_t       index_handlers;
+
+    size_t            max_server_name_len;
 } ngx_http_core_main_conf_t;
 
 

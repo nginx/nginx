@@ -1013,6 +1013,7 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
     }
 
     if (r->connection->write->timer_set) {
+        r->connection->write->delayed = 0;
         ngx_del_timer(r->connection->write);
     }
 
@@ -1055,11 +1056,11 @@ static void ngx_http_set_write_handler(ngx_http_request_t *r)
     wev = r->connection->write;
     wev->event_handler = ngx_http_writer;
 
+    r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
+
     if (wev->ready && wev->delayed) {
         return;
     }
-
-    r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
     clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                         ngx_http_core_module);

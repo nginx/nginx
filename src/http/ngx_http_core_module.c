@@ -1158,8 +1158,10 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
     ngx_http_core_srv_conf_t *prev = parent;
     ngx_http_core_srv_conf_t *conf = child;
 
-    ngx_http_listen_t        *l;
-    ngx_http_server_name_t   *n;
+    ngx_http_listen_t          *l;
+    ngx_http_conf_ctx_t        *ctx;
+    ngx_http_server_name_t     *n;
+    ngx_http_core_main_conf_t  *cmcf;
 
     /* TODO: it does not merge, it inits only */
 
@@ -1188,6 +1190,14 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
 
         n->name.len = ngx_strlen(n->name.data);
         n->core_srv_conf = conf;
+
+        ctx = (ngx_http_conf_ctx_t *)
+                                    cf->cycle->conf_ctx[ngx_http_module.index];
+        cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+
+        if (cmcf->max_server_name_len < n->name.len) {
+            cmcf->max_server_name_len = n->name.len;
+        }
     }
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
@@ -1425,12 +1435,17 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_srv_conf_t *scf = conf;
 
-    ngx_uint_t               i;
-    ngx_str_t               *value;
-    ngx_http_server_name_t  *sn;
+    ngx_uint_t                  i;
+    ngx_str_t                  *value;
+    ngx_http_conf_ctx_t        *ctx;
+    ngx_http_server_name_t     *sn;
+    ngx_http_core_main_conf_t  *cmcf;
 
     /* TODO: several names */
     /* TODO: warn about duplicate 'server_name' directives */
+
+    ctx = (ngx_http_conf_ctx_t *) cf->cycle->conf_ctx[ngx_http_module.index];
+    cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
 
     value = cf->args->elts;
 
@@ -1448,6 +1463,10 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         sn->name.len = value[i].len;
         sn->name.data = value[i].data;
         sn->core_srv_conf = scf;
+
+        if (cmcf->max_server_name_len < sn->name.len) {
+            cmcf->max_server_name_len = sn->name.len;
+        }
     }
 
     return NGX_CONF_OK;

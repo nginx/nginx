@@ -4,13 +4,24 @@
 #include <ngx_http.h>
 
 
-static char *ngx_http_status(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+typedef struct {
+    ngx_http_request_t  *request;
+    ngx_pool_t          *pool;
+    ngx_chain_t         *head;
+    ngx_buf_t           *last;
+    size_t               size;
+} ngx_http_status_ctx_t;
+
+
+static ngx_int_t ngx_http_status(ngx_http_status_ctx_t *ctx);
+static char *ngx_http_set_status(ngx_conf_t *cf, ngx_command_t *cmd,
+                                 void *conf);
 
 static ngx_command_t  ngx_http_status_commands[] = {
 
     { ngx_string("status"),
       NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_http_status,
+      ngx_http_set_status,
       0,
       0,
       NULL },
@@ -46,14 +57,8 @@ ngx_module_t  ngx_http_status_module = {
 
 static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
 {
-    u_char               ch;
-    size_t               len;
-    ngx_int_t            rc;
-    ngx_uint_t           i, dash;
-    ngx_buf_t           *b;
-    ngx_chain_t          out;
-    ngx_connection_t    *c;
-    ngx_http_request_t  *rq;
+    ngx_int_t              rc;
+    ngx_http_status_ctx_t  ctx;
 
     if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
         return NGX_HTTP_NOT_ALLOWED;
@@ -86,53 +91,85 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
         }
     }
 
-    len = 0;
-    dash = 0;
+    ctx.request = r;
+    ctx.pool = r->pool;
+    ctx.head = NULL;
+    ctx.size = 0;
 
-    c = ngx_cycle->connections;
-    for (i = 0; i < ngx_cycle->connection_n; i++) {
-        rq = c[i].data;
-        if (rq && rq->signature == NGX_HTTP_MODULE) {
-
-                   /* STUB: should be NGX_PID_T_LEN */
-            len += NGX_INT64_LEN                       /* pid */
-                   + 1 + NGX_INT32_LEN                 /* connection */
-                   + 1 + 1                             /* state */
-                   + 1 + c[i].addr_text.len
-                   + 1 + rq->server_name->len
-                   + 2;                                /* "\r\n" */
-
-            if (rq->request_line.len) {
-                len += 1 + rq->request_line.len + 2;
-            }
-
-            dash = 0;
-
-            continue;
-        }
-
-        if (!dash) {
-            len += 3;
-            dash = 1;
-        }
-    }
-
-    if (!(b = ngx_create_temp_buf(r->pool, len))) {
+    if (ngx_http_status(&ctx) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = ctx.size;
+
+    rc = ngx_http_send_header(r);
+
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return rc;
+    }
+
+    if (!r->main) {
+        ctx.last->last_buf = 1;
+    }
+
+    return ngx_http_output_filter(r, ctx.head);
+}
+
+
+static ngx_int_t ngx_http_status(ngx_http_status_ctx_t *ctx)
+{
+    u_char                      ch;
+    size_t                      len, n;
+    ngx_uint_t                  i, dash;
+    ngx_buf_t                  *b;
+    ngx_chain_t                *cl, **ll;
+    ngx_connection_t           *c;
+    ngx_http_request_t         *r;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_http_get_module_main_conf(ctx->request, ngx_http_core_module);
+
+#if (NGX_SUPPRESS_WARN)
+    b = NULL;
+    ll = NULL;
+#endif
+
     dash = 0;
 
+    /* TODO: old connections */
+
+    c = ngx_cycle->connections;
     for (i = 0; i < ngx_cycle->connection_n; i++) {
-        rq = c[i].data;
-        if (rq && rq->signature == NGX_HTTP_MODULE) {
+
+        /* TODO: trylock connection mutex */
+
+        r = c[i].data;
+        if (r && r->signature == NGX_HTTP_MODULE) {
+
+                   /* STUB: should be NGX_PID_T_LEN */
+            len = NGX_INT64_LEN                       /* pid */
+                  + 1 + NGX_INT32_LEN                 /* connection */
+                  + 1 + 1                             /* state */
+                  + 1 + INET_ADDRSTRLEN
+                  + 1 + (r->server_name ? cmcf->max_server_name_len : 1)
+                  + 2;                                /* "\r\n" */
+
+            if (r->request_line.len) {
+                len += 1 + 1 + r->request_line.len + 1;
+            }
+
+            if (!(b = ngx_create_temp_buf(ctx->pool, len))) {
+                /* TODO: unlock mutex */
+                return NGX_ERROR;
+            }
 
             b->last += ngx_snprintf((char *) b->last,
                                     /* STUB: should be NGX_PID_T_LEN */
                                     NGX_INT64_LEN + NGX_INT32_LEN,
-                                    PID_T_FMT " %u", ngx_pid, i);
+                                    PID_T_FMT " %4u", ngx_pid, i);
 
-            switch (rq->http_state) {
+            switch (r->http_state) {
             case NGX_HTTP_INITING_REQUEST_STATE:
                 ch = 'I';
                 break;
@@ -163,12 +200,26 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
             *(b->last++) = ' ';
             b->last = ngx_cpymem(b->last, c[i].addr_text.data,
                                  c[i].addr_text.len);
+            for (n = c[i].addr_text.len; n < INET_ADDRSTRLEN; n++) {
+                 *(b->last++) = ' ';
+            }
 
             *(b->last++) = ' ';
-            b->last = ngx_cpymem(b->last, rq->server_name->data,
-                                 rq->server_name->len);
+            if (r->server_name) {
+                b->last = ngx_cpymem(b->last, r->server_name->data,
+                                     r->server_name->len);
+                for (n = r->server_name->len;
+                     n < cmcf->max_server_name_len;
+                     n++)
+                {
+                     *(b->last++) = ' ';
+                }
 
-            if (rq->request_line.len) {
+            } else {
+                *(b->last++) = '?';
+            }
+
+            if (r->request_line.len) {
                 *(b->last++) = ' ';
                 *(b->last++) = '"';
                 b->last = ngx_cpymem(b->last, r->request_line.data,
@@ -181,36 +232,72 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
 
             dash = 0;
 
+        } else if (c[i].fd != -1) {
+            len = NGX_INT64_LEN                       /* pid */
+                  + 1 + NGX_INT32_LEN                 /* connection */
+                  + 1 + 1                             /* state */
+                  + 2;                                /* "\r\n" */
+
+            if (!(b = ngx_create_temp_buf(ctx->pool, len))) {
+                /* TODO: unlock mutex */
+                return NGX_ERROR;
+            }
+
+            b->last += ngx_snprintf((char *) b->last,
+                                    /* STUB: should be NGX_PID_T_LEN */
+                                    NGX_INT64_LEN + NGX_INT32_LEN,
+                                    PID_T_FMT " %4u", ngx_pid, i);
+
+            *(b->last++) = ' ';
+            *(b->last++) = 's';
+
+            *(b->last++) = CR; *(b->last++) = LF;
+
+            dash = 0;
+
+       } else if (!dash) {
+            len = 3;
+
+            if (!(b = ngx_create_temp_buf(ctx->pool, len))) {
+                /* TODO: unlock mutex */
+                return NGX_ERROR;
+            }
+
+            *(b->last++) = '-'; *(b->last++) = CR; *(b->last++) = LF;
+
+            dash = 1;
+
+        } else {
             continue;
         }
 
-        if (!dash) {
-            *(b->last++) = '-'; *(b->last++) = CR; *(b->last++) = LF;
-            dash = 1;
+        /* TODO: unlock mutex */
+
+        if (!(cl = ngx_alloc_chain_link(ctx->pool))) {
+            return NGX_ERROR;
         }
+
+        if (ctx->head) {
+            *ll = cl;
+
+        } else { 
+            ctx->head = cl;
+        }
+
+        cl->buf = b;
+        cl->next = NULL;
+        ll = &cl->next;
+
+        ctx->size += b->last - b->pos;
     }
 
-    r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = b->last - b->pos;
+    ctx->last = b;
 
-    rc = ngx_http_send_header(r);
-
-    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-        return rc;
-    }
-
-    if (!r->main) {
-        b->last_buf = 1;
-    }
-
-    out.buf = b;
-    out.next = NULL;
-
-    return ngx_http_output_filter(r, &out);
+    return NGX_OK;
 }
 
 
-static char *ngx_http_status(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *ngx_http_set_status(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_conf_ctx_t       *ctx;
     ngx_http_core_loc_conf_t  *clcf;
