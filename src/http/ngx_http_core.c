@@ -350,7 +350,10 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool)
                   ngx_pcalloc(pool, sizeof(ngx_http_core_loc_conf_t)),
                   NULL);
 
+    conf->send_timeout = 10;
+/*
     conf->send_timeout = NGX_CONF_UNSET;
+*/
 
     return conf;
 }

@@ -99,6 +99,12 @@
 */
 #endif
 
+
+#if (HAVE_DEVPOLL)
+#include <sys/devpoll.h>        /* Solaris, HP/UX */
+#endif
+
+
 #define ngx_inline   inline
 
 

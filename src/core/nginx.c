@@ -56,7 +56,7 @@ int main(int argc, char *const *argv)
 
     /* TODO: read config */
 
-#if 1
+#if 0
     ngx_memzero(&conf, sizeof(ngx_conf_t));
     ngx_test_null(conf.args,
                   ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)), 1);

@@ -53,6 +53,10 @@ typedef struct {
     char    *description;
 } ngx_command_t;
 
+
+int ngx_conf_read_token(ngx_conf_t *cf);
+
+
 char *ngx_conf_set_size_slot(char *conf, int offset, char *value);
 char *ngx_conf_set_time_slot(char *conf, int offset, char *value);
 

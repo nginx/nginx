@@ -51,6 +51,7 @@ struct ngx_event_s {
     unsigned         listening:1;
     unsigned         write:1;
 
+    unsigned         active:1;
     unsigned         ready:1;
     unsigned         timedout:1;
     unsigned         blocked:1;
@@ -73,6 +74,9 @@ typedef enum {
     NGX_SELECT_EVENT = 0,
 #if (HAVE_POLL)
     NGX_POLL_EVENT,
+#endif
+#if (HAVE_DEVPOLL)
+    NGX_DEVPOLL_EVENT,
 #endif
 #if (HAVE_KQUEUE)
     NGX_KQUEUE_EVENT,
@@ -120,7 +124,7 @@ NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
 #define NGX_CLEAR_EVENT    EV_CLEAR
 #endif
 
-#elif (HAVE_POLL)
+#elif (HAVE_POLL) || (HAVE_DEVPOLL)
 
 #define NGX_READ_EVENT     POLLIN
 #define NGX_WRITE_EVENT    POLLOUT
@@ -159,9 +163,10 @@ NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
 #endif
 
 
-static void ngx_inline ngx_del_timer(ngx_event_t *ev)
+ngx_inline static void ngx_del_timer(ngx_event_t *ev)
 {
-#if (NGX_DEBUG)
+#if (NGX_DEBUG_EVENT)
+    /* STUB - we can not cast (ngx_connection_t *) here */
     ngx_log_debug(ev->log, "del timer: %d" _ *(int *)(ev->data));
 #endif
 

@@ -15,6 +15,9 @@
 #if (HAVE_POLL)
 #include <ngx_poll_module.h>
 #endif
+#if (HAVE_DEVPOLL)
+#include <ngx_devpoll_module.h>
+#endif
 #if (HAVE_KQUEUE)
 #include <ngx_kqueue_module.h>
 #endif
@@ -29,18 +32,20 @@ ngx_event_t         *ngx_read_events, *ngx_write_events;
 
 #if 0
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
-#elif 1
+#elif 0
 ngx_event_type_e     ngx_event_type = NGX_POLL_EVENT;
 #else
 ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
 #endif
 
-#elif (HAVE_POLL)
+#elif (HAVE_DEVPOLL)
 
 #if 0
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
-#else
+#elif 0
 ngx_event_type_e     ngx_event_type = NGX_POLL_EVENT;
+#else
+ngx_event_type_e     ngx_event_type = NGX_DEVPOLL_EVENT;
 #endif
 
 #else
@@ -56,6 +61,9 @@ static int (*ngx_event_init[]) (int max_connections, ngx_log_t *log) = {
     ngx_select_init,
 #if (HAVE_POLL)
     ngx_poll_init,
+#endif
+#if (HAVE_DEVPOLL)
+    ngx_devpoll_init,
 #endif
 #if (HAVE_KQUEUE)
     ngx_kqueue_init

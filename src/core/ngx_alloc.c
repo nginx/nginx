@@ -12,11 +12,14 @@ void *ngx_alloc(size_t size, ngx_log_t *log)
     void *p;
 
     p = malloc(size);
-    if (p == NULL)
+    if (p == NULL) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "malloc() %d bytes failed", size);
+    }
 
+#if (NGX_DEBUG_ALLOC)
     ngx_log_debug(log, "malloc: %08x:%d" _ p _ size);
+#endif
 
     return p;
 }
@@ -26,8 +29,9 @@ void *ngx_calloc(size_t size, ngx_log_t *log)
     void *p;
 
     p = ngx_alloc(size, log);
-    if (p)
+    if (p) {
         ngx_memzero(p, size);
+    }
 
     return p;
 }
@@ -53,16 +57,21 @@ void ngx_destroy_pool(ngx_pool_t *pool)
     ngx_pool_large_t  *l;
 
     for (l = pool->large; l; l = l->next) {
+#if (NGX_DEBUG_ALLOC)
         ngx_log_debug(pool->log, "free: %08x" _ l->alloc);
+#endif
         free(l->alloc);
     }
 
     for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
+#if (NGX_DEBUG_ALLOC)
         ngx_log_debug(pool->log, "free: %08x" _ p);
+#endif
         free(p);
 
-        if (n == NULL)
+        if (n == NULL) {
             break;
+        }
     }
 }
 
@@ -83,8 +92,9 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
                 return m;
             }
 
-            if (n == NULL)
+            if (n == NULL) {
                 break;
+            }
         }
 
         /* alloc new pool block */
@@ -107,8 +117,9 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
                     break;
                 }
 
-                if (last->next == NULL)
+                if (last->next == NULL) {
                     break;
+                }
             }
         }
 
@@ -138,8 +149,9 @@ void *ngx_pcalloc(ngx_pool_t *pool, size_t size)
     void *p;
 
     p = ngx_palloc(pool, size);
-    if (p)
+    if (p) {
         ngx_memzero(p, size);
+    }
 
     return p;
 }

@@ -549,7 +549,7 @@ static int ngx_http_writer(ngx_event_t *ev)
 
     if (!r->keepalive) {
         if (r->lingering_close) {
-            ngx_http_set_lingering_close(r);
+            return ngx_http_set_lingering_close(r);
 
         } else {
             return ngx_http_close_request(r);

@@ -22,7 +22,7 @@ static int            max_write;
 static int            max_fd;
 #endif
 
-static int            nevents;
+static unsigned int   nevents;
 
 static ngx_event_t  **event_index;
 static ngx_event_t  **ready_index;
@@ -75,11 +75,13 @@ int ngx_select_init(int max_connections, ngx_log_t *log)
 
 int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 {
-    ngx_connection_t *c;
+    ngx_connection_t  *c;
 
     c = (ngx_connection_t *) ev->data;
 
+#if (NGX_DEBUG_EVENT)
     ngx_log_debug(ev->log, "select fd:%d event:%d" _ c->fd _ event);
+#endif
 
     if (ev->index != NGX_INVALID_INDEX) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
@@ -117,6 +119,7 @@ int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 
 #endif
 
+    ev->active = 1;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
 
     event_index[nevents] = ev;
@@ -134,7 +137,9 @@ int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
     if (ev->index == NGX_INVALID_INDEX)
         return NGX_OK;
 
+#if (NGX_DEBUG_EVENT)
     ngx_log_debug(c->log, "del event: %d, %d" _ c->fd _ event);
+#endif
 
 #if (WIN32)
     if (event == NGX_READ_EVENT) {
@@ -161,6 +166,7 @@ int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
         event_index[ev->index]->index = ev->index;
     }
 
+    ev->active = 0;
     ev->index = NGX_INVALID_INDEX;
 
     return NGX_OK;
@@ -199,20 +205,21 @@ int ngx_select_process_events(ngx_log_t *log)
                 max_fd = c->fd;
         }
 
+#if (NGX_DEBUG_EVENT)
         ngx_log_debug(log, "change max_fd: %d" _ max_fd);
+#endif
     }
 #endif
 
-#if 1
-    /* DEBUG */
+#if (NGX_DEBUG_EVENT)
     for (i = 0; i < nevents; i++) {
         ev = event_index[i];
         c = (ngx_connection_t *) ev->data;
         ngx_log_debug(log, "select: %d:%d" _ c->fd _ ev->write);
     }
-#endif
 
     ngx_log_debug(log, "select timer: %d" _ timer);
+#endif
 
 #if (WIN32)
     if ((ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp))
@@ -220,42 +227,30 @@ int ngx_select_process_events(ngx_log_t *log)
     if ((ready = select(max_fd + 1, &work_read_fd_set, &work_write_fd_set,
                         NULL, tp))
 #endif
-               == -1) {
+               == -1)
+    {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno, "select() failed");
         return NGX_ERROR;
     }
 
+#if (NGX_DEBUG_EVENT)
     ngx_log_debug(log, "select ready %d" _ ready);
+#endif
 
     if (timer) {
         delta = ngx_msec() - delta;
 
     } else {
-        ngx_assert((ready != 0), return NGX_ERROR, log,
-                   "select() returns no events without timeout");
-    }
-
-    ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ delta);
-
-    if (timer) {
-        if (delta >= timer) {
-            for ( ;; ) {
-                ev = timer_queue.timer_next;
-
-                if (ev == &timer_queue || delta < ev->timer_delta)
-                    break;
-
-                delta -= ev->timer_delta;
-                ngx_del_timer(ev);
-                ev->timedout = 1;
-                if (ev->event_handler(ev) == NGX_ERROR)
-                    ev->close_handler(ev);
-            }
-
-        } else {
-           timer_queue.timer_next->timer_delta -= delta;
+        if (ready == 0) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "select() returns no events without timeout");
+            return NGX_ERROR;
         }
     }
+
+#if (NGX_DEBUG_EVENT)
+    ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ delta);
+#endif
 
     nready = 0;
 
@@ -266,14 +261,18 @@ int ngx_select_process_events(ngx_log_t *log)
 
         if (ev->write) {
             if (FD_ISSET(c->fd, &work_write_fd_set)) {
-                ngx_log_debug(log, "select write %d" _ c->fd);
                 found = 1;
+#if (NGX_DEBUG_EVENT)
+                ngx_log_debug(log, "select write %d" _ c->fd);
+#endif
             }
 
         } else {
             if (FD_ISSET(c->fd, &work_read_fd_set)) {
-                ngx_log_debug(log, "select read %d" _ c->fd);
                 found = 1;
+#if (NGX_DEBUG_EVENT)
+                ngx_log_debug(log, "select read %d" _ c->fd);
+#endif
             }
         }
 
@@ -284,6 +283,11 @@ int ngx_select_process_events(ngx_log_t *log)
 
     for (i = 0; i < nready; i++) {
         ev = ready_index[i];
+        ready--;
+
+        if (!ev->active) {
+            continue;
+        }
 
         ev->ready = 1;
 
@@ -298,11 +302,34 @@ int ngx_select_process_events(ngx_log_t *log)
 
         if (ev->event_handler(ev) == NGX_ERROR)
             ev->close_handler(ev);
-
-        ready--;
     }
 
-    ngx_assert((ready == 0), /* void */ ; , log, "select ready != events");
+    if (ready != 0) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "select ready != events");
+    }
+
+    if (timer && timer_queue.timer_next != &timer_queue) {
+        if (delta >= timer_queue.timer_next->timer_delta) {
+            for ( ;; ) {
+                ev = timer_queue.timer_next;
+
+                if (ev == &timer_queue || delta < ev->timer_delta) {
+                    break;
+                }
+
+                delta -= ev->timer_delta;
+
+                ngx_del_timer(ev);
+                ev->timedout = 1;
+                if (ev->event_handler(ev) == NGX_ERROR) {
+                    ev->close_handler(ev);
+                }
+            }
+
+        } else {
+           timer_queue.timer_next->timer_delta -= delta;
+        }
+    }
 
     return NGX_OK;
 }
@@ -311,17 +338,22 @@ void ngx_select_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_event_t *e;
 
-#if (NGX_DEBUG)
+#if (NGX_DEBUG_EVENT)
     ngx_connection_t *c = (ngx_connection_t *) ev->data;
     ngx_log_debug(ev->log, "set timer: %d:%d" _ c->fd _ timer);
 #endif
-    ngx_assert((!ev->timer_next && !ev->timer_prev), return, ev->log,
-               "timer already set");
+
+    if (ev->timer_next || ev->timer_prev) {
+        ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "timer already set");
+        return;
+    }
 
     for (e = timer_queue.timer_next;
          e != &timer_queue && timer > e->timer_delta;
          e = e->timer_next)
+    {
         timer -= e->timer_delta;
+    }
 
     ev->timer_delta = timer;
 

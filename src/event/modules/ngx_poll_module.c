@@ -12,9 +12,10 @@
 
 /* should be per-thread */
 static struct pollfd  *event_list;
-static int             nevents;
+static unsigned int    nevents;
 
 static ngx_event_t   **event_index;
+static ngx_event_t   **ready_index;
 static ngx_event_t     timer_queue;
 /* */
 
@@ -26,6 +27,10 @@ int ngx_poll_init(int max_connections, ngx_log_t *log)
 
     ngx_test_null(event_index,
                   ngx_alloc(sizeof(ngx_event_t *) * max_connections, log),
+                  NGX_ERROR);
+
+    ngx_test_null(ready_index,
+                  ngx_alloc(sizeof(ngx_event_t *) * 2 * max_connections, log),
                   NGX_ERROR);
 
     nevents = 0;
@@ -43,11 +48,12 @@ int ngx_poll_init(int max_connections, ngx_log_t *log)
 
 int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
-    ngx_event_t      *e;
-    ngx_connection_t *c;
+    ngx_event_t       *e;
+    ngx_connection_t  *c;
 
     c = (ngx_connection_t *) ev->data;
 
+    ev->active = 1;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
 
     if (event == NGX_READ_EVENT) {
@@ -63,7 +69,9 @@ int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 #endif
     }
 
-    ngx_log_debug(ev->log, "poll fd:%d event:%d" _ c->fd _ event);
+#if (NGX_DEBUG_EVENT)
+    ngx_log_debug(ev->log, "add event: %d:%d" _ c->fd _ event);
+#endif
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
         event_list[nevents].fd = c->fd;
@@ -84,13 +92,14 @@ int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 
 int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
-    ngx_event_t      *e;
-    ngx_connection_t *c;
+    ngx_event_t       *e;
+    ngx_connection_t  *c;
 
     c = (ngx_connection_t *) ev->data;
 
-    if (ev->index == NGX_INVALID_INDEX)
+    if (ev->index == NGX_INVALID_INDEX) {
         return NGX_OK;
+    }
 
     if (event == NGX_READ_EVENT) {
         e = c->write;
@@ -105,7 +114,9 @@ int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 #endif
     }
 
+#if (NGX_DEBUG_EVENT)
     ngx_log_debug(c->log, "del event: %d, %d" _ c->fd _ event);
+#endif
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
         if (ev->index < --nevents) {
@@ -118,6 +129,7 @@ int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
         event_list[e->index].events &= ~event;
     }
 
+    ev->active = 0;
     ev->index = NGX_INVALID_INDEX;
 
     return NGX_OK;
@@ -125,7 +137,7 @@ int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
 int ngx_poll_process_events(ngx_log_t *log)
 {
-    int                i, ready, found;
+    int                i, ready, nready, found;
     u_int              timer, delta;
     ngx_err_t          err;
     ngx_event_t       *ev;
@@ -140,15 +152,14 @@ int ngx_poll_process_events(ngx_log_t *log)
         delta = 0;
     }
 
-#if 1
-    /* DEBUG */
+#if (NGX_DEBUG_EVENT)
     for (i = 0; i < nevents; i++) {
         ngx_log_debug(log, "poll: %d, %d" _
                       event_list[i].fd _ event_list[i].events);
     }
-#endif
 
     ngx_log_debug(log, "poll timer: %d" _ timer);
+#endif
 
     if ((ready = poll(event_list, nevents, timer)) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "poll() failed");
@@ -161,70 +172,38 @@ int ngx_poll_process_events(ngx_log_t *log)
         delta = ngx_msec() - delta;
 
     } else {
-        ngx_assert((ready != 0), return NGX_ERROR, log,
-                   "poll() returns no events without timeout");
-    }
-
-    ngx_log_debug(log, "poll timer: %d, delta: %d" _ timer _ delta);
-
-    if (timer != INFTIM) {
-        if (delta >= timer) {
-            for ( ;; ) {
-                ev = timer_queue.timer_next;
-
-                if (ev == &timer_queue || delta < ev->timer_delta) {
-                    break;
-                }
-
-                delta -= ev->timer_delta;
-                ngx_del_timer(ev);
-                ev->timedout = 1;
-
-                if (ev->event_handler(ev) == NGX_ERROR) {
-                    ev->close_handler(ev);
-                }
-            }
-
-        } else {
-           timer_queue.timer_next->timer_delta -= delta;
+        if (ready == 0) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "poll() returns no events without timeout");
+            return NGX_ERROR;
         }
     }
+
+#if (NGX_DEBUG_EVENT)
+    ngx_log_debug(log, "poll timer: %d, delta: %d" _ timer _ delta);
+#endif
+
+    nready = 0;
 
     for (i = 0; i < nevents && ready; i++) {
         c = &ngx_connections[event_list[i].fd];
 
+#if (NGX_DEBUG_EVENT)
         ngx_log_debug(log, "poll: fd:%d, ev:%d, rev:%d" _
                       event_list[i].fd _
                       event_list[i].events _ event_list[i].revents);
+#endif
 
         found = 0;
 
         if (event_list[i].revents & POLLIN) {
             found = 1;
-            c->read->ready = 1;
-
-            if (c->read->oneshot) {
-                ngx_del_timer(c->read);
-                ngx_poll_del_event(c->read, NGX_READ_EVENT, 0);
-            }
-
-            if (c->read->event_handler(c->read) == NGX_ERROR) {
-                c->read->close_handler(c->read);
-            }
+            ready_index[nready++] = c->read;
         }
 
         if (event_list[i].revents & POLLOUT) {
             found = 1;
-            c->write->ready = 1;
-
-            if (c->write->oneshot) {
-                ngx_del_timer(c->write);
-                ngx_poll_del_event(c->write, NGX_WRITE_EVENT, 0);
-            }
-
-            if (c->write->event_handler(c->write) == NGX_ERROR) {
-                c->write->close_handler(c->write);
-            }
+            ready_index[nready++] = c->write;
         }
 
         if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
@@ -245,7 +224,56 @@ int ngx_poll_process_events(ngx_log_t *log)
         }
     }
 
-    ngx_assert((ready == 0), /* void */ ; , log, "poll ready != nevents");
+    for (i = 0; i < nready; i++) {
+        ev = ready_index[i];
+
+        if (!ev->active) {
+            continue;
+        }
+
+        ev->ready = 1;
+
+        if (ev->oneshot) {
+            ngx_del_timer(ev);
+
+            if (ev->write) {
+                ngx_poll_del_event(ev, NGX_WRITE_EVENT, 0);
+            } else {
+                ngx_poll_del_event(ev, NGX_READ_EVENT, 0);
+            }
+        }
+
+        if (ev->event_handler(ev) == NGX_ERROR) {
+            ev->close_handler(ev);
+        }
+    }
+
+    if (ready != 0) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "poll ready != events");
+    }
+
+    if (timer != INFTIM && timer_queue.timer_next != &timer_queue) {
+        if (delta >= timer_queue.timer_next->timer_delta) {
+            for ( ;; ) {
+                ev = timer_queue.timer_next;
+
+                if (ev == &timer_queue || delta < ev->timer_delta) {
+                    break;
+                }
+
+                delta -= ev->timer_delta;
+
+                ngx_del_timer(ev);
+                ev->timedout = 1;
+                if (ev->event_handler(ev) == NGX_ERROR) {
+                    ev->close_handler(ev);
+                }
+            }
+
+        } else {
+           timer_queue.timer_next->timer_delta -= delta;
+        }
+    }
 
     return NGX_OK;
 }
@@ -254,10 +282,22 @@ void ngx_poll_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_event_t *e;
 
+#if (NGX_DEBUG_EVENT)
+    ngx_connection_t *c = (ngx_connection_t *) ev->data;
+    ngx_log_debug(ev->log, "set timer: %d:%d" _ c->fd _ timer);
+#endif
+
+    if (ev->timer_next || ev->timer_prev) {
+        ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "timer already set");
+        return;
+    }
+
     for (e = timer_queue.timer_next;
          e != &timer_queue && timer > e->timer_delta;
          e = e->timer_next)
+    {
         timer -= e->timer_delta;
+    }
 
     ev->timer_delta = timer;
 
