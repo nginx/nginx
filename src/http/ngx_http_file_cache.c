@@ -4,7 +4,11 @@
 #include <ngx_http.h>
 
 
+#if (HAVE_OPENSSL_MD5_H)
+#include <openssl/md5.h>
+#else
 #include <md5.h>
+#endif
 
 #if (HAVE_OPENSSL_MD5)
 #define  MD5Init    MD5_Init

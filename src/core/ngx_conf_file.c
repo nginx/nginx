@@ -582,11 +582,11 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int         flag;
-    ngx_str_t  *value;
+    ngx_flag_t   flag;
+    ngx_str_t   *value;
 
 
-    if (*(int *) (p + cmd->offset) != NGX_CONF_UNSET) {
+    if (*(ngx_flag_t *) (p + cmd->offset) != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -606,7 +606,7 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    *(int *) (p + cmd->offset) = flag;
+    *(ngx_flag_t *) (p + cmd->offset) = flag;
 
     return NGX_CONF_OK;
 }
@@ -636,12 +636,12 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int              *np;
+    ngx_int_t        *np;
     ngx_str_t        *value;
     ngx_conf_post_t  *post;
 
 
-    np = (int *) (p + cmd->offset);
+    np = (ngx_int_t *) (p + cmd->offset);
 
     if (*np != NGX_CONF_UNSET) {
         return "is duplicate";
@@ -666,26 +666,26 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int              *np;
+    ssize_t          *sp;
     ngx_str_t        *value;
     ngx_conf_post_t  *post;
 
 
-    np = (int *) (p + cmd->offset);
-    if (*np != NGX_CONF_UNSET) {
+    sp = (ssize_t *) (p + cmd->offset);
+    if (*sp != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
     value = (ngx_str_t *) cf->args->elts;
 
-    *np = ngx_parse_size(&value[1]);
-    if (*np == NGX_ERROR) {
+    *sp = ngx_parse_size(&value[1]);
+    if (*sp == NGX_ERROR) {
         return "invalid value";
     }
 
     if (cmd->post) {
         post = cmd->post;
-        return post->post_handler(cf, post, np);
+        return post->post_handler(cf, post, sp);
     }
 
     return NGX_CONF_OK;
@@ -696,30 +696,30 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int              *np;
+    ngx_msec_t       *msp;
     ngx_str_t        *value;
     ngx_conf_post_t  *post;
 
 
-    np = (int *) (p + cmd->offset);
-    if (*np != NGX_CONF_UNSET) {
+    msp = (ngx_msec_t *) (p + cmd->offset);
+    if (*msp != (ngx_msec_t) NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
     value = (ngx_str_t *) cf->args->elts;
 
-    *np = ngx_parse_time(&value[1], 0);
-    if (*np == NGX_ERROR) {
+    *msp = ngx_parse_time(&value[1], 0);
+    if (*msp == (ngx_msec_t) NGX_ERROR) {
         return "invalid value";
     }
 
-    if (*np == NGX_PARSE_LARGE_TIME) {
+    if (*msp == (ngx_msec_t) NGX_PARSE_LARGE_TIME) {
         return "value must be less than 597 hours";
     }
 
     if (cmd->post) {
         post = cmd->post;
-        return post->post_handler(cf, post, np);
+        return post->post_handler(cf, post, msp);
     }
 
     return NGX_CONF_OK;
@@ -730,30 +730,30 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int              *np;
+    time_t           *sp;
     ngx_str_t        *value;
     ngx_conf_post_t  *post;
 
 
-    np = (int *) (p + cmd->offset);
-    if (*np != NGX_CONF_UNSET) {
+    sp = (time_t *) (p + cmd->offset);
+    if (*sp != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
     value = (ngx_str_t *) cf->args->elts;
 
-    *np = ngx_parse_time(&value[1], 1);
-    if (*np == NGX_ERROR) {
+    *sp = ngx_parse_time(&value[1], 1);
+    if (*sp == NGX_ERROR) {
         return "invalid value";
     }
 
-    if (*np == NGX_PARSE_LARGE_TIME) {
+    if (*sp == NGX_PARSE_LARGE_TIME) {
         return "value must be less than 68 years";
     }
 
     if (cmd->post) {
         post = cmd->post;
-        return post->post_handler(cf, post, np);
+        return post->post_handler(cf, post, sp);
     }
 
     return NGX_CONF_OK;
@@ -793,12 +793,12 @@ char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int                 *np, i, m;
+    ngx_int_t           *np, i, m;
     ngx_str_t           *value;
     ngx_conf_bitmask_t  *mask;
 
 
-    np = (int *) (p + cmd->offset);
+    np = (ngx_int_t *) (p + cmd->offset);
     value = (ngx_str_t *) cf->args->elts;
     mask = cmd->post;
 
@@ -843,7 +843,7 @@ char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data)
 {
     ngx_conf_num_bounds_t *bounds = post;
-    int *np = data;
+    ngx_int_t *np = data;
 
     if (bounds->high == -1) {
         if (*np >= bounds->low) {

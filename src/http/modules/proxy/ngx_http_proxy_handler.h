@@ -65,7 +65,7 @@ typedef struct {
 
     int                              ignore_expires;
     int                              lm_factor;
-    int                              default_expires;
+    time_t                           default_expires;
 
     int                              next_upstream;
     int                              use_stale;

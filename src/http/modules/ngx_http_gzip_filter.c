@@ -10,8 +10,8 @@ typedef struct {
     int                  enable;
     ngx_bufs_t           bufs;
     int                  level;
-    int                  wbits;
-    int                  memlevel;
+    ssize_t              wbits;
+    ssize_t              memlevel;
     int                  no_buffer;
 } ngx_http_gzip_conf_t;
 
@@ -667,8 +667,9 @@ static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
     ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 4,
                               /* STUB: PAGE_SIZE */ 4096);
     ngx_conf_merge_value(conf->level, prev->level, 1);
-    ngx_conf_merge_value(conf->wbits, prev->wbits, MAX_WBITS);
-    ngx_conf_merge_value(conf->memlevel, prev->memlevel, MAX_MEM_LEVEL - 1);
+    ngx_conf_merge_size_value(conf->wbits, prev->wbits, MAX_WBITS);
+    ngx_conf_merge_size_value(conf->memlevel, prev->memlevel,
+                              MAX_MEM_LEVEL - 1);
     ngx_conf_merge_value(conf->no_buffer, prev->no_buffer, 0);
 
     return NGX_CONF_OK;

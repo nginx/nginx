@@ -37,6 +37,7 @@ ngx_lib_inc="#include <sys/types.h>
     if [ $ngx_found = yes ]; then
         CORE_LIBS="$CORE_LIBS $ngx_libs"
         MD5=YES
+        MD5_LIB=md5
         ngx_found=no
 
     else
@@ -51,19 +52,24 @@ ngx_lib_inc="#include <sys/types.h>
     if [ $ngx_found = yes ]; then
         CORE_LIBS="$CORE_LIBS $ngx_libs"
         MD5=YES
+        MD5_LIB=md
         ngx_found=no
 
     else
-        ngx_lib="OpenSSL md5"
+        ngx_lib_inc="#include <sys/types.h>
+#include <openssl/md5.h>"
+        ngx_lib="OpenSSL md5 crypto"
         ngx_lib_test="MD5_CTX md5; MD5_Init(&md5)"
-        ngx_libs=-lmd5
+        ngx_libs=-lcrypto
         . auto/lib/test
     fi
 
 
     if [ $ngx_found = yes ]; then
         have=HAVE_OPENSSL_MD5 . auto/have
+        have=HAVE_OPENSSL_MD5_H . auto/have
         CORE_LIBS="$CORE_LIBS $ngx_libs"
         MD5=YES
+        MD5_LIB=crypto
     fi
 fi

@@ -2,15 +2,19 @@
 echo
 echo "Configuration summary"
 
-case $PCRE in
-    YES)   echo " + using system PCRE library" ;;
-    NONE)  echo " + PCRE library is not used" ;;
-    NO)    echo " + PCRE library is not found" ;;
-    *)     echo " + using PCRE library: $PCRE" ;;
-esac
+if [ $USE_PCRE = DISABLED ]; then
+    echo " + PCRE library is disabled"
+
+else
+    case $PCRE in
+        YES)   echo " + using system PCRE library" ;;
+        NO)    echo " + PCRE library is not found" ;;
+        *)     echo " + using PCRE library: $PCRE" ;;
+    esac
+fi
 
 case $MD5 in
-    YES)   echo " + using system md5 library" ;;
+    YES)   echo " + md5: using system $MD5_LIB library" ;;
     NONE)  echo " + md5 library is not used" ;;
     NO)    echo " + md5 library is not found" ;;
     *)     echo " + using md5 library: $MD5" ;;

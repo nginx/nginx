@@ -28,7 +28,8 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     int              rc;
     char            *prev;
     off_t            sent, fprev;
-    size_t           hsize, fsize, size;
+    size_t           hsize, fsize;
+    ssize_t          size;
     ngx_int_t        eintr, eagain;
     struct iovec    *iov;
     struct sf_hdtr   hdtr;
