@@ -33,6 +33,7 @@ ngx_array_t  ngx_http_index_handlers;
 
 
 int  (*ngx_http_top_header_filter) (ngx_http_request_t *r);
+int  (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
 
 static ngx_str_t  http_name = ngx_string("http");
@@ -59,32 +60,6 @@ ngx_module_t  ngx_http_module = {
 };
 
 
-
-static void ngx_http_init_filters(ngx_pool_t *pool, ngx_module_t **modules)
-{
-    int                      i;
-    ngx_http_module_t       *module;
-    ngx_http_conf_filter_t   cf;
-
-    cf.output_header_filter = NULL;
-    cf.output_body_filter = NULL;
-
-    for (i = 0; modules[i]; i++) {
-        if (modules[i]->type != NGX_HTTP_MODULE_TYPE) {
-            continue;
-        }
-
-        module = (ngx_http_module_t *) modules[i]->ctx;
-
-        if (module->init_filters) {
-            module->init_filters(pool, &cf);
-        }
-    }
-
-    ngx_http_top_header_filter = cf.output_header_filter;
-}
-
-
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 {
     int                         i, s, l, p, a, n, start;
@@ -108,12 +83,15 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
                   NGX_CONF_ERROR);
 
+    ngx_http_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_HTTP_MODULE_TYPE) {
             continue;
         }
 
-        ngx_modules[i]->index = ngx_http_max_module++;
+        module = (ngx_http_module_t *) ngx_modules[i]->ctx;
+
+        module->index = ngx_http_max_module++;
     }
 
     /* null loc_conf */
@@ -168,8 +146,6 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 
     ngx_init_array(ngx_http_index_handlers,
                    cf->pool, 3, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
-
-    ngx_http_init_filters(cf->pool, ngx_modules);
 
     /* create lists of ports, addresses and server names */
 

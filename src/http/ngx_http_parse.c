@@ -338,6 +338,7 @@ int ngx_read_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
         sw_space_after_value,
         sw_almost_done,
         sw_header_almost_done,
+        sw_ignore_line,
         sw_done,
         sw_header_done
     } state;
@@ -404,6 +405,14 @@ int ngx_read_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
                 break;
             }
 
+            if (ch == '/') {
+                /* IIS can send duplicate "HTTP/1.1 ..." lines */
+                if (r->proxy && ngx_strncmp(r->header_start, "HTTP", 4) == 0) {
+                    state = sw_ignore_line;
+                    break;
+                }
+            }
+
             return NGX_HTTP_PARSE_INVALID_HEADER;
 
         /* space* before header value */
@@ -457,6 +466,17 @@ int ngx_read_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
                 break;
             default:
                 state = sw_value;
+                break;
+            }
+            break;
+
+        /* ignore header line */
+        case sw_ignore_line:
+            switch (ch) {
+            case LF:
+                state = sw_start;
+                break;
+            default:
                 break;
             }
             break;

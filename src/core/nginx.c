@@ -36,6 +36,8 @@ ngx_log_t     ngx_log;
 ngx_pool_t   *ngx_pool;
 
 
+int ngx_max_module;
+
 int ngx_connection_counter;
 
 ngx_array_t  ngx_listening_sockets;
@@ -67,6 +69,11 @@ int main(int argc, char *const *argv)
 
     ngx_init_array(ngx_listening_sockets, ngx_pool, 10, sizeof(ngx_listen_t),
                    1);
+
+    ngx_max_module = 0;
+    for (i = 0; ngx_modules[i]; i++) {
+        ngx_modules[i]->index = ngx_max_module++;
+    }
 
     ngx_memzero(&conf, sizeof(ngx_conf_t));
     ngx_test_null(conf.args,

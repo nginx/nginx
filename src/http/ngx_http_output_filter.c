@@ -33,13 +33,13 @@ static ngx_command_t  ngx_http_output_filter_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_output_filter_module_ctx = {
+    NGX_HTTP_MODULE,
+
     NULL,                                  /* create server config */
     NULL,                                  /* init server config */
 
     ngx_http_output_filter_create_conf,    /* create location config */
-    ngx_http_output_filter_merge_conf,     /* merge location config */
-
-    ngx_http_output_filter_init            /* output body filter */
+    ngx_http_output_filter_merge_conf      /* merge location config */
 };
 
 
@@ -52,8 +52,11 @@ ngx_module_t  ngx_http_output_filter_module = {
 };
 
 
+#define next_filter  (*ngx_http_top_body_filter)
 
+#if 0
 static int (*next_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
+#endif
 
 
 #if 0
@@ -77,10 +80,10 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
     ctx = (ngx_http_output_filter_ctx_t *)
                     ngx_http_get_module_ctx(r->main ? r->main : r,
-                                            ngx_http_output_filter_module);
+                                            ngx_http_output_filter_module_ctx);
 
     if (ctx == NULL) {
-        ngx_http_create_ctx(r, ctx, ngx_http_output_filter_module,
+        ngx_http_create_ctx(r, ctx, ngx_http_output_filter_module_ctx,
                             sizeof(ngx_http_output_filter_ctx_t), NGX_ERROR);
     }
 
@@ -120,8 +123,8 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
     if (ctx->hunk == NULL) {
 
         conf = (ngx_http_output_filter_conf_t *)
-                   ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                                ngx_http_output_filter_module);
+               ngx_http_get_module_loc_conf(r->main ? r->main : r,
+                                            ngx_http_output_filter_module_ctx);
 
         if (hunk->type & NGX_HUNK_LAST) {
             if (hunk->type & NGX_HUNK_IN_MEMORY) {
@@ -303,8 +306,10 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
 static void ngx_http_output_filter_init(ngx_pool_t *pool,
                                         ngx_http_conf_filter_t *cf)
 {
+#if 0
     next_filter = cf->output_body_filter;
     cf->output_body_filter = NULL;
+#endif
 }
 
 

@@ -122,11 +122,22 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     if (error < NGX_HTTP_BAD_REQUEST) {
         err = error - NGX_HTTP_MOVED_PERMANENTLY;
 
-    } else if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
-        err = error - NGX_HTTP_BAD_REQUEST + 3;
-
     } else {
-        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 3 + 17;
+        ngx_test_null(r->headers_out.content_type,
+                      ngx_push_table(r->headers_out.headers),
+                      NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+        r->headers_out.content_type->key.len = 12;
+        r->headers_out.content_type->key.data = "Content-Type";
+        r->headers_out.content_type->value.len = 9;
+        r->headers_out.content_type->value.data = "text/html";
+
+        if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
+            err = error - NGX_HTTP_BAD_REQUEST + 3;
+
+        } else {
+            err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 3 + 17;
+        }
     }
 
     if (r->keepalive != 0) {

@@ -57,13 +57,17 @@ typedef struct {
     void      **loc_conf;      /* pointer to modules loc_conf,
                                   used in translation handler */
 
+    int       (*handler) (ngx_http_request_t *r);
+
     ngx_str_t   doc_root;                /* root */
 
+    int         sendfile;                /* sendfile */
     time_t      send_timeout;            /* send_timeout */
     size_t      send_lowat;              /* send_lowa */
     size_t      discarded_buffer_size;   /* discarded_buffer_size */
     time_t      lingering_time;          /* lingering_time */
     ngx_msec_t  lingering_timeout;       /* lingering_timeout */
+
 } ngx_http_core_loc_conf_t;
 
 
@@ -76,10 +80,20 @@ typedef struct {
 #endif
 
 
+#if 0
+#define ngx_http_set_loc_handler(conf_ctx, ngx_http_handler)                  \
+    {                                                                         \
+        ngx_http_conf_ctx_t       *cx = conf_ctx;                             \
+        ngx_http_core_loc_conf_t  *lcf;                                       \
+        lcf = cx->loc_conf[ngx_http_core_module_ctx.index];                   \
+        lcf->handler = ngx_http_handler;                                      \
+    }
+#endif
+
+
 extern ngx_http_module_t  ngx_http_core_module_ctx;
 extern ngx_module_t  ngx_http_core_module;
 
-extern int (*ngx_http_top_header_filter) (ngx_http_request_t *r);
 extern int ngx_http_max_module;
 
 

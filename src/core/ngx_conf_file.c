@@ -130,7 +130,7 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                         pconf = *(void **) ((char *) cf->ctx + cmd->conf);
 
                         if (pconf) {
-                            conf = pconf[ngx_modules[i]->index];
+                            conf = pconf[*(int *)(ngx_modules[i]->ctx)];
                         }
                     }
 

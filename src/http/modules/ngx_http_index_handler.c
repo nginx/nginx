@@ -35,13 +35,13 @@ static ngx_command_t ngx_http_index_commands[] = {
 
 
 ngx_http_module_t  ngx_http_index_module_ctx = {
+    NGX_HTTP_MODULE,
+
     NULL,                                  /* create server config */
     NULL,                                  /* init server config */
 
     ngx_http_index_create_conf,            /* create location config */
-    ngx_http_index_merge_conf,             /* merge location config */
-
-    NULL                                   /* init filters */
+    ngx_http_index_merge_conf              /* merge location config */
 };
 
 
@@ -74,10 +74,10 @@ int ngx_http_index_handler(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t  *core_cf;
 
     cf = (ngx_http_index_conf_t *)
-                        ngx_http_get_module_loc_conf(r, ngx_http_index_module);
+                    ngx_http_get_module_loc_conf(r, ngx_http_index_module_ctx);
 
     core_cf = (ngx_http_core_loc_conf_t *)
-                         ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+                     ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
 
     ngx_test_null(r->path.data,
                   ngx_palloc(r->pool,

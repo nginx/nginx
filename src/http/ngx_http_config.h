@@ -19,18 +19,19 @@ typedef struct {
 
 
 typedef struct {
+    int      index;
+
     void  *(*create_srv_conf)(ngx_pool_t *p);
     char  *(*init_srv_conf)(ngx_pool_t *p, void *conf);
 
     void  *(*create_loc_conf)(ngx_pool_t *p);
     char  *(*merge_loc_conf)(ngx_pool_t *p, void *prev, void *conf);
-
-    void   (*init_filters) (ngx_pool_t *p, ngx_http_conf_filter_t *cf);
 } ngx_http_module_t;
 
 
 #define NGX_HTTP_MODULE_TYPE      0x50545448   /* "HTTP" */
 
+#define NGX_HTTP_MODULE           0
 
 #define NGX_HTTP_MAIN_CONF        0x1000000
 #define NGX_HTTP_SRV_CONF         0x2000000

@@ -16,30 +16,29 @@
 static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool);
 static char *ngx_http_write_filter_merge_conf(ngx_pool_t *pool,
                                               void *parent, void *child);
-static void ngx_http_write_filter_init(ngx_pool_t *pool,
-                                       ngx_http_conf_filter_t *cf);
+static int ngx_http_write_filter_init(ngx_pool_t *pool);
 
 
 static ngx_command_t ngx_http_write_filter_commands[] = {
 
-    {ngx_string("write_buffer"),
+    {ngx_string("buffer_output"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_write_filter_conf_t, buffer_output)},
 
-    {ngx_string(""), 0, NULL, 0, 0}
+    {ngx_null_string, 0, NULL, 0, 0}
 };
 
 
 ngx_http_module_t  ngx_http_write_filter_module_ctx = {
+    NGX_HTTP_MODULE,
+
     NULL,                                  /* create server config */
     NULL,                                  /* init server config */
 
     ngx_http_write_filter_create_conf,     /* create location config */
-    ngx_http_write_filter_merge_conf,      /* merge location config */
-
-    ngx_http_write_filter_init             /* init filters */
+    ngx_http_write_filter_merge_conf       /* merge location config */
 };
 
 
@@ -48,24 +47,24 @@ ngx_module_t  ngx_http_write_filter_module = {
     &ngx_http_write_filter_module_ctx,     /* module context */
     ngx_http_write_filter_commands,        /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
-    NULL                                   /* init module */
+    ngx_http_write_filter_init             /* init module */
 };
 
 
 int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    int                           last;
-    off_t                         size, flush;
-    ngx_chain_t                  *ce, **le, *chain;
-    ngx_http_write_filter_ctx_t  *ctx;
-    ngx_http_write_filter_conf_t *conf;
+    int                            last;
+    off_t                          size, flush;
+    ngx_chain_t                   *ce, **le, *chain;
+    ngx_http_write_filter_ctx_t   *ctx;
+    ngx_http_write_filter_conf_t  *conf;
 
 
     ctx = (ngx_http_write_filter_ctx_t *)
                      ngx_http_get_module_ctx(r->main ? r->main : r,
-                                             ngx_http_write_filter_module);
+                                             ngx_http_write_filter_module_ctx);
     if (ctx == NULL) {
-        ngx_http_create_ctx(r, ctx, ngx_http_write_filter_module,
+        ngx_http_create_ctx(r, ctx, ngx_http_write_filter_module_ctx,
                             sizeof(ngx_http_write_filter_ctx_t), NGX_ERROR);
     }
 
@@ -73,7 +72,8 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     last = 0;
     le = &ctx->out;
 
-    /* find the size, the flush point and the last entry of saved chain */
+    /* find the size, the flush point and the last entry of the saved chain */
+
     for (ce = ctx->out; ce; ce = ce->next) {
         le = &ce->next;
 
@@ -93,6 +93,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     /* add the new chain to the existent one */
+
     for (/* void */; in; in = in->next) {
         ngx_test_null(ce, ngx_palloc(r->pool, sizeof(ngx_chain_t)), NGX_ERROR);
 
@@ -118,7 +119,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     conf = (ngx_http_write_filter_conf_t *)
                 ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                             ngx_http_write_filter_module);
+                                             ngx_http_write_filter_module_ctx);
 
 #if (NGX_DEBUG_WRITE_FILTER)
     ngx_log_debug(r->connection->log, "write filter: last:%d flush:%d" _
@@ -126,7 +127,8 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #endif
 
     /* avoid the output if there is no last hunk, no flush point and
-       size of the hunks is smaller then 'write_buffer' */
+       size of the hunks is smaller then "buffer_output" */
+
     if (!last && flush == 0 && size < conf->buffer_output) {
         return NGX_OK;
     }
@@ -149,13 +151,6 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     } else {
         return NGX_AGAIN;
     }
-}
-
-
-static void ngx_http_write_filter_init(ngx_pool_t *pool,
-                                       ngx_http_conf_filter_t *cf)
-{
-    cf->output_body_filter = ngx_http_write_filter;
 }
 
 
@@ -186,3 +181,10 @@ static char *ngx_http_write_filter_merge_conf(ngx_pool_t *pool,
     return NULL;
 }
 
+
+static int ngx_http_write_filter_init(ngx_pool_t *pool)
+{
+    ngx_http_top_body_filter = ngx_http_write_filter;
+
+    return NGX_OK;
+}

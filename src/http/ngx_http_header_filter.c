@@ -14,8 +14,7 @@
 #include <ngx_http_write_filter.h>
 
 
-static void ngx_http_header_filter_init(ngx_pool_t *pool,
-                                        ngx_http_conf_filter_t *cf);
+static int ngx_http_header_filter_init(ngx_pool_t *pool);
 static int ngx_http_header_filter(ngx_http_request_t *r);
 
 
@@ -26,7 +25,7 @@ ngx_http_module_t  ngx_http_header_filter_module_ctx = {
     NULL,                                  /* create location config */
     NULL,                                  /* merge location config */
 
-    ngx_http_header_filter_init            /* init filters */
+    NULL                                   /* init filters */
 };
 
 
@@ -35,7 +34,7 @@ ngx_module_t  ngx_http_header_filter_module = {
     &ngx_http_header_filter_module_ctx,    /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
-    NULL                                   /* init module */
+    ngx_http_header_filter_init            /* init module */
 };
 
 
@@ -294,8 +293,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 }
 
 
-static void ngx_http_header_filter_init(ngx_pool_t *pool,
-                                        ngx_http_conf_filter_t *cf)
+static int ngx_http_header_filter_init(ngx_pool_t *pool)
 {
-    cf->output_header_filter = ngx_http_header_filter;
+    ngx_http_top_header_filter = ngx_http_header_filter;
+    return NGX_OK;
 }

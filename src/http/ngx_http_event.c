@@ -238,12 +238,12 @@ static int ngx_http_process_request(ngx_event_t *rev)
             r->header_in->last += n;
         }
 
-        /* the state_handlers are called in the following order:
+        /* the state handlers are called in the following order:
             ngx_http_process_request_line(r)
             ngx_http_process_request_headers(r) */
 
         do {
-            rc = (r->state_handler)(r);
+            rc = r->state_handler(r);
 
         } while (rc == NGX_AGAIN && r->header_in->pos < r->header_in->last);
 
@@ -265,8 +265,8 @@ static int ngx_http_process_request(ngx_event_t *rev)
 
         rc = ngx_http_handler(r);
 
-        /* a handler is still busy */
-        if (rc == NGX_BUSY) {
+        /* a handler does its own processing */
+        if (rc == NGX_DONE) {
             return rc;
         }
 
@@ -310,6 +310,14 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
 
     if (rc == NGX_OK) {
 
+        if (r->http_version >= NGX_HTTP_VERSION_10
+            && ngx_http_large_client_header == 0
+            && r->header_in->pos == r->header_in->end)
+        {
+            ngx_http_header_parse_error(r, NGX_HTTP_PARSE_TOO_LONG_URI);
+            return NGX_HTTP_REQUEST_URI_TOO_LARGE;
+        }
+
         /* copy URI */
 
         if (r->args_start) {
@@ -329,7 +337,6 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
            we need to copy a request line */
 
         if (ngx_http_large_client_header) {
-
             ngx_test_null(r->request_line.data,
                           ngx_palloc(r->pool, r->request_line.len + 1),
                           NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -651,8 +658,8 @@ int ngx_http_finalize_request(ngx_http_request_t *r, int error)
                   but the transfer is still not completed */
 
     lcf = (ngx_http_core_loc_conf_t *)
-                            ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                                         ngx_http_core_module);
+                        ngx_http_get_module_loc_conf(r->main ? r->main : r,
+                                                     ngx_http_core_module_ctx);
     wev = r->connection->write;
     wev->event_handler = ngx_http_writer;
     wev->timer_set = 1;
@@ -725,8 +732,8 @@ static int ngx_http_writer(ngx_event_t *wev)
     if (rc == NGX_AGAIN) {
 
         lcf = (ngx_http_core_loc_conf_t *)
-                            ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                                         ngx_http_core_module);
+                        ngx_http_get_module_loc_conf(r->main ? r->main : r,
+                                                     ngx_http_core_module_ctx);
         if (wev->timer_set) {
             ngx_del_timer(wev);
         } else {
@@ -824,7 +831,7 @@ static int ngx_http_read_discarded_body(ngx_event_t *ev)
     r = (ngx_http_request_t *) c->data;
 
     lcf = (ngx_http_core_loc_conf_t *)
-                         ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+                     ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
 
     if (r->discarded_buffer == NULL) {
         ngx_test_null(r->discarded_buffer,
@@ -944,7 +951,7 @@ static int ngx_http_keepalive_handler(ngx_event_t *rev)
     ngx_log_debug(c->log, "http keepalive handler");
 
     if (rev->timedout) {
-        return NGX_DONE;
+        return NGX_ERROR;  /* to close connection */
     }
 
     /* MSIE closes a keepalive connection with RST flag
@@ -965,7 +972,7 @@ static int ngx_http_keepalive_handler(ngx_event_t *rev)
     if (n == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, ngx_socket_errno,
                       "client %s closed keepalive connection", lctx->client);
-        return NGX_DONE;
+        return NGX_ERROR;  /* to close connection */
     }
 
     c->buffer->last += n;
@@ -986,7 +993,7 @@ static int ngx_http_set_lingering_close(ngx_http_request_t *r)
     rev = c->read;
 
     lcf = (ngx_http_core_loc_conf_t *)
-                         ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+                     ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
 
     r->lingering_time = ngx_time() + lcf->lingering_time / 1000;
     r->connection->read->event_handler = ngx_http_lingering_close_handler;
@@ -1063,7 +1070,7 @@ static int ngx_http_lingering_close_handler(ngx_event_t *rev)
     }
 
     lcf = (ngx_http_core_loc_conf_t *)
-                         ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+                     ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
 
     if (r->discarded_buffer == NULL) {
 

@@ -147,6 +147,7 @@ struct ngx_http_request_s {
     ngx_str_t   path;
     int         path_err;
 
+    unsigned  proxy:1;
     unsigned  pipeline:1;
     unsigned  keepalive:1;
     unsigned  lingering_close:1;
@@ -249,6 +250,9 @@ extern int  ngx_http_url_in_error_log;
 
 extern ngx_array_t  ngx_http_translate_handlers;
 extern ngx_array_t  ngx_http_index_handlers;
+
+extern int (*ngx_http_top_header_filter) (ngx_http_request_t *r);
+extern int (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
 
 /* STUB */

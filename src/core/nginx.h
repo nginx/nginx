@@ -5,6 +5,7 @@
 #define  NGINX_VER  "nginx/0.0.1"
 
 
+extern int ngx_max_module;
 extern int ngx_connection_counter;
 
 

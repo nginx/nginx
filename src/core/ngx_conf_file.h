@@ -31,8 +31,8 @@
 #define NGX_CONF_FILE_DONE   2
 
 
-#define NGX_CORE_MODULE_TYPE 0x45524f43  /* "CORE" */
-#define NGX_CONF_MODULE_TYPE 0x464E4f43  /* "CONF" */
+#define NGX_CORE_MODULE_TYPE 0x45524F43  /* "CORE" */
+#define NGX_CONF_MODULE_TYPE 0x464E4F43  /* "CONF" */
 
 
 typedef struct ngx_conf_s  ngx_conf_t;
