@@ -71,11 +71,9 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
                                  int before, int after);
 
 #define ngx_alloc_hunk(pool) ngx_palloc(pool, sizeof(ngx_hunk_t))
-#define ngx_alloc_chain_entry(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
+#define ngx_calloc_hunk(pool) ngx_pcalloc(pool, sizeof(ngx_hunk_t))
 
-/* STUB */
-#define ngx_create_chain_entry(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
-/**/
+#define ngx_alloc_chain_entry(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
 
 #define ngx_add_hunk_to_chain(chain, h, pool, error)                         \
             do {                                                             \

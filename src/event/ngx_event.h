@@ -5,17 +5,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-#if 0
-#include <ngx_types.h>
-#include <ngx_time.h>
-#include <ngx_socket.h>
-#include <ngx_log.h>
-#include <ngx_alloc.h>
-#include <ngx_array.h>
-#include <ngx_conf_file.h>
-#endif
-
-
 
 #define NGX_INVALID_INDEX  0x80000000
 
@@ -309,10 +298,6 @@ extern ngx_event_type_e      ngx_event_type;
 extern int                   ngx_event_flags;
 #endif
 
-
-#if !(HAVE_EPOLL)
-#define  ngx_edge_add_event(ev)  NGX_ERROR
-#endif
 
 
 #define NGX_EVENT_MODULE      0x544E5645  /* "EVNT" */

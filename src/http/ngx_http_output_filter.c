@@ -1,15 +1,20 @@
 
 #include <ngx_config.h>
-
 #include <ngx_core.h>
-#include <ngx_files.h>
-#include <ngx_string.h>
-#include <ngx_hunk.h>
-#include <ngx_conf_file.h>
-
 #include <ngx_http.h>
-#include <ngx_http_config.h>
-#include <ngx_http_output_filter.h>
+
+
+typedef struct {
+    size_t        hunk_size;
+} ngx_http_output_filter_conf_t;
+
+
+typedef struct {
+    ngx_hunk_t   *hunk;         /* the temporary hunk to copy */
+    ngx_chain_t  *incoming;
+    ngx_chain_t   in;           /* one chain entry for input */
+    ngx_chain_t   out;          /* one chain entry for output */
+} ngx_http_output_filter_ctx_t;
 
 
 static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src);

@@ -2,10 +2,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <ngx_http_config.h>
-#include <ngx_http_core_module.h>
-#include <ngx_http_output_filter.h>
-
 
 
 int ngx_http_static_handler(ngx_http_request_t *r)
@@ -32,7 +28,8 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     ctx->action = "sending response";
 
     if (r->file.fd == NGX_INVALID_FILE) {
-        r->file.fd = ngx_open_file(r->file.name.data, NGX_FILE_RDONLY);
+        r->file.fd = ngx_open_file(r->file.name.data,
+                                   NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
         if (r->file.fd == NGX_INVALID_FILE) {
             err = ngx_errno;
@@ -129,6 +126,10 @@ int ngx_http_static_handler(ngx_http_request_t *r)
 
 
     rc = ngx_http_send_header(r);
+    if (rc == NGX_ERROR || rc > NGX_OK) {
+        ngx_http_finalize_request(r, rc);
+        return NGX_OK;
+    }
 
     if (r->header_only) {
         if (rc == NGX_AGAIN) {

@@ -40,6 +40,7 @@
 
 
 #define NGX_HTTP_OK                     200
+#define NGX_HTTP_PARTIAL_CONTENT        206
 
 #define NGX_HTTP_SPECIAL_RESPONSE       300
 #define NGX_HTTP_MOVED_PERMANENTLY      301
@@ -52,6 +53,7 @@
 #define NGX_HTTP_NOT_ALLOWED            405
 #define NGX_HTTP_REQUEST_TIME_OUT       408
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE  414
+#define NGX_HTTP_RANGE_NOT_SATISFIABLE  416
 
 #define NGX_HTTP_INTERNAL_SERVER_ERROR  500
 #define NGX_HTTP_NOT_IMPLEMENTED        501
@@ -79,6 +81,8 @@ typedef struct {
     ngx_table_elt_t  *connection;
     ngx_table_elt_t  *if_modified_since;
     ngx_table_elt_t  *content_length;
+    ngx_table_elt_t  *range;
+
     ngx_table_elt_t  *accept_encoding;
 
     ngx_table_elt_t  *user_agent;
@@ -100,6 +104,13 @@ typedef struct {
 
 
 typedef struct {
+    off_t      start;
+    off_t      end;
+    ngx_str_t  content_range;
+} ngx_http_range_t;
+
+
+typedef struct {
     int               status;
     ngx_str_t         status_line;
 
@@ -108,11 +119,14 @@ typedef struct {
     ngx_table_elt_t  *content_type;
     ngx_table_elt_t  *location;
     ngx_table_elt_t  *last_modified;
+    ngx_table_elt_t  *content_range;
+
+    ngx_str_t         charset;
+    ngx_array_t       ranges;
 
     ngx_table_t      *headers;
 
     off_t             content_length;
-    char             *charset;
     char             *etag;
     time_t            date_time;
     time_t            last_modified_time;
@@ -140,7 +154,7 @@ struct ngx_http_request_s {
 
     int  (*handler)(ngx_http_request_t *r);
 
-    time_t  lingering_time;
+    time_t               lingering_time;
 
     int                  method;
     int                  http_version;
@@ -161,46 +175,44 @@ struct ngx_http_request_s {
     ngx_str_t           *server_name;
     ngx_array_t         *virtual_names;
 
-    int         filter;
 
-    char       *discarded_buffer;
+    char                *discarded_buffer;
 
-    ngx_str_t   path;
-    int         path_err;
+    ngx_str_t            path;
+    int                  path_err;
 
-    unsigned  proxy:1;
-    unsigned  cachable:1;
-    unsigned  pipeline:1;
-    unsigned  keepalive:1;
-    unsigned  lingering_close:1;
+    /* URI is not started with '/' - "GET http://" */
+    unsigned             unusual_uri:1;
+    /* URI with "/.", "%" and on Win32 with "//" */
+    unsigned             complex_uri:1;
+    unsigned             header_timeout_set:1;
 
-    unsigned  header_read:1;
-    unsigned  header_timeout_set:1;
-
-    unsigned  logging:1;
-
-    unsigned  header_only:1;
-    unsigned  unusual_uri:1;  /* URI is not started with '/' - "GET http://" */
-    unsigned  complex_uri:1;  /* URI with "/." or with "//" (WIN32) */
-    unsigned  path_not_found:1;
-#ifdef NGX_EVENT
-    unsigned  write_level_event:1;
+    unsigned             proxy:1;
+#if 0
+    unsigned             cachable:1;
 #endif
+    unsigned             pipeline:1;
 
-    int    state;
-    char  *uri_start;
-    char  *uri_end;
-    char  *uri_ext;
-    char  *args_start;
-    char  *request_start;
-    char  *request_end;
-    char  *header_name_start;
-    char  *header_name_end;
-    char  *header_start;
-    char  *header_end;
-#ifdef NGX_EVENT
-    int  (*state_handler)(ngx_http_request_t *r);
-#endif
+    unsigned             chunked:1;
+    unsigned             header_only:1;
+    unsigned             keepalive:1;
+    unsigned             lingering_close:1;
+
+    /* TODO: use filter or bits ???? */
+    int                  filter;
+
+    /* used to parse HTTP headers */
+    int                  state;
+    char                *uri_start;
+    char                *uri_end;
+    char                *uri_ext;
+    char                *args_start;
+    char                *request_start;
+    char                *request_end;
+    char                *header_name_start;
+    char                *header_name_end;
+    char                *header_start;
+    char                *header_end;
 };
 
 

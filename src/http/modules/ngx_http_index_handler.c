@@ -1,5 +1,16 @@
 
-#include <ngx_http_index_handler.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
+
+
+typedef struct {
+    ngx_array_t  indices;
+    size_t       max_index_len;
+} ngx_http_index_conf_t;
+
+
+#define NGX_HTTP_DEFAULT_INDEX   "index.html"
 
 
 static int ngx_http_index_test_dir(ngx_http_request_t *r);
@@ -14,7 +25,7 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_command_t ngx_http_index_commands[] = {
 
     {ngx_string("index"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_ANY1,
+     NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
      ngx_http_index_set_index,
      NGX_HTTP_LOC_CONF_OFFSET,
      0,
@@ -46,8 +57,8 @@ ngx_module_t  ngx_http_index_module = {
 
 
 /*
-   Try to open first index file before the test of the directory existence
-   because the valid requests should be many more then invalid ones.
+   Try to open the first index file before the directory existence test
+   because the valid requests should be many more than invalid ones.
    If open() failed then stat() should be more quickly because some data
    is already cached in the kernel.
    Besides Win32 has ERROR_PATH_NOT_FOUND (NGX_ENOTDIR).
@@ -57,7 +68,7 @@ ngx_module_t  ngx_http_index_module = {
 
 int ngx_http_index_handler(ngx_http_request_t *r)
 {
-    int                        i, rc, test_dir;
+    int                        i, rc, test_dir, path_not_found;
     char                      *name, *file;
     ngx_str_t                  redirect, *index;
     ngx_err_t                  err;
@@ -80,6 +91,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
     r->path.len = file - r->path.data;
 
     test_dir = 1;
+    path_not_found = 1;
 
     index = icf->indices.elts;
     for (i = 0; i < icf->indices.nelts; i++) {
@@ -92,7 +104,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
             name = index[i].data;
         }
 
-        fd = ngx_open_file(name, NGX_FILE_RDONLY);
+        fd = ngx_open_file(name, NGX_FILE_RDONLY, NGX_FILE_OPEN);
         if (fd == NGX_INVALID_FILE) {
             err = ngx_errno;
 
@@ -100,7 +112,7 @@ ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
               "DEBUG: " ngx_open_file_n " %s failed", name);
 
             if (err == NGX_ENOTDIR) {
-                r->path_not_found = 1;
+                path_not_found = 1;
 
             } else if (err == NGX_EACCES) {
                 r->path_err = err;
@@ -108,7 +120,7 @@ ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
             }
 
             if (test_dir) {
-                if (r->path_not_found) {
+                if (path_not_found) {
                     r->path_err = err;
                     return NGX_HTTP_NOT_FOUND;
                 }

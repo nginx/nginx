@@ -18,6 +18,7 @@ typedef struct ngx_event_s       ngx_event_t;
 #include <ngx_array.h>
 #include <ngx_string.h>
 #include <ngx_file.h>
+#include <ngx_inet.h>
 #include <ngx_conf_file.h>
 #include <ngx_os_init.h>
 #include <ngx_connection.h>

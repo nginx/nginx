@@ -1,16 +1,17 @@
 
 #include <ngx_config.h>
-
 #include <ngx_core.h>
-#include <ngx_hunk.h>
-#include <ngx_conf_file.h>
-#include <ngx_connection.h>
-
-#include <ngx_event_write.h>
-
 #include <ngx_http.h>
-#include <ngx_http_config.h>
-#include <ngx_http_write_filter.h>
+
+
+typedef struct {
+    size_t        buffer_output;
+} ngx_http_write_filter_conf_t;
+
+
+typedef struct {
+    ngx_chain_t  *out;
+} ngx_http_write_filter_ctx_t;
 
 
 static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool);
@@ -96,7 +97,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     /* add the new chain to the existent one */
 
     for (/* void */; in; in = in->next) {
-        ngx_test_null(ce, ngx_palloc(r->pool, sizeof(ngx_chain_t)), NGX_ERROR);
+        ngx_test_null(ce, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
 
         ce->hunk = in->hunk;
         ce->next = NULL;

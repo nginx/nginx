@@ -1,10 +1,8 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-
-#include <nginx.h>
-
 #include <ngx_event.h>
+#include <nginx.h>
 
 
 void ngx_event_accept(ngx_event_t *ev)
@@ -30,9 +28,11 @@ void ngx_event_accept(ngx_event_t *ev)
 
     do {
 
-        /* Create the pool before accept() to avoid copy the sockaddr.
-           Although accept() can fail it's uncommon case
-           and the pool can be got from the free pool list */
+        /*
+         * Create the pool before accept() to avoid copy the sockaddr.
+         * Although accept() can fail it's uncommon case
+         * and the pool can be got from the free pool list
+         */
 
         pool = ngx_create_pool(ls->pool_size, ev->log);
         if (pool == NULL) {
@@ -168,7 +168,7 @@ void ngx_event_accept(ngx_event_t *ev)
         ngx_memcpy(c->log, ev->log, sizeof(ngx_log_t));
         rev->log = wev->log = c->log;
 
-        /* STUB: x86: MT: lock xadd, MP: lock xadd, shared */
+        /* TODO: x86: MT: lock xadd, MP: lock xadd, shared */
         c->number = ngx_connection_counter++;
 
         ngx_log_debug(ev->log, "accept: %d, %d" _ s _ c->number);

@@ -1,11 +1,8 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-
-#include <nginx.h>
-
 #include <ngx_http.h>
-#include <ngx_http_write_filter.h>
+#include <nginx.h>
 
 
 static int ngx_http_header_filter_init(ngx_pool_t *pool);
@@ -52,7 +49,11 @@ static ngx_str_t http_codes[] = {
 #endif
 
     ngx_string("301 Moved Permanently"),
+#if 0
     ngx_string("302 Moved Temporarily"),
+#else
+    ngx_string("302 Found"),
+#endif
     ngx_null_string,  /* "303 See Other" */
     ngx_string("304 Not Modified"),
 
@@ -87,11 +88,12 @@ static ngx_str_t http_codes[] = {
 
 static int ngx_http_header_filter(ngx_http_request_t *r)
 {
-    int               len, status, text, i;
-    time_t            ims;
-    ngx_hunk_t       *h;
-    ngx_chain_t      *ch;
-    ngx_table_elt_t  *header;
+    int                len, status, i;
+    time_t             ims;
+    ngx_hunk_t        *h;
+    ngx_chain_t       *ch;
+    ngx_table_elt_t   *header;
+    ngx_http_range_t  *range;
 
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
@@ -170,20 +172,23 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         len += 37;
     }
 
+    if (r->headers_out.content_range && r->headers_out.content_range->value.len)
+    {
+        len += 15 + r->headers_out.content_range->value.len + 2;
+    }
+
     if (r->headers_out.content_length >= 0) {
         /* "Content-Length: ... \r\n", 2^64 is 20 characters */
         len += 48;
     }
 
-    text = 0;
     if (r->headers_out.content_type && r->headers_out.content_type->value.len) {
         r->headers_out.content_type->key.len = 0;
         len += 16 + r->headers_out.content_type->value.len;
-        if (ngx_strncasecmp(r->headers_out.content_type->value.data,
-                                                            "text/", 5) == 0) {
-            text = 1;
-            /* "; charset=koi8-r" */
-            len += 16;
+
+        if (r->headers_out.charset.len) {
+            /* "; charset= ... " */
+            len += 10 + r->headers_out.charset.len;
         }
     }
 
@@ -208,6 +213,11 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     } else if (r->headers_out.last_modified_time != -1) {
         /* "Last-Modified: ... \r\n" */
         len += 46;
+    }
+
+    if (r->chunked) {
+        /* "Transfer-Encoding: chunked\r\n" */
+        len += 28;
     }
 
     if (r->keepalive == 0) {
@@ -253,6 +263,15 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         *(h->last++) = CR; *(h->last++) = LF;
     }
 
+
+    if (r->headers_out.content_range && r->headers_out.content_range->value.len)
+    {
+        h->last = ngx_cpymem(h->last, "Content-Range: ", 15);
+        h->last = ngx_cpymem(h->last, r->headers_out.content_range->value.data,
+                             r->headers_out.content_range->value.len);
+        *(h->last++) = CR; *(h->last++) = LF;
+    }
+
     /* 2^64 is 20 characters  */
     if (r->headers_out.content_length >= 0) {
         h->last += ngx_snprintf(h->last, 49,
@@ -263,10 +282,12 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     if (r->headers_out.content_type && r->headers_out.content_type->value.len) {
         h->last = ngx_cpymem(h->last, "Content-Type: ", 14);
         h->last = ngx_cpymem(h->last, r->headers_out.content_type->value.data,
-                   r->headers_out.content_type->value.len);
+                             r->headers_out.content_type->value.len);
 
-        if (text) {
-            h->last = ngx_cpymem(h->last, "; charset=koi8-r", 16);
+        if (r->headers_out.charset.len) {
+            h->last = ngx_cpymem(h->last, "; charset=", 10);
+            h->last = ngx_cpymem(h->last, r->headers_out.charset.data,
+                                 r->headers_out.charset.len);
         }
 
         *(h->last++) = CR; *(h->last++) = LF;
@@ -297,6 +318,10 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         h->last += ngx_http_get_time(h->last,
                                          r->headers_out.last_modified_time);
         *(h->last++) = CR; *(h->last++) = LF;
+    }
+
+    if (r->chunked) {
+        h->last = ngx_cpymem(h->last, "Transfer-Encoding: chunked" CRLF, 28);
     }
 
     if (r->keepalive == 0) {

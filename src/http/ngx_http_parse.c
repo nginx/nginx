@@ -175,7 +175,7 @@ int ngx_parse_http_request_line(ngx_http_request_t *r)
             }
             break;
 
-        /* check "/." or "//" */
+        /* check "/.", "//", and "%" in URI */
         case sw_after_slash_in_uri:
             switch (ch) {
             case CR:
@@ -193,6 +193,7 @@ int ngx_parse_http_request_line(ngx_http_request_t *r)
                 state = sw_http_09;
                 break;
             case '.':
+            case '%':
                 r->complex_uri = 1;
                 state = sw_uri;
                 break;
@@ -211,7 +212,7 @@ int ngx_parse_http_request_line(ngx_http_request_t *r)
             }
             break;
 
-        /* check slash in URI */
+        /* check "/" and "%" in URI */
         case sw_check_uri:
             switch (ch) {
             case CR:
@@ -234,6 +235,10 @@ int ngx_parse_http_request_line(ngx_http_request_t *r)
             case '/':
                 r->uri_ext = NULL;
                 state = sw_after_slash_in_uri;
+                break;
+            case '%':
+                r->complex_uri = 1;
+                state = sw_uri;
                 break;
             case '?':
                 r->args_start = p;

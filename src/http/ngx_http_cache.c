@@ -1,11 +1,21 @@
 
 
+/*
+ * small file in malloc()ed memory, mmap()ed file, file descriptor only,
+ * file access time only (to estimate can pages pages still be in memory),
+ * translated URI (ngx_http_index_hanlder),
+ * compiled script (ngx_http_ssi_filter).
+ */
+
 
 #define NGX_HTTP_CACHE_ENTRY_DELETED  0x00000001
 #define NGX_HTTP_CACHE_ENTRY_MMAPED   0x00000002
 
 /* "/" -> "/index.html" in ngx_http_index_handler */
 #define NGX_HTTP_CACHE_ENTRY_URI      0x00000004
+
+/* complied script */
+#define NGX_HTTP_CACHE_ENTRY_SCRIPT   0x00000008
 
 #define NGX_HTTP_CACHE_FILTER_FLAGS   0xFFFF0000
 
@@ -42,7 +52,7 @@ int ngx_http_cache_get(ngx_http_cache_hash_t *cache_hash,
     int                           hi;
     ngx_http_cache_hash_entry_t  *entry;
 
-    h->crc = ngx_crc32(uri->data, uri->len);
+    h->crc = ngx_crc(uri->data, uri->len);
 
     hi = h->crc % cache_hash->size;
     entry = cache_hash[hi].elts;
@@ -60,4 +70,24 @@ int ngx_http_cache_get(ngx_http_cache_hash_t *cache_hash,
     }
 
     return NGX_ERROR;
+}
+
+
+/* 32-bit crc16 */
+
+int ngx_crc(char *data, size_t len)
+{
+    u_int32_t  sum;
+
+    for (sum = 0; len; len--) {
+        /*
+         * gcc 2.95.2 x86 compiles that operator into the single rol opcode.
+         * msvc 6.0sp2 compiles it into four opcodes.
+         */
+        sum = sum >> 1 | sum << 31;
+
+        sum += *data++;
+    }
+
+    return sum;
 }

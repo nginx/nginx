@@ -6,8 +6,6 @@
 #include <ngx_listen.h>
 
 #include <ngx_http.h>
-#include <ngx_http_output_filter.h>
-
 #include <nginx.h>
 
 
@@ -97,14 +95,18 @@ static ngx_command_t  ngx_http_core_commands[] = {
      NULL},
 
     {ngx_string("listen"),
+#if 0
      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+#else
+     NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+#endif
      ngx_set_listen,
      NGX_HTTP_SRV_CONF_OFFSET,
      0,
      NULL},
 
     {ngx_string("server_name"),
-     NGX_HTTP_SRV_CONF|NGX_CONF_ANY1,
+     NGX_HTTP_SRV_CONF|NGX_CONF_1MORE,
      ngx_set_server_name,
      NGX_HTTP_SRV_CONF_OFFSET,
      0,
@@ -195,11 +197,15 @@ ngx_module_t  ngx_http_core_module = {
 void ngx_http_handler(ngx_http_request_t *r)
 {
     int                        rc, i;
+    ngx_http_log_ctx_t        *lcx;
     ngx_http_handler_pt       *h;
     ngx_http_core_loc_conf_t  *clcf, **clcfp;
     ngx_http_core_srv_conf_t  *cscf;
 
     r->connection->unexpected_eof = 0;
+
+    lcx = r->connection->log->data;
+    lcx->action = NULL;
 
     r->keepalive = 1;
 
@@ -337,7 +343,8 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
 #else
 
     if (r->file.fd == NGX_INVALID_FILE) {
-        r->file.fd = ngx_open_file(r->file.name.data, NGX_FILE_RDONLY);
+        r->file.fd = ngx_open_file(r->file.name.data,
+                                   NGX_FILE_RDONLY, NGX_FILE_OPEN);
     }
 
     if (r->file.fd == NGX_INVALID_FILE) {
@@ -367,6 +374,8 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
                               r->file.name.data);
             }
 
+            r->file.fd = NGX_INVALID_FILE;
+
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
@@ -382,6 +391,8 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
                           ngx_close_file_n " \"%s\" failed", r->file.name.data);
         }
+
+        r->file.fd = NGX_INVALID_FILE;
 #endif
 
         /* BROKEN: need to include server name */
@@ -782,12 +793,13 @@ static char *ngx_http_core_merge_srv_conf(ngx_pool_t *pool,
     ngx_http_listen_t        *l;
     ngx_http_server_name_t   *n;
 
-    /* TODO: it does not merge, it init only */
+    /* TODO: it does not merge, it inits only */
 
     if (conf->listen.nelts == 0) {
         ngx_test_null(l, ngx_push_array(&conf->listen), NGX_CONF_ERROR);
         l->addr = INADDR_ANY;
-        l->port = 8000;
+        /* STUB: getuid() should be cached */
+        l->port = (getuid() == 0) ? 80 : 8000;
         l->family = AF_INET;
     }
 
@@ -871,8 +883,7 @@ static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
     int               i, key;
     ngx_http_type_t  *t;
 
-    ngx_conf_merge_str_value(conf->doc_root,
-                             prev->doc_root, "html");
+    ngx_conf_merge_str_value(conf->doc_root, prev->doc_root, "html");
 
     if (conf->types == NULL) {
         if (prev->types) {

@@ -1,8 +1,6 @@
 
-#include <nginx.h>
-
 #include <ngx_config.h>
-#include <ngx_types.h>
+#include <ngx_core.h>
 
 
 size_t ngx_http_get_time(char *buf, time_t t)

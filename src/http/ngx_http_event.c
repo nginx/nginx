@@ -1,21 +1,8 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_string.h>
-#include <ngx_files.h>
-#include <ngx_log.h>
-#include <ngx_alloc.h>
-#include <ngx_array.h>
-#include <ngx_table.h>
-#include <ngx_hunk.h>
-#include <ngx_connection.h>
 #include <ngx_event.h>
-#include <ngx_event_timer.h>
-#include <ngx_inet.h>
 #include <ngx_http.h>
-#include <ngx_http_config.h>
-#include <ngx_http_core_module.h>
-#include <ngx_http_output_filter.h>
 
 
 static void ngx_http_init_request(ngx_event_t *ev);
@@ -63,11 +50,12 @@ static ngx_http_header_t headers_in[] = {
     { ngx_string("Content-Length"),
                             offsetof(ngx_http_headers_in_t, content_length) },
 
+    { ngx_string("Range"), offsetof(ngx_http_headers_in_t, range) },
 #if 0
+    { ngx_string("If-Range"), offsetof(ngx_http_headers_in_t, if_range) },
+#endif
 
     { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent) },
-
-#endif
 
     { ngx_null_string, 0 }
 };
@@ -289,6 +277,13 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         /* the request line has been parsed successfully */
 
+        /* STUB: we need to handle such URIs */
+        if (r->complex_uri || r->unusual_uri) {
+            ngx_http_header_parse_error(r, NGX_HTTP_PARSE_INVALID_REQUEST);
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return;
+        }
+
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
         if (r->http_version >= NGX_HTTP_VERSION_10
@@ -402,7 +397,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         if (r->args.data[0] == '\0') { r->args.data = NULL; }
 #endif
 
-        if (r->http_version == NGX_HTTP_VERSION_9) {
+        if (r->http_version < NGX_HTTP_VERSION_10) {
             rev->event_handler = ngx_http_block_read;
             ngx_http_handler(r);
             return;
@@ -1436,9 +1431,14 @@ static size_t ngx_http_log_error(void *data, char *buf, size_t len)
 {
     ngx_http_log_ctx_t *ctx = (ngx_http_log_ctx_t *) data;
 
-    if (ctx->url) {
+    if (ctx->action && ctx->url) {
         return ngx_snprintf(buf, len, " while %s, client: %s, URL: %s",
                             ctx->action, ctx->client, ctx->url);
+
+    } else if (ctx->action == NULL && ctx->url) {
+        return ngx_snprintf(buf, len, ", client: %s, URL: %s",
+                            ctx->client, ctx->url);
+
     } else {
         return ngx_snprintf(buf, len, " while %s, client: %s",
                             ctx->action, ctx->client);

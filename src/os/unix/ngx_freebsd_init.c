@@ -9,6 +9,7 @@ int ngx_freebsd_kern_osreldate;
 int ngx_freebsd_hw_ncpu;
 int ngx_freebsd_net_inet_tcp_sendspace;
 int ngx_freebsd_sendfile_nbytes_bug;
+int ngx_freebsd_tcp_nopush_flush;
 
 /* FreeBSD 5.0 */
 int ngx_freebsd_kern_ipc_zero_copy_send;
@@ -39,6 +40,8 @@ sysctl_t sysctls[] = {
      &ngx_freebsd_net_inet_tcp_sendspace,
      sizeof(int)},
 
+     /* FreeBSD 5.0 */
+
     {"kern.ipc.zero_copy.send",
      &ngx_freebsd_kern_ipc_zero_copy_send,
      sizeof(int)},
@@ -49,7 +52,7 @@ sysctl_t sysctls[] = {
 
 int ngx_os_init(ngx_log_t *log)
 {
-    int        i;
+    int        i, version;
     size_t     size;
     ngx_err_t  err;
 
@@ -81,9 +84,11 @@ int ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
+    version = ngx_freebsd_kern_osreldate;
+
     ngx_log_error(NGX_LOG_INFO, log, 0,
                   "kern.osreldate: %d, built on %d",
-                  ngx_freebsd_kern_osreldate, __FreeBSD_version);
+                  version, __FreeBSD_version);
 
 
 #if (HAVE_FREEBSD_SENDFILE)
@@ -91,12 +96,12 @@ int ngx_os_init(ngx_log_t *log)
     /* The determination of the sendfile() nbytes bug is complex enough.
        There're two sendfile() syscalls: a new 393 has no bug while
        an old 336 has the bug in some versions and has not in others.
-       libc_r wrapper also emulates the bug in some versions.
+       Besides libc_r wrapper also emulates the bug in some versions.
        There's no way to say exactly if a given FreeBSD version has bug.
-       Here is the algorithm that work at least for RELEASEs
+       Here is the algorithm that works at least for RELEASEs
        and for syscalls only (not libc_r wrapper). */
 
-    /* detect was the new sendfile() version available at the compile time
+    /* detect the new sendfile() version available at the compile time
        to allow an old binary to run correctly on an updated FreeBSD system. */
 
 #if (__FreeBSD__ == 4 && __FreeBSD_version >= 460102) \
@@ -113,6 +118,11 @@ int ngx_os_init(ngx_log_t *log)
 #endif
 
 #endif /* HAVE_FREEBSD_SENDFILE */
+
+
+    if ((version < 500000 && version >= 440003) || version >= 500017) {
+        ngx_freebsd_tcp_nopush_flush = 1;
+    }
 
 
     for (i = 0; sysctls[i].name; i++) {

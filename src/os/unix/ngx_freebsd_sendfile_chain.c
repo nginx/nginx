@@ -13,9 +13,9 @@
    and the first part of the file in one packet but also sends 4K pages
    in the full packets.
 
-   The turning TCP_NOPUSH off flushes any pending data at least in FreeBSD 4.2,
-   although there's special fix in src/sys/netinet/tcp_usrreq.c just before
-   FreeBSD 4.5.
+   Until FreeBSD 4.5 the turning TCP_NOPUSH off does not not flush
+   the pending data that less than MSS and the data sent with 5 second delay.
+   So we use TCP_NOPUSH on FreeBSD 4.5+ only.
 */
 
 
@@ -105,14 +105,15 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         if (file) {
 
-            if (tcp_nopush == 0) {
+            if (!c->tcp_nopush && ngx_freebsd_tcp_nopush_flush) {
+                c->tcp_nopush = 1;
                 tcp_nopush = 1;
                 if (setsockopt(c->fd, IPPROTO_TCP, TCP_NOPUSH,
                                (const void *) &tcp_nopush,
                                sizeof(int)) == -1)
                 {
                     ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
-                                  "setsockopt(TCP_NO_PUSH) failed");
+                                  "setsockopt(TCP_NOPUSH) failed");
                     return NGX_CHAIN_ERROR;
                 }
             }
@@ -221,14 +222,18 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
     } while ((tail && tail == ce) || eintr);
 
-    if (tcp_nopush == 1) {
+    /* STUB: should be in app code, no need to clear TCP_NOPUSH
+             if the conneciton close()d or shutdown()ed */
+
+    if (c->tcp_nopush) {
+        c->tcp_nopush = 0;
         tcp_nopush = 0;
         if (setsockopt(c->fd, IPPROTO_TCP, TCP_NOPUSH,
                        (const void *) &tcp_nopush,
                        sizeof(int)) == -1)
         {
             ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
-                          "setsockopt(!TCP_NO_PUSH) failed");
+                          "setsockopt(!TCP_NOPUSH) failed");
             return NGX_CHAIN_ERROR;
         }
     }

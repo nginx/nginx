@@ -24,7 +24,7 @@
 #define NGX_CONF_TAKE2       0x00000004
 #define NGX_CONF_ARGS_NUMBER 0x0000ffff
 #define NGX_CONF_ANY         0x00010000
-#define NGX_CONF_ANY1        0x00020000
+#define NGX_CONF_1MORE       0x00020000
 #define NGX_CONF_BLOCK       0x00040000
 #define NGX_CONF_FLAG        0x00080000
 

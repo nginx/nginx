@@ -18,13 +18,20 @@
 
 
 
-#define ngx_open_file(name, flags)                                          \
+#define ngx_open_file(name, access, create)                                 \
             CreateFile(name, flags,                                         \
                        FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,  \
-                       NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL)
+                       NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL)
 /*
                        NULL, OPEN_EXISTING, 0, NULL)
 */
+#define ngx_open_file_n             "CreateFile()"
+
+#define NGX_FILE_RDONLY             GENERIC_READ
+#define NGX_FILE_RDWR               GENERIC_READ|GENERIC_WRITE
+#define NGX_FILE_CREATE_OR_OPEN     OPEN_ALWAYS
+#define NGX_FILE_OPEN               OPEN_EXISTING
+
 
 #define ngx_open_tempfile(name, persistent)                                 \
             CreateFile(name,                                                \
@@ -39,10 +46,6 @@
 #define ngx_open_tempfile_n         "CreateFile()"
 
 
-
-#define ngx_open_file_n             "CreateFile()"
-
-#define NGX_FILE_RDONLY             GENERIC_READ
 
 #define ngx_close_file              CloseHandle
 #define ngx_close_file_n            "CloseHandle()"

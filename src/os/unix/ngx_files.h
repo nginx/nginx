@@ -15,20 +15,29 @@
 
 
 
-#define ngx_open_file            open
+#define ngx_open_file(name, access, create)                                 \
+                                 open(name, access|create, 0644)
 #define ngx_open_file_n          "open()"
+
+#define NGX_FILE_RDONLY          O_RDONLY
+#define NGX_FILE_RDWR            O_RDWR
+#define NGX_FILE_CREATE_OR_OPEN  O_CREAT
+#define NGX_FILE_OPEN            0
+#define NGX_FILE_APPEND          O_APPEND
+
 
 #define ngx_close_file           close
 #define ngx_close_file_n         "close()"
+
 
 #define ngx_open_tempfile(name, persistent)                                 \
                                  open(name, O_CREAT|O_EXCL|O_RDWR, 0600)
 #define ngx_open_tempfile_n      "open()"
 
+
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
 #define ngx_read_file_n          "read()"
 
-#define NGX_FILE_RDONLY          O_RDONLY
 
 ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
 

@@ -32,7 +32,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         /* open configuration file */
 
-        fd = ngx_open_file(filename->data, NGX_FILE_RDONLY);
+        fd = ngx_open_file(filename->data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
         if (fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
                           ngx_open_file_n " %s failed", filename->data);
@@ -142,7 +142,7 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                     if (cmd->type & argument_number[cf->args->nelts - 1]) {
                         valid = 1;
 
-                    } else if (cmd->type & NGX_CONF_ANY1) {
+                    } else if (cmd->type & NGX_CONF_1MORE) {
 
                         if (cf->args->nelts != 1) {
                             valid = 1;

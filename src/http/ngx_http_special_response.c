@@ -1,17 +1,22 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-
-#include <nginx.h>
-
 #include <ngx_http.h>
-#include <ngx_http_output_filter.h>
+#include <nginx.h>
 
 
 static char error_tail[] =
 "<hr><center>" NGINX_VER "</center>" CRLF
 "</body>" CRLF
 "</html>" CRLF
+;
+
+
+static char error_302_page[] =
+"<html>" CRLF
+"<head><title>302 Found</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>302 Found</h1></center>" CRLF
 ;
 
 
@@ -63,6 +68,14 @@ static char error_414_page[] =
 ;
 
 
+static char error_416_page[] =
+"<html>" CRLF
+"<head><title>416 Requested Range Not Satisfiable</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>416 Requested Range Not Satisfiable</h1></center>" CRLF
+;
+
+
 static char error_500_page[] =
 "<html>" CRLF
 "<head><title>500 Internal Server Error</title></head>" CRLF
@@ -88,8 +101,9 @@ static char error_504_page[] =
 
 
 static ngx_str_t error_pages[] = {
+    ngx_null_string,             /* 300 */
     ngx_null_string,             /* 301 */
-    ngx_null_string,             /* 302 */
+    ngx_string(error_302_page),
     ngx_null_string,             /* 303 */
 
     ngx_string(error_400_page),
@@ -108,7 +122,7 @@ static ngx_str_t error_pages[] = {
     ngx_null_string,             /* 413 */
     ngx_string(error_414_page),
     ngx_null_string,             /* 415 */
-    ngx_null_string,             /* 416 */
+    ngx_string(error_416_page),
 
     ngx_string(error_500_page),
     ngx_null_string,             /* 501 */
@@ -120,10 +134,8 @@ static ngx_str_t error_pages[] = {
 
 int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
-    int          err, len;
+    int          err;
     ngx_hunk_t  *message, *tail;
-
-    len = 0;
 
     r->headers_out.status = error;
 
@@ -131,24 +143,13 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         /* 3XX */
         err = error - NGX_HTTP_MOVED_PERMANENTLY;
 
+    } else if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
+        /* 4XX */
+        err = error - NGX_HTTP_BAD_REQUEST + 4;
+
     } else {
-        ngx_test_null(r->headers_out.content_type,
-                      ngx_push_table(r->headers_out.headers),
-                      NGX_HTTP_INTERNAL_SERVER_ERROR);
-
-        r->headers_out.content_type->key.len = 12;
-        r->headers_out.content_type->key.data = "Content-Type";
-        r->headers_out.content_type->value.len = 9;
-        r->headers_out.content_type->value.data = "text/html";
-
-        if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
-            /* 4XX */
-            err = error - NGX_HTTP_BAD_REQUEST + 3;
-
-        } else {
-            /* 5XX */
-            err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 3 + 17;
-        }
+        /* 5XX */
+        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 4 + 17;
     }
 
     if (r->keepalive != 0) {
@@ -169,11 +170,21 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         }
     }
 
-    if (error_pages[err].len == 0) {
-        r->headers_out.content_length = -1;
-    } else {
+    if (error_pages[err].len) {
         r->headers_out.content_length = error_pages[err].len
-                                        + len + sizeof(error_tail);
+                                        + sizeof(error_tail);
+
+        ngx_test_null(r->headers_out.content_type,
+                      ngx_push_table(r->headers_out.headers),
+                      NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+        r->headers_out.content_type->key.len = 12;
+        r->headers_out.content_type->key.data = "Content-Type";
+        r->headers_out.content_type->value.len = 9;
+        r->headers_out.content_type->value.data = "text/html";
+
+    } else {
+        r->headers_out.content_length = -1;
     }
 
     if (ngx_http_send_header(r) == NGX_ERROR) {
