@@ -89,7 +89,7 @@ ngx_module_t *ngx_modules[] = {
     /* &ngx_http_ssi_filter_module, */
     &ngx_http_charset_filter_module,
 
-    /* &ngx_http_static_module, */
+    &ngx_http_static_module,
     &ngx_http_index_module,
     &ngx_http_proxy_module,
 

@@ -765,7 +765,7 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
 {
     ngx_log_debug(r->connection->log, "finalize http request");
 
-    if (r->main || r->closed) {
+    if (rc == NGX_DONE || r->main || r->closed) {
         return;
     }
 

@@ -6,9 +6,6 @@
 #include <nginx.h>
 
 
-/* STUB */
-int ngx_http_static_handler(ngx_http_request_t *r);
-/**/
 
 static void ngx_http_phase_event_handler(ngx_event_t *rev);
 static void ngx_http_run_phases(ngx_http_request_t *r);
@@ -304,7 +301,6 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
         return;
     }
 
-    /* TODO: no handlers found ? */
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     return;
 }
@@ -346,163 +342,19 @@ ngx_log_debug(r->connection->log, "rc: %d" _ rc);
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    if ((ngx_io.flags & NGX_IO_SENDFILE) == 0 || clcf->sendfile == 0) {
+    if (!(ngx_io.flags & NGX_IO_SENDFILE) || !clcf->sendfile) {
         r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
     }
 
-    return NGX_OK;
-}
-
-
-int ngx_http_core_translate_handler(ngx_http_request_t *r)
-{
-    char                       *location, *last;
-    ngx_err_t                   err;
-    ngx_table_elt_t            *h;
-    ngx_http_core_srv_conf_t   *cscf;
-    ngx_http_core_loc_conf_t   *clcf;
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
     if (clcf->handler) {
+        /*
+         * if the location already has content handler then skip
+         * the translation phase
+         */
+
         r->content_handler = clcf->handler;
-        return NGX_OK;
+        r->phase++;
     }
-
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-    if (r->uri.data[r->uri.len - 1] == '/') {
-        if (r->path.data == NULL) {
-            ngx_test_null(r->path.data,
-                          ngx_palloc(r->pool,
-                                     clcf->doc_root.len + r->uri.len),
-                          NGX_HTTP_INTERNAL_SERVER_ERROR);
-
-            ngx_cpystrn(ngx_cpymem(r->path.data, clcf->doc_root.data,
-                                   clcf->doc_root.len),
-                        r->uri.data, r->uri.len + 1);
-
-        } else {
-            r->path.data[r->path.len] = '\0';
-        }
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "directory index of \"%s\" is forbidden", r->path.data);
-
-        return NGX_HTTP_FORBIDDEN;
-    }
-
-    /* "+ 2" is for trailing '/' in redirect and '\0' */
-    ngx_test_null(r->file.name.data,
-                  ngx_palloc(r->pool, clcf->doc_root.len + r->uri.len + 2),
-                  NGX_HTTP_INTERNAL_SERVER_ERROR);
-
-    location = ngx_cpymem(r->file.name.data, clcf->doc_root.data,
-                          clcf->doc_root.len),
-
-    last = ngx_cpystrn(location, r->uri.data, r->uri.len + 1);
-
-ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
-
-#if (WIN9X)
-
-    /*
-     * There is no way to open a file or a directory in Win9X with
-     * one syscall: Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag.
-     * so we need to check its type before the opening
-     */
-
-    r->file.info.dwFileAttributes = GetFileAttributes(r->file.name.data);
-    if (r->file.info.dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
-        err = ngx_errno;
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                      ngx_file_type_n " \"%s\" failed", r->file.name.data);
-
-        if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
-            return NGX_HTTP_NOT_FOUND;
-
-        } else if (err == NGX_EACCES) {
-            return NGX_HTTP_FORBIDDEN;
-
-        } else {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-    }
-
-#else
-
-    if (r->file.fd == NGX_INVALID_FILE) {
-        r->file.fd = ngx_open_file(r->file.name.data,
-                                   NGX_FILE_RDONLY, NGX_FILE_OPEN);
-    }
-
-    if (r->file.fd == NGX_INVALID_FILE) {
-        err = ngx_errno;
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
-                      ngx_open_file_n " \"%s\" failed", r->file.name.data);
-
-        if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
-            return NGX_HTTP_NOT_FOUND;
-
-        } else if (err == NGX_EACCES) {
-            return NGX_HTTP_FORBIDDEN;
-
-        } else {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-    }
-
-ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);
-
-    if (!r->file.info_valid) {
-        if (ngx_stat_fd(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          ngx_stat_fd_n " \"%s\" failed", r->file.name.data);
-
-            if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                              ngx_close_file_n " \"%s\" failed",
-                              r->file.name.data);
-            }
-
-            r->file.fd = NGX_INVALID_FILE;
-
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        r->file.info_valid = 1;
-    }
-#endif
-
-    if (ngx_is_dir(r->file.info)) {
-ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
-
-#if !(WIN9X)
-        if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                          ngx_close_file_n " \"%s\" failed", r->file.name.data);
-        }
-
-        r->file.fd = NGX_INVALID_FILE;
-#endif
-
-        /* BROKEN: need to include server name */
-
-        ngx_test_null(h, ngx_push_table(r->headers_out.headers),
-                      NGX_HTTP_INTERNAL_SERVER_ERROR);
-
-        *last++ = '/';
-        *last = '\0';
-        h->key.len = 8;
-        h->key.data = "Location" ;
-        h->value.len = last - location;
-        h->value.data = location;
-        r->headers_out.location = h;
-
-        return NGX_HTTP_MOVED_PERMANENTLY;
-    }
-
-    r->content_handler = ngx_http_static_handler;
 
     return NGX_OK;
 }
@@ -609,17 +461,14 @@ int ngx_http_delay_handler(ngx_http_request_t *r)
 
 static int ngx_http_core_init(ngx_cycle_t *cycle)
 {
+#if 0
     ngx_http_handler_pt        *h;
+#endif
     ngx_http_conf_ctx_t        *ctx;
     ngx_http_core_main_conf_t  *cmcf;
 
     ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
-
-    ngx_test_null(h, ngx_push_array(
-                             &cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers),
-                  NGX_ERROR);
-    *h = ngx_http_core_translate_handler;
 
 #if 0
     ngx_test_null(h, ngx_push_array(

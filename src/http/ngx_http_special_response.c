@@ -163,11 +163,11 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 
     } else if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
         /* 4XX */
-        err = error - NGX_HTTP_BAD_REQUEST + 4;
+        err = error - NGX_HTTP_BAD_REQUEST + 3;
 
     } else {
         /* 5XX */
-        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 4 + 17;
+        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 3 + 17;
     }
 
     if (r->keepalive != 0) {

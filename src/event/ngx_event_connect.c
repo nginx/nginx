@@ -220,6 +220,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
         return NGX_AGAIN;
     }
 
+    wev->ready = 1;
+
     if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
         return NGX_ERROR;
     }

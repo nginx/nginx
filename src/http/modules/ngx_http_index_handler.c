@@ -79,7 +79,7 @@ ngx_module_t  ngx_http_index_module = {
 
 int ngx_http_index_handler(ngx_http_request_t *r)
 {
-    int                        i, rc, test_dir, path_not_found;
+    int                        rc;
     char                      *name, *file;
     ngx_str_t                  redirect, *index;
     ngx_err_t                  err;
@@ -132,7 +132,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
 
         fd = ngx_open_file(name, NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
-        if (fd == NGX_AGAIN) {
+        if (fd == (ngx_fd_t) NGX_AGAIN) {
             return NGX_AGAIN;
         }
 

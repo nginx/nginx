@@ -9,21 +9,33 @@
 
 
 typedef struct {
-    ngx_msec_t    connect_timeout;
-    ngx_msec_t    send_timeout;
-    ssize_t       header_size;
-    ngx_msec_t    read_timeout;
+    ngx_str_t   host;
+    ngx_str_t   uri;
+    ngx_str_t  *location;
+    ngx_str_t   host_header;
+    ngx_str_t   port_text;
+    int         port;
+} ngx_http_proxy_upstream_t;
+
+
+typedef struct {
+    ngx_msec_t                  connect_timeout;
+    ngx_msec_t                  send_timeout;
+    ssize_t                     header_size;
+    ngx_msec_t                  read_timeout;
+
+    ngx_bufs_t                  bufs;
 
     /* STUB */
-    int           block_size;
-    int           max_block_size;
-    int           max_temp_file_size;
-    int           temp_file_write_size;
+    int                         max_busy_len;
+    int                         max_temp_file_size;
+    int                         temp_file_write_size;
     /* */
 
-    ngx_path_t   *temp_path;
+    ngx_path_t                 *temp_path;
 
-    ngx_peers_t  *peers;
+    ngx_http_proxy_upstream_t  *upstream;
+    ngx_peers_t                *peers;
 } ngx_http_proxy_loc_conf_t;
 
 

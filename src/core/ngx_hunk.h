@@ -85,9 +85,9 @@ typedef struct {
         (h->type == (h->type & (NGX_HUNK_FLUSH|NGX_HUNK_LAST)))
 
 
-#define nxg_hunk_size(h)                                                     \
-        (h->type & NGX_HUNK_IN_MEMORY) ? h->last - h->pos:                   \
-                                         (size_t) h->file_last - h->file_pos
+#define ngx_hunk_size(h)                                                     \
+        ((h->type & NGX_HUNK_IN_MEMORY) ? h->last - h->pos:                  \
+                                         (size_t) (h->file_last - h->file_pos))
 
 
 ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
@@ -108,14 +108,13 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
 #define ngx_alloc_ce_and_set_hunk  ngx_add_hunk_to_chain
 
 
-#define ngx_chain_add_ce(ngx_chain_t *chain, ngx_chain_t **last,             \
-                         ngx_chain_t *ce)                                    \
+#define ngx_chain_add_ce(chain, last, ce)                                    \
             if (chain) {                                                     \
-                last->next = ce;                                             \
+                *last = ce;                                                  \
             } else {                                                         \
                 chain = ce;                                                  \
             }                                                                \
-            last = ce;
+            last = &ce->next
 
 
 int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **ch, ngx_chain_t *in);

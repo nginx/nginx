@@ -10,40 +10,37 @@
 typedef struct ngx_event_proxy_s  ngx_event_proxy_t;
 
 typedef int (*ngx_event_proxy_input_filter_pt)(ngx_event_proxy_t *p,
-                                                          ngx_chain_t *chain);
+                                               ngx_hunk_t *hunk);
 typedef int (*ngx_event_proxy_output_filter_pt)(void *data, ngx_hunk_t *hunk);
 
 
 struct ngx_event_proxy_s {
-    ngx_chain_t       *read_hunks;
-    ngx_chain_t       *last_read_hunk;
+    ngx_chain_t       *free_raw_hunks;
+    ngx_chain_t       *in;
+    ngx_chain_t      **last_in;
 
-    ngx_chain_t       *file_hunks;
+    ngx_chain_t       *out;
+    ngx_chain_t      **last_out;
 
-    ngx_chain_t       *in_hunks;
-    ngx_chain_t       *last_in_hunk;
+    ngx_chain_t       *free;
+    ngx_chain_t       *busy;
 
-    ngx_chain_t       *out_hunks;
-    ngx_chain_t       *last_out_hunk;
+    /*
+     * the input filter i.e. that moves HTTP/1.1 chunks
+     * from the raw hunks to an incoming chain
+     */
 
-    ngx_chain_t       *free_hunks;
-#if 0
-    ngx_chain_t       *last_free_hunk;
-#endif
+    ngx_event_proxy_input_filter_pt    input_filter;
+    void                              *input_ctx;
 
-    ngx_hunk_t        *busy_hunk;
-
-    ngx_event_proxy_input_filter_pt   input_filter;
-    void              *input_data;
-
-    ngx_event_proxy_output_filter_pt  output_filter;
-    void              *output_data;
+    ngx_event_proxy_output_filter_pt   output_filter;
+    void                              *output_ctx;
 
     unsigned           cachable:1;
-    unsigned           block_upstream:1;
+    unsigned           upstream_done:1;
     unsigned           upstream_eof:1;
     unsigned           upstream_error:1;
-    unsigned           downstream_eof:1;
+    unsigned           downstream_done:1;
     unsigned           downstream_error:1;
 
     int                upstream_level;
@@ -51,6 +48,9 @@ struct ngx_event_proxy_s {
 
     int                hunks;
     ngx_bufs_t         bufs;
+
+    size_t             busy_len;
+    size_t             max_busy_len;
 
     off_t              temp_offset;
     off_t              max_temp_file_size;
@@ -63,9 +63,6 @@ struct ngx_event_proxy_s {
     ngx_log_t         *log;
 
     ngx_chain_t       *preread_hunks;
-#if 0
-    ngx_chain_t       *last_preread_hunk;
-#endif
     int                preread_size;
 
     ngx_file_t        *temp_file;
@@ -76,7 +73,7 @@ struct ngx_event_proxy_s {
 
 int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p);
 int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p);
-int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p, ngx_chain_t *chain);
+int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p, ngx_hunk_t *hunk);
 
 
 #endif /* _NGX_EVENT_PROXY_H_INCLUDED_ */
