@@ -242,12 +242,12 @@ static int ngx_http_process_request_header(ngx_event_t *ev)
             r->header_in->last.mem += n;
         }
 
-        /* state_handlers are called in following order:
+        /* the state_handlers are called in the following order:
             ngx_http_process_request_line(r)
             ngx_http_process_request_headers(r) */
 
         do {
-            /* state_handlers return NGX_OK when whole header done */
+            /* state_handlers return NGX_OK when the whole header done */
             rc = (r->state_handler)(r);
 
             if (rc == NGX_ERROR)
@@ -297,42 +297,9 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
 
     rc = ngx_read_http_request_line(r);
 
-    /* If it's a pipelined request and a request line is not complete
-       then we need to copy it to the start of r->header_in hunk.
-       We need to copy it here only if the large client headers are enabled
-       otherwise a request line had already copied to start
-       of r->header_in hunk in ngx_http_set_keepalive() */
-
-    if (ngx_http_large_client_header
-        && rc == NGX_AGAIN
-        && r->header_in->last.mem == r->header_in->end)
-    {
-        offset = r->request_start - r->header_in->start;
-
-        if (offset == 0) {
-            return ngx_http_header_parse_error(r, NGX_HTTP_PARSE_TOO_LONG_URI,
-                                               NGX_HTTP_REQUEST_URI_TOO_LARGE);
-        }
-
-        ngx_memcpy(r->header_in->start, r->request_start,
-                   r->header_in->last.mem - r->request_start);
-
-        r->header_in->pos.mem -= offset;
-        r->header_in->last.mem -= offset;
-        r->request_start = r->header_in->start;
-        r->request_end -= offset;
-        r->uri_start -= offset;
-        r->uri_end -= offset;
-        if (r->uri_ext) {
-            r->uri_ext -= offset;
-        }
-        if (r->args_start) {
-            r->args_start -= offset;
-        }
-    }
-
     c = r->connection;
 
+    /* a request line has been parsed successfully */
     if (rc == NGX_OK) {
         /* copy URI */
         r->uri.len = (r->args_start ? r->args_start - 1 : r->uri_end)
@@ -341,8 +308,8 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
                       ngx_http_close_request(r));
         ngx_cpystrn(r->uri.data, r->uri_start, r->uri.len + 1);
 
-        /* if large client headers is supported then
-           we need to copy request line */
+        /* if the large client headers is enabled then
+           we need to copy a request line */
 
         r->request_line.len = r->request_end - r->request_start;
         if (ngx_http_large_client_header) {
@@ -387,8 +354,13 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
             ngx_cpystrn(ctx->url, r->uri_start, r->uri_end - r->uri_start + 1);
         }
 
-        if (r->http_version == NGX_HTTP_VERSION_9)
+        /* if we need to parse the headers then return NGX_AGAIN
+           becuase of HTTP/0.9 has no headers so return NGX_OK */
+
+        if (r->http_version == NGX_HTTP_VERSION_9) {
+            r->state_handler = NULL;
             return NGX_OK;
+        }
 
         r->headers_in.headers = ngx_create_table(r->pool, 10);
 
@@ -396,17 +368,55 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
         ctx->action = "reading client request headers";
 
         return NGX_AGAIN;
+
+    /* there was error while a request line parsing */
+    } else if (rc != NGX_AGAIN) {
+        return ngx_http_header_parse_error(r, rc, NGX_HTTP_BAD_REQUEST);
     }
+
+    /* NGX_AGAIN: a request line parsing is still not complete */
 
     if (r->header_in->last.mem == r->header_in->end) {
-        return ngx_http_header_parse_error(r, NGX_HTTP_PARSE_TOO_LONG_URI,
-                                           NGX_HTTP_REQUEST_URI_TOO_LARGE);
 
-    } else if (rc == NGX_AGAIN) {
-        return NGX_AGAIN;
+        /* If it's a pipelined request and a request line is not complete
+           then we need to copy it to the start of r->header_in hunk.
+           We need to copy it here only if the large client header
+           is enabled otherwise a request line had been already copied
+           to the start of r->header_in hunk in ngx_http_set_keepalive() */
+
+        if (ngx_http_large_client_header) {
+            offset = r->request_start - r->header_in->start;
+
+            if (offset == 0) {
+                return ngx_http_header_parse_error(r,
+                                               NGX_HTTP_PARSE_TOO_LONG_URI,
+                                               NGX_HTTP_REQUEST_URI_TOO_LARGE);
+            }
+
+            ngx_memcpy(r->header_in->start, r->request_start,
+                       r->header_in->last.mem - r->request_start);
+
+            r->header_in->pos.mem -= offset;
+            r->header_in->last.mem -= offset;
+            r->request_start = r->header_in->start;
+            r->request_end -= offset;
+            r->uri_start -= offset;
+            r->uri_end -= offset;
+            if (r->uri_ext) {
+                r->uri_ext -= offset;
+            }
+            if (r->args_start) {
+                r->args_start -= offset;
+            }
+
+        } else {
+            return ngx_http_header_parse_error(r,
+                                               NGX_HTTP_PARSE_TOO_LONG_URI,
+                                               NGX_HTTP_REQUEST_URI_TOO_LARGE);
+        }
     }
 
-    return ngx_http_header_parse_error(r, rc, NGX_HTTP_BAD_REQUEST);
+    return NGX_AGAIN;
 }
 
 
@@ -419,39 +429,15 @@ static int ngx_http_process_request_headers(ngx_http_request_t *r)
     for ( ;; ) {
         rc = ngx_read_http_header_line(r, r->header_in);
 
-        /* if large client header is supported then
-            we need to compact r->header_in hunk */
-
-        if (ngx_http_large_client_header
-            && rc == NGX_AGAIN
-            && r->header_in->pos.mem == r->header_in->end)
-        {
-            offset = r->header_name_start - r->header_in->start;
-
-            if (offset == 0) {
-                return ngx_http_header_parse_error(r,
-                                                NGX_HTTP_PARSE_TOO_LONG_HEADER,
-                                                NGX_HTTP_BAD_REQUEST);
-            }
-
-            ngx_memcpy(r->header_in->start, r->header_name_start,
-                       r->header_in->last.mem - r->header_name_start);
-
-            r->header_in->last.mem -= offset;
-            r->header_in->pos.mem -= offset;
-            r->header_name_start = r->header_in->start;
-            r->header_name_end -= offset;
-            r->header_start -= offset;
-            r->header_end -= offset;
-        }
-
-        if (rc == NGX_OK) { /* header line is ready */
+        /* a header line has been parsed successfully */
+        if (rc == NGX_OK) {
             if (ngx_http_process_request_header_line(r) == NGX_ERROR) {
                 return ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             }
 
             return NGX_AGAIN;
 
+        /* the whole header has been parsed successfully */
         } else if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
             ngx_log_debug(r->connection->log, "HTTP header done");
 
@@ -472,17 +458,49 @@ static int ngx_http_process_request_headers(ngx_http_request_t *r)
                 r->headers_in.host_name_len = 0;
             }
 
+            r->state_handler = NULL;
             return NGX_OK;
 
-        } else if (!ngx_http_large_client_header
-                   && r->header_in->last.mem == r->header_in->end) {
-            return ngx_http_header_parse_error(r,
+        /* there was error while a header line parsing */
+        } else if (rc != NGX_AGAIN) {
+            return ngx_http_header_parse_error(r, rc, NGX_HTTP_BAD_REQUEST);
+        }
+
+        /* NGX_AGAIN: a header line parsing is still not complete */
+
+        if (r->header_in->last.mem == r->header_in->end) {
+
+            /* if the large client header is enabled then
+                we need to compact r->header_in hunk */
+
+            if (ngx_http_large_client_header) {
+                offset = r->header_name_start - r->header_in->start;
+
+                if (offset == 0) {
+                    return ngx_http_header_parse_error(r,
+                                                NGX_HTTP_PARSE_TOO_LONG_HEADER,
+                                                NGX_HTTP_BAD_REQUEST);
+                }
+
+                ngx_memcpy(r->header_in->start, r->header_name_start,
+                           r->header_in->last.mem - r->header_name_start);
+
+                r->header_in->last.mem -= offset;
+                r->header_in->pos.mem -= offset;
+                r->header_name_start = r->header_in->start;
+                r->header_name_end -= offset;
+                r->header_start -= offset;
+                r->header_end -= offset;
+
+            } else {
+                return ngx_http_header_parse_error(r,
                                                NGX_HTTP_PARSE_TOO_LONG_HEADER,
                                                NGX_HTTP_BAD_REQUEST);
+            }
 
-        } else if (rc == NGX_AGAIN) {
-            return NGX_AGAIN;
         }
+
+        return NGX_AGAIN;
     }
 }
 
@@ -494,7 +512,7 @@ static int ngx_http_process_request_header_line(ngx_http_request_t *r)
 
     ngx_test_null(h, ngx_push_table(r->headers_in.headers), NGX_ERROR);
 
-    /* if large client headers is supported then
+    /* if large client header is enabled then
        we need to copy header name and value */
 
     h->key.len = r->header_name_end - r->header_name_start;
@@ -548,7 +566,6 @@ static int ngx_http_event_request_handler(ngx_http_request_t *r)
         rev->timer_set = 0;
     }
 
-    r->state_handler = NULL;
     rev->event_handler = ngx_http_block_read;
 
     ctx = r->connection->log->data;
@@ -840,8 +857,11 @@ static int ngx_http_set_keepalive(ngx_http_request_t *r)
     /* pipelined request */
     if (h->pos.mem < h->last.mem) {
 
-        /* clients that support pipelined requests (Mozilla 1.x, Opera 6.x)
-           are rare now so this copy should also be rare */
+        /* We do not know here whether pipelined request is complete
+           so we need to copy it to the start of c->buffer if the large
+           client header is not enabled. This copy should be rare
+           because clients that support pipelined requests (Mozilla 1.x,
+           Opera 6.x) are still rare */
 
         if (!ngx_http_large_client_header) {
             len = h->last.mem - h->pos.mem; 
