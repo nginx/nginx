@@ -33,6 +33,19 @@
 
 
 
+#if !(WIN32)
+
+#define ngx_signal_helper(n)  SIG##n
+#define ngx_signal_value(n)   ngx_signal_helper(n)
+
+/* TODO: #ifndef */
+#define NGX_RESTART_SIGNAL    HUP
+#define NGX_ROTATE_SIGNAL     USR1
+
+#endif
+
+
+
 /* TODO: platform specific: array[NGX_INVALID_ARRAY_INDEX] must cause SIGSEGV */
 #define NGX_INVALID_ARRAY_INDEX 0x80000000
 

@@ -36,7 +36,8 @@ ngx_module_t  ngx_http_module = {
     &http_name,                            /* module context */
     ngx_http_commands,                     /* module directives */
     NGX_CORE_MODULE,                       /* module type */
-    NULL                                   /* init module */
+    NULL,                                  /* init module */
+    NULL                                   /* init child */
 };
 
 

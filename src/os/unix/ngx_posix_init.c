@@ -26,16 +26,16 @@ int ngx_posix_init(ngx_log_t *log)
     }
 
     sa.sa_handler = ngx_restart_signal_handler;
-    if (sigaction(SIGHUP, &sa, NULL) == -1) {
+    if (sigaction(ngx_signal_value(NGX_RESTART_SIGNAL), &sa, NULL) == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "sigaction(SIGHUP) failed");
+                      "sigaction(SIG" ngx_value(NGX_RESTART_SIGNAL) ") failed");
         return NGX_ERROR;
     }
 
     sa.sa_handler = ngx_rotate_signal_handler;
-    if (sigaction(SIGUSR1, &sa, NULL) == -1) {
+    if (sigaction(ngx_signal_value(NGX_ROTATE_SIGNAL), &sa, NULL) == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "sigaction(SIGUSR1) failed");
+                      "sigaction(SIG" ngx_value(NGX_ROTATE_SIGNAL) ") failed");
         return NGX_ERROR;
     }
 

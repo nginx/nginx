@@ -53,7 +53,8 @@ ngx_module_t  ngx_http_output_filter_module = {
     &ngx_http_output_filter_module_ctx,    /* module context */
     ngx_http_output_filter_commands,       /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
-    NULL                                   /* init module */
+    NULL,                                  /* init module */
+    NULL                                   /* init child */
 };
 
 

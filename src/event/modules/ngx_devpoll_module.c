@@ -26,8 +26,8 @@ struct dvpoll {
 
 
 typedef struct {
-    int   changes;
-    int   events;
+    u_int  changes;
+    u_int  events;
 } ngx_devpoll_conf_t;
 
 
@@ -43,8 +43,7 @@ static char *ngx_devpoll_init_conf(ngx_cycle_t *cycle, void *conf);
 
 static int              dp;
 static struct pollfd   *change_list, *event_list;
-static u_int            nchanges, max_changes;
-static int              nevents;
+static u_int            nchanges, max_changes, nevents;
 
 static ngx_event_t    **change_index;
 
@@ -95,7 +94,8 @@ ngx_module_t  ngx_devpoll_module = {
     &ngx_devpoll_module_ctx,               /* module context */
     ngx_devpoll_commands,                  /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
-    NULL                                   /* init module */
+    NULL,                                  /* init module */
+    NULL                                   /* init child */
 };
 
 
@@ -321,7 +321,7 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 
 int ngx_devpoll_process_events(ngx_log_t *log)
 {
-    int                 events, n, i;
+    int                 events, n, i, j;
     ngx_msec_t          timer, delta;
     ngx_err_t           err;
     ngx_cycle_t       **cycle;
@@ -397,11 +397,11 @@ int ngx_devpoll_process_events(ngx_log_t *log)
 
         if (c->fd == -1) {
             cycle = ngx_old_cycles.elts;
-            for (i = 0; i < ngx_old_cycles.nelts; i++) {
+            for (j = 0; j < ngx_old_cycles.nelts; j++) {
                 if (cycle[i] == NULL) {
                     continue;
                 }
-                c = &cycle[i]->connections[event_list[i].fd];
+                c = &cycle[j]->connections[event_list[i].fd];
                 if (c->fd != -1) {
                     break;
                 }
@@ -471,8 +471,8 @@ static char *ngx_devpoll_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_devpoll_conf_t *dpcf = conf;
 
-    ngx_conf_init_value(dpcf->changes, 512);
-    ngx_conf_init_value(dpcf->events, 512);
+    ngx_conf_init_unsigned_value(dpcf->changes, 512);
+    ngx_conf_init_unsigned_value(dpcf->events, 512);
 
     return NGX_CONF_OK;
 }

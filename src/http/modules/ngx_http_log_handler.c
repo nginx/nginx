@@ -45,6 +45,7 @@ ngx_module_t  ngx_http_log_module = {
     ngx_http_log_commands,                 /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init module */
+    NULL                                   /* init child */
 };
 
 

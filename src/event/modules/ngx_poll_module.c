@@ -224,8 +224,8 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_poll_process_events(ngx_log_t *log)
 {
-    int                 ready, found;
-    u_int               i, nready;
+    int                 ready, found, j;
+    u_int               nready, i;
     ngx_msec_t          timer, delta;
     ngx_err_t           err;
     ngx_cycle_t       **cycle;
@@ -293,11 +293,11 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
         if (c->fd == -1) {
             cycle = ngx_old_cycles.elts;
-            for (i = 0; i < ngx_old_cycles.nelts; i++) {
-                if (cycle[i] == NULL) {
+            for (j = 0; j < ngx_old_cycles.nelts; j++) {
+                if (cycle[j] == NULL) {
                     continue;
                 }
-                c = &cycle[i]->connections[event_list[i].fd];
+                c = &cycle[j]->connections[event_list[i].fd];
                 if (c->fd != -1) {
                     break;
                 }

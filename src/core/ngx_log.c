@@ -37,7 +37,8 @@ ngx_module_t  ngx_errlog_module = {
     &errlog_name,                          /* module context */
     ngx_errlog_commands,                   /* module directives */
     NGX_CORE_MODULE,                       /* module type */
-    NULL                                   /* init module */
+    NULL,                                  /* init module */
+    NULL                                   /* init child */
 };
 
 
