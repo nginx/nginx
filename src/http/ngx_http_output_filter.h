@@ -23,6 +23,9 @@ typedef struct {
 } ngx_http_output_filter_ctx_t;
 
 
+int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk);
+
+
 extern ngx_module_t  ngx_http_output_filter_module;
 
 

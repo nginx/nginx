@@ -10,7 +10,6 @@
 #include <ngx_http_output_filter.h>
 
 
-static int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk);
 static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src);
 static void *ngx_http_output_filter_create_conf(ngx_pool_t *pool);
 
@@ -18,12 +17,12 @@ static void *ngx_http_output_filter_create_conf(ngx_pool_t *pool);
 static ngx_command_t  ngx_http_output_filter_commands[] = {
 
     {ngx_string("output_buffer"),
+     NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
-     offsetof(ngx_http_output_filter_conf_t, hunk_size),
      NGX_HTTP_LOC_CONF,
-     NGX_CONF_TAKE1},
+     offsetof(ngx_http_output_filter_conf_t, hunk_size)},
 
-    {ngx_string(""), NULL, 0, 0, 0}
+    {ngx_string(""), 0, NULL, 0, 0}
 };
 
 
@@ -37,8 +36,8 @@ static ngx_http_module_t  ngx_http_output_filter_module_ctx = {
 
     NULL,                                  /* output header filter */
     NULL,                                  /* next output header filter */
-    (ngx_http_output_body_filter_p) ngx_http_output_filter,
-                                           /* output body filter */
+    (int (*)(ngx_http_request_t *, ngx_chain_t *))
+        ngx_http_output_filter,            /* output body filter */
     NULL                                   /* next output body filter */
 };
 
@@ -51,7 +50,7 @@ ngx_module_t  ngx_http_output_filter_module = {
 };
 
 
-static int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
+int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 {
     int      rc, once;
     size_t   size;

@@ -1,8 +1,6 @@
 
 #include <ngx_config.h>
-
 #include <ngx_core.h>
-
 #include <ngx_config_file.h>
 
 
@@ -13,14 +11,13 @@ static int argument_number[] = {
 };
 
 static int ngx_conf_read_token(ngx_conf_t *cf);
-static ngx_command_t *ngx_conf_find_token(ngx_conf_t *cf,
-                                          ngx_http_module_t **modules);
 
 
 int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
-    int               rc;
+    int               rc, i;
     char             *error;
+    ngx_str_t        *name;
     ngx_fd_t          fd;
     ngx_conf_file_t  *prev;
     ngx_command_t    *cmd;
@@ -75,7 +72,29 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
             continue;
         }
 
-        cmd = ngx_conf_find_token(cf);
+        name = (ngx_str_t *) cf->args->elts;
+
+        for (i = 0; ngx_modules[i]; i++) {
+            if (cf->type != ngx_modules[i]->type) {
+                continue;
+            }
+
+            cmd = ngx_modules[i]->commands;
+            if (cmd == NULL) {
+                continue;
+            }
+
+            while (cmd->name.len) {
+                if (name->len == cmd->name.len
+                    && ngx_strcmp(name->data, cmd->name.data) == 0)
+                {
+ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
+                    cmd->set(cf, cmd, NULL);
+                }
+
+                cmd++;
+            }
+       }
 
 #if 0
         cmd = ngx_conf_find_token(cf);
@@ -368,59 +387,37 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 }
 
 
-static ngx_command_t *ngx_conf_find_token(ngx_conf_t *cf)
-{
-    int  i;
-    ngx_command_t  *cmd;
-
-    for (i = 0; cf->modules[i]; i++) {
-         cmd = cf->modules[i]->commands;
-         if (cmd == NULL) {
-             continue;
-         }
-
-         while (cmd->name) {
-
-ngx_log_debug(cf->log, "command '%s'" _ cmd->name);
-
-             cmd++;
-         }
-
-    }
-}
-
-
-char *ngx_conf_set_size_slot(ngx_conf_t *cf, char *conf)
+char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
     int         size;
     ngx_str_t  *value;
 
     value = (ngx_str_t *) cf->args->elts;
 
-    size = atoi(value.data);
+    size = atoi(value[1].data);
     if (size < 0) {
         return "value must be greater or equal to zero";
     }
 
-    *(int *) (conf + cf->offset) = size;
+    *(int *) (conf + cmd->offset) = size;
 
     return NULL;
 }
 
 
-char *ngx_conf_set_time_slot(ngx_conf_t *cf, char *conf)
+char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
     int         size;
     ngx_str_t  *value;
 
     value = (ngx_str_t *) cf->args->elts;
 
-    size = atoi(value.data);
+    size = atoi(value[1].data);
     if (size < 0) {
         return "value must be greater or equal to zero";
     }
 
-    *(int *) (conf + offset) = size;
+    *(int *) (conf + cmd->offset) = size;
 
     return NULL;
 }

@@ -5,9 +5,21 @@
 #include <ngx_alloc.h>
 #include <ngx_http.h>
 
-#define NGX_HTTP_LOC_CONF  0
 
-int ngx_http_config_modules(ngx_pool_t *pool, ngx_http_module_t **modules);
+typedef struct {
+    void  **srv_conf;
+    void  **loc_conf;
+} ngx_http_conf_ctx_t;
+
+
+#define NGX_HTTP_SRV_CONF  offsetof(ngx_http_conf_ctx_t, srv_conf)
+#define NGX_HTTP_LOC_CONF  offsetof(ngx_http_conf_ctx_t, loc_conf)
+
+
+int ngx_http_config_modules(ngx_pool_t *pool, ngx_module_t **modules);
+
+
+extern ngx_module_t  ngx_http_module;
 
 
 extern int (*ngx_http_top_header_filter) (ngx_http_request_t *r);

@@ -62,7 +62,6 @@ int main(int argc, char *const *argv)
                   ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)), 1);
     conf.pool = ngx_pool;
     conf.log = &ngx_log;
-    conf.modules = ngx_http_modules;
 
     conf_file.len = sizeof("nginx.conf") - 1;
     conf_file.data = "nginx.conf";

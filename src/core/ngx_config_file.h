@@ -16,7 +16,8 @@
 #define NGX_CONF_TAKE1     2
 #define NGX_CONF_TAKE2     4
 
-#define NGX_CONF_ITERATE   0
+#define NGX_CONF_ANY       0x10000
+#define NGX_CONF_BLOCK     0x20000
 
 #define NGX_CONF_UNSET    -1
 
@@ -28,13 +29,14 @@
 typedef struct ngx_conf_s  ngx_conf_t;
 
 
-typedef struct {
+typedef struct ngx_command_s  ngx_command_t;
+struct ngx_command_s {
     ngx_str_t  name;
-    char    *(*set)(ngx_conf_t *cf);
-    int        offset;
-    int        zone;
     int        type;
-} ngx_command_t;
+    char    *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
+    int        conf;
+    int        offset;
+};
 
 
 typedef struct {
@@ -60,9 +62,8 @@ struct ngx_conf_s {
     ngx_conf_file_t  *conf_file;
     ngx_log_t        *log;
 
-    ngx_module_t     *modules;
-
     void             *ctx;
+    int               type;
     int             (*handler)(ngx_conf_t *cf);
 };
 
@@ -70,7 +71,11 @@ struct ngx_conf_s {
 int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
 
-char *ngx_conf_set_size_slot(ngx_conf_t *cf);
+char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
+char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
+
+
+extern ngx_module_t *ngx_modules[];
 
 
 #endif _NGX_HTTP_CONFIG_FILE_H_INCLUDED_

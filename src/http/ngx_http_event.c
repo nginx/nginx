@@ -177,7 +177,8 @@ static int ngx_http_init_request(ngx_event_t *ev)
     ngx_test_null(r->pool, ngx_create_pool(srv->request_pool_size, ev->log),
                   ngx_http_close_request(r));
 
-    ngx_test_null(r->ctx, ngx_pcalloc(r->pool, sizeof(void *) * ngx_max_module),
+    ngx_test_null(r->ctx,
+                  ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module),
                   ngx_http_close_request(r));
 
     r->headers_out.headers = ngx_create_table(r->pool, 10);
@@ -519,8 +520,8 @@ static int ngx_http_writer(ngx_event_t *ev)
 
         if (c->sent > 0) {
             conf = (ngx_http_core_loc_conf_t *)
-                        ngx_get_module_loc_conf(r->main ? r->main : r,
-                                                ngx_http_core_module);
+                        ngx_http_get_module_loc_conf(r->main ? r->main : r,
+                                                     ngx_http_core_module_ctx);
 
             timeout = (ngx_msec_t) (c->sent * conf->send_timeout);
 

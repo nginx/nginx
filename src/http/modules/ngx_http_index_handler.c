@@ -13,32 +13,43 @@
 static void *ngx_http_index_create_conf(ngx_pool_t *pool);
 static void *ngx_http_index_merge_conf(ngx_pool_t *p,
                                        void *parent, void *child);
-static char *ngx_http_index_set_index(ngx_pool_t *p, void *conf,
-                                      ngx_str_t *value);
+static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
+                                      char *conf);
 
 
 static ngx_command_t ngx_http_index_commands[] = {
 
-    {"index", ngx_http_index_set_index, 0,
-     NGX_HTTP_LOC_CONF, NGX_CONF_ITERATE,
-     "set index files"},
+    {ngx_string("index"),
+     NGX_CONF_ANY,
+     ngx_http_index_set_index,
+     NGX_HTTP_LOC_CONF,
+     0},
 
-    {NULL}
-
+    {ngx_string(""), 0, NULL, 0, 0}
 };
 
 
-ngx_http_module_t  ngx_http_index_module = {
+ngx_http_module_t  ngx_http_index_module_ctx = {
     NGX_HTTP_MODULE,
 
     NULL,                                  /* create server config */
     ngx_http_index_create_conf,            /* create location config */
-    ngx_http_index_commands,               /* module directives */
 
-    NULL,                                  /* init module */
     NULL,                                  /* translate handler */
 
-    NULL,                                  /* init output body filter */
+    NULL,                                  /* output header filter */
+    NULL,                                  /* next output header filter */
+    NULL,                                  /* output body filter */
+    NULL,                                  /* next output body filter */
+
+};
+
+
+ngx_module_t  ngx_http_index_module = {
+    &ngx_http_index_module_ctx,            /* module context */
+    ngx_http_index_commands,               /* module directives */
+    NGX_HTTP_MODULE_TYPE,                  /* module type */
+    NULL                                   /* init module */
 };
 
 
@@ -53,7 +64,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
     ngx_http_index_conf_t  *cf;
 
     cf = (ngx_http_index_conf_t *)
-                            ngx_get_module_loc_conf(r, ngx_http_index_module);
+                   ngx_http_get_module_loc_conf(r, ngx_http_index_module_ctx);
 
     ngx_test_null(name,
                   ngx_palloc(r->pool,
@@ -71,11 +82,13 @@ int ngx_http_index_handler(ngx_http_request_t *r)
         fd = ngx_open_file(name, NGX_FILE_RDONLY);
         if (fd == NGX_INVALID_FILE) {
             err = ngx_errno;
-            if (err == NGX_ENOENT)
+            if (err == NGX_ENOENT) {
                 continue;
+            }
 #if (WIN32)
-            if (err == ERROR_PATH_NOT_FOUND)
+            if (err == ERROR_PATH_NOT_FOUND) {
                 continue;
+            }
 #endif
 
             ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
@@ -117,8 +130,9 @@ static void *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
     ngx_str_t  *index;
 
     if (conf->max_index_len == 0) {
-        if (prev->max_index_len != 0)
+        if (prev->max_index_len != 0) {
             return prev;
+        }
 
         ngx_test_null(index, ngx_push_array(conf->indices), NULL);
         index->len = sizeof(NGX_HTTP_INDEX) - 1;
@@ -130,18 +144,23 @@ static void *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
 }
 
 
-static char *ngx_http_index_set_index(ngx_pool_t *p, void *conf,
-                                      ngx_str_t *value)
+static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
+                                      char *conf)
 {
-    ngx_http_index_conf_t *cf = (ngx_http_index_conf_t *) conf;
-    ngx_str_t  *index;
+    ngx_http_index_conf_t *icf = (ngx_http_index_conf_t *) conf;
+    int  i;
+    ngx_str_t  *index, *value;
 
-    ngx_test_null(index, ngx_push_array(cf->indices), NULL);
-    index->len = value->len;
-    index->data = value->data;
+    value = (ngx_str_t *) cf->args->elts;
+    for (i = 1; i < cf->args->nelts; i++) {
+        ngx_test_null(index, ngx_push_array(icf->indices), NULL);
+        index->len = value[i].len;
+        index->data = value[i].data;
 
-    if (cf->max_index_len < index->len)
-        cf->max_index_len = index->len;
+        if (icf->max_index_len < index->len) {
+            icf->max_index_len = index->len;
+        }
+    }
 
     return NULL;
 }

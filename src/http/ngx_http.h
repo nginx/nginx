@@ -188,29 +188,18 @@ typedef int (*ngx_http_output_body_filter_p)
 
 
 typedef struct {
-    int               index;
+    int      index;
 
-    void           *(*create_srv_conf)(ngx_pool_t *p);
-    void           *(*create_loc_conf)(ngx_pool_t *p);
+    void  *(*create_srv_conf)(ngx_pool_t *p);
+    void  *(*create_loc_conf)(ngx_pool_t *p);
 
-    int             (*translate_handler)(ngx_http_request_t *r);
+    int    (*translate_handler)(ngx_http_request_t *r);
 
-    int             (*output_header_filter) (ngx_http_request_t *r);
-    int             (*next_output_header_filter) (ngx_http_request_t *r);
+    int    (*output_header_filter) (ngx_http_request_t *r);
+    int    (*next_output_header_filter) (ngx_http_request_t *r);
 
-    ngx_http_output_body_filter_p  output_body_filter;
-    ngx_http_output_body_filter_p  next_output_body_filter;
-
-#if 0
-    int             (*output_body_filter)();
-    int             (*next_output_body_filter)
-                                      (ngx_http_request_t *r, ngx_chain_t *ch);
-#endif
-
-#if 0
-    int             (*next_output_body_filter)(int (**next_filter)
-                                     (ngx_http_request_t *r, ngx_chain_t *ch));
-#endif
+    int    (*output_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
+    int    (*next_output_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 } ngx_http_module_t;
 
 
@@ -218,11 +207,6 @@ typedef struct {
 
 #define NGX_HTTP_MODULE_TYPE   0x50545448   /* "HTTP" */
 
-
-/* STUB */
-#define ngx_get_module_loc_conf(r, module)  r->loc_conf[module.index]
-#define ngx_get_module_ctx(r, module)  r->ctx[module.index]
-/**/
 
 #define ngx_http_get_module_srv_conf(r, module)  r->srv_conf[module.index]
 #define ngx_http_get_module_loc_conf(r, module)  r->loc_conf[module.index]

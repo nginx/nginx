@@ -8,7 +8,7 @@
 #include <ngx_http.h>
 #include <ngx_http_event_proxy_handler.h>
 
-ngx_http_module_t  ngx_http_proxy_module;
+ngx_http_module_t  ngx_http_proxy_module_ctx;
 
 
 static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_request_t *r);
@@ -36,10 +36,11 @@ int ngx_http_proxy_handler(ngx_http_request_t *r)
     ngx_chain_t           *chain;
     ngx_http_proxy_ctx_t  *p;
 
-    p = (ngx_http_proxy_ctx_t *) ngx_get_module_ctx(r, ngx_http_proxy_module);
+    p = (ngx_http_proxy_ctx_t *)
+                         ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
 
     if (p == NULL)
-        ngx_http_create_ctx(r, p, ngx_http_proxy_module,
+        ngx_http_create_ctx(r, p, ngx_http_proxy_module_ctx,
                             sizeof(ngx_http_proxy_ctx_t));
 
     chain = ngx_http_proxy_create_request(r);
@@ -244,7 +245,8 @@ static int ngx_http_proxy_send_request(ngx_event_t *ev)
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
-    p = (ngx_http_proxy_ctx_t *) ngx_get_module_ctx(r, ngx_http_proxy_module);
+    p = (ngx_http_proxy_ctx_t *)
+                         ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
 
     chain = ngx_event_write(c, p->out, 0);
     if (chain == (ngx_chain_t *) -1)
@@ -269,7 +271,8 @@ static int ngx_http_proxy_read_response_header(ngx_event_t *ev)
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
-    p = (ngx_http_proxy_ctx_t *) ngx_get_module_ctx(r, ngx_http_proxy_module);
+    p = (ngx_http_proxy_ctx_t *)
+                         ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
 
     if (p->header_in == NULL) {
         ngx_test_null(p->header_in,
@@ -389,7 +392,8 @@ static int ngx_http_proxy_read_response_body(ngx_event_t *ev)
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
-    p = (ngx_http_proxy_ctx_t *) ngx_get_module_ctx(r, ngx_http_proxy_module);
+    p = (ngx_http_proxy_ctx_t *)
+                         ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
 
     left = 0;
 
@@ -464,7 +468,8 @@ static int ngx_http_proxy_write_to_client(ngx_event_t *ev)
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
-    p = (ngx_http_proxy_ctx_t *) ngx_get_module_ctx(r, ngx_http_proxy_module);
+    p = (ngx_http_proxy_ctx_t *)
+                         ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
 
     do {
         h = ((ngx_hunk_t **) p->hunks->elts)[p->hunk_n];

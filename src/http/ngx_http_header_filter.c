@@ -6,19 +6,20 @@
 #include <ngx_string.h>
 #include <ngx_table.h>
 #include <ngx_hunk.h>
+#include <ngx_config_file.h>
 #include <ngx_http.h>
+#include <ngx_http_write_filter.h>
 
 
 static int ngx_http_header_filter(ngx_http_request_t *r);
 
-ngx_http_module_t  ngx_http_header_filter_module = {
+
+ngx_http_module_t  ngx_http_header_filter_module_ctx = {
     NGX_HTTP_MODULE,
 
     NULL,                                  /* create server config */
     NULL,                                  /* create location config */
-    NULL,                                  /* module directives */
 
-    NULL,                                  /* init module */
     NULL,                                  /* translate handler */
 
     ngx_http_header_filter,                /* output header filter */
@@ -28,12 +29,23 @@ ngx_http_module_t  ngx_http_header_filter_module = {
 };
 
 
+ngx_module_t  ngx_http_header_filter_module = {
+    &ngx_http_header_filter_module_ctx,    /* module context */
+    NULL,                                  /* module directives */
+    NGX_HTTP_MODULE_TYPE,                  /* module type */
+    NULL                                   /* init module */
+};
+
+
 static char server_string[] = "Server: " NGINX_VER CRLF;
 
 
 static ngx_str_t http_codes[] = {
 
+    ngx_string("200 OK"),
+#if 0
     { 6,  "200 OK" },
+#endif
 
     { 21, "301 Moved Permanently" },
     { 21, "302 Moved Temporarily" },
@@ -59,8 +71,9 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     ngx_chain_t      *ch;
     ngx_table_elt_t  *header;
 
-    if (r->http_version < NGX_HTTP_VERSION_10)
+    if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
+    }
 
     /* 9 is for "HTTP/1.x ", 2 is for trailing "\r\n"
        and 2 is for end of header */
@@ -89,19 +102,21 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     /* status line */
     if (r->headers_out.status_line.len) {
         len += r->headers_out.status_line.len;
+
     } else {
-        if (r->headers_out.status < NGX_HTTP_MOVED_PERMANENTLY)
+        if (r->headers_out.status < NGX_HTTP_MOVED_PERMANENTLY) {
             status = r->headers_out.status - NGX_HTTP_OK;
 
-        else if (r->headers_out.status < NGX_HTTP_BAD_REQUEST)
+        } else if (r->headers_out.status < NGX_HTTP_BAD_REQUEST) {
             status = r->headers_out.status - NGX_HTTP_MOVED_PERMANENTLY + 1;
 
-        else if (r->headers_out.status < NGX_HTTP_INTERNAL_SERVER_ERROR)
+        } else if (r->headers_out.status < NGX_HTTP_INTERNAL_SERVER_ERROR) {
             status = r->headers_out.status - NGX_HTTP_BAD_REQUEST + 1 + 4;
 
-        else
+        } else {
             status = r->headers_out.status
                                  - NGX_HTTP_INTERNAL_SERVER_ERROR + 1 + 4 + 5;
+        }
 
         len += http_codes[status].len;
     }
@@ -122,8 +137,9 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     }
 
     /* 2^64 is 20 characters */
-    if (r->headers_out.content_length >= 0)
+    if (r->headers_out.content_length >= 0) {
         len += 48;
+    }
 
 #if 0
     if (r->headers_out.content_type.len)
@@ -138,15 +154,17 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         len += 46;
     }
 
-    if (r->keepalive)
+    if (r->keepalive) {
         len += 24;
-    else
+    } else {
         len += 19;
+    }
 
     header = (ngx_table_elt_t *) r->headers_out.headers->elts;
     for (i = 0; i < r->headers_out.headers->nelts; i++) {
-        if (header[i].key.len == 0)
+        if (header[i].key.len == 0) {
             continue;
+        }
 
         len += header[i].key.len + 2 + header[i].value.len + 2;
     }
@@ -183,9 +201,10 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     }
 
     /* 2^64 is 20 characters  */
-    if (r->headers_out.content_length >= 0)
+    if (r->headers_out.content_length >= 0) {
         h->last.mem += ngx_snprintf(h->last.mem, 49, "Content-Length: %u" CRLF,
                                     r->headers_out.content_length);
+    }
 
 #if 0
     if (r->headers_out.content_type.len) {
@@ -219,8 +238,9 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     }
 
     for (i = 0; i < r->headers_out.headers->nelts; i++) {
-        if (header[i].key.len == 0)
+        if (header[i].key.len == 0) {
             continue;
+        }
 
         ngx_memcpy(h->last.mem, header[i].key.data, header[i].key.len);
         h->last.mem += header[i].key.len;
@@ -239,8 +259,9 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     /* end of HTTP header */
     *(h->last.mem++) = CR; *(h->last.mem++) = LF;
 
-    if (r->header_only)
+    if (r->header_only) {
         h->type |= NGX_HUNK_LAST;
+    }
 
     ngx_test_null(ch, ngx_palloc(r->pool, sizeof(ngx_chain_t)), NGX_ERROR);
 
