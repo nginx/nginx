@@ -94,9 +94,13 @@ void ngx_event_accept(ngx_event_t *ev)
             err = ngx_socket_errno;
 
             if (err == NGX_EAGAIN) {
-                ngx_log_error(NGX_LOG_NOTICE, log, err,
-                              "EAGAIN after %d accepted connection(s)",
-                              accepted);
+                if (!(ngx_event_flags
+                      & (NGX_USE_EDGE_EVENT|NGX_USE_SIGIO_EVENT)))
+                {
+                    ngx_log_error(NGX_LOG_NOTICE, log, err,
+                                  "EAGAIN after %d accepted connection(s)",
+                                  accepted);
+                }
 
                 ngx_destroy_pool(pool);
                 return;

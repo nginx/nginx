@@ -264,7 +264,12 @@ static int ngx_event_init(ngx_cycle_t *cycle)
 #else
 
         rev->event_handler = &ngx_event_accept;
-        ngx_add_event(rev, NGX_READ_EVENT, 0);
+
+        if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
+            ngx_add_conn(c);
+        } else {
+            ngx_add_event(rev, NGX_READ_EVENT, 0);
+        }
 
 #endif
     }

@@ -6,10 +6,11 @@ OBJS=objs
 
 TEST_BUILD_DEVPOLL=NO
 TEST_BUILD_EPOLL=NO
-TEST_BUILD_SIGIO=NO
+TEST_BUILD_RTSIG=NO
 
 EVENT_FOUND=NO
 
+EVENT_RTSIG=NO
 EVENT_SELECT=NO
 EVENT_POLL=NO
 EVENT_AIO=NO
@@ -43,6 +44,7 @@ do
 
         --builddir=*)                    OBJS="$value"              ;;
 
+        --with-rtsig_module)             EVENT_RTSIG=YES            ;;
         --with-select_module)            EVENT_SELECT=YES           ;;
         --without-select_module)         EVENT_SELECT=NONE          ;;
         --with-poll_module)              EVENT_POLL=YES             ;;
@@ -63,7 +65,7 @@ do
 
         --test-build-devpoll)            TEST_BUILD_DEVPOLL=YES     ;;
         --test-build-epoll)              TEST_BUILD_EPOLL=YES       ;;
-        --test-build-sigio)              TEST_BUILD_SIGIO=YES       ;;
+        --test-build-rtsig)              TEST_BUILD_RTSIG=YES       ;;
 
         *)
             echo "$0: error: invalid option \"$option\""

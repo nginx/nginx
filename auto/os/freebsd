@@ -4,6 +4,9 @@ CORE_DEPS="$UNIX_DEPS $FREEBSD_DEPS"
 CORE_SRCS="$UNIX_SRCS $FREEBSD_SRCS"
 
 
+# __FreeBSD_version is the best way to learn when
+# some capability appeared or became safe to use
+
 version=`grep "#define __FreeBSD_version" /usr/include/osreldate.h \
          | sed -e 's/^.* \(.*\)$/\1/'`
 

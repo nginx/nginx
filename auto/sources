@@ -76,8 +76,8 @@ DEVPOLL_SRCS=src/event/modules/ngx_devpoll_module.c
 EPOLL_MODULE=ngx_epoll_module
 EPOLL_SRCS=src/event/modules/ngx_epoll_module.c
 
-SIGIO_MODULE=ngx_sigio_module
-SIGIO_SRCS=src/event/modules/ngx_sigio_module.c
+RTSIG_MODULE=ngx_rtsig_module
+RTSIG_SRCS=src/event/modules/ngx_rtsig_module.c
 
 IOCP_MODULE=ngx_iocp_module
 IOCP_SRCS=src/event/modules/ngx_iocp_module.c
