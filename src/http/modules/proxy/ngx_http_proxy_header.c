@@ -20,6 +20,8 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
     h = headers_in->headers.elts;
     for (i = 0; i < headers_in->headers.nelts; i++) {
 
+        /* ignore some headers */
+
         if (&h[i] == headers_in->connection) {
             continue;
         }
@@ -51,11 +53,17 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
             }
         }
 
+
+        /* "Content-Type" is handled specially */
+
         if (&h[i] == headers_in->content_type) {
             r->headers_out.content_type = &h[i];
             r->headers_out.content_type->key.len = 0;
             continue;
         }
+
+
+        /* copy some header pointers and set up r->headers_out */
 
         if (!(ho = ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
         {
@@ -64,9 +72,30 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
 
         *ho = h[i];
 
+        if (&h[i] == headers_in->expires) {
+            r->headers_out.expires = ho;
+            continue;
+        }
+
+        if (&h[i] == headers_in->cache_control) {
+            r->headers_out.cache_control = ho;
+            continue;
+        }
+
+        if (&h[i] == headers_in->etag) {
+            r->headers_out.etag = ho;
+            continue;
+        }
+
+        if (&h[i] == headers_in->last_modified) {
+            r->headers_out.last_modified = ho;
+            /* TODO: update r->headers_out.last_modified_time */
+            continue;
+        }
+
         /*
-         * ngx_http_header_filter() does not handle specially
-         * the following headers if they are set:
+         * ngx_http_header_filter() passes the following headers as is
+         * and does not handle them specially if they are set:
          *     r->headers_out.server,
          *     r->headers_out.date,
          *     r->headers_out.content_length

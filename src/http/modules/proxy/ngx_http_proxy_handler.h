@@ -114,6 +114,7 @@ typedef struct {
 
     ngx_table_elt_t                 *expires;
     ngx_table_elt_t                 *cache_control;
+    ngx_table_elt_t                 *etag;
     ngx_table_elt_t                 *x_accel_expires;
 
     ngx_table_elt_t                 *connection;

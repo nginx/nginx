@@ -8,7 +8,7 @@
 
 typedef uint64_t       ngx_epoch_msec_t;
 
-typedef u_int          ngx_msec_t;
+typedef ngx_int_t      ngx_msec_t;
 #define NGX_MAX_MSEC   (ngx_msec_t) -1
 
 

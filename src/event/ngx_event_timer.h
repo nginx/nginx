@@ -12,10 +12,10 @@
 /*
  * 32 bit timer key value resolution
  *
- * 1 msec - 49 days
- * 10 msec - 1 years 4 months
- * 50 msec - 6 years 10 months
- * 100 msec - 13 years 8 months
+ * 1 msec - 24 days
+ * 10 msec - 8 months
+ * 50 msec - 3 years 5 months
+ * 100 msec - 6 years 10 months
  */
 
 #define NGX_TIMER_RESOLUTION  1

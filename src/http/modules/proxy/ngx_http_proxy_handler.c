@@ -262,6 +262,7 @@ ngx_http_header_t ngx_http_proxy_headers_in[] = {
     { ngx_string("Expires"), offsetof(ngx_http_proxy_headers_in_t, expires) },
     { ngx_string("Cache-Control"),
                         offsetof(ngx_http_proxy_headers_in_t, cache_control) },
+    { ngx_string("ETag"), offsetof(ngx_http_proxy_headers_in_t, etag) },
     { ngx_string("X-Accel-Expires"),
                       offsetof(ngx_http_proxy_headers_in_t, x_accel_expires) },
 

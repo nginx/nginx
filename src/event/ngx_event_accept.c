@@ -402,6 +402,10 @@ ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle)
          */
 
         if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
+            if (!cycle->connections[s[i].fd].read->active) {
+                continue;
+            }
+
             if (ngx_del_conn(&cycle->connections[s[i].fd], NGX_DISABLE_EVENT)
                                                                   == NGX_ERROR)
             {
@@ -409,6 +413,10 @@ ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle)
             }
 
         } else {
+            if (!cycle->read_events[s[i].fd].active) {
+                continue;
+            }
+
             if (ngx_del_event(&cycle->read_events[s[i].fd], NGX_READ_EVENT,
                                                NGX_DISABLE_EVENT) == NGX_ERROR)
             {

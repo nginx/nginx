@@ -383,7 +383,12 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         }
     }
 
-    if (timer) {
+    if (timer == -1) {
+        ts.tv_sec = 0;
+        ts.tv_nsec = 0;
+        tp = &ts;
+
+    } else if (timer) {
         ts.tv_sec = timer / 1000;
         ts.tv_nsec = (timer % 1000) * 1000000;
         tp = &ts;

@@ -82,13 +82,13 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
             /*
              * we have to limit the maximum life time of the worker processes
-             * by 1 month because our millisecond event timer is limited
-             * by 49 days on 32-bit platforms
+             * by 10 days because our millisecond event timer is limited
+             * by 24 days on 32-bit platforms
              */
 
             itv.it_interval.tv_sec = 0;
             itv.it_interval.tv_usec = 0;
-            itv.it_value.tv_sec = 30 * 24 * 60 * 60;
+            itv.it_value.tv_sec = 10 * 24 * 60 * 60;
             itv.it_value.tv_usec = 0;
 
             if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {

@@ -36,6 +36,7 @@ ngx_int_t ngx_event_timer_init(ngx_log_t *log)
 
 ngx_msec_t ngx_event_find_timer(void)
 {
+    ngx_msec_t     timer;
     ngx_rbtree_t  *node;
 
     if (ngx_event_timer_rbtree == &ngx_event_timer_sentinel) {
@@ -51,12 +52,14 @@ ngx_msec_t ngx_event_find_timer(void)
 
     ngx_mutex_unlock(ngx_event_timer_mutex);
 
-    return (ngx_msec_t)
+    timer = (ngx_msec_t)
          (node->key * NGX_TIMER_RESOLUTION -
                ngx_elapsed_msec / NGX_TIMER_RESOLUTION * NGX_TIMER_RESOLUTION);
 #if 0
                          (node->key * NGX_TIMER_RESOLUTION - ngx_elapsed_msec);
 #endif
+
+    return timer > 0 ? timer: -1 ;
 }
 
 

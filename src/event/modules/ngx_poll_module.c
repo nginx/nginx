@@ -125,6 +125,8 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 
     c = ev->data;
 
+    ev->active = 1;
+
     if (ev->index != NGX_INVALID_INDEX) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
                       "poll event fd:%d ev:%d is already set", c->fd, event);
@@ -163,7 +165,6 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
         ev->index = e->index;
     }
 
-    ev->active = 1;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 
     return NGX_OK;
@@ -278,7 +279,11 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
     } else {
         timer = ngx_event_find_timer();
 
-        if (timer == 0) {
+        if (timer == -1) {
+            timer = 0;
+            expire = 1;
+
+        } else if (timer == 0) {
             timer = (ngx_msec_t) INFTIM;
             expire = 0;
 
@@ -302,7 +307,9 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-        if (ngx_accept_mutex_held == 0 && timer > ngx_accept_mutex_delay) {
+        if (ngx_accept_mutex_held == 0 
+            && (timer == (ngx_msec_t) INFTIM || timer > ngx_accept_mutex_delay))
+        {
             timer = ngx_accept_mutex_delay;
             expire = 0;
         }
@@ -348,8 +355,11 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
         }
     }
 
-    if (timer == 0 && ready == 0) {
+    if ((ngx_event_flags & NGX_OVERFLOW_EVENT) && timer == 0 && ready == 0) {
+
         /* the overflowed rt signals queue has been drained */
+
+        ngx_accept_mutex_unlock();
         return NGX_OK;
     }
 

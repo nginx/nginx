@@ -338,9 +338,7 @@ static void ngx_http_proxy_init_upstream(void *data)
 
     r->connection->read->event_handler = ngx_http_proxy_check_broken_connection;
 
-    if (ngx_event_flags & (NGX_USE_CLEAR_EVENT|NGX_HAVE_KQUEUE_EVENT)) {
-
-        /* kqueue allows to detect when client closes prematurely connection */
+    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
         r->connection->write->event_handler =
                                         ngx_http_proxy_check_broken_connection;
@@ -627,11 +625,6 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
 
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, p->lcf->connect_timeout);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http proxy connect handler: " PTR_FMT,
-                       c->write->event_handler);
-
         return;
     }
 

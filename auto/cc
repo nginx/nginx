@@ -1,4 +1,6 @@
 
+CFLAGS="$CFLAGS $CC_OPT"
+
 case $CC in
 
     *gcc*)

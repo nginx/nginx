@@ -53,6 +53,10 @@ ngx_http_header_t  ngx_http_headers_out[] = {
                             offsetof(ngx_http_headers_out_t, last_modified) },
     { ngx_string("Accept-Ranges"),
                             offsetof(ngx_http_headers_out_t, accept_ranges) },
+    { ngx_string("Expires"), offsetof(ngx_http_headers_out_t, expires) },
+    { ngx_string("Cache-Control"),
+                            offsetof(ngx_http_headers_out_t, cache_control) },
+    { ngx_string("ETag"), offsetof(ngx_http_headers_out_t, etag) },
 
     { ngx_null_string, 0 }
 };

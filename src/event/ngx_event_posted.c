@@ -25,9 +25,6 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
             return;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                      "posted event handler " PTR_FMT, ev->event_handler);
-
         ngx_posted_events = ev->next;
 
         if (ev->accept) {

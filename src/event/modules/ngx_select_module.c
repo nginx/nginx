@@ -263,33 +263,25 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
     static ngx_epoch_msec_t   deltas = 0;
 #endif
 
-    work_read_fd_set = master_read_fd_set;
-    work_write_fd_set = master_write_fd_set;
-
     timer = ngx_event_find_timer();
     ngx_old_elapsed_msec = ngx_elapsed_msec;
 
-    if (timer) {
-        tv.tv_sec = timer / 1000;
-        tv.tv_usec = (timer % 1000) * 1000;
-        tp = &tv;
-        expire = 1;
-
-    } else {
-        tp = NULL;
-        expire = 0;
-    }
-
-#if (NGX_DEBUG)
-    for (i = 0; i < nevents; i++) {
-        ev = event_index[i];
-        c = ev->data;
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "select event: fd:%d wr:%d", c->fd,ev->write);
-    }
-#endif
+    expire = 1;
 
 #if !(WIN32)
+
+    if (ngx_accept_mutex) {
+        if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (ngx_accept_mutex_held == 0
+            && (timer == 0 || timer > ngx_accept_mutex_delay))
+        {
+            timer = ngx_accept_mutex_delay;
+            expire = 0;
+        }
+    }
 
     if (max_fd == -1) {
         for (i = 0; i < nevents; i++) {
@@ -303,21 +295,40 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
                        "change max_fd: %d", max_fd);
     }
 
-    if (ngx_accept_mutex) {
-        if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-
-        if (ngx_accept_mutex_held == 0 && timer > ngx_accept_mutex_delay) {
-            timer = ngx_accept_mutex_delay;
-            expire = 0;
-        }
-    }
-
 #endif
+
+#if (NGX_DEBUG)
+    for (i = 0; i < nevents; i++) {
+        ev = event_index[i];
+        c = ev->data;
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "select event: fd:%d wr:%d", c->fd, ev->write);
+    }
+#endif
+
+    if (timer == -1) {
+        tv.tv_sec = 0;
+        tv.tv_usec = 0;
+        tp = &tv;
+
+    } else if (timer) {
+        tv.tv_sec = timer / 1000;
+        tv.tv_usec = (timer % 1000) * 1000;
+        tp = &tv;
+
+    } else {
+        tp = NULL;
+        expire = 0;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "select timer: %d", timer);
+
+    work_read_fd_set = master_read_fd_set;
+    work_write_fd_set = master_write_fd_set;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "select read fd_set: %08X", *(int *) &work_read_fd_set);
 
 #if (WIN32)
     ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp);
@@ -359,6 +370,7 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "select() returned no events without timeout");
+            ngx_accept_mutex_unlock();
             return NGX_ERROR;
         }
     }
@@ -381,6 +393,7 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "select() returned no events without timeout");
+            ngx_accept_mutex_unlock();
             return NGX_ERROR;
         }
     }
@@ -397,6 +410,7 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
                       cycle->log, err, "select() failed");
 #endif
+        ngx_accept_mutex_unlock();
         return NGX_ERROR;
     }
 

@@ -6,6 +6,7 @@ CPP=
 OBJS=objs
 
 DEBUG=NO
+CC_OPT=
 CPU=NO
 
 TEST_BUILD_DEVPOLL=NO
@@ -72,6 +73,7 @@ do
 
         --with-cc=*)                     CC="$value"                ;;
         --with-cpp=*)                    CPP="$value"               ;;
+        --with-cc-opt=*)                 CC_OPT="$value"            ;;
         --with-cpu-opt=*)                CPU="$value"               ;;
         --with-debug)                    DEBUG=YES                  ;;
 

@@ -96,10 +96,8 @@ static ngx_conf_enum_t  ngx_http_gzip_http_version[] = {
 
 static ngx_conf_enum_t  ngx_http_gzip_proxied[] = {
     { ngx_string("off"), NGX_HTTP_GZIP_PROXIED_OFF },
-#if 0
     { ngx_string("nocachable"), NGX_HTTP_GZIP_PROXIED_NOCACHABLE },
     { ngx_string("poor_cachable"), NGX_HTTP_GZIP_PROXIED_POOR_CACHABLE },
-#endif
     { ngx_string("on"), NGX_HTTP_GZIP_PROXIED_ON },
     { ngx_null_string, 0 }
 };
@@ -223,6 +221,7 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
 {
+    time_t                 date, expires;
     ngx_http_gzip_ctx_t   *ctx;
     ngx_http_gzip_conf_t  *conf;
 
@@ -250,9 +249,67 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
     }
 
 
-    /* TODO: proxied */
-    if (r->headers_in.via && conf->proxied == NGX_HTTP_GZIP_PROXIED_OFF) {
-        return ngx_http_next_header_filter(r);
+    if (r->headers_in.via && conf->proxied != NGX_HTTP_GZIP_PROXIED_ON) {
+
+        if (conf->proxied == NGX_HTTP_GZIP_PROXIED_OFF) {
+            return ngx_http_next_header_filter(r);
+        }
+
+        if (r->headers_out.expires) {
+            expires = ngx_http_parse_time(r->headers_out.expires->value.data,
+                                          r->headers_out.expires->value.len);
+            if (expires == NGX_ERROR) {
+                return ngx_http_next_header_filter(r);
+            }
+
+            if (r->headers_out.date) {
+                date = ngx_http_parse_time(r->headers_out.date->value.data,
+                                           r->headers_out.date->value.len);
+                if (date == NGX_ERROR) {
+                    return ngx_http_next_header_filter(r);
+                }
+
+            } else {
+                date = ngx_cached_time;
+            }
+
+            if (expires >= date) {
+                return ngx_http_next_header_filter(r);
+            }
+
+        } else if (r->headers_out.cache_control) {
+
+            if (conf->proxied == NGX_HTTP_GZIP_PROXIED_NOCACHABLE) {
+                if (ngx_strstr(r->headers_out.cache_control->value.data,
+                               "no-cache") == NULL)
+                {
+                    return ngx_http_next_header_filter(r);
+                }
+
+            } else {  /* NGX_HTTP_GZIP_PROXIED_POOR_CACHABLE */
+
+                /* STUB: should be one cycle for all values */
+
+                if (ngx_strstr(r->headers_out.cache_control->value.data,
+                               "no-cache") == NULL
+                    && ngx_strstr(r->headers_out.cache_control->value.data,
+                                  "private") == NULL
+                    && ngx_strstr(r->headers_out.cache_control->value.data,
+                                  "no-store") == NULL)
+                {
+                    return ngx_http_next_header_filter(r);
+                }
+            }
+
+        } else if (conf->proxied == NGX_HTTP_GZIP_PROXIED_NOCACHABLE) {
+            return ngx_http_next_header_filter(r);
+
+        } else {  /* NGX_HTTP_GZIP_PROXIED_POOR_CACHABLE */
+
+            if (r->headers_out.last_modified || r->headers_out.etag) {
+                return ngx_http_next_header_filter(r);
+            }
+        }
     }
 
 
@@ -533,7 +590,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     trailer->crc32 = ctx->crc32;
                     trailer->zlen = ctx->zin;
 #else
-                    /* STUB */
+                    /* STUB */ Oops !
 #endif
 
                     ctx->zstream.avail_in = 0;

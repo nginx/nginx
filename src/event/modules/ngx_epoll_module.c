@@ -356,7 +356,11 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     timer = ngx_event_find_timer();
     ngx_old_elapsed_msec = ngx_elapsed_msec;
 
-    if (timer == 0) {
+    if (timer == -1) {
+        timer = 0;
+        expire = 1;
+
+    } else if (timer == 0) {
         timer = (ngx_msec_t) -1;
         expire = 0;
 
@@ -369,7 +373,9 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-        if (ngx_accept_mutex_held == 0 && timer > ngx_accept_mutex_delay) {
+        if (ngx_accept_mutex_held == 0
+            && (timer == -1 || timer > ngx_accept_mutex_delay))
+        {
             timer = ngx_accept_mutex_delay;
             expire = 0;
         }
