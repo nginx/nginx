@@ -28,6 +28,7 @@ typedef struct {
     void             *servers;    /* array of ngx_http_in_addr_t, for example */
 
     ngx_log_t        *log;
+    int               pool_size;
 
     int               backlog;
     time_t            post_accept_timeout;  /* should be here because

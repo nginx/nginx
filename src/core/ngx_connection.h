@@ -19,10 +19,6 @@ struct ngx_connection_s {
     ngx_socket_t     fd;
     void            *data;
 
-    /* STUB */
-    ngx_array_t     *requests;
-    int              requests_len;
-
 #ifdef NGX_EVENT
     ngx_event_t      *read;
     ngx_event_t      *write;
@@ -34,8 +30,10 @@ struct ngx_connection_s {
     void             *ctx;
     ngx_server_t     *servers;
 
-    ngx_pool_t       *pool;
     ngx_log_t        *log;
+
+    ngx_pool_t       *pool;
+    int               pool_size;
 
     int               family;
     struct sockaddr  *sockaddr;

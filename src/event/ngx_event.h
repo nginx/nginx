@@ -111,13 +111,19 @@ typedef struct {
 /* Event filter requires to read/write the whole data -
    select, poll, /dev/poll, kqueue. */
 #define NGX_HAVE_LEVEL_EVENT    1
-/* Event filter deleted after notification - select, poll, kqueue.
-   /dev/poll, epoll implemetned with additional syscall */
+
+/* Event filter is deleted after notification - select, poll, kqueue.
+   Using /dev/poll, epoll it can be implemented with additional syscall */
 #define NGX_HAVE_ONESHOT_EVENT  2
-/* Event filter notify only changes - kqueue, epoll */
+
+/* Event filter notifies only changes and initial level - kqueue */
 #define NGX_HAVE_CLEAR_EVENT    4
-/* No nedd to add or delete event filters - overlapped, aio_read, aioread */
-#define NGX_HAVE_AIO_EVENT      8
+
+/* Event filter notifies only changes (edgesi) but not initial level - epoll */
+#define NGX_HAVE_EDGE_EVENT     8
+
+/* No need to add or delete event filters - overlapped, aio_read, aioread */
+#define NGX_HAVE_AIO_EVENT      16
 
 /* Event filter is deleted before closing file. Has no meaning
    for select, poll, epoll.

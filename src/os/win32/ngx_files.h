@@ -4,19 +4,18 @@
 
 #include <ngx_config.h>
 
+#include <ngx_types.h>
+#include <ngx_file.h>
+
 
 /* INVALID_FILE_ATTRIBUTES specified but never defined at least in VC6SP2 */
 #ifndef INVALID_FILE_ATTRIBUTES
 #define INVALID_FILE_ATTRIBUTES  0xFFFFFFFF
 #endif
 
-typedef HANDLE                      ngx_fd_t;
 #define NGX_INVALID_FILE            INVALID_HANDLE_VALUE
 #define NGX_FILE_ERROR              0
 
-typedef unsigned __int64            off_t;
-
-typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
 
 
 #define ngx_open_file(name, flags)                                          \
@@ -56,6 +55,7 @@ int ngx_file_type(char *filename, ngx_file_info_t *fi);
                                           - 116444736000000000) / 10000000)
 
 
+ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
 #define ngx_read_file_n            "ReadFile()"
 
 

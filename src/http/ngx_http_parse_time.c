@@ -20,6 +20,11 @@ time_t ngx_http_parse_time(char *value, size_t len)
     fmt = 0;
     end = value + len;
 
+#if (NGX_SUPPRESS_WARN)
+    day = 32;
+    year = 2038;
+#endif
+
     for (p = value; p < end; p++) {
         if (*p == ',') {
             break;

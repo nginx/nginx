@@ -2,14 +2,15 @@
 #define _NGX_FILES_H_INCLUDED_
 
 
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <ngx_config.h>
 
-typedef int                      ngx_fd_t;
+#include <ngx_types.h>
+#include <ngx_file.h>
+
+
 #define NGX_INVALID_FILE         -1
 #define NGX_FILE_ERROR           -1
 
-typedef struct stat              ngx_file_info_t;
 
 
 #define ngx_open_file            open
@@ -18,6 +19,7 @@ typedef struct stat              ngx_file_info_t;
 #define ngx_close_file           close
 #define ngx_close_file_n         "close()"
 
+ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
 #define ngx_read_file_n          "read()"
 
 #define NGX_FILE_RDONLY          O_RDONLY

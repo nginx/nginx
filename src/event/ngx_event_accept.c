@@ -11,40 +11,55 @@
 #include <ngx_event_accept.h>
 
 
+/* This function should always return NGX_OK even there are some failures
+   because if we return NGX_ERROR then listening socket would be closed */
+
 int ngx_event_accept(ngx_event_t *ev)
 {
+    socklen_t          len;
+    struct sockaddr   *sa;
     ngx_err_t          err;
+    ngx_pool_t        *pool;
     ngx_socket_t       s;
     ngx_event_t       *rev, *wev;
-    ngx_connection_t  *c, *ac;
+    ngx_connection_t  *c, *ls;
 
-    ac = (ngx_connection_t *) ev->data;
-            
+    ls = (ngx_connection_t *) ev->data;
+
     ngx_log_debug(ev->log, "ngx_event_accept: accept ready: %d" _
                   ev->available);
-        
+
     ev->ready = 0;
-  
+
+/* DEBUG */ ev->available++;
+
     do {
-        if ((s = accept(ac->fd, ac->sockaddr, &ac->socklen)) == -1) {
+        ngx_test_null(pool, ngx_create_pool(ls->pool_size, ev->log), NGX_OK);
+
+        ngx_test_null(sa, ngx_palloc(pool, ls->socklen), NGX_OK);
+        len = ls->socklen;
+
+        s = accept(ls->fd, sa, &len);
+        if (s == -1) {
             err = ngx_socket_errno;
+            ngx_destroy_pool(pool);
+
             if (err == NGX_EAGAIN) {
-                ngx_log_error(NGX_LOG_INFO, ev->log, err,
-                             "ngx_event_accept: EAGAIN while accept %s",
-                             ac->addr_text);
+                ngx_log_error(NGX_LOG_NOTICE, ev->log, err,
+                              "EAGAIN while accept %s", ls->addr_text.data);
                 return NGX_OK;
             }
 
-            ngx_log_error(NGX_LOG_ERR, ev->log, err,
-                         "ngx_event_accept: accept %s failed", ac->addr_text);
-            /* if we return NGX_ERROR listen socket would be closed */
+            ngx_log_error(NGX_LOG_ALERT, ev->log, err,
+                          "accept %s failed", ls->addr_text.data);
             return NGX_OK;
         }
 
 #if !(HAVE_INHERITED_NONBLOCK)
-        if (ngx_nonblocking(s) == -1)
-            ngx_log_error(NGX_LOG_ERR, ev->log, ngx_socket_errno,
-                          ngx_nonblocking_n "failed");
+        if (ngx_nonblocking(s) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                          ngx_nonblocking_n " %s failed", ls->addr_text.data);
+        }
 #endif
 
         rev = &ngx_read_events[s];
@@ -55,12 +70,14 @@ int ngx_event_accept(ngx_event_t *ev)
         ngx_memzero(wev, sizeof(ngx_event_t));
         ngx_memzero(c, sizeof(ngx_connection_t));
 
-        c->sockaddr = ac->sockaddr;
-        c->family = ac->family;
-        c->socklen = ac->socklen;
-        c->addr = ac->addr;
-        c->addr_text_max_len = ac->addr_text_max_len;
-        c->post_accept_timeout = ac->post_accept_timeout;
+        c->pool = pool;
+
+        c->sockaddr = sa;
+        c->family = ls->family;
+        c->socklen = len;
+        c->addr = ls->addr;
+        c->addr_text_max_len = ls->addr_text_max_len;
+        c->post_accept_timeout = ls->post_accept_timeout;
 
         rev->index = wev->index = NGX_INVALID_INDEX;
 
@@ -77,30 +94,39 @@ int ngx_event_accept(ngx_event_t *ev)
         wev->timer_handler = rev->timer_handler = ngx_event_close_connection;
         wev->close_handler = rev->close_handler = ngx_event_close_connection;
 
-        c->ctx = ac->ctx;
-        c->servers = ac->servers;
-        c->log = rev->log = wev->log = ev->log;
+        c->ctx = ls->ctx;
+        c->servers = ls->servers;
 
-        /* STUB: x86: SP: xadd, MT: lock xadd, MP: lock xadd, shared */
+        ngx_test_null(c->log, ngx_palloc(c->pool, sizeof(ngx_log_t)), NGX_OK);
+        ngx_memcpy(c->log, ev->log, sizeof(ngx_log_t));
+        rev->log = wev->log = c->log;
+
+        /* STUB: x86: SP: xadd ?, MT: lock xadd, MP: lock xadd, shared */
         c->number = ngx_connection_counter++;
 
         ngx_log_debug(ev->log, "ngx_event_accept: accept: %d, %d" _
-                                s _ c->number);
+                      s _ c->number);
 
 #if (HAVE_DEFERRED_ACCEPT)
-        if (ev->accept_filter)
+        if (ev->accept_filter) {
             rev->ready = 1;
+        }
 #endif
 
-        ac->handler(c);
+        ls->handler(c);
 
-#if (HAVE_KQUEUE)
-#if !(USE_KQUEUE)
-        if (ngx_event_type == NGX_KQUEUE_EVENT)
-#endif
+#if (USE_KQUEUE)
+
+        ev->available--;
+
+#elif (HAVE_KQUEUE)
+
+        if (ngx_event_type == NGX_KQUEUE_EVENT) {
             ev->available--;
+        }
+
 #endif
     } while (ev->available);
   
-    return 0;
+    return NGX_OK;
 }

@@ -1,8 +1,10 @@
 
 #include <ngx_config.h>
+
 #include <ngx_string.h>
 #include <ngx_socket.h>
 #include <ngx_listen.h>
+#include <ngx_inet.h>
 #include <ngx_http.h>
 #include <ngx_http_config.h>
 #include <ngx_http_core_module.h>
@@ -324,7 +326,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
             ls->addr_text.len =
                 ngx_snprintf(ls->addr_text.data
                              + ngx_inet_ntop(AF_INET,
-                                             &in_addr[a].addr,
+                                             (char *) &in_addr[a].addr,
                                              ls->addr_text.data,
                                              INET_ADDRSTRLEN),
                              6, ":%d", in_port[p].port);
@@ -345,6 +347,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 
             ls->handler = ngx_http_init_connection;
             ls->log = cf->log;
+            ls->pool_size = ngx_http_connection_pool_size;
             ls->ctx = ctx;
             ls->servers = &in_port[p];
 
@@ -372,7 +375,7 @@ ngx_log_debug(cf->log, "port: %d" _ in_port[p].port);
         in_addr = (ngx_http_in_addr_t *) in_port[p].addr.elts;
         for (a = 0; a < in_port[p].addr.nelts; a++) {
             char ip[20];
-            ngx_inet_ntop(AF_INET, &in_addr[a].addr, ip, 20);
+            ngx_inet_ntop(AF_INET, (char *) &in_addr[a].addr, ip, 20);
 ngx_log_debug(cf->log, "%s %08x" _ ip _ in_addr[a].core_srv_conf);
         }
     }

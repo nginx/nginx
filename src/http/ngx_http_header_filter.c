@@ -70,7 +70,7 @@ static ngx_str_t http_codes[] = {
 
 static int ngx_http_header_filter(ngx_http_request_t *r)
 {
-    int  len, status, i;
+    int               len, status, i;
     time_t            ims;
     ngx_hunk_t       *h;
     ngx_chain_t      *ch;
@@ -106,6 +106,9 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     /* status line */
     if (r->headers_out.status_line.len) {
         len += r->headers_out.status_line.len;
+#if (NGX_SUPPRESS_WARN)
+        status = NGX_INVALID_ARRAY_INDEX;
+#endif
 
     } else {
         if (r->headers_out.status < NGX_HTTP_MOVED_PERMANENTLY) {
@@ -207,7 +210,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 
     /* 2^64 is 20 characters  */
     if (r->headers_out.content_length >= 0) {
-        h->last.mem += ngx_snprintf(h->last.mem, 49, "Content-Length: %u" CRLF,
+        h->last.mem += ngx_snprintf(h->last.mem, 49,
+                                    "Content-Length: " OFF_FMT CRLF,
                                     r->headers_out.content_length);
     }
 

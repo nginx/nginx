@@ -2,8 +2,8 @@
 #define _NGX_LOG_H_INCLUDED_
 
 
+#include <ngx_types.h>
 #include <ngx_errno.h>
-#include <ngx_files.h>
 
 typedef enum {
     NGX_LOG_EMERG = 0,

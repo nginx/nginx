@@ -16,12 +16,6 @@
 #include <ngx_http_config.h>
 #include <ngx_http_core_module.h>
 
-/* STUB */
-#include <ngx_http_output_filter.h>
-int ngx_http_static_handler(ngx_http_request_t *r);
-int ngx_http_index_handler(ngx_http_request_t *r);
-int ngx_http_proxy_handler(ngx_http_request_t *r);
-/**/
 
 int ngx_http_init_connection(ngx_connection_t *c);
 
@@ -40,13 +34,6 @@ static int ngx_http_read_discarded_body(ngx_event_t *ev);
 static int ngx_http_keepalive_handler(ngx_event_t *ev);
 static int ngx_http_set_lingering_close(ngx_http_request_t *r);
 static int ngx_http_lingering_close_handler(ngx_event_t *ev);
-
-#if 0
-int ngx_http_special_response(ngx_http_request_t *r, int error);
-int ngx_http_redirect(ngx_http_request_t *r, int redirect);
-int ngx_http_error(ngx_http_request_t *r, int error);
-int ngx_http_close_request(ngx_http_request_t *r);
-#endif
 
 static int ngx_http_close_connection(ngx_event_t *ev);
 static size_t ngx_http_log_error(void *data, char *buf, size_t len);
@@ -76,34 +63,23 @@ static ngx_http_header_t headers_in[] = {
 int ngx_http_init_connection(ngx_connection_t *c)
 {
     ngx_event_t         *ev;
-    struct sockaddr     *addr;
     ngx_http_log_ctx_t  *ctx;
 
     ev = c->read;
     ev->event_handler = ngx_http_init_request;
 
-    ngx_test_null(c->pool,
-                  ngx_create_pool(ngx_http_connection_pool_size, ev->log),
-                  NGX_ERROR);
-
-    ngx_test_null(c->requests, ngx_create_array(c->pool, 10, sizeof(char *)),
-                  NGX_ERROR);
-
     ev->close_handler = ngx_http_close_connection;
     c->write->close_handler = ngx_http_close_connection;
-
-    ngx_test_null(addr, ngx_palloc(c->pool, c->socklen), NGX_ERROR);
-    ngx_memcpy(addr, c->sockaddr, c->socklen);
-    c->sockaddr = addr;
 
     ngx_test_null(c->addr_text.data, ngx_palloc(c->pool, c->addr_text_max_len),
                   NGX_ERROR);
 
-    c->addr_text.len = ngx_inet_ntop(c->family,
-                                     (char *)c->sockaddr + c->addr,
+    c->addr_text.len = ngx_sock_ntop(c->family, c->sockaddr,
                                      c->addr_text.data, c->addr_text_max_len);
-    if (c->addr_text.len == 0)
-       return NGX_ERROR;
+
+    if (c->addr_text.len == 0) {
+        return NGX_ERROR;
+    }
 
     ngx_test_null(ctx, ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t)),
                   NGX_ERROR);
@@ -133,6 +109,15 @@ int ngx_http_init_connection(ngx_connection_t *c)
     }
 #endif
 
+#if (HAVE_EDGE_EVENT)
+    if (ngx_event_flags & NGX_HAVE_EDGE_EVENT) {
+        if (ngx_add_event(ev, NGX_READ_EVENT, NGX_EDGE_EVENT) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+        return ngx_http_init_request(ev);
+    }
+#endif
+
 #if (HAVE_AIO_EVENT)
     if (ngx_event_flags & NGX_HAVE_AIO_EVENT) {
         return ngx_http_init_request(ev);
@@ -147,8 +132,9 @@ int ngx_http_init_connection(ngx_connection_t *c)
 
 static int ngx_http_init_request(ngx_event_t *ev)
 {
-    ngx_connection_t    *c;
-    ngx_http_request_t  *r;
+    ngx_connection_t     *c;
+    ngx_http_request_t   *r;
+    ngx_http_conf_ctx_t  *ctx;
 
     c = (ngx_connection_t *) ev->data;
     c->sent = 0;
@@ -179,6 +165,10 @@ static int ngx_http_init_request(ngx_event_t *ev)
                   ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module),
                   ngx_http_close_request(r));
 
+    ctx = (ngx_http_conf_ctx_t *) c->ctx;
+    r->srv_conf = ctx->srv_conf;
+    r->loc_conf = ctx->loc_conf;
+
     r->headers_out.headers = ngx_create_table(r->pool, 10);
     r->headers_out.content_length = -1;
     r->headers_out.last_modified_time = -1;
@@ -195,7 +185,6 @@ static int ngx_http_process_request_header(ngx_event_t *ev)
     int  n, rc;
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
-    ngx_http_log_ctx_t  *ctx;
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
@@ -283,8 +272,7 @@ static int ngx_http_process_request_header(ngx_event_t *ev)
 
 static int ngx_http_process_request_line(ngx_http_request_t *r)
 {
-    int     rc, len;
-    char  **request;
+    int                  rc;
     ngx_connection_t    *c;
     ngx_http_log_ctx_t  *ctx;
 
@@ -305,22 +293,6 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
                       ngx_http_close_request(r));
         ngx_cpystrn(r->request_line.data, r->header_in->start,
                     r->request_line.len + 1);
-
-        /* TEMP */
-        ngx_test_null(request, ngx_push_array(c->requests),
-                      ngx_http_close_request(r));
-
-        if (r->request_end)
-            len = r->request_end - r->header_in->start + 1;
-        else
-            len = 1;
-        c->requests_len += len;
-        ngx_test_null(*request, ngx_palloc(c->pool, len),
-                      ngx_http_close_request(r));
-        ngx_cpystrn(*request, r->header_in->start, len);
-
-        ngx_log_debug(c->log, "REQ: '%s'" _ *request);
-        /* */
 
         if (r->uri_ext) {
             r->exten.len = (r->args_start ? r->args_start - 1 : r->uri_end)
@@ -764,12 +736,12 @@ static int ngx_http_lingering_close_handler(ngx_event_t *ev)
 
     ngx_log_debug(ev->log, "http lingering close handler");
 
+    c = (ngx_connection_t *) ev->data;
+    r = (ngx_http_request_t *) c->data;
+
     if (ev->timedout) {
         return ngx_http_close_request(r);
     }
-
-    c = (ngx_connection_t *) ev->data;
-    r = (ngx_http_request_t *) c->data;
 
     timer = r->lingering_time - ngx_time();
     if (timer <= 0) {
@@ -817,35 +789,7 @@ static int ngx_http_lingering_close_handler(ngx_event_t *ev)
 
 static int ngx_http_close_connection(ngx_event_t *ev)
 {
-    int    i, len;
-    char **requests, *requests_line, *prev, *new;
     ngx_connection_t *c = (ngx_connection_t *) ev->data;
-
-    if (c->requests->nelts > 1) {
-        len = c->requests_len + c->requests->nelts * 2 - 1;
-
-        ngx_test_null(requests_line, ngx_palloc(c->pool, len),
-                      ngx_event_close_connection(ev));
-
-        requests = (char **) c->requests->elts;
-        prev = requests_line;
-        new = ngx_cpystrn(prev, requests[0], len);
-        len -= new - prev;
-        prev = new;
-
-        for (i = 1; i < c->requests->nelts; i++) { 
-            new = ngx_cpystrn(prev, ", ", len);
-            new = ngx_cpystrn(new, requests[i], len);
-            len -= new - prev;
-            prev = new;
-        }
-
-    } else {
-        requests_line = * (char **) c->requests->elts;
-    }
-
-    ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                  "REQUESTS: %d, '%s'", c->requests->nelts, requests_line);
 
     return ngx_event_close_connection(ev);
 }

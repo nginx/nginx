@@ -59,12 +59,11 @@ ngx_module_t  ngx_http_output_filter_module = {
 
 int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 {
-    int      rc, once;
-    size_t   size;
-    ssize_t  n;
-    ngx_chain_t  *ce;
-    ngx_http_output_filter_ctx_t  *ctx;
-    ngx_http_output_filter_conf_t *conf;
+    int                             rc, once;
+    size_t                          size;
+    ngx_chain_t                    *ce;
+    ngx_http_output_filter_ctx_t   *ctx;
+    ngx_http_output_filter_conf_t  *conf;
 
     ctx = (ngx_http_output_filter_ctx_t *)
                     ngx_http_get_module_ctx(r->main ? r->main : r,
@@ -78,6 +77,10 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
     if (hunk && (hunk->type & NGX_HUNK_LAST)) {
         ctx->last = 1;
     }
+
+#if (NGX_SUPPRESS_WARN)
+    rc = NGX_ALERT;
+#endif
 
     for (once = 1; once || ctx->in; once = 0) {
 
@@ -179,13 +182,12 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
                     } else {
                         if (ctx->hunk == NULL) {
 
-                            if (hunk->type & NGX_HUNK_LAST) {
-
-                                conf = (ngx_http_output_filter_conf_t *)
+                            conf = (ngx_http_output_filter_conf_t *)
                                             ngx_http_get_module_loc_conf(
                                                 r->main ? r->main : r,
                                                 ngx_http_output_filter_module);
 
+                            if (hunk->type & NGX_HUNK_LAST) {
                                 size = hunk->last.mem - hunk->pos.mem;
                                 if (size > conf->hunk_size) {
                                     size = conf->hunk_size;
@@ -242,6 +244,14 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
         if (rc == NGX_OK && ctx->hunk)
             ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
     }
+
+#if (NGX_SUPPRESS_WARN)
+    if (rc == NGX_ALERT) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "ngx_http_output_filter: rc == NGX_ALERT");
+        return NGX_ERROR;
+    }
+#endif
 
     if (rc == NGX_OK && ctx->last) {
         return NGX_OK;

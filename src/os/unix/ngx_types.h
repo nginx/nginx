@@ -4,6 +4,14 @@
 
 #include <ngx_config.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
+
+typedef int          ngx_fd_t;
+typedef struct stat  ngx_file_info_t;
+
+
 
 #ifdef SOLARIS
 

@@ -21,6 +21,11 @@
 #define ngx_align(p)    (char *) (((NGX_ALIGN_TYPE) p + NGX_ALIGN) & ~NGX_ALIGN)
 
 
+
+/* Platform specific: array[NGX_INVALID_ARRAY_INDEX] should cause SIGSEGV */
+#define NGX_INVALID_ARRAY_INDEX 0x80000000
+
+
 #ifdef _WIN32
 
 #define WIN32 1

@@ -5,10 +5,15 @@
 #include <ngx_config.h>
 
 
-typedef int               ssize_t;
-typedef long              time_t;
+typedef unsigned __int32            u_int32_t;
 
-typedef unsigned __int32  u_int32_t;
+typedef int                         ssize_t;
+typedef long                        time_t;
+
+typedef HANDLE                      ngx_fd_t;
+typedef unsigned __int64            off_t;
+typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
+
 
 
 

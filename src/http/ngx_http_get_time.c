@@ -5,7 +5,7 @@
 #include <ngx_types.h>
 
 
-ngx_http_get_time(char *buf, time_t t)
+size_t ngx_http_get_time(char *buf, time_t t)
 {
     struct tm *tp;
 

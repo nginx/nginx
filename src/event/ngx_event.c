@@ -120,6 +120,7 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
         c->ctx = s[i].ctx;
         c->servers = s[i].servers;
         c->log = s[i].log;
+        c->pool_size = s[i].pool_size;
 
         ngx_test_null(ev->log,
                       ngx_palloc(pool, sizeof(ngx_log_t)), /* void */ ; );
