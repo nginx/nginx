@@ -142,7 +142,7 @@ void ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
-        /* set a blocking mode for aio and non-blocking mode for others */
+        /* set a blocking mode for aio and non-blocking mode for the others */
 
         if (ngx_inherited_nonblocking) {
             if ((ngx_event_flags & NGX_USE_AIO_EVENT)) {

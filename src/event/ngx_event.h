@@ -176,18 +176,19 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * The event filter requires to read/write the whole data -
- * select, poll, /dev/poll, kqueue.
+ * select, poll, /dev/poll, kqueue, epoll.
  */
 #define NGX_USE_LEVEL_EVENT    0x00000001
 
 /*
  * The event filter is deleted after a notification without an additional
- * syscall - select, poll, kqueue.
+ * syscall - select, poll, kqueue, epoll.
  */
 #define NGX_USE_ONESHOT_EVENT  0x00000002
 
 /*
- *  The event filter notifies only the changes and an initial level - kqueue.
+ * The event filter notifies only the changes and an initial level -
+ * kqueue, epoll.
  */
 #define NGX_USE_CLEAR_EVENT    0x00000004
 
@@ -205,7 +206,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * The event filter notifies only the changes (the edges)
- * but not an initial level - epoll.
+ * but not an initial level - early epoll patches.
  */
 #define NGX_USE_EDGE_EVENT     0x00000020
 
@@ -275,6 +276,27 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_DISABLE_EVENT  EV_DISABLE
 
 
+#elif (HAVE_DEVPOLL)
+
+#define NGX_READ_EVENT     POLLIN
+#define NGX_WRITE_EVENT    POLLOUT
+
+#define NGX_LEVEL_EVENT    0
+
+
+#elif (HAVE_EPOLL)
+
+#define NGX_READ_EVENT     EPOLLIN
+#define NGX_WRITE_EVENT    EPOLLOUT
+
+#define NGX_LEVEL_EVENT    0
+#define NGX_CLEAR_EVENT    EPOLLET
+#define NGX_ONESHOT_EVENT  0x70000000
+#if 0
+#define NGX_ONESHOT_EVENT  EPOLLONESHOT
+#endif
+
+
 #elif (HAVE_POLL)
 
 #define NGX_READ_EVENT     POLLIN
@@ -282,14 +304,6 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  1
-
-
-#elif (HAVE_DEVPOLL)
-
-#define NGX_READ_EVENT     POLLIN
-#define NGX_WRITE_EVENT    POLLOUT
-
-#define NGX_LEVEL_EVENT    0
 
 
 #else /* select */

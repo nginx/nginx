@@ -21,6 +21,7 @@ ngx_func_test="int efd = 0, fd = 1, n;
 
 if [ $ngx_found = yes ]; then
     have=HAVE_EPOLL . auto/have
+    have=HAVE_CLEAR_EVENT . auto/have
     CORE_SRCS="$CORE_SRCS $EPOLL_SRCS"
     EVENT_MODULES="$EVENT_MODULES $EPOLL_MODULE"
     EVENT_FOUND=YES

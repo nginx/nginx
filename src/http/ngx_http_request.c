@@ -84,10 +84,10 @@ void ngx_http_init_connection(ngx_connection_t *c)
     rev = c->read;
     rev->event_handler = ngx_http_init_request;
 
-    /* STUB: epoll */ c->write->event_handler = ngx_http_empty_handler;
+    /* STUB: epoll edge */ c->write->event_handler = ngx_http_empty_handler;
 
     if (rev->ready) {
-        /* deferred accept, aio, iocp, epoll */
+        /* deferred accept, aio, iocp */
         ngx_http_init_request(rev);
         return;
     }
@@ -1180,6 +1180,8 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     }
 
     h = c->buffer;
+    wev = c->write;
+    wev->event_handler = ngx_http_empty_handler;
 
     if (h->pos < h->last) {
 
@@ -1214,8 +1216,6 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     h->pos = h->last = h->start;
     rev->event_handler = ngx_http_keepalive_handler;
-    wev = c->write;
-    wev->event_handler = ngx_http_empty_handler;
 
     if (wev->active) {
         if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {

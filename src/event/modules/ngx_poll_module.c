@@ -146,7 +146,7 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 
     } else {
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                       "poll index: %d", e->index);
+                       "poll add index: %d", e->index);
 
         event_list[e->index].events |= event;
         ev->index = e->index;
@@ -195,6 +195,10 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
         nevents--;
 
         if (ev->index < (u_int) nevents) {
+
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                           "index: copy event %d to %d", nevents, ev->index);
+
             event_list[ev->index] = event_list[nevents];
 
             c = &ngx_cycle->connections[event_list[nevents].fd];
@@ -219,20 +223,17 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
             } else {
                 if (c->read->index == (u_int) nevents) {
                     c->read->index = ev->index;
+                }
 
-                } else if (c->write->index == (u_int) nevents) {
+                if (c->write->index == (u_int) nevents) {
                     c->write->index = ev->index;
-
-                } else {
-                    ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                                  "unexpected last event index");
                 }
             }
         }
 
     } else {
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                       "poll index: %d", e->index);
+                       "poll del index: %d", e->index);
 
         event_list[e->index].events &= ~event;
     }
