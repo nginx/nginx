@@ -6,6 +6,34 @@
             title="nginx">
 
 
+<changes ver="0.1.10" date="26.11.2004">
+
+<change type="bugfix">
+<para lang="ru">
+если в запросе без аргументов есть "//", "/./", "/../" или "%XX",
+то терялся последний символ в строке запроса;
+ошибка появилась в 0.1.9.
+</para>
+<para lang="en">
+if the request without arguments contains "//", "/./", "/../" or "%XX"
+then the lost character in the request line was lost;
+bug appeared in 0.1.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+исправление в версии 0.1.9 для файлов больше на Linux не работало.
+</para>
+<para lang="en">
+the fix in 0.1.9 for the files bigger than 2G on Linux
+did not work.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.9" date="25.11.2004">
 
 <change type="bugfix">

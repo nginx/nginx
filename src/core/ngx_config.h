@@ -11,13 +11,6 @@
 #include <ngx_auto_headers.h>
 
 
-#if ((__GNU__ == 2) && (__GNUC_MINOR__ < 8))
-#define NGX_MAX_UINT32_VALUE  0xffffffffLL
-#else
-#define NGX_MAX_UINT32_VALUE  0xffffffff
-#endif
-
-
 #if defined __DragonFly__ && !defined __FreeBSD__
 #define __FreeBSD__        4
 #define __FreeBSD_version  480101
@@ -133,6 +126,13 @@ typedef long               ngx_flag_t;
 /*
 #define NGX_MAXHOSTNAMELEN MAXHOSTNAMELEN
 */
+
+
+#if ((__GNU__ == 2) && (__GNUC_MINOR__ < 8))
+#define NGX_MAX_UINT32_VALUE  0xffffffffLL
+#else
+#define NGX_MAX_UINT32_VALUE  0xffffffff
+#endif
 
 
 #endif /* _NGX_CONFIG_H_INCLUDED_ */

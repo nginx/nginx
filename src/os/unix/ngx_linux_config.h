@@ -61,7 +61,7 @@
 #include <sys/sendfile.h>
 #else
 extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
-#define NGX_SENDFILE_LIMIT  (NGX_MAX_UINT32_VALUE + 1)
+#define NGX_SENDFILE_LIMIT  0x80000000
 #endif
 
 
