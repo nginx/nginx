@@ -2,6 +2,8 @@
 #include <ngx_core.h>
 
 
+#if (HAVE_STRERROR_R)
+
 ngx_int_t ngx_strerror_r(int err, char *errstr, size_t size)
 {
     size_t  len;
@@ -22,3 +24,5 @@ ngx_int_t ngx_strerror_r(int err, char *errstr, size_t size)
 
     return len;
 }
+
+#endif

@@ -2,6 +2,11 @@
 #define _NGX_CONFIG_H_INCLUDED_
 
 
+/* STUB to allocate a big ngx_connections */
+#undef  FD_SETSIZE
+#define FD_SETSIZE  5000
+
+
 #if defined __FreeBSD__
 #include <ngx_freebsd_config.h>
 

@@ -346,17 +346,17 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
                 continue;
             }
 
-            if (rc == NGX_AGAIN) {
-                return;
-            }
-
             if (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_ERROR) {
                 ngx_http_finalize_request(r, rc);
                 return;
             }
 
-            if (rc == NGX_OK && r->phase == NGX_HTTP_CONTENT_PHASE) {
-                ngx_http_finalize_request(r, 0);
+            if (r->phase == NGX_HTTP_CONTENT_PHASE) {
+                ngx_http_finalize_request(r, rc);
+                return;
+            }
+
+            if (rc == NGX_AGAIN) {
                 return;
             }
 
