@@ -3,6 +3,7 @@
 
 
 #include <ngx_hunk.h>
+#include <ngx_conf_file.h>
 #include <ngx_http.h>
 
 

@@ -1,5 +1,5 @@
-#ifndef _NGX_HTTP_CONFIG_FILE_H_INCLUDED_
-#define _NGX_HTTP_CONFIG_FILE_H_INCLUDED_
+#ifndef _NGX_HTTP_CONF_FILE_H_INCLUDED_
+#define _NGX_HTTP_CONF_FILE_H_INCLUDED_
 
 
 #include <ngx_config.h>
@@ -12,21 +12,25 @@
 #include <ngx_array.h>
 
 
-#define NGX_CONF_NOARGS    1
-#define NGX_CONF_TAKE1     2
-#define NGX_CONF_TAKE2     4
+#define NGX_CONF_NOARGS      1
+#define NGX_CONF_TAKE1       2
+#define NGX_CONF_TAKE2       4
+#define NGX_CONF_ARGS_NUMBER 0x0ffff
+#define NGX_CONF_ANY         0x10000
+#define NGX_CONF_BLOCK       0x20000
 
-#define NGX_CONF_ANY       0x10000
-#define NGX_CONF_BLOCK     0x20000
 
-#define NGX_CONF_UNSET    -1
+#define NGX_CONF_UNSET       -1
 
+
+#define NGX_CONF_ERROR       (char *) -1
 
 #define NGX_CONF_BLOCK_DONE  1
 #define NGX_CONF_FILE_DONE   2
 
 
-#define NGX_CONF_ERROR       (char *) -1
+#define NGX_CORE_MODULE_TYPE 0x45524f43  /* "CORE" */
+
 
 typedef struct ngx_conf_s  ngx_conf_t;
 
@@ -80,4 +84,4 @@ char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 extern ngx_module_t *ngx_modules[];
 
 
-#endif _NGX_HTTP_CONFIG_FILE_H_INCLUDED_
+#endif _NGX_HTTP_CONF_FILE_H_INCLUDED_

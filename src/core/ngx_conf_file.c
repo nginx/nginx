@@ -1,7 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_config_file.h>
+#include <ngx_conf_file.h>
 
 
 static int argument_number[] = {
@@ -75,7 +75,9 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         name = (ngx_str_t *) cf->args->elts;
 
         for (i = 0; ngx_modules[i]; i++) {
-            if (cf->type != ngx_modules[i]->type) {
+            if (ngx_modules[i]->type != NULL
+                && ngx_modules[i]->type != cf->type)
+            {
                 continue;
             }
 
@@ -88,7 +90,9 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                 if (name->len == cmd->name.len
                     && ngx_strcmp(name->data, cmd->name.data) == 0)
                 {
+
 ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
+
                     cmd->set(cf, cmd, NULL);
                 }
 

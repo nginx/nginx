@@ -2,6 +2,7 @@
 #include <nginx.h>
 
 #include <ngx_config.h>
+
 #include <ngx_string.h>
 #include <ngx_errno.h>
 #include <ngx_time.h>
@@ -12,6 +13,7 @@
 #include <ngx_server.h>
 #include <ngx_connection.h>
 #include <ngx_listen.h>
+#include <ngx_conf_file.h>
 
 /* STUB */
 #include <ngx_http.h>
@@ -62,6 +64,7 @@ int main(int argc, char *const *argv)
                   ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)), 1);
     conf.pool = ngx_pool;
     conf.log = &ngx_log;
+    conf.type = NGX_CORE_MODULE_TYPE;
 
     conf_file.len = sizeof("nginx.conf") - 1;
     conf_file.data = "nginx.conf";

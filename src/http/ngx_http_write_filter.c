@@ -1,8 +1,12 @@
 
 #include <ngx_config.h>
+
 #include <ngx_core.h>
 #include <ngx_hunk.h>
+#include <ngx_conf_file.h>
+
 #include <ngx_event_write.h>
+
 #include <ngx_http.h>
 #include <ngx_http_config.h>
 #include <ngx_http_write_filter.h>

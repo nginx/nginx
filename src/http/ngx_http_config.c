@@ -1,7 +1,13 @@
 
+/* TODO:
+    ngx_http_conf_ctx_t   ctx; on stack or in pool ? */
+
+
 #include <ngx_config.h>
+
 #include <ngx_core.h>
-#include <ngx_config_file.h>
+#include <ngx_conf_file.h>
+
 #include <ngx_http.h>
 #include <ngx_http_core.h>
 #include <ngx_http_config.h>
@@ -38,9 +44,10 @@ static ngx_command_t  ngx_http_commands[] = {
 ngx_module_t  ngx_http_module = {
     NULL,                                  /* module context */
     ngx_http_commands,                     /* module directives */
-    0,                                     /* module type */
+    NGX_CORE_MODULE_TYPE,                  /* module type */
     NULL                                   /* init module */
 };
+
 
 static ngx_command_t  ngx_http_core_commands[] = {
 
@@ -83,7 +90,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 {
     int  i;
     ngx_http_module_t    *module;
-    ngx_http_conf_ctx_t  *ctx;
+    ngx_http_conf_ctx_t   ctx;
 
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_HTTP_MODULE_TYPE) {
@@ -98,9 +105,9 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                   ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
                   NGX_CONF_ERROR);
 
-    ctx->srv_conf = NULL;
-    ctx->loc_conf = null_loc_conf;
-    ctx->locations = NULL;
+    ctx.srv_conf = NULL;
+    ctx.loc_conf = null_loc_conf;
+    ctx.locations = NULL;
 
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_HTTP_MODULE_TYPE) {
@@ -116,7 +123,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         }
     }
 
-    cf->ctx = ctx;
+    cf->ctx = &ctx;
     cf->type = NGX_HTTP_MODULE_TYPE;
     return ngx_conf_parse(cf, NULL);
 }

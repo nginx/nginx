@@ -1,7 +1,7 @@
 
 #include <ngx_config.h>
 
-#include <ngx_config_file.h>
+#include <ngx_conf_file.h>
 
 
 extern ngx_module_t  ngx_http_header_filter_module;
