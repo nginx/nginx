@@ -61,7 +61,7 @@ struct ngx_event_pipe_s {
     off_t              read_length;
 
     off_t              max_temp_file_size;
-    size_t             temp_file_write_size;
+    ssize_t            temp_file_write_size;
 
     ngx_msec_t         read_timeout;
     ngx_msec_t         send_timeout;
