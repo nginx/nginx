@@ -203,6 +203,15 @@ int main(int argc, char *const *argv, char **envp)
         ccf->pid.data = NGINX_PID;
         ccf->newpid.len = sizeof(NGINX_NEW_PID) - 1;
         ccf->newpid.data = NGINX_NEW_PID;
+
+    } else {
+        ccf->newpid.len = ccf->pid.len + sizeof(NGINX_NEW_PID_EXT);
+        if (!(ccf->newpid.data = ngx_alloc(ccf->newpid.len, cycle->log))) {
+            return 1;
+        }
+
+        ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
+                   NGINX_NEW_PID_EXT, sizeof(NGINX_NEW_PID_EXT));
     }
 
     len = ngx_snprintf(pid, /* STUB */ 10, PID_T_FMT, ngx_getpid());
@@ -785,7 +794,7 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
         }
     }
 
-    if (cycle->conf_file.len == NULL) {
+    if (cycle->conf_file.data == NULL) {
         cycle->conf_file.len = sizeof(NGINX_CONF) - 1;
         cycle->conf_file.data = NGINX_CONF;
     }
@@ -814,6 +823,7 @@ static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle)
     /* set by pcalloc()
      *
      * ccf->pid = NULL;
+     * ccf->newpid = NULL;
      */
     ccf->daemon = NGX_CONF_UNSET;
     ccf->master = NGX_CONF_UNSET;

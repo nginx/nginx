@@ -98,6 +98,12 @@ ngx_func_test="char buf[20]; int n; n = strerror_r(1, buf, 20)"
 . auto/func
 
 
+ngx_func="gnu_strerror_r()"
+ngx_func_inc="#include <string.h>"
+ngx_func_test="char buf[20], *str; str = strerror_r(1, buf, 20)"
+. auto/func
+
+
 ngx_func="localtime_r()"
 ngx_func_inc="#include <time.h>"
 ngx_func_test="struct tm t; time_t c=0; localtime_r(&c, &t)"

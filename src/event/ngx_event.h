@@ -20,14 +20,6 @@ typedef struct {
 #endif
 
 
-typedef enum {
-     NGX_ERROR_CRIT = 0,
-     NGX_ERROR_ERR,
-     NGX_ERROR_INFO,
-     NGX_ERROR_IGNORE_ECONNRESET
-} ngx_event_log_error_e;
-
-
 struct ngx_event_s {
     void            *data;
     /* TODO rename to handler */
@@ -88,7 +80,6 @@ struct ngx_event_s {
 
     unsigned short   read_discarded:1;
 
-    unsigned short   log_error:2;  /* ngx_event_log_error_e */
     unsigned short   unexpected_eof:1;
 
     unsigned short   deferred_accept:1;

@@ -14,9 +14,10 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 #include <signal.h>
-#include <strings.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>

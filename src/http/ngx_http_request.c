@@ -79,10 +79,10 @@ void ngx_http_init_connection(ngx_connection_t *c)
     ctx->action = "reading client request line";
     c->log->data = ctx;
     c->log->handler = ngx_http_log_error;
+    c->log_error = NGX_ERROR_INFO;
 
     rev = c->read;
     rev->event_handler = ngx_http_init_request;
-    rev->log_error = NGX_ERROR_INFO;
 
     /* STUB: epoll */ c->write->event_handler = ngx_http_empty_handler;
 
@@ -1272,10 +1272,10 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
      * so we ignore ECONNRESET here.
      */
 
-    rev->log_error = NGX_ERROR_IGNORE_ECONNRESET;
+    c->log_error = NGX_ERROR_IGNORE_ECONNRESET;
     ngx_set_socket_errno(0);
     n = ngx_recv(c, c->buffer->last, c->buffer->end - c->buffer->last);
-    rev->log_error = NGX_ERROR_INFO;
+    c->log_error = NGX_ERROR_INFO;
 
     if (n == NGX_AGAIN) {
         return;

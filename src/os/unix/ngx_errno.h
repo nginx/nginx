@@ -2,8 +2,8 @@
 #define _NGX_ERRNO_H_INCLUDED_
 
 
-#include <errno.h>
-#include <string.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
 
 
 typedef int               ngx_err_t;
@@ -34,7 +34,7 @@ typedef int               ngx_err_t;
 #define ngx_set_socket_errno(err)  errno = err
 
 
-#if (HAVE_STRERROR_R)
+#if (HAVE_STRERROR_R || HAVE_GNU_STRERROR_R)
 
 ngx_int_t ngx_strerror_r(int err, char *errstr, size_t size);
 

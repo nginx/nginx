@@ -32,7 +32,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
                     ngx_set_socket_errno(rev->kq_errno);
 
                     if (rev->kq_errno == NGX_ECONNRESET
-                        && rev->log_error == NGX_ERROR_IGNORE_ECONNRESET)
+                        && c->log_error == NGX_ERROR_IGNORE_ECONNRESET)
                     {
                         return 0;
                     }

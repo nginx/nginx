@@ -52,6 +52,14 @@ typedef struct {
 } ngx_listening_t;
 
 
+typedef enum {
+     NGX_ERROR_CRIT = 0,
+     NGX_ERROR_ERR,
+     NGX_ERROR_INFO,
+     NGX_ERROR_IGNORE_ECONNRESET
+} ngx_connection_log_error_e;
+
+
 struct ngx_connection_s {
     void             *data;
     ngx_event_t      *read;
@@ -83,6 +91,8 @@ struct ngx_connection_s {
     ngx_hunk_t       *buffer;
 
     ngx_int_t         number;
+
+    unsigned          log_error:2;  /* ngx_connection_log_error_e */
 
     unsigned          pipeline:1;
     unsigned          unexpected_eof:1;
