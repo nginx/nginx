@@ -27,18 +27,6 @@
 #include <osreldate.h>
 
 
-/* TODO: autoconf */
-#if __FreeBSD_version < 300007
-typedef u_int64_t  uint64_t;
-typedef u_int32_t  uintptr_t;
-#endif
-
-
-/* TODO: autoconf ??? */
-#if __FreeBSD_version < 330002  /* exactly */
-typedef uint32_t   socklen_t;
-#endif
-
 
 /* TODO: autoconf */
 #if (i386)
@@ -55,7 +43,9 @@ typedef uint32_t   socklen_t;
 
 #endif
 
+#if 0
 #define TIME_FMT   "%ld"
+#endif
 #define PID_FMT    "%d"
 #define RLIM_FMT   "%lld"
 

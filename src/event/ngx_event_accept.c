@@ -85,7 +85,7 @@ void ngx_event_accept(ngx_event_t *ev)
             ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
                           "accept() on %s returned socket #%d while "
                           "only %d connections was configured, "
-                          "sleeping for 1 second",
+                          "closing the connection",
                           ls->listening->addr_text.data, s, ecf->connections);
 
             if (ngx_close_socket(s) == -1) {
@@ -93,7 +93,7 @@ void ngx_event_accept(ngx_event_t *ev)
                               ngx_close_socket_n "failed");
             }
 
-            ngx_msleep(1000);
+            /* TODO: disable temporary accept() event */
 
             ngx_destroy_pool(pool);
             return;
@@ -225,11 +225,9 @@ void ngx_event_accept(ngx_event_t *ev)
 
         ls->listening->handler(c);
 
-#if 0
         if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
             ev->available--;
         }
-#endif
 
         accepted++;
 

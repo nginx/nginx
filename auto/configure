@@ -1,0 +1,12 @@
+
+CC=cc
+CPP='cc -E'
+
+echo > ngx_auto_config.h
+
+. auto/types/time_t
+
+. auto/types/uint64_t
+. auto/types/uintptr_t
+
+. auto/types/socklen_t

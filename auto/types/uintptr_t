@@ -1,0 +1,45 @@
+
+found=0
+
+echo 'Checking for uintptr_t'
+
+    echo '#include <sys/types.h>' > autotest.c
+    echo 'int main() { uintptr_t i = 0; return i; }' >> autotest.c
+
+    eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+
+    if [ -x autotest ]; then
+        echo ' + uintptr_t found'
+        found=1
+    else
+        echo ' + uintptr_t not found'
+    fi
+
+    rm autotest*
+
+
+if [ $found = 0 ]; then
+    echo 'int main() { printf("%d", 8 * sizeof(void *)); return 0; }'	\
+          > autotest.c
+    eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+
+    if [ -x autotest ]; then
+        type="uint`./autotest`_t"
+        echo " + $type used"
+        type="typedef $type  uintptr_t;"
+        found=2
+    fi
+fi
+
+
+if [ $found = 0 ]; then
+    echo "$0: error: uintptr_t not found"
+    exit 1
+fi
+
+
+if [ $found = 2 ]; then
+    echo $type >> ngx_auto_config.h
+    echo >> ngx_auto_config.h
+fi
+

@@ -157,7 +157,7 @@ ngx_log_debug(rev->log, "IN: %08x" _ in_port);
     if (in_port->addrs.nelts > 1) {
 
         /*
-         * there're the several addresses on this port and one of them
+         * There're the several addresses on this port and one of them
          * is "*:port" so getsockname() is needed to determine
          * the server address.
          * AcceptEx() already gave this address.
@@ -346,10 +346,12 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         r->request_line.len = r->request_end - r->request_start;
 
-        /* if the large client headers are enabled then
-           we need to copy a request line */
-
         if (cscf->large_client_header) {
+
+           /*
+            * if the large client headers are enabled then
+            * we need to copy a request line
+            */
 
             r->request_line.data = ngx_palloc(r->pool, r->request_line.len + 1);
             if (r->request_line.data == NULL) {
@@ -366,9 +368,11 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             r->request_line.data[r->request_line.len] = '\0';
         }
 
-        /* copy URI extention if it exists */
 
         if (r->uri_ext) {
+
+            /* copy URI extention */
+
             if (r->args_start) {
                 r->exten.len = r->args_start - 1 - r->uri_ext;
             } else {
@@ -384,9 +388,10 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             ngx_cpystrn(r->exten.data, r->uri_ext, r->exten.len + 1);
         }
 
-        /* copy URI arguments if they exist */
-
         if (r->args_start && r->uri_end > r->args_start) {
+
+            /* copy URI arguments */
+
             r->args.len = r->uri_end - r->args_start;
 
             if (!(r->args.data = ngx_palloc(r->pool, r->args.len + 1))) {
@@ -446,8 +451,8 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         /*
          * If it's a pipelined request and a request line is not complete
-         * then we need to copy it to the start of the r->header_in hunk.
-         * We need to copy it here only if the large client headers
+         * then we have to copy it to the start of the r->header_in hunk.
+         * We have to copy it here only if the large client headers
          * are enabled otherwise a request line had been already copied
          * to the start of the r->header_in hunk in ngx_http_set_keepalive().
          */

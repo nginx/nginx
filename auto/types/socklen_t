@@ -1,0 +1,28 @@
+
+found=0
+
+echo 'Checking for socklen_t'
+
+echo '#include <sys/types.h>' > autotest.c
+echo '#include <sys/socket.h>' >> autotest.c
+echo 'int main() { socklen_t i = 0; return 0; }' >> autotest.c
+
+eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+
+if [ -x autotest ]; then
+    echo ' + socklen_t found'
+    found=1
+else
+    echo ' + socklen_t not found'
+    echo ' + uint32_t used'
+    type='typedef uint32_t  socklen_t;'
+    found=2
+fi
+
+rm autotest*
+
+
+if [ $found = 2 ]; then
+    echo $type >> ngx_auto_config.h
+    echo >> ngx_auto_config.h
+fi
