@@ -15,11 +15,6 @@ static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
 
 
-#if (NGX_DEBUG) && (__FreeBSD__)
-extern char *malloc_options;
-#endif
-
-
 typedef struct {
      int   daemon;
 } ngx_core_conf_t;
@@ -81,13 +76,8 @@ int main(int argc, char *const *argv)
     ngx_core_conf_t  *ccf;
 #endif
 
-#if (NGX_DEBUG) && (__FreeBSD__)
-#if __FreeBSD_version >= 500014
-    _malloc_options
-#else
-    malloc_options
-#endif
-                    = "J";
+#if __FreeBSD__
+    ngx_debug_init();
 #endif
 
     /* TODO */ ngx_max_sockets = -1;
@@ -134,7 +124,9 @@ int main(int argc, char *const *argv)
     /* life cycle */
 
     for ( ;; ) {
+#if 0
         /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG|NGX_LOG_DEBUG_HTTP;
+#endif
 
 #if 0
 
@@ -255,13 +247,11 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     ngx_listening_t  *ls, *nls;
 
 
-    pool = ngx_create_pool(16 * 1024, log);
-    if (pool == NULL) {
+    if (!(pool = ngx_create_pool(16 * 1024, log))) {
         return NULL;
     }
 
-    cycle = ngx_pcalloc(pool, sizeof(ngx_cycle_t));
-    if (cycle == NULL) {
+    if (!(cycle = ngx_pcalloc(pool, sizeof(ngx_cycle_t)))) {
         ngx_destroy_pool(pool);
         return NULL;
     }
@@ -271,8 +261,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
 
     n = old_cycle ? old_cycle->pathes.nelts : 10;
-    cycle->pathes.elts = ngx_pcalloc(pool, n * sizeof(ngx_path_t *));
-    if (cycle->pathes.elts == NULL) {
+    if (!(cycle->pathes.elts = ngx_pcalloc(pool, n * sizeof(ngx_path_t *)))) {
         ngx_destroy_pool(pool);
         return NULL;
     }
@@ -294,8 +283,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     cycle->open_files.pool = pool;
 
 
-    cycle->log = ngx_log_create_errlog(cycle, NULL);
-    if (cycle->log == NULL) {
+    if (!(cycle->log = ngx_log_create_errlog(cycle, NULL))) {
         ngx_destroy_pool(pool);
         return NULL;
     }
@@ -320,8 +308,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     }
 
 
-    ccf = ngx_pcalloc(pool, sizeof(ngx_core_conf_t));
-    if (ccf == NULL) {
+    if (!(ccf = ngx_pcalloc(pool, sizeof(ngx_core_conf_t)))) {
         ngx_destroy_pool(pool);
         return NULL;
     }
@@ -386,7 +373,9 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
 #endif
     }
 
+#if 0
     /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG;
+#endif
 
     if (!failed) {
         if (old_cycle) {

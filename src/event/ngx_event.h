@@ -22,7 +22,7 @@ typedef struct {
 
 struct ngx_event_s {
     void            *data;
-    /* TODO rename to handler, move flags to struct start */
+    /* TODO rename to handler */
     void           (*event_handler)(ngx_event_t *ev);
 
     u_int            index;
@@ -31,17 +31,14 @@ struct ngx_event_s {
     ngx_event_t     *prev;
     ngx_event_t     *next;
 
-#if 0
-    ngx_event_t     *timer_prev;
-    ngx_event_t     *timer_next;
-
-    ngx_msec_t       timer_delta;
-#endif
-
     ngx_log_t       *log;
 
     /*
-     * ngx_rbtree_t     rbtree;
+     * The inline of "ngx_rbtree_t  rbtree;".
+     *
+     * It allows to pack rbtree_color and variuos event bit flags into
+     * the single int.  We also use "unsigned char" and then "usigned short"
+     * because otherwise MSVC 6.0 uses an additional int for bit flags.
      */
 
     ngx_int_t        rbtree_key;

@@ -35,11 +35,13 @@ void ngx_event_expire_timers(ngx_msec_t timer);
 
 
 extern ngx_rbtree_t  *ngx_event_timer_rbtree;
+extern ngx_rbtree_t   ngx_event_timer_sentinel;
+
 
 
 ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
 {
-    ngx_rbtree_delete(&ngx_event_timer_rbtree,
+    ngx_rbtree_delete(&ngx_event_timer_rbtree, &ngx_event_timer_sentinel,
                       (ngx_rbtree_t *) &ev->rbtree_key);
 
     ev->timer_set = 0;
@@ -55,7 +57,7 @@ ngx_inline static void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     ev->rbtree_key = (ngx_int_t)
                              (ngx_elapsed_msec + timer) / NGX_TIMER_RESOLUTION;
 
-    ngx_rbtree_insert(&ngx_event_timer_rbtree,
+    ngx_rbtree_insert(&ngx_event_timer_rbtree, &ngx_event_timer_sentinel,
                       (ngx_rbtree_t *) &ev->rbtree_key);
 
     ev->timer_set = 1;

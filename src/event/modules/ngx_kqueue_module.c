@@ -354,6 +354,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     struct timespec    ts, *tp;
 
     timer = ngx_event_find_timer();
+    ngx_old_elapsed_msec = ngx_elapsed_msec;
 
     if (timer) {
         ts.tv_sec = timer / 1000;
@@ -398,19 +399,6 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
     if (timer) {
         delta = ngx_elapsed_msec - delta;
-
-#if 0
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
-
-        /*
-         * The expired timers must be handled before a processing of the events
-         * because the new timers can be added during a processing
-         */
-
-        ngx_event_expire_timers((ngx_msec_t) delta);
-
-        ngx_event_set_timer_delta((ngx_msec_t) delta);
-#endif
 
     } else {
         if (events == 0) {
@@ -518,12 +506,6 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     if (timer && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);
     }
-
-#if 0
-    if (timer) {
-        ngx_event_expire_timers((ngx_msec_t) delta);
-    }
-#endif
 
     return NGX_OK;
 }

@@ -5,18 +5,19 @@
 
 time_t            ngx_cached_time;
 ngx_epoch_msec_t  ngx_elapsed_msec;
+ngx_epoch_msec_t  ngx_old_elapsed_msec;
 ngx_epoch_msec_t  ngx_start_msec;
 
 ngx_tm_t          ngx_cached_gmtime;
 
-static char  cached_err_log_time[] = "1970/09/28 12:00:00";
-ngx_str_t    ngx_cached_err_log_time;
+static char       cached_err_log_time[] = "1970/09/28 12:00:00";
+ngx_str_t         ngx_cached_err_log_time;
 
-static char  cached_http_time[] = "Mon, 28 Sep 1970 06:00:00 GMT";
-ngx_str_t    ngx_cached_http_time;
+static char       cached_http_time[] = "Mon, 28 Sep 1970 06:00:00 GMT";
+ngx_str_t         ngx_cached_http_time;
 
-static char  cached_http_log_time[] = "28/Sep/1970:12:00:00";
-ngx_str_t    ngx_cached_http_log_time;
+static char       cached_http_log_time[] = "28/Sep/1970:12:00:00";
+ngx_str_t         ngx_cached_http_log_time;
 
 
 static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fir", "Sat" };
@@ -40,6 +41,7 @@ void ngx_time_init()
     ngx_gettimeofday(&tv);
     ngx_cached_time = tv.tv_sec;
     ngx_start_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    ngx_old_elapsed_msec = 0;
     ngx_elapsed_msec = 0;
 
     ngx_time_update();

@@ -22,7 +22,7 @@ static ngx_str_t  errlog_name = ngx_string("errlog");
 static ngx_command_t  ngx_errlog_commands[] = {
 
     {ngx_string("error_log"),
-     NGX_MAIN_CONF|NGX_CONF_TAKE1,
+     NGX_MAIN_CONF|NGX_CONF_TAKE12,
      ngx_set_error_log,
      0,
      0,
@@ -233,12 +233,14 @@ ngx_log_t *ngx_log_init_errlog()
     ngx_stderr.fd = GetStdHandle(STD_ERROR_HANDLE);
 
     if (ngx_stderr.fd == NGX_INVALID_FILE) {
-        /* TODO: where we can log error ? */
+        /* TODO: where can we log error ? */
         return NULL;
 
     } else if (ngx_stderr.fd == NULL) {
+
         /* there are no associated standard handles */
-        /* TODO: where we can log possible errors ? */
+
+        /* TODO: where can we can log possible errors ? */
 
         ngx_stderr.fd = NGX_INVALID_FILE;
     }
@@ -251,7 +253,10 @@ ngx_log_t *ngx_log_init_errlog()
 
     ngx_log.file = &ngx_stderr;
     ngx_log.log_level = NGX_LOG_INFO;
+
+#if 0
     /* STUB */ ngx_log.log_level = NGX_LOG_DEBUG;
+#endif
 
     return &ngx_log;
 }
@@ -264,7 +269,9 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name)
     ngx_test_null(log, ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)), NULL);
     ngx_test_null(log->file, ngx_conf_open_file(cycle, name), NULL);
 
+#if 0
     /* STUB */ log->log_level = NGX_LOG_DEBUG;
+#endif
 
     return log;
 }
@@ -272,6 +279,7 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name)
 
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    ngx_int_t   i;
     ngx_str_t  *value;
 
     value = cf->args->elts;
@@ -283,51 +291,19 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         cf->cycle->log->file->name = value[1];
     }
 
-    return NGX_CONF_OK;
-}
-
-
-#if 0
-
-char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log)
-{
-    int         len;
-    ngx_err_t   err;
-    ngx_str_t  *value;
-
-    value = cf->args->elts;
-
-    log->file->fd = ngx_open_file(value[1].data,
-                            NGX_FILE_RDWR,
-                            NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
-
-    if (log->file->fd == NGX_INVALID_FILE) {
-        err = ngx_errno;
-        len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                          ngx_open_file_n " \"%s\" failed (%d: ",
-                          value[1].data, err);
-        len += ngx_strerror_r(err, ngx_conf_errstr + len,
-                              sizeof(ngx_conf_errstr) - len - 1);
-        ngx_conf_errstr[len++] = ')';
-        ngx_conf_errstr[len++] = '\0';
-        return ngx_conf_errstr;
+    if (cf->args->nelts == 3) {
+        for (i = 1; i <= /* STUB ??? */ NGX_LOG_DEBUG; i++) {
+            if (ngx_strcmp(value[2].data, err_levels[i]) == 0) {
+                cf->cycle->log->log_level = i;
+                break;
+            }
+        }
+        if (i > NGX_LOG_DEBUG) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid log level \"%s\"", value[2].data);
+            return NGX_CONF_ERROR;
+        }
     }
-
-#if (WIN32)
-    if (ngx_file_append_mode(log->file->fd) == NGX_ERROR) {
-        err = ngx_errno;
-        len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                          ngx_file_append_mode_n " \"%s\" failed (%d: ",
-                          value[1].data, err);
-        len += ngx_strerror_r(err, ngx_conf_errstr + len,
-                              sizeof(ngx_conf_errstr) - len - 1);
-        ngx_conf_errstr[len++] = ')';
-        ngx_conf_errstr[len++] = '\0';
-        return ngx_conf_errstr;
-    }
-#endif
 
     return NGX_CONF_OK;
 }
-
-#endif

@@ -16,6 +16,7 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp);
 
 extern time_t            ngx_cached_time;
 extern ngx_epoch_msec_t  ngx_elapsed_msec;
+extern ngx_epoch_msec_t  ngx_old_elapsed_msec;
 extern ngx_epoch_msec_t  ngx_start_msec;
 
 extern ngx_str_t         ngx_cached_err_log_time;

@@ -16,16 +16,17 @@ struct ngx_rbtree_s {
    char            color;
 };
 
-extern ngx_rbtree_t  sentinel;
+
+void ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
+                       ngx_rbtree_t *node);
+void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
+                       ngx_rbtree_t *node);
 
 
-void ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *node);
-void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *node);
-
-
-ngx_inline static ngx_rbtree_t *ngx_rbtree_min(ngx_rbtree_t *root)
+ngx_inline static ngx_rbtree_t *ngx_rbtree_min(ngx_rbtree_t *root,
+                                               ngx_rbtree_t *sentinel)
 {
-   while (root->left != &sentinel) {
+   while (root->left != sentinel) {
        root = root->left;
    }
 

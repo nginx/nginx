@@ -79,5 +79,7 @@
 #define HAVE_LITTLE_ENDIAN  1
 
 
+extern char *malloc_options;
+
 
 #endif /* _NGX_FREEBSD_CONFIG_H_INCLUDED_ */
