@@ -117,13 +117,13 @@ ngx_log_debug(r->connection->log, "servers: %0x" _ r->connection->servers);
          /* AF_INET only */
 
         in_port = (ngx_http_in_port_t *) r->connection->servers;
+        in_addr = (ngx_http_in_addr_t *) in_port->addr.elts;
 
         a = 0;
 
         if (in_port->addr.nelts > 1) {
             /* find r->in_addr, getsockname() */ 
 
-            in_addr = (ngx_http_in_addr_t *) in_port->addr.elts;
             for ( /* void */ ; a < in_port->addr.nelts; a++) {
 
                 if (in_addr[a].addr == INADDR_ANY) {
@@ -203,7 +203,7 @@ ngx_log_debug(r->connection->log, "loc_conf: %0x" _ r->loc_conf);
 
 int ngx_http_core_translate_handler(ngx_http_request_t *r)
 {
-    int                         i, rc, len, f_offset, l_offset;
+    int                         i, rc, len, port_len, f_offset, l_offset;
     char                       *buf, *location, *last;
     ngx_err_t                   err;
     ngx_table_elt_t            *h;
@@ -245,14 +245,34 @@ ngx_log_debug(r->connection->log, "doc_root: %08x" _ &loc_conf->doc_root);
 
     s_name = (ngx_http_server_name_t *) scf->server_names.elts;
 
+    if (r->port == 0) {
+#if 0
+        struct sockaddr_in  *addr_in;
+        addr_in = (struct sockaddr_in *) r->connection->sockaddr;
+        r->port = ntohs(addr_in->sin_port);
+#else
+        ngx_http_in_port_t  *in_port;
+        in_port = (ngx_http_in_port_t *) r->connection->servers;
+        r->port = in_port->port;
+#endif
+        if (r->port != 80) {
+            ngx_test_null(r->port_name.data, ngx_palloc(r->pool, 7),
+                          NGX_HTTP_INTERNAL_SERVER_ERROR);
+            r->port_name.len = ngx_snprintf(r->port_name.data, 7, ":%d",
+                                            r->port);
+        }
+    }
+
+    port_len = (r->port != 80) ? r->port_name.len : 0;
+
     /* "+ 7" is "http://" */
-    if (loc_conf->doc_root.len > s_name[0].name.len + 7) {
+    if (loc_conf->doc_root.len > 7 + s_name[0].name.len + port_len) {
         len = loc_conf->doc_root.len;
         f_offset = 0;
-        l_offset = len - (s_name[0].name.len + 7);
+        l_offset = len - (7 + s_name[0].name.len + port_len);
 
     } else {
-        len = s_name[0].name.len + 7;
+        len = 7 + s_name[0].name.len + port_len;
         f_offset = len - loc_conf->doc_root.len;
         l_offset = 0;
     }
@@ -367,6 +387,10 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
         ngx_memcpy(location, "http://", 7);
         ngx_memcpy(location + 7, s_name[0].name.data, s_name[0].name.len);
+        if (port_len) {
+            ngx_memcpy(location + 7 + s_name[0].name.len, r->port_name.data,
+                       port_len);
+        }
 
         *last++ = '/';
         *last = '\0';

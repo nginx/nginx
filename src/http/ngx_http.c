@@ -348,6 +348,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
             ls->ctx = ctx;
             ls->servers = &in_port[p];
 
+#if 0
             if (in_port[p].addr.nelts == 1) {
                 in_addr = (ngx_http_in_addr_t *) in_port[p].addr.elts;
 
@@ -359,9 +360,23 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                     ls->servers = NULL;
                 }
             }
+#endif
 ngx_log_debug(cf->log, "ls ctx: %d:%08x" _ in_port[p].port _ ls->ctx);
         }
     }
+
+    /* DEBUG STUFF */
+    in_port = (ngx_http_in_port_t *) in_ports.elts;
+    for (p = 0; p < in_ports.nelts; p++) {
+ngx_log_debug(cf->log, "port: %d" _ in_port[p].port);
+        in_addr = (ngx_http_in_addr_t *) in_port[p].addr.elts;
+        for (a = 0; a < in_port[p].addr.nelts; a++) {
+            char ip[20];
+            ngx_inet_ntop(AF_INET, &in_addr[a].addr, ip, 20);
+ngx_log_debug(cf->log, "%s %08x" _ ip _ in_addr[a].core_srv_conf);
+        }
+    }
+    /**/
 
     return NGX_CONF_OK;
 }

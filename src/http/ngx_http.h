@@ -138,12 +138,15 @@ struct ngx_http_request_s {
 
     ngx_connection_t  *connection;
 
-    u_int     in_addr;
+    u_int       in_addr;
 
-    int       filter;
+    int         port;
+    ngx_str_t   port_name;
 
-    ssize_t   client_content_length;
-    char     *discarded_buffer;
+    int         filter;
+
+    ssize_t     client_content_length;
+    char       *discarded_buffer;
 
     ngx_str_t   path;
     int         path_err;
