@@ -19,6 +19,13 @@ static char error_400_page[] =
 "<center><h1>400 Bad Request</h1></center>" CRLF
 ;
 
+static char error_403_page[] =
+"<html>" CRLF
+"<head><title>403 Forbidden</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>403 Forbidden</h1></center>" CRLF
+;
+
 static char error_404_page[] =
 "<html>" CRLF
 "<head><title>404 Not Found</title></head>" CRLF
@@ -36,7 +43,7 @@ static ngx_str_t error_pages[] = {
     { sizeof(error_400_page) - 1, error_400_page },
     { 0, NULL},  /* 401 */
     { 0, NULL},  /* 402 */
-    { 0, NULL},  /* 403 */
+    { sizeof(error_403_page) - 1, error_403_page },
     { sizeof(error_404_page) - 1, error_404_page },
 
     { 0, NULL}   /* 500 */

@@ -26,6 +26,10 @@ int  ngx_http_lingering_timeout = 5000;
 int  ngx_http_lingering_time = 30;
 /**/
 
+
+ngx_array_t  ngx_http_index_handlers;
+
+
 int  (*ngx_http_top_header_filter) (ngx_http_request_t *r);
 
 
@@ -116,6 +120,9 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 
     if (rv != NGX_CONF_OK)
         return rv;
+
+    ngx_init_array(ngx_http_index_handlers,
+                   cf->pool, 3, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
 
     ngx_http_init_filters(cf->pool, ngx_modules);
 

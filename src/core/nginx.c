@@ -3,6 +3,7 @@
 
 #include <ngx_config.h>
 
+#include <ngx_core.h>
 #include <ngx_string.h>
 #include <ngx_errno.h>
 #include <ngx_time.h>
@@ -41,6 +42,7 @@ ngx_array_t  ngx_listening_sockets;
 
 int main(int argc, char *const *argv)
 {
+    int         i;
     ngx_str_t   conf_file;
     ngx_conf_t  conf;
 
@@ -70,8 +72,17 @@ int main(int argc, char *const *argv)
     conf_file.data = "nginx.conf";
 
     if (ngx_conf_parse(&conf, &conf_file) != NGX_CONF_OK) {
-        exit(1);
+        return 1;
     }
+
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->init_module) {
+            if (ngx_modules[i]->init_module(ngx_pool) == NGX_ERROR) {
+                return 1;
+            }
+        }
+    }
+
 
 #if 0
     /* STUB */

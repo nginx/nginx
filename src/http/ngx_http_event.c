@@ -400,7 +400,7 @@ static int ngx_http_process_request_header_line(ngx_http_request_t *r)
 
     for (i = 0; headers_in[i].len != 0; i++) {
         if (headers_in[i].len == h->key.len) {
-            if (strcasecmp(headers_in[i].data, h->key.data) == 0) {
+            if (ngx_strcasecmp(headers_in[i].data, h->key.data) == 0) {
                 *((ngx_table_elt_t **)
                     ((char *) &r->headers_in + headers_in[i].offset)) = h;
             }

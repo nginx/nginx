@@ -8,6 +8,9 @@
 typedef int               ssize_t;
 typedef long              time_t;
 
+typedef unsigned __int32  u_int32_t;
+
+
 
 #define QD_FMT            "%I64d"
 #define QX_FMT            "%I64x"

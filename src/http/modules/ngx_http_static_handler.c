@@ -107,17 +107,17 @@ int ngx_http_static_handler(ngx_http_request_t *r)
 
     /* STUB */
     if (r->exten.len) {
-        if (strcasecmp(r->exten.data, "html") == 0) {
+        if (ngx_strcasecmp(r->exten.data, "html") == 0) {
             r->headers_out.content_type->value.len = 25;
             r->headers_out.content_type->value.data =
                                                    "text/html; charset=koi8-r";
-        } else if (strcasecmp(r->exten.data, "gif") == 0) {
+        } else if (ngx_strcasecmp(r->exten.data, "gif") == 0) {
             r->headers_out.content_type->value.len = 9;
             r->headers_out.content_type->value.data = "image/gif";
-        } else if (strcasecmp(r->exten.data, "jpg") == 0) {
+        } else if (ngx_strcasecmp(r->exten.data, "jpg") == 0) {
             r->headers_out.content_type->value.len = 10;
             r->headers_out.content_type->value.data = "image/jpeg";
-        } else if (strcasecmp(r->exten.data, "pdf") == 0) {
+        } else if (ngx_strcasecmp(r->exten.data, "pdf") == 0) {
             r->headers_out.content_type->value.len = 15;
             r->headers_out.content_type->value.data = "application/pdf";
         }

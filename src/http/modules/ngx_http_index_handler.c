@@ -13,6 +13,7 @@
 #include <ngx_http_index_handler.h>
 
 
+static int ngx_http_index_init(ngx_pool_t *pool);
 static void *ngx_http_index_create_conf(ngx_pool_t *pool);
 static char *ngx_http_index_merge_conf(ngx_pool_t *p,
                                        void *parent, void *child);
@@ -55,13 +56,13 @@ ngx_module_t  ngx_http_index_module = {
     &ngx_http_index_module_ctx,            /* module context */
     ngx_http_index_commands,               /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
-    NULL                                   /* init module */
+    ngx_http_index_init                    /* init module */
 };
 
 
 int ngx_http_index_handler(ngx_http_request_t *r)
 {
-    int          i;
+    int          i, len;
     char        *name, *file;
     ngx_str_t    loc, *index;
     ngx_err_t    err;
@@ -76,19 +77,31 @@ int ngx_http_index_handler(ngx_http_request_t *r)
     core_cf = (ngx_http_core_loc_conf_t *)
                     ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
 
-    ngx_test_null(name,
+    ngx_test_null(r->path.data,
                   ngx_palloc(r->pool,
                              core_cf->doc_root.len + r->uri.len
                              + cf->max_index_len),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    loc.data = ngx_cpystrn(name, core_cf->doc_root.data,
+    loc.data = ngx_cpystrn(r->path.data, core_cf->doc_root.data,
                            core_cf->doc_root.len + 1);
     file = ngx_cpystrn(loc.data, r->uri.data, r->uri.len + 1);
+    r->path.len = file - r->path.data;
 
     index = (ngx_str_t *) cf->indices->elts;
     for (i = 0; i < cf->indices->nelts; i++) {
-        ngx_memcpy(file, index[i].data, index[i].len + 1);
+
+        if (index[i].data[0] != '/') {
+            if (!r->path_not_found) {
+                continue;
+            }
+
+            ngx_memcpy(file, index[i].data, index[i].len + 1);
+            name = r->path.data;
+
+        } else {
+            name = index[i].data;
+        }
 
         fd = ngx_open_file(name, NGX_FILE_RDONLY);
         if (fd == NGX_INVALID_FILE) {
@@ -98,6 +111,12 @@ int ngx_http_index_handler(ngx_http_request_t *r)
             }
 #if (WIN32)
             if (err == ERROR_PATH_NOT_FOUND) {
+                r->path_not_found = 1;
+                continue;
+            }
+#else
+            if (err == NGX_ENOTDIR) {
+                r->path_not_found = 1;
                 continue;
             }
 #endif
@@ -108,15 +127,36 @@ int ngx_http_index_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        r->file.name.len = core_cf->doc_root.len + r->uri.len + index[i].len;
         r->file.name.data = name; 
         r->file.fd = fd; 
 
-        loc.len = r->uri.len + index[i].len;
+        if (index[i].data[0] == '/') {
+            r->file.name.len = index[i].len;
+            loc.len = index[i].len;
+            loc.data = index[i].data;
+
+        } else {
+            loc.len = r->uri.len + index[i].len;
+            r->file.name.len = core_cf->doc_root.len + r->uri.len
+                               + index[i].len;
+        }
+
         return ngx_http_internal_redirect(r, loc);
     }
 
     return NGX_DECLINED;
+}
+
+
+static int ngx_http_index_init(ngx_pool_t *pool)
+{
+    ngx_http_handler_pt  *h;
+
+    ngx_test_null(h, ngx_push_array(&ngx_http_index_handlers), NGX_ERROR);
+
+    *h = ngx_http_index_handler;
+
+    return NGX_OK;
 }
 
 

@@ -11,15 +11,15 @@
 #if 0
 #include <ngx_http_write_filter.h>
 #include <ngx_http_output_filter.h>
-#include <ngx_http_index_handler.h>
 #endif
 
 /* STUB */
 #include <ngx_http_output_filter.h>
 int ngx_http_static_handler(ngx_http_request_t *r);
-int ngx_http_index_handler(ngx_http_request_t *r);
 int ngx_http_proxy_handler(ngx_http_request_t *r);
 /**/
+
+static int ngx_http_core_index_handler(ngx_http_request_t *r);
 
 
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy);
@@ -173,9 +173,7 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
     }
 
     if (r->uri.data[r->uri.len - 1] == '/') {
-        /* TODO: find index handler */
-        /* STUB */ r->handler = ngx_http_index_handler;
-
+        r->handler = ngx_http_core_index_handler;
         return NGX_OK;
     }
 
@@ -234,6 +232,9 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
 #if (WIN32)
         } else if (err == ERROR_PATH_NOT_FOUND) {
             return NGX_HTTP_NOT_FOUND;
+#else
+        } else if (err == NGX_ENOTDIR) {
+            return NGX_HTTP_NOT_FOUND;
 #endif
         } else {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -290,6 +291,62 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
     /* STUB */ r->handler = ngx_http_static_handler;
 
     return NGX_OK;
+}
+
+
+static int ngx_http_core_index_handler(ngx_http_request_t *r)
+{
+    int                   i, rc;
+    ngx_err_t             err;
+    ngx_http_handler_pt  *h;
+
+    h = (ngx_http_handler_pt *) ngx_http_index_handlers.elts;
+    for (i = 0; i < ngx_http_index_handlers.nelts; i++) {
+        rc = h[i](r);
+
+        if (rc != NGX_DECLINED) {
+            return rc;
+        }
+    }
+
+#if (WIN32)
+
+    if (r->path_not_found) {
+        return NGX_HTTP_NOT_FOUND;
+
+    } else {
+        return NGX_HTTP_FORBIDDEN;
+    }
+
+#else
+
+    if (r->path_not_found) {
+        return NGX_HTTP_NOT_FOUND;
+    }
+
+    r->path.data[r->path.len] = '\0';
+    if (stat(r->path.data, &r->file.info) == -1) {
+
+        err = ngx_errno;
+        if (err == NGX_ENOENT) {
+            return NGX_HTTP_NOT_FOUND;
+        }
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
+                      "ngx_http_core_index_handler: "
+                      "stat() %s failed", r->path.data);
+
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (ngx_is_dir(r->file.info)) {
+        return NGX_HTTP_FORBIDDEN;
+
+    } else {
+        return NGX_HTTP_NOT_FOUND;
+    }
+
+#endif
 }
 
 

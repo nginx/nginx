@@ -37,6 +37,7 @@
 #define NGX_HTTP_MOVED_TEMPORARILY      302
 #define NGX_HTTP_NOT_MODIFIED           304
 #define NGX_HTTP_BAD_REQUEST            400
+#define NGX_HTTP_FORBIDDEN              403
 #define NGX_HTTP_NOT_FOUND              404
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE  414
 #define NGX_HTTP_INTERNAL_SERVER_ERROR  500
@@ -106,13 +107,6 @@ typedef struct ngx_http_request_s ngx_http_request_t;
 struct ngx_http_request_s {
     ngx_file_t  file;
 
-#if 0
-    ngx_str_t   filename;
-    ngx_file_info_t fileinfo;
-    ngx_fd_t  fd;
-    int    filename_len;
-#endif
-
     void  **ctx;
     void  **srv_conf;
     void  **loc_conf;
@@ -145,6 +139,8 @@ struct ngx_http_request_s {
     ssize_t   client_content_length;
     char     *discarded_buffer;
 
+    ngx_str_t   path;
+
     unsigned  keepalive:1;
     unsigned  lingering_close:1;
 
@@ -156,6 +152,7 @@ struct ngx_http_request_s {
     unsigned  header_only:1;
     unsigned  unusual_uri:1;  /* URI is not started with '/' - "GET http://" */
     unsigned  complex_uri:1;  /* URI with "/." or with "//" (WIN32) */
+    unsigned  path_not_found:1;
 
     int    state;
     char  *uri_start;
@@ -179,6 +176,8 @@ typedef struct {
     char  *url;
 } ngx_http_log_ctx_t;
 
+
+typedef int (*ngx_http_handler_pt)(ngx_http_request_t *r);
 
 typedef int (*ngx_http_output_header_filter_p)(ngx_http_request_t *r);
 
@@ -249,6 +248,9 @@ extern int  ngx_http_discarded_buffer_size;
 
 extern int  ngx_http_lingering_timeout;
 extern int  ngx_http_lingering_time;
+
+
+extern ngx_array_t  ngx_http_index_handlers;
 
 
 extern ngx_http_module_t  *ngx_http_modules[];

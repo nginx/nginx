@@ -29,6 +29,7 @@ typedef struct {
 
 #define ngx_memzero               bzero
 
+#define ngx_strcasecmp            strcasecmp
 #define ngx_strncmp               strncmp
 #define ngx_strcmp                strcmp
 

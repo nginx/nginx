@@ -83,7 +83,7 @@ ngx_log_debug(cf->log, "token %d" _ rc);
         found = 0;
 
         for (i = 0; !found && ngx_modules[i]; i++) {
-            if (ngx_modules[i]->type != NULL
+            if (ngx_modules[i]->type != NGX_CONF_MODULE_TYPE
                 && ngx_modules[i]->type != cf->type)
             {
                 continue;

@@ -68,11 +68,10 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
     ctx = (ngx_http_output_filter_ctx_t *)
                     ngx_http_get_module_ctx(r->main ? r->main : r,
-                                            ngx_http_output_filter_module_ctx);
+                                            ngx_http_output_filter_module);
 
     if (ctx == NULL) {
-        ngx_http_create_ctx(r, ctx,
-                            ngx_http_output_filter_module_ctx,
+        ngx_http_create_ctx(r, ctx, ngx_http_output_filter_module,
                             sizeof(ngx_http_output_filter_ctx_t));
     }
 
@@ -183,9 +182,9 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
                             if (hunk->type & NGX_HUNK_LAST) {
 
                                 conf = (ngx_http_output_filter_conf_t *)
-                                        ngx_http_get_module_loc_conf(
-                                            r->main ? r->main : r,
-                                            ngx_http_output_filter_module_ctx);
+                                            ngx_http_get_module_loc_conf(
+                                                r->main ? r->main : r,
+                                                ngx_http_output_filter_module);
 
                                 size = hunk->last.mem - hunk->pos.mem;
                                 if (size > conf->hunk_size) {
