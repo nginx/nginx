@@ -38,4 +38,11 @@ fi
 
 have=NGX_SMP . auto/have
 
+have=NGX_PREFIX value="\"$PREFIX/\"" . auto/define
+have=NGX_SBIN_PATH value="\"$SBIN_PATH\"" . auto/define
+have=NGX_CONF_PATH value="\"$CONF_PATH\"" . auto/define
+have=NGX_PID_PATH value="\"$PID_PATH\"" . auto/define
+have=NGX_ERROR_LOG_PATH value="\"$ERROR_LOG_PATH\"" . auto/define
+have=NGX_HTTP_LOG_PATH value="\"$HTTP_LOG_PATH\"" . auto/define
+
 . auto/summary

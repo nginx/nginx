@@ -59,15 +59,14 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     u_char       *chunk;
     size_t        size, len;
     ngx_hunk_t   *h;
-    ngx_chain_t  *out, *cl, *tl, **ll;
+    ngx_chain_t   out, tail, *cl, *tl, **ll;
 
     if (in == NULL || !r->chunked) {
         return ngx_http_next_body_filter(r, in);
     }
 
-    ngx_test_null(out, ngx_alloc_chain_link(r->pool), NGX_ERROR);
-    out->hunk = NULL;
-    ll = &out->next;
+    out.hunk = NULL;
+    ll = &out.next;
 
     size = 0;
     cl = in;
@@ -99,11 +98,10 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         h->pos = chunk;
         h->last = chunk + len;
 
-        out->hunk = h;
+        out.hunk = h;
     }
 
     if (cl->hunk->type & NGX_HUNK_LAST) {
-
         ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_MEMORY|NGX_HUNK_LAST;
         h->pos = (u_char *) CRLF "0" CRLF CRLF;
@@ -112,16 +110,17 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         cl->hunk->type &= ~NGX_HUNK_LAST;
 
         if (size == 0) {
-            out->hunk = h;
-            out->next = NULL;
+            h->pos += 2;
+            out.hunk = h;
+            out.next = NULL;
 
-            return ngx_http_next_body_filter(r, out);
+            return ngx_http_next_body_filter(r, &out);
         }
 
     } else {
         if (size == 0) {
             *ll = NULL;
-            return ngx_http_next_body_filter(r, out->next);
+            return ngx_http_next_body_filter(r, out.next);
         }
 
         ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
@@ -130,10 +129,11 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         h->last = h->pos + 2;
     }
 
-    ngx_alloc_link_and_set_hunk(tl, h, r->pool, NGX_ERROR);
-    *ll = tl;
+    tail.hunk = h;
+    tail.next = NULL;
+    *ll = &tail;
 
-    return ngx_http_next_body_filter(r, out);
+    return ngx_http_next_body_filter(r, &out);
 }
 
 

@@ -546,6 +546,10 @@ static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
+    if (value[1].data[0] == '/') {
+        return ngx_conf_parse(cf, &value[1]);
+    }
+
     file.len = cf->cycle->root.len + value[1].len;
     if (!(file.data = ngx_palloc(cf->pool, file.len + 1))) {
         return NGX_CONF_ERROR;

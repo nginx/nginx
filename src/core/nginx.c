@@ -315,8 +315,8 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
     }
 
     if (cycle->conf_file.data == NULL) {
-        cycle->conf_file.len = sizeof(NGINX_CONF) - 1;
-        cycle->conf_file.data = NGINX_CONF;
+        cycle->conf_file.len = sizeof(NGX_CONF_PATH) - 1;
+        cycle->conf_file.data = (u_char *) NGX_CONF_PATH;
     }
 
     return NGX_OK;
@@ -358,20 +358,20 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     /* TODO: default "nobody" user */
 
     if (ccf->pid.len == 0) {
-        ccf->pid.len = sizeof(NGINX_PID) - 1;
-        ccf->pid.data = NGINX_PID;
-        ccf->newpid.len = sizeof(NGINX_NEWPID) - 1;
-        ccf->newpid.data = NGINX_NEWPID;
+        ccf->pid.len = sizeof(NGX_PID_PATH) - 1;
+        ccf->pid.data = NGX_PID_PATH;
+        ccf->newpid.len = sizeof(NGX_PID_PATH NGX_NEWPID_EXT) - 1;
+        ccf->newpid.data = NGX_PID_PATH NGX_NEWPID_EXT;
 
     } else {
-        ccf->newpid.len = ccf->pid.len + sizeof(NGINX_NEWPID_EXT);
+        ccf->newpid.len = ccf->pid.len + sizeof(NGX_NEWPID_EXT);
 
         if (!(ccf->newpid.data = ngx_palloc(cycle->pool, ccf->newpid.len))) {
             return NGX_CONF_ERROR;
         }
 
         ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
-                   NGINX_NEWPID_EXT, sizeof(NGINX_NEWPID_EXT));
+                   NGX_NEWPID_EXT, sizeof(NGX_NEWPID_EXT));
     }
 #endif
 

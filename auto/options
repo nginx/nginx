@@ -1,6 +1,13 @@
 
 help=no
 
+PREFIX=
+SBIN_PATH=
+CONF_PATH=
+HTTP_LOG_PATH=
+ERROR_LOG_PATH=
+PID_PATH=
+
 CC=gcc
 CPP=
 OBJS=objs
@@ -51,6 +58,13 @@ do
 
     case "$option" in
         --help)                          help=yes                   ;;
+
+        --prefix=*)                      PREFIX="$value"            ;;
+        --sbin-path=*)                   SBIN_PATH="$value"         ;;
+        --conf-path=*)                   CONF_PATH="$value"         ;;
+        --http-log-path=*)               HTTP_LOG_PATH="$value"     ;;
+        --error-log-path=*)              ERROR_LOG_PATH="$value"    ;;
+        --pid-path=*)                    PID_PATH="$value"          ;;
 
         --crossbuild=*)                  PLATFORM="$value"          ;;
 
@@ -128,4 +142,29 @@ fi
 if [ ".$PLATFORM" = ".win32" -a $EVENT_POLL = YES ]; then
     EVENT_POLL=NO
     echo "$0: warning: --with-poll_module option is ignored for win32"
+fi
+
+
+if [ ".$PREFIX" = "." ]; then
+    PREFIX=/usr/local/nginx
+fi
+
+if [ ".$SBIN_PATH" = "." ]; then
+    SBIN_PATH=$PREFIX/sbin/nginx
+fi
+
+if [ ".$CONF_PATH" = "." ]; then
+    CONF_PATH=$PREFIX/conf/nginx.conf
+fi
+
+if [ ".$PID_PATH" = "." ]; then
+    PID_PATH=$PREFIX/logs/nginx.pid
+fi
+
+if [ ".$ERROR_LOG_PATH" = "." ]; then
+    ERROR_LOG_PATH=$PREFIX/logs/error.log
+fi
+
+if [ ".$HTTP_LOG_PATH" = "." ]; then
+    HTTP_LOG_PATH=$PREFIX/logs/access.log
 fi
