@@ -50,9 +50,9 @@ ngx_module_t  ngx_http_charset_filter_module = {
 };
 
 
-static int (*next_header_filter) (ngx_http_request_t *r);
+static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 #if 0
-static int (*next_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
+static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 #endif
 
 
@@ -62,12 +62,12 @@ static int ngx_http_charset_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.content_type == NULL
         || ngx_strncasecmp(r->headers_out.content_type->value.data,
-                                                           "text/", 5) != 0
+                                                              "text/", 5) != 0
         || ngx_strstr(r->headers_out.content_type->value.data, "charset")
                                                                        != NULL
        )
     {
-        return next_header_filter(r);
+        return ngx_http_next_header_filter(r);
     }
 
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
@@ -75,15 +75,19 @@ static int ngx_http_charset_header_filter(ngx_http_request_t *r)
     if (r->headers_out.status == NGX_HTTP_MOVED_PERMANENTLY
         && r->headers_out.status == NGX_HTTP_MOVED_TEMPORARILY)
     {
-        /* do not set charset for the redirect because NN 4.x uses this
-           charset instead of the next page charset */
+
+        /*
+         * do not set charset for the redirect because NN 4.x uses this
+         * charset instead of the next page charset
+         */
+
         r->headers_out.charset.len = 0;
 
     } else if (r->headers_out.charset.len == 0) {
         r->headers_out.charset = lcf->default_charset;
     }
 
-    return next_header_filter(r);
+    return ngx_http_next_header_filter(r);
 }
 
 
@@ -91,18 +95,18 @@ static int ngx_http_charset_header_filter(ngx_http_request_t *r)
 static int ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     ngx_log_debug(r->connection->log, "CHARSET BODY");
-    return next_body_filter(r, in);
+    return ngx_http_next_body_filter(r, in);
 }
 #endif
 
 
 static int ngx_http_charset_filter_init(ngx_cycle_t *cycle)
 {
-    next_header_filter = ngx_http_top_header_filter;
+    ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_charset_header_filter;
 
 #if 0
-    next_body_filter = ngx_http_top_body_filter;
+    ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_charset_body_filter;
 #endif
 

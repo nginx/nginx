@@ -17,12 +17,6 @@ typedef struct {
 } ngx_http_log_ctx_t;
 
 
-typedef int (*ngx_http_output_header_filter_p)(ngx_http_request_t *r);
-
-typedef int (*ngx_http_output_body_filter_p)
-                                   (ngx_http_request_t *r, ngx_chain_t *chain);
-
-
 #define ngx_http_get_module_ctx(r, module)       r->ctx[module.ctx_index]
 
 #define ngx_http_create_ctx(r, cx, module, size, error)                       \
@@ -80,13 +74,6 @@ extern ngx_module_t  ngx_http_module;
 
 
 extern int  ngx_max_module;
-
-
-extern ngx_array_t  ngx_http_translate_handlers;
-extern ngx_array_t  ngx_http_index_handlers;
-
-extern int (*ngx_http_top_header_filter) (ngx_http_request_t *r);
-extern int (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
 
 /* STUB */

@@ -371,5 +371,6 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 static int ngx_http_header_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_top_header_filter = ngx_http_header_filter;
+
     return NGX_OK;
 }

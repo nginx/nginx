@@ -154,7 +154,7 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
     int           err, rc;
     ngx_hunk_t   *h;
-    ngx_chain_t  *out, **le, *ce;
+    ngx_chain_t  *out, **ll, *cl;
 
     r->headers_out.status = error;
 
@@ -219,15 +219,15 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     }
 
     out = NULL;
-    le = NULL;
+    ll = NULL;
 
     ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
     h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
     h->pos = error_pages[err].data;
     h->last = error_pages[err].data + error_pages[err].len;
 
-    ngx_alloc_ce_and_set_hunk(ce, h, r->pool, NGX_ERROR);
-    ngx_chain_add_ce(out, le, ce);
+    ngx_alloc_link_and_set_hunk(cl, h, r->pool, NGX_ERROR);
+    ngx_chain_add_link(out, ll, cl);
 
 
     ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
@@ -235,8 +235,8 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     h->pos = error_tail;
     h->last = error_tail + sizeof(error_tail) - 1;
 
-    ngx_alloc_ce_and_set_hunk(ce, h, r->pool, NGX_ERROR);
-    ngx_chain_add_ce(out, le, ce);
+    ngx_alloc_link_and_set_hunk(cl, h, r->pool, NGX_ERROR);
+    ngx_chain_add_link(out, ll, cl);
 
     if (/* STUB: "msie_padding on/off" */ 1
         && r->http_version >= NGX_HTTP_VERSION_10
@@ -249,8 +249,8 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         h->pos = msie_stub;
         h->last = msie_stub + sizeof(msie_stub) - 1;
 
-        ngx_alloc_ce_and_set_hunk(ce, h, r->pool, NGX_ERROR);
-        ngx_chain_add_ce(out, le, ce);
+        ngx_alloc_link_and_set_hunk(cl, h, r->pool, NGX_ERROR);
+        ngx_chain_add_link(out, ll, cl);
     }
 
     h->type |= NGX_HUNK_LAST;

@@ -60,7 +60,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                            last;
     off_t                          size, flush;
-    ngx_chain_t                   *ce, **le, *chain;
+    ngx_chain_t                   *cl, **ll, *chain;
     ngx_http_write_filter_ctx_t   *ctx;
     ngx_http_write_filter_conf_t  *conf;
 
@@ -74,20 +74,20 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     size = flush = 0;
     last = 0;
-    le = &ctx->out;
+    ll = &ctx->out;
 
-    /* find the size, the flush point and the last entry of the saved chain */
+    /* find the size, the flush point and the last link of the saved chain */
 
-    for (ce = ctx->out; ce; ce = ce->next) {
-        le = &ce->next;
+    for (cl = ctx->out; cl; cl = cl->next) {
+        ll = &cl->next;
 
-        size += ngx_hunk_size(ce->hunk);
+        size += ngx_hunk_size(cl->hunk);
 
-        if (ce->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
+        if (cl->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
             flush = size;
         }
 
-        if (ce->hunk->type & NGX_HUNK_LAST) {
+        if (cl->hunk->type & NGX_HUNK_LAST) {
             last = 1;
         }
     }
@@ -95,20 +95,17 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     /* add the new chain to the existent one */
 
     for (/* void */; in; in = in->next) {
-        ngx_test_null(ce, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
+        ngx_alloc_link_and_set_hunk(cl, in->hunk, r->pool, NGX_ERROR);
+        *ll = cl;
+        ll = &cl->next;
 
-        ce->hunk = in->hunk;
-        ce->next = NULL;
-        *le = ce;
-        le = &ce->next;
+        size += ngx_hunk_size(cl->hunk);
 
-        size += ngx_hunk_size(ce->hunk);
-
-        if (ce->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
+        if (cl->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
             flush = size;
         }
 
-        if (ce->hunk->type & NGX_HUNK_LAST) {
+        if (cl->hunk->type & NGX_HUNK_LAST) {
             last = 1;
         }
     }
@@ -124,7 +121,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     /*
      * avoid the output if there is no last hunk, no flush point and
-     * size of the hunks is smaller then "buffer_output"
+     * the size of the hunks is smaller than "buffer_output" directive
      */
 
     if (!last && flush == 0 && size < conf->buffer_output) {

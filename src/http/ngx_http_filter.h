@@ -7,12 +7,17 @@
 #define NGX_HTTP_FILTER_NEED_TEMP           4
 
 
-int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in);
-int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in);
+typedef int (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);
+typedef int (*ngx_http_output_body_filter_pt)
+                                   (ngx_http_request_t *r, ngx_chain_t *chain);
 
 
-extern int (*ngx_http_top_header_filter) (ngx_http_request_t *r);
-extern int (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
+int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);
+int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
+
+
+extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
+extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
 
 
 #endif /* _NGX_HTTP_FILTER_H_INCLUDED_ */

@@ -34,8 +34,8 @@ ngx_module_t  ngx_http_range_filter_module = {
 };
 
 
-static int (*next_header_filter) (ngx_http_request_t *r);
-static int (*next_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
+static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
+static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
 static int ngx_http_range_header_filter(ngx_http_request_t *r)
@@ -53,7 +53,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
         /* STUB: we currently support ranges for file hunks only */
         || r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)
     {
-        return next_header_filter(r);
+        return ngx_http_next_header_filter(r);
     }
 
     if (r->headers_in.range == NULL
@@ -69,7 +69,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
         r->headers_out.accept_ranges->value.len = sizeof("bytes") - 1;
         r->headers_out.accept_ranges->value.data = "bytes";
 
-        return next_header_filter(r);
+        return ngx_http_next_header_filter(r);
     }
 
     ngx_init_array(r->headers_out.ranges, r->pool, 5, sizeof(ngx_http_range_t),
@@ -279,7 +279,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
         }
     }
 
-    return next_header_filter(r);
+    return ngx_http_next_header_filter(r);
 }
 
 
@@ -287,16 +287,18 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                           i;
     ngx_hunk_t                   *h;
-    ngx_chain_t                  *out, *hce, *rce, *dce, **le;
+    ngx_chain_t                  *out, *hcl, *rcl, *dcl, **ll;
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *ctx;
 
     if (r->headers_out.ranges.nelts == 0) {
-        return next_body_filter(r, in);
+        return ngx_http_next_body_filter(r, in);
     }
 
-    /* the optimized version for the static files only
-       that are passed in the single file hunk */
+    /*
+     * the optimized version for the static files only
+     * that are passed in the single file hunk
+     */
 
     if (in
         && in->hunk->type & NGX_HUNK_FILE
@@ -307,11 +309,11 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             in->hunk->file_pos = range->start;
             in->hunk->file_last = range->end;
 
-            return next_body_filter(r, in);
+            return ngx_http_next_body_filter(r, in);
         }
 
         ctx = ngx_http_get_module_ctx(r, ngx_http_range_filter_module);
-        le = &out;
+        ll = &out;
 
         range = r->headers_out.ranges.elts;
         for (i = 0; i < r->headers_out.ranges.nelts; i++) {
@@ -321,16 +323,16 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             h->pos = ctx->boundary_header.data;
             h->last = ctx->boundary_header.data + ctx->boundary_header.len;
 
-            ngx_test_null(hce, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
-            hce->hunk = h;
+            ngx_test_null(hcl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
+            hcl->hunk = h;
 
             ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
             h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
             h->pos = range[i].content_range.data;
             h->last = range[i].content_range.data + range[i].content_range.len;
 
-            ngx_test_null(rce, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
-            rce->hunk = h;
+            ngx_test_null(rcl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
+            rcl->hunk = h;
 
             ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
             h->type = NGX_HUNK_FILE;
@@ -338,14 +340,12 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             h->file_last = range[i].end;
             h->file = in->hunk->file;
 
-            ngx_test_null(dce, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
-            dce->hunk = h;
-            dce->next = NULL;
+            ngx_alloc_link_and_set_hunk(dcl, h, r->pool, NGX_ERROR);
 
-            *le = hce;
-            hce->next = rce;
-            rce->next = dce;
-            le = &dce->next;
+            *ll = hcl;
+            hcl->next = rcl;
+            rcl->next = dcl;
+            ll = &dcl->next;
         }
 
         ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
@@ -355,27 +355,25 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         *h->last++ = '-'; *h->last++ = '-';
         *h->last++ = CR; *h->last++ = LF;
 
-        ngx_test_null(hce, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
-        hce->hunk = h;
-        hce->next = NULL;
-        *le = hce;
+        ngx_alloc_link_and_set_hunk(hcl, h, r->pool, NGX_ERROR);
+        *ll = hcl;
 
-        return next_body_filter(r, out);
+        return ngx_http_next_body_filter(r, out);
     }
 
     /* TODO: several incoming hunks of proxied responses
              and memory hunks on platforms that have no sendfile() */
 
-    return next_body_filter(r, in);
+    return ngx_http_next_body_filter(r, in);
 }
 
 
 static int ngx_http_range_filter_init(ngx_cycle_t *cycle)
 {
-    next_header_filter = ngx_http_top_header_filter;
+    ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_range_header_filter;
 
-    next_body_filter = ngx_http_top_body_filter;
+    ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_range_body_filter;
 
     return NGX_OK;

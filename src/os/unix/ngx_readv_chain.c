@@ -4,7 +4,7 @@
 #include <ngx_event.h>
 
 
-ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *entry)
+ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
     ssize_t        n;
     struct iovec  *iov;
@@ -19,18 +19,16 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *entry)
 
     /* TODO: coalesce the neighbouring chain entries */
 
-    while (entry) {
+    while (chain) {
         ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
-        iov->iov_base = entry->hunk->last;
-        iov->iov_len = entry->hunk->end - entry->hunk->last;
-        entry = entry->next;
+        iov->iov_base = chain->hunk->last;
+        iov->iov_len = chain->hunk->end - chain->hunk->last;
+        chain = chain->next;
     }
 
 ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
 
     n = readv(c->fd, (struct iovec *) io.elts, io.nelts);
-
-    ngx_destroy_array(&io);
 
     if (n == -1) {
         c->read->ready = 0;

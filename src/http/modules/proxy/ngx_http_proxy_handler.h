@@ -21,17 +21,15 @@ typedef struct {
 typedef struct {
     ngx_msec_t                  connect_timeout;
     ngx_msec_t                  send_timeout;
-    ssize_t                     header_size;
+    ssize_t                     header_buffer_size;
     ngx_msec_t                  read_timeout;
 
     ngx_bufs_t                  bufs;
+    ssize_t                     busy_buffers_size;
 
-    /* STUB names */
-    int                         max_busy_len;
-    int                         max_temp_file_size;
-    int                         temp_file_write_size;
+    ssize_t                     max_temp_file_size;
+    ssize_t                     temp_file_write_size;
     int                         cyclic_temp_file;
-    /* */
 
     ngx_path_t                 *temp_path;
 

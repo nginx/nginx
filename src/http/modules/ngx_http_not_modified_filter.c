@@ -30,7 +30,7 @@ ngx_module_t  ngx_http_not_modified_filter_module = {
 };
 
 
-static int (*next_header_filter) (ngx_http_request_t *r);
+static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 
 
 static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
@@ -41,7 +41,7 @@ static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
         || r->headers_in.if_modified_since == NULL
         || r->headers_out.last_modified_time == -1)
     {
-        return next_header_filter(r);
+        return ngx_http_next_header_filter(r);
     }
 
     ims = ngx_http_parse_time(r->headers_in.if_modified_since->value.data,
@@ -50,7 +50,9 @@ static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     ngx_log_debug(r->connection->log, "%d %d" _
                   ims _ r->headers_out.last_modified_time);
 
-    /* I think that the equality of the dates is correcter */
+    /*
+     * I think that the equality of the dates is correcter
+     */
 
     if (ims != NGX_ERROR && ims == r->headers_out.last_modified_time) {
         r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
@@ -61,13 +63,13 @@ static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
         r->headers_out.accept_ranges->key.len = 0;
     }
 
-    return next_header_filter(r);
+    return ngx_http_next_header_filter(r);
 }
 
 
 static int ngx_http_not_modified_filter_init(ngx_cycle_t *cycle)
 {
-    next_header_filter = ngx_http_top_header_filter;
+    ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_not_modified_header_filter;
 
     return NGX_OK;

@@ -99,31 +99,30 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
 #define ngx_alloc_hunk(pool) ngx_palloc(pool, sizeof(ngx_hunk_t))
 #define ngx_calloc_hunk(pool) ngx_pcalloc(pool, sizeof(ngx_hunk_t))
 
-#define ngx_alloc_chain_entry(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
 
-#define ngx_add_hunk_to_chain(chain, h, pool, error)                         \
+#define ngx_alloc_chain_link(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
+
+
+#define ngx_alloc_link_and_set_hunk(chain, h, pool, error)                   \
             do {                                                             \
-                ngx_test_null(chain, ngx_alloc_chain_entry(pool), error);    \
+                ngx_test_null(chain, ngx_alloc_chain_link(pool), error);     \
                 chain->hunk = h;                                             \
                 chain->next = NULL;                                          \
             } while (0);
 
-#define ngx_alloc_ce_and_set_hunk  ngx_add_hunk_to_chain
 
-
-#define ngx_chain_add_ce(chain, last, ce)                                    \
+#define ngx_chain_add_link(chain, last, cl)                                  \
             if (chain) {                                                     \
-                *last = ce;                                                  \
+                *last = cl;                                                  \
             } else {                                                         \
-                chain = ce;                                                  \
+                chain = cl;                                                  \
             }                                                                \
-            last = &ce->next
+            last = &cl->next
 
 
-int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **ch, ngx_chain_t *in);
+int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in);
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
                              ngx_chain_t **out, ngx_hunk_tag_t tag);
-
 
 
 #endif /* _NGX_HUNK_H_INCLUDED_ */

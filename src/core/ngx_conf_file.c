@@ -6,10 +6,20 @@
 
 #define MAX_CONF_ERRSTR  256
 
+/* Ten fixed arguments */
+
 static int argument_number[] = {
     NGX_CONF_NOARGS,
     NGX_CONF_TAKE1,
-    NGX_CONF_TAKE2
+    NGX_CONF_TAKE2,
+    NGX_CONF_TAKE3,
+    NGX_CONF_TAKE4,
+    NGX_CONF_TAKE5,
+    NGX_CONF_TAKE6,
+    NGX_CONF_TAKE7,
+    NGX_CONF_TAKE8,
+    NGX_CONF_TAKE9,
+    NGX_CONF_TAKE10
 };
 
 static int ngx_conf_read_token(ngx_conf_t *cf);
@@ -146,16 +156,8 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
                     /* is the directive's argument count right ? */
 
-                    if (cmd->type & argument_number[cf->args->nelts - 1]) {
+                    if (cmd->type & NGX_CONF_ANY) {
                         valid = 1;
-
-                    } else if (cmd->type & NGX_CONF_1MORE) {
-
-                        if (cf->args->nelts != 1) {
-                            valid = 1;
-                        } else {
-                            valid = 0;
-                        }
 
                     } else if (cmd->type & NGX_CONF_FLAG) {
 
@@ -165,7 +167,18 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                             valid = 0;
                         }
 
-                    } else if (cmd->type & NGX_CONF_ANY) {
+                    } else if (cmd->type & NGX_CONF_1MORE) {
+
+                        if (cf->args->nelts != 1) {
+                            valid = 1;
+                        } else {
+                            valid = 0;
+                        }
+
+                    } else if (cf->args->nelts <= 10
+                               && (cmd->type
+                                   & argument_number[cf->args->nelts - 1]))
+                    {
                         valid = 1;
 
                     } else {
@@ -573,8 +586,7 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = (ngx_str_t *) cf->args->elts;
 
-    field->len = value[1].len;
-    field->data = value[1].data;
+    *field = value[1];
 
     return NGX_CONF_OK;
 }

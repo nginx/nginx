@@ -9,12 +9,12 @@ static int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p);
 static int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p);
 
 static int ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p);
-ngx_inline static void ngx_remove_shadow_links(ngx_hunk_t *hunk);
-ngx_inline static void ngx_remove_shadow_free_raw_hunk(ngx_chain_t **free,
-                                                       ngx_hunk_t *h);
-ngx_inline static void ngx_add_after_partially_filled_hunk(ngx_chain_t **chain,
-                                                           ngx_chain_t *ce);
-static int ngx_drain_chains(ngx_event_pipe_t *p);
+ngx_inline static void ngx_event_pipe_remove_shadow_links(ngx_hunk_t *hunk);
+ngx_inline static void ngx_event_pipe_free_shadow_raw_hunk(ngx_chain_t **free,
+                                                           ngx_hunk_t *h);
+ngx_inline static void ngx_event_pipe_add_free_hunk(ngx_chain_t **chain,
+                                                    ngx_chain_t *cl);
+static int ngx_event_pipe_drain_chains(ngx_event_pipe_t *p);
 
 
 int ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
@@ -57,7 +57,7 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 {
     int           n, rc, size;
     ngx_hunk_t   *h;
-    ngx_chain_t  *chain, *ce, *te;
+    ngx_chain_t  *chain, *cl, *tl;
 
     if (p->upstream_eof || p->upstream_error || p->upstream_done) {
         return NGX_OK;
@@ -131,8 +131,8 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                               NGX_ABORT);
                 p->hunks++;
 
-                ngx_alloc_ce_and_set_hunk(te, h, p->pool, NGX_ABORT);
-                chain = te;
+                ngx_alloc_link_and_set_hunk(tl, h, p->pool, NGX_ABORT);
+                chain = tl;
 
             } else if (!p->cachable && p->downstream->write->ready) {
 
@@ -212,33 +212,33 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             }
         }
 
-        ce = chain;
+        cl = chain;
 
-        while (ce && n > 0) {
+        while (cl && n > 0) {
 
-            ngx_remove_shadow_links(ce->hunk);
+            ngx_event_pipe_remove_shadow_links(cl->hunk);
 
-            size = ce->hunk->end - ce->hunk->last;
+            size = cl->hunk->end - cl->hunk->last;
 
             if (n >= size) {
-                ce->hunk->last = ce->hunk->end;
+                cl->hunk->last = cl->hunk->end;
 
-    /* STUB */ ce->hunk->num = p->num++;
+    /* STUB */ cl->hunk->num = p->num++;
 
-                if (p->input_filter(p, ce->hunk) == NGX_ERROR) {
+                if (p->input_filter(p, cl->hunk) == NGX_ERROR) {
                     return NGX_ABORT;
                 }
 
                 n -= size;
-                ce = ce->next;
+                cl = cl->next;
 
             } else {
-                ce->hunk->last += n;
+                cl->hunk->last += n;
                 n = 0;
             }
         }
 
-        p->free_raw_hunks = ce;
+        p->free_raw_hunks = cl;
     }
 
     if ((p->upstream_eof || p->upstream_error) && p->free_raw_hunks) {
@@ -263,15 +263,15 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
 int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 {
-    size_t        busy_len;
+    size_t        bsize, to_write;
     ngx_hunk_t   *h;
-    ngx_chain_t  *out, **le, *ce, *te;
+    ngx_chain_t  *out, **ll, *cl, *tl;
 
     ngx_log_debug(p->log, "write downstream: %d" _ p->downstream->write->ready);
 
     for ( ;; ) {
         if (p->downstream_error) {
-            return ngx_drain_chains(p);
+            return ngx_event_pipe_drain_chains(p);
         }
 
         if ((p->upstream_eof || p->upstream_error || p->upstream_done)
@@ -285,95 +285,105 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             break;
         }
 
-        busy_len = 0;
+        /*
+         * bsize is the busy hunks size
+         * to_write is the size of data that to be written
+         */
+
+        bsize = 0;
+        to_write = 0;
 
         if (!(p->upstream_eof || p->upstream_error || p->upstream_done)) {
-            /* calculate p->busy_len */
-            for (ce = p->busy; ce; ce = ce->next) {
-                busy_len += ngx_hunk_size(ce->hunk);
+            for (cl = p->busy; cl; cl = cl->next) {
+                bsize += cl->hunk->end - cl->hunk->start;
+                to_write += ngx_hunk_size(cl->hunk);
             }
         }
 
         out = NULL;
-        le = NULL;
+        ll = NULL;
 
         for ( ;; ) {
             if (p->out) {
-                ce = p->out;
+                cl = p->out;
 
                 if (!(p->upstream_eof || p->upstream_error || p->upstream_done)
-                    && (busy_len + ngx_hunk_size(ce->hunk) > p->max_busy_len))
+                    && (bsize + ngx_hunk_size(cl->hunk) > p->busy_size))
                 {
                     break;
                 }
 
                 p->out = p->out->next;
-                ngx_remove_shadow_free_raw_hunk(&p->free_raw_hunks, ce->hunk);
+                ngx_event_pipe_free_shadow_raw_hunk(&p->free_raw_hunks,
+                                                    cl->hunk);
 
-ngx_log_debug(p->log, "HUNK OUT: %d %x" _ ce->hunk->num _ ce->hunk->type);
+ngx_log_debug(p->log, "HUNK OUT: %d %x" _ cl->hunk->num _ cl->hunk->type);
 
             } else if (!p->cachable && p->in) {
-                ce = p->in;
+                cl = p->in;
 
                 if (!(p->upstream_eof || p->upstream_error || p->upstream_done)
-                    && (busy_len + ngx_hunk_size(ce->hunk) > p->max_busy_len))
+                    && (bsize + ngx_hunk_size(cl->hunk) > p->busy_size))
                 {
                     break;
                 }
 
                 p->in = p->in->next;
 
-ngx_log_debug(p->log, "HUNK IN: %d" _ ce->hunk->num);
+ngx_log_debug(p->log, "HUNK IN: %d" _ cl->hunk->num);
 
             } else {
                 break;
             }
 
-            busy_len += ngx_hunk_size(ce->hunk);
-            ce->next = NULL;
-            ngx_chain_add_ce(out, le, ce);
+            bsize += ngx_hunk_size(cl->hunk);
+            cl->next = NULL;
+            ngx_chain_add_link(out, ll, cl);
         }
 
         if (out == NULL) {
-            ngx_log_debug(p->log, "no hunks to write BUSY: %d" _ busy_len);
+            ngx_log_debug(p->log, "no hunks to write BUSY: %d" _ to_write);
 
-            if (!p->upstream_blocked || busy_len == 0) {
+            if (!(p->upstream_blocked && to_write)) {
                 break;
             }
 
-            /* if the upstream is blocked then write the busy hunks */
+            /*
+             * if the upstream is blocked and there are the busy hunks
+             * to write then write these hunks
+             */
         }
 
         if (p->output_filter(p->output_ctx, out) == NGX_ERROR) {
             p->downstream_error = 1;
 
-            /* handle the downstream error at the begin of the cycle.  */
+            /* handle the downstream error at the begin of a cycle */
 
             continue;
         }
 
         ngx_chain_update_chains(&p->free, &p->busy, &out, p->tag);
 
-        for (ce = p->free; ce; ce = ce->next) {
+        for (cl = p->free; cl; cl = cl->next) {
 
             /* add the free shadow raw hunk to p->free_raw_hunks */
 
-            if (ce->hunk->type & NGX_HUNK_LAST_SHADOW) {
-                h = ce->hunk->shadow;
+            if (cl->hunk->type & NGX_HUNK_LAST_SHADOW) {
+                h = cl->hunk->shadow;
                 h->pos = h->last = h->start;
                 h->shadow = NULL;
-                ngx_alloc_ce_and_set_hunk(te, h, p->pool, NGX_ABORT);
-                ngx_add_after_partially_filled_hunk(&p->free_raw_hunks, te);
+                ngx_alloc_link_and_set_hunk(tl, h, p->pool, NGX_ABORT);
+                ngx_event_pipe_add_free_hunk(&p->free_raw_hunks, tl);
 
-                ce->hunk->type &= ~NGX_HUNK_LAST_SHADOW;
+                cl->hunk->type &= ~NGX_HUNK_LAST_SHADOW;
             }
-            ce->hunk->shadow = NULL;
+            cl->hunk->shadow = NULL;
 
-            if (p->cyclic_temp_file && (ce->hunk->type & NGX_HUNK_TEMP_FILE)) {
+            if (p->cyclic_temp_file && (cl->hunk->type & NGX_HUNK_TEMP_FILE)) {
 
                 /* reset p->temp_offset if all hunks had been sent */
 
-                if (ce->hunk->file_last == p->temp_offset) {
+                if (cl->hunk->file_last == p->temp_offset) {
                     p->temp_offset = 0;
                 }
             }
@@ -388,7 +398,7 @@ static int ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 {
     int           rc, size, hsize;
     ngx_hunk_t   *h;
-    ngx_chain_t  *ce, *te, *next, *out, **le, **last_free;
+    ngx_chain_t  *cl, *tl, *next, *out, **ll, **last_free;
 
     ngx_log_debug(p->log, "write to file");
 
@@ -414,13 +424,13 @@ static int ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
     if (!p->cachable) {
 
         size = 0;
-        ce = p->in;
-        le = NULL;
+        cl = p->in;
+        ll = NULL;
 
 ngx_log_debug(p->log, "offset: %d" _ p->temp_offset);
 
         do {
-            hsize = ce->hunk->last - ce->hunk->pos;
+            hsize = cl->hunk->last - cl->hunk->pos;
 
 ngx_log_debug(p->log, "hunk size: %d" _ hsize);
 
@@ -431,16 +441,16 @@ ngx_log_debug(p->log, "hunk size: %d" _ hsize);
             }
 
             size += hsize;
-            le = &ce->next;
-            ce = ce->next;
+            ll = &cl->next;
+            cl = cl->next;
 
-        } while (ce);
+        } while (cl);
 
 ngx_log_debug(p->log, "size: %d" _ size);
 
-        if (ce) {
-           p->in = ce;
-           *le = NULL;
+        if (cl) {
+           p->in = cl;
+           *ll = NULL;
 
         } else {
            p->in = NULL;
@@ -464,11 +474,11 @@ ngx_log_debug(p->log, "size: %d" _ size);
         /* void */
     }
 
-    for (ce = out; ce; ce = next) {
-        next = ce->next;
-        ce->next = NULL;
+    for (cl = out; cl; cl = next) {
+        next = cl->next;
+        cl->next = NULL;
 
-        h = ce->hunk;
+        h = cl->hunk;
         h->file = p->temp_file;
         h->file_pos = p->temp_offset;
         p->temp_offset += h->last - h->pos;
@@ -480,13 +490,13 @@ ngx_log_debug(p->log, "size: %d" _ size);
             h->type |= NGX_HUNK_FILE|NGX_HUNK_TEMP_FILE;
         }
 
-        ngx_chain_add_ce(p->out, p->last_out, ce);
+        ngx_chain_add_link(p->out, p->last_out, cl);
 
         if (h->type & NGX_HUNK_LAST_SHADOW) {
             h->shadow->last = h->shadow->pos = h->shadow->start;
-            ngx_alloc_ce_and_set_hunk(te, h->shadow, p->pool, NGX_ABORT);
-            *last_free = te;
-            last_free = &te->next;
+            ngx_alloc_link_and_set_hunk(tl, h->shadow, p->pool, NGX_ABORT);
+            *last_free = tl;
+            last_free = &tl->next;
         }
     }
 
@@ -499,7 +509,7 @@ ngx_log_debug(p->log, "size: %d" _ size);
 int ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_hunk_t *hunk)
 {
     ngx_hunk_t   *h;
-    ngx_chain_t  *ce;
+    ngx_chain_t  *cl;
 
     if (hunk->pos == hunk->last) {
         return NGX_OK;
@@ -519,15 +529,15 @@ int ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_hunk_t *hunk)
     h->type |= NGX_HUNK_LAST_SHADOW|NGX_HUNK_RECYCLED;
     hunk->shadow = h;
 
-    ngx_alloc_ce_and_set_hunk(ce, h, p->pool, NGX_ERROR);
+    ngx_alloc_link_and_set_hunk(cl, h, p->pool, NGX_ERROR);
 ngx_log_debug(p->log, "HUNK %d" _ h->num);
-    ngx_chain_add_ce(p->in, p->last_in, ce);
+    ngx_chain_add_link(p->in, p->last_in, cl);
 
     return NGX_OK;
 }
 
 
-ngx_inline static void ngx_remove_shadow_links(ngx_hunk_t *hunk)
+ngx_inline static void ngx_event_pipe_remove_shadow_links(ngx_hunk_t *hunk)
 {
     ngx_hunk_t  *h, *next;
 
@@ -554,11 +564,11 @@ ngx_inline static void ngx_remove_shadow_links(ngx_hunk_t *hunk)
 }
 
 
-ngx_inline static void ngx_remove_shadow_free_raw_hunk(ngx_chain_t **free,
-                                                       ngx_hunk_t *h)
+ngx_inline static void ngx_event_pipe_free_shadow_raw_hunk(ngx_chain_t **free,
+                                                           ngx_hunk_t *h)
 {
     ngx_hunk_t   *s;
-    ngx_chain_t  *ce, **le;
+    ngx_chain_t  *cl, **ll;
 
     if (h->shadow == NULL) {
         return;
@@ -568,77 +578,77 @@ ngx_inline static void ngx_remove_shadow_free_raw_hunk(ngx_chain_t **free,
         /* void */
     }
 
-    le = free;
+    ll = free;
 
-    for (ce = *free ; ce; ce = ce->next) {
-        if (ce->hunk == s) {
-            *le = ce->next;
+    for (cl = *free ; cl; cl = cl->next) {
+        if (cl->hunk == s) {
+            *ll = cl->next;
             break;
         }
 
-        if (ce->hunk->shadow) {
+        if (cl->hunk->shadow) {
             break;
         }
 
-        le = &ce->next;
+        ll = &cl->next;
     }
 }
 
 
-ngx_inline static void ngx_add_after_partially_filled_hunk(ngx_chain_t **chain,
-                                                           ngx_chain_t *ce)
+ngx_inline static void ngx_event_pipe_add_free_hunk(ngx_chain_t **chain,
+                                                    ngx_chain_t *cl)
 {
     if (*chain == NULL) {
-        *chain = ce;
+        *chain = cl;
         return;
     }
 
     if ((*chain)->hunk->pos != (*chain)->hunk->last) {
-        ce->next = (*chain)->next;
-        (*chain)->next = ce;
+        cl->next = (*chain)->next;
+        (*chain)->next = cl;
 
     } else {
-        ce->next = (*chain);
-        (*chain) = ce;
+        cl->next = (*chain);
+        (*chain) = cl;
     }
 }
 
 
-static int ngx_drain_chains(ngx_event_pipe_t *p)
+static int ngx_event_pipe_drain_chains(ngx_event_pipe_t *p)
 {
     ngx_hunk_t   *h;
-    ngx_chain_t  *ce, *te;
+    ngx_chain_t  *cl, *tl;
 
     for ( ;; ) {
         if (p->busy) {
-            ce = p->busy;
+            cl = p->busy;
 
         } else if (p->out) {
-            ce = p->out;
+            cl = p->out;
 
         } else if (p->in) {
-            ce = p->in;
+            cl = p->in;
 
         } else {
             return NGX_OK;
         }
 
-        while (ce) {
-            if (ce->hunk->type & NGX_HUNK_LAST_SHADOW) {
-                h = ce->hunk->shadow;
-                /* THINK NEEDED ??? */ h->pos = h->last = h->start;
+        while (cl) {
+            if (cl->hunk->type & NGX_HUNK_LAST_SHADOW) {
+                h = cl->hunk->shadow;
+                h->pos = h->last = h->start;
                 h->shadow = NULL;
-                ngx_alloc_ce_and_set_hunk(te, h, p->pool, NGX_ABORT);
-                ngx_add_after_partially_filled_hunk(&p->free_raw_hunks, te);
+                ngx_alloc_link_and_set_hunk(tl, h, p->pool, NGX_ABORT);
+                ngx_event_pipe_add_free_hunk(&p->free_raw_hunks, tl);
 
-                ce->hunk->type &= ~NGX_HUNK_LAST_SHADOW;
+                cl->hunk->type &= ~NGX_HUNK_LAST_SHADOW;
             }
 
-            ce->hunk->shadow = NULL;
-            te = ce->next;
-            ce->next = p->free;
-            p->free = ce;
-            ce = te;
+            cl->hunk->shadow = NULL;
+            tl = cl->next;
+            cl->next = p->free;
+            p->free = cl;
+            cl = tl;
         }
     }
 }

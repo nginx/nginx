@@ -226,6 +226,7 @@ void ngx_http_handler(ngx_http_request_t *r)
     }
 
 #if 0
+    /* TEST STUB */ r->http_version = NGX_HTTP_VERSION_10;
     /* TEST STUB */ r->keepalive = 0;
 #endif
 

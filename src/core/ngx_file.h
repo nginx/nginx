@@ -34,5 +34,24 @@ int ngx_create_path(ngx_file_t *file, ngx_path_t *path);
 void ngx_init_temp_number();
 int ngx_next_temp_number(int collision);
 
+char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+
+#define ngx_conf_merge_path_value(conf, prev, path, l1, l2, l3, pool)        \
+    if (conf == NULL) {                                                      \
+        if (prev == NULL) {                                                  \
+            ngx_test_null(conf, ngx_palloc(pool, sizeof(ngx_path_t)), NULL); \
+            conf->name.len = sizeof(path) - 1;                               \
+            conf->name.data = path;                                          \
+            conf->level[0] = l1;                                             \
+            conf->level[1] = l2;                                             \
+            conf->level[2] = l3;                                             \
+            conf->len = l1 + l2 + l3 + l1 ? 1:0 + l2 ? 1:0 + l3 ? 1:0;       \
+        } else {                                                             \
+            conf = prev;                                                     \
+        }                                                                    \
+    }
+
+
 
 #endif /* _NGX_FILE_H_INCLUDED_ */

@@ -49,17 +49,17 @@ static ngx_http_header_t headers_in[] = {
     { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection) },
     { ngx_string("If-Modified-Since"),
                          offsetof(ngx_http_headers_in_t, if_modified_since) },
+    { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent) },
+
     { ngx_string("Content-Length"),
                             offsetof(ngx_http_headers_in_t, content_length) },
     { ngx_string("Accept-Encoding"),
                            offsetof(ngx_http_headers_in_t, accept_encoding) },
-
     { ngx_string("Range"), offsetof(ngx_http_headers_in_t, range) },
 #if 0
     { ngx_string("If-Range"), offsetof(ngx_http_headers_in_t, if_range) },
 #endif
 
-    { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent) },
     { ngx_string("Keep-Alive"), offsetof(ngx_http_headers_in_t, keep_alive) },
 
     { ngx_null_string, 0 }

@@ -32,6 +32,8 @@ typedef struct {
 } ngx_http_output_filter_ctx_t;
 
 
+ngx_inline static int ngx_http_output_filter_need_to_copy(ngx_http_request_t *r,
+                                                          ngx_hunk_t *hunk);
 static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
                                             int sendfile);
 static void *ngx_http_output_filter_create_conf(ngx_conf_t *cf);
@@ -74,23 +76,12 @@ ngx_module_t  ngx_http_output_filter_module = {
 };
 
 
-#define ngx_next_filter  (*ngx_http_top_body_filter)
-
-#define need_to_copy(r, hunk)                                             \
-            (!ngx_hunk_special(hunk)                                      \
-             && (!r->sendfile                                             \
-                 || ((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)         \
-                   && (hunk->type & NGX_HUNK_IN_MEMORY) == 0)             \
-                 || ((r->filter & NGX_HTTP_FILTER_NEED_TEMP)              \
-                  && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP)))))
-
-
 
 int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                             rc, last;
     ssize_t                         size;
-    ngx_chain_t                    *ce;
+    ngx_chain_t                    *cl;
     ngx_http_output_filter_ctx_t   *ctx;
     ngx_http_output_filter_conf_t  *conf;
 
@@ -112,11 +103,13 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (ctx->in == NULL) {
 
         if (in == NULL) {
-            return ngx_next_filter(r, in);
+            return ngx_http_top_body_filter(r, in);
         }
 
-        if (in->next == NULL && (!need_to_copy(r, in->hunk))) {
-            return ngx_next_filter(r, in);
+        if (in->next == NULL
+            && (!ngx_http_output_filter_need_to_copy(r, in->hunk)))
+        {
+            return ngx_http_top_body_filter(r, in);
         }
     }
 
@@ -137,16 +130,16 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         while (ctx->in) {
 
-            if (!need_to_copy(r, ctx->in->hunk)) {
+            if (!ngx_http_output_filter_need_to_copy(r, ctx->in->hunk)) {
 
-                /* move the chain entry to the chain ctx->out */
+                /* move the chain link to the chain ctx->out */
 
-                ce = ctx->in;
-                ctx->in = ce->next;
+                cl = ctx->in;
+                ctx->in = cl->next;
 
-                *ctx->last_out = ce;
-                ctx->last_out = &ce->next;
-                ce->next = NULL;
+                *ctx->last_out = cl;
+                ctx->last_out = &cl->next;
+                cl->next = NULL;
 
                 continue;
             }
@@ -204,9 +197,9 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ctx->in = ctx->in->next;
             }
 
-            ngx_add_hunk_to_chain(ce, ctx->hunk, r->pool, NGX_ERROR);
-            *ctx->last_out = ce;
-            ctx->last_out = &ce->next;
+            ngx_alloc_link_and_set_hunk(cl, ctx->hunk, r->pool, NGX_ERROR);
+            *ctx->last_out = cl;
+            ctx->last_out = &cl->next;
             ctx->hunk = NULL;
 
             if (ctx->free == NULL) {
@@ -218,12 +211,40 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return last;
         }
 
-        last = ngx_next_filter(r, ctx->out);
+        last = ngx_http_top_body_filter(r, ctx->out);
 
         ngx_chain_update_chains(&ctx->free, &ctx->busy, &ctx->out,
                                (ngx_hunk_tag_t) &ngx_http_output_filter_module);
         ctx->last_out = &ctx->out;
     }
+}
+
+
+ngx_inline static int ngx_http_output_filter_need_to_copy(ngx_http_request_t *r,
+                                                          ngx_hunk_t *hunk)
+{
+    if (ngx_hunk_special(hunk)) {
+        return 0;
+    }
+
+    if (!r->sendfile) {
+        return 1;
+    }
+
+    if ((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)
+        && (!(hunk->type & NGX_HUNK_IN_MEMORY)))
+    {
+        return 1;
+    }
+
+
+    if ((r->filter & NGX_HTTP_FILTER_NEED_TEMP)
+        && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP)))
+    {
+        return 1;
+    }
+
+    return 0;
 }
 
 

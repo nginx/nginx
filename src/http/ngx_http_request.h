@@ -66,12 +66,12 @@ typedef struct {
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
     ngx_table_elt_t  *if_modified_since;
+    ngx_table_elt_t  *user_agent;
+
     ngx_table_elt_t  *content_length;
+    ngx_table_elt_t  *accept_encoding;
     ngx_table_elt_t  *range;
 
-    ngx_table_elt_t  *accept_encoding;
-
-    ngx_table_elt_t  *user_agent;
     ngx_table_elt_t  *keep_alive;
 
     size_t            host_name_len;

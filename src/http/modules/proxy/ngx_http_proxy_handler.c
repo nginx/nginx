@@ -26,6 +26,8 @@ static void ngx_http_proxy_close_connection(ngx_connection_t *c);
 
 static int ngx_http_proxy_init(ngx_cycle_t *cycle);
 static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf);
+static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
+                                           void *parent, void *child);
 
 static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
                                      void *conf);
@@ -42,6 +44,62 @@ static ngx_command_t ngx_http_proxy_commands[] = {
      0,
      NULL},
 
+    {ngx_string("proxy_connect_timeout"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_msec_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_proxy_loc_conf_t, connect_timeout),
+     NULL},
+
+    {ngx_string("proxy_send_timeout"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_msec_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_proxy_loc_conf_t, send_timeout),
+     NULL},
+
+    {ngx_string("proxy_header_buffer_size"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_size_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_proxy_loc_conf_t, header_buffer_size),
+     NULL},
+
+    {ngx_string("proxy_read_timeout"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_msec_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_proxy_loc_conf_t, read_timeout),
+     NULL},
+
+    {ngx_string("proxy_buffers"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
+     ngx_conf_set_bufs_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_proxy_loc_conf_t, bufs),
+     NULL},
+
+    {ngx_string("proxy_busy_buffers_size"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_size_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_proxy_loc_conf_t, busy_buffers_size),
+     NULL},
+
+    {ngx_string("proxy_temp_path"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1234,
+     ngx_conf_set_path_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_proxy_loc_conf_t, temp_path),
+     NULL},
+
+    {ngx_string("proxy_temp_file_write_size"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_size_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_proxy_loc_conf_t, temp_file_write_size),
+     NULL},
+
     ngx_null_command
 };
 
@@ -54,11 +112,7 @@ ngx_http_module_t  ngx_http_proxy_module_ctx = {
     NULL,                                  /* merge server configuration */
 
     ngx_http_proxy_create_loc_conf,        /* create location configration */
-#if 0
-    ngx_http_proxy_merge_conf              /* merge location configration */
-#endif
-
-    NULL
+    ngx_http_proxy_merge_loc_conf          /* merge location configration */
 };
 
 
@@ -108,7 +162,7 @@ static ngx_http_header_t headers_in[] = {
 
 static char http_version[] = " HTTP/1.0" CRLF;
 static char host_header[] = "Host: ";
-static char conn_close_header[] = "Connection: close" CRLF;
+static char connection_close_header[] = "Connection: close" CRLF;
 
 
 
@@ -168,7 +222,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
           + sizeof(http_version) - 1
           + sizeof(host_header) - 1 + p->host_header.len + 2
                                                           /* 2 is for "\r\n" */
-          + sizeof(conn_close_header) - 1
+          + sizeof(connection_close_header) - 1
           + 2;                          /* 2 is for "\r\n" at the header end */
 
     header = (ngx_table_elt_t *) r->headers_in.headers->elts;
@@ -189,7 +243,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     /* STUB */ len++;
 
     ngx_test_null(h, ngx_create_temp_hunk(r->pool, len, 0, 0), NULL);
-    ngx_add_hunk_to_chain(chain, h, r->pool, NULL);
+    ngx_alloc_link_and_set_hunk(chain, h, r->pool, NULL);
 
 
     /* the request line */
@@ -220,8 +274,8 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     /* the "Connection: close" header */
 
-    h->last = ngx_cpymem(h->last, conn_close_header,
-                         sizeof(conn_close_header) - 1);
+    h->last = ngx_cpymem(h->last, connection_close_header,
+                         sizeof(connection_close_header) - 1);
 
 
     for (i = 0; i < r->headers_in.headers->nelts; i++) {
@@ -341,8 +395,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
 #if (NGX_SUPPRESS_WARN)
                 le = NULL;
 #endif
-                p->work_request_hunks =
-                                       ngx_alloc_chain_entry(p->request->pool);
+                p->work_request_hunks = ngx_alloc_chain_link(p->request->pool);
                 if (p->work_request_hunks == NULL) {
                     ngx_http_proxy_finalize_request(p,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -357,7 +410,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
                     le = &te->next;
                     ce->hunk->pos = ce->hunk->start;
 
-                    te = ngx_alloc_chain_entry(p->request->pool);
+                    te = ngx_alloc_chain_link(p->request->pool);
                     if (te == NULL) {
                         ngx_http_proxy_finalize_request(p,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -404,7 +457,7 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
 
     if (p->header_in == NULL) {
         p->header_in = ngx_create_temp_hunk(p->request->pool,
-                                            p->lcf->header_size,
+                                            p->lcf->header_buffer_size,
                                             0, 0);
         if (p->header_in == NULL) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -563,10 +616,6 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
 
             /* there was error while a header line parsing */
 
-#if 0
-            ngx_http_header_parse_error(r, rc);
-            ngx_http_proxy_next_upstream(p);
-#endif
             ngx_http_proxy_finalize_request(p, NGX_HTTP_BAD_GATEWAY);
             return;
         }
@@ -692,10 +741,8 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
     /* */
 
-#if 0
-    /* TODO: look "Content-Length" */
-    p->block_size = p->lcf->block_size;
-#endif
+
+    /* TODO: preallocate event_pipe hunks, look "Content-Length" */
 
     r->headers_out.status = p->status;
 
@@ -715,7 +762,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->output_ctx = r;
     ep->tag = (ngx_hunk_tag_t) &ngx_http_proxy_module;
     ep->bufs = p->lcf->bufs;
-    ep->max_busy_len = p->lcf->max_busy_len;
+    ep->busy_size = p->lcf->busy_buffers_size;
     ep->upstream = p->upstream.connection;
     ep->downstream = r->connection;
     ep->pool = r->pool;
@@ -736,7 +783,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->temp_file_warn = "an upstream response is buffered "
                          "to a temporary file";
 
-    ep->preread_hunks = ngx_alloc_chain_entry(r->pool);
+    ep->preread_hunks = ngx_alloc_chain_link(r->pool);
     if (ep->preread_hunks == NULL) {
         ngx_http_proxy_finalize_request(p, 0);
         return;
@@ -758,8 +805,8 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
         /*
          * we need to disable the use of sendfile() if we use cyclic temp file
-         * because the writing a new data can interfere with sendfile
-         * that uses the same kernel file pages
+         * because the writing a new data can interfere with sendfile()
+         * that uses the same kernel file pages (at least on FreeBSD)
          */
 
         ep->cyclic_temp_file = 1;
@@ -1160,56 +1207,70 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_proxy_loc_conf_t)),
                   NGX_CONF_ERROR);
 
-    /* STUB */
-    ngx_test_null(conf->peers, ngx_pcalloc(cf->pool, sizeof(ngx_peers_t)),
-                  NGX_CONF_ERROR);
+    /* set by ngx_pcalloc():
 
-    conf->peers->number = 1;
-    conf->peers->peers[0].addr = inet_addr("127.0.0.1");
-    conf->peers->peers[0].host.data = "localhost";
-    conf->peers->peers[0].host.len = sizeof("localhost") - 1;
-    conf->peers->peers[0].port = htons(9000);
-    conf->peers->peers[0].addr_port_text.data = "127.0.0.1:9000";
-    conf->peers->peers[0].addr_port_text.len = sizeof("127.0.0.1:9000") - 1;
+    conf->bufs.num = 0;
 
-    conf->connect_timeout = 30000;
-    conf->send_timeout = 30000;
-    conf->header_size = 4096;
-    conf->read_timeout = 30000;
+    conf->path = NULL;
 
-    conf->bufs.num = 5;
-    conf->bufs.size = 4096;
-    conf->max_busy_len = 8192;
+    conf->upstreams = NULL;
+    conf->peers = NULL;
 
+    */
 
-    /* CHECK in _init conf->max_temp_size >= conf->bufs.size !!! */
-    conf->max_temp_file_size = 4096 * 3;
+    conf->connect_timeout = NGX_CONF_UNSET;
+    conf->send_timeout = NGX_CONF_UNSET;
+    conf->header_buffer_size = NGX_CONF_UNSET;
+    conf->read_timeout = NGX_CONF_UNSET;
+    conf->busy_buffers_size = NGX_CONF_UNSET;
 
+    /*
+     * "proxy_max_temp_file_size" is hardcoded to 1G for reverse proxy,
+     * it should be configurable in the generic proxy
+     */
+    conf->max_temp_file_size = 1024 * 1024 * 1024;
 
-    conf->temp_file_write_size = 4096 * 2;
-    conf->cyclic_temp_file= 1;
+    conf->temp_file_write_size = NGX_CONF_UNSET;
 
-    ngx_test_null(conf->temp_path, ngx_pcalloc(cf->pool, sizeof(ngx_path_t)),
-                  NULL);
-
-    conf->temp_path->name.data = "temp";
-    conf->temp_path->name.len = 4;
-    conf->temp_path->level[0] = 1;
-    conf->temp_path->level[1] = 2;
-    conf->temp_path->level[2] = 3;
-    conf->temp_path->len = 0;
-
-    for (i = 0; i < 3; i++) {
-        if (conf->temp_path->level[i] == 0) {
-            break;
-        }
-        conf->temp_path->len += conf->temp_path->level[i] + 1;
-    }
-
-    /* */
+    /* "proxy_cyclic_temp_file" is disabled */
+    conf->cyclic_temp_file = 0;
 
     return conf;
 }
+
+
+static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
+                                           void *parent, void *child)
+{
+    ngx_http_proxy_loc_conf_t *prev = parent;
+    ngx_http_proxy_loc_conf_t *conf = child;
+
+    ngx_conf_merge_msec_value(conf->connect_timeout,
+                              prev->connect_timeout, 60000);
+    ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 30000);
+    ngx_conf_merge_size_value(conf->header_buffer_size,
+                              prev->header_buffer_size, 4096);
+    ngx_conf_merge_msec_value(conf->read_timeout, prev->read_timeout, 30000);
+    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 8, 4096);
+    ngx_conf_merge_size_value(conf->busy_buffers_size,
+                              prev->busy_buffers_size, 8192);
+
+#if 0
+    if (conf->max_temp_file_size > conf->bufs.size) {
+        return "\"proxy_max_temp_file\" must be greater "
+               "than one of the \"proxy_buffers\"";
+    }
+#endif
+
+    ngx_conf_merge_size_value(conf->temp_file_write_size,
+                              prev->temp_file_write_size, 16384);
+
+    ngx_conf_merge_path_value(conf->temp_path, prev->temp_path,
+                              "temp", 1, 2, 0, cf->pool);
+
+    return NULL;
+}
+
 
 
 static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -1336,6 +1397,7 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 
     return NULL;
 }
+
 
 static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
                                            ngx_http_proxy_upstream_t *u)

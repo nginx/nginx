@@ -32,14 +32,14 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     ngx_err_t        err;
     ngx_array_t      header, trailer;
     ngx_hunk_t      *file;
-    ngx_chain_t     *ce, *tail;
+    ngx_chain_t     *cl, *tail;
 
     if (!c->write->ready) {
         return in;
     }
 
     do {
-        ce = in;
+        cl = in;
         file = NULL;
         fsize = 0;
         hsize = 0;
@@ -51,80 +51,80 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         ngx_init_array(trailer, c->pool, 10, sizeof(struct iovec),
                        NGX_CHAIN_ERROR);
 
-        /* create the iovec and coalesce the neighbouring chain entries */
+        /* create the header iovec and coalesce the neighbouring hunks */
 
         prev = NULL;
         iov = NULL;
 
-        for (ce = in; ce; ce = ce->next) {
-            if (ngx_hunk_special(ce->hunk)) {
+        for (cl = in; cl; cl = cl->next) {
+            if (ngx_hunk_special(cl->hunk)) {
                 continue;
             }
 
-            if (!ngx_hunk_in_memory_only(ce->hunk)) {
+            if (!ngx_hunk_in_memory_only(cl->hunk)) {
                 break;
             }
 
-            if (prev == ce->hunk->pos) {
-                iov->iov_len += ce->hunk->last - ce->hunk->pos;
-                prev = ce->hunk->last;
+            if (prev == cl->hunk->pos) {
+                iov->iov_len += cl->hunk->last - cl->hunk->pos;
+                prev = cl->hunk->last;
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
-                iov->iov_base = ce->hunk->pos;
-                iov->iov_len = ce->hunk->last - ce->hunk->pos;
-                prev = ce->hunk->last;
+                iov->iov_base = cl->hunk->pos;
+                iov->iov_len = cl->hunk->last - cl->hunk->pos;
+                prev = cl->hunk->last;
             }
 
-            hsize += ce->hunk->last - ce->hunk->pos;
+            hsize += cl->hunk->last - cl->hunk->pos;
         }
 
         /* get the file hunk */
 
-        if (ce && (ce->hunk->type & NGX_HUNK_FILE)) {
-            file = ce->hunk;
+        if (cl && (cl->hunk->type & NGX_HUNK_FILE)) {
+            file = cl->hunk;
             fsize = (size_t) (file->file_last - file->file_pos);
             fprev = file->file_last;
-            ce = ce->next;
+            cl = cl->next;
 
             /* coalesce the neighbouring file hunks */
 
-            while (ce && (ce->hunk->type & NGX_HUNK_FILE)) {
-                if (file->file->fd != ce->hunk->file->fd
-                    || fprev != ce->hunk->file_pos)
+            while (cl && (cl->hunk->type & NGX_HUNK_FILE)) {
+                if (file->file->fd != cl->hunk->file->fd
+                    || fprev != cl->hunk->file_pos)
                 {
                     break;
                 }
 
-                fsize += (size_t) (ce->hunk->file_last - ce->hunk->file_pos);
-                fprev = ce->hunk->file_last;
-                ce = ce->next;
+                fsize += (size_t) (cl->hunk->file_last - cl->hunk->file_pos);
+                fprev = cl->hunk->file_last;
+                cl = cl->next;
             }
         }
 
-        /* create the iovec and coalesce the neighbouring chain entries */
+        /* create the tailer iovec and coalesce the neighbouring hunks */
 
         prev = NULL;
         iov = NULL;
 
-        for ( /* void */; ce; ce = ce->next) {
-            if (ngx_hunk_special(ce->hunk)) {
+        for ( /* void */; cl; cl = cl->next) {
+            if (ngx_hunk_special(cl->hunk)) {
                 continue;
             }
 
-            if (!ngx_hunk_in_memory_only(ce->hunk)) {
+            if (!ngx_hunk_in_memory_only(cl->hunk)) {
                 break;
             }
 
-            if (prev == ce->hunk->pos) {
-                iov->iov_len += ce->hunk->last - ce->hunk->pos;
-                prev = ce->hunk->last;
+            if (prev == cl->hunk->pos) {
+                iov->iov_len += cl->hunk->last - cl->hunk->pos;
+                prev = cl->hunk->last;
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&trailer), NGX_CHAIN_ERROR);
-                iov->iov_base = ce->hunk->pos;
-                iov->iov_len = ce->hunk->last - ce->hunk->pos;
-                prev = ce->hunk->last;
+                iov->iov_base = cl->hunk->pos;
+                iov->iov_len = cl->hunk->last - cl->hunk->pos;
+                prev = cl->hunk->last;
             }
         }
 
@@ -133,7 +133,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
          * a single sendfile() capability
          */
 
-        tail = ce;
+        tail = cl;
 
         if (file) {
 
@@ -155,7 +155,7 @@ ngx_log_debug(c->log, "NOPUSH");
             hdtr.trl_cnt = trailer.nelts;
 
             /*
-             * the old sendfile() "nbytes bug":
+             * the "nbytes bug" of the old sendfile() syscall:
              * http://www.freebsd.org/cgi/query-pr.cgi?pr=33771
              */
 
@@ -220,9 +220,9 @@ ngx_log_debug(c->log, "NOPUSH");
 
         c->sent += sent;
 
-        for (ce = in; ce; ce = ce->next) {
+        for (cl = in; cl; cl = cl->next) {
 
-            if (ngx_hunk_special(ce->hunk)) {
+            if (ngx_hunk_special(cl->hunk)) {
                 continue;
             }
 
@@ -230,41 +230,43 @@ ngx_log_debug(c->log, "NOPUSH");
                 break;
             }
 
-            size = ngx_hunk_size(ce->hunk);
+            size = ngx_hunk_size(cl->hunk);
 
             if (sent >= size) {
                 sent -= size;
 
-                if (ce->hunk->type & NGX_HUNK_IN_MEMORY) {
-                    ce->hunk->pos = ce->hunk->last;
+                if (cl->hunk->type & NGX_HUNK_IN_MEMORY) {
+                    cl->hunk->pos = cl->hunk->last;
                 }
 
-                if (ce->hunk->type & NGX_HUNK_FILE) {
-                    ce->hunk->file_pos = ce->hunk->file_last;
+                if (cl->hunk->type & NGX_HUNK_FILE) {
+                    cl->hunk->file_pos = cl->hunk->file_last;
                 }
 
                 continue;
             }
 
-            if (ce->hunk->type & NGX_HUNK_IN_MEMORY) {
-                ce->hunk->pos += sent;
+            if (cl->hunk->type & NGX_HUNK_IN_MEMORY) {
+                cl->hunk->pos += sent;
             }
 
-            if (ce->hunk->type & NGX_HUNK_FILE) {
-                ce->hunk->file_pos += sent;
+            if (cl->hunk->type & NGX_HUNK_FILE) {
+                cl->hunk->file_pos += sent;
             }
 
             break;
         }
 
-        in = ce;
+        in = cl;
 
         if (eagain) {
+
             /*
              * sendfile() can return EAGAIN even if it has sent
              * a whole file part and successive sendfile() would
-             * return EAGAIN right away and would not send anything.
+             * return EAGAIN right away and would not send anything
              */
+
             c->write->ready = 0;
             break;
         }

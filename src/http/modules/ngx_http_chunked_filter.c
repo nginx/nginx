@@ -29,14 +29,14 @@ ngx_module_t  ngx_http_chunked_filter_module = {
 };
 
 
-static int (*next_header_filter) (ngx_http_request_t *r);
-static int (*next_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
+static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
+static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
 static int ngx_http_chunked_header_filter(ngx_http_request_t *r)
 {
     if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED) {
-        return next_header_filter(r);
+        return ngx_http_next_header_filter(r);
     }
 
     if (r->headers_out.content_length_n == -1) {
@@ -48,7 +48,7 @@ static int ngx_http_chunked_header_filter(ngx_http_request_t *r)
         }
     }
 
-    return next_header_filter(r);
+    return ngx_http_next_header_filter(r);
 }
 
 
@@ -57,36 +57,31 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     char         *chunk;
     size_t        size, len;
     ngx_hunk_t   *h;
-    ngx_chain_t  *out, *ce, *te, **le;
+    ngx_chain_t  *out, *cl, *tl, **ll;
 
     if (in == NULL || !r->chunked) {
-        return next_body_filter(r, in);
+        return ngx_http_next_body_filter(r, in);
     }
 
-    ngx_test_null(out, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
-    le = &out->next;
+    ngx_test_null(out, ngx_alloc_chain_link(r->pool), NGX_ERROR);
+    ll = &out->next;
 
     size = 0;
-    ce = in;
+    cl = in;
 
     for ( ;; ) {
+        size += ngx_hunk_size(cl->hunk);
 
-        if (ce->hunk->type & NGX_HUNK_IN_MEMORY) {
-            size += ce->hunk->last - ce->hunk->pos;
-        } else {
-            size += (size_t) (ce->hunk->file_last - ce->hunk->file_pos);
-        }
+        ngx_test_null(tl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
+        tl->hunk = cl->hunk;
+        *ll = tl;
+        ll = &tl->next;
 
-        ngx_test_null(te, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
-        te->hunk = ce->hunk;
-        *le = te;
-        le = &te->next;
-
-        if (ce->next == NULL) {
+        if (cl->next == NULL) {
             break;
         }
 
-        ce = ce->next;
+        cl = cl->next;
     }
 
     ngx_test_null(chunk, ngx_palloc(r->pool, 11), NGX_ERROR);
@@ -101,8 +96,8 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
 
-    if (ce->hunk->type & NGX_HUNK_LAST) {
-        ce->hunk->type &= ~NGX_HUNK_LAST;
+    if (cl->hunk->type & NGX_HUNK_LAST) {
+        cl->hunk->type &= ~NGX_HUNK_LAST;
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_MEMORY|NGX_HUNK_LAST;
         h->pos = CRLF "0" CRLF CRLF;
         h->last = h->pos + 7;
@@ -113,21 +108,19 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         h->last = h->pos + 2;
     }
 
-    ngx_test_null(te, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
-    te->hunk = h;
-    te->next = NULL;
-    *le = te;
+    ngx_alloc_link_and_set_hunk(tl, h, r->pool, NGX_ERROR);
+    *ll = tl;
 
-    return next_body_filter(r, out);
+    return ngx_http_next_body_filter(r, out);
 }
 
 
 static int ngx_http_chunked_filter_init(ngx_cycle_t *cycle)
 {
-    next_header_filter = ngx_http_top_header_filter;
+    ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_chunked_header_filter;
 
-    next_body_filter = ngx_http_top_body_filter;
+    ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_chunked_body_filter;
 
     return NGX_OK;

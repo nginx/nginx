@@ -50,7 +50,7 @@ struct ngx_event_pipe_s {
     ngx_bufs_t         bufs;
     ngx_hunk_tag_t     tag;
 
-    size_t             max_busy_len;
+    size_t             busy_size;
 
     off_t              temp_offset;
     off_t              max_temp_file_size;
