@@ -101,7 +101,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
 {
     int              events, i;
     u_int            timer = 0, delta = 0;
-    ngx_event_t      *ev, *nx;
+    ngx_event_t      *ev;
     struct timeval   tv;
     struct timespec  ts, *tp = NULL;
 
@@ -137,17 +137,17 @@ int ngx_kqueue_process_events(ngx_log_t *log)
 
     if (timer) {
         if (delta >= timer) {
-            for (ev = timer_queue.timer_next;
-                 ev != &timer_queue && delta >= ev->timer_delta;
-                 /* void */)
-            {
+            for ( ;; ) {
+                ev = timer_queue.timer_next;
+
+                if (ev == &timer_queue || delta < ev->timer_delta)
+                    break;
+
                 delta -= ev->timer_delta;
-                nx = ev->timer_next;
                 ngx_del_timer(ev);
                 ev->timedout = 1;
                 if (ev->event_handler(ev) == NGX_ERROR)
                     ev->close_handler(ev);
-                ev = nx;
             }
 
         } else {
