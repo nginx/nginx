@@ -78,3 +78,28 @@ if [ $HTTP_PROXY = YES ]; then
     HTTP_DEPS="$HTTP_DEPS $HTTP_PROXY_DEPS"
     HTTP_SRCS="$HTTP_SRCS $HTTP_PROXY_SRCS"
 fi
+
+
+modules="$CORE_MODULES $EVENT_MODULES $HTTP_MODULES \
+         $HTTP_FILTER_MODULES $HTTP_NOT_MODIFIED_FILTER_MODULE"
+
+
+echo "#include <ngx_config.h>"                > $NGX_MODULES_C
+echo "#include <ngx_core.h>"                  >> $NGX_MODULES_C
+echo                                          >> $NGX_MODULES_C
+
+for mod in $modules
+do
+    echo "extern ngx_module_t  $mod;"         >> $NGX_MODULES_C
+done
+
+echo                                          >> $NGX_MODULES_C
+echo 'ngx_module_t *ngx_modules[] = {'        >> $NGX_MODULES_C
+
+for mod in $modules
+do
+    echo "    &$mod,"                         >> $NGX_MODULES_C
+done
+
+echo "    NULL"                               >> $NGX_MODULES_C
+echo "};"                                     >> $NGX_MODULES_C

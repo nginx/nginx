@@ -10,6 +10,12 @@ NGX_ERR=$OBJS/autoconf.err
 CC_WARN=$CC
 
 
+INC_EQ=NO
+MAKE_BS=NO
+MAKE_SL=NO
+MAKE_BL=YES
+
+
 # checking echo's "-n" option and "\c" capabilties
 
 if echo "test\c" | grep c >/dev/null; then

@@ -2,6 +2,7 @@
 case $CC in
 
     *gcc)
+         # gcc 2.95.4, 3.3.2
 
          # optimization
          #CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"
@@ -31,6 +32,7 @@ case $CC in
          have=HAVE_GCC_VARIADIC_MACROS . auto/have
 
          OBJEXT=o
+         COMPILEONLY="-c "
          OBJOUT="-o "
          BINOUT="-o "
 
@@ -57,6 +59,7 @@ case $CC in
          have=HAVE_C99_VARIADIC_MACROS . auto/have
 
          OBJEXT=o
+         COMPILEONLY="-c "
          OBJOUT="-o "
          BINOUT="-o "
 
@@ -113,6 +116,7 @@ case $CC in
          CORE_LINK="$CORE_LINK -debug -debugtype:coff"
 
          OBJEXT=obj
+         COMPILEONLY="-c "
          OBJOUT="-Fo"
          BINOUT="-Fe"
 
@@ -122,6 +126,52 @@ case $CC in
 
     wcc386)
          # Open Watcom 1.0
+
+         # optimization
+
+         # maximize speed
+         CFLAGS="$CFLAGS -ot"
+         # reorder instructions for best pipeline usage
+         CFLAGS="$CFLAGS -op"
+         # inline intrinsic functions
+         CFLAGS="$CFLAGS -oi"
+         # inline expansion
+         CFLAGS="$CFLAGS -oe"
+         # disable stack checking calls
+         CFLAGS="$CFLAGS -s"
+         # optimize for Pentium Pro
+         #CFLAGS="$CFLAGS -6r"
+         CFLAGS="$CFLAGS -6s"
+
+         # warnings
+         #CFLAGS="$CFLAGS -w3"
+         CFLAGS="$CFLAGS -wx"
+
+         # stop on warning
+         #CFLAGS="$CFLAGS -we"
+
+         # built target is NT
+         CFLAGS="$CFLAGS -bt=nt"
+
+         # multithreaded
+         CFLAGS="$CFLAGS -bm"
+
+         # debug
+         CFLAGS="$CFLAGS -d2"
+
+         # quiet
+         CFLAGS="$CFLAGS -zq"
+
+         # link traget is NT
+         CORE_LINK="$CORE_LINK -l=nt"
+
+         OBJEXT=obj
+         COMPILEONLY=
+         OBJOUT="-fo"
+         BINOUT="-fo"
+         INC_EQ=YES
+         MAKE_BS=YES
+         MAKE_SL=YES
     ;;
 
 esac

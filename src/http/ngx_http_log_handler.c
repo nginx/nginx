@@ -129,7 +129,7 @@ int ngx_http_log_handler(ngx_http_request_t *r)
     ngx_http_log_op_t        *op;
     ngx_http_log_loc_conf_t  *lcf;
 #if (WIN32)
-    u_int                     written;
+    u_long                    written;
 #endif
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,

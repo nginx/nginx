@@ -5,8 +5,8 @@
 
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 {
-    size_t      n;
     long        high_offset;
+    DWORD       n;
     ngx_err_t   err;
     OVERLAPPED  ovlp, *povlp;
 
@@ -67,8 +67,8 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 
 ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 {
-    size_t      n;
     long        high_offset;
+    DWORD       n;
     ngx_err_t   err;
     OVERLAPPED  ovlp, *povlp;
 

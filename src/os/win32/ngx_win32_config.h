@@ -7,6 +7,10 @@
 #define STRICT
 #define WIN32_LEAN_AND_MEAN
 
+#ifdef __WATCOMC__
+#pragma disable_message(107)
+#endif
+
 /*
  * we need to include windows.h explicity before winsock2.h because
  * warning 4201 is enabled in windows.h
@@ -32,6 +36,17 @@
 
 /* STUB */
 #pragma warning(disable:4127)
+#endif
+
+
+#ifdef __WATCOMC__
+#pragma enable_message(107)
+#if 0
+/* Symbol 'ngx_rbtree_min' has been defined, but not referenced */
+#pragma disable_message(202)
+#endif
+/* No prototype found for 'stricmp' */
+#pragma disable_message(301)
 #endif
 
 #include <ngx_auto_config.h>

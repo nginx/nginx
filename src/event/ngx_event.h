@@ -122,11 +122,13 @@ struct ngx_event_s {
      *   write:      available space in buffer when event is ready
      *               or lowat when event is set with NGX_LOWAT_EVENT flag
      *
+     * iocp: TODO
+     *
      * otherwise:
      *   accept:     1 if accept many, 0 otherwise
      */
 
-#if (HAVE_KQUEUE)
+#if (HAVE_KQUEUE) || (HAVE_IOCP)
     int              available;
 #else
     unsigned short   available:1;

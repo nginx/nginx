@@ -7,8 +7,7 @@
 ssize_t ngx_wsarecv(ngx_connection_t *c, char *buf, size_t size)
 {
     int           rc;
-    u_int         flags;
-    size_t        bytes;
+    u_long        bytes, flags;
     WSABUF        wsabuf[1];
     ngx_err_t     err;
     ngx_event_t  *rev;
@@ -56,8 +55,7 @@ ssize_t ngx_wsarecv(ngx_connection_t *c, char *buf, size_t size)
 ssize_t ngx_overlapped_wsarecv(ngx_connection_t *c, char *buf, size_t size)
 {
     int               rc;
-    u_int             flags;
-    size_t            bytes;
+    u_long            bytes, flags;
     WSABUF            wsabuf[1];
     ngx_err_t         err;
     ngx_event_t      *rev;

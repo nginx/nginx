@@ -8,8 +8,8 @@ ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
     int           rc;
     char         *prev;
-    u_int         flags;
-    size_t        bytes, size;
+    u_long        bytes, flags;
+    size_t        size;
     WSABUF       *wsabuf;
     ngx_err_t     err;
     ngx_array_t   io;

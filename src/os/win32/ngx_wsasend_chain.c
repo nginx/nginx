@@ -8,7 +8,8 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int           rc;
     char         *prev;
-    size_t        size, sent;
+    size_t        size;
+    u_long        sent;
     LPWSABUF      wsabuf;
     ngx_err_t     err;
     ngx_event_t  *wev;
@@ -102,7 +103,8 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int               rc;
     char             *prev;
-    size_t            size, sent;
+    size_t            size;
+    u_long            sent;
     LPWSABUF          wsabuf;
     ngx_err_t         err;
     ngx_event_t      *wev;

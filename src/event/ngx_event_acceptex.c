@@ -58,8 +58,8 @@ void ngx_event_acceptex(ngx_event_t *rev)
 
 int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
 {
-    int                i;
-    u_int              rcvd;
+    u_long             rcvd;
+    ngx_int_t          i;
     ngx_err_t          err;
     ngx_event_t       *rev, *wev;
     ngx_socket_t       s;

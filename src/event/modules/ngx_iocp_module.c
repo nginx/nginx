@@ -164,7 +164,7 @@ static ngx_int_t ngx_iocp_process_events(ngx_log_t *log)
 {
     int                rc;
     u_int              key;
-    size_t             bytes;
+    u_long             bytes;
     ngx_err_t          err;
     ngx_msec_t         timer;
     ngx_event_t       *ev;
