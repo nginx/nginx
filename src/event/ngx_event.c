@@ -5,6 +5,7 @@
 #include <ngx_string.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
+#include <ngx_array.h>
 #include <ngx_listen.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>

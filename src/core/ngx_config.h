@@ -80,6 +80,10 @@
 #define CRLF   "\x0d\x0a"
 
 
+#ifndef INET_ADDRSTRLEN
+#define INET_ADDRSTRLEN 16
+#endif
+
 
 #if defined SO_ACCEPTFILTER || defined TCP_DEFER_ACCEPT
 

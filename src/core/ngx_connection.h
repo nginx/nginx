@@ -3,8 +3,9 @@
 
 #include <ngx_socket.h>
 #include <ngx_log.h>
-#include <ngx_hunk.h>
 #include <ngx_alloc.h>
+#include <ngx_hunk.h>
+#include <ngx_array.h>
 #include <ngx_string.h>
 #include <ngx_server.h>
 

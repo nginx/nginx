@@ -22,7 +22,10 @@ typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
 #define ngx_open_file(name, flags)                                          \
             CreateFile(name, flags,                                         \
                        FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,  \
+                       NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL)
+/*
                        NULL, OPEN_EXISTING, 0, NULL)
+*/
 
 #define ngx_open_file_n             "CreateFile()"
 

@@ -105,10 +105,10 @@ static int ngx_http_core_translate_handler(ngx_http_request_t *r)
     ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _
                   r->file.name.data);
 
-#if (WIN32)
+#if (WIN9X)
 
-    /* There is no way to open file or directory in Win32 with
-       one syscall: CreateFile() returns ERROR_ACCESS_DENIED on directory,
+    /* There is no way to open file or directory in Win9X with
+       one syscall: Win9X has not FILE_FLAG_BACKUP_SEMANTICS flag.
        so we need to check its type before opening */
 
 #if 0 /* OLD: ngx_file_type() is to be removed */
@@ -138,7 +138,7 @@ static int ngx_http_core_translate_handler(ngx_http_request_t *r)
     if (r->file.fd == NGX_INVALID_FILE) {
         err = ngx_errno;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
-                      "ngx_http_static_handler: "
+                      "ngx_http_core_handler: "
                       ngx_open_file_n " %s failed", r->file.name.data);
 
         if (err == NGX_ENOENT)
@@ -150,12 +150,12 @@ static int ngx_http_core_translate_handler(ngx_http_request_t *r)
     if (!r->file.info_valid) {
         if (ngx_stat_fd(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
-                          "ngx_http_static_handler: "
+                          "ngx_http_core_handler: "
                           ngx_stat_fd_n " %s failed", r->file.name.data);
 
             if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR)
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
-                              "ngx_http_static_handler: "
+                              "ngx_http_core_handler: "
                               ngx_close_file_n " %s failed", r->file.name.data);
 
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -168,10 +168,10 @@ static int ngx_http_core_translate_handler(ngx_http_request_t *r)
     if (ngx_is_dir(r->file.info)) {
         ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
-#if !(WIN32)
+#if !(WIN9X)
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR)
             ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
-                          "ngx_http_static_handler: "
+                          "ngx_http_core_handler: "
                           ngx_close_file_n " %s failed", r->file.name.data);
 #endif
 

@@ -20,15 +20,19 @@ int ngx_http_log_handler(ngx_http_request_t *r)
     char     *line, *p;
     ngx_tm_t  tm;
 
+    ngx_log_debug(r->connection->log, "log handler");
+
+    /* %a, 20:%c, 22:%d, 3:%s, 20:%b, 5*" ", "2/1: "\r\n" */
 #if (WIN32)
-    len = 2 + 22 + 3 + 20 + 5 + 20 + 2;
+    len = 2 + 20 + 22 + 3 + 20 + 5 + + 2;
 #else
-    len = 2 + 22 + 3 + 20 + 5 + 20 + 1;
+    len = 2 + 20 + 22 + 3 + 20 + 5 + + 1;
 #endif
 
     len += r->connection->addr_text.len;
     len += r->request_line.len;
 
+    ngx_log_debug(r->connection->log, "log handler: %d" _ len);
 
     ngx_test_null(line, ngx_palloc(r->pool, len), NGX_ERROR);
     p = line;
@@ -38,17 +42,29 @@ int ngx_http_log_handler(ngx_http_request_t *r)
 
     *p++ = ' ';
 
+    p += ngx_snprintf(p, 21, "%u", r->connection->number);
+
+    *p++ = ' ';
+
+    *p = '\0';
+    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
+
     ngx_localtime(&tm);
+
+    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
 
     *p++ = '[';
     p += ngx_snprintf(p, 21, "%02d/%s/%d:%02d:%02d:%02d",
-                      tm.ngx_tm_mday, months[tm.ngx_tm_mon],
-                      tm.ngx_tm_year + 1900,
+                      tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
+                      tm.ngx_tm_year,
                       tm.ngx_tm_hour, tm.ngx_tm_min, tm.ngx_tm_sec);
 
     *p++ = ']';
 
     *p++ = ' ';
+
+    *p = '\0';
+    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
 
     *p++ = '"';
     ngx_memcpy(p, r->request_line.data, r->request_line.len);
@@ -63,15 +79,17 @@ int ngx_http_log_handler(ngx_http_request_t *r)
 
     p += ngx_snprintf(p, 21, QD_FMT, r->connection->sent);
 
-    *p++ = ' ';
-
-    p += ngx_snprintf(p, 21, "%u", r->connection->number);
+    *p = '\0';
+    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
 
 #if (WIN32)
     *p++ = CR; *p++ = LF;
 #else
     *p++ = LF;
 #endif
+
+    *p = '\0';
+    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
 
     write(1, line, len);
 

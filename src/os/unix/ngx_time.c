@@ -6,6 +6,8 @@ void ngx_localtime(ngx_tm_t *tm)
 {
     time_t clock = time(NULL);
     localtime_r(&clock, tm);
+    tm->ngx_tm_mon++;
+    tm->ngx_tm_year += 1900;
 }
 
 u_int ngx_msec(void)
