@@ -136,6 +136,17 @@ static ngx_int_t ngx_rtsig_add_connection(ngx_connection_t *c)
     int                signo;
     ngx_rtsig_conf_t  *rtscf;
 
+    if (c->read->accept && c->read->disabled) {
+        if (fcntl(c->fd, F_SETOWN, ngx_pid) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
+                          "fcntl(F_SETOWN) failed");
+            return NGX_ERROR;
+        }
+
+        c->read->active = 1;
+        c->read->disabled = 0;
+    }
+
     rtscf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_rtsig_module);
 
     signo = rtscf->signo + c->read->instance;
@@ -181,12 +192,22 @@ static ngx_int_t ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "rtsig del connection: fd:%d", c->fd);
 
-    if (!(flags & NGX_CLOSE_EVENT)) {
-        if (fcntl(c->fd, F_SETFL, O_RDWR|O_NONBLOCK) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
-                          "fcntl(O_RDWR|O_NONBLOCK) failed");
-            return NGX_ERROR;
-        }
+    if ((flags & NGX_DISABLE_EVENT) && c->read->accept) {
+        c->read->active = 0;
+        c->read->disabled = 0;
+        return NGX_OK;
+    }
+
+    if (flags & NGX_CLOSE_EVENT) {
+        c->read->active = 0;
+        c->write->active = 0;
+        return NGX_OK;
+    }
+
+    if (fcntl(c->fd, F_SETFL, O_RDWR|O_NONBLOCK) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
+                      "fcntl(O_RDWR|O_NONBLOCK) failed");
+        return NGX_ERROR;
     }
 
     c->read->active = 0;
@@ -444,7 +465,11 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
         ngx_event_process_posted(cycle);
     }
 
-    return NGX_OK;
+    if (signo == -1) {
+        return NGX_AGAIN;
+    } else {
+        return NGX_OK;
+    }
 }
 
 
@@ -531,9 +556,8 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
              * is bigger then "/proc/sys/kernel/rtsig-max / 4"
              */
 
-            while (rtsig_max / 4 < rtsig_nr) {
-                ngx_rtsig_process_events(cycle);
-                rtsig_nr--;
+            if (rtsig_max / 4 < rtsig_nr) {
+                while (ngx_rtsig_process_events(cycle) == NGX_OK) { /* void */ }
             }
         }
     }
