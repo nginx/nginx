@@ -50,6 +50,21 @@ typedef struct {
 } ngx_http_server_name_t;
 
 
+#define NGX_HTTP_TYPES_HASH_PRIME  13
+
+#define ngx_http_types_hash_key(key, ext)                                   \
+        {                                                                   \
+            int n;                                                          \
+            for (key = 0, n = 0; n < ext.len; n++) {                        \
+                key += ext.data[n];                                         \
+            }                                                               \
+            key %= NGX_HTTP_TYPES_HASH_PRIME;                               \
+        }
+
+typedef struct {
+    ngx_str_t  exten;
+    ngx_str_t  type;
+} ngx_http_type_t;
 
 
 typedef struct {
@@ -60,6 +75,8 @@ typedef struct {
     int       (*handler) (ngx_http_request_t *r);
 
     ngx_str_t   doc_root;                /* root */
+
+    ngx_array_t  *types;
 
     int         sendfile;                /* sendfile */
     time_t      send_timeout;            /* send_timeout */

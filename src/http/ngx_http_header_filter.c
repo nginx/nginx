@@ -65,7 +65,7 @@ static ngx_str_t http_codes[] = {
     ngx_null_string,  /* 412 */
     ngx_string("413 Request Entity Too Large"),
     ngx_null_string,  /* "414 Request-URI Too Large" but we never send it
-                         because we treat such requests as HTTP/0.9 requests
+                         because we treat such requests as the HTTP/0.9 requests
                          and send only the body without the header */
     ngx_null_string,  /* 415 */
     ngx_string("416 Requested Range Not Satisfiable"),
@@ -124,16 +124,20 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 
     } else {
         if (r->headers_out.status < NGX_HTTP_MOVED_PERMANENTLY) {
+            /* 2XX */
             status = r->headers_out.status - NGX_HTTP_OK;
 
         } else if (r->headers_out.status < NGX_HTTP_BAD_REQUEST) {
+            /* 3XX */
             status = r->headers_out.status - NGX_HTTP_MOVED_PERMANENTLY + 1;
             r->header_only = 1;
 
         } else if (r->headers_out.status < NGX_HTTP_INTERNAL_SERVER_ERROR) {
+            /* 4XX */
             status = r->headers_out.status - NGX_HTTP_BAD_REQUEST + 1 + 4;
 
         } else {
+            /* 5XX */
             status = r->headers_out.status
                                  - NGX_HTTP_INTERNAL_SERVER_ERROR + 1 + 4 + 17;
         }

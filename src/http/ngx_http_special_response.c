@@ -120,6 +120,7 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     r->headers_out.status = error;
 
     if (error < NGX_HTTP_BAD_REQUEST) {
+        /* 3XX */
         err = error - NGX_HTTP_MOVED_PERMANENTLY;
 
     } else {
@@ -133,9 +134,11 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         r->headers_out.content_type->value.data = "text/html";
 
         if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
+            /* 4XX */
             err = error - NGX_HTTP_BAD_REQUEST + 3;
 
         } else {
+            /* 5XX */
             err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 3 + 17;
         }
     }
@@ -146,6 +149,15 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
             case NGX_HTTP_REQUEST_URI_TOO_LARGE:
             case NGX_HTTP_INTERNAL_SERVER_ERROR:
                 r->keepalive = 0;
+        }
+    }
+
+    if (r->lingering_close == 1) {
+        switch (error) {
+            case NGX_HTTP_BAD_REQUEST:
+            case NGX_HTTP_REQUEST_URI_TOO_LARGE:
+            case NGX_HTTP_INTERNAL_SERVER_ERROR:
+                r->lingering_close = 0;
         }
     }
 

@@ -9,6 +9,7 @@
 #include <ngx_connection.h>
 #include <ngx_sendv.h>
 #include <ngx_sendfile.h>
+#include <ngx_freebsd_init.h>
 
 
 ngx_chain_t *ngx_freebsd_write_chain(ngx_connection_t *c, ngx_chain_t *in)
@@ -50,9 +51,9 @@ ngx_chain_t *ngx_freebsd_write_chain(ngx_connection_t *c, ngx_chain_t *in)
                 prev = ce->hunk->last;
             }
 
-#if (HAVE_FREEBSD_SENDFILE_NBYTES_BUG)
-            hsize += ce->hunk->last - ce->hunk->pos;
-#endif
+            if (ngx_freebsd_sendfile_nbytes_bug) {
+                hsize += ce->hunk->last - ce->hunk->pos;
+            }
             ce = ce->next;
         }
     }

@@ -76,11 +76,21 @@ ngx_log_debug(cf->log, "token %d" _ rc);
 
         if (cf->handler) {
 
-            if ((*cf->handler)(cf) == NGX_CONF_ERROR) {
+            rv = (*cf->handler)(cf, NULL, cf->handler_conf);
+            if (rv == NGX_CONF_OK) {
+                continue;
+
+            } else if (rv == NGX_CONF_ERROR) {
+                return NGX_CONF_ERROR;
+
+            } else {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                             "%s %s in %s:%d",
+                             name->data, rv,
+                             cf->conf_file->file.name.data,
+                             cf->conf_file->line);
                 return NGX_CONF_ERROR;
             }
-
-            continue;
         }
 
         name = (ngx_str_t *) cf->args->elts;
@@ -88,7 +98,7 @@ ngx_log_debug(cf->log, "token %d" _ rc);
 
         for (i = 0; !found && ngx_modules[i]; i++) {
             if (ngx_modules[i]->type != NGX_CONF_MODULE_TYPE
-                && ngx_modules[i]->type != cf->type)
+                && ngx_modules[i]->type != cf->module_type)
             {
                 continue;
             }
@@ -106,6 +116,16 @@ ngx_log_debug(cf->log, "token %d" _ rc);
 #if 0
 ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 #endif
+
+                    if ((cmd->type & cf->cmd_type) == 0) {
+                        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                      "directive \"%s\" in %s:%d "
+                                      "is not allowed here",
+                                      name->data,
+                                      cf->conf_file->file.name.data,
+                                      cf->conf_file->line);
+                        return NGX_CONF_ERROR;
+                    }
 
                     if (!(cmd->type & NGX_CONF_ANY)
                         && ((cmd->type & NGX_CONF_FLAG && cf->args->nelts != 2)

@@ -2,19 +2,41 @@
 #include <ngx_freebsd_init.h>
 
 
-int freebsd_kern_osreldate;
-int freebsd_hw_ncpu;
-
-int freebsd_sendfile_nbytes_bug;
+char ngx_freebsd_kern_ostype[20];
+char ngx_freebsd_kern_osrelease[20];
+int ngx_freebsd_kern_osreldate;
+int ngx_freebsd_hw_ncpu;
+int ngx_freebsd_net_inet_tcp_sendspace;
+int ngx_freebsd_sendfile_nbytes_bug;
 
 
 int ngx_os_init(ngx_log_t *log)
 {
     size_t  size;
 
+    size = 20;
+    if (sysctlbyname("kern.ostype",
+                     ngx_freebsd_kern_ostype, &size, NULL, 0) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, errno,
+                      "sysctlbyname(kern.ostype) failed");
+        return NGX_ERROR;
+    }
+
+    size = 20;
+    if (sysctlbyname("kern.osrelease",
+                     ngx_freebsd_kern_osrelease, &size, NULL, 0) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, errno,
+                      "sysctlbyname(kern.osrelease) failed");
+        return NGX_ERROR;
+    }
+
+    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
+                  ngx_freebsd_kern_ostype, ngx_freebsd_kern_osrelease);
+
+
     size = 4;
     if (sysctlbyname("kern.osreldate",
-                     &freebsd_kern_osreldate, &size, NULL, 0) == -1) {
+                     &ngx_freebsd_kern_osreldate, &size, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
                       "sysctlbyname(kern.osreldate) failed");
         return NGX_ERROR;
@@ -22,7 +44,7 @@ int ngx_os_init(ngx_log_t *log)
 
     ngx_log_error(NGX_LOG_INFO, log, 0,
                   "kern.osreldate: %d, built on %d",
-                  freebsd_kern_osreldate, __FreeBSD_version);
+                  ngx_freebsd_kern_osreldate, __FreeBSD_version);
 
 
 #if HAVE_FREEBSD_SENDFILE
@@ -42,12 +64,12 @@ int ngx_os_init(ngx_log_t *log)
     || __FreeBSD_version == 460002 || __FreeBSD_version >= 500039
 
     /* a new syscall without the bug */
-    freebsd_sendfile_nbytes_bug = 0;
+    ngx_freebsd_sendfile_nbytes_bug = 0;
 
 #else
 
     /* an old syscall that can have the bug */
-    freebsd_sendfile_nbytes_bug = 1;
+    ngx_freebsd_sendfile_nbytes_bug = 1;
 
 #endif
 
@@ -55,13 +77,27 @@ int ngx_os_init(ngx_log_t *log)
 
 
     size = 4;
-    if (sysctlbyname("hw.ncpu", &freebsd_hw_ncpu, &size, NULL, 0) == -1) {
+    if (sysctlbyname("hw.ncpu", &ngx_freebsd_hw_ncpu, &size, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
                       "sysctlbyname(hw.ncpu) failed");
         return NGX_ERROR;
     }
 
-    ngx_log_error(NGX_LOG_INFO, log, 0, "hw.ncpu: %d", freebsd_hw_ncpu);
+    ngx_log_error(NGX_LOG_INFO, log, 0, "hw.ncpu: %d", ngx_freebsd_hw_ncpu);
+
+
+    size = 4;
+    if (sysctlbyname("net.inet.tcp.sendspace",
+                     &ngx_freebsd_net_inet_tcp_sendspace,
+                     &size, NULL, 0) == -1)
+    {
+        ngx_log_error(NGX_LOG_ALERT, log, errno,
+                      "sysctlbyname(net.inet.tcp.sendspace) failed");
+        return NGX_ERROR;
+    }
+
+    ngx_log_error(NGX_LOG_INFO, log, 0, "net.inet.tcp.sendspace: %d",
+                  ngx_freebsd_net_inet_tcp_sendspace);
 
     return NGX_OK;
 }

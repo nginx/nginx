@@ -157,6 +157,8 @@ ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
                                + index[i].len;
         }
 
+/* STUB */ r->exten.len = 4; r->exten.data = "html";
+
         return ngx_http_internal_redirect(r, loc);
     }
 

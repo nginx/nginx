@@ -42,7 +42,7 @@ static ngx_str_t  http_name = ngx_string("http");
 static ngx_command_t  ngx_http_commands[] = {
 
     {ngx_string("http"),
-     NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+     NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
      ngx_http_block,
      0,
      0},
@@ -69,7 +69,8 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     ngx_array_t                 in_ports;
     ngx_listen_t               *ls;
     ngx_http_module_t          *module;
-    ngx_http_conf_ctx_t        *ctx, *prev;
+    ngx_conf_t                  prev;
+    ngx_http_conf_ctx_t        *ctx;
     ngx_http_in_port_t         *in_port;
     ngx_http_in_addr_t         *in_addr, *inaddr;
     ngx_http_core_srv_conf_t  **cscf;
@@ -113,12 +114,12 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         }
     }
 
-    prev = cf->ctx;
+    prev = *cf;
     cf->ctx = ctx;
-    cf->type = NGX_HTTP_MODULE_TYPE;
-
+    cf->module_type = NGX_HTTP_MODULE_TYPE;
+    cf->cmd_type = NGX_HTTP_MAIN_CONF;
     rv = ngx_conf_parse(cf, NULL);
-    cf->ctx = prev;
+    *cf = prev;
 
     if (rv != NGX_CONF_OK)
         return rv;
@@ -147,7 +148,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     ngx_init_array(ngx_http_index_handlers,
                    cf->pool, 3, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
 
-    /* create lists of ports, addresses and server names */
+    /* create lists of the ports, the addresses and the server names */
 
     ngx_init_array(in_ports, cf->pool, 10, sizeof(ngx_http_in_port_t),
                    NGX_CONF_ERROR);
