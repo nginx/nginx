@@ -785,6 +785,10 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int error)
     int           rc;
     ngx_event_t  *rev, *wev;
 
+    if (r->main) {
+        return;
+    }
+
     rc = error;
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
@@ -813,9 +817,25 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int error)
             return;
         }
 
+#if 1
+        return;
+#endif
+
     } else if (rc == NGX_ERROR) {
         r->keepalive = 0;
         r->lingering_close = 0;
+
+    } else {
+        if (ngx_http_send_last(r) == NGX_ERROR) {
+            ngx_http_close_request(r, 0);
+            ngx_http_close_connection(r->connection);
+            return;
+        }
+
+        if (rc == NGX_AGAIN) {
+            ngx_http_set_write_handler(r);
+            return;
+        }
     }
 
     rev = r->connection->read;
@@ -840,6 +860,8 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int error)
         ngx_http_close_request(r, 0);
         ngx_http_close_connection(r->connection);
     }
+
+    return;
 }
 
 
@@ -887,6 +909,8 @@ void ngx_http_set_write_handler(ngx_http_request_t *r)
         ngx_http_close_request(r, 0);
         ngx_http_close_connection(r->connection);
     }
+
+    return;
 }
 
 
@@ -951,6 +975,8 @@ static void ngx_http_writer(ngx_event_t *wev)
         ngx_http_close_request(r, 0);
         ngx_http_close_connection(r->connection);
     }
+
+    return;
 }
 
 
@@ -1046,6 +1072,8 @@ static void ngx_http_read_discarded_body_event(ngx_event_t *rev)
         ngx_http_close_request(r, rc);
         ngx_http_close_connection(c);
     }
+
+    return;
 }
 
 
@@ -1382,6 +1410,17 @@ static void ngx_http_empty_handler(ngx_event_t *wev)
     ngx_log_debug(wev->log, "http empty handler");
 
     return;
+}
+
+
+int ngx_http_send_last(ngx_http_request_t *r)
+{
+    ngx_hunk_t  *h;
+
+    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
+    h->type = NGX_HUNK_LAST;
+
+    return ngx_http_output_filter(r, h);
 }
 
 

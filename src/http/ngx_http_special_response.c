@@ -199,15 +199,19 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     }
 
     rc = ngx_http_send_header(r);
+
     if (rc == NGX_ERROR) {
         return NGX_ERROR;
     }
 
     if (r->header_only) {
+        ngx_http_finalize_request(r, rc);
+#if 0
         if (rc == NGX_AGAIN) {
             ngx_http_set_write_handler(r);
             return NGX_AGAIN;
         }
+#endif
 
         return NGX_OK;
     }
@@ -248,12 +252,16 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 
     rc = ngx_http_output_filter(r, h);
 
+    ngx_http_finalize_request(r, rc);
+
+#if 0
     if (r->main == NULL) {
         if (rc == NGX_AGAIN) {
             ngx_http_set_write_handler(r);
             return NGX_AGAIN;
         }
     }
+#endif
 
     return NGX_OK;
 

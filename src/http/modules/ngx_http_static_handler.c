@@ -118,6 +118,7 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     }
 
     /* we need to allocate all before the header would be sent */
+
     ngx_test_null(h, ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
@@ -132,18 +133,28 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     }
 
     if (r->header_only) {
+        ngx_http_finalize_request(r, rc);
+
+#if 0
         if (rc == NGX_AGAIN) {
             ngx_http_set_write_handler(r);
 
         } else {
             ngx_http_finalize_request(r, 0);
         }
+#endif
 
         return NGX_OK;
     }
 
 
-    h->type = NGX_HUNK_FILE|NGX_HUNK_LAST;
+#if 0
+    h->type = r->main ? NGX_HUNK_FILE : NGX_HUNK_FILE|NGX_HUNK_LAST;
+#else
+    h->type = NGX_HUNK_FILE;
+#endif
+
+
     h->file_pos = 0;
     h->file_last = ngx_file_size(r->file.info);
 
@@ -152,6 +163,9 @@ int ngx_http_static_handler(ngx_http_request_t *r)
 
     rc = ngx_http_output_filter(r, h);
 
+    ngx_http_finalize_request(r, rc);
+
+#if 0
     if (r->main == NULL) {
         if (rc == NGX_AGAIN) {
             ngx_http_set_write_handler(r);
@@ -160,6 +174,7 @@ int ngx_http_static_handler(ngx_http_request_t *r)
             ngx_http_finalize_request(r, 0);
         }
     }
+#endif
 
     return NGX_OK;
 }

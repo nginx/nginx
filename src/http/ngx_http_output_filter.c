@@ -72,10 +72,11 @@ ngx_module_t  ngx_http_output_filter_module = {
 #define ngx_next_filter  (*ngx_http_top_body_filter)
 
 #define need_to_copy(r, hunk)                                             \
-            (((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)                \
-               && (hunk->type & NGX_HUNK_IN_MEMORY) == 0)                 \
-             || ((r->filter & NGX_HTTP_FILTER_NEED_TEMP)                  \
-                  && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP))))
+            (!ngx_hunk_special(hunk)                                      \
+             && (((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)            \
+                   && (hunk->type & NGX_HUNK_IN_MEMORY) == 0)             \
+                 || ((r->filter & NGX_HTTP_FILTER_NEED_TEMP)              \
+                  && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP)))))
 
 
 
@@ -201,6 +202,8 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
             *ctx->last_out = ce;
             ctx->last_out = &ce->next;
             ctx->hunk = NULL;
+
+            break;
         }
 
         if (ctx->out == NULL && last != NGX_NONE) {

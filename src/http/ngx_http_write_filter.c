@@ -130,14 +130,16 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                   last _ flush _ size);
 #endif
 
-    /* avoid the output if there is no last hunk, no flush point and
-       size of the hunks is smaller then "buffer_output" */
+    /*
+     * avoid the output if there is no last hunk, no flush point and
+     * size of the hunks is smaller then "buffer_output"
+     */
 
     if (!last && flush == 0 && size < conf->buffer_output) {
         return NGX_OK;
     }
 
-    if (r->connection->write->delayed) {
+    if (!r->connection->write->ready || r->connection->write->delayed) {
         return NGX_AGAIN;
     }
 

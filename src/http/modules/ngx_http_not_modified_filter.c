@@ -39,7 +39,7 @@ static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.status != NGX_HTTP_OK
         || r->headers_in.if_modified_since == NULL
-        || r->headers_out.last_modified_time == NULL)
+        || r->headers_out.last_modified_time == -1)
     {
         return next_header_filter(r);
     }
@@ -50,7 +50,7 @@ static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     ngx_log_debug(r->connection->log, "%d %d" _
                   ims _ r->headers_out.last_modified_time);
 
-    /* I think that the date equality is correcter */
+    /* I think that the equality of the dates is correcter */
 
     if (ims != NGX_ERROR && ims == r->headers_out.last_modified_time) {
         r->headers_out.status = NGX_HTTP_NOT_MODIFIED;

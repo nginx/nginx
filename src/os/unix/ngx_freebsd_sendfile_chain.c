@@ -1,23 +1,24 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_event.h>
 #include <ngx_freebsd_init.h>
 
 
 /*
-   sendfile() often sends 4K pages over ethernet in 3 packets: 2x1460 and 1176
-   or in 6 packets: 5x1460 and 892.  Besides although sendfile() allows
-   to pass the header and the trailer it never sends the header or the trailer
-   with the part of the file in one packet.  So we use TCP_NOPUSH (similar
-   to Linux's TCP_CORK) to postpone the sending - it not only sends the header
-   and the first part of the file in one packet but also sends 4K pages
-   in the full packets.
-
-   Until FreeBSD 4.5 the turning TCP_NOPUSH off does not not flush
-   the pending data that less than MSS and the data sent with 5 second delay.
-   So we use TCP_NOPUSH on FreeBSD prior to 4.5 only if the connection
-   is not needed not keepalive.
-*/
+ * sendfile() often sends 4K pages over ethernet in 3 packets: 2x1460 and 1176
+ * or in 6 packets: 5x1460 and 892.  Besides although sendfile() allows
+ * to pass the header and the trailer it never sends the header or the trailer
+ * with the part of the file in one packet.  So we use TCP_NOPUSH (similar
+ * to Linux's TCP_CORK) to postpone the sending - it not only sends the header
+ * and the first part of the file in one packet but also sends 4K pages
+ * in the full packets.
+ *
+ * Until FreeBSD 4.5 the turning TCP_NOPUSH off does not not flush
+ * the pending data that less than MSS and the data sent with 5 second delay.
+ * So we use TCP_NOPUSH on FreeBSD prior to 4.5 only if the connection
+ * is not needed to be keepalive.
+ */
 
 
 ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
@@ -47,12 +48,23 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                        NGX_CHAIN_ERROR);
 
         /* create the header iovec */
-        if (ngx_hunk_in_memory_only(ce->hunk)) {
+
+#if 0
+        if (ngx_hunk_in_memory_only(ce->hunk) || ngx_hunk_special(ce->hunk)) {
+#endif
             prev = NULL;
             iov = NULL;
 
             /* create the iovec and coalesce the neighbouring chain entries */
-            while (ce && ngx_hunk_in_memory_only(ce->hunk)) {
+
+            for ( /* void */; ce; ce = ce->next) {
+                if (ngx_hunk_special(ce->hunk)) {
+                    continue;
+                }
+
+                if (!ngx_hunk_in_memory_only(ce->hunk)) {
+                    break;
+                }
 
                 if (prev == ce->hunk->pos) {
                     iov->iov_len += ce->hunk->last - ce->hunk->pos;
@@ -67,24 +79,39 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                 }
 
                 hsize += ce->hunk->last - ce->hunk->pos;
-
-                ce = ce->next;
             }
+#if 0
         }
+#endif
 
         /* TODO: coalesce the neighbouring file hunks */
+
         if (ce && (ce->hunk->type & NGX_HUNK_FILE)) {
             file = ce->hunk;
             ce = ce->next;
         }
 
         /* create the trailer iovec */
-        if (ce && ngx_hunk_in_memory_only(ce->hunk)) {
+
+#if 0
+        if (ce
+            && (ngx_hunk_in_memory_only(ce->hunk)
+                || ngx_hunk_special(ce->hunk)))
+        {
+#endif
             prev = NULL;
             iov = NULL;
 
             /* create the iovec and coalesce the neighbouring chain entries */
-            while (ce && ngx_hunk_in_memory_only(ce->hunk)) {
+
+            for ( /* void */; ce; ce = ce->next) {
+                if (ngx_hunk_special(ce->hunk)) {
+                    continue;
+                }
+
+                if (!ngx_hunk_in_memory_only(ce->hunk)) {
+                    break;
+                }
 
                 if (prev == ce->hunk->pos) {
                     iov->iov_len += ce->hunk->last - ce->hunk->pos;
@@ -97,10 +124,10 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                     iov->iov_len = ce->hunk->last - ce->hunk->pos;
                     prev = ce->hunk->last;
                 }
-
-                ce = ce->next;
             }
+#if 0
         }
+#endif
 
         tail = ce;
 
@@ -155,28 +182,36 @@ ngx_log_debug(c->log, "NOPUSH");
 #endif
 
         } else {
-            rc = writev(c->fd, (struct iovec *) header.elts, header.nelts);
+            if (hsize) {
+                rc = writev(c->fd, (struct iovec *) header.elts, header.nelts);
 
-            if (rc == -1) {
-                err = ngx_errno;
-                if (err == NGX_EAGAIN) {
-                    ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EAGAIN");
+                if (rc == -1) {
+                    err = ngx_errno;
+                    if (err == NGX_EAGAIN) {
+                        ngx_log_error(NGX_LOG_INFO, c->log, err,
+                                      "writev() EAGAIN");
 
-                } else if (err == NGX_EINTR) {
-                    eintr = 1;
-                    ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EINTR");
+                    } else if (err == NGX_EINTR) {
+                        eintr = 1;
+                        ngx_log_error(NGX_LOG_INFO, c->log, err,
+                                      "writev() EINTR");
 
-                } else {
-                    ngx_log_error(NGX_LOG_CRIT, c->log, err, "writev() failed");
-                    return NGX_CHAIN_ERROR;
+                    } else {
+                        ngx_log_error(NGX_LOG_CRIT, c->log, err,
+                                      "writev() failed");
+                        return NGX_CHAIN_ERROR;
+                    }
                 }
-            }
 
-            sent = rc > 0 ? rc : 0;
+                sent = rc > 0 ? rc : 0;
 
 #if (NGX_DEBUG_WRITE_CHAIN)
-            ngx_log_debug(c->log, "writev: %qd" _ sent);
+                ngx_log_debug(c->log, "writev: %qd" _ sent);
 #endif
+
+            } else {
+                sent = 0;
+            }
         }
 
         c->sent += sent;
@@ -220,6 +255,10 @@ ngx_log_debug(c->log, "NOPUSH");
         in = ce;
 
     } while ((tail && tail == ce) || eintr);
+
+    if (ce) {
+        c->write->ready = 0;
+    }
 
     return ce;
 }

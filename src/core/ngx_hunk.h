@@ -75,6 +75,14 @@ typedef struct {
 
 #define ngx_hunk_in_memory_only(h)                                           \
          ((h->type & (NGX_HUNK_IN_MEMORY|NGX_HUNK_FILE)) == NGX_HUNK_IN_MEMORY)
+/*
+    ((h->type & (NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP|NGX_HUNK_FILE)) \
+                  == (h->type & (NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP)))
+
+*/
+
+#define ngx_hunk_special(h)                                                  \
+        (h->type == (h->type & (NGX_HUNK_FLUSH|NGX_HUNK_LAST)))
 
 
 ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
