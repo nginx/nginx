@@ -17,17 +17,37 @@ typedef enum {
 
 /*
     "[%time] [%level] %pid#%tid: %message:(%errno)%errstr, while %action"
-        " %peer and processing %context"
+        " %peer and while processing %context"
 
+    ----
     message = "recv() failed";
     errno = 32;
     action = "reading request headers from client";
     peer = "192.168.1.1";
     context = "URL /"
 
-    "[2002/08/20 12:00:00] [error] 412#3: recv() failed:(32)Broken pipe,"
+    "[2002/08/20 12:00:00] [error] 412#3: recv() failed (32: Broken pipe)"
     " while reading request headers from client 192.168.1.1"
-    " and processing URL /"
+    " and while processing URL /"
+
+    ----
+    message = "recv() failed";
+    errno = 32;
+    ngx_http_proxy_error_context_t:
+        action = "reading headers from server %s for client %s and "
+                 "while processing %s"
+        backend = "127.0.0.1";
+        peer = "192.168.1.1";
+        context = "URL /"
+
+    "[2002/08/20 12:00:00] [error] 412#3: recv() failed (32: Broken pipe)"
+    " while reading headers from backend 127.0.0.1"
+    " for client 192.168.1.1 and while processing URL /"
+
+    ----
+    "[alert] 412#3: ngx_alloc: malloc() 102400 bytes failed (12: Cannot "
+    "allocate memory) while reading request headers from client 192.168.1.1"
+    " and while processing URL /"
 
 
     OLD:
@@ -42,7 +62,10 @@ typedef struct {
     int    log_level;
     char  *action;
     char  *context;
-/*  char  *func(ngx_log_t *log); */
+#if 0
+    void  *data;   /* i.e. ngx_http_proxy_error_context_t */
+    char  *func(ngx_log_t *log);
+#endif
 } ngx_log_t;
 
 #define MAX_ERROR_STR	2048
@@ -57,7 +80,7 @@ typedef struct {
 #define ngx_log_error(level, log, args...) \
         if (log->log_level >= level) ngx_log_error_core(level, log, args)
 
-#ifdef NGX_DEBUG
+#if (NGX_DEBUG)
 #define ngx_log_debug(log, args...) \
     if (log->log_level == NGX_LOG_DEBUG) \
         ngx_log_error_core(NGX_LOG_DEBUG, log, 0, args)
@@ -82,7 +105,7 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 #define ngx_log_error(level, log, ...) \
         if (log->log_level >= level) ngx_log_error_core(level, log, __VA_ARGS__)
 
-#ifdef NGX_DEBUG
+#if (NGX_DEBUG)
 #define ngx_log_debug(log, ...) \
     if (log->log_level == NGX_LOG_DEBUG) \
         ngx_log_error_core(NGX_LOG_DEBUG, log, 0, __VA_ARGS__)
@@ -104,7 +127,7 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 
 #include <stdarg.h>
 
-#ifdef NGX_DEBUG
+#if (NGX_DEBUG)
 #define ngx_log_debug(log, text) \
     if (log->log_level == NGX_LOG_DEBUG) \
         ngx_log_debug_core(log, text)

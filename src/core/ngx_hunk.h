@@ -57,6 +57,14 @@ struct ngx_chain_s {
     ngx_chain_t *next;
 };
 
+#define ngx_add_hunk_to_chain(chain, h, pool, error)                         \
+            do {                                                             \
+                ngx_test_null(chain, ngx_create_chain_entry(pool), error);   \
+                chain->hunk = h;                                             \
+                chain->next = NULL;                                          \
+            } while (0);
+
+
 
 ngx_hunk_t *ngx_get_hunk(ngx_pool_t *pool, int size, int before, int after);
 

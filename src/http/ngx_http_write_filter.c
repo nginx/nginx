@@ -44,7 +44,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         prev = &ch->next;
         size += ch->hunk->last.file - ch->hunk->pos.file;
 
-        ngx_log_debug(r->connection->log, "old chunk: %x %qx %qd" _
+        ngx_log_debug(r->connection->log, "old chunk: %x " QX_FMT " " QD_FMT _
                       ch->hunk->type _ ch->hunk->pos.file _
                       ch->hunk->last.file - ch->hunk->pos.file);
 
@@ -57,8 +57,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     /* add new chain to existent one */
     for (/* void */; in; in = in->next) {
-        ngx_test_null(ch, ngx_palloc(r->pool, sizeof(ngx_chain_t)),
-                      NGX_HTTP_FILTER_ERROR);
+        ngx_test_null(ch, ngx_palloc(r->pool, sizeof(ngx_chain_t)), NGX_ERROR);
 
         ch->hunk = in->hunk;
         ch->next = NULL;
@@ -66,7 +65,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         prev = &ch->next;
         size += ch->hunk->last.file - ch->hunk->pos.file;
 
-        ngx_log_debug(r->connection->log, "new chunk: %x %qx %qd" _
+        ngx_log_debug(r->connection->log, "new chunk: %x " QX_FMT " " QD_FMT _
                       ch->hunk->type _ ch->hunk->pos.file _
                       ch->hunk->last.file - ch->hunk->pos.file);
 
@@ -78,13 +77,13 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (!last && flush == 0 && size < ctx->buffer_output)
-        return NGX_HTTP_FILTER_DONE;
+        return NGX_OK;
 
     chain = ngx_event_write(r->connection, ctx->out, flush);
     if (chain == (ngx_chain_t *) -1)
-        return NGX_HTTP_FILTER_ERROR;
+        return NGX_ERROR;
 
     ctx->out = chain;
 
-    return (chain ? NGX_HTTP_FILTER_AGAIN : NGX_HTTP_FILTER_DONE);
+    return (chain ? NGX_AGAIN : NGX_OK);
 }

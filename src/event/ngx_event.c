@@ -19,7 +19,7 @@ ngx_event_t         *ngx_read_events, *ngx_write_events;
 
 #if !(USE_KQUEUE)
 
-#if 0
+#if 1
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
 #else
 ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;

@@ -53,7 +53,7 @@ int ngx_sendfile(ngx_socket_t s,
         ptfb = NULL;
     }
 
-#if 0
+#if 1
     tfrc = TransmitFile(s, fd, nbytes, 0, &olp, ptfb, 0);
 #else
     tfrc = TransmitFile(s, fd, nbytes, 0, NULL, ptfb, 0);
@@ -67,8 +67,13 @@ int ngx_sendfile(ngx_socket_t s,
     rc = WSAGetOverlappedResult(s, &olp, (unsigned long *) sent, 0, NULL);
 #endif
 
+#if 0
     ngx_log_debug(log, "ngx_sendfile: %d, @%I64d %I64d:%d" _
                   tfrc _ offset _ *sent _ nbytes);
+#else
+    ngx_log_debug(log, "ngx_sendfile: %d, @%I64d %d:%d" _
+                  tfrc _ offset _ olp.InternalHigh _ nbytes);
+#endif
 
     if (rc == 0) {
         err = ngx_socket_errno;

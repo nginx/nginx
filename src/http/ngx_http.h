@@ -93,6 +93,8 @@ struct ngx_http_request_s {
     ngx_buff_t  *buff;
     ngx_pool_t  *pool;
 
+    int       filter;
+
     unsigned  header_only:1;
     unsigned  unusual_uri:1;
     unsigned  complex_uri:1;
