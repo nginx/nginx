@@ -30,10 +30,11 @@
 
 
 
-#define  QD_FMT   "%qd"
-#define  QX_FMT   "%qx"
-#define  OFF_FMT  "%qd"
-#define  PID_FMT  "%d"
+#define OFF_FMT    "%lld"
+#define SIZE_FMT   "%d"
+#define SIZEX_FMT  "%x"
+#define PID_FMT    "%d"
+
 
 
 #ifndef HAVE_SELECT

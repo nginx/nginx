@@ -69,7 +69,7 @@ ngx_module_t  ngx_http_output_filter_module = {
 int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 {
     int                             rc;
-    size_t                          size;
+    ssize_t                         size;
     ngx_chain_t                    *ce, *le;
     ngx_http_output_filter_ctx_t   *ctx;
     ngx_http_output_filter_conf_t  *conf;

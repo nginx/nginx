@@ -1035,8 +1035,7 @@ static void ngx_http_read_discarded_body_event(ngx_event_t *rev)
 
 static int ngx_http_read_discarded_body(ngx_http_request_t *r)
 {
-    size_t                     size;
-    ssize_t                    n;
+    ssize_t                    size, n;
     ngx_http_core_loc_conf_t  *clcf;
 
     ngx_log_debug(r->connection->log, "http read discarded body");
@@ -1318,7 +1317,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
                  or the end of parsed header (otherwise)
                  instead of r->header_in->last */
 
-        if ((size_t)(r->header_in->end - r->header_in->last)
+        if (r->header_in->end - r->header_in->last
                                               >= clcf->discarded_buffer_size) {
             r->discarded_buffer = r->header_in->last;
 

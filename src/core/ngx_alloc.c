@@ -74,17 +74,17 @@ void ngx_destroy_pool(ngx_pool_t *pool)
 
 void *ngx_palloc(ngx_pool_t *pool, size_t size)
 {
-    void              *m;
+    char              *m;
     ngx_pool_t        *p, *n;
     ngx_pool_large_t  *large, *last;
 
     if (size <= NGX_MAX_ALLOC_FROM_POOL) {
 
         for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
-            if ((size_t) (p->end - ngx_align(p->last)) >= size) {
-                m = ngx_align(p->last);
-                p->last = ngx_align(p->last);
-                p->last += size ;
+            m = ngx_align(p->last);
+
+            if ((size_t) (p->end - m) >= size) {
+                p->last = m + size ;
 
                 return m;
             }

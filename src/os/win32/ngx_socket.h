@@ -8,7 +8,6 @@
 
 #define NGX_WRITE_SHUTDOWN SD_SEND
 
-#define INET_ADDRSTRLEN     16
 
 typedef SOCKET  ngx_socket_t;
 typedef int     socklen_t;

@@ -56,8 +56,10 @@ typedef struct ngx_connection_s  ngx_connection_t;
 */
 
 
+#if 0
 /* STUB */
 extern ngx_log_t  ngx_log;
+#endif
 
 
 #endif /* _NGX_CORE_H_INCLUDED_ */

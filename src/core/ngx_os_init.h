@@ -25,8 +25,8 @@
 
 typedef struct {
     ssize_t       (*recv)(ngx_connection_t *c, char *buf, size_t size);
-    void           *dummy_recv_chain;
-    void           *dummy_send;
+    ssize_t       (*recv_chain)(ngx_connection_t *c, ngx_chain_t *in);
+    ssize_t       (*send)(ngx_connection_t *c, char *buf, size_t size);
     ngx_chain_t  *(*send_chain)(ngx_connection_t *c, ngx_chain_t *in);
     int             flags;
 } ngx_os_io_t;

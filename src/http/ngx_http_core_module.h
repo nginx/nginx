@@ -35,9 +35,9 @@ typedef struct {
 
     ngx_msec_t   post_accept_timeout;
     ssize_t      connection_pool_size;
-    size_t       request_pool_size;
+    ssize_t      request_pool_size;
     ngx_msec_t   client_header_timeout;
-    size_t       client_header_buffer_size;
+    ssize_t      client_header_buffer_size;
     int          large_client_header;
 } ngx_http_core_srv_conf_t;
 
@@ -99,8 +99,8 @@ typedef struct {
 
     int           sendfile;                /* sendfile */
     ngx_msec_t    send_timeout;            /* send_timeout */
-    size_t        send_lowat;              /* send_lowat */
-    size_t        discarded_buffer_size;   /* discarded_buffer_size */
+    ssize_t       send_lowat;              /* send_lowat */
+    ssize_t       discarded_buffer_size;   /* discarded_buffer_size */
     ngx_msec_t    keepalive_timeout;       /* keepalive_timeout */
     ngx_msec_t    lingering_time;          /* lingering_time */
     ngx_msec_t    lingering_timeout;       /* lingering_timeout */

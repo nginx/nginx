@@ -16,10 +16,10 @@ typedef unsigned __int64            off_t;
 typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
 
 
-#define QD_FMT            "%I64d"
-#define QX_FMT            "%I64x"
-#define OFF_FMT           "%I64d"
-#define PID_FMT           "%d"
+#define OFF_FMT    "%I64d"
+#define SIZE_FMT   "%d"
+#define SIZEX_FMT  "%x"
+#define PID_FMT    "%d"
 
 
 #endif /* _NGX_TYPES_H_INCLUDED_ */

@@ -38,10 +38,10 @@
 
 
 /* TODO: auto_conf */
-#define NGX_ALIGN       (4 - 1)
-#define NGX_ALIGN_TYPE  (unsigned int)
+#define NGX_ALIGN       (sizeof(unsigned long) - 1)  /* platform word */
+#define NGX_ALIGN_CAST  (unsigned long)              /* size of the pointer */
 
-#define ngx_align(p)    (char *) ((NGX_ALIGN_TYPE p + NGX_ALIGN) & ~NGX_ALIGN)
+#define ngx_align(p)    (char *) ((NGX_ALIGN_CAST p + NGX_ALIGN) & ~NGX_ALIGN)
 
 
 /* TODO: auto_conf: ngx_inline   inline __inline __inline__ */
@@ -50,16 +50,16 @@
 #endif
 
 
-#ifndef INFTIM    /* Linux */
-#define INFTIM    -1
+#ifndef INFTIM  /* Linux */
+#define INFTIM  -1
 #endif
 
-#ifndef INADDR_NONE    /* Solaris */
-#define INADDR_NONE ((unsigned long) -1)
+#ifndef INADDR_NONE  /* Solaris */
+#define INADDR_NONE  ((unsigned int) -1)
 #endif
 
-#ifndef INET_ADDRSTRLEN
-#define INET_ADDRSTRLEN 16
+#ifndef INET_ADDRSTRLEN  /* Win32 */
+#define INET_ADDRSTRLEN  16
 #endif
 
 
