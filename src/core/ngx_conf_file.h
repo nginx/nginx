@@ -3,14 +3,7 @@
 
 
 #include <ngx_config.h>
-#include <ngx_files.h>
-#include <ngx_log.h>
-#include <ngx_file.h>
-#include <ngx_time.h>
-#include <ngx_string.h>
-#include <ngx_alloc.h>
-#include <ngx_hunk.h>
-#include <ngx_array.h>
+#include <ngx_core.h>
 
 
 /*
@@ -51,10 +44,6 @@
 extern  char ngx_conf_errstr[MAX_CONF_ERRSTR];
 
 
-typedef struct ngx_conf_s  ngx_conf_t;
-
-
-typedef struct ngx_command_s  ngx_command_t;
 struct ngx_command_s {
     ngx_str_t  name;
     int        type;
@@ -66,14 +55,15 @@ struct ngx_command_s {
 
 #define ngx_null_command   {ngx_null_string, 0, NULL, 0, 0, NULL}
 
-typedef struct {
+
+struct ngx_module_s {
     int             ctx_index;
     int             index;
     void           *ctx;
     ngx_command_t  *commands;
     int             type;
     int           (*init_module)(ngx_pool_t *p);
-} ngx_module_t;
+};
 
 
 typedef struct {

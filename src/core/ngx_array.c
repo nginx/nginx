@@ -1,9 +1,6 @@
 
 #include <ngx_config.h>
-
-#include <ngx_alloc.h>
-#include <ngx_string.h>
-#include <ngx_array.h>
+#include <ngx_core.h>
 
 
 ngx_array_t *ngx_create_array(ngx_pool_t *p, int n, size_t size)

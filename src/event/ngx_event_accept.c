@@ -78,7 +78,7 @@ void ngx_event_accept(ngx_event_t *ev)
                               ls->addr_text.data);
             }
 
-            sleep(1);
+            ngx_msleep(1000);
 
             ngx_destroy_pool(pool);
             return;

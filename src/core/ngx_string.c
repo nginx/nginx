@@ -1,7 +1,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_string.h>
 
 
 char *ngx_cpystrn(char *dst, char *src, size_t n)

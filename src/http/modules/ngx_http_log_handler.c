@@ -198,5 +198,19 @@ static char *ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd,
         return ngx_conf_errstr;
     }
 
+#if (WIN32)
+    if (ngx_file_append_mode(lcf->file.fd) == NGX_ERROR) {
+        err = ngx_errno;
+        len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
+                          ngx_file_appned_mode_n " \"%s\" failed (%d: ",
+                          lcf->file.name.data, err);
+        len += ngx_strerror_r(err, ngx_conf_errstr + len,
+                              sizeof(ngx_conf_errstr) - len - 1);
+        ngx_conf_errstr[len++] = ')';
+        ngx_conf_errstr[len++] = '\0';
+        return ngx_conf_errstr;
+    }
+#endif
+
     return NGX_CONF_OK;
 }

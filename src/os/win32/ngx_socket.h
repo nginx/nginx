@@ -3,7 +3,8 @@
 
 
 #include <ngx_config.h>
-#include <ngx_log.h>
+#include <ngx_core.h>
+
 
 #define NGX_WRITE_SHUTDOWN SD_SEND
 
@@ -12,7 +13,6 @@
 typedef SOCKET  ngx_socket_t;
 typedef int     socklen_t;
 
-int ngx_init_sockets(ngx_log_t *log);
 
 #define ngx_socket(af, type, proto, flags)                                    \
             WSASocket(af, type, proto, NULL, 0, flags)

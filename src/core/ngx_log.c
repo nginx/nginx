@@ -14,6 +14,36 @@
 #include <ngx_core.h>
 
 
+static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+
+static ngx_str_t  errlog_name = ngx_string("errlog");
+
+static ngx_command_t  ngx_errlog_commands[] = {
+
+    {ngx_string("error_log"),
+     NGX_MAIN_CONF|NGX_CONF_TAKE1,
+     ngx_set_error_log,
+     0,
+     0,
+     NULL},
+
+    ngx_null_command
+};
+
+
+ngx_module_t  ngx_errlog_module = {
+    NGX_MODULE,
+    &errlog_name,                          /* module context */
+    ngx_errlog_commands,                   /* module directives */
+    NGX_CORE_MODULE,                       /* module type */
+    NULL                                   /* init module */
+};
+
+
+static ngx_log_t  ngx_log;
+
+
 static const char *err_levels[] = {
     "stderr", "emerg", "alert", "crit", "error",
     "warn", "notice", "info", "debug"
@@ -32,6 +62,9 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     size_t    len;
 #if (HAVE_VARIADIC_MACROS)
     va_list   args;
+#endif
+#if (WIN32)
+    int       written;
 #endif
 
     ngx_localtime(&tm);
@@ -87,10 +120,15 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 
 #if (WIN32)
     errstr[len++] = '\r';
-#endif
     errstr[len++] = '\n';
-
+    if (log->fd) {
+        WriteFile(log->fd, errstr, len, &written, NULL);
+    }
+#else
+    errstr[len++] = '\n';
     write(log->fd, errstr, len);
+#endif
+
 
 #if 0
     errstr[len] = '\0';
@@ -137,6 +175,8 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...)
 #endif
 
 
+#if 0
+
 void ngx_log_stderr(ngx_event_t *ev)
 {
     char       errstr[MAX_ERROR_STR];
@@ -164,4 +204,80 @@ void ngx_log_stderr(ngx_event_t *ev)
         errstr[n] = '\0';
         ngx_log_error(NGX_LOG_STDERR, &ngx_log, 0, "%s", errstr);
     }
+}
+
+#endif
+
+
+static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    return ngx_log_set_errlog(cf, cmd, &ngx_log);
+}
+
+
+
+ngx_log_t *ngx_log_init_errlog()
+{
+#if (WIN32)
+    ngx_log.fd = GetStdHandle(STD_ERROR_HANDLE);
+
+    if (ngx_log.fd == NGX_INVALID_FILE) {
+        /* TODO: where we can log error ? */
+        return NULL;
+
+    } else if (ngx_log.fd == NULL) {
+        /* there are no associated standard handles */
+        /* TODO: where we can log possible errors ? */
+    }
+
+#else
+    ngx_log.fd = STDERR_FILENO;
+#endif
+
+    ngx_log.log_level = NGX_LOG_INFO;
+    /* STUB */ ngx_log.log_level = NGX_LOG_DEBUG;
+
+    return &ngx_log;
+}
+
+
+char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log)
+{
+    int         len;
+    ngx_err_t   err;
+    ngx_str_t  *value;
+
+    value = cf->args->elts;
+
+    log->fd = ngx_open_file(value[1].data,
+                            NGX_FILE_RDWR,
+                            NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+
+    if (log->fd == NGX_INVALID_FILE) {
+        err = ngx_errno;
+        len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
+                          ngx_open_file_n " \"%s\" failed (%d: ",
+                          value[1].data, err);
+        len += ngx_strerror_r(err, ngx_conf_errstr + len,
+                              sizeof(ngx_conf_errstr) - len - 1);
+        ngx_conf_errstr[len++] = ')';
+        ngx_conf_errstr[len++] = '\0';
+        return ngx_conf_errstr;
+    }
+
+#if (WIN32)
+    if (ngx_file_append_mode(log->fd) == NGX_ERROR) {
+        err = ngx_errno;
+        len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
+                          ngx_file_append_mode_n " \"%s\" failed (%d: ",
+                          value[1].data, err);
+        len += ngx_strerror_r(err, ngx_conf_errstr + len,
+                              sizeof(ngx_conf_errstr) - len - 1);
+        ngx_conf_errstr[len++] = ')';
+        ngx_conf_errstr[len++] = '\0';
+        return ngx_conf_errstr;
+    }
+#endif
+
+    return NGX_CONF_OK;
 }

@@ -3,6 +3,7 @@
 
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 
 
 typedef unsigned __int32            u_int32_t;

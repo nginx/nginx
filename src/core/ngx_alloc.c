@@ -1,10 +1,6 @@
 
 #include <ngx_config.h>
-
-#include <ngx_errno.h>
-#include <ngx_log.h>
-#include <ngx_string.h>
-#include <ngx_alloc.h>
+#include <ngx_core.h>
 
 
 void *ngx_alloc(size_t size, ngx_log_t *log)

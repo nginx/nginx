@@ -1,11 +1,9 @@
-#ifndef _NGX_CHUNK_H_INCLUDED_
-#define _NGX_CHUNK_H_INCLUDED_
+#ifndef _NGX_HUNK_H_INCLUDED_
+#define _NGX_HUNK_H_INCLUDED_
 
 
 #include <ngx_config.h>
-#include <ngx_types.h>
-#include <ngx_file.h>
-#include <ngx_alloc.h>
+#include <ngx_core.h>
 
 
 /* hunk type */
@@ -35,7 +33,8 @@
 
 
 
-typedef struct ngx_hunk_s ngx_hunk_t;
+typedef struct ngx_hunk_s        ngx_hunk_t;
+
 struct ngx_hunk_s {
     char        *pos;
     char        *last;
@@ -53,7 +52,8 @@ struct ngx_hunk_s {
 };
 
 
-typedef struct ngx_chain_s  ngx_chain_t;
+typedef struct ngx_chain_s       ngx_chain_t;
+
 struct ngx_chain_s {
     ngx_hunk_t  *hunk;
     ngx_chain_t *next;
@@ -83,4 +83,4 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
             } while (0);
 
 
-#endif /* _NGX_CHUNK_H_INCLUDED_ */
+#endif /* _NGX_HUNK_H_INCLUDED_ */

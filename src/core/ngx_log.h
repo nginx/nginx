@@ -2,8 +2,9 @@
 #define _NGX_LOG_H_INCLUDED_
 
 
-#include <ngx_types.h>
-#include <ngx_errno.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
+
 
 typedef enum {
     NGX_LOG_STDERR = 0,
@@ -158,6 +159,13 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 
 
 #endif /* VARIADIC MACROS */
+
+
+ngx_log_t *ngx_log_init_errlog();
+char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log);
+
+
+extern ngx_module_t  ngx_errlog_module;
 
 
 #endif /* _NGX_LOG_H_INCLUDED_ */

@@ -279,6 +279,10 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         /* STUB: we need to handle such URIs */
         if (r->complex_uri || r->unusual_uri) {
+            r->request_line.len = r->request_end - r->request_start;
+            r->request_line.data = r->request_start;
+            r->request_line.data[r->request_line.len] = '\0';
+
             ngx_http_header_parse_error(r, NGX_HTTP_PARSE_INVALID_REQUEST);
             ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
             return;

@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <string.h>
 
+
 typedef int               ngx_err_t;
 
 #define NGX_ENOENT        ENOENT

@@ -93,7 +93,6 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     ngx_hunk_t        *h;
     ngx_chain_t       *ch;
     ngx_table_elt_t   *header;
-    ngx_http_range_t  *range;
 
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;

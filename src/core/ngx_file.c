@@ -1,10 +1,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_hunk.h>
-#include <ngx_array.h>
-#include <ngx_file.h>
-#include <ngx_files.h>
 
 
 static int ngx_temp_number;

@@ -31,21 +31,25 @@ ngx_array_t  ngx_listening_sockets;
 int main(int argc, char *const *argv)
 {
     int         i;
-    ngx_str_t   conf_file;
-    ngx_conf_t  conf;
+    ngx_str_t    conf_file;
+    ngx_log_t   *log;
+    ngx_conf_t   conf;
 
     ngx_max_sockets = -1;
 
+#if 0
     ngx_log.fd = STDERR_FILENO;
     ngx_log.log_level = NGX_LOG_INFO;
 
     /* STUB */ ngx_log.log_level = NGX_LOG_DEBUG;
+#endif
+    log = ngx_log_init_errlog();
 
-    if (ngx_os_init(&ngx_log) == NGX_ERROR) {
+    if (ngx_os_init(log) == NGX_ERROR) {
         return 1;
     }
 
-    ngx_pool = ngx_create_pool(16 * 1024, &ngx_log);
+    ngx_pool = ngx_create_pool(16 * 1024, log);
     /* */
 
     ngx_max_module = 0;
@@ -72,7 +76,7 @@ int main(int argc, char *const *argv)
 
         conf.ctx = ngx_conf_ctx;
         conf.pool = ngx_pool;
-        conf.log = &ngx_log;
+        conf.log = log;
         conf.module_type = NGX_CORE_MODULE;
         conf.cmd_type = NGX_MAIN_CONF;
 
@@ -82,6 +86,11 @@ int main(int argc, char *const *argv)
         if (ngx_conf_parse(&conf, &conf_file) != NGX_CONF_OK) {
             return 1;
         }
+
+#if 0
+        log = (ngx_log_t *) ngx_get_conf(ngx_errlog_module);
+        /* STUB */ log->log_level = NGX_LOG_DEBUG;
+#endif
 
         ngx_init_temp_number();
 
@@ -95,7 +104,7 @@ int main(int argc, char *const *argv)
             }
         }
 
-        if (ngx_open_listening_sockets(&ngx_log) == NGX_ERROR) {
+        if (ngx_open_listening_sockets(log) == NGX_ERROR) {
             return 1;
         }
 
@@ -103,12 +112,12 @@ int main(int argc, char *const *argv)
 
         /* TODO: fork */
 
-        ngx_pre_thread(&ngx_listening_sockets, ngx_pool, &ngx_log);
+        ngx_pre_thread(&ngx_listening_sockets, ngx_pool, log);
 
         /* TODO: threads */
 
         /* STUB */
-        ngx_worker(&ngx_log);
+        ngx_worker(log);
     }
 
     return 0;

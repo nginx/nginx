@@ -798,8 +798,12 @@ static char *ngx_http_core_merge_srv_conf(ngx_pool_t *pool,
     if (conf->listen.nelts == 0) {
         ngx_test_null(l, ngx_push_array(&conf->listen), NGX_CONF_ERROR);
         l->addr = INADDR_ANY;
+#if (WIN32)
+        l->port = 80;
+#else
         /* STUB: getuid() should be cached */
         l->port = (getuid() == 0) ? 80 : 8000;
+#endif
         l->family = AF_INET;
     }
 

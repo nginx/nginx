@@ -1,13 +1,10 @@
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 
-#include <ngx_string.h>
-#include <ngx_socket.h>
 #include <ngx_listen.h>
-#include <ngx_inet.h>
+
 #include <ngx_http.h>
-#include <ngx_http_config.h>
-#include <ngx_http_core_module.h>
 
 
 static void ngx_http_init_filters(ngx_pool_t *pool, ngx_module_t **modules);

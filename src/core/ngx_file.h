@@ -2,11 +2,9 @@
 #define _NGX_FILE_H_INCLUDED_
 
 
-#include <ngx_log.h>
-#include <ngx_alloc.h>
-#include <ngx_string.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
 
-typedef struct ngx_file_s  ngx_file_t;
 
 struct ngx_file_s {
     ngx_fd_t         fd;

@@ -252,7 +252,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                                      r->headers_out.content_length);
 
                  len += ctx->boundary_header.len + range[i].content_range.len
-                        + range[i].end - range[i].start;
+                        + (size_t) (range[i].end - range[i].start);
             }
 
             r->headers_out.content_length = len;

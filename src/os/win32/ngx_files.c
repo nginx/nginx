@@ -1,9 +1,7 @@
 
 #include <ngx_config.h>
-
 #include <ngx_core.h>
-#include <ngx_types.h>
-#include <ngx_file.h>
+
 
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 {
@@ -17,4 +15,16 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
     file->offset += n;
 
     return n;
+}
+
+
+int ngx_file_append_mode(ngx_fd_t *fd)
+{
+    if (SetFilePointer(fd, 0, NULL, FILE_END) == 0xFFFFFFFF) {
+        if (GetLastError() != NO_ERROR) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
 }

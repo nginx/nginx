@@ -1,11 +1,9 @@
 
 #include <ngx_config.h>
-
 #include <ngx_core.h>
-#include <ngx_types.h>
-#include <ngx_log.h>
+
 #include <ngx_listen.h>
-#include <ngx_connection.h>
+
 #include <ngx_event.h>
 #include <ngx_event_close.h>
 #include <ngx_iocp_module.h>
@@ -14,10 +12,7 @@
 
 
 
-/* This function should always return NGX_OK even there are some failures
-   because if we return NGX_ERROR then listening socket would be closed */
-
-int ngx_event_acceptex(ngx_event_t *ev)
+void ngx_event_acceptex(ngx_event_t *ev)
 {
     ngx_connection_t  *c;
 
@@ -25,25 +20,23 @@ int ngx_event_acceptex(ngx_event_t *ev)
 
     if (ev->ovlp.error) {
         ngx_log_error(NGX_LOG_CRIT, ev->log, ev->ovlp.error,
-                      "AcceptEx(%s) falied", c->addr_text.data);
-        return NGX_OK;
+                      "AcceptEx() falied for %s", c->addr_text.data);
+        return;
     }
 
-#if 0
-
-    /* can we do SO_UPDATE_ACCEPT_CONTEXT just before shutdown() ???
+    /* TODO: can we do SO_UPDATE_ACCEPT_CONTEXT just before shutdown() ???
        or AcceptEx's context will be lost ??? */
 
      /* SO_UPDATE_ACCEPT_CONTEXT is required for shutdown() to work */
-    if (setsockopt(context->accept_socket, SOL_SOCKET,
-                    SO_UPDATE_ACCEPT_CONTEXT, (char *)&nsd,
-                     sizeof(nsd))) {
-          ap_log_error(APLOG_MARK, APLOG_ERR, WSAGetLastError(), server_conf,
-                       "setsockopt(SO_UPDATE_ACCEPT_CONTEXT) failed.");
+    if (setsockopt(c->fd, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
+                   (char *)&c->listening->fd, sizeof(ngx_socket_t)) == -1)
+    {
+        ngx_log_error(NGX_LOG_CRIT, ev->log, ngx_socket_errno,
+                      "setsockopt(SO_UPDATE_ACCEPT_CONTEXT) failed for %s",
+                      c->addr_text.data);
 
-         /* non fatal - we can not only do lingering close */
-
-#endif
+        /* non fatal - we can not only do lingering close */
+    }
 
     getacceptexsockaddrs(c->data, 0,
                          c->socklen + 16, c->socklen + 16,
@@ -57,7 +50,7 @@ int ngx_event_acceptex(ngx_event_t *ev)
 
     c->handler(c);
 
-    return NGX_OK;
+    return;
 
 }
 

@@ -3,8 +3,8 @@
 
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 
-#include <ngx_log.h>
 
 /* NGX_MAX_ALLOC_FROM_POOL should be (PAGE_SIZE - 1), i.e. 4095 on x86.
    On FreeBSD 5.x it allows to use zero copy send.
@@ -18,12 +18,15 @@
 
 
 typedef struct ngx_pool_large_s  ngx_pool_large_t;
+
 struct ngx_pool_large_s {
     ngx_pool_large_t  *next;
     void              *alloc;
 };
 
-typedef struct ngx_pool_s  ngx_pool_t;
+
+typedef struct ngx_pool_s        ngx_pool_t;
+
 struct ngx_pool_s {
     char              *last;
     char              *end;

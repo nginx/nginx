@@ -3,22 +3,24 @@
 
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 
-typedef DWORD             ngx_err_t;
+
+typedef DWORD                      ngx_err_t;
 
 #define ngx_errno                  GetLastError()
 #define ngx_socket_errno           WSAGetLastError()
 #define ngx_set_socket_errno(err)  WSASetLastError(err)
 
-#define NGX_ENOENT        ERROR_FILE_NOT_FOUND
-#define NGX_EACCES        ERROR_ACCESS_DENIED
-#define NGX_EEXIST        ERROR_FILE_EXISTS
-#define NGX_ENOTDIR       ERROR_PATH_NOT_FOUND
-#define NGX_EAGAIN        WSAEWOULDBLOCK
-#define NGX_EINPROGRESS   WSAEINPROGRESS
-#define NGX_EADDRINUSE    WSAEADDRINUSE
-#define NGX_ECONNRESET    ECONNRESET
-#define NGX_ETIMEDOUT     WSAETIMEDOUT
+#define NGX_ENOENT                 ERROR_FILE_NOT_FOUND
+#define NGX_EACCES                 ERROR_ACCESS_DENIED
+#define NGX_EEXIST                 ERROR_FILE_EXISTS
+#define NGX_ENOTDIR                ERROR_PATH_NOT_FOUND
+#define NGX_EAGAIN                 WSAEWOULDBLOCK
+#define NGX_EINPROGRESS            WSAEINPROGRESS
+#define NGX_EADDRINUSE             WSAEADDRINUSE
+#define NGX_ECONNRESET             ECONNRESET
+#define NGX_ETIMEDOUT              WSAETIMEDOUT
 
 int ngx_strerror_r(ngx_err_t err, char *errstr, size_t size);
 

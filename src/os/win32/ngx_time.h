@@ -2,7 +2,9 @@
 #define _NGX_TIME_H_INCLUDED_
 
 
-#include <windows.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
+
 
 typedef unsigned int   ngx_msec_t;
 #define NGX_MAX_MSEC   ~0
@@ -24,7 +26,7 @@ typedef FILETIME       ngx_mtime_t;
 #define ngx_msec       GetTickCount
 
 /* STUB */
-#define ngx_time()  time(NULL)
+#define ngx_time()     time(NULL)
 
 
 #endif /* _NGX_TIME_H_INCLUDED_ */

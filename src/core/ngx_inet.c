@@ -1,7 +1,6 @@
 
 #include <ngx_config.h>
-#include <ngx_string.h>
-#include <ngx_inet.h>
+#include <ngx_core.h>
 
 
 /* AF_INET only */

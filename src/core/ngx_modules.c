@@ -1,9 +1,9 @@
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 
-#include <ngx_conf_file.h>
 
-
+extern ngx_module_t  ngx_errlog_module;
 extern ngx_module_t  ngx_events_module;
 extern ngx_module_t  ngx_event_module;
 
@@ -41,6 +41,10 @@ extern ngx_module_t  ngx_http_log_module;
 
 
 ngx_module_t *ngx_modules[] = {
+
+    /* core */
+
+    &ngx_errlog_module,
 
     /* events */
 

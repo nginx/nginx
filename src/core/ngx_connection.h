@@ -1,26 +1,10 @@
 #ifndef _NGX_CONNECTION_H_INCLUDED_
 #define _NGX_CONNECTION_H_INCLUDED_
 
+#include <ngx_config.h>
 #include <ngx_core.h>
-
-#if 0
-#include <ngx_socket.h>
-#include <ngx_log.h>
-#include <ngx_alloc.h>
-#include <ngx_hunk.h>
-#include <ngx_array.h>
-#include <ngx_string.h>
-
-#include <ngx_server.h>
-#endif
-
-#if 0
-typedef struct ngx_connection_s  ngx_connection_t;
-#endif
-
-#ifdef NGX_EVENT
 #include <ngx_event.h>
-#endif
+
 
 struct ngx_connection_s {
     ngx_socket_t     fd;

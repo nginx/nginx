@@ -1,6 +1,6 @@
 
 #include <ngx_config.h>
-#include <ngx_hunk.h>
+#include <ngx_core.h>
 
 
 ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,

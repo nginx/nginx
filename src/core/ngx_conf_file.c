@@ -1,9 +1,6 @@
 
 #include <ngx_config.h>
-
 #include <ngx_core.h>
-#include <ngx_files.h>
-#include <ngx_conf_file.h>
 
 
 char ngx_conf_errstr[MAX_CONF_ERRSTR];
