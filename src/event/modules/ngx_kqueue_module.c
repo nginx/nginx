@@ -8,6 +8,7 @@
 */
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_types.h>
 #include <ngx_log.h>
 #include <ngx_connection.h>
@@ -19,7 +20,6 @@
 #endif
 
 static void ngx_add_timer_core(ngx_event_t *ev, u_int timer);
-static void ngx_inline ngx_del_timer(ngx_event_t *ev);
 
 
 static int              kq;
@@ -145,7 +145,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
     }
 
     ngx_log_debug(log, "ngx_kqueue_process_events: "
-                       "timer: %d, delta: %d" _ timer _ delta);
+                  "timer: %d, delta: %d" _ timer _ delta);
 
     if (timer) {
         if (delta >= timer) {
@@ -158,7 +158,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
                 ngx_del_timer(ev);
 #if 1
                 ev->timedout = 1;
-                if (ev->event_handler(ev) == -1)
+                if (ev->event_handler(ev) == NGX_ERROR)
                     ev->close_handler(ev);
 #else
                 if (ev->timer_handler(ev) == -1)
@@ -200,7 +200,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
                 ev->error = event_list[i].fflags;
             }
 
-            if (ev->event_handler(ev) == -1)
+            if (ev->event_handler(ev) == NGX_ERROR)
                 ev->close_handler(ev);
 
             break;
@@ -233,6 +233,7 @@ static void ngx_add_timer_core(ngx_event_t *ev, u_int timer)
     e->timer_prev = ev;
 }
 
+#if 0
 static void ngx_inline ngx_del_timer(ngx_event_t *ev)
 {
     if (ev->timer_prev)
@@ -240,9 +241,10 @@ static void ngx_inline ngx_del_timer(ngx_event_t *ev)
 
     if (ev->timer_next) {
         ev->timer_next->timer_prev = ev->timer_prev;
-        ev->timer_prev = NULL;
+        ev->timer_next = NULL;
     }
 
     if (ev->timer_prev)
-        ev->timer_next = NULL;
+        ev->timer_prev = NULL;
 }
+#endif

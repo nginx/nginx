@@ -34,7 +34,7 @@ struct ngx_connection_s {
     char             *addr_text;
     size_t            addr_textlen;
 
-    time_t            post_accept_timeout;
+    unsigned int      post_accept_timeout;
 };
 
 

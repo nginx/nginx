@@ -133,6 +133,23 @@ NGX_AIO_EVENT              overlapped, aio_read, aioread
 
 #define ngx_add_timer(ev, time)  ngx_add_event(ev, NGX_TIMER_EVENT, time)
 
+static void ngx_inline ngx_del_timer(ngx_event_t *ev)
+{
+    if (ev->timer_prev)
+        ev->timer_prev->timer_next = ev->timer_next;
+
+    if (ev->timer_next) {
+        ev->timer_next->timer_prev = ev->timer_prev;
+        ev->timer_next = NULL;
+    }
+
+    if (ev->timer_prev)
+        ev->timer_prev = NULL;
+}
+
+
+
+
 extern ngx_event_t          *ngx_read_events;
 extern ngx_event_t          *ngx_write_events;
 extern ngx_connection_t     *ngx_connections;

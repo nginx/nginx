@@ -17,6 +17,7 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
 {
     ngx_listen_t  *ls;
 
+    ngx_http_server.header_timeout = 20000;
     ngx_http_server.buff_size = 1024;
 #if (WIN32)
     ngx_http_server.doc_root = "html";

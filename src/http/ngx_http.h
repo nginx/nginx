@@ -4,14 +4,10 @@
 
 #include <ngx_config.h>
 #include <ngx_types.h>
+#include <ngx_hunk.h>
 #include <ngx_file.h>
 #include <ngx_connection.h>
 
-
-#define NGX_SYS_ERROR             -1
-#define NGX_HTTP_INVALID_METHOD   -2
-#define NGX_HTTP_INVALID_REQUEST  -3
-#define NGX_HTTP_INVALID_HEADER   -4
 
 #define NGX_HTTP_GET   1
 #define NGX_HTTP_HEAD  2
@@ -20,10 +16,17 @@
 #define NGX_HTTP_CONN_CLOSE       0
 #define NGX_HTTP_CONN_KEEP_ALIVE  1
 
-#define NGX_OK                          0
+
+#define NGX_HTTP_HEADER_DONE            1
+#define NGX_HTTP_INVALID_METHOD         10
+#define NGX_HTTP_INVALID_REQUEST        11
+#define NGX_HTTP_INVALID_HEAD           12
+#define NGX_HTTP_INVALID_HEADER         13
+
 
 #define NGX_HTTP_OK                     200
 #define NGX_HTTP_MOVED_PERMANENTLY      302
+#define NGX_HTTP_BAD_REQUEST            400
 #define NGX_HTTP_NOT_FOUND              404
 #define NGX_HTTP_INTERNAL_SERVER_ERROR  503
 
@@ -40,9 +43,11 @@ typedef struct {
 #define ngx_get_module_ctx(r, module)  (module)->ctx
 
 typedef struct {
-    char   *doc_root;
-    size_t  doc_root_len;
-    size_t  buff_size;
+    char          *doc_root;
+    size_t         doc_root_len;
+    size_t         buff_size;
+
+    unsigned int   header_timeout;
 } ngx_http_server_t;
 
 typedef struct {
@@ -72,6 +77,12 @@ struct ngx_http_request_s {
     char  *location;
     ngx_fd_t  fd;
 
+    ngx_pool_t  *pool;
+    ngx_hunk_t  *header_in;
+
+/*
+    ngx_http_headers_in_t *headers_in;
+*/
     ngx_http_headers_out_t *headers_out;
 
     int    filename_len;
@@ -90,10 +101,10 @@ struct ngx_http_request_s {
 
     ngx_connection_t  *connection;
     ngx_http_server_t *server;
-    ngx_buff_t  *buff;
-    ngx_pool_t  *pool;
 
     int       filter;
+
+    unsigned  header_timeout:1;
 
     unsigned  header_only:1;
     unsigned  unusual_uri:1;

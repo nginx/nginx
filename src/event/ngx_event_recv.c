@@ -6,29 +6,27 @@
 #include <ngx_recv.h>
 #include <ngx_connection.h>
 
-int ngx_event_recv_core(ngx_event_t *ev, char *buf, size_t size)
+int ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
 {
     int                n;
     ngx_err_t          err;
-    ngx_connection_t  *c;
 
-    c = (ngx_connection_t *) ev->data;
-
-    if (ev->timedout) {
+    if (c->read->timedout) {
         ngx_set_socket_errno(NGX_ETIMEDOUT);
-        ngx_log_error(NGX_LOG_ERR, ev->log, NGX_ETIMEDOUT, "recv() failed");
+        ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT, "recv() failed");
         return NGX_ERROR;
     }
 
 #if (HAVE_KQUEUE)
-    ngx_log_debug(ev->log, "ngx_event_recv: eof:%d, avail:%d, err:%d" _
-                  ev->eof _ ev->available _ ev->error);
+    ngx_log_debug(c->log, "ngx_event_recv: eof:%d, avail:%d, err:%d" _
+                  c->read->eof _ c->read->available _ c->read->error);
 #if !(USE_KQUEUE)
     if (ngx_event_type == NGX_KQUEUE_EVENT)
 #endif
-        if (ev->eof && ev->available == 0) {
-            if (ev->error) {
-                ngx_log_error(NGX_LOG_ERR, ev->log, ev->error, "recv() failed");
+        if (c->read->eof && c->read->available == 0) {
+            if (c->read->error) {
+                ngx_log_error(NGX_LOG_ERR, c->log, c->read->error,
+                              "recv() failed");
                 return NGX_ERROR;
             }
 
@@ -42,11 +40,11 @@ int ngx_event_recv_core(ngx_event_t *ev, char *buf, size_t size)
         err = ngx_socket_errno;
 
         if (err == NGX_EAGAIN) {
-            ngx_log_error(NGX_LOG_INFO, ev->log, err, "recv() returns EAGAIN");
+            ngx_log_error(NGX_LOG_INFO, c->log, err, "recv() returns EAGAIN");
             return NGX_AGAIN;
         }
 
-        ngx_log_error(NGX_LOG_ERR, ev->log, err, "recv() failed");
+        ngx_log_error(NGX_LOG_ERR, c->log, err, "recv() failed");
         return NGX_ERROR;
     }
 
@@ -54,7 +52,7 @@ int ngx_event_recv_core(ngx_event_t *ev, char *buf, size_t size)
 #if !(USE_KQUEUE)
     if (ngx_event_type == NGX_KQUEUE_EVENT)
 #endif
-        ev->available -= n;
+        c->read->available -= n;
 #endif
 
     return n;

@@ -24,7 +24,6 @@ static ngx_event_t  timer_queue;
 
 
 static void ngx_add_timer_core(ngx_event_t *ev, u_int timer);
-static void ngx_inline ngx_del_timer(ngx_event_t *ev);
 
 static fd_set *ngx_select_get_fd_set(ngx_socket_t fd, int event,
                                      ngx_log_t *log);
@@ -338,6 +337,7 @@ static void ngx_add_timer_core(ngx_event_t *ev, u_int timer)
     e->timer_prev = ev;
 }
 
+#if 0
 static void ngx_inline ngx_del_timer(ngx_event_t *ev)
 {
     if (ev->timer_prev)
@@ -345,9 +345,10 @@ static void ngx_inline ngx_del_timer(ngx_event_t *ev)
 
     if (ev->timer_next) {
         ev->timer_next->timer_prev = ev->timer_prev;
-        ev->timer_prev = NULL;
+        ev->timer_next = NULL;
     }
 
     if (ev->timer_prev)
-        ev->timer_next = NULL;
+        ev->timer_prev = NULL;
 }
+#endif
