@@ -632,15 +632,12 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         return NULL;
     }
 
-    file->fd = NGX_INVALID_FILE;
-
     if (name) {
+        file->fd = NGX_INVALID_FILE;
         file->name = full;
 
     } else {
-
-        /* stderr */
-
+        file->fd = STDERR_FILENO;
         file->name.len = 0;
         file->name.data = NULL;
     }
