@@ -100,7 +100,7 @@ static char *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 static ngx_str_t ngx_http_combined_fmt =
     ngx_string("%addr - - [%time] \"%request\" %status %apache_length "
-               "\"%{Referer}i\" %{User-Agent}i\"");
+               "\"%{Referer}i\" \"%{User-Agent}i\"");
 
 
 ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {

@@ -620,7 +620,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http header: \"%s: %s\"'",
+                           "http header: \"%s: %s\"",
                            h->key.data, h->value.data);
 
             if (cscf->large_client_header

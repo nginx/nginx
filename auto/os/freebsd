@@ -25,7 +25,7 @@ fi
 if [ \( $version -lt 500000 -a $version -ge 410000 \) \
      -o $version -ge 500011 ]
 then
-    CFLAGS="$CFLAGS -D HAVE_KQUEUE=1"
+    CFLAGS="$CFLAGS -D HAVE_KQUEUE=1 -D HAVE_CLEAR_EVENT=1"
     CORE_SRCS="$CORE_SRCS $KQUEUE_SRCS"
     EVENT_MODULES="$EVENT_MODULES $KQUEUE_MODULE"
 fi
