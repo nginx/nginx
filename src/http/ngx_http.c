@@ -11,7 +11,7 @@
 
 
 static void ngx_http_init_filters(ngx_pool_t *pool, ngx_module_t **modules);
-static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy);
+static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 int  ngx_http_max_module;
@@ -37,20 +37,20 @@ static ngx_command_t  ngx_http_commands[] = {
      0,
      NULL},
 
-    {ngx_string(""), 0, NULL, 0, 0, NULL}
+    ngx_null_command
 };
 
 
 ngx_module_t  ngx_http_module = {
+    NGX_MODULE,
     &http_name,                            /* module context */
-    0,                                     /* module index */
     ngx_http_commands,                     /* module directives */
-    NGX_CORE_MODULE_TYPE,                  /* module type */
+    NGX_CORE_MODULE,                       /* module type */
     NULL                                   /* init module */
 };
 
 
-static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     int                          mi, m, s, l, p, a, n;
     int                          port_found, addr_found, virtual_names;
@@ -81,12 +81,11 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
     ngx_http_max_module = 0;
     for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_HTTP_MODULE_TYPE) {
+        if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
             continue;
         }
 
-        module = (ngx_http_module_t *) ngx_modules[m]->ctx;
-        module->index = ngx_http_max_module++;
+        ngx_modules[m]->ctx_index = ngx_http_max_module++;
     }
 
     /* the main http main_conf, it's the same in the all http contexts */
@@ -108,26 +107,27 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     /* create the main_conf, srv_conf and loc_conf in all http modules */
 
     for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_HTTP_MODULE_TYPE) {
+        if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
             continue;
         }
 
-        module = (ngx_http_module_t *) ngx_modules[m]->ctx;
+        module = ngx_modules[m]->ctx;
+        mi = ngx_modules[m]->ctx_index;
 
         if (module->create_main_conf) {
-            ngx_test_null(ctx->main_conf[module->index],
+            ngx_test_null(ctx->main_conf[mi],
                           module->create_main_conf(cf->pool),
                           NGX_CONF_ERROR);
         }
 
         if (module->create_srv_conf) {
-            ngx_test_null(ctx->srv_conf[module->index],
+            ngx_test_null(ctx->srv_conf[mi],
                           module->create_srv_conf(cf->pool),
                           NGX_CONF_ERROR);
         }
 
         if (module->create_loc_conf) {
-            ngx_test_null(ctx->loc_conf[module->index],
+            ngx_test_null(ctx->loc_conf[mi],
                           module->create_loc_conf(cf->pool),
                           NGX_CONF_ERROR);
         }
@@ -138,7 +138,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
     pcf = *cf;
     cf->ctx = ctx;
-    cf->module_type = NGX_HTTP_MODULE_TYPE;
+    cf->module_type = NGX_HTTP_MODULE;
     cf->cmd_type = NGX_HTTP_MAIN_CONF;
     rv = ngx_conf_parse(cf, NULL);
     *cf = pcf;
@@ -150,16 +150,16 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     /* init http{} main_conf's, merge the server{}s' srv_conf's
        and its location{}s' loc_conf's */
 
-    cmcf = ctx->main_conf[ngx_http_core_module_ctx.index];
+    cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
     cscfp = (ngx_http_core_srv_conf_t **)cmcf->servers.elts;
 
     for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_HTTP_MODULE_TYPE) {
+        if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
             continue;
         }
 
         module = (ngx_http_module_t *) ngx_modules[m]->ctx;
-        mi = module->index;
+        mi = ngx_modules[m]->ctx_index;
 
         /* init http{} main_conf's */
 
@@ -310,7 +310,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
                                        sizeof(ngx_http_in_addr_t));
 
                             in_addr[a].addr = lscf[l].addr;
-                            in_addr[a].flags = lscf[l].flags;   
+                            in_addr[a].flags = lscf[l].flags;
                             in_addr[a].core_srv_conf = cscfp[s];
 
                             /* create the empty list of the server names that
@@ -336,7 +336,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
                                       NGX_CONF_ERROR);
 
                         inaddr->addr = lscf[l].addr;
-                        inaddr->flags = lscf[l].flags;   
+                        inaddr->flags = lscf[l].flags;
                         inaddr->core_srv_conf = cscfp[s];
 
                         /* create the empty list of the server names that
@@ -359,6 +359,12 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
                 in_port->port = lscf[l].port;
 
+                ngx_test_null(in_port->port_name.data, ngx_palloc(cf->pool, 7),
+                              NGX_CONF_ERROR);
+                in_port->port_name.len = ngx_snprintf(in_port->port_name.data,
+                                                      7, ":%d",
+                                                      in_port->port);
+
                 /* create list of the addresses that bound to this port ... */
 
                 ngx_init_array(in_port->addrs, cf->pool, 10,
@@ -371,7 +377,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
                 /* ... and add the address to this list */
 
                 inaddr->addr = lscf[l].addr;
-                inaddr->flags = lscf[l].flags;   
+                inaddr->flags = lscf[l].flags;
                 inaddr->core_srv_conf = cscfp[s];
 
                 /* create the empty list of the server names that
@@ -484,6 +490,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
                                   NGX_CONF_ERROR);
 
                     inport->port = in_port[p].port;
+                    inport->port_name = in_port[p].port_name;
 
                     /* init list of the addresses ... */
 

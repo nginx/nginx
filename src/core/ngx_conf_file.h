@@ -40,9 +40,14 @@
 #define NGX_CONF_BLOCK_DONE  1
 #define NGX_CONF_FILE_DONE   2
 
+#define NGX_MODULE           0, 0
 
-#define NGX_CORE_MODULE_TYPE 0x45524F43  /* "CORE" */
-#define NGX_CONF_MODULE_TYPE 0x464E4F43  /* "CONF" */
+#define NGX_CORE_MODULE      0x45524F43  /* "CORE" */
+#define NGX_CONF_MODULE      0x464E4F43  /* "CONF" */
+
+
+#define MAX_CONF_ERRSTR      256
+extern  char ngx_conf_errstr[MAX_CONF_ERRSTR];
 
 
 typedef struct ngx_conf_s  ngx_conf_t;
@@ -52,16 +57,18 @@ typedef struct ngx_command_s  ngx_command_t;
 struct ngx_command_s {
     ngx_str_t  name;
     int        type;
-    char    *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
+    char    *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
     int        conf;
     int        offset;
     void      *bounds;
 };
 
+#define ngx_null_command   {ngx_null_string, 0, NULL, 0, 0, NULL}
 
 typedef struct {
-    void           *ctx;
+    int             ctx_index;
     int             index;
+    void           *ctx;
     ngx_command_t  *commands;
     int             type;
     int           (*init_module)(ngx_pool_t *p);
@@ -129,6 +136,17 @@ struct ngx_conf_s {
         conf = (prev == (size_t) NGX_CONF_UNSET) ? default : prev;           \
     }
 
+#define ngx_conf_merge_str_value(conf, prev, default)                        \
+    if (conf.len == 0) {                                                     \
+        if (prev.len) {                                                      \
+            conf.len = prev.len;                                             \
+            conf.data = prev.data;                                           \
+        } else {                                                             \
+            conf.len = sizeof(default) - 1;                                  \
+            conf.data = default;                                             \
+        }                                                                    \
+    }
+
 
 #define addressof(addr)  ((int) &addr)
 
@@ -136,12 +154,12 @@ struct ngx_conf_s {
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
 
-char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
-char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
-char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
-char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
-char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
-char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
+char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 extern ngx_module_t     *ngx_modules[];

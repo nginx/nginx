@@ -39,6 +39,14 @@ static char error_404_page[] =
 ;
 
 
+static char error_405_page[] =
+"<html>" CRLF
+"<head><title>405 Not Allowed</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>405 Not Allowed</h1></center>" CRLF
+;
+
+
 static char error_408_page[] =
 "<html>" CRLF
 "<head><title>408 Request Time-out</title></head>" CRLF
@@ -89,7 +97,7 @@ static ngx_str_t error_pages[] = {
     ngx_null_string,             /* 402 */
     ngx_string(error_403_page),
     ngx_string(error_404_page),
-    ngx_null_string,             /* 405 */
+    ngx_string(error_405_page),
     ngx_null_string,             /* 406 */
     ngx_null_string,             /* 407 */
     ngx_string(error_408_page),

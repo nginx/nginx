@@ -6,6 +6,9 @@
 #include <ngx_conf_file.h>
 
 
+char ngx_conf_errstr[MAX_CONF_ERRSTR];
+
+
 static int argument_number[] = {
     NGX_CONF_NOARGS,
     NGX_CONF_TAKE1,
@@ -17,7 +20,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf);
 
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
-    int               i, rc, found;
+    int               m, rc, found;
     char             *rv;
     void             *conf, **confp;
     ngx_str_t        *name;
@@ -32,7 +35,6 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         fd = ngx_open_file(filename->data, NGX_FILE_RDONLY);
         if (fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
-                          "ngx_conf_file: "
                           ngx_open_file_n " %s failed", filename->data);
             return NGX_CONF_ERROR;
         }
@@ -44,7 +46,6 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         if (ngx_stat_fd(fd, &cf->conf_file->file.info) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
-                          "ngx_conf_file: "
                           ngx_stat_fd_n " %s failed", filename->data);
         }
 
@@ -101,17 +102,17 @@ ngx_log_debug(cf->log, "token %d" _ rc);
         name = (ngx_str_t *) cf->args->elts;
         found = 0;
 
-        for (i = 0; !found && ngx_modules[i]; i++) {
+        for (m = 0; !found && ngx_modules[m]; m++) {
 
             /* look up the directive in the appropriate modules */
 
-            if (ngx_modules[i]->type != NGX_CONF_MODULE_TYPE
-                && ngx_modules[i]->type != cf->module_type)
+            if (ngx_modules[m]->type != NGX_CONF_MODULE
+                && ngx_modules[m]->type != cf->module_type)
             {
                 continue;
             }
 
-            cmd = ngx_modules[i]->commands;
+            cmd = ngx_modules[m]->commands;
             if (cmd == NULL) {
                 continue;
             }
@@ -160,14 +161,14 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
                     conf = NULL;
 
-                    if (cf->module_type == NGX_CORE_MODULE_TYPE) {
-                        conf = &(((void **) cf->ctx)[ngx_modules[i]->index]);
+                    if (cf->module_type == NGX_CORE_MODULE) {
+                        conf = &(((void **) cf->ctx)[ngx_modules[m]->index]);
 
                     } else if (cf->ctx) {
                         confp = *(void **) ((char *) cf->ctx + cmd->conf);
 
                         if (confp) {
-                            conf = confp[*(int *)(ngx_modules[i]->ctx)];
+                            conf = confp[ngx_modules[m]->ctx_index];
                         }
                     }
 
@@ -185,11 +186,19 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
                         return NGX_CONF_ERROR;
 
                     } else {
-                        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                     "%s %s in %s:%d",
-                                     name->data, rv,
-                                     cf->conf_file->file.name.data,
-                                     cf->conf_file->line);
+                        if (rv == ngx_conf_errstr) {
+                            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                         "%s in %s:%d",
+                                         rv,
+                                         cf->conf_file->file.name.data,
+                                         cf->conf_file->line);
+                        } else {
+                            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                         "%s %s in %s:%d",
+                                         name->data, rv,
+                                         cf->conf_file->file.name.data,
+                                         cf->conf_file->line);
+                        }
 
                         return NGX_CONF_ERROR;
                     }
@@ -430,7 +439,7 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 }
 
 
-char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     int         flag;
     ngx_str_t  *value;
@@ -457,13 +466,13 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 }
 
 
-char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t  *field, *value;
 
     field = (ngx_str_t *) (conf + cmd->offset);
 
-    if (field->len > 0) {
+    if (field->data) {
         return "is duplicate";
     }
 
@@ -476,7 +485,7 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 }
 
 
-char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     int         num, len;
     ngx_str_t  *value;
@@ -500,7 +509,7 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 }
 
 
-char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     int         size, len, scale;
     char        last;
@@ -545,7 +554,7 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 }
 
 
-char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     int         size, total, len, scale;
     u_int       max, i;
@@ -640,7 +649,7 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 }
 
 
-char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     int         size, total, len, scale;
     u_int       max, i;
@@ -747,7 +756,7 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 }
 
 
-char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     return "unsupported on this platform";
 }

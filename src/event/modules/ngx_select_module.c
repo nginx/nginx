@@ -40,7 +40,6 @@ static ngx_event_t  **ready_index;
 static ngx_str_t    select_name = ngx_string("select");
 
 ngx_event_module_t  ngx_select_module_ctx = {
-    NGX_EVENT_MODULE,
     &select_name,
     NULL,                                  /* create configuration */
     ngx_select_init_conf,                  /* init configuration */
@@ -60,10 +59,10 @@ ngx_event_module_t  ngx_select_module_ctx = {
 };
 
 ngx_module_t  ngx_select_module = {
+    NGX_MODULE,
     &ngx_select_module_ctx,                /* module context */
-    0,                                     /* module index */
     NULL,                                  /* module directives */
-    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NGX_EVENT_MODULE,                      /* module type */
     NULL                                   /* init module */
 };
 
@@ -72,7 +71,7 @@ static int ngx_select_init(ngx_log_t *log)
 {
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_module_ctx);
+    ecf = ngx_event_get_conf(ngx_event_module);
 
     FD_ZERO(&master_read_fd_set);
     FD_ZERO(&master_write_fd_set);
@@ -378,7 +377,7 @@ static char *ngx_select_init_conf(ngx_pool_t *pool, void *conf)
 {
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_module_ctx);
+    ecf = ngx_event_get_conf(ngx_event_module);
 
     if (ecf->connections > FD_SETSIZE) {
         return "maximum number of connections "

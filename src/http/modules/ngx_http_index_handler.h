@@ -3,16 +3,16 @@
 
 
 #include <ngx_config.h>
-#include <ngx_array.h>
+#include <ngx_core.h>
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_INDEX   "index.html"
+#define NGX_HTTP_DEFAULT_INDEX   "index.html"
 
 
 typedef struct {
-    ngx_array_t  *indices;
-    size_t        max_index_len;
+    ngx_array_t  indices;
+    size_t       max_index_len;
 } ngx_http_index_conf_t;
 
 

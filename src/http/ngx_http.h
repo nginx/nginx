@@ -13,6 +13,8 @@
 #include <ngx_conf_file.h>
 
 #include <ngx_http_request.h>
+#include <ngx_http_config.h>
+#include <ngx_http_core_module.h>
 
 
 typedef struct {
@@ -30,12 +32,12 @@ typedef int (*ngx_http_output_body_filter_p)
                                    (ngx_http_request_t *r, ngx_chain_t *chain);
 
 
-#define ngx_http_get_module_ctx(r, module)       r->ctx[module.index]
+#define ngx_http_get_module_ctx(r, module)       r->ctx[module.ctx_index]
 
 #define ngx_http_create_ctx(r, cx, module, size, error)                       \
             do {                                                              \
                 ngx_test_null(cx, ngx_pcalloc(r->pool, size), error);         \
-                r->ctx[module.index] = cx;                                    \
+                r->ctx[module.ctx_index] = cx;                                \
             } while (0)
 
 

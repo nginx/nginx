@@ -17,9 +17,6 @@
 
 
 
-/* STUB */
-#define NGX_LOWAT   10000
-
 #define NGX_INVALID_INDEX  0x80000000
 
 
@@ -319,10 +316,9 @@ extern int                   ngx_event_flags;
 #endif
 
 
-#define NGX_EVENT_MODULE_TYPE 0x544E5645  /* "EVNT" */
+#define NGX_EVENT_MODULE      0x544E5645  /* "EVNT" */
 
 #define NGX_EVENT_CONF        0x00200000
-#define NGX_EVENT_MODULE      0
 
 
 typedef struct {
@@ -333,7 +329,6 @@ typedef struct {
 
 
 typedef struct {
-    int                     index;
     ngx_str_t              *name;
 
     void                 *(*create_conf)(ngx_pool_t *p);
@@ -344,11 +339,11 @@ typedef struct {
 
 
 extern ngx_module_t        ngx_events_module;
-extern ngx_event_module_t  ngx_event_module_ctx;
+extern ngx_module_t        ngx_event_module;
 
 
 #define ngx_event_get_conf(module)                                           \
-                          (*(ngx_get_conf(ngx_events_module))) [module.index];
+                     (*(ngx_get_conf(ngx_events_module))) [module.ctx_index];
 
 
 

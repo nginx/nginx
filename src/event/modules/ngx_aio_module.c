@@ -29,7 +29,6 @@ ngx_os_io_t ngx_os_aio = {
 static ngx_str_t      aio_name = ngx_string("aio");
 
 ngx_event_module_t  ngx_aio_module_ctx = {
-    NGX_EVENT_MODULE,
     &aio_name,
     NULL,                                  /* create configuration */
     NULL,                                  /* init configuration */
@@ -49,10 +48,10 @@ ngx_event_module_t  ngx_aio_module_ctx = {
 };
 
 ngx_module_t  ngx_aio_module = {
+    NGX_MODULE,
     &ngx_aio_module_ctx,                   /* module context */
-    0,                                     /* module index */
     NULL,                                  /* module directives */
-    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NGX_EVENT_MODULE,                      /* module type */
     NULL                                   /* init module */
 };
 

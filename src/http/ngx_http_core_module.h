@@ -47,6 +47,7 @@ typedef struct {
 
 typedef struct {
     int           port;
+    ngx_str_t     port_name;
     ngx_array_t   addrs;       /* array of ngx_http_in_addr_t */
 } ngx_http_in_port_t;
 
@@ -56,7 +57,7 @@ typedef struct {
     ngx_array_t                names;     /* array of ngx_http_server_name_t */
     ngx_http_core_srv_conf_t  *core_srv_conf;  /* default server conf
                                                   for this address:port */
-    int                        flags;    
+    int                        flags;
 } ngx_http_in_addr_t;
 
 /* ngx_http_in_addr_t's flags */
@@ -87,22 +88,23 @@ typedef struct {
 
 
 typedef struct {
-    ngx_str_t   name;          /* location name */
-    void      **loc_conf ;     /* pointer to the modules' loc_conf */
+    ngx_str_t     name;          /* location name */
+    void        **loc_conf ;     /* pointer to the modules' loc_conf */
 
-    int       (*handler) (ngx_http_request_t *r);
+    int         (*handler) (ngx_http_request_t *r);
 
-    ngx_str_t   doc_root;                /* root */
+    ngx_str_t     doc_root;                /* root */
 
     ngx_array_t  *types;
+    ngx_str_t     default_type;
 
-    int         sendfile;                /* sendfile */
-    ngx_msec_t  send_timeout;            /* send_timeout */
-    size_t      send_lowat;              /* send_lowa */
-    size_t      discarded_buffer_size;   /* discarded_buffer_size */
-    ngx_msec_t  keepalive_timeout;       /* keepalive_timeout */
-    ngx_msec_t  lingering_time;          /* lingering_time */
-    ngx_msec_t  lingering_timeout;       /* lingering_timeout */
+    int           sendfile;                /* sendfile */
+    ngx_msec_t    send_timeout;            /* send_timeout */
+    size_t        send_lowat;              /* send_lowat */
+    size_t        discarded_buffer_size;   /* discarded_buffer_size */
+    ngx_msec_t    keepalive_timeout;       /* keepalive_timeout */
+    ngx_msec_t    lingering_time;          /* lingering_time */
+    ngx_msec_t    lingering_timeout;       /* lingering_timeout */
 
 } ngx_http_core_loc_conf_t;
 

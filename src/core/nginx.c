@@ -87,7 +87,7 @@ int main(int argc, char *const *argv)
         conf.ctx = ngx_conf_ctx;
         conf.pool = ngx_pool;
         conf.log = &ngx_log;
-        conf.module_type = NGX_CORE_MODULE_TYPE;
+        conf.module_type = NGX_CORE_MODULE;
         conf.cmd_type = NGX_MAIN_CONF;
 
         conf_file.len = sizeof("nginx.conf") - 1;
@@ -121,7 +121,7 @@ int main(int argc, char *const *argv)
 
         /* STUB */
         ngx_worker(&ngx_log);
-    }     
+    }
 
     return 0;
 }

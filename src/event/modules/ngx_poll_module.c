@@ -27,7 +27,6 @@ static ngx_event_t   **ready_index;
 static ngx_str_t    poll_name = ngx_string("poll");
 
 ngx_event_module_t  ngx_poll_module_ctx = {
-    NGX_EVENT_MODULE,
     &poll_name,
     NULL,                                  /* create configuration */
     NULL,                                  /* init configuration */
@@ -47,10 +46,10 @@ ngx_event_module_t  ngx_poll_module_ctx = {
 };
 
 ngx_module_t  ngx_poll_module = {
+    NGX_MODULE,
     &ngx_poll_module_ctx,                  /* module context */
-    0,                                     /* module index */
     NULL,                                  /* module directives */
-    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NGX_EVENT_MODULE,                      /* module type */
     NULL                                   /* init module */
 };
 
@@ -60,7 +59,7 @@ static int ngx_poll_init(ngx_log_t *log)
 {
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_module_ctx);
+    ecf = ngx_event_get_conf(ngx_event_module);
 
     ngx_test_null(event_list,
                   ngx_alloc(sizeof(struct pollfd) * ecf->connections, log),

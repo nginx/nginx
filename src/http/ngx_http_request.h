@@ -49,6 +49,7 @@
 #define NGX_HTTP_BAD_REQUEST            400
 #define NGX_HTTP_FORBIDDEN              403
 #define NGX_HTTP_NOT_FOUND              404
+#define NGX_HTTP_NOT_ALLOWED            405
 #define NGX_HTTP_REQUEST_TIME_OUT       408
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE  414
 
@@ -154,10 +155,11 @@ struct ngx_http_request_s {
 
     ngx_http_request_t  *main;
 
-    u_int       in_addr;
-
-    int         port;
-    ngx_str_t   port_name;
+    u_int                in_addr;
+    int                  port;
+    ngx_str_t           *port_name;    /* ":80" */
+    ngx_str_t           *server_name;
+    ngx_array_t         *virtual_names;
 
     int         filter;
 

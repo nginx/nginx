@@ -15,7 +15,9 @@
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>        /* TCP_NOPUSH */
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <osreldate.h>
 
 

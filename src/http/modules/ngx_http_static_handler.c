@@ -1,43 +1,31 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_string.h>
-#include <ngx_file.h>
-#include <ngx_hunk.h>
 #include <ngx_http.h>
 #include <ngx_http_config.h>
 #include <ngx_http_core_module.h>
 #include <ngx_http_output_filter.h>
 
 
-ngx_http_module_t  ngx_http_static_module;
-
 
 int ngx_http_static_handler(ngx_http_request_t *r)
 {
-    int                  rc, key, i;
-    ngx_log_e            level;
-    ngx_err_t            err;
-    ngx_hunk_t          *h;
-    ngx_http_type_t     *type;
-    ngx_http_log_ctx_t  *ctx;
-    ngx_http_core_loc_conf_t  *core_lcf; 
-
-    core_lcf = (ngx_http_core_loc_conf_t *)
-                     ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
-
-#if 0
-    ngx_http_event_static_handler_loc_conf_t  *lcf;
-
-    lcf = (ngx_http_event_static_handler_loc_conf_t *)
-         ngx_get_module_loc_conf(r, &ngx_http_event_static_handler_module_ctx);
-
-#endif
+    int                        rc, key, i;
+    ngx_log_e                  level;
+    ngx_err_t                  err;
+    ngx_hunk_t                *h;
+    ngx_http_type_t           *type;
+    ngx_http_log_ctx_t        *ctx;
+    ngx_http_core_loc_conf_t  *clcf;
 
     rc = ngx_http_discard_body(r);
 
     if (rc != NGX_OK) {
         return rc;
+    }
+
+    if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+        return NGX_HTTP_NOT_ALLOWED;
     }
 
     ctx = r->connection->log->data;
@@ -102,14 +90,18 @@ int ngx_http_static_handler(ngx_http_request_t *r)
                   ngx_push_table(r->headers_out.headers),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    r->headers_out.content_type->key.len = 12;
-    r->headers_out.content_type->key.data = "Content-Type";
+    r->headers_out.content_type->key.len = 0;
+    r->headers_out.content_type->key.data = NULL;
+    r->headers_out.content_type->value.len = 0;
+    r->headers_out.content_type->value.data = NULL;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->exten.len) {
         ngx_http_types_hash_key(key, r->exten);
 
-        type = (ngx_http_type_t *) core_lcf->types[key].elts;
-        for (i = 0; i < core_lcf->types[key].nelts; i++) {
+        type = (ngx_http_type_t *) clcf->types[key].elts;
+        for (i = 0; i < clcf->types[key].nelts; i++) {
             if (r->exten.len != type[i].exten.len) {
                 continue;
             }
@@ -117,14 +109,15 @@ int ngx_http_static_handler(ngx_http_request_t *r)
             if (ngx_strcasecmp(r->exten.data, type[i].exten.data) == 0) {
                 r->headers_out.content_type->value.len = type[i].type.len;
                 r->headers_out.content_type->value.data = type[i].type.data;
+
+                break;
             }
         }
     }
 
     if (r->headers_out.content_type->value.len == 0) {
-        /* STUB: default type */
-        r->headers_out.content_type->value.len = 25;
-        r->headers_out.content_type->value.data = "text/html; charset=koi8-r";
+        r->headers_out.content_type->value.len = clcf->default_type.len;
+        r->headers_out.content_type->value.data = clcf->default_type.data;
     }
 
     /* we need to allocate all before the header would be sent */
@@ -134,9 +127,19 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     ngx_test_null(h->file, ngx_pcalloc(r->pool, sizeof(ngx_file_t)),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    ngx_http_send_header(r);
-    if (r->header_only)
+
+    rc = ngx_http_send_header(r);
+
+    if (r->header_only) {
+        if (rc == NGX_AGAIN) {
+            ngx_http_set_write_handler(r);
+
+        } else {
+            ngx_http_finalize_request(r, 0);
+        }
+
         return NGX_OK;
+    }
 
 
     h->type = NGX_HUNK_FILE|NGX_HUNK_LAST;

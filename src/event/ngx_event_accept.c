@@ -162,6 +162,6 @@ void ngx_event_accept(ngx_event_t *ev)
         }
 
     } while (ev->available);
-  
+
     return;
 }

@@ -47,12 +47,11 @@ static ngx_command_t  ngx_kqueue_commands[] = {
      offsetof(ngx_kqueue_conf_t, events),
      NULL},
 
-    {ngx_string(""), 0, NULL, 0, 0, NULL}
+    ngx_null_command
 };
 
 
 ngx_event_module_t  ngx_kqueue_module_ctx = {
-    NGX_EVENT_MODULE,
     &kqueue_name,
     ngx_kqueue_create_conf,                /* create configuration */
     ngx_kqueue_init_conf,                  /* init configuration */
@@ -72,10 +71,10 @@ ngx_event_module_t  ngx_kqueue_module_ctx = {
 };
 
 ngx_module_t  ngx_kqueue_module = {
+    NGX_MODULE,
     &ngx_kqueue_module_ctx,                /* module context */
-    0,                                     /* module index */
     ngx_kqueue_commands,                   /* module directives */
-    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NGX_EVENT_MODULE,                      /* module type */
     NULL                                   /* init module */
 };
 
@@ -84,7 +83,7 @@ static int ngx_kqueue_init(ngx_log_t *log)
 {
     ngx_kqueue_conf_t  *kcf;
 
-    kcf = ngx_event_get_conf(ngx_kqueue_module_ctx);
+    kcf = ngx_event_get_conf(ngx_kqueue_module);
 
 ngx_log_debug(log, "CH: %d" _ kcf->changes);
 ngx_log_debug(log, "EV: %d" _ kcf->events);

@@ -72,12 +72,11 @@ static ngx_command_t  ngx_devpoll_commands[] = {
      offsetof(ngx_devpoll_conf_t, events),
      NULL},
 
-    {ngx_string(""), 0, NULL, 0, 0, NULL}
+    ngx_null_command
 };
 
 
 ngx_event_module_t  ngx_devpoll_module_ctx = {
-    NGX_EVENT_MODULE,
     &devpoll_name,
     ngx_devpoll_create_conf,               /* create configuration */
     ngx_devpoll_init_conf,                 /* init configuration */
@@ -97,10 +96,10 @@ ngx_event_module_t  ngx_devpoll_module_ctx = {
 };
 
 ngx_module_t  ngx_devpoll_module = {
+    NGX_MODULE,
     &ngx_devpoll_module_ctx,               /* module context */
-    0,                                     /* module index */
     ngx_devpoll_commands,                  /* module directives */
-    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NGX_EVENT_MODULE,                      /* module type */
     NULL                                   /* init module */
 };
 
@@ -109,7 +108,7 @@ static int ngx_devpoll_init(ngx_log_t *log)
 {
     ngx_devpoll_conf_t  *dpcf;
 
-    dpcf = ngx_event_get_conf(ngx_devpoll_module_ctx);
+    dpcf = ngx_event_get_conf(ngx_devpoll_module);
 
 ngx_log_debug(log, "CH: %d" _ dpcf->changes);
 ngx_log_debug(log, "EV: %d" _ dpcf->events);
@@ -194,7 +193,7 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
     ngx_event_t  *e;
 
 #if (NGX_DEBUG_EVENT)
-    ngx_connection_t *c = (ngx_connection_t *) ev->data;
+    ngx_connection_t *c = ev->data;
     ngx_log_debug(c->log, "del event: %d, %d" _ c->fd _ event);
 #endif
 
@@ -229,7 +228,7 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 {
-    int  n;
+    int                n;
     ngx_connection_t  *c;
 
     c = ev->data;

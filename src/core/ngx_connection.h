@@ -10,9 +10,9 @@
 #include <ngx_hunk.h>
 #include <ngx_array.h>
 #include <ngx_string.h>
-#endif
 
 #include <ngx_server.h>
+#endif
 
 #if 0
 typedef struct ngx_connection_s  ngx_connection_t;
@@ -35,7 +35,7 @@ struct ngx_connection_s {
 
     void            (*handler)(ngx_connection_t *c);
     void             *ctx;
-    ngx_server_t     *servers;
+    void             *servers;
 
     ngx_log_t        *log;
 
@@ -114,7 +114,6 @@ ngx_chain_t *ngx_write_chain(ngx_connection_t *c, ngx_chain_t *in, off_t flush);
 
 /* TODO: move it to OS specific file */
 #if (__FreeBSD__)
-ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in);
 ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in);
 #endif
 

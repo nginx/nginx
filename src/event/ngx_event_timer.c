@@ -20,7 +20,7 @@ int ngx_event_timer_init(ngx_log_t *log)
     int                i;
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_module_ctx);
+    ecf = ngx_event_get_conf(ngx_event_module);
 
     ngx_timer_queue_num = ecf->timer_queues;
     ngx_timer_cur_queue = 0;

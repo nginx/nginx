@@ -1,25 +1,14 @@
 
-#include <ngx_config.h>
-
-#include <ngx_core.h>
-#include <ngx_errno.h>
-#include <ngx_string.h>
-#include <ngx_files.h>
-#include <ngx_conf_file.h>
-
-#include <ngx_http.h>
-#include <ngx_http_config.h>
-#include <ngx_http_core_module.h>
 #include <ngx_http_index_handler.h>
 
 
 static int ngx_http_index_test_dir(ngx_http_request_t *r);
 static int ngx_http_index_init(ngx_pool_t *pool);
 static void *ngx_http_index_create_conf(ngx_pool_t *pool);
-static char *ngx_http_index_merge_conf(ngx_pool_t *p,
-                                       void *parent, void *child);
+static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent,
+                                                                  void *child);
 static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
-                                      char *conf);
+                                                                   void *conf);
 
 
 static ngx_command_t ngx_http_index_commands[] = {
@@ -31,13 +20,11 @@ static ngx_command_t ngx_http_index_commands[] = {
      0,
      NULL},
 
-    {ngx_string(""), 0, NULL, 0, 0, NULL}
+    ngx_null_command
 };
 
 
 ngx_http_module_t  ngx_http_index_module_ctx = {
-    NGX_HTTP_MODULE,
-
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 
@@ -50,10 +37,10 @@ ngx_http_module_t  ngx_http_index_module_ctx = {
 
 
 ngx_module_t  ngx_http_index_module = {
+    NGX_MODULE,
     &ngx_http_index_module_ctx,            /* module context */
-    0,                                     /* module index */
     ngx_http_index_commands,               /* module directives */
-    NGX_HTTP_MODULE_TYPE,                  /* module type */
+    NGX_HTTP_MODULE,                       /* module type */
     ngx_http_index_init                    /* init module */
 };
 
@@ -63,42 +50,39 @@ ngx_module_t  ngx_http_index_module = {
    because the valid requests should be many more then invalid ones.
    If open() failed then stat() should be more quickly because some data
    is already cached in the kernel.
-   Besides Win32 has ERROR_PATH_NOT_FOUND (NGX_ENOTDIR) and
-   Unix has ENOTDIR error (although it less helpfull).
+   Besides Win32 has ERROR_PATH_NOT_FOUND (NGX_ENOTDIR).
+   Unix has ENOTDIR error, although it less helpfull - it shows only
+   that path contains the usual file in place of the directory.
 */
 
 int ngx_http_index_handler(ngx_http_request_t *r)
 {
-    int          i, rc, test_dir;
-    char        *name, *file;
-    ngx_str_t    loc, *index;
-    ngx_err_t    err;
-    ngx_fd_t     fd;
+    int                        i, rc, test_dir;
+    char                      *name, *file;
+    ngx_str_t                  loc, *index;
+    ngx_err_t                  err;
+    ngx_fd_t                   fd;
+    ngx_http_index_conf_t     *icf;
+    ngx_http_core_loc_conf_t  *clcf;
 
-    ngx_http_index_conf_t     *cf;
-    ngx_http_core_loc_conf_t  *core_cf;
-
-    cf = (ngx_http_index_conf_t *)
-                    ngx_http_get_module_loc_conf(r, ngx_http_index_module_ctx);
-
-    core_cf = (ngx_http_core_loc_conf_t *)
-                     ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
+    icf = ngx_http_get_module_loc_conf(r, ngx_http_index_module);
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     ngx_test_null(r->path.data,
                   ngx_palloc(r->pool,
-                             core_cf->doc_root.len + r->uri.len
-                             + cf->max_index_len),
+                             clcf->doc_root.len + r->uri.len
+                             + icf->max_index_len),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    loc.data = ngx_cpystrn(r->path.data, core_cf->doc_root.data,
-                           core_cf->doc_root.len + 1);
+    loc.data = ngx_cpystrn(r->path.data, clcf->doc_root.data,
+                           clcf->doc_root.len + 1);
     file = ngx_cpystrn(loc.data, r->uri.data, r->uri.len + 1);
     r->path.len = file - r->path.data;
 
     test_dir = 1;
 
-    index = (ngx_str_t *) cf->indices->elts;
-    for (i = 0; i < cf->indices->nelts; i++) {
+    index = (ngx_str_t *) icf->indices.elts;
+    for (i = 0; i < icf->indices.nelts; i++) {
 
         if (index[i].data[0] != '/') {
             ngx_memcpy(file, index[i].data, index[i].len + 1);
@@ -147,8 +131,8 @@ ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        r->file.name.data = name; 
-        r->file.fd = fd; 
+        r->file.name.data = name;
+        r->file.fd = fd;
 
         if (index[i].data[0] == '/') {
             r->file.name.len = index[i].len;
@@ -157,7 +141,7 @@ ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
 
         } else {
             loc.len = r->uri.len + index[i].len;
-            r->file.name.len = core_cf->doc_root.len + r->uri.len
+            r->file.name.len = clcf->doc_root.len + r->uri.len
                                + index[i].len;
         }
 
@@ -178,9 +162,9 @@ static int ngx_http_index_test_dir(ngx_http_request_t *r)
 ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
 
 #if 0
-        if (r->path_err == NGX_EACCES) {
-            return NGX_HTTP_FORBIDDEN;
-        }
+    if (r->path_err == NGX_EACCES) {
+        return NGX_HTTP_FORBIDDEN;
+    }
 #endif
 
     if (ngx_file_type(r->path.data, &r->file.info) == -1) {
@@ -226,76 +210,88 @@ static void *ngx_http_index_create_conf(ngx_pool_t *pool)
 {
     ngx_http_index_conf_t  *conf;
 
-    ngx_test_null(conf, ngx_pcalloc(pool, sizeof(ngx_http_index_conf_t)),
+    ngx_test_null(conf, ngx_palloc(pool, sizeof(ngx_http_index_conf_t)),
                   NGX_CONF_ERROR);
 
-    ngx_test_null(conf->indices,
-                  ngx_create_array(pool, 3, sizeof(ngx_str_t)),
-                  NGX_CONF_ERROR);
+    ngx_init_array(conf->indices, pool, 3, sizeof(ngx_str_t), NGX_CONF_ERROR);
+    conf->max_index_len = 0;
 
     return conf;
 }
 
 
-/* STUB */
+/* TODO: remove duplicate indices */
+
 static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
 {
-#if 0
-    ngx_http_index_conf_t *prev = (ngx_http_index_conf_t *) parent;
-#endif
-    ngx_http_index_conf_t *conf = (ngx_http_index_conf_t *) child;
-    ngx_str_t  *index;
+    ngx_http_index_conf_t *prev = parent;
+    ngx_http_index_conf_t *conf = child;
 
-    if (conf->max_index_len == 0) {
-        ngx_test_null(index, ngx_push_array(conf->indices), NGX_CONF_ERROR);
-        index->len = sizeof(NGX_HTTP_INDEX) - 1;
-        index->data = NGX_HTTP_INDEX;
-        conf->max_index_len = sizeof(NGX_HTTP_INDEX);
-    }
-
-    /* FAIL: if first index is started with '/' */
-
-    return NULL;
-}
-
-
-#if 0
-static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
-{
-    ngx_http_index_conf_t *prev = (ngx_http_index_conf_t *) parent;
-    ngx_http_index_conf_t *conf = (ngx_http_index_conf_t *) child;
-    ngx_str_t  *index;
+    int         i;
+    ngx_str_t  *index, *prev_index;
 
     if (conf->max_index_len == 0) {
         if (prev->max_index_len != 0) {
-            return prev;
+            ngx_memcpy(conf, prev, sizeof(ngx_http_index_conf_t)); 
+            return NGX_CONF_OK;
         }
 
-        ngx_test_null(index, ngx_push_array(conf->indices), NULL);
-        index->len = sizeof(NGX_HTTP_INDEX) - 1;
-        index->data = NGX_HTTP_INDEX;
-        conf->max_index_len = sizeof(NGX_HTTP_INDEX);
+        ngx_test_null(index, ngx_push_array(&conf->indices), NGX_CONF_ERROR);
+        index->len = sizeof(NGX_HTTP_DEFAULT_INDEX) - 1;
+        index->data = NGX_HTTP_DEFAULT_INDEX;
+        conf->max_index_len = sizeof(NGX_HTTP_DEFAULT_INDEX);
+
+        return NGX_CONF_OK;
     }
 
-    return conf;
+    if (prev->max_index_len != 0) {
+
+        prev_index = prev->indices.elts;
+        for (i = 0; i < prev->indices.nelts; i++) {
+            ngx_test_null(index, ngx_push_array(&conf->indices),
+                          NGX_CONF_ERROR);
+            index->len = prev_index[i].len;
+            index->data = prev_index[i].data;
+        }
+    }
+
+    if (conf->max_index_len < prev->max_index_len) {
+        conf->max_index_len = prev->max_index_len;
+    }
+
+    return NGX_CONF_OK;
 }
-#endif
+
+
+/* TODO: check duplicate indices */
 
 static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
-                                      char *conf)
+                                      void *conf)
 {
-    ngx_http_index_conf_t *lcf = (ngx_http_index_conf_t *) conf;
-    int  i;
+    ngx_http_index_conf_t *icf = conf;
+
+    int         i;
     ngx_str_t  *index, *value;
 
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
+
+    if (value[1].data[0] == '/' && icf->indices.nelts == 0) {
+        ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
+                     "first index \"%s\" must not be absolute", value[1].data);
+        return ngx_conf_errstr;
+    }
+
     for (i = 1; i < cf->args->nelts; i++) {
-        ngx_test_null(index, ngx_push_array(lcf->indices), NGX_CONF_ERROR);
+        if (value[i].len == 0) {
+            return "is invalid";
+        }
+
+        ngx_test_null(index, ngx_push_array(&icf->indices), NGX_CONF_ERROR);
         index->len = value[i].len;
         index->data = value[i].data;
 
-        if (lcf->max_index_len < index->len) {
-            lcf->max_index_len = index->len;
+        if (icf->max_index_len < index->len + 1) {
+            icf->max_index_len = index->len + 1;
         }
     }
 
