@@ -5,8 +5,8 @@
 #define SOLARIS  1
 
 #define _REENTRANT
-#define _FILE_OFFSET_BITS  64   /* must be before sys/types.h */
 
+#define _FILE_OFFSET_BITS  64   /* must be before sys/types.h */
 
 #include <unistd.h>
 #include <stddef.h>             /* offsetof */
@@ -26,6 +26,10 @@
 
 
 typedef uint32_t  u_int32_t;
+
+#define  QD_FMT   "%lld"
+#define  QX_FMT   "%llx"
+#define  OFF_FMT  "%lld"
 
 
 #ifndef HAVE_SELECT

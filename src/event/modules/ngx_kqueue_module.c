@@ -6,9 +6,14 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_connection.h>
 #include <ngx_event.h>
 #include <ngx_kqueue_module.h>
+
+
+typedef struct {
+    int  changes;
+    int  events;
+} ngx_kqueue_conf_t;
 
 
 static int ngx_kqueue_init(ngx_log_t *log);
@@ -210,7 +215,7 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
     c = ev->data;
 
 #if (NGX_DEBUG_EVENT)
-    ngx_log_debug(ev->log, "kqueue set event: %d: ft:%d f:%08x" _
+    ngx_log_debug(ev->log, "kqueue set event: %d: ft:%d fl:%08x" _
                   c->fd _ filter _ flags);
 #endif
 
@@ -322,13 +327,13 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 #if (NGX_DEBUG_EVENT)
         if (event_list[i].ident > 0x8000000) {
             ngx_log_debug(log,
-                          "kevent: %08x: ft:%d f:%08x ff:%08x d:%d ud:%08x" _
+                          "kevent: %08x: ft:%d fl:%08x ff:%08x d:%d ud:%08x" _
                           event_list[i].ident _ event_list[i].filter _
                           event_list[i].flags _ event_list[i].fflags _
                           event_list[i].data _ event_list[i].udata);
         } else {
             ngx_log_debug(log,
-                          "kevent: %d: ft:%d f:%08x ff:%08x d:%d ud:%08x" _
+                          "kevent: %d: ft:%d fl:%08x ff:%08x d:%d ud:%08x" _
                           event_list[i].ident _ event_list[i].filter _
                           event_list[i].flags _ event_list[i].fflags _
                           event_list[i].data _ event_list[i].udata);

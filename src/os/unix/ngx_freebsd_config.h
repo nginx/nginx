@@ -22,6 +22,11 @@
 #include <osreldate.h>
 
 
+#define  QD_FMT   "%qd"
+#define  QX_FMT   "%qx"
+#define  OFF_FMT  "%qd"
+
+
 #ifndef HAVE_SELECT
 #define HAVE_SELECT  1
 #endif

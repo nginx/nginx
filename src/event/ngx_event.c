@@ -6,7 +6,7 @@
 #include <ngx_event.h>
 
 
-#define DEF_CONNECTIONS  1024
+#define DEF_CONNECTIONS  512
 
 
 extern ngx_module_t ngx_select_module;
@@ -367,15 +367,6 @@ static char *ngx_event_init_conf(ngx_pool_t *pool, void *conf)
 
 #if (HAVE_KQUEUE)
 
-#if 0
-    if (ecf->connections != NGX_CONF_UNSET) {
-        ecf->connections = (ngx_max_connections < DEF_CONNECTIONS) ?
-                                        ngx_max_connections : DEF_CONNECTIONS;
-
-    } else if (ecf->connections > ngx_max_connections) {
-    }
-#endif
-
     ngx_conf_init_value(ecf->connections, DEF_CONNECTIONS);
     ngx_conf_init_value(ecf->use, ngx_kqueue_module.ctx_index);
 
@@ -391,6 +382,14 @@ static char *ngx_event_init_conf(ngx_pool_t *pool, void *conf)
 
     ngx_conf_init_value(ecf->use, ngx_select_module.ctx_index);
 
+#endif
+
+#if (WIN32)
+    /*
+     * Winsock assignes a socket number according to 4 * N + M,
+     * where M is the constant 32 (98SE), 88 (NT) or 100 (W2K).
+     * So to find a connection we divide a socket number by 4.
+     */
 #endif
 
     ngx_conf_init_value(ecf->timer_queues, 10);

@@ -2,25 +2,20 @@
 #define _NGX_LINUX_CONFIG_H_INCLUDED_
 
 
+#define _GNU_SOURCE             /* pread, pwrite, gethostname, bzero */
+
 #define _FILE_OFFSET_BITS  64
 #define _LARGEFILE_SOURCE
 
 
-#define _XOPEN_SOURCE 500       /* pread, pwrite */
 #include <unistd.h>
-#undef  _XOPEN_SOURCE 500
-
 #include <stddef.h>             /* offsetof */
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <time.h>
-
-#define __USE_BSD               /* bzero */
 #include <string.h>
-#undef  __USE_BSD
-
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/select.h>
@@ -37,6 +32,11 @@
 typedef unsigned int    u_int;
 typedef unsigned short  u_short;
 typedef unsigned char   u_char;
+
+
+#define  QD_FMT         "%qd"
+#define  QX_FMT         "%qx"
+#define  OFF_FMT        "%qd"
 
 
 #ifndef HAVE_SELECT

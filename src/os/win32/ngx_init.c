@@ -26,19 +26,64 @@ static GUID tf_guid = WSAID_TRANSMITFILE;
 
 int ngx_os_init(ngx_log_t *log)
 {
-    DWORD    bytes;
-    SOCKET   s;
-    WSADATA  wsd;
+    u_int            sp;
+    DWORD            bytes;
+    SOCKET           s;
+    WSADATA          wsd;
+    OSVERSIONINFOEX  osvi;
+
+    /* get Windows version */
+
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+    osviex = GetVersionEx((OSVERSIONINFO *) &osvi);
+
+    if (osviex == 0) {
+        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+        if (GetVersionEx((OSVERSIONINFO *) &osvi) == 0)
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          "GetVersionEx() failed");
+            return NGX_ERROR;
+        }
+    }
+
+    /*
+     *  Windows 95       1400
+     *  Windows 98       1410
+     *  Windows ME       1490
+     *  Windows NT 3.51  2351
+     *  Windows NT 4.0   2400
+     *  Windows 2000     2500
+     *  Windows XP       2501
+     *  Windows 2003     2502
+     */
+
+    ngx_win32_version = osvi.dwPlatformId * 1000
+                        + osvi.dwMajorVersion * 100
+                        + osvi.dwMinorVersion;
+
+    if (osviex) {
+        sp = osvi.wServicePackMajor * 100 + osvi.wServicePackMinor;
+
+        ngx_log_error(NGX_LOG_INFO, log, 0,
+                      "OS: %u build:%u, %s, SP:%u, suite:%x, type:%u",
+                      ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
+                      sp, osvi.wSuiteMask, osvi.wProductType);
+
+    } else {
+        ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %u build:%u, %s",
+                      ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion);
+    }
+
 
     /* init Winsock */
 
     if (WSAStartup(MAKEWORD(2,2), &wsd) != 0) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                      "WSAStartup failed");
+                      "WSAStartup() failed");
         return NGX_ERROR;
     }
-
-    ngx_log_error(NGX_LOG_INFO, log, 0, "max sockets: %d", wsd.iMaxSockets);
 
     /* get AcceptEx(), GetAcceptExSockAddrs() and TransmitFile() addresses */
 

@@ -5,37 +5,36 @@
 #include <ngx_listen.h>
 
 #include <ngx_event.h>
+#if 0
 #include <ngx_event_close.h>
 #include <ngx_iocp_module.h>
-
-#include <ngx_event_acceptex.h>
-
+#endif
 
 
-void ngx_event_acceptex(ngx_event_t *ev)
+void ngx_event_acceptex(ngx_event_t *rev)
 {
     ngx_connection_t  *c;
 
-    c = (ngx_connection_t *) ev->data;
+    c = (ngx_connection_t *) rev->data;
 
-    if (ev->ovlp.error) {
-        ngx_log_error(NGX_LOG_CRIT, ev->log, ev->ovlp.error,
-                      "AcceptEx() falied for %s", c->addr_text.data);
+ngx_log_debug(rev->log, "ADDR: %s" _ c->addr_text.data);
+
+    if (rev->ovlp.error) {
+        ngx_log_error(NGX_LOG_CRIT, rev->log, rev->ovlp.error,
+                      "AcceptEx() failed for %s", c->addr_text.data);
         return;
     }
 
-    /* TODO: can we do SO_UPDATE_ACCEPT_CONTEXT just before shutdown() ???
-       or AcceptEx's context will be lost ??? */
+    /* SO_UPDATE_ACCEPT_CONTEXT is required for shutdown() to work */
 
-     /* SO_UPDATE_ACCEPT_CONTEXT is required for shutdown() to work */
     if (setsockopt(c->fd, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
                    (char *)&c->listening->fd, sizeof(ngx_socket_t)) == -1)
     {
         ngx_log_error(NGX_LOG_CRIT, ev->log, ngx_socket_errno,
                       "setsockopt(SO_UPDATE_ACCEPT_CONTEXT) failed for %s",
                       c->addr_text.data);
-
-        /* non fatal - we can not only do lingering close */
+    } else {
+        accept_context_updated = 1;
     }
 
     getacceptexsockaddrs(c->data, 0,
@@ -75,8 +74,7 @@ int ngx_event_post_acceptex(ngx_listen_t *ls, int n)
 
         if (s == -1) {
             ngx_log_error(NGX_LOG_ALERT, ls->log, ngx_socket_errno,
-                          ngx_socket_n " for AcceptEx(%s) falied",
-                          ls->addr_text.data);
+                          ngx_socket_n " for AcceptEx() post failed");
 
             return NGX_ERROR;
         }
@@ -132,7 +130,7 @@ int ngx_event_post_acceptex(ngx_listen_t *ls, int n)
         ngx_memcpy(c->log, ls->log, sizeof(ngx_log_t));
         rev->log = wev->log = c->log;
 
-        if (ngx_iocp_add_event(rev) == NGX_ERROR) {
+        if (ngx_add_event(rev, 0, NGX_IOCP_IO) == NGX_ERROR) {
             return NGX_ERROR;
         }
 

@@ -9,16 +9,14 @@
 #define NGX_INVALID_INDEX  0x80000000
 
 
-#if 0
-typedef struct ngx_event_s       ngx_event_t;
-#endif
-
 #if (HAVE_IOCP)
+
 typedef struct {
     WSAOVERLAPPED    ovlp;
     ngx_event_t     *event;
     int              error;
 } ngx_event_ovlp_t;
+
 #endif
 
 
@@ -80,6 +78,10 @@ struct ngx_event_s {
     unsigned         unexpected_eof:1;
 
     unsigned         deferred_accept:1;
+
+#if (WIN32)
+    unsigned         accept_context_updated:1;
+#endif
 
 #if (HAVE_KQUEUE)
     unsigned         eof:1;
@@ -283,6 +285,13 @@ typedef struct {
 #endif
 
 #endif
+
+
+#if (HAVE_IOCP_EVENT)
+#define NGX_IOCP_ACCEPT      0
+#define NGX_IOCP_IO          1
+#endif
+
 
 #define ngx_del_timer        ngx_event_del_timer
 
