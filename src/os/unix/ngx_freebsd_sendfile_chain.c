@@ -44,7 +44,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 #if (HAVE_KQUEUE)
 
     if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && wev->kq_eof) {
-        ngx_log_error(NGX_LOG_ERR, c->log, wev->kq_errno,
+        ngx_log_error(NGX_LOG_INFO, c->log, wev->kq_errno,
                       "kevent() reported about closed connection");
 
         wev->error = 1;
@@ -153,7 +153,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             if (ngx_freebsd_use_tcp_nopush && !c->tcp_nopush) {
                 c->tcp_nopush = 1;
 
-ngx_log_debug(c->log, "NOPUSH");
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "tcp_nopush");
 
                 if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
                     ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
@@ -193,9 +193,9 @@ ngx_log_debug(c->log, "NOPUSH");
                 }
 
                 if (err == NGX_EAGAIN || err == NGX_EINTR) {
-                    ngx_log_error(NGX_LOG_INFO, c->log, err,
-                                  "sendfile() sent only " OFF_T_FMT " bytes",
-                                  sent);
+                    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, err,
+                                   "sendfile() sent only " OFF_T_FMT " bytes",
+                                   sent);
 
                 } else {
                     wev->error = 1;
@@ -205,22 +205,23 @@ ngx_log_debug(c->log, "NOPUSH");
                 }
             }
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-            ngx_log_debug(c->log, "sendfile: %d, @%qd %qd:%d" _
-                          rc _ file->file_pos _ sent _ fsize + hsize);
-#endif
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "sendfile: %d, @" OFF_T_FMT " " OFF_T_FMT ":%d",
+                           rc, file->file_pos, sent, fsize + hsize);
 
         } else {
             rc = writev(c->fd, header.elts, header.nelts);
 
             if (rc == -1) {
                 err = ngx_errno;
-                if (err == NGX_EAGAIN) {
-                    ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EAGAIN");
 
-                } else if (err == NGX_EINTR) {
+                if (err == NGX_EINTR) {
                     eintr = 1;
-                    ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EINTR");
+                }
+
+                if (err == NGX_EAGAIN || err == NGX_EINTR) {
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                                   "writev() not ready");
 
                 } else {
                     wev->error = 1;
@@ -231,9 +232,8 @@ ngx_log_debug(c->log, "NOPUSH");
 
             sent = rc > 0 ? rc : 0;
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-            ngx_log_debug(c->log, "writev: %qd" _ sent);
-#endif
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "writev: " OFF_T_FMT, sent);
         }
 
         c->sent += sent;

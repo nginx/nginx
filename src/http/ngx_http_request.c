@@ -657,6 +657,24 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
             /* there was error while a header line parsing */
 
+#if (NGX_LOG_DEBUG)
+            if (rc == NGX_HTTP_PARSE_INVALID_HEADER) {
+                char  *p;
+                for (p = r->header_name_start;
+                     p < r->header_in->last - 1;
+                     p++)
+                {
+                    if (*p == CR || *p == LF) {
+                        break;
+                    }
+                }
+                *p = '\0';
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                               "http invalid header: \"%s\"",
+                               r->header_name_start);
+            }
+#endif
+
             ngx_http_client_error(r, rc, NGX_HTTP_BAD_REQUEST);
             return;
         }
@@ -1419,7 +1437,7 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
         return;
     }
 
-    if (error) {
+    if (error && r->headers_out.status == 0) {
         r->headers_out.status = error;
     }
 

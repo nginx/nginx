@@ -207,6 +207,23 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 #endif
 
 #if (NGX_DEBUG)
+#define ngx_log_debug4(level, log, err, fmt, arg1, arg2, arg3, arg4) \
+    if (log->log_level & level) \
+        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, arg1, arg2, arg3, arg4)
+#else
+#define ngx_log_debug4(level, log, err, fmt, arg1, arg2, arg3, arg4)
+#endif
+
+#if (NGX_DEBUG)
+#define ngx_log_debug5(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5) \
+    if (log->log_level & level) \
+        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, \
+                           arg1, arg2, arg3, arg4, arg5)
+#else
+#define ngx_log_debug5(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5)
+#endif
+
+#if (NGX_DEBUG)
 #define ngx_log_debug6(level, log, err, fmt, \
                        arg1, arg2, arg3, arg4, arg5, arg6) \
     if (log->log_level & level) \
@@ -250,6 +267,22 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
         ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3)
 #else
 #define ngx_log_debug3(level, log, err, fmt, arg1, arg2, arg3)
+#endif
+
+#if (NGX_DEBUG)
+#define ngx_log_debug4(level, log, err, fmt, arg1, arg2, arg3, arg4) \
+    if (log->log_level & level) \
+        ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3, arg4)
+#else
+#define ngx_log_debug4(level, log, err, fmt, arg1, arg2, arg3, arg4)
+#endif
+
+#if (NGX_DEBUG)
+#define ngx_log_debug5(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5) \
+    if (log->log_level & level) \
+        ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3, arg4, arg5)
+#else
+#define ngx_log_debug5(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5)
 #endif
 
 #if (NGX_DEBUG)
