@@ -9,16 +9,17 @@
 
 typedef struct ngx_event_pipe_s  ngx_event_pipe_t;
 
-typedef int (*ngx_event_pipe_input_filter_pt)(ngx_event_pipe_t *p,
-                                              ngx_hunk_t *hunk);
-typedef int (*ngx_event_pipe_output_filter_pt)(void *data, ngx_chain_t *chain);
+typedef ngx_int_t (*ngx_event_pipe_input_filter_pt)(ngx_event_pipe_t *p,
+                                                    ngx_buf_t *buf);
+typedef ngx_int_t (*ngx_event_pipe_output_filter_pt)(void *data,
+                                                     ngx_chain_t *chain);
 
 
 struct ngx_event_pipe_s {
     ngx_connection_t  *upstream;
     ngx_connection_t  *downstream;
 
-    ngx_chain_t       *free_raw_hunks;
+    ngx_chain_t       *free_raw_bufs;
     ngx_chain_t       *in;
     ngx_chain_t      **last_in;
 
@@ -30,14 +31,14 @@ struct ngx_event_pipe_s {
 
     /*
      * the input filter i.e. that moves HTTP/1.1 chunks
-     * from the raw hunks to an incoming chain
+     * from the raw bufs to an incoming chain
      */
 
     ngx_event_pipe_input_filter_pt    input_filter;
-    void                              *input_ctx;
+    void                             *input_ctx;
 
     ngx_event_pipe_output_filter_pt   output_filter;
-    void                              *output_ctx;
+    void                             *output_ctx;
 
     unsigned           read:1;
     unsigned           cachable:1;
@@ -51,16 +52,16 @@ struct ngx_event_pipe_s {
     unsigned           downstream_error:1;
     unsigned           cyclic_temp_file:1;
 
-    int                hunks;
+    ngx_int_t          allocated;
     ngx_bufs_t         bufs;
-    ngx_hunk_tag_t     tag;
+    ngx_buf_tag_t      tag;
 
     size_t             busy_size;
 
     off_t              read_length;
 
     off_t              max_temp_file_size;
-    int                temp_file_write_size;
+    size_t             temp_file_write_size;
 
     ngx_msec_t         read_timeout;
     ngx_msec_t         send_timeout;
@@ -69,9 +70,9 @@ struct ngx_event_pipe_s {
     ngx_pool_t        *pool;
     ngx_log_t         *log;
 
-    ngx_chain_t       *preread_hunks;
-    int                preread_size;
-    ngx_hunk_t        *hunk_to_file;
+    ngx_chain_t       *preread_bufs;
+    size_t             preread_size;
+    ngx_buf_t         *buf_to_file;
 
     ngx_temp_file_t   *temp_file;
 
@@ -79,8 +80,8 @@ struct ngx_event_pipe_s {
 };
 
 
-int ngx_event_pipe(ngx_event_pipe_t *p, int do_write);
-int ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_hunk_t *hunk);
+ngx_int_t ngx_event_pipe(ngx_event_pipe_t *p, int do_write);
+ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf);
 
 
 #endif /* _NGX_EVENT_PIPE_H_INCLUDED_ */

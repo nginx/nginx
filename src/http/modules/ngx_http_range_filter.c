@@ -406,7 +406,7 @@ static ngx_int_t ngx_http_range_body_filter(ngx_http_request_t *r,
                                             ngx_chain_t *in)
 {
     ngx_uint_t                    i;
-    ngx_hunk_t                   *h;
+    ngx_buf_t                    *b;
     ngx_chain_t                  *out, *hcl, *rcl, *dcl, **ll;
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *ctx;
@@ -417,18 +417,15 @@ static ngx_int_t ngx_http_range_body_filter(ngx_http_request_t *r,
 
     /*
      * the optimized version for the static files only
-     * that are passed in the single file hunk
+     * that are passed in the single file buf
      */
 
-    if (in
-        && in->hunk->type & NGX_HUNK_FILE
-        && in->hunk->type & NGX_HUNK_LAST)
-    {
+    if (in && in->buf->in_file && in->buf->last_buf) {
         range = r->headers_out.ranges.elts;
 
         if (r->headers_out.ranges.nelts == 1) {
-            in->hunk->file_pos = range->start;
-            in->hunk->file_last = range->end;
+            in->buf->file_pos = range->start;
+            in->buf->file_last = range->end;
 
             return ngx_http_next_body_filter(r, in);
         }
@@ -446,33 +443,33 @@ static ngx_int_t ngx_http_range_body_filter(ngx_http_request_t *r,
              * "Content-Range: bytes "
              */
 
-            ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
-            h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_MEMORY;
-            h->pos = ctx->boundary_header.data;
-            h->last = ctx->boundary_header.data + ctx->boundary_header.len;
+            ngx_test_null(b, ngx_calloc_buf(r->pool), NGX_ERROR);
+            b->memory = 1;
+            b->pos = ctx->boundary_header.data;
+            b->last = ctx->boundary_header.data + ctx->boundary_header.len;
 
             ngx_test_null(hcl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
-            hcl->hunk = h;
+            hcl->buf = b;
 
             /* "SSSS-EEEE/TTTT" CRLF CRLF */
 
-            ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
-            h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
-            h->pos = range[i].content_range.data;
-            h->last = range[i].content_range.data + range[i].content_range.len;
+            ngx_test_null(b, ngx_calloc_buf(r->pool), NGX_ERROR);
+            b->temporary = 1;
+            b->pos = range[i].content_range.data;
+            b->last = range[i].content_range.data + range[i].content_range.len;
 
             ngx_test_null(rcl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
-            rcl->hunk = h;
+            rcl->buf = b;
 
             /* the range data */
 
-            ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
-            h->type = NGX_HUNK_FILE;
-            h->file_pos = range[i].start;
-            h->file_last = range[i].end;
-            h->file = in->hunk->file;
+            ngx_test_null(b, ngx_calloc_buf(r->pool), NGX_ERROR);
+            b->in_file = 1;
+            b->file_pos = range[i].start;
+            b->file_last = range[i].end;
+            b->file = in->buf->file;
 
-            ngx_alloc_link_and_set_hunk(dcl, h, r->pool, NGX_ERROR);
+            ngx_alloc_link_and_set_buf(dcl, b, r->pool, NGX_ERROR);
 
             *ll = hcl;
             hcl->next = rcl;
@@ -482,14 +479,15 @@ static ngx_int_t ngx_http_range_body_filter(ngx_http_request_t *r,
 
         /* the last boundary CRLF "--0123456789--" CRLF  */
 
-        ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
-        h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP|NGX_HUNK_LAST;
-        ngx_test_null(h->pos, ngx_palloc(r->pool, 4 + 10 + 4), NGX_ERROR);
-        h->last = ngx_cpymem(h->pos, ctx->boundary_header.data, 4 + 10);
-        *h->last++ = '-'; *h->last++ = '-';
-        *h->last++ = CR; *h->last++ = LF;
+        ngx_test_null(b, ngx_calloc_buf(r->pool), NGX_ERROR);
+        b->temporary = 1;
+        b->last_buf = 1;
+        ngx_test_null(b->pos, ngx_palloc(r->pool, 4 + 10 + 4), NGX_ERROR);
+        b->last = ngx_cpymem(b->pos, ctx->boundary_header.data, 4 + 10);
+        *b->last++ = '-'; *b->last++ = '-';
+        *b->last++ = CR; *b->last++ = LF;
 
-        ngx_alloc_link_and_set_hunk(hcl, h, r->pool, NGX_ERROR);
+        ngx_alloc_link_and_set_buf(hcl, b, r->pool, NGX_ERROR);
         *ll = hcl;
 
         return ngx_http_next_body_filter(r, out);

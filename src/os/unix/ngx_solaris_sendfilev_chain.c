@@ -40,7 +40,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
         ngx_init_array(vec, c->pool, 10, sizeof(sendfilevec_t),
                        NGX_CHAIN_ERROR);
 
-        /* create the sendfilevec and coalesce the neighbouring hunks */
+        /* create the sendfilevec and coalesce the neighbouring bufs */
 
         for (cl = in; cl && vec.nelts < IOV_MAX; cl = cl->next) {
             if (ngx_hunk_special(cl->hunk)) {
@@ -83,8 +83,8 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
         }
 
         /*
-         * the tail is the rest of the chain that exceeded a single
-         * sendfilev() capability, IOV_MAX in Solaris is only 16
+         * the tail is the rest of the chain that exceedes a single
+         * sendfilev() capability, IOV_MAX in Solaris is limited by 16
          */
 
         tail = cl;

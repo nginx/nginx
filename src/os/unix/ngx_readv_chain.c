@@ -10,10 +10,10 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
     u_char        *prev;
     ssize_t        n, size;
-    struct iovec  *iov;
     ngx_err_t      err;
     ngx_array_t    io;
     ngx_event_t   *rev;
+    struct iovec  *iov;
 
     rev = c->read; 
 
@@ -50,20 +50,20 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
     ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_ERROR);
 
-    /* coalesce the neighbouring hunks */
+    /* coalesce the neighbouring bufs */
 
     while (chain) {
-        if (prev == chain->hunk->last) {
-            iov->iov_len += chain->hunk->end - chain->hunk->last;
+        if (prev == chain->buf->last) {
+            iov->iov_len += chain->buf->end - chain->buf->last;
 
         } else {
             ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
-            iov->iov_base = (void *) chain->hunk->last;
-            iov->iov_len = chain->hunk->end - chain->hunk->last;
+            iov->iov_base = (void *) chain->buf->last;
+            iov->iov_len = chain->buf->end - chain->buf->last;
         }
 
-        size += chain->hunk->end - chain->hunk->last;
-        prev = chain->hunk->end;
+        size += chain->buf->end - chain->buf->last;
+        prev = chain->buf->end;
         chain = chain->next;
     }
 
@@ -137,10 +137,10 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
     u_char        *prev;
     ssize_t        n, size;
-    struct iovec  *iov;
     ngx_err_t      err;
     ngx_array_t    io;
     ngx_event_t   *rev;
+    struct iovec  *iov;
 
     prev = NULL;
     iov = NULL;
@@ -148,20 +148,20 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
     ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_ERROR);
 
-    /* coalesce the neighbouring hunks */
+    /* coalesce the neighbouring bufs */
 
     while (chain) {
-        if (prev == chain->hunk->last) {
-            iov->iov_len += chain->hunk->end - chain->hunk->last;
+        if (prev == chain->buf->last) {
+            iov->iov_len += chain->buf->end - chain->buf->last;
 
         } else {
             ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
-            iov->iov_base = chain->hunk->last;
-            iov->iov_len = chain->hunk->end - chain->hunk->last;
+            iov->iov_base = chain->buf->last;
+            iov->iov_len = chain->buf->end - chain->buf->last;
         }
 
-        size += chain->hunk->end - chain->hunk->last;
-        prev = chain->hunk->end;
+        size += chain->buf->end - chain->buf->last;
+        prev = chain->buf->end;
         chain = chain->next;
     }
 

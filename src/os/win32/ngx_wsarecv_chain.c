@@ -23,20 +23,20 @@ ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
     ngx_init_array(io, c->pool, 10, sizeof(WSABUF), NGX_ERROR);
 
-    /* coalesce the neighbouring hunks */
+    /* coalesce the neighbouring bufs */
 
     while (chain) {
-        if (prev == chain->hunk->last) {
-            wsabuf->len += chain->hunk->end - chain->hunk->last;
+        if (prev == chain->buf->last) {
+            wsabuf->len += chain->buf->end - chain->buf->last;
 
         } else {
             ngx_test_null(wsabuf, ngx_push_array(&io), NGX_ERROR);
-            wsabuf->buf = (char *) chain->hunk->last;
-            wsabuf->len = chain->hunk->end - chain->hunk->last;
+            wsabuf->buf = (char *) chain->buf->last;
+            wsabuf->len = chain->buf->end - chain->buf->last;
         }
 
-        size += chain->hunk->end - chain->hunk->last;
-        prev = chain->hunk->end;
+        size += chain->buf->end - chain->buf->last;
+        prev = chain->buf->end;
         chain = chain->next;
     }
 

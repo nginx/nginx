@@ -11,7 +11,7 @@ CORE_DEPS="src/core/nginx.h \
             src/core/ngx_alloc.h \
             src/core/ngx_array.h \
             src/core/ngx_table.h \
-            src/core/ngx_hunk.h \
+            src/core/ngx_buf.h \
             src/core/ngx_string.h \
             src/core/ngx_parse.h \
             src/core/ngx_inet.h \
@@ -29,7 +29,7 @@ CORE_SRCS="src/core/nginx.c \
             src/core/ngx_log.c \
             src/core/ngx_alloc.c \
             src/core/ngx_array.c \
-            src/core/ngx_hunk.c \
+            src/core/ngx_buf.c \
             src/core/ngx_output_chain.c \
             src/core/ngx_string.c \
             src/core/ngx_parse.c \

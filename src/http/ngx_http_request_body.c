@@ -12,7 +12,7 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r)
 {
     ssize_t                    size;
-    ngx_hunk_t                *h;
+    ngx_buf_t                 *b;
     ngx_chain_t               *cl;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -22,14 +22,14 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r)
 
         /* there is the pre-read part of the request body */
 
-        ngx_test_null(h, ngx_calloc_hunk(r->pool),
+        ngx_test_null(b, ngx_calloc_buf(r->pool),
                       NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-        h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
-        h->start = h->pos = r->header_in->pos;
-        h->end = h->last = r->header_in->last;
+        b->temporary = 1;
+        b->start = b->pos = r->header_in->pos;
+        b->end = b->last = r->header_in->last;
 
-        ngx_alloc_link_and_set_hunk(r->request_body->bufs, h, r->pool,
+        ngx_alloc_link_and_set_buf(r->request_body->bufs, b, r->pool,
                                     NGX_HTTP_INTERNAL_SERVER_ERROR);
 
         if (size >= r->headers_in.content_length_n) {
@@ -61,11 +61,11 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r)
         size = clcf->client_body_buffer_size;
     }
 
-    ngx_test_null(r->request_body->buf, ngx_create_temp_hunk(r->pool, size),
+    ngx_test_null(r->request_body->buf, ngx_create_temp_buf(r->pool, size),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    ngx_alloc_link_and_set_hunk(cl, r->request_body->buf, r->pool,
-                                NGX_HTTP_INTERNAL_SERVER_ERROR);
+    ngx_alloc_link_and_set_buf(cl, r->request_body->buf, r->pool,
+                               NGX_HTTP_INTERNAL_SERVER_ERROR);
 
     if (r->request_body->bufs) {
         r->request_body->bufs->next = cl;
@@ -107,7 +107,7 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 {
     size_t                     size;
     ssize_t                    n;
-    ngx_hunk_t                *h;
+    ngx_buf_t                 *b;
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -199,21 +199,20 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        h = ngx_calloc_hunk(r->pool);
-        if (h == NULL) {
+        if (!(b = ngx_calloc_buf(r->pool))) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        h->type = NGX_HUNK_FILE;
-        h->file_pos = 0;
-        h->file_last = r->request_body->temp_file->file.offset;
-        h->file = &r->request_body->temp_file->file;
+        b->in_file = 1;
+        b->file_pos = 0;
+        b->file_last = r->request_body->temp_file->file.offset;
+        b->file = &r->request_body->temp_file->file;
 
         if (r->request_body->bufs->next) {
-            r->request_body->bufs->next->hunk = h;
+            r->request_body->bufs->next->buf = b;
 
         } else {
-            r->request_body->bufs->hunk = h;
+            r->request_body->bufs->buf = b;
         }
     }
 

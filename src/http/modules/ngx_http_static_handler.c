@@ -67,7 +67,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     ngx_str_t                    name, location;
     ngx_err_t                    err;
     ngx_log_t                   *log;
-    ngx_hunk_t                  *h;
+    ngx_buf_t                   *b;
     ngx_chain_t                  out;
     ngx_file_info_t              fi;
     ngx_http_cleanup_t          *file_cleanup, *redirect_cleanup;
@@ -472,11 +472,11 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
 
     /* we need to allocate all before the header would be sent */
 
-    if (!(h = ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)))) {
+    if (!(b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t)))) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (!(h->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t)))) {
+    if (!(b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t)))) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -487,15 +487,19 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    h->type = r->main ? NGX_HUNK_FILE : NGX_HUNK_FILE|NGX_HUNK_LAST;
+    b->in_file = 1;
 
-    h->file_pos = 0;
-    h->file_last = ngx_file_size(&fi);
+    if (!r->main) {
+        b->last_buf = 1;
+    }
 
-    h->file->fd = fd;
-    h->file->log = log;
+    b->file_pos = 0;
+    b->file_last = ngx_file_size(&fi);
 
-    out.hunk = h;
+    b->file->fd = fd;
+    b->file->log = log;
+
+    out.buf = b;
     out.next = NULL;
 
     return ngx_http_output_filter(r, &out);

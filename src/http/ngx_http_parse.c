@@ -438,7 +438,7 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
 }
 
 
-ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
+ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
     u_char  c, ch, *p;
     enum {
@@ -455,9 +455,9 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
     } state;
 
     state = r->state;
-    p = h->pos;
+    p = b->pos;
 
-    while (p < h->last && state < sw_done) {
+    while (p < b->last && state < sw_done) {
         ch = *p++;
 
         switch (state) {
@@ -623,7 +623,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
         }
     }
 
-    h->pos = p;
+    b->pos = p;
 
     if (state == sw_done) {
         r->state = sw_start;

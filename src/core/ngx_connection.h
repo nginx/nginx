@@ -88,7 +88,7 @@ struct ngx_connection_s {
     socklen_t         local_socklen;
 #endif
 
-    ngx_hunk_t       *buffer;
+    ngx_buf_t        *buffer;
 
     ngx_int_t         number;
 

@@ -26,7 +26,7 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #include <ngx_parse.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
-#include <ngx_hunk.h>
+#include <ngx_buf.h>
 #include <ngx_array.h>
 #include <ngx_table.h>
 #include <ngx_types.h>

@@ -8,20 +8,20 @@
 
 
 ngx_inline static int ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx,
-                                                    ngx_hunk_t *hunk);
-static int ngx_output_chain_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
-                                      u_int sendfile);
+                                                    ngx_buf_t *buf);
+static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
+                                           ngx_uint_t sendfile);
 
 
 int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 {
     int           rc, last;
-    size_t        size, hsize;
+    size_t        size, bsize;
     ngx_chain_t  *cl, *out, **last_out;
 
     /*
      * the short path for the case when the ctx->in chain is empty
-     * and the incoming chain is empty too or it has the single hunk
+     * and the incoming chain is empty too or it has the single buf
      * that does not require the copy
      */
 
@@ -32,7 +32,7 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
         }
 
         if (in->next == NULL
-            && (!ngx_output_chain_need_to_copy(ctx, in->hunk)))
+            && (!ngx_output_chain_need_to_copy(ctx, in->buf)))
         {
             return ctx->output_filter(ctx->filter_ctx, in);
         }
@@ -55,11 +55,11 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
         while (ctx->in) {
 
             /*
-             * cycle while there are the ctx->in hunks
-             * or there are the free output hunks to copy in
+             * cycle while there are the ctx->in bufs
+             * or there are the free output bufs to copy in
              */
 
-            if (!ngx_output_chain_need_to_copy(ctx, ctx->in->hunk)) {
+            if (!ngx_output_chain_need_to_copy(ctx, ctx->in->buf)) {
 
                 /* move the chain link to the output chain */
 
@@ -73,15 +73,15 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 continue;
             }
 
-            if (ctx->hunk == NULL) {
+            if (ctx->buf == NULL) {
 
-                /* get the free hunk */
+                /* get the free buf */
 
                 if (ctx->free) {
-                    ctx->hunk = ctx->free->hunk;
+                    ctx->buf = ctx->free->buf;
                     ctx->free = ctx->free->next;
 
-                } else if (out || ctx->hunks == ctx->bufs.num) {
+                } else if (out || ctx->allocated == ctx->bufs.num) {
 
                     break;
 
@@ -89,44 +89,45 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
                     size = ctx->bufs.size;
 
-                    if (ctx->in->hunk->type & NGX_HUNK_LAST) {
+                    if (ctx->in->buf->last_buf) {
 
-                        hsize = ngx_hunk_size(ctx->in->hunk);
+                        bsize = ngx_buf_size(ctx->in->buf);
 
-                        if (hsize < ctx->bufs.size) {
+                        if (bsize < ctx->bufs.size) {
 
                            /*
-                            * allocate small temp hunk for the small last hunk
+                            * allocate small temp buf for the small last buf
                             * or its small last part
                             */
 
-                            size = hsize;
+                            size = bsize;
 
                         } else if (ctx->bufs.num == 1
-                                   && (hsize < ctx->bufs.size
+                                   && (bsize < ctx->bufs.size
                                                      + (ctx->bufs.size >> 2)))
                         {
                             /*
-                             * allocate a temp hunk that equals
-                             * to the last hunk if the last hunk size is lesser
-                             * than 1.25 of bufs.size and a temp hunk is single
+                             * allocate a temp buf that equals
+                             * to the last buf if the last buf size is lesser
+                             * than 1.25 of bufs.size and a temp buf is single
                              */
 
-                            size = hsize;
+                            size = bsize;
                         }
                     }
 
-                    ngx_test_null(ctx->hunk,
-                                  ngx_create_temp_hunk(ctx->pool, size),
-                                  NGX_ERROR);
-                    ctx->hunk->tag = ctx->tag;
-                    ctx->hunk->type |= NGX_HUNK_RECYCLED;
-                    ctx->hunks++;
+                    if (!(ctx->buf = ngx_create_temp_buf(ctx->pool, size))) {
+                        return NGX_ERROR;
+                    }
+
+                    ctx->buf->tag = ctx->tag;
+                    ctx->buf->recycled = 1;
+                    ctx->allocated++;
                 }
             }
 
-            rc = ngx_output_chain_copy_hunk(ctx->hunk, ctx->in->hunk,
-                                            ctx->sendfile);
+            rc = ngx_output_chain_copy_buf(ctx->buf, ctx->in->buf,
+                                           ctx->sendfile);
 
             if (rc == NGX_ERROR) {
                 return rc;
@@ -139,16 +140,16 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 return rc;
             }
 
-            /* delete the completed hunk from the ctx->in chain */
+            /* delete the completed buf from the ctx->in chain */
 
-            if (ngx_hunk_size(ctx->in->hunk) == 0) {
+            if (ngx_buf_size(ctx->in->buf) == 0) {
                 ctx->in = ctx->in->next;
             }
 
-            ngx_alloc_link_and_set_hunk(cl, ctx->hunk, ctx->pool, NGX_ERROR);
+            ngx_alloc_link_and_set_buf(cl, ctx->buf, ctx->pool, NGX_ERROR);
             *last_out = cl;
             last_out = &cl->next;
-            ctx->hunk = NULL;
+            ctx->buf = NULL;
         }
 
         if (out == NULL && last != NGX_NONE) {
@@ -168,26 +169,25 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
 
 ngx_inline static int ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx,
-                                                    ngx_hunk_t *hunk)
+                                                    ngx_buf_t *buf)
 {
-    if (ngx_hunk_special(hunk)) {
+    if (ngx_buf_special(buf)) {
         return 0;
     }
 
     if (!ctx->sendfile) {
-        if (!(hunk->type & NGX_HUNK_IN_MEMORY)) {
+        if (!ngx_buf_in_memory(buf)) {
             return 1;
         }
 
-        hunk->type &= ~NGX_HUNK_FILE;
+        buf->in_file = 0;
     }
 
-    if (ctx->need_in_memory && (!(hunk->type & NGX_HUNK_IN_MEMORY))) {
+    if (ctx->need_in_memory && !ngx_buf_in_memory(buf)) {
         return 1;
     }
 
-
-    if (ctx->need_in_temp && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP))) {
+    if (ctx->need_in_temp && (buf->memory || buf->mmap)) {
         return 1;
     }
 
@@ -195,29 +195,29 @@ ngx_inline static int ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx,
 }
 
 
-static int ngx_output_chain_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
-                                      u_int sendfile)
+static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
+                                           ngx_uint_t sendfile)
 {
     size_t   size;
     ssize_t  n;
 
-    size = ngx_hunk_size(src);
+    size = ngx_buf_size(src);
 
     if (size > (size_t) (dst->end - dst->pos)) {
         size = dst->end - dst->pos;
     }
 
-    if (src->type & NGX_HUNK_IN_MEMORY) {
+    if (ngx_buf_in_memory(src)) {
         ngx_memcpy(dst->pos, src->pos, size);
         src->pos += size;
         dst->last += size;
 
-        if (src->type & NGX_HUNK_FILE) {
+        if (src->in_file) {
             src->file_pos += size;
         }
 
-        if ((src->type & NGX_HUNK_LAST) && src->pos == src->last) {
-            dst->type |= NGX_HUNK_LAST;
+        if (src->last_buf && src->pos == src->last) {
+            dst->last_buf = 1;
         }
 
     } else {
@@ -246,11 +246,11 @@ static int ngx_output_chain_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
         dst->last += n;
 
         if (!sendfile) {
-            dst->type &= ~NGX_HUNK_FILE;
+            dst->in_file = 0;
         }
 
-        if ((src->type & NGX_HUNK_LAST) && src->file_pos == src->file_last) {
-            dst->type |= NGX_HUNK_LAST;
+        if (src->last_buf && src->file_pos == src->file_last) {
+            dst->last_buf = 1;
         }
     }
 
@@ -258,7 +258,7 @@ static int ngx_output_chain_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
 }
 
 
-int ngx_chain_writer(void *data, ngx_chain_t *in)
+ngx_int_t ngx_chain_writer(void *data, ngx_chain_t *in)
 {
     ngx_chain_writer_ctx_t *ctx = data;
 
@@ -266,7 +266,7 @@ int ngx_chain_writer(void *data, ngx_chain_t *in)
 
 
     for (/* void */; in; in = in->next) {
-        ngx_alloc_link_and_set_hunk(cl, in->hunk, ctx->pool, NGX_ERROR);
+        ngx_alloc_link_and_set_buf(cl, in->buf, ctx->pool, NGX_ERROR);
         *ctx->last = cl;
         ctx->last = &cl->next;
     }

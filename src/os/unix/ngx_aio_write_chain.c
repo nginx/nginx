@@ -19,7 +19,7 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
 
     while (cl) {
 
-        if (cl->hunk->last - cl->hunk->pos == 0) {
+        if (cl->buf->last - cl->buf->pos == 0) {
             cl = cl->next;
             continue;
         }
@@ -30,15 +30,15 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
             return cl;
         }
 
-        buf = cl->hunk->pos;
+        buf = cl->buf->pos;
         prev = buf;
         size = 0;
 
-        /* coalesce the neighbouring hunks */
+        /* coalesce the neighbouring bufs */
 
-        while (cl && prev == cl->hunk->pos) {
-            size += cl->hunk->last - cl->hunk->pos;
-            prev = cl->hunk->last;
+        while (cl && prev == cl->buf->pos) {
+            size += cl->buf->last - cl->buf->pos;
+            prev = cl->buf->last;
             cl = cl->next;
         }
 
@@ -60,14 +60,14 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         for (cl = in; cl; cl = cl->next) {
 
-            if (sent >= cl->hunk->last - cl->hunk->pos) {
-                sent -= cl->hunk->last - cl->hunk->pos;
-                cl->hunk->pos = cl->hunk->last;
+            if (sent >= cl->buf->last - cl->buf->pos) {
+                sent -= cl->buf->last - cl->buf->pos;
+                cl->buf->pos = cl->buf->last;
 
                 continue;
             }
 
-            cl->hunk->pos += sent;
+            cl->buf->pos += sent;
 
             break;
         }

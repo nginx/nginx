@@ -51,8 +51,8 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     int               m, rc, found, valid;
     char             *rv;
     void             *conf, **confp;
-    ngx_str_t        *name;
     ngx_fd_t          fd;
+    ngx_str_t        *name;
     ngx_conf_file_t  *prev;
     ngx_command_t    *cmd;
 
@@ -73,18 +73,18 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         }
 
         prev = cf->conf_file;
-        ngx_test_null(cf->conf_file,
-                      ngx_palloc(cf->pool, sizeof(ngx_conf_file_t)),
-                      NGX_CONF_ERROR);
+        if (!(cf->conf_file = ngx_palloc(cf->pool, sizeof(ngx_conf_file_t)))) {
+            return NGX_CONF_ERROR;
+        }
 
         if (ngx_fd_info(fd, &cf->conf_file->file.info) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
                           ngx_fd_info_n " %s failed", filename->data);
         }
 
-        ngx_test_null(cf->conf_file->hunk,
-                      ngx_create_temp_hunk(cf->pool, 1024),
-                      NGX_CONF_ERROR);
+        if (!(cf->conf_file->buffer = ngx_create_temp_buf(cf->pool, 1024))) {
+            return NGX_CONF_ERROR;
+        }
 
         cf->conf_file->file.fd = fd;
         cf->conf_file->file.name.len = filename->len;
@@ -97,8 +97,10 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     for ( ;; ) {
         rc = ngx_conf_read_token(cf);
 
-        /* ngx_conf_read_token() returns NGX_OK, NGX_ERROR,
-           NGX_CONF_FILE_DONE or NGX_CONF_BLOCK_DONE */
+        /*
+         * ngx_conf_read_token() returns NGX_OK, NGX_ERROR,
+         * NGX_CONF_FILE_DONE or NGX_CONF_BLOCK_DONE
+         */
 
 #if 0
 ngx_log_debug(cf->log, "token %d" _ rc);
@@ -315,7 +317,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
     int          quoted, s_quoted, d_quoted;
     ssize_t      n;
     ngx_str_t   *word;
-    ngx_hunk_t  *h;
+    ngx_buf_t   *b;
 
     found = 0;
     need_space = 0;
@@ -324,8 +326,8 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
     quoted = s_quoted = d_quoted = 0;
 
     cf->args->nelts = 0;
-    h = cf->conf_file->hunk;
-    start = h->pos;
+    b = cf->conf_file->buffer;
+    start = b->pos;
 
 #if 0
 ngx_log_debug(cf->log, "TOKEN START");
@@ -333,31 +335,31 @@ ngx_log_debug(cf->log, "TOKEN START");
 
     for ( ;; ) {
 
-        if (h->pos >= h->last) {
+        if (b->pos >= b->last) {
             if (cf->conf_file->file.offset
-                               >= ngx_file_size(&cf->conf_file->file.info)) {
+                                 >= ngx_file_size(&cf->conf_file->file.info)) {
                 return NGX_CONF_FILE_DONE;
             }
 
-            if (h->pos - start) {
-                ngx_memcpy(h->start, start, (size_t) (h->pos - start));
+            if (b->pos - start) {
+                ngx_memcpy(b->start, start, b->pos - start);
             }
 
             n = ngx_read_file(&cf->conf_file->file,
-                              h->start + (h->pos - start),
-                              (size_t) (h->end - (h->start + (h->pos - start))),
+                              b->start + (b->pos - start),
+                              b->end - (b->start + (b->pos - start)),
                               cf->conf_file->file.offset);
 
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
-            h->pos = h->start + (h->pos - start);
-            start = h->start;
-            h->last = h->pos + n;
+            b->pos = b->start + (b->pos - start);
+            start = b->start;
+            b->last = b->pos + n;
         }
 
-        ch = *h->pos++;
+        ch = *b->pos++;
 
 #if 0
 ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
@@ -406,7 +408,7 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
                 continue;
             }
 
-            start = h->pos - 1;
+            start = b->pos - 1;
 
             switch (ch) {
 
@@ -485,14 +487,16 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
             }
 
             if (found) {
-                ngx_test_null(word, ngx_push_array(cf->args), NGX_ERROR);
-                ngx_test_null(word->data,
-                              ngx_palloc(cf->pool,
-                                         (size_t) (h->pos - start + 1)),
-                              NGX_ERROR);
+                if (!(word = ngx_push_array(cf->args))) {
+                    return NGX_ERROR;
+                }
+
+                if (!(word->data = ngx_palloc(cf->pool, b->pos - start + 1))) {
+                    return NGX_ERROR;
+                }
 
                 for (dst = word->data, src = start, len = 0;
-                     src < h->pos - 1;
+                     src < b->pos - 1;
                      len++)
                 {
                     if (*src == '\\') {
@@ -583,8 +587,12 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         }
     }
 
-    ngx_test_null(file, ngx_push_array(&cycle->open_files), NULL);
+    if (!(file = ngx_push_array(&cycle->open_files))) {
+        return NULL;
+    }
+
     file->fd = NGX_INVALID_FILE;
+
     if (name) {
         file->name = *name;
     }
@@ -917,8 +925,8 @@ char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data)
 {
-    ngx_conf_num_bounds_t *bounds = post;
-    ngx_int_t *np = data;
+    ngx_conf_num_bounds_t  *bounds = post;
+    ngx_int_t  *np = data;
 
     if (bounds->high == -1) {
         if (*np >= bounds->low) {

@@ -128,8 +128,8 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
     /* use pwrite() if there's the only hunk in a chain */
 
     if (cl->next == NULL) {
-        return ngx_write_file(file, cl->hunk->pos,
-                              (size_t) (cl->hunk->last - cl->hunk->pos),
+        return ngx_write_file(file, cl->buf->pos,
+                              (size_t) (cl->buf->last - cl->buf->pos),
                               offset);
     }
 
@@ -139,20 +139,20 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 
     ngx_init_array(io, pool, 10, sizeof(struct iovec), NGX_ERROR);
 
-    /* create the iovec and coalesce the neighbouring hunks */
+    /* create the iovec and coalesce the neighbouring bufs */
 
     while (cl) {
-        if (prev == cl->hunk->pos) {
-            iov->iov_len += cl->hunk->last - cl->hunk->pos;
+        if (prev == cl->buf->pos) {
+            iov->iov_len += cl->buf->last - cl->buf->pos;
 
         } else {
             ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
-            iov->iov_base = (void *) cl->hunk->pos;
-            iov->iov_len = cl->hunk->last - cl->hunk->pos;
+            iov->iov_base = (void *) cl->buf->pos;
+            iov->iov_len = cl->buf->last - cl->buf->pos;
         }
 
-        size += cl->hunk->last - cl->hunk->pos;
-        prev = cl->hunk->last;
+        size += cl->buf->last - cl->buf->pos;
+        prev = cl->buf->last;
         cl = cl->next;
     }
 

@@ -92,13 +92,13 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (cl = ctx->out; cl; cl = cl->next) {
         ll = &cl->next;
 
-        size += ngx_hunk_size(cl->hunk);
+        size += ngx_buf_size(cl->buf);
 
-        if (cl->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
+        if (cl->buf->flush || cl->buf->recycled) {
             flush = size;
         }
 
-        if (cl->hunk->type & NGX_HUNK_LAST) {
+        if (cl->buf->last_buf) {
             last = 1;
         }
     }
@@ -106,17 +106,17 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     /* add the new chain to the existent one */
 
     for (ln = in; ln; ln = ln->next) {
-        ngx_alloc_link_and_set_hunk(cl, ln->hunk, r->pool, NGX_ERROR);
+        ngx_alloc_link_and_set_buf(cl, ln->buf, r->pool, NGX_ERROR);
         *ll = cl;
         ll = &cl->next;
 
-        size += ngx_hunk_size(cl->hunk);
+        size += ngx_buf_size(cl->buf);
 
-        if (cl->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
+        if (cl->buf->flush || cl->buf->recycled) {
             flush = size;
         }
 
-        if (cl->hunk->type & NGX_HUNK_LAST) {
+        if (cl->buf->last_buf) {
             last = 1;
         }
     }

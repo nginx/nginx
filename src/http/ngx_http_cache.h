@@ -76,7 +76,7 @@ typedef struct {
     uint32_t                  crc;
     u_char                    md5[16];
     ngx_path_t               *path;
-    ngx_hunk_t               *buf;
+    ngx_buf_t                *buf;
     time_t                    expires;
     time_t                    last_modified;
     time_t                    date;

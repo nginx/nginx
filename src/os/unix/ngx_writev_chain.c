@@ -41,19 +41,19 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
         iov = NULL;
         eintr = 0;
 
-        /* create the iovec and coalesce the neighbouring hunks */
+        /* create the iovec and coalesce the neighbouring bufs */
 
         for (cl = in; cl; cl = cl->next) {
 
-            if (prev == cl->hunk->pos) {
-                iov->iov_len += cl->hunk->last - cl->hunk->pos;
-                prev = cl->hunk->last;
+            if (prev == cl->buf->pos) {
+                iov->iov_len += cl->buf->last - cl->buf->pos;
+                prev = cl->buf->last;
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&io), NGX_CHAIN_ERROR);
-                iov->iov_base = (void *) cl->hunk->pos;
-                iov->iov_len = cl->hunk->last - cl->hunk->pos;
-                prev = cl->hunk->last;
+                iov->iov_base = (void *) cl->buf->pos;
+                iov->iov_len = cl->buf->last - cl->buf->pos;
+                prev = cl->buf->last;
             }
         }
 
@@ -86,20 +86,20 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         for (cl = in; cl && sent > 0; cl = cl->next) {
 
-            size = cl->hunk->last - cl->hunk->pos;
+            size = cl->buf->last - cl->buf->pos;
 
             if (sent >= size) {
                 sent -= size;
 
-                if (cl->hunk->type & NGX_HUNK_IN_MEMORY) {
-                    cl->hunk->pos = cl->hunk->last;
+                if (ngx_buf_in_memory(cl->buf)) {
+                    cl->buf->pos = cl->buf->last;
                 }
 
                 continue;
             }
 
-            if (cl->hunk->type & NGX_HUNK_IN_MEMORY) {
-                cl->hunk->pos += sent;
+            if (ngx_buf_in_memory(cl->buf)) {
+                cl->buf->pos += sent;
             }
 
             break;

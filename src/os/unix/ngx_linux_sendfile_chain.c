@@ -28,7 +28,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     ngx_int_t        eintr;
     struct iovec    *iov;
     ngx_err_t        err;
-    ngx_hunk_t      *file;
+    ngx_buf_t       *file;
     ngx_array_t      header;
     ngx_event_t     *wev;
     ngx_chain_t     *cl, *tail;
@@ -55,7 +55,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         prev = NULL;
         iov = NULL;
 
-        /* create the iovec and coalesce the neighbouring hunks */
+        /* create the iovec and coalesce the neighbouring bufs */
 
         for (cl = in; cl && header.nelts < IOV_MAX; cl = cl->next) {
             if (ngx_hunk_special(cl->hunk)) {
@@ -131,7 +131,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         }
 
         /* 
-         * the tail is the rest of the chain that exceeded
+         * the tail is the rest of the chain that exceedes
          * a single sendfile() capability
          */
 

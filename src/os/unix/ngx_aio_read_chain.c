@@ -28,15 +28,15 @@ ssize_t ngx_aio_read_chain(ngx_connection_t *c, ngx_chain_t *cl)
             return total ? total : NGX_AGAIN;
         }
 
-        buf = cl->hunk->last;
-        prev = cl->hunk->last;
+        buf = cl->buf->last;
+        prev = cl->buf->last;
         size = 0;
 
-        /* coalesce the neighbouring hunks */
+        /* coalesce the neighbouring bufs */
 
-        while (cl && prev == cl->hunk->last) {
-            size += cl->hunk->end - cl->hunk->last;
-            prev = cl->hunk->end;
+        while (cl && prev == cl->buf->last) {
+            size += cl->buf->end - cl->buf->last;
+            prev = cl->buf->end;
             cl = cl->next;
         }
 

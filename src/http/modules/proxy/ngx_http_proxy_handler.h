@@ -159,7 +159,7 @@ struct ngx_http_proxy_ctx_s {
     ngx_http_proxy_upstream_t    *upstream;
     ngx_http_proxy_cache_t       *cache;
 
-    ngx_hunk_t                   *header_in;
+    ngx_buf_t                    *header_in;
 
     ngx_http_busy_lock_ctx_t      busy_lock;
 

@@ -40,7 +40,7 @@ typedef struct {
 } ngx_http_charset_ctx_t;
 
 
-static void ngx_charset_recode(ngx_hunk_t *h, char *table);
+static void ngx_charset_recode(ngx_buf_t *b, char *table);
 
 static char *ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd,
                                    void *conf);
@@ -50,7 +50,7 @@ static char *ngx_http_set_charset_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                        void *conf);
 static ngx_int_t ngx_http_add_charset(ngx_array_t *charsets, ngx_str_t *name);
 
-static int ngx_http_charset_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_charset_filter_init(ngx_cycle_t *cycle);
 
 static void *ngx_http_charset_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_charset_init_main_conf(ngx_conf_t *cf, void *conf);
@@ -212,18 +212,18 @@ static int ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     table = charsets[lcf->source_charset].tables[lcf->default_charset];
 
     for (cl = in; cl; cl = cl->next) {
-        ngx_charset_recode(cl->hunk, table);
+        ngx_charset_recode(cl->buf, table);
     }
 
     return ngx_http_next_body_filter(r, in);
 }
 
 
-static void ngx_charset_recode(ngx_hunk_t *h, char *table)
+static void ngx_charset_recode(ngx_buf_t *b, char *table)
 {
     u_char  *p, c;
 
-    for (p = h->pos; p < h->last; p++) {
+    for (p = b->pos; p < b->last; p++) {
         c = *p;
         *p = table[c];
     }
@@ -412,7 +412,7 @@ static ngx_int_t ngx_http_add_charset(ngx_array_t *charsets, ngx_str_t *name)
 }
 
 
-static int ngx_http_charset_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_charset_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_charset_header_filter;

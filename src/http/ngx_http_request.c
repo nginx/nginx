@@ -236,8 +236,8 @@ static void ngx_http_init_request(ngx_event_t *rev)
     }
 
     if (c->buffer == NULL) {
-        c->buffer = ngx_create_temp_hunk(c->pool,
-                                         cscf->client_header_buffer_size);
+        c->buffer = ngx_create_temp_buf(c->pool,
+                                        cscf->client_header_buffer_size);
         if (c->buffer == NULL) {
             ngx_http_close_connection(c);
             return;
@@ -1233,7 +1233,7 @@ static int ngx_http_read_discarded_body(ngx_http_request_t *r)
 static void ngx_http_set_keepalive(ngx_http_request_t *r)
 {
     int                        len;
-    ngx_hunk_t                *h;
+    ngx_buf_t                 *b;
     ngx_event_t               *rev, *wev;
     ngx_connection_t          *c;
     ngx_http_log_ctx_t        *ctx;
@@ -1257,12 +1257,12 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
         return;
     }
 
-    h = c->buffer;
+    b = c->buffer;
     wev = c->write;
     wev->event_handler = ngx_http_empty_handler;
 
 
-    if (h->pos < h->last) {
+    if (b->pos < b->last) {
 
         /*
          * The pipelined request.
@@ -1277,10 +1277,10 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
         if (!cscf->large_client_header) {
-            len = h->last - h->pos;
-            ngx_memcpy(h->start, h->pos, len);
-            h->pos = h->start;
-            h->last = h->start + len;
+            len = b->last - b->pos;
+            ngx_memcpy(b->start, b->pos, len);
+            b->pos = b->start;
+            b->last = b->start + len;
         }
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "pipelined request");
@@ -1293,7 +1293,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     c->pipeline = 0;
 
-    h->pos = h->last = h->start;
+    b->pos = b->last = b->start;
     rev->event_handler = ngx_http_keepalive_handler;
 
     if (wev->active) {
@@ -1523,12 +1523,15 @@ void ngx_http_empty_handler(ngx_event_t *wev)
 
 int ngx_http_send_last(ngx_http_request_t *r)
 {
-    ngx_hunk_t   *h;
+    ngx_buf_t    *b;
     ngx_chain_t   out;
 
-    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
-    h->type = NGX_HUNK_LAST;
-    out.hunk = h;
+    if (!(b = ngx_calloc_buf(r->pool))) {
+        return NGX_ERROR;
+    }
+
+    b->last_buf = 1;
+    out.buf = b;
     out.next = NULL;
 
     return ngx_http_output_filter(r, &out);

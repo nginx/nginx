@@ -176,7 +176,7 @@ typedef struct {
 typedef struct {
     ngx_temp_file_t   *temp_file;
     ngx_chain_t       *bufs;
-    ngx_hunk_t        *buf;
+    ngx_buf_t         *buf;
     size_t             rest;
     void             (*handler) (void *data); 
     void              *data;
@@ -216,7 +216,7 @@ struct ngx_http_request_s {
     ngx_file_t                file;
 
     ngx_pool_t               *pool;
-    ngx_hunk_t               *header_in;
+    ngx_buf_t                *header_in;
 
     ngx_http_headers_in_t     headers_in;
     ngx_http_headers_out_t    headers_out;

@@ -108,7 +108,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 {
     size_t                           len;
     ngx_uint_t                       i;
-    ngx_hunk_t                      *h;
+    ngx_buf_t                       *b;
     ngx_chain_t                     *chain;
     ngx_table_elt_t                 *header;
     ngx_http_request_t              *r;
@@ -177,71 +177,73 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
         len += header[i].key.len + 2 + header[i].value.len + 2;
     }
 
-    /* STUB */ len++;
+#if (NGX_DEBUG)
+    len++;
+#endif
 
-    ngx_test_null(h, ngx_create_temp_hunk(r->pool, len), NULL);
-    ngx_alloc_link_and_set_hunk(chain, h, r->pool, NULL);
+    ngx_test_null(b, ngx_create_temp_buf(r->pool, len), NULL);
+    ngx_alloc_link_and_set_buf(chain, b, r->pool, NULL);
 
 
     /* the request line */
 
     if (p->upstream->method) {
-        h->last = ngx_cpymem(h->last,
+        b->last = ngx_cpymem(b->last,
                              http_methods[p->upstream->method - 1].data,
                              http_methods[p->upstream->method - 1].len);
     } else {
-        h->last = ngx_cpymem(h->last, r->method_name.data, r->method_name.len);
+        b->last = ngx_cpymem(b->last, r->method_name.data, r->method_name.len);
     }
 
-    h->last = ngx_cpymem(h->last, uc->uri.data, uc->uri.len);
+    b->last = ngx_cpymem(b->last, uc->uri.data, uc->uri.len);
 
-    h->last = ngx_cpymem(h->last,
+    b->last = ngx_cpymem(b->last,
                          r->uri.data + uc->location->len,
                          r->uri.len - uc->location->len);
 
     if (r->args.len > 0) {
-        *(h->last++) = '?';
-        h->last = ngx_cpymem(h->last, r->args.data, r->args.len);
+        *(b->last++) = '?';
+        b->last = ngx_cpymem(b->last, r->args.data, r->args.len);
     }
 
-    h->last = ngx_cpymem(h->last, http_version, sizeof(http_version) - 1);
+    b->last = ngx_cpymem(b->last, http_version, sizeof(http_version) - 1);
 
 
     /* the "Connection: close" header */
 
-    h->last = ngx_cpymem(h->last, connection_close_header,
+    b->last = ngx_cpymem(b->last, connection_close_header,
                          sizeof(connection_close_header) - 1);
 
 
     /* the "Host" header */
 
-    h->last = ngx_cpymem(h->last, host_header, sizeof(host_header) - 1);
+    b->last = ngx_cpymem(b->last, host_header, sizeof(host_header) - 1);
 
     if (p->lcf->preserve_host && r->headers_in.host) {
-        h->last = ngx_cpymem(h->last, r->headers_in.host->value.data,
+        b->last = ngx_cpymem(b->last, r->headers_in.host->value.data,
                              r->headers_in.host_name_len);
 
         if (!uc->default_port) {
-            *(h->last++) = ':';
-            h->last = ngx_cpymem(h->last, uc->port_text.data,
+            *(b->last++) = ':';
+            b->last = ngx_cpymem(b->last, uc->port_text.data,
                                  uc->port_text.len);
         }
 
     } else {
-        h->last = ngx_cpymem(h->last, uc->host_header.data,
+        b->last = ngx_cpymem(b->last, uc->host_header.data,
                              uc->host_header.len);
     }
-    *(h->last++) = CR; *(h->last++) = LF;
+    *(b->last++) = CR; *(b->last++) = LF;
 
 
     /* the "X-Real-IP" header */
 
     if (p->lcf->set_x_real_ip) {
-        h->last = ngx_cpymem(h->last, x_real_ip_header,
+        b->last = ngx_cpymem(b->last, x_real_ip_header,
                              sizeof(x_real_ip_header) - 1);
-        h->last = ngx_cpymem(h->last, r->connection->addr_text.data,
+        b->last = ngx_cpymem(b->last, r->connection->addr_text.data,
                              r->connection->addr_text.len);
-        *(h->last++) = CR; *(h->last++) = LF;
+        *(b->last++) = CR; *(b->last++) = LF;
     }
 
 
@@ -249,23 +251,23 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     if (p->lcf->add_x_forwarded_for) {
         if (r->headers_in.x_forwarded_for) {
-            h->last = ngx_cpymem(h->last, x_forwarded_for_header,
+            b->last = ngx_cpymem(b->last, x_forwarded_for_header,
                                  sizeof(x_forwarded_for_header) - 1);
 
-            h->last = ngx_cpymem(h->last,
+            b->last = ngx_cpymem(b->last,
                                  r->headers_in.x_forwarded_for->value.data,
                                  r->headers_in.x_forwarded_for->value.len);
 
-            *(h->last++) = ','; *(h->last++) = ' ';
+            *(b->last++) = ','; *(b->last++) = ' ';
 
         } else {
-            h->last = ngx_cpymem(h->last, x_forwarded_for_header,
+            b->last = ngx_cpymem(b->last, x_forwarded_for_header,
                                  sizeof(x_forwarded_for_header) - 1);
         }
 
-        h->last = ngx_cpymem(h->last, r->connection->addr_text.data,
+        b->last = ngx_cpymem(b->last, r->connection->addr_text.data,
                              r->connection->addr_text.len);
-        *(h->last++) = CR; *(h->last++) = LF;
+        *(b->last++) = CR; *(b->last++) = LF;
     }
 
 
@@ -289,14 +291,14 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
             continue;
         }
 
-        h->last = ngx_cpymem(h->last, header[i].key.data, header[i].key.len);
+        b->last = ngx_cpymem(b->last, header[i].key.data, header[i].key.len);
 
-        *(h->last++) = ':'; *(h->last++) = ' ';
+        *(b->last++) = ':'; *(b->last++) = ' ';
 
-        h->last = ngx_cpymem(h->last, header[i].value.data,
+        b->last = ngx_cpymem(b->last, header[i].value.data,
                              header[i].value.len);
 
-        *(h->last++) = CR; *(h->last++) = LF;
+        *(b->last++) = CR; *(b->last++) = LF;
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http proxy header: \"%s: %s\"",
@@ -304,12 +306,12 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     }
 
     /* add "\r\n" at the header end */
-    *(h->last++) = CR; *(h->last++) = LF;
+    *(b->last++) = CR; *(b->last++) = LF;
 
 #if (NGX_DEBUG)
-    *(h->last) = '\0';
+    *(b->last) = '\0';
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http proxy header:\n\"%s\"", h->pos);
+                   "http proxy header:\n\"%s\"", b->pos);
 #endif
 
     return chain;
@@ -389,7 +391,7 @@ static void ngx_http_proxy_init_upstream(void *data)
     output->sendfile = r->sendfile;
     output->pool = r->pool;
     output->bufs.num = 1;
-    output->tag = (ngx_hunk_tag_t) &ngx_http_proxy_module;
+    output->tag = (ngx_buf_tag_t) &ngx_http_proxy_module;
     output->output_filter = (ngx_output_chain_filter_pt) ngx_chain_writer;
 
     if (!(writer = ngx_palloc(r->pool, sizeof(ngx_chain_writer_ctx_t)))) {
@@ -420,15 +422,15 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
     /* reinit the request chain */
 
     for (cl = p->request->request_body->bufs; cl; cl = cl->next) {
-        cl->hunk->pos = cl->hunk->start;
-        cl->hunk->file_pos = 0;
+        cl->buf->pos = cl->buf->start;
+        cl->buf->file_pos = 0;
     }
 
     /* reinit the ngx_output_chain() context */
 
     output = p->upstream->output_chain_ctx;
 
-    output->hunk = NULL;
+    output->buf = NULL;
     output->in = NULL;
     output->free = NULL;
     output->busy = NULL;
@@ -614,9 +616,9 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
             return;
         }
 
-        output->free->hunk = r->request_body->buf;
-        output->free->next = NULL;
-        output->hunks = 1;
+        output->free->buf = r->request_body->buf;
+        output->free->buf = NULL;
+        output->allocated = 1;
 
         r->request_body->buf->pos = r->request_body->buf->start;
     }
@@ -793,13 +795,13 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
     }
 
     if (p->header_in == NULL) {
-        p->header_in = ngx_create_temp_hunk(p->request->pool,
-                                            p->lcf->header_buffer_size);
+        p->header_in = ngx_create_temp_buf(p->request->pool,
+                                           p->lcf->header_buffer_size);
         if (p->header_in == NULL) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
-        p->header_in->tag = (ngx_hunk_tag_t) &ngx_http_proxy_module;
+        p->header_in->tag = (ngx_buf_tag_t) &ngx_http_proxy_module;
 
         if (p->cache) {
             p->header_in->pos += p->cache->ctx.header_size;
@@ -1176,7 +1178,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->output_filter = (ngx_event_pipe_output_filter_pt)
                                                         ngx_http_output_filter;
     ep->output_ctx = r;
-    ep->tag = (ngx_hunk_tag_t) &ngx_http_proxy_module;
+    ep->tag = (ngx_buf_tag_t) &ngx_http_proxy_module;
     ep->bufs = p->lcf->bufs;
     ep->busy_size = p->lcf->busy_buffers_size;
     ep->upstream = p->upstream->peer.connection;
@@ -1206,25 +1208,24 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->max_temp_file_size = p->lcf->max_temp_file_size;
     ep->temp_file_write_size = p->lcf->temp_file_write_size;
 
-    ep->preread_hunks = ngx_alloc_chain_link(r->pool);
-    if (ep->preread_hunks == NULL) {
+    if (!(ep->preread_bufs = ngx_alloc_chain_link(r->pool))) {
         ngx_http_proxy_finalize_request(p, 0);
         return;
     }
-    ep->preread_hunks->hunk = p->header_in;
-    ep->preread_hunks->next = NULL;
+    ep->preread_bufs->buf = p->header_in;
+    ep->preread_bufs->next = NULL;
 
     ep->preread_size = p->header_in->last - p->header_in->pos;
 
     if (p->cachable) {
-        ep->hunk_to_file = ngx_calloc_hunk(r->pool);
-        if (ep->hunk_to_file == NULL) {
+        ep->buf_to_file = ngx_calloc_buf(r->pool);
+        if (ep->buf_to_file == NULL) {
             ngx_http_proxy_finalize_request(p, 0);
             return;
         }
-        ep->hunk_to_file->pos = p->header_in->start;
-        ep->hunk_to_file->last = p->header_in->pos;
-        ep->hunk_to_file->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
+        ep->buf_to_file->pos = p->header_in->start;
+        ep->buf_to_file->last = p->header_in->pos;
+        ep->buf_to_file->temporary = 1;
     }
 
     if (ngx_event_flags & NGX_USE_AIO_EVENT) {
@@ -1232,7 +1233,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
         ep->single_buf = 1;
     }
 
-    /* TODO: ep->free_bufs = 0 if use ngx_create_chain_of_hunks() */
+    /* TODO: ep->free_bufs = 0 if use ngx_create_chain_of_bufs() */
     ep->free_bufs = 1;
 
     /*

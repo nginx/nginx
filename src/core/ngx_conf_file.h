@@ -112,7 +112,7 @@ typedef struct {
 
 typedef struct {
     ngx_file_t   file;
-    ngx_hunk_t  *hunk;
+    ngx_buf_t   *buffer;
     int          line;
 } ngx_conf_file_t;
 

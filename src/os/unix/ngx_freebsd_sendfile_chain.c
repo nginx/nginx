@@ -39,7 +39,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     struct iovec    *iov;
     struct sf_hdtr   hdtr;
     ngx_err_t        err;
-    ngx_hunk_t      *file;
+    ngx_buf_t       *file;
     ngx_array_t      header, trailer;
     ngx_event_t     *wev;
     ngx_chain_t     *cl, *tail;
@@ -74,87 +74,87 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         ngx_init_array(trailer, c->pool, 10, sizeof(struct iovec),
                        NGX_CHAIN_ERROR);
 
-        /* create the header iovec and coalesce the neighbouring hunks */
+        /* create the header iovec and coalesce the neighbouring bufs */
 
         prev = NULL;
         iov = NULL;
 
         for (cl = in; cl && header.nelts < IOV_MAX; cl = cl->next) {
-            if (ngx_hunk_special(cl->hunk)) {
+            if (ngx_buf_special(cl->buf)) {
                 continue;
             }
 
-            if (!ngx_hunk_in_memory_only(cl->hunk)) {
+            if (!ngx_buf_in_memory_only(cl->buf)) {
                 break;
             }
 
-            if (prev == cl->hunk->pos) {
-                iov->iov_len += cl->hunk->last - cl->hunk->pos;
+            if (prev == cl->buf->pos) {
+                iov->iov_len += cl->buf->last - cl->buf->pos;
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
-                iov->iov_base = (void *) cl->hunk->pos;
-                iov->iov_len = cl->hunk->last - cl->hunk->pos;
+                iov->iov_base = (void *) cl->buf->pos;
+                iov->iov_len = cl->buf->last - cl->buf->pos;
             }
 
-            prev = cl->hunk->last;
-            hsize += cl->hunk->last - cl->hunk->pos;
+            prev = cl->buf->last;
+            hsize += cl->buf->last - cl->buf->pos;
         }
 
-        /* get the file hunk */
+        /* get the file buf */
 
-        if (cl && (cl->hunk->type & NGX_HUNK_FILE)) {
-            file = cl->hunk;
+        if (cl && cl->buf->in_file) {
+            file = cl->buf;
             fsize = (size_t) (file->file_last - file->file_pos);
             fprev = file->file_last;
             cl = cl->next;
 
-            /* coalesce the neighbouring file hunks */
+            /* coalesce the neighbouring file bufs */
 
-            while (cl && (cl->hunk->type & NGX_HUNK_FILE)) {
-                if (file->file->fd != cl->hunk->file->fd
-                    || fprev != cl->hunk->file_pos)
+            while (cl && cl->buf->in_file) {
+                if (file->file->fd != cl->buf->file->fd
+                    || fprev != cl->buf->file_pos)
                 {
                     break;
                 }
 
-                fsize += (size_t) (cl->hunk->file_last - cl->hunk->file_pos);
-                fprev = cl->hunk->file_last;
+                fsize += (size_t) (cl->buf->file_last - cl->buf->file_pos);
+                fprev = cl->buf->file_last;
                 cl = cl->next;
             }
         }
 
         if (file) {
-            /* create the tailer iovec and coalesce the neighbouring hunks */
+            /* create the tailer iovec and coalesce the neighbouring bufs */
 
             prev = NULL;
             iov = NULL;
 
             for ( /* void */; cl && trailer.nelts < IOV_MAX; cl = cl->next) {
-                if (ngx_hunk_special(cl->hunk)) {
+                if (ngx_buf_special(cl->buf)) {
                     continue;
                 }
 
-                if (!ngx_hunk_in_memory_only(cl->hunk)) {
+                if (!ngx_buf_in_memory_only(cl->buf)) {
                     break;
                 }
 
-                if (prev == cl->hunk->pos) {
-                    iov->iov_len += cl->hunk->last - cl->hunk->pos;
+                if (prev == cl->buf->pos) {
+                    iov->iov_len += cl->buf->last - cl->buf->pos;
 
                 } else {
                     ngx_test_null(iov, ngx_push_array(&trailer),
                                   NGX_CHAIN_ERROR);
-                    iov->iov_base = (void *) cl->hunk->pos;
-                    iov->iov_len = cl->hunk->last - cl->hunk->pos;
+                    iov->iov_base = (void *) cl->buf->pos;
+                    iov->iov_len = cl->buf->last - cl->buf->pos;
                 }
 
-                prev = cl->hunk->last;
+                prev = cl->buf->last;
             }
         }
 
         /*
-         * the tail is the rest of the chain that exceeded
+         * the tail is the rest of the chain that exceedes
          * a single sendfile() capability
          */
 
@@ -262,7 +262,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         for (cl = in; cl; cl = cl->next) {
 
-            if (ngx_hunk_special(cl->hunk)) {
+            if (ngx_buf_special(cl->buf)) {
                 continue;
             }
 
@@ -270,28 +270,28 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                 break;
             }
 
-            size = ngx_hunk_size(cl->hunk);
+            size = ngx_buf_size(cl->buf);
 
             if (sent >= size) {
                 sent -= size;
 
-                if (cl->hunk->type & NGX_HUNK_IN_MEMORY) {
-                    cl->hunk->pos = cl->hunk->last;
+                if (ngx_buf_in_memory(cl->buf)) {
+                    cl->buf->pos = cl->buf->last;
                 }
 
-                if (cl->hunk->type & NGX_HUNK_FILE) {
-                    cl->hunk->file_pos = cl->hunk->file_last;
+                if (cl->buf->in_file) {
+                    cl->buf->file_pos = cl->buf->file_last;
                 }
 
                 continue;
             }
 
-            if (cl->hunk->type & NGX_HUNK_IN_MEMORY) {
-                cl->hunk->pos += sent;
+            if (ngx_buf_in_memory(cl->buf)) {
+                cl->buf->pos += sent;
             }
 
-            if (cl->hunk->type & NGX_HUNK_FILE) {
-                cl->hunk->file_pos += sent;
+            if (cl->buf->in_file) {
+                cl->buf->file_pos += sent;
             }
 
             break;

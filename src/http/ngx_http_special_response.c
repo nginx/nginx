@@ -181,7 +181,7 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
     ngx_int_t                  rc;
     ngx_uint_t                 err, i;
-    ngx_hunk_t                *h;
+    ngx_buf_t                 *b;
     ngx_chain_t               *out, **ll, *cl;
     ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
@@ -293,25 +293,25 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     out = NULL;
     ll = NULL;
 
-    if (!(h = ngx_calloc_hunk(r->pool))) {
+    if (!(b = ngx_calloc_buf(r->pool))) {
         return NGX_ERROR;
     }
-    h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
-    h->pos = error_pages[err].data;
-    h->last = error_pages[err].data + error_pages[err].len;
+    b->memory = 1;
+    b->pos = error_pages[err].data;
+    b->last = error_pages[err].data + error_pages[err].len;
 
-    ngx_alloc_link_and_set_hunk(cl, h, r->pool, NGX_ERROR);
+    ngx_alloc_link_and_set_buf(cl, b, r->pool, NGX_ERROR);
     ngx_chain_add_link(out, ll, cl);
 
 
-    if (!(h = ngx_calloc_hunk(r->pool))) {
+    if (!(b = ngx_calloc_buf(r->pool))) {
         return NGX_ERROR;
     }
-    h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
-    h->pos = error_tail;
-    h->last = error_tail + sizeof(error_tail) - 1;
+    b->memory = 1;
+    b->pos = error_tail;
+    b->last = error_tail + sizeof(error_tail) - 1;
 
-    ngx_alloc_link_and_set_hunk(cl, h, r->pool, NGX_ERROR);
+    ngx_alloc_link_and_set_buf(cl, b, r->pool, NGX_ERROR);
     ngx_chain_add_link(out, ll, cl);
 
     if (clcf->msie_padding
@@ -319,18 +319,18 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         && error >= NGX_HTTP_BAD_REQUEST
         && error != NGX_HTTP_REQUEST_URI_TOO_LARGE)
     {
-        if (!(h = ngx_calloc_hunk(r->pool))) {
+        if (!(b = ngx_calloc_buf(r->pool))) {
             return NGX_ERROR;
         }
-        h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
-        h->pos = msie_stub;
-        h->last = msie_stub + sizeof(msie_stub) - 1;
+        b->memory = 1;
+        b->pos = msie_stub;
+        b->last = msie_stub + sizeof(msie_stub) - 1;
 
-        ngx_alloc_link_and_set_hunk(cl, h, r->pool, NGX_ERROR);
+        ngx_alloc_link_and_set_buf(cl, b, r->pool, NGX_ERROR);
         ngx_chain_add_link(out, ll, cl);
     }
 
-    h->type |= NGX_HUNK_LAST;
+    b->last_buf = 1;
 
     return ngx_http_output_filter(r, out);
 }
