@@ -2,20 +2,6 @@
 #define _NGX_HTTP_REQUEST_H_INCLUDED_
 
 
-#if 0
-#include <ngx_config.h>
-
-#include <ngx_types.h>
-#include <ngx_string.h>
-#include <ngx_table.h>
-#include <ngx_hunk.h>
-#include <ngx_files.h>
-#include <ngx_connection.h>
-#include <ngx_conf_file.h>
-
-#endif
-
-
 #define NGX_HTTP_VERSION_9           9
 #define NGX_HTTP_VERSION_10       1000
 #define NGX_HTTP_VERSION_11       1001
@@ -26,6 +12,9 @@
 
 #define NGX_HTTP_CONN_CLOSE       0
 #define NGX_HTTP_CONN_KEEP_ALIVE  1
+
+
+#define NGX_NONE                        1
 
 
 #define NGX_HTTP_PARSE_HEADER_DONE        1

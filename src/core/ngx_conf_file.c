@@ -859,6 +859,60 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    int          len, scale;
+    char         last;
+    ngx_str_t   *value;
+    ngx_bufs_t  *bufs;
+
+
+    bufs = (ngx_bufs_t *) (p + cmd->offset);
+
+    if (bufs->num) {
+        return "is duplicate";
+    }
+
+    value = (ngx_str_t *) cf->args->elts;
+
+    bufs->num = ngx_atoi(value[1].data, value[1].len);
+    if (bufs->num == NGX_ERROR || bufs->num == 0) {
+        return "invalid value";
+    }
+
+    len = value[2].len;
+    last = value[2].data[len - 1];
+
+    switch (last) {
+    case 'K':
+    case 'k':
+        len--;
+        scale = 1024;
+        break;
+
+    case 'M':
+    case 'm':
+        len--;
+        scale = 1024 * 1024;
+        break;
+
+    default:
+        scale = 1;
+    }
+
+    bufs->size = ngx_atoi(value[2].data, len);
+    if (bufs->size == NGX_ERROR || bufs->size == 0) {
+        return "invalid value";
+    }
+
+    bufs->size *= scale;
+
+    return NGX_CONF_OK;
+}
+
+
 char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     return "unsupported on this platform";

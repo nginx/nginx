@@ -101,8 +101,12 @@ static char conn_close_header[] = "Connection: close" CRLF;
 
 static int ngx_http_proxy_translate_handler(ngx_http_request_t *r)
 {
+#if 0
     r->handler = ngx_http_proxy_handler;
     return NGX_OK;
+#else
+    return NGX_DECLINED;
+#endif
 }
 
 

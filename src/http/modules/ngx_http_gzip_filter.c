@@ -7,10 +7,9 @@
 
 
 typedef struct {
-    int  enable;
-    int  hunk_size;
-    int  hunks;
-    int  no_buffer;
+    int         enable;
+    ngx_bufs_t  bufs;
+    int         no_buffer;
 } ngx_http_gzip_conf_t;
 
 
@@ -51,18 +50,11 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
      offsetof(ngx_http_gzip_conf_t, enable),
      NULL},
 
-    {ngx_string("gzip_hunk_size"),
-     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_size_slot,
+    {ngx_string("gzip_buffers"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
+     ngx_conf_set_bufs_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_gzip_conf_t, hunk_size),
-     NULL},
-
-    {ngx_string("gzip_hunks"),
-     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_gzip_conf_t, hunks),
+     offsetof(ngx_http_gzip_conf_t, bufs),
      NULL},
 
     {ngx_string("gzip_no_buffer"),
@@ -173,7 +165,7 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
 
 static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    int                    rc, wbits, mem_level, zin, zout;
+    int                    rc, wbits, mem_level, zin, zout, last;
     struct gztrailer      *trailer;
     ngx_hunk_t            *h;
     ngx_chain_t           *ce;
@@ -240,6 +232,8 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
+    last = NGX_NONE;
+
     for ( ;; ) {
 
         for ( ;; ) {
@@ -285,11 +279,12 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     ctx->out_hunk = ctx->free->hunk;
                     ctx->free = ctx->free->next;
 
-                } else if (ctx->hunks < conf->hunks) {
+                } else if (ctx->hunks < conf->bufs.num) {
                     ngx_test_null(ctx->out_hunk,
-                                  ngx_create_temp_hunk(r->pool, conf->hunk_size,
+                                  ngx_create_temp_hunk(r->pool, conf->bufs.size,
                                                        0, 0),
                                   ngx_http_gzip_error(ctx));
+                    ctx->out_hunk->type |= NGX_HUNK_RECYCLED;
                     ctx->hunks++;
 
                 } else {
@@ -297,7 +292,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 }
 
                 ctx->zstream.next_out = (unsigned char *) ctx->out_hunk->pos;
-                ctx->zstream.avail_out = conf->hunk_size;
+                ctx->zstream.avail_out = conf->bufs.size;
             }
 
 ngx_log_debug(r->connection->log, "deflate(): %08x %08x %d %d %d" _
@@ -318,7 +313,7 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
             ctx->in_hunk->pos = (char *) ctx->zstream.next_in;
 
             if (ctx->zstream.avail_out == 0) {
-                ctx->out_hunk->last += conf->hunk_size;
+                ctx->out_hunk->last += conf->bufs.size;
                 ngx_add_hunk_to_chain(ce, ctx->out_hunk, r->pool,
                                       ngx_http_gzip_error(ctx));
                 *ctx->last_out = ce;
@@ -409,15 +404,13 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
             }
         }
 
-        if (ctx->out == NULL) {
-            if (ctx->in || ctx->zstream.avail_in) {
-                return NGX_AGAIN;
-            } else {
-                return NGX_OK;
-            }
+        if (ctx->out == NULL && last != NGX_NONE) {
+            return last;
         }
 
-        if (next_body_filter(r, ctx->out) == NGX_ERROR) {
+        last = next_body_filter(r, ctx->out);
+
+        if (last == NGX_ERROR) {
             return ngx_http_gzip_error(ctx);
         }
 
@@ -463,8 +456,7 @@ static void *ngx_http_gzip_create_conf(ngx_conf_t *cf)
                   NGX_CONF_ERROR);
 
     conf->enable = NGX_CONF_UNSET;
-    conf->hunk_size = NGX_CONF_UNSET;
-    conf->hunks = NGX_CONF_UNSET;
+/*  conf->bufs.num = 0; */
     conf->no_buffer = NGX_CONF_UNSET;
 
     return conf;
@@ -478,9 +470,8 @@ static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
     ngx_http_gzip_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
-    ngx_conf_merge_size_value(conf->hunk_size, prev->hunk_size,
+    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 4,
                               /* STUB: PAGE_SIZE */ 4096);
-    ngx_conf_merge_value(conf->hunks, prev->hunks, 4);
     ngx_conf_merge_value(conf->no_buffer, prev->no_buffer, 0);
 
     return NGX_CONF_OK;

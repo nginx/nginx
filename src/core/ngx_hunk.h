@@ -64,6 +64,12 @@ struct ngx_chain_s {
 };
 
 
+typedef struct {
+    int          num;
+    ssize_t      size;
+} ngx_bufs_t;
+
+
 #define NGX_CHAIN_ERROR     (ngx_chain_t *) NGX_ERROR
 
 

@@ -175,6 +175,17 @@ struct ngx_conf_s {
         }                                                                    \
     }
 
+#define ngx_conf_merge_bufs_value(conf, prev, default_num, default_size)     \
+    if (conf.num == 0) {                                                     \
+        if (prev.num) {                                                      \
+            conf.num = prev.num;                                             \
+            conf.size = prev.size;                                           \
+        } else {                                                             \
+            conf.num = default_num;                                          \
+            conf.size = default_size;                                        \
+        }                                                                    \
+    }
+
 
 #define addressof(addr)  ((int) &addr)
 
@@ -193,6 +204,7 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);
