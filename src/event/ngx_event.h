@@ -287,6 +287,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_WRITE_EVENT    POLLOUT
 
 #define NGX_LEVEL_EVENT    0
+#define NGX_ONESHOT_EVENT  1
 
 
 #elif (HAVE_EPOLL)

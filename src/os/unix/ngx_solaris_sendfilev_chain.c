@@ -16,7 +16,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
     sendfilevec_t  *sfv;
     ngx_array_t     vec;
     ngx_event_t    *wev;
-    ngx_chain_t    *cl;
+    ngx_chain_t    *cl, *tail;
 
     wev = c->write;
 
@@ -37,7 +37,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         /* create the sendfilevec and coalesce the neighbouring hunks */
 
-        for (cl = in; cl; cl = cl->next) {
+        for (cl = in; cl && vec.nelts < IOV_MAX; cl = cl->next) {
             if (ngx_hunk_special(cl->hunk)) {
                 continue;
             }
@@ -76,6 +76,13 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
                 fprev = cl->hunk->file_last;
             }
         }
+
+        /*
+         * the tail is the rest of the chain that exceeded a single
+         * sendfilev() capability, IOV_MAX in Solaris is only 16
+         */
+
+        tail = cl;
 
         n = sendfilev(c->fd, vec.elts, vec.nelts, &sent);
 
@@ -142,7 +149,9 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         in = cl;
 
-    } while (eintr);
+        /* "tail == in" means that a single sendfilev() is complete */
+
+    } while ((tail && tail == in) || eintr);
 
     if (in) {
         wev->ready = 0;

@@ -52,7 +52,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         /* create the iovec and coalesce the neighbouring hunks */
 
-        for (cl = in; cl; cl = cl->next) {
+        for (cl = in; cl && header.nelts < IOV_MAX; cl = cl->next) {
             if (ngx_hunk_special(cl->hunk)) {
                 continue;
             }

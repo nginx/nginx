@@ -24,7 +24,7 @@ case $CC in
          # debug
          CFLAGS="$CFLAGS -g"
 
-         CFLAGS="$CFLAGS -D HAVE_GCC_VARIADIC_MACROS=1"
+         have=HAVE_GCC_VARIADIC_MACROS . auto/have
 
          OBJEXT=o
          OBJOUT="-o "
@@ -50,7 +50,7 @@ case $CC in
          # stop on warning
          CFLAGS="$CFLAGS -Werror"
 
-         CFLAGS="$CFLAGS -D HAVE_C99_VARIADIC_MACROS=1"
+         have=HAVE_C99_VARIADIC_MACROS . auto/have
 
          OBJEXT=o
          OBJOUT="-o "

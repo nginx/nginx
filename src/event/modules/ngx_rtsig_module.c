@@ -40,7 +40,7 @@ static void ngx_rtsig_done(ngx_cycle_t *cycle);
 static int ngx_rtsig_add_connection(ngx_connection_t *c);
 static int ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags);
 static int ngx_rtsig_process_events(ngx_log_t *log);
-static int ngx_rtsig_process_overlow(ngx_log_t *log);
+static int ngx_rtsig_process_overflow(ngx_log_t *log);
 
 static void *ngx_rtsig_create_conf(ngx_cycle_t *cycle);
 static char *ngx_rtsig_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -310,7 +310,7 @@ int ngx_rtsig_process_events(ngx_log_t *log)
 }
 
 
-static int ngx_rtsig_process_overlow(ngx_log_t *log)
+static int ngx_rtsig_process_overflow(ngx_log_t *log)
 {
     if (ngx_poll_module_ctx.actions.process(log) == NGX_OK) {
         ngx_event_actions = ngx_rtsig_module_ctx.actions;
