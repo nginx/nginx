@@ -42,7 +42,8 @@ u_char  master_process[] = "master process";
 
 void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
-    char              *title, *p;
+    char              *title;
+    u_char            *p;
     size_t             size;
     ngx_int_t          n;
     ngx_uint_t         i;
@@ -83,7 +84,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     p = ngx_cpymem(title, master_process, sizeof(master_process) - 1);
     for (n = 0; n < ctx->argc; n++) {
         *p++ = ' ';
-        p = ngx_cpystrn(p, ctx->argv[n], size);
+        p = ngx_cpystrn(p, (u_char *) ctx->argv[n], size);
     }
 
     ngx_setproctitle(title);
@@ -220,6 +221,15 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
         if (ngx_reconfigure) {
             ngx_reconfigure = 0;
+
+            if (ngx_new_binary) {
+                ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "start new workers");
+
+                ngx_start_worker_processes(cycle, ccf->worker_processes,
+                                           NGX_PROCESS_JUST_RESPAWN);
+                continue;
+            }
+
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reconfiguring");
 
             cycle = ngx_init_cycle(cycle);
