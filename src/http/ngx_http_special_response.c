@@ -102,6 +102,14 @@ static char error_416_page[] =
 ;
 
 
+static char error_497_page[] =
+"<html>" CRLF
+"<head><title>The plain HTTP request was sent to HTTPS port</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>The plain HTTP request was sent to HTTPS por</h1></center>" CRLF
+;
+
+
 static char error_500_page[] =
 "<html>" CRLF
 "<head><title>500 Internal Server Error</title></head>" CRLF
@@ -166,8 +174,9 @@ static ngx_str_t error_pages[] = {
     ngx_null_string,             /* 415 */
     ngx_string(error_416_page),
 
-    ngx_string(error_404_page),  /* 498 */
-    ngx_null_string,             /* 499 */
+    ngx_string(error_400_page),  /* 497, http to https */
+    ngx_string(error_404_page),  /* 498, invalid host name */
+    ngx_null_string,             /* 499, client closed connection */
 
     ngx_string(error_500_page),
     ngx_string(error_501_page),
@@ -199,6 +208,7 @@ ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error)
             case NGX_HTTP_BAD_REQUEST:
             case NGX_HTTP_REQUEST_ENTITY_TOO_LARGE:
             case NGX_HTTP_REQUEST_URI_TOO_LARGE:
+            case NGX_HTTP_TO_HTTPS:
             case NGX_HTTP_INTERNAL_SERVER_ERROR:
                 r->keepalive = 0;
         }
@@ -207,6 +217,7 @@ ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     if (r->lingering_close == 1) {
         switch (error) {
             case NGX_HTTP_BAD_REQUEST:
+            case NGX_HTTP_TO_HTTPS:
                 r->lingering_close = 0;
         }
     }
@@ -241,6 +252,11 @@ ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         err = error - NGX_HTTP_NGX_CODES + 3 + 17;
 
         switch (error) {
+            case NGX_HTTP_TO_HTTPS:
+                r->headers_out.status = NGX_HTTP_BAD_REQUEST;
+                error = NGX_HTTP_BAD_REQUEST;
+                break;
+
             case NGX_HTTP_INVALID_HOST:
                 r->headers_out.status = NGX_HTTP_NOT_FOUND;
                 error = NGX_HTTP_NOT_FOUND;

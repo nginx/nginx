@@ -111,8 +111,30 @@ ngx_int_t ngx_http_ssl_read(ngx_http_request_t *r)
                 return NGX_AGAIN;
             }
 
+            if (rc == SSL_ERROR_ZERO_RETURN) {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                               "client closed connection while SSL handshake");
+
+                ngx_http_ssl_close_request(ctx->ssl, SSL_RECEIVED_SHUTDOWN);
+
+                return NGX_ERROR;
+            }
+
+            if (ERR_GET_REASON(ERR_peek_error()) == SSL_R_HTTP_REQUEST) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                               "client sent HTTP request to HTTPS port");
+
+                ngx_http_ssl_close_request(ctx->ssl,
+                                      SSL_SENT_SHUTDOWN|SSL_RECEIVED_SHUTDOWN);
+
+                return NGX_OK;
+            }
+
             ngx_http_ssl_error(NGX_LOG_ALERT, r->connection->log, rc,
                                "SSL_accept() failed");
+
+            ngx_http_ssl_close_request(ctx->ssl, SSL_RECEIVED_SHUTDOWN);
+
             return NGX_ERROR;
         }
 
@@ -171,6 +193,14 @@ static ngx_http_ssl_ctx_t *ngx_http_ssl_create_ctx(ngx_http_request_t *r)
     }
 
     return ctx;
+}
+
+
+void ngx_http_ssl_close_request(SSL *ssl, int mode)
+{
+    SSL_set_shutdown(ssl, mode);
+    SSL_smart_shutdown(ssl);
+    SSL_free(ssl);
 }
 
 

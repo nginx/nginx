@@ -54,7 +54,13 @@
 
 /* Our own HTTP codes */
 
-#define NGX_HTTP_NGX_CODES                 NGX_HTTP_INVALID_HOST
+#define NGX_HTTP_NGX_CODES                 NGX_HTTP_TO_HTTPS
+
+/*
+ * We use the special code for the plain HTTP requests that are sent to
+ * HTTPS port to distinguish it from 4XX in an error page redirection 
+ */
+#define NGX_HTTP_TO_HTTPS                  497
 
 /*
  * We use the special code for the requests with invalid host name
