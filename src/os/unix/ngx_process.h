@@ -16,8 +16,9 @@ typedef struct {
 
     unsigned            respawn:1;
     unsigned            detached:1;
-    unsigned            exited:1;
+    unsigned            signal:1;
     unsigned            exiting:1;
+    unsigned            exited:1;
 } ngx_process_t;
 
 

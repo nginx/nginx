@@ -230,9 +230,10 @@ int main(int argc, char *const *argv, char **envp)
 
 static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
+    int             signo;
     ngx_msec_t      delay;
     struct timeval  tv;
-    ngx_uint_t      i, live;
+    ngx_uint_t      i, live, first;
     sigset_t        set, wset;
 
     delay = 125;
@@ -277,6 +278,9 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
         for ( ;; ) {
 
+            signo = 0;
+            first = 1;
+
             /* an event loop */
 
             for ( ;; ) {
@@ -299,10 +303,6 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                    "quit cycle");
 
-                    if (delay < 15000) {
-                        delay *= 2;
-                    }
-
                     if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
                         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                                       "sigprocmask() failed");
@@ -310,8 +310,13 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     }
 
                     if (ngx_reap == 0) {
+
+                        if (delay < 15000) {
+                            delay *= 2;
+                        }
+
                         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                                       "sleep %d", delay / 1000);
+                                       "msleep %d", delay);
 
                         ngx_msleep(delay);
 
@@ -369,23 +374,20 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
                 if (ngx_terminate) {
                     if (delay > 10000) {
-                        ngx_signal_processes(cycle, SIGKILL);
+                        signo = SIGKILL;
                     } else {
-                        ngx_signal_processes(cycle,
-                                       ngx_signal_value(NGX_TERMINATE_SIGNAL));
+                        signo = ngx_signal_value(NGX_TERMINATE_SIGNAL);
                     }
                     ngx_process = NGX_PROCESS_QUITING;
                 }
 
                 if (ngx_quit) {
-                    ngx_signal_processes(cycle,
-                                        ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+                    signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
                     ngx_process = NGX_PROCESS_QUITING;
                 }
 
                 if (ngx_pause) {
-                    ngx_signal_processes(cycle,
-                                        ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+                    signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
                     ngx_process = NGX_PROCESS_PAUSED;
                 }
 
@@ -402,26 +404,35 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                 }
 
                 if (ngx_reconfigure) {
+                    signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
                     ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reconfiguring");
-                    break;
                 }
 
                 if (ngx_reopen) {
+                    signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
                     ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
                                   "reopening logs");
                     ngx_reopen_files(cycle);
                     ngx_reopen = 0;
                 }
 
-                if (first) {
-                    for (i = 0; i < ngx_last_process; i++) {
-                        if (!ngx_processes[i].detached) {
-                            ngx_processes[i].signal = 1;
+                if (signo) {
+                    if (first) {
+                        for (i = 0; i < ngx_last_process; i++) {
+                            if (!ngx_processes[i].detached) {
+                                ngx_processes[i].signal = 1;
+                            }
                         }
+                        first = 0;
+                        delay = 125;
                     }
-                    first = 1;
+
+                    ngx_signal_processes(cycle, signo);
                 }
 
+                if (ngx_reconfigure) {
+                    break;
+                }
             }
 
             if (ngx_process == NGX_PROCESS_PAUSED) {

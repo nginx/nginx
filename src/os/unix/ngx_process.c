@@ -70,6 +70,7 @@ ngx_int_t ngx_spawn_process(ngx_cycle_t *cycle,
                                       (respawn == NGX_PROCESS_RESPAWN) ? 1 : 0;
     ngx_processes[ngx_last_process].detached =
                                      (respawn == NGX_PROCESS_DETACHED) ? 1 : 0;
+    ngx_processes[ngx_last_process].signal = 0;
     ngx_processes[ngx_last_process].exited = 0;
     ngx_processes[ngx_last_process].exiting = 0;
     ngx_last_process++;
@@ -118,7 +119,7 @@ void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signo)
 
     for (i = 0; i < ngx_last_process; i++) {
 
-        if (ngx_processes[i].detached) {
+        if (!ngx_processes[i].signal) {
             continue;
         }
 
