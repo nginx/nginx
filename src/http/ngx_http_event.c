@@ -65,7 +65,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
 {
     int                  event;
     ngx_event_t         *rev;
-    ngx_http_log_ctx_t  *lcx;
+    ngx_http_log_ctx_t  *lctx;
 
     c->addr_text.data = ngx_palloc(c->pool, c->listening->addr_text_max_len);
     if (c->addr_text.data == NULL) {
@@ -81,15 +81,15 @@ void ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
-    lcx = ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t));
-    if (lcx == NULL) {
+    lctx = ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t));
+    if (lctx == NULL) {
         ngx_http_close_connection(c);
         return;
     }
 
-    lcx->client = c->addr_text.data;
-    lcx->action = "reading client request line";
-    c->log->data = lcx;
+    lctx->client = c->addr_text.data;
+    lctx->action = "reading client request line";
+    c->log->data = lctx;
     c->log->handler = ngx_http_log_error;
 
     rev = c->read;
@@ -136,6 +136,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
     ngx_http_in_addr_t        *in_addr;
     ngx_http_server_name_t    *server_name;
     ngx_http_core_srv_conf_t  *cscf;
+    ngx_http_core_loc_conf_t  *clcf;
 
     c = rev->data;
 
@@ -212,6 +213,10 @@ ngx_log_debug(rev->log, "IN: %08x" _ in_port);
     server_name = cscf->server_names.elts;
     r->server_name = &server_name->name;
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    c->log->file = clcf->err_log->file;
+    c->log->log_level = clcf->err_log->log_level;
+
     if (c->buffer == NULL) {
         c->buffer = ngx_create_temp_hunk(c->pool,
                                          cscf->client_header_buffer_size,
@@ -265,7 +270,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
     ssize_t                    n;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
-    ngx_http_log_ctx_t        *lcx;
+    ngx_http_log_ctx_t        *lctx;
     ngx_http_core_srv_conf_t  *cscf;
 
     c = rev->data;
@@ -421,9 +426,9 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             return;
         }
 
-        lcx = c->log->data;
-        lcx->action = "reading client request headers";
-        lcx->url = r->unparsed_uri.data;
+        lctx = c->log->data;
+        lctx->action = "reading client request headers";
+        lctx->url = r->unparsed_uri.data;
         r->headers_in.headers = ngx_create_table(r->pool, 10);
 
         if (cscf->large_client_header
@@ -505,6 +510,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
     ngx_http_request_t        *r;
     ngx_http_server_name_t    *name;
     ngx_http_core_srv_conf_t  *cscf;
+    ngx_http_core_loc_conf_t  *clcf;
 
     c = rev->data;
     r = c->data;
@@ -619,6 +625,12 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
                     {
                         r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
                         r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
+
+                        clcf = ngx_http_get_module_loc_conf(r,
+                                                         ngx_http_core_module);
+                        c->log->file = clcf->err_log->file;
+                        c->log->log_level = clcf->err_log->log_level;
+
                         break;
                     }
                 }

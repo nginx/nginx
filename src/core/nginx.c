@@ -66,8 +66,10 @@ int rotate;
 int main(int argc, char *const *argv)
 {
     int               i;
+    ngx_fd_t          fd;
     ngx_log_t        *log;
     ngx_cycle_t      *cycle;
+    ngx_open_file_t  *file;
     ngx_core_conf_t  *ccf;
 
 #if (NGX_DEBUG) && (__FreeBSD__)
@@ -150,6 +152,55 @@ int main(int argc, char *const *argv)
 
                 if (rotate) {
                     ngx_log_debug(ngx_cycle->log, "rotate");
+
+                    file = cycle->open_files.elts;
+                    for (i = 0; i < cycle->open_files.nelts; i++) {
+                        if (file[i].name.data == NULL) {
+                            continue;
+                        }
+
+                        fd = ngx_open_file(file[i].name.data,
+                                      NGX_FILE_RDWR,
+                                      NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+
+ngx_log_debug(log, "REOPEN: %d:%d:%s" _ fd _ file[i].fd _ file[i].name.data);
+
+                        if (fd == NGX_INVALID_FILE) {
+                            ngx_log_error(NGX_LOG_EMERG,
+                                          ngx_cycle->log, ngx_errno,
+                                          ngx_open_file_n " \"%s\" failed",
+                                          file[i].name.data);
+                            continue;
+                        }
+
+#if (WIN32)
+                        if (ngx_file_append_mode(fd) == NGX_ERROR) {
+                            ngx_log_error(NGX_LOG_EMERG,
+                                          ngx_cycle->log, ngx_errno,
+                                          ngx_file_append_mode_n
+                                          " \"%s\" failed",
+                                          file[i].name.data);
+
+                            if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+                                ngx_log_error(NGX_LOG_EMERG,
+                                              ngx_cycle->log, ngx_errno,
+                                              ngx_close_file_n " \"%s\" failed",
+                                              file[i].name.data);
+                            }
+
+                            continue;
+                        }
+#endif
+
+                        if (ngx_close_file(file[i].fd) == NGX_FILE_ERROR) {
+                            ngx_log_error(NGX_LOG_EMERG,
+                                          ngx_cycle->log, ngx_errno,
+                                          ngx_close_file_n " \"%s\" failed",
+                                          file[i].name.data);
+                        }
+
+                        file[i].fd = fd;
+                    }
                 }
 
                 if (restart) {
@@ -275,25 +326,33 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
     file = cycle->open_files.elts;
     for (i = 0; i < cycle->open_files.nelts; i++) {
-        if (file->name.data == NULL) {
+        if (file[i].name.data == NULL) {
             continue;
         }
 
-        file->fd = ngx_open_file(file->name.data,
-                                 NGX_FILE_RDWR,
-                                 NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+        file[i].fd = ngx_open_file(file[i].name.data,
+                                   NGX_FILE_RDWR,
+                                   NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 
-ngx_log_debug(log, "OPEN: %d:%s" _ file->fd _ file->name.data);
+ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
 
-        if (file->fd == NGX_INVALID_FILE) {
+        if (file[i].fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           ngx_open_file_n " \"%s\" failed",
-                          file->name.data);
+                          file[i].name.data);
             failed = 1;
             break;
         }
 
-        /* TODO: Win32 append */
+#if (WIN32)
+        if (ngx_file_append_mode(file[i].fd) == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          ngx_file_append_mode_n " \"%s\" failed",
+                          file[i].name.data);
+            failed = 1;
+            break;
+        }
+#endif
     }
 
     /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG;
@@ -341,14 +400,14 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file->fd _ file->name.data);
 
         file = cycle->open_files.elts;
         for (i = 0; i < cycle->open_files.nelts; i++) {
-            if (file->fd == NGX_INVALID_FILE) {
+            if (file[i].fd == NGX_INVALID_FILE) {
                 continue;
             }
 
-            if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
+            if (ngx_close_file(file[i].fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                               ngx_close_file_n " \"%s\" failed",
-                              file->name.data);
+                              file[i].name.data);
             }
         }
 
@@ -405,14 +464,14 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file->fd _ file->name.data);
 
     file = old_cycle->open_files.elts;
     for (i = 0; i < old_cycle->open_files.nelts; i++) {
-        if (file->fd == NGX_INVALID_FILE) {
+        if (file[i].fd == NGX_INVALID_FILE) {
             continue;
         }
 
-        if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
+        if (ngx_close_file(file[i].fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           ngx_close_file_n " \"%s\" failed",
-                          file->name.data);
+                          file[i].name.data);
         }
     }
 

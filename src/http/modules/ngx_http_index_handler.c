@@ -15,11 +15,11 @@ typedef struct {
 
 static int ngx_http_index_test_dir(ngx_http_request_t *r);
 static int ngx_http_index_init(ngx_cycle_t *cycle);
-static void *ngx_http_index_create_conf(ngx_pool_t *pool);
-static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent,
-                                                                  void *child);
+static void *ngx_http_index_create_conf(ngx_conf_t *cf);
+static char *ngx_http_index_merge_conf(ngx_conf_t *cf,
+                                       void *parent, void *child);
 static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
-                                                                   void *conf);
+                                      void *conf);
 
 
 static ngx_command_t ngx_http_index_commands[] = {
@@ -220,14 +220,15 @@ static int ngx_http_index_init(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_http_index_create_conf(ngx_pool_t *pool)
+static void *ngx_http_index_create_conf(ngx_conf_t *cf)
 {
     ngx_http_index_conf_t  *conf;
 
-    ngx_test_null(conf, ngx_palloc(pool, sizeof(ngx_http_index_conf_t)),
+    ngx_test_null(conf, ngx_palloc(cf->pool, sizeof(ngx_http_index_conf_t)),
                   NGX_CONF_ERROR);
 
-    ngx_init_array(conf->indices, pool, 3, sizeof(ngx_str_t), NGX_CONF_ERROR);
+    ngx_init_array(conf->indices, cf->pool, 3, sizeof(ngx_str_t),
+                   NGX_CONF_ERROR);
     conf->max_index_len = 0;
 
     return conf;
@@ -236,7 +237,8 @@ static void *ngx_http_index_create_conf(ngx_pool_t *pool)
 
 /* TODO: remove duplicate indices */
 
-static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
+static char *ngx_http_index_merge_conf(ngx_conf_t *cf,
+                                       void *parent, void *child)
 {
     ngx_http_index_conf_t *prev = parent;
     ngx_http_index_conf_t *conf = child;

@@ -66,4 +66,9 @@
 #endif
 
 
+#ifndef HAVE_SELECT_CHANGE_TIMEOUT
+#define HAVE_SELECT_CHANGE_TIMEOUT   1
+#endif
+
+
 #endif /* _NGX_LINUX_CONFIG_H_INCLUDED_ */

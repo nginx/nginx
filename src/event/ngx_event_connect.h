@@ -3,10 +3,8 @@
 
 
 #include <ngx_config.h>
-#include <ngx_string.h>
-#include <ngx_log.h>
+#include <ngx_core.h>
 #include <ngx_event.h>
-#include <ngx_connection.h>
 
 
 typedef struct {
@@ -37,6 +35,8 @@ typedef struct {
     ngx_peers_t       *peers;
     int                cur_peer;
     int                tries;
+
+    unsigned           cached:1;
 } ngx_connect_peer_t;
 
 

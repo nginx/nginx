@@ -15,8 +15,8 @@ typedef struct {
 } ngx_http_write_filter_ctx_t;
 
 
-static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool);
-static char *ngx_http_write_filter_merge_conf(ngx_pool_t *pool,
+static void *ngx_http_write_filter_create_conf(ngx_conf_t *cf);
+static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
                                               void *parent, void *child);
 static int ngx_http_write_filter_init(ngx_cycle_t *cycle);
 
@@ -162,12 +162,12 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 }
 
 
-static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool)
+static void *ngx_http_write_filter_create_conf(ngx_conf_t *cf)
 {
     ngx_http_write_filter_conf_t *conf;
 
     ngx_test_null(conf,
-                  ngx_palloc(pool, sizeof(ngx_http_write_filter_conf_t)),
+                  ngx_palloc(cf->pool, sizeof(ngx_http_write_filter_conf_t)),
                   NULL);
 
     conf->buffer_output = NGX_CONF_UNSET;
@@ -176,7 +176,7 @@ static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool)
 }
 
 
-static char *ngx_http_write_filter_merge_conf(ngx_pool_t *pool,
+static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
                                               void *parent, void *child)
 {
     ngx_http_write_filter_conf_t *prev = parent;

@@ -3,8 +3,8 @@
 #include <ngx_core.h>
 
 
-char ngx_conf_errstr[MAX_CONF_ERRSTR];
 
+#define MAX_CONF_ERRSTR  256
 
 static int argument_number[] = {
     NGX_CONF_NOARGS,
@@ -212,19 +212,11 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
                         break;
 
                     } else {
-                        if (rv == ngx_conf_errstr) {
-                            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                         "%s in %s:%d",
-                                         rv,
-                                         cf->conf_file->file.name.data,
-                                         cf->conf_file->line);
-                        } else {
-                            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                         "\"%s\" directive %s in %s:%d",
-                                         name->data, rv,
-                                         cf->conf_file->file.name.data,
-                                         cf->conf_file->line);
-                        }
+                        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                      "\"%s\" directive %s in %s:%d",
+                                      name->data, rv,
+                                      cf->conf_file->file.name.data,
+                                      cf->conf_file->line);
 
                         rc = NGX_ERROR;
                         break;
@@ -475,6 +467,34 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 }
 
 
+ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
+{
+    int               i;
+    ngx_open_file_t  *file;
+
+    if (name) {
+        file = cycle->open_files.elts;
+        for (i = 0; i < cycle->open_files.nelts; i++) {
+            if (name->len != file[i].name.len) {
+                continue;
+            }
+
+            if (ngx_strcmp(name->data, file[i].name.data) == 0) {
+                return &file[i];
+            }
+        }
+    }
+
+    ngx_test_null(file, ngx_push_array(&cycle->open_files), NULL);
+    file->fd = NGX_INVALID_FILE;
+    if (name) {
+        file->name = *name;
+    }
+
+    return file;
+}
+
+
 void ngx_conf_log_error(int level, ngx_conf_t *cf, ngx_err_t err,
                         char *fmt, ...)
 {
@@ -526,10 +546,11 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         flag = 0;
 
     } else {
-        ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                     "invalid value \"%s\", it must be \"on\" or \"off\"",
-                     value[1].data);
-        return ngx_conf_errstr;
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                     "invalid value \"%s\" in \"%s\" directive, "
+                     "it must be \"on\" or \"off\"",
+                     value[1].data, cmd->name.data);
+        return NGX_CONF_ERROR;
     }
 
     *(int *) (p + cmd->offset) = flag;

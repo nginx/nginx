@@ -378,7 +378,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
     } else {
         if (events == 0) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
-                          "ioctl(DP_POLL) returns no events without timeout");
+                          "ioctl(DP_POLL) returned no events without timeout");
             return NGX_ERROR;
         }
 

@@ -20,14 +20,14 @@ typedef struct {
 
 
 typedef struct {
-    void  *(*create_main_conf)(ngx_pool_t *p);
-    char  *(*init_main_conf)(ngx_pool_t *p, void *conf);
+    void  *(*create_main_conf)(ngx_conf_t *cf);
+    char  *(*init_main_conf)(ngx_conf_t *cf, void *conf);
 
-    void  *(*create_srv_conf)(ngx_pool_t *p);
-    char  *(*merge_srv_conf)(ngx_pool_t *p, void *prev, void *conf);
+    void  *(*create_srv_conf)(ngx_conf_t *cf);
+    char  *(*merge_srv_conf)(ngx_conf_t *cf, void *prev, void *conf);
 
-    void  *(*create_loc_conf)(ngx_pool_t *p);
-    char  *(*merge_loc_conf)(ngx_pool_t *p, void *prev, void *conf);
+    void  *(*create_loc_conf)(ngx_conf_t *cf);
+    char  *(*merge_loc_conf)(ngx_conf_t *cf, void *prev, void *conf);
 } ngx_http_module_t;
 
 

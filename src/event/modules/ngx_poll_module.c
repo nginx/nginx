@@ -64,7 +64,7 @@ static int ngx_poll_init(ngx_cycle_t *cycle)
         nevents = 0;
     }
 
-    if (cycle->old_cycle == NULL 
+    if (cycle->old_cycle == NULL
         || cycle->old_cycle->connection_n < cycle->connection_n)
     {
         ngx_test_null(list,
@@ -272,7 +272,7 @@ static int ngx_poll_process_events(ngx_log_t *log)
     } else {
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
-                          "poll() returns no events without timeout");
+                          "poll() returned no events without timeout");
             return NGX_ERROR;
         }
 

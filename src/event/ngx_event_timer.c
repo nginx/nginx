@@ -4,6 +4,10 @@
 #include <ngx_event.h>
 
 
+/* in multithreaded enviroment all timer operations must be
+   protected by the single mutex */
+
+
 static ngx_event_t  *ngx_timer_queue, ngx_temp_timer_queue;
 static int           ngx_timer_cur_queue;
 static int           ngx_timer_queue_num;

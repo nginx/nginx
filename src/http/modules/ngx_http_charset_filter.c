@@ -10,8 +10,8 @@ typedef struct {
 
 
 static int ngx_http_charset_filter_init(ngx_cycle_t *cycle);
-static void *ngx_http_charset_create_loc_conf(ngx_pool_t *pool);
-static char *ngx_http_charset_merge_loc_conf(ngx_pool_t *pool,
+static void *ngx_http_charset_create_loc_conf(ngx_conf_t *cf);
+static char *ngx_http_charset_merge_loc_conf(ngx_conf_t *cf,
                                              void *parent, void *child);
 
 
@@ -100,19 +100,19 @@ static int ngx_http_charset_filter_init(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_http_charset_create_loc_conf(ngx_pool_t *pool)
+static void *ngx_http_charset_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_charset_loc_conf_t  *lcf;
 
     ngx_test_null(lcf,
-                  ngx_pcalloc(pool, sizeof(ngx_http_charset_loc_conf_t)),
+                  ngx_pcalloc(cf->pool, sizeof(ngx_http_charset_loc_conf_t)),
                   NGX_CONF_ERROR);
 
     return lcf;
 }
 
 
-static char *ngx_http_charset_merge_loc_conf(ngx_pool_t *pool,
+static char *ngx_http_charset_merge_loc_conf(ngx_conf_t *cf,
                                              void *parent, void *child)
 {
     ngx_http_charset_loc_conf_t *prev = parent;

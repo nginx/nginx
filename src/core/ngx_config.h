@@ -32,6 +32,13 @@
 #endif
 
 
+#ifndef NGX_SERVER_ROOT
+#define NGX_SERVER_ROOT   "./"
+#if 0
+#define NGX_SERVER_ROOT   "/usr/local/nginx/"
+#endif
+#endif
+
 
 #if !(WIN32)
 

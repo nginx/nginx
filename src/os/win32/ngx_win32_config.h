@@ -4,11 +4,14 @@
 
 #define WIN32 1
 
+
 #include <winsock2.h>
 #include <mswsock.h>
 #include <stddef.h>    /* offsetof */
 #include <stdio.h>
 #include <stdarg.h>
+
+#include <time.h>      /* gmtime, strftime */
 
 
 #define ngx_inline   __inline

@@ -56,7 +56,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_in_addr_t          *in_addr, *inaddr;
     ngx_http_core_main_conf_t   *cmcf;
     ngx_http_core_srv_conf_t   **cscfp, *cscf;
-    ngx_http_core_loc_conf_t   **clcfp;
+    ngx_http_core_loc_conf_t   **clcfp, *clcf;
     ngx_http_listen_t           *lscf;
     ngx_http_server_name_t      *s_name, *name;
 #if (WIN32)
@@ -108,20 +108,17 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         mi = ngx_modules[m]->ctx_index;
 
         if (module->create_main_conf) {
-            ngx_test_null(ctx->main_conf[mi],
-                          module->create_main_conf(cf->pool),
+            ngx_test_null(ctx->main_conf[mi], module->create_main_conf(cf),
                           NGX_CONF_ERROR);
         }
 
         if (module->create_srv_conf) {
-            ngx_test_null(ctx->srv_conf[mi],
-                          module->create_srv_conf(cf->pool),
+            ngx_test_null(ctx->srv_conf[mi], module->create_srv_conf(cf),
                           NGX_CONF_ERROR);
         }
 
         if (module->create_loc_conf) {
-            ngx_test_null(ctx->loc_conf[mi],
-                          module->create_loc_conf(cf->pool),
+            ngx_test_null(ctx->loc_conf[mi], module->create_loc_conf(cf),
                           NGX_CONF_ERROR);
         }
     }
@@ -157,7 +154,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         /* init http{} main_conf's */
 
         if (module->init_main_conf) {
-            rv = module->init_main_conf(cf->pool, ctx->main_conf[mi]);
+            rv = module->init_main_conf(cf, ctx->main_conf[mi]);
             if (rv != NGX_CONF_OK) {
                 return rv;
             }
@@ -168,7 +165,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             /* merge the server{}s' srv_conf's */
 
             if (module->merge_srv_conf) {
-                rv = module->merge_srv_conf(cf->pool,
+                rv = module->merge_srv_conf(cf,
                                             ctx->srv_conf[mi],
                                             cscfp[s]->ctx->srv_conf[mi]);
                 if (rv != NGX_CONF_OK) {
@@ -180,7 +177,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 /* merge the server{}'s loc_conf */
 
-                rv = module->merge_loc_conf(cf->pool,
+                rv = module->merge_loc_conf(cf,
                                             ctx->loc_conf[mi],
                                             cscfp[s]->ctx->loc_conf[mi]);
                 if (rv != NGX_CONF_OK) {
@@ -192,7 +189,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 clcfp = (ngx_http_core_loc_conf_t **)cscfp[s]->locations.elts;
 
                 for (l = 0; l < cscfp[s]->locations.nelts; l++) {
-                    rv = module->merge_loc_conf(cf->pool,
+                    rv = module->merge_loc_conf(cf,
                                                 cscfp[s]->ctx->loc_conf[mi],
                                                 clcfp[l]->loc_conf[mi]);
                     if (rv != NGX_CONF_OK) {
@@ -464,11 +461,17 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->nonblocking = 1;
 
             ls->handler = ngx_http_init_connection;
+
+#if 0
             ls->log = cf->cycle->log;
+#endif
 
             cscf = in_addr[a].core_srv_conf;
             ls->pool_size = cscf->connection_pool_size;
             ls->post_accept_timeout = cscf->post_accept_timeout;
+
+            clcf = cscf->ctx->loc_conf[ngx_http_core_module.ctx_index];
+            ls->log = clcf->err_log;
 
 #if (WIN32)
             iocpcf = ngx_event_get_conf(cf->cycle->conf_ctx, ngx_iocp_module);

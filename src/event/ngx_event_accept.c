@@ -67,6 +67,7 @@ ngx_log_debug(ev->log, "ADDR %s" _ ls->listening->addr_text.data);
         }
 
         /* disable warnings: Win32 SOCKET is u_int while UNIX socket is int */
+
         if ((unsigned) s >= (unsigned) ecf->connections) {
 
             ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
@@ -183,7 +184,7 @@ ngx_log_debug(ev->log, "ADDR %s" _ ls->listening->addr_text.data);
         if (c->log == NULL) {
             return;
         }
-        ngx_memcpy(c->log, ev->log, sizeof(ngx_log_t));
+        ngx_memcpy(c->log, ls->log, sizeof(ngx_log_t));
         rev->log = wev->log = c->log;
 
         /* TODO: x86: MT: lock xadd, MP: lock xadd, shared */

@@ -18,8 +18,8 @@ typedef struct {
 
 
 static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src);
-static void *ngx_http_output_filter_create_conf(ngx_pool_t *pool);
-static char *ngx_http_output_filter_merge_conf(ngx_pool_t *pool,
+static void *ngx_http_output_filter_create_conf(ngx_conf_t *cf);
+static char *ngx_http_output_filter_merge_conf(ngx_conf_t *cf,
                                                void *parent, void *child);
 
 
@@ -307,12 +307,12 @@ ngx_log_debug(src->file->log, "READ: %qd:%qd %X:%X %X:%X" _
 }
 
 
-static void *ngx_http_output_filter_create_conf(ngx_pool_t *pool)
+static void *ngx_http_output_filter_create_conf(ngx_conf_t *cf)
 {
     ngx_http_output_filter_conf_t *conf;
 
     ngx_test_null(conf,
-                  ngx_palloc(pool, sizeof(ngx_http_output_filter_conf_t)),
+                  ngx_palloc(cf->pool, sizeof(ngx_http_output_filter_conf_t)),
                   NULL);
 
     conf->hunk_size = NGX_CONF_UNSET;
@@ -321,7 +321,7 @@ static void *ngx_http_output_filter_create_conf(ngx_pool_t *pool)
 }
 
 
-static char *ngx_http_output_filter_merge_conf(ngx_pool_t *pool,
+static char *ngx_http_output_filter_merge_conf(ngx_conf_t *cf,
                                                void *parent, void *child)
 {
     ngx_http_output_filter_conf_t *prev = parent;

@@ -40,9 +40,6 @@
 #define NGX_CONF_MODULE      0x464E4F43  /* "CONF" */
 
 
-#define MAX_CONF_ERRSTR      256
-extern  char ngx_conf_errstr[MAX_CONF_ERRSTR];
-
 
 struct ngx_command_s {
     ngx_str_t  name;
@@ -59,6 +56,13 @@ struct ngx_command_s {
 struct ngx_open_file_s {
     ngx_fd_t   fd;
     ngx_str_t  name;
+#if 0
+    /* e.g. append mode, error_log */
+    int        flags;
+    /* e.g. reopen db file */
+    int      (*handler)(void *data, ngx_open_file_t *file);
+    void      *data;
+#endif
 };
 
 
@@ -178,6 +182,7 @@ struct ngx_conf_s {
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
 
+ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name);
 void ngx_conf_log_error(int level, ngx_conf_t *cf, ngx_err_t err,
                         char *fmt, ...);
 
@@ -192,8 +197,10 @@ char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);
 
+
 extern ngx_module_t     *ngx_modules[];
 extern ngx_cycle_t      *ngx_cycle;
 extern ngx_array_t       ngx_old_cycles;
+
 
 #endif /* _NGX_HTTP_CONF_FILE_H_INCLUDED_ */

@@ -69,6 +69,10 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     int       written;
 #endif
 
+    if (log->file->fd == NGX_INVALID_FILE) {
+        return;
+    }
+
     ngx_localtime(&tm);
     len = ngx_snprintf(errstr, sizeof(errstr), "%4d/%02d/%02d %02d:%02d:%02d",
                        tm.ngx_tm_year, tm.ngx_tm_mon, tm.ngx_tm_mday,
@@ -121,21 +125,16 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     }
 
 #if (WIN32)
-    errstr[len++] = '\r';
-    errstr[len++] = '\n';
-    if (log->file->fd) {
-        WriteFile(log->file->fd, errstr, len, &written, NULL);
-    }
+
+    errstr[len++] = CR;
+    errstr[len++] = LF;
+    WriteFile(log->file->fd, errstr, len, &written, NULL);
+
 #else
-    errstr[len++] = '\n';
+
+    errstr[len++] = LF;
     write(log->file->fd, errstr, len);
-#endif
 
-
-#if 0
-    errstr[len] = '\0';
-    fputs(errstr, stderr);
-    fflush(stderr);
 #endif
 }
 
@@ -225,6 +224,8 @@ ngx_log_t *ngx_log_init_errlog()
     } else if (ngx_stderr.fd == NULL) {
         /* there are no associated standard handles */
         /* TODO: where we can log possible errors ? */
+
+        ngx_stderr.fd = NGX_INVALID_FILE;
     }
 
 #else
@@ -246,11 +247,9 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name)
     ngx_log_t  *log;
 
     ngx_test_null(log, ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)), NULL);
-    ngx_test_null(log->file, ngx_push_array(&cycle->open_files), NULL);
-    log->file->fd = NGX_INVALID_FILE;
-    if (name) {
-        log->file->name = *name;
-    }
+    ngx_test_null(log->file, ngx_conf_open_file(cycle, name), NULL);
+
+    /* STUB */ log->log_level = NGX_LOG_DEBUG;
 
     return log;
 }

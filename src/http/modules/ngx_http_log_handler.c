@@ -5,14 +5,14 @@
 
 
 typedef struct {
-    ngx_file_t  file;
+    ngx_open_file_t  *file;
 } ngx_http_log_conf_t;
 
 
-static void *ngx_http_log_create_conf(ngx_pool_t *pool);
-static char *ngx_http_log_merge_conf(ngx_pool_t *p, void *parent, void *child);
+static void *ngx_http_log_create_conf(ngx_conf_t *cf);
+static char *ngx_http_log_merge_conf(ngx_conf_t *cf, void *parent, void *child);
 static char *ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd,
-                                                                   void *conf);
+                                  void *conf);
 
 static ngx_command_t ngx_http_log_commands[] = {
 
@@ -49,6 +49,8 @@ ngx_module_t  ngx_http_log_module = {
 };
 
 
+static ngx_str_t http_access_log = ngx_string("access.log");
+
 
 static char *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
@@ -60,6 +62,9 @@ int ngx_http_log_handler(ngx_http_request_t *r)
     size_t                len;
     ngx_tm_t              tm;
     ngx_http_log_conf_t  *lcf;
+#if (WIN32)
+    int                   written;
+#endif
 
     ngx_log_debug(r->connection->log, "log handler");
 
@@ -135,35 +140,47 @@ int ngx_http_log_handler(ngx_http_request_t *r)
     *p++ = '"';
 
 #if (WIN32)
+
     *p++ = CR; *p++ = LF;
+    WriteFile(lcf->file->fd, line, p - line, &written, NULL);
+
 #else
+
     *p++ = LF;
+    write(lcf->file->fd, line, p - line);
+
 #endif
 
-    write(lcf->file.fd, line, p - line);
 
     return NGX_OK;
 }
 
 
-static void *ngx_http_log_create_conf(ngx_pool_t *pool)
+static void *ngx_http_log_create_conf(ngx_conf_t *cf)
 {
     ngx_http_log_conf_t  *conf;
 
-    ngx_test_null(conf, ngx_pcalloc(pool, sizeof(ngx_http_log_conf_t)),
+    ngx_test_null(conf, ngx_pcalloc(cf->pool, sizeof(ngx_http_log_conf_t)),
                   NGX_CONF_ERROR);
 
     return conf;
 }
 
 
-static char *ngx_http_log_merge_conf(ngx_pool_t *p, void *parent, void *child)
+static char *ngx_http_log_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_log_conf_t *prev = parent;
     ngx_http_log_conf_t *conf = child;
 
-    /* STUB */
-    *conf = *prev;
+    if (conf->file == NULL) {
+        if (prev->file) {
+            conf->file = prev->file;
+        } else {
+            ngx_test_null(conf->file,
+                          ngx_conf_open_file(cf->cycle, &http_access_log),
+                          NGX_CONF_ERROR);
+        }
+    }
 
     return NGX_CONF_OK;
 }
@@ -174,44 +191,12 @@ static char *ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     ngx_http_log_conf_t *lcf = conf;
 
-    int         len;
-    ngx_err_t   err;
     ngx_str_t  *value;
 
     value = cf->args->elts;
 
-    lcf->file.name.len = value[1].len;
-    lcf->file.name.data = value[1].data;
-
-    lcf->file.fd = ngx_open_file(lcf->file.name.data,
-                                 NGX_FILE_RDWR,
-                                 NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
-
-    if (lcf->file.fd == NGX_INVALID_FILE) {
-        err = ngx_errno;
-        len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                          ngx_open_file_n " \"%s\" failed (%d: ",
-                          lcf->file.name.data, err);
-        len += ngx_strerror_r(err, ngx_conf_errstr + len,
-                              sizeof(ngx_conf_errstr) - len - 1);
-        ngx_conf_errstr[len++] = ')';
-        ngx_conf_errstr[len++] = '\0';
-        return ngx_conf_errstr;
-    }
-
-#if (WIN32)
-    if (ngx_file_append_mode(lcf->file.fd) == NGX_ERROR) {
-        err = ngx_errno;
-        len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                          ngx_file_append_mode_n " \"%s\" failed (%d: ",
-                          lcf->file.name.data, err);
-        len += ngx_strerror_r(err, ngx_conf_errstr + len,
-                              sizeof(ngx_conf_errstr) - len - 1);
-        ngx_conf_errstr[len++] = ')';
-        ngx_conf_errstr[len++] = '\0';
-        return ngx_conf_errstr;
-    }
-#endif
+    ngx_test_null(lcf->file, ngx_conf_open_file(cf->cycle, &value[1]),
+                  NGX_CONF_ERROR);
 
     return NGX_CONF_OK;
 }

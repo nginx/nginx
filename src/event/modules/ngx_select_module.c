@@ -263,7 +263,11 @@ static int ngx_select_process_events(ngx_log_t *log)
         tv.tv_sec = timer / 1000;
         tv.tv_usec = (timer % 1000) * 1000;
         tp = &tv;
+#if (HAVE_SELECT_CHANGE_TIMEOUT)
+        delta = 0;
+#else
         delta = ngx_msec();
+#endif
 
     } else {
         timer = 0;
@@ -313,8 +317,11 @@ static int ngx_select_process_events(ngx_log_t *log)
 #endif
 
     if (timer) {
-        /* TODO: Linux returns time in tv */
+#if (HAVE_SELECT_CHANGE_TIMEOUT)
+        delta = timer - (tv.tv_sec * 1000 + tv.tv_usec / 1000);
+#else
         delta = ngx_msec() - delta;
+#endif
 
 #if (NGX_DEBUG_EVENT)
         ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ delta);
@@ -324,7 +331,7 @@ static int ngx_select_process_events(ngx_log_t *log)
     } else {
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
-                          "select() returns no events without timeout");
+                          "select() returned no events without timeout");
             return NGX_ERROR;
         }
 
@@ -408,7 +415,7 @@ static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
-    /* the default FD_SETSIZE is 1024U in FreeBSD 5.x */
+    /* disable warnings: the default FD_SETSIZE is 1024U in FreeBSD 5.x */
 
     if ((unsigned) ecf->connections > FD_SETSIZE) {
         return "maximum number of connections "

@@ -4,16 +4,21 @@
 
 int ngx_event_connect_peer(ngx_connect_peer_t *cp)
 {
+    time_t   now;
 
+    /* TODO: cached connection */
+
+    now = ngx_time();
 
     if (cp->peers->number > 1) {
 
-        /* it's a first try - get current peer */
+        /* there are several peers */
 
         if (cp->tries == cp->peers->number) {
 
-            /* Here is the race condition
-               when the peers are shared between
+            /* it's a first try - get a current peer */
+
+            /* Here is the race condition when the peers are shared between
                the threads or the processes but it should not be serious */
 
             cp->cur_peer = cp->peers->current++;
@@ -22,10 +27,11 @@ int ngx_event_connect_peer(ngx_connect_peer_t *cp)
                 cp->peers->current = 0;
             }
 
-            /* */
+            /* the end of the race condition */
 
 #if (NGX_MULTITHREADED || NGX_MULTIPROCESSED)
             /* eliminate the sequences of the race condition */
+
             if (cp->cur_peer >= cp->peers->number) {
                 cp->cur_peer = 0;
             }
@@ -34,11 +40,12 @@ int ngx_event_connect_peer(ngx_connect_peer_t *cp)
 
         if (cp->peers->max_fails > 0) {
 
+            /* the peers support a fault tolerance */
+
             for ( ;; ) {
                 peer = &cp->peers->peers[cp->cur_peer];
 
-                /* Here is the race condition
-                   when the peers are shared between
+                /* Here is the race condition when the peers are shared between
                    the threads or the processes but it should not be serious */
 
                 if (peer->fails <= cp->peers->max_fails
@@ -47,7 +54,7 @@ int ngx_event_connect_peer(ngx_connect_peer_t *cp)
                     break;
                 }
 
-                /* */
+                /* the end of the race condition */
 
                 cp->cur_peer++;
 
@@ -71,23 +78,23 @@ int ngx_event_connect_peer(ngx_connect_peer_t *cp)
     s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP, 0);
 
     if (s == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cn->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, cp->log, ngx_socket_errno,
                       ngx_socket_n " failed");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
-    if (cn->rcvbuf) {
+    if (cp->rcvbuf) {
         if (setsockopt(s, SOL_SOCKET, SO_RCVBUF,
-                       (const void *) &cn->rcvbuf, sizeof(int)) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, cn->log, ngx_socket_errno,
+                       (const void *) &cp->rcvbuf, sizeof(int)) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cp->log, ngx_socket_errno,
                           "setsockopt(SO_RCVBUF) failed");
 
             if (ngx_close_socket(s) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, cn->log, ngx_socket_errno,
+                ngx_log_error(NGX_LOG_ALERT, cp->log, ngx_socket_errno,
                               ngx_close_socket_n " failed");
             }
 
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            return NGX_ERROR;
         }
     }
 
@@ -100,12 +107,33 @@ int ngx_event_connect_peer(ngx_connect_peer_t *cp)
                           ngx_close_socket_n " failed");
         }
 
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
-    c = &ngx_connections[s];
-    rev = &ngx_read_events[s];
-    wev = &ngx_write_events[s];
+#if (WIN32)
+        /*
+         * Winsock assignes a socket number divisible by 4
+         * so to find a connection we divide a socket number by 4.
+         */
+
+        if (s % 4) {
+            ngx_log_error(NGX_LOG_EMERG, cp->log, 0,
+                          ngx_socket_n
+                          " created socket %d, not divisible by 4", s);
+            exit(1);
+        }
+
+    c = &ngx_cycle->connections[s / 4];
+    rev = &ngx_cycle->read_events[s / 4];
+    wev = &ngx_cycle->write_events[s / 4];
+
+#else
+
+    c = &ngx_cycle->connections[s];
+    rev = &ngx_cycle->read_events[s];
+    wev = &ngx_cycle->write_events[s];
+
+#endif
 
     instance = rev->instance;
 
@@ -120,7 +148,9 @@ int ngx_event_connect_peer(ngx_connect_peer_t *cp)
 
     rev->instance = wev->instance = !instance;
 
+    !!!!!!!!!!!!!!!
+
     rev->log = wev->log = c->log = cn->log;
     c->fd = s;
     wev->close_handler = rev->close_handler = ngx_event_close_connection;
-
+}
