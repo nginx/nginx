@@ -43,7 +43,7 @@ int ngx_event_accept(ngx_event_t *ev)
 
 #if !(HAVE_INHERITED_NONBLOCK)
         if (ngx_nonblocking(s) == -1)
-            ngx_log_error(NGX_LOG_ERR, log, ngx_socket_errno,
+            ngx_log_error(NGX_LOG_ERR, ev->log, ngx_socket_errno,
                           ngx_nonblocking_n "failed");
 #endif
 
