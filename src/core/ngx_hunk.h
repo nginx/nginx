@@ -34,20 +34,8 @@
 
 
 
-
 typedef struct ngx_hunk_s ngx_hunk_t;
 struct ngx_hunk_s {
-#if 0
-    union {
-        char    *mem;           /* start of current data */
-        off_t    file;   
-    } pos;
-    union {
-        char    *mem;           /* end of current data */
-        off_t    file;   
-    } last;
-#endif
-
     char        *pos;
     char        *last;
     off_t        file_pos;
@@ -60,8 +48,8 @@ struct ngx_hunk_s {
     char        *post_end;      /* end of post-allocated hunk */
     int          tag;
     ngx_file_t  *file;
+    ngx_hunk_t  *shadow;
 };
-
 
 
 typedef struct ngx_chain_s  ngx_chain_t;

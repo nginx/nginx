@@ -370,12 +370,12 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
         err = ngx_errno;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
                       "ngx_http_core_translate_handler: "
-                      ngx_file_type_n " %s failed", r->file.name.data);
+                      ngx_file_type_n " \"%s\" failed", r->file.name.data);
 
         if (err == NGX_ENOENT) {
             return NGX_HTTP_NOT_FOUND;
 
-        } else if (err == ERROR_PATH_NOT_FOUND) {
+        } else if (err == NGX_ENOTDIR) {
             return NGX_HTTP_NOT_FOUND;
 
         } else if (err == NGX_EACCES) {
@@ -396,17 +396,14 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
         err = ngx_errno;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
                       "ngx_http_core_handler: "
-                      ngx_open_file_n " %s failed", r->file.name.data);
+                      ngx_open_file_n " \"%s\" failed", r->file.name.data);
 
         if (err == NGX_ENOENT) {
             return NGX_HTTP_NOT_FOUND;
-#if (WIN32)
-        } else if (err == ERROR_PATH_NOT_FOUND) {
-            return NGX_HTTP_NOT_FOUND;
-#else
+
         } else if (err == NGX_ENOTDIR) {
             return NGX_HTTP_NOT_FOUND;
-#endif
+
         } else if (err == NGX_EACCES) {
             return NGX_HTTP_FORBIDDEN;
 
@@ -419,12 +416,13 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
         if (ngx_stat_fd(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                           "ngx_http_core_handler: "
-                          ngx_stat_fd_n " %s failed", r->file.name.data);
+                          ngx_stat_fd_n " \"%s\" failed", r->file.name.data);
 
             if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
                               "ngx_http_core_handler: "
-                              ngx_close_file_n " %s failed", r->file.name.data);
+                              ngx_close_file_n " \"%s\" failed",
+                              r->file.name.data);
             }
 
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -441,7 +439,7 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
                           "ngx_http_core_handler: "
-                          ngx_close_file_n " %s failed", r->file.name.data);
+                          ngx_close_file_n " \"%s\" failed", r->file.name.data);
         }
 #endif
 
@@ -487,12 +485,12 @@ static int ngx_http_core_index_handler(ngx_http_request_t *r)
 
             if (rc == NGX_HTTP_NOT_FOUND) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, r->path_err,
-                              "%s is not found", r->path.data);
+                              "\"%s\" is not found", r->path.data);
             }
 
             if (rc == NGX_HTTP_FORBIDDEN) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, r->path_err,
-                          "%s is forbidden", r->path.data);
+                          "\"%s\" is forbidden", r->path.data);
             }
 
             return rc;
@@ -501,7 +499,7 @@ static int ngx_http_core_index_handler(ngx_http_request_t *r)
 
     r->path.data[r->path.len] = '\0';
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "directory index of %s is forbidden", r->path.data);
+                  "directory index of \"%s\" is forbidden", r->path.data);
 
     return NGX_HTTP_FORBIDDEN;
 }
@@ -550,7 +548,7 @@ int ngx_http_close_request(ngx_http_request_t *r, int error)
     if (r->file.fd != NGX_INVALID_FILE) {
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
-                          ngx_close_file_n " failed");
+                          ngx_close_file_n " \"%s\" failed", r->file.name.data);
         }
     }
 

@@ -40,14 +40,15 @@ int ngx_http_static_handler(ngx_http_request_t *r)
                       "ngx_http_static_handler: "
                       ngx_open_file_n " %s failed", r->file.name.data);
 
-        if (err == NGX_ENOENT)
+        if (err == NGX_ENOENT) {
             return NGX_HTTP_NOT_FOUND;
-#if (WIN32)
-        else if (err == ERROR_PATH_NOT_FOUND)
+
+        } else if (err == NGX_ENOTDIR) {
             return NGX_HTTP_NOT_FOUND;
-#endif
-        else
+
+        } else {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
     }
 
     if (!r->file.info_valid) {

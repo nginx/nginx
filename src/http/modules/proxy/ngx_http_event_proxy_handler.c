@@ -31,6 +31,9 @@ static int ngx_http_proxy_process_upstream_headers(ngx_http_proxy_ctx_t *p);
 static int ngx_http_proxy_process_upstream_header_line(ngx_http_proxy_ctx_t *p);
 
 
+static int ngx_http_proxy_write_upstream_body(ngx_event_t *wev);
+
+
 static int ngx_http_proxy_read_response_body(ngx_event_t *ev);
 static int ngx_http_proxy_write_to_client(ngx_event_t *ev);
 
@@ -39,6 +42,7 @@ static int ngx_read_http_proxy_status_line(ngx_http_proxy_ctx_t *ctx);
 static int ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int error);
 static size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len);
 
+static int ngx_http_proxy_init(ngx_pool_t *pool);
 static void *ngx_http_proxy_create_loc_conf(ngx_pool_t *pool);
 
 static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -82,7 +86,7 @@ ngx_module_t  ngx_http_proxy_module = {
     &ngx_http_proxy_module_ctx,            /* module context */
     ngx_http_proxy_commands,               /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
-    NULL                                   /* init module */
+    ngx_http_proxy_init                    /* init module */
 };
 
 
@@ -179,7 +183,7 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
     }
 
     /* TODO: duplicate the hunks and chain if there is backend farm */
-    p->out = chain;
+    p->request_hunks = chain;
 
     p->last_error = NGX_HTTP_BAD_GATEWAY;
     ngx_http_proxy_process_upstream(p, NULL);
@@ -679,12 +683,12 @@ static int ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
     ngx_chain_t  *chain;
     ngx_event_t  *wev;
 
-    chain = ngx_write_chain(p->connection, p->out, 0);
+    chain = ngx_write_chain(p->connection, p->request_hunks, 0);
     if (chain == (ngx_chain_t *) -1) {
         return NGX_ERROR;
     }
 
-    p->out = chain;
+    p->request_hunks = chain;
 
     wev = p->connection->write;
 
@@ -1026,12 +1030,11 @@ static int ngx_http_proxy_process_upstream_header_line(ngx_http_proxy_ctx_t *p)
 }
 
 
-#if 0
-
 static int ngx_http_proxy_read_upstream_body(ngx_event_t *rev)
 {
+    int                    rc, n, size;
     ngx_hunk_t            *h;
-    ngx_chain_t           *chain, ce;
+    ngx_chain_t           *chain, chain_entry, *ce, *te;
     ngx_connection_t      *c;
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
@@ -1041,9 +1044,9 @@ static int ngx_http_proxy_read_upstream_body(ngx_event_t *rev)
     p = (ngx_http_proxy_ctx_t *)
                          ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
 
-    ce.next = NULL;
+    chain_entry.next = NULL;
 
-    do {
+    for ( ;; ) {
 
 #if (USE_KQUEUE)
 
@@ -1051,7 +1054,7 @@ static int ngx_http_proxy_read_upstream_body(ngx_event_t *rev)
             break;
         }
 
-#elif (HAVE_KQUEUE)
+#elif (HAVE_KQUEUE0)
 
         if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT
             && ev->eof && ev->available == 0)
@@ -1063,6 +1066,7 @@ static int ngx_http_proxy_read_upstream_body(ngx_event_t *rev)
 
         if (p->free_hunks) {
             chain = p->free_hunks;
+            p->free_hunks = NULL;
 
         } else if (p->allocated < p->lcf->max_block_size) {
             ngx_test_null(h,
@@ -1070,12 +1074,13 @@ static int ngx_http_proxy_read_upstream_body(ngx_event_t *rev)
                           NGX_ERROR);
 
             p->allocated += p->block_size;
-            ce.hunk = h;
-            chain = &ce;
+            chain_entry.hunk = h;
+            chain = &chain_entry;
 
         } else {
-            if (p->temp_fd == NGX_INVALID_FILE) {
-                rc = ngx_create_temp_file(p->temp_file, r->cachable);
+            if (p->temp_file->fd == NGX_INVALID_FILE) {
+                rc = ngx_create_temp_file(p->temp_file, p->lcf->temp_path,
+                                          r->pool, 0, 2, r->cachable);
 
                 if (rc != NGX_OK) {
                     return rc;
@@ -1089,69 +1094,168 @@ static int ngx_http_proxy_read_upstream_body(ngx_event_t *rev)
             }
 
             n = ngx_write_chain_to_file(p->temp_file, p->in_hunks,
-                                        p->temp_offset);
+                                        p->temp_offset, r->pool);
 
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
-            ngx_test_null(h, ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)),
-                          NGX_ERROR);
+            for (ce = p->in_hunks; ce; ce = ce->next) {
+                ngx_test_null(h, ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)),
+                              NGX_ERROR);
 
-            h->type = NGX_HUNK_FILE
-                      |NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP|NGX_HUNK_RECYCLED;
+                h->type = NGX_HUNK_FILE
+                          |NGX_HUNK_TEMP|NGX_HUNK_IN_MEMORY|NGX_HUNK_RECYCLED;
 
-            h->file_pos = p->temp_offset;
-            p->temp_offset += n;
-            h->file_last = p->temp_offset;
+                ce->hunk->shadow = h;
+                h->shadow = ce->hunk;
 
-            h->file->fd = p->temp_file.fd;
-            h->file->log = p->log;
+                h->file_pos = p->temp_offset;
+                p->temp_offset += ce->hunk->last - ce->hunk->pos;
+                h->file_last = p->temp_offset;
 
-            h->pos = p->in_hunks->hunk->pos;
-            h->last = p->in_hunks->hunk->last;
-            h->start = p->in_hunks->hunk->start;
-            h->end = p->in_hunks->hunk->end;
-            h->pre_start = p->in_hunks->hunk->pre_start;
-            h->post_end = p->in_hunks->hunk->post_end;
+                h->file->fd = p->temp_file->fd;
+                h->file->log = p->log;
 
-            ngx_add_hunk_to_chain(p->last_out_hunk, h, r->pool, NGX_ERROR);
+                h->pos = ce->hunk->pos;
+                h->last = ce->hunk->last;
+                h->start = ce->hunk->start;
+                h->end = ce->hunk->end;
+                h->pre_start = ce->hunk->pre_start;
+                h->post_end = ce->hunk->post_end;
 
-            ce.hunk = p->in_hunks->next;
-            p->in_hunks = p->in_hunks->next;
-            chain = &ce;
+                ngx_test_null(te, ngx_create_chain_entry(r->pool), NGX_ERROR);
+                te->hunk = h;
+                te->next = NULL;
+
+                if (p->last_out_hunk) {
+                    p->last_out_hunk->next = te;
+                    p->last_out_hunk = te;
+
+                } else {
+                    p->last_out_hunk = te;
+                }
+            }
         }
 
         n = ngx_recv_chain(c, chain);
 
-        h->last += n;
-        left = hunk->end - hunk->last;
+        if (n == NGX_ERROR) {
+            return NGX_ERROR;
+        }
 
-    } while (n > 0 && left == 0);
+        if (n == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
+        if (n == 0) {
+            break;
+        }
+
+        for (ce = chain; ce && n > 0; ce = ce->next) {
+            ngx_test_null(te, ngx_create_chain_entry(r->pool), NGX_ERROR);
+            te->hunk = ce->hunk;
+            te->next = NULL;
+
+            if (p->last_in_hunk) {
+                p->last_in_hunk->next = te;
+                p->last_in_hunk = te;
+
+            } else {
+                p->last_in_hunk = te;
+            }
+
+            size = ce->hunk->end - ce->hunk->last;
+
+            if (n >= size) {
+                n -= size;
+                ce->hunk->last = ce->hunk->end;
+                if (ce->hunk->shadow) {
+                    ce->hunk->shadow->type &= ~(NGX_HUNK_TEMP
+                                                |NGX_HUNK_IN_MEMORY
+                                                |NGX_HUNK_RECYCLED);
+                    ce->hunk->shadow->shadow = NULL;
+
+                }
+
+                continue;
+            }
+
+            ce->hunk->last += n;
+            if (ce->hunk->shadow) {
+                ce->hunk->shadow->type &= ~(NGX_HUNK_TEMP
+                                            |NGX_HUNK_IN_MEMORY
+                                            |NGX_HUNK_RECYCLED);
+                ce->hunk->shadow->shadow = NULL;
+            }
+
+            break;
+        }
+
+        if (ce) {
+            ce->next = p->free_hunks;
+            p->free_hunks = ce;
+            break;
+
+            return NGX_OK;
+        }
+    }
 
     if (p->out_hunks && p->request->connection->write->ready) {
-        ngx_http_proxy_write_upstream_body(p->request->connection->write);
+        return
+             ngx_http_proxy_write_upstream_body(p->request->connection->write);
     }
+
+    return NGX_OK;
 }
 
 
 static int ngx_http_proxy_write_upstream_body(ngx_event_t *wev)
 {
-    while (out) {
-        output_filter(r, hunk);
-        if (again)
-            return
+    int                    rc;
+    ngx_hunk_t            *h, *sh;
+    ngx_chain_t           *ce;
+    ngx_connection_t      *c;
+    ngx_http_request_t    *r;
+    ngx_http_proxy_ctx_t  *p;
 
-        if (hunk done)
-            remove from out
-            if (hunk is memory)
-                add it to free
+    c = (ngx_connection_t *) wev->data;
+    r = (ngx_http_request_t *) c->data;
+    p = (ngx_http_proxy_ctx_t *)
+                         ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
+
+    while (p->out_hunks) {
+        h = p->out_hunks->hunk;
+        rc = ngx_http_output_filter(r, h);
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_AGAIN || h->pos < h->last) {
+            return NGX_AGAIN;
+        }
+
+        p->out_hunks = p->out_hunks->next;
+
+        /* if the complete hunk has a shadow hunk
+           then add a shadow hunk to p->free_hunks chain */
+
+        sh = h->shadow;
+
+        if (sh) {
+            sh->pos = sh->last = sh->start;
+            ngx_test_null(ce, ngx_create_chain_entry(r->pool), NGX_ERROR);
+            ce->hunk = sh;
+            ce->next = p->free_hunks;
+            p->free_hunks = ce;
+        }
     }
+
+    return NGX_OK;
 }
 
 
-
-#endif
 
 
 
@@ -1482,9 +1586,36 @@ static int ngx_read_http_proxy_status_line(ngx_http_proxy_ctx_t *ctx)
 }
 
 
+static int ngx_http_proxy_init(ngx_pool_t *pool)
+{
+    int         i;
+    ngx_file_t  file;
+    ngx_path_t  path;
+
+    file.log = pool->log;
+
+    path.name.data = "temp";
+    path.name.len = 4;
+    path.level[0] = 1;
+    path.level[1] = 2;
+    path.level[2] = 3;
+    path.len = 0;
+
+    for (i = 0; i < 3; i++) {
+        if (path.level[i] == 0) {
+            break;
+        }
+        path.len += path.level[i] + 1;
+    }
+
+    return ngx_create_temp_file(&file, &path, pool, 123456789, 2, 0);
+}
+
+
 static void *ngx_http_proxy_create_loc_conf(ngx_pool_t *pool)
 {
-    ngx_http_proxy_loc_conf_t *conf;
+    int                         i;
+    ngx_http_proxy_loc_conf_t  *conf;
 
     ngx_test_null(conf,
                   ngx_pcalloc(pool, sizeof(ngx_http_proxy_loc_conf_t)),
@@ -1498,6 +1629,22 @@ static void *ngx_http_proxy_create_loc_conf(ngx_pool_t *pool)
     conf->header_size = 1024;
     conf->block_size = 4096;
     conf->max_block_size = 32768;
+
+    ngx_test_null(conf->temp_path, ngx_pcalloc(pool, sizeof(ngx_path_t)), NULL);
+
+    conf->temp_path->name.data = "temp";
+    conf->temp_path->name.len = 4;
+    conf->temp_path->level[0] = 1;
+    conf->temp_path->level[1] = 2;
+    conf->temp_path->level[2] = 3;
+    conf->temp_path->len = 0;
+
+    for (i = 0; i < 3; i++) {
+        if (conf->temp_path->level[i] == 0) {
+            break;
+        }
+        conf->temp_path->len += conf->temp_path->level[i] + 1;
+    }
     /**/
 
     return conf;

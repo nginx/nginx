@@ -8,10 +8,10 @@
 
 ssize_t ngx_recv_chain(ngx_connection_t *c, ngx_chain_t *ce)
 {
-    int              n;
-    struct iovec   *iov;
-    ngx_err_t       err;
-    ngx_array_t     io;
+    ssize_t         n;
+    struct iovec  *iov;
+    ngx_err_t      err;
+    ngx_array_t    io;
 
     ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_ERROR);
 

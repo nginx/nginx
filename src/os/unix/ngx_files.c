@@ -1,7 +1,11 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_hunk.h>
+#include <ngx_array.h>
 #include <ngx_file.h>
+#include <ngx_files.h>
+
 
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 {
@@ -12,7 +16,7 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
     n = pread(file->fd, buf, size, offset);
 
     if (n == -1) {
-        ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "pread() failed");
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "pread() failed");
         return NGX_ERROR;
     }
 
@@ -29,13 +33,66 @@ ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
     n = pwrite(file->fd, buf, size, offset);
 
     if (n == -1) {
-        ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "pwrite() failed");
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "pwrite() failed");
         return NGX_ERROR;
     }
 
-    if (n != size) {
-        ngx_log_error(NGX_LOG_ERR, file->log, 0,
+    if ((size_t) n != size) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, 0,
                       "pwrite() has written only %d of %d", n, size);
+        return NGX_ERROR;
+    }
+
+    file->offset += n;
+
+    return n;
+}
+
+
+ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
+                                off_t offset, ngx_pool_t *pool)
+{
+    size_t         size;
+    ssize_t        n;
+    struct iovec  *iov;
+    ngx_err_t      err;
+    ngx_array_t    io;
+
+    /* use pwrite() if there's the only hunk in a chain */
+
+    if (ce->next == NULL) {
+        return ngx_write_file(file, ce->hunk->pos,
+                              ce->hunk->last - ce->hunk->pos, offset);
+    }
+
+    ngx_init_array(io, pool, 10, sizeof(struct iovec), NGX_ERROR);
+    size = 0;
+
+    while (ce) {
+        ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
+        iov->iov_base = ce->hunk->pos;
+        iov->iov_len = ce->hunk->last - ce->hunk->pos;
+        size += ce->hunk->last - ce->hunk->pos;
+        ce = ce->next;
+    }
+
+    if (lseek(file->fd, offset, SEEK_SET) == -1) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
+        return NGX_ERROR;
+    }
+
+    n = writev(file->fd, (struct iovec *) io.elts, io.nelts);
+
+    ngx_destroy_array(&io);
+
+    if (n == -1) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "writev() failed");
+        return NGX_ERROR;
+    }
+
+    if ((size_t) n != size) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, 0,
+                      "writev() has written only %d of %d", n, size);
         return NGX_ERROR;
     }
 

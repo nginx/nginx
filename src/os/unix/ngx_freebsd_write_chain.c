@@ -140,7 +140,7 @@ ngx_chain_t *ngx_freebsd_write_chain(ngx_connection_t *c, ngx_chain_t *in)
 
     c->sent += sent;
 
-    for (ce = in; ce; ce = ce->next) {
+    for (ce = in; ce && sent > 0; ce = ce->next) {
 
         if (ce->hunk->type & NGX_HUNK_IN_MEMORY) {
             size = ce->hunk->last - ce->hunk->pos;

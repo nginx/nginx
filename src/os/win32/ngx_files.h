@@ -26,12 +26,26 @@
                        NULL, OPEN_EXISTING, 0, NULL)
 */
 
+#define ngx_open_tempfile(name, persistent)                                 \
+            CreateFile(name,                                                \
+                    GENERIC_READ|GENERIC_WRITE,                             \
+                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,     \
+                    NULL,                                                   \
+                    CREATE_NEW,                                             \
+                    persistent ? 0:                                         \
+                        FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE, \
+                    NULL);
+
+
 #define ngx_open_file_n             "CreateFile()"
 
 #define NGX_FILE_RDONLY             GENERIC_READ
 
 #define ngx_close_file              CloseHandle
 #define ngx_close_file_n            "CloseHandle()"
+
+#define ngx_mkdir(name)             CreateDirectory(name, NULL)
+#define ngx_mkdir_n                 "CreateDirectory()"
 
 int ngx_file_type(char *filename, ngx_file_info_t *fi);
 #define ngx_file_type_n             "GetFileAttributes"

@@ -5,6 +5,8 @@
 #include <ngx_config.h>
 
 #include <ngx_types.h>
+#include <ngx_alloc.h>
+#include <ngx_hunk.h>
 #include <ngx_file.h>
 
 
@@ -19,10 +21,23 @@
 #define ngx_close_file           close
 #define ngx_close_file_n         "close()"
 
+#define ngx_open_tempfile(name, persistent)                                 \
+                                 open(name, O_CREAT|O_EXCL|O_WRONLY, 0600)
+#define ngx_open_tempfile_n      "open()"
+
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
 #define ngx_read_file_n          "read()"
 
 #define NGX_FILE_RDONLY          O_RDONLY
+
+ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
+
+ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
+                                off_t offset, ngx_pool_t *pool);
+
+
+#define ngx_mkdir(name)          mkdir(name, 0700)
+#define ngx_mkdir_n              "mkdir()"
 
 
 #define ngx_file_type(file, sb)  stat(file, sb)

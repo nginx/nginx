@@ -71,6 +71,9 @@ typedef struct {
     int   block_size;
     int   max_block_size;
 
+    ngx_path_t  *temp_path;
+    int   temp_file_warn;
+
     int   retry_500_error;
 
 } ngx_http_proxy_loc_conf_t;
@@ -91,17 +94,32 @@ typedef struct {
 typedef struct ngx_http_proxy_ctx_s  ngx_http_proxy_ctx_t;
 
 struct ngx_http_proxy_ctx_s {
-    ngx_chain_t  *out;
+    ngx_chain_t   *in_hunks;
+    ngx_chain_t   *last_in_hunk;
+
+    ngx_chain_t   *out_hunks;
+    ngx_chain_t   *last_out_hunk;
+
+    ngx_chain_t   *free_hunks;
+
+    ngx_chain_t   *request_hunks;
+
+    ngx_connection_t               *connection;
+    ngx_http_request_t             *request;
+    ngx_http_proxy_headers_in_t     headers_in;
+
+
+    int           block_size;
+    int           allocated;
+
+    ngx_file_t   *temp_file;
+    off_t         temp_offset;
 
     int           last_hunk;
     ngx_array_t   hunks;
     int           nhunks;
 
     int           hunk_n;
-
-    ngx_connection_t               *connection;
-    ngx_http_request_t             *request;
-    ngx_http_proxy_headers_in_t     headers_in;
 
     ngx_http_proxy_upstream_url_t  *upstream_url;
     ngx_http_proxy_upstreams_t     *upstreams;

@@ -58,8 +58,9 @@ ngx_module_t  ngx_http_index_module = {
    Try to open first index file before the test of the directory existence
    because the valid requests should be many more then invalid ones.
    If open() failed then stat() should be more quickly because some data
-   is already cached in the kernel.  Besides Win32 has ERROR_PATH_NOT_FOUND
-   and Unix has ENOTDIR error (although it less helpfull).
+   is already cached in the kernel.
+   Besides Win32 has ERROR_PATH_NOT_FOUND (NGX_ENOTDIR) and
+   Unix has ENOTDIR error (although it less helpfull).
 */
 
 int ngx_http_index_handler(ngx_http_request_t *r)
@@ -110,11 +111,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
 ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
               "DEBUG: " ngx_open_file_n " %s failed", name);
 
-#if (WIN32)
-            if (err == ERROR_PATH_NOT_FOUND) {
-#else
             if (err == NGX_ENOTDIR) {
-#endif
                 r->path_not_found = 1;
 
             } else if (err == NGX_EACCES) {

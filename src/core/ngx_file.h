@@ -4,6 +4,7 @@
 
 #include <ngx_file.h>
 #include <ngx_log.h>
+#include <ngx_alloc.h>
 #include <ngx_string.h>
 
 typedef struct ngx_file_s  ngx_file_t;
@@ -19,6 +20,20 @@ struct ngx_file_s {
 
     unsigned         info_valid:1;
 };
+
+
+typedef struct {
+    ngx_str_t  name;
+    int        len;
+    int        level[3];
+} ngx_path_t;
+
+
+int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
+                         ngx_pool_t *pool, int num, int step, int persistent);
+void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path);
+int ngx_create_path(ngx_file_t *file, ngx_path_t *path);
+
 
 
 #endif /* _NGX_FILE_H_INCLUDED_ */

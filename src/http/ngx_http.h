@@ -148,6 +148,7 @@ struct ngx_http_request_s {
     int         path_err;
 
     unsigned  proxy:1;
+    unsigned  cachable:1;
     unsigned  pipeline:1;
     unsigned  keepalive:1;
     unsigned  lingering_close:1;
