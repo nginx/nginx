@@ -433,6 +433,18 @@ extern ngx_msec_t             ngx_accept_mutex_delay;
 extern ngx_int_t              ngx_accept_disabled;
 
 
+#if (NGX_STAT_STUB)
+
+extern ngx_atomic_t  *ngx_stat_accepted;
+extern ngx_atomic_t  *ngx_stat_requests;
+extern ngx_atomic_t  *ngx_stat_active;
+extern ngx_atomic_t  *ngx_stat_reading;
+extern ngx_atomic_t  *ngx_stat_writing;
+
+#endif
+
+
+
 #define ngx_accept_mutex_unlock()                                             \
            if (ngx_accept_mutex_held) {                                       \
                *ngx_accept_mutex = 0;                                         \

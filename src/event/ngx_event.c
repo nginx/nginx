@@ -64,6 +64,22 @@ ngx_msec_t                        ngx_accept_mutex_delay;
 ngx_int_t                         ngx_accept_disabled;
 
 
+#if (NGX_STAT_STUB)
+
+ngx_atomic_t   ngx_stat_accepted0;
+ngx_atomic_t  *ngx_stat_accepted = &ngx_stat_accepted0;
+ngx_atomic_t   ngx_stat_requests0;
+ngx_atomic_t  *ngx_stat_requests = &ngx_stat_requests0;
+ngx_atomic_t   ngx_stat_active0;
+ngx_atomic_t  *ngx_stat_active = &ngx_stat_active0;
+ngx_atomic_t   ngx_stat_reading0;
+ngx_atomic_t  *ngx_stat_reading = &ngx_stat_reading0;
+ngx_atomic_t   ngx_stat_writing0;
+ngx_atomic_t  *ngx_stat_writing = &ngx_stat_reading0;
+
+#endif
+
+
 
 static ngx_command_t  ngx_events_commands[] = {
 
@@ -187,12 +203,32 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
     size = 128            /* ngx_accept_mutex */
            + 128;         /* ngx_connection_counter */
 
+#if (NGX_STAT_STUB)
+
+    size += 128           /* ngx_stat_accepted */
+           + 128          /* ngx_stat_requests */
+           + 128          /* ngx_stat_active */
+           + 128          /* ngx_stat_reading */
+           + 128;         /* ngx_stat_writing */
+
+#endif
+
     if (!(shared = ngx_create_shared_memory(size, cycle->log))) {
         return NGX_ERROR;
     }
 
     ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
     ngx_connection_counter = (ngx_atomic_t *) (shared + 128);
+
+#if (NGX_STAT_STUB)
+
+    ngx_stat_accepted = (ngx_atomic_t *) (shared + 2 * 128);
+    ngx_stat_requests = (ngx_atomic_t *) (shared + 3 * 128);
+    ngx_stat_active = (ngx_atomic_t *) (shared + 4 * 128);
+    ngx_stat_reading = (ngx_atomic_t *) (shared + 5 * 128);
+    ngx_stat_writing = (ngx_atomic_t *) (shared + 6 * 128);
+
+#endif
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "counter: " PTR_FMT ", %d",

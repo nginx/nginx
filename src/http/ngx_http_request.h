@@ -146,8 +146,8 @@ typedef struct {
     size_t            connection_type;
     ssize_t           keep_alive_n;
 
-    unsigned          msie;
-    unsigned          msie4;
+    unsigned          msie:1;
+    unsigned          msie4:1;
 } ngx_http_headers_in_t;
 
 

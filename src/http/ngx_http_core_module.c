@@ -1178,14 +1178,18 @@ static char *ngx_set_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     ngx_http_type_t  *type;
 
     if (lcf->types == NULL) {
-        ngx_test_null(lcf->types,
-                      ngx_palloc(cf->pool, NGX_HTTP_TYPES_HASH_PRIME
-                                                        * sizeof(ngx_array_t)),
-                      NGX_CONF_ERROR);
+        lcf->types = ngx_palloc(cf->pool, NGX_HTTP_TYPES_HASH_PRIME
+                                                        * sizeof(ngx_array_t));
+        if (lcf->types == NULL) {
+            return NGX_CONF_ERROR;
+        }
 
         for (i = 0; i < NGX_HTTP_TYPES_HASH_PRIME; i++) {
-            ngx_init_array(lcf->types[i], cf->pool, 5, sizeof(ngx_http_type_t),
-                           NGX_CONF_ERROR);
+            if (ngx_array_init(&lcf->types[i], cf->pool, 5,
+                                         sizeof(ngx_http_type_t)) == NGX_ERROR)
+            {
+                return NGX_CONF_ERROR;
+            }
         }
     }
 
@@ -1194,7 +1198,10 @@ static char *ngx_set_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     for (i = 1; i < cf->args->nelts; i++) {
         ngx_http_types_hash_key(key, args[i]);
 
-        ngx_test_null(type, ngx_push_array(&lcf->types[key]), NGX_CONF_ERROR);
+        if (!(type = ngx_array_push(&lcf->types[key]))) {
+            return NGX_CONF_ERROR;
+        }
+
         type->exten = args[i];
         type->type = args[0];
     }

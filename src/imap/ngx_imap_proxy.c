@@ -44,12 +44,12 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
 #if 0
     peers->peers[0].addr = inet_addr("81.19.69.70");
     peers->peers[0].addr_port_text.len = sizeof("81.19.69.70:110") - 1;
-    peers->peers[0].addr_port_text.data = "81.19.69.70:110";
+    peers->peers[0].addr_port_text.data = (u_char *) "81.19.69.70:110";
     peers->peers[0].port = htons(110);
 #else
     peers->peers[0].addr = inet_addr("81.19.64.101");
     peers->peers[0].addr_port_text.len = sizeof("81.19.64.101:110") - 1;
-    peers->peers[0].addr_port_text.data = "81.19.64.101:110";
+    peers->peers[0].addr_port_text.data = (u_char *) "81.19.64.101:110";
     peers->peers[0].port = htons(110);
 #endif
 

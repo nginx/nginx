@@ -223,8 +223,8 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 #define ngx_log_debug4(level, log, err, fmt, arg1, arg2, arg3, arg4)
 #define ngx_log_debug5(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5)
 #define ngx_log_debug6(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5, arg6)
-#define ngx_log_debug7(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5, arg6,
-                       arg7)
+#define ngx_log_debug7(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5,    \
+                       arg6, arg7)
 
 #endif
 

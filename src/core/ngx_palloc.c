@@ -86,7 +86,7 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
             }
         }
 
-        /* alloc a new pool block */
+        /* allocate a new pool block */
 
         if (!(n = ngx_create_pool((size_t) (p->end - (char *) p), p->log))) {
             return NULL;
@@ -99,7 +99,7 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
         return m;
     }
 
-    /* alloc a large block */
+    /* allocate a large block */
 
     large = NULL;
     last = NULL;
