@@ -147,8 +147,15 @@ void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
     }
 
     if (subst == *root) {
-        /* it's the last node */
-        *root = sentinel;
+        *root = temp;
+        ngx_rbt_black(temp);
+
+        /* DEBUG stuff */
+        node->left = NULL;
+        node->right = NULL;
+        node->parent = NULL;
+        node->key = 0;
+
         return;
     }
 
@@ -197,6 +204,12 @@ void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
         if (subst->right != sentinel) {
             subst->right->parent = subst;
         }
+
+        /* DEBUG stuff */
+        node->left = NULL;
+        node->right = NULL;
+        node->parent = NULL;
+        node->key = 0;
     }
 
     if (is_red) {
