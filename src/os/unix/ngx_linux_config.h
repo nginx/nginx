@@ -8,35 +8,43 @@
 #define _LARGEFILE_SOURCE
 
 
-#include <unistd.h>
-#include <stddef.h>             /* offsetof() */
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <string.h>
-#include <signal.h>
-#include <limits.h>
-#include <time.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <sys/select.h>
-#include <sys/uio.h>
-#include <sys/ioctl.h>
-#include <sys/resource.h>
-#include <sys/sysctl.h>
-#include <sys/wait.h>
-#include <sys/mman.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>        /* TCP_CORK */
-#include <arpa/inet.h>
+#include <unistd.h>
+#include <stdarg.h>
+#include <stddef.h>             /* offsetof() */
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <signal.h>
 #include <pwd.h>
 #include <grp.h>
-#include <netdb.h>
 #include <dirent.h>
 
+#include <sys/uio.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <sys/wait.h>
+#include <sys/mman.h>
+#include <sys/resource.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+#include <time.h>               /* tzset() */
+#include <sys/ioctl.h>
+#include <sys/sysctl.h>
+#include <netinet/tcp.h>        /* TCP_CORK */
+
+
+/* Linux has no <sys/filio.h> so autoconfigure does not find FIONBIO */
+#ifndef HAVE_FIONBIO
+#define HAVE_FIONBIO  1
+#endif
 
 #include <ngx_auto_config.h>
 
@@ -77,11 +85,6 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 
 #ifndef HAVE_INHERITED_NONBLOCK
 #define HAVE_INHERITED_NONBLOCK  0
-#endif
-
-
-#ifndef HAVE_FIONBIO
-#define HAVE_FIONBIO   1
 #endif
 
 

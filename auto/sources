@@ -125,6 +125,8 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_posix_init.c \
             src/os/unix/ngx_process_cycle.c"
 
+POSIX_DEPS=src/os/unix/ngx_posix_config.h
+
 FREEBSD_DEPS=src/os/unix/ngx_freebsd_config.h
 FREEBSD_SRCS=src/os/unix/ngx_freebsd_init.c
 FREEBSD_SENDFILE_SRCS=src/os/unix/ngx_freebsd_sendfile_chain.c

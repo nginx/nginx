@@ -22,17 +22,11 @@
 
 
 #elif defined _WIN32
-
-/* STUB to allocate a big ngx_connections */
-#undef  FD_SETSIZE
-#define FD_SETSIZE  1024
-
 #include <ngx_win32_config.h>
 
 
 #else /* posix */
-
-#include <ngx_auto_config.h>
+#include <ngx_posix_config.h>
 
 #endif
 

@@ -658,8 +658,12 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #elif (HAVE_SELECT)
 
+#if (WIN32)
+    ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
+#else
     ngx_conf_init_unsigned_value(ecf->connections,
           FD_SETSIZE < DEFAULT_CONNECTIONS ? FD_SETSIZE : DEFAULT_CONNECTIONS);
+#endif
 
     ngx_conf_init_value(ecf->use, ngx_select_module.ctx_index);
     ngx_conf_init_ptr_value(ecf->name, ngx_select_module_ctx.name->data);

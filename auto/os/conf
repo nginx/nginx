@@ -45,4 +45,10 @@ case $PLATFORM in
         CORE_LIBS="$CORE_LIBS ws2_32.lib"
     ;;
 
+    *)
+        CORE_INCS="$UNIX_INCS"
+        CORE_DEPS="$UNIX_DEPS $POSIX_DEPS"
+        CORE_SRCS="$UNIX_SRCS"
+    ;;
+
 esac

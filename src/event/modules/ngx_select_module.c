@@ -596,12 +596,14 @@ static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
 
     /* disable warning: the default FD_SETSIZE is 1024U in FreeBSD 5.x */
 
+#if !(WIN32)
     if ((unsigned) ecf->connections > FD_SETSIZE) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "the maximum number of files "
                       "supported by select() is " ngx_value(FD_SETSIZE));
         return NGX_CONF_ERROR;
     }
+#endif
 
     return NGX_CONF_OK;
 }

@@ -6,6 +6,7 @@
 
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
 
+ngx_int_t      ngx_current_slot;
 ngx_int_t      ngx_last_process;
 ngx_socket_t   ngx_channel;
 ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
@@ -44,6 +45,7 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     }
 
     ngx_channel = ngx_processes[s].channel[1];
+    ngx_current_slot = s;
 
 
     pid = fork();

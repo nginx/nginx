@@ -7,6 +7,26 @@ int  ngx_max_sockets;
 int  ngx_inherited_nonblocking;
 
 
+#if (NGX_POSIX_IO)
+
+ngx_os_io_t ngx_os_io = {
+    ngx_unix_recv,
+    ngx_readv_chain,
+    NULL,
+    ngx_writev_chain,
+    0
+};
+
+
+int ngx_os_init(ngx_log_t *log)
+{
+    return ngx_posix_init(log);
+}
+
+
+#endif
+
+
 void ngx_signal_handler(int signo);
 
 

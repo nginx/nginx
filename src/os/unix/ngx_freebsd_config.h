@@ -2,35 +2,38 @@
 #define _NGX_FREEBSD_CONFIG_H_INCLUDED_
 
 
+#include <sys/types.h>
+#include <sys/time.h>
 #include <unistd.h>
-#include <stddef.h>             /* offsetof() */
-#include <stdlib.h>
 #include <stdarg.h>
+#include <stddef.h>             /* offsetof() */
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <string.h>
 #include <signal.h>
-#include <limits.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/uio.h>
-#include <sys/ioctl.h>
-#include <sys/resource.h>
-#include <sys/sysctl.h>
-#include <sys/wait.h>
-#include <sys/mman.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>        /* TCP_NOPUSH */
-#include <arpa/inet.h>
 #include <pwd.h>
 #include <grp.h>
-#include <netdb.h>
 #include <dirent.h>
-#include <libutil.h>            /* setproctitle() brefore 4.1 */
+
+#include <sys/uio.h>
+#include <sys/filio.h>          /* FIONBIO */
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <sys/wait.h>
+#include <sys/mman.h>
+#include <sys/resource.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+#include <libutil.h>            /* setproctitle() before 4.1 */
 #include <osreldate.h>
+#include <sys/sysctl.h>
+#include <netinet/tcp.h>        /* TCP_NOPUSH */
 
 #include <ngx_auto_config.h>
 
@@ -86,11 +89,6 @@ pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);
 
 #ifndef HAVE_INHERITED_NONBLOCK
 #define HAVE_INHERITED_NONBLOCK  1
-#endif
-
-
-#ifndef HAVE_FIONBIO
-#define HAVE_FIONBIO   1
 #endif
 
 

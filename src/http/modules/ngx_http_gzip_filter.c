@@ -668,7 +668,15 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 trailer->crc32 = ctx->crc32;
                 trailer->zlen = ctx->zin;
 #else
-                /* STUB */ Oops !
+                trailer->crc32[0] = ctx->crc32 & 0xff;
+                trailer->crc32[1] = (ctx->crc32 >> 8) & 0xff;
+                trailer->crc32[2] = (ctx->crc32 >> 16) & 0xff;
+                trailer->crc32[3] = (ctx->crc32 >> 24) & 0xff;
+
+                trailer->zlen[0] = ctx->zin & 0xff;
+                trailer->zlen[1] = (ctx->zin >> 8) & 0xff;
+                trailer->zlen[2] = (ctx->zin >> 16) & 0xff;
+                trailer->zlen[3] = (ctx->zin >> 24) & 0xff;
 #endif
 
                 ctx->zstream.avail_in = 0;

@@ -66,6 +66,3 @@ if [ $EVENT_AIO = YES ]; then
 else
     have=HAVE_AIO . auto/nohave
 fi
-
-
-have=HAVE_MSGHDR_MSG_CONTROL . auto/have

@@ -41,8 +41,7 @@ ngx_types="int"; . auto/types/typedef
 
 
 ngx_func="sin_len"
-ngx_func_inc="#include <sys/types.h>
-#include <sys/socket.h>
+ngx_func_inc="#include <sys/socket.h>
 #include <netinet/in.h>"
 
 ngx_func_test="struct sockaddr_in sa; sa.sin_len = 5"
@@ -121,4 +120,16 @@ ngx_func_test="void *p, int n; n = posix_memalign(&p, 4096, 4096)"
 ngx_func="memalign()"
 ngx_func_inc="#include <stdlib.h>"
 ngx_func_test="void *p; p = memalign(4096, 4096)"
+. auto/func
+
+
+ngx_func="msghdr.msg_control"
+ngx_func_inc="#include <sys/socket.h>"
+ngx_func_test="struct msghdr  msg; msg.msg_control = NULL"
+. auto/func
+
+
+ngx_func="FIONBIO"
+ngx_func_inc="#include <sys/filio.h>"
+ngx_func_test="int i; i = FIONBIO"
 . auto/func

@@ -5,10 +5,11 @@ echo "checking for $ngx_func" >> $NGX_ERR
 
 ngx_found=no
 
-func=`echo $ngx_func | sed -e 's/()$//' | tr '[a-z]' '[A-Z]'`
+func=`echo $ngx_func | sed -e 's/()$//' | tr '[a-z.]' '[A-Z_]'`
 
 cat << END > $NGX_AUTOTEST.c
 
+#include <sys/types.h>
 $NGX_UNISTD_H
 $ngx_func_inc
 

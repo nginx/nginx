@@ -527,20 +527,21 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
     }
 
-    for (n = 0; n < ngx_last_process; n++) {
+    for (n = 0; n <= ngx_last_process; n++) {
 
-        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "close channel %d", ngx_processes[n].channel[1]);
+        if (n == ngx_current_slot) {
+            if (close(ngx_processes[n].channel[0]) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                              "close() failed");
+            }
+
+            continue;
+        }
 
         if (close(ngx_processes[n].channel[1]) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "close() failed");
         }
-    }
-
-    if (close(ngx_processes[ngx_last_process].channel[0]) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "close() failed");
     }
 
 #if 0
@@ -737,7 +738,7 @@ ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
         msg.msg_controllen = 0;
 
     } else {
-        msg.msg_control = &cm;
+        msg.msg_control = (caddr_t) &cm;
         msg.msg_controllen = sizeof(struct cmsghdr) +  sizeof(int);
 
         cm.cmsg_len = sizeof(struct cmsghdr) +  sizeof(int);
@@ -802,7 +803,7 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     msg.msg_iovlen = 1;
 
 #if (HAVE_MSGHDR_MSG_CONTROL)
-    msg.msg_control = &cm;
+    msg.msg_control = (caddr_t) &cm;
     msg.msg_controllen = sizeof(struct cmsghdr) +  sizeof(int);
 #else
     msg.msg_accrights = (caddr_t) &fd;
@@ -830,7 +831,7 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
 #if (HAVE_MSGHDR_MSG_CONTROL)
 
     if (ch->command == NGX_CMD_OPEN_CHANNEL) {
-        cm = msg.msg_control;
+        cm = (struct cmsghdr *) msg.msg_control;
 
         if (cm == NULL) {
             ngx_log_error(NGX_LOG_ALERT, log, 0, 
