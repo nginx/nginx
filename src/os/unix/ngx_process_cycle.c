@@ -1113,7 +1113,7 @@ static void ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data)
         for (i = 0; i < cycle->pathes.nelts; i++) {
             ctx.path = path[i];
             ctx.log = cycle->log;
-            ctx.handler = path[i]->gc_handler;
+            ctx.handler = path[i]->cleaner;
 
             ngx_collect_garbage(&ctx, &path[i]->name, 0);
         }

@@ -26,12 +26,7 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
     part = &headers_in->headers.part;
     h = part->elts;
 
-#if 0
-    h = headers_in->headers.elts;
-    for (i = 0; i < headers_in->headers.nelts; i++) {
-#endif
-
-    for (i = 0 ; /* void */; i++) {
+    for (i = 0; /* void */; i++) {
   
         if (i >= part->nelts) {
             if (part->next == NULL) {
@@ -113,10 +108,12 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
             continue;
         }
 
+#if (NGX_HTTP_GZIP)
         if (&h[i] == headers_in->content_encoding) {
             r->headers_out.content_encoding = ho;
             continue;
         }
+#endif
 
         if (&h[i] == headers_in->last_modified) {
             r->headers_out.last_modified = ho;
@@ -169,7 +166,8 @@ static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
         return NGX_ERROR;
     }
 
-    if (uc->url.len > loc->value.len
+    if (p->lcf->preserve_host
+        || uc->url.len > loc->value.len
         || ngx_rstrncmp(loc->value.data, uc->url.data, uc->url.len) != 0)
     {
 

@@ -57,6 +57,12 @@ fi
 CFLAGS="$CFLAGS -w1"
 #CFLAGS="$CFLAGS -w2"
 
+# disable the ICC 8.0 errors:
+#    error #181: argument is incompatible with corresponding format
+#                string conversion
+#    error #269: invalid format string conversion
+CFLAGS="$CFLAGS -wd181 -wd269"
+
 # stop on warning
 CFLAGS="$CFLAGS -Werror"
 

@@ -5,13 +5,13 @@
 if test -z "$NGX_PLATFORM"; then
     echo "checking for OS"
 
-    SYSTEM=`uname -s 2>/dev/null`
-    RELEASE=`uname -r 2>/dev/null`
-    MACHINE=`uname -m 2>/dev/null`
+    NGX_SYSTEM=`uname -s 2>/dev/null`
+    NGX_RELEASE=`uname -r 2>/dev/null`
+    NGX_MACHINE=`uname -m 2>/dev/null`
 
-    echo " + $SYSTEM $RELEASE $MACHINE"
+    echo " + $NGX_SYSTEM $NGX_RELEASE $NGX_MACHINE"
 
-    NGX_PLATFORM="$SYSTEM:$RELEASE:$MACHINE";
+    NGX_PLATFORM="$NGX_SYSTEM:$NGX_RELEASE:$NGX_MACHINE";
 else
     echo "building for $NGX_PLATFORM"
 fi
@@ -39,6 +39,15 @@ case $NGX_PLATFORM in
         CORE_DEPS="$UNIX_DEPS $POSIX_DEPS"
         CORE_SRCS="$UNIX_SRCS"
     ;;
+
+esac
+
+
+case $NGX_MACHINE in
+
+     i386|i686|i86pc|amd64)
+         have=NGX_HAVE_NONALIGNED . auto/have
+     ;;
 
 esac
 

@@ -37,6 +37,7 @@
 #include <netinet/tcp.h>        /* TCP_NODELAY, TCP_NOPUSH */
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/un.h>
 
 #include <libutil.h>            /* setproctitle() before 4.1 */
 #include <osreldate.h>

@@ -63,6 +63,8 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("Referer"), offsetof(ngx_http_headers_in_t, referer) },
     { ngx_string("Content-Length"),
                             offsetof(ngx_http_headers_in_t, content_length) },
+    { ngx_string("Content-Type"),
+                              offsetof(ngx_http_headers_in_t, content_type) },
 
     { ngx_string("Range"), offsetof(ngx_http_headers_in_t, range) },
 #if 0
@@ -86,7 +88,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("X-Real-IP"), offsetof(ngx_http_headers_in_t, x_real_ip) },
     { ngx_string("X-URL"), offsetof(ngx_http_headers_in_t, x_url) },
 #endif
-    
+
     { ngx_null_string, 0 }
 };
 
@@ -175,7 +177,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
 {
     ngx_uint_t                 i;
     socklen_t                  len;
-    struct sockaddr_in         addr_in;
+    struct sockaddr_in         sin;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
     ngx_http_in_port_t        *in_port;
@@ -283,21 +285,19 @@ static void ngx_http_init_request(ngx_event_t *rev)
             r->in_addr =
                    ((struct sockaddr_in *) c->local_sockaddr)->sin_addr.s_addr;
 
-        } else {
+        } else
 #endif
+        {
             len = sizeof(struct sockaddr_in);
-            if (getsockname(c->fd, (struct sockaddr *) &addr_in, &len) == -1) {
+            if (getsockname(c->fd, (struct sockaddr *) &sin, &len) == -1) {
                 ngx_connection_error(c, ngx_socket_errno,
                                      "getsockname() failed");
                 ngx_http_close_connection(c);
                 return;
             }
 
-            r->in_addr = addr_in.sin_addr.s_addr;
-
-#if (NGX_WIN32)
+            r->in_addr = sin.sin_addr.s_addr;
         }
-#endif
 
         /* the last in_port->addrs address is "*" */
 
@@ -570,6 +570,11 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             if (r->method == 0) {
                 r->method_name.len = r->method_end - r->request_start + 1;
                 r->method_name.data = r->request_line.data;
+            }
+
+
+            if (r->http_protocol.data) {
+                r->http_protocol.len = r->request_end - r->http_protocol.data;
             }
 
 
@@ -2173,6 +2178,8 @@ void ngx_ssl_close_handler(ngx_event_t *ev)
 
 void ngx_http_close_connection(ngx_connection_t *c)
 {
+    ngx_pool_t  *pool;
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "close http connection: %d", c->fd);
 
@@ -2192,7 +2199,11 @@ void ngx_http_close_connection(ngx_connection_t *c)
     (*ngx_stat_active)--;
 #endif
 
+    pool = c->pool;
+
     ngx_close_connection(c);
+
+    ngx_destroy_pool(c->pool);
 }
 
 

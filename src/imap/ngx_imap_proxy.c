@@ -24,6 +24,7 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
 {
     ngx_int_t              rc;
     ngx_peers_t           *peers;
+    struct sockaddr_in    *sin;
     ngx_imap_proxy_ctx_t  *p;
 
     if (!(p = ngx_pcalloc(s->connection->pool, sizeof(ngx_imap_proxy_ctx_t)))) {
@@ -44,19 +45,30 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
     p->upstream.log = s->connection->log;
     p->upstream.log_error = NGX_ERROR_ERR;
 
-    peers->number = 1;
-    peers->max_fails = 1;
-#if 0
-    peers->peers[0].addr = inet_addr("81.19.69.70");
-    peers->peers[0].addr_port_text.len = sizeof("81.19.69.70:110") - 1;
-    peers->peers[0].addr_port_text.data = (u_char *) "81.19.69.70:110";
-    peers->peers[0].port = htons(110);
+    if (!(sin = ngx_pcalloc(s->connection->pool, sizeof(struct sockaddr_in)))) {
+        ngx_imap_close_connection(s->connection);
+        return;
+    }
+
+    peers->peer[0].sockaddr = (struct sockaddr *) sin;
+    peers->peer[0].socklen = sizeof(struct sockaddr_in);
+
+    sin->sin_port = htons(110);
+#if 1
+    sin->sin_addr.s_addr = inet_addr("81.19.64.101");
+    peers->peer[0].name.len = sizeof("81.19.64.101:110") - 1;
+    peers->peer[0].name.data = (u_char *) "81.19.64.101:110";
 #else
-    peers->peers[0].addr = inet_addr("81.19.64.101");
-    peers->peers[0].addr_port_text.len = sizeof("81.19.64.101:110") - 1;
-    peers->peers[0].addr_port_text.data = (u_char *) "81.19.64.101:110";
-    peers->peers[0].port = htons(110);
+    sin->sin_addr.s_addr = inet_addr("81.19.69.70");
+    peers->peer[0].name.len = sizeof("81.19.69.70:110") - 1;
+    peers->peer[0].name.data = (u_char *) "81.19.69.70:110";
 #endif
+
+    peers->number = 1;
+
+    peers->peer[0].max_fails = 1;
+    peers->peer[0].fail_timeout = 60;
+    peers->peer[0].weight = 1;
 
     rc = ngx_event_connect_peer(&p->upstream);
 

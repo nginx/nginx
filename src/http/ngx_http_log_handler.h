@@ -13,49 +13,54 @@
 #include <ngx_http.h>
 
 
-typedef u_char *(*ngx_http_log_op_pt) (ngx_http_request_t *r, u_char *buf,
-                                       uintptr_t data);
+typedef struct ngx_http_log_op_s  ngx_http_log_op_t;
 
-#define NGX_HTTP_LOG_COPY_SHORT  (ngx_http_log_op_pt) 0
-#define NGX_HTTP_LOG_COPY_LONG   (ngx_http_log_op_pt) -1
+typedef u_char *(*ngx_http_log_op_run_pt) (ngx_http_request_t *r, u_char *buf,
+                                           ngx_http_log_op_t *op);
 
-#define NGX_HTTP_LOG_ARG         (u_int) -1
+typedef size_t (*ngx_http_log_op_getlen_pt) (ngx_http_request_t *r,
+                                             uintptr_t data);
+
+typedef ngx_int_t (*ngx_http_log_op_compile_pt) (ngx_http_log_op_t *op,
+                                                 ngx_str_t *value);
+
+struct ngx_http_log_op_s {
+    size_t                      len;
+    ngx_http_log_op_getlen_pt   getlen;
+    ngx_http_log_op_run_pt      run;
+    uintptr_t                   data;
+};
 
 
 typedef struct {
-    size_t               len;
-    ngx_http_log_op_pt   op;
-    uintptr_t            data;
-} ngx_http_log_op_t;
-
-
-typedef struct {
-    ngx_str_t            name;
-    ngx_array_t         *ops;        /* array of ngx_http_log_op_t */
+    ngx_str_t                   name;
+    ngx_array_t                *ops;        /* array of ngx_http_log_op_t */
 } ngx_http_log_fmt_t;
 
 
 typedef struct {
-    ngx_str_t            name;
-    size_t               len;
-    ngx_http_log_op_pt   op;
+    ngx_str_t                   name;
+    size_t                      len;
+    ngx_http_log_op_compile_pt  compile;
+    ngx_http_log_op_getlen_pt   getlen;
+    ngx_http_log_op_run_pt      run;
 } ngx_http_log_op_name_t;
 
 
 typedef struct {
-    ngx_array_t          formats;    /* array of ngx_http_log_fmt_t */
+    ngx_array_t                 formats;    /* array of ngx_http_log_fmt_t */
 } ngx_http_log_main_conf_t;
 
 
 typedef struct {
-    ngx_open_file_t     *file;
-    ngx_array_t         *ops;        /* array of ngx_http_log_op_t */
+    ngx_open_file_t            *file;
+    ngx_array_t                *ops;        /* array of ngx_http_log_op_t */
 } ngx_http_log_t;
 
 
 typedef struct {
-    ngx_array_t         *logs;       /* array of ngx_http_log_t */
-    ngx_uint_t           off;        /* unsigned  off:1 */
+    ngx_array_t                *logs;       /* array of ngx_http_log_t */
+    ngx_uint_t                  off;        /* unsigned  off:1 */
 } ngx_http_log_loc_conf_t;
 
 

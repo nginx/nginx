@@ -205,6 +205,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, client_body_timeout),
       NULL },
 
+    { ngx_string("client_body_temp_path"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1234,
+      ngx_conf_set_path_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, client_body_temp_path),
+      (void *) ngx_garbage_collector_temp_handler },
+
     { ngx_string("sendfile"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -1288,15 +1295,11 @@ static void *ngx_http_core_create_srv_conf(ngx_conf_t *cf)
     ngx_test_null(cscf,
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_core_srv_conf_t)),
                   NGX_CONF_ERROR);
-
     /*
-
-    set by ngx_pcalloc():
-
-    conf->client_large_buffers.num = 0;
-
-    */
-
+     *
+     * set by ngx_pcalloc():
+     *     conf->client_large_buffers.num = 0;
+     */
 
     ngx_init_array(cscf->locations, cf->pool,
                    5, sizeof(void *), NGX_CONF_ERROR);
@@ -1398,22 +1401,22 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_core_loc_conf_t)),
                   NGX_CONF_ERROR);
 
-    /* set by ngx_pcalloc():
-
-    lcf->root.len = 0;
-    lcf->root.data = NULL;
-    lcf->types = NULL;
-    lcf->default_type.len = 0;
-    lcf->default_type.data = NULL;
-    lcf->err_log = NULL;
-    lcf->error_pages = NULL;
-
-    lcf->regex = NULL;
-    lcf->exact_match = 0;
-    lcf->auto_redirect = 0;
-    lcf->alias = 0;
-
-    */
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     lcf->root.len = 0;
+     *     lcf->root.data = NULL;
+     *     lcf->types = NULL;
+     *     lcf->default_type.len = 0;
+     *     lcf->default_type.data = NULL;
+     *     lcf->err_log = NULL;
+     *     lcf->error_pages = NULL;
+     *     lcf->client_body_path = NULL;
+     *     lcf->regex = NULL;
+     *     lcf->exact_match = 0;
+     *     lcf->auto_redirect = 0;
+     *     lcf->alias = 0;
+     */
 
     lcf->client_max_body_size = NGX_CONF_UNSET_SIZE;
     lcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
@@ -1525,6 +1528,11 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                               prev->lingering_time, 30000);
     ngx_conf_merge_msec_value(conf->lingering_timeout,
                               prev->lingering_timeout, 5000);
+
+    ngx_conf_merge_path_value(conf->client_body_temp_path,
+                              prev->client_body_temp_path,
+                              NGX_HTTP_CLIENT_TEMP_PATH, 0, 0, 0,
+                              ngx_garbage_collector_temp_handler, cf);
 
     ngx_conf_merge_value(conf->reset_timedout_connection,
                          prev->reset_timedout_connection, 0);
@@ -1746,7 +1754,7 @@ static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (overwrite == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid value \"%V\"", value[i]);
+                               "invalid value \"%V\"", &value[i]);
             return NGX_CONF_ERROR;
         }
 

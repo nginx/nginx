@@ -86,7 +86,11 @@ u_char *ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
 
 u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
 {
-    u_char         *p, zero, *last, temp[NGX_INT64_LEN];
+    u_char         *p, zero, *last, temp[NGX_INT64_LEN + 1];
+                                    /*
+                                     * really we need temp[NGX_INT64_LEN] only,
+                                     * but icc shows the warning
+                                     */
     int             d;
     size_t          len;
     uint32_t        ui32;

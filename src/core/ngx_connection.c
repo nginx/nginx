@@ -18,7 +18,7 @@ ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
 {
     size_t               len;
     ngx_listening_t     *ls;
-    struct sockaddr_in  *addr_in;
+    struct sockaddr_in  *sin;
 
     if (!(ls = ngx_array_push(&cf->cycle->listening))) {
         return NULL;
@@ -26,13 +26,13 @@ ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
 
     ngx_memzero(ls, sizeof(ngx_listening_t));
 
-    if (!(addr_in = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in)))) {
+    if (!(sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in)))) {
         return NULL;
     }
 
-    addr_in->sin_family = AF_INET;
-    addr_in->sin_addr.s_addr = addr;
-    addr_in->sin_port = htons(port);
+    sin->sin_family = AF_INET;
+    sin->sin_addr.s_addr = addr;
+    sin->sin_port = htons(port);
 
 
     ls->addr_text.data = ngx_palloc(cf->pool,
@@ -50,8 +50,7 @@ ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
     ls->fd = (ngx_socket_t) -1;
     ls->family = AF_INET;
     ls->type = SOCK_STREAM;
-    ls->protocol = IPPROTO_IP;
-    ls->sockaddr = (struct sockaddr *) addr_in;
+    ls->sockaddr = (struct sockaddr *) sin;
     ls->socklen = sizeof(struct sockaddr_in);
     ls->addr = offsetof(struct sockaddr_in, sin_addr);
     ls->addr_text_max_len = INET_ADDRSTRLEN;
@@ -65,7 +64,7 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
     size_t               len;
     ngx_uint_t           i;
     ngx_listening_t     *ls;
-    struct sockaddr_in  *addr_in;
+    struct sockaddr_in  *sin;
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
@@ -86,9 +85,9 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             continue;
         }
 
-        addr_in = (struct sockaddr_in *) ls[i].sockaddr;
+        sin = (struct sockaddr_in *) ls[i].sockaddr;
 
-        if (addr_in->sin_family != AF_INET) {
+        if (sin->sin_family != AF_INET) {
             ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
                           "the inherited socket #%d has "
                           "unsupported family", ls[i].fd);
@@ -105,7 +104,7 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-        ls[i].family = addr_in->sin_family;
+        ls[i].family = sin->sin_family;
         len = ngx_sock_ntop(ls[i].family, ls[i].sockaddr,
                             ls[i].addr_text.data, INET_ADDRSTRLEN);
         if (len == 0) {
@@ -113,7 +112,7 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         }
 
         ls[i].addr_text.len = ngx_sprintf(ls[i].addr_text.data + len, ":%d",
-                                        ntohs(addr_in->sin_port))
+                                          ntohs(sin->sin_port))
                               - ls[i].addr_text.data;
     }
 
@@ -163,7 +162,7 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 continue;
             }
 
-            s = ngx_socket(ls[i].family, ls[i].type, ls[i].protocol);
+            s = ngx_socket(ls[i].family, ls[i].type, 0);
 
             if (s == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
@@ -313,7 +312,7 @@ void ngx_close_connection(ngx_connection_t *c)
 {
     ngx_socket_t  fd;
 
-    if (c->pool == NULL) {
+    if (c->fd == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, 0, "connection already closed");
         return;
     }
@@ -387,8 +386,6 @@ void ngx_close_connection(ngx_connection_t *c)
     fd = c->fd;
     c->fd = (ngx_socket_t) -1;
     c->data = NULL;
-
-    ngx_destroy_pool(c->pool);
 
     if (ngx_close_socket(fd) == -1) {
 

@@ -11,7 +11,6 @@ NGX_ERROR_LOG_PATH=
 NGX_PID_PATH=
 NGX_USER=
 NGX_GROUP=
-NGX_HTTP_LOG_PATH=
 
 CC=${CC:-gcc}
 CPP=
@@ -40,6 +39,12 @@ EVENT_AIO=NO
 USE_THREADS=NO
 
 HTTP=YES
+
+NGX_HTTP_LOG_PATH=
+NGX_HTTP_CLIENT_TEMP_PATH=
+NGX_HTTP_PROXY_TEMP_PATH=
+NGX_HTTP_FASTCGI_TEMP_PATH=
+
 HTTP_CHARSET=YES
 HTTP_GZIP=YES
 HTTP_SSL=NO
@@ -50,6 +55,7 @@ HTTP_AUTOINDEX=YES
 HTTP_STATUS=NO
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
+HTTP_FASTCGI=YES
 
 IMAP=NO
 
@@ -107,6 +113,9 @@ do
 
         --without-http)                  HTTP=NO                    ;;
         --http-log-path=*)               NGX_HTTP_LOG_PATH="$value" ;;
+        --http-client-body-temp-path=*)  NGX_HTTP_CLIENT_TEMP_PATH="$value" ;;
+        --http-proxy-temp-path=*)        NGX_HTTP_PROXY_TEMP_PATH="$value" ;;
+        --http-fastcgi-temp-path=*)      NGX_HTTP_FASTCGI_TEMP_PATH="$value" ;;
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
@@ -118,6 +127,7 @@ do
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
+        --without-http_fastcgi_module)   HTTP_FASTCGI=NO            ;;
 
         --with-imap)                     IMAP=YES                   ;;
 
@@ -161,30 +171,69 @@ if [ $help = yes ]; then
 
 cat << END
 
-  --help                           this message
+  --help                             this message
 
-  --user=USER                      set non-privilege user
-                                   for the worker processes
-  --group=GROUP                    set non-privilege group
-                                   for the worker processes
+  --prefix=PATH                      set the installation prefix
+  --sbin-path=PATH                   set path to the nginx binary file
+  --conf-path=PATH                   set path to the nginx.conf file
+  --error-log-path=PATH              set path to the error log
+  --pid-path=PATH                    set path to nginx.pid file
 
-  --with-select_module             enable select module
-  --without-select_module          disable select module
-  --with-poll_module               enable poll module
-  --without-poll_module            disable poll module
+  --user=USER                        set non-privilege user
+                                     for the worker processes
+  --group=GROUP                      set non-privilege group
+                                     for the worker processes
 
-  --without-http_charset_module    disable ngx_http_charset_module
-  --without-http_rewrite_module    disable ngx_http_rewrite_module
-  --without-http_gzip_module       disable ngx_http_gzip_module
-  --without-http_proxy_module      disable ngx_http_proxy_module
+  --builddir=DIR                     set the build directory
 
-  --with-cc-opt=OPTIONS            additional options for compiler
-  --with-ld-opt=OPTIONS            additional options for linker
+  --with-rtsig_module                enable rtsig module
+  --with-select_module               enable select module
+  --without-select_module            disable select module
+  --with-poll_module                 enable poll module
+  --without-poll_module              disable poll module
 
-  --with-pcre=DIR                  path to PCRE library
-  --with-md5=DIR                   path to md5 library
-  --with-zlib=DIR                  path to zlib library
-  --with-openssl=DIR               path to OpenSSL library
+  --with-http_ssl_module             enable ngx_http_ssl_module
+  --without-http_charset_module      disable ngx_http_charset_module
+  --without-http_gzip_module         disable ngx_http_gzip_module
+  --without-http_userid_module       disable ngx_http_userid_module
+  --without-http_access_module       disable ngx_http_access_module
+  --without-http_autoindex_module    disable ngx_http_autoindex_module
+  --without-http_rewrite_module      disable ngx_http_rewrite_module
+  --without-http_proxy_module        disable ngx_http_proxy_module
+  --without-http_fastcgi_module      disable ngx_http_fastcgi_module
+
+  --http-log-path=PATH               set path to the http access log
+  --http-client-body-temp-path=PATH  set path to the http client request body
+                                     temporary files path
+  --http-proxy-temp-path=PATH        set path to the http proxy temporary
+                                     files path
+  --http-fastcgi-temp-path=PATH      set path to the http fastcgi temporary
+                                     files path
+
+  --with-cc=PATH                     set path to C compiler
+  --with-cpp=PATH                    set path to C preprocessor
+  --with-cc-opt=OPTIONS              set additional options for C compiler
+  --with-ld-opt=OPTIONS              set additional options for linker
+  --with-cpu-opt=CPU                 build for specified CPU, the valid values:
+                                     pentium, pentiumpro, pentium4, sparc64
+
+  --without-pcre                     disable PCRE libarary usage
+  --with-pcre=DIR                    set path to PCRE library sources
+  --with-pcre-opt=OPTIONS            set additional options for PCRE building
+
+  --with-md5=DIR                     set path to md5 library sources
+  --with-md5-opt=OPTIONS             set additional options for md5 building
+  --with-md5-asm                     use md5 assembler sources
+
+  --with-zlib=DIR                    set path to zlib library sources
+  --with-zlib-opt=OPTIONS            set additional options for zlib building
+  --with-zlib-asm=CPU                use zlib assembler sources optimized
+                                     for specified CPU, the valid values:
+                                     pentium, pentiumpro
+
+  --with-openssl=DIR                 set path to OpenSSL library sources
+
+  --with-debug                       enable the debugging logging
 
 END
 
@@ -201,6 +250,7 @@ if [ $HTTP = NO ]; then
     HTTP_STATUS=NO
     HTTP_REWRITE=NO
     HTTP_PROXY=NO
+    HTTP_FASTCGI=NO
 fi
 
 
@@ -282,5 +332,47 @@ case ".$NGX_HTTP_LOG_PATH" in
 
     *)
         NGX_HTTP_LOG_PATH=$NGX_PREFIX/$NGX_HTTP_LOG_PATH
+    ;;
+esac
+
+
+case ".$NGX_HTTP_CLIENT_TEMP_PATH" in
+    ./*)
+    ;;
+
+    .)
+        NGX_HTTP_CLIENT_TEMP_PATH=$NGX_PREFIX/client_body_temp
+    ;;
+
+    *)
+        NGX_HTTP_CLIENT_TEMP_PATH=$NGX_PREFIX/$NGX_HTTP_CLIENT_TEMP_PATH
+    ;;
+esac
+
+
+case ".$NGX_HTTP_PROXY_TEMP_PATH" in
+    ./*)
+    ;;
+
+    .)
+        NGX_HTTP_PROXY_TEMP_PATH=$NGX_PREFIX/proxy_temp
+    ;;
+
+    *)
+        NGX_HTTP_PROXY_TEMP_PATH=$NGX_PREFIX/$NGX_HTTP_PROXY_TEMP_PATH
+    ;;
+esac
+
+
+case ".$NGX_HTTP_FASTCGI_TEMP_PATH" in
+    ./*)
+    ;;
+
+    .)
+        NGX_HTTP_FASTCGI_TEMP_PATH=$NGX_PREFIX/fastcgi_temp
+    ;;
+
+    *)
+        NGX_HTTP_FASTCGI_TEMP_PATH=$NGX_PREFIX/$NGX_HTTP_FASTCGI_TEMP_PATH
     ;;
 esac

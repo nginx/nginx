@@ -18,6 +18,7 @@ typedef struct ngx_open_file_s   ngx_open_file_t;
 typedef struct ngx_command_s     ngx_command_t;
 typedef struct ngx_file_s        ngx_file_t;
 typedef struct ngx_event_s       ngx_event_t;
+typedef struct ngx_peers_s       ngx_peers_t;
 typedef struct ngx_connection_s  ngx_connection_t;
 
 typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
@@ -60,6 +61,9 @@ typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
 #include <ngx_rbtree.h>
 #include <ngx_times.h>
 #include <ngx_inet.h>
+#if (NGX_HAVE_UNIX_DOMAIN)
+#include <ngx_unix_domain.h>
+#endif
 #include <ngx_cycle.h>
 #include <ngx_process_cycle.h>
 #include <ngx_conf_file.h>

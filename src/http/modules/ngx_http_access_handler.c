@@ -80,7 +80,7 @@ ngx_module_t  ngx_http_access_module = {
 static ngx_int_t ngx_http_access_handler(ngx_http_request_t *r)
 {
     ngx_uint_t                   i;
-    struct sockaddr_in          *addr_in;
+    struct sockaddr_in          *sin;
     ngx_http_access_rule_t      *rule;
     ngx_http_access_loc_conf_t  *alcf;
 
@@ -92,16 +92,16 @@ static ngx_int_t ngx_http_access_handler(ngx_http_request_t *r)
 
     /* AF_INET only */
 
-    addr_in = (struct sockaddr_in *) r->connection->sockaddr;
+    sin = (struct sockaddr_in *) r->connection->sockaddr;
 
     rule = alcf->rules->elts;
     for (i = 0; i < alcf->rules->nelts; i++) {
 
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "%08XD %08XD %08XD",
-                       addr_in->sin_addr.s_addr, rule[i].mask, rule[i].addr);
+                       sin->sin_addr.s_addr, rule[i].mask, rule[i].addr);
 
-        if ((addr_in->sin_addr.s_addr & rule[i].mask) == rule[i].addr) {
+        if ((sin->sin_addr.s_addr & rule[i].mask) == rule[i].addr) {
             if (rule[i].deny) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "access forbidden by rule");

@@ -2,6 +2,9 @@
 # Copyright (C) Igor Sysoev
 
 
+have=NGX_HAVE_UNIX_DOMAIN . auto/have
+
+
 CC_WARN=
 ngx_fmt_collect=yes
 

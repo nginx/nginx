@@ -11,9 +11,10 @@
 
 /*
  * On Linux up to 2.4.21 sendfile() (syscall #187) works with 32-bit
- * offsets only and the including <sys/sendfile.h> breaks the compiling
- * if off_t is 64 bit wide.  So we use own sendfile() definition where offset
- * parameter is int32_t and use sendfile() for the file parts below 2G only.
+ * offsets only, and the including <sys/sendfile.h> breaks the compiling,
+ * if off_t is 64 bit wide.  So we use own sendfile() definition, where offset
+ * parameter is int32_t, and use sendfile() for the file parts below 2G only,
+ * see src/os/unix/ngx_linux_config.h
  *
  * Linux 2.4.21 has a new sendfile64() syscall #239.
  */
@@ -85,6 +86,14 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                 continue;
             }
 
+#if 1
+            if (!ngx_buf_in_memory(cl->buf) && !cl->buf->in_file) {
+                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                              "zero size buf in sendfile");
+                ngx_debug_point();
+            }
+#endif
+
             if (!ngx_buf_in_memory_only(cl->buf)) {
                 break;
             }
@@ -118,7 +127,6 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
             && cl
             && cl->buf->in_file)
         {
-
             /* the TCP_CORK and TCP_NODELAY are mutually exclusive */
 
             if (c->tcp_nodelay) {
@@ -131,7 +139,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                     err = ngx_errno;
 
                     /*
-                     * there is a tiny chance to be interrupted, however
+                     * there is a tiny chance to be interrupted, however,
                      * we continue a processing with the TCP_NODELAY
                      * and without the TCP_CORK
                      */
@@ -157,7 +165,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                     err = ngx_errno;
 
                     /*
-                     * there is a tiny chance to be interrupted, however
+                     * there is a tiny chance to be interrupted, however,
                      * we continue a processing without the TCP_CORK
                      */
 

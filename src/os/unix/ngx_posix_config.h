@@ -57,6 +57,7 @@
 #include <netinet/tcp.h>        /* TCP_NODELAY */
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/un.h>
 
 #if (NGX_HAVE_LIMITS_H)
 #include <limits.h>             /* IOV_MAX */

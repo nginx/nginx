@@ -298,8 +298,14 @@ void ngx_imap_close_session(ngx_imap_session_t *s)
 
 void ngx_imap_close_connection(ngx_connection_t *c)
 {
+    ngx_pool_t  *pool;
+
     ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
                    "close imap connection: %d", c->fd);
 
+    pool = c->pool;
+
     ngx_close_connection(c);
+
+    ngx_destroy_pool(c->pool);
 }

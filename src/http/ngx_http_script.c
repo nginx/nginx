@@ -9,42 +9,46 @@
 #include <ngx_http.h>
 
 
-char *ngx_http_script_copy(ngx_http_request_t *r,
-                           ngx_http_script_code_t *code,
-                           char *p, size_t len)
+u_char *ngx_http_script_copy(ngx_http_request_t *r, u_char *buf, void *data)
 {
-    return ngx_cpymem(p, code->offset, code->len < len ? code->len : len);
+    u_char  **p = data;
+
+    ngx_http_script_code_t  *code;
+
+    code = (ngx_http_script_code_t *)
+                              ((char *) data - sizeof(ngx_http_script_code_t));
+
+    return ngx_cpymem(buf, *p, code->data_len);
 }
 
 
-char *ngx_http_script_header_in(ngx_http_request_t *r,
-                                ngx_http_script_code_t *code,
-                                char *p, size_t len)
+u_char *ngx_http_script_header_in(ngx_http_request_t *r,
+                                  u_char *buf, void *data)
 {
-    ngx_str_t *s;
+    size_t  *offset = data;
 
-    s = (ngx_str_t *) (((char *) r->headers_in) + code->offset);
+    ngx_table_elt_t  *h;
 
-    return ngx_cpymem(p, s->data, s->len < len ? s->len : len);
+    h = *(ngx_table_elt_t **) (((char *) r->headers_in) + *offset);
+
+    return ngx_cpymem(p, h->value.data, h->value.len);
 }
 
 
-/* the log script codes */
-
-char *ngx_http_script_request_line(ngx_http_request_t *r, char *p, size_t len)
+u_char *ngx_http_script_request_line(ngx_http_request_t *r,
+                                     u_char *buf, void *data)
 {
-    return ngx_cpymem(p, r->request_line.data,
-                      r->request_line.len < len ? r->request_line.len : len);
+    return ngx_cpymem(p, r->request_line.data, r->request_line.len);
 }
 
 
-char *ngx_http_script_status(ngx_http_request_t *r, char *p, size_t len)
+u_char *ngx_http_script_status(ngx_http_request_t *r, u_char *buf, void *data)
 {
-    return ngx_snprintf(p, len, "%d", r->headers_out.status);
+    return ngx_sprintf(buf, "%ui", r->headers_out.status);
 }
 
 
-char *ngx_http_script_sent(ngx_http_request_t *r, char *p, size_t len)
+u_char *ngx_http_script_sent(ngx_http_request_t *r, u_char *buf, void *data)
 {
-    return ngx_sprintf(p, "%O", r->connection->sent);
+    return ngx_sprintf(buf, "%O", r->connection->sent);
 }

@@ -35,7 +35,7 @@ struct ngx_path_s {
     ngx_str_t           name;
     ngx_uint_t          len;
     ngx_uint_t          level[3];
-    ngx_gc_handler_pt   gc_handler;
+    ngx_gc_handler_pt   cleaner;
 
     u_char             *conf_file;
     ngx_uint_t          line;
@@ -58,6 +58,7 @@ ngx_int_t ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
                                ngx_pool_t *pool, int persistent);
 void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path);
 ngx_int_t ngx_create_path(ngx_file_t *file, ngx_path_t *path);
+ngx_int_t ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot);
 ngx_int_t ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user);
 
 void ngx_init_temp_number();
@@ -66,19 +67,34 @@ ngx_uint_t ngx_next_temp_number(ngx_uint_t collision);
 char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
-#define ngx_conf_merge_path_value(conf, prev, path, l1, l2, l3, pool)        \
-    if (conf == NULL) {                                                      \
-        if (prev == NULL) {                                                  \
-            ngx_test_null(conf, ngx_palloc(pool, sizeof(ngx_path_t)), NULL); \
-            conf->name.len = sizeof(path) - 1;                               \
-            conf->name.data = (u_char *) path;                               \
-            conf->level[0] = l1;                                             \
-            conf->level[1] = l2;                                             \
-            conf->level[2] = l3;                                             \
-            conf->len = l1 + l2 + l3 + (l1 ? 1:0) + (l2 ? 1:0) + (l3 ? 1:0); \
-        } else {                                                             \
-            conf = prev;                                                     \
-        }                                                                    \
+#define ngx_conf_merge_path_value(curr, prev, path, l1, l2, l3, clean, cf)    \
+    if (curr == NULL) {                                                       \
+        if (prev == NULL) {                                                   \
+            if (!(curr = ngx_palloc(cf->pool, sizeof(ngx_path_t)))) {         \
+                return NGX_CONF_ERROR;                                        \
+            }                                                                 \
+                                                                              \
+            curr->name.len = sizeof(path) - 1;                                \
+            curr->name.data = (u_char *) path;                                \
+                                                                              \
+            if (ngx_conf_full_name(cf->cycle, &curr->name) == NGX_ERROR) {    \
+                return NGX_CONF_ERROR;                                        \
+            }                                                                 \
+                                                                              \
+            curr->level[0] = l1;                                              \
+            curr->level[1] = l2;                                              \
+            curr->level[2] = l3;                                              \
+            curr->len = l1 + l2 + l3 + (l1 ? 1:0) + (l2 ? 1:0) + (l3 ? 1:0);  \
+            curr->cleaner = clean;                                            \
+            curr->conf_file = NULL;                                           \
+                                                                              \
+            if (ngx_add_path(cf, &curr) == NGX_ERROR) {                       \
+                return NGX_CONF_ERROR;                                        \
+            }                                                                 \
+                                                                              \
+        } else {                                                              \
+            curr = prev;                                                      \
+        }                                                                     \
     }
 
 

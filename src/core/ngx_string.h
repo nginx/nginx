@@ -64,7 +64,7 @@ typedef struct {
 
 /* msvc and icc compile memcpy() to the inline "rep movs" */
 #define ngx_memcpy(dst, src, n)   memcpy(dst, src, n)
-#define ngx_cpymem(dst, src, n)   ((u_char *) memcpy(dst, src, n)) + n
+#define ngx_cpymem(dst, src, n)   ((u_char *) memcpy(dst, src, n)) + (n)
 
 
 /* msvc and icc compile memcmp() to the inline loop */

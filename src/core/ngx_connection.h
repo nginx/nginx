@@ -23,7 +23,6 @@ typedef struct {
 
     int               family;
     int               type;
-    int               protocol;
 
     void            (*handler)(ngx_connection_t *c); /* handler of accepted
                                                         connection */

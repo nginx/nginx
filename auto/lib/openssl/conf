@@ -13,8 +13,14 @@ if [ $OPENSSL != NONE ]; then
             LINK_DEPS="$LINK_DEPS $OPENSSL/libssl.a $OPENSSL/libcrypto.a"
             CORE_LIBS="$CORE_LIBS $OPENSSL/libssl.a $OPENSSL/libcrypto.a"
         ;;
-
     esac
+
+    case "$NGX_SYSTEM" in
+        SunOS|Linux)
+            CORE_LIBS="$CORE_LIBS -ldl"
+        ;;
+    esac
+
 
 else
 

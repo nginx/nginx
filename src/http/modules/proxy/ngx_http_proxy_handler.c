@@ -13,14 +13,20 @@
 static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_cache_get(ngx_http_proxy_ctx_t *p);
 
+static size_t ngx_http_proxy_log_proxy_state_getlen(ngx_http_request_t *r,
+                                                    uintptr_t data);
 static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
-                                              u_char *buf, uintptr_t data);
+                                              u_char *buf,
+                                              ngx_http_log_op_t *op);
+
+#if 0
 static u_char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r,
                                               u_char *buf, uintptr_t data);
 static u_char *ngx_http_proxy_log_reason(ngx_http_request_t *r, u_char *buf,
                                          uintptr_t data);
+#endif
 
-static ngx_int_t ngx_http_proxy_pre_conf(ngx_conf_t *cf);
+static ngx_int_t ngx_http_proxy_add_log_formats(ngx_conf_t *cf);
 static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
                                            void *parent, void *child);
@@ -231,7 +237,6 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, default_expires),
       NULL },
 
-
     { ngx_string("proxy_next_upstream"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
       ngx_conf_set_bitmask_slot,
@@ -251,7 +256,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
 
 ngx_http_module_t  ngx_http_proxy_module_ctx = {
-    ngx_http_proxy_pre_conf,               /* pre conf */
+    ngx_http_proxy_add_log_formats,        /* pre conf */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -270,16 +275,22 @@ ngx_module_t  ngx_http_proxy_module = {
     ngx_http_proxy_commands,               /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
 
 static ngx_http_log_op_name_t ngx_http_proxy_log_fmt_ops[] = {
-    { ngx_string("proxy"), 0, ngx_http_proxy_log_proxy_state },
+    { ngx_string("proxy"), 0, NULL,
+                              ngx_http_proxy_log_proxy_state_getlen,
+                              ngx_http_proxy_log_proxy_state },
+
+#if 0
     { ngx_string("proxy_cache_state"), 0, ngx_http_proxy_log_cache_state },
     { ngx_string("proxy_reason"), 0, ngx_http_proxy_log_reason },
-    { ngx_null_string, 0, NULL }
+#endif
+
+    { ngx_null_string, 0, NULL, NULL, NULL }
 };
 
 
@@ -301,8 +312,12 @@ ngx_http_header_t ngx_http_proxy_headers_in[] = {
                          offsetof(ngx_http_proxy_headers_in_t, content_type) },
     { ngx_string("Content-Length"),
                        offsetof(ngx_http_proxy_headers_in_t, content_length) },
+
+#if (NGX_HTTP_GZIP)
     { ngx_string("Content-Encoding"),
                      offsetof(ngx_http_proxy_headers_in_t, content_encoding) },
+#endif
+
     { ngx_string("Last-Modified"),
                         offsetof(ngx_http_proxy_headers_in_t, last_modified) },
     { ngx_string("Location"),
@@ -779,11 +794,12 @@ u_char *ngx_http_proxy_log_error(void *data, u_char *buf, size_t len)
     peer = &ctx->proxy->upstream->peer;
 
     p = ngx_snprintf(buf, len,
-                     " while %s, client: %V, URL: %V, upstream: %V%V",
+                     " while %s, client: %V, URL: %V, upstream: http://%V%s%V",
                      ctx->proxy->action,
                      &r->connection->addr_text,
                      &r->unparsed_uri,
-                     &peer->peers->peers[peer->cur_peer].addr_port_text,
+                     &peer->peers->peer[peer->cur_peer].name,
+                     ctx->proxy->lcf->upstream->uri_separator,
                      &ctx->proxy->lcf->upstream->uri);
     len -= p - buf;
     buf = p;
@@ -835,8 +851,24 @@ u_char *ngx_http_proxy_log_error(void *data, u_char *buf, size_t len)
 }
 
 
+static size_t ngx_http_proxy_log_proxy_state_getlen(ngx_http_request_t *r,
+                                                    uintptr_t data)
+{
+    ngx_http_proxy_ctx_t  *p;
+
+    p = ngx_http_get_module_err_ctx(r, ngx_http_proxy_module);
+
+    if (p == NULL) {
+        return 1;
+    }
+
+    return p->states.nelts * /* STUB */ 100;
+}
+
+
 static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
-                                              u_char *buf, uintptr_t data)
+                                              u_char *buf,
+                                              ngx_http_log_op_t *op)
 {
     ngx_uint_t               i;
     ngx_http_proxy_ctx_t    *p;
@@ -845,20 +877,9 @@ static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
     p = ngx_http_get_module_err_ctx(r, ngx_http_proxy_module);
 
     if (p == NULL) {
-        if (buf == NULL) {
-            return (u_char *) 1;
-        }
-
         *buf = '-';
         return buf + 1;
     }
-
-
-    if (buf == NULL) {
-        /* find the request line length */
-        return (u_char *) (uintptr_t) (p->states.nelts * /* STUB */ 100);
-    }
-
 
     i = 0;
     state = p->states.elts;
@@ -934,6 +955,8 @@ static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
     }
 }
 
+
+#if 0
 
 static u_char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r,
                                               u_char *buf, uintptr_t data)
@@ -1014,23 +1037,23 @@ static u_char *ngx_http_proxy_log_reason(ngx_http_request_t *r, u_char *buf,
     }
 }
 
+#endif
 
-static ngx_int_t ngx_http_proxy_pre_conf(ngx_conf_t *cf)
+
+static ngx_int_t ngx_http_proxy_add_log_formats(ngx_conf_t *cf)
 {
     ngx_http_log_op_name_t  *op;
 
     for (op = ngx_http_proxy_log_fmt_ops; op->name.len; op++) { /* void */ }
-    op->op = NULL;
+    op->run = NULL;
 
-    op = ngx_http_log_fmt_ops;
-
-    for (op = ngx_http_log_fmt_ops; op->op; op++) {
+    for (op = ngx_http_log_fmt_ops; op->run; op++) {
         if (op->name.len == 0) {
-            op = (ngx_http_log_op_name_t *) op->op;
+            op = (ngx_http_log_op_name_t *) op->run;
         }
     }
 
-    op->op = (ngx_http_log_op_pt) ngx_http_proxy_log_fmt_ops;
+    op->run = (ngx_http_log_op_run_pt) ngx_http_proxy_log_fmt_ops;
 
     return NGX_OK;
 }
@@ -1044,24 +1067,19 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_proxy_loc_conf_t)),
                   NGX_CONF_ERROR);
 
-    /* set by ngx_pcalloc():
-
-    conf->bufs.num = 0;
-
-    conf->path = NULL;
-
-    conf->next_upstream = 0;
-    conf->use_stale = 0;
-
-    conf->upstreams = NULL;
-    conf->peers = NULL;
-
-    conf->cache_path = NULL;
-    conf->temp_path = NULL;
-
-    conf->busy_lock = NULL;
-
-    */
+    /*
+     * set by ngx_pcalloc():
+     *
+     *    conf->bufs.num = 0;
+     *    conf->path = NULL;
+     *    conf->next_upstream = 0;
+     *    conf->use_stale = 0;
+     *    conf->upstreams = NULL;
+     *    conf->peers = NULL;
+     *    conf->cache_path = NULL;
+     *    conf->temp_path = NULL;
+     *    conf->busy_lock = NULL;
+     */
 
     conf->connect_timeout = NGX_CONF_UNSET_MSEC;
     conf->send_timeout = NGX_CONF_UNSET_MSEC;
@@ -1210,11 +1228,15 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_bitmask_value(conf->use_stale, prev->use_stale,
                                  NGX_CONF_BITMASK_SET);
 
+#if 0
     ngx_conf_merge_path_value(conf->cache_path, prev->cache_path,
-                              "cache", 1, 2, 0, cf->pool);
+                              NGX_HTTP_PROXY_CACHE_PATH, 1, 2, 0,
+                              ngx_garbage_collector_temp_handler, cf);
+#endif
 
     ngx_conf_merge_path_value(conf->temp_path, prev->temp_path,
-                              "temp", 1, 2, 0, cf->pool);
+                              NGX_HTTP_PROXY_TEMP_PATH, 1, 2, 0,
+                              ngx_garbage_collector_temp_handler, cf);
 
     ngx_conf_merge_value(conf->cache, prev->cache, 0);
 
@@ -1256,24 +1278,23 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
 }
 
 
-
 static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
                                      void *conf)
 {
     ngx_http_proxy_loc_conf_t *lcf = conf;
 
-    ngx_uint_t                 i, len;
-    char                      *err;
-    u_char                    *host;
-    in_addr_t                  addr;
-    ngx_str_t                 *value;
-    struct hostent            *h;
-    ngx_http_core_loc_conf_t  *clcf;
-
+    ngx_str_t                   *value, *url;
+    ngx_inet_upstream_t          inet_upstream;
+    ngx_http_core_loc_conf_t    *clcf;
+#if (NGX_HAVE_UNIX_DOMAIN)
+    ngx_unix_domain_upstream_t   unix_upstream;
+#endif
 
     value = cf->args->elts;
 
-    if (ngx_strncasecmp(value[1].data, "http://", 7) != 0) {
+    url = &value[1];
+
+    if (ngx_strncasecmp(url->data, "http://", 7) != 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid URL prefix");
         return NGX_CONF_ERROR;
     }
@@ -1284,121 +1305,52 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
         return NGX_CONF_ERROR;
     }
 
-    lcf->upstream->url.len = value[1].len;
-    if (!(lcf->upstream->url.data = ngx_palloc(cf->pool, value[1].len + 1))) {
-        return NGX_CONF_ERROR;
-    }
+    if (ngx_strncasecmp(url->data + 7, "unix:", 5) == 0) {
 
-    ngx_cpystrn(lcf->upstream->url.data, value[1].data, value[1].len + 1);
+#if (NGX_HAVE_UNIX_DOMAIN)
 
-    value[1].data += 7;
-    value[1].len -= 7;
+        ngx_memzero(&unix_upstream, sizeof(ngx_unix_domain_upstream_t));
 
-    err = ngx_http_proxy_parse_upstream(&value[1], lcf->upstream);
+        unix_upstream.name = *url;
+        unix_upstream.url.len = url->len - 7;
+        unix_upstream.url.data = url->data + 7;
+        unix_upstream.uri_part = 1;
 
-    if (err) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, err);
-        return NGX_CONF_ERROR;
-    }
-
-    if (!(host = ngx_palloc(cf->pool, lcf->upstream->host.len + 1))) {
-        return NGX_CONF_ERROR;
-    }
-
-    ngx_cpystrn(host, lcf->upstream->host.data, lcf->upstream->host.len + 1);
-
-    /* AF_INET only */
-
-    addr = inet_addr((char *) host);
-
-    if (addr == INADDR_NONE) {
-        h = gethostbyname((char *) host);
-
-        if (h == NULL || h->h_addr_list[0] == NULL) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "host %s not found", host);
+        if (!(lcf->peers = ngx_unix_upstream_parse(cf, &unix_upstream))) {
             return NGX_CONF_ERROR;
         }
 
-        for (i = 0; h->h_addr_list[i] != NULL; i++) { /* void */ }
+        lcf->upstream->host_header.len = sizeof("localhost") - 1;
+        lcf->upstream->host_header.data = (u_char *) "localhost";
+        lcf->upstream->uri = unix_upstream.uri;
+        lcf->upstream->uri_separator = ":";
+        lcf->upstream->default_port = 1;
 
-        /* MP: ngx_shared_palloc() */
+#else
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the unix domain sockets are not supported "
+                           "on this platform");
+        return NGX_CONF_ERROR;
 
-        lcf->peers = ngx_pcalloc(cf->pool,
-                           sizeof(ngx_peers_t) + sizeof(ngx_peer_t) * (i - 1));
-
-        if (lcf->peers == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        lcf->peers->number = i;
-
-        /* STUB */
-        lcf->peers->max_fails = 1;
-        lcf->peers->fail_timeout = 60;
-
-        for (i = 0; h->h_addr_list[i] != NULL; i++) {
-            lcf->peers->peers[i].host.data = host;
-            lcf->peers->peers[i].host.len = lcf->upstream->host.len;
-            lcf->peers->peers[i].addr = *(in_addr_t *)(h->h_addr_list[i]);
-            lcf->peers->peers[i].port = lcf->upstream->port;
-
-            len = INET_ADDRSTRLEN - 1 + 1 + lcf->upstream->port_text.len;
-
-            lcf->peers->peers[i].addr_port_text.data =
-                                                     ngx_palloc(cf->pool, len);
-            if (lcf->peers->peers[i].addr_port_text.data == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            len = ngx_inet_ntop(AF_INET,
-                                &lcf->peers->peers[i].addr,
-                                lcf->peers->peers[i].addr_port_text.data,
-                                len);
-
-            lcf->peers->peers[i].addr_port_text.data[len++] = ':';
-
-            ngx_memcpy(lcf->peers->peers[i].addr_port_text.data + len,
-                       lcf->upstream->port_text.data,
-                       lcf->upstream->port_text.len);
-
-            lcf->peers->peers[i].addr_port_text.len =
-                                            len + lcf->upstream->port_text.len;
-        }
+#endif
 
     } else {
+        ngx_memzero(&inet_upstream, sizeof(ngx_inet_upstream_t));
 
-        /* MP: ngx_shared_palloc() */
+        inet_upstream.name = *url;
+        inet_upstream.url.len = url->len - 7;
+        inet_upstream.url.data = url->data + 7;
+        inet_upstream.default_port_value = 80;
+        inet_upstream.uri_part = 1;
 
-        if (!(lcf->peers = ngx_pcalloc(cf->pool, sizeof(ngx_peers_t)))) {
+        if (!(lcf->peers = ngx_inet_upstream_parse(cf, &inet_upstream))) {
             return NGX_CONF_ERROR;
         }
 
-        lcf->peers->number = 1;
-
-        lcf->peers->peers[0].host.data = host;
-        lcf->peers->peers[0].host.len = lcf->upstream->host.len;
-        lcf->peers->peers[0].addr = addr;
-        lcf->peers->peers[0].port = lcf->upstream->port;
-
-        len = lcf->upstream->host.len + 1 + lcf->upstream->port_text.len;
-
-        lcf->peers->peers[0].addr_port_text.len = len;
-
-        lcf->peers->peers[0].addr_port_text.data = ngx_palloc(cf->pool, len);
-        if (lcf->peers->peers[0].addr_port_text.data == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        len = lcf->upstream->host.len;
-
-        ngx_memcpy(lcf->peers->peers[0].addr_port_text.data,
-                   lcf->upstream->host.data, len);
-
-        lcf->peers->peers[0].addr_port_text.data[len++] = ':';
-
-        ngx_memcpy(lcf->peers->peers[0].addr_port_text.data + len,
-                   lcf->upstream->port_text.data,
-                   lcf->upstream->port_text.len);
+        lcf->upstream->host_header = inet_upstream.host_header;
+        lcf->upstream->port_text = inet_upstream.port_text;
+        lcf->upstream->uri = inet_upstream.uri;
+        lcf->upstream->uri_separator = "";
     }
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
@@ -1410,93 +1362,7 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
         clcf->auto_redirect = 1;
     }
 
-    return NULL;
-}
-
-
-static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
-                                           ngx_http_proxy_upstream_conf_t *u)
-{
-    size_t  i;
-
-    if (url->data[0] == ':' || url->data[0] == '/') {
-        return "invalid upstream URL";
-    }
-
-    u->host.data = url->data;
-    u->host_header.data = url->data;
-
-    for (i = 1; i < url->len; i++) {
-        if (url->data[i] == ':') {
-            u->port_text.data = &url->data[i] + 1;
-            u->host.len = i;
-        }
-
-        if (url->data[i] == '/') {
-            u->uri.data = &url->data[i];
-            u->uri.len = url->len - i;
-            u->host_header.len = i;
-
-            if (u->host.len == 0) {
-                u->host.len = i;
-            }
-
-            if (u->port_text.data == NULL) {
-                u->default_port = 1;
-                u->port = htons(80);
-                u->port_text.len = 2;
-                u->port_text.data = (u_char *) "80";
-                return NULL;
-            }
-
-            u->port_text.len = &url->data[i] - u->port_text.data;
-
-            if (u->port_text.len > 0) {
-                u->port = (in_port_t) ngx_atoi(u->port_text.data,
-                                               u->port_text.len);
-                if (u->port > 0) {
-
-                    if (u->port == 80) {
-                        u->default_port = 1;
-                    }
-
-                    u->port = htons(u->port);
-                    return NULL;
-                }
-            }
-
-            return "invalid port in upstream URL";
-        }
-    }
-
-    if (u->host.len == 0) {
-        u->host.len = i;
-    }
-
-    u->host_header.len = i;
-
-    u->uri.data = (u_char *) "/";
-    u->uri.len = 1;
-
-    if (u->port_text.data == NULL) {
-        u->default_port = 1;
-        u->port = htons(80);
-        u->port_text.len = 2;
-        u->port_text.data = (u_char *) "80";
-        return NULL;
-    }
-
-    u->port_text.len = &url->data[i] - u->port_text.data;
-
-    if (u->port_text.len > 0) {
-        u->port = (in_port_t) ngx_atoi(u->port_text.data, u->port_text.len);
-        if (u->port > 0) {
-            u->port = htons(u->port);
-            return NULL;
-        }
-    }
-
-    return "invalid port in upstream URL";
+    return NGX_CONF_OK;
 }
 
 

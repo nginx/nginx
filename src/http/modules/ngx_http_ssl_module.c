@@ -8,17 +8,28 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#include <openssl/engine.h>
+
 
 #define NGX_DEFLAUT_CERTIFICATE      "cert.pem"
 #define NGX_DEFLAUT_CERTIFICATE_KEY  "cert.pem"
 
 
+static void *ngx_http_ssl_create_main_conf(ngx_conf_t *cf);
+static char *ngx_http_ssl_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
                                          void *parent, void *child);
 
 
 static ngx_command_t  ngx_http_ssl_commands[] = {
+
+    { ngx_string("ssl_engine"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      offsetof(ngx_http_ssl_main_conf_t, engine),
+      NULL },
 
     { ngx_string("ssl"),
       NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
@@ -41,6 +52,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       offsetof(ngx_http_ssl_srv_conf_t, certificate_key),
       NULL },
 
+    { ngx_string("ssl_ciphers"),
+      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, ciphers),
+      NULL },
+
       ngx_null_command
 };
 
@@ -48,8 +66,8 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
 static ngx_http_module_t  ngx_http_ssl_module_ctx = {
     NULL,                                  /* pre conf */
 
-    NULL,                                  /* create main configuration */
-    NULL,                                  /* init main configuration */
+    ngx_http_ssl_create_main_conf,         /* create main configuration */
+    ngx_http_ssl_init_main_conf,           /* init main configuration */
 
     ngx_http_ssl_create_srv_conf,          /* create server configuration */
     ngx_http_ssl_merge_srv_conf,           /* merge server configuration */
@@ -69,6 +87,56 @@ ngx_module_t  ngx_http_ssl_module = {
 };
 
 
+static void *ngx_http_ssl_create_main_conf(ngx_conf_t *cf)
+{
+    ngx_http_ssl_main_conf_t  *mcf;
+
+    if (!(mcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_main_conf_t)))) {
+        return NGX_CONF_ERROR;
+    }
+
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     mcf->engine.len = 0;
+     *     mcf->engine.data = NULL;
+     */
+
+    return mcf;
+}
+
+
+static char *ngx_http_ssl_init_main_conf(ngx_conf_t *cf, void *conf)
+{
+    ngx_http_ssl_main_conf_t *mcf = conf;
+
+    ENGINE  *engine;
+
+    if (mcf->engine.len == 0) {
+        return NGX_CONF_OK;
+    }
+
+    engine = ENGINE_by_id((const char *) mcf->engine.data);
+
+    if (engine == NULL) {
+        ngx_ssl_error(NGX_LOG_WARN, cf->log, 0,
+                      "ENGINE_by_id(\"%V\") failed", &mcf->engine);
+        return NGX_CONF_ERROR;
+    }
+
+    if (ENGINE_set_default(engine, ENGINE_METHOD_ALL) == 0) {
+        ngx_ssl_error(NGX_LOG_WARN, cf->log, 0,
+                      "ENGINE_set_default(\"%V\", ENGINE_METHOD_ALL) failed",
+                      &mcf->engine);
+        return NGX_CONF_ERROR;
+    }
+
+    ENGINE_free(engine);
+
+    return NGX_CONF_OK;
+}
+
+
 static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
 {
     ngx_http_ssl_srv_conf_t  *scf;
@@ -76,6 +144,17 @@ static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     if (!(scf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_srv_conf_t)))) {
         return NGX_CONF_ERROR;
     }
+
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     scf->certificate.len = 0;
+     *     scf->certificate.data = NULL;
+     *     scf->certificate_key.len = 0;
+     *     scf->certificate_key.data = NULL;
+     *     scf->ciphers.len = 0;
+     *     scf->ciphers.data = NULL;
+     */
 
     scf->enable = NGX_CONF_UNSET;
 
@@ -101,6 +180,9 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key,
                              NGX_DEFLAUT_CERTIFICATE_KEY);
 
+    ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, "");
+
+
     /* TODO: configure methods */
 
     conf->ssl_ctx = SSL_CTX_new(SSLv23_server_method());
@@ -108,6 +190,16 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     if (conf->ssl_ctx == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0, "SSL_CTX_new() failed");
         return NGX_CONF_ERROR;
+    }
+
+    if (conf->ciphers.len) {
+        if (SSL_CTX_set_cipher_list(conf->ssl_ctx,
+                                   (const char *) conf->ciphers.data) == 0)
+        {
+            ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
+                          "SSL_CTX_set_cipher_list(\"%V\") failed",
+                          &conf->ciphers);
+        }
     }
 
     if (SSL_CTX_use_certificate_file(conf->ssl_ctx,

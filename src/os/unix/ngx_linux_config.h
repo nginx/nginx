@@ -42,6 +42,7 @@
 #include <netinet/tcp.h>        /* TCP_NODELAY, TCP_CORK */
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/un.h>
 
 #include <time.h>               /* tzset() */
 #include <malloc.h>             /* memalign() */

@@ -8,6 +8,8 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
+#include <openssl/engine.h>
+
 
 static void ngx_ssl_write_handler(ngx_event_t *wev);
 static ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size);
@@ -16,8 +18,11 @@ static void ngx_ssl_read_handler(ngx_event_t *rev);
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log)
 {
+    ENGINE  *engine;
+
     SSL_library_init();
     SSL_load_error_strings();
+    ENGINE_load_builtin_engines();
 
     return NGX_OK;
 }
@@ -71,6 +76,48 @@ ssize_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_read: %d", n); 
 
     if (n > 0) {
+
+#if (NGX_DEBUG)
+
+        if (!c->ssl->handshaked && SSL_is_init_finished(c->ssl->ssl)) {
+            char         buf[129], *s, *d;
+            SSL_CIPHER  *cipher;
+
+            c->ssl->handshaked = 1;
+
+            cipher = SSL_get_current_cipher(c->ssl->ssl);
+
+            if (cipher) {
+                SSL_CIPHER_description(cipher, &buf[1], 128);
+
+                for (s = &buf[1], d = buf; *s; s++) {
+                    if (*s == ' ' && *d == ' ') {
+                        continue;
+                    }
+
+                    if (*s == '\n' || *s == '\r') {
+                        continue;
+                    }
+
+                    *++d = *s;
+                }
+
+                if (*d != ' ') {
+                    d++;
+                }
+
+                *d = '\0';
+
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "SSL cipher: \"%s\"", &buf[1]); 
+            } else {
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "SSL no shared ciphers"); 
+            }
+        }
+
+#endif
+
         if (c->ssl->saved_write_handler) {
 
             c->write->event_handler = c->ssl->saved_write_handler;

@@ -193,7 +193,7 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ssize_t      level;
     ngx_uint_t   i, n;
     ngx_str_t   *value;
-    ngx_path_t  *path, **pp, **slot;
+    ngx_path_t  *path, **slot;
 
     slot = (ngx_path_t **) (p + cmd->offset);
 
@@ -209,7 +209,7 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     path->name = value[1];
     path->len = 0;
-    path->gc_handler = (ngx_gc_handler_pt) cmd->post;
+    path->cleaner = (ngx_gc_handler_pt) cmd->post;
     path->conf_file = cf->conf_file->file.name.data;
     path->line = cf->conf_file->line;
 
@@ -227,42 +227,65 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         path->level[i++] = 0;
     }
 
+    *slot = path;
 
-    pp = cf->cycle->pathes.elts;
+    if (ngx_add_path(cf, slot) == NGX_ERROR) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+ngx_int_t ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
+{
+    ngx_uint_t   i, n;
+    ngx_path_t  *path, **p;
+
+    path = *slot;
+
+    p = cf->cycle->pathes.elts;
     for (i = 0; i < cf->cycle->pathes.nelts; i++) {
-        if (pp[i]->name.len == path->name.len
-            && ngx_strcmp(pp[i]->name.data, path->name.data) == 0)
+        if (p[i]->name.len == path->name.len
+            && ngx_strcmp(p[i]->name.data, path->name.data) == 0)
         {
             for (n = 0; n < 3; n++) {
-                if (pp[i]->level[n] != path->level[n]) {
+                if (p[i]->level[n] != path->level[n]) {
+                    if (path->conf_file == NULL) {
+                        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                      "the path name \"%V\" in %s:%ui has "
+                                      "the same name as default path but "
+                                      "the different levels, you need to "
+                                      "define default path in http section",
+                                      &p[i]->name, p[i]->conf_file, p[i]->line);
+                        return NGX_ERROR;
+                    }
+
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "the same \"%V\" path name in %s:%ui "
-                                   "has the different levels than",
-                                   &pp[i]->name, pp[i]->conf_file, pp[i]->line);
-                    return NGX_CONF_ERROR;
+                                      "the same path name \"%V\" in %s:%ui "
+                                      "has the different levels than",
+                                      &p[i]->name, p[i]->conf_file, p[i]->line);
+                    return NGX_ERROR;
                 }
 
-                if (pp[i]->level[n] == 0) {
+                if (p[i]->level[n] == 0) {
                     break;
                 }
             }
 
-            *slot = pp[i];
+            *slot = p[i];
 
-            return NGX_CONF_OK;
+            return NGX_OK;
         }
     }
 
-    *slot = path;
-
-
-    if (!(pp = ngx_array_push(&cf->cycle->pathes))) {
-        return NGX_CONF_ERROR;
+    if (!(p = ngx_array_push(&cf->cycle->pathes))) {
+        return NGX_ERROR;
     }
 
-    *pp = path;
+    *p = path;
 
-    return NGX_CONF_OK;
+    return NGX_OK;
 }
 
 

@@ -379,7 +379,7 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
 ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 {
-    off_t         bsize;
+    size_t        bsize;
     ngx_uint_t    flush;
     ngx_buf_t    *b;
     ngx_chain_t  *out, **ll, *cl, *tl;
@@ -433,16 +433,18 @@ ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             break;
         }
 
-        /* bsize is the size of the busy bufs */
+        /* bsize is the size of the busy recycled bufs */
 
         bsize = 0;
 
         for (cl = p->busy; cl; cl = cl->next) {
-            bsize += cl->buf->end - cl->buf->start;
+            if (cl->buf->recycled) {
+                bsize += cl->buf->end - cl->buf->start;
+            }
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe write busy: %O", bsize);
+                       "pipe write busy: %uz", bsize);
 
         out = NULL;
         ll = NULL;
@@ -452,19 +454,23 @@ ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             if (p->out) {
                 cl = p->out;
 
-                if (bsize + ngx_buf_size(cl->buf) > p->busy_size) {
+                if (cl->buf->recycled
+                    && bsize + cl->buf->last - cl->buf->pos > p->busy_size)
+                {
                     flush = 1;
                     break;
                 }
 
                 p->out = p->out->next;
-                ngx_event_pipe_free_shadow_raw_buf(&p->free_raw_bufs,
-                                                   cl->buf);
+
+                ngx_event_pipe_free_shadow_raw_buf(&p->free_raw_bufs, cl->buf);
 
             } else if (!p->cachable && p->in) {
                 cl = p->in;
 
-                if (bsize + ngx_buf_size(cl->buf) > p->busy_size) {
+                if (cl->buf->recycled
+                    && bsize + cl->buf->last - cl->buf->pos > p->busy_size)
+                {
                     flush = 1;
                     break;
                 }
@@ -475,7 +481,10 @@ ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                 break;
             }
 
-            bsize += ngx_buf_size(cl->buf);
+            if (cl->buf->recycled) {
+                bsize += cl->buf->last - cl->buf->pos;
+            }
+
             cl->next = NULL;
             ngx_chain_add_link(out, ll, cl);
         }
@@ -618,8 +627,6 @@ static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 
         b->in_file = 1;
         b->temp_file = 1;
-        b->temporary = 0;
-        b->recycled = 0;
 
         ngx_chain_add_link(p->out, p->last_out, cl);
 
@@ -668,7 +675,7 @@ ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
     ngx_alloc_link_and_set_buf(cl, b, p->pool, NGX_ERROR);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "buf #%d", b->num);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "input buf #%d", b->num);
 
     ngx_chain_add_link(p->in, p->last_in, cl);
 
@@ -781,7 +788,14 @@ static ngx_int_t ngx_event_pipe_drain_chains(ngx_event_pipe_t *p)
                 b = cl->buf->shadow;
                 b->pos = b->last = b->start;
                 b->shadow = NULL;
-                ngx_alloc_link_and_set_buf(tl, b, p->pool, NGX_ABORT);
+
+                if (!(tl = ngx_alloc_chain_link(p->pool))) {
+                    return NGX_ABORT;
+                }
+
+                tl->buf = b;
+                tl->next = NULL;
+
                 ngx_event_pipe_add_free_buf(&p->free_raw_bufs, tl);
 
                 cl->buf->last_shadow = 0;

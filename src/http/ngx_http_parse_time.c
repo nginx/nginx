@@ -216,10 +216,6 @@ time_t ngx_http_parse_time(u_char *value, size_t len)
                + (*(p + 2) - '0') * 10 + *(p + 3) - '0';
     }
 
-#if 0
-    printf("%d.%d.%d %d:%d:%d\n", day, month + 1, year, hour, min, sec);
-#endif
-
     if (hour > 23 || min > 59 || sec > 59) {
          return NGX_ERROR;
     }
@@ -239,7 +235,7 @@ time_t ngx_http_parse_time(u_char *value, size_t len)
 
     /*
      * shift new year to March 1 and start months from 1 (not 0),
-     * it's needed for Gauss's formula
+     * it is needed for Gauss's formula
      */
 
     if (--month <= 0) {
@@ -247,41 +243,16 @@ time_t ngx_http_parse_time(u_char *value, size_t len)
        year -= 1;
     }
 
-           /* Gauss's formula for Grigorian days from 1 March 1 BC */
+    /* Gauss's formula for Grigorian days from 1 March 1 BC */
 
     return (365 * year + year / 4 - year / 100 + year / 400
             + 367 * month / 12 - 31
             + day
 
-           /*
-            * 719527 days were between March 1, 1 BC and March 1, 1970,
-            * 31 and 28 days in January and February 1970
-            */
+            /*
+             * 719527 days were between March 1, 1 BC and March 1, 1970,
+             * 31 and 28 days in January and February 1970
+             */
 
             - 719527 + 31 + 28) * 86400 + hour * 3600 + min * 60 + sec;
 }
-
-#if 0
-char zero[] = "Sun, 01 Jan 1970 08:49:30";
-char one[]  = "Sunday, 11-Dec-02 08:49:30";
-char two[]  = "Sun Mar 1 08:49:37 2000";
-char thr[]  = "Sun Dec 11 08:49:37 2002";
-
-main()
-{
-    int rc;
-
-    rc = ngx_http_parse_time(zero, sizeof(zero) - 1);
-    printf("rc: %d\n", rc);
-
-    rc = ngx_http_parse_time(one, sizeof(one) - 1);
-    printf("rc: %d\n", rc);
-
-    rc = ngx_http_parse_time(two, sizeof(two) - 1);
-    printf("rc: %d\n", rc);
-
-    rc = ngx_http_parse_time(thr, sizeof(thr) - 1);
-    printf("rc: %d\n", rc);
-}
-
-#endif

@@ -80,7 +80,7 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
             if (bsize == 0 && !ngx_buf_special(ctx->in->buf)) {
 
                 ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, 0,
-                              "zero size buf");
+                              "zero size buf in output");
 
                 ngx_debug_point();
 

@@ -199,6 +199,8 @@ struct ngx_http_core_loc_conf_s {
 
     ngx_array_t  *error_pages;             /* error_page */
 
+    ngx_path_t   *client_body_temp_path;   /* client_body_temp_path */
+
     ngx_http_cache_hash_t  *open_files;
 
     ngx_log_t    *err_log;

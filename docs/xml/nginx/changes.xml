@@ -6,6 +6,130 @@
             title="nginx">
 
 
+<changes ver="0.1.14" date="18.01.2005">
+
+<change type="feature">
+<para lang="ru">
+параметры автоконфигурации
+--http-client-body-temp-path=PATH,
+--http-proxy-temp-path=PATH
+и --http-fastcgi-temp-path=PATH
+</para>
+<para lang="en">
+the autoconfiguration directives:
+--http-client-body-temp-path=PATH,
+--http-proxy-temp-path=PATH,
+and --http-fastcgi-temp-path=PATH
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+имя каталога с временными файлами, содержащие тело запроса клиента,
+задаётся директивой client_body_temp_path,
+по умолчанию &lt;prefix&gt;/client_body_temp.
+</para>
+<para lang="en">
+the directory name for the temporary files with the client request body
+is specified by directive client_body_temp_path,
+by default it is &lt;prefix&gt;/client_body_temp.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_fastcgi_module и директивы
+fastcgi_pass,
+fastcgi_root,
+fastcgi_index,
+fastcgi_params,
+fastcgi_connect_timeout,
+fastcgi_send_timeout,
+fastcgi_read_timeout,
+fastcgi_send_lowat,
+fastcgi_header_buffer_size,
+fastcgi_buffers,
+fastcgi_busy_buffers_size,
+fastcgi_temp_path,
+fastcgi_max_temp_file_size,
+fastcgi_temp_file_write_size,
+fastcgi_next_upstream
+и fastcgi_x_powered_by.
+
+</para>
+<para lang="en">
+the ngx_http_fastcgi_module and the directives:
+fastcgi_pass,
+fastcgi_root,
+fastcgi_index,
+fastcgi_params,
+fastcgi_connect_timeout,
+fastcgi_send_timeout,
+fastcgi_read_timeout,
+fastcgi_send_lowat,
+fastcgi_header_buffer_size,
+fastcgi_buffers,
+fastcgi_busy_buffers_size,
+fastcgi_temp_path,
+fastcgi_max_temp_file_size,
+fastcgi_temp_file_write_size,
+fastcgi_next_upstream,
+and fastcgi_x_powered_by.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибка "[alert] zero size buf";
+ошибка появилась в 0.1.3.
+</para>
+<para lang="en">
+the "[alert] zero size buf" error;
+bug appeared in 0.1.3.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+в директиве proxy_pass нужно обязательно указывать URI после имени хоста.
+</para>
+<para lang="en">
+the URI must be specified after the host name in the proxy_pass directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+если в URI встречался символ %3F, то он считался началом строки аргументов.
+</para>
+<para lang="en">
+the %3F symbol in the URI was considered as the argument string start.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка unix domain сoкетов в модуле ngx_http_proxy_module.
+</para>
+<para lang="en">
+the unix domain sockets support in the ngx_http_proxy_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_engine и ssl_ciphers.<br/>
+Спасибо Сергею Скворцову за SSL-акселератор.
+</para>
+<para lang="en">
+the ssl_engine and ssl_ciphers directives.<br/>
+Thanks to Sergey Skvortsov for SSL-accelerator.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.13" date="21.12.2004">
 
 <change type="feature">

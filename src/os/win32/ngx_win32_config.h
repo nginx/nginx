@@ -122,6 +122,7 @@ typedef uint32_t          ngx_atomic_t;
 #define NGX_SIG_ATOMIC_T_SIZE   4
 
 #define NGX_HAVE_LITTLE_ENDIAN  1
+#define NGX_HAVE_NONALIGNED     1
 
 #define NGX_THREADS       1
 

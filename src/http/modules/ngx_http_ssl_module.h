@@ -14,9 +14,16 @@
 
 
 typedef struct {
+    ngx_str_t       engine;
+} ngx_http_ssl_main_conf_t;
+
+
+typedef struct {
     ngx_flag_t      enable;
     ngx_str_t       certificate;
     ngx_str_t       certificate_key;
+
+    ngx_str_t       ciphers;
 
     ngx_ssl_ctx_t  *ssl_ctx;
 } ngx_http_ssl_srv_conf_t;

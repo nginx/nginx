@@ -69,7 +69,7 @@ typedef struct {
 } ngx_bufs_t;
 
 
-typedef int  (*ngx_output_chain_filter_pt)(void *ctx, ngx_chain_t *out);
+typedef ngx_int_t (*ngx_output_chain_filter_pt)(void *ctx, ngx_chain_t *in);
 
 typedef struct {
     ngx_buf_t                   *buf;
@@ -141,7 +141,7 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
 
 
 ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in);
-ngx_int_t ngx_chain_writer(void *data, ngx_chain_t *in);
+ngx_int_t ngx_chain_writer(void *ctx, ngx_chain_t *in);
 
 ngx_int_t ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
                              ngx_chain_t *in);

@@ -25,7 +25,6 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_event_t         *rev, *wev;
     ngx_connection_t    *c;
     ngx_event_conf_t    *ecf;
-    struct sockaddr_in   addr;
 
     now = ngx_time();
 
@@ -54,7 +53,7 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
     pc->connection = NULL;
 
     if (pc->peers->number == 1) {
-        peer = &pc->peers->peers[0];
+        peer = &pc->peers->peer[0];
 
     } else {
 
@@ -64,45 +63,47 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
             /* it's a first try - get a current peer */
 
-            pc->cur_peer = pc->peers->current++;
+            pc->cur_peer = pc->peers->current;
+
+            pc->peers->weight--;
+
+            if (pc->peers->weight == 0) {
+                pc->peers->current++;
+            }
 
             if (pc->peers->current >= pc->peers->number) {
                 pc->peers->current = 0;
             }
+
+            if (pc->peers->weight == 0) {
+                pc->peers->weight = pc->peers->peer[pc->peers->current].weight;
+            }
         }
 
-        if (pc->peers->max_fails == 0) {
-            peer = &pc->peers->peers[pc->cur_peer];
+        for ( ;; ) {
+            peer = &pc->peers->peer[pc->cur_peer];
 
-        } else {
+            if (peer->fails <= peer->max_fails) {
+                break;
+            }
 
-            /* the peers support a fault tolerance */
+            if (now - peer->accessed > peer->fail_timeout) {
+                peer->fails = 0;
+                break;
+            }
 
-            for ( ;; ) {
-                peer = &pc->peers->peers[pc->cur_peer];
+            pc->cur_peer++;
 
-                if (peer->fails <= pc->peers->max_fails) {
-                    break;
-                }
+            if (pc->cur_peer >= pc->peers->number) {
+                pc->cur_peer = 0;
+            }
 
-                if (now - peer->accessed > pc->peers->fail_timeout) {
-                    peer->fails = 0;
-                    break;
-                }
+            pc->tries--;
 
-                pc->cur_peer++;
+            if (pc->tries == 0) {
+                /* ngx_unlock_mutex(pc->peers->mutex); */
 
-                if (pc->cur_peer >= pc->peers->number) {
-                    pc->cur_peer = 0;
-                }
-
-                pc->tries--;
-
-                if (pc->tries == 0) {
-                    /* ngx_unlock_mutex(pc->peers->mutex); */
-
-                    return NGX_ERROR;
-                }
+                return NGX_ERROR;
             }
         }
     }
@@ -110,7 +111,7 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
     /* ngx_unlock_mutex(pc->peers->mutex); */
 
 
-    s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    s = ngx_socket(peer->sockaddr->sa_family, SOCK_STREAM, 0);
 
     if (s == -1) {
         ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
@@ -257,16 +258,10 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     } 
 
-    ngx_memzero(&addr, sizeof(struct sockaddr_in));
-
-    addr.sin_family = AF_INET;
-    addr.sin_port = peer->port;
-    addr.sin_addr.s_addr = peer->addr;
-
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0,
-                   "connect to %V, #%d", &peer->addr_port_text, c->number);
+                   "connect to %V, #%d", &peer->name, c->number);
 
-    rc = connect(s, (struct sockaddr *) &addr, sizeof(struct sockaddr_in));
+    rc = connect(s, peer->sockaddr, peer->socklen);
 
     if (rc == -1) {
         err = ngx_socket_errno;
@@ -367,8 +362,8 @@ void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc)
 
     /* ngx_lock_mutex(pc->peers->mutex); */
 
-    pc->peers->peers[pc->cur_peer].fails++;
-    pc->peers->peers[pc->cur_peer].accessed = now;
+    pc->peers->peer[pc->cur_peer].fails++;
+    pc->peers->peer[pc->cur_peer].accessed = now;
 
     /* ngx_unlock_mutex(pc->peers->mutex); */
 

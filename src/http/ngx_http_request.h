@@ -133,6 +133,7 @@ typedef struct {
     ngx_table_elt_t  *user_agent;
     ngx_table_elt_t  *referer;
     ngx_table_elt_t  *content_length;
+    ngx_table_elt_t  *content_type;
 
     ngx_table_elt_t  *range;
 
@@ -201,13 +202,14 @@ typedef struct {
 } ngx_http_headers_out_t;
 
 
+typedef void (*ngx_http_client_body_handler_pt)(ngx_http_request_t *r);
+
 typedef struct {
-    ngx_temp_file_t   *temp_file;
-    ngx_chain_t       *bufs;
-    ngx_buf_t         *buf;
-    size_t             rest;
-    void             (*handler) (void *data); 
-    void              *data;
+    ngx_temp_file_t                  *temp_file;
+    ngx_chain_t                      *bufs;
+    ngx_buf_t                        *buf;
+    size_t                            rest;
+    ngx_http_client_body_handler_pt   post_handler;
 } ngx_http_request_body_t;
 
 
@@ -256,6 +258,8 @@ struct ngx_http_request_s {
 
     ngx_http_cache_t         *cache;
 
+    ngx_http_upstream_t      *upstream;
+
     ngx_file_t                file;
 
     ngx_pool_t               *pool;
@@ -280,6 +284,7 @@ struct ngx_http_request_s {
     ngx_str_t            unparsed_uri;
 
     ngx_str_t            method_name;
+    ngx_str_t            http_protocol;
 
     ngx_http_request_t  *main;
 

@@ -13,6 +13,7 @@
 #include <ngx_garbage_collector.h>
 
 typedef struct ngx_http_request_s  ngx_http_request_t;
+typedef struct ngx_http_log_ctx_s  ngx_http_log_ctx_t;
 typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 typedef struct ngx_http_in_addr_s  ngx_http_in_addr_t;
 
@@ -22,6 +23,7 @@ typedef struct ngx_http_in_addr_s  ngx_http_in_addr_t;
 /* STUB */
 #include <ngx_http_cache.h>
 
+#include <ngx_http_upstream.h>
 #include <ngx_http_request.h>
 #include <ngx_http_config.h>
 #include <ngx_http_busy_lock.h>
@@ -33,8 +35,8 @@ typedef struct ngx_http_in_addr_s  ngx_http_in_addr_t;
 #endif
 
 
-typedef struct {
-    u_int              connection;
+struct ngx_http_log_ctx_s {
+    ngx_uint_t         connection;
 
     /*
      * we declare "action" as "char *" because the actions are usually
@@ -45,18 +47,23 @@ typedef struct {
     char                *action;
     ngx_str_t           *client;
     ngx_http_request_t  *request;
-} ngx_http_log_ctx_t;
+};
 
 
 #define ngx_http_get_module_ctx(r, module)       r->ctx[module.ctx_index]
 #define ngx_http_get_module_err_ctx(r, module)                                \
          (r->err_ctx ? r->err_ctx[module.ctx_index] : r->ctx[module.ctx_index])
 
+/* STUB */
 #define ngx_http_create_ctx(r, cx, module, size, error)                       \
             do {                                                              \
                 ngx_test_null(cx, ngx_pcalloc(r->pool, size), error);         \
                 r->ctx[module.ctx_index] = cx;                                \
             } while (0)
+/**/
+
+#define ngx_http_set_ctx(r, c, module)                                        \
+            r->ctx[module.ctx_index] = c;
 
 #define ngx_http_delete_ctx(r, module)                                        \
             r->ctx[module.ctx_index] = NULL;
@@ -80,7 +87,8 @@ void ngx_http_close_request(ngx_http_request_t *r, int error);
 void ngx_http_close_connection(ngx_connection_t *c);
 
 
-ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r);
+ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
+                                 ngx_http_client_body_handler_pt post_handler);
 
 ngx_int_t ngx_http_send_header(ngx_http_request_t *r);
 ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error);

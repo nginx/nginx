@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 
 
-static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *s1, struct sockaddr *s2);
+static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
 
 
@@ -531,18 +531,18 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 }
 
 
-static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *s1, struct sockaddr *s2)
+static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2)
 {
     struct sockaddr_in  *sin1, *sin2;
 
     /* AF_INET only */
 
-    if (s1->sa_family != AF_INET || s2->sa_family != AF_INET) {
+    if (sa1->sa_family != AF_INET || sa2->sa_family != AF_INET) {
         return NGX_DECLINED;
     }
 
-    sin1 = (struct sockaddr_in *) s1;
-    sin2 = (struct sockaddr_in *) s2;
+    sin1 = (struct sockaddr_in *) sa1;
+    sin2 = (struct sockaddr_in *) sa2;
 
     if (sin1->sin_addr.s_addr != sin2->sin_addr.s_addr) {
         return NGX_DECLINED;

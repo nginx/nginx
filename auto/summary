@@ -101,14 +101,39 @@ END
 fi
 
 
-echo "  nginx path prefix: $NGX_PREFIX"
-echo "  nginx binary file: $NGX_SBIN_PATH"
-echo "  nginx configuration file: $NGX_CONF_PATH"
-echo "  nginx pid file: $NGX_PID_PATH"
+if [ $HTTP_SSL = YES ]; then
+    if [ $OPENSSL = NONE -o $OPENSSL = NO ]; then
+
+cat << END
+$0: error: the HTTP SSL module requires the OpenSSL library.
+You can either do not enable the module, or install the OpenSSL library
+into the system, or build the OpenSSL library statically from the source
+with nginx by using --with-openssl=<path> option.
+
+END
+
+        exit 1
+    fi
+fi
+
+
+cat << END
+  nginx path prefix: $NGX_PREFIX
+  nginx binary file: $NGX_SBIN_PATH
+  nginx configuration file: $NGX_CONF_PATH
+  nginx pid file: $NGX_PID_PATH
+END
+
 if test -n "$NGX_ERROR_LOG_PATH"; then
     echo "  nginx error log file: $NGX_ERROR_LOG_PATH"
 else
     echo "  nginx logs errors to stderr"
 fi
-echo "  nginx http access log file: $NGX_HTTP_LOG_PATH"
-echo
+
+cat << END
+  nginx http access log file: $NGX_HTTP_LOG_PATH
+  nginx http client request body temporary files: $NGX_HTTP_CLIENT_TEMP_PATH
+  nginx http proxy temporary files: $NGX_HTTP_PROXY_TEMP_PATH
+  nginx http fastcgi temporary files: $NGX_HTTP_FASTCGI_TEMP_PATH
+
+END

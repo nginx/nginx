@@ -92,7 +92,7 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
 
         /* TODO: look up reused sockets */
 
-        s = ngx_socket(ls->family, ls->type, ls->protocol);
+        s = ngx_socket(ls->family, ls->type, 0);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ls->log, 0,
                        ngx_socket_n " s:%d", s);

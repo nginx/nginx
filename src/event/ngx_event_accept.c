@@ -313,12 +313,12 @@ void ngx_event_accept(ngx_event_t *ev)
 
         uint32_t            *addr;
         in_addr_t            i;
-        struct sockaddr_in  *addr_in;
+        struct sockaddr_in  *sin;
 
-        addr_in = (struct sockaddr_in *) sa;
+        sin = (struct sockaddr_in *) sa;
         addr = ecf->debug_connection.elts;
         for (i = 0; i < ecf->debug_connection.nelts; i++) {
-            if (addr[i] == addr_in->sin_addr.s_addr) {
+            if (addr[i] == sin->sin_addr.s_addr) {
                 log->log_level = NGX_LOG_DEBUG_CONNECTION|NGX_LOG_DEBUG_ALL;
                 break;
             }

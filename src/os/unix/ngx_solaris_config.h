@@ -41,6 +41,7 @@
 #include <netinet/tcp.h>        /* TCP_NODELAY */
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/un.h>
 
 #include <sys/systeminfo.h>
 #include <limits.h>             /* IOV_MAX */

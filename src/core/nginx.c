@@ -451,12 +451,15 @@ static void *ngx_core_module_create_conf(ngx_cycle_t *cycle)
     if (!(ccf = ngx_pcalloc(cycle->pool, sizeof(ngx_core_conf_t)))) {
         return NULL;
     }
-    /* set by pcalloc()
+
+    /*
+     * set by pcalloc()
      *
-     * ccf->pid = NULL;
-     * ccf->newpid = NULL;
-     * ccf->priority = 0;
+     *     ccf->pid = NULL;
+     *     ccf->newpid = NULL;
+     *     ccf->priority = 0;
      */
+
     ccf->daemon = NGX_CONF_UNSET;
     ccf->master = NGX_CONF_UNSET;
     ccf->worker_processes = NGX_CONF_UNSET;

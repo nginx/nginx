@@ -110,6 +110,7 @@ OPENSSL_SRCS=src/event/ngx_event_openssl.c
 UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"
 
 UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
+            src/core/ngx_unix_domain.h \
             src/os/unix/ngx_time.h \
             src/os/unix/ngx_types.h \
             src/os/unix/ngx_errno.h \
@@ -125,6 +126,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_process_cycle.h"
 
 UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
+            src/core/ngx_unix_domain.c \
             src/os/unix/ngx_time.c \
             src/os/unix/ngx_errno.c \
             src/os/unix/ngx_alloc.c \
@@ -203,9 +205,13 @@ NGX_WIN32_ICONS="src/os/win32/nginx.ico src/os/win32/tray.ico"
 NGX_WIN32_RC="src/os/win32/nginx.rc"
 
 
+# the http modules that have their logging formats
+# must be after ngx_http_log_module
+
 HTTP_MODULES="ngx_http_module \
               ngx_http_core_module \
-              ngx_http_log_module"
+              ngx_http_log_module \
+              ngx_http_upstream_module"
 
 HTTP_CACHE_MODULE=ngx_http_cache_module
 
@@ -231,6 +237,7 @@ HTTP_DEPS="src/http/ngx_http.h \
            src/http/ngx_http_config.h \
            src/http/ngx_http_core_module.h \
            src/http/ngx_http_cache.h \
+           src/http/ngx_http_upstream.h \
            src/http/ngx_http_busy_lock.h \
            src/http/ngx_http_log_handler.h"
 
@@ -244,6 +251,7 @@ HTTP_SRCS="src/http/ngx_http.c \
            src/http/ngx_http_copy_filter.c \
            src/http/ngx_http_log_handler.c \
            src/http/ngx_http_request_body.c \
+           src/http/ngx_http_upstream.c \
            src/http/ngx_http_parse_time.c \
            src/http/modules/ngx_http_static_handler.c \
            src/http/modules/ngx_http_index_handler.c \
@@ -306,6 +314,10 @@ HTTP_PROXY_SRCS="src/http/modules/proxy/ngx_http_proxy_handler.c \
 
 # STUB
 #                 src/http/modules/proxy/ngx_http_proxy_cache.c \
+
+
+HTTP_FASTCGI_MODULE=ngx_http_fastcgi_module
+HTTP_FASTCGI_SRCS=src/http/modules/ngx_http_fastcgi_handler.c
 
 
 IMAP_INCS="src/imap"

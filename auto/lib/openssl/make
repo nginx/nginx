@@ -6,6 +6,7 @@ case $NGX_PLATFORM in
     *)
         echo "$OPENSSL/libssl.a:"                                 >> $MAKEFILE
         echo "	cd $OPENSSL \\"                                   >> $MAKEFILE
+        echo "	&& \$(MAKE) clean \\"                             >> $MAKEFILE
         echo "	&& CC=\"\$(CC)\" \\"                              >> $MAKEFILE
         echo "	./config threads no-shared \\"                    >> $MAKEFILE
         echo "	&& \$(MAKE)"                                      >> $MAKEFILE

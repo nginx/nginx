@@ -17,34 +17,40 @@
 
 
 typedef struct {
-    in_addr_t          addr;
-    ngx_str_t          host;
-    in_port_t          port;
-    ngx_str_t          addr_port_text;
+    struct sockaddr    *sockaddr;
+    socklen_t           socklen;
 
-    ngx_int_t          fails;
-    time_t             accessed;
+    ngx_str_t           name;
+    char               *uri_separator;
+
+    ngx_uint_t          weight;
+
+    ngx_uint_t          fails;
+    time_t              accessed;
+
+    ngx_uint_t          max_fails;
+    time_t              fail_timeout;
 } ngx_peer_t;
 
 
-typedef struct {
-    ngx_int_t           current;
-    ngx_int_t           number;
-    ngx_int_t           max_fails;
-    time_t              fail_timeout;
-    ngx_int_t           last_cached;
+struct ngx_peers_s {
+    ngx_uint_t          current;
+    ngx_uint_t          weight;
+
+    ngx_uint_t          number;
+    ngx_uint_t          last_cached;
 
  /* ngx_mutex_t        *mutex; */
     ngx_connection_t  **cached;
 
-    ngx_peer_t          peers[1];
-} ngx_peers_t;
+    ngx_peer_t          peer[1];
+};
 
 
 typedef struct {
     ngx_peers_t       *peers;
-    ngx_int_t          cur_peer;
-    ngx_int_t          tries;
+    ngx_uint_t         cur_peer;
+    ngx_uint_t         tries;
 
     ngx_connection_t  *connection;
 #if (NGX_THREADS)

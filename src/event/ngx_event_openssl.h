@@ -25,6 +25,10 @@ typedef struct {
     unsigned               no_rcv_shut:1;
     unsigned               no_send_shut:1;
     unsigned               shutdown_set:1;
+
+#if (NGX_DEBUG)
+    unsigned               handshaked:1;
+#endif
 } ngx_ssl_t;
 
 
