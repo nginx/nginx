@@ -17,6 +17,7 @@ typedef char *(*ngx_http_log_op_pt) (ngx_http_request_t *r, char *buf,
 
 /* STUB */
 #define NGX_INT32_LEN      sizeof("4294967296") - 1
+#define NGX_TIME_LEN       sizeof("4294967296") - 1
 #define NGX_OFF_LEN        sizeof("18446744073709551616") - 1
 
 
@@ -54,6 +55,9 @@ typedef struct {
 typedef struct {
     ngx_array_t         *logs;       /* array of ngx_http_log_t */
 } ngx_http_log_loc_conf_t;
+
+
+extern ngx_http_log_op_name_t ngx_http_log_fmt_ops[];
 
 
 #endif /* _NGX_HTTP_LOG_HANDLER_H_INCLUDED_ */

@@ -34,6 +34,10 @@ typedef struct {
 
     unsigned             flush:4;
     unsigned             redo:1;
+    unsigned             done:1;
+
+    size_t               zin;
+    size_t               zout;
 
     u_int                crc32;
     z_stream             zstream;
@@ -46,6 +50,11 @@ static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items,
 static void ngx_http_gzip_filter_free(void *opaque, void *address);
 
 ngx_inline static int ngx_http_gzip_error(ngx_http_gzip_ctx_t *ctx);
+
+static char *ngx_http_gzip_log_ratio(ngx_http_request_t *r, char *buf,
+                                     uintptr_t data);
+
+static int ngx_http_gzip_pre_conf(ngx_conf_t *cf);
 static int ngx_http_gzip_filter_init(ngx_cycle_t *cycle);
 static void *ngx_http_gzip_create_conf(ngx_conf_t *cf);
 static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
@@ -114,6 +123,8 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_gzip_filter_module_ctx = {
+    ngx_http_gzip_pre_conf,                /* pre conf */
+
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 
@@ -133,6 +144,13 @@ ngx_module_t  ngx_http_gzip_filter_module = {
     ngx_http_gzip_filter_init,             /* init module */
     NULL                                   /* init child */
 };
+
+
+static ngx_http_log_op_name_t ngx_http_gzip_log_fmt_ops[] = {
+    { ngx_string("gzip_ratio"), NGX_INT32_LEN + 3, ngx_http_gzip_log_ratio },
+    { ngx_null_string, 0, NULL }
+};
+
 
 
 static u_char  gzheader[10] = { 0x1f, 0x8b, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3 };
@@ -215,7 +233,7 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
 
 static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    int                    rc, wbits, memlevel, zin, zout, last;
+    int                    rc, wbits, memlevel, last;
     struct gztrailer      *trailer;
     ngx_hunk_t            *h;
     ngx_chain_t           *cl;
@@ -223,6 +241,10 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_gzip_conf_t  *conf;
 
     if (!(ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module))) {
+        return ngx_http_next_body_filter(r, in);
+    }
+
+    if (ctx->done) {
         return ngx_http_next_body_filter(r, in);
     }
 
@@ -400,8 +422,8 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
 
                     /* rc == Z_STREAM_END */
 
-                    zin = ctx->zstream.total_in;
-                    zout = 10 + ctx->zstream.total_out + 8;
+                    ctx->zin = ctx->zstream.total_in;
+                    ctx->zout = 10 + ctx->zstream.total_out + 8;
 
                     rc = deflateEnd(&ctx->zstream);
                     if (rc != Z_OK) {
@@ -441,7 +463,7 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
 
 #if (HAVE_LITTLE_ENDIAN)
                     trailer->crc32 = ctx->crc32;
-                    trailer->zlen = zin;
+                    trailer->zlen = ctx->zin;
 #else
                     /* STUB */
 #endif
@@ -449,7 +471,11 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
                     ctx->zstream.avail_in = 0;
                     ctx->zstream.avail_out = 0;
 
+                    ctx->done = 1;
+
+#if 0
                     ngx_http_delete_ctx(r, ngx_http_gzip_filter_module);
+#endif
 
                     break;
 
@@ -531,6 +557,40 @@ static void ngx_http_gzip_filter_free(void *opaque, void *address)
 }
 
 
+static char *ngx_http_gzip_log_ratio(ngx_http_request_t *r, char *buf,
+                                     uintptr_t data)
+{
+    int                   zint, zfrac;
+    ngx_http_gzip_ctx_t  *ctx;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module);
+
+    if (ctx == NULL || ctx->zout == 0) {
+        *buf = '-';
+        return buf + 1;
+    }
+
+#if 0
+    return buf + ngx_snprintf(buf, NGX_INT32_LEN + 4, "%.2f",
+                              (float) ctx->zin / ctx->zout);
+#endif
+
+    /* we prefer do not use FPU */
+
+    zint = ctx->zin / ctx->zout;
+    zfrac = (ctx->zin * 100 / ctx->zout) % 100;
+
+    if ((ctx->zin * 1000 / ctx->zout) %10 > 4) {
+        if (++zfrac > 99) {
+            zint++;
+            zfrac = 0;
+        }
+    }
+
+    return buf + ngx_snprintf(buf, NGX_INT32_LEN + 4, "%d.%02d", zint, zfrac);
+}
+
+
 ngx_inline static int ngx_http_gzip_error(ngx_http_gzip_ctx_t *ctx)
 {
     deflateEnd(&ctx->zstream);
@@ -541,6 +601,27 @@ ngx_inline static int ngx_http_gzip_error(ngx_http_gzip_ctx_t *ctx)
     ctx->zstream.avail_out = 0;
 
     return NGX_ERROR;
+}
+
+
+static int ngx_http_gzip_pre_conf(ngx_conf_t *cf)
+{
+    ngx_http_log_op_name_t  *op;
+
+    for (op = ngx_http_gzip_log_fmt_ops; op->name.len; op++) { /* void */ }
+    op->op = NULL;
+
+    op = ngx_http_log_fmt_ops;
+
+    for (op = ngx_http_log_fmt_ops; op->op; op++) {
+        if (op->name.len == 0) {
+            op = (ngx_http_log_op_name_t *) op->op;
+        }
+    }
+
+    op->op = (ngx_http_log_op_pt) ngx_http_gzip_log_fmt_ops;
+
+    return NGX_OK;
 }
 
 

@@ -302,6 +302,7 @@ void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
         return;
     }
     
+    p->state->status = NGX_HTTP_SERVICE_UNAVAILABLE;
     ngx_http_proxy_finalize_request(p, NGX_HTTP_SERVICE_UNAVAILABLE);
 }
 
@@ -468,7 +469,7 @@ int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p)
 
 int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p)
 {
-    time_t                        date, last_modified, expires;
+    time_t                        date, last_modified, expires, t;
     ngx_http_proxy_headers_in_t  *h;
 
     switch (p->upstream->status) {
@@ -509,6 +510,7 @@ int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p)
                            h->x_accel_expires->value.len);
         if (expires != NGX_ERROR) {
             p->state->reason = NGX_HTTP_PROXY_CACHE_XAE;
+            p->state->expires = expires;
             p->cache->ctx.expires = date + expires;
             return (expires > 0);
         }
@@ -523,6 +525,7 @@ int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p)
                                           h->expires->value.len);
             if (expires != NGX_ERROR) {
                 p->state->reason = NGX_HTTP_PROXY_CACHE_EXP;
+                p->state->expires = expires - date;
                 p->cache->ctx.expires = expires;
                 return (date < expires);
             }
@@ -531,6 +534,7 @@ int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p)
 
     if (p->upstream->status == NGX_HTTP_MOVED_PERMANENTLY) {
         p->state->reason = NGX_HTTP_PROXY_CACHE_MVD;
+        p->state->expires = /* STUB: 1 hour */ 60 * 60;
         p->cache->ctx.expires = /* STUB: 1 hour */ 60 * 60;
         return 1;
     }
@@ -544,14 +548,17 @@ int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p)
         /* FIXME: time_t == int_64_t, we can use fpu */ 
 
         p->state->reason = NGX_HTTP_PROXY_CACHE_LMF;
-        p->cache->ctx.expires = (time_t) (ngx_time()
-             + (((int64_t) (date - last_modified)) * p->lcf->lm_factor) / 100);
+        t = (time_t)
+              ((((int64_t) (date - last_modified)) * p->lcf->lm_factor) / 100);
+        p->state->expires = t;
+        p->cache->ctx.expires = ngx_time() + t;
         return 1;
     }
 
     if (p->lcf->default_expires > 0) {
         p->state->reason = NGX_HTTP_PROXY_CACHE_PDE;
-        p->cache->ctx.expires = p->lcf->default_expires;
+        p->state->expires = p->lcf->default_expires;
+        p->cache->ctx.expires = ngx_time() + p->lcf->default_expires;
         return 1;
     }
 

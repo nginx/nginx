@@ -10,6 +10,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r);
 
 
 static ngx_http_module_t  ngx_http_header_filter_module_ctx = {
+    NULL,                                  /* pre conf */
+
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 

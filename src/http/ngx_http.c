@@ -107,6 +107,12 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         module = ngx_modules[m]->ctx;
         mi = ngx_modules[m]->ctx_index;
 
+        if (module->pre_conf) {
+            if (module->pre_conf(cf) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+        }
+
         if (module->create_main_conf) {
             ngx_test_null(ctx->main_conf[mi], module->create_main_conf(cf),
                           NGX_CONF_ERROR);
@@ -157,6 +163,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (module->init_main_conf) {
             rv = module->init_main_conf(cf, ctx->main_conf[mi]);
             if (rv != NGX_CONF_OK) {
+                *cf = pcf;
                 return rv;
             }
         }
@@ -170,6 +177,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                             ctx->srv_conf[mi],
                                             cscfp[s]->ctx->srv_conf[mi]);
                 if (rv != NGX_CONF_OK) {
+                    *cf = pcf;
                     return rv;
                 }
             }
@@ -182,6 +190,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                             ctx->loc_conf[mi],
                                             cscfp[s]->ctx->loc_conf[mi]);
                 if (rv != NGX_CONF_OK) {
+                    *cf = pcf;
                     return rv;
                 }
 
@@ -194,6 +203,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                                 cscfp[s]->ctx->loc_conf[mi],
                                                 clcfp[l]->loc_conf[mi]);
                     if (rv != NGX_CONF_OK) {
+                        *cf = pcf;
                         return rv;
                     }
                 }
@@ -201,6 +211,8 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    /* we needed "http"'s cf->ctx while merging configuration */
+    *cf = pcf;
 
     /* init lists of the handlers */
 
@@ -557,6 +569,5 @@ ngx_log_debug(cf->log, "%s %08x" _ s_name[n].name.data _
     }
     /**/
 
-    *cf = pcf;
     return NGX_CONF_OK;
 }

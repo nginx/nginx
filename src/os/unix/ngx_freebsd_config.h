@@ -29,12 +29,14 @@
 #define OFF_FMT    "%lld"
 #define SIZE_FMT   "%d"
 #define SIZEX_FMT  "%x"
+#define TIME_FMT   "%lu"
 
 #else  /* amd64, alpha, sparc64, ia64 */
 
 #define OFF_FMT    "%ld"
 #define SIZE_FMT   "%ld"
 #define SIZEX_FMT  "%lx"
+#define TIME_FMT   "%lu"
 
 #endif
 

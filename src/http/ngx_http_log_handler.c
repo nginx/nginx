@@ -28,6 +28,7 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
 static char *ngx_http_log_unknown_header_out(ngx_http_request_t *r, char *buf,
                                              uintptr_t data);
 
+static int ngx_http_log_pre_conf(ngx_conf_t *cf);
 static void *ngx_http_log_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_log_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent,
@@ -61,6 +62,8 @@ static ngx_command_t  ngx_http_log_commands[] = {
 
 
 ngx_http_module_t  ngx_http_log_module_ctx = {
+    ngx_http_log_pre_conf,                 /* pre conf */
+
     ngx_http_log_create_main_conf,         /* create main configuration */
     NULL,                                  /* init main configuration */
 
@@ -93,7 +96,7 @@ static ngx_str_t ngx_http_combined_fmt =
                "\"%{Referer}i\" %{User-Agent}i\"");
 
 
-static ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
+ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
     { ngx_string("addr"), INET_ADDRSTRLEN - 1, ngx_http_log_addr },
     { ngx_string("conn"), NGX_INT32_LEN, ngx_http_log_connection },
     { ngx_string("pipe"), 1, ngx_http_log_pipe },
@@ -439,6 +442,17 @@ static char *ngx_http_log_unknown_header_out(ngx_http_request_t *r, char *buf,
 }
 
 
+static int ngx_http_log_pre_conf(ngx_conf_t *cf)
+{
+    ngx_http_log_op_name_t  *op;
+
+    for (op = ngx_http_log_fmt_ops; op->name.len; op++) { /* void */ }
+    op->op = NULL;
+
+    return NGX_OK;
+}
+
+
 static void *ngx_http_log_create_main_conf(ngx_conf_t *cf)
 {
     ngx_http_log_main_conf_t  *conf;
@@ -474,7 +488,7 @@ static void *ngx_http_log_create_main_conf(ngx_conf_t *cf)
 
     rc = ngx_http_log_set_format(cf, NULL, conf);
     if (rc != NGX_CONF_OK) {
-        return rc;
+        return NULL;
     }
 
     return conf;
@@ -597,9 +611,6 @@ static char *ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_http_log_op_name_t     *name;
 
     value = cf->args->elts;
-#if 0
-    lmcf = ngx_http_conf_module_main_conf(cf, ngx_http_log_module);
-#endif
 
     fmt = lmcf->formats.elts;
     for (f = 0; f < lmcf->formats.nelts; f++) {
@@ -669,8 +680,8 @@ static char *ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd,
                 fname = &value[s].data[i];
 
                 while (i < value[s].len
-                       && value[s].data[i] >= 'a'
-                       && value[s].data[i] <= 'z')
+                       && ((value[s].data[i] >= 'a' && value[s].data[i] <= 'z')
+                           || value[s].data[i] == '_'))
                 {
                     i++;
                 }
@@ -682,7 +693,11 @@ static char *ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd,
                     break;
                 }
 
-                for (name = ngx_http_log_fmt_ops; name->name.len; name++) {
+                for (name = ngx_http_log_fmt_ops; name->op; name++) {
+                    if (name->name.len == 0) {
+                        name = (ngx_http_log_op_name_t *) name->op;
+                    }
+
                     if (name->name.len == fname_len
                         && ngx_strncmp(name->name.data, fname, fname_len) == 0)
                     {

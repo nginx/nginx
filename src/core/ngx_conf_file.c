@@ -368,6 +368,11 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
                 return NGX_OK;
             }
 
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "unexpected '%c' in %s:%d",
+                          ch, cf->conf_file->file.name.data,
+                          cf->conf_file->line);
+
             return NGX_ERROR;
         }
 

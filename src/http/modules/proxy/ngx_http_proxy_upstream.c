@@ -305,6 +305,13 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
         }
     }
 
+    /* add one more state */
+
+    if (!(p->state = ngx_push_array(&p->states))) {
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
     p->status = 0;
     p->status_count = 0;
 }
@@ -344,6 +351,7 @@ void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
         return;
     }
 
+    p->state->status = NGX_HTTP_SERVICE_UNAVAILABLE;
     ngx_http_proxy_finalize_request(p, NGX_HTTP_SERVICE_UNAVAILABLE);
 }
 
@@ -406,11 +414,6 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     }
 
     p->request_sent = 0;
-
-    if (!(p->state = ngx_push_array(&p->states))) {
-        ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return;
-    }
 
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, p->lcf->connect_timeout);
@@ -636,6 +639,7 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
     /* rc == NGX_OK */
 
     p->upstream->status = p->status;
+    p->state->status = p->status;
 
     if (p->status == NGX_HTTP_INTERNAL_SERVER_ERROR) {
 

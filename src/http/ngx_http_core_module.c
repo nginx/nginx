@@ -212,6 +212,8 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
 
 ngx_http_module_t  ngx_http_core_module_ctx = {
+    NULL,                                  /* pre conf */
+
     ngx_http_core_create_main_conf,        /* create main configuration */
     ngx_http_core_init_main_conf,          /* init main configuration */
 

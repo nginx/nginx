@@ -16,6 +16,8 @@ static ngx_command_t  ngx_http_static_commands[] = {
 
 
 ngx_http_module_t  ngx_http_static_module_ctx = {
+    NULL,                                  /* pre conf */
+
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
     

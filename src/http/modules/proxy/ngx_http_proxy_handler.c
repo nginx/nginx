@@ -7,7 +7,14 @@
 
 static int ngx_http_proxy_handler(ngx_http_request_t *r);
 
-static int ngx_http_proxy_init(ngx_cycle_t *cycle);
+static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
+                                            uintptr_t data);
+static char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r, char *buf,
+                                            uintptr_t data);
+static char *ngx_http_proxy_log_reason(ngx_http_request_t *r, char *buf,
+                                       uintptr_t data);
+
+static int ngx_http_proxy_pre_conf(ngx_conf_t *cf);
 static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
                                            void *parent, void *child);
@@ -194,6 +201,8 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
 
 ngx_http_module_t  ngx_http_proxy_module_ctx = {
+    ngx_http_proxy_pre_conf,               /* pre conf */
+
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 
@@ -213,6 +222,19 @@ ngx_module_t  ngx_http_proxy_module = {
     NULL,                                  /* init module */
     NULL                                   /* init child */
 };
+
+
+
+static ngx_http_log_op_name_t ngx_http_proxy_log_fmt_ops[] = {
+    { ngx_string("proxy"), /* STUB */ 100,
+                           ngx_http_proxy_log_proxy_state },
+    { ngx_string("proxy_cache_state"), sizeof("BYPASS") - 1,
+                                       ngx_http_proxy_log_cache_state },
+    { ngx_string("proxy_reason"), sizeof("BPS") - 1,
+                                  ngx_http_proxy_log_reason },
+    { ngx_null_string, 0, NULL }
+};
+
 
 
 ngx_http_header_t ngx_http_proxy_headers_in[] = {
@@ -252,7 +274,7 @@ static ngx_str_t cache_states[] = {
 };
 
 
-static ngx_str_t cache_reason[] = {
+static ngx_str_t cache_reasons[] = {
     ngx_string("BPS"),
     ngx_string("XAE"),
     ngx_string("CTL"),
@@ -453,12 +475,6 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
 }
 
 
-size_t ngx_http_proxy_log_state(void *data, char *buf, size_t len)
-{
-    return 0;
-}
-
-
 size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len)
 {
     ngx_http_proxy_ctx_t *p = data;
@@ -479,6 +495,121 @@ size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len)
                         r->uri.data + p->lcf->upstream->location->len,
                         r->args.len ? "?" : "",
                         r->args.len ? r->args.data : "");
+}
+
+
+static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
+                                            uintptr_t data)
+{
+    ngx_http_proxy_ctx_t  *p;
+
+    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
+    if (p == NULL) {
+        *buf = '-';
+        return buf + 1;
+    }
+
+    if (p->state->cache_state == 0) {
+        *buf++ = '-';
+
+    } else {
+        buf = ngx_cpymem(buf, cache_states[p->state->cache_state - 1].data,
+                         cache_states[p->state->cache_state - 1].len);
+    }
+
+    *buf++ = '/';
+
+    *buf++ = 'X';
+
+    *buf++ = '/';
+
+    *buf++ = 'X';
+
+    *buf++ = ' ';
+
+    if (p->state->status == 0) {
+        *buf++ = '-';
+
+    } else {
+        buf += ngx_snprintf(buf, 4, "%d", p->state->status);
+    }
+
+    *buf++ = '/';
+
+    if (p->state->reason == 0) {
+        *buf++ = '-';
+
+    } else {
+        buf = ngx_cpymem(buf, cache_reasons[p->state->reason - 1].data,
+                         cache_reasons[p->state->reason - 1].len);
+    }
+
+    *buf++ = '/';
+
+    if (p->state->reason >= NGX_HTTP_PROXY_CACHE_XAE) {
+        *buf++ = '-';
+
+    } else {
+        buf += ngx_snprintf(buf, NGX_TIME_LEN, TIME_FMT, p->state->expires);
+    }
+
+    return buf;
+}
+
+
+static char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r, char *buf,
+                                            uintptr_t data)
+{
+    ngx_http_proxy_ctx_t  *p;
+
+    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
+    if (p == NULL || p->state->cache_state == 0) {
+        *buf = '-';
+        return buf + 1;
+    }
+
+    return ngx_cpymem(buf, cache_states[p->state->cache_state - 1].data,
+                      cache_states[p->state->cache_state - 1].len);
+}
+
+
+static char *ngx_http_proxy_log_reason(ngx_http_request_t *r, char *buf,
+                                       uintptr_t data)
+{
+    ngx_http_proxy_ctx_t  *p;
+
+    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
+    if (p == NULL || p->state->reason == 0) {
+        *buf = '-';
+        return buf + 1;
+    }
+
+    return ngx_cpymem(buf, cache_reasons[p->state->reason - 1].data,
+                      cache_reasons[p->state->reason - 1].len);
+}
+
+
+static int ngx_http_proxy_pre_conf(ngx_conf_t *cf)
+{
+    ngx_http_log_op_name_t  *op;
+
+    for (op = ngx_http_proxy_log_fmt_ops; op->name.len; op++) { /* void */ }
+    op->op = NULL;
+
+    op = ngx_http_log_fmt_ops;
+
+    for (op = ngx_http_log_fmt_ops; op->op; op++) {
+        if (op->name.len == 0) {
+            op = (ngx_http_log_op_name_t *) op->op;
+        }
+    }
+
+    op->op = (ngx_http_log_op_pt) ngx_http_proxy_log_fmt_ops;
+
+    return NGX_OK;
 }
 
 

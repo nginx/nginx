@@ -28,6 +28,8 @@ static ngx_command_t  ngx_http_output_filter_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_output_filter_module_ctx = {
+    NULL,                                  /* pre conf */
+
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 

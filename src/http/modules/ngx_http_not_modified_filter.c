@@ -9,6 +9,8 @@ static int ngx_http_not_modified_filter_init(ngx_cycle_t *cycle);
 
 
 static ngx_http_module_t  ngx_http_not_modified_filter_module_ctx = {
+    NULL,                                  /* pre conf */
+
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 
