@@ -18,11 +18,22 @@ typedef struct {
     ngx_socket_t  fd;
 
     ngx_log_t    *log;
-    ngx_server_t *server;
+    void         *server;
 
-    unsigned      shared:1;
+    int           family;
+    int           type;
+    int           protocol;
+
+    void         *addr;
+    size_t        addr_len;
+    char         *addr_text;
+
+    int           backlog;
+
+    unsigned      non_blocking:1;
+    unsigned      shared:1;          /* shared between threads or processes */
 #if (HAVE_DEFERRED_ACCEPT)
-    unsigned      accept_filter:1;
+    unsigned      deferred_accept:1;
 #endif
 } ngx_listen_t;
 

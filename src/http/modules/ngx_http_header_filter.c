@@ -12,11 +12,11 @@ static line http_codes[] = {
 
 
 
-
 int ngx_http_header_filter(ngx_http_request_t *r)
 {
     int  status;
-    ngx_hunk_t  *h;
+    ngx_hunk_t   *h;
+    ngx_chain_t  *ch;
 
     ngx_test_null(h, ngx_get_hunk(r->pool, 1024, 0, 64), NGX_HTTP_FILTER_ERROR);
 
@@ -51,5 +51,12 @@ int ngx_http_header_filter(ngx_http_request_t *r)
         h->pos.mem += sizeof(NGINX_VER);
     }
     *(h->pos.mem++) = CR; *(h->pos.mem++) = LF;
-    
+
+    ngx_test_null(ch, ngx_palloc(r->pool, sizeof(ngx_chain_t)),
+                  NGX_HTTP_FILTER_ERROR);
+
+    ch->hunk = in->hunk;
+    ch->next = NULL;
+
+    return ngx_http_write_filter(r, ch);
 }

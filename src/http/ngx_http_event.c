@@ -180,6 +180,78 @@ static int ngx_process_http_request_header(ngx_http_request_t *r)
 
 static int ngx_process_http_request(ngx_http_request_t *r)
 {
+    int   err;
+    char *name, *loc, *file;
+
+    ngx_log_debug(r->connection->log, "HTTP request");
+
+    if (*(r->uri_end - 1) == '/') {
+        r->handler = NGX_HTTP_DIRECTORY_HANDLER;
+        return NGX_OK;
+    }
+
+    /* 20 bytes is spare space for some index name, i.e. index.html */
+    r->filename_len = r->uri_end - r->uri_start + r->server->doc_root_len + 20;
+
+    ngx_test_null(r->filename,
+                  ngx_palloc(r->pool, r->filename_len),
+                  ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR));
+
+    r->location = ngx_cpystrn(r->filename, r->server->doc_root,
+                              r->server->doc_root_len);
+    file = ngx_cpystrn(r->location, r->uri_start,
+                       r->uri_end - r->uri_start + 1);
+
+    ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->filename);
+
+}
+#if 0
+
+    if (ngx_stat(r->filename, &r->stat) == -1) {
+        err = ngx_errno;
+        ngx_log_error(GX_LOG_ERR, r->connection->log, err,
+                     "ngx_process_http_request: "
+                      ngx_stat_n " %s failed", r->filename);
+
+        if (err == NGX_ENOENT)
+            return ngx_http_error(r, NGX_HTTP_NOT_FOUND);
+        else
+            return ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    }
+
+    if (ngx_is_dir(r->stat)) {
+        *file++ = '/';
+        *file = '\0';
+        r->headers_out->location = r->location;
+        return ngx_http_redirect(r, NGX_HTTP_MOVED_PERMANENTLY);
+    }
+
+    r->stat_valid = 1;
+    r->handler = NGX_HTTP_STATIC_HANDLER;
+    return NGX_OK;
+}
+
+static int ngx_http_handler(ngx_http_request_t *r, int handler)
+{
+    if (handler == NGX_HTTP_STATIC_HANDLER) 
+        return ngx_http_static_handler(r);
+
+    elsif (handler == NGX_HTTP_DIRECTORY_HANDLER) 
+        return ngx_http_index_handler(r);
+
+    return ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+}
+#endif
+
+static int ngx_http_redirect(ngx_http_request_t *r, int redirect)
+{
+    /* STUB */
+    return -1;
+}
+
+static int ngx_http_error(ngx_http_request_t *r, int error)
+{
+    /* STUB */
     return -1;
 }
 

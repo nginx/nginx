@@ -19,7 +19,15 @@
 #define NGX_HTTP_CONN_CLOSE       0
 #define NGX_HTTP_CONN_KEEP_ALIVE  1
 
-#define NGX_HTTP_OK               200
+#define NGX_OK                          0
+
+#define NGX_HTTP_OK                     200
+#define NGX_HTTP_NOT_FOUND              404
+#define NGX_HTTP_INTERNAL_SERVER_ERROR  503
+
+
+#define NGX_HTTP_STATIC_HANDLER     0
+#define NGX_HTTP_DIRECTORY_HANDLER  1
 
 
 typedef struct {
@@ -28,6 +36,11 @@ typedef struct {
 
 /* STUB */
 #define ngx_get_module_ctx(r, module)  (module)->ctx
+
+typedef struct {
+    char  *doc_root;
+    int    doc_root_len;
+} ngx_http_server_t;
 
 typedef struct {
     char *buff;
@@ -50,6 +63,12 @@ typedef struct {
 typedef struct ngx_http_request_s ngx_http_request_t;
 
 struct ngx_http_request_s {
+    char  *filename;
+    char  *location;
+
+    int    filename_len;
+    int  (*handler)(ngx_http_request_t *r);
+
     int    method;
 
     int    http_version;
@@ -59,7 +78,8 @@ struct ngx_http_request_s {
     char  *uri;
     ngx_http_request_t *main;
 
-    ngx_connection_t *connection;
+    ngx_connection_t  *connection;
+    ngx_http_server_t *server;
     ngx_buff_t  *buff;
     ngx_pool_t  *pool;
 
