@@ -15,9 +15,9 @@ version=`grep "#define LINUX_VERSION_CODE" /usr/include/linux/version.h \
          | sed -e 's/^.* \(.*\)$/\1/'`
 
 
-# enable rt signals on Linux 2.4.x
+# enable rt signals on Linux 2.2.19 and onward
 
-if [ $version -ge 132096 -o $EVENT_RTSIG = YES ]; then
+if [ $version -ge 131609 -o $EVENT_RTSIG = YES ]; then
     echo " + using rt signals"
     have=HAVE_RTSIG . auto/have
     EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"
