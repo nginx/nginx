@@ -1,5 +1,5 @@
-#ifndef _NGX_FILE_H_INCLUDED_
-#define _NGX_FILE_H_INCLUDED_
+#ifndef _NGX_FILES_H_INCLUDED_
+#define _NGX_FILES_H_INCLUDED_
 
 
 #include <ngx_config.h>
@@ -21,9 +21,9 @@ typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
                        FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,  \
                        NULL, OPEN_EXISTING, 0, NULL)
 
-#define ngx_open_file_n             "CreateFile"
+#define ngx_open_file_n             "CreateFile()"
 
-#define NGX_FILE_RDONLY          GENERIC_READ
+#define NGX_FILE_RDONLY             GENERIC_READ
 
 
 int ngx_file_type(char *filename, ngx_file_info_t *fi);
@@ -51,4 +51,7 @@ int ngx_file_type(char *filename, ngx_file_info_t *fi);
 */
 
 
-#endif /* _NGX_FILE_H_INCLUDED_ */
+#define ngx_read_file_n             "ReadFile()"
+
+
+#endif /* _NGX_FILES_H_INCLUDED_ */

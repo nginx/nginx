@@ -4,6 +4,7 @@
 
 #include <ngx_config.h>
 #include <ngx_types.h>
+#include <ngx_time.h>
 #include <ngx_socket.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
@@ -40,11 +41,16 @@ struct ngx_event_s {
                                 /*   accept: 1 if accept many, 0 otherwise   */
 
     /* flags - int are probably faster on write then bits ??? */
+#if !(USE_KQUEUE)
+    unsigned         oneshot:1;
+#endif
     unsigned         listening:1;
     unsigned         write:1;
 
     unsigned         ready:1;
     unsigned         timedout:1;
+    unsigned         blocked:1;
+
     unsigned         process:1;
     unsigned         read_discarded:1;
 
@@ -72,6 +78,7 @@ typedef enum {
 typedef struct {
     int  (*add)(ngx_event_t *ev, int event, u_int flags);
     int  (*del)(ngx_event_t *ev, int event);
+    void (*timer)(ngx_event_t *ev, ngx_msec_t timer);
     int  (*process)(ngx_log_t *log);
     int  (*read)(ngx_event_t *ev, char *buf, size_t size);
 /*
@@ -93,21 +100,22 @@ NGX_AIO_EVENT              overlapped, aio_read, aioread
 
 #define NGX_READ_EVENT     EVFILT_READ
 #define NGX_WRITE_EVENT    EVFILT_WRITE
-#define NGX_TIMER_EVENT    (-EVFILT_SYSCOUNT - 1)
 
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  EV_ONESHOT
+
+#ifndef HAVE_CLEAR_EVENT
+#define HAVE_CLEAR_EVENT   1
 #define NGX_CLEAR_EVENT    EV_CLEAR
+#endif
 
 #else
 
 #define NGX_READ_EVENT     0
 #define NGX_WRITE_EVENT    1
-#define NGX_TIMER_EVENT    2
 
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  1
-#define NGX_CLEAR_EVENT    2
 
 #endif
 
@@ -116,8 +124,11 @@ NGX_AIO_EVENT              overlapped, aio_read, aioread
 
 #define ngx_init_events      ngx_kqueue_init
 #define ngx_process_events   ngx_kqueue_process_events
-#define ngx_add_event        ngx_kqueue_add_event
-#define ngx_del_event        ngx_kqueue_del_event
+#define ngx_kqueue_add_event(ev, event)                                       \
+            ngx_kqueue_set_event(ev, event, EV_ADD | flags)
+#define ngx_kqueue_del_event(ev, event)                                       \
+            ngx_kqueue_set_event(ev, event, EV_DELETE)
+#define ngx_add_timer        ngx_kqueue_add_timer
 #define ngx_event_recv       ngx_event_recv_core
 
 #else
@@ -126,12 +137,11 @@ NGX_AIO_EVENT              overlapped, aio_read, aioread
 #define ngx_process_events   ngx_event_actions.process
 #define ngx_add_event        ngx_event_actions.add
 #define ngx_del_event        ngx_event_actions.del
+#define ngx_add_timer        ngx_event_actions.timer
 #define ngx_event_recv       ngx_event_recv_core
 
 #endif
 
-
-#define ngx_add_timer(ev, time)  ngx_add_event(ev, NGX_TIMER_EVENT, time)
 
 static void ngx_inline ngx_del_timer(ngx_event_t *ev)
 {

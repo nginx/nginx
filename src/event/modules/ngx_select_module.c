@@ -1,5 +1,6 @@
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_types.h>
 #include <ngx_log.h>
 #include <ngx_time.h>
@@ -7,10 +8,10 @@
 #include <ngx_event.h>
 #include <ngx_select_module.h>
 
-static fd_set       master_read_fds;
-static fd_set       master_write_fds;
-static fd_set       work_read_fds;
-static fd_set       work_write_fds;
+static fd_set       master_read_fd_set;
+static fd_set       master_write_fd_set;
+static fd_set       work_read_fd_set;
+static fd_set       work_write_fd_set;
 
 #if (WIN32)
 static int          max_read;
@@ -22,8 +23,6 @@ static int          max_fd;
 static ngx_event_t  event_queue;
 static ngx_event_t  timer_queue;
 
-
-static void ngx_add_timer_core(ngx_event_t *ev, u_int timer);
 
 static fd_set *ngx_select_get_fd_set(ngx_socket_t fd, int event,
                                      ngx_log_t *log);
@@ -42,8 +41,8 @@ void ngx_select_init(int max_connections, ngx_log_t *log)
         exit(1);
     }
 
-    FD_ZERO(&master_read_fds);
-    FD_ZERO(&master_write_fds);
+    FD_ZERO(&master_read_fd_set);
+    FD_ZERO(&master_write_fd_set);
 
     event_queue.prev = &event_queue;
     event_queue.next = &event_queue;
@@ -53,6 +52,7 @@ void ngx_select_init(int max_connections, ngx_log_t *log)
 
     ngx_event_actions.add = ngx_select_add_event;
     ngx_event_actions.del = ngx_select_del_event;
+    ngx_event_actions.timer = ngx_select_add_timer;
     ngx_event_actions.process = ngx_select_process_events;
 
 #if (WIN32)
@@ -64,58 +64,76 @@ void ngx_select_init(int max_connections, ngx_log_t *log)
 
 int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 {
-    fd_set *fds;
-    ngx_connection_t *cn = (ngx_connection_t *) ev->data;
+    ngx_connection_t *c;
 
-    if (event == NGX_TIMER_EVENT) {
-        ngx_add_timer_core(ev, flags);
-        return 0;
+    c = (ngx_connection_t *) ev->data;
+
+    ngx_log_debug(ev->log, "select fd:%d event:%d" _ c->fd _ event);
+
+#if (WIN32)
+    if ((event == NGX_READ_EVENT) && (max_read >= FD_SETSIZE)
+        || (event == NGX_WRITE_EVENT) && (max_write >= FD_SETSIZE))
+    {
+        ngx_log_error(NGX_LOG_ERR, ev->log, 0,
+                      "maximum number of descriptors "
+                      "supported by select() is %d", FD_SETSIZE);
+        return NGX_ERROR;
     }
 
-    ngx_assert((flags != NGX_ONESHOT_EVENT), return -1, ev->log,
-               "ngx_select_add_event: NGX_ONESHOT_EVENT is not supported");
+    if (event == NGX_READ_EVENT) {
+        FD_SET(c->fd, &master_read_fd_set);
+        max_read++;
 
-    fds = ngx_select_get_fd_set(cn->fd, event, ev->log);
-    if (fds == NULL)
-        return -1;
+    } else if (event == NGX_WRITE_EVENT) {
+        FD_SET(c->fd, &master_write_fd_set);
+        max_write++;
+    }
+#else
+    if (event == NGX_READ_EVENT)
+        FD_SET(c->fd, &master_read_fd_set);
+
+    else if (event == NGX_WRITE_EVENT)
+        FD_SET(c->fd, &master_write_fd_set);
+
+    if (max_fd != -1 && max_fd < c->fd)
+        max_fd = c->fd;
+
+#endif
+
+    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
 
     ev->prev = &event_queue;
     ev->next = event_queue.next;
     event_queue.next->prev = ev;
     event_queue.next = ev;
 
-    FD_SET(cn->fd, fds);
-
-#if (WIN32)
-    switch (event) {
-    case NGX_READ_EVENT:
-        max_read++;
-        break;
-    case NGX_WRITE_EVENT:
-        max_write++;
-        break;
-    }
-#else
-    if (max_fd != -1 && max_fd < cn->fd)
-        max_fd = cn->fd;
-#endif
-
-    return 0;
+    return NGX_OK;
 }
 
 int ngx_select_del_event(ngx_event_t *ev, int event)
 {
-    fd_set *fds;
-    ngx_connection_t *cn = (ngx_connection_t *) ev->data;
+    ngx_connection_t *c;
+    c = (ngx_connection_t *) ev->data;
 
-    if (event == NGX_TIMER_EVENT) {
-        ngx_del_timer(ev);
-        return 0;
+#if (WIN32)
+    if (event == NGX_READ_EVENT) {
+        FD_CLR(c->fd, &master_read_fd_set);
+        max_read--;
+
+    } else if (event == NGX_WRITE_EVENT) {
+        FD_CLR(c->fd, &master_write_fd_set);
+        max_write--;
     }
+#else
+    if (event == NGX_READ_EVENT)
+        FD_CLR(c->fd, &master_read_fd_set);
 
-    fds = ngx_select_get_fd_set(cn->fd, event, ev->log);
-    if (fds == NULL)
-        return -1;
+    else if (event == NGX_WRITE_EVENT)
+        FD_CLR(c->fd, &master_write_fd_set);
+
+    if (max_fd == c->fd)
+        max_fd = -1;
+#endif
 
     if (ev->prev)
         ev->prev->next = ev->next;
@@ -128,70 +146,7 @@ int ngx_select_del_event(ngx_event_t *ev, int event)
     if (ev->prev)
         ev->next = NULL;
 
-    FD_CLR(cn->fd, fds);
-
-#if (WIN32)
-    switch (event) {
-    case NGX_READ_EVENT:
-        max_read--;
-        break;
-    case NGX_WRITE_EVENT:
-        max_write--;
-        break;
-    }
-#else
-    if (max_fd == cn->fd)
-        max_fd = -1;
-#endif
-
-    return 0;
-}
-
-static fd_set *ngx_select_get_fd_set(ngx_socket_t fd, int event, ngx_log_t *log)
-{
-    ngx_log_debug(log, "ngx_select_get_fd_set: %d %d" _ fd _ event);
-
-#if !(WIN32)
-    if (fd >= FD_SETSIZE) {
-        ngx_log_error(NGX_LOG_ERR, log, 0,
-                      "ngx_select_get_event: maximum descriptor number"
-                      "supported by select() is %d",
-                      FD_SETSIZE - 1);
-        return NULL;
-    }
-#endif
-
-    switch (event) {
-    case NGX_READ_EVENT:
-#if (WIN32)
-        if (max_read >= FD_SETSIZE) {
-            ngx_log_error(NGX_LOG_ERR, log, 0,
-                          "ngx_select_get_event: maximum number of descriptors "
-                          "supported by select() is %d",
-                          FD_SETSIZE);
-            return NULL;
-        }
-#endif
-        return &master_read_fds;
-
-    case NGX_WRITE_EVENT:
-#if (WIN32)
-        if (max_write >= FD_SETSIZE) {
-            ngx_log_error(NGX_LOG_ERR, log, 0,
-                          "ngx_select_get_event: maximum number of descriptors "
-                          "supported by select() is %d",
-                          FD_SETSIZE);
-            return NULL;
-        }
-#endif
-        return &master_write_fds;
-
-    default:
-        ngx_assert(0, return NULL, log,
-                      "ngx_select_get_fd_set: invalid event %d" _ event);
-    }
-
-    return NULL;
+    return NGX_OK;
 }
 
 int ngx_select_process_events(ngx_log_t *log)
@@ -199,11 +154,11 @@ int ngx_select_process_events(ngx_log_t *log)
     int                ready, found;
     u_int              timer, delta;
     ngx_event_t       *ev, *nx;
-    ngx_connection_t  *cn;
+    ngx_connection_t  *c;
     struct timeval     tv, *tp;
 
-    work_read_fds = master_read_fds;
-    work_write_fds = master_write_fds;
+    work_read_fd_set = master_read_fd_set;
+    work_write_fd_set = master_write_fd_set;
 
     if (timer_queue.timer_next != &timer_queue) {
         timer = timer_queue.timer_next->timer_delta;
@@ -222,27 +177,27 @@ int ngx_select_process_events(ngx_log_t *log)
 #if !(WIN32)
     if (max_fd == -1) {
         for (ev = event_queue.next; ev != &event_queue; ev = ev->next) {
-            cn = (ngx_connection_t *) ev->data;
-            if (max_fd < cn->fd)
-                max_fd = cn->fd;
+            c = (ngx_connection_t *) ev->data;
+            if (max_fd < c->fd)
+                max_fd = c->fd;
         }
 
-        ngx_log_debug(log, "ngx_select_process_events: change max_fd: %d" _
-                      max_fd);
+        ngx_log_debug(log, "change max_fd: %d" _ max_fd);
     }
 #endif
 
     ngx_log_debug(log, "ngx_select_process_events: timer: %d" _ timer);
 
 #if (WIN32)
-    if ((ready = select(0, &work_read_fds, &work_write_fds, NULL, tp))
+    if ((ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp))
 #else
-    if ((ready = select(max_fd + 1, &work_read_fds, &work_write_fds, NULL, tp))
+    if ((ready = select(max_fd + 1, &work_read_fd_set, &work_write_fd_set,
+                        NULL, tp))
 #endif
                == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
                      "ngx_select_process_events: select failed");
-        return -1;
+        return NGX_ERROR;
     }
 
     ngx_log_debug(log, "ngx_select_process_events: ready %d" _ ready);
@@ -251,7 +206,7 @@ int ngx_select_process_events(ngx_log_t *log)
         delta = ngx_msec() - delta;
 
     } else {
-        ngx_assert((ready != 0), return -1, log,
+        ngx_assert((ready != 0), return NGX_ERROR, log,
                    "ngx_select_process_events: "
                    "select returns no events without timeout");
     }
@@ -268,14 +223,9 @@ int ngx_select_process_events(ngx_log_t *log)
                 delta -= ev->timer_delta;
                 nx = ev->timer_next;
                 ngx_del_timer(ev);
-#if 1
                 ev->timedout = 1;
                 if (ev->event_handler(ev) == -1)
                     ev->close_handler(ev);
-#else
-                if (ev->timer_handler(ev) == -1)
-                    ev->close_handler(ev);
-#endif
                 ev = nx;
             }
 
@@ -285,26 +235,35 @@ int ngx_select_process_events(ngx_log_t *log)
     }
 
     for (ev = event_queue.next; ev != &event_queue; ev = ev->next) {
-        cn = (ngx_connection_t *) ev->data;
+        c = (ngx_connection_t *) ev->data;
         found = 0;
 
         if (ev->write) {
-            if (FD_ISSET(cn->fd, &work_write_fds)) {
+            if (FD_ISSET(c->fd, &work_write_fd_set)) {
                 ngx_log_debug(log, "ngx_select_process_events: write %d" _
-                              cn->fd);
+                              c->fd);
                 found = 1;
             }
 
         } else {
-            if (FD_ISSET(cn->fd, &work_read_fds)) {
+            if (FD_ISSET(c->fd, &work_read_fd_set)) {
                 ngx_log_debug(log, "ngx_select_process_events: read %d" _
-                              cn->fd);
+                              c->fd);
                 found = 1;
             }
         }
 
         if (found) {
             ev->ready = 1;
+
+            if (ev->oneshot) {
+                ngx_del_timer(ev);
+                if (ev->write)
+                    ngx_select_del_event(ev, NGX_WRITE_EVENT);
+                else
+                    ngx_select_del_event(ev, NGX_READ_EVENT);
+            }
+
             if (ev->event_handler(ev) == -1)
                 ev->close_handler(ev);
 
@@ -313,13 +272,13 @@ int ngx_select_process_events(ngx_log_t *log)
 
     }
 
-    ngx_assert((ready == 0), return 0, log,
+    ngx_assert((ready == 0), /* void */ ; , log,
                "ngx_select_process_events: ready != events");
 
-    return 0;
+    return NGX_OK;
 }
 
-static void ngx_add_timer_core(ngx_event_t *ev, u_int timer)
+void ngx_select_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_event_t *e;
 
@@ -336,19 +295,3 @@ static void ngx_add_timer_core(ngx_event_t *ev, u_int timer)
     e->timer_prev->timer_next = ev;
     e->timer_prev = ev;
 }
-
-#if 0
-static void ngx_inline ngx_del_timer(ngx_event_t *ev)
-{
-    if (ev->timer_prev)
-        ev->timer_prev->timer_next = ev->timer_next;
-
-    if (ev->timer_next) {
-        ev->timer_next->timer_prev = ev->timer_prev;
-        ev->timer_next = NULL;
-    }
-
-    if (ev->timer_prev)
-        ev->timer_prev = NULL;
-}
-#endif

@@ -18,6 +18,7 @@
 
 #include <winsock2.h>
 #include <mswsock.h>
+#include <stddef.h>    /* offsetof */
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -87,6 +88,10 @@
 
 #endif
 
+
+#ifndef HAVE_SELECT
+#define HAVE_SELECT 1
+#endif
 
 
 #ifdef __FreeBSD__

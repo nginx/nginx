@@ -63,7 +63,8 @@ int ngx_event_accept(ngx_event_t *ev)
         ngx_connections[s].write = &ngx_write_events[s];
 
         ngx_connections[s].fd = s;
-        ngx_read_events[s].unexpected_eof = 1;
+        ngx_connections[s].unexpected_eof = 1;
+        ngx_write_events[s].write = 1;
         ngx_write_events[s].ready = 1;
 
         ngx_write_events[s].timer = ngx_read_events[s].timer = 10000;

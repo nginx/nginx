@@ -4,6 +4,8 @@
 
 #include <windows.h>
 
+typedef unsigned int   ngx_msec_t;
+
 typedef SYSTEMTIME     ngx_tm_t;
 typedef FILETIME       ngx_mtime_t;
 

@@ -1,6 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_string.h>
+#include <ngx_socket.h>
 #include <ngx_listen.h>
 #include <ngx_http.h>
 
@@ -17,8 +18,11 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
 {
     ngx_listen_t  *ls;
 
+    ngx_http_server.request_pool_size = 16384;
     ngx_http_server.header_timeout = 20000;
-    ngx_http_server.buff_size = 1024;
+    ngx_http_server.header_buffer_size = 1024;
+    ngx_http_server.discarded_buffer_size = 1500;
+
 #if (WIN32)
     ngx_http_server.doc_root = "html";
 #else
@@ -26,7 +30,10 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
 #endif
     ngx_http_server.doc_root_len = strlen(ngx_http_server.doc_root) + 1;
 
+
+    ngx_http_output_filter_init();
     ngx_http_write_filter_init();
+
 
     ls = ngx_push_array(ngx_listening_sockets);
     ngx_memzero(ls, sizeof(ngx_listen_t));
@@ -56,6 +63,7 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
     ls->handler = ngx_http_init_connection;
     ls->server = &ngx_http_server;
     ls->log = log;
+
 
     return 1;
 }

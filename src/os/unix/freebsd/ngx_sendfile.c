@@ -1,5 +1,6 @@
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_types.h>
 #include <ngx_file.h>
 #include <ngx_socket.h>
@@ -12,12 +13,6 @@
   TODO:
     FreeBSD:
        check sent if errno == EINTR then should return right sent.
-*/
-
-/*
-  returns
-      0 done
-     -1 error
 */
 
 #if (HAVE_FREEBSD_SENDFILE)
@@ -50,7 +45,7 @@ int ngx_sendfile(ngx_socket_t s,
         if (err != NGX_EAGAIN && err != NGX_EINTR) {
             ngx_log_error(NGX_LOG_ERR, log, err,
                          "ngx_sendfile: sendfile failed");
-            return -1;
+            return NGX_ERROR;
 
         } else {
             ngx_log_error(NGX_LOG_INFO, log, err,
@@ -61,7 +56,7 @@ int ngx_sendfile(ngx_socket_t s,
     ngx_log_debug(log, "ngx_sendfile: %d, @%qd %qd:%d" _
                   rc _ offset _ *sent _ nbytes);
 
-    return 0;
+    return NGX_OK;
 }
 
 #endif

@@ -4,6 +4,8 @@
 
 #include <ngx_config.h>
 
+typedef u_int          ngx_msec_t;
+
 typedef struct tm      ngx_tm_t;
 
 #define ngx_tm_sec     tm_sec
@@ -18,7 +20,7 @@ typedef struct tm      ngx_tm_t;
 
 void ngx_localtime(ngx_tm_t *tm);
 
-u_int ngx_msec(void);
+ngx_msec_t ngx_msec(void);
 
 
 #endif /* _NGX_TIME_H_INCLUDED_ */

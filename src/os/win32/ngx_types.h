@@ -5,6 +5,7 @@
 #include <ngx_config.h>
 
 
+typedef int               ssize_t;
 typedef long              time_t;
 
 

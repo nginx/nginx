@@ -36,8 +36,6 @@ ngx_array_t  *ngx_listening_sockets;
 
 int main(int argc, char *const *argv)
 {
-    int  i;
-
     /* STUB */
     ngx_log.log_level = NGX_LOG_DEBUG;
 
@@ -68,6 +66,8 @@ int main(int argc, char *const *argv)
 
     /* STUB */
     ngx_worker(&ngx_log);
+
+    return 0;
 }
 
 static void ngx_open_listening_sockets(ngx_log_t *log)

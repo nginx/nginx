@@ -2,13 +2,19 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_string.h>
-#include <ngx_file.h>
+#include <ngx_files.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
 #include <ngx_hunk.h>
 #include <ngx_connection.h>
 
 #include <ngx_http.h>
+
+/* STUB */
+#include <ngx_http_output_filter.h>
+
+int ngx_http_static_handler(ngx_http_request_t *r);
+
 
 int ngx_http_init_connection(ngx_connection_t *c);
 
@@ -17,8 +23,19 @@ static int ngx_http_process_request(ngx_event_t *ev);
 
 static int ngx_http_process_request_line(ngx_http_request_t *r);
 static int ngx_http_process_request_header(ngx_http_request_t *r);
+static int ngx_http_process_request_header_line(ngx_http_request_t *r);
 
-static int ngx_http_process_http_request(ngx_http_request_t *r);
+static int ngx_http_block_read(ngx_event_t *ev);
+static int ngx_http_read_discarded_body(ngx_event_t *ev);
+
+static int ngx_http_handler(ngx_http_request_t *r);
+static int ngx_http_set_default_handler(ngx_http_request_t *r);
+
+static int ngx_http_writer(ngx_event_t *ev);
+
+static int ngx_http_special_response(ngx_http_request_t *r, int error);
+static int ngx_http_redirect(ngx_http_request_t *r, int redirect);
+static int ngx_http_error(ngx_http_request_t *r, int error);
 
 static int ngx_http_close_request(ngx_http_request_t *r);
 static size_t ngx_http_log_error(void *data, char *buf, size_t len);
@@ -54,8 +71,15 @@ int ngx_http_init_connection(ngx_connection_t *c)
 
     ngx_test_null(c->addr_text, ngx_palloc(c->pool, c->addr_textlen),
                   NGX_ERROR);
+#if (WIN32)
+/*
+    c->addr_text = inet_ntoa((struct in_addr) ((char *)c->sockaddr + c->addr));
+*/
+    c->addr_text = NULL;
+#else
     inet_ntop(c->family, (char *)c->sockaddr + c->addr,
               c->addr_text, c->addr_textlen);
+#endif
 
     ngx_test_null(ctx, ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t)),
                   NGX_ERROR);
@@ -107,22 +131,22 @@ int ngx_http_init_request(ngx_event_t *ev)
     r->connection = c;
     r->server = srv;
 
-    /* TODO: request's pool size */
-    ngx_test_null(r->pool, ngx_create_pool(16384, ev->log),
+    ngx_test_null(r->pool, ngx_create_pool(srv->request_pool_size, ev->log),
                   ngx_http_close_request(r));
 
     ngx_test_null(r->header_in,
-                  ngx_create_temp_hunk(r->pool, srv->buff_size, 0, 0),
+                  ngx_create_temp_hunk(r->pool, srv->header_buffer_size, 0, 0),
                   ngx_http_close_request(r));
 
     ev->event_handler = ngx_http_process_request;
     r->state_handler = ngx_http_process_request_line;
+    r->process_header = 1;
 
     return ngx_http_process_request(ev);
 }
 
 
-int ngx_http_process_request(ngx_event_t *ev)
+static int ngx_http_process_request(ngx_event_t *ev)
 {
     int n, rc;
     ngx_connection_t *c ;
@@ -151,11 +175,9 @@ int ngx_http_process_request(ngx_event_t *ev)
     ngx_log_debug(ev->log, "http read %d" _ n);
 
     if (n == 0) {
-        /* STUB: c-> */
-        if (ev->unexpected_eof)
+        if (c->unexpected_eof)
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "client prematurely closed connection");
-
         return ngx_http_close_request(r);
     }
 
@@ -173,8 +195,9 @@ int ngx_http_process_request(ngx_event_t *ev)
 
         /* rc == NGX_OK || rc == NGX_AGAIN */
 
-    } while (r->header_in->pos.mem < r->header_in->last.mem);
-             
+    } while (r->process_header
+             && r->header_in->pos.mem < r->header_in->last.mem);
+
     if (!r->header_timeout) {
         r->header_timeout = 1;
         ngx_del_timer(ev);
@@ -200,27 +223,23 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
         ngx_log_debug(r->connection->log, "HTTP: %d, %d, %s" _
                       r->method _ r->http_version _ r->uri);
 
-        if (r->http_version == 9) {
-            /* set lock event */
-            return ngx_http_process_http_request(r);
-        }
+        if (r->http_version == 9)
+            return ngx_http_handler(r);
 
         r->state_handler = ngx_http_process_request_header;
-        r->connection->read->action = "reading client request headers";
+        ctx = r->connection->log->data;
+        ctx->action = "reading client request headers";
 
         return NGX_OK;
     }
 
-    r->connection->log->handler = NULL;
     ctx = r->connection->log->data;
-
+    r->connection->log->handler = NULL;
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   header_errors[rc - NGX_HTTP_INVALID_METHOD], ctx->client);
-
     r->connection->log->handler = ngx_http_log_error;
 
-    /* STUB return ngx_http_error(r, NGX_HTTP_BAD_REQUEST)  */
-    return ngx_http_close_request(r);
+    return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
 }
 
 static int ngx_http_process_request_header(ngx_http_request_t *r)
@@ -232,63 +251,192 @@ static int ngx_http_process_request_header(ngx_http_request_t *r)
         rc = ngx_read_http_header_line(r);
 
         if (rc == NGX_OK) {
-            *r->header_name_end = '\0';
-            *r->header_end = '\0';
-            ngx_log_debug(r->connection->log, "HTTP header: '%s: %s'" _
-                          r->header_name_start _ r->header_start);
+            if (ngx_http_process_request_header_line(r) == NGX_ERROR)
+                return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
+
+        } else if (rc == NGX_HTTP_HEADER_DONE) {
+            ngx_log_debug(r->connection->log, "HTTP header done");
+            return ngx_http_handler(r);
 
         } else if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
 
-        } else if (rc == NGX_HTTP_HEADER_DONE) {
-            break;
-
         } else if (rc == NGX_HTTP_INVALID_HEADER) {
-            r->connection->log->handler = NULL;
             ctx = r->connection->log->data;
+            r->connection->log->handler = NULL;
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client %s sent invalid header", ctx->client);
             r->connection->log->handler = ngx_http_log_error;
 
-            /* STUB return ngx_http_error(r, NGX_HTTP_BAD_REQUEST)  */
-            return ngx_http_close_request(r);
+            return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
         }
     }
+}
 
-    r->state_handler = NULL;
-    r->connection->read->action = "reading client request body";
+static int ngx_http_process_request_header_line(ngx_http_request_t *r)
+{
+    /* STUB */
+    *r->header_name_end = '\0';
+    *r->header_end = '\0';
+    ngx_log_debug(r->connection->log, "HTTP header: '%s: %s'" _
+                  r->header_name_start _ r->header_start);
 
-    r->connection->read->read_discarded = 1;
-    r->connection->read->unexpected_eof = 0;
-    ngx_log_debug(r->connection->log, "HTTP header done");
+    return NGX_OK;
+}
+
+static int ngx_http_block_read(ngx_event_t *ev)
+{
+    ngx_log_debug(ev->log, "http read blocked");
+
+    ngx_del_event(ev, NGX_READ_EVENT);
+    ev->blocked = 1;
+}
+
+void ngx_http_discard_body(ngx_http_request_t *r)
+{
+    ngx_log_debug(r->connection->log, "set discard body");
 
     ngx_del_timer(r->connection->read);
 
-    return ngx_http_process_http_request(r);
+    if (r->client_content_length)
+        r->connection->read->event_handler = ngx_http_read_discarded_body;
 }
 
-#if 0
-static int ngx_http_lock_read(ngx_event_t *ev)
+static int ngx_http_read_discarded_body(ngx_event_t *ev)
 {
-    ngx_del_event(ev, NGX_READ_EVENT);
-    ev->read_blocked = 1;
-}
-#endif
+    size_t   size;
+    ssize_t  n;
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
 
-static int ngx_http_process_http_request(ngx_http_request_t *r)
+    c = (ngx_connection_t *) ev->data;
+    r = (ngx_http_request_t *) c->data;
+
+    ngx_log_debug(ev->log, "http read discarded body");
+
+    if (ev->timedout)
+        return NGX_ERROR;
+
+    if (r->discarded_buffer == NULL)
+        ngx_test_null(r->discarded_buffer,
+                      ngx_palloc(r->pool, r->server->discarded_buffer_size),
+                      NGX_ERROR);
+
+    size = r->client_content_length;
+    if (size > r->server->discarded_buffer_size)
+        size = r->server->discarded_buffer_size;
+
+    n = ngx_event_recv(c, r->discarded_buffer, size);
+    if (n > 0)
+        r->client_content_length -= n;
+
+    return n;
+}
+
+static int ngx_http_discarded_read(ngx_event_t *ev)
+{
+    ssize_t n;
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
+
+    c = (ngx_connection_t *) ev->data;
+    r = (ngx_http_request_t *) c->data;
+
+    ngx_log_debug(ev->log, "http discarded read");
+
+    if (ev->timedout)
+        return NGX_ERROR;
+
+    if (r->discarded_buffer == NULL)
+        ngx_test_null(r->discarded_buffer,
+                      ngx_palloc(r->pool, r->server->discarded_buffer_size),
+                      NGX_ERROR);
+
+    n = ngx_event_recv(c, r->discarded_buffer,
+                       r->server->discarded_buffer_size);
+
+    return n;
+}
+
+static int ngx_http_handler(ngx_http_request_t *r)
+{
+    int  rc;
+
+    ngx_del_timer(r->connection->read);
+    r->header_timeout = 1;
+
+    r->process_header = 0;
+    r->state_handler = NULL;
+    r->connection->unexpected_eof = 0;
+
+    r->connection->read->event_handler = ngx_http_block_read;
+
+    /* STUB: should find handler */
+    r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
+    rc = ngx_http_set_default_handler(r);
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE)
+        return ngx_http_special_response(r, rc);
+
+    rc = r->handler(r);
+
+    /* transfer not completed */
+    if (rc == NGX_AGAIN) {
+#if (HAVE_CLEAR_EVENT)
+        if (ngx_add_event(r->connection->write, NGX_WRITE_EVENT,
+                          NGX_CLEAR_EVENT) == NGX_ERROR) {
+#else
+        if (ngx_add_event(r->connection->write, NGX_WRITE_EVENT,
+                          NGX_ONESHOT_EVENT) == NGX_ERROR) {
+#endif
+            /* log http request */
+            return ngx_http_close_request(r);
+        }
+
+        ngx_add_timer(r->connection->write, 5000);
+
+        r->connection->write->event_handler = ngx_http_writer;
+        return rc;
+    }
+
+    if (rc == NGX_ERROR) {
+        /* log http request */
+        return ngx_http_close_request(r);
+    }
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE)
+        return ngx_http_special_response(r, rc);
+
+    /* rc == NGX_OK */
+
+    /* STUB */
+    return ngx_http_close_request(r);
+
+/*
+    if (!keepalive)
+        if (linger)
+            set linger timeout on read
+            shutdown socket
+        else
+            close socket
+*/
+}
+
+static int ngx_http_set_default_handler(ngx_http_request_t *r)
 {
     int   err, rc;
     char *name, *loc, *file;
 
-    ngx_log_debug(r->connection->log, "HTTP request");
-
     ngx_test_null(r->headers_out,
                   ngx_pcalloc(r->pool, sizeof(ngx_http_headers_out_t)),
-                  ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR));
+                  NGX_HTTP_INTERNAL_SERVER_ERROR);
 
     if (*(r->uri_end - 1) == '/') {
-        r->handler = NGX_HTTP_DIRECTORY_HANDLER;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+#if 0
+        r->handler = ngx_http_index_handler;
         return NGX_OK;
+#endif
     }
 
     /* 20 bytes is spare space for some index name, i.e. index.html */
@@ -296,7 +444,7 @@ static int ngx_http_process_http_request(ngx_http_request_t *r)
 
     ngx_test_null(r->filename,
                   ngx_palloc(r->pool, r->filename_len),
-                  ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR));
+                  NGX_HTTP_INTERNAL_SERVER_ERROR);
 
     r->location = ngx_cpystrn(r->filename, r->server->doc_root,
                               r->server->doc_root_len);
@@ -305,99 +453,73 @@ static int ngx_http_process_http_request(ngx_http_request_t *r)
 
     ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->filename);
 
-    if (ngx_file_type(r->filename, &r->file_info) == -1) {
+    if (ngx_file_type(r->filename, &r->fileinfo) == -1) {
         err = ngx_errno;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                     "ngx_process_http_request: "
                       ngx_file_type_n " %s failed", r->filename);
 
         if (err == NGX_ENOENT)
-            return ngx_http_error(r, NGX_HTTP_NOT_FOUND);
+            return NGX_HTTP_NOT_FOUND;
         else
-            return ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (ngx_is_dir(r->file_info)) {
+    if (ngx_is_dir(r->fileinfo)) {
         ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->filename);
         *file++ = '/';
         *file = '\0';
         r->headers_out->location = r->location;
-        return ngx_http_redirect(r, NGX_HTTP_MOVED_PERMANENTLY);
+        return NGX_HTTP_MOVED_PERMANENTLY;
     }
 
-    /* STUB */
-    rc =  ngx_http_static_handler(r);
-    if (rc == 0) {
-        r->connection->write->event_handler = ngx_http_writer;
-        ngx_add_event(r->connection->write, NGX_WRITE_EVENT, NGX_CLEAR_EVENT);
-    }
-    return rc;
+    r->handler = ngx_http_static_handler;
 
-    r->handler = NGX_HTTP_STATIC_HANDLER;
     return NGX_OK;
 }
 
-#if 0
-
-static int ngx_http_handler(ngx_http_request_t *r)
-{
-    find_http_handler();
-
-    if (r->discard_body && r->connection->read->ready)
-        ngx_http_discarad_body();
-
-    rc = http_handler();
-
-    /* transfer not completed */
-    if (rc == NGX_AGAIN)
-        return rc;
-
-    if (rc == NGX_ERROR) {
-        log http request
-        close http request
-        return rc;
-    }
-
-    if (rc > 300) {
-        send special response
-    }
-
-    /* rc == NGX_OK */
-
-    if (!keepalive)
-        if (linger)
-            set linger timeout on read
-            shutdown socket
-        else
-            close socket
-
-    log http request
-    close http request
-    if (keepalive)
-        return NGX_OK;
-    else
-        close connection
-        return NGX_OK;
-}
 
 static int ngx_http_writer(ngx_event_t *ev)
 {
     int rc;
+    unsigned int timeout;
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
 
-    ngx_connection_t   *c = (ngx_connection_t *) ev->data;
-    ngx_http_request_t *r = (ngx_http_request_t *) c->data;
+    c = (ngx_connection_t *) ev->data;
+    r = (ngx_http_request_t *) c->data;
 
-    rc = ngx_http_filter(r, NULL);
+    rc = ngx_http_output_filter(r, NULL);
 
-    if (rc == NGX_AGAIN)
+    ngx_log_debug(ev->log, "output_filter: %d" _ rc);
+
+    if (rc == NGX_AGAIN) {
+
+        if (c->sent > 0) {
+            ngx_log_debug(ev->log, "sent: " QD_FMT _ c->sent);
+            timeout = (ngx_msec_t) (c->sent * 10);
+            ngx_log_debug(ev->log, "timeout: %d" _ timeout);
+            ngx_del_timer(ev);
+            ngx_add_timer(ev, timeout);
+        }
+
+        if (ev->oneshot)
+            if (ngx_add_event(r->connection->write, NGX_WRITE_EVENT,
+                              NGX_ONESHOT_EVENT) == NGX_ERROR) {
+            /* log http request */
+            return ngx_http_close_request(r);
+        }
+
         return rc;
+    }
 
     if (rc == NGX_ERROR)
         return rc;
 
     /* rc == NGX_OK */
 
+    return ngx_http_close_request(r);
 
+/*
     if (!keepalive)
         if (linger)
             shutdown socket
@@ -411,19 +533,10 @@ static int ngx_http_writer(ngx_event_t *ev)
     else
         close connection
         return NGX_OK;
+*/
 }
 
-static int ngx_http_discarded_read(ngx_event_t *ev)
-{
-    if (ev->timedout)
-        return NGX_ERROR;
-
-    while (full) {
-        recv();
-    }
-
-    return NGX_OK;
-}
+#if 0
 
 static int ngx_http_keepalive_handler(ngx_event_t *ev)
 {
@@ -446,40 +559,28 @@ static int ngx_http_keepalive_handler(ngx_event_t *ev)
 #endif
 
 
-static int ngx_http_writer(ngx_event_t *ev)
+static int ngx_http_special_response(ngx_http_request_t *r, int error)
 {
-    int rc;
-    ngx_connection_t   *c = (ngx_connection_t *) ev->data;
-    ngx_http_request_t *r = (ngx_http_request_t *) c->data;
-
-    rc = ngx_http_write_filter(r, NULL);
-    ngx_log_debug(r->connection->log, "write_filter: %d" _ rc);
-    return rc;
-}
-
-static int ngx_http_handler(ngx_http_request_t *r, int handler)
-{
-    if (handler == NGX_HTTP_STATIC_HANDLER) 
-        return ngx_http_static_handler(r);
-
-#if 0
-    elsif (handler == NGX_HTTP_DIRECTORY_HANDLER) 
-        return ngx_http_index_handler(r);
-#endif
-
-    return ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    return ngx_http_error(r, error);
 }
 
 static int ngx_http_redirect(ngx_http_request_t *r, int redirect)
 {
     /* STUB */
-    return -1;
+
+    /* log request */
+
+    return ngx_http_close_request(r);
 }
 
 static int ngx_http_error(ngx_http_request_t *r, int error)
 {
     /* STUB */
-    return -1;
+    ngx_log_debug(r->connection->log, "http error: %d" _ error);
+
+    /* log request */
+
+    return ngx_http_close_request(r);
 }
 
 #if 0
@@ -549,8 +650,8 @@ static int ngx_http_close_request(ngx_http_request_t *r)
 
     ngx_log_debug(r->connection->log, "http close");
 
-    ngx_del_event(r->connection->read, NGX_TIMER_EVENT);
-    ngx_del_event(r->connection->write, NGX_TIMER_EVENT);
+    ngx_del_timer(r->connection->read);
+    ngx_del_timer(r->connection->write);
 
     return NGX_ERROR;
 }
@@ -559,6 +660,7 @@ static int ngx_http_close_request(ngx_http_request_t *r)
 static size_t ngx_http_log_error(void *data, char *buf, size_t len)
 {
     ngx_http_log_ctx_t *ctx = (ngx_http_log_ctx_t *) data;
+
     if (ctx->url)
         return ngx_snprintf(buf, len, " while %s, client: %s, URL: %s",
                             ctx->action, ctx->client, ctx->url);

@@ -27,6 +27,8 @@
 /* can be used with NGX_HUNK_LAST only */
 #define NGX_HUNK_SHUTDOWN   0x0400
 
+#define NGX_HUNK_RECYCLED   0x0800
+
 
 #define NGX_HUNK_IN_MEMORY  (NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP)
 
@@ -48,7 +50,7 @@ struct ngx_hunk_s {
     char        *pre_start;     /* start of pre-allocated hunk */
     char        *post_end;      /* end of post-allocated hunk */
     int          tag;
-    ngx_fd_t     fd;
+    ngx_file_t  *file;
 };
 
 typedef struct ngx_chain_s  ngx_chain_t;
@@ -57,8 +59,11 @@ struct ngx_chain_s {
     ngx_chain_t *next;
 };
 
-#define ngx_create_temp_hunk(pool, size, before, after)                      \
-            ngx_get_hunk(pool, size, before, after)
+
+ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
+                                 int before, int after);
+
+#define ngx_create_chain_entry(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
 
 #define ngx_add_hunk_to_chain(chain, h, pool, error)                         \
             do {                                                             \
@@ -70,7 +75,6 @@ struct ngx_chain_s {
 
 
 
-ngx_hunk_t *ngx_get_hunk(ngx_pool_t *pool, int size, int before, int after);
 
 
 #endif /* _NGX_CHUNK_H_INCLUDED_ */

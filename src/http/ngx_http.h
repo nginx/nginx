@@ -5,7 +5,7 @@
 #include <ngx_config.h>
 #include <ngx_types.h>
 #include <ngx_hunk.h>
-#include <ngx_file.h>
+#include <ngx_files.h>
 #include <ngx_connection.h>
 
 
@@ -25,6 +25,7 @@
 
 
 #define NGX_HTTP_OK                     200
+#define NGX_HTTP_SPECIAL_RESPONSE       300
 #define NGX_HTTP_MOVED_PERMANENTLY      302
 #define NGX_HTTP_BAD_REQUEST            400
 #define NGX_HTTP_NOT_FOUND              404
@@ -45,7 +46,11 @@ typedef struct {
 typedef struct {
     char          *doc_root;
     size_t         doc_root_len;
-    size_t         buff_size;
+
+    size_t         request_pool_size;
+
+    size_t         header_buffer_size;
+    size_t         discarded_buffer_size;
 
     unsigned int   header_timeout;
 } ngx_http_server_t;
@@ -88,7 +93,7 @@ struct ngx_http_request_s {
     int    filename_len;
     int  (*handler)(ngx_http_request_t *r);
 
-    ngx_file_info_t file_info;
+    ngx_file_info_t fileinfo;
 
     int    method;
 
@@ -104,7 +109,11 @@ struct ngx_http_request_s {
 
     int       filter;
 
+    ssize_t   client_content_length;
+    char     *discarded_buffer;
+
     unsigned  header_timeout:1;
+    unsigned  process_header:1;
 
     unsigned  header_only:1;
     unsigned  unusual_uri:1;
@@ -133,6 +142,9 @@ typedef struct {
 
 #define NGX_INDEX "index.html"
 
+
+/* STUB */
+int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log);
 
 int ngx_http_init_connection(ngx_connection_t *c);
 

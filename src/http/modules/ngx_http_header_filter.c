@@ -2,6 +2,7 @@
 #include <nginx.h>
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_string.h>
 #include <ngx_hunk.h>
 #include <ngx_http.h>
@@ -25,12 +26,8 @@ int ngx_http_header_filter(ngx_http_request_t *r)
     ngx_hunk_t   *h;
     ngx_chain_t  *ch;
 
-    ngx_test_null(h, ngx_get_hunk(r->pool, 1024, 0, 64),
-                  /* STUB */
-                  -1);
-/*
-                  NGX_HTTP_FILTER_ERROR);
-*/
+    ngx_test_null(h, ngx_create_temp_hunk(r->pool, 1024, 0, 64),
+                  NGX_ERROR);
 
     status = r->headers_out->status - NGX_HTTP_OK;
 

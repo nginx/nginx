@@ -1,5 +1,6 @@
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_types.h>
 #include <ngx_alloc.h>
 #include <ngx_array.h>
@@ -10,7 +11,7 @@
 #include <ngx_event_write.h>
 
 
-ngx_chain_t *ngx_event_write(ngx_connection_t *cn, ngx_chain_t *in,
+ngx_chain_t *ngx_event_write(ngx_connection_t *c, ngx_chain_t *in,
                              off_t flush)
 {
     int           rc;
@@ -24,10 +25,10 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *cn, ngx_chain_t *in,
     ch = in;
     file = NULL;
 
-    ngx_test_null(header, ngx_create_array(cn->pool, 10, sizeof(ngx_iovec_t)),
+    ngx_test_null(header, ngx_create_array(c->pool, 10, sizeof(ngx_iovec_t)),
                   (ngx_chain_t *) -1);
 
-    ngx_test_null(trailer, ngx_create_array(cn->pool, 10, sizeof(ngx_iovec_t)),
+    ngx_test_null(trailer, ngx_create_array(c->pool, 10, sizeof(ngx_iovec_t)),
                   (ngx_chain_t *) -1);
 
     do {
@@ -62,7 +63,7 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *cn, ngx_chain_t *in,
 
 #if (HAVE_MAX_SENDFILE_IOVEC)
         if (file && header->nelts > HAVE_MAX_SENDFILE_IOVEC) {
-            rc = ngx_sendv(cn->fd, (ngx_iovec_t *) header->elts, header->nelts,
+            rc = ngx_sendv(c->fd, (ngx_iovec_t *) header->elts, header->nelts,
                            &sent);
         } else {
 #endif
@@ -90,44 +91,57 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *cn, ngx_chain_t *in,
             }
 
             if (file) {
-                rc = ngx_sendfile(cn->fd,
+                rc = ngx_sendfile(c->fd,
                                   (ngx_iovec_t *) header->elts, header->nelts,
-                                  file->fd, file->pos.file,
+                                  file->file->fd, file->pos.file,
                                   (size_t) (file->last.file - file->pos.file),
                                   (ngx_iovec_t *) trailer->elts, trailer->nelts,
-                                  &sent, cn->log);
+                                  &sent, c->log);
             } else {
-                rc = ngx_sendv(cn->fd, (ngx_iovec_t *) header->elts,
-                               header->nelts, (size_t *) &sent);
-                ngx_log_debug(cn->log, "sendv: %d" _ sent);
+                size_t sendv_sent;
+
+                sendv_sent = 0;
+                rc = ngx_sendv(c->fd, (ngx_iovec_t *) header->elts,
+                               header->nelts, &sendv_sent);
+                sent = sendv_sent;
+                ngx_log_debug(c->log, "sendv: " QD_FMT _ sent);
             }
 #if (HAVE_MAX_SENDFILE_IOVEC)
         }
 #endif
         /* save sent for logging */
 
-        if (rc == -1)
+        if (rc == NGX_ERROR)
             return (ngx_chain_t *) -1;
 
+        c->sent = sent;
         flush -= sent;
 
         for (ch = in; ch; ch = ch->next) {
+
+            ngx_log_debug(c->log, "ch event write: %x %qx %qd" _
+                          ch->hunk->type _
+                          ch->hunk->pos.file _
+                          ch->hunk->last.file - ch->hunk->pos.file);
+
             if (sent >= ch->hunk->last.file - ch->hunk->pos.file) {
                 sent -= ch->hunk->last.file - ch->hunk->pos.file;
-                ch->hunk->last.file = ch->hunk->pos.file;
+                ch->hunk->pos.file = ch->hunk->last.file;
 
-                ngx_log_debug(cn->log, "event write: %qx 0" _
-                              ch->hunk->pos.file);
+                ngx_log_debug(c->log, "event write: " QX_FMT " 0 " QD_FMT _
+                              ch->hunk->pos.file _ sent);
 
+/*
                 if (ch->hunk->type & NGX_HUNK_LAST)
                    break;
+*/
 
                 continue;
             }
 
             ch->hunk->pos.file += sent;
 
-            ngx_log_debug(cn->log, "event write: %qx %qd" _
+            ngx_log_debug(c->log, "event write: %qx %qd" _
                           ch->hunk->pos.file _
                           ch->hunk->last.file - ch->hunk->pos.file);
 
@@ -135,7 +149,7 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *cn, ngx_chain_t *in,
         }
 
     /* flush hunks if threaded state */
-    } while (cn->write->context && flush > 0);
+    } while (c->write->context && flush > 0);
 
     ngx_destroy_array(trailer);
     ngx_destroy_array(header);

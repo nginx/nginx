@@ -3,7 +3,7 @@
 
 
 #include <ngx_errno.h>
-#include <ngx_file.h>
+#include <ngx_files.h>
 
 typedef enum {
     NGX_LOG_EMERG = 0,

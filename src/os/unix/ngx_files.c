@@ -1,8 +1,19 @@
 
+#include <ngx_core.h>
+#include <ngx_file.h>
 
-ssize_t ngx_read_file(ngx_file_t file, char *buf, size_t size, off_t offset)
+ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 {
-    return pread(file->fd, buf, size, offset);
+    ssize_t n;
+
+    ngx_log_debug(file->log, "read: %x, %d, %qd" _ buf _ size _ offset);
+
+    n = pread(file->fd, buf, size, offset);
+
+    if (n == NGX_ERROR)
+        ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "read() failed");
+
+    return n;
 }
 
 #if 0

@@ -2,9 +2,9 @@
 #include <ngx_config.h>
 
 #include <ngx_hunk.h>
-#include <ngx_http.h>
-#include <ngx_http_filter.h>
 #include <ngx_event_write.h>
+#include <ngx_http.h>
+#include <ngx_http_output_filter.h>
 
 #include <ngx_http_write_filter.h>
 
@@ -48,7 +48,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                       ch->hunk->type _ ch->hunk->pos.file _
                       ch->hunk->last.file - ch->hunk->pos.file);
 
-        if (ch->hunk->type & NGX_HUNK_FLUSH)
+        if (ch->hunk->type & NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)
             flush = size;
 
         if (ch->hunk->type & NGX_HUNK_LAST)
@@ -69,7 +69,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                       ch->hunk->type _ ch->hunk->pos.file _
                       ch->hunk->last.file - ch->hunk->pos.file);
 
-        if (ch->hunk->type & NGX_HUNK_FLUSH)
+        if (ch->hunk->type & NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)
             flush = size;
 
         if (ch->hunk->type & NGX_HUNK_LAST)
@@ -84,6 +84,8 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
 
     ctx->out = chain;
+
+    ngx_log_debug(r->connection->log, "write filter %x" _ chain);
 
     return (chain ? NGX_AGAIN : NGX_OK);
 }

@@ -1,5 +1,5 @@
-#ifndef _NGX_FILE_H_INCLUDED_
-#define _NGX_FILE_H_INCLUDED_
+#ifndef _NGX_FILES_H_INCLUDED_
+#define _NGX_FILES_H_INCLUDED_
 
 
 #include <sys/types.h>
@@ -12,7 +12,6 @@ typedef struct stat              ngx_file_info_t;
 #define ngx_open_file            open
 #define ngx_open_file_n          "open()"
 
-#define ngx_read_file            read
 #define ngx_read_file_n          "read()"
 
 #define NGX_FILE_RDONLY          O_RDONLY
@@ -29,4 +28,4 @@ typedef struct stat              ngx_file_info_t;
 #define ngx_file_mtime(sb)       sb.st_mtime
 
 
-#endif /* _NGX_FILE_H_INCLUDED_ */
+#endif /* _NGX_FILES_H_INCLUDED_ */

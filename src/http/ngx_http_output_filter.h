@@ -1,5 +1,5 @@
-#ifndef _NGX_HTTP_FILTER_H_INCLUDED_
-#define _NGX_HTTP_FILTER_H_INCLUDED_
+#ifndef _NGX_HTTP_OUTPUT_FILTER_H_INCLUDED_
+#define _NGX_HTTP_OUTPUT_FILTER_H_INCLUDED_
 
 
 #include <ngx_core.h>
@@ -14,7 +14,7 @@ typedef struct {
     ngx_chain_t   out;
     size_t        hunk_size;
     unsigned      last;
-} ngx_http_filter_ctx_t;
+} ngx_http_output_filter_ctx_t;
 
 
-#endif /* _NGX_HTTP_FILTER_H_INCLUDED_ */
+#endif /* _NGX_HTTP_OUTPUT_FILTER_H_INCLUDED_ */

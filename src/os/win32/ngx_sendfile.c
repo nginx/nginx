@@ -1,6 +1,8 @@
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_types.h>
+#include <ngx_files.h>
 #include <ngx_socket.h>
 #include <ngx_errno.h>
 #include <ngx_log.h>
@@ -13,17 +15,11 @@
        TransmitPackets
 */
 
-/*
-  returns
-      0 done
-     -1 error
-*/
-
 #if (HAVE_WIN32_TRANSMITFILE)
 
 int ngx_sendfile(ngx_socket_t s,
                  ngx_iovec_t *headers, int hdr_cnt,
-                 ngx_file_t fd, off_t offset, size_t nbytes,
+                 ngx_fd_t fd, off_t offset, size_t nbytes,
                  ngx_iovec_t *trailers, int trl_cnt,
                  off_t *sent,
                  ngx_log_t *log)
@@ -65,15 +61,13 @@ int ngx_sendfile(ngx_socket_t s,
     /* set sent */
 #if 0
     rc = WSAGetOverlappedResult(s, &olp, (unsigned long *) sent, 0, NULL);
+#else
+    *sent = olp.InternalHigh;
+    rc = 1;
 #endif
 
-#if 0
     ngx_log_debug(log, "ngx_sendfile: %d, @%I64d %I64d:%d" _
                   tfrc _ offset _ *sent _ nbytes);
-#else
-    ngx_log_debug(log, "ngx_sendfile: %d, @%I64d %d:%d" _
-                  tfrc _ offset _ olp.InternalHigh _ nbytes);
-#endif
 
     if (rc == 0) {
         err = ngx_socket_errno;
@@ -85,7 +79,7 @@ int ngx_sendfile(ngx_socket_t s,
         if (tf_err != NGX_EAGAIN) {
             ngx_log_error(NGX_LOG_ERR, log, tf_err,
                           "ngx_sendfile: TransmitFile failed");
-            return -1;
+            return NGX_ERROR;
         }
 
         ngx_log_error(NGX_LOG_INFO, log, tf_err,
@@ -94,9 +88,9 @@ int ngx_sendfile(ngx_socket_t s,
     }
 
     if (rc == 0)
-        return -1;
+        return NGX_ERROR;
 
-    return 0;
+    return NGX_OK;
 }
 
 #endif

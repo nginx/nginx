@@ -3,7 +3,7 @@
 
 
 #include <ngx_types.h>
-#include <ngx_file.h>
+#include <ngx_files.h>
 #include <ngx_socket.h>
 #include <ngx_log.h>
 #include <ngx_sendv.h>

@@ -1,6 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_types.h>
+#include <ngx_string.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
 #include <ngx_listen.h>
@@ -19,7 +20,7 @@ ngx_event_t         *ngx_read_events, *ngx_write_events;
 
 #if !(USE_KQUEUE)
 
-#if 0
+#if 1
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
 #else
 ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
@@ -78,7 +79,10 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
         ngx_connections[fd].handler = s[i].handler;
         ngx_connections[fd].log = s[i].log;
 
-        ngx_read_events[fd].log = ngx_connections[fd].log;
+        ngx_test_null(ngx_read_events[fd].log,
+                      ngx_palloc(pool, sizeof(ngx_log_t)), /* void */ ; );
+        ngx_memcpy(ngx_read_events[fd].log, ngx_connections[fd].log,
+                   sizeof(ngx_log_t));
         ngx_read_events[fd].data = &ngx_connections[fd];
         ngx_read_events[fd].event_handler = &ngx_event_accept;
         ngx_read_events[fd].listening = 1;

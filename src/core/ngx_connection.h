@@ -21,6 +21,8 @@ struct ngx_connection_s {
     ngx_event_t      *write;
 #endif
 
+    off_t             sent;
+
     ngx_log_t        *log;
     int             (*handler)(ngx_connection_t *c);
     ngx_server_t     *server;
@@ -35,6 +37,8 @@ struct ngx_connection_s {
     size_t            addr_textlen;
 
     unsigned int      post_accept_timeout;
+
+    unsigned          unexpected_eof:1;
 };
 
 

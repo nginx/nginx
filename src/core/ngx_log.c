@@ -45,7 +45,11 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
                         " [%s] ", err_levels[level]);
 
     len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
+#if (WIN32)
+                        "%d#%d: ", 0, 0);
+#else
                         "%d#%d: ", getpid(), 0);
+#endif
 
 #if (HAVE_VARIADIC_MACROS)
     va_start(args, fmt);

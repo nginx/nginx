@@ -19,7 +19,6 @@
 #error "kqueue is not supported on this platform"
 #endif
 
-static void ngx_add_timer_core(ngx_event_t *ev, u_int timer);
 
 
 static int              kq;
@@ -50,6 +49,7 @@ void ngx_kqueue_init(int max_connections, ngx_log_t *log)
 #if !(USE_KQUEUE)
     ngx_event_actions.add = ngx_kqueue_add_event;
     ngx_event_actions.del = ngx_kqueue_del_event;
+    ngx_event_actions.timer = ngx_kqueue_add_timer;
     ngx_event_actions.process = ngx_kqueue_process_events;
 #endif
 
@@ -57,21 +57,11 @@ void ngx_kqueue_init(int max_connections, ngx_log_t *log)
 
 int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
-    if (event == NGX_TIMER_EVENT) {
-        ngx_add_timer_core(ev, flags);
-        return 0;
-    }
-
     return ngx_kqueue_set_event(ev, event, EV_ADD | flags);
 }
 
 int ngx_kqueue_del_event(ngx_event_t *ev, int event)
 {
-    if (event == NGX_TIMER_EVENT) {
-        ngx_del_timer(ev);
-        return 0;
-    }
-
     return ngx_kqueue_set_event(ev, event, EV_DELETE);
 }
 
@@ -156,14 +146,9 @@ int ngx_kqueue_process_events(ngx_log_t *log)
                 delta -= ev->timer_delta;
                 nx = ev->timer_next;
                 ngx_del_timer(ev);
-#if 1
                 ev->timedout = 1;
                 if (ev->event_handler(ev) == NGX_ERROR)
                     ev->close_handler(ev);
-#else
-                if (ev->timer_handler(ev) == -1)
-                    ev->close_handler(ev);
-#endif
                 ev = nx;
             }
 
@@ -182,7 +167,8 @@ int ngx_kqueue_process_events(ngx_log_t *log)
 
         if (event_list[i].flags & EV_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, event_list[i].data,
-                          "ngx_kqueue_process_events: kevent error");
+                          "ngx_kqueue_process_events: kevent error on %d",
+                          event_list[i].ident);
             continue;
         }
 
@@ -215,9 +201,11 @@ int ngx_kqueue_process_events(ngx_log_t *log)
     return 0;
 }
 
-static void ngx_add_timer_core(ngx_event_t *ev, u_int timer)
+void ngx_kqueue_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_event_t *e;
+
+    ngx_log_debug(ev->log, "set timer: %d" _ timer);
 
     for (e = timer_queue.timer_next;
          e != &timer_queue && timer > e->timer_delta;
@@ -232,19 +220,3 @@ static void ngx_add_timer_core(ngx_event_t *ev, u_int timer)
     e->timer_prev->timer_next = ev;
     e->timer_prev = ev;
 }
-
-#if 0
-static void ngx_inline ngx_del_timer(ngx_event_t *ev)
-{
-    if (ev->timer_prev)
-        ev->timer_prev->timer_next = ev->timer_next;
-
-    if (ev->timer_next) {
-        ev->timer_next->timer_prev = ev->timer_prev;
-        ev->timer_next = NULL;
-    }
-
-    if (ev->timer_prev)
-        ev->timer_prev = NULL;
-}
-#endif
