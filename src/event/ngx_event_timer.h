@@ -31,8 +31,8 @@ extern ngx_mutex_t  *ngx_event_timer_mutex;
 #endif
 
 
-extern volatile ngx_rbtree_t  *ngx_event_timer_rbtree;
-extern ngx_rbtree_t            ngx_event_timer_sentinel;
+extern ngx_thread_volatile ngx_rbtree_t  *ngx_event_timer_rbtree;
+extern ngx_rbtree_t                       ngx_event_timer_sentinel;
 
 
 ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)

@@ -9,8 +9,8 @@ ngx_mutex_t  *ngx_event_timer_mutex;
 #endif
 
 
-volatile ngx_rbtree_t  *ngx_event_timer_rbtree;
-ngx_rbtree_t            ngx_event_timer_sentinel;
+ngx_thread_volatile ngx_rbtree_t  *ngx_event_timer_rbtree;
+ngx_rbtree_t                       ngx_event_timer_sentinel;
 
 
 ngx_int_t ngx_event_timer_init(ngx_log_t *log)

@@ -7,6 +7,8 @@
 
 #if (NGX_THREADS)
 
+#define ngx_thread_volatile  volatile
+
 #if (NGX_USE_RFORK)
 
 #include <sys/ipc.h>
@@ -95,6 +97,8 @@ extern ngx_int_t ngx_threaded;
 
 
 #else /* !NGX_THREADS */
+
+#define ngx_thread_volatile
 
 #define ngx_log_tid  0
 #define TID_T_FMT    "%d"
