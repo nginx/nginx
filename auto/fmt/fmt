@@ -1,5 +1,5 @@
 
-echo -n "checking for $ngx_type printf() format ..."
+echo $ngx_n "checking for $ngx_type printf() format ..." $ngx_c
 echo >> $NGX_ERR
 echo "checking for $ngx_type printf() format" >> $NGX_ERR
 
@@ -33,9 +33,9 @@ END
     if [ -x $NGX_AUTOTEST ]; then
         if [ "`$NGX_AUTOTEST`" = $max_size ]; then
             if [ $ngx_fmt_collect = yes ]; then
-                echo -n "$comma \"${fmt}\" is appropriate"
+                echo $ngx_n "$comma \"${fmt}\" is appropriate" $ngx_c
             else
-                echo -n "$comma \"${fmt}\" used"
+                echo $ngx_n "$comma \"${fmt}\" used" $ngx_c
             fi
             ngx_fmt=$fmt
         fi
@@ -53,7 +53,7 @@ END
         fi
     fi
 
-    echo -n "$comma \"${fmt}\" is not appropriate"
+    echo $ngx_n "$comma \"${fmt}\" is not appropriate" $ngx_c
     comma=","
 done
 

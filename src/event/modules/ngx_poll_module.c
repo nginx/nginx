@@ -130,6 +130,12 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 
     c = ev->data;
 
+    if (ev->index != NGX_INVALID_INDEX) {
+        ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
+                      "poll event fd:%d ev:%d is already set", c->fd, event);
+        return NGX_OK;
+    }
+
     ev->active = 1;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 
@@ -159,6 +165,9 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
         nevents++;
 
     } else {
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                       "poll index: %d", e->index);
+
         event_list[e->index].events |= event;
         ev->index = e->index;
     }
@@ -195,13 +204,18 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
                    "poll del event: fd:%d ev:%d", c->fd, event);
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
-        if (ev->index < (u_int) --nevents) {
+        nevents--;
+
+        if (ev->index < (u_int) nevents) {
             event_list[ev->index] = event_list[nevents];
             event_index[ev->index] = event_index[nevents];
             event_index[ev->index]->index = ev->index;
         }
 
     } else {
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                       "poll index: %d", e->index);
+
         event_list[e->index].events &= ~event;
     }
 
@@ -232,8 +246,8 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
 #if (NGX_DEBUG)
     for (i = 0; i < nevents; i++) {
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0, "poll: fd:%d ev:%04X",
-                       event_list[i].fd, event_list[i].events);
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0, "poll: %d: fd:%d ev:%04X",
+                       i, event_list[i].fd, event_list[i].events);
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "poll timer: %d", timer);
@@ -278,9 +292,9 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
     for (i = 0; i < nevents && ready; i++) {
 
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
-                       "poll: fd:%d ev:%04X rev:%04X",
-                       event_list[i].fd,
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "poll: %d: fd:%d ev:%04X rev:%04X",
+                       i, event_list[i].fd,
                        event_list[i].events, event_list[i].revents);
 
         if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
@@ -315,6 +329,18 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
         if (c->fd == -1) {
             ngx_log_error(NGX_LOG_ALERT, log, 0, "unknown cycle");
+
+            /*
+             * it is certainly our fault and it should be investigated,
+             * in the meantime we disable this event to avoid a CPU spinning
+             */
+
+            if (i == nevents - 1) {
+                nevents--;
+            } else {
+                event_list[i].fd = -1;
+            }
+
             continue;
         }
 

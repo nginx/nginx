@@ -1,5 +1,5 @@
 
-echo -n "checking for uintptr_t ... "
+echo $ngx_n "checking for uintptr_t ... " $ngx_c
 echo >> $NGX_ERR
 echo "checking for uintptr_t" >> $NGX_ERR
 
@@ -23,7 +23,7 @@ if [ -x $NGX_AUTOTEST ]; then
     echo " uintptr_t found"
     found=yes
 else
-    echo -n " uintptr_t not found"
+    echo $ngx_n " uintptr_t not found" $ngx_c
 fi
 
 rm $NGX_AUTOTEST*

@@ -1,5 +1,5 @@
 
-echo -n "checking for $ngx_type size ..."
+echo $ngx_n "checking for $ngx_type size ..." $ngx_c
 echo >> $NGX_ERR
 echo "checking for $ngx_type size" >> $NGX_ERR
 

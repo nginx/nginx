@@ -471,7 +471,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
     cycle->connection_n = ecf->connections;
 
-    ngx_conf_init_value(ecf->multi_accept, 1);
+    ngx_conf_init_value(ecf->multi_accept, 0);
 
     return NGX_CONF_OK;
 }

@@ -1,5 +1,5 @@
 
-echo -n "checking for $ngx_inc ..."
+echo $ngx_n "checking for $ngx_inc ..." $ngx_c
 echo >> $NGX_ERR
 echo "checking for $ngx_inc" >> $NGX_ERR
 

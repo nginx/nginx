@@ -1,5 +1,5 @@
 
-echo -n "checking for $ngx_type ..."
+echo $ngx_n "checking for $ngx_type ..." $ngx_c
 echo >> $NGX_ERR
 echo "checking for $ngx_type" >> $NGX_ERR
 
@@ -39,7 +39,7 @@ END
     rm $NGX_AUTOTEST*
 
     if [ $found = no ]; then
-        echo -n " $type not found"
+        echo $ngx_n " $type not found" $ngx_c
     else
         break
     fi

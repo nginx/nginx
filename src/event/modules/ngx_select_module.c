@@ -136,7 +136,7 @@ static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 
     if (ev->index != NGX_INVALID_INDEX) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                      "%d:%d is already set", c->fd, event);
+                      "select event fd:%d ev:%d is already set", c->fd, event);
         return NGX_OK;
     }
 
@@ -268,7 +268,7 @@ static int ngx_select_process_events(ngx_log_t *log)
 #if !(WIN32)
     if (max_fd == -1) {
         for (i = 0; i < nevents; i++) {
-            c = (ngx_connection_t *) event_index[i]->data;
+            c = event_index[i]->data;
             if (max_fd < c->fd) {
                 max_fd = c->fd;
             }
@@ -282,7 +282,7 @@ static int ngx_select_process_events(ngx_log_t *log)
 #if (NGX_DEBUG)
     for (i = 0; i < nevents; i++) {
         ev = event_index[i];
-        c = (ngx_connection_t *) ev->data;
+        c = ev->data;
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                        "select event: fd:%d wr:%d", c->fd,ev->write);
     }
@@ -370,7 +370,7 @@ static int ngx_select_process_events(ngx_log_t *log)
 
     for (i = 0; i < nevents; i++) {
         ev = event_index[i];
-        c = (ngx_connection_t *) ev->data;
+        c = ev->data;
         found = 0;
 
         if (ev->write) {
