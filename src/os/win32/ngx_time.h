@@ -5,6 +5,8 @@
 #include <windows.h>
 
 typedef unsigned int   ngx_msec_t;
+#define NGX_MAX_MSEC   ~0
+
 
 typedef SYSTEMTIME     ngx_tm_t;
 typedef FILETIME       ngx_mtime_t;

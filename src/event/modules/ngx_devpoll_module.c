@@ -9,6 +9,7 @@
 #include <ngx_log.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
+#include <ngx_event_timer.h>
 #include <ngx_devpoll_module.h>
 
 #if (USE_DEVPOLL) && !(HAVE_DEVPOLL)

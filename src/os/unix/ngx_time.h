@@ -5,6 +5,7 @@
 #include <ngx_config.h>
 
 typedef u_int          ngx_msec_t;
+#define NGX_MAX_MSEC   ~0
 
 typedef struct tm      ngx_tm_t;
 

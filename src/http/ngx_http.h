@@ -12,6 +12,8 @@
 #include <ngx_connection.h>
 #include <ngx_conf_file.h>
 
+/* STUB */
+#include <ngx_event_timer.h>
 
 #define NGX_HTTP_VERSION_10       1000
 

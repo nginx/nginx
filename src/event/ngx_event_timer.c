@@ -1,7 +1,43 @@
 
+#include <ngx_config.h>
 
-void ngx_add_timer(ngx_event_t *ev, ngx_msec_t timer)
+#include <ngx_core.h>
+#include <ngx_log.h>
+#include <ngx_alloc.h>
+#include <ngx_connection.h>
+#include <ngx_event.h>
+
+#include <ngx_event_timer.h>
+
+/* STUB */
+#define NGX_TIMER_HASH_SIZE  5
+
+ngx_event_t  *ngx_timer_queue;
+int           ngx_timer_hash_size;
+
+
+int ngx_event_init_timer(ngx_log_t *log)
 {
+    int  i;
+
+    ngx_timer_hash_size = NGX_TIMER_HASH_SIZE;
+
+    ngx_test_null(ngx_timer_queue,
+                  ngx_alloc(ngx_timer_hash_size * sizeof(ngx_event_t), log),
+                  NGX_ERROR);
+
+    for (i = 0; i < ngx_timer_hash_size; i++) {
+        ngx_timer_queue[i].timer_prev = &ngx_timer_queue[i];
+        ngx_timer_queue[i].timer_next = &ngx_timer_queue[i];
+    }
+
+    return NGX_OK;
+}
+
+
+void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
+{
+    int           n;
     ngx_event_t  *e;
 
 #if (NGX_DEBUG_EVENT)
@@ -16,8 +52,8 @@ void ngx_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 
     n = timer % ngx_timer_hash_size;
 
-    for (e = timer_queue[n].timer_next;
-         e != &timer_queue[n] && timer > e->timer_delta;
+    for (e = ngx_timer_queue[n].timer_next;
+         e != &ngx_timer_queue[n] && timer > e->timer_delta;
          e = e->timer_next)
     {
         timer -= e->timer_delta;

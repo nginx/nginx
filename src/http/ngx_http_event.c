@@ -9,6 +9,8 @@
 #include <ngx_table.h>
 #include <ngx_hunk.h>
 #include <ngx_connection.h>
+#include <ngx_event.h>
+#include <ngx_event_timer.h>
 #include <ngx_inet.h>
 #include <ngx_http.h>
 #include <ngx_http_config.h>

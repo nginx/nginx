@@ -3,6 +3,8 @@
 #include <ngx_core.h>
 #include <ngx_types.h>
 #include <ngx_connection.h>
+#include <ngx_event.h>
+#include <ngx_event_timer.h>
 #include <ngx_event_close.h>
 
 

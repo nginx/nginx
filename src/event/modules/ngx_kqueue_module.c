@@ -9,6 +9,7 @@
 #include <ngx_log.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
+#include <ngx_event_timer.h>
 #include <ngx_kqueue_module.h>
 
 #if (USE_KQUEUE) && !(HAVE_KQUEUE)
@@ -50,8 +51,14 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
     ngx_test_null(change_list, ngx_alloc(change_size, log), NGX_ERROR);
     ngx_test_null(event_list, ngx_alloc(event_size, log), NGX_ERROR);
 
+    if (ngx_event_init_timer(log) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+#if 0
     timer_queue.timer_prev = &timer_queue;
     timer_queue.timer_next = &timer_queue;
+#endif
 
 #if !(USE_KQUEUE)
     ngx_event_actions.add = ngx_kqueue_add_event;

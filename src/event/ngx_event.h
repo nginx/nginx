@@ -10,6 +10,7 @@
 #include <ngx_alloc.h>
 #include <ngx_array.h>
 
+
 #define NGX_INVALID_INDEX  0x80000000
 
 typedef struct ngx_event_s       ngx_event_t;
@@ -31,8 +32,8 @@ struct ngx_event_s {
     ngx_event_t     *timer_prev;
     ngx_event_t     *timer_next;
 
-    u_int            timer_delta;
-    u_int            timer;
+    ngx_msec_t       timer_delta;
+    ngx_msec_t       timer;
 
     ngx_log_t       *log;
 
@@ -150,7 +151,11 @@ NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
 #define ngx_process_events   ngx_kqueue_process_events
 #define ngx_add_event        ngx_kqueue_add_event
 #define ngx_del_event        ngx_kqueue_del_event
+#if 0
 #define ngx_add_timer        ngx_kqueue_add_timer
+#else
+#define ngx_add_timer        ngx_event_add_timer
+#endif
 #define ngx_event_recv       ngx_event_recv_core
 
 #else
@@ -159,12 +164,19 @@ NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
 #define ngx_process_events   ngx_event_actions.process
 #define ngx_add_event        ngx_event_actions.add
 #define ngx_del_event        ngx_event_actions.del
+#if 0
 #define ngx_add_timer        ngx_event_actions.timer
+#else
+#define ngx_add_timer        ngx_event_add_timer
+#endif
 #define ngx_event_recv       ngx_event_recv_core
 
 #endif
 
+#define ngx_del_timer        ngx_event_del_timer
 
+
+#if 0
 ngx_inline static void ngx_del_timer(ngx_event_t *ev)
 {
 #if (NGX_DEBUG_EVENT)
@@ -186,7 +198,7 @@ ngx_inline static void ngx_del_timer(ngx_event_t *ev)
         ev->timer_prev = NULL;
     }
 }
-
+#endif
 
 
 

@@ -7,6 +7,7 @@
 #include <ngx_time.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
+#include <ngx_event_timer.h>
 #include <ngx_poll_module.h>
 
 
