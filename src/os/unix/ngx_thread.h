@@ -7,7 +7,7 @@
 
 #if (NGX_THREADS)
 
-#if (USE_RFORK)
+#if (NGX_USE_RFORK)
 
 #include <sys/ipc.h>
 #include <sys/sem.h>
@@ -46,7 +46,7 @@ typedef pthread_t  ngx_tid_t;
 #endif
 
 
-ngx_int_t ngx_init_threads(int n, size_t size, ngx_log_t *log);
+ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle);
 int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
                       ngx_log_t *log);
 ngx_tid_t ngx_thread_self();

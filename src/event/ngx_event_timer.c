@@ -4,13 +4,8 @@
 #include <ngx_event.h>
 
 
-/*
- * TODO: in multithreaded enviroment all timer operations must be
- * protected by the single mutex
- */
-
 #if (NGX_THREADS)
-static ngx_mutex_t  *ngx_event_timer_mutex;
+ngx_mutex_t  *ngx_event_timer_mutex;
 #endif
 
 
@@ -18,13 +13,20 @@ ngx_rbtree_t  *ngx_event_timer_rbtree;
 ngx_rbtree_t   ngx_event_timer_sentinel;
 
 
-void ngx_event_timer_init(void)
+ngx_int_t ngx_event_timer_init(ngx_log_t *log)
 {
     if (ngx_event_timer_rbtree) {
-        return;
+        ngx_event_timer_mutex->log = log;
+        return NGX_OK;
     }
 
     ngx_event_timer_rbtree = &ngx_event_timer_sentinel;
+
+    if (!(ngx_event_timer_mutex = ngx_mutex_init(log, 0))) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -36,7 +38,17 @@ ngx_msec_t ngx_event_find_timer(void)
         return 0;
     }
 
+#if (NGX_THREADS)
+    if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
+        return NGX_TIMER_ERROR;
+    }
+#endif
+
     node = ngx_rbtree_min(ngx_event_timer_rbtree, &ngx_event_timer_sentinel);
+
+#if (NGX_THREADS)
+    ngx_mutex_unlock(ngx_event_timer_mutex);
+#endif
 
     return (ngx_msec_t)
          (node->key * NGX_TIMER_RESOLUTION -
@@ -58,8 +70,18 @@ void ngx_event_expire_timers(ngx_msec_t timer)
             break;
         }
 
+#if (NGX_THREADS)
+        if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
+            return;
+        }
+#endif
+
         node = ngx_rbtree_min(ngx_event_timer_rbtree,
                               &ngx_event_timer_sentinel);
+
+#if (NGX_THREADS)
+        ngx_mutex_unlock(ngx_event_timer_mutex);
+#endif
 
         if ((ngx_msec_t) node->key <= (ngx_msec_t)
                          (ngx_old_elapsed_msec + timer) / NGX_TIMER_RESOLUTION)
@@ -78,6 +100,10 @@ void ngx_event_expire_timers(ngx_msec_t timer)
             } else {
                 ev->timedout = 1;
             }
+
+#if (NGX_THREADS)
+            /* STUB: post event */
+#endif
 
             ev->event_handler(ev);
             continue;

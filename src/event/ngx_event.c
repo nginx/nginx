@@ -133,7 +133,9 @@ static int ngx_event_init(ngx_cycle_t *cycle)
 #endif
 
 
-    ngx_event_timer_init();
+    if (ngx_event_timer_init(cycle->log) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
 
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 

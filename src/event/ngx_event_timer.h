@@ -7,6 +7,8 @@
 #include <ngx_event.h>
 
 
+#define NGX_TIMER_ERROR  (ngx_msec_t) -1
+
 /*
  * 32 bit timer key value resolution
  *
@@ -19,9 +21,14 @@
 #define NGX_TIMER_RESOLUTION  1
 
 
-void ngx_event_timer_init(void);
+ngx_int_t ngx_event_timer_init(ngx_log_t *log);
 ngx_msec_t ngx_event_find_timer(void);
 void ngx_event_expire_timers(ngx_msec_t timer);
+
+
+#if (NGX_THREADS)
+extern ngx_mutex_t  *ngx_event_timer_mutex;
+#endif
 
 
 extern ngx_rbtree_t  *ngx_event_timer_rbtree;
@@ -34,8 +41,18 @@ ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
                    "event timer del: %d: %d",
                     ngx_event_ident(ev->data), ev->rbtree_key);
 
+#if (NGX_THREADS)
+    if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
+        return;
+    }
+#endif
+
     ngx_rbtree_delete(&ngx_event_timer_rbtree, &ngx_event_timer_sentinel,
                       (ngx_rbtree_t *) &ev->rbtree_key);
+
+#if (NGX_THREADS)
+    ngx_mutex_unlock(ngx_event_timer_mutex);
+#endif
 
 #if (NGX_DEBUG)
     ev->rbtree_left = NULL;
@@ -64,8 +81,18 @@ ngx_inline static void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
                    "event timer add: %d: %d",
                     ngx_event_ident(ev->data), ev->rbtree_key);
 
+#if (NGX_THREADS)
+    if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
+        return;
+    }
+#endif
+
     ngx_rbtree_insert(&ngx_event_timer_rbtree, &ngx_event_timer_sentinel,
                       (ngx_rbtree_t *) &ev->rbtree_key);
+
+#if (NGX_THREADS)
+    ngx_mutex_unlock(ngx_event_timer_mutex);
+#endif
 
     ev->timer_set = 1;
 }

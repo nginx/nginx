@@ -147,6 +147,12 @@ int main(int argc, char *const *argv, char **envp)
     ctx.argc = argc;
     ctx.argv = argv;
 
+#if (NGX_THREADS)
+    if (ngx_time_mutex_init(log) == NGX_ERROR) {
+        return 1;
+    }
+#endif
+
     if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
         return 1;
     }
@@ -649,7 +655,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
 #if (NGX_THREADS)
 
-    if (ngx_init_threads(5, 128 * 1024 * 1024, cycle->log) == NGX_ERROR) {
+    if (ngx_init_threads(5, 128 * 1024 * 1024, cycle) == NGX_ERROR) {
         /* fatal */
         exit(1);
     }

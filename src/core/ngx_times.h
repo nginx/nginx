@@ -7,6 +7,9 @@
 
 
 void ngx_time_init();
+#if (NGX_THREADS)
+ngx_int_t ngx_time_mutex_init(ngx_log_t *log);
+#endif
 void ngx_time_update(time_t s);
 size_t ngx_http_time(char *buf, time_t t);
 void ngx_gmtime(time_t t, ngx_tm_t *tp);

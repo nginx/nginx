@@ -51,14 +51,21 @@ void ngx_time_init()
     ngx_elapsed_msec = 0;
 
     ngx_time_update(tv.tv_sec);
-
-#if (NGX_THREADS0)
-    if (!(ngx_time_mutex = ngx_mutex_init(log, NGX_MUTEX_LIGHT);
-        return 0;
-    }
-#endif
-
 }
+
+
+#if (NGX_THREADS)
+
+ngx_int_t ngx_time_mutex_init(ngx_log_t *log)
+{
+    if (!(ngx_time_mutex = ngx_mutex_init(log, NGX_MUTEX_LIGHT))) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+#endif
 
 
 void ngx_time_update(time_t s)
@@ -69,9 +76,11 @@ void ngx_time_update(time_t s)
         return;
     }
 
-#if (NGX_THREADS0)
-    if (ngx_mutex_trylock(ngx_time_mutex) != NGX_OK) {
-        return;
+#if (NGX_THREADS)
+    if (ngx_time_mutex) {
+        if (ngx_mutex_trylock(ngx_time_mutex) != NGX_OK) {
+            return;
+        }
     }
 #endif
 
@@ -109,8 +118,10 @@ void ngx_time_update(time_t s)
                                        tm.ngx_tm_min,
                                        tm.ngx_tm_sec);
 
-#if (NGX_THREADS0)
-    ngx_mutex_unlock(ngx_time_mutex);
+#if (NGX_THREADS)
+    if (ngx_time_mutex) {
+        ngx_mutex_unlock(ngx_time_mutex);
+    }
 #endif
 
 }

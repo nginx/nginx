@@ -337,7 +337,7 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 }
 
 
-static int ngx_kqueue_process_events(ngx_log_t *log)
+static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
 {
     int                events;
     ngx_int_t          instance, i;
@@ -349,6 +349,19 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     struct timespec    ts, *tp;
 
     timer = ngx_event_find_timer();
+
+#if (NGX_THREADS)
+    if (timer == NGX_TIMER_ERROR) {
+        return NGX_ERROR;
+    }
+
+    /*
+     * TODO: if timer is 0 and any worker thread is still busy
+     *       then set 1 second timeout
+     */
+
+#endif
+
     ngx_old_elapsed_msec = ngx_elapsed_msec;
 
     if (timer) {

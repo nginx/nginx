@@ -147,7 +147,7 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
 }
 
 
-ngx_int_t ngx_init_threads(int n, size_t size, ngx_log_t *log)
+ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 {
     size_t   len;
     char    *red_zone, *zone;
@@ -156,7 +156,7 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_log_t *log)
 
     len = sizeof(usrstack);
     if (sysctlbyname("kern.usrstack", &usrstack, &len, NULL, 0) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "sysctlbyname(kern.usrstack) failed");
         return NGX_ERROR;
     }
@@ -164,13 +164,13 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_log_t *log)
     /* the main thread stack red zone */
     red_zone = usrstack - (size + rz_size);
 
-    ngx_log_debug2(NGX_LOG_DEBUG_CORE, log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                    "usrstack: " PTR_FMT " red zone: " PTR_FMT,
                    usrstack, red_zone);
 
     zone = mmap(red_zone, rz_size, PROT_NONE, MAP_ANON, -1, 0);
     if (zone == MAP_FAILED) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "mmap(" PTR_FMT ":" SIZE_T_FMT
                       ", PROT_NONE, MAP_ANON) red zone failed",
                       red_zone, rz_size);
@@ -178,18 +178,19 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_log_t *log)
     }
 
     if (zone != red_zone) {
-        ngx_log_error(NGX_LOG_ALERT, log, 0, "red zone address was changed");
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "red zone address was changed");
     }
 
     /* create the threads errno array */
 
-    if (!(errnos = ngx_calloc(n * sizeof(int), log))) {
+    if (!(errnos = ngx_calloc(n * sizeof(int), cycle->log))) {
         return NGX_ERROR;
     }
 
     /* create the threads tid array */
 
-    if (!(tids = ngx_calloc((n + 1) * sizeof(ngx_tid_t), log))) {
+    if (!(tids = ngx_calloc((n + 1) * sizeof(ngx_tid_t), cycle->log))) {
         return NGX_ERROR;
     }
 
