@@ -132,7 +132,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                            "http index cache get: " PTR_FMT, ctx->cache);
 
-            if (ctx->cache && ctx->cache->valid) {
+            if (ctx->cache && !ctx->cache->expired) {
 
                 ctx->cache->accessed = ngx_cached_time;
 
@@ -266,7 +266,6 @@ int ngx_http_index_handler(ngx_http_request_t *r)
                 ctx->cache->accessed = ngx_cached_time;
                 ctx->cache->last_modified = 0;
                 ctx->cache->updated = ngx_cached_time;
-                ctx->cache->valid = 1;
                 ctx->cache->memory = 1;
                 ngx_http_cache_unlock(ilcf->index_cache, ctx->cache, log);
             }

@@ -91,7 +91,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
      * and it must be already registered in r->cleanup
      */
 
-    if (r->cache && r->cache->valid) {
+    if (r->cache && !r->cache->expired) {
         return ngx_http_send_cached(r);
     }
 
@@ -146,7 +146,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                        "http open file cache get: " PTR_FMT, file);
 
-        if (file && file->valid) {
+        if (file && !file->expired) {
             r->cache = file;
             return ngx_http_send_cached(r);
         }
@@ -165,7 +165,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                        "http redirect cache get: " PTR_FMT, redirect);
 
-        if (redirect && redirect->valid) {
+        if (redirect && !redirect->expired) {
 
             /*
              * We do not copy a cached value so the cache entry is locked
@@ -336,7 +336,6 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
                 redirect->accessed = ngx_cached_time;
                 redirect->last_modified = 0;
                 redirect->updated = ngx_cached_time;
-                redirect->valid = 1;
                 redirect->memory = 1;
                 ngx_http_cache_unlock(slcf->redirect_cache, redirect, log);
                 redirect_cleanup->valid = 0;
@@ -375,7 +374,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
             }
             file->accessed = ngx_cached_time;
             file->updated = ngx_cached_time;
-            file->valid = 1;
+            file->expired = 0;
             r->cache = file;
 
             return ngx_http_send_cached(r);
@@ -409,7 +408,6 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
             file->accessed = ngx_cached_time;
             file->last_modified = ngx_file_mtime(&fi);
             file->updated = ngx_cached_time;
-            file->valid = 1;
             r->cache = file;
         }
 

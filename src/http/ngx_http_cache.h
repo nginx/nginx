@@ -22,8 +22,8 @@ typedef struct {
 
     unsigned         count:NGX_HTTP_CACHE_LAZY_ALLOCATION_BITS;
 
-    unsigned         valid:1;
     unsigned         deleted:1;
+    unsigned         expired:1;
     unsigned         memory:1;
     unsigned         mmap:1;
     unsigned         notify:1;
