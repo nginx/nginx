@@ -53,15 +53,15 @@ static ngx_command_t  ngx_http_commands[] = {
 
 
 ngx_module_t  ngx_http_module = {
-    0,                                     /* module index */
     &http_name,                            /* module context */
+    0,                                     /* module index */
     ngx_http_commands,                     /* module directives */
     NGX_CORE_MODULE_TYPE,                  /* module type */
     NULL                                   /* init module */
 };
 
 
-static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
+static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
     int                         i, s, l, p, a, n, start;
     int                         port_found, addr_found, virtual_names;
@@ -70,7 +70,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     ngx_array_t                 in_ports;
     ngx_listen_t               *ls;
     ngx_http_module_t          *module;
-    ngx_conf_t                  prev;
+    ngx_conf_t                  pcf;
     ngx_http_conf_ctx_t        *ctx;
     ngx_http_in_port_t         *in_port, *inport;
     ngx_http_in_addr_t         *in_addr, *inaddr;
@@ -85,6 +85,8 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
                   NGX_CONF_ERROR);
 
+    *(ngx_http_conf_ctx_t **) conf = ctx;
+
     ngx_http_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_HTTP_MODULE_TYPE) {
@@ -96,7 +98,20 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         module->index = ngx_http_max_module++;
     }
 
-    /* null loc_conf */
+    /* TODO: http main_conf */
+
+    ngx_test_null(ctx->main_conf,
+                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
+                  NGX_CONF_ERROR);
+
+    /* TODO: http srv_conf */
+
+    ngx_test_null(ctx->srv_conf,
+                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
+                  NGX_CONF_ERROR);
+
+    /* http null loc_conf */
+
     ngx_test_null(ctx->loc_conf,
                   ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
                   NGX_CONF_ERROR);
@@ -115,12 +130,12 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         }
     }
 
-    prev = *cf;
+    pcf = *cf;
     cf->ctx = ctx;
     cf->module_type = NGX_HTTP_MODULE_TYPE;
     cf->cmd_type = NGX_HTTP_MAIN_CONF;
     rv = ngx_conf_parse(cf, NULL);
-    *cf = prev;
+    *cf = pcf;
 
     if (rv != NGX_CONF_OK)
         return rv;

@@ -4,6 +4,10 @@
 #include <ngx_conf_file.h>
 
 
+extern ngx_module_t  ngx_events_module;
+extern ngx_module_t  ngx_event_module;
+
+
 extern ngx_module_t  ngx_http_module;
 extern ngx_module_t  ngx_http_core_module;
 
@@ -16,6 +20,13 @@ extern ngx_module_t  ngx_http_proxy_module;
 
 
 ngx_module_t *ngx_modules[] = {
+
+    /* events */
+
+    &ngx_events_module,
+    &ngx_event_module,
+
+    /* http */
 
     &ngx_http_module,
 

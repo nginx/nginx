@@ -74,8 +74,8 @@ static ngx_command_t  ngx_http_core_commands[] = {
     {ngx_string("client_header_buffer_size"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
-     0,
-     addressof(ngx_http_client_header_buffer_size),
+     NGX_HTTP_MAIN_CONF_OFFSET,
+     offsetof(ngx_http_core_main_conf_t, client_header_buffer_size),
      NULL},
 
     {ngx_string("large_client_header"),
@@ -157,8 +157,8 @@ ngx_http_module_t  ngx_http_core_module_ctx = {
 
 
 ngx_module_t  ngx_http_core_module = {
-    0,                                     /* module index */
     &ngx_http_core_module_ctx,             /* module context */
+    0,                                     /* module index */
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
     ngx_http_core_init                     /* init module */
@@ -615,7 +615,7 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     char                       *rv;
     ngx_http_module_t          *module;
     ngx_conf_t                  pcf;
-    ngx_http_conf_ctx_t        *ctx, *pctx;
+    ngx_http_conf_ctx_t        *ctx, *tctx, *pctx;
     ngx_http_core_srv_conf_t   *scf;
     ngx_http_core_loc_conf_t  **plcf;
 
@@ -623,12 +623,17 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
                   NGX_CONF_ERROR);
 
-    /* server config */
+    tctx = (ngx_http_conf_ctx_t *) cf->ctx;
+    ctx->main_conf = tctx->main_conf;
+
+    /* server configuration */
+
     ngx_test_null(ctx->srv_conf,
                   ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
                   NGX_CONF_ERROR);
 
-    /* server location config */
+    /* server location configuration */
+
     ngx_test_null(ctx->loc_conf,
                   ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
                   NGX_CONF_ERROR);

@@ -9,6 +9,7 @@
 #include <ngx_listen.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
+#include <ngx_conf_file.h>
 
 #include <ngx_select_module.h>
 
@@ -32,6 +33,9 @@
 #include <ngx_event_acceptex.h>
 #include <ngx_iocp_module.h>
 #endif
+
+
+static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy);
 
 
 ngx_connection_t    *ngx_connections;
@@ -66,6 +70,66 @@ static int (*ngx_event_init[]) (int max_connections, ngx_log_t *log) = {
 };
 
 #endif /* USE_KQUEUE */
+
+
+static int  ngx_event_connections;
+
+
+static ngx_str_t  events_name = ngx_string("events");
+
+static ngx_command_t  ngx_events_commands[] = {
+
+    {ngx_string("events"),
+     NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+     ngx_events_block,
+     0,
+     0,
+     NULL},
+
+    {ngx_string(""), 0, NULL, 0, 0, NULL}
+};
+
+
+ngx_module_t  ngx_events_module = {
+    &events_name,                          /* module context */
+    0,                                     /* module index */
+    ngx_events_commands,                   /* module directives */
+    NGX_CORE_MODULE_TYPE,                  /* module type */
+    NULL                                   /* init module */
+};
+
+
+
+static ngx_command_t  ngx_event_commands[] = {
+
+    {ngx_string("connections"),
+     NGX_EVENT_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_num_slot,
+     0,
+     addressof(ngx_event_connections),
+     NULL},
+
+#if 0
+    {ngx_string("type"),
+     NGX_EVENT_CONF|NGX_CONF_TAKE1,
+     ngx_event_set_type,
+     0,
+     0,
+     NULL},
+#endif
+
+    {ngx_string(""), 0, NULL, 0, 0, NULL}
+};
+
+
+ngx_module_t  ngx_event_module = {
+    NULL,                                  /* module context */
+    0,                                     /* module index */
+    ngx_events_commands,                   /* module directives */
+    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NULL                                   /* init module */
+};
+
 
 
 void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
@@ -173,6 +237,7 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
     }
 }
 
+
 void ngx_worker(ngx_log_t *log)
 {
     for ( ;; ) {
@@ -180,4 +245,45 @@ void ngx_worker(ngx_log_t *log)
 
         ngx_process_events(log);
     }
+}
+
+
+static char *ngx_events_init(ngx_pool_t *pool)
+{
+    ngx_event_connections = -1;
+    ngx_event_type = -1;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_events_postconf(ngx_pool_t *pool)
+{
+    if (ngx_event_connections == -1) {
+        ngx_event_connections = 512;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+{
+    char        *rv;
+    ngx_conf_t   pcf;
+
+#if 0
+    *(ngx_events_conf_ctx_t **) conf = ctx;
+#endif
+
+    pcf = *cf;
+    cf->module_type = NGX_EVENT_MODULE_TYPE;
+    cf->cmd_type = NGX_EVENT_CONF;
+    rv = ngx_conf_parse(cf, NULL);
+    *cf = pcf;
+
+    if (rv != NGX_CONF_OK)
+        return rv;
+
+    return NGX_CONF_OK;
 }

@@ -27,6 +27,8 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
     if (filename) {
 
+        /* open configuration file */
+
         fd = ngx_open_file(filename->data, NGX_FILE_RDONLY);
         if (fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
@@ -60,7 +62,8 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     for ( ;; ) {
         rc = ngx_conf_read_token(cf);
 
-        /* NGX_OK, NGX_ERROR, NGX_CONF_FILE_DONE, NGX_CONF_BLOCK_DONE */
+        /* ngx_conf_read_token() returns NGX_OK, NGX_ERROR,
+           NGX_CONF_FILE_DONE or NGX_CONF_BLOCK_DONE */
 
 #if 0
 ngx_log_debug(cf->log, "token %d" _ rc);
@@ -75,6 +78,8 @@ ngx_log_debug(cf->log, "token %d" _ rc);
         }
 
         if (cf->handler) {
+
+            /* custom handler, i.e. used in http "types { ... }" directive */
 
             rv = (*cf->handler)(cf, NULL, cf->handler_conf);
             if (rv == NGX_CONF_OK) {
@@ -97,6 +102,9 @@ ngx_log_debug(cf->log, "token %d" _ rc);
         found = 0;
 
         for (i = 0; !found && ngx_modules[i]; i++) {
+
+            /* look up the directive in the appropriate modules */
+
             if (ngx_modules[i]->type != NGX_CONF_MODULE_TYPE
                 && ngx_modules[i]->type != cf->module_type)
             {
@@ -116,6 +124,7 @@ ngx_log_debug(cf->log, "token %d" _ rc);
 #if 0
 ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 #endif
+                    /* is the directive's location right ? */
 
                     if ((cmd->type & cf->cmd_type) == 0) {
                         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
@@ -126,6 +135,8 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                                       cf->conf_file->line);
                         return NGX_CONF_ERROR;
                     }
+
+                    /* is the directive's argument count right ? */
 
                     if (!(cmd->type & NGX_CONF_ANY)
                         && ((cmd->type & NGX_CONF_FLAG && cf->args->nelts != 2)
@@ -145,8 +156,14 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                         return NGX_CONF_ERROR;
                     }
 
+                    /* set up the directive's configuration context */
+
                     conf = NULL;
-                    if (cf->ctx) {
+
+                    if (cf->module_type == NGX_CORE_MODULE_TYPE) {
+                        conf = &(((void **) cf->ctx)[ngx_modules[i]->index]);
+
+                    } else if (cf->ctx) {
                         pconf = *(void **) ((char *) cf->ctx + cmd->conf);
 
                         if (pconf) {
@@ -197,7 +214,7 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
         cf->conf_file = prev;
 
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ERR, cf->log, ngx_errno,
+            ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
                           ngx_close_file_n " %s failed",
                           cf->conf_file->file.name.data);
             return NGX_CONF_ERROR;
@@ -445,6 +462,26 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
     field->len = value[1].len;
     field->data = value[1].data;
+
+    return NGX_CONF_OK;
+}
+
+
+char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+{
+    int         num, len;
+    ngx_str_t  *value;
+
+    value = (ngx_str_t *) cf->args->elts;
+
+    len = value[1].len;
+
+    num = ngx_atoi(value[1].data, len);
+    if (num == NGX_ERROR) {
+        return "invalid value";
+    }
+
+    *(int *) (conf + cmd->offset) = num;
 
     return NGX_CONF_OK;
 }

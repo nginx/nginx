@@ -298,6 +298,12 @@ extern int                   ngx_event_flags;
 #endif
 
 
+#define NGX_EVENT_MODULE_TYPE 0x544E5645  /* "EVNT" */
+
+#define NGX_EVENT_CONF        0x00200000
+
+
+
 void ngx_event_accept(ngx_event_t *ev);
 
 

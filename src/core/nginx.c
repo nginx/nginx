@@ -38,6 +38,7 @@ ngx_pool_t   *ngx_pool;
 
 
 int ngx_max_module;
+void *ctx_conf;
 
 int ngx_connection_counter;
 
@@ -81,8 +82,14 @@ int main(int argc, char *const *argv)
     }
 
     ngx_memzero(&conf, sizeof(ngx_conf_t));
-    ngx_test_null(conf.args,
-                  ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)), 1);
+
+    ngx_test_null(conf.args, ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)),
+                  1);
+
+    ngx_test_null(conf.ctx,
+                  ngx_pcalloc(ngx_pool, ngx_max_module * sizeof(void *)),
+                  1);
+
     conf.pool = ngx_pool;
     conf.log = &ngx_log;
     conf.module_type = NGX_CORE_MODULE_TYPE;

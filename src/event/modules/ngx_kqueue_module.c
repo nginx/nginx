@@ -10,12 +10,17 @@
 #include <ngx_connection.h>
 #include <ngx_event.h>
 #include <ngx_event_timer.h>
+#include <ngx_conf_file.h>
 #include <ngx_kqueue_module.h>
 
 
 /* STUB */
 #define KQUEUE_NCHANGES  512
 #define KQUEUE_NEVENTS   512
+
+
+static int  ngx_kqueue_changes;
+static int  ngx_kqueue_events;
 
 
 /* should be per-thread if threads are used without thread pool */
@@ -30,6 +35,37 @@ static int              nevents;
 
 static ngx_event_t     *timer_queue;
 /* */
+
+
+static ngx_str_t  kqueue_name = ngx_string("kqueue");
+
+static ngx_command_t  ngx_kqueue_commands[] = {
+
+    {ngx_string("kqueue_changes"),
+     NGX_EVENT_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_num_slot,
+     0,
+     addressof(ngx_kqueue_changes),
+     NULL},
+
+    {ngx_string("kqueue_events"),
+     NGX_EVENT_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_num_slot,
+     0,
+     addressof(ngx_kqueue_events),
+     NULL},
+
+    {ngx_string(""), 0, NULL, 0, 0, NULL}
+};
+
+ngx_module_t  ngx_kqueue_module = {
+    &kqueue_name,                          /* module context */
+    0,                                     /* module index */
+    ngx_kqueue_commands,                   /* module directives */
+    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NULL                                   /* init module */
+};
+
 
 
 int ngx_kqueue_init(int max_connections, ngx_log_t *log)

@@ -44,8 +44,8 @@ ngx_http_module_t  ngx_http_write_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_write_filter_module = {
-    0,                                     /* module index */
     &ngx_http_write_filter_module_ctx,     /* module context */
+    0,                                     /* module index */
     ngx_http_write_filter_commands,        /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
     ngx_http_write_filter_init             /* init module */

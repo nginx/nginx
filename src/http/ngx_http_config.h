@@ -7,6 +7,7 @@
 
 
 typedef struct {
+    void        **main_conf;
     void        **srv_conf;
     void        **loc_conf;
 } ngx_http_conf_ctx_t;
@@ -38,18 +39,17 @@ typedef struct {
 #define NGX_HTTP_LOC_CONF         0x8000000
 
 
-#define NGX_HTTP_SRV_CONF_OFFSET  offsetof(ngx_http_conf_ctx_t, srv_conf)
-#define NGX_HTTP_LOC_CONF_OFFSET  offsetof(ngx_http_conf_ctx_t, loc_conf)
+#define NGX_HTTP_MAIN_CONF_OFFSET  offsetof(ngx_http_conf_ctx_t, main_conf)
+#define NGX_HTTP_SRV_CONF_OFFSET   offsetof(ngx_http_conf_ctx_t, srv_conf)
+#define NGX_HTTP_LOC_CONF_OFFSET   offsetof(ngx_http_conf_ctx_t, loc_conf)
 
 
-#define ngx_http_get_module_srv_conf(r, module)  r->srv_conf[module.index]
-#define ngx_http_get_module_loc_conf(r, module)  r->loc_conf[module.index]
+#define ngx_http_get_module_main_conf(r, ctx)  r->main_conf[ctx.index]
+#define ngx_http_get_module_srv_conf(r, ctx)   r->srv_conf[ctx.index]
+#define ngx_http_get_module_loc_conf(r, ctx)   r->loc_conf[ctx.index]
 
 
 int ngx_http_config_modules(ngx_pool_t *pool, ngx_module_t **modules);
-
-
-extern ngx_module_t  ngx_http_module;
 
 
 extern int (*ngx_http_top_header_filter) (ngx_http_request_t *r);

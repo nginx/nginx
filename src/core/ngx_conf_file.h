@@ -17,18 +17,17 @@
  *        AAAA  number of agruments
  *      FF      command flags
  *    TT        command type, i.e. HTTP "location" or "server" command
- *  00
  */
 
-#define NGX_CONF_NOARGS      0x0000000001
-#define NGX_CONF_TAKE1       0x0000000002
-#define NGX_CONF_TAKE2       0x0000000004
-#define NGX_CONF_ARGS_NUMBER 0x000000ffff
-#define NGX_CONF_ANY         0x0000010000
-#define NGX_CONF_BLOCK       0x0000020000
-#define NGX_CONF_FLAG        0x0000040000
+#define NGX_CONF_NOARGS      0x00000001
+#define NGX_CONF_TAKE1       0x00000002
+#define NGX_CONF_TAKE2       0x00000004
+#define NGX_CONF_ARGS_NUMBER 0x0000ffff
+#define NGX_CONF_ANY         0x00010000
+#define NGX_CONF_BLOCK       0x00020000
+#define NGX_CONF_FLAG        0x00040000
 
-#define NGX_MAIN_CONF        0x0001000000
+#define NGX_MAIN_CONF        0x01000000
 
 
 
@@ -61,8 +60,8 @@ struct ngx_command_s {
 
 
 typedef struct {
-    int             index;
     void           *ctx;
+    int             index;
     ngx_command_t  *commands;
     int             type;
     int           (*init_module)(ngx_pool_t *p);
@@ -121,6 +120,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
 char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
+char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);

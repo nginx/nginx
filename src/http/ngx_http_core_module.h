@@ -18,6 +18,12 @@ typedef struct {
 
 
 typedef struct {
+    int          request_pool_size;
+    int          client_header_buffer_size;
+} ngx_http_core_main_conf_t;
+
+
+typedef struct {
     ngx_array_t  locations;    /* array of ngx_http_core_loc_conf_t */
 
     ngx_array_t  listen;       /* 'listen', array of ngx_http_listen_t */

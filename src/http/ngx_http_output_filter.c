@@ -45,8 +45,8 @@ static ngx_http_module_t  ngx_http_output_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_output_filter_module = {
-    0,                                     /* module index */
     &ngx_http_output_filter_module_ctx,    /* module context */
+    0,                                     /* module index */
     ngx_http_output_filter_commands,       /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
     NULL                                   /* init module */
