@@ -128,7 +128,7 @@ NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  1
 
-#endif
+#endif /* HAVE_KQUEUE */
 
 #if (USE_KQUEUE)
 
