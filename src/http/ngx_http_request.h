@@ -28,11 +28,12 @@
 #define NGX_HTTP_PARSE_HEADER_ERROR        14
 #define NGX_HTTP_PARSE_INVALID_HEADER      14
 #define NGX_HTTP_PARSE_TOO_LONG_HEADER     15
-#define NGX_HTTP_PARSE_NO_HOST_HEADER      16
-#define NGX_HTTP_PARSE_INVALID_CL_HEADER   17
-#define NGX_HTTP_PARSE_POST_WO_CL_HEADER   18
-#define NGX_HTTP_PARSE_HTTP_TO_HTTPS       19
-#define NGX_HTTP_PARSE_INVALID_HOST        20
+#define NGX_HTTP_PARSE_TOO_MANY_HEADERS    16
+#define NGX_HTTP_PARSE_NO_HOST_HEADER      17
+#define NGX_HTTP_PARSE_INVALID_CL_HEADER   18
+#define NGX_HTTP_PARSE_POST_WO_CL_HEADER   19
+#define NGX_HTTP_PARSE_HTTP_TO_HTTPS       20
+#define NGX_HTTP_PARSE_INVALID_HOST        21
 
 
 #define NGX_HTTP_OK                        200
@@ -114,7 +115,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_table_t       headers;   /* it must be first field */
+    ngx_list_t        headers;
 
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
@@ -158,7 +159,10 @@ typedef struct {
 
 
 typedef struct {
+    ngx_list_t        headers;
+#if 0
     ngx_table_t       headers;   /* it must be first field */
+#endif
 
     ngx_uint_t        status;
     ngx_str_t         status_line;
@@ -306,6 +310,8 @@ struct ngx_http_request_s {
     unsigned             filter_ssi_need_in_memory:1;
     unsigned             filter_need_temporary:1;
     unsigned             filter_allow_ranges:1;
+
+    ngx_uint_t           headers_n;
 
     /* used to parse HTTP headers */
     ngx_int_t            state;

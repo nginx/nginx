@@ -70,8 +70,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    if (!(r->headers_out.content_type =
-                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+    if (!(r->headers_out.content_type = ngx_push_list(&r->headers_out.headers)))
     {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     } 

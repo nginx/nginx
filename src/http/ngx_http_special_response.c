@@ -283,7 +283,7 @@ ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         }
 
         if (!(r->headers_out.content_type =
-                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+                                       ngx_push_list(&r->headers_out.headers)))
         {
             return NGX_ERROR;
         }

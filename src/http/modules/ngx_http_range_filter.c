@@ -123,9 +123,8 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
         || ngx_strncasecmp(r->headers_in.range->value.data, "bytes=", 6) != 0)
     {
 
-        if (!(r->headers_out.accept_ranges =
-                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
-        {
+        r->headers_out.accept_ranges = ngx_push_list(&r->headers_out.headers);
+        if (r->headers_out.accept_ranges == NULL) {
             return NGX_ERROR;
         }
 
@@ -245,18 +244,19 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
         r->headers_out.status = rc;
         r->headers_out.ranges.nelts = 0;
 
-        if (!(r->headers_out.content_range =
-                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
-        {
+        r->headers_out.content_range = ngx_push_list(&r->headers_out.headers);
+        if (r->headers_out.content_range == NULL) {
             return NGX_ERROR;
         }
 
         r->headers_out.content_range->key.len = sizeof("Content-Range") - 1;
         r->headers_out.content_range->key.data = (u_char *) "Content-Range";
 
-        ngx_test_null(r->headers_out.content_range->value.data,
-                      ngx_palloc(r->pool, 8 + 20 + 1),
-                      NGX_ERROR);
+        r->headers_out.content_range->value.data =
+                                               ngx_palloc(r->pool, 8 + 20 + 1);
+        if (r->headers_out.content_range->value.data == NULL) {
+            return NGX_ERROR;
+        }
 
         r->headers_out.content_range->value.len =
                 ngx_snprintf((char *) r->headers_out.content_range->value.data,
@@ -276,9 +276,9 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
 
         if (r->headers_out.ranges.nelts == 1) {
 
-            if (!(r->headers_out.content_range =
-                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
-            {
+            r->headers_out.content_range =
+                                        ngx_push_list(&r->headers_out.headers);
+            if (r->headers_out.content_range == NULL) {
                 return NGX_ERROR;
             }
 

@@ -196,25 +196,22 @@ static ngx_int_t ngx_http_userid_get_uid(ngx_http_request_t *r,
                                          ngx_http_userid_ctx_t *ctx,
                                          ngx_http_userid_conf_t *conf)
 {
-    u_char           *start, *last, *end;
-    ngx_uint_t       *cookies, i;
-    ngx_str_t         src, dst;
-    ngx_table_elt_t  *headers;
+    u_char            *start, *last, *end;
+    ngx_uint_t         i;
+    ngx_str_t          src, dst;
+    ngx_table_elt_t  **cookies;
 
-    headers = r->headers_in.headers.elts;
     cookies = r->headers_in.cookies.elts;
 
     for (i = 0; i < r->headers_in.cookies.nelts; i++) {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "cookie: %d:\"%s\"",
-                       cookies[i],
-                       headers[cookies[i]].value.data);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "cookie: \"%s\"", cookies[i]->value.data);
 
-        end = headers[cookies[i]].value.data + headers[cookies[i]].value.len;
+        end = cookies[i]->value.data + cookies[i]->value.len;
 
-        for (start = headers[cookies[i]].value.data; start < end; /* void */) {
+        for (start = cookies[i]->value.data; start < end; /* void */) {
 
-            if (conf->name.len >= headers[cookies[i]].value.len
+            if (conf->name.len >= cookies[i]->value.len
                 || ngx_strncmp(start, conf->name.data, conf->name.len) != 0)
             {
                 start += conf->name.len;
@@ -241,7 +238,7 @@ static ngx_int_t ngx_http_userid_get_uid(ngx_http_request_t *r,
             if (last - start < 22) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "client sent too short userid cookie \"%s\"",
-                              headers[cookies[i]].value.data);
+                              cookies[i]->value.data);
                 break;
             }
 
@@ -258,7 +255,7 @@ static ngx_int_t ngx_http_userid_get_uid(ngx_http_request_t *r,
             if (ngx_decode_base64(&src, &dst) == NGX_ERROR) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "client sent invalid userid cookie \"%s\"",
-                              headers[cookies[i]].value.data);
+                              cookies[i]->value.data);
                 break;
             }
 
@@ -384,8 +381,7 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "uid cookie: \"%s\"", cookie);
 
-    set_cookie = ngx_http_add_header(&r->headers_out, ngx_http_headers_out);
-    if (set_cookie == NULL) {
+    if (!(set_cookie = ngx_push_list(&r->headers_out.headers))) {
         return NGX_ERROR;
     }
 

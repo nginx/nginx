@@ -341,8 +341,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         *last++ = '/';
         *last = '\0';
 
-        if (!(r->headers_out.location =
-                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+        if (!(r->headers_out.location = ngx_push_list(&r->headers_out.headers)))
         {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }

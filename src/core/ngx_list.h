@@ -24,22 +24,47 @@ typedef struct {
 } ngx_list_t;
 
 
-#define ngx_init_list(l, p, n, s, rc)                                        \
-    if (!(l.part.elts = ngx_palloc(p, n * s))) {                             \
-        return rc;                                                           \
-    }                                                                        \
-    l.part.nelts = 0; l.part.next = NULL;                                    \
-    l.last = &l.part; l.size = s; l.nalloc = n; l.pool = p;
+ngx_inline static ngx_int_t ngx_init_list(ngx_list_t *list, ngx_pool_t *pool,
+                                          ngx_uint_t n, size_t size)
+{
+    if (!(list->part.elts = ngx_palloc(pool, n * size))) {
+        return NGX_ERROR;
+    }
+
+    list->part.nelts = 0;
+    list->part.next = NULL;
+    list->last = &list->part;
+    list->size = size;
+    list->nalloc = n;
+    list->pool = pool;
+
+    return NGX_OK;
+}
 
 
-#define ngx_iterate_list(p, i)                                               \
-            for ( ;; i++) {                                                  \
-                if (i >= p->nelts) {                                         \
-                    if (p->next == NULL) {                                   \
-                        break;                                               \
-                    }                                                        \
-                    p = p->next; i = 0;                                      \
-                }
+/*
+ *
+ *  the iteration through the list:
+ *
+ *  part = &list.part;
+ *  data = part->elts;
+ *
+ *  for (i = 0 ;; i++) {
+ *
+ *      if (i >= part->nelts) {
+ *          if (part->next == NULL) {
+ *              break;
+ *          }
+ *
+ *          part = part->next;
+ *          data = part->elts;
+ *          i = 0;
+ *      }
+ *
+ *      ...  data[i] ...
+ *
+ *  }
+ */
 
 
 void *ngx_push_list(ngx_list_t *list);

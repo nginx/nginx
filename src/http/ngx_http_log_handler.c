@@ -94,7 +94,7 @@ ngx_module_t  ngx_http_log_module = {
 };
 
 
-static ngx_str_t http_access_log = ngx_string("access.log");
+static ngx_str_t http_access_log = ngx_string(NGX_HTTP_LOG_PATH);
 
 
 static ngx_str_t ngx_http_combined_fmt =
@@ -339,12 +339,26 @@ static u_char *ngx_http_log_unknown_header_in(ngx_http_request_t *r,
 {
     ngx_uint_t        i;
     ngx_str_t        *s;
+    ngx_list_part_t  *part;
     ngx_table_elt_t  *h;
 
     s = (ngx_str_t *) data;
 
-    h = r->headers_in.headers.elts;
-    for (i = 0; i < r->headers_in.headers.nelts; i++) {
+    part = &r->headers_in.headers.part;
+    h = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            h = part->elts;
+            i = 0;
+        }
+
         if (h[i].key.len != s->len) {
             continue;
         }
@@ -547,12 +561,26 @@ static u_char *ngx_http_log_unknown_header_out(ngx_http_request_t *r,
 {
     ngx_uint_t        i;
     ngx_str_t        *s;
+    ngx_list_part_t  *part;
     ngx_table_elt_t  *h;
 
     s = (ngx_str_t *) data;
 
-    h = r->headers_out.headers.elts;
-    for (i = 0; i < r->headers_out.headers.nelts; i++) {
+    part = &r->headers_out.headers.part;
+    h = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            h = part->elts;
+            i = 0;
+        }
+
         if (h[i].key.len != s->len) {
             continue;
         }

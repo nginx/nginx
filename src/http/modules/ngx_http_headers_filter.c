@@ -75,15 +75,13 @@ static ngx_int_t ngx_http_headers_filter(ngx_http_request_t *r)
 
     if (conf->expires != NGX_HTTP_EXPIRES_OFF) {
 
-        expires = ngx_http_add_header(&r->headers_out, ngx_http_headers_out);
-        if (expires == NULL) {
+        if (!(expires = ngx_push_list(&r->headers_out.headers))) {
             return NGX_ERROR;
         }
 
         r->headers_out.expires = expires;
 
-        cc = ngx_http_add_header(&r->headers_out, ngx_http_headers_out);
-        if (cc == NULL) {
+        if (!(cc = ngx_push_list(&r->headers_out.headers))) {
             return NGX_ERROR;
         }
 

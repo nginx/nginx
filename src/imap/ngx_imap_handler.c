@@ -4,10 +4,10 @@
 #include <ngx_event.h>
 
 
-void ngx_imap_proxy_init_connection(ngx_connection_t *c)
+void ngx_imap_init_connection(ngx_connection_t *c)
 {
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0,
-                   "imap proxy init connection");
+                   "imap init connection");
 
     if (ngx_close_socket(c->fd) == -1) {
 

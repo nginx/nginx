@@ -29,6 +29,7 @@ EVENT_AIO=NO
 
 USE_THREADS=NO
 
+HTTP=YES
 HTTP_CHARSET=YES
 HTTP_GZIP=YES
 HTTP_SSL=NO
@@ -70,7 +71,6 @@ do
         --prefix=*)                      PREFIX="$value"            ;;
         --sbin-path=*)                   SBIN_PATH="$value"         ;;
         --conf-path=*)                   CONF_PATH="$value"         ;;
-        --http-log-path=*)               HTTP_LOG_PATH="$value"     ;;
         --error-log-path=*)              ERROR_LOG_PATH="$value"    ;;
         --pid-path=*)                    PID_PATH="$value"          ;;
 
@@ -87,6 +87,9 @@ do
 
         --with-threads=*)                USE_THREADS="$value"       ;;
         --with-threads)                  USE_THREADS="pthreads"     ;;
+
+        --without-http)                  HTTP=NO                    ;;
+        --http-log-path=*)               HTTP_LOG_PATH="$value"     ;;
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;

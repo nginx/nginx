@@ -40,6 +40,7 @@ static char *client_header_errors[] = {
 
     "client %s sent invalid header, URL: %s",
     "client %s sent too long header line, URL: %s",
+    "client %s sent too many headers, URL: %s",
     "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s",
     "client %s sent invalid \"Content-Length\" header, URL: %s",
     "client %s sent POST method without \"Content-Length\" header, URL: %s",
@@ -309,6 +310,16 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->cleanup.pool = r->pool;
 
 
+    if (ngx_init_list(&r->headers_out.headers, r->pool, 2,
+                                         sizeof(ngx_table_elt_t)) == NGX_ERROR)
+    {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_http_close_connection(c);
+        return;
+    }
+
+
+#if 0
     /* init the r->headers_out.headers table */
 
     r->headers_out.headers.elts = ngx_pcalloc(r->pool,
@@ -322,6 +333,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->headers_out.headers.nalloc = 20;
     r->headers_out.headers.size = sizeof(ngx_table_elt_t);
     r->headers_out.headers.pool = r->pool;
+#endif
 
 
     r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
@@ -607,36 +619,22 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         }
 
 
-        /* init the r->headers_in.headers table */
-
-        r->headers_in.headers.elts = ngx_pcalloc(r->pool,
-                                                 20 * sizeof(ngx_table_elt_t));
-        if (r->headers_in.headers.elts == NULL) {
+        if (ngx_init_list(&r->headers_in.headers, r->pool, 2,
+                                         sizeof(ngx_table_elt_t)) == NGX_ERROR)
+        {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             ngx_http_close_connection(c);
             return;
         }
 
-        /* r->headers_in.headers.nelts = 0; */
-        r->headers_in.headers.size = sizeof(ngx_table_elt_t);
-        r->headers_in.headers.nalloc = 20;
-        r->headers_in.headers.pool = r->pool;
 
-
-        /* init the r->headers_in.cookies array */
-
-        r->headers_in.cookies.elts = ngx_pcalloc(r->pool,
-                                                 5 * sizeof(ngx_uint_t));
-        if (r->headers_in.cookies.elts == NULL) {
+        if (ngx_init_array0(&r->headers_in.cookies, r->pool, 5,
+                                       sizeof(ngx_table_elt_t *)) == NGX_ERROR)
+        {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             ngx_http_close_connection(c);
             return;
         }
-
-        /* r->headers_in.cookies.nelts = 0; */
-        r->headers_in.cookies.size = sizeof(ngx_uint_t);
-        r->headers_in.cookies.nalloc = 5;
-        r->headers_in.cookies.pool = r->pool;
 
 
         ctx = c->log->data;
@@ -731,8 +729,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 {
     ssize_t                    n;
     ngx_int_t                  rc, i, offset;
-    ngx_uint_t                *cookie;
-    ngx_table_elt_t           *h;
+    ngx_table_elt_t           *h, **cookie;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
     ngx_http_core_srv_conf_t  *cscf;
@@ -761,14 +758,21 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             }
         }
 
+        if (r->headers_n > 100) {
+            ngx_http_client_error(r, NGX_HTTP_PARSE_TOO_MANY_HEADERS,
+                                  NGX_HTTP_BAD_REQUEST);
+            return;
+        }
+
         rc = ngx_http_parse_header_line(r, r->header_in);
 
         if (rc == NGX_OK) {
 
             /* a header line has been parsed successfully */
 
-            h = ngx_http_add_header(&r->headers_in, ngx_http_headers_in);
-            if (h == NULL) {
+            r->headers_n++;
+
+            if (!(h = ngx_push_list(&r->headers_in.headers))) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 ngx_http_close_connection(c);
                 return;
@@ -809,7 +813,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
                     return;
                 }
 
-                *cookie = r->headers_in.headers.nelts - 1;
+                *cookie = h;
 
             } else {
 
@@ -1369,7 +1373,7 @@ ngx_int_t ngx_http_discard_body(ngx_http_request_t *r)
 
 static void ngx_http_read_discarded_body_event(ngx_event_t *rev)
 {
-    int                  rc;
+    ngx_int_t            rc;
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
 
@@ -1446,7 +1450,7 @@ static ngx_int_t ngx_http_read_discarded_body(ngx_http_request_t *r)
 
 static void ngx_http_set_keepalive(ngx_http_request_t *r)
 {
-    int                        len;
+    size_t                     len;
     ngx_buf_t                 *b;
     ngx_event_t               *rev, *wev;
     ngx_connection_t          *c;

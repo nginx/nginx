@@ -92,12 +92,13 @@ static ngx_str_t http_codes[] = {
 
 static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
 {
-    u_char            *p;
-    size_t             len;
-    ngx_uint_t         status, i;
-    ngx_buf_t         *b;
-    ngx_chain_t       *ln;
-    ngx_table_elt_t   *header;
+    u_char           *p;
+    size_t            len;
+    ngx_uint_t        status, i;
+    ngx_buf_t        *b;
+    ngx_chain_t      *ln;
+    ngx_list_part_t  *part;
+    ngx_table_elt_t  *header;
 
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
@@ -205,8 +206,26 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
         len += sizeof("Connection: closed" CRLF) - 1;
     }
 
+    part = &r->headers_out.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+#if 0
     header = r->headers_out.headers.elts;
     for (i = 0; i < r->headers_out.headers.nelts; i++) {
+#endif
+
         if (header[i].key.len == 0) {
             continue;
         }
@@ -321,7 +340,25 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
                              sizeof("Connection: close" CRLF) - 1);
     }
 
+    part = &r->headers_out.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+#if 0
     for (i = 0; i < r->headers_out.headers.nelts; i++) {
+#endif
+
         if (header[i].key.len == 0) {
             continue;
         }

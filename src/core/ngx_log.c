@@ -37,8 +37,8 @@ ngx_module_t  ngx_errlog_module = {
 };
 
 
-static ngx_open_file_t  ngx_stderr;
 static ngx_log_t        ngx_log;
+static ngx_open_file_t  ngx_stderr;
 
 
 static const char *err_levels[] = {
@@ -296,8 +296,13 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
         name = NULL;
     }
 
-    ngx_test_null(log, ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)), NULL);
-    ngx_test_null(log->file, ngx_conf_open_file(cycle, name), NULL);
+    if (!(log = ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)))) {
+        return NULL;
+    }
+
+    if (!(log->file = ngx_conf_open_file(cycle, name))) {
+        return NULL;
+    }
 
     return log;
 }
@@ -363,7 +368,9 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     if (value[1].len == 6 && ngx_strcmp(value[1].data, "stderr") == 0) {
-        cf->cycle->new_log->file = &ngx_stderr;
+        cf->cycle->new_log->file->fd = ngx_stderr.fd;
+        cf->cycle->new_log->file->name.len = 0;
+        cf->cycle->new_log->file->name.data = NULL;
 
     } else {
         cf->cycle->new_log->file->name = value[1];

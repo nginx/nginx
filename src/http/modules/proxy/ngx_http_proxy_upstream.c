@@ -113,6 +113,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     ngx_uint_t                       i;
     ngx_buf_t                       *b;
     ngx_chain_t                     *chain;
+    ngx_list_part_t                 *part;
     ngx_table_elt_t                 *header;
     ngx_http_request_t              *r;
     ngx_http_proxy_upstream_conf_t  *uc;
@@ -165,8 +166,20 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     }
 
 
-    header = r->headers_in.headers.elts;
-    for (i = 0; i < r->headers_in.headers.nelts; i++) {
+    part = &r->headers_in.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
 
         if (&header[i] == r->headers_in.host) {
             continue;
@@ -274,7 +287,20 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     }
 
 
-    for (i = 0; i < r->headers_in.headers.nelts; i++) {
+    part = &r->headers_in.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
 
         if (&header[i] == r->headers_in.host) {
             continue;

@@ -24,6 +24,8 @@ ngx_tls_key_t          ngx_core_tls_key;
 static ngx_connection_t  dumb;
 /* STUB */
 
+static ngx_str_t  error_log = ngx_string(NGX_ERROR_LOG_PATH);
+
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
@@ -79,37 +81,20 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         n = 20;
     }
 
-    cycle->open_files.part.elts = ngx_palloc(pool, n * sizeof(ngx_open_file_t));
-    if (cycle->open_files.part.elts == NULL) {
+    if (ngx_init_list(&cycle->open_files, pool, n, sizeof(ngx_open_file_t))
+                                                                  == NGX_ERROR)
+    {
         ngx_destroy_pool(pool);
         return NULL;
     }
-    cycle->open_files.part.nelts = 0;
-    cycle->open_files.part.next = NULL;
-    cycle->open_files.last = &cycle->open_files.part;
-    cycle->open_files.size = sizeof(ngx_open_file_t);
-    cycle->open_files.nalloc = n;
-    cycle->open_files.pool = pool;
-
-
-#if 0
-    n = old_cycle->open_files.nelts ? old_cycle->open_files.nelts : 20;
-    cycle->open_files.elts = ngx_pcalloc(pool, n * sizeof(ngx_open_file_t));
-    if (cycle->open_files.elts == NULL) {
-        ngx_destroy_pool(pool);
-        return NULL;
-    }
-    cycle->open_files.nelts = 0;
-    cycle->open_files.size = sizeof(ngx_open_file_t);
-    cycle->open_files.nalloc = n;
-    cycle->open_files.pool = pool;
-#endif
 
 
     if (!(cycle->new_log = ngx_log_create_errlog(cycle, NULL))) {
         ngx_destroy_pool(pool);
         return NULL;
     }
+
+    cycle->new_log->file->name = error_log;
 
 
     n = old_cycle->listening.nelts ? old_cycle->listening.nelts : 10;
@@ -221,11 +206,6 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                 i = 0;
             }
 
-#if 0
-        file = cycle->open_files.elts;
-        for (i = 0; i < cycle->open_files.nelts; i++) {
-#endif
-
             if (file[i].name.data == NULL) {
                 continue;
             }
@@ -234,7 +214,9 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                                        NGX_FILE_RDWR,
                                        NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 
+#if 0
             log->log_level = NGX_LOG_DEBUG_ALL;
+#endif
             ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
                            "log: %0X %d \"%s\"",
                            &file[i], file[i].fd, file[i].name.data);
@@ -269,6 +251,10 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     cycle->log = cycle->new_log;
     pool->log = cycle->new_log;
+
+    if (cycle->log->log_level == 0) {
+        cycle->log->log_level = NGX_LOG_ERR;
+    }
 
     if (!failed) {
         if (old_cycle->listening.nelts) {
@@ -335,7 +321,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 #if !(WIN32)
 
-    if (!failed && !ngx_test_config) {
+    if (!failed && !ngx_test_config && cycle->log->file->fd != STDERR_FILENO) {
 
         ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
                        "dup2: %0X %d \"%s\"",
@@ -368,11 +354,6 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                 file = part->elts;
                 i = 0;
             }
-
-#if 0
-        file = cycle->open_files.elts;
-        for (i = 0; i < cycle->open_files.nelts; i++) {
-#endif
 
             if (file[i].fd == NGX_INVALID_FILE) {
                 continue;
@@ -455,11 +436,6 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
             file = part->elts;
             i = 0;
         }
-
-#if 0
-    file = old_cycle->open_files.elts;
-    for (i = 0; i < old_cycle->open_files.nelts; i++) {
-#endif
 
         if (file[i].fd == NGX_INVALID_FILE) {
             continue;
@@ -639,11 +615,6 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
             i = 0;
         }
 
-#if 0
-    file = cycle->open_files.elts;
-    for (i = 0; i < cycle->open_files.nelts; i++) {
-#endif
-
         if (file[i].name.data == NULL) {
             continue;
         }
@@ -715,9 +686,11 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 
 #if !(WIN32)
 
-    if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      "dup2(STDERR) failed");
+    if (cycle->log->file->fd != STDERR_FILENO) {
+        if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "dup2(STDERR) failed");
+        }
     }
 
 #endif
