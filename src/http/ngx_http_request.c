@@ -583,6 +583,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
                 if (ngx_strcasecmp(headers_in[i].name.data, h->key.data) == 0) {
                     *((ngx_table_elt_t **)
                         ((char *) &r->headers_in + headers_in[i].offset)) = h;
+                    break;
                 }
             }
 

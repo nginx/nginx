@@ -100,7 +100,7 @@ int ngx_os_init(ngx_log_t *log)
 
     /*
      * The determination of the sendfile() nbytes bug is complex enough.
-     * There're two sendfile() syscalls: a new 393 has no bug while
+     * There are two sendfile() syscalls: a new 393 has no bug while
      * an old 336 has the bug in some versions and has not in others.
      * Besides libc_r wrapper also emulates the bug in some versions.
      * There's no way to say exactly if a given FreeBSD version has the bug.

@@ -14,8 +14,8 @@
  * and the first part of the file in one packet but also sends 4K pages
  * in the full packets.
  *
- * Until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush
- * the pending data that less than MSS so the data is sent with 5 second delay.
+ * Until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush the pending
+ * data that less than MSS so the data can be sent with 5 second delay.
  * We do not use TCP_NOPUSH on FreeBSD prior to 4.5 although it can be used
  * for non-keepalive HTTP connections.
  */
@@ -23,10 +23,10 @@
 
 ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
-    int              rc, eintr;
+    int              rc, eintr, eagain;
     char            *prev;
-    ssize_t          hsize, size;
-    off_t            sent;
+    ssize_t          hsize, fsize, size;
+    off_t            sent, fprev;
     struct iovec    *iov;
     struct sf_hdtr   hdtr;
     ngx_err_t        err;
@@ -41,8 +41,10 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     do {
         ce = in;
         file = NULL;
+        fsize = 0;
         hsize = 0;
         eintr = 0;
+        eagain = 0;
 
         ngx_init_array(header, c->pool, 10, sizeof(struct iovec),
                        NGX_CHAIN_ERROR);
@@ -77,11 +79,27 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             hsize += ce->hunk->last - ce->hunk->pos;
         }
 
-        /* TODO: coalesce the neighbouring file hunks */
+        /* get the file hunk */
 
         if (ce && (ce->hunk->type & NGX_HUNK_FILE)) {
             file = ce->hunk;
             ce = ce->next;
+            fsize = (size_t) (file->file_last - file->file_pos);
+            fprev = file->file_last;
+
+            /* coalesce the neighbouring file hunks */
+
+            while (ce && (ce->hunk->type & NGX_HUNK_FILE)) {
+                if (file->file->fd != ce->hunk->file->fd
+                    || fprev != ce->hunk->file_pos)
+                {
+                    break;
+                }
+
+                fsize += (size_t) (ce->hunk->file_last - ce->hunk->file_pos);
+                fprev = ce->hunk->file_last;
+                ce = ce->next;
+            }
         }
 
         /* create the iovec and coalesce the neighbouring chain entries */
@@ -110,6 +128,11 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             }
         }
 
+        /*
+         * the tail is the rest of the chain that exceeded
+         * a single sendfile() capability
+         */
+
         tail = ce;
 
         if (file) {
@@ -136,14 +159,17 @@ ngx_log_debug(c->log, "NOPUSH");
             }
 
             rc = sendfile(file->file->fd, c->fd, file->file_pos,
-                          (size_t) (file->file_last - file->file_pos) + hsize,
-                          &hdtr, &sent, 0);
+                          fsize + hsize, &hdtr, &sent, 0);
 
             if (rc == -1) {
                 err = ngx_errno;
 
                 if (err == NGX_EINTR) {
                     eintr = 1;
+                }
+
+                if (err == NGX_EAGAIN) {
+                    eagain = 1;
                 }
 
                 if (err == NGX_EAGAIN || err == NGX_EINTR) {
@@ -159,8 +185,7 @@ ngx_log_debug(c->log, "NOPUSH");
 
 #if (NGX_DEBUG_WRITE_CHAIN)
             ngx_log_debug(c->log, "sendfile: %d, @%qd %qd:%d" _
-                          rc _ file->file_pos _ sent _
-                          (size_t) (file->file_last - file->file_pos) + hsize);
+                          rc _ file->file_pos _ sent _ fsize + hsize);
 #endif
 
         } else {
@@ -169,6 +194,7 @@ ngx_log_debug(c->log, "NOPUSH");
             if (rc == -1) {
                 err = ngx_errno;
                 if (err == NGX_EAGAIN) {
+                    eagain = 1;
                     ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EAGAIN");
 
                 } else if (err == NGX_EINTR) {
@@ -190,13 +216,17 @@ ngx_log_debug(c->log, "NOPUSH");
 
         c->sent += sent;
 
-        for (ce = in; ce && sent > 0; ce = ce->next) {
+        for (ce = in; ce; ce = ce->next) {
 
-            if (ce->hunk->type & NGX_HUNK_IN_MEMORY) {
-                size = ce->hunk->last - ce->hunk->pos;
-            } else {
-                size = ce->hunk->file_last - ce->hunk->file_pos;
+            if (ngx_hunk_special(ce->hunk)) {
+                continue;
             }
+
+            if (sent == 0) {
+                break;
+            }
+
+            size = ngx_hunk_size(ce->hunk);
 
             if (sent >= size) {
                 sent -= size;
@@ -223,16 +253,20 @@ ngx_log_debug(c->log, "NOPUSH");
             break;
         }
 
-        ngx_destroy_array(&trailer);
-        ngx_destroy_array(&header);
-
         in = ce;
 
-    } while ((tail && tail == ce) || eintr);
+        if (eagain) {
+            c->write->ready = 0;
+            break;
+        }
 
-    if (ce) {
+        /* "tail == in" means that a single sendfile() is complete */
+
+    } while ((tail && tail == in) || eintr);
+
+    if (in) {
         c->write->ready = 0;
     }
 
-    return ce;
+    return in;
 }

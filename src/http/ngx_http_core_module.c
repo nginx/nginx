@@ -207,13 +207,31 @@ void ngx_http_handler(ngx_http_request_t *r)
     lcx = r->connection->log->data;
     lcx->action = NULL;
 
+    /* STUB */
     r->keepalive = 1;
+    if (r->headers_in.connection) {
+        if (r->headers_in.connection->value.len == 5
+            && ngx_strcasecmp(r->headers_in.connection->value.data, "close")
+                                                                          == 0)
+        {
+            r->keepalive = 0;
+        }
+    }
+
+#if 0
+    /* TEST STUB */ r->keepalive = 0;
+#endif
 
     if (r->headers_in.content_length_n > 0) {
         r->lingering_close = 1;
+
+    } else {
+        r->lingering_close = 0;
     }
 
+#if 0
     /* TEST STUB */ r->lingering_close = 1;
+#endif
 
     r->connection->write->event_handler = ngx_http_phase_event_handler;
 
@@ -258,6 +276,11 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
         {
             rc = h[r->phase_handler](r);
 
+            if (rc == NGX_DONE) {
+                return;
+            }
+
+            /* TODO THINK: is it dupliate NGX_DONE ??? */
             if (r->closed) {
                 return;
             }
@@ -435,7 +458,7 @@ int ngx_http_internal_redirect(ngx_http_request_t *r,
 
     ngx_http_handler(r);
 
-    return NGX_OK;
+    return NGX_DONE;
 }
 
 

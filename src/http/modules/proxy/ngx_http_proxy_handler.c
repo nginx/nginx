@@ -742,6 +742,12 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
     ep->preread_size = p->header_in->last - p->header_in->pos;
 
+    /*
+     * event_proxy would do p->header_in->last += ep->preread_size
+     * as these bytes were read.
+     */
+    p->header_in->last = p->header_in->pos;
+
     /* STUB */ ep->cachable = 0;
 
     p->event_proxy = ep;
@@ -806,7 +812,7 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
         }
 
         if (ep->upstream_done || ep->upstream_eof || ep->upstream_error) {
-            ngx_http_proxy_close_connection(c);
+            ngx_http_proxy_close_connection(p->upstream.connection);
             p->upstream.connection = NULL;
         }
     }
@@ -819,7 +825,7 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
 
     if (ep->downstream_error) {
         if (!p->cachable && p->upstream.connection) {
-            ngx_http_proxy_close_connection(c);
+            ngx_http_proxy_close_connection(p->upstream.connection);
             p->upstream.connection = NULL;
         }
  
@@ -1052,7 +1058,9 @@ static void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
         p->upstream.connection = NULL;
     }
 
-    if (p->header_sent) {
+    if (p->header_sent
+        && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
+    {
         rc = 0;
     }
 
@@ -1152,7 +1160,12 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->bufs.num = 10;
     conf->bufs.size = 4096;
     conf->max_busy_len = 8192 + 4096;
+
+
+    /* CHECK in _init conf->max_temp_size >= conf->bufs.size !!! */
     conf->max_temp_file_size = 4096 * 6;
+
+
     conf->temp_file_write_size = 4096 * 2;
 
     ngx_test_null(conf->temp_path, ngx_pcalloc(cf->pool, sizeof(ngx_path_t)),

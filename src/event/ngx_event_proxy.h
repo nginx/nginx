@@ -47,7 +47,6 @@ struct ngx_event_proxy_s {
     int                hunks;
     ngx_bufs_t         bufs;
 
-    size_t             busy_len;
     size_t             max_busy_len;
 
     off_t              temp_offset;
