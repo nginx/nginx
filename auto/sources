@@ -249,6 +249,10 @@ HTTP_GZIP_FILTER_MODULE=ngx_http_gzip_filter_module
 HTTP_GZIP_SRCS=src/http/modules/ngx_http_gzip_filter.c
 
 
+HTTP_SSL_FILTER_MODULE=ngx_http_ssl_filter_module
+HTTP_SSL_SRCS=src/http/modules/ngx_http_ssl_filter.c
+
+
 HTTP_SSI_FILTER_MODULE=ngx_http_ssi_filter_module
 HTTP_SSI_SRCS=src/http/modules/ngx_http_ssi_filter.c
 

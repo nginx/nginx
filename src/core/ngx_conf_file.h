@@ -45,6 +45,7 @@
 
 #define NGX_CONF_UNSET       -1
 #define NGX_CONF_UNSET_UINT  (ngx_uint_t) -1
+#define NGX_CONF_UNSET_PTR   (void *) -1
 #define NGX_CONF_UNSET_SIZE  (size_t) -1
 #define NGX_CONF_UNSET_MSEC  (ngx_msec_t) -1
 
@@ -181,7 +182,7 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
     }
 
 #define ngx_conf_init_ptr_value(conf, default)                               \
-    if (conf == (void *) NGX_CONF_UNSET) {                                   \
+    if (conf == NGX_CONF_UNSET_PTR) {                                        \
         conf = default;                                                      \
     }
 
@@ -203,6 +204,11 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 #define ngx_conf_merge_value(conf, prev, default)                            \
     if (conf == NGX_CONF_UNSET) {                                            \
         conf = (prev == NGX_CONF_UNSET) ? default : prev;                    \
+    }
+
+#define ngx_conf_merge_ptr_value(conf, prev, default)                        \
+    if (conf == NULL) {                                                      \
+        conf = (prev == NULL) ? default : prev;                              \
     }
 
 #define ngx_conf_merge_unsigned_value(conf, prev, default)                   \

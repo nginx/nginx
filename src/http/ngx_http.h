@@ -10,7 +10,9 @@ typedef struct ngx_http_request_s  ngx_http_request_t;
 typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 
 #if (NGX_HTTP_CACHE)
+#include <ngx_http_cache.h>
 #endif
+/* STUB */
 #include <ngx_http_cache.h>
 
 #include <ngx_http_request.h>
@@ -18,6 +20,10 @@ typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 #include <ngx_http_busy_lock.h>
 #include <ngx_http_log_handler.h>
 #include <ngx_http_core_module.h>
+
+#if (NGX_HTTP_SSL)
+#include <ngx_http_ssl_filter.h>
+#endif
 
 
 typedef struct {
@@ -48,14 +54,6 @@ typedef struct {
 #define ngx_http_delete_ctx(r, module)                                        \
             r->ctx[module.ctx_index] = NULL;
 
-
-/* STUB */
-#define NGX_INDEX "index.html"
-
-
-/* STUB */
-int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log);
-/**/
 
 void ngx_http_init_connection(ngx_connection_t *c);
 

@@ -58,6 +58,14 @@ if [ $HTTP_GZIP = YES ]; then
     HTTP_SRCS="$HTTP_SRCS $HTTP_GZIP_SRCS"
 fi
 
+if [ $HTTP_SSL = YES ]; then
+    have=NGX_HTTP_SSL . auto/have
+    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_SSL_FILTER_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_SSL_SRCS"
+    # STUB: move to auto/libs/ssl
+    CORE_LIBS="$CORE_LIBS -lssl -lcrypto"
+fi
+
 if [ $HTTP_SSI = YES ]; then
     have=NGX_HTTP_SSI . auto/have
     HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_SSI_FILTER_MODULE"

@@ -205,7 +205,9 @@ static void ngx_kqueue_done(ngx_cycle_t *cycle)
 
     ngx_kqueue = -1;
 
+#if (NGX_THREADS)
     ngx_mutex_destroy(ngx_kqueue_mutex);
+#endif
 
     ngx_free(change_list1);
     ngx_free(change_list0);
