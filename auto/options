@@ -6,6 +6,7 @@ OBJS=objs
 
 TEST_BUILD_DEVPOLL=NO
 
+HTTP_REWRITE=YES
 HTTP_GZIP=YES
 HTTP_PROXY=YES
 
@@ -34,6 +35,7 @@ do
 
         --builddir=*)                    OBJS="$value"              ;;
 
+        --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
 

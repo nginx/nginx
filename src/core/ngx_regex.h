@@ -15,7 +15,8 @@ typedef pcre  ngx_regex_t;
 void ngx_regex_init();
 ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
                                ngx_pool_t *pool, ngx_str_t *err);
-ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s);
+ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s,
+                         int *matches, ngx_int_t size);
 
 #define ngx_regex_exec_n  "pcre_exec()"
 

@@ -45,11 +45,12 @@ ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
 }
 
 
-ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s)
+ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s,
+                         int *matches, ngx_int_t size)
 {
     int  rc;
 
-    rc = pcre_exec(re, NULL, s->data, s->len, 0, 0, NULL, 0);
+    rc = pcre_exec(re, NULL, s->data, s->len, 0, 0, matches, size);
 
     if (rc == -1) {
         return NGX_DECLINED;

@@ -470,14 +470,14 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
         && ngx_strncasecmp(s->data, "Connection", s->len) == 0)
     {
         op->op = ngx_http_log_connection_header_out;
-        op->data = NULL;
+        op->data = (uintptr_t) NULL;
         return NULL;
     }
 
     if (s->len == sizeof("Transfer-Encoding") - 1
         && ngx_strncasecmp(s->data, "Transfer-Encoding", s->len) == 0) {
         op->op = ngx_http_log_transfer_encoding_header_out;
-        op->data = NULL;
+        op->data = (uintptr_t) NULL;
         return NULL;
     }
 

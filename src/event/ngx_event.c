@@ -8,6 +8,7 @@
 
 
 extern ngx_module_t ngx_select_module;
+extern ngx_event_module_t ngx_select_module_ctx;
 
 #if (HAVE_KQUEUE)
 #include <ngx_kqueue_module.h>

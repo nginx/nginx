@@ -142,6 +142,8 @@ static void ngx_http_init_request(ngx_event_t *rev)
         }
     }
 
+    r->http_state = NGX_HTTP_INITING_REQUEST_STATE;
+
     /* find the server configuration for the address:port */
 
     /* AF_INET only */
@@ -1519,6 +1521,7 @@ void ngx_http_close_connection(ngx_connection_t *c)
     }
 
     c->fd = -1;
+    c->data = NULL;
 
     ngx_destroy_pool(c->pool);
 
@@ -1545,13 +1548,13 @@ static void ngx_http_client_error(ngx_http_request_t *r,
 
     if (ctx->url) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                     client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
-                     ctx->client, ctx->url);
+                    client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
+                    ctx->client, ctx->url);
 
     } else {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                     client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
-                     ctx->client);
+                    client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
+                    ctx->client);
     }
 
     r->connection->log->handler = ngx_http_log_error;

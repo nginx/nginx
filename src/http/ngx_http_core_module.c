@@ -469,7 +469,7 @@ int ngx_http_find_location_config(ngx_http_request_t *r)
                                  clcfp[i]->regex ? "~ " : "",
                            clcfp[i]->name.data);
 
-            rc = ngx_regex_exec(clcfp[i]->regex, &r->uri);
+            rc = ngx_regex_exec(clcfp[i]->regex, &r->uri, NULL, 0);
 
             if (rc == NGX_DECLINED) {
                 continue;
@@ -613,11 +613,40 @@ int ngx_http_error(ngx_http_request_t *r, int error)
 }
 
 
+ngx_int_t ngx_http_set_exten(ngx_http_request_t *r)
+{
+    ngx_int_t  i;
+
+    r->exten.len = 0;
+    r->exten.data = NULL;
+
+    for (i = r->uri.len - 1; i > 1; i--) {
+        if (r->uri.data[i] == '.' && r->uri.data[i - 1] != '/') {
+            r->exten.len = r->uri.len - i - 1;
+
+            if (r->exten.len > 0) {
+                if (!(r->exten.data = ngx_palloc(r->pool, r->exten.len + 1))) {
+                    return NGX_ERROR;
+                }
+
+                ngx_cpystrn(r->exten.data, &r->uri.data[i + 1],
+                            r->exten.len + 1);
+            }
+
+            break;
+
+        } else if (r->uri.data[i] == '/') {
+            break;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
 int ngx_http_internal_redirect(ngx_http_request_t *r,
                                ngx_str_t *uri, ngx_str_t *args)
 {
-    int  i;
-
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "internal redirect: \"%s\"", uri->data);
 
@@ -629,26 +658,8 @@ int ngx_http_internal_redirect(ngx_http_request_t *r,
         r->args.data = args->data;
     }
 
-    r->exten.len = 0;
-    r->exten.data = NULL;
-
-    for (i = uri->len - 1; i > 1; i--) {
-        if (uri->data[i] == '.' && uri->data[i - 1] != '/') {
-            r->exten.len = uri->len - i - 1;
-
-            if (r->exten.len > 0) {
-                ngx_test_null(r->exten.data,
-                              ngx_palloc(r->pool, r->exten.len + 1),
-                              NGX_HTTP_INTERNAL_SERVER_ERROR);
-
-                ngx_cpystrn(r->exten.data, &uri->data[i + 1], r->exten.len + 1);
-            }
-
-            break;
-
-        } else if (uri->data[i] == '/') {
-            break;
-        }
+    if (ngx_http_set_exten(r) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     if (r->err_ctx) {
@@ -872,7 +883,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     clcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
     clcf->loc_conf = ctx->loc_conf;
 
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
 
     if (cf->args->nelts == 3) {
         if (value[1].len == 1 && value[1].data[0] == '=') {
@@ -898,8 +909,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
                 return NGX_CONF_ERROR;
             }
 
-            clcf->name.len = value[2].len;
-            clcf->name.data = value[2].data;
+            clcf->name = value[2];
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "the using of the regex \"%s\" "

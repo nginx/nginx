@@ -50,19 +50,19 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     int                          port_found, addr_found, virtual_names;
     char                        *rv;
     struct sockaddr_in          *addr_in;
+    ngx_conf_t                   pcf;
     ngx_array_t                  in_ports;
     ngx_listening_t             *ls;
+    ngx_http_listen_t           *lscf;
     ngx_http_module_t           *module;
-    ngx_conf_t                   pcf;
     ngx_http_handler_pt         *h;
     ngx_http_conf_ctx_t         *ctx;
     ngx_http_in_port_t          *in_port, *inport;
     ngx_http_in_addr_t          *in_addr, *inaddr;
-    ngx_http_core_main_conf_t   *cmcf;
+    ngx_http_server_name_t      *s_name, *name;
     ngx_http_core_srv_conf_t   **cscfp, *cscf;
     ngx_http_core_loc_conf_t   **clcfp, *clcf;
-    ngx_http_listen_t           *lscf;
-    ngx_http_server_name_t      *s_name, *name;
+    ngx_http_core_main_conf_t   *cmcf;
 #if (WIN32)
     ngx_iocp_conf_t             *iocpcf;
 #endif

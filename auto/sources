@@ -193,6 +193,10 @@ HTTP_SRCS="src/http/ngx_http.c \
             src/http/modules/ngx_http_not_modified_filter.c"
 
 
+HTTP_REWRITE_MODULE=ngx_http_rewrite_module
+HTTP_REWRITE_SRCS=src/http/modules/ngx_http_rewrite_handler.c
+
+
 HTTP_GZIP_FILTER_MODULE=ngx_http_gzip_filter_module
 HTTP_GZIP_SRCS=src/http/modules/ngx_http_gzip_filter.c
 HTTP_GZIP_UNIX_LIBS=-lz

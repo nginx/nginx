@@ -64,9 +64,19 @@
 #define NGX_HTTP_GATEWAY_TIME_OUT          504
 
 
+typedef enum {
+    NGX_HTTP_INITING_REQUEST_STATE = 0,
+    NGX_HTTP_READING_REQUEST_STATE,
+    NGX_HTTP_PROCESS_REQUEST_STATE,
 
-#define NGX_HTTP_STATIC_HANDLER     0
-#define NGX_HTTP_DIRECTORY_HANDLER  1
+    NGX_HTTP_CONNECT_UPSTREAM_STATE,
+    NGX_HTTP_WRITING_UPSTREAM_STATE,
+    NGX_HTTP_READING_UPSTREAM_STATE,
+
+    NGX_HTTP_WRITING_REQUEST_STATE,
+    NGX_HTTP_LINGERING_CLOSE_STATE,
+    NGX_HTTP_KEEPALIVE_STATE
+} ngx_http_state_e;
 
 
 typedef struct {
@@ -222,6 +232,8 @@ struct ngx_http_request_s {
     char                *discarded_buffer;
     void               **err_ctx;
     int                  err_status;
+
+    unsigned             http_state:4;
 
     /* URI is not started with '/' - "GET http://" */
     unsigned             unusual_uri:1;

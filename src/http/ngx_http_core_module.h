@@ -156,6 +156,7 @@ int ngx_http_find_location_config(ngx_http_request_t *r);
 int ngx_http_core_translate_handler(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
+ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 
 int ngx_http_internal_redirect(ngx_http_request_t *r,
                                ngx_str_t *uri, ngx_str_t *args);

@@ -204,11 +204,13 @@ int main(int argc, char *const *argv)
                 ngx_process_events(cycle->log);
 
                 if (done) {
+#if !(WIN32)
                     if (ngx_delete_file(pidfile.name.data) == NGX_FILE_ERROR) {
                         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                                       ngx_delete_file_n " \"%s\" failed",
                                       pidfile.name.data);
                     }
+#endif
 
                     ngx_log_error(NGX_LOG_INFO,
                                   cycle->log, 0, "exiting");
@@ -291,11 +293,11 @@ ngx_log_debug(log, "REOPEN: %d:%d:%s" _ fd _ file[i].fd _ file[i].name.data);
 static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 {
     int               i, n, failed;
-    ngx_fd_t          fd;
     ngx_str_t         conf_file;
     ngx_conf_t        conf;
     ngx_pool_t       *pool;
     ngx_cycle_t      *cycle, **old;
+    ngx_socket_t      fd;
     ngx_core_conf_t  *ccf;
     ngx_open_file_t  *file;
     ngx_listening_t  *ls, *nls;
@@ -457,7 +459,7 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
 
                         fd /= 4;
 #endif
-                        if (fd >= cycle->connection_n) {
+                        if (fd >= (ngx_socket_t) cycle->connection_n) {
                             ngx_log_error(NGX_LOG_EMERG, log, 0,
                                         "%d connections is not enough to hold "
                                         "an open listening socket on %s, "

@@ -81,7 +81,7 @@ struct ngx_connection_s {
 
     ngx_hunk_t       *buffer;
 
-    int               number;
+    ngx_int_t         number;
 
     unsigned          pipeline:1;
     unsigned          unexpected_eof:1;
