@@ -41,6 +41,9 @@ typedef struct {
     int                tries;
 
     ngx_connection_t  *connection;
+#if (NGX_THREADS)
+    ngx_atomic_t      *lock;
+#endif
 
     int                rcvbuf;
 

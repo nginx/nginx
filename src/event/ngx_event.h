@@ -73,8 +73,6 @@ struct ngx_event_s {
 
     unsigned         deferred_accept:1;
 
-    unsigned         overflow:1;
-
     /* the pending eof reported by kqueue or in aio chain operation */
     unsigned         pending_eof:1;
 

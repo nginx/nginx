@@ -279,6 +279,9 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     rev = cycle->read_events;
     for (i = 0; i < cycle->connection_n; i++) {
         rev[i].closed = 1;
+#if (NGX_THREADS)
+        rev[i].lock = &c[i].lock;
+#endif
     }
 
     cycle->write_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
@@ -290,6 +293,9 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     wev = cycle->write_events;
     for (i = 0; i < cycle->connection_n; i++) {
         wev[i].closed = 1;
+#if (NGX_THREADS)
+        wev[i].lock = &c[i].lock;
+#endif
     }
 
     /* for each listening socket */

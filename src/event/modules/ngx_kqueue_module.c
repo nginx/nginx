@@ -157,7 +157,6 @@ static ngx_int_t ngx_kqueue_init(ngx_cycle_t *cycle)
 #if (HAVE_LOWAT_EVENT)
                      |NGX_HAVE_LOWAT_EVENT
 #endif
-                     |NGX_HAVE_INSTANCE_EVENT
                      |NGX_HAVE_KQUEUE_EVENT;
 
     return NGX_OK;
@@ -370,7 +369,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
     for ( ;; ) {
         timer = ngx_event_find_timer();
 
-#if (NGX_THREADS0)
+#if (NGX_THREADS)
         if (timer == NGX_TIMER_ERROR) {
             return NGX_ERROR;
         }
@@ -522,13 +521,11 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
                 ngx_kqueue_dump_event(ev->log, &event_list[i]);
             }
 
-            ev->returned_instance = instance;
-
 #if (NGX_THREADS)
 
             if (ngx_threaded && !ev->accept) {
                 ev->posted_ready = 1;
-                ev->posted_available += event_list[i].data;
+                ev->posted_available = event_list[i].data;
 
                 if (event_list[i].flags & EV_EOF) {
                     ev->posted_eof = 1;

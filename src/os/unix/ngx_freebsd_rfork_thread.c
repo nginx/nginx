@@ -676,14 +676,24 @@ ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
 
 ngx_int_t ngx_cond_signal(ngx_cond_t *cv)
 {
+    ngx_err_t  err;
+
     ngx_log_debug3(NGX_LOG_DEBUG_CORE, cv->log, 0,
                    "cv " PTR_FMT " to signal " PID_T_FMT " %d",
                    cv, cv->tid, cv->signo);
 
     if (kill(cv->tid, cv->signo) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,
+
+        err = ngx_errno;
+
+        ngx_log_error(NGX_LOG_ALERT, cv->log, err,
                       "kill() failed while signaling condition variable "
                       PTR_FMT, cv);
+
+        if (err == NGX_ESRCH) {
+            cv->tid = -1;
+        }
+
         return NGX_ERROR;
     }
 

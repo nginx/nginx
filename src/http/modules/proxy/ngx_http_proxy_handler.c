@@ -608,6 +608,7 @@ void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
 
 void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
 {
+    ngx_socket_t       fd;
     ngx_connection_t  *c;
 
     c = p->upstream->peer.connection;
@@ -650,12 +651,36 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
         }
     }
 
-    if (ngx_close_socket(c->fd) == -1) {
+    /*
+     * we have to clean the connection information before the closing
+     * because another thread may reopen the same file descriptor
+     * before we clean the connection
+     */
+    
+    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_OK) {
+
+        if (c->read->prev) {
+            ngx_delete_posted_event(c->read);
+        }
+
+        if (c->write->prev) {
+            ngx_delete_posted_event(c->write);
+        }
+
+        c->read->closed = 1;
+        c->write->closed = 1;
+
+        ngx_mutex_unlock(ngx_posted_events_mutex);
+    }
+
+    fd = c->fd;
+    c->fd = (ngx_socket_t) -1;
+    c->data = NULL;
+
+    if (ngx_close_socket(fd) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
                       ngx_close_socket_n " failed");
     }
-
-    c->fd = (ngx_socket_t) -1;
 }
 
 

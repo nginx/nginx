@@ -228,6 +228,11 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     c->number = ngx_atomic_inc(ngx_connection_counter);
 
+#if (NGX_THREADS)
+    rev->lock = pc->lock;
+    wev->lock = pc->lock;
+#endif
+
     if (ngx_add_conn) {
         if (ngx_add_conn(c) == NGX_ERROR) {
             return NGX_ERROR;

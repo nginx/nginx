@@ -62,6 +62,9 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
     u->peer.log_error = NGX_ERROR_ERR;
     u->peer.peers = p->lcf->peers;
     u->peer.tries = p->lcf->peers->number;
+#if (NGX_THREADS)
+    u->peer.lock = &r->connection->lock;
+#endif
 
     u->method = r->method;
 

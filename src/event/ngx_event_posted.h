@@ -12,8 +12,14 @@
                 ev->next = (ngx_event_t *) ngx_posted_events;                 \
                 ev->prev = (ngx_event_t **) &ngx_posted_events;               \
                 ngx_posted_events = ev;                                       \
-                ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0,         \
+                if (ev->next) {                                               \
+                    ev->next->prev = &ev->next;                               \
+                }                                                             \
+                ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,                \
                                "post event " PTR_FMT, ev);                    \
+            } else  {                                                         \
+                ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,                \
+                               "update posted event " PTR_FMT, ev);           \
             }
 
 #define ngx_delete_posted_event(ev)                                           \
@@ -21,7 +27,9 @@
         if (ev->next) {                                                       \
             ev->next->prev = ev->prev;                                        \
         }                                                                     \
-        ev->prev = NULL;
+        ev->prev = NULL;                                                      \
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,                        \
+                       "delete posted event " PTR_FMT, ev);
 
 
 

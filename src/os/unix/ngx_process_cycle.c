@@ -792,7 +792,12 @@ static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle)
         for (i = 0; i < ngx_threads_n; i++) {
             if (ngx_threads[i].state < NGX_THREAD_EXIT) {
                 ngx_cond_signal(ngx_threads[i].cv);
-                live = 1;
+
+                if (ngx_threads[i].cv->tid == -1) {
+                    ngx_threads[i].state = NGX_THREAD_DONE;
+                } else {
+                    live = 1;
+                }
             }
 
             if (ngx_threads[i].state == NGX_THREAD_EXIT) {

@@ -210,11 +210,16 @@ void ngx_event_accept(ngx_event_t *ev)
         rinstance = rev->returned_instance;
         winstance = wev->returned_instance;
 
+#if (NGX_THREADS)
+        if (*(rev->lock)) {
+            ngx_spinlock(rev->lock, 1000);
+            ngx_unlock(rev->lock);
+        }
+#endif
+
         ngx_memzero(rev, sizeof(ngx_event_t));
         ngx_memzero(wev, sizeof(ngx_event_t));
         ngx_memzero(c, sizeof(ngx_connection_t));
-
-        /* ngx_memzero(c) does ngx_unlock(&c->lock); */
 
         c->pool = pool;
 

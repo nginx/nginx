@@ -1749,13 +1749,6 @@ void ngx_http_close_connection(ngx_connection_t *c)
 
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_OK) {
 
-        ngx_unlock(&c->lock);
-        c->read->locked = 0;
-        c->write->locked = 0;
-
-        c->read->closed = 1;
-        c->write->closed = 1;
-
         if (c->read->prev) {
             ngx_delete_posted_event(c->read);
         }
@@ -1764,13 +1757,17 @@ void ngx_http_close_connection(ngx_connection_t *c)
             ngx_delete_posted_event(c->write);
         }
 
+        c->read->closed = 1;
+        c->write->closed = 1;
+
+        ngx_unlock(&c->lock);
+        c->read->locked = 0;
+        c->write->locked = 0;
+
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }
 
 #else
-
-    c->read->closed = 1;
-    c->write->closed = 1;
 
     if (c->read->prev) {
         ngx_delete_posted_event(c->read);
@@ -1779,6 +1776,9 @@ void ngx_http_close_connection(ngx_connection_t *c)
     if (c->write->prev) {
         ngx_delete_posted_event(c->write);
     }
+
+    c->read->closed = 1;
+    c->write->closed = 1;
 
 #endif
 
