@@ -7,7 +7,7 @@ mkdir -p $OBJS/src/core $OBJS/src/event $OBJS/src/event/modules \
 echo "CC = $CC"                                                   > $MAKEFILE
 echo "CPP = $CPP"                                                 >> $MAKEFILE
 echo "LINK = $LINK"                                               >> $MAKEFILE
-if [ $CC = wcl386 ]; then
+if [ "$CC" = wcl386 ]; then
     echo MAKE = wmake                                             >> $MAKEFILE
 fi
 echo "CFLAGS = $CFLAGS"                                           >> $MAKEFILE

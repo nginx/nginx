@@ -1,5 +1,5 @@
 
-case $CC in
+case "$CC" in
 
     cl)
         makefile=makefile.msvc
@@ -49,7 +49,8 @@ case $PLATFORM in
             echo "	cd $MD5 \\"                               >> $MAKEFILE
             echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE
             echo "		MD5_ASM_OBJ=asm/mx86-sol.o \\"    >> $MAKEFILE
-            echo "		CC=$CC CPP=\"$CPP\" libmd5.a"     >> $MAKEFILE
+            echo "		CC=\"\$(CC)\" CPP=\"\$(CPP)\" \\" >> $MAKEFILE
+            echo "		libmd5.a"                         >> $MAKEFILE
 
             done=YES
         fi
@@ -66,7 +67,8 @@ case $PLATFORM in
             echo "	cd $MD5 \\"                               >> $MAKEFILE
             echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE
             echo "		MD5_ASM_OBJ=asm/mx86-elf.o \\"    >> $MAKEFILE
-            echo "		CC=$CC CPP=\"$CPP\" libmd5.a"     >> $MAKEFILE
+            echo "		CC=\"\$(CC)\" CPP=\"\$(CPP)\" \\" >> $MAKEFILE
+            echo "		libmd5.a"                         >> $MAKEFILE
 
             done=YES
         fi
@@ -78,7 +80,7 @@ esac
 if [ $done = NO ]; then
     echo "	cd $MD5 \\"                                       >> $MAKEFILE
     echo "	&& \$(MAKE) CFLAGS=\"$MD5_OPT\" \\"               >> $MAKEFILE
-    echo "		MD5_ASM_OBJ= CC=$CC libmd5.a"             >> $MAKEFILE
+    echo "		MD5_ASM_OBJ= CC=\"\$(CC)\" libmd5.a"      >> $MAKEFILE
 fi
 
 

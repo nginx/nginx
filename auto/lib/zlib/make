@@ -1,5 +1,5 @@
 
-case $CC in
+case "$CC" in
 
     cl)
         makefile=makefile.msvc
@@ -48,7 +48,8 @@ case $PLATFORM in
             pentium)
                 echo "	cd $ZLIB \\"                              >> $MAKEFILE
                 echo "	&& cp contrib/asm586/match.S . \\"        >> $MAKEFILE
-                echo "	&& CC=$CC CFLAGS=\"$ZLIB_OPT -DASMV\" \\" >> $MAKEFILE
+                echo "	&& CFLAGS=\"$ZLIB_OPT -DASMV\" \\"        >> $MAKEFILE
+                echo "		CC=\"\$(CC)\" \\"                 >> $MAKEFILE
                 echo "		./configure \\"                   >> $MAKEFILE
                 echo "	&& \$(MAKE) OBJA=match.o libz.a"          >> $MAKEFILE
 
@@ -58,7 +59,8 @@ case $PLATFORM in
             pentiumpro)
                 echo "	cd $ZLIB \\"                              >> $MAKEFILE
                 echo "	&& cp contrib/asm686/match.S . \\"        >> $MAKEFILE
-                echo "	&& CC=$CC CFLAGS=\"$ZLIB_OPT -DASMV\" \\" >> $MAKEFILE
+                echo "	&& CFLAGS=\"$ZLIB_OPT -DASMV\" \\"        >> $MAKEFILE
+                echo "		CC=\"\$(CC)\" \\"                 >> $MAKEFILE
                 echo "		./configure \\"                   >> $MAKEFILE
                 echo "	&& \$(MAKE) OBJA=match.o libz.a"          >> $MAKEFILE
 
@@ -72,7 +74,8 @@ esac
 
 if [ $done = NO ]; then
     echo "	cd $ZLIB \\"                                      >> $MAKEFILE
-    echo "	&& CC=$CC CFLAGS=\"$ZLIB_OPT\" ./configure \\"    >> $MAKEFILE
+    echo "	&& CFLAGS=\"$ZLIB_OPT\" CC=\"\$(CC)\" \\"         >> $MAKEFILE
+    echo "		./configure \\"                           >> $MAKEFILE
     echo "	&& \$(MAKE) libz.a"                               >> $MAKEFILE
 fi
 

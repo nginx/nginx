@@ -4,7 +4,7 @@ if [ $PCRE != NONE ]; then
     CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
     CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
 
-    case $CC in
+    case "$CC" in
 
         cl)
             have=HAVE_PCRE . auto/have

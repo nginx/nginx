@@ -1,7 +1,7 @@
 
 case $CC in
 
-    *gcc)
+    *gcc*)
          # gcc 2.95.4, 3.3.2
 
          # optimization
@@ -24,8 +24,7 @@ case $CC in
              ;;
          esac
 
-         CFLAGS="$CFLAGS $PIPE"
-         CFLAGS="$CFLAGS $CPU_OPT"
+         CFLAGS="$CFLAGS $PIPE $CPU_OPT"
 
          if [ ".$PCRE_OPT" = "." ]; then
              PCRE_OPT="-O2 -fomit-frame-pointer $PIPE $CPU_OPT"

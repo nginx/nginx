@@ -12,7 +12,7 @@ if [ $MD5 != NONE ]; then
 
     CORE_INCS="$CORE_INCS -I $MD5"
 
-    case $CC in
+    case "$CC" in
 
         cl)
             LINK_DEPS="$LINK_DEPS $MD5/md5.lib"

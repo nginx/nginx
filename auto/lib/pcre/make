@@ -1,5 +1,5 @@
 
-case $CC in
+case "$CC" in
 
     cl)
         makefile=makefile.msvc
@@ -35,7 +35,7 @@ case $PLATFORM in
 
         echo "$PCRE/pcre.h:"                                      >> $MAKEFILE
         echo "	cd $PCRE \\"                                      >> $MAKEFILE
-        echo "	&& CC=$CC $PCRE_OPT \\"                           >> $MAKEFILE
+        echo "	&& CC=\"\$(CC)\" $PCRE_OPT \\"                    >> $MAKEFILE
         echo "	./configure --disable-shared"                     >> $MAKEFILE
         echo                                                      >> $MAKEFILE
         echo "$PCRE/.libs/libpcre.a:	$PCRE/pcre.h"             >> $MAKEFILE

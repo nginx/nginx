@@ -15,7 +15,7 @@ fi
 
 case $PLATFORM in
 
-    FreeBSD:*)
+    FreeBSD:* | DragonFly:*)
         . auto/os/freebsd
     ;;
 
