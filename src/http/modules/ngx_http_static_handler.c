@@ -115,18 +115,27 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
      * in a possible redirect and for the last '\0'
      */
 
-    name.data = ngx_palloc(r->pool, clcf->root.len + r->uri.len + 2
-                                    - clcf->alias * clcf->name.len);
-    if (name.data == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    location.data = ngx_cpymem(name.data, clcf->root.data, clcf->root.len);
-
     if (clcf->alias) {
-        last = ngx_cpystrn(location.data, r->uri.data + clcf->name.len,
+        name.data = ngx_palloc(r->pool, clcf->root.len + r->uri.len + 2
+                                        - clcf->name.len);
+        if (name.data == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        last = ngx_cpymem(name.data, clcf->root.data, clcf->root.len);
+        last = ngx_cpystrn(last, r->uri.data + clcf->name.len,
                            r->uri.len + 1 - clcf->name.len);
 
+        name.len = last - name.data;
+
+        location.data = ngx_palloc(r->pool, r->uri.len + 2);
+        if (location.data == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        last = ngx_cpystrn(location.data, r->uri.data, r->uri.len + 1);
+
+#if 0
         /*
          * aliases usually have trailling "/",
          * set it in the start of the possible redirect
@@ -135,13 +144,22 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         if (*location.data != '/') {
             location.data--;
         }
+#endif
+
+        location.len = last - location.data + 1;
 
     } else {
-        last = ngx_cpystrn(location.data, r->uri.data, r->uri.len + 1);
-    }
+        name.data = ngx_palloc(r->pool, clcf->root.len + r->uri.len + 2);
+        if (name.data == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
 
-    name.len = last - name.data;
-    location.len = last - location.data + 1;
+        location.data = ngx_cpymem(name.data, clcf->root.data, clcf->root.len);
+        last = ngx_cpystrn(location.data, r->uri.data, r->uri.len + 1);
+
+        name.len = last - name.data;
+        location.len = last - location.data + 1;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                    "http filename: \"%s\"", name.data);

@@ -589,19 +589,24 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
         }
 
         if (n == 0) {
+            if (clcfp[i]->exact_match && r->uri.len == clcfp[i]->name.len) {
+                r->loc_conf = clcfp[i]->loc_conf;
+                return NGX_HTTP_LOCATION_EXACT;
+            }
+
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-            if (clcf->name.len >= clcfp[i]->name.len) {
+#if 0
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "p:%d c:%d", clcf->name.len, clcfp[i]->name.len);
+#endif
+
+            if (clcf->name.len > clcfp[i]->name.len) {
                 /* the previous match is longer */
                 break;
             }
 
             r->loc_conf = clcfp[i]->loc_conf;
-
-            if (clcfp[i]->exact_match && r->uri.len == clcfp[i]->name.len) {
-                return NGX_HTTP_LOCATION_EXACT;
-            }
-
             found = 1;
         }
     }
@@ -1110,9 +1115,14 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
             return NGX_CONF_ERROR;
         }
 
+#if (HAVE_PCRE)
         if (clcf->regex == NULL
             && ngx_strncmp(clcf->name.data, pclcf->name.data, pclcf->name.len)
                                                                          != 0)
+#else
+        if (ngx_strncmp(clcf->name.data, pclcf->name.data, pclcf->name.len)
+                                                                         != 0)
+#endif
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "location \"%s\" is outside location \"%s\"",

@@ -107,7 +107,8 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
     ngx_http_index_ctx_t       *ctx;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_index_loc_conf_t  *ilcf;
-#if (NGX_HTTP_CACHE)
+#if (NGX_HTTP_CACHE0)
+    /* crc must be in ctx !! */
     uint32_t                    crc;
 #endif
 
@@ -174,27 +175,17 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
 #endif
 
         if (clcf->alias) {
-            if (clcf->root.len > clcf->name.len) {
-                ctx->path.data = ngx_palloc(r->pool, clcf->root.len
-                                                     + r->uri.len
-                                                     - clcf->name.len
-                                                     + ilcf->max_index_len);
-                if (ctx->path.data == NULL) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
-                }
+            ctx->path.data = ngx_palloc(r->pool, clcf->root.len
+                                              + r->uri.len + 1 - clcf->name.len
+                                              + ilcf->max_index_len);
+            if (ctx->path.data == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
 
-                ctx->redirect.data = ctx->path.data + clcf->root.len + 1
-                                                              - clcf->name.len;
-
-            } else {
-                ctx->redirect.data = ngx_palloc(r->pool, r->uri.len
-                                                         + ilcf->max_index_len);
-                if (ctx->redirect.data == NULL) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
-                }
-
-                ctx->path.data = ctx->redirect.data + clcf->name.len
-                                                              - clcf->root.len;
+            ctx->redirect.data = ngx_palloc(r->pool, r->uri.len
+                                            + ilcf->max_index_len);
+            if (ctx->redirect.data == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
             ngx_memcpy(ctx->path.data, clcf->root.data, clcf->root.len);
@@ -203,6 +194,7 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
                                     r->uri.data + clcf->name.len,
                                     r->uri.len + 1 - clcf->name.len);
 
+#if 0
             /*
              * aliases usually have trailling "/",
              * set it in the start of the possible redirect
@@ -211,6 +203,7 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
             if (*ctx->redirect.data != '/') {
                 ctx->redirect.data--; 
             }
+#endif
 
         } else {
             ctx->path.data = ngx_palloc(r->pool, clcf->root.len + r->uri.len
@@ -241,6 +234,9 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
             name = ctx->path.data;
         }
 
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+                       "open index \"%s\"", name);
+
         fd = ngx_open_file(name, NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
         if (fd == (ngx_fd_t) NGX_AGAIN) {
@@ -250,8 +246,8 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
         if (fd == NGX_INVALID_FILE) {
             err = ngx_errno;
 
-            ngx_log_error(NGX_LOG_DEBUG, log, err,
-                          "debug: " ngx_open_file_n " %s failed", name);
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, err,
+                           ngx_open_file_n " %s failed", name);
 
             if (err == NGX_ENOTDIR) {
                 return ngx_http_index_error(r, ctx, err);
@@ -293,11 +289,12 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
 
         } else {
             if (clcf->alias) {
-                ngx_memcpy(ctx->redirect.data, clcf->name.data, clcf->name.len);
+                name = ngx_cpymem(ctx->redirect.data, r->uri.data, r->uri.len);
+                ngx_memcpy(name, index[ctx->index].data,
+                           index[ctx->index].len + 1);
             }
 
-            ctx->redirect.len = r->uri.len + index[ctx->index].len
-                                                - clcf->alias * clcf->name.len;
+            ctx->redirect.len = r->uri.len + index[ctx->index].len;
             r->file.name.len = clcf->root.len + r->uri.len
                                                 - clcf->alias * clcf->name.len
                                                        + index[ctx->index].len;

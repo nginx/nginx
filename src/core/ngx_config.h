@@ -97,7 +97,7 @@ typedef long               ngx_flag_t;
 #define ngx_inline   inline
 #endif
 
-#define NGX_ACCEPT_THRESHOLD   50
+#define NGX_ACCEPT_THRESHOLD   100
 
 #ifndef INADDR_NONE  /* Solaris */
 #define INADDR_NONE  ((unsigned int) -1)
