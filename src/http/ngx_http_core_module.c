@@ -22,8 +22,6 @@ int ngx_http_proxy_handler(ngx_http_request_t *r);
 /**/
 
 static int ngx_http_core_index_handler(ngx_http_request_t *r);
-static ngx_http_conf_ctx_t *ngx_http_find_server_conf(ngx_http_request_t *r,
-                                                      void *addr);
 
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy);
 static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -98,9 +96,12 @@ ngx_module_t  ngx_http_core_module = {
 
 int ngx_http_handler(ngx_http_request_t *r)
 {
-    int  rc, i;
-    ngx_http_module_t    *module;
-    ngx_http_conf_ctx_t  *ctx;
+    int                      rc, a, n, i;
+    ngx_http_module_t       *module;
+    ngx_http_conf_ctx_t     *ctx;
+    ngx_http_in_port_t      *in_port;
+    ngx_http_in_addr_t      *in_addr;
+    ngx_http_server_name_t  *name;
 
     r->connection->unexpected_eof = 0;
     r->lingering_close = 1;
@@ -112,7 +113,47 @@ ngx_log_debug(r->connection->log, "servers: %0x" _ r->connection->servers);
         ctx = (ngx_http_conf_ctx_t *) r->connection->ctx;
 
     } else {
-        ctx = ngx_http_find_server_conf(r, r->connection->servers);
+
+         /* AF_INET only */
+
+        in_port = (ngx_http_in_port_t *) r->connection->servers;
+
+        a = 0;
+
+        if (in_port->addr.nelts > 1) {
+            /* find r->in_addr, getsockname() */ 
+
+            in_addr = (ngx_http_in_addr_t *) in_port->addr.elts;
+            for ( /* void */ ; a < in_port->addr.nelts; a++) {
+
+                if (in_addr[a].addr == INADDR_ANY) {
+                    break;
+                }
+
+                if (in_addr[a].addr == r->in_addr) {
+                    break;
+                }
+            }
+        }
+
+        ctx = in_addr[a].core_srv_conf->ctx;
+
+        if (r->headers_in.host_name_len > 0) {
+
+            name = (ngx_http_server_name_t *) in_addr[a].names.elts;
+            for (n = 0; n < in_addr[a].names.nelts; n++) {
+                if (r->headers_in.host_name_len != name[n].name.len) {
+                    continue;
+                }
+
+                if (ngx_strncasecmp(r->headers_in.host->value.data,
+                                    name[n].name.data,
+                                    r->headers_in.host_name_len) == 0) {
+                    ctx = name->core_srv_conf->ctx;
+                    break;
+                }
+            }
+        }
     }
 
     r->srv_conf = ctx->srv_conf;
@@ -454,40 +495,6 @@ int ngx_http_internal_redirect(ngx_http_request_t *r, ngx_str_t uri)
 }
 
 
-static ngx_http_conf_ctx_t *ngx_http_find_server_conf(ngx_http_request_t *r,
-                                                      void *addr)
-{
-    int    i, len;
-    ngx_http_in_addr_t      *in_addr;
-    ngx_http_server_name_t  *name;
-
-    /* AF_INET only */
-
-    /* BUG: need cycle thru addr[]->elts */
-
-    in_addr = (ngx_http_in_addr_t *) addr;
-
-    if (r->headers_in.host == NULL) {
-        return in_addr->core_srv_conf->ctx;
-    }
-
-    len = r->headers_in.host_name.len;
-    name = (ngx_http_server_name_t *) in_addr->names.elts;
-    for (i = 0; i < in_addr->names.nelts; i++) {
-        if (len != name->name.len) {
-            continue;
-        }
-
-        if (ngx_strncasecmp(r->headers_in.host_name.data,
-                            name->name.data, len) == 0) {
-            return name->core_srv_conf->ctx;
-        }
-    }
-
-    return in_addr->core_srv_conf->ctx;
-}
-
-
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 {
     int                        i, j;
@@ -796,7 +803,7 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     ls->family = AF_INET;
     ls->addr = INADDR_ANY;
     ls->flags = 0;
-    ls->conf_file = cf->conf_file;
+    ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
 
     args = (ngx_str_t *) cf->args->elts;

@@ -74,7 +74,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_str_t         host_name;
+    int               host_name_len;
 
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
@@ -137,6 +137,8 @@ struct ngx_http_request_s {
     ngx_http_request_t *main;
 
     ngx_connection_t  *connection;
+
+    u_int     in_addr;
 
     int       filter;
 

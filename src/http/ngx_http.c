@@ -188,7 +188,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 
                                     ngx_log_error(NGX_LOG_ERR, cf->log, 0,
                                         "duplicate default server in %s:%d",
-                                        lscf[l].conf_file->file.name.data,
+                                        lscf[l].file_name.data,
                                         lscf[l].line);
 
                                     return NGX_CONF_ERROR;
@@ -212,7 +212,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                                        sizeof(ngx_http_in_addr_t));
 
                             inaddr->addr = lscf[l].addr;
-                            inaddr->flags = lscf[l].flags;
+                            inaddr->flags = lscf[l].flags;   
                             inaddr->core_srv_conf = cscf[s];
 
                             ngx_init_array(inaddr->names, cf->pool, 10,
@@ -231,7 +231,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                                       NGX_CONF_ERROR);
 
                         inaddr->addr = lscf[l].addr;
-                        inaddr->flags = lscf[l].flags;
+                        inaddr->flags = lscf[l].flags;   
                         inaddr->core_srv_conf = cscf[s];
 
                         ngx_init_array(inaddr->names, cf->pool, 10,
@@ -256,7 +256,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                               NGX_CONF_ERROR);
 
                 inaddr->addr = lscf[l].addr;
-                inaddr->flags = lscf[l].flags;
+                inaddr->flags = lscf[l].flags;   
                 inaddr->core_srv_conf = cscf[s];
 
                 ngx_init_array(inaddr->names, cf->pool, 10,
@@ -346,7 +346,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
             ls->handler = ngx_http_init_connection;
             ls->log = cf->log;
             ls->ctx = ctx;
-            ls->servers = &in_port[p].addr;
+            ls->servers = &in_port[p];
 
             if (in_port[p].addr.nelts == 1) {
                 in_addr = (ngx_http_in_addr_t *) in_port[p].addr.elts;

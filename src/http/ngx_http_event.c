@@ -397,14 +397,13 @@ static int ngx_http_process_request_headers(ngx_http_request_t *r)
                          break;
                      }
                  }
-                 r->headers_in.host_name.len = len;
-                 r->headers_in.host_name.data = r->headers_in.host->value.data;
+                 r->headers_in.host_name_len = len;
 
             } else {
                  if (r->http_version > NGX_HTTP_VERSION_10) {
                      return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
                  }
-                 r->headers_in.host_name.len = 0;
+                 r->headers_in.host_name_len = 0;
             }
 
             return NGX_OK;

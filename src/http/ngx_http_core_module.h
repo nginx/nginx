@@ -8,12 +8,12 @@
 
 
 typedef struct {
-    int               addr;
-    int               port;
-    int               family;
-    int               flags;             /* 'default' */
-    ngx_conf_file_t  *conf_file;
-    int               line;
+    int        addr;
+    int        port;
+    int        family;
+    int        flags;             /* 'default' */
+    ngx_str_t  file_name;
+    int        line;
 } ngx_http_listen_t;
 
 
@@ -23,29 +23,32 @@ typedef struct {
     ngx_array_t  listen;       /* 'listen', array of ngx_http_listen_t */
     ngx_array_t  server_names; /* 'server_name',
                                   array of ngx_http_server_name_t */
-    ngx_http_conf_ctx_t *ctx;
+    ngx_http_conf_ctx_t *ctx;  /* server ctx */
 } ngx_http_core_srv_conf_t;
 
 
-typedef struct {
-    ngx_str_t                  name;
-    ngx_http_core_srv_conf_t  *core_srv_conf;
-} ngx_http_server_name_t;
-
+/* list of structures to find core_srv_conf quickly at run time */
 
 typedef struct {
     int           port;
-    ngx_array_t   addr;
+    ngx_array_t   addr;        /* array of ngx_http_in_addr_t */
 } ngx_http_in_port_t;
 
 typedef struct {
     u_int32_t                  addr;
-    ngx_array_t                names;
-    int                        flags;
-    ngx_http_core_srv_conf_t  *core_srv_conf;
+    ngx_array_t                names;     /* array of ngx_http_server_name_t */
+    ngx_http_core_srv_conf_t  *core_srv_conf;  /* default server conf
+                                                  for this address:port */
+    int                        flags;    
 } ngx_http_in_addr_t;
 
 #define NGX_HTTP_DEFAULT_SERVER  1
+
+typedef struct {
+    ngx_str_t                  name;
+    ngx_http_core_srv_conf_t  *core_srv_conf; /* virtual name server conf */
+} ngx_http_server_name_t;
+
 
 
 
