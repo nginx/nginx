@@ -31,13 +31,19 @@
 /* TODO: autoconf */
 #if (i386)
 
+#if 0
 #define OFF_FMT    "%lld"
+#endif
+
 #define SIZE_FMT   "%d"
 #define SIZEX_FMT  "%x"
 
 #else  /* amd64, alpha, sparc64, ia64 */
 
+#if 0
 #define OFF_FMT    "%ld"
+#endif
+
 #define SIZE_FMT   "%ld"
 #define SIZEX_FMT  "%lx"
 

@@ -392,6 +392,10 @@ int ngx_http_parse_request_line(ngx_http_request_t *r)
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
+
+        /* suppress warning */
+        case sw_done:
+            break;
         }
     }
 
@@ -594,6 +598,11 @@ int ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
             default:
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
+            break;
+
+        /* suppress warning */
+        case sw_done:
+        case sw_header_done:
             break;
         }
     }

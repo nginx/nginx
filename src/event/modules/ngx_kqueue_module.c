@@ -11,8 +11,8 @@
 
 
 typedef struct {
-    u_int           changes;
-    u_int           events;
+    int  changes;
+    int  events;
 } ngx_kqueue_conf_t;
 
 
@@ -30,7 +30,7 @@ static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
 int                    ngx_kqueue = -1;
 
 static struct kevent  *change_list, *event_list;
-static u_int           max_changes, nchanges, nevents;
+static int             max_changes, nchanges, nevents;
 
 
 static ngx_str_t      kqueue_name = ngx_string("kqueue");
@@ -196,8 +196,9 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 
     if (nchanges > 0
-        && ev->index < nchanges
-        && (void *) ((uintptr_t) change_list[ev->index].udata & ~1) == ev)
+        && ev->index < (u_int) nchanges
+        && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
+                                                             == (uintptr_t) ev)
     {
         c = ev->data;
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
@@ -206,7 +207,7 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_ERROR;
     }
 
-    return ngx_kqueue_set_event(ev, event, EV_ADD | flags);
+    return ngx_kqueue_set_event(ev, event, EV_ADD|flags);
 }
 
 
@@ -217,8 +218,9 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
     ev->active = 0;
 
     if (nchanges > 0
-        && ev->index < nchanges
-        && (void *) ((uintptr_t) change_list[ev->index].udata & ~1) == ev)
+        && ev->index < (u_int) nchanges
+        && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
+                                                             == (uintptr_t) ev)
     {
 #if (NGX_DEBUG_EVENT)
         ngx_connection_t *c = (ngx_connection_t *) ev->data;
@@ -228,7 +230,7 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
         /* if the event is still not passed to a kernel we will not pass it */
 
-        if (ev->index < --nchanges) {
+        if (ev->index < (u_int) --nchanges) {
             e = (ngx_event_t *) change_list[nchanges].udata;
             change_list[ev->index] = change_list[nchanges];
             e->index = ev->index;
@@ -247,7 +249,8 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_OK;
     }
 
-    return ngx_kqueue_set_event(ev, event, EV_DELETE);
+    return ngx_kqueue_set_event(ev, event,
+                           flags & NGX_DISABLE_EVENT ? EV_DISABLE : EV_DELETE);
 }
 
 
@@ -420,7 +423,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         case EVFILT_WRITE:
 
             instance = (uintptr_t) ev & 1;
-            ev = (void *) ((uintptr_t) ev & ~1);
+            ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
 
             /*
              * it's a stale event from a file descriptor
@@ -486,8 +489,8 @@ static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_kqueue_conf_t *kcf = conf;
 
-    ngx_conf_init_unsigned_value(kcf->changes, 512);
-    ngx_conf_init_unsigned_value(kcf->events, 512);
+    ngx_conf_init_value(kcf->changes, 512);
+    ngx_conf_init_value(kcf->events, 512);
 
     return NGX_CONF_OK;
 }

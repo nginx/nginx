@@ -105,7 +105,8 @@ ngx_log_debug(file->log, "temp fd: %d" _ file->fd);
 
 void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
 {
-    int        i, name, pos, level;
+    int     i, name, pos;
+    size_t  level;
 
     name = file->name.len;
     pos = path->name.len + 1;
@@ -192,7 +193,7 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int          i, n;
+    int          i, n, level;
     ngx_str_t   *value;
     ngx_path_t  *path, **pp;
 
@@ -219,12 +220,12 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     path->len = 0;
 
     for (i = 0, n = 2; n < cf->args->nelts; i++, n++) {
-        path->level[i] = ngx_atoi(value[n].data, value[n].len);
-        if (path->level[i] == NGX_ERROR || path->level[i] == 0) {
+        level = ngx_atoi(value[n].data, value[n].len);
+        if (level == NGX_ERROR || level == 0) {
             return "invalid value";
         }
 
-        path->len += path->level[i] + 1;
+        path->len += path->level[i] + level + 1;
     }
 
     while (i < 3) {

@@ -230,7 +230,7 @@ ngx_log_debug(log, "REOPEN: %d:%d:%s" _ fd _ file[i].fd _ file[i].name.data);
 
             cycle = ngx_init_cycle(cycle, cycle->log);
             if (cycle == NULL) {
-                cycle = (ngx_cycle_t*) ngx_cycle;
+                cycle = (ngx_cycle_t *) ngx_cycle;
                 continue;
             }
 

@@ -9,7 +9,8 @@
 
 int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
-    int                  rc, instance, event;
+    int                  rc, instance;
+    u_int                event;
     time_t               now;
     ngx_err_t            err;
     ngx_peer_t          *peer;

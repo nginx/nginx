@@ -3,7 +3,7 @@
 #include <ngx_core.h>
 
 
-ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size)
+ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, size_t size)
 {
     ngx_hunk_t *h;
 

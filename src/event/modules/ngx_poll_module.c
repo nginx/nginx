@@ -17,7 +17,7 @@ static int ngx_poll_process_events(ngx_log_t *log);
 
 
 static struct pollfd  *event_list;
-static u_int           nevents;
+static int             nevents;
 
 static ngx_event_t   **event_index;
 static ngx_event_t   **ready_index;
@@ -203,7 +203,7 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 #endif
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
-        if (ev->index < --nevents) {
+        if (ev->index < (u_int) --nevents) {
             event_list[ev->index] = event_list[nevents];
             event_index[ev->index] = event_index[nevents];
             event_index[ev->index]->index = ev->index;
@@ -222,8 +222,7 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_poll_process_events(ngx_log_t *log)
 {
-    int                 ready, found, j;
-    u_int               nready, i;
+    int                 i, j, ready, nready, found;
     ngx_msec_t          timer;
     ngx_err_t           err;
     ngx_cycle_t       **cycle;
@@ -239,7 +238,7 @@ static int ngx_poll_process_events(ngx_log_t *log)
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     } else {
-        timer = INFTIM;
+        timer = (ngx_msec_t) INFTIM;
         delta = 0;
     }
 
@@ -252,7 +251,7 @@ static int ngx_poll_process_events(ngx_log_t *log)
     ngx_log_debug(log, "poll timer: %d" _ timer);
 #endif
 
-    ready = poll(event_list, nevents, timer);
+    ready = poll(event_list, (u_int) nevents, (int) timer);
 
     if (ready == -1) {
         err = ngx_errno;

@@ -662,7 +662,7 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return rv;
     }
 
-    ngx_qsort(cscf->locations.elts, cscf->locations.nelts,
+    ngx_qsort(cscf->locations.elts, (size_t) cscf->locations.nelts,
               sizeof(void *), ngx_cmp_locations);
 
     return rv;

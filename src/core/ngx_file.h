@@ -27,8 +27,8 @@ struct ngx_file_s {
 
 struct ngx_path_s {
     ngx_str_t           name;
-    int                 len;
-    int                 level[3];
+    u_int               len;
+    u_int               level[3];
     ngx_gc_handler_pt   gc_handler;
 };
 

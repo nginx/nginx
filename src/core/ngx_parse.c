@@ -5,8 +5,9 @@
 
 int ngx_parse_size(ngx_str_t *line)
 {
-    int   len, scale, size;
-    char  last;
+    int     scale, size;
+    char    last;
+    size_t  len;
 
     len = line->len;
     last = line->data[len - 1];
@@ -41,8 +42,9 @@ int ngx_parse_size(ngx_str_t *line)
 
 int ngx_parse_time(ngx_str_t *line, int sec)
 {
-    int     value, total, len, scale;
+    int     value, total, scale;
     u_int   max, i;
+    size_t  len;
     char   *start, last;
     enum {
         st_start = 0,

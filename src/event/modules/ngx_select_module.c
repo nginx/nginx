@@ -30,7 +30,7 @@ static int            max_write;
 static int            max_fd;
 #endif
 
-static u_int          nevents;
+static int            nevents;
 
 static ngx_event_t  **event_index;
 static ngx_event_t  **ready_index;
@@ -233,7 +233,7 @@ static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 
 #endif
 
-    if (ev->index < --nevents) {
+    if (ev->index < (u_int) --nevents) {
         event_index[ev->index] = event_index[nevents];
         event_index[ev->index]->index = ev->index;
     }
@@ -247,8 +247,7 @@ static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_select_process_events(ngx_log_t *log)
 {
-    int                ready, found;
-    u_int              i, nready;
+    int                i, ready, nready,found;
     ngx_err_t          err;
     ngx_msec_t         timer;
     ngx_event_t       *ev;

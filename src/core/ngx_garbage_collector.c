@@ -70,8 +70,9 @@ void stub_init(ngx_cycle_t *cycle)
 
 static int ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level)
 {
-    int         rc, len;
+    int         rc;
     char       *last;
+    size_t      len;
     ngx_err_t   err;
     ngx_str_t   fname, buf;
     ngx_dir_t   dir;

@@ -118,7 +118,8 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 
     if (cl->next == NULL) {
         return ngx_write_file(file, cl->hunk->pos,
-                              cl->hunk->last - cl->hunk->pos, offset);
+                              (size_t) (cl->hunk->last - cl->hunk->pos),
+                              offset);
     }
 
     prev = NULL;

@@ -10,14 +10,13 @@
 ngx_inline static int ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx,
                                                     ngx_hunk_t *hunk);
 static int ngx_output_chain_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
-                                      int sendfile);
+                                      u_int sendfile);
 
 
 int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 {
     int           rc, last;
-    size_t        hsize;
-    ssize_t       size;
+    size_t        size, hsize;
     ngx_chain_t  *cl, *out, **last_out;
 
     /*
@@ -191,13 +190,14 @@ ngx_inline static int ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx,
 
 
 static int ngx_output_chain_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
-                                      int sendfile)
+                                      u_int sendfile)
 {
-    ssize_t  n, size;
+    size_t   size;
+    ssize_t  n;
 
     size = ngx_hunk_size(src);
 
-    if (size > (dst->end - dst->pos)) {
+    if (size > (size_t) (dst->end - dst->pos)) {
         size = dst->end - dst->pos;
     }
 
@@ -233,7 +233,7 @@ ngx_log_debug(src->file->log, "READ: %qd:%qd %X:%X %X:%X" _
         }
 #endif
 
-        if (n != size) {
+        if ((size_t) n != size) {
             ngx_log_error(NGX_LOG_ALERT, src->file->log, 0,
                           ngx_read_file_n " reads only %d of %d from file",
                           n, size);

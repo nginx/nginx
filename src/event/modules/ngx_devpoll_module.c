@@ -101,7 +101,7 @@ ngx_module_t  ngx_devpoll_module = {
 
 static int ngx_devpoll_init(ngx_cycle_t *cycle)
 {
-    int                  n;
+    size_t               n;
     ngx_devpoll_conf_t  *dpcf;
 
     dpcf = ngx_event_get_conf(cycle->conf_ctx, ngx_devpoll_module);
@@ -122,7 +122,7 @@ ngx_log_debug(cycle->log, "EV: %d" _ dpcf->events);
     if (max_changes < dpcf->changes) {
         if (nchanges) {
             n = nchanges * sizeof(struct pollfd);
-            if (write(dp, change_list, n) != n) {
+            if ((size_t) write(dp, change_list, n) != n) {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                               "write(/dev/poll) failed");
                 return NGX_ERROR;
@@ -271,7 +271,7 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 {
-    int                n;
+    size_t             n;
     ngx_connection_t  *c;
 
     c = ev->data;
@@ -286,7 +286,7 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
                       "/dev/pool change list is filled up");
 
         n = nchanges * sizeof(struct pollfd);
-        if (write(dp, change_list, n) != n) {
+        if ((size_t) write(dp, change_list, n) != n) {
             ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
                           "write(/dev/poll) failed");
             return NGX_ERROR;
@@ -306,7 +306,7 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 
     if (flags & NGX_CLOSE_EVENT) {
         n = nchanges * sizeof(struct pollfd);
-        if (write(dp, change_list, n) != n) {
+        if ((size_t) write(dp, change_list, n) != n) {
             ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
                           "write(/dev/poll) failed");
             return NGX_ERROR;
@@ -321,7 +321,8 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 
 int ngx_devpoll_process_events(ngx_log_t *log)
 {
-    int                 events, n, i, j;
+    int                 events, i, j;
+    size_t              n;
     ngx_msec_t          timer;
     ngx_err_t           err;
     ngx_cycle_t       **cycle;
@@ -337,7 +338,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     } else {
-        timer = INFTIM;
+        timer = (ngx_msec_t) INFTIM;
         delta = 0;
     }
 
@@ -347,7 +348,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
 
     if (nchanges) {
         n = nchanges * sizeof(struct pollfd);
-        if (write(dp, change_list, n) != n) {
+        if ((size_t) write(dp, change_list, n) != n) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           "write(/dev/poll) failed");
             return NGX_ERROR;

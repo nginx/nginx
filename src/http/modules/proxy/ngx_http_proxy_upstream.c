@@ -936,6 +936,14 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
     p->header_sent = 1;
 
+    if (p->cache && p->cache->ctx.file.fd != NGX_INVALID_FILE) {
+        if (ngx_close_file(p->cache->ctx.file.fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed",
+                          p->cache->ctx.file.name.data);
+        }
+    }
+
     if (p->cachable) {
         header = (ngx_http_cache_header_t *) p->header_in->start;
 

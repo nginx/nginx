@@ -1,21 +1,24 @@
 
-echo "Checking for printf() $NGX_TYPE format"
+echo "Checking for $NGX_TYPE printf() format"
 
 NGX_FMT=NO
 
 for FMT in $NGX_FORMATS
 do
-    echo "int main() {" > autotest.c
-    echo "printf(\"%${FMT}u\", (unsigned $NGX_TYPE) -1);" >> autotest.c
+    echo "#include <unistd.h>" > autotest.c
+    echo "#include <stdio.h>" >> autotest.c
+    echo "#include <sys/types.h>" >> autotest.c
+    echo "int main() {" >> autotest.c
+    echo "printf(\"${FMT}\", ($NGX_TYPE) $NGX_MAX_SIZE);" >> autotest.c
     echo "return 0; }" >> autotest.c
 
-    eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+    eval "${CC_WARN} -o autotest autotest.c > /dev/null 2>&1"
 
-    if [ -x ./autotest -a "`./autotest`" = $NGX_MAX_SIZE ]; then
-        echo " + \"%${FMT}\" used"
-        NGX_FMT=$FMT
-    else
-        echo " + \"%${FMT}\" is not appropriate"
+    if [ -x ./autotest ]; then
+        if [ "`./autotest`" = $NGX_MAX_SIZE ]; then
+            echo " + \"${FMT}\" used"
+            NGX_FMT=$FMT
+        fi
     fi
 
     rm autotest*
@@ -23,6 +26,8 @@ do
     if [ $NGX_FMT != NO ]; then
         break
     fi
+
+    echo " + \"${FMT}\" is not appropriate"
 done
 
 
@@ -30,3 +35,9 @@ if [ $NGX_FMT = NO ]; then
     echo "printf() $NGX_TYPE format not found"
     exit 1
 fi
+
+
+echo "#ifndef $NGX_FMT_NAME"                 >> $NGX_AUTO_CONFIG_H
+echo "#define $NGX_FMT_NAME  \"$NGX_FMT\""   >> $NGX_AUTO_CONFIG_H
+echo "#endif"                                >> $NGX_AUTO_CONFIG_H
+echo                                         >> $NGX_AUTO_CONFIG_H

@@ -6,7 +6,7 @@
 #include <ngx_core.h>
 
 
-#define NGX_INVALID_INDEX  0x80000000
+#define NGX_INVALID_INDEX  0xd0d0d0d0
 
 
 #if (HAVE_IOCP)
@@ -28,7 +28,7 @@ struct ngx_event_s {
     void            *context;
     char            *action;
 
-    unsigned int     index;
+    u_int            index;
 
     /* queue in mutex(), aio_read(), aio_write()  */
     ngx_event_t     *prev;
@@ -230,8 +230,9 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_CLOSE_EVENT    1
 
 
-/* this flag has meaning only for kqueue */
+/* these flags have a meaning only for kqueue */
 #define NGX_LOWAT_EVENT    0
+#define NGX_DISABLE_EVENT  0
 
 
 #if (HAVE_KQUEUE)
@@ -255,6 +256,9 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  EV_ONESHOT
 #define NGX_CLEAR_EVENT    EV_CLEAR
+
+#undef  NGX_DISABLE_EVENT
+#define NGX_DISABLE_EVENT  EV_DISABLE
 
 
 #elif (HAVE_POLL)
@@ -362,7 +366,7 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
 
 
 
-ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, int flags)
+ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, u_int flags)
 {
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
@@ -432,7 +436,7 @@ ngx_inline static int ngx_handle_level_read_event(ngx_event_t *rev)
 }
 
 
-ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, int flags)
+ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, u_int flags)
 {
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 

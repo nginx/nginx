@@ -315,12 +315,12 @@ ngx_log_debug(cf->log, "TOKEN START");
             }
 
             if (h->pos - start) {
-                ngx_memcpy(h->start, start, h->pos - start);
+                ngx_memcpy(h->start, start, (size_t) (h->pos - start));
             }
 
             n = ngx_read_file(&cf->conf_file->file,
                               h->start + (h->pos - start),
-                              h->end - (h->start + (h->pos - start)),
+                              (size_t) (h->end - (h->start + (h->pos - start))),
                               cf->conf_file->file.offset);
 
             if (n == NGX_ERROR) {
@@ -462,7 +462,8 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
             if (found) {
                 ngx_test_null(word, ngx_push_array(cf->args), NGX_ERROR);
                 ngx_test_null(word->data,
-                              ngx_palloc(cf->pool, h->pos - start + 1),
+                              ngx_palloc(cf->pool,
+                                         (size_t) (h->pos - start + 1)),
                               NGX_ERROR);
 
                 for (dst = word->data, src = start, len = 0;

@@ -124,7 +124,7 @@ typedef struct {
                                           (size_t) (h->file_last - h->file_pos))
 
 
-ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size);
+ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, size_t size);
 
 #define ngx_alloc_hunk(pool) ngx_palloc(pool, sizeof(ngx_hunk_t))
 #define ngx_calloc_hunk(pool) ngx_pcalloc(pool, sizeof(ngx_hunk_t))

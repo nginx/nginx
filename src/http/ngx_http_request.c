@@ -1116,10 +1116,20 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     wev = c->write;
     wev->event_handler = ngx_http_empty_handler;
 
-    if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && wev->active) {
-        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
-            ngx_http_close_connection(c);
-            return;
+    if (wev->active) {
+        if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+            if (ngx_del_event(wev, NGX_WRITE_EVENT, NGX_DISABLE_EVENT)
+                                                                  == NGX_ERROR)
+            {
+                ngx_http_close_connection(c);
+                return;
+            }
+
+        } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
+            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+                ngx_http_close_connection(c);
+                return;
+            }
         }
     }
 
@@ -1218,11 +1228,20 @@ static void ngx_http_set_lingering_close(ngx_http_request_t *r)
     wev = c->write;
     wev->event_handler = ngx_http_empty_handler;
 
-    if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && wev->active) {
-        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
-            ngx_http_close_request(r, 0);
-            ngx_http_close_connection(c);
-            return;
+    if (wev->active) {
+        if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+            if (ngx_del_event(wev, NGX_WRITE_EVENT, NGX_DISABLE_EVENT)
+                                                                  == NGX_ERROR)
+            {
+                ngx_http_close_connection(c);
+                return;
+            }
+
+        } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
+            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+                ngx_http_close_connection(c);
+                return;
+            }
         }
     }
 

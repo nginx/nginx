@@ -28,8 +28,8 @@ typedef struct {
     ngx_log_t        *log;
     int               backlog;
 
-    int               pool_size;
-    int               post_accept_buffer_size; /* should be here because
+    size_t            pool_size;
+    size_t            post_accept_buffer_size; /* should be here because
                                                   of the AcceptEx() preread */
     time_t            post_accept_timeout;     /* should be here because
                                                   of the deferred accept */

@@ -185,6 +185,10 @@ int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p)
                 return NGX_HTTP_PROXY_PARSE_NO_HEADER;
             }
             break;
+
+        /* suppress warning */
+        case sw_done:
+            break;
         }
     }
 

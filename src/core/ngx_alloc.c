@@ -5,10 +5,9 @@
 
 void *ngx_alloc(size_t size, ngx_log_t *log)
 {
-    void *p;
+    void  *p;
 
-    p = malloc(size);
-    if (p == NULL) {
+    if (!(p = malloc(size))) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "malloc() %d bytes failed", size);
     }
@@ -23,7 +22,7 @@ void *ngx_alloc(size_t size, ngx_log_t *log)
 
 void *ngx_calloc(size_t size, ngx_log_t *log)
 {
-    void *p;
+    void  *p;
 
     p = ngx_alloc(size, log);
     if (p) {
@@ -36,9 +35,11 @@ void *ngx_calloc(size_t size, ngx_log_t *log)
 
 ngx_pool_t *ngx_create_pool(size_t size, ngx_log_t *log)
 {
-    ngx_pool_t *p;
+    ngx_pool_t  *p;
 
-    ngx_test_null(p, ngx_alloc(size, log), NULL);
+    if (!(p = ngx_alloc(size, log))) {
+       return NULL;
+    }
 
     p->last = (char *) p + sizeof(ngx_pool_t);
     p->end = (char *) p + size;
@@ -115,7 +116,10 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
 
         /* alloc a new pool block */
 
-        ngx_test_null(n, ngx_create_pool(p->end - (char *) p, p->log), NULL);
+        if (!(n = ngx_create_pool((size_t) (p->end - (char *) p), p->log))) {
+            return NULL;
+        }
+
         p->next = n;
         m = n->last;
         n->last += size;
@@ -143,11 +147,16 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
     }
 
     if (large == NULL) {
-        ngx_test_null(large, ngx_palloc(pool, sizeof(ngx_pool_large_t)), NULL);
+        if (!(large = ngx_palloc(pool, sizeof(ngx_pool_large_t)))) {
+            return NULL;
+        }
+
         large->next = NULL;
     }
 
-    ngx_test_null(p, ngx_alloc(size, pool->log), NULL);
+    if (!(p = ngx_alloc(size, pool->log))) {
+        return NULL;
+    }
 
     if (pool->large == NULL) {
         pool->large = large;
