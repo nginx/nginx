@@ -77,6 +77,15 @@ ngx_module_t  ngx_iocp_module = {
 };
 
 
+ngx_os_io_t ngx_iocp_io = {
+    ngx_overlapped_wsarecv,
+    NULL,
+    NULL,
+    ngx_wsasend_chain,
+    0
+};
+
+
 static HANDLE  iocp;
 
 
@@ -225,6 +234,7 @@ ngx_log_debug(log, "iocp ev: %08x" _ ev);
 
         switch (key) {
         case NGX_IOCP_IO:
+            ev->complete = 1;
             ev->ready = 1;
             break;
 

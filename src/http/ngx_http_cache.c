@@ -140,9 +140,7 @@ int ngx_http_cache_update_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
     retry = 0;
 
     for ( ;; ) {
-        if (ngx_rename_file(temp_file->data, ctx->file.name.data)
-                                                             != NGX_FILE_ERROR)
-        {
+        if (ngx_rename_file(temp_file, (&ctx->file.name), r->pool) == NGX_OK) {
             return NGX_OK;
         }
 

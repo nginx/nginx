@@ -2,11 +2,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-/* STUB */
-ssize_t ngx_wsarecv(ngx_connection_t *c, char *buf, size_t size);
-ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in);
-/* */
-
 
 int  ngx_win32_version;
 int  ngx_max_sockets;

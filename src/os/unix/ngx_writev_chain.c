@@ -24,6 +24,7 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
     iov = NULL;
 
     /* create the iovec and coalesce the neighbouring hunks */
+
     for (cl = in; cl; cl = cl->next) {
 
         if (prev == cl->hunk->pos) {
@@ -57,7 +58,7 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
     sent = n > 0 ? n : 0;
 
 #if (NGX_DEBUG_WRITE_CHAIN)
-    ngx_log_debug(c->log, "writev: %qd" _ sent);
+    ngx_log_debug(c->log, "writev: " OFF_FMT  _ sent);
 #endif
 
     c->sent += sent;
@@ -75,24 +76,12 @@ ngx_log_debug(c->log, "SIZE: %d" _ size);
                 cl->hunk->pos = cl->hunk->last;
             }
 
-#if 0
-            if (cl->hunk->type & NGX_HUNK_FILE) {
-                cl->hunk->file_pos = cl->hunk->file_last;
-            }
-#endif
-
             continue;
         }
 
         if (cl->hunk->type & NGX_HUNK_IN_MEMORY) {
             cl->hunk->pos += sent;
         }
-
-#if 0
-        if (cl->hunk->type & NGX_HUNK_FILE) {
-            cl->hunk->file_pos += sent;
-        }
-#endif
 
         break;
     }

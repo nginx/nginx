@@ -25,12 +25,12 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
     rev = c->read;
 
     if (!rev->ready) {
-        ngx_log_error(NGX_LOG_ALERT, rev->log, 0, "SECOND AIO POST");
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "SECOND AIO POST");
         return NGX_AGAIN;
     }
 
-    ngx_log_debug(rev->log, "rev->complete: %d" _ rev->complete);
-    ngx_log_debug(rev->log, "aio size: %d" _ size);
+    ngx_log_debug(c->log, "rev->complete: %d" _ rev->complete);
+    ngx_log_debug(c->log, "aio size: %d" _ size);
 
     if (!rev->complete) {
         ngx_memzero(&rev->aiocb, sizeof(struct aiocb));
@@ -52,7 +52,7 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
             return NGX_ERROR;
         }
 
-        ngx_log_debug(rev->log, "aio_read: #%d OK" _ c->fd);
+        ngx_log_debug(c->log, "aio_read: #%d OK" _ c->fd);
 
         rev->active = 1;
         rev->ready = 0;
@@ -62,7 +62,7 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
 
     n = aio_error(&rev->aiocb);
     if (n == -1) {
-        ngx_log_error(NGX_LOG_ALERT, rev->log, ngx_errno, "aio_error() failed");
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno, "aio_error() failed");
         rev->error = 1;
         return NGX_ERROR;
     }
@@ -70,14 +70,14 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
     if (n != 0) {
         if (n == NGX_EINPROGRESS) {
             if (rev->ready) {
-                ngx_log_error(NGX_LOG_ALERT, rev->log, n,
+                ngx_log_error(NGX_LOG_ALERT, c->log, n,
                               "aio_read() still in progress");
                 rev->ready = 0;
             }
             return NGX_AGAIN;
         }
 
-        ngx_log_error(NGX_LOG_CRIT, rev->log, n, "aio_read() failed");
+        ngx_log_error(NGX_LOG_CRIT, c->log, n, "aio_read() failed");
         rev->error = 1;
         rev->ready = 0;
         return NGX_ERROR;
@@ -85,7 +85,7 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
 
     n = aio_return(&rev->aiocb);
     if (n == -1) {
-        ngx_log_error(NGX_LOG_ALERT, rev->log, ngx_errno,
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
                       "aio_return() failed");
 
         rev->error = 1;
