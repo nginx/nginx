@@ -235,12 +235,12 @@ ngx_log_debug(log, "TYPE: %d" _ ecf->use);
 }
 
 
-void ngx_worker(ngx_log_t *log)
+void ngx_worker(ngx_cycle_t *cycle)
 {
     for ( ;; ) {
-        ngx_log_debug(log, "ngx_worker cycle");
+        ngx_log_debug(cycle->log, "ngx_worker cycle");
 
-        ngx_process_events(log);
+        ngx_process_events(cycle->log);
     }
 }
 

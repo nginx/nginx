@@ -5,8 +5,8 @@
 #include <nginx.h>
 
 
-
-static int ngx_open_listening_sockets(ngx_log_t *log);
+static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log);
+static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log);
 
 
 void  ****ngx_conf_ctx;
@@ -16,21 +16,25 @@ ngx_os_io_t  ngx_io;
 
 
 int     ngx_max_module;
+#if 0
 void   *ctx_conf;
+#endif
 
 int ngx_connection_counter;
 
-ngx_array_t  ngx_listening_sockets;
-
-
 #if 0
+ngx_array_t  ngx_listening_sockets;
+#endif
+
+
+#if 1
 
 int main(int argc, char *const *argv)
 {
-    ngx_str_t     conf_file;
+    int           i;
     ngx_log_t    *log;
     ngx_conf_t    conf;
-    ngx_cycle_t  *cycle;
+    ngx_cycle_t  *cycle, *new_cycle;
 
     /* TODO */ ngx_max_sockets = -1;
 
@@ -64,10 +68,10 @@ int main(int argc, char *const *argv)
 
         for ( ;; ) {
 
-            worker(cycle->log);
+            ngx_worker(cycle);
 
             new_cycle = ngx_init_cycle(cycle, cycle->log);
-            if (new_cycle) == NULL) {
+            if (new_cycle == NULL) {
                 continue;
             }
 
@@ -80,9 +84,10 @@ int main(int argc, char *const *argv)
 }
 
 
-static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
+static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 {
-    int               i, n;
+    int               i, n, failed;
+    ngx_str_t         conf_file;
     ngx_conf_t        conf;
     ngx_pool_t       *pool;
     ngx_cycle_t      *cycle;
@@ -101,6 +106,12 @@ static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
         return NULL;
     }
     cycle->pool = pool;
+
+    cycle->log = ngx_log_create_errlog(cycle);
+    if (cycle->log == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
 
     n = old_cycle ? old_cycle->open_files.nelts : 20;
     cycle->open_files.elts = ngx_pcalloc(pool, n * sizeof(ngx_open_file_t));
@@ -153,6 +164,8 @@ static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
         return NULL;
     }
 
+    failed = 0;
+
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->init_module) {
             if (ngx_modules[i]->init_module(cycle, log) == NGX_ERROR)
@@ -166,7 +179,7 @@ static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     if (!failed) {
         file = cycle->open_files.elts;
         for (i = 0; i < cycle->open_files.nelts; i++) {
-            if (file->name.data = NULL) {
+            if (file->name.data == NULL) {
                 continue;
             }
 
@@ -209,7 +222,7 @@ static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
             }
         }
 
-        if (ngx_open_listening_sockets(new_cycle) == NGX_ERROR) {
+        if (ngx_open_listening_sockets(cycle, log) == NGX_ERROR) {
             failed = 1;
         }
     }
@@ -220,7 +233,7 @@ static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
         for (i = 0; ngx_modules[i]; i++) {
             if (ngx_modules[i]->rollback_module) {
-                ngx_modules[i]->rollback_module(cycle);
+                ngx_modules[i]->rollback_module(cycle, log);
             }
         }
 
@@ -230,20 +243,20 @@ static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
                 continue;
             }
 
-            if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
+            if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                               ngx_close_file_n " \"%s\" failed",
                               file->name.data);
             }
         }
 
-        ls[i] = cycle->listening.elts;
+        ls = cycle->listening.elts;
         for (i = 0; i < cycle->listening.nelts; i++) {
             if (ls[i].new && ls[i].fd == -1) {
                 continue;
             }
 
-            if (ngx_close_socket(ls[i].fd) == -1)
+            if (ngx_close_socket(ls[i].fd) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                               ngx_close_socket_n " %s failed",
                               ls[i].addr_text.data);
@@ -252,15 +265,13 @@ static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
         ngx_destroy_pool(pool);
         return NULL;
+    }
 
-    } else {
+    /* commit the new cycle configuration */
 
-        /* commit the new cycle configuration */
-
-        for (i = 0; ngx_modules[i]; i++) {
-            if (ngx_modules[i]->commit_module) {
-                ngx_modules[i]->commit_module(cycle);
-            }
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->commit_module) {
+            ngx_modules[i]->commit_module(cycle, log);
         }
     }
 
@@ -270,7 +281,7 @@ static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
             continue;
         }
 
-        if (ngx_close_socket(ls[i].fd) == -1)
+        if (ngx_close_socket(ls[i].fd) == -1) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                           ngx_close_socket_n " %s failed",
                           ls[i].addr_text.data);
@@ -278,20 +289,19 @@ static int ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     }
 
     file = old_cycle->open_files.elts;
-    for (i = 0; i < cycle->old_open_files.nelts; i++) {
+    for (i = 0; i < old_cycle->open_files.nelts; i++) {
         if (file->fd == NGX_INVALID_FILE) {
             continue;
         }
 
-        if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
+        if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           ngx_close_file_n " \"%s\" failed",
                           file->name.data);
         }
     }
 
-    new_cycle->log = ???;
-    pool->log = ???;
+    pool->log = cycle->log;
 
     ngx_destroy_pool(old_cycle->pool);
 
@@ -397,7 +407,7 @@ int main(int argc, char *const *argv)
 #endif
 
 
-static int ngx_open_listening_sockets(ngx_log_t *log)
+static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log)
 {
     int              times, failed, reuseaddr, i;
     ngx_err_t        err;
@@ -406,16 +416,19 @@ static int ngx_open_listening_sockets(ngx_log_t *log)
 
     reuseaddr = 1;
 
+    /* TODO: times configurable */
+
     for (times = 10; times; times--) {
          failed = 0;
 
         /* for each listening socket */
 
-        ls = ngx_listening_sockets.elts;
-        for (i = 0; i < ngx_listening_sockets.nelts; i++) {
+        ls = cycle->listening.elts;
+        for (i = 0; i < cycle->listening.nelts; i++) {
 
-            if (ls[i].bound)
+            if (ls[i].fd != -1) {
                 continue;
+            }
 
             if (ls[i].inherited) {
 
@@ -423,12 +436,12 @@ static int ngx_open_listening_sockets(ngx_log_t *log)
                 /* TODO: nonblocking */
                 /* TODO: deferred accept */
 
-                ls[i].bound = 1;
                 continue;
             }
 
             s = ngx_socket(ls[i].family, ls[i].type, ls[i].protocol,
                            ls[i].flags);
+
             if (s == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                               ngx_socket_n " %s falied", ls[i].addr_text.data);
@@ -493,11 +506,12 @@ static int ngx_open_listening_sockets(ngx_log_t *log)
             /* TODO: deferred accept */
 
             ls[i].fd = s;
-            ls[i].bound = 1;
         }
 
         if (!failed)
             break;
+
+        /* TODO: delay configurable */
 
         ngx_log_error(NGX_LOG_NOTICE, log, 0,
                       "try again to bind() after 500ms");
@@ -505,10 +519,7 @@ static int ngx_open_listening_sockets(ngx_log_t *log)
     }
 
     if (failed) {
-
-        /* TODO: configurable */
-
-        ngx_log_error(NGX_LOG_EMERG, log, 0, "can not bind(), exiting");
+        ngx_log_error(NGX_LOG_EMERG, log, 0, "still can not bind()");
         return NGX_ERROR;
     }
 

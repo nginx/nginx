@@ -168,6 +168,8 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 #define ngx_log_copy_log(new, old)    ngx_memcpy(new, old, sizeof(ngx_log_t))
 
 ngx_log_t *ngx_log_init_errlog();
+ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle);
+
 char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log);
 
 

@@ -20,7 +20,7 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool);
 static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
                                           void *parent, void *child);
 
-static int ngx_http_core_init(ngx_pool_t *pool);
+static int ngx_http_core_init(ngx_cycle_t *cycle, ngx_log_t *log);
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
 static int ngx_cmp_locations(const void *first, const void *second);
 static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -186,17 +186,20 @@ ngx_module_t  ngx_http_core_module = {
     &ngx_http_core_module_ctx,             /* module context */
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
-    ngx_http_core_init                     /* init module */
+    ngx_http_core_init,                    /* init module */
+    NULL,                                  /* commit module */
+    NULL                                   /* rollback module */
 };
 
 
 void ngx_http_handler(ngx_http_request_t *r)
 {
-    int                        rc, i;
-    ngx_http_log_ctx_t        *lcx;
-    ngx_http_handler_pt       *h;
-    ngx_http_core_loc_conf_t  *clcf, **clcfp;
-    ngx_http_core_srv_conf_t  *cscf;
+    int                         rc, i;
+    ngx_http_log_ctx_t         *lcx;
+    ngx_http_handler_pt        *h;
+    ngx_http_core_loc_conf_t   *clcf, **clcfp;
+    ngx_http_core_srv_conf_t   *cscf;
+    ngx_http_core_main_conf_t  *cmcf;
 
     r->connection->unexpected_eof = 0;
 
@@ -248,10 +251,12 @@ ngx_log_debug(r->connection->log, "rc: %d" _ rc);
         r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
     }
 
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
     /* run translation phase */
 
-    h = ngx_http_translate_handlers.elts;
-    for (i = ngx_http_translate_handlers.nelts - 1; i >= 0; i--) {
+    h = cmcf->translate_handlers.elts;
+    for (i = cmcf->translate_handlers.nelts - 1; i >= 0; i--) {
 
         rc = h[i](r);
 
@@ -521,7 +526,7 @@ int ngx_http_internal_redirect(ngx_http_request_t *r,
 }
 
 
-static int ngx_http_core_init(ngx_pool_t *pool)
+static int ngx_http_core_init(ngx_cycle_t *cycle, ngx_log_t *log)
 {
     ngx_http_handler_pt  *h;
 

@@ -190,10 +190,10 @@ static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
-    ngx_event_t  *e;
+    ngx_event_t       *e;
+    ngx_connection_t  *c;
 
 #if (NGX_DEBUG_EVENT)
-    ngx_connection_t *c = ev->data;
     ngx_log_debug(c->log, "del event: %d, %d" _ c->fd _ event);
 #endif
 
@@ -208,6 +208,8 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     /* we need to restore second event if it exists */
+
+    c = ev->data;
 
     if (event == NGX_READ_EVENT) {
         e = c->write;

@@ -56,13 +56,32 @@ struct ngx_command_s {
 #define ngx_null_command   {ngx_null_string, 0, NULL, 0, 0, NULL}
 
 
+struct ngx_open_file_s {
+    ngx_fd_t   fd;
+    ngx_str_t  name;
+};
+
+
+struct ngx_cycle_s {
+    void         ****conf_ctx;
+    ngx_pool_t      *pool;
+    ngx_log_t       *log;
+    ngx_array_t      listening;
+    ngx_array_t      open_files;
+
+    unsigned         one_process:1;
+};
+
+
 struct ngx_module_s {
     int             ctx_index;
     int             index;
     void           *ctx;
     ngx_command_t  *commands;
     int             type;
-    int           (*init_module)(ngx_pool_t *p);
+    int           (*init_module)(ngx_cycle_t *cycle, ngx_log_t *log);
+    int           (*commit_module)(ngx_cycle_t *cycle, ngx_log_t *log);
+    int           (*rollback_module)(ngx_cycle_t *cycle, ngx_log_t *log);
 };
 
 
@@ -71,22 +90,6 @@ typedef struct {
     ngx_hunk_t  *hunk;
     int          line;
 } ngx_conf_file_t;
-
-
-struct ngx_open_file_s {
-    ngx_fd_t   fd;
-    ngx_str_t  name;
-};
-
-
-typedef struct {
-    ngx_pool_t   *pool;
-    ngx_log_t    *log;
-    ngx_array_t   listening;
-    ngx_array_t   open_files;
-
-    unsigned      one_process:1;
-} ngx_cycle_t;
 
 
 typedef char *(*ngx_conf_handler_pt)(ngx_conf_t *cf,

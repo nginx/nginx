@@ -246,6 +246,17 @@ ngx_log_t *ngx_log_init_errlog()
 }
 
 
+ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle)
+{
+    ngx_log_t  *log;
+
+    ngx_test_null(log, ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)), NULL);
+    ngx_test_null(log->file, ngx_push_array(&cycle->open_files), NULL);
+
+    return log;
+}
+
+
 char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log)
 {
     int         len;

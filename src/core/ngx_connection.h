@@ -34,6 +34,9 @@ typedef struct {
     time_t            post_accept_timeout;     /* should be here because
                                                   of the deferred accept */
 
+    unsigned          new:1;
+    unsigned          remain:1;
+
     unsigned          bound:1;       /* already bound */
     unsigned          inherited:1;   /* inherited from previous process */
     unsigned          nonblocking_accept:1;

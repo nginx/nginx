@@ -371,7 +371,7 @@ int ngx_event_close_connection(ngx_event_t *ev);
 
 
 int  ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log);
-void ngx_worker(ngx_log_t *log);
+void ngx_worker(ngx_cycle_t *cycle);
 
 
 /* ***************************** */
