@@ -56,6 +56,7 @@ struct ngx_event_s {
                                 /* otherwise:                                */
                                 /*   accept: 1 if accept many, 0 otherwise   */
 
+    unsigned         level:1;
     unsigned         oneshot:1;
 
 #if 0

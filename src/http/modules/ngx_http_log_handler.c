@@ -22,11 +22,12 @@ int ngx_http_log_handler(ngx_http_request_t *r)
 
     ngx_log_debug(r->connection->log, "log handler");
 
-    /* 10:%con, 22:%date, 2:%"%r", 3:%status, 20:%bytes, 5*" ", 2/1: "\r\n" */
+    /* 10:%con, 1:%pipe, 22:%date, 2:"%r", 3:%status, 20:%bytes,
+       6*" ", 2/1: "\r\n" */
 #if (WIN32)
-    len = 10 + 22 + 2 + 3 + 20 + 5 + 2;
+    len = 10 + 1 + 22 + 2 + 3 + 20 + 6 + 2;
 #else
-    len = 10 + 22 + 2 + 3 + 20 + 5 + 1;
+    len = 10 + 1 + 22 + 2 + 3 + 20 + 6 + 1;
 #endif
 
     len += r->connection->addr_text.len;
@@ -41,6 +42,14 @@ int ngx_http_log_handler(ngx_http_request_t *r)
     *p++ = ' ';
 
     p += ngx_snprintf(p, 21, "%u", r->connection->number);
+
+    *p++ = ' ';
+
+    if (r->pipeline) {
+        *p++ = 'p';
+    } else {
+        *p++ = '.';
+    }
 
     *p++ = ' ';
 

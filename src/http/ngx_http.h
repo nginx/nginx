@@ -155,6 +155,7 @@ struct ngx_http_request_s {
     ngx_str_t   path;
     int         path_err;
 
+    unsigned  pipeline:1;
     unsigned  keepalive:1;
     unsigned  lingering_close:1;
 
@@ -176,6 +177,7 @@ struct ngx_http_request_s {
     char  *uri_end;
     char  *uri_ext;
     char  *args_start;
+    char  *request_start;
     char  *request_end;
     char  *header_name_start;
     char  *header_name_end;

@@ -52,6 +52,7 @@ struct ngx_connection_s {
 
     int               number;
 
+    unsigned          pipeline:1;
     unsigned          unexpected_eof:1;
 };
 

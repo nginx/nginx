@@ -36,6 +36,8 @@ static int ngx_http_set_lingering_close(ngx_http_request_t *r);
 static int ngx_http_lingering_close_handler(ngx_event_t *ev);
 
 static int ngx_http_close_connection(ngx_event_t *ev);
+static int ngx_http_header_parse_error(ngx_http_request_t *r,
+                                       int parse_err, int err);
 static size_t ngx_http_log_error(void *data, char *buf, size_t len);
 
 
@@ -128,6 +130,7 @@ int ngx_http_init_connection(ngx_connection_t *c)
 
     /* select, poll, /dev/poll */
 
+    ev->level = 1;
     return ngx_add_event(ev, NGX_READ_EVENT, NGX_LEVEL_EVENT);
 
 #endif /* USE_KQUEUE */
@@ -160,6 +163,7 @@ static int ngx_http_init_request(ngx_event_t *ev)
         r->header_read = 1;
     }
 
+    r->pipeline = c->pipeline;
     r->header_in = c->buffer;
 
     ngx_test_null(r->pool, ngx_create_pool(ngx_http_request_pool_size, ev->log),
@@ -186,7 +190,7 @@ static int ngx_http_init_request(ngx_event_t *ev)
 
 static int ngx_http_process_request_header(ngx_event_t *ev)
 {
-    int                  n, rc, offset;
+    int                  n, rc;
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
     ngx_http_log_ctx_t  *ctx;
@@ -252,38 +256,6 @@ static int ngx_http_process_request_header(ngx_event_t *ev)
         } while (rc == NGX_AGAIN
                  && r->header_in->pos.mem < r->header_in->last.mem);
 
-        /* if large client header is supported then
-            we need to compact r->header_in hunk */
-
-        if (ngx_http_large_client_header
-            && rc == NGX_AGAIN
-            && r->header_in->last.mem == r->header_in->end
-            && r->header_in->pos.mem == r->header_in->last.mem)
-        {
-            offset = r->header_name_start - r->header_in->start;
-
-            if (offset == 0) {
-                ctx = r->connection->log->data;
-                r->connection->log->handler = NULL;
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "client %s sent too long header line, URL: %s",
-                              ctx->client, ctx->url);
-                r->connection->log->handler = ngx_http_log_error;
-
-                return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
-            }
-
-            ngx_memcpy(r->header_in->start, r->header_name_start,
-                       r->header_in->last.mem - r->header_name_start);
-
-            r->header_name_start = r->header_in->start;
-            r->header_in->last.mem -= offset;
-            r->header_in->pos.mem -= offset;
-            r->header_name_end -= offset;
-            r->header_start -= offset;
-            r->header_end -= offset;
-        }
-
 #if (HAVE_AIO_EVENT) /* aio, iocp */
     } while (rc == NGX_AGAIN && ngx_event_flags & NGX_HAVE_AIO_EVENT);
 #endif
@@ -319,11 +291,45 @@ static int ngx_http_process_request_header(ngx_event_t *ev)
 
 static int ngx_http_process_request_line(ngx_http_request_t *r)
 {
-    int                  rc;
+    int                  rc, offset;
     ngx_connection_t    *c;
     ngx_http_log_ctx_t  *ctx;
 
     rc = ngx_read_http_request_line(r);
+
+    /* If it's a pipelined request and a request line is not complete
+       then we need to copy it to the start of r->header_in hunk.
+       We need to copy it here only if the large client headers are enabled
+       otherwise a request line had already copied to start
+       of r->header_in hunk in ngx_http_set_keepalive() */
+
+    if (ngx_http_large_client_header
+        && rc == NGX_AGAIN
+        && r->header_in->last.mem == r->header_in->end)
+    {
+        offset = r->request_start - r->header_in->start;
+
+        if (offset == 0) {
+            return ngx_http_header_parse_error(r, NGX_HTTP_PARSE_TOO_LONG_URI,
+                                               NGX_HTTP_REQUEST_URI_TOO_LARGE);
+        }
+
+        ngx_memcpy(r->header_in->start, r->request_start,
+                   r->header_in->last.mem - r->request_start);
+
+        r->header_in->pos.mem -= offset;
+        r->header_in->last.mem -= offset;
+        r->request_start = r->header_in->start;
+        r->request_end -= offset;
+        r->uri_start -= offset;
+        r->uri_end -= offset;
+        if (r->uri_ext) {
+            r->uri_ext -= offset;
+        }
+        if (r->args_start) {
+            r->args_start -= offset;
+        }
+    }
 
     c = r->connection;
 
@@ -338,16 +344,16 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
         /* if large client headers is supported then
            we need to copy request line */
 
-        r->request_line.len = r->request_end - r->header_in->start;
+        r->request_line.len = r->request_end - r->request_start;
         if (ngx_http_large_client_header) {
             ngx_test_null(r->request_line.data,
                           ngx_palloc(r->pool, r->request_line.len + 1),
                           ngx_http_close_request(r));
-            ngx_cpystrn(r->request_line.data, r->header_in->start,
+            ngx_cpystrn(r->request_line.data, r->request_start,
                         r->request_line.len + 1);
 
         } else {
-            r->request_line.data = r->header_in->start;
+            r->request_line.data = r->request_start;
             r->request_line.data[r->request_line.len] = '\0';
         }
 
@@ -361,10 +367,16 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
             ngx_cpystrn(r->exten.data, r->uri_ext, r->exten.len + 1);
         }
 
-#if 0
-        ngx_log_debug(r->connection->log, "HTTP: %d, %d, %s %s" _
+#if 1
+        if (r->exten.data == NULL) {
+            r->exten.data = "";
+        }
+        ngx_log_debug(r->connection->log, "HTTP: %d, %d, '%s', '%s'" _
                       r->method _ r->http_version _
                       r->uri.data _ r->exten.data);
+        if (r->exten.data[0] == '\0') {
+            r->exten.data = NULL;
+        }
 #endif
 
         ctx = r->connection->log->data;
@@ -387,33 +399,51 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
     }
 
     if (r->header_in->last.mem == r->header_in->end) {
-        rc = NGX_HTTP_PARSE_TOO_LONG_URI;
+        return ngx_http_header_parse_error(r, NGX_HTTP_PARSE_TOO_LONG_URI,
+                                           NGX_HTTP_REQUEST_URI_TOO_LARGE);
 
     } else if (rc == NGX_AGAIN) {
         return NGX_AGAIN;
     }
 
-    ctx = r->connection->log->data;
-    r->connection->log->handler = NULL;
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  header_errors[rc - NGX_HTTP_PARSE_INVALID_METHOD],
-                  ctx->client);
-    r->connection->log->handler = ngx_http_log_error;
-
-    return ngx_http_error(r, (rc == NGX_HTTP_PARSE_TOO_LONG_URI) ?
-                                 NGX_HTTP_REQUEST_URI_TOO_LARGE:
-                                 NGX_HTTP_BAD_REQUEST);
+    return ngx_http_header_parse_error(r, rc, NGX_HTTP_BAD_REQUEST);
 }
 
 
 static int ngx_http_process_request_headers(ngx_http_request_t *r)
 {
-    int                  rc;
+    int                  rc, offset;
     size_t               len;
     ngx_http_log_ctx_t  *ctx;
 
     for ( ;; ) {
         rc = ngx_read_http_header_line(r, r->header_in);
+
+        /* if large client header is supported then
+            we need to compact r->header_in hunk */
+
+        if (ngx_http_large_client_header
+            && rc == NGX_AGAIN
+            && r->header_in->pos.mem == r->header_in->end)
+        {
+            offset = r->header_name_start - r->header_in->start;
+
+            if (offset == 0) {
+                return ngx_http_header_parse_error(r,
+                                                NGX_HTTP_PARSE_TOO_LONG_HEADER,
+                                                NGX_HTTP_BAD_REQUEST);
+            }
+
+            ngx_memcpy(r->header_in->start, r->header_name_start,
+                       r->header_in->last.mem - r->header_name_start);
+
+            r->header_in->last.mem -= offset;
+            r->header_in->pos.mem -= offset;
+            r->header_name_start = r->header_in->start;
+            r->header_name_end -= offset;
+            r->header_start -= offset;
+            r->header_end -= offset;
+        }
 
         if (rc == NGX_OK) { /* header line is ready */
             if (ngx_http_process_request_header_line(r) == NGX_ERROR) {
@@ -426,39 +456,33 @@ static int ngx_http_process_request_headers(ngx_http_request_t *r)
             ngx_log_debug(r->connection->log, "HTTP header done");
 
             if (r->headers_in.host) {
-                 for (len = 0; len < r->headers_in.host->value.len; len++) {
-                     if (r->headers_in.host->value.data[len] == ':') {
-                         break;
-                     }
-                 }
-                 r->headers_in.host_name_len = len;
-                 return NGX_OK;
+                for (len = 0; len < r->headers_in.host->value.len; len++) {
+                    if (r->headers_in.host->value.data[len] == ':') {
+                        break;
+                    }
+                }
+                r->headers_in.host_name_len = len;
 
             } else {
-                 if (r->http_version < NGX_HTTP_VERSION_11) {
-                     r->headers_in.host_name_len = 0;
-                     return NGX_OK;
-                 }
+                if (r->http_version > NGX_HTTP_VERSION_10) {
+                    return ngx_http_header_parse_error(r,
+                                                 NGX_HTTP_PARSE_NO_HOST_HEADER,
+                                                 NGX_HTTP_BAD_REQUEST);
+                }
+                r->headers_in.host_name_len = 0;
             }
 
-            rc = NGX_HTTP_PARSE_NO_HOST_HEADER;
+            return NGX_OK;
 
         } else if (!ngx_http_large_client_header
                    && r->header_in->last.mem == r->header_in->end) {
-            rc = NGX_HTTP_PARSE_TOO_LONG_HEADER;
+            return ngx_http_header_parse_error(r,
+                                               NGX_HTTP_PARSE_TOO_LONG_HEADER,
+                                               NGX_HTTP_BAD_REQUEST);
 
         } else if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
         }
-
-        ctx = r->connection->log->data;
-        r->connection->log->handler = NULL;
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      header_errors[rc - NGX_HTTP_PARSE_INVALID_METHOD],
-                      ctx->client, ctx->url);
-        r->connection->log->handler = ngx_http_log_error;
-
-        return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
     }
 }
 
@@ -590,13 +614,13 @@ static int ngx_http_event_request_handler(ngx_http_request_t *r)
 
         } else {
             event = NGX_LEVEL_EVENT;
-            r->write_level_event = 1;
+            wev->level = 1;
         }
 
 #else /* select, poll, /dev/poll */
 
         event = NGX_LEVEL_EVENT;
-        r->write_level_event = 1;
+        wev->level = 1;
 
 #endif
 
@@ -698,7 +722,6 @@ static int ngx_http_writer(ngx_event_t *ev)
 }
 
 
-/* TODO */
 static int ngx_http_block_read(ngx_event_t *ev)
 {
     ngx_log_debug(ev->log, "http read blocked");
@@ -711,27 +734,13 @@ static int ngx_http_block_read(ngx_event_t *ev)
 
 #else
 
-#if (HAVE_CLEAR_EVENT) /* kqueue */
+    if (ev->level) {       /* select, poll, /dev/poll */
+        ev->blocked = 1;
+        return ngx_del_event(ev, NGX_READ_EVENT, 0);
 
-    if (ngx_event_flags & NGX_HAVE_CLEAR_EVENT) {
+    } else {               /* kqueue, epoll */
         return NGX_OK;
     }
-
-#endif
-
-#if (HAVE_EDGE_EVENT) /* epoll */
-
-    if (ngx_event_flags & NGX_HAVE_EDGE_EVENT) {
-        return NGX_OK;
-    }
-
-#endif
-
-    /* select, poll, /dev/poll */
-
-    ev->blocked = 1;
-
-    return ngx_del_event(ev, NGX_READ_EVENT, 0);
 
 #endif /* USE_KQUEUE */
 }
@@ -803,34 +812,68 @@ static int ngx_http_read_discarded_body(ngx_event_t *ev)
 }
 
 
-/* TODO: if c->read->blocked */
 static int ngx_http_set_keepalive(ngx_http_request_t *r)
 {
+    int                  len;
+    ngx_hunk_t          *h;
+    ngx_event_t         *rev, *wev;
     ngx_connection_t    *c;
     ngx_http_log_ctx_t  *ctx;
 
     c = (ngx_connection_t *) r->connection;
+    rev = c->read;
+    wev = c->write;
 
-    c->buffer->pos.mem = c->buffer->last.mem = c->buffer->start;
-    c->read->event_handler = ngx_http_keepalive_handler;
-
-    if (r->write_level_event) {
-        if (ngx_del_event(c->write, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+    if (rev->blocked && rev->level) {
+        if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) == NGX_ERROR) {
             return NGX_ERROR;
         }
+        rev->blocked = 0;
     }
 
     ctx = (ngx_http_log_ctx_t *) c->log->data;
     ctx->action = "closing request";
-
     ngx_http_close_request(r);
+
+    h = c->buffer;
+
+    /* pipelined request */
+    if (h->pos.mem < h->last.mem) {
+
+        /* clients that support pipelined requests (Mozilla 1.x, Opera 6.x)
+           are rare now so this copy should also be rare */
+
+        if (!ngx_http_large_client_header) {
+            len = h->last.mem - h->pos.mem; 
+            ngx_memcpy(h->start, h->pos.mem, len);
+            h->pos.mem = h->start;
+            h->last.mem = h->start + len;
+        }
+
+        c->pipeline = 1;
+        ctx->action = "reading client pipelined request line";
+        return ngx_http_init_request(rev);
+    }
+
+    c->pipeline = 0;
+
+    h->pos.mem = h->last.mem = h->start;
+    rev->event_handler = ngx_http_keepalive_handler;
+
+    if (wev->active && wev->level) {
+        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+    }
 
     ctx->action = "keepalive";
 
 #if (HAVE_AIO_EVENT) /* aio, iocp */
+
     if (ngx_event_flags & NGX_HAVE_AIO_EVENT) {
-        return ngx_http_keepalive_handler(c->read);
+        return ngx_http_keepalive_handler(rev);
     }
+
 #endif
 
     return NGX_OK;
@@ -996,6 +1039,31 @@ static int ngx_http_lingering_close_handler(ngx_event_t *ev)
 static int ngx_http_close_connection(ngx_event_t *ev)
 {
     return ngx_event_close_connection(ev);
+}
+
+
+static int ngx_http_header_parse_error(ngx_http_request_t *r,
+                                       int parse_err, int err)
+{
+    ngx_http_log_ctx_t  *ctx;
+
+    ctx = r->connection->log->data;
+    r->connection->log->handler = NULL;
+
+    if (ctx->url) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      header_errors[parse_err - NGX_HTTP_PARSE_INVALID_METHOD],
+                      ctx->client, ctx->url);
+
+    } else {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      header_errors[parse_err - NGX_HTTP_PARSE_INVALID_METHOD],
+                      ctx->client);
+    }
+
+    r->connection->log->handler = ngx_http_log_error;
+
+    return ngx_http_error(r, err);
 }
 
 

@@ -41,6 +41,8 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
 
         /* HTTP methods: GET, HEAD, POST */
         case sw_start:
+            r->request_start = p - 1;
+
             switch (ch) {
             case 'G':
                 if (p + 1 >= r->header_in->last.mem) {
