@@ -37,21 +37,30 @@ static int (*next_header_filter) (ngx_http_request_t *r);
 static int (*next_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
 
+static comment_string = "<!--";
+
+
 static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
 
 }
 
 
-static int ngx_http_ssi_parse()
+
+
+
+
+static int ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
+                              ngx_hunk_t *h)
 {
+    int           looked, state;
+    char         *p;
+    ngx_hunk_t   *temp;
+    ngx_chain_t   chain;
 
-    ctx
-
-    new_hunk = 1;
     looked = ctx->looked;
     state = ctx->state;
-
+    p = h->pos;
 
     while (p < h->last) {
         ch = *p++;
@@ -60,11 +69,23 @@ static int ngx_http_ssi_parse()
 
         case ssi_start_state:
 
-            if (new_hunk) {
+            if (ctx->new_hunk) {
+
                 if (looked) {
-                    send looked hunk
+                    ngx_test_null(temp, ngx_calloc_hunk(r->pool), NGX_ERROR);
+                    temp->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
+                    temp->pos = comment_string;
+                    temp->last = comment_string + looked;
+
+                    chain.hunk = temp;
+                    chain.next = NULL;
+
+                    if (next_body_filter(r, &chain) == NGX_ERROR) {
+                        return NGX_ERROR;
+                    }
                 }
-                new_hunk = 0;
+
+                ctx->new_hunk = 0;
             }
 
             /* tight loop */
@@ -77,9 +98,9 @@ static int ngx_http_ssi_parse()
                 }
 
                 if (p < h->last) {
-                    state = ssi_start_state;
-                    looked = 0;
-                    break;
+                    ctx->state = ssi_start_state;
+                    ctx->looked = 0;
+                    return NGX_HTTP_SSI_DONE;
                 }
 
                 ch = *p++;
@@ -175,7 +196,7 @@ static int ngx_http_ssi_parse()
 
             default:
                 ngx_test_null(ctx->command.data,
-                              ngx_palloc(r->pool, NGX_SSI_COMMAND_LEN),
+                              ngx_palloc(r->pool, NGX_HTTP_SSI_COMMAND_LEN),
                               NGX_ERROR);
                 ctx->command.data[0] = ch;
                 ctx->command.len = 1;
@@ -186,26 +207,83 @@ static int ngx_http_ssi_parse()
             break;
 
         case ssi_command_state:
-            if ((ch >= 'a' && ch =< 'z') || (ch >= 'A' && ch <= 'Z')
-                || (ch == '_') || (ch >= '0' && ch <= '9'))
-            {
+            switch (ch) {
+            case ' ':
+            case CR:
+            case LF:
+            case '\t':
+                ctx->command.data[ctx->command.len] = 0;
+                state = ssi_preparam_state;
+                break;
+
+            default:
+                if (ctx->command.len >= NGX_HTTP_SSI_COMMAND_LEN) {
+                    return NGX_HTTP_SSI_INVALID_COMMAND;
+                }
+
                 ctx->command.data[ctx->command.len++] = ch;
-
-            } else if (ch == ' ' || ch == CR || ch == LF || ch == '\t') {
-                state = ssi_postcommand_state;
-
-#if 0
-            } else if (ch == '=') {
-                state = ssi_preexpression_state;
-#endif
-
-            } else {
-                return NGX_SSI_PARSE_INVALID_COMMAND;
             }
 
             break;
 
-        case ssi_postcommand_state:
+        case ssi_preparam_state:
+            switch (ch) {
+            case ' ':
+            case CR:
+            case LF:
+            case '\t':
+                break;
+
+            case '-':
+                state = ssi_comment_end0_state;
+                break;
+
+            default:
+                ngx_test_null(param, ngx_push_array(&ctx->params), NGX_ERROR);
+
+                ngx_test_null(param->name.data,
+                              ngx_palloc(r->pool, NGX_HTTP_SSI_PARAM_LEN),
+                              NGX_ERROR);
+                param->name.data[0] = ch;
+                param->name.len = 1;
+
+                ngx_test_null(param->value.data,
+                              ngx_palloc(r->pool, NGX_HTTP_SSI_VALUE_LEN),
+                              NGX_ERROR);
+                param->value.len = 0;
+
+                state = ssi_param_state;
+                break;
+            }
+
+            break;
+
+        case ssi_param_state:
+            switch (ch) {
+            case ' ':
+            case CR:
+            case LF:
+            case '\t':
+                ctx->param.data[ctx->param.len] = 0;
+                state = ssi_preequal_state;
+                break;
+
+            case '=':
+                ctx->param.data[ctx->param.len] = 0;
+                state = ssi_prevalue_state;
+                break;
+
+            default:
+                if (ctx->param.len >= NGX_HTTP_SSI_PARAM_LEN) {
+                    return NGX_HTTP_SSI_INVALID_PARAM;
+                }
+
+                ctx->param.data[ctx->param.len++] = ch;
+            }
+
+            break;
+
+        case ssi_preequal_state:
             switch (ch) {
             case ' ':
             case CR:
@@ -214,16 +292,16 @@ static int ngx_http_ssi_parse()
                 break;
 
             case '=':
-                state = ssi_preexpression_state;
+                state = ssi_prevalue_state;
                 break;
 
             default:
-                return NGX_SSI_PARSE_INVALID_PARAM;
+                return NGX_HTTP_SSI_PARSE_INVALID_PARAM;
             }
 
             break;
 
-        case ssi_preexpression_state:
+        case ssi_prevalue_state:
             switch (ch) {
             case ' ':
             case CR:
@@ -232,23 +310,23 @@ static int ngx_http_ssi_parse()
                 break;
 
             case '"':
-                state = ssi_expression_state;
+                state = ssi_value_state;
                 break;
 
             default:
-                return NGX_SSI_PARSE_INVALID_PARAM;
+                return NGX_HTTP_SSI_PARSE_INVALID_PARAM;
             }
 
             break;
 
-        case ssi_expression_state:
+        case ssi_value_state:
             switch (ch) {
             case '\':
                 state = ssi_quote_state;
                 break;
 
             case '"':
-                state = ssi_expression_state;
+                state = ssi_postvalue_state;
                 break;
 
             default:
@@ -268,9 +346,7 @@ static int ngx_http_ssi_parse()
     ctx->state = state;
     ctx->looked = looked;
 
-    send hunk (size - looked);
-
-    return;
+    return NGX_HTTP_SSI_DONE;
 }
 
 
