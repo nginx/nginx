@@ -73,6 +73,8 @@ typedef struct {
     ngx_path_t                      *cache_path;
     ngx_path_t                      *temp_path;
 
+    ngx_http_busy_lock_t            *busy_lock;
+
     ngx_http_proxy_upstream_conf_t  *upstream;
     ngx_peers_t                     *peers;
 } ngx_http_proxy_loc_conf_t;
@@ -143,6 +145,7 @@ struct ngx_http_proxy_ctx_s {
 
     unsigned                      cachable:1;
     unsigned                      stale:1;
+    unsigned                      valid_header_in:1;
 
     unsigned                      request_sent:1;
     unsigned                      header_sent:1;

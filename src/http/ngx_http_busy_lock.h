@@ -24,4 +24,8 @@ typedef struct {
 } ngx_http_busy_lock_t;
 
 
+char *ngx_http_set_busy_lock_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+                                  void *conf);
+
+
 #endif /* _NGX_HTTP_BUSY_LOCK_H_INCLUDED_ */

@@ -12,14 +12,9 @@ typedef struct {
     time_t       last_modified;
     time_t       date;
     off_t        length;
+    size_t       key_len;
+    char         key[0];
 } ngx_http_cache_header_t;
-
-
-typedef struct {
-    ngx_http_cache_header_t  header;
-    size_t                   key_len;
-    char                     key[0];
-} ngx_http_cache_file_t;
 
 
 typedef struct {
@@ -37,12 +32,17 @@ typedef struct {
 
 
 typedef struct {
-    ngx_file_t                file;
-    ngx_str_t                 key;
-    ngx_path_t               *path;
-    ngx_hunk_t               *buf;
-    ngx_http_cache_header_t   header;
-    ssize_t                   header_size;
+    ngx_file_t   file;
+    ngx_str_t    key;
+    u_char       md5[16];
+    ngx_path_t  *path;
+    ngx_hunk_t  *buf;
+    time_t       expires;
+    time_t       last_modified;
+    time_t       date;
+    off_t        length;
+    ssize_t      header_size;
+    size_t       file_start;
 } ngx_http_cache_ctx_t;
 
 

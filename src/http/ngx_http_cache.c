@@ -8,12 +8,12 @@
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
 {
-    ssize_t                 n;
-    MD5_CTX                 md5;
-    ngx_err_t               err;
-    ngx_http_cache_file_t  *h;
+    ssize_t                   n;
+    MD5_CTX                   md5;
+    ngx_err_t                 err;
+    ngx_http_cache_header_t  *h;
 
-    ctx->header_size = sizeof(ngx_http_cache_file_t) + ctx->key.len + 1;
+    ctx->header_size = sizeof(ngx_http_cache_header_t) + ctx->key.len + 1;
 
     ctx->file.name.len = ctx->path->name.len + 1 + ctx->path->len + 32;
     if (!(ctx->file.name.data = ngx_palloc(r->pool, ctx->file.name.len + 1))) {
@@ -24,8 +24,15 @@ int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
 
     MD5Init(&md5);
     MD5Update(&md5, (u_char *) ctx->key.data, ctx->key.len);
+    MD5Final(ctx->md5, &md5);
+
+    ngx_print_md5(
+                 ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len,
+                 ctx->md5);
+#if 0
     MD5End(&md5,
            ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len);
+#endif
 
 ngx_log_debug(r->connection->log, "URL: %s, md5: %s" _ ctx->key.data _
               ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len);
@@ -64,8 +71,11 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
         return NGX_ERROR;
     }
 
-    h = (ngx_http_cache_file_t *) ctx->buf->pos;
-    ctx->header = h->header;
+    h = (ngx_http_cache_header_t *) ctx->buf->pos;
+    ctx->expires = h->expires;
+    ctx->last_modified= h->last_modified;
+    ctx->date = h->date;
+    ctx->length = h->length;
 
     if (h->key_len != ctx->key.len
         || ngx_strncmp(h->key, ctx->key.data, h->key_len) != 0)
@@ -79,7 +89,7 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
 
     ctx->buf->last += n;
 
-    if (ctx->header.expires < ngx_time()) {
+    if (ctx->expires < ngx_time()) {
         return NGX_HTTP_CACHE_STALE;
     }
 

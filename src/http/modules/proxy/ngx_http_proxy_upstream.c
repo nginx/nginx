@@ -300,6 +300,9 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
             p->header_in->last = p->header_in->start;
         }
     }
+
+    p->status = 0;
+    p->status_count = 0;
 }
 
 
@@ -557,6 +560,8 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
         return;
     }
 
+    p->valid_header_in = 0;
+
     p->upstream->peer.cached = 0;
 
     rc = ngx_http_proxy_parse_status_line(p);
@@ -811,7 +816,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     int                           rc;
     ngx_event_pipe_t             *ep;
     ngx_http_request_t           *r;
-    ngx_http_cache_file_t        *header;
+    ngx_http_cache_header_t      *header;
     ngx_http_core_loc_conf_t     *clcf;
 
     r = p->request;
@@ -836,14 +841,15 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
     p->header_sent = 1;
 
-    if (p->cache) {
-        header = (ngx_http_cache_file_t *) p->header_in->start;
+    if (p->cachable) {
+        header = (ngx_http_cache_header_t *) p->header_in->start;
 
-        /* STUB */
-        header->header.expires = 0;
-        header->header.last_modified = 0;
+        header->expires = p->cache->ctx.expires;
+        header->last_modified = p->cache->ctx.last_modified;
+        header->date = p->cache->ctx.date;
+        /* TODO: r->headers_out.content_length_n == -1 */
+        header->length = r->headers_out.content_length_n;
 
-        header->header.length = r->headers_out.content_length_n;
         header->key_len = p->cache->ctx.key.len;
         ngx_memcpy(&header->key, p->cache->ctx.key.data, header->key_len);
         header->key[header->key_len] = LF;

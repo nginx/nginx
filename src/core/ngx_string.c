@@ -69,6 +69,15 @@ int ngx_atoi(char *line, size_t n)
 }
 
 
+void ngx_print_md5(char *text, u_char *md5)
+{
+    ngx_snprintf(text, 33, "%0x%0x%0x%0x%0x%0x%0x%0x%0x%0x%0x%0x%0x%0x%0x%0x",
+                 md5[0], md5[1], md5[2], md5[3], md5[4], md5[5],
+                 md5[6], md5[7], md5[8], md5[9], md5[10], md5[11],
+                 md5[12], md5[13], md5[14], md5[15]);
+}
+
+
 #if 0
 char *ngx_psprintf(ngx_pool_t *p, const char *fmt, ...)
 {

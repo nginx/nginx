@@ -131,6 +131,14 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       NULL },
 
 
+    { ngx_string("proxy_busy_lock"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE3,
+      ngx_http_set_busy_lock_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, busy_lock),
+      NULL },
+
+
     { ngx_string("proxy_pass_server"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -255,6 +263,8 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    ngx_memzero(p->state, sizeof(ngx_http_proxy_state_t));
+
 
     if (!p->lcf->cache) {
         p->state->cache = NGX_HTTP_PROXY_CACHE_PASS;
@@ -279,6 +289,8 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
     }
 
     rc = ngx_http_proxy_get_cached_response(p);
+
+    p->valid_header_in = 1;
 
     if (rc == NGX_OK) {
         return ngx_http_proxy_send_cached_response(p);
@@ -406,6 +418,8 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->cache_path = NULL;
     conf->temp_path = NULL;
 
+    conf->busy_lock = NULL;
+
     */
 
     conf->request_buffer_size = NGX_CONF_UNSET;
@@ -481,6 +495,26 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
                               "temp", 1, 2, 0, cf->pool);
 
     ngx_conf_merge_value(conf->cache, prev->cache, 0);
+
+
+    /* conf->cache must be merged */
+
+    if (conf->busy_lock == NULL) {
+        conf->busy_lock = prev->busy_lock;
+    }
+
+    if (conf->busy_lock && conf->cache && conf->busy_lock->busy == NULL) {
+
+        /* 16 bytes are 128 bits of the md5 */
+
+        /* ngx_alloc_shared() */
+        conf->busy_lock->busy = ngx_palloc(cf->pool,
+                                           16 * conf->busy_lock->max_conn);
+        if (conf->busy_lock->busy == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
 
     ngx_conf_merge_value(conf->pass_server, prev->pass_server, 0);
     ngx_conf_merge_value(conf->pass_x_accel_expires,
