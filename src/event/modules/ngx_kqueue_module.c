@@ -279,9 +279,9 @@ static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
 static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 {
+    struct kevent     *kev, kv;
     struct timespec    ts;
     ngx_connection_t  *c;
-    struct kevent     *kev, kv;
 
     c = ev->data;
 
@@ -370,7 +370,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
     for ( ;; ) {
         timer = ngx_event_find_timer();
 
-#if (NGX_THREADS)
+#if (NGX_THREADS0)
         if (timer == NGX_TIMER_ERROR) {
             return NGX_ERROR;
         }
@@ -621,7 +621,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
     if (ngx_posted_events) {
         if (ngx_threaded) {
-            ngx_cond_signal(ngx_posted_events_cv);
+            ngx_wakeup_worker_thread(cycle);
 
         } else {
             ngx_event_process_posted(cycle);

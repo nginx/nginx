@@ -8,7 +8,6 @@ ngx_thread_volatile ngx_event_t  *ngx_posted_events;
 
 #if (NGX_THREADS)
 ngx_mutex_t                      *ngx_posted_events_mutex;
-ngx_cond_t                       *ngx_posted_events_cv;
 #endif
 
 
@@ -57,6 +56,19 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
 
 #if (NGX_THREADS)
 
+void ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
+{
+    ngx_int_t  i;
+
+    for (i = 0; i < ngx_threads_n; i++) {
+        if (ngx_threads[i].state == NGX_THREAD_FREE) {
+            ngx_cond_signal(ngx_threads[i].cv);
+            return;
+        }
+    }
+}
+
+
 ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 {
     ngx_event_t  *ev;
@@ -71,7 +83,6 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
                           "posted event " PTR_FMT, ev);
 
             if (ev == NULL) {
-                ngx_mutex_unlock(ngx_posted_events_mutex);
                 return NGX_OK;
             }
 
@@ -142,6 +153,12 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
             break;
         }
     }
+}
+
+#else
+
+void ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
+{
 }
 
 #endif

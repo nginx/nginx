@@ -10,18 +10,20 @@
 /*
  * The threads implementation uses the rfork(RFPROC|RFTHREAD|RFMEM) syscall
  * to create threads.  All threads use the stacks of the same size mmap()ed
- * below the main stack.  Thus the current thread id is determinated through
- * the stack pointer.
+ * below the main stack.  Thus the current thread id is determinated via
+ * the stack pointer value.
  *
  * The mutex implementation uses the ngx_atomic_cmp_set() operation
- * to acquire a mutex and the SysV semaphore to wait on a mutex or to wake up
+ * to acquire a mutex and the SysV semaphore to wait on a mutex and to wake up
  * the waiting threads.  The light mutex does not use semaphore, so after
  * spinning in the lock the thread calls sched_yield().  However the light
  * mutecies are intended to be used with the "trylock" operation only.
+ * The SysV semop() is a cheap syscall, particularly if it has little sembuf's
+ * and does not use SEM_UNDO.
  *
- * The condition variable implementation uses the SysV semaphore set of two
- * semaphores. The first is used by the CV mutex, and the second is used
- * by the CV to signal.
+ * The condition variable implementation uses signal #64.  The signal handler
+ * is SIG_IGN so the kill() is a cheap syscall.  The thread waits a signal
+ * in kevent().  The use of the EVFILT_SIGNAL is safe since FreeBSD 4.7.
  *
  * This threads implementation currently works on i386 (486+) and amd64
  * platforms only.
@@ -76,7 +78,7 @@ void _spinlock(ngx_atomic_t *lock)
     for ( ;; ) {
 
         if (*lock) {
-            if (ngx_freebsd_hw_ncpu > 1 && tries++ < 1000) {
+            if (ngx_ncpu > 1 && tries++ < 1000) {
                 continue;
             }
 
@@ -110,7 +112,7 @@ void _spinunlock(ngx_atomic_t *lock)
 #endif
 
 
-int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
+int ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
                       ngx_log_t *log)
 {
     int    id, err;
@@ -144,15 +146,10 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, log, 0,
                    "thread stack: " PTR_FMT "-" PTR_FMT, stack, stack_top);
 
-#if 1
-    id = rfork_thread(RFPROC|RFTHREAD|RFMEM, stack_top, func, arg);
-#elif 1
-    id = rfork_thread(RFPROC|RFMEM, stack_top, func, arg);
-#elif 1
-    id = rfork_thread(RFFDG|RFCFDG, stack_top, func, arg);
-#else
-    id = rfork(RFFDG|RFCFDG);
-#endif
+    ngx_set_errno(0);
+
+    id = rfork_thread(RFPROC|RFTHREAD|RFMEM, stack_top,
+                      (ngx_rfork_thread_func_pt) func, arg);
 
     err = ngx_errno;
 
@@ -174,10 +171,23 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
 
 ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 {
-    size_t   len;
-    char    *red_zone, *zone;
+    char              *red_zone, *zone;
+    size_t             len;
+    ngx_int_t          i;
+    struct sigaction   sa;
 
-    max_threads = n;
+    max_threads = n + 1;
+
+    for (i = 0; i < n; i++) {
+        ngx_memzero(&sa, sizeof(struct sigaction));
+        sa.sa_handler = SIG_IGN;
+        sigemptyset(&sa.sa_mask);
+        if (sigaction(NGX_CV_SIGNAL, &sa, NULL) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "sigaction(%d, SIG_IGN) failed", NGX_CV_SIGNAL);
+            return NGX_ERROR;
+        }
+    }
 
     len = sizeof(ngx_freebsd_kern_usrstack);
     if (sysctlbyname("kern.usrstack", &ngx_freebsd_kern_usrstack, &len,
@@ -249,14 +259,6 @@ ngx_tid_t ngx_thread_self()
         return ngx_pid;
     }
 
-#if 0
-    if (tids[tid] == 0) {
-        pid = ngx_pid;
-        tids[tid] = pid;
-        return pid;
-    }
-#endif
-
     return tids[tid];
 }
 
@@ -301,7 +303,7 @@ ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, uint flags)
 }
 
 
-void ngx_mutex_done(ngx_mutex_t *m)
+void ngx_mutex_destroy(ngx_mutex_t *m)
 {
     if (semctl(m->semid, 0, IPC_RMID) == -1) {
         ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
@@ -538,43 +540,26 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 
 ngx_cond_t *ngx_cond_init(ngx_log_t *log)
 {
-    ngx_cond_t   *cv;
-    union semun   op;
+    ngx_cond_t  *cv;
 
     if (!(cv = ngx_alloc(sizeof(ngx_cond_t), log))) {
         return NULL;
     }
 
+    cv->signo = NGX_CV_SIGNAL;
+    cv->tid = 0;
     cv->log = log;
-
-    cv->semid = semget(IPC_PRIVATE, 2, SEM_R|SEM_A);
-    if (cv->semid == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "semget() failed");
-        return NULL;
-    }
-
-    op.val = 0;
-
-    if (semctl(cv->semid, 0, SETVAL, op) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "semctl(SETVAL) failed");
-
-        if (semctl(cv->semid, 0, IPC_RMID) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                          "semctl(IPC_RMID) failed");
-        }
-
-        return NULL;
-    }
+    cv->kq = -1;
 
     return cv;
 }
 
 
-void ngx_cond_done(ngx_cond_t *cv)
+void ngx_cond_destroy(ngx_cond_t *cv)
 {
-    if (semctl(cv->semid, 0, IPC_RMID) == -1) {
+    if (close(cv->kq) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,
-                      "semctl(IPC_RMID) failed");
+                      "kqueue close() failed");
     }
 
     ngx_free(cv);
@@ -583,19 +568,99 @@ void ngx_cond_done(ngx_cond_t *cv)
 
 ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
 {
-    struct sembuf  op;
+    int              n;
+    ngx_err_t        err;
+    struct kevent    kev;
+    struct timespec  ts;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->log, 0,
-                   "cv " PTR_FMT " wait", cv);
+    if (cv->kq == -1) {
 
-    op.sem_num = 0;
-    op.sem_op = -1;
-    op.sem_flg = 0;
+        /*
+         * We have to add the EVFILT_SIGNAL filter in the rfork()ed thread.
+         * Otherwise the thread would not get a signal event.
+         *
+         * However, we have not to open the kqueue in the thread,
+         * it is simply handy do it together.
+         */
 
-    if (semop(cv->semid, &op, 1) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,
-                      "semop() failed while waiting on cv " PTR_FMT, cv);
+        cv->kq = kqueue();
+        if (cv->kq == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno, "kqueue() failed");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, cv->log, 0,
+                       "cv kq:%d signo:%d", cv->kq, cv->signo);
+
+        kev.ident = cv->signo;
+        kev.filter = EVFILT_SIGNAL;
+        kev.flags = EV_ADD;
+        kev.fflags = 0;
+        kev.data = 0;
+        kev.udata = NULL;
+
+        ts.tv_sec = 0;
+        ts.tv_nsec = 0;
+
+        if (kevent(cv->kq, &kev, 1, NULL, 0, &ts) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno, "kevent() failed");
+            return NGX_ERROR;
+        }
+    }
+
+    if (ngx_mutex_unlock(m) == NGX_ERROR) {
         return NGX_ERROR;
+    }
+
+    ngx_log_debug3(NGX_LOG_DEBUG_CORE, cv->log, 0,
+                   "cv " PTR_FMT " wait, kq:%d, signo:%d",
+                   cv, cv->kq, cv->signo);
+
+    for ( ;; ) {
+        n = kevent(cv->kq, NULL, 0, &kev, 1, NULL);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, cv->log, 0,
+                       "cv " PTR_FMT " kevent: %d", cv, n);
+
+        if (n == -1) {
+            err = ngx_errno;
+            ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
+                          cv->log, ngx_errno,
+                          "kevent() failed while waiting condition variable "
+                          PTR_FMT, cv);
+
+            if (err == NGX_EINTR) {
+                break;
+            }
+
+            return NGX_ERROR;
+        }
+
+        if (n == 0) {
+            ngx_log_error(NGX_LOG_ALERT, cv->log, 0,
+                          "kevent() returned no events "
+                          "while waiting condition variable " PTR_FMT,
+                          cv);
+            continue;
+        }
+
+        if (kev.filter != EVFILT_SIGNAL) {
+            ngx_log_error(NGX_LOG_ALERT, cv->log, 0,
+                          "kevent() returned unexpected events: %d "
+                          "while waiting condition variable " PTR_FMT,
+                          kev.filter, cv);
+            continue;
+        }
+
+        if (kev.ident != (uintptr_t) cv->signo) {
+            ngx_log_error(NGX_LOG_ALERT, cv->log, 0,
+                          "kevent() returned unexpected signal: %d ",
+                          "while waiting condition variable " PTR_FMT,
+                          kev.ident, cv);
+            continue;
+        }
+
+        break;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->log, 0,
@@ -611,18 +676,14 @@ ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
 
 ngx_int_t ngx_cond_signal(ngx_cond_t *cv)
 {
-    struct sembuf  op;
+    ngx_log_debug3(NGX_LOG_DEBUG_CORE, cv->log, 0,
+                   "cv " PTR_FMT " to signal " PID_T_FMT " %d",
+                   cv, cv->tid, cv->signo);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->log, 0,
-                   "cv " PTR_FMT " to signal", cv);
-
-    op.sem_num = 0;
-    op.sem_op = 1;
-    op.sem_flg = 0;
-
-    if (semop(cv->semid, &op, 1) == -1) {
+    if (kill(cv->tid, cv->signo) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,
-                      "semop() failed while signaling cv " PTR_FMT, cv);
+                      "kill() failed while signaling condition variable "
+                      PTR_FMT, cv);
         return NGX_ERROR;
     }
 

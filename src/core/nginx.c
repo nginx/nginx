@@ -35,6 +35,24 @@ static ngx_command_t  ngx_core_commands[] = {
       offsetof(ngx_core_conf_t, worker_processes),
       NULL },
 
+#if (NGX_THREADS)
+
+    { ngx_string("worker_threads"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_core_conf_t, worker_threads),
+      NULL },
+
+    { ngx_string("thread_stack_size"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      0,
+      offsetof(ngx_core_conf_t, thread_stack_size),
+      NULL },
+
+#endif
+
     { ngx_string("user"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE12,
       ngx_set_user,
@@ -105,12 +123,6 @@ int main(int argc, char *const *argv)
     ngx_memzero(&ctx, sizeof(ngx_master_ctx_t));
     ctx.argc = argc;
     ctx.argv = argv;
-
-#if (NGX_THREADS)
-    if (ngx_time_mutex_init(log) == NGX_ERROR) {
-        return 1;
-    }
-#endif
 
     if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
         return 1;
@@ -341,6 +353,10 @@ static void *ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->daemon = NGX_CONF_UNSET;
     ccf->master = NGX_CONF_UNSET;
     ccf->worker_processes = NGX_CONF_UNSET;
+#if (NGX_THREADS)
+    ccf->worker_threads = NGX_CONF_UNSET;
+    ccf->thread_stack_size = NGX_CONF_UNSET;
+#endif
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET;
     ccf->group = (ngx_gid_t) NGX_CONF_UNSET;
 
@@ -355,6 +371,12 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
     ngx_conf_init_value(ccf->worker_processes, 1);
+
+#if (NGX_THREADS)
+    ngx_conf_init_value(ccf->worker_threads, 0);
+    ngx_threads_n = ccf->worker_threads;
+    ngx_conf_init_size_value(ccf->thread_stack_size, 2 * 1024 * 1024);
+#endif
 
 #if !(WIN32)
 

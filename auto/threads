@@ -1,13 +1,51 @@
 
-if [ $USE_THREADS = "rfork" ]; then
+case $USE_THREADS in
+    rfork)
+        have=NGX_THREADS . auto/have
+        have=NGX_USE_RFORK . auto/have
+        CORE_DEPS="$CORE_DEPS $FREEBSD_RFORK_DEPS"
+        CORE_SRCS="$CORE_SRCS $FREEBSD_RFORK_SRCS"
 
-    have=NGX_THREADS . auto/have
-    have=NGX_USE_RFORK . auto/have
-    CORE_DEPS="$CORE_DEPS $UNIX_THREADS_DEPS"
-    CORE_SRCS="$CORE_SRCS $FREEBSD_RFORK_SRCS"
+        case $PLATFORM in
+            *:i386)
+                if [ \( $version -gt 500000 -a $version -lt 501000 \) \
+                     -o $version -lt 491000 ]
+                then
+                    CORE_SRCS="$CORE_SRCS $FREEBSD_RFORK_THREAD_SRCS"
+                fi
+            ;;
+        esac
+    ;;
 
-    if [ $version -lt 501000 ]; then
-        CORE_SRCS="$CORE_SRCS $FREEBSD_RFORK_THREAD_SRCS"
-    fi
+    pthread)
+        have=NGX_THREADS . auto/have
+        CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
+        CORE_LIBS="$CORE_LIBS -lpthread"
+    ;;
 
-fi
+    freebsd4)
+        have=NGX_THREADS . auto/have
+        CFLAGS="$CFLAGS -pthread"
+        CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
+        CORE_LIBS="$CORE_LIBS -pthread"
+    ;;
+
+    lc_r)
+        have=NGX_THREADS . auto/have
+        CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
+        CORE_LIBS="$CORE_LIBS -lc_r"
+    ;;
+
+    lthr)
+        have=NGX_THREADS . auto/have
+        CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
+        CORE_LIBS="$CORE_LIBS -lthr"
+    ;;
+
+    lkse)
+        have=NGX_THREADS . auto/have
+        CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
+        CORE_LIBS="$CORE_LIBS -lkse"
+    ;;
+
+esac

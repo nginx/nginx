@@ -40,6 +40,12 @@ typedef struct {
 
      ngx_str_t   pid;
      ngx_str_t   newpid;
+
+#if (NGX_THREADS)
+     ngx_int_t   worker_threads;
+     size_t      thread_stack_size;
+#endif
+
 } ngx_core_conf_t;
 
 

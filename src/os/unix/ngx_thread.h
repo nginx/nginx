@@ -7,111 +7,84 @@
 
 #if (NGX_THREADS)
 
-#define ngx_thread_volatile  volatile
+#define NGX_MAX_THREADS      128
 
 #if (NGX_USE_RFORK)
-
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include <sched.h>
-
-typedef pid_t  ngx_tid_t;
-
-#undef ngx_log_pid
-#define ngx_log_pid    ngx_thread_self()
-#define ngx_log_tid    0
-
-#define TID_T_FMT      PID_T_FMT
-
-
-#define NGX_MUTEX_LIGHT      1
-#define NGX_MUTEX_CV         2
-
-#define NGX_MUTEX_LOCK_BUSY  0x80000000
-
-typedef volatile struct {
-    ngx_atomic_t  lock;
-    ngx_log_t    *log;
-    int           semid;
-} ngx_mutex_t;
-
-
-typedef struct {
-    int           semid;
-    ngx_log_t    *log;
-} ngx_cond_t;
-
-
-#define ngx_thread_sigmask(how, set, oset)                         \
-            (sigprocmask(how, set, oset) == -1) ? ngx_errno : 0
-
-#define ngx_thread_sigmask_n  "sigprocmask()"
-
-
-extern char    *ngx_freebsd_kern_usrstack;
-extern size_t   ngx_thread_stack_size;
-
-static inline int ngx_gettid()
-{
-    char  *sp;
-
-    if (ngx_thread_stack_size == 0) {
-        return 0;
-    }
-
-#if ( __i386__ )
-
-    __asm__ volatile ("mov %%esp, %0" : "=q" (sp));
-
-#elif ( __amd64__ )
-
-    __asm__ volatile ("mov %%rsp, %0" : "=q" (sp));
-
-#else
-
-#error "rfork()ed threads are not supported on this platform"
-
-#endif
-
-    return (ngx_freebsd_kern_usrstack - sp) / ngx_thread_stack_size;
-}
-
-
-#define ngx_thread_main()   (ngx_gettid() == 0)
+#include <ngx_freebsd_rfork_thread.h>
 
 
 #else /* use pthreads */
 
 #include <pthread.h>
+#include <pthread_np.h>
 
 typedef pthread_t  ngx_tid_t;
 
-#define ngx_gettid()   ((ngx_int_t) pthread_getspecific(0))
-#define ngx_log_tid    ngx_thread_self()
+#define ngx_thread_self()   pthread_self()
+#define ngx_thread_main()   pthread_main_np()
+#define ngx_log_tid         (int) ngx_thread_self()
+
+#define TID_T_FMT           PTR_FMT
+
+
+#define NGX_MUTEX_LIGHT     0
+
+typedef struct {
+    pthread_mutex_t   mutex;
+    ngx_log_t        *log;
+} ngx_mutex_t;
+
+typedef struct {
+    pthread_cond_t    cond;
+    ngx_tid_t         tid;
+    ngx_log_t        *log;
+} ngx_cond_t;
 
 #define ngx_thread_sigmask     pthread_sigmask
 #define ngx_thread_sigmask_n  "pthread_sigmask()"
 
+#define ngx_thread_join(t, p)  pthread_join(t, p)
+
+#define ngx_setthrtitle(n)
+
+
+
+ngx_int_t ngx_mutex_trylock(ngx_mutex_t *m);
+ngx_int_t ngx_mutex_lock(ngx_mutex_t *m);
+ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m);
+
 #endif
 
 
+#define ngx_thread_volatile   volatile
+
+
+typedef struct {
+    ngx_tid_t    tid;
+    ngx_cond_t  *cv;
+    ngx_uint_t   state;
+} ngx_thread_t;
+
+#define NGX_THREAD_FREE   1
+#define NGX_THREAD_BUSY   2
+#define NGX_THREAD_EXIT   3
+#define NGX_THREAD_DONE   4
+
+extern ngx_int_t              ngx_threads_n;
+extern volatile ngx_thread_t  ngx_threads[NGX_MAX_THREADS];
+
+
 ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle);
-int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
+int ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
                       ngx_log_t *log);
-ngx_tid_t ngx_thread_self();
 
 
 ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, uint flags);
-void ngx_mutex_done(ngx_mutex_t *m);
-
-#define ngx_mutex_trylock(m)  ngx_mutex_dolock(m, 1)
-#define ngx_mutex_lock(m)     ngx_mutex_dolock(m, 0)
-ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try);
-ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m);
+void ngx_mutex_destroy(ngx_mutex_t *m);
 
 
 ngx_cond_t *ngx_cond_init(ngx_log_t *log);
-void ngx_cond_done(ngx_cond_t *cv);
+void ngx_cond_destroy(ngx_cond_t *cv);
 ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m);
 ngx_int_t ngx_cond_signal(ngx_cond_t *cv);
 

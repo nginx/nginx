@@ -26,6 +26,7 @@
 
 
 void ngx_event_process_posted(ngx_cycle_t *cycle);
+void ngx_wakeup_worker_thread(ngx_cycle_t *cycle);
 
 extern ngx_thread_volatile ngx_event_t  *ngx_posted_events;
 
@@ -34,7 +35,6 @@ extern ngx_thread_volatile ngx_event_t  *ngx_posted_events;
 ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle);
 
 extern ngx_mutex_t                      *ngx_posted_events_mutex;
-extern ngx_cond_t                       *ngx_posted_events_cv;
 #endif
 
 

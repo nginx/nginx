@@ -13,7 +13,8 @@ static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static void ngx_channel_handler(ngx_event_t *ev);
 #if (NGX_THREADS)
-static int ngx_worker_thread_cycle(void *data);
+static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle);
+static void *ngx_worker_thread_cycle(void *data);
 #endif
 
 
@@ -38,6 +39,12 @@ ngx_uint_t    ngx_daemonized;
 sig_atomic_t  ngx_noaccept;
 ngx_uint_t    ngx_noaccepting;
 ngx_uint_t    ngx_restart;
+
+
+#if (NGX_THREADS)
+volatile ngx_thread_t  ngx_threads[NGX_MAX_THREADS];
+ngx_int_t              ngx_threads_n;
+#endif
 
 
 u_char  master_process[] = "master process";
@@ -524,9 +531,6 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_listening_t   *ls;
     ngx_core_conf_t   *ccf;
     ngx_connection_t  *c;
-#if (NGX_THREADS)
-    ngx_tid_t          tid;
-#endif
 
     ngx_process = NGX_PROCESS_WORKER;
 
@@ -620,22 +624,33 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
 #if (NGX_THREADS)
 
-    if (ngx_init_threads(5, 128 * 1024 * 1024, cycle) == NGX_ERROR) {
+    if (ngx_time_mutex_init(cycle->log) == NGX_ERROR) {
         /* fatal */
         exit(2);
     }
 
-    if (!(ngx_posted_events_cv = ngx_cond_init(cycle->log))) {
-        /* fatal */
-        exit(2);
-    }
-
-    for (i = 0; i < 2; i++) {
-        if (ngx_create_thread(&tid, ngx_worker_thread_cycle,
-                              cycle, cycle->log) != 0)
+    if (ngx_threads_n) {
+        if (ngx_init_threads(ngx_threads_n,
+                                   ccf->thread_stack_size, cycle) == NGX_ERROR)
         {
             /* fatal */
             exit(2);
+        }
+
+        for (n = 0; n < ngx_threads_n; n++) {
+
+            if (!(ngx_threads[n].cv = ngx_cond_init(cycle->log))) {
+                /* fatal */
+                exit(2);
+            }
+
+            if (ngx_create_thread((ngx_tid_t *) &ngx_threads[n].tid,
+                                  ngx_worker_thread_cycle,
+                                  (void *) &ngx_threads[n], cycle->log) != 0)
+            {
+                /* fatal */
+                exit(2);
+            }
         }
     }
 
@@ -646,6 +661,14 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             && ngx_event_timer_rbtree == &ngx_event_timer_sentinel)
         {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
+
+
+#if (NGX_THREADS)
+            ngx_terminate = 1;
+
+            ngx_wakeup_worker_threads(cycle);
+#endif
+
             /*
              * we do not destroy cycle->pool here because a signal handler
              * that uses cycle->log can be called at this point
@@ -659,6 +682,11 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
+
+#if (NGX_THREADS)
+            ngx_wakeup_worker_threads(cycle);
+#endif
+
             /*
              * we do not destroy cycle->pool here because a signal handler
              * that uses cycle->log can be called at this point
@@ -752,13 +780,52 @@ static void ngx_channel_handler(ngx_event_t *ev)
 
 #if (NGX_THREADS)
 
-int ngx_worker_thread_cycle(void *data)
+static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle)
 {
-    ngx_cycle_t *cycle = data;
+    ngx_int_t   i;
+    ngx_uint_t  live;
 
-    ngx_err_t       err;
+    for ( ;; ) {
+
+        live = 0;
+
+        for (i = 0; i < ngx_threads_n; i++) {
+            if (ngx_threads[i].state < NGX_THREAD_EXIT) {
+                ngx_cond_signal(ngx_threads[i].cv);
+                live = 1;
+            }
+
+            if (ngx_threads[i].state == NGX_THREAD_EXIT) {
+                ngx_thread_join(ngx_threads[i].tid, NULL);
+                ngx_threads[i].state = NGX_THREAD_DONE;
+            }
+        }
+
+        if (live == 0) {
+            ngx_log_debug0(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                           "all worker threads are joined");
+
+            /* STUB */
+            ngx_mutex_destroy(ngx_event_timer_mutex);
+            ngx_mutex_destroy(ngx_posted_events_mutex);
+
+            return;
+        }
+
+        ngx_sched_yield();
+    }
+}
+
+
+static void* ngx_worker_thread_cycle(void *data)
+{
+    ngx_thread_t  *thr = data;
+
     sigset_t        set;
+    ngx_err_t       err;
     struct timeval  tv;
+
+    thr->cv->tid = ngx_thread_self();
 
     sigemptyset(&set);
     sigaddset(&set, ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
@@ -767,32 +834,46 @@ int ngx_worker_thread_cycle(void *data)
 
     err = ngx_thread_sigmask(SIG_BLOCK, &set, NULL);
     if (err) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, err,
                       ngx_thread_sigmask_n " failed");
-        return 1;
+        return (void *) 1;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, ngx_errno,
-                   "thread %d started", ngx_thread_self());
+                   "thread " TID_T_FMT " started", ngx_thread_self());
 
-    ngx_setproctitle("worker thread");
+    ngx_setthrtitle("worker thread");
+
+    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+        return (void *) 1;
+    }
 
     for ( ;; ) {
-        if (ngx_cond_wait(ngx_posted_events_cv, ngx_posted_events_mutex)
+        thr->state = NGX_THREAD_FREE;
+
+        if (ngx_cond_wait(thr->cv, ngx_posted_events_mutex) == NGX_ERROR) {
+            return (void *) 1;
+        }
+
+        if (ngx_terminate) {
+            thr->state = NGX_THREAD_EXIT;
+
+            ngx_mutex_unlock(ngx_posted_events_mutex);
+
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, ngx_errno,
+                           "thread %d is done", ngx_thread_self());
+
+            return (void *) 0;
+        }
+
+        thr->state = NGX_THREAD_BUSY;
+
+        if (ngx_event_thread_process_posted((ngx_cycle_t *) ngx_cycle)
                                                                   == NGX_ERROR)
         {
-            return 1;
-        }
-
-        if (ngx_event_thread_process_posted(cycle) == NGX_ERROR) {
-            return 1;
+            return (void *) 1;
         }
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, ngx_errno,
-                   "thread %d done", ngx_thread_self());
-
-    return 0;
 }
 
 #endif

@@ -14,8 +14,8 @@
 
 
 typedef struct {
-     int           argc;
-     char *const  *argv;
+    int           argc;
+    char *const  *argv;
 } ngx_master_ctx_t;
 
 

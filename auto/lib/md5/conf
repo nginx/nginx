@@ -65,7 +65,7 @@ else
 
             ngx_lib="rsaref md library"
             ngx_lib_test="MD5_CTX md5; MD5Init(&md5)"
-            #ngx_libs=-lmd
+            ngx_libs=-lmd
             . auto/lib/test
         fi
 
