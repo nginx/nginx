@@ -484,7 +484,7 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
         overflow_current = 0;
         ngx_event_actions.process = ngx_rtsig_process_overflow;
 
-        return NGX_OK;
+        return NGX_ERROR;
 
     } else if (signo != -1) {
         ngx_accept_mutex_unlock();

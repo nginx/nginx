@@ -189,7 +189,7 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 
     shared = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_ANON|MAP_SHARED, -1, 0);
 
-    if (shared == NULL) {
+    if (shared == MAP_FAILED) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "mmap(MAP_ANON|MAP_SHARED) failed");
         return NGX_ERROR;
