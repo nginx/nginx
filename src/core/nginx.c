@@ -384,6 +384,8 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
                             if (ngx_processes[i].pid == ngx_new_binary) {
                                 ngx_new_binary = 0;
+
+                                /* TODO: if (ngx_noaccept) ngx_configure = 1 */
                             }
 
                             if (i != --ngx_last_process) {
@@ -444,6 +446,10 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                             if (ccf->worker_reopen > 0) {
                                 signo = ngx_signal_value(NGX_REOPEN_SIGNAL);
                                 ngx_reopen = 0;
+
+                            } else if (ngx_noaccept) {
+                                ngx_reopen = 0;
+
                             } else {
                                 signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
                             }

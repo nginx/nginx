@@ -149,9 +149,8 @@ void ngx_signal_handler(int signo)
             break;
 
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
-            if ((ngx_inherited && getppid() > 1)
-                || (!ngx_inherited && ngx_new_binary > 0))
-            {
+            if (getppid() > 1 || ngx_new_binary > 0) {
+
                 /*
                  * Ignore the signal in the new binary if its parent is
                  * not the init process, i.e. the old binary's process

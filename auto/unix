@@ -28,6 +28,9 @@ NGX_AUTO_CONFIG="#include \"../$NGX_AUTO_CONFIG_H\""
 ngx_type="uint64_t"
 ngx_types="u_int64_t"; . auto/types/typedef
 
+#ngx_type="sig_atomic_t"
+#ngx_types="int"; . auto/types/typedef
+
 ngx_type="socklen_t"
 ngx_types="uint32_t"; . auto/types/typedef
 

@@ -19,7 +19,6 @@ static int ngx_poll_process_events(ngx_log_t *log);
 static struct pollfd  *event_list;
 static int             nevents;
 
-static ngx_event_t   **event_index;
 static ngx_event_t   **ready_index;
 
 
@@ -58,7 +57,6 @@ ngx_module_t  ngx_poll_module = {
 static int ngx_poll_init(ngx_cycle_t *cycle)
 {
     struct pollfd   *list;
-    ngx_event_t    **index;
 
     if (event_list == NULL) {
         nevents = 0;
@@ -78,18 +76,6 @@ static int ngx_poll_init(ngx_cycle_t *cycle)
         }
 
         event_list = list;
-
-        ngx_test_null(index,
-                      ngx_alloc(sizeof(ngx_event_t *) * cycle->connection_n,
-                                cycle->log),
-                      NGX_ERROR);
-
-        if (event_index) {
-            ngx_memcpy(index, event_index, sizeof(ngx_event_t *) * nevents);
-            ngx_free(event_index);
-        }
-
-        event_index = index;
 
         if (ready_index) {
             ngx_free(ready_index);
@@ -114,11 +100,9 @@ static int ngx_poll_init(ngx_cycle_t *cycle)
 static void ngx_poll_done(ngx_cycle_t *cycle)
 {
     ngx_free(event_list);
-    ngx_free(event_index);
     ngx_free(ready_index);
 
     event_list = NULL;
-    event_index = NULL;
     ready_index = NULL;
 }
 
@@ -135,9 +119,6 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
                       "poll event fd:%d ev:%d is already set", c->fd, event);
         return NGX_OK;
     }
-
-    ev->active = 1;
-    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 
     if (event == NGX_READ_EVENT) {
         e = c->write;
@@ -160,7 +141,6 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
         event_list[nevents].events = event;
         event_list[nevents].revents = 0;
 
-        event_index[nevents] = ev;
         ev->index = nevents;
         nevents++;
 
@@ -172,18 +152,26 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
         ev->index = e->index;
     }
 
+    ev->active = 1;
+    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
+
     return NGX_OK;
 }
 
 
 static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
-    ngx_event_t       *e;
-    ngx_connection_t  *c;
+    ngx_int_t           i;
+    ngx_cycle_t       **cycle;
+    ngx_event_t        *e;
+    ngx_connection_t   *c;
 
-    c = (ngx_connection_t *) ev->data;
+    c = ev->data;
 
     if (ev->index == NGX_INVALID_INDEX) {
+        ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
+                      "poll event fd:%d ev:%d is already deleted",
+                      c->fd, event);
         return NGX_OK;
     }
 
@@ -208,8 +196,38 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
         if (ev->index < (u_int) nevents) {
             event_list[ev->index] = event_list[nevents];
-            event_index[ev->index] = event_index[nevents];
-            event_index[ev->index]->index = ev->index;
+
+            c = &ngx_cycle->connections[event_list[nevents].fd];
+
+            if (c->fd == -1) {
+                cycle = ngx_old_cycles.elts;
+                for (i = 0; i < ngx_old_cycles.nelts; i++) {
+                    if (cycle[i] == NULL) {
+                        continue;
+                    }
+                    c = &cycle[i]->connections[event_list[nevents].fd];
+                    if (c->fd != -1) {
+                        break;
+                    }
+                }
+            }
+
+            if (c->fd == -1) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
+                              "unexpected last event");
+
+            } else {
+                if (c->read->index == (u_int) nevents) {
+                    c->read->index = ev->index;
+
+                } else if (c->write->index == (u_int) nevents) {
+                    c->write->index = ev->index;
+
+                } else {
+                    ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
+                                  "unexpected last event index");
+                }
+            }
         }
 
     } else {
@@ -228,7 +246,8 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_poll_process_events(ngx_log_t *log)
 {
-    int                 i, j, ready, nready, found;
+    int                 ready;
+    ngx_int_t           i, j, nready, found;
     ngx_msec_t          timer;
     ngx_err_t           err;
     ngx_cycle_t       **cycle;
@@ -244,7 +263,7 @@ static int ngx_poll_process_events(ngx_log_t *log)
         timer = (ngx_msec_t) INFTIM;
     }
 
-#if (NGX_DEBUG)
+#if (NGX_DEBUG0)
     for (i = 0; i < nevents; i++) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0, "poll: %d: fd:%d ev:%04X",
                        i, event_list[i].fd, event_list[i].events);
@@ -292,10 +311,19 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
     for (i = 0; i < nevents && ready; i++) {
 
+#if 0
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
                        "poll: %d: fd:%d ev:%04X rev:%04X",
                        i, event_list[i].fd,
                        event_list[i].events, event_list[i].revents);
+#else
+        if (event_list[i].revents) {
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
+                           "poll: %d: fd:%d ev:%04X rev:%04X",
+                           i, event_list[i].fd,
+                           event_list[i].events, event_list[i].revents);
+        }
+#endif
 
         if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
@@ -335,7 +363,7 @@ static int ngx_poll_process_events(ngx_log_t *log)
         }
 
         if (c->fd == -1) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0, "unknown cycle");
+            ngx_log_error(NGX_LOG_ALERT, log, 0, "unexpected event");
 
             /*
              * it is certainly our fault and it should be investigated,
