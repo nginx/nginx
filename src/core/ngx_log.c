@@ -275,7 +275,6 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
 
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_int_t   i, n, d;
     ngx_str_t  *value;
 
     value = cf->args->elts;
@@ -287,19 +286,30 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         cf->cycle->log->file->name = value[1];
     }
 
+    return ngx_set_error_log_levels(cf, cf->cycle->log);
+}
+
+
+char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
+{
+    ngx_int_t   i, n, d;
+    ngx_str_t  *value;
+
+    value = cf->args->elts;
+
     for (i = 2; i < cf->args->nelts; i++) {
 
         for (n = 1; n < NGX_LOG_DEBUG; n++) {
             if (ngx_strcmp(value[i].data, err_levels[n]) == 0) {
 
-                if (cf->cycle->log->log_level != 0) {
+                if (log->log_level != 0) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                        "invalid log level \"%s\"",
                                        value[i].data);
                     return NGX_CONF_ERROR;
                 }
 
-                cf->cycle->log->log_level = n;
+                log->log_level = n;
                 continue;
             }
         }
@@ -307,21 +317,21 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         d = NGX_LOG_DEBUG_FIRST;
         for (n = 0; n < /* STUB */ 4; n++) {
             if (ngx_strcmp(value[i].data, debug_levels[n]) == 0) {
-                if (cf->cycle->log->log_level & ~NGX_LOG_DEBUG_ALL) {
+                if (log->log_level & ~NGX_LOG_DEBUG_ALL) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                        "invalid log level \"%s\"",
                                        value[i].data);
                     return NGX_CONF_ERROR;
                 }
 
-                cf->cycle->log->log_level |= d;
+                log->log_level |= d;
             }
 
             d <<= 1;
         }
 
 
-        if (cf->cycle->log->log_level == 0) {
+        if (log->log_level == 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid log level \"%s\"", value[i].data);
             return NGX_CONF_ERROR;

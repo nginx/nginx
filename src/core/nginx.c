@@ -6,9 +6,10 @@
 
 
 typedef struct {
-     ngx_str_t  user;
      int        daemon;
      int        master;
+     uid_t      user;
+     gid_t      group;
      ngx_str_t  pid;
      ngx_str_t  newpid;
 } ngx_core_conf_t;
@@ -27,6 +28,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle, char **envp);
 static ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
 static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle);
+static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 static ngx_str_t  core_name = ngx_string("core");
@@ -34,10 +36,10 @@ static ngx_str_t  core_name = ngx_string("core");
 static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("user"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_core_str_slot,
+      NGX_MAIN_CONF|NGX_CONF_TAKE12,
+      ngx_set_user,
       0,
-      offsetof(ngx_core_conf_t, user),
+      0,
       NULL },
 
     { ngx_string("daemon"),
@@ -68,26 +70,21 @@ ngx_module_t  ngx_core_module = {
 };
 
 
-ngx_int_t              ngx_max_module;
+ngx_int_t   ngx_max_module;
+ngx_uint_t  ngx_connection_counter;
 
+ngx_int_t   ngx_process;
+ngx_pid_t   ngx_new_binary;
 
-/* STUB */
-uid_t      user;
-
-u_int ngx_connection_counter;
-
-ngx_int_t  ngx_process;
-ngx_pid_t  ngx_new_binary;
-
-ngx_int_t  ngx_inherited;
-ngx_int_t  ngx_signal;
-ngx_int_t  ngx_reap;
-ngx_int_t  ngx_terminate;
-ngx_int_t  ngx_quit;
-ngx_int_t  ngx_noaccept;
-ngx_int_t  ngx_reconfigure;
-ngx_int_t  ngx_reopen;
-ngx_int_t  ngx_change_binary;
+ngx_int_t   ngx_inherited;
+ngx_int_t   ngx_signal;
+ngx_int_t   ngx_reap;
+ngx_int_t   ngx_terminate;
+ngx_int_t   ngx_quit;
+ngx_int_t   ngx_noaccept;
+ngx_int_t   ngx_reconfigure;
+ngx_int_t   ngx_reopen;
+ngx_int_t   ngx_change_binary;
 
 
 int main(int argc, char *const *argv, char **envp)
@@ -102,7 +99,6 @@ int main(int argc, char *const *argv, char **envp)
 #if !(WIN32)
     size_t             len;
     char               pid[/* STUB */ 10];
-    struct passwd     *pwd;
 #endif
 
 #if __FreeBSD__
@@ -168,19 +164,6 @@ int main(int argc, char *const *argv, char **envp)
 #endif
 
 #else
-
-    /* STUB */
-    if (ccf->user.len) {
-        pwd = getpwnam(ccf->user.data);
-        if (pwd == NULL) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "getpwnam(%s) failed", ccf->user);
-            return 1;
-        }
-
-        user = pwd->pw_uid;
-    }
-    /* */
 
     if (ccf->daemon != 0) {
         if (ngx_daemon(cycle->log) == NGX_ERROR) {
@@ -573,16 +556,28 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     sigset_t          set;
     ngx_int_t         i;
     ngx_listening_t  *ls;
+    ngx_core_conf_t  *ccf;
 
     ngx_process = NGX_PROCESS_WORKER;
     ngx_last_process = 0;
 
-    if (user) {
-        if (setuid(user) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "setuid() failed");
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ccf->group != (gid_t) NGX_CONF_UNSET) {
+        if (setuid(ccf->group) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "setgid(%d) failed", ccf->group);
             /* fatal */
-            exit(1);
+            exit(2);
+        }
+    }
+
+    if (ccf->user != (uid_t) NGX_CONF_UNSET && geteuid() == 0) {
+        if (setuid(ccf->user) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "setuid(%d) failed", ccf->user);
+            /* fatal */
+            exit(2);
         }
     }
 
@@ -755,10 +750,53 @@ static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle)
      *
      * ccf->pid = NULL;
      */
-    ccf->daemon = -1;
-    ccf->master = -1;
+    ccf->daemon = NGX_CONF_UNSET;
+    ccf->master = NGX_CONF_UNSET;
+    ccf->user = (uid_t) NGX_CONF_UNSET;
+    ccf->group = (gid_t) NGX_CONF_UNSET;
 
     ((void **)(cycle->conf_ctx))[ngx_core_module.index] = ccf;
 
     return NGX_OK;
+}
+
+
+static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    struct passwd    *pwd;
+    struct group     *grp;
+    ngx_str_t        *value;
+    ngx_core_conf_t  *ccf;
+
+    ccf = *(void **)conf;
+
+    if (ccf->user != (uid_t) NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = (ngx_str_t *) cf->args->elts;
+
+    pwd = getpwnam(value[1].data);
+    if (pwd == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                           "getpwnam(%s) failed", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+
+    ccf->user = pwd->pw_uid;
+
+    if (cf->args->nelts == 2) {
+        return NGX_CONF_OK;
+    }
+
+    grp = getgrnam(value[2].data);
+    if (grp == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                           "getgrnam(%s) failed", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+
+    ccf->group = grp->gr_gid;
+
+    return NGX_CONF_OK;
 }

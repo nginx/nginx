@@ -305,6 +305,8 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 
 ngx_log_t *ngx_log_init_errlog();
 ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args);
+char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log);
+
 
 
 extern ngx_module_t  ngx_errlog_module;

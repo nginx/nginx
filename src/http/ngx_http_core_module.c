@@ -205,7 +205,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
     { ngx_string("error_log"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_set_error_log,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -1395,17 +1395,11 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
-#if 0
-    ngx_str_t  *value;
+    if (!(lcf->err_log = ngx_log_create_errlog(cf->cycle, cf->args))) {
+        return NGX_CONF_ERROR;
+    }
 
-    value = cf->args->elts;
-#endif
-
-    ngx_test_null(lcf->err_log,
-                  ngx_log_create_errlog(cf->cycle, cf->args),
-                  NGX_CONF_ERROR);
-
-    return NGX_CONF_OK;
+    return ngx_set_error_log_levels(cf, lcf->err_log);
 }
 
 

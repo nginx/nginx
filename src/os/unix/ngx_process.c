@@ -235,5 +235,13 @@ void ngx_process_get_status()
                           "%s " PID_T_FMT " exited with code %d",
                           process, pid, WEXITSTATUS(status));
         }
+
+        if (WEXITSTATUS(status) == 2 && ngx_processes[i].respawn) {
+            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                          "%s " PID_T_FMT
+                          " exited with fatal code %d and could not respawn",
+                          process, pid, WEXITSTATUS(status));
+            ngx_processes[i].respawn = 0;
+        }
     }
 }
