@@ -319,6 +319,19 @@ static int ngx_select_process_events(ngx_log_t *log)
     if (timer) {
 #if (HAVE_SELECT_CHANGE_TIMEOUT)
         delta = timer - (tv.tv_sec * 1000 + tv.tv_usec / 1000);
+
+#if 0
+        /*
+         * update the cached time if the sum of the last deltas
+         * is more than 0.5 seconds
+         */
+        deltas += delta;
+        if (deltas > 500000) {
+            ngx_cached_time = ngx_real_time();
+            deltas = 0;
+        }
+#endif
+
 #else
         delta = ngx_msec() - delta;
 #endif

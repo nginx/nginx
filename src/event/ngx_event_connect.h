@@ -25,7 +25,7 @@ typedef struct {
     int                fail_timeout;
 
  /* ngx_mutex_t       *mutex; */
- /* ngx_connection_t  *cached; */
+    ngx_connection_t  *cached;
 
     ngx_peer_t         peers[1];
 } ngx_peers_t;
@@ -36,8 +36,10 @@ typedef struct {
     int                cur_peer;
     int                tries;
 
+    ngx_connection_t  *connection;
+
     unsigned           cached:1;
-} ngx_connect_peer_t;
+} ngx_peer_connection_t;
 
 
 #endif /* _NGX_EVENT_CONNECT_H_INCLUDED_ */

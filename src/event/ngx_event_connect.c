@@ -2,7 +2,7 @@
 #include <ngx_event_connect.h>
 
 
-int ngx_event_connect_peer(ngx_connect_peer_t *cp)
+int ngx_event_connect_peer(ngx_peer_connecttion_t *pc)
 {
     time_t   now;
 
@@ -10,21 +10,21 @@ int ngx_event_connect_peer(ngx_connect_peer_t *cp)
 
     now = ngx_time();
 
-    if (cp->peers->number > 1) {
+    if (pc->peers->number > 1) {
 
         /* there are several peers */
 
-        if (cp->tries == cp->peers->number) {
+        if (pc->tries == pc->peers->number) {
 
             /* it's a first try - get a current peer */
 
             /* Here is the race condition when the peers are shared between
                the threads or the processes but it should not be serious */
 
-            cp->cur_peer = cp->peers->current++;
+            pc->cur_peer = pc->peers->current++;
 
             if (cp->peers->current >= cp->peers->number) {
-                cp->peers->current = 0;
+                pc->peers->current = 0;
             }
 
             /* the end of the race condition */
@@ -32,39 +32,39 @@ int ngx_event_connect_peer(ngx_connect_peer_t *cp)
 #if (NGX_MULTITHREADED || NGX_MULTIPROCESSED)
             /* eliminate the sequences of the race condition */
 
-            if (cp->cur_peer >= cp->peers->number) {
-                cp->cur_peer = 0;
+            if (pc->cur_peer >= pc->peers->number) {
+                pc->cur_peer = 0;
             }
 #endif
         }
 
-        if (cp->peers->max_fails > 0) {
+        if (pc->peers->max_fails > 0) {
 
             /* the peers support a fault tolerance */
 
             for ( ;; ) {
-                peer = &cp->peers->peers[cp->cur_peer];
+                peer = &pc->peers->peers[pc->cur_peer];
 
                 /* Here is the race condition when the peers are shared between
                    the threads or the processes but it should not be serious */
 
-                if (peer->fails <= cp->peers->max_fails
-                    || (now - peer->accessed > cp->peers->fail_timeout))
+                if (peer->fails <= pc->peers->max_fails
+                    || (now - peer->accessed > pc->peers->fail_timeout))
                 {
                     break;
                 }
 
                 /* the end of the race condition */
 
-                cp->cur_peer++;
+                pc->cur_peer++;
 
-                if (cp->cur_peer >= cp->peers->number) {
-                    cp->cur_peer = 0;
+                if (pc->cur_peer >= pc->peers->number) {
+                    pc->cur_peer = 0;
                 }
 
-                cp->tries--;
+                pc->tries--;
 
-                if (cp->tries == 0) {
+                if (pc->tries == 0) {
                     return NGX_ERROR;
                 }
             }
