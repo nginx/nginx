@@ -45,7 +45,7 @@ typedef struct {
 
 /*
  * ngx_http_conf_get_module_srv_conf() and ngx_http_conf_get_module_loc_conf()
- * msut not be used because at the merge phase cf->ctx points to http{}'s ctx
+ * must not be used at the merge phase because cf->ctx points to http{}'s ctx
  */
 
 #define ngx_http_conf_get_module_main_conf(cf, module)                        \

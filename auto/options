@@ -161,6 +161,18 @@ if [ $help = yes ]; then
 fi
 
 
+if [ $HTTP = NO ]; then
+    HTTP_CHARSET=NO
+    HTTP_GZIP=NO
+    HTTP_SSI=NO
+    HTTP_USERID=NO
+    HTTP_ACCESS=NO
+    HTTP_STATUS=NO
+    HTTP_REWRITE=NO
+    HTTP_PROXY=NO
+fi
+
+
 if [ ".$PLATFORM" = ".win32" -a $EVENT_POLL = YES ]; then
     EVENT_POLL=NO
     echo "$0: warning: --with-poll_module option is ignored for win32"

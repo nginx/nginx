@@ -66,9 +66,11 @@ typedef struct {
 #define NGX_IMAP_PROXY_ERROR    11
 
 
-#define NGX_IMAP_MODULE    0x50414D49     /* "IMAP" */
+#define NGX_IMAP_MODULE      0x50414D49     /* "IMAP" */
 
-#define NGX_IMAP_CONF      0x02000000
+#define NGX_IMAP_SRV_CONF    0x02000000
+#define NGX_IMAP_IMAP_CONF   0x04000000
+#define NGX_IMAP_POP3_CONF   0x08000000
 
 
 void ngx_imap_init_connection(ngx_connection_t *c);
