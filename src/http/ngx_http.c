@@ -69,7 +69,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_in_addr_t          *in_addr, *inaddr;
     ngx_http_server_name_t      *s_name, *name;
     ngx_http_core_srv_conf_t   **cscfp, *cscf;
-    ngx_http_core_loc_conf_t   **clcfp, *clcf;
+    ngx_http_core_loc_conf_t    *clcf;
     ngx_http_core_main_conf_t   *cmcf;
 #if (WIN32)
     ngx_iocp_conf_t             *iocpcf;

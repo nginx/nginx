@@ -1264,7 +1264,6 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
     ngx_http_core_srv_conf_t *conf = child;
 
     ngx_http_listen_t          *l;
-    ngx_http_conf_ctx_t        *ctx;
     ngx_http_server_name_t     *n;
     ngx_http_core_main_conf_t  *cmcf;
 
@@ -1550,7 +1549,6 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_uint_t                  i;
     ngx_str_t                  *value;
-    ngx_http_conf_ctx_t        *ctx;
     ngx_http_server_name_t     *sn;
     ngx_http_core_main_conf_t  *cmcf;
 

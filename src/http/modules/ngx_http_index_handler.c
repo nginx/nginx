@@ -98,7 +98,6 @@ ngx_module_t  ngx_http_index_module = {
 ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
 {
     u_char                     *name;
-    size_t                      len;
     ngx_fd_t                    fd;
     ngx_int_t                   rc;
     ngx_str_t                  *index;
