@@ -12,20 +12,24 @@
 /*
  * Although FreeBSD sendfile() allows to pass a header and a trailer
  * it can not send a header with a part of the file in one packet until
- * FreeBSD 5.2-STABLE.  Besides over the fast ethernet connection sendfile()
+ * FreeBSD 5.3.  Besides over the fast ethernet connection sendfile()
  * may send the partially filled packets, i.e. the 8 file pages may be sent
  * as the 11 full 1460-bytes packets, then one incomplete 324-bytes packet,
  * and then again the 11 full 1460-bytes packets.
  *
  * So we use the TCP_NOPUSH option (similar to Linux's TCP_CORK)
  * to postpone the sending - it not only sends a header and the first part
- * of the file in one packet but also sends file pages in the full packets.
+ * of the file in one packet but also sends the file pages in the full packets.
  *
  * But until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush a pending
  * data that less than MSS so that data may be sent with 5 second delay.
  * So we do not use TCP_NOPUSH on FreeBSD prior to 4.5 although it can be used
  * for non-keepalive HTTP connections.
  */
+
+
+#define NGX_HEADERS   8
+#define NGX_TRAILERS  4
 
 
 ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
@@ -37,13 +41,13 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
     size_t           hsize, fsize;
     ssize_t          size;
     ngx_uint_t       eintr, eagain, complete;
-    struct iovec    *iov;
-    struct sf_hdtr   hdtr;
     ngx_err_t        err;
     ngx_buf_t       *file;
     ngx_array_t      header, trailer;
     ngx_event_t     *wev;
     ngx_chain_t     *cl;
+    struct sf_hdtr   hdtr;
+    struct iovec    *iov, headers[NGX_HEADERS], trailers[NGX_TRAILERS];
 
     wev = c->write;
 
@@ -66,6 +70,16 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
     send = 0;
     eagain = 0;
 
+    header.elts = headers;
+    header.size = sizeof(struct iovec);
+    header.nalloc = NGX_HEADERS;
+    header.pool = c->pool;
+
+    trailer.elts = trailers;
+    trailer.size = sizeof(struct iovec);
+    trailer.nalloc = NGX_TRAILERS;
+    trailer.pool = c->pool;
+
     for ( ;; ) {
         file = NULL;
         fsize = 0;
@@ -74,10 +88,8 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
         complete = 0;
         sprev = send;
 
-        ngx_init_array(header, c->pool, 10, sizeof(struct iovec),
-                       NGX_CHAIN_ERROR);
-        ngx_init_array(trailer, c->pool, 10, sizeof(struct iovec),
-                       NGX_CHAIN_ERROR);
+        header.nelts = 0;
+        trailer.nelts = 0;
 
         /* create the header iovec and coalesce the neighbouring bufs */
 
@@ -106,7 +118,10 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                 iov->iov_len += size;
 
             } else {
-                ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
+                if (!(iov = ngx_array_push(&header))) {
+                    return NGX_CHAIN_ERROR;
+                }
+
                 iov->iov_base = (void *) cl->buf->pos;
                 iov->iov_len = size;
             }
@@ -177,8 +192,10 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                     iov->iov_len += size;
 
                 } else {
-                    ngx_test_null(iov, ngx_push_array(&trailer),
-                                  NGX_CHAIN_ERROR);
+                    if (!(iov = ngx_array_push(&trailer))) {
+                        return NGX_CHAIN_ERROR;
+                    }
+
                     iov->iov_base = (void *) cl->buf->pos;
                     iov->iov_len = size;
                 }

@@ -19,6 +19,9 @@
  */
 
 
+#define NGX_HEADERS   8
+
+
 ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                                       off_t limit)
 {
@@ -28,12 +31,12 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
     size_t           fsize;
     ssize_t          size, sent;
     ngx_uint_t       eintr, complete;
-    struct iovec    *iov;
     ngx_err_t        err;
     ngx_buf_t       *file;
     ngx_array_t      header;
     ngx_event_t     *wev;
     ngx_chain_t     *cl;
+    struct iovec    *iov, headers[NGX_HEADERS];
 #if (HAVE_SENDFILE64)
     off_t            offset;
 #else
@@ -48,6 +51,11 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
 
     send = 0;
 
+    header.elts = headers;
+    header.size = sizeof(struct iovec);
+    header.nalloc = NGX_HEADERS;
+    header.pool = c->pool;
+
     for ( ;; ) {
         file = NULL;
         fsize = 0;
@@ -55,8 +63,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
         complete = 0;
         sprev = send;
 
-        ngx_init_array(header, c->pool, 10, sizeof(struct iovec),
-                       NGX_CHAIN_ERROR);
+        header.nelts = 0;
 
         prev = NULL;
         iov = NULL;
@@ -85,7 +92,10 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                 iov->iov_len += size;
 
             } else {
-                ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
+                if (!(iov = ngx_array_push(&header))) {
+                    return NGX_CHAIN_ERROR;
+                }
+
                 iov->iov_base = (void *) cl->buf->pos;
                 iov->iov_len = size;
             }

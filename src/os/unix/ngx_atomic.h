@@ -108,7 +108,7 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
                                               ngx_atomic_t old,
                                               ngx_atomic_t set)
 {
-    uint32_t  res = (u_int32_t) set;
+    uint32_t  res = (uint32_t) set;
 
     __asm__ volatile (
 

@@ -9,6 +9,9 @@
 #include <ngx_event.h>
 
 
+#define NGX_SENDFILEVECS   16
+
+
 ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                                          off_t limit)
 {
@@ -19,7 +22,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
     ssize_t         n;
     ngx_int_t       eintr, complete;
     ngx_err_t       err;
-    sendfilevec_t  *sfv;
+    sendfilevec_t  *sfv, sfvs[NGX_SENDFILEVECS];
     ngx_array_t     vec;
     ngx_event_t    *wev;
     ngx_chain_t    *cl, *tail;
@@ -33,6 +36,11 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
     send = 0;
     complete = 0;
 
+    vec.elts = sfvs;
+    vec.size = sizeof(sendfilevec_t);
+    vec.nalloc = NGX_SENDFILEVECS;
+    vec.pool = c->pool;
+
     for ( ;; ) {
         fd = SFV_FD_SELF;
         prev = NULL;
@@ -42,8 +50,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
         sent = 0;
         sprev = send;
 
-        ngx_init_array(vec, c->pool, 10, sizeof(sendfilevec_t),
-                       NGX_CHAIN_ERROR);
+        vec.nelts = 0;
 
         /* create the sendfilevec and coalesce the neighbouring bufs */
 
@@ -66,7 +73,10 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                     sfv->sfv_len += size;
 
                 } else {
-                    ngx_test_null(sfv, ngx_push_array(&vec), NGX_CHAIN_ERROR);
+                    if (!(sfv = ngx_array_push(&vec))) {
+                        return NGX_CHAIN_ERROR;
+                    }
+
                     sfv->sfv_fd = SFV_FD_SELF;
                     sfv->sfv_flag = 0;
                     sfv->sfv_off = (off_t) (uintptr_t) cl->buf->pos;
@@ -96,7 +106,10 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                     sfv->sfv_len += size;
 
                 } else {
-                    ngx_test_null(sfv, ngx_push_array(&vec), NGX_CHAIN_ERROR);
+                    if (!(sfv = ngx_array_push(&vec))) {
+                        return NGX_CHAIN_ERROR;
+                    }
+
                     fd = cl->buf->file->fd;
                     sfv->sfv_fd = fd;
                     sfv->sfv_flag = 0;
