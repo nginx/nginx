@@ -25,12 +25,25 @@ struct ngx_cycle_s {
 };
 
 
+typedef struct {
+     ngx_flag_t  daemon;
+     ngx_flag_t  master;
+     ngx_flag_t  worker_reopen;
+     ngx_uid_t   user;
+     ngx_gid_t   group;
+     ngx_str_t   pid;
+     ngx_str_t   newpid;
+} ngx_core_conf_t;
+
+
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
-void ngx_reopen_files(ngx_cycle_t *cycle, uid_t user);
+void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user);
+ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
 
 
 extern volatile ngx_cycle_t  *ngx_cycle;
 extern ngx_array_t            ngx_old_cycles;
+extern ngx_module_t           ngx_core_module;
 
 
 #endif /* _NGX_CYCLE_H_INCLUDED_ */

@@ -36,21 +36,29 @@ echo                                          >> $MAKEFILE
 echo "CORE_DEPS = \\"                         >> $MAKEFILE
 for dep in $CORE_DEPS
 do
+    if [ $PLATFORM = win32 ]; then
+        dep=`echo $dep | sed -e "s/\//\\\\\\/g"`
+    fi
     echo "	$dep \\"                      >> $MAKEFILE
 done
 echo                                          >> $MAKEFILE
 
-echo "CORE_INCS = $CORE_INCS -I $OBJS"        >> $MAKEFILE
+inc=`echo "$CORE_INCS -I $OBJS" | sed -e "s/\//\\\\\\/g"`
+echo "CORE_INCS = $inc"                       >> $MAKEFILE
 echo                                          >> $MAKEFILE
 
 echo "HTTP_DEPS = \\"                         >> $MAKEFILE
 for inc in $HTTP_DEPS
 do
+    if [ $PLATFORM = win32 ]; then
+        inc=`echo $inc | sed -e "s/\//\\\\\\/g"`
+    fi
     echo "	$inc \\"                      >> $MAKEFILE
 done
 echo                                          >> $MAKEFILE
 
-echo "HTTP_INCS = $HTTP_INCS"                 >> $MAKEFILE
+inc=`echo "$HTTP_INCS" | sed -e "s/\//\\\\\\/g"`
+echo "HTTP_INCS = $inc"                       >> $MAKEFILE
 echo                                          >> $MAKEFILE
 
 
@@ -60,12 +68,21 @@ echo "nginx: \\"                              >> $MAKEFILE
 for src in $CORE_SRCS $HTTP_SRCS
 do
     obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
-    echo "	$OBJS/$obj \\"                >> $MAKEFILE
+    obj="$OBJS/$obj"
+    if [ $PLATFORM = win32 ]; then
+        obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
+    fi
+
+    echo "	$obj \\"                      >> $MAKEFILE
 done
 
 for src in $NGX_MODULES_C $LINK_DEPS
 do
     obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
+    if [ $PLATFORM = win32 ]; then
+        obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
+    fi
+
     echo "	$obj \\"                      >> $MAKEFILE
 done
 
@@ -75,10 +92,18 @@ echo "	\$(CC) ${BINOUT}nginx \\"             >> $MAKEFILE
 for src in $CORE_SRCS $HTTP_SRCS
 do
     obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
-    echo "	$OBJS/$obj \\"                >> $MAKEFILE
+    obj="$OBJS/$obj"
+    if [ $PLATFORM = win32 ]; then
+        obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
+    fi
+
+    echo "	$obj \\"                      >> $MAKEFILE
 done
 
 obj=`echo $NGX_MODULES_C | sed -e "s/\.c\$/.$OBJEXT/"`
+if [ $PLATFORM = win32 ]; then
+    obj=`echo $obj | sed -e "s/\//\\\\\\/g"`
+fi
 echo "	$obj \\"                              >> $MAKEFILE
 echo "	$CORE_LIBS \\"                        >> $MAKEFILE
 echo "	$CORE_LINK"                           >> $MAKEFILE

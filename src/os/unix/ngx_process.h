@@ -29,10 +29,6 @@ typedef struct {
 } ngx_exec_ctx_t;
 
 
-#define NGX_PROCESS_SINGLE   0
-#define NGX_PROCESS_MASTER   1
-#define NGX_PROCESS_WORKER   2
-
 #define NGX_MAX_PROCESSES  1024
 
 #define NGX_PROCESS_NORESPAWN  -1

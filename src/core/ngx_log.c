@@ -47,10 +47,10 @@ static const char *debug_levels[] = {
 
 
 #if (HAVE_VARIADIC_MACROS)
-void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
+void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...)
 #else
-void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
+void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, va_list args)
 #endif
 {
@@ -176,7 +176,7 @@ static void ngx_log_write(ngx_log_t *log, char *errstr, size_t len)
 
 #if !(HAVE_VARIADIC_MACROS)
 
-void ngx_log_error(int level, ngx_log_t *log, ngx_err_t err,
+void ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                    const char *fmt, ...)
 {
     va_list    args;

@@ -24,7 +24,6 @@ static ngx_connection_t  dumb;
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     ngx_int_t         i, n, failed;
-    ngx_str_t         conf_file;
     ngx_log_t        *log;
     ngx_conf_t        conf;
     ngx_pool_t       *pool;
@@ -227,13 +226,17 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
-    /* TODO: Win32 DuplicateHandle ? */
-    if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
+#if (WIN32)
+    /* TODO: TEST */
+    CloseHandle(GetStdHandle(STD_ERROR_HANDLE));
+    SetStdHandle(STD_ERROR_HANDLE, cycle->log->file->fd);
+#else
+    if (dup2(cycle->log->file->fd, STDERR_FILENO) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "dup2(STDERR) failed");
         failed = 1;
     }
-
+#endif
 
     if (failed) {
 
@@ -370,7 +373,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 }
 
 
-void ngx_reopen_files(ngx_cycle_t *cycle, uid_t user)
+void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 {
     ngx_fd_t          fd;
     ngx_int_t         i;
@@ -395,19 +398,6 @@ void ngx_reopen_files(ngx_cycle_t *cycle, uid_t user)
             continue;
         }
 
-        if (user != (uid_t) -1) {
-            if (chown(file[i].name.data, user, -1) == -1) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                              "chown \"%s\" failed", file[i].name.data);
-
-                if (ngx_close_file(fd) == NGX_FILE_ERROR) {
-                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                                  ngx_close_file_n " \"%s\" failed",
-                                  file[i].name.data);
-                }
-            }
-        }
-
 #if (WIN32)
         if (ngx_file_append_mode(fd) == NGX_ERROR) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
@@ -423,6 +413,19 @@ void ngx_reopen_files(ngx_cycle_t *cycle, uid_t user)
             continue;
         }
 #else
+        if (user != (ngx_uid_t) -1) {
+            if (chown(file[i].name.data, user, -1) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "chown \"%s\" failed", file[i].name.data);
+
+                if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                                  ngx_close_file_n " \"%s\" failed",
+                                  file[i].name.data);
+                }
+            }
+        }
+
         if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "fcntl(FD_CLOEXEC) \"%s\" failed",
@@ -447,11 +450,16 @@ void ngx_reopen_files(ngx_cycle_t *cycle, uid_t user)
         file[i].fd = fd;
     }
 
-    /* TODO: Win32 DuplicateHandle ? */
+#if (WIN32)
+    /* TODO: TEST */
+    CloseHandle(GetStdHandle(STD_ERROR_HANDLE));
+    SetStdHandle(STD_ERROR_HANDLE, cycle->log->file->fd);
+#else
     if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "dup2(STDERR) failed");
     }
+#endif
 }
 
 

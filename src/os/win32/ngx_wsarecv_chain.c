@@ -40,7 +40,9 @@ ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
         chain = chain->next;
     }
 
-ngx_log_debug(c->log, "WSARecv: %d:%d" _ io.nelts _ wsabuf->len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "WSARecv: %d:%d", io.nelts, wsabuf->len);
+
 
     rc = WSARecv(c->fd, io.elts, io.nelts, &bytes, &flags, NULL, NULL);
 
@@ -51,12 +53,13 @@ ngx_log_debug(c->log, "WSARecv: %d:%d" _ io.nelts _ wsabuf->len);
         err = ngx_socket_errno;
 
         if (err == WSAEWOULDBLOCK) {
-            ngx_log_error(NGX_LOG_INFO, c->log, err, "WSARecv() EAGAIN");
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                           "WSARecv() not ready");
             return NGX_AGAIN;
         }
 
         rev->error = 1;
-        ngx_log_error(NGX_LOG_CRIT, c->log, err, "WSARecv() failed");
+        ngx_connection_error(c, err, "WSARecv() failed");
         return NGX_ERROR;
     }
 

@@ -361,8 +361,12 @@ static int ngx_select_process_events(ngx_log_t *log)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "select ready %d", ready);
 
     if (err) {
+#if (WIN32)
+        ngx_log_error(NGX_LOG_ALERT, log, err, "select() failed");
+#else
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
                       log, err, "select() failed");
+#endif
         return NGX_ERROR;
     }
 

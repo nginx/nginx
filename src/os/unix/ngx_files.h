@@ -3,11 +3,7 @@
 
 
 #include <ngx_config.h>
-
-#include <ngx_types.h>
-#include <ngx_alloc.h>
-#include <ngx_hunk.h>
-#include <ngx_file.h>
+#include <ngx_core.h>
 
 
 #define NGX_INVALID_FILE         -1

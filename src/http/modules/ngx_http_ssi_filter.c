@@ -21,6 +21,7 @@ typedef struct {
 
 
 typedef struct {
+    int               dummy;
 } ngx_http_ssi_command_t;
 
 

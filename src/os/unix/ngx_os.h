@@ -49,6 +49,8 @@ extern int          ngx_max_sockets;
 extern int          ngx_inherited_nonblocking;
 
 
+#if 0
+
 extern ngx_int_t    ngx_process;
 extern ngx_pid_t    ngx_new_binary;
 
@@ -61,6 +63,8 @@ extern ngx_int_t    ngx_noaccept;
 extern ngx_int_t    ngx_reconfigure;
 extern ngx_int_t    ngx_reopen;
 extern ngx_int_t    ngx_change_binary;
+
+#endif
 
 
 #ifdef __FreeBSD__

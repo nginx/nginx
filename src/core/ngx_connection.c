@@ -248,7 +248,12 @@ ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
         return 0;
     }
 
-    if (err == NGX_ECONNRESET || err == NGX_EPIPE || err == NGX_ENOTCONN) {
+    if (err == NGX_ECONNRESET
+#if !(WIN32)
+        || err == NGX_EPIPE
+#endif
+        || err == NGX_ENOTCONN)
+    {
 
         switch (c->log_error) {
 

@@ -70,7 +70,9 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
         /* TODO: look up reused sockets */
 
         s = ngx_socket(ls->family, ls->type, ls->protocol, ls->flags);
-        ngx_log_debug(ls->log, ngx_socket_n ": %d:%d" _ s _ ls->flags);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ls->log, 0,
+                       ngx_socket_n " s:%d fl:%d", s, ls->flags);
 
         if (s == -1) {
             ngx_log_error(NGX_LOG_ALERT, ls->log, ngx_socket_errno,

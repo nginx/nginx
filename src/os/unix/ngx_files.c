@@ -1,10 +1,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_hunk.h>
-#include <ngx_array.h>
-#include <ngx_file.h>
-#include <ngx_files.h>
 
 
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)

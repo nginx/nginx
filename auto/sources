@@ -103,20 +103,21 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_process.h \
             src/os/unix/ngx_thread.h \
             src/os/unix/ngx_socket.h \
-            src/os/unix/ngx_os.h"
+            src/os/unix/ngx_os.h \
+            src/os/unix/ngx_process_cycle.h"
 
 UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_time.c \
             src/os/unix/ngx_errno.c \
-            src/os/unix/ngx_sendv.c \
             src/os/unix/ngx_files.c \
             src/os/unix/ngx_socket.c \
             src/os/unix/ngx_recv.c \
             src/os/unix/ngx_readv_chain.c \
             src/os/unix/ngx_writev_chain.c \
-            src/os/unix/ngx_posix_init.c \
+            src/os/unix/ngx_daemon.c \
             src/os/unix/ngx_process.c \
-            src/os/unix/ngx_daemon.c"
+            src/os/unix/ngx_posix_init.c \
+            src/os/unix/ngx_process_cycle.c"
 
 FREEBSD_DEPS=src/os/unix/ngx_freebsd_config.h
 FREEBSD_SRCS=src/os/unix/ngx_freebsd_init.c
@@ -144,18 +145,20 @@ WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_files.h \
             src/os/win32/ngx_process.h \
             src/os/win32/ngx_socket.h \
-            src/os/win32/ngx_os.h"
+            src/os/win32/ngx_os.h \
+            src/os/win32/ngx_process_cycle.h"
 
 WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_errno.c \
             src/os/win32/ngx_files.c \
             src/os/win32/ngx_time.c \
+            src/os/win32/ngx_process.c \
             src/os/win32/ngx_socket.c \
             src/os/win32/ngx_wsarecv.c \
             src/os/win32/ngx_wsarecv_chain.c \
             src/os/win32/ngx_wsasend_chain.c \
-            src/os/win32/ngx_sendv.c \
             src/os/win32/ngx_win32_init.c \
+            src/os/win32/ngx_process_cycle.c \
             src/event/ngx_event_acceptex.c"
 
 

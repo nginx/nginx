@@ -4,8 +4,6 @@
 
 #define WIN32       1
 
-#define NGX_WIN_NT  200000
-
 #define STRICT
 #define WIN32_LEAN_AND_MEAN
 
@@ -36,16 +34,19 @@
 #pragma warning(disable:4127)
 #endif
 
+#include <ngx_auto_config.h>
+
 
 #define ngx_inline   __inline
 
 
-#if 0
-/* owc have not __int32 */
+#if 1
 typedef unsigned __int32  uint32_t;
 #else
+/* OWC has not __int32 */
 typedef unsigned int      uint32_t;
 #endif
+
 typedef __int64           int64_t;
 typedef unsigned __int64  uint64_t;
 typedef u_int             uintptr_t;
@@ -54,6 +55,7 @@ typedef int               ssize_t;
 typedef long              time_t;
 typedef __int64           off_t;
 typedef uint32_t          in_addr_t;
+typedef int               sig_atomic_t;
 
 
 #define OFF_T_FMT         "%I64d"
@@ -61,7 +63,10 @@ typedef uint32_t          in_addr_t;
 #define SIZE_T_X_FMT      "%x"
 #define PID_T_FMT         "%d"
 #define TIME_T_FMT        "%lu"
+#define PTR_FMT           "%08X"
 
+
+#define NGX_WIN_NT        200000
 
 
 #ifndef HAVE_INHERITED_NONBLOCK

@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru
+ * Copyright (C) 2002-2004 Igor Sysoev, http://sysoev.ru/en/
  */
 
 
@@ -10,11 +10,11 @@
 #include <ngx_iocp_module.h>
 
 
-static int ngx_iocp_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_iocp_init(ngx_cycle_t *cycle);
 static void ngx_iocp_done(ngx_cycle_t *cycle);
-static int ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key);
-static int ngx_iocp_del_connection(ngx_connection_t *c, u_int flags);
-static int ngx_iocp_process_events(ngx_log_t *log);
+static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key);
+static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, u_int flags);
+static ngx_int_t ngx_iocp_process_events(ngx_log_t *log);
 static void *ngx_iocp_create_conf(ngx_cycle_t *cycle);
 static char *ngx_iocp_init_conf(ngx_cycle_t *cycle, void *conf);
 
@@ -89,7 +89,7 @@ ngx_os_io_t ngx_iocp_io = {
 static HANDLE  iocp;
 
 
-static int ngx_iocp_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_iocp_init(ngx_cycle_t *cycle)
 {
     ngx_iocp_conf_t  *cf;
 
@@ -103,10 +103,6 @@ static int ngx_iocp_init(ngx_cycle_t *cycle)
     if (iocp == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "CreateIoCompletionPort() failed");
-        return NGX_ERROR;
-    }
-
-    if (ngx_event_timer_init(cycle) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -128,12 +124,10 @@ static void ngx_iocp_done(ngx_cycle_t *cycle)
     }
 
     iocp = NULL;
-
-    ngx_event_timer_done(cycle);
 }
 
 
-static int ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
+static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
 {
     ngx_connection_t  *c;
 
@@ -142,7 +136,8 @@ static int ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
     c->read->active = 1;
     c->write->active = 1;
 
-    ngx_log_debug(ev->log, "iocp add: %d, %d:%08x" _ c->fd _ key _ &ev->ovlp);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "iocp add: fd:%d k:%d ov:" PTR_FMT, c->fd, key, &ev->ovlp);
 
     if (CreateIoCompletionPort((HANDLE) c->fd, iocp, key, 0) == NULL) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -154,7 +149,7 @@ static int ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
 }
 
 
-static int ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
+static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
 {
     if (CancelIo((HANDLE) c->fd) == 0) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno, "CancelIo() failed");
@@ -165,7 +160,7 @@ static int ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
 }
 
 
-static int ngx_iocp_process_events(ngx_log_t *log)
+static ngx_int_t ngx_iocp_process_events(ngx_log_t *log)
 {
     int                rc;
     u_int              key;
@@ -178,22 +173,16 @@ static int ngx_iocp_process_events(ngx_log_t *log)
     ngx_event_ovlp_t  *ovlp;
 
     timer = ngx_event_find_timer();
+    ngx_old_elapsed_msec = ngx_elapsed_msec;
 
-    if (timer) {
-        ngx_gettimeofday(&tv);
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
-    } else {
+    if (timer == 0) {
         timer = INFINITE;
-        delta = 0;
     }
 
-    ngx_log_debug(log, "iocp timer: %d" _ timer);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "iocp timer: %d", timer);
 
     rc = GetQueuedCompletionStatus(iocp, &bytes, (LPDWORD) &key,
                                    (LPOVERLAPPED *) &ovlp, timer);
-
-    ngx_log_debug(log, "iocp: %d, %d, %d:%08x" _ rc _ bytes _ key _ ovlp);
 
     if (rc == 0) {
         err = ngx_errno;
@@ -202,16 +191,13 @@ static int ngx_iocp_process_events(ngx_log_t *log)
     }
 
     ngx_gettimeofday(&tv);
+    ngx_time_update(tv.tv_sec);
 
-    if (ngx_cached_time != tv.tv_sec) {
-        ngx_cached_time = tv.tv_sec;
-        ngx_time_update();
-    }
+    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "iocp: %d b:%d k:%d ov:" PTR_FMT, rc, bytes, key, ovlp);
 
-    if (timer != INFINITE) {
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
-        ngx_event_expire_timers((ngx_msec_t) delta);
-    }
+    delta = ngx_elapsed_msec;
+    ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
     if (err) {
         if (ovlp == NULL) {
@@ -227,12 +213,20 @@ static int ngx_iocp_process_events(ngx_log_t *log)
         }
     }
 
+    if (timer != INFINITE) {
+        delta = ngx_elapsed_msec - delta;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "iocp timer: %d, delta: %d", timer, (int) delta);
+    }
+
     if (ovlp) {
         ev = ovlp->event;
 
-ngx_log_debug(log, "iocp ev: %08x" _ ev);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "iocp event:" PTR_FMT, ev);
 
         switch (key) {
+
         case NGX_IOCP_ACCEPT:
             if (bytes) {
                 ev->ready = 1;
@@ -250,9 +244,14 @@ ngx_log_debug(log, "iocp ev: %08x" _ ev);
 
         ev->available = bytes;
 
-ngx_log_debug(log, "iocp ev handler: %08x" _ ev->event_handler);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "iocp event handler: %08x" PTR_FMT, ev->event_handler);
 
         ev->event_handler(ev);
+    }
+
+    if (timer != INFINITE && delta) {
+        ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
     return NGX_OK;

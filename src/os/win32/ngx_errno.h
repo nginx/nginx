@@ -17,10 +17,13 @@ typedef DWORD                      ngx_err_t;
 #define NGX_EACCES                 ERROR_ACCESS_DENIED
 #define NGX_EEXIST                 ERROR_FILE_EXISTS
 #define NGX_ENOTDIR                ERROR_PATH_NOT_FOUND
+#define NGX_EPIPE                  EPIPE
 #define NGX_EAGAIN                 WSAEWOULDBLOCK
 #define NGX_EINPROGRESS            WSAEINPROGRESS
 #define NGX_EADDRINUSE             WSAEADDRINUSE
-#define NGX_ECONNRESET             ECONNRESET
+#define NGX_ECONNABORTED           WSAECONNABORTED
+#define NGX_ECONNRESET             WSAECONNRESET
+#define NGX_ENOTCONN               WSAENOTCONN
 #define NGX_ETIMEDOUT              WSAETIMEDOUT
 #define NGX_ENOMOREFILES           ERROR_NO_MORE_FILES
 

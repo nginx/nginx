@@ -21,8 +21,6 @@
 #define NGX_FILE_ERROR              0
 
 
-#define STDERR_FILENO               (HANDLE) 2
-
 
 #define ngx_open_file(name, access, create)                                 \
             CreateFile(name, access,                                        \

@@ -21,6 +21,7 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #include <ngx_errno.h>
 #include <ngx_process.h>
 #include <ngx_thread.h>
+#include <ngx_user.h>
 #include <ngx_string.h>
 #include <ngx_parse.h>
 #include <ngx_log.h>
@@ -39,6 +40,7 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #include <ngx_times.h>
 #include <ngx_inet.h>
 #include <ngx_cycle.h>
+#include <ngx_process_cycle.h>
 #include <ngx_conf_file.h>
 #include <ngx_os.h>
 #include <ngx_connection.h>

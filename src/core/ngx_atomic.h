@@ -72,8 +72,8 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 typedef volatile uint32_t  ngx_atomic_t;
 
 /* STUB */
-#define ngx_atomic_inc(x)   x++;
-#define ngx_atomic_dec(x)   x--;
+#define ngx_atomic_inc(x)   (*(x))++;
+#define ngx_atomic_dec(x)   (*(x))--;
 #define ngx_atomic_cmp_set(lock, old, set)   1;
 /**/
 

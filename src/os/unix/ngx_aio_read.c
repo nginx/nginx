@@ -25,7 +25,7 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
     rev = c->read;
 
     if (!rev->ready) {
-        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "SECOND AIO POST");
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "second aio post");
         return NGX_AGAIN;
     }
 

@@ -46,8 +46,13 @@ extern int          ngx_inherited_nonblocking;
 extern int          ngx_win32_version;
 
 
-extern int          reconfigure;
-extern int          reopen;
+extern ngx_int_t    ngx_process;
+
+extern ngx_int_t    ngx_quit;
+extern ngx_int_t    ngx_terminate;
+
+extern ngx_int_t    ngx_reconfigure;
+extern ngx_int_t    ngx_reopen;
 
 
 

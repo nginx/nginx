@@ -53,18 +53,19 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
         err = ngx_errno;
 
         if (err == WSAEWOULDBLOCK) {
-            ngx_log_error(NGX_LOG_INFO, c->log, err, "WSASend() EAGAIN");
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                           "WSASend() not ready");
             wev->ready = 0;
             return in;
 
         } else {
             wev->error = 1;
-            ngx_log_error(NGX_LOG_CRIT, c->log, err, "WSASend() failed");
+            ngx_connection_error(c, err, "WSASend() failed");
             return NGX_CHAIN_ERROR;
         }
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "WSASend(): %d", sent);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "WSASend: %d", sent);
 
     c->sent += sent;
 
@@ -162,7 +163,7 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
 
             } else {
                 wev->error = 1;
-                ngx_log_error(NGX_LOG_CRIT, c->log, err, "WSASend() failed");
+                ngx_connection_error(c, err, "WSASend() failed");
                 return NGX_CHAIN_ERROR;
             }
  
@@ -187,8 +188,7 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
             if (wev->ovlp.error) {
-                ngx_log_error(NGX_LOG_ERR, c->log, wev->ovlp.error,
-                              "WSASend() failed");
+                ngx_connection_error(c, wev->ovlp.error, "WSASend() failed");
                 return NGX_CHAIN_ERROR;
             }
 
@@ -197,15 +197,15 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
         } else {
             if (WSAGetOverlappedResult(c->fd, (LPWSAOVERLAPPED) &wev->ovlp,
                                        &sent, 0, NULL) == 0) {
-                ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
-                             "WSASend() or WSAGetOverlappedResult() failed");
+                ngx_connection_error(c, ngx_socket_errno,
+                               "WSASend() or WSAGetOverlappedResult() failed");
     
                 return NGX_CHAIN_ERROR;
             }
         }
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "WSASend(): %d", sent);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "WSASend: %d", sent);
 
     c->sent += sent;
 

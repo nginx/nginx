@@ -92,7 +92,7 @@ struct ngx_log_s {
 #define ngx_log_error(level, log, args...) \
         if (log->log_level >= level) ngx_log_error_core(level, log, args)
 
-void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
+void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
 
 /*********************************/
@@ -104,7 +104,7 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 #define ngx_log_error(level, log, ...) \
         if (log->log_level >= level) ngx_log_error_core(level, log, __VA_ARGS__)
 
-void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
+void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
 
 /*********************************/
@@ -113,9 +113,9 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 
 #define HAVE_VARIADIC_MACROS  0
 
-void ngx_log_error(int level, ngx_log_t *log, ngx_err_t err,
+void ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                    const char *fmt, ...);
-void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
+void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, va_list args);
 void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...);
 void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
