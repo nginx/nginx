@@ -1157,6 +1157,7 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     ngx_http_proxy_conf_t  *lcf = (ngx_http_proxy_conf_t *) conf;
     char                   *url;
+    struct hostent         *h;
     ngx_str_t              *value;
     ngx_http_proxy_pass_t  *pass;
 
@@ -1166,16 +1167,87 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_test_null(pass, ngx_push_array(lcf->proxy_pass), NGX_CONF_ERROR);
 
     if (ngx_strncasecmp(url, "http://", 7) == 0) {
-        "invalid prefix in URL %s", url;
+        /* STUB: "invalid prefix in URL %s", url */
+        return "invalid prefix";
     }
 
     err = ngx_http_proxy_parse_upstream(url, u);
 
     if (err) {
-        "%s %s", err, url;
+        /* STUB: "%s %s", err, url */
+        return err;
     }
 
-    h = ngx_gethostbyname(cmd->pool, u->host);
+    if (u.port == 0) {
+        u.port = 80;
+    }
+
+    ngx_test_null(host, ngx_palloc(cf->pool, u.host.len + 1), NGX_CONF_ERROR);
+    ngx_cpystr(host, u.host.data, u.host.len + 1);
+
+    addr.sin_addr.s_addr = inet_addr(host);
+    if (addr.sin_addr.s_addr == INADDR_NONE) {
+        h = gethostbyname(host);
+
+        if (h == NULL || h->h_addr_list[0] == NULL) {
+            /* STUB: "host %s not found", host */
+            return "host not found";
+        }
+
+        for (i = 0; h->h_addr_list[i] != NULL; i++) {
+            /* void */
+        }
+
+        /* MP: ngx_shared_palloc() */
+
+        ngx_test_null(upstreams,
+                      ngx_palloc(cf->pool,
+                                 sizeof(ngx_http_proxy_upstreams_t)
+                                 + sizeof(ngx_http_proxy_upstream_t) * (i - 1)),
+                      NGX_CONF_ERROR);
+
+        upstreams->num = i;
+
+        for (i = 0; h->h_addr_list[i] != NULL; i++) {
+            upstreams->u[i].host.data = host;
+            upstreams->u[i].host.len = u.host.len;
+            upstreams->u[i].addr = *(struct in_addr *)(h->h_addr_list[i]);
+            upstreams->u[i].port = u.port;
+
+            len = INET_ADDRSTRLEN + u.port_name.len + 1;
+            ngx_test_null(upstreams->u[i].addr_port_name.data,
+                          ngx_palloc(cf->pool, len),
+                          NGX_CONF_ERROR);
+
+            s = (ngx_inet_ntop(AF_INET,
+                               upstreams->u[i].addr,
+                               upstreams->u[i].addr_port_name.data,
+                               len),
+
+            upstreams->u[i].addr_port_name.data[s++] = ':';
+
+            ngx_cpystrn(upstreams->u[i].addr_port_name.data[s],
+                        u.port_name.data,
+                        u.port_name.len + 1);
+
+            upstreams->u[i].addr_port_name.len = s + u.port_name.len + 1;
+        }
+
+    } else {
+
+        /* MP: ngx_shared_palloc() */
+
+        ngx_test_null(upstreams,
+                      ngx_palloc(cf->pool, sizeof(ngx_http_proxy_upstreams_t),
+                      NGX_CONF_ERROR);
+
+        upstreams->num = 1;
+
+        upstreams->u[0].host.data = host;
+        upstreams->u[0].host.len = u.host.len;
+        upstreams->u[0].addr = *(struct in_addr *)(h->h_addr_list[i]);
+        upstreams->u[0].port = u.port;
+    }
 
     return NULL;
 }
