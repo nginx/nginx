@@ -40,6 +40,7 @@ int ngx_http_busy_lock(ngx_http_busy_lock_t *bl, ngx_http_busy_lock_ctx_t *bc)
 
     if (bl->waiting < bl->max_waiting) {
         bl->waiting++;
+
         ngx_add_timer(bc->event, 1000);
         bc->event->event_handler = bc->event_handler;
 
@@ -203,6 +204,11 @@ char *ngx_http_set_busy_lock_slot(ngx_conf_t *cf, ngx_command_t *cmd,
         return NGX_CONF_ERROR;
     }
     *blp = bl;
+
+    /* ngx_calloc_shared() */
+    if (!(bl->mutex = ngx_pcalloc(cf->pool, sizeof(ngx_event_mutex_t)))) {
+        return NGX_CONF_ERROR;
+    }
 
     dup = 0;
     invalid = 0;

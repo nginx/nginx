@@ -5,6 +5,10 @@ case $CC in
 
          # optimization
          #CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"
+         # optimize for Pentium Pro, Pentium II and Pentium III
+         CFLAGS="$CFLAGS -mcpu=pentiumpro"
+         # optimize for Pentium 4, gcc 3.x
+         #CFLAGS="$CFLAGS -mcpu=pentium4"
 
          # warnings
          CFLAGS="$CFLAGS -O -W"
@@ -40,7 +44,7 @@ case $CC in
          # optimization
          CFLAGS="$CFLAGS -O"
          # optimize for Pentium Pro, Pentium II and Pentium III
-         #CFLAGS="$CFLAGS -mcpu=pentiumpro"
+         CFLAGS="$CFLAGS -mcpu=pentiumpro"
          # optimize for Pentium 4, default
          #CFLAGS="$CFLAGS -mcpu=pentium4"
 

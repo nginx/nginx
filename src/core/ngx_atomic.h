@@ -59,7 +59,7 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 
         NGX_SMP_LOCK
     "   cmpxchgl  %3, %1;   "
-    "   setzb     %%al;     "
+    "   setz      %%al;     "
     "   movzbl    %%al, %0; "
 
     : "=a" (res) : "m" (*lock), "a" (old), "q" (set));

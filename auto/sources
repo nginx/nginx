@@ -57,6 +57,7 @@ EVENT_DEPS="src/event/ngx_event.h \
 
 EVENT_SRCS="src/event/ngx_event.c \
             src/event/ngx_event_timer.c \
+            src/event/ngx_event_mutex.c \
             src/event/ngx_event_accept.c \
             src/event/ngx_event_connect.c \
             src/event/ngx_event_pipe.c"

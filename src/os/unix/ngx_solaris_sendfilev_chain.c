@@ -1,4 +1,9 @@
 
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev, http://sysoev.ru/en/
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>

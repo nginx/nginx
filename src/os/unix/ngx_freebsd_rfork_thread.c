@@ -1,4 +1,9 @@
 
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev, http://sysoev.ru/en/
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 
@@ -21,15 +26,12 @@
  */
 
 
-ngx_int_t  ngx_threaded;
+ngx_int_t   ngx_threaded;
+char       *ngx_freebsd_kern_usrstack;
+size_t      ngx_thread_stack_size;
 
-static inline int ngx_gettid();
 
-
-static char        *usrstack;
 static size_t       rz_size = /* STUB: PAGE_SIZE */ 4096;
-
-static size_t       stack_size;
 static size_t       usable_stack_size;
 static char        *last_stack;
 
@@ -54,12 +56,12 @@ int *__error()
 
 
 /*
- * __isthreaded enables spinlock() in some libc functions, i.e. in malloc()
+ * __isthreaded enables the spinlocks in some libc functions, i.e. in malloc()
  * and some other places.  Nevertheless we protect our malloc()/free() calls
  * by own mutex that is more efficient than the spinlock.
  *
- * We define own _spinlock() because a weak referenced _spinlock() stub in
- * src/lib/libc/gen/_spinlock_stub.c does nothing.
+ * _spinlock() is a weak referenced stub in src/lib/libc/gen/_spinlock_stub.c
+ * that does nothing.
  */
 
 extern int  __isthreaded;
@@ -69,6 +71,7 @@ void _spinlock(ngx_atomic_t *lock)
     ngx_int_t  tries;
 
     tries = 0;
+
     for ( ;; ) {
 
         if (*lock) {
@@ -88,6 +91,24 @@ void _spinlock(ngx_atomic_t *lock)
 }
 
 
+/*
+ * Before FreeBSD 5.1 _spinunlock() is a simple #define in
+ * src/lib/libc/include/spinlock.h that zeroes lock.
+ *
+ * Since FreeBSD 5.1 _spinunlock() is a weak referenced stub in
+ * src/lib/libc/gen/_spinlock_stub.c that does nothing.
+ */
+
+#ifndef _spinunlock
+
+void _spinunlock(ngx_atomic_t *lock)
+{
+    *lock = 0;
+}
+
+#endif
+
+
 int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
                       ngx_log_t *log)
 {
@@ -100,7 +121,7 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
         return NGX_ERROR;
     }
 
-    last_stack -= stack_size;
+    last_stack -= ngx_thread_stack_size;
 
     stack = mmap(last_stack, usable_stack_size, PROT_READ|PROT_WRITE,
                  MAP_STACK, -1, 0);
@@ -139,7 +160,8 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
 
     } else {
         *tid = id;
-        nthreads = (usrstack - stack_top) / stack_size;
+        nthreads = (ngx_freebsd_kern_usrstack - stack_top)
+                                                       / ngx_thread_stack_size;
         tids[nthreads] = id;
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, log, 0, "rfork()ed thread: %d", id);
@@ -156,19 +178,21 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 
     max_threads = n;
 
-    len = sizeof(usrstack);
-    if (sysctlbyname("kern.usrstack", &usrstack, &len, NULL, 0) == -1) {
+    len = sizeof(ngx_freebsd_kern_usrstack);
+    if (sysctlbyname("kern.usrstack", &ngx_freebsd_kern_usrstack, &len,
+                                                                NULL, 0) == -1)
+    {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "sysctlbyname(kern.usrstack) failed");
         return NGX_ERROR;
     }
 
     /* the main thread stack red zone */
-    red_zone = usrstack - (size + rz_size);
+    red_zone = ngx_freebsd_kern_usrstack - (size + rz_size);
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                    "usrstack: " PTR_FMT " red zone: " PTR_FMT,
-                   usrstack, red_zone);
+                   ngx_freebsd_kern_usrstack, red_zone);
 
     zone = mmap(red_zone, rz_size, PROT_NONE, MAP_ANON, -1, 0);
     if (zone == MAP_FAILED) {
@@ -201,7 +225,7 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 
     last_stack = zone + rz_size;
     usable_stack_size = size;
-    stack_size = size + rz_size;
+    ngx_thread_stack_size = size + rz_size;
 
     /* allow the spinlock in libc malloc() */
     __isthreaded = 1;
@@ -209,28 +233,6 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
     ngx_threaded = 1;
 
     return NGX_OK;
-}
-
-
-static inline int ngx_gettid()
-{
-    char  *sp;
-
-    if (stack_size == 0) {
-        return 0;
-    }
-
-#if ( __i386__ )
-
-    __asm__ volatile ("mov %%esp, %0" : "=q" (sp));
-
-#elif ( __amd64__ )
-
-    __asm__ volatile ("mov %%rsp, %0" : "=q" (sp));
-
-#endif
-
-    return (usrstack - sp) / stack_size;
 }
 
 
@@ -313,7 +315,7 @@ void ngx_mutex_done(ngx_mutex_t *m)
 }
 
 
-ngx_int_t ngx_mutex_do_lock(ngx_mutex_t *m, ngx_int_t try)
+ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
 {
     uint32_t       lock, new, old;
     ngx_uint_t     tries;
@@ -453,7 +455,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
     old = m->lock;
 
     if (!(old & NGX_MUTEX_LOCK_BUSY)) {
-        ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
+        ngx_log_error(NGX_LOG_ALERT, m->log, 0,
                       "tring to unlock the free mutex " PTR_FMT, m);
         return NGX_ERROR;
     }

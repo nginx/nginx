@@ -20,6 +20,14 @@ typedef struct {
 #endif
 
 
+typedef struct {
+    ngx_uint_t       lock;
+
+    ngx_event_t     *events;
+    ngx_event_t     *last;
+} ngx_event_mutex_t;
+
+
 struct ngx_event_s {
     void            *data;
     /* TODO rename to handler */
@@ -373,11 +381,11 @@ typedef struct {
 
 
 
-extern ngx_event_t          *ngx_posted_events;
+extern volatile ngx_event_t  *ngx_posted_events;
 
-extern int                   ngx_event_flags;
-extern ngx_module_t          ngx_events_module;
-extern ngx_module_t          ngx_event_core_module;
+extern int                    ngx_event_flags;
+extern ngx_module_t           ngx_events_module;
+extern ngx_module_t           ngx_event_core_module;
 
 
 #define ngx_event_get_conf(conf_ctx, module)                                  \

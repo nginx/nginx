@@ -39,13 +39,13 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle);
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
-int                  ngx_event_flags;
-ngx_event_actions_t  ngx_event_actions;
+int                    ngx_event_flags;
+ngx_event_actions_t    ngx_event_actions;
 
 
-static int           ngx_event_max_module;
+static int             ngx_event_max_module;
 
-ngx_event_t         *ngx_posted_events;
+volatile ngx_event_t  *ngx_posted_events;
 
 
 static ngx_str_t  events_name = ngx_string("events");

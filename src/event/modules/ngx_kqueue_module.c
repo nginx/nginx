@@ -22,6 +22,9 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags);
 static int ngx_kqueue_process_events(ngx_log_t *log);
+#if (NGX_THREADS)
+static void ngx_kqueue_thread_handler(ngx_event_t *ev);
+#endif
 
 static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle);
 static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -68,6 +71,9 @@ ngx_event_module_t  ngx_kqueue_module_ctx = {
         NULL,                              /* add an connection */
         NULL,                              /* delete an connection */
         ngx_kqueue_process_events,         /* process the events */
+#if (NGX_THREADS0)
+        ngx_kqueue_thread_handler,         /* process an event by thread */
+#endif
         ngx_kqueue_init,                   /* init the events */
         ngx_kqueue_done                    /* done the events */
     }
@@ -500,7 +506,12 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
 
             if (ev->light) {
 
-                /* the accept event */
+                /*
+                 * The light events are the accept event,
+                 * or the event that waits in the mutex queue - we need to
+                 * remove it from the mutex queue before the inserting into
+                 * the posted events queue.
+                 */
 
                 ngx_mutex_unlock(ngx_posted_events_mutex);
 
@@ -538,12 +549,17 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
 
     /* TODO: non-thread mode only */
 
-    ev = ngx_posted_events;
-    ngx_posted_events = NULL;
+    for ( ;; ) {
 
-    while (ev) {
+        ev = (ngx_event_t *) ngx_posted_events;
+
+        if (ev == NULL) {
+            break;
+        }
+
+        ngx_posted_events = ev->next;
+
         ev->event_handler(ev);
-        ev = ev->next;
     }
 
     return NGX_OK;

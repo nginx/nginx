@@ -13,9 +13,12 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,
                             char *name, ngx_int_t respawn)
 {
+#if 0
     sigset_t   set, oset;
+#endif
     ngx_pid_t  pid;
 
+#if 0
     if (respawn < 0) {
         sigemptyset(&set);
         sigaddset(&set, SIGCHLD);
@@ -25,6 +28,7 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
             return NGX_ERROR;
         }
     }
+#endif
 
     pid = fork();
 
@@ -34,11 +38,13 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     }
 
     if (pid == -1 || pid == 0) {
+#if 0
         if (sigprocmask(SIG_SETMASK, &oset, &set) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "sigprocmask() failed while spawning %s", name);
             return NGX_ERROR;
         }
+#endif
     }
 
     switch (pid) {
@@ -75,11 +81,13 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     ngx_processes[ngx_last_process].exiting = 0;
     ngx_last_process++;
 
+#if 0
     if (sigprocmask(SIG_SETMASK, &oset, &set) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "sigprocmask() failed while spawning %s", name);
         return NGX_ERROR;
     }
+#endif
 
     return pid;
 }

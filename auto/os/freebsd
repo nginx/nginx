@@ -24,7 +24,7 @@ fi
 # sendfile
 
 if [ $version -gt 300007 ]; then
-    echo " + sendfile() found"
+    echo " + using sendfile()"
 
     have=HAVE_SENDFILE . auto/have
     CORE_SRCS="$CORE_SRCS $FREEBSD_SENDFILE_SRCS"
@@ -36,7 +36,7 @@ fi
 if [ \( $version -lt 500000 -a $version -ge 410000 \) \
      -o $version -ge 500011 ]
 then
-    echo " + kqueue found"
+    echo " + using kqueue"
 
     have=HAVE_KQUEUE . auto/have
     have=HAVE_CLEAR_EVENT . auto/have
@@ -51,7 +51,7 @@ fi
 if [ \( $version -lt 500000 -a $version -ge 430000 \) \
      -o $version -ge 500018 ]
 then
-    echo " + kqueue's NOTE_LAWAT found"
+    echo " + using kqueue's NOTE_LAWAT"
 
     have=HAVE_LOWAT_EVENT . auto/have
 fi

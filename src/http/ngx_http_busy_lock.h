@@ -9,20 +9,19 @@
 
 
 typedef struct {
-    u_char  *md5_mask;
-    char    *md5;
-    int      cachable;
+    u_char             *md5_mask;
+    char               *md5;
+    int                 cachable;
 
-    int      busy;
-    int      max_busy;
+    int                 busy;
+    int                 max_busy;
 
-    int      waiting;
-    int      max_waiting;
+    int                 waiting;
+    int                 max_waiting;
 
-    time_t   timeout;
+    time_t              timeout;
 
- /* ngx_mutex_t  mutex; */
-
+    ngx_event_mutex_t  *mutex;
 } ngx_http_busy_lock_t;
 
 

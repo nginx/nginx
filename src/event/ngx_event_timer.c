@@ -9,22 +9,26 @@ ngx_mutex_t  *ngx_event_timer_mutex;
 #endif
 
 
-ngx_rbtree_t  *ngx_event_timer_rbtree;
-ngx_rbtree_t   ngx_event_timer_sentinel;
+volatile ngx_rbtree_t  *ngx_event_timer_rbtree;
+ngx_rbtree_t            ngx_event_timer_sentinel;
 
 
 ngx_int_t ngx_event_timer_init(ngx_log_t *log)
 {
     if (ngx_event_timer_rbtree) {
+#if (NGX_THREADS)
         ngx_event_timer_mutex->log = log;
+#endif
         return NGX_OK;
     }
 
     ngx_event_timer_rbtree = &ngx_event_timer_sentinel;
 
+#if (NGX_THREADS)
     if (!(ngx_event_timer_mutex = ngx_mutex_init(log, 0))) {
         return NGX_ERROR;
     }
+#endif
 
     return NGX_OK;
 }
@@ -44,7 +48,8 @@ ngx_msec_t ngx_event_find_timer(void)
     }
 #endif
 
-    node = ngx_rbtree_min(ngx_event_timer_rbtree, &ngx_event_timer_sentinel);
+    node = ngx_rbtree_min((ngx_rbtree_t *) ngx_event_timer_rbtree,
+                          &ngx_event_timer_sentinel);
 
 #if (NGX_THREADS)
     ngx_mutex_unlock(ngx_event_timer_mutex);
@@ -76,7 +81,7 @@ void ngx_event_expire_timers(ngx_msec_t timer)
         }
 #endif
 
-        node = ngx_rbtree_min(ngx_event_timer_rbtree,
+        node = ngx_rbtree_min((ngx_rbtree_t *) ngx_event_timer_rbtree,
                               &ngx_event_timer_sentinel);
 
 #if (NGX_THREADS)
