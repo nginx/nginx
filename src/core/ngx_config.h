@@ -87,6 +87,7 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <sys/socket.h>
@@ -167,10 +168,11 @@
 
 /* FreeBSD sendfile nbytes bug */
 #if (__FreeBSD__ == 4 && __FreeBSD_version >= 460100) \
-    || __FreeBSD_version == 460001
+    || __FreeBSD_version == 460001 \
     || __FreeBSD_version >= 500029
 
 #if (HAVE_FREEBSD_SENDFILE_NBYTES_BUG == 2)
+#undef  HAVE_FREEBSD_SENDFILE_NBYTES_BUG
 #define HAVE_FREEBSD_SENDFILE_NBYTES_BUG  0
 #endif
 

@@ -298,41 +298,36 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     /* the request line */
 
-    ngx_memcpy(hunk->last, http_methods[p->method - 1].data,
-               http_methods[p->method - 1].len);
-    hunk->last += http_methods[p->method - 1].len;
+    hunk->last = ngx_cpymem(hunk->last, http_methods[p->method - 1].data,
+                            http_methods[p->method - 1].len);
 
-    ngx_memcpy(hunk->last, p->upstream_url->uri.data, p->upstream_url->uri.len);
-    hunk->last += p->upstream_url->uri.len;
+    hunk->last = ngx_cpymem(hunk->last, p->upstream_url->uri.data,
+                            p->upstream_url->uri.len);
 
-    ngx_memcpy(hunk->last, r->uri.data + p->upstream_url->location->len,
-               r->uri.len - p->upstream_url->location->len);
-    hunk->last += r->uri.len - p->upstream_url->location->len;
+    hunk->last = ngx_cpymem(hunk->last,
+                            r->uri.data + p->upstream_url->location->len,
+                            r->uri.len - p->upstream_url->location->len);
 
     if (r->args.len > 0) {
         *(hunk->last++) = '?';
-        ngx_memcpy(hunk->last, r->args.data, r->args.len);
-        hunk->last += r->args.len;
+        hunk->last = ngx_cpymem(hunk->last, r->args.data, r->args.len);
     }
 
-    ngx_memcpy(hunk->last, http_version, sizeof(http_version) - 1);
-    hunk->last += sizeof(http_version) - 1;
+    hunk->last = ngx_cpymem(hunk->last, http_version, sizeof(http_version) - 1);
 
     /* the "Host" header */
 
-    ngx_memcpy(hunk->last, host_header, sizeof(host_header) - 1);
-    hunk->last += sizeof(host_header) - 1;
+    hunk->last = ngx_cpymem(hunk->last, host_header, sizeof(host_header) - 1);
 
-    ngx_memcpy(hunk->last, p->upstream_url->host.data,
-               p->upstream_url->host.len);
-    hunk->last += p->upstream_url->host.len;
+    hunk->last = ngx_cpymem(hunk->last, p->upstream_url->host.data,
+                            p->upstream_url->host.len);
 
     *(hunk->last++) = CR; *(hunk->last++) = LF;
 
     /* the "Connection: close" header */
 
-    ngx_memcpy(hunk->last, conn_close_header, sizeof(conn_close_header) - 1);
-    hunk->last += sizeof(conn_close_header) - 1;
+    hunk->last = ngx_cpymem(hunk->last, conn_close_header,
+                            sizeof(conn_close_header) - 1);
 
     for (i = 0; i < r->headers_in.headers->nelts; i++) {
 
@@ -344,13 +339,13 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
             continue;
         }
 
-        ngx_memcpy(hunk->last, header[i].key.data, header[i].key.len);
-        hunk->last += header[i].key.len;
+        hunk->last = ngx_cpymem(hunk->last, header[i].key.data,
+                                header[i].key.len);
 
         *(hunk->last++) = ':'; *(hunk->last++) = ' ';
 
-        ngx_memcpy(hunk->last, header[i].value.data, header[i].value.len);
-        hunk->last += header[i].value.len;
+        hunk->last = ngx_cpymem(hunk->last, header[i].value.data,
+                                header[i].value.len);
 
         *(hunk->last++) = CR; *(hunk->last++) = LF;
 

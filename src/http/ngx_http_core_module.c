@@ -43,7 +43,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
     {ngx_string("post_accept_timeout"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_time_slot,
+     ngx_conf_set_msec_slot,
      0,
      addressof(ngx_http_post_accept_timeout)},
 
@@ -61,7 +61,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
     {ngx_string("client_header_timeout"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_time_slot,
+     ngx_conf_set_msec_slot,
      0,
      addressof(ngx_http_client_header_timeout)},
 
@@ -103,19 +103,19 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
     {ngx_string("send_timeout"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_time_slot,
+     ngx_conf_set_msec_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, send_timeout)},
 
     {ngx_string("lingering_time"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_time_slot,
+     ngx_conf_set_msec_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, lingering_time)},
 
     {ngx_string("lingering_timeout"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_time_slot,
+     ngx_conf_set_msec_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, lingering_timeout)},
 
@@ -239,7 +239,7 @@ ngx_log_debug(r->connection->log, "trans: %s" _ plcf[i]->name.data);
              continue;
          }
 
-         rc = ngx_strncmp(r->uri.data, plcf[i]->name.data, plcf[i]->name.len);
+         rc = ngx_rstrncmp(r->uri.data, plcf[i]->name.data, plcf[i]->name.len);
 
          if (rc < 0) {
              break;

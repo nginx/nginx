@@ -441,21 +441,26 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     len = value[1].len;
     last = value[1].data[len - 1];
 
-    if (last == 'K' || last == 'k') {
+    switch (last) {
+    case 'K':
+    case 'k':
         len--;
         scale = 1024;
+        break;
 
-    } else if (last == 'M' || last == 'm') {
+    case 'M':
+    case 'm':
         len--;
         scale = 1024 * 1024;
+        break;
 
-    } else {
+    default:
         scale = 1;
     }
 
     size = ngx_atoi(value[1].data, len);
     if (size == NGX_ERROR) {
-        return "value must be greater or equal to zero";
+        return "invalid value";
     }
 
     size *= scale;
@@ -466,70 +471,199 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 }
 
 
-char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
-    int         size, len, scale;
-    char        last;
+    int         size, total, len, scale, i;
+    u_int       max;
+    char        last, *start;
     ngx_str_t  *value;
 
     value = (ngx_str_t *) cf->args->elts;
+    start = value[1].data;
+    len = 0;
+    total = 0;
 
-    len = value[1].len;
-    last = value[1].data[len - 1];
+    for (i = 0; /* void */ ; i++) {
 
-    if (last == 'm') {
-        len--;
-        scale = 1000 * 60;
+        if (i < value[1].len) {
+            if (value[1].data[i] != ' ') {
+                len++;
+                continue;
+            }
 
-    } else if (last == 'h') {
-        len--;
-        scale = 1000 * 60 * 60;
+            if (value[1].data[i] == ' ' && len == 0) {
+                start = &value[1].data[i + 1];
+                continue;
+            }
+        }
 
-    } else if (last == 'd') {
-        len--;
-        scale = 1000 * 60 * 60 * 24;
+        if (len == 0) {
+            break;
+        }
 
-    } else if (last == 'w') {
-        len--;
-        scale = 1000 * 60 * 60 * 24 * 7;
+        last = value[1].data[i - 1];
 
-#if 0   /* overflow */
-
-    } else if (last == 'M') {
-        len--;
-        scale = 1000 * 60 * 60 * 24 * 30;
-
-    } else if (last == 'y') {
-        len--;
-        scale = 1000 * 60 * 60 * 24 * 365;
-
-#endif
-
-    } else if (last == 's') {
-        len--;
-        if (value[1].data[len - 1] == 'm') {
+        switch (last) {
+        case 'm':
             len--;
-            scale = 1;
+            max = 35791;
+            scale = 1000 * 60;
+            break;
 
-        } else {
+        case 'h':
+            len--;
+            max = 596;
+            scale = 1000 * 60 * 60;
+            break;
+
+        case 'd':
+            len--;
+            max = 24;
+            scale = 1000 * 60 * 60 * 24;
+            break;
+
+        case 's':
+            len--;
+            if (value[1].data[i - 2] == 'm') {
+                len--;
+                max = 2147483647;
+                scale = 1;
+                break;
+            }
+            /* fall thru */
+
+        default:
+            max = 2147483;
             scale = 1000;
         }
 
-    } else {
-        scale = 1000;
+        size = ngx_atoi(start, len);
+        if (size < 0) {
+            return "invalid value";
+        }
+
+        if ((u_int) size > max) {
+            return "value must be less than 597 hours";
+        }
+
+        total += size * scale;
+
+        if (i >= value[1].len) {
+            break;
+        }
+
+        len = 0;
+        start = &value[1].data[i + 1];
     }
 
-    size = ngx_atoi(value[1].data, len);
-    if (size < 0) {
-        return "value must be greater or equal to zero";
-    }
-
-    size *= scale;
-
-    *(int *) (conf + cmd->offset) = size;
+    *(int *) (conf + cmd->offset) = total;
 
     return NGX_CONF_OK;
 }
+
+
+char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+{
+    int         size, total, len, scale, i;
+    u_int       max;
+    char        last, *start;
+    ngx_str_t  *value;
+
+    value = (ngx_str_t *) cf->args->elts;
+    start = value[1].data;
+    len = 0;
+    total = 0;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i < value[1].len) {
+            if (value[1].data[i] != ' ') {
+                len++;
+                continue;
+            }
+
+            if (value[1].data[i] == ' ' && len == 0) {
+                start = &value[1].data[i + 1];
+                continue;
+            }
+        }
+
+        if (len == 0) {
+            break;
+        }
+
+        last = value[1].data[i - 1];
+
+        switch (last) {
+        case 'm':
+            len--;
+            max = 35791394;
+            scale = 60;
+            break;
+
+        case 'h':
+            len--;
+            max = 596523;
+            scale = 60 * 60;
+            break;
+
+        case 'd':
+            len--;
+            max = 24855;
+            scale = 60 * 60 * 24;
+            break;
+
+        case 'w':
+            len--;
+            max = 3550;
+            scale = 60 * 60 * 24 * 7;
+            break;
+
+        case 'M':
+            len--;
+            max = 828;
+            scale = 60 * 60 * 24 * 30;
+            break;
+
+        case 'y':
+            len--;
+            max = 68;
+            scale = 60 * 60 * 24 * 365;
+            break;
+
+        case 's':
+            len--;
+            /* fall thru */
+
+        default:
+            max = 2147483647;
+            scale = 1;
+        }
+
+        size = ngx_atoi(start, len);
+        if (size < 0) {
+            return "invalid value";
+        }
+
+        if ((u_int) size > max) {
+            return "value must be less than 68 years";
+        }
+
+        total += size * scale;
+
+        if (i >= value[1].len) {
+            break;
+        }
+
+        len = 0;
+        start = &value[1].data[i + 1];
+    }
+
+    *(int *) (conf + cmd->offset) = total;
+
+    return NGX_CONF_OK;
+}
+
 
 char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {

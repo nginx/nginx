@@ -6,14 +6,16 @@
 
 char *ngx_cpystrn(char *dst, char *src, size_t n)
 {
-    if (n == 0)
+    if (n == 0) {
         return dst;
+    }
 
     for (/* void */; --n; dst++, src++) {
         *dst = *src;
 
-        if (*dst == '\0')
+        if (*dst == '\0') {
             return dst;
+        }
     }
 
     *dst = '\0';
@@ -22,9 +24,35 @@ char *ngx_cpystrn(char *dst, char *src, size_t n)
 }
 
 
+int ngx_rstrncmp(char *s1, char *s2, size_t n)
+{
+    if (n == 0) {
+        return 0;
+    }
+
+    n--;
+
+    for ( ;; ) {
+        if (s1[n] != s2[n]) {
+            return (u_char) s1[n] - (u_char) s2[n];
+        }
+
+        if (n == 0) {
+            return 0;
+        }
+
+        n--;
+    }
+}
+
+
 int ngx_atoi(char *line, size_t n)
 {
     int  value;
+
+    if (n == 0) {
+        return NGX_ERROR;
+    }
 
     for (value = 0; n--; line++) {
         if (*line < '0' || *line > '9') {
