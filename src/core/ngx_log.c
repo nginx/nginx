@@ -210,12 +210,6 @@ void ngx_log_stderr(ngx_event_t *ev)
 #endif
 
 
-static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    return ngx_log_set_errlog(cf, cmd, &ngx_log);
-}
-
-
 
 ngx_log_t *ngx_log_init_errlog()
 {
@@ -252,10 +246,30 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle)
 
     ngx_test_null(log, ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)), NULL);
     ngx_test_null(log->file, ngx_push_array(&cycle->open_files), NULL);
+    log->file->fd = NGX_INVALID_FILE;
 
     return log;
 }
 
+
+static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t  *value;
+
+    value = cf->args->elts;
+
+    if (value[1].len == 6 && ngx_strcmp(value[1].data, "stderr") == 0) {
+        cf->cycle->log->file = &ngx_stderr;
+
+    } else {
+        cf->cycle->log->file->name = value[1];
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+#if 0
 
 char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log)
 {
@@ -297,3 +311,5 @@ char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log)
 
     return NGX_CONF_OK;
 }
+
+#endif

@@ -9,10 +9,10 @@ typedef struct {
 } ngx_http_charset_loc_conf_t;
 
 
+static int ngx_http_charset_filter_init(ngx_cycle_t *cycle);
 static void *ngx_http_charset_create_loc_conf(ngx_pool_t *pool);
 static char *ngx_http_charset_merge_loc_conf(ngx_pool_t *pool,
                                              void *parent, void *child);
-static int ngx_http_charset_filter_init(ngx_cycle_t *cycle, ngx_log_t *log);
 
 
 static ngx_command_t  ngx_http_charset_filter_commands[] = {
@@ -46,8 +46,7 @@ ngx_module_t  ngx_http_charset_filter_module = {
     ngx_http_charset_filter_commands,      /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_charset_filter_init,          /* init module */
-    NULL,                                  /* commit module */
-    NULL                                   /* rollback module */
+    NULL                                   /* init child */
 };
 
 
@@ -87,7 +86,7 @@ static int ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #endif
 
 
-static int ngx_http_charset_filter_init(ngx_cycle_t *cycle, ngx_log_t *log)
+static int ngx_http_charset_filter_init(ngx_cycle_t *cycle)
 {
     next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_charset_header_filter;

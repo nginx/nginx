@@ -11,7 +11,7 @@
 
 
 
-static int ngx_http_header_filter_init(ngx_cycle_t *cycle, ngx_log_t *log);
+static int ngx_http_header_filter_init(ngx_cycle_t *cycle);
 static int ngx_http_header_filter(ngx_http_request_t *r);
 
 
@@ -33,8 +33,7 @@ ngx_module_t  ngx_http_header_filter_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_header_filter_init,           /* init module */
-    NULL,                                  /* commit module */
-    NULL                                   /* rollback module */
+    NULL                                   /* init child */
 };
 
 
@@ -389,7 +388,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_header_filter_init(ngx_cycle_t *cycle, ngx_log_t *log)
+static int ngx_http_header_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_top_header_filter = ngx_http_header_filter;
     return NGX_OK;

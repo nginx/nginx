@@ -14,7 +14,7 @@ typedef struct {
 
 
 static int ngx_http_index_test_dir(ngx_http_request_t *r);
-static int ngx_http_index_init(ngx_cycle_t *cycle, ngx_log_t *log);
+static int ngx_http_index_init(ngx_cycle_t *cycle);
 static void *ngx_http_index_create_conf(ngx_pool_t *pool);
 static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent,
                                                                   void *child);
@@ -53,8 +53,7 @@ ngx_module_t  ngx_http_index_module = {
     ngx_http_index_commands,               /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_index_init,                   /* init module */
-    NULL,                                  /* commit module */
-    NULL                                   /* rollback module */
+    NULL                                   /* init child */
 };
 
 
@@ -204,7 +203,7 @@ ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
 }
 
 
-static int ngx_http_index_init(ngx_cycle_t *cycle, ngx_log_t *log)
+static int ngx_http_index_init(ngx_cycle_t *cycle)
 {
     ngx_http_handler_pt        *h;
     ngx_http_conf_ctx_t        *ctx;

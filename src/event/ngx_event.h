@@ -151,8 +151,8 @@ typedef struct {
     int   (*del_conn)(ngx_connection_t *c);
 
     int   (*process)(ngx_log_t *log);
-    int   (*init)(ngx_log_t *log);
-    void  (*done)(ngx_log_t *log);
+    int   (*init)(ngx_cycle_t *cycle);
+    void  (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
 
 
@@ -348,8 +348,8 @@ extern ngx_module_t        ngx_events_module;
 extern ngx_module_t        ngx_event_core_module;
 
 
-#define ngx_event_get_conf(module)                                           \
-                     (*(ngx_get_conf(ngx_events_module))) [module.ctx_index];
+#define ngx_event_get_conf(conf_ctx, module)                                  \
+             (*(ngx_get_conf(conf_ctx, ngx_events_module))) [module.ctx_index];
 
 
 

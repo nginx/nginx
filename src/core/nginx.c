@@ -15,7 +15,7 @@ void  ****ngx_conf_ctx;
 ngx_os_io_t  ngx_io;
 
 
-ngx_cycle_t  *cycle;
+ngx_cycle_t  ngx_cycle;
 
 int     ngx_max_module;
 
@@ -30,7 +30,7 @@ int main(int argc, char *const *argv)
 {
     int           i;
     ngx_log_t    *log;
-    ngx_cycle_t  *new_cycle;
+    ngx_cycle_t  *cycle;
 
     /* TODO */ ngx_max_sockets = -1;
 
@@ -50,23 +50,27 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
+    ngx_cycle = *cycle;
+
     /* daemon */
 
     /* life cycle */
 
     for ( ;; ) {
-        /* STUB */ cycle->log->file->fd = log->file->fd;
-        /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG;
-
-        /* STUB */
-        ngx_io = ngx_os_io;
+        /* STUB */ ngx_cycle.log->log_level = NGX_LOG_DEBUG;
 
         /* forks */
 
         ngx_init_temp_number();
 
-        /* STUB */
-        ngx_pre_thread(&cycle->listening, cycle->pool, cycle->log);
+        for (i = 0; ngx_modules[i]; i++) {
+            if (ngx_modules[i]->init_child) {
+                if (ngx_modules[i]->init_child(&ngx_cycle) == NGX_ERROR) {
+                    /* fatal */
+                    exit(1);
+                }
+            }
+        }
 
         /* threads */
 
@@ -76,27 +80,29 @@ int main(int argc, char *const *argv)
         for ( ;; ) {
 
             for ( ;; ) {
-                ngx_log_debug(cycle->log, "worker cycle");
+                ngx_log_debug(ngx_cycle.log, "worker cycle");
 
-                ngx_process_events(cycle->log);
+                ngx_process_events(ngx_cycle.log);
 
                 if (rotate) {
-                    ngx_log_debug(cycle->log, "rotate");
+                    ngx_log_debug(ngx_cycle.log, "rotate");
                 }
 
                 if (restart) {
-                    ngx_log_debug(cycle->log, "restart");
+                    ngx_log_debug(ngx_cycle.log, "restart");
                     break;
                 }
 
             }
 
-            new_cycle = ngx_init_cycle(cycle, cycle->log);
-            if (new_cycle == NULL) {
+            cycle = ngx_init_cycle(&ngx_cycle, ngx_cycle.log);
+            if (cycle == NULL) {
                 continue;
             }
 
-            cycle = new_cycle;
+ngx_log_debug(ngx_cycle.log, "OPEN: %d" _ cycle->log->file->fd);
+            ngx_cycle = *cycle;
+ngx_log_debug(ngx_cycle.log, "OPEN: %d" _ ngx_cycle.log->file->fd);
             break;
         }
     }
@@ -187,38 +193,32 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
     failed = 0;
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->init_module) {
-            if (ngx_modules[i]->init_module(cycle, log) == NGX_ERROR)
-            {
-                failed = 1;
-                break;
-            }
+ngx_log_debug(log, "OPEN: %d" _ cycle->log->file->fd);
+
+    file = cycle->open_files.elts;
+    for (i = 0; i < cycle->open_files.nelts; i++) {
+        if (file->name.data == NULL) {
+            continue;
         }
+
+        file->fd = ngx_open_file(file->name.data,
+                                 NGX_FILE_RDWR,
+                                 NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+
+        if (file->fd == NGX_INVALID_FILE) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          ngx_open_file_n " \"%s\" failed",
+                          file->name.data);
+            failed = 1;
+            break;
+        }
+
+        /* TODO: Win32 append */
     }
 
-    if (!failed) {
-        file = cycle->open_files.elts;
-        for (i = 0; i < cycle->open_files.nelts; i++) {
-            if (file->name.data == NULL) {
-                continue;
-            }
-
-            file->fd = ngx_open_file(file->name.data,
-                                     NGX_FILE_RDWR,
-                                     NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
-
-            if (file->fd == NGX_INVALID_FILE) {
-                ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                              ngx_open_file_n " \"%s\" failed",
-                              file->name.data);
-                failed = 1;
-                break;
-            }
-
-            /* TODO: Win32 append */
-        }
-    }
+ngx_log_debug(log, "OPEN: %d" _ cycle->log->file->fd);
+        /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG;
+ngx_log_debug(cycle->log, "TEST");
 
     if (!failed) {
         if (old_cycle) {
@@ -254,12 +254,6 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
         /* rollback the new cycle configuration */
 
-        for (i = 0; ngx_modules[i]; i++) {
-            if (ngx_modules[i]->rollback_module) {
-                ngx_modules[i]->rollback_module(cycle, log);
-            }
-        }
-
         file = cycle->open_files.elts;
         for (i = 0; i < cycle->open_files.nelts; i++) {
             if (file->fd == NGX_INVALID_FILE) {
@@ -292,13 +286,16 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
     /* commit the new cycle configuration */
 
+    pool->log = cycle->log;
+
     for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->commit_module) {
-            ngx_modules[i]->commit_module(cycle, log);
+        if (ngx_modules[i]->init_module) {
+            if (ngx_modules[i]->init_module(cycle) == NGX_ERROR) {
+                /* fatal */
+                exit(1);
+            }
         }
     }
-
-    pool->log = cycle->log;
 
     if (old_cycle == NULL) {
         return cycle;

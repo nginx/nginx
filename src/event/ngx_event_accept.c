@@ -17,7 +17,7 @@ void ngx_event_accept(ngx_event_t *ev)
     ngx_connection_t  *c, *ls;
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_core_module);
+    ecf = ngx_event_get_conf(ngx_cycle.conf_ctx, ngx_event_core_module);
 
     ls = ev->data;
 

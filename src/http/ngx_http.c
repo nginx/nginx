@@ -464,7 +464,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->nonblocking = 1;
 
             ls->handler = ngx_http_init_connection;
-            ls->log = cf->log;
+            ls->log = cf->cycle->log;
 
             cscf = in_addr[a].core_srv_conf;
             ls->pool_size = cscf->connection_pool_size;

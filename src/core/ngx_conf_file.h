@@ -79,9 +79,8 @@ struct ngx_module_s {
     void           *ctx;
     ngx_command_t  *commands;
     int             type;
-    int           (*init_module)(ngx_cycle_t *cycle, ngx_log_t *log);
-    int           (*commit_module)(ngx_cycle_t *cycle, ngx_log_t *log);
-    int           (*rollback_module)(ngx_cycle_t *cycle, ngx_log_t *log);
+    int           (*init_module)(ngx_cycle_t *cycle);
+    int           (*init_child)(ngx_cycle_t *cycle);
 };
 
 
@@ -114,7 +113,7 @@ struct ngx_conf_s {
 };
 
 
-#define ngx_get_conf(module)  ngx_conf_ctx[module.index]
+#define ngx_get_conf(conf_ctx, module)  conf_ctx[module.index]
 
 
 #define ngx_conf_init_value(conf, default)                                   \
@@ -179,7 +178,7 @@ char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 extern ngx_module_t     *ngx_modules[];
-extern void          ****ngx_conf_ctx;
+extern ngx_cycle_t       ngx_cycle;
 
 
 #endif /* _NGX_HTTP_CONF_FILE_H_INCLUDED_ */

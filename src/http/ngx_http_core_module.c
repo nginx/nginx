@@ -20,7 +20,7 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool);
 static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
                                           void *parent, void *child);
 
-static int ngx_http_core_init(ngx_cycle_t *cycle, ngx_log_t *log);
+static int ngx_http_core_init(ngx_cycle_t *cycle);
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
 static int ngx_cmp_locations(const void *first, const void *second);
 static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -187,8 +187,7 @@ ngx_module_t  ngx_http_core_module = {
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_core_init,                    /* init module */
-    NULL,                                  /* commit module */
-    NULL                                   /* rollback module */
+    NULL                                   /* init child */
 };
 
 
@@ -529,7 +528,7 @@ int ngx_http_internal_redirect(ngx_http_request_t *r,
 }
 
 
-static int ngx_http_core_init(ngx_cycle_t *cycle, ngx_log_t *log)
+static int ngx_http_core_init(ngx_cycle_t *cycle)
 {
     ngx_http_handler_pt        *h;
     ngx_http_conf_ctx_t        *ctx;

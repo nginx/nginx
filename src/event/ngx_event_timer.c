@@ -9,17 +9,18 @@ static int           ngx_timer_cur_queue;
 static int           ngx_timer_queue_num;
 
 
-int ngx_event_timer_init(ngx_log_t *log)
+int ngx_event_timer_init(ngx_cycle_t *cycle)
 {
     int                i;
     ngx_event_t       *new_queue;
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_core_module);
+    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
     if (ngx_timer_queue_num < ecf->timer_queues) {
         ngx_test_null(new_queue,
-                      ngx_alloc(ecf->timer_queues * sizeof(ngx_event_t), log),
+                      ngx_alloc(ecf->timer_queues * sizeof(ngx_event_t),
+                                cycle->log),
                       NGX_ERROR);
 
         for (i = 0; i < ngx_timer_queue_num; i++) {
@@ -39,16 +40,22 @@ int ngx_event_timer_init(ngx_log_t *log)
             ngx_timer_queue[i].timer_prev = &ngx_timer_queue[i];
             ngx_timer_queue[i].timer_next = &ngx_timer_queue[i];
         }
+
+    } else if (ngx_timer_queue_num > ecf->timer_queues) {
+        /* STUB */
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "NOT READY");
+        exit(1);
     }
 
     return NGX_OK;;
 }
 
 
-void ngx_event_timer_done(ngx_log_t *log)
+void ngx_event_timer_done(ngx_cycle_t *cycle)
 {
     ngx_free(ngx_timer_queue);
     ngx_timer_queue = NULL;
+    ngx_timer_queue_num = 0;
 }
 
 
