@@ -43,27 +43,234 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 }
 
 
-static void ngx_http_ssi_parse()
+static int ngx_http_ssi_parse()
 {
-    for ( ) {
+
+    ctx
+
+    new_hunk = 1;
+    looked = ctx->looked;
+    state = ctx->state;
+
+
+    while (p < h->last) {
+        ch = *p++;
+
         switch (state) {
+
         case ssi_start_state:
 
-            /* tight loop */
-            while (p < h->last) {
-                if (*p++ == '<') {
-                    state = ssi_comment_state;
-                    length = 1;
-                    break;
+            if (new_hunk) {
+                if (looked) {
+                    send looked hunk
                 }
+                new_hunk = 0;
             }
 
-            /* fall through */
+            /* tight loop */
+            for ( ;; ) {
 
-        case ssi_comment_state:
+                if (ch == '<') {
+                    state = ssi_tag_state;
+                    looked = 1;
+                    break;
+                }
+
+                if (p < h->last) {
+                    state = ssi_start_state;
+                    looked = 0;
+                    break;
+                }
+
+                ch = *p++;
+            }
+
             break;
 
+        case ssi_tag_state:
+            switch (ch) {
+            case '!':
+                state = ssi_comment0_state;
+                looked = 2;
+                break;
+
+            case '<':
+                break;
+
+            default:
+                state = ssi_start_state;
+                looked = 0;
+                break;
+            }
+
+            break;
+
+        case ssi_comment0_state:
+            switch (ch) {
+            case '-':
+                state = ssi_comment1_state;
+                looked = 3;
+                break;
+
+            case '<':
+                state = ssi_tag_state;
+                looked = 1;
+                break;
+
+            default:
+                state = ssi_start_state;
+                looked = 0;
+                break;
+            }
+
+            break;
+
+        case ssi_comment1_state:
+            switch (ch) {
+            case '-':
+                state = ssi_sharp_state;
+                looked = 4;
+                break;
+
+            case '<':
+                state = ssi_tag_state;
+                looked = 1;
+                break;
+
+            default:
+                state = ssi_start_state;
+                looked = 0;
+                break;
+            }
+
+            break;
+
+        case ssi_sharp_state:
+            switch (ch) {
+            case '#':
+                state = ssi_precommand_state;
+                looked = 0;
+                break;
+
+            case '<':
+                state = ssi_tag_state;
+                looked = 1;
+                break;
+
+            default:
+                state = ssi_start_state;
+                looked = 0;
+                break;
+            }
+
+            break;
+
+        case ssi_precommand_state:
+            switch (ch) {
+            case ' ':
+            case CR:
+            case LF:
+            case '\t':
+                break;
+
+            default:
+                ngx_test_null(ctx->command.data,
+                              ngx_palloc(r->pool, NGX_SSI_COMMAND_LEN),
+                              NGX_ERROR);
+                ctx->command.data[0] = ch;
+                ctx->command.len = 1;
+                state = ssi_command_state;
+                break;
+            }
+
+            break;
+
+        case ssi_command_state:
+            if ((ch >= 'a' && ch =< 'z') || (ch >= 'A' && ch <= 'Z')
+                || (ch == '_') || (ch >= '0' && ch <= '9'))
+            {
+                ctx->command.data[ctx->command.len++] = ch;
+
+            } else if (ch == ' ' || ch == CR || ch == LF || ch == '\t') {
+                state = ssi_postcommand_state;
+
+#if 0
+            } else if (ch == '=') {
+                state = ssi_preexpression_state;
+#endif
+
+            } else {
+                return NGX_SSI_PARSE_INVALID_COMMAND;
+            }
+
+            break;
+
+        case ssi_postcommand_state:
+            switch (ch) {
+            case ' ':
+            case CR:
+            case LF:
+            case '\t':
+                break;
+
+            case '=':
+                state = ssi_preexpression_state;
+                break;
+
+            default:
+                return NGX_SSI_PARSE_INVALID_PARAM;
+            }
+
+            break;
+
+        case ssi_preexpression_state:
+            switch (ch) {
+            case ' ':
+            case CR:
+            case LF:
+            case '\t':
+                break;
+
+            case '"':
+                state = ssi_expression_state;
+                break;
+
+            default:
+                return NGX_SSI_PARSE_INVALID_PARAM;
+            }
+
+            break;
+
+        case ssi_expression_state:
+            switch (ch) {
+            case '\':
+                state = ssi_quote_state;
+                break;
+
+            case '"':
+                state = ssi_expression_state;
+                break;
+
+            default:
+                return NGX_SSI_PARSE_INVALID_PARAM;
+            }
+
+            break;
+
+        case ssi_quote_state:
+            state = ssi_expression_state;
+
+            break;
+
+        }
     }
+
+    ctx->state = state;
+    ctx->looked = looked;
+
+    send hunk (size - looked);
+
+    return;
 }
 
 
