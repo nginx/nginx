@@ -38,11 +38,6 @@
 #endif
 
 
-/* STUB: ngx_mutex.h */
-#define ngx_mutex_lock(m)
-#define ngx_mutex_unlock(m)
-
-
 /* STUB: autoconf */
 typedef int    ngx_int_t;
 typedef u_int  ngx_uint_t;
@@ -71,7 +66,7 @@ typedef int    ngx_flag_t;
 /* TODO: #ifndef */
 #define NGX_SHUTDOWN_SIGNAL      QUIT
 #define NGX_TERMINATE_SIGNAL     TERM
-#define NGX_NOACCEPT_SIGNAL      ABRT
+#define NGX_NOACCEPT_SIGNAL      WINCH
 #define NGX_RECONFIGURE_SIGNAL   HUP
 #define NGX_REOPEN_SIGNAL        USR1
 #define NGX_CHANGEBIN_SIGNAL     USR2

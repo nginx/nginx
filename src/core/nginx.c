@@ -27,6 +27,9 @@ typedef struct {
 static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
 static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
+#if (NGX_THREADS)
+static int ngx_worker_thread_cycle(void *data);
+#endif
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle, char **envp);
 static ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
 static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle);
@@ -87,22 +90,22 @@ ngx_module_t  ngx_core_module = {
 };
 
 
-ngx_int_t   ngx_max_module;
-ngx_uint_t  ngx_connection_counter;
+ngx_int_t     ngx_max_module;
+ngx_atomic_t  ngx_connection_counter;
 
-ngx_int_t   ngx_process;
-ngx_pid_t   ngx_pid;
-ngx_pid_t   ngx_new_binary;
+ngx_int_t     ngx_process;
+ngx_pid_t     ngx_pid;
+ngx_pid_t     ngx_new_binary;
 
-ngx_int_t   ngx_inherited;
-ngx_int_t   ngx_reap;
-ngx_int_t   ngx_timer;
-ngx_int_t   ngx_terminate;
-ngx_int_t   ngx_quit;
-ngx_int_t   ngx_noaccept;
-ngx_int_t   ngx_reconfigure;
-ngx_int_t   ngx_reopen;
-ngx_int_t   ngx_change_binary;
+ngx_int_t     ngx_inherited;
+ngx_int_t     ngx_reap;
+ngx_int_t     ngx_timer;
+ngx_int_t     ngx_terminate;
+ngx_int_t     ngx_quit;
+ngx_int_t     ngx_noaccept;
+ngx_int_t     ngx_reconfigure;
+ngx_int_t     ngx_reopen;
+ngx_int_t     ngx_change_binary;
 
 
 int main(int argc, char *const *argv, char **envp)
@@ -577,6 +580,9 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_int_t         i;
     ngx_listening_t  *ls;
     ngx_core_conf_t  *ccf;
+#if (NGX_THREADS)
+    ngx_tid_t         tid;
+#endif
 
     ngx_process = NGX_PROCESS_WORKER;
     ngx_last_process = 0;
@@ -641,7 +647,15 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     ngx_setproctitle("worker process");
 
-    /* TODO: threads: start ngx_worker_thread_cycle() */
+#if (NGX_THREADS)
+
+    ngx_init_threads(5, 128 * 1024 * 1024, cycle->log);
+
+    for (i = 0; i < 1; i++) {
+        ngx_create_thread(&tid, ngx_worker_thread_cycle, cycle, cycle->log);
+    }
+
+#endif
 
     for ( ;; ) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
@@ -686,6 +700,35 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
     }
 }
+
+
+#if (NGX_THREADS)
+
+int ngx_worker_thread_cycle(void *data)
+{
+    ngx_cycle_t *cycle = data;
+
+    struct timeval  tv;
+
+    /* STUB */
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, ngx_errno,
+                   "thread %d started", ngx_thread_self());
+
+    ngx_setproctitle("worker thread");
+
+    sleep(5);
+
+    ngx_gettimeofday(&tv);
+    ngx_time_update(tv.tv_sec);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, ngx_errno,
+                   "thread %d done", ngx_thread_self());
+
+    return 1;
+}
+
+#endif
 
 
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle, char **envp)

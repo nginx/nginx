@@ -9,6 +9,10 @@
  * protected by the single mutex
  */
 
+#if (NGX_THREADS)
+static ngx_mutex_t  *ngx_event_timer_mutex;
+#endif
+
 
 ngx_rbtree_t  *ngx_event_timer_rbtree;
 ngx_rbtree_t   ngx_event_timer_sentinel;

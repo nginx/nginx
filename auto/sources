@@ -5,6 +5,7 @@ CORE_INCS="-I src/core"
 
 CORE_DEPS="src/core/nginx.h \
             src/core/ngx_config.h \
+            src/core/ngx_core.h \
             src/core/ngx_atomic.h \
             src/core/ngx_log.h \
             src/core/ngx_alloc.h \
@@ -98,6 +99,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_errno.h \
             src/os/unix/ngx_files.h \
             src/os/unix/ngx_process.h \
+            src/os/unix/ngx_thread.h \
             src/os/unix/ngx_socket.h \
             src/os/unix/ngx_os.h"
 
@@ -117,7 +119,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
 FREEBSD_DEPS=src/os/unix/ngx_freebsd_config.h
 FREEBSD_SRCS=src/os/unix/ngx_freebsd_init.c
 FREEBSD_SENDFILE_SRCS=src/os/unix/ngx_freebsd_sendfile_chain.c
-
+FREEBSD_RFORK_SRCS="src/os/unix/ngx_freebsd_rfork_thread.c"
 
 LINUX_DEPS=src/os/unix/ngx_linux_config.h
 LINUX_SRCS=src/os/unix/ngx_linux_init.c

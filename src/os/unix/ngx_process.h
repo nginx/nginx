@@ -40,7 +40,8 @@ typedef struct {
 #define NGX_PROCESS_DETACHED   -3
 
 
-#define ngx_getpid  getpid
+#define ngx_getpid   getpid
+#define ngx_log_pid  ngx_pid
 
 ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,

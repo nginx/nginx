@@ -3,6 +3,11 @@
 #include <ngx_core.h>
 
 
+#if (NGX_THREADS)
+static ngx_mutex_t  *ngx_time_mutex;
+#endif
+
+
 time_t            ngx_cached_time;
 ngx_epoch_msec_t  ngx_elapsed_msec;
 ngx_epoch_msec_t  ngx_old_elapsed_msec;
@@ -46,6 +51,13 @@ void ngx_time_init()
     ngx_elapsed_msec = 0;
 
     ngx_time_update(tv.tv_sec);
+
+#if (NGX_THREADS0)
+    if (!(ngx_time_mutex = ngx_mutex_init(log, NGX_MUTEX_LIGHT);
+        return 0;
+    }
+#endif
+
 }
 
 
@@ -56,6 +68,12 @@ void ngx_time_update(time_t s)
     if (ngx_cached_time == s) {
         return;
     }
+
+#if (NGX_THREADS0)
+    if (ngx_mutex_trylock(ngx_time_mutex) != NGX_OK) {
+        return;
+    }
+#endif
 
     ngx_cached_time = s;
 
@@ -90,6 +108,11 @@ void ngx_time_update(time_t s)
                                        tm.ngx_tm_hour,
                                        tm.ngx_tm_min,
                                        tm.ngx_tm_sec);
+
+#if (NGX_THREADS0)
+    ngx_mutex_unlock(ngx_time_mutex);
+#endif
+
 }
 
 

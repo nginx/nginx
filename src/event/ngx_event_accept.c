@@ -254,17 +254,17 @@ void ngx_event_accept(ngx_event_t *ev)
 
         /*
          * TODO: MT: - atomic increment (x86: lock xadd)
-         *             or protection by critical section or mutex
+         *             or protection by critical section or light mutex
          *
          * TODO: MP: - allocated in a shared memory
          *           - atomic increment (x86: lock xadd)
-         *             or protection by critical section or mutex
+         *             or protection by critical section or light mutex
          */
 
-        c->number = ngx_connection_counter++;
+        c->number = ngx_atomic_inc(&ngx_connection_counter);
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                       "accept: %d, %d", s, c->number);
+                       "accept: fd:%d c:%d", s, c->number);
 
         if (ngx_add_conn) {
             if (ngx_add_conn(c) == NGX_ERROR) {
@@ -292,8 +292,6 @@ void ngx_event_accept(ngx_event_t *ev)
         accepted++;
 
     } while (ev->available);
-
-    return;
 }
 
 

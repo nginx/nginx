@@ -27,11 +27,12 @@ ngx_lib_inc="#include <sys/types.h>
 
     MD5=NO
 
-        # Solaris 8/9
-        ngx_lib="rsaref md5"
-        ngx_lib_test="MD5_CTX md5; MD5Init(&md5)"
-        ngx_libs=-lmd5
-        . auto/lib/test
+    # Solaris 8/9
+
+    ngx_lib="rsaref md5"
+    ngx_lib_test="MD5_CTX md5; MD5Init(&md5)"
+    ngx_libs=-lmd5
+    . auto/lib/test
 
 
     if [ $ngx_found = yes ]; then
@@ -42,6 +43,7 @@ ngx_lib_inc="#include <sys/types.h>
 
     else
         # FreeBSD
+
         ngx_lib="rsaref md"
         ngx_lib_test="MD5_CTX md5; MD5Init(&md5)"
         ngx_libs=-lmd
@@ -56,8 +58,9 @@ ngx_lib_inc="#include <sys/types.h>
         ngx_found=no
 
     else
-        ngx_lib_inc="#include <sys/types.h>
-#include <openssl/md5.h>"
+        # OpenSSL crypto library
+
+        ngx_inc="#include <openssl/md5.h>"
         ngx_lib="OpenSSL md5 crypto"
         ngx_lib_test="MD5_CTX md5; MD5_Init(&md5)"
         ngx_libs=-lcrypto

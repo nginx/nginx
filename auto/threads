@@ -1,0 +1,7 @@
+
+if [ $USE_THREADS = "rfork" ]; then
+    have=NGX_THREADS . auto/have
+    have=USE_RFORK . auto/have
+    CORE_DEPS="$CORE_DEPS $UNIX_THREADS_DEPS"
+    CORE_SRCS="$CORE_SRCS $FREEBSD_RFORK_SRCS"
+fi

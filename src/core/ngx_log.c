@@ -79,7 +79,7 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 
     /* pid#tid */
     len += ngx_snprintf(errstr + len, max - len,
-                        PID_T_FMT "#%d: ", ngx_pid, /* STUB */ 0);
+                        PID_T_FMT "#" TID_T_FMT ": ", ngx_log_pid, ngx_log_tid);
 
     if (log->data && *(int *) log->data != -1) {
         len += ngx_snprintf(errstr + len, max - len,

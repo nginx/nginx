@@ -2,36 +2,60 @@
 if [ "$PLATFORM" != "win32" ]; then
 
     if [ $PCRE != NO ]; then
-        echo "$PCRE/.libs/libpcre.a:"                  >> $MAKEFILE
-        echo "	cd $PCRE \\"                           >> $MAKEFILE
-        echo "	&& ./configure --disable-shared \\"    >> $MAKEFILE
-        echo "	&& \$(MAKE)"                           >> $MAKEFILE
-        echo                                           >> $MAKEFILE
+        echo "$PCRE/.libs/libpcre.a:"                            >> $MAKEFILE
+        echo "	cd $PCRE \\"                                     >> $MAKEFILE
+        echo "	&& ./configure --disable-shared \\"              >> $MAKEFILE
+        echo "	&& \$(MAKE)"                                     >> $MAKEFILE
+        echo                                                     >> $MAKEFILE
     fi
 
 
     if [ $MD5 != NO ]; then
-        echo "$MD5/libmd5.a:"                          >> $MAKEFILE
+        echo "$MD5/libmd5.a:"                                    >> $MAKEFILE
 
         case $PLATFORM in
 
-        SunOS:*)
-            echo "	cd $MD5 && \$(MAKE) x86-solaris" >> $MAKEFILE
-        ;;
+            SunOS:*:i386)
+                echo "	cd $MD5 && \$(MAKE) x86-solaris"         >> $MAKEFILE
+            ;;
 
-        *)
-            echo "	cd $MD5 && \$(MAKE) x86-elf"   >> $MAKEFILE
-        ;;
+            *:i386)
+                echo "	cd $MD5 && \$(MAKE) x86-elf"             >> $MAKEFILE
+            ;;
+
+            *)
+                if [ $CC = gcc ]; then
+                    echo "	cd $MD5 && \$(MAKE) gcc"         >> $MAKEFILE
+                else
+                    echo "	cd $MD5 && \$(MAKE) cc"          >> $MAKEFILE
+                fi
+            ;;
+
         esac
 
-        echo                                           >> $MAKEFILE
+        echo                                                     >> $MAKEFILE
     fi
 
 
     if [ $ZLIB != NO ]; then
-        echo "$ZLIB/libz.a:"                           >> $MAKEFILE
-        echo "	cd $ZLIB && ./configure && \$(MAKE)"   >> $MAKEFILE
-        echo                                           >> $MAKEFILE
+        echo "$ZLIB/libz.a:"                                     >> $MAKEFILE
+
+        case $PLATFORM in
+
+            *:i386)
+                echo "	cd $ZLIB \\"                             >> $MAKEFILE
+                echo "	&& cp contrib/asm686/match.S . \\"       >> $MAKEFILE
+                echo "	&& CFLAGS=\"-O3 -DASMV\" ./configure \\" >> $MAKEFILE
+                echo "	&& \$(MAKE) OBJA=match.o"                >> $MAKEFILE
+            ;;
+
+            *)
+                echo "	cd $ZLIB && ./configure && \$(MAKE)"     >> $MAKEFILE
+            ;;
+
+        esac
+
+        echo                                                     >> $MAKEFILE
     fi
 
 fi

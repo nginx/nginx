@@ -16,11 +16,17 @@ fi
 . auto/cc
 . auto/lib/conf
 
+if [ "$PLATFORM" != win32 ]; then
+    . auto/threads
+fi
+
 . auto/make
 . auto/lib/make
 
 if [ "$PLATFORM" != win32 ]; then
     . auto/unix
 fi
+
+#have NGX_SMP . auto/have
 
 . auto/summary

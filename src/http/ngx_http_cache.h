@@ -61,6 +61,9 @@ typedef struct {
     size_t                    nelts;
     time_t                    life;
     time_t                    update;
+#if (NGX_THREADS)
+    ngx_mutex_t               mutex;
+#endif
     ngx_pool_t               *pool;
 } ngx_http_cache_hash_t;
 

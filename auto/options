@@ -15,6 +15,8 @@ EVENT_SELECT=NO
 EVENT_POLL=NO
 EVENT_AIO=NO
 
+USE_THREADS=NO
+
 HTTP_REWRITE=YES
 HTTP_GZIP=YES
 HTTP_SSI=YES
@@ -50,6 +52,9 @@ do
         --with-poll_module)              EVENT_POLL=YES             ;;
         --without-poll_module)           EVENT_POLL=NONE            ;;
         --with-aio_module)               EVENT_AIO=YES              ;;
+
+        --with-threads=*)                USE_THREADS="$value"       ;;
+        --with-threads)                  USE_THREADS="pthreads"     ;;
 
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_ssi_module)       HTTP_SSI=NO                ;;
