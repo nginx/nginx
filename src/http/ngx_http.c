@@ -107,7 +107,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         module = (ngx_http_module_t *) ngx_modules[i]->ctx;
 
         if (module->create_loc_conf) {
-            ngx_test_null(ctx->loc_conf[ngx_modules[i]->index],
+            ngx_test_null(ctx->loc_conf[module->index],
                           module->create_loc_conf(cf->pool),
                           NGX_CONF_ERROR);
         }

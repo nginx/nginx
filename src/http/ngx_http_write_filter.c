@@ -169,8 +169,6 @@ static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool)
 
     conf->buffer_output = NGX_CONF_UNSET;
 
-ngx_log_debug(pool->log, "write conf %08X %08X" _ conf _ conf->buffer_output);
-
     return conf;
 }
 
@@ -184,8 +182,6 @@ static char *ngx_http_write_filter_merge_conf(ngx_pool_t *pool,
                                        (ngx_http_write_filter_conf_t *) child;
 
     ngx_conf_size_merge(conf->buffer_output, prev->buffer_output, 1460);
-
-ngx_log_debug(pool->log, "write merge %08X %08X %08X" _ prev _ conf _ conf->buffer_output);
 
     return NULL;
 }

@@ -18,8 +18,9 @@
 
 /* STUB */
 typedef struct {
-    int   dummy;
+    int   type;
 } ngx_cache_header_t;
+
 
 static int ngx_http_proxy_handler(ngx_http_request_t *r);
 
@@ -609,8 +610,8 @@ static int ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         }
     }
 
-    wev->event_handler = rev->event_handler =
-                                         ngx_http_proxy_process_upstream_event;
+    rev->event_handler = ngx_http_proxy_process_upstream_event;
+    p->request->connection->write->event_handler = NULL;
 
     p->state_write_upstream_handler = ngx_http_proxy_send_request;
     p->state_read_upstream_handler = ngx_http_proxy_init_upstream;
@@ -1087,11 +1088,26 @@ static int ngx_http_proxy_read_upstream_body(ngx_http_proxy_ctx_t *p)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (p->event_proxy->upstream_eof && p->event_proxy->upstream_error) {
+    if (p->event_proxy->upstream_eof || p->event_proxy->upstream_error) {
         rc = ngx_event_close_connection(p->connection->read);
     }
 
     return rc;
+}
+
+
+static int ngx_http_proxy_process_client_event(ngx_event_t *ev)
+{
+    ngx_connection_t      *c;
+    ngx_http_request_t    *r;
+    ngx_http_proxy_ctx_t  *p;
+
+    c = (ngx_connection_t *) ev->data;
+    r = (ngx_http_request_t *) c->data;
+    p = (ngx_http_proxy_ctx_t *)
+                         ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
+
+    return ngx_http_proxy_process_upstream(p, ev);
 }
 
 
@@ -1105,6 +1121,23 @@ static int ngx_http_proxy_write_upstream_body(ngx_http_proxy_ctx_t *p)
 
 static int ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int error)
 {
+#if 0
+
+    if (p->event_proxy->upstream_eof) {
+        rc = ngx_event_close_connection(p->connection->read);
+        link cache;
+    }
+
+    if (p->event_proxy->upstream_error) {
+        rc = ngx_event_close_connection(p->connection->read);
+    }
+
+    if (p->event_proxy->downstream_error) {
+        rc = ngx_event_close_connection(p->request->connection->write);
+    }
+
+#endif
+
     return ngx_http_finalize_request(p->request, error);
 }
 

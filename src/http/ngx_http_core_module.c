@@ -674,8 +674,6 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
             }
         }
 
-ngx_log_debug(cf->pool->log, "main merge");
-
         if (module->merge_loc_conf) {
             if (module->merge_loc_conf(cf->pool,
                                        prev->loc_conf[module->index],
@@ -683,8 +681,6 @@ ngx_log_debug(cf->pool->log, "main merge");
                                                            == NGX_CONF_ERROR) {
                 return NGX_CONF_ERROR;
             }
-
-ngx_log_debug(cf->pool->log, "server merge");
 
             for (j = 0; j < scf->locations.nelts; j++) {
                 if (module->merge_loc_conf(cf->pool,
@@ -694,7 +690,6 @@ ngx_log_debug(cf->pool->log, "server merge");
                     return NGX_CONF_ERROR;
                 }
             }
-ngx_log_debug(cf->pool->log, "server merge done");
         }
     }
 
