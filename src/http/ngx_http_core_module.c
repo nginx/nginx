@@ -31,6 +31,7 @@ static char *ngx_set_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf);
 static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
                                  void *conf);
+static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data);
@@ -190,6 +191,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
      ngx_conf_set_flag_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, msie_padding),
+     NULL},
+
+    {ngx_string("error_page"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_2MORE,
+     ngx_set_error_page,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     0,
      NULL},
 
     {ngx_string("error_log"),
@@ -631,8 +639,8 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     char                      *rv;
     ngx_str_t                 *location;
     ngx_http_module_t         *module;
-    ngx_conf_t                 pcf;
-    ngx_http_conf_ctx_t       *ctx, *pctx;
+    ngx_conf_t                 pvcf;
+    ngx_http_conf_ctx_t       *ctx, *pvctx;
     ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf, **clcfp;
 
@@ -640,9 +648,9 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
                   NGX_CONF_ERROR);
 
-    pctx = (ngx_http_conf_ctx_t *) cf->ctx;
-    ctx->main_conf = pctx->main_conf;
-    ctx->srv_conf = pctx->srv_conf;
+    pvctx = (ngx_http_conf_ctx_t *) cf->ctx;
+    ctx->main_conf = pvctx->main_conf;
+    ctx->srv_conf = pvctx->srv_conf;
 
     ngx_test_null(ctx->loc_conf,
                   ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
@@ -672,11 +680,11 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     ngx_test_null(clcfp, ngx_push_array(&cscf->locations), NGX_CONF_ERROR);
     *clcfp = clcf;
 
-    pcf = *cf;
+    pvcf = *cf;
     cf->ctx = ctx;
     cf->cmd_type = NGX_HTTP_LOC_CONF;
     rv = ngx_conf_parse(cf, NULL);
-    *cf = pcf;
+    *cf = pvcf;
 
     return rv;
 }
@@ -856,6 +864,7 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->default_type.len = 0;
     lcf->default_type.data = NULL;
     lcf->err_log = NULL;
+    lcf->error_pages = NULL;
 
     */
 
@@ -927,6 +936,10 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
         } else {
             conf->err_log = cf->cycle->log;
         }
+    }
+
+    if (conf->error_pages == NULL && prev->error_pages) {
+        conf->error_pages = prev->error_pages;
     }
 
     ngx_conf_merge_str_value(conf->default_type,
@@ -1061,6 +1074,47 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *lcf = conf;
+
+    int                   i;
+    ngx_str_t            *value;
+    ngx_http_err_page_t  *err;
+
+    if (lcf->error_pages == NULL) {
+        lcf->error_pages = ngx_create_array(cf->pool, 5,
+                                            sizeof(ngx_http_err_page_t));
+        if (lcf->error_pages == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts - 1; i++) {
+        ngx_test_null(err, ngx_push_array(lcf->error_pages), NGX_CONF_ERROR);
+        err->code = ngx_atoi(value[i].data, value[i].len);
+        if (err->code == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid value \"%s\"", value[i].data);
+            return NGX_CONF_ERROR;
+        }
+
+        if (err->code < 400 || err->code > 599) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "value \"%s\" must be between 400 and 599",
+                               value[i].data);
+            return NGX_CONF_ERROR;
+        }
+
+        err->uri = value[cf->args->nelts - 1];
+    }
+
+    return NGX_CONF_OK;
+}
+
+
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
@@ -1079,9 +1133,9 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data)
 {
-    int *np = data;
-
 #if (HAVE_LOWAT_EVENT)
+
+    int *np = data;
 
     if (*np >= ngx_freebsd_net_inet_tcp_sendspace) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

@@ -5,12 +5,14 @@
 #include <ngx_http_proxy_handler.h>
 
 
+static int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p,
+                                                  int rc);
 static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p);
+static void ngx_http_proxy_cache_look_complete_request(ngx_http_proxy_ctx_t *p);
 
 
 int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p)
 {
-    int                              rc;
     char                            *last;
     ngx_http_request_t              *r;
     ngx_http_proxy_cache_t          *c;
@@ -54,44 +56,69 @@ int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p)
 
     c->ctx.buf = p->header_in; 
 
-    rc = ngx_http_cache_get_file(r, &c->ctx);
+    return ngx_http_proxy_process_cached_response(p,
+                                          ngx_http_cache_get_file(r, &c->ctx));
+}
 
-    switch (rc) {
-    case NGX_HTTP_CACHE_STALE:
-        p->stale = 1;
-        p->state->cache = NGX_HTTP_PROXY_CACHE_EXPR;
-        break;
 
-    case NGX_HTTP_CACHE_AGED:
-        p->stale = 1;
-        p->state->cache = NGX_HTTP_PROXY_CACHE_AGED;
-        break;
+static int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p,
+                                                  int rc)
+{
+    if (rc == NGX_OK) {
+        p->state->cache_state = NGX_HTTP_PROXY_CACHE_HIT;
+        p->header_in->pos = p->header_in->start + p->cache->ctx.header_size;
 
-    case NGX_OK:
-        p->state->cache = NGX_HTTP_PROXY_CACHE_HIT;
-        break;
-
-    default:
-        p->state->cache = NGX_HTTP_PROXY_CACHE_MISS;
-    }
-
-    if (rc == NGX_OK
-        || rc == NGX_HTTP_CACHE_STALE
-        || rc == NGX_HTTP_CACHE_AGED)
-    {
-        p->header_in->pos = p->header_in->start + c->ctx.header_size;
         if (ngx_http_proxy_process_cached_header(p) == NGX_ERROR) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
-        p->header_in->pos = p->header_in->start + c->ctx.header_size;
+
+        p->valid_header_in = 1;
+
+        return ngx_http_proxy_send_cached_response(p);
+    }
+
+    if (rc == NGX_HTTP_CACHE_STALE) {
+        p->state->cache_state = NGX_HTTP_PROXY_CACHE_EXPR;
+
+    } else if (rc == NGX_HTTP_CACHE_AGED) {
+        p->state->cache_state = NGX_HTTP_PROXY_CACHE_AGED;
+    }
+
+    if (rc == NGX_HTTP_CACHE_STALE || rc == NGX_HTTP_CACHE_AGED) {
+        p->header_in->pos = p->header_in->start + p->cache->ctx.header_size;
+
+        if (ngx_http_proxy_process_cached_header(p) == NGX_ERROR) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        p->header_in->pos = p->header_in->start + p->cache->ctx.header_size;
         p->header_in->last = p->header_in->pos;
 
+        p->stale = 1;
+        p->valid_header_in = 1;
+
     } else if (rc == NGX_DECLINED) {
-        p->header_in->pos = p->header_in->start + c->ctx.header_size;
+        p->state->cache_state = NGX_HTTP_PROXY_CACHE_MISS;
+        p->header_in->pos = p->header_in->start + p->cache->ctx.header_size;
         p->header_in->last = p->header_in->pos;
     }
 
-    return rc;
+    if (p->lcf->busy_lock) {
+        p->try_busy_lock = 1;
+
+        p->header_in->pos = p->header_in->start;
+        p->header_in->last = p->header_in->start;
+
+        p->busy_lock.time = 0;
+        p->busy_lock.event = p->request->connection->read;
+        p->busy_lock.event_handler = ngx_http_proxy_busy_lock_handler;
+        p->busy_lock.md5 = p->cache->ctx.md5;
+
+        ngx_http_proxy_cache_busy_lock(p);
+        return NGX_DONE;
+    }
+
+    return ngx_http_proxy_request_upstream(p);
 }
 
 
@@ -141,6 +168,7 @@ static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p)
     ngx_log_debug(r->connection->log, "http cache status %d '%s'" _ 
                   c->status _ c->status_line.data);
 
+    /* TODO: ngx_init_table */
     c->headers_in.headers = ngx_create_table(r->pool, 20);
 
     for ( ;; ) {
@@ -216,28 +244,109 @@ static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p)
 }
 
 
-#if 0
-
-static void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
+void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
 {
-    rc = ngx_http_busy_lock(p->lcf->busy_lock, p->cache->ctx.md5);
+    int  rc, ft_type;
+
+    rc = ngx_http_busy_lock_cachable(p->lcf->busy_lock, &p->busy_lock,
+                                     p->try_busy_lock);
 
     if (rc == NGX_OK) {
-        ngx_http_proxy_request_upstream(p);
+        if (p->try_busy_lock) {
+            p->busy_locked = 1;
+            p->header_in->pos = p->header_in->start + p->cache->ctx.header_size;
+            p->header_in->last = p->header_in->pos;
+
+            ngx_http_proxy_request_upstream(p);
+            return;
+        }
+
+        ngx_http_proxy_cache_look_complete_request(p);
+        return;
     }
 
-    if (rc == NGX_AGAIN) {
-        if (p->busy_lock_time) {
-            ngx_add_timer(p->request->connection->read, 1000);
+    p->try_busy_lock = 0;
+
+    if (p->cache->ctx.file.fd != NGX_INVALID_FILE
+        && !p->cache->ctx.file.info_valid)
+    {
+        if (ngx_stat_fd(p->cache->ctx.file.fd, &p->cache->ctx.file.info)
+                                                             == NGX_FILE_ERROR)
+        {
+            ngx_log_error(NGX_LOG_CRIT, p->request->connection->log, ngx_errno,
+                          ngx_stat_fd_n " \"%s\" failed",
+                          p->cache->ctx.file.name.data);
+            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
+        }
+
+        p->cache->ctx.file.info_valid = 1;
+    }
+
+
+    if (rc == NGX_AGAIN) {
+        return;
+    }
+
+    if (rc == NGX_DONE) {
+        ft_type = NGX_HTTP_PROXY_FT_BUSY_LOCK;
+
+    } else {
+        /* rc == NGX_ERROR */
+        ft_type = NGX_HTTP_PROXY_FT_MAX_WAITING;
+    }
+    
+    if (p->stale && (p->lcf->use_stale & ft_type)) {
+        ngx_http_proxy_finalize_request(p,
+                                        ngx_http_proxy_send_cached_response(p));
+        return;
+    }
+    
+    ngx_http_proxy_finalize_request(p, NGX_HTTP_SERVICE_UNAVAILABLE);
+}
+
+
+static void ngx_http_proxy_cache_look_complete_request(ngx_http_proxy_ctx_t *p)
+{
+    int                    rc;
+    ngx_http_cache_ctx_t  *ctx;
+
+    if (!(ctx = ngx_pcalloc(p->request->pool, sizeof(ngx_http_cache_ctx_t)))) {
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    *ctx = p->cache->ctx;
+
+    rc = ngx_http_cache_open_file(p->request, ctx,
+                                  ngx_file_uniq(p->cache->ctx.file.info));
+
+    if (rc == NGX_HTTP_CACHE_THE_SAME) {
+        p->try_busy_lock = 1;
+        p->busy_lock.time = 0;
+        ngx_http_proxy_cache_busy_lock(p);
+        return;
+    }
+
+ngx_log_debug(p->request->connection->log, "OLD: %d, NEW: %d" _
+              p->cache->ctx.file.fd _ ctx->file.fd);
+
+    if (p->cache->ctx.file.fd != NGX_INVALID_FILE) {
+        if (ngx_close_file(p->cache->ctx.file.fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, p->request->connection->log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed",
+                          p->cache->ctx.file.name.data);
         }
     }
 
-    rc == NGX_ERROR
-    check waitn
-}
+    p->cache->ctx = *ctx;
 
-#endif
+    p->status = 0;
+    p->status_count = 0;
+
+    ngx_http_proxy_finalize_request(p,
+                                ngx_http_proxy_process_cached_response(p, rc));
+}
 
 
 int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p)
@@ -435,8 +544,8 @@ int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p)
         /* FIXME: time_t == int_64_t, we can use fpu */ 
 
         p->state->reason = NGX_HTTP_PROXY_CACHE_LMF;
-        p->cache->ctx.expires = ngx_time()
-              + (((int64_t) (date - last_modified)) * p->lcf->lm_factor) / 100;
+        p->cache->ctx.expires = (time_t) (ngx_time()
+             + (((int64_t) (date - last_modified)) * p->lcf->lm_factor) / 100);
         return 1;
     }
 
@@ -459,6 +568,9 @@ int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p)
     }
 
     ep = p->upstream->event_pipe;
+
+ngx_log_debug(p->request->connection->log, "LEN: " OFF_FMT ", " OFF_FMT _
+              p->cache->ctx.length _ ep->read_length);
 
     if (p->cache->ctx.length == -1) {
         /* TODO: test rc */

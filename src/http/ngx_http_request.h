@@ -74,6 +74,7 @@ typedef struct {
     ngx_table_elt_t  *connection;
     ngx_table_elt_t  *if_modified_since;
     ngx_table_elt_t  *user_agent;
+    ngx_table_elt_t  *referer;
 
     ngx_table_elt_t  *content_length;
     ngx_table_elt_t  *accept_encoding;
@@ -201,6 +202,8 @@ struct ngx_http_request_s {
     unsigned             proxy:1;
     unsigned             bypass_cache:1;
     unsigned             no_cache:1;
+
+    unsigned             error_page:1;
 
 #if 0
     unsigned             cachable:1;

@@ -8,10 +8,7 @@
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
 {
-    ssize_t                   n;
-    MD5_CTX                   md5;
-    ngx_err_t                 err;
-    ngx_http_cache_header_t  *h;
+    MD5_CTX  md5;
 
     ctx->header_size = sizeof(ngx_http_cache_header_t) + ctx->key.len + 1;
 
@@ -38,6 +35,19 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
 
     /* TODO: look open files cache */
 
+    return ngx_http_cache_open_file(r, ctx, 0);
+}
+
+
+/* TODO: Win32 inode analogy */
+
+int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
+                             ngx_file_uniq_t uniq)
+{
+    ssize_t                   n;
+    ngx_err_t                 err;
+    ngx_http_cache_header_t  *h;
+
     ctx->file.fd = ngx_open_file(ctx->file.name.data,
                                  NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
@@ -51,6 +61,25 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       ngx_open_file_n " \"%s\" failed", ctx->file.name.data);
         return NGX_ERROR;
+    }
+
+    if (uniq) {
+        if (ngx_stat_fd(ctx->file.fd, &ctx->file.info) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                          ngx_stat_fd_n " \"%s\" failed", ctx->file.name.data);
+
+            return NGX_ERROR;
+        }
+
+        if (ngx_file_uniq(ctx->file.info) == uniq) {
+            if (ngx_close_file(ctx->file.fd) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                              ngx_close_file_n " \"%s\" failed",
+                              ctx->file.name.data);
+            }
+
+            return NGX_HTTP_CACHE_THE_SAME;
+        }
     }
 
     n = ngx_read_file(&ctx->file, ctx->buf->pos,

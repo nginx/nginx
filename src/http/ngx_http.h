@@ -9,6 +9,7 @@
 #include <ngx_http_cache.h>
 #include <ngx_http_busy_lock.h>
 #include <ngx_http_filter.h>
+#include <ngx_http_log_handler.h>
 #include <ngx_http_core_module.h>
 
 

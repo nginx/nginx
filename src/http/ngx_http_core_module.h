@@ -100,6 +100,12 @@ typedef struct {
 
 
 typedef struct {
+    int        code;
+    ngx_str_t  uri;
+} ngx_http_err_page_t;
+
+
+typedef struct {
     ngx_str_t     name;          /* location name */
     void        **loc_conf ;     /* pointer to the modules' loc_conf */
 
@@ -120,6 +126,7 @@ typedef struct {
     ngx_msec_t    lingering_timeout;       /* lingering_timeout */
 
     int           msie_padding;            /* msie_padding */
+    ngx_array_t  *error_pages;             /* error_page */
 
     ngx_log_t    *err_log;
 } ngx_http_core_loc_conf_t;

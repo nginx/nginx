@@ -80,10 +80,24 @@ typedef struct {
 } ngx_http_proxy_loc_conf_t;
 
 
+/*
+ * "EXPR/10/5/- 200/EXP/60 4"
+ * "MISS/-/-/B 503/-/- -"
+ * "EXPR/10/20/SB HIT/-/- -"
+ * "EXPR/10/15/NB HIT/-/- -"
+ */
+
 typedef struct {
-    ngx_http_proxy_state_e           cache;
-    ngx_http_proxy_reason_e          reason;
+    ngx_http_proxy_state_e           cache_state;
+    time_t                           expired;
+    time_t                           bl_time;
+    int                              bl_state;
+
     int                              status;
+    ngx_http_proxy_reason_e          reason;
+    time_t                           time;
+    time_t                           expires;
+
     ngx_str_t                       *peer;
 } ngx_http_proxy_state_t;
 
@@ -140,12 +154,14 @@ struct ngx_http_proxy_ctx_s {
 
     ngx_hunk_t                   *header_in;
 
-    time_t                        busy_lock_time;
+    ngx_http_busy_lock_ctx_t      busy_lock;
 
     unsigned                      accel:1;
 
     unsigned                      cachable:1;
     unsigned                      stale:1;
+    unsigned                      try_busy_lock:1;
+    unsigned                      busy_locked:1;
     unsigned                      valid_header_in:1;
 
     unsigned                      request_sent:1;
@@ -186,6 +202,10 @@ int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p);
+
+void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev);
+void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p);
+void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p);
 
 size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len);
 void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc);

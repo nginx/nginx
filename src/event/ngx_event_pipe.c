@@ -417,6 +417,7 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             }
 
             /* TODO: free hunk if p->free_bufs && upstream done */
+
             /* add the free shadow raw hunk to p->free_raw_hunks */
 
             if (cl->hunk->type & NGX_HUNK_LAST_SHADOW) {

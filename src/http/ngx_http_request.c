@@ -225,6 +225,7 @@ ngx_log_debug(rev->log, "IN: %08x" _ in_port);
         return;
     }
 
+    /* TODO: ngx_init_table */
     if (!(r->headers_out.headers = ngx_create_table(r->pool, 20))) {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         ngx_http_close_connection(c);
@@ -416,6 +417,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         lctx = c->log->data;
         lctx->action = "reading client request headers";
         lctx->url = r->unparsed_uri.data;
+        /* TODO: ngx_init_table */
         r->headers_in.headers = ngx_create_table(r->pool, 20);
 
         if (cscf->large_client_header
@@ -1068,7 +1070,8 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     if (h->pos < h->last) {
 
-        /* Pipelined request.
+        /*
+         * Pipelined request.
          *
          * We do not know here whether a pipelined request is complete
          * so if the large client headers are not enabled

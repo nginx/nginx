@@ -132,7 +132,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
 
     { ngx_string("proxy_busy_lock"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE3,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE13,
       ngx_http_set_busy_lock_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, busy_lock),
@@ -240,9 +240,31 @@ ngx_http_header_t ngx_http_proxy_headers_in[] = {
 };
 
 
+static ngx_str_t cache_states[] = {
+    ngx_string("PASS"),
+    ngx_string("BYPASS"),
+    ngx_string("AUTH"),
+    ngx_string("PGNC"),
+    ngx_string("MISS"),
+    ngx_string("EXPR"),
+    ngx_string("AGED"),
+    ngx_string("HIT")
+};
+
+
+static ngx_str_t cache_reason[] = {
+    ngx_string("BPS"),
+    ngx_string("XAE"),
+    ngx_string("CTL"),
+    ngx_string("EXP"),
+    ngx_string("MVD"),
+    ngx_string("LMF"),
+    ngx_string("PDE")
+};
+
+
 static int ngx_http_proxy_handler(ngx_http_request_t *r)
 {
-    int                    rc;
     ngx_http_proxy_ctx_t  *p;
 
     ngx_http_create_ctx(r, p, ngx_http_proxy_module,
@@ -269,16 +291,16 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
     if (!p->lcf->cache
         || (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD))
     {
-        p->state->cache = NGX_HTTP_PROXY_CACHE_PASS;
+        p->state->cache_state = NGX_HTTP_PROXY_CACHE_PASS;
 
     } else if (r->bypass_cache) {
-        p->state->cache = NGX_HTTP_PROXY_CACHE_BYPASS;
+        p->state->cache_state = NGX_HTTP_PROXY_CACHE_BYPASS;
 
     } else if (r->headers_in.authorization) {
-        p->state->cache = NGX_HTTP_PROXY_CACHE_AUTH;
+        p->state->cache_state = NGX_HTTP_PROXY_CACHE_AUTH;
 
     } else if (r->no_cache) {
-        p->state->cache = NGX_HTTP_PROXY_CACHE_PGNC;
+        p->state->cache_state = NGX_HTTP_PROXY_CACHE_PGNC;
         p->cachable = 1;
 
     } else {
@@ -286,25 +308,72 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
     }
 
 
-    if (p->state->cache) {
+    if (p->state->cache_state != 0) {
         return ngx_http_proxy_request_upstream(p);
     }
 
-    rc = ngx_http_proxy_get_cached_response(p);
+    return ngx_http_proxy_get_cached_response(p);
+}
 
-    if (rc == NGX_DONE || rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
-        return rc;
+
+void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
+{
+    ngx_connection_t      *c;
+    ngx_http_request_t    *r;
+    ngx_http_proxy_ctx_t  *p;
+    
+    ngx_log_debug(rev->log, "busy lock");
+
+    c = rev->data;
+    r = c->data;
+    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+    p->action = "waiting upstream in busy lock";
+
+    if (rev->timedout) {
+        rev->timedout = 0;
+        p->busy_lock.time++;
+        p->state->bl_time = p->busy_lock.time;
+        if (p->state->cache_state < NGX_HTTP_PROXY_CACHE_MISS) {
+            ngx_http_proxy_upstream_busy_lock(p);
+
+        } else {
+            ngx_http_proxy_cache_busy_lock(p);
+        }
+
+        return;
     }
 
-    p->valid_header_in = 1;
+    ngx_log_debug(rev->log, "client sent while busy lock");
 
-    if (rc == NGX_OK) {
-        return ngx_http_proxy_send_cached_response(p);
+    /*
+     * TODO: kevent() notify about error, otherwise we need to
+     * call ngx_peek(): recv(MGS_PEEK) to get errno. THINK about aio
+     * if there's no error we need to disable event.
+     */
+
+#if (HAVE_KQUEUE)
+
+    if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && rev->kq_eof) {
+        p->lcf->busy_lock->waiting--;
+
+        ngx_del_timer(rev);
+
+        ngx_log_error(NGX_LOG_ERR, c->log, rev->kq_errno,
+                      "client() closed connection");
+
+        if (ngx_del_event(rev, NGX_READ_EVENT, NGX_CLOSE_EVENT) == NGX_ERROR) {
+            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        /* we have not HTTP code for the case when a client cancels a request */
+
+        ngx_http_proxy_finalize_request(p, 0);
+        return;
     }
 
-    /* rc == NGX_DECLINED || NGX_HTTP_CACHE_STALE || NGX_HTTP_CACHE_AGED */
+#endif
 
-    return ngx_http_proxy_request_upstream(p);
 }
 
 
@@ -313,7 +382,7 @@ void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
     ngx_log_debug(p->request->connection->log,
                   "finalize http proxy request");
 
-    if (p->upstream->peer.connection) {
+    if (p->upstream && p->upstream->peer.connection) {
         ngx_http_proxy_close_connection(p);
     }
 
@@ -323,8 +392,10 @@ void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
         rc = 0;
     }
 
-    p->request->connection->log->data = p->saved_ctx;
-    p->request->connection->log->handler = p->saved_handler;
+    if (p->saved_ctx) {
+        p->request->connection->log->data = p->saved_ctx;
+        p->request->connection->log->handler = p->saved_handler;
+    }
 
     ngx_http_finalize_request(p->request, rc);
 }
@@ -338,7 +409,7 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
     p->upstream->peer.connection = NULL;
 
     if (p->lcf->busy_lock) {
-        p->lcf->busy_lock->conn_n--;
+        p->lcf->busy_lock->busy--;
     }
 
     ngx_log_debug(c->log, "proxy close connection: %d" _ c->fd);
@@ -379,6 +450,12 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
     }
 
     c->fd = -1;
+}
+
+
+size_t ngx_http_proxy_log_state(void *data, char *buf, size_t len)
+{
+    return 0;
 }
 
 
@@ -513,21 +590,21 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
         conf->busy_lock = prev->busy_lock;
     }
 
-    if (conf->busy_lock && conf->cache && conf->busy_lock->busy == NULL) {
+    if (conf->busy_lock && conf->cache && conf->busy_lock->md5 == NULL) {
 
-        /* ngx_alloc_shared() */
-        conf->busy_lock->busy_mask =
-                     ngx_palloc(cf->pool, (conf->busy_lock->max_conn + 7) / 8);
-        if (conf->busy_lock->busy_mask == NULL) {
+        /* ngx_calloc_shared() */
+        conf->busy_lock->md5_mask =
+                     ngx_pcalloc(cf->pool, (conf->busy_lock->max_busy + 7) / 8);
+        if (conf->busy_lock->md5_mask == NULL) {
             return NGX_CONF_ERROR;
         }
 
         /* 16 bytes are 128 bits of the md5 */
 
         /* ngx_alloc_shared() */
-        conf->busy_lock->busy = ngx_palloc(cf->pool,
-                                           16 * conf->busy_lock->max_conn);
-        if (conf->busy_lock->busy == NULL) {
+        conf->busy_lock->md5 = ngx_palloc(cf->pool,
+                                          16 * conf->busy_lock->max_busy);
+        if (conf->busy_lock->md5 == NULL) {
             return NGX_CONF_ERROR;
         }
     }

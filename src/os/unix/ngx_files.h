@@ -63,6 +63,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 #define ngx_is_file(sb)          (S_ISREG(sb.st_mode))
 #define ngx_file_size(sb)        sb.st_size
 #define ngx_file_mtime(sb)       sb.st_mtime
+#define ngx_file_uniq(sb)        sb.st_ino
 
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

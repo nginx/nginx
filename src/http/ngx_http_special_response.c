@@ -168,9 +168,10 @@ static ngx_str_t error_pages[] = {
 
 int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
-    int                        err, rc;
+    int                        err, rc, i;
     ngx_hunk_t                *h;
     ngx_chain_t               *out, **ll, *cl;
+    ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
 
     rc = ngx_http_discard_body(r);
@@ -180,19 +181,6 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     }
 
     r->headers_out.status = error;
-
-    if (error < NGX_HTTP_BAD_REQUEST) {
-        /* 3XX */
-        err = error - NGX_HTTP_MOVED_PERMANENTLY;
-
-    } else if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
-        /* 4XX */
-        err = error - NGX_HTTP_BAD_REQUEST + 3;
-
-    } else {
-        /* 5XX */
-        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 3 + 17;
-    }
 
     if (r->keepalive != 0) {
         switch (error) {
@@ -211,6 +199,31 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
             case NGX_HTTP_INTERNAL_SERVER_ERROR:
                 r->lingering_close = 0;
         }
+    }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (!r->error_page && clcf->error_pages) {
+        err_page = clcf->error_pages->elts;
+        for (i = 0; i < clcf->error_pages->nelts; i++) {
+            if (err_page[i].code == error) {
+                r->error_page = 1;
+                return ngx_http_internal_redirect(r, &err_page[i].uri, NULL);
+            }
+        }
+    }
+
+    if (error < NGX_HTTP_BAD_REQUEST) {
+        /* 3XX */
+        err = error - NGX_HTTP_MOVED_PERMANENTLY;
+
+    } else if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
+        /* 4XX */
+        err = error - NGX_HTTP_BAD_REQUEST + 3;
+
+    } else {
+        /* 5XX */
+        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 3 + 17;
     }
 
     if (error_pages[err].len) {
@@ -271,8 +284,6 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 
     ngx_alloc_link_and_set_hunk(cl, h, r->pool, NGX_ERROR);
     ngx_chain_add_link(out, ll, cl);
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (clcf->msie_padding
         && r->http_version >= NGX_HTTP_VERSION_10

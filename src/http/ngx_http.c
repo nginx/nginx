@@ -123,7 +123,6 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-
     /* parse inside the http{} block */
 
     pcf = *cf;
@@ -131,14 +130,16 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cf->module_type = NGX_HTTP_MODULE;
     cf->cmd_type = NGX_HTTP_MAIN_CONF;
     rv = ngx_conf_parse(cf, NULL);
-    *cf = pcf;
 
-    if (rv != NGX_CONF_OK)
+    if (rv != NGX_CONF_OK) {
+        *cf = pcf;
         return rv;
+    }
 
-
-    /* init http{} main_conf's, merge the server{}s' srv_conf's
-       and its location{}s' loc_conf's */
+    /*
+     * init http{} main_conf's, merge the server{}s' srv_conf's
+     * and its location{}s' loc_conf's
+     */
 
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
     cscfp = cmcf->servers.elts;
@@ -556,5 +557,6 @@ ngx_log_debug(cf->log, "%s %08x" _ s_name[n].name.data _
     }
     /**/
 
+    *cf = pcf;
     return NGX_CONF_OK;
 }

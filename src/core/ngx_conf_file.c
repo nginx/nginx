@@ -168,7 +168,15 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
                     } else if (cmd->type & NGX_CONF_1MORE) {
 
-                        if (cf->args->nelts != 1) {
+                        if (cf->args->nelts > 1) {
+                            valid = 1;
+                        } else {
+                            valid = 0;
+                        }
+
+                    } else if (cmd->type & NGX_CONF_2MORE) {
+
+                        if (cf->args->nelts > 2) {
                             valid = 1;
                         } else {
                             valid = 0;

@@ -13,7 +13,7 @@ typedef struct {
     time_t       date;
     off_t        length;
     size_t       key_len;
-    char         key[0];
+    char         key[1];
 } ngx_http_cache_header_t;
 
 
@@ -46,11 +46,14 @@ typedef struct {
 } ngx_http_cache_ctx_t;
 
 
-#define NGX_HTTP_CACHE_STALE  1
-#define NGX_HTTP_CACHE_AGED   2
+#define NGX_HTTP_CACHE_STALE     1
+#define NGX_HTTP_CACHE_AGED      2
+#define NGX_HTTP_CACHE_THE_SAME  3
 
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx);
+int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
+                             ngx_file_uniq_t uniq);
 int ngx_http_cache_update_file(ngx_http_request_t *r,ngx_http_cache_ctx_t *ctx,
                                ngx_str_t *temp_file);
 

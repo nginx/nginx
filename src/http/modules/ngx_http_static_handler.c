@@ -158,22 +158,6 @@ ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);
         r->file.info_valid = 1;
     }
 
-#if !(WIN32) /* the not regular files are probably Unix specific */
-
-    if (!ngx_is_file(r->file.info)) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                      "%s is not a regular file", r->file.name.data);
-
-        if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR)
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                          ngx_close_file_n " %s failed", r->file.name.data);
-
-        return NGX_HTTP_NOT_FOUND;
-    }
-
-#endif
-#endif
-
     if (ngx_is_dir(r->file.info)) {
 ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
@@ -202,6 +186,22 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
+
+#if !(WIN32) /* the not regular files are probably Unix specific */
+
+    if (!ngx_is_file(r->file.info)) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                      "%s is not a regular file", r->file.name.data);
+
+        if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR)
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                          ngx_close_file_n " %s failed", r->file.name.data);
+
+        return NGX_HTTP_NOT_FOUND;
+    }
+
+#endif
+#endif
 
     r->content_handler = ngx_http_static_handler;
 

@@ -11,8 +11,6 @@
 static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p);
 static void ngx_http_proxy_init_upstream(void *data);
 static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p);
-static void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p);
-static void ngx_http_proxy_upstream_busy_lock_handler(ngx_event_t *rev);
 static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p);
 static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p);
 static void ngx_http_proxy_send_request_handler(ngx_event_t *wev);
@@ -266,7 +264,7 @@ ngx_log_debug(r->connection->log, "timer_set: %d" _
 
     wctx->pool = r->pool;
 
-    if (p->lcf->busy_lock) {
+    if (p->lcf->busy_lock && !p->busy_locked) {
         ngx_http_proxy_upstream_busy_lock(p);
     } else {
         ngx_http_proxy_connect(p);
@@ -312,41 +310,31 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
 }
 
 
-static void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
+void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
 {
-    int  ft_type;
+    int  rc, ft_type;
 
-    if (p->lcf->busy_lock->conn_n < p->lcf->busy_lock->max_conn) {
-        p->lcf->busy_lock->conn_n++;
+    if (p->busy_lock.time == 0) {
+        p->busy_lock.event = p->request->connection->read;
+        p->busy_lock.event_handler = ngx_http_proxy_busy_lock_handler;
+    }
 
-        if (p->busy_lock_time) {
-            p->busy_lock_time = 0;
-            p->lcf->busy_lock->waiting_n--;
-        }
+    rc = ngx_http_busy_lock(p->lcf->busy_lock, &p->busy_lock);
 
+    if (rc == NGX_AGAIN) {
+        return;
+    }
+
+    if (rc == NGX_OK) {
         ngx_http_proxy_connect(p);
         return;
     }
 
-    if (p->busy_lock_time) {
-        if (p->busy_lock_time < p->lcf->busy_lock->timeout) {
-            ngx_add_timer(p->request->connection->read, 1000);
-            return;
-        }
-
-        p->lcf->busy_lock->waiting_n--;
+    if (rc == NGX_DONE) {
         ft_type = NGX_HTTP_PROXY_FT_BUSY_LOCK;
 
     } else {
-        if (p->lcf->busy_lock->waiting_n < p->lcf->busy_lock->max_waiting) {
-            p->lcf->busy_lock->waiting_n++;
-            ngx_add_timer(p->request->connection->read, 1000);
-            p->request->connection->read->event_handler =
-                                     ngx_http_proxy_upstream_busy_lock_handler;
-            /* TODO: ngx_handle_level_read_event() */
-            return;
-        }
-
+        /* rc == NGX_ERROR */
         ft_type = NGX_HTTP_PROXY_FT_MAX_WAITING;
     }
 
@@ -357,61 +345,6 @@ static void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
     }
 
     ngx_http_proxy_finalize_request(p, NGX_HTTP_SERVICE_UNAVAILABLE);
-    return;
-}
-
-
-static void ngx_http_proxy_upstream_busy_lock_handler(ngx_event_t *rev)
-{
-    ngx_connection_t      *c;
-    ngx_http_request_t    *r;
-    ngx_http_proxy_ctx_t  *p;
-
-    ngx_log_debug(rev->log, "busy lock");
-
-    c = rev->data;
-    r = c->data;
-    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
-    p->action = "waiting upstream in busy lock";
-
-    if (rev->timedout) {
-        rev->timedout = 0;
-        p->busy_lock_time++;
-        ngx_http_proxy_upstream_busy_lock(p);
-        return;
-    }
-
-    ngx_log_debug(rev->log, "client sent while busy lock");
-
-    /*
-     * TODO: kevent() notify about error, otherwise we need to
-     * call ngx_peek(): recv(MGS_PEEK) to get errno. THINK about aio
-     * if there's no error we need to disable event.
-     */
-
-#if (HAVE_KQUEUE)
-
-    if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && rev->kq_eof) {
-        p->lcf->busy_lock->waiting_n--;
-
-        ngx_del_timer(rev);
-
-        ngx_log_error(NGX_LOG_ERR, c->log, rev->kq_errno,
-                      "client() closed connection");
-
-        if (ngx_del_event(rev, NGX_READ_EVENT, NGX_CLOSE_EVENT) == NGX_ERROR) {
-            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
-        }
-
-        /* we have not HTTP code for the case when a client cancels a request */
-
-        ngx_http_proxy_finalize_request(p, 0);
-        return;
-    }
-
-#endif
-
 }
 
 
@@ -724,6 +657,16 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
         }
     }
 
+    if (p->status == NGX_HTTP_NOT_FOUND
+        && p->upstream->peer.tries > 1
+        && p->lcf->next_upstream & NGX_HTTP_PROXY_FT_HTTP_404)
+    {
+        ngx_http_proxy_next_upstream(p, NGX_HTTP_PROXY_FT_HTTP_404);
+        return;
+    }
+
+    /* TODO: "proxy_error_page" */
+
     p->upstream->status_line.len = p->status_end - p->status_start;
     p->upstream->status_line.data = ngx_palloc(p->request->pool,
                                               p->upstream->status_line.len + 1);
@@ -740,6 +683,7 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
     if (p->upstream->headers_in.headers) {
         p->upstream->headers_in.headers->nelts = 0;
     } else {
+        /* TODO: ngx_init_table */
         p->upstream->headers_in.headers = ngx_create_table(p->request->pool,
                                                            20);
     }
@@ -956,8 +900,8 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
         header->expires = p->cache->ctx.expires;
         header->last_modified = p->cache->ctx.last_modified;
         header->date = p->cache->ctx.date;
-        /* TODO: r->headers_out.content_length_n == -1 */
         header->length = r->headers_out.content_length_n;
+        p->cache->ctx.length = r->headers_out.content_length_n;
 
         header->key_len = p->cache->ctx.key.len;
         ngx_memcpy(&header->key, p->cache->ctx.key.data, header->key_len);
@@ -1105,18 +1049,24 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
     if (p->upstream->peer.connection) {
         if (ep->upstream_done && p->cachable) {
             if (ngx_http_proxy_update_cache(p) == NGX_ERROR) {
+                ngx_http_busy_unlock_cachable(p->lcf->busy_lock, &p->busy_lock);
                 ngx_http_proxy_finalize_request(p, 0);
                 return;
             }
+
+            ngx_http_busy_unlock_cachable(p->lcf->busy_lock, &p->busy_lock);
 
         } else if (ep->upstream_eof && p->cachable) {
 
             /* TODO: check length & update cache */
 
             if (ngx_http_proxy_update_cache(p) == NGX_ERROR) {
+                ngx_http_busy_unlock_cachable(p->lcf->busy_lock, &p->busy_lock);
                 ngx_http_proxy_finalize_request(p, 0);
                 return;
             }
+
+            ngx_http_busy_unlock_cachable(p->lcf->busy_lock, &p->busy_lock);
         }
 
         if (ep->upstream_done || ep->upstream_eof || ep->upstream_error) {
@@ -1206,7 +1156,7 @@ ngx_log_debug(p->request->connection->log, "next upstream: %d" _ ft_type);
         }
     }
 
-    if (p->lcf->busy_lock) {
+    if (p->lcf->busy_lock && !p->busy_locked) {
         ngx_http_proxy_upstream_busy_lock(p);
     } else {
         ngx_http_proxy_connect(p);

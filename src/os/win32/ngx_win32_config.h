@@ -18,6 +18,30 @@
 #define ngx_inline   __inline
 
 
+#if 0
+typedef unsigned __int32  uint32_t;
+#else
+typedef unsigned int      uint32_t;
+#endif
+typedef __int64           int64_t;
+typedef unsigned __int64  uint64_t;
+typedef u_int             uintptr_t;
+
+typedef int               ssize_t;
+typedef long              time_t;
+typedef unsigned __int64  off_t;
+
+
+#define OFF_FMT    "%I64d"
+#define SIZE_FMT   "%d"
+#define SIZEX_FMT  "%x"
+#define PID_FMT    "%d"
+
+
+/* STUB */
+typedef uint32_t     u_int32_t;
+
+
 #ifndef HAVE_INHERITED_NONBLOCK
 #define HAVE_INHERITED_NONBLOCK  1
 #endif
