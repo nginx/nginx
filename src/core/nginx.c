@@ -7,45 +7,44 @@
 
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
 static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle);
-static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle);
+static void *ngx_core_module_create_conf(ngx_cycle_t *cycle);
+static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf);
 static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
-static ngx_str_t  core_name = ngx_string("core");
-
 static ngx_command_t  ngx_core_commands[] = {
 
-    { ngx_string("user"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE12,
-      ngx_set_user,
-      0,
-      0,
-      NULL },
-
     { ngx_string("daemon"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_core_flag_slot,
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_core_conf_t, daemon),
       NULL },
 
     { ngx_string("master_process"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_core_flag_slot,
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_core_conf_t, master),
       NULL },
 
     { ngx_string("worker_processes"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_core_num_slot,
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
       0,
       offsetof(ngx_core_conf_t, worker_processes),
       NULL },
 
+    { ngx_string("user"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE12,
+      ngx_set_user,
+      0,
+      0,
+      NULL },
+
     { ngx_string("pid"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_core_str_slot,
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
       0,
       offsetof(ngx_core_conf_t, pid),
       NULL },
@@ -54,22 +53,29 @@ static ngx_command_t  ngx_core_commands[] = {
 };
 
 
+static ngx_core_module_t  ngx_core_module_ctx = {
+    ngx_string("core"),
+    ngx_core_module_create_conf,
+    ngx_core_module_init_conf
+};
+
+
 ngx_module_t  ngx_core_module = {
     NGX_MODULE,
-    &core_name,                            /* module context */
+    &ngx_core_module_ctx,                  /* module context */
     ngx_core_commands,                     /* module directives */
     NGX_CORE_MODULE,                       /* module type */
-    ngx_core_module_init,                  /* init module */
+    NULL,                                  /* init module */
     NULL                                   /* init child */
 };
 
 
-ngx_int_t     ngx_max_module;
+ngx_int_t  ngx_max_module;
 
-ngx_int_t     ngx_process;
-ngx_pid_t     ngx_pid;
-ngx_pid_t     ngx_new_binary;
-ngx_int_t     ngx_inherited;
+ngx_int_t  ngx_process;
+ngx_pid_t  ngx_pid;
+ngx_pid_t  ngx_new_binary;
+ngx_int_t  ngx_inherited;
 
 
 int main(int argc, char *const *argv)
@@ -149,67 +155,30 @@ int main(int argc, char *const *argv)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    ngx_process = (ccf->master != 0) ? NGX_PROCESS_MASTER : NGX_PROCESS_SINGLE;
+    ngx_process = ccf->master ? NGX_PROCESS_MASTER : NGX_PROCESS_SINGLE;
 
 #if (WIN32)
 
 #if 0
-
-    if (run_as_service) {
-        if (ngx_servie(cycle->log) == NGX_ERROR) {
+    if (ccf->run_as_service) {
+        if (ngx_service(cycle->log) == NGX_ERROR) {
             return 1;
         }
 
         return 0;
     }
-
 #endif
 
 #else
 
-    if (!ngx_inherited && ccf->daemon != 0) {
+    if (!ngx_inherited && ccf->daemon) {
         if (ngx_daemon(cycle->log) == NGX_ERROR) {
             return 1;
         }
     }
 
-    if (ccf->pid.len == 0) {
-        ccf->pid.len = sizeof(NGINX_PID) - 1;
-        ccf->pid.data = NGINX_PID;
-        ccf->newpid.len = sizeof(NGINX_NEWPID) - 1;
-        ccf->newpid.data = NGINX_NEWPID;
-
-    } else {
-        ccf->newpid.len = ccf->pid.len + sizeof(NGINX_NEWPID_EXT);
-        if (!(ccf->newpid.data = ngx_alloc(ccf->newpid.len, cycle->log))) {
-            return 1;
-        }
-
-        ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
-                   NGINX_NEWPID_EXT, sizeof(NGINX_NEWPID_EXT));
-    }
-
-    len = ngx_snprintf((char *) pid, /* STUB */ 10, PID_T_FMT, ngx_getpid());
-    ngx_memzero(&ctx.pid, sizeof(ngx_file_t));
-    ctx.pid.name = ngx_inherited ? ccf->newpid : ccf->pid;
-    ctx.name = ccf->pid.data;
-
-    ctx.pid.fd = ngx_open_file(ctx.pid.name.data, NGX_FILE_RDWR,
-                               NGX_FILE_CREATE_OR_OPEN);
-
-    if (ctx.pid.fd == NGX_INVALID_FILE) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      ngx_open_file_n " \"%s\" failed", ctx.pid.name.data);
+    if (ngx_create_pidfile(cycle, NULL) == NGX_ERROR) {
         return 1;
-    }
-
-    if (ngx_write_file(&ctx.pid, pid, len, 0) == NGX_ERROR) {
-        return 1;
-    }
-
-    if (ngx_close_file(ctx.pid.fd) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      ngx_close_file_n " \"%s\" failed", ctx.pid.name.data);
     }
 
 #endif
@@ -336,22 +305,12 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
 }
 
 
-static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle)
+static void *ngx_core_module_create_conf(ngx_cycle_t *cycle)
 {
     ngx_core_conf_t  *ccf;
 
-    /*
-     * ngx_core_module has a special init procedure: it is called by
-     * ngx_init_cycle() before the configuration file parsing to create
-     * ngx_core_module configuration and to set its default parameters
-     */
-
-    if (((void **)(cycle->conf_ctx))[ngx_core_module.index] != NULL) {
-        return NGX_OK;
-    }
-
     if (!(ccf = ngx_pcalloc(cycle->pool, sizeof(ngx_core_conf_t)))) {
-        return NGX_ERROR;
+        return NULL;
     }
     /* set by pcalloc()
      *
@@ -364,9 +323,41 @@ static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle)
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET;
     ccf->group = (ngx_gid_t) NGX_CONF_UNSET;
 
-    ((void **)(cycle->conf_ctx))[ngx_core_module.index] = ccf;
+    return ccf;
+}
 
-    return NGX_OK;
+
+static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
+{
+    ngx_core_conf_t  *ccf = conf;
+
+    ngx_conf_init_value(ccf->daemon, 1);
+    ngx_conf_init_value(ccf->master, 1);
+    ngx_conf_init_value(ccf->worker_processes, 1);
+
+#if !(WIN32)
+
+    /* TODO: default "nobody" user */
+
+    if (ccf->pid.len == 0) {
+        ccf->pid.len = sizeof(NGINX_PID) - 1;
+        ccf->pid.data = NGINX_PID;
+        ccf->newpid.len = sizeof(NGINX_NEWPID) - 1;
+        ccf->newpid.data = NGINX_NEWPID;
+
+    } else {
+        ccf->newpid.len = ccf->pid.len + sizeof(NGINX_NEWPID_EXT);
+
+        if (!(ccf->newpid.data = ngx_palloc(cycle->pool, ccf->newpid.len))) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
+                   NGINX_NEWPID_EXT, sizeof(NGINX_NEWPID_EXT));
+    }
+#endif
+
+    return NGX_CONF_OK;
 }
 
 
@@ -381,12 +372,11 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #else
 
+    ngx_core_conf_t  *ccf = conf;
+
     struct passwd    *pwd;
     struct group     *grp;
     ngx_str_t        *value;
-    ngx_core_conf_t  *ccf;
-
-    ccf = *(void **)conf;
 
     if (ccf->user != (uid_t) NGX_CONF_UNSET) {
         return "is duplicate";

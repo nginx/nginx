@@ -263,6 +263,7 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
      */
 
     if (flags & NGX_CLOSE_EVENT) {
+        ev->posted = 0;
         return NGX_OK;
     }
 
@@ -464,10 +465,6 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
             ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
             ev->returned_instance = instance;
 
-            if (ev->log && (ev->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
-                ngx_kqueue_dump_event(ev->log, &event_list[i]);
-            }
-
             if (!ev->active || ev->instance != instance) {
 
                 /*
@@ -478,6 +475,10 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                "kevent: stale event " PTR_FMT, ev);
                 continue;
+            }
+
+            if (ev->log && (ev->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
+                ngx_kqueue_dump_event(ev->log, &event_list[i]);
             }
 
             ev->available = event_list[i].data;

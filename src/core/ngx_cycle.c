@@ -2,8 +2,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-/* STUB */
-#include <nginx.h>
 
 
 static void ngx_clean_old_cycles(ngx_event_t *ev);
@@ -23,15 +21,16 @@ static ngx_connection_t  dumb;
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
-    ngx_uint_t        i, n, failed;
-    ngx_log_t        *log;
-    ngx_conf_t        conf;
-    ngx_pool_t       *pool;
-    ngx_cycle_t      *cycle, **old;
-    ngx_socket_t      fd;
-    ngx_open_file_t  *file;
-    ngx_core_conf_t  *ccf;
-    ngx_listening_t  *ls, *nls;
+    void               *rv;
+    ngx_uint_t          i, n, failed;
+    ngx_log_t          *log;
+    ngx_conf_t          conf;
+    ngx_pool_t         *pool;
+    ngx_cycle_t        *cycle, **old;
+    ngx_socket_t        fd;
+    ngx_open_file_t    *file;
+    ngx_listening_t    *ls, *nls;
+    ngx_core_module_t  *module;
 
     log = old_cycle->log;
 
@@ -97,9 +96,21 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    if (ngx_core_module.init_module(cycle) == NGX_ERROR) {
-        ngx_destroy_pool(pool);
-        return NULL;
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->type != NGX_CORE_MODULE) {
+            continue;
+        }
+
+        module = ngx_modules[i]->ctx;
+
+        if (module->create_conf) {
+            rv = module->create_conf(cycle);
+            if (rv == NGX_CONF_ERROR) {
+                ngx_destroy_pool(pool);
+                return NULL;
+            }
+            cycle->conf_ctx[ngx_modules[i]->index] = rv;
+        }
     }
 
 
@@ -125,46 +136,73 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    failed = 0;
-
-
-
-    file = cycle->open_files.elts;
-    for (i = 0; i < cycle->open_files.nelts; i++) {
-        if (file[i].name.data == NULL) {
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->type != NGX_CORE_MODULE) {
             continue;
         }
 
-        file[i].fd = ngx_open_file(file[i].name.data,
-                                   NGX_FILE_RDWR,
-                                   NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+        module = ngx_modules[i]->ctx;
 
-        if (file[i].fd == NGX_INVALID_FILE) {
-            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                          ngx_open_file_n " \"%s\" failed",
-                          file[i].name.data);
-            failed = 1;
-            break;
+        if (module->init_conf) {
+            if (module->init_conf(cycle, cycle->conf_ctx[ngx_modules[i]->index])
+                                                              == NGX_CONF_ERROR)
+            {
+                ngx_destroy_pool(pool);
+                return NULL;
+            }
         }
+    }
+
+
+    failed = 0;
+
+
+#if !(WIN32)
+    if (ngx_create_pidfile(cycle, old_cycle) == NGX_ERROR) {
+        failed = 1;
+    }
+#endif
+
+
+    if (!failed) {
+        file = cycle->open_files.elts;
+        for (i = 0; i < cycle->open_files.nelts; i++) {
+            if (file[i].name.data == NULL) {
+                continue;
+            }
+
+            file[i].fd = ngx_open_file(file[i].name.data,
+                                       NGX_FILE_RDWR,
+                                       NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+
+            if (file[i].fd == NGX_INVALID_FILE) {
+                ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                              ngx_open_file_n " \"%s\" failed",
+                              file[i].name.data);
+                failed = 1;
+                break;
+            }
 
 #if (WIN32)
-        if (ngx_file_append_mode(file[i].fd) == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                          ngx_file_append_mode_n " \"%s\" failed",
-                          file[i].name.data);
-            failed = 1;
-            break;
-        }
+            if (ngx_file_append_mode(file[i].fd) == NGX_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                              ngx_file_append_mode_n " \"%s\" failed",
+                              file[i].name.data);
+                failed = 1;
+                break;
+            }
 #else
-        if (fcntl(file[i].fd, F_SETFD, FD_CLOEXEC) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                          "fcntl(FD_CLOEXEC) \"%s\" failed",
-                          file[i].name.data);
-            failed = 1;
-            break;
-        }
+            if (fcntl(file[i].fd, F_SETFD, FD_CLOEXEC) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                              "fcntl(FD_CLOEXEC) \"%s\" failed",
+                              file[i].name.data);
+                failed = 1;
+                break;
+            }
 #endif
+        }
     }
+
 
     if (!failed) {
         if (old_cycle->listening.nelts) {
@@ -374,74 +412,76 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 }
 
 
-static ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
+#if !(WIN32)
+
+ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
 {
-    size_t             len;
-    u_char             pid[NGX_INT64_LEN + 1];
-    ngx_str_t          name;
-    ngx_core_conf_t   *ccf;
+    size_t            len;
+    u_char           *name, pid[NGX_INT64_LEN + 1];
+    ngx_file_t        file;
+    ngx_core_conf_t  *ccf, *old_ccf;
+
+    if (old_cycle && old_cycle->conf_ctx == NULL) {
+
+        /*
+         * do not create the pid file in the first ngx_init_cycle() call
+         * because we need to write the demonized process pid 
+         */
+
+        return NGX_OK;
+    }
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    if (ctx->pid.len) {
-        if (ccf->pid.len == 0) {
-            return NGX_OK;
-        }
+    if (old_cycle) {
+        old_ccf = (ngx_core_conf_t *) ngx_get_conf(old_cycle->conf_ctx,
+                                                   ngx_core_module);
 
-        if (ctx->pid.len == ccf->pid.len
-            && ngx_strcmp(ctx->pid.data, ccf->pid.data) == 0)
+        if (ccf->pid.len == old_ccf->pid.len
+            && ngx_strcmp(ccf->pid.data, old_ccf->pid.data) == 0)
         {
             return NGX_OK;
         }
     }
-    
-    if (ccf->pid.len == 0) {
-        ccf->pid.len = sizeof(NGINX_PID) - 1;
-        ccf->pid.data = NGINX_PID;
-        ccf->newpid.len = sizeof(NGINX_NEWPID) - 1;
-        ccf->newpid.data = NGINX_NEWPID;
-
-    } else {
-        ccf->newpid.len = ccf->pid.len + sizeof(NGINX_NEWPID_EXT);
-        if (!(ccf->newpid.data = ngx_alloc(ccf->newpid.len, cycle->log))) {
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
-                   NGINX_NEWPID_EXT, sizeof(NGINX_NEWPID_EXT));
-    }
 
     len = ngx_snprintf((char *) pid, NGX_INT64_LEN + 1, PID_T_FMT, ngx_pid);
-    ngx_memzero(&ctx->pid, sizeof(ngx_file_t));
-    ctx->pid.name = ngx_inherited ? ccf->newpid : ccf->pid;
-    ctx->name = ccf->pid.data;
 
-    ctx->pid.fd = ngx_open_file(ctx->pid.name.data, NGX_FILE_RDWR,
-                                NGX_FILE_CREATE_OR_OPEN);
+    ngx_memzero(&file, sizeof(ngx_file_t));
+    file.name = (ngx_inherited && getppid() > 1) ? ccf->newpid : ccf->pid;
+    file.log = cycle->log;
 
-    if (ctx->pid.fd == NGX_INVALID_FILE) {
+    file.fd = ngx_open_file(file.name.data, NGX_FILE_RDWR,
+                            NGX_FILE_CREATE_OR_OPEN);
+
+    if (file.fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      ngx_open_file_n " \"%s\" failed", ctx->pid.name.data);
+                      ngx_open_file_n " \"%s\" failed", file.name.data);
         return NGX_ERROR;
     }
 
-    if (ngx_write_file(&ctx->pid, pid, len, 0) == NGX_ERROR) {
+    if (ngx_write_file(&file, pid, len, 0) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
-    if (ngx_close_file(ctx->pid.fd) == NGX_FILE_ERROR) {
+    if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      ngx_close_file_n " \"%s\" failed", ctx->pid.name.data);
+                      ngx_close_file_n " \"%s\" failed", file.name.data);
     }
+
+    ngx_delete_pidfile(old_cycle);
 
     return NGX_OK;
 }
 
 
-static void ngx_delete_pidfile(ngx_cycle_t *cycle)
+void ngx_delete_pidfile(ngx_cycle_t *cycle)
 {   
     u_char           *name;
     ngx_core_conf_t  *ccf;
+
+    if (cycle == NULL || cycle->conf_ctx == NULL) {
+        return;
+    }
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
@@ -457,6 +497,8 @@ static void ngx_delete_pidfile(ngx_cycle_t *cycle)
                       ngx_delete_file_n " \"%s\" failed", name);
     }
 }
+
+#endif
 
 
 void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)

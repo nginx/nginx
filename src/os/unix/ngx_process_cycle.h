@@ -7,8 +7,6 @@
 
 
 typedef struct {
-     ngx_file_t    pid;
-     u_char       *name;
      int           argc;
      char *const  *argv;
 } ngx_master_ctx_t;

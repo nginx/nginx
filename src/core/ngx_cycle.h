@@ -40,6 +40,8 @@ typedef struct {
 
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
+ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle);
+void ngx_delete_pidfile(ngx_cycle_t *cycle);
 void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user);
 ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
 

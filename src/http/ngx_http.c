@@ -18,9 +18,6 @@ int  (*ngx_http_top_header_filter) (ngx_http_request_t *r);
 int  (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
 
-static ngx_str_t  http_name = ngx_string("http");
-
-
 static ngx_command_t  ngx_http_commands[] = {
 
     {ngx_string("http"),
@@ -33,10 +30,17 @@ static ngx_command_t  ngx_http_commands[] = {
     ngx_null_command
 };
 
+    
+static ngx_core_module_t  ngx_http_module_ctx = {
+    ngx_string("http"),
+    NULL,
+    NULL
+};  
+
 
 ngx_module_t  ngx_http_module = {
     NGX_MODULE,
-    &http_name,                            /* module context */
+    &ngx_http_module_ctx,                  /* module context */
     ngx_http_commands,                     /* module directives */
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init module */

@@ -13,9 +13,7 @@ static int argument_number[] = {
     NGX_CONF_TAKE4,
     NGX_CONF_TAKE5,
     NGX_CONF_TAKE6,
-    NGX_CONF_TAKE7,
-    NGX_CONF_TAKE8,
-    NGX_CONF_TAKE9,
+    NGX_CONF_TAKE7
 };
 
 static int ngx_conf_read_token(ngx_conf_t *cf);
@@ -204,7 +202,10 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
                     conf = NULL;
 
-                    if (cf->module_type == NGX_CORE_MODULE) {
+                    if (cmd->type & NGX_DIRECT_CONF) {
+                        conf = ((void **) cf->ctx)[ngx_modules[m]->index];
+
+                    } else if (cmd->type & NGX_MAIN_CONF) {
                         conf = &(((void **) cf->ctx)[ngx_modules[m]->index]);
 
                     } else if (cf->ctx) {
@@ -561,27 +562,6 @@ void ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
 
     ngx_log_error(level, cf->log, 0, "%s in %s:%d",
                   errstr, cf->conf_file->file.name.data, cf->conf_file->line);
-}
-
-
-char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
-                                  void *conf)
-{
-    return ngx_conf_set_flag_slot(cf, cmd, *(void **)conf);
-}
-
-
-char *ngx_conf_set_core_num_slot(ngx_conf_t *cf, ngx_command_t *cmd,
-                                 void *conf)
-{
-    return ngx_conf_set_num_slot(cf, cmd, *(void **)conf);
-}
-
-
-char *ngx_conf_set_core_str_slot(ngx_conf_t *cf, ngx_command_t *cmd,
-                                 void *conf)
-{
-    return ngx_conf_set_str_slot(cf, cmd, *(void **)conf);
 }
 
 

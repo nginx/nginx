@@ -7,8 +7,6 @@ static void ngx_log_write(ngx_log_t *log, char *errstr, size_t len);
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
-static ngx_str_t  errlog_name = ngx_string("errlog");
-
 static ngx_command_t  ngx_errlog_commands[] = {
 
     {ngx_string("error_log"),
@@ -22,9 +20,16 @@ static ngx_command_t  ngx_errlog_commands[] = {
 };
 
 
+static ngx_core_module_t  ngx_errlog_module_ctx = {
+    ngx_string("errlog"),
+    NULL,                           
+    NULL
+};
+
+
 ngx_module_t  ngx_errlog_module = {
     NGX_MODULE,
-    &errlog_name,                          /* module context */
+    &ngx_errlog_module_ctx,                /* module context */
     ngx_errlog_commands,                   /* module directives */
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init module */

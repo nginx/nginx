@@ -263,6 +263,7 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 
     if (flags & NGX_CLOSE_EVENT) {
         ev->active = 0;
+        ev->posted = 0;
         return NGX_OK;
     }
 
@@ -437,10 +438,6 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         log = c->log ? c->log : cycle->log;
 #endif
 
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
-                       "epoll: fd:%d ev:%04X d:" PTR_FMT,
-                       c->fd, event_list[i].events, event_list[i].data);
-
         if (c->read->instance != instance) {
 
             /*
@@ -452,6 +449,10 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
                            "epoll: stale event " PTR_FMT, c);
             continue;
         }
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "epoll: fd:%d ev:%04X d:" PTR_FMT,
+                       c->fd, event_list[i].events, event_list[i].data);
 
         if (event_list[i].events & (EPOLLERR|EPOLLHUP)) {
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,

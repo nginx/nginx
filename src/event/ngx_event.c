@@ -59,8 +59,6 @@ ngx_msec_t                        ngx_accept_mutex_delay;
 
 
 
-static ngx_str_t  events_name = ngx_string("events");
-
 static ngx_command_t  ngx_events_commands[] = {
 
     { ngx_string("events"),
@@ -73,10 +71,17 @@ static ngx_command_t  ngx_events_commands[] = {
       ngx_null_command
 };
 
+    
+static ngx_core_module_t  ngx_events_module_ctx = {
+    ngx_string("events"),
+    NULL,
+    NULL
+};  
+
 
 ngx_module_t  ngx_events_module = {
     NGX_MODULE,
-    &events_name,                          /* module context */
+    &ngx_events_module_ctx,                /* module context */
     ngx_events_commands,                   /* module directives */
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init module */

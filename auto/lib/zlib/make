@@ -76,6 +76,14 @@ case $PLATFORM in
 
                 done=YES
             ;;
+
+            *)
+                echo "$0: error: invalid --with-zlib=asm=$ZLIB_ASM option."
+                echo "The valid values are \"pentium\" and \"pentiumpro\" only".
+                echo
+
+                exit 1;
+            ;;
         esac
     ;;
 
