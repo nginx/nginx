@@ -87,17 +87,19 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
 
         if (s % 4) {
             ngx_log_error(NGX_LOG_EMERG, ls->log, 0,
-                          ngx_socket_n " created socket %d", s);
+                          ngx_socket_n
+                          " created socket %d, not divisible by 4", s);
+
             exit(1);
         }
 
-        rev = &ngx_read_events[s / 4];
-        wev = &ngx_write_events[s / 4];
-        c = &ngx_connections[s / 4];
+        c = &ngx_cycle->connections[s / 4];
+        rev = &ngx_cycle->read_events[s / 4];
+        wev = &ngx_cycle->write_events[s / 4];
 
+        ngx_memzero(c, sizeof(ngx_connection_t));
         ngx_memzero(rev, sizeof(ngx_event_t));
         ngx_memzero(wev, sizeof(ngx_event_t));
-        ngx_memzero(c, sizeof(ngx_connection_t));
 
         rev->index = wev->index = NGX_INVALID_INDEX;
 

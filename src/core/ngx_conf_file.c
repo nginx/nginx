@@ -25,6 +25,11 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     ngx_conf_file_t  *prev;
     ngx_command_t    *cmd;
 
+#if (NGX_SUPPRESS_WARN)
+    fd = NGX_INVALID_FILE;
+    prev = NULL;
+#endif
+
     if (filename) {
 
         /* open configuration file */
@@ -53,6 +58,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         cf->conf_file->file.fd = fd;
         cf->conf_file->file.name.len = filename->len;
         cf->conf_file->file.name.data = filename->data;
+        cf->conf_file->file.offset = 0;
         cf->conf_file->file.log = cf->log;;
         cf->conf_file->line = 1;
     }
@@ -68,11 +74,11 @@ ngx_log_debug(cf->log, "token %d" _ rc);
 #endif
 
         if (rc == NGX_ERROR) {
-            return NGX_CONF_ERROR;
+            break;
         }
 
         if (rc != NGX_OK) {
-            return NGX_CONF_OK;
+            break;
         }
 
         if (cf->handler) {
@@ -84,7 +90,8 @@ ngx_log_debug(cf->log, "token %d" _ rc);
                 continue;
 
             } else if (rv == NGX_CONF_ERROR) {
-                return NGX_CONF_ERROR;
+                rc = NGX_ERROR;
+                break;
 
             } else {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
@@ -92,14 +99,15 @@ ngx_log_debug(cf->log, "token %d" _ rc);
                              rv,
                              cf->conf_file->file.name.data,
                              cf->conf_file->line);
-                return NGX_CONF_ERROR;
+                rc = NGX_ERROR;
+                break;
             }
         }
 
         name = (ngx_str_t *) cf->args->elts;
         found = 0;
 
-        for (m = 0; !found && ngx_modules[m]; m++) {
+        for (m = 0; rc != NGX_ERROR && !found && ngx_modules[m]; m++) {
 
             /* look up the directive in the appropriate modules */
 
@@ -131,7 +139,8 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                                       name->data,
                                       cf->conf_file->file.name.data,
                                       cf->conf_file->line);
-                        return NGX_CONF_ERROR;
+                        rc = NGX_ERROR;
+                        break;
                     }
 
                     /* is the directive's argument count right ? */
@@ -169,7 +178,8 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                                       name->data,
                                       cf->conf_file->file.name.data,
                                       cf->conf_file->line);
-                        return NGX_CONF_ERROR;
+                        rc = NGX_ERROR;
+                        break;
                     }
 
                     /* set up the directive's configuration context */
@@ -198,7 +208,8 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
                         break;
 
                     } else if (rv == NGX_CONF_ERROR) {
-                        return NGX_CONF_ERROR;
+                        rc = NGX_ERROR;
+                        break;
 
                     } else {
                         if (rv == ngx_conf_errstr) {
@@ -215,7 +226,8 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
                                          cf->conf_file->line);
                         }
 
-                        return NGX_CONF_ERROR;
+                        rc = NGX_ERROR;
+                        break;
                     }
                 }
 
@@ -230,7 +242,8 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
                           cf->conf_file->file.name.data,
                           cf->conf_file->line);
 
-            return NGX_CONF_ERROR;
+            rc = NGX_ERROR;
+            break;
         }
     }
 
@@ -243,6 +256,10 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
                           cf->conf_file->file.name.data);
             return NGX_CONF_ERROR;
         }
+    }
+
+    if (rc == NGX_ERROR) {
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;

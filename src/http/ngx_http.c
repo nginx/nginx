@@ -69,7 +69,6 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     *(ngx_http_conf_ctx_t **) conf = ctx;
 
-
     /* count the number of the http modules and set up their indices */
 
     ngx_http_max_module = 0;
@@ -273,9 +272,9 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                                    & NGX_HTTP_DEFAULT_SERVER) {
 
                                     ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-                                        "duplicate default server in %s:%d",
-                                        lscf[l].file_name.data,
-                                        lscf[l].line);
+                                           "duplicate default server in %s:%d",
+                                           lscf[l].file_name.data,
+                                           lscf[l].line);
 
                                     return NGX_CONF_ERROR;
                                 }
@@ -471,7 +470,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->post_accept_timeout = cscf->post_accept_timeout;
 
 #if (WIN32)
-            iocpcf = ngx_event_get_conf(ngx_iocp_module);
+            iocpcf = ngx_event_get_conf(cf->cycle->conf_ctx, ngx_iocp_module);
             if (iocpcf->acceptex_read) {
                 ls->post_accept_buffer_size = cscf->client_header_buffer_size;
             }
@@ -489,7 +488,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                     ngx_test_null(inport,
                                   ngx_palloc(cf->pool,
-                                                   sizeof(ngx_http_in_port_t)),
+                                             sizeof(ngx_http_in_port_t)),
                                   NGX_CONF_ERROR);
 
                     inport->port = in_port[p].port;
@@ -529,7 +528,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     /* DEBUG STUFF */
     in_port = in_ports.elts;
     for (p = 0; p < in_ports.nelts; p++) {
-ngx_log_debug(cf->log, "port: %d" _ in_port[p].port);
+ngx_log_debug(cf->log, "port: %d %08x" _ in_port[p].port _ &in_port[p]);
         in_addr = in_port[p].addrs.elts;
         for (a = 0; a < in_port[p].addrs.nelts; a++) {
             char ip[20];

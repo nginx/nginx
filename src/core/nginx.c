@@ -7,17 +7,22 @@
 
 static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log);
 static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log);
+static void ngx_clean_old_cycles(ngx_event_t *ev);
 
+#if (NGX_DEBUG) && (__FreeBSD__)
+extern char *malloc_options;
+#endif
 
-void  ****ngx_conf_ctx;
+int           ngx_max_module;
+ngx_os_io_t   ngx_io;
 
+ngx_cycle_t  *ngx_cycle;
+ngx_pool_t   *ngx_temp_pool;
+ngx_array_t   ngx_old_cycles;
+ngx_event_t   ngx_cleaner_event;
 
-ngx_os_io_t  ngx_io;
-
-
-ngx_cycle_t  ngx_cycle;
-
-int     ngx_max_module;
+/* STUB NAME */
+ngx_connection_t  dumb;
 
 int ngx_connection_counter;
 
@@ -31,6 +36,10 @@ int main(int argc, char *const *argv)
     int           i;
     ngx_log_t    *log;
     ngx_cycle_t  *cycle;
+
+#if (NGX_DEBUG) && (__FreeBSD__)
+    malloc_options = "J";
+#endif
 
     /* TODO */ ngx_max_sockets = -1;
 
@@ -50,14 +59,14 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
-    ngx_cycle = *cycle;
+    ngx_cycle = cycle;
 
     /* daemon */
 
     /* life cycle */
 
     for ( ;; ) {
-        /* STUB */ ngx_cycle.log->log_level = NGX_LOG_DEBUG;
+        /* STUB */ ngx_cycle->log->log_level = NGX_LOG_DEBUG;
 
         /* forks */
 
@@ -65,7 +74,7 @@ int main(int argc, char *const *argv)
 
         for (i = 0; ngx_modules[i]; i++) {
             if (ngx_modules[i]->init_child) {
-                if (ngx_modules[i]->init_child(&ngx_cycle) == NGX_ERROR) {
+                if (ngx_modules[i]->init_child(ngx_cycle) == NGX_ERROR) {
                     /* fatal */
                     exit(1);
                 }
@@ -80,29 +89,27 @@ int main(int argc, char *const *argv)
         for ( ;; ) {
 
             for ( ;; ) {
-                ngx_log_debug(ngx_cycle.log, "worker cycle");
+                ngx_log_debug(ngx_cycle->log, "worker cycle");
 
-                ngx_process_events(ngx_cycle.log);
+                ngx_process_events(ngx_cycle->log);
 
                 if (rotate) {
-                    ngx_log_debug(ngx_cycle.log, "rotate");
+                    ngx_log_debug(ngx_cycle->log, "rotate");
                 }
 
                 if (restart) {
-                    ngx_log_debug(ngx_cycle.log, "restart");
+                    ngx_log_debug(ngx_cycle->log, "restart");
                     break;
                 }
 
             }
 
-            cycle = ngx_init_cycle(&ngx_cycle, ngx_cycle.log);
+            cycle = ngx_init_cycle(ngx_cycle, ngx_cycle->log);
             if (cycle == NULL) {
                 continue;
             }
 
-ngx_log_debug(ngx_cycle.log, "OPEN: %d" _ cycle->log->file->fd);
-            ngx_cycle = *cycle;
-ngx_log_debug(ngx_cycle.log, "OPEN: %d" _ ngx_cycle.log->file->fd);
+            ngx_cycle = cycle;
             break;
         }
     }
@@ -117,7 +124,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     ngx_str_t         conf_file;
     ngx_conf_t        conf;
     ngx_pool_t       *pool;
-    ngx_cycle_t      *cycle;
+    ngx_cycle_t      *cycle, **old;
     ngx_open_file_t  *file;
     ngx_listening_t  *ls, *nls;
 
@@ -133,6 +140,8 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
         return NULL;
     }
     cycle->pool = pool;
+
+    cycle->old_cycle = old_cycle;
 
     n = old_cycle ? old_cycle->open_files.nelts : 20;
     cycle->open_files.elts = ngx_pcalloc(pool, n * sizeof(ngx_open_file_t));
@@ -178,7 +187,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
     conf.ctx = cycle->conf_ctx;
     conf.cycle = cycle;
-    /* STUB */ conf.pool = cycle->pool; ngx_conf_ctx = cycle->conf_ctx;
+    /* STUB */ conf.pool = cycle->pool;
     conf.log = log;
     conf.module_type = NGX_CORE_MODULE;
     conf.cmd_type = NGX_MAIN_CONF;
@@ -193,8 +202,6 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
     failed = 0;
 
-ngx_log_debug(log, "OPEN: %d" _ cycle->log->file->fd);
-
     file = cycle->open_files.elts;
     for (i = 0; i < cycle->open_files.nelts; i++) {
         if (file->name.data == NULL) {
@@ -204,6 +211,8 @@ ngx_log_debug(log, "OPEN: %d" _ cycle->log->file->fd);
         file->fd = ngx_open_file(file->name.data,
                                  NGX_FILE_RDWR,
                                  NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+
+ngx_log_debug(log, "OPEN: %d:%s" _ file->fd _ file->name.data);
 
         if (file->fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
@@ -216,9 +225,7 @@ ngx_log_debug(log, "OPEN: %d" _ cycle->log->file->fd);
         /* TODO: Win32 append */
     }
 
-ngx_log_debug(log, "OPEN: %d" _ cycle->log->file->fd);
-        /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG;
-ngx_log_debug(cycle->log, "TEST");
+    /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG;
 
     if (!failed) {
         if (old_cycle) {
@@ -234,6 +241,7 @@ ngx_log_debug(cycle->log, "TEST");
                                    ls[i].sockaddr, ls[i].socklen) == 0)
                     {
                         nls[n].fd = ls[i].fd;
+                        nls[i].remain = 1;
                         ls[i].remain = 1;
                         break;
                     }
@@ -242,6 +250,12 @@ ngx_log_debug(cycle->log, "TEST");
                 if (nls[n].fd == -1) {
                     nls[n].new = 1;
                 }
+            }
+
+        } else {
+            ls = cycle->listening.elts;
+            for (i = 0; i < cycle->listening.nelts; i++) {
+                ls[i].new = 1;
             }
         }
 
@@ -288,6 +302,10 @@ ngx_log_debug(cycle->log, "TEST");
 
     pool->log = cycle->log;
 
+#if 1
+    /* STUB */ cycle->one_process = 1;
+#endif
+
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->init_module) {
             if (ngx_modules[i]->init_module(cycle) == NGX_ERROR) {
@@ -327,108 +345,52 @@ ngx_log_debug(cycle->log, "TEST");
         }
     }
 
-    ngx_destroy_pool(old_cycle->pool);
+
+    if (!old_cycle->one_process) {
+        ngx_destroy_pool(old_cycle->pool);
+        return cycle;
+    }
+
+    if (ngx_temp_pool == NULL) {
+        ngx_temp_pool = ngx_create_pool(128, cycle->log);
+        if (ngx_temp_pool == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "can not create ngx_temp_pool");
+            exit(1);
+        }
+
+        n = 10;
+        ngx_old_cycles.elts = ngx_pcalloc(ngx_temp_pool,
+                                          n * sizeof(ngx_cycle_t *));
+        if (ngx_old_cycles.elts == NULL) {
+            exit(1);
+        }
+        ngx_old_cycles.nelts = 0;
+        ngx_old_cycles.size = sizeof(ngx_cycle_t *);
+        ngx_old_cycles.nalloc = n;
+        ngx_old_cycles.pool = ngx_temp_pool;
+
+        ngx_cleaner_event.event_handler = ngx_clean_old_cycles;
+        ngx_cleaner_event.log = cycle->log;
+        ngx_cleaner_event.data = &dumb;
+        dumb.fd = -1;
+    }
+
+    ngx_temp_pool->log = cycle->log;
+
+    old = ngx_push_array(&ngx_old_cycles);
+    if (old == NULL) {
+        exit(1);
+    }
+    *old = old_cycle;
+
+    if (!ngx_cleaner_event.timer_set) {
+        ngx_add_timer(&ngx_cleaner_event, 30000);
+        ngx_cleaner_event.timer_set = 1;
+    }
 
     return cycle;
 }
-
-
-
-#if 0
-
-
-int main(int argc, char *const *argv)
-{
-    int          i;
-    ngx_str_t    conf_file;
-    ngx_log_t   *log;
-    ngx_pool_t  *pool, *old_pool;
-    ngx_conf_t   conf;
-
-    ngx_max_sockets = -1;
-
-    log = ngx_log_init_errlog();
-
-    if (ngx_os_init(log) == NGX_ERROR) {
-        return 1;
-    }
-
-    ngx_max_module = 0;
-    for (i = 0; ngx_modules[i]; i++) {
-        ngx_modules[i]->index = ngx_max_module++;
-    }
-
-    /* life cycle */
-
-    {
-        old_pool = pool;
-
-        pool = ngx_create_pool(16 * 1024, log);
-
-        ngx_init_array(ngx_listening_sockets,
-                       pool, 10, sizeof(ngx_listening_t),
-                       1);
-
-        ngx_memzero(&conf, sizeof(ngx_conf_t));
-
-        ngx_test_null(conf.args,
-                      ngx_create_array(pool, 10, sizeof(ngx_str_t)),
-                      1);
-
-        ngx_test_null(ngx_conf_ctx,
-                      ngx_pcalloc(pool, ngx_max_module * sizeof(void *)),
-                      1);
-
-        conf.ctx = ngx_conf_ctx;
-        conf.pool = pool;
-        conf.log = log;
-        conf.module_type = NGX_CORE_MODULE;
-        conf.cmd_type = NGX_MAIN_CONF;
-
-        conf_file.len = sizeof(NGINX_CONF) - 1;
-        conf_file.data = NGINX_CONF;
-
-        if (ngx_conf_parse(&conf, &conf_file) != NGX_CONF_OK) {
-            return 1;
-        }
-
-#if 0
-        log = (ngx_log_t *) ngx_get_conf(ngx_errlog_module);
-        /* STUB */ log->log_level = NGX_LOG_DEBUG;
-#endif
-
-        ngx_init_temp_number();
-
-        ngx_io = ngx_os_io;
-
-        for (i = 0; ngx_modules[i]; i++) {
-            if (ngx_modules[i]->init_module) {
-                if (ngx_modules[i]->init_module(pool) == NGX_ERROR) {
-                    return 1;
-                }
-            }
-        }
-
-        if (ngx_open_listening_sockets(log) == NGX_ERROR) {
-            return 1;
-        }
-
-        /* TODO: daemon, once only */
-
-        /* TODO: fork */
-
-        ngx_pre_thread(&ngx_listening_sockets, pool, log);
-
-        /* TODO: threads */
-
-        /* STUB */
-        ngx_worker(log);
-    }
-
-    return 0;
-}
-
-#endif
 
 
 static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log)
@@ -548,4 +510,57 @@ static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log)
     }
 
     return NGX_OK;
+}
+
+
+static void ngx_clean_old_cycles(ngx_event_t *ev)
+{
+    int            i, n, found, live;
+    ngx_cycle_t  **cycle;
+
+    ngx_temp_pool->log = ngx_cycle->log;
+
+    ngx_log_debug(ngx_cycle->log, "clean old cycles");
+
+    live = 0;
+
+    cycle = ngx_old_cycles.elts;
+    for (i = 0; i < ngx_old_cycles.nelts; i++) {
+
+        if (cycle[i] == NULL) {
+            continue;
+        }
+
+        found = 0;
+
+        for (n = 0; n < cycle[i]->connection_n; n++) {
+            if (cycle[i]->connections[n].fd != -1) {
+                found = 1;
+                ngx_log_debug(ngx_cycle->log, "live fd: %d" _ n);
+                break;
+            }
+        }
+
+        if (found) {
+            live = 1;
+            continue;
+        }
+
+        ngx_log_debug(ngx_cycle->log, "clean old cycle: %d" _ i);
+        ngx_destroy_pool(cycle[i]->pool);
+        cycle[i] = NULL;
+    }
+
+    ngx_log_debug(ngx_cycle->log, "old cycles status: %d" _ live);
+
+    if (live) {
+        ngx_log_debug(ngx_cycle->log, "TIMER");
+        ngx_add_timer(ev, 30000);
+
+    } else {
+        ngx_cleaner_event.timer_set = 0;
+        ngx_destroy_pool(ngx_temp_pool);
+        ngx_temp_pool = NULL;
+        ngx_old_cycles.nelts = 0;
+    }
 }

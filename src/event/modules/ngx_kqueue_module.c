@@ -23,8 +23,8 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags);
 static int ngx_kqueue_process_events(ngx_log_t *log);
 
-static void *ngx_kqueue_create_conf(ngx_pool_t *pool);
-static char *ngx_kqueue_init_conf(ngx_pool_t *pool, void *conf);
+static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle);
+static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
 int                    ngx_kqueue = -1;
@@ -311,6 +311,7 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 static int ngx_kqueue_process_events(ngx_log_t *log)
 {
     int              events, instance, i;
+    ngx_err_t        err;
     ngx_msec_t       timer, delta;
     ngx_event_t      *ev;
     struct timeval   tv;
@@ -338,8 +339,9 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     events = kevent(ngx_kqueue, change_list, nchanges, event_list, nevents, tp);
 
     if (events == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "kevent() failed");
-        return NGX_ERROR;
+        err = ngx_errno;
+    } else {
+        err = 0;
     }
 
     nchanges = 0;
@@ -347,6 +349,10 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     if (timer) {
         gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
+
+#if (NGX_DEBUG_EVENT)
+        ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ delta);
+#endif
 
         /* The expired timers must be handled before a processing of the events
            because the new timers can be added during a processing */
@@ -359,11 +365,16 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
                           "kevent() returned no events without timeout");
             return NGX_ERROR;
         }
-    }
 
 #if (NGX_DEBUG_EVENT)
-    ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ delta);
 #endif
+    }
+
+    if (err) {
+        ngx_log_error(NGX_LOG_ALERT, log, err, "kevent() failed");
+        return NGX_ERROR;
+    }
 
     for (i = 0; i < events; i++) {
 
@@ -439,11 +450,11 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 }
 
 
-static void *ngx_kqueue_create_conf(ngx_pool_t *pool)
+static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle)
 {
     ngx_kqueue_conf_t  *kcf;
 
-    ngx_test_null(kcf, ngx_palloc(pool, sizeof(ngx_kqueue_conf_t)),
+    ngx_test_null(kcf, ngx_palloc(cycle->pool, sizeof(ngx_kqueue_conf_t)),
                   NGX_CONF_ERROR);
 
     kcf->changes = NGX_CONF_UNSET;
@@ -453,7 +464,7 @@ static void *ngx_kqueue_create_conf(ngx_pool_t *pool)
 }
 
 
-static char *ngx_kqueue_init_conf(ngx_pool_t *pool, void *conf)
+static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_kqueue_conf_t *kcf = conf;
 

@@ -867,6 +867,7 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool)
     lcf->types = NULL;
     lcf->default_type.len = 0;
     lcf->default_type.data = NULL;
+    lcf->err_log = NULL;
 
     */
 
@@ -1047,6 +1048,23 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         sn->name.data = value[i].data;
         sn->core_srv_conf = scf;
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *lcf = conf;
+
+    ngx_str_t  *value;
+
+    value = cf->args->elts;
+
+    ngx_test_null(lcf->err_log, ngx_log_create_errlog(cf->cycle),
+                  NGX_CONF_ERROR);
+
+    lcf->err_log->file->name = value[1];
 
     return NGX_CONF_OK;
 }

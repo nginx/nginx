@@ -4,9 +4,10 @@
 #include <ngx_event.h>
 
 
-static ngx_event_t  *ngx_timer_queue;
+static ngx_event_t  *ngx_timer_queue, ngx_temp_timer_queue;
 static int           ngx_timer_cur_queue;
 static int           ngx_timer_queue_num;
+static int           ngx_expire_timers;
 
 
 int ngx_event_timer_init(ngx_cycle_t *cycle)
@@ -43,9 +44,12 @@ int ngx_event_timer_init(ngx_cycle_t *cycle)
 
     } else if (ngx_timer_queue_num > ecf->timer_queues) {
         /* STUB */
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "NOT READY");
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "NOT READY: timer");
         exit(1);
     }
+
+    ngx_temp_timer_queue.timer_prev = &ngx_temp_timer_queue;
+    ngx_temp_timer_queue.timer_next = &ngx_temp_timer_queue;
 
     return NGX_OK;;
 }
@@ -61,7 +65,7 @@ void ngx_event_timer_done(ngx_cycle_t *cycle)
 
 void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
-    ngx_event_t  *e;
+    ngx_event_t  *e, *queue;
 
 #if (NGX_DEBUG_EVENT)
     ngx_connection_t *c = ev->data;
@@ -74,16 +78,22 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
         return;
     }
 
-    for (e = ngx_timer_queue[ngx_timer_cur_queue].timer_next;
-         e != &ngx_timer_queue[ngx_timer_cur_queue] && timer > e->timer_delta;
+    if (ngx_expire_timers) {
+        queue = &ngx_temp_timer_queue;
+
+    } else {
+        queue = &ngx_timer_queue[ngx_timer_cur_queue++];
+
+        if (ngx_timer_cur_queue >= ngx_timer_queue_num) {
+            ngx_timer_cur_queue = 0;
+        }
+    }
+
+    for (e = queue->timer_next;
+         e != queue && timer > e->timer_delta;
          e = e->timer_next)
     {
         timer -= e->timer_delta;
-    }
-
-    ngx_timer_cur_queue++;
-    if (ngx_timer_cur_queue >= ngx_timer_queue_num) {
-        ngx_timer_cur_queue = 0;
     }
 
     ev->timer_delta = timer;
@@ -127,6 +137,8 @@ void ngx_event_expire_timers(ngx_msec_t timer)
     ngx_msec_t    delta;
     ngx_event_t  *ev;
 
+    ngx_expire_timers = 1;
+
     for (i = 0; i < ngx_timer_queue_num; i++) {
 
         delta = timer;
@@ -160,5 +172,21 @@ void ngx_event_expire_timers(ngx_msec_t timer)
 
             ev->event_handler(ev);
         }
+    }
+
+    ngx_expire_timers = 0;
+
+    if (ngx_temp_timer_queue.timer_next == &ngx_temp_timer_queue) {
+        return;
+    }
+
+    timer = 0;
+
+    while (ngx_temp_timer_queue.timer_next != &ngx_temp_timer_queue) {
+        timer += ngx_temp_timer_queue.timer_next->timer_delta;
+        ev = ngx_temp_timer_queue.timer_next;
+
+        ngx_del_timer(ev);
+        ngx_add_timer(ev, timer);
     }
 }

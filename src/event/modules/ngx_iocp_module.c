@@ -10,13 +10,13 @@
 #include <ngx_iocp_module.h>
 
 
-static int ngx_iocp_init(ngx_log_t *log);
-static void ngx_iocp_done(ngx_log_t *log);
+static int ngx_iocp_init(ngx_cycle_t *cycle);
+static void ngx_iocp_done(ngx_cycle_t *cycle);
 static int ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key);
 static int ngx_iocp_del_connection(ngx_connection_t *c);
 static int ngx_iocp_process_events(ngx_log_t *log);
-static void *ngx_iocp_create_conf(ngx_pool_t *pool);
-static char *ngx_iocp_init_conf(ngx_pool_t *pool, void *conf);
+static void *ngx_iocp_create_conf(ngx_cycle_t *cycle);
+static char *ngx_iocp_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
 static ngx_str_t      iocp_name = ngx_string("iocp");
@@ -72,30 +72,36 @@ ngx_module_t  ngx_iocp_module = {
     &ngx_iocp_module_ctx,                  /* module context */
     ngx_iocp_commands,                     /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
-    NULL                                   /* init module */
+    NULL,                                  /* init module */
+    NULL                                   /* init child */
 };
 
 
 static HANDLE  iocp;
 
 
-static int ngx_iocp_init(ngx_log_t *log)
+static int ngx_iocp_init(ngx_cycle_t *cycle)
 {
     ngx_iocp_conf_t  *cf;
 
-    cf = ngx_event_get_conf(ngx_iocp_module);
-
-    iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, cf->threads);
+    cf = ngx_event_get_conf(cycle->conf_ctx, ngx_iocp_module);
 
     if (iocp == NULL) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+        iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0,
+                                      cf->threads);
+    }
+
+    if (iocp == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "CreateIoCompletionPort() failed");
         return NGX_ERROR;
     }
 
-    if (ngx_event_timer_init(log) == NGX_ERROR) {
+    if (ngx_event_timer_init(cycle) == NGX_ERROR) {
         return NGX_ERROR;
     }
+
+    ngx_io = ngx_os_io;
 
     ngx_event_actions = ngx_iocp_module_ctx.actions;
 
@@ -105,14 +111,16 @@ static int ngx_iocp_init(ngx_log_t *log)
 }
 
 
-static void ngx_iocp_done(ngx_log_t *log)
+static void ngx_iocp_done(ngx_cycle_t *cycle)
 {
     if (CloseHandle(iocp) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-        "iocp CloseHandle() failed");
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "iocp CloseHandle() failed");
     }
 
-    ngx_event_timer_done(log);
+    iocp = NULL;
+
+    ngx_event_timer_done(cycle);
 }
 
 
@@ -177,7 +185,16 @@ static int ngx_iocp_process_events(ngx_log_t *log)
 
     if (rc == 0) {
         err = ngx_errno;
+    } else {
+        err = 0;
+    }
 
+    if (timer != INFINITE) {
+        delta = ngx_msec() - delta;
+        ngx_event_expire_timers(delta);
+    }
+
+    if (err) {
         if (ovlp == NULL) {
             if (err != WAIT_TIMEOUT) {
                 ngx_log_error(NGX_LOG_ALERT, log, err,
@@ -189,11 +206,6 @@ static int ngx_iocp_process_events(ngx_log_t *log)
         } else {
             ovlp->error = err;
         }
-    }
-
-    if (timer != INFINITE) {
-        delta = ngx_msec() - delta;
-        ngx_event_expire_timers(delta);
     }
 
     if (ovlp) {
@@ -224,11 +236,11 @@ ngx_log_debug(log, "iocp ev handler: %08x" _ ev->event_handler);
 }
 
 
-static void *ngx_iocp_create_conf(ngx_pool_t *pool)
+static void *ngx_iocp_create_conf(ngx_cycle_t *cycle)
 {
     ngx_iocp_conf_t  *cf;
 
-    ngx_test_null(cf, ngx_palloc(pool, sizeof(ngx_iocp_conf_t)),
+    ngx_test_null(cf, ngx_palloc(cycle->pool, sizeof(ngx_iocp_conf_t)),
                   NGX_CONF_ERROR);
 
     cf->threads = NGX_CONF_UNSET;
@@ -239,7 +251,7 @@ static void *ngx_iocp_create_conf(ngx_pool_t *pool)
 }
 
 
-static char *ngx_iocp_init_conf(ngx_pool_t *pool, void *conf)
+static char *ngx_iocp_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_iocp_conf_t *cf = conf;
 

@@ -317,8 +317,9 @@ int ngx_devpoll_process_events(ngx_log_t *log)
     events = ioctl(dp, DP_POLL, &dvp);
 
     if (events == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "ioctl(DP_POLL) failed");
-        return NGX_ERROR;
+        err = ngx_errno;
+    } else {
+        err = 0;
     }
 
     nchanges = 0;
@@ -326,6 +327,10 @@ int ngx_devpoll_process_events(ngx_log_t *log)
     if ((int) timer != INFTIM) {
         gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
+
+#if (NGX_DEBUG_EVENT)
+        ngx_log_debug(log, "devpoll timer: %d, delta: %d" _ timer _ delta);
+#endif
         ngx_event_expire_timers(delta);
 
     } else {
@@ -334,11 +339,16 @@ int ngx_devpoll_process_events(ngx_log_t *log)
                           "ioctl(DP_POLL) returns no events without timeout");
             return NGX_ERROR;
         }
-    }
 
 #if (NGX_DEBUG_EVENT)
-    ngx_log_debug(log, "devpoll timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "devpoll timer: %d, delta: %d" _ timer _ delta);
 #endif
+    }
+
+    if (err) {
+        ngx_log_error(NGX_LOG_ALERT, log, err, "ioctl(DP_POLL) failed");
+        return NGX_ERROR;
+    }
 
     for (i = 0; i < events; i++) {
 

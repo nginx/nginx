@@ -152,6 +152,8 @@ static void ngx_http_init_request(ngx_event_t *rev)
     in_port = c->servers;
     in_addr = in_port->addrs.elts;
 
+ngx_log_debug(rev->log, "IN: %08x" _ in_port);
+
     r->port = in_port->port;
     r->port_name = &in_port->port_name;
 

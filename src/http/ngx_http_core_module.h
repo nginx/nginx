@@ -107,6 +107,7 @@ typedef struct {
     ngx_msec_t    lingering_time;          /* lingering_time */
     ngx_msec_t    lingering_timeout;       /* lingering_timeout */
 
+    ngx_log_t    *err_log;
 } ngx_http_core_loc_conf_t;
 
 

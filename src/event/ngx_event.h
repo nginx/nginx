@@ -308,10 +308,6 @@ typedef struct {
 
 
 
-extern ngx_event_t          *ngx_read_events;
-extern ngx_event_t          *ngx_write_events;
-extern ngx_connection_t     *ngx_connections;
-
 #if !(USE_KQUEUE)
 extern ngx_event_actions_t   ngx_event_actions;
 extern ngx_event_type_e      ngx_event_type;
@@ -337,8 +333,8 @@ typedef struct {
 typedef struct {
     ngx_str_t              *name;
 
-    void                 *(*create_conf)(ngx_pool_t *p);
-    char                 *(*init_conf)(ngx_pool_t *p, void *conf);
+    void                 *(*create_conf)(ngx_cycle_t *cycle);
+    char                 *(*init_conf)(ngx_cycle_t *cycle, void *conf);
 
     ngx_event_actions_t     actions;
 } ngx_event_module_t;

@@ -17,7 +17,7 @@ void ngx_event_accept(ngx_event_t *ev)
     ngx_connection_t  *c, *ls;
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_cycle.conf_ctx, ngx_event_core_module);
+    ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
     ls = ev->data;
 
@@ -134,17 +134,18 @@ ngx_log_debug(ev->log, "ADDR %s" _ ls->listening->addr_text.data);
 
         if (s % 4) {
             ngx_log_error(NGX_LOG_EMERG, ls->log, 0,
-                          ngx_socket_n " created socket %d", s);
+                          ngx_socket_n
+                          " created socket %d, not divisible by 4", s);
             exit(1);
         }
 
-        rev = &ngx_read_events[s / 4];
-        wev = &ngx_write_events[s / 4];
-        c = &ngx_connections[s / 4];
+        c = &ngx_cycle->connections[s / 4];
+        rev = &ngx_cycle->read_events[s / 4];
+        wev = &ngx_cycle->write_events[s / 4];
 #else
-        rev = &ngx_read_events[s];
-        wev = &ngx_write_events[s];
-        c = &ngx_connections[s];
+        c = &ngx_cycle->connections[s];
+        rev = &ngx_cycle->read_events[s];
+        wev = &ngx_cycle->write_events[s];
 #endif
 
         instance = rev->instance;
@@ -178,12 +179,14 @@ ngx_log_debug(ev->log, "ADDR %s" _ ls->listening->addr_text.data);
         c->ctx = ls->ctx;
         c->servers = ls->servers;
 
+#if 0
         c->log = ngx_palloc(c->pool, sizeof(ngx_log_t));
         if (c->log == NULL) {
             return;
         }
         ngx_memcpy(c->log, ev->log, sizeof(ngx_log_t));
-        rev->log = wev->log = c->log;
+#endif
+        rev->log = wev->log = c->log = ev->log;
 
         /* TODO: x86: MT: lock xadd, MP: lock xadd, shared */
         c->number = ngx_connection_counter++;

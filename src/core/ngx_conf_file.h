@@ -63,13 +63,21 @@ struct ngx_open_file_s {
 
 
 struct ngx_cycle_s {
-    void         ****conf_ctx;
-    ngx_pool_t      *pool;
-    ngx_log_t       *log;
-    ngx_array_t      listening;
-    ngx_array_t      open_files;
+    void           ****conf_ctx;
+    ngx_pool_t        *pool;
+    ngx_log_t         *log;
+    ngx_array_t        listening;
+    ngx_array_t        open_files;
 
-    unsigned         one_process:1;
+    int                connection_n;
+    ngx_connection_t  *connections;
+    ngx_event_t       *read_events;
+    ngx_event_t       *write_events;
+
+    ngx_cycle_t       *cycle;
+    ngx_cycle_t       *old_cycle;
+
+    unsigned           one_process:1;
 };
 
 
@@ -178,7 +186,7 @@ char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 extern ngx_module_t     *ngx_modules[];
-extern ngx_cycle_t       ngx_cycle;
-
+extern ngx_cycle_t      *ngx_cycle;
+extern ngx_array_t       ngx_old_cycles;
 
 #endif /* _NGX_HTTP_CONF_FILE_H_INCLUDED_ */
