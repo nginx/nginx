@@ -811,7 +811,7 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data)
         }
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "value must be more than %d", bounds->low);
+                           "value must be equal or more than %d", bounds->low);
 
         return NGX_CONF_ERROR;
     }
