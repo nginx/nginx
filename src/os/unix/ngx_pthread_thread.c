@@ -146,6 +146,10 @@ ngx_int_t ngx_mutex_trylock(ngx_mutex_t *m)
 
     err = pthread_mutex_trylock(&m->mutex);
 
+    if (err == NGX_EBUSY) {
+        return NGX_AGAIN;
+    }
+
     if (err != 0) {
         ngx_log_error(NGX_LOG_ALERT, m->log, err,
                       "pthread_mutex_trylock(" PTR_FMT ") failed", m);

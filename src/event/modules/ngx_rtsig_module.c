@@ -23,6 +23,8 @@ int sigtimedwait(const sigset_t *set, siginfo_t *info,
     return -1;
 }
 
+int ngx_linux_rtsig_max;
+
 #endif
 
 
@@ -45,6 +47,8 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle);
 
 static void *ngx_rtsig_create_conf(ngx_cycle_t *cycle);
 static char *ngx_rtsig_init_conf(ngx_cycle_t *cycle, void *conf);
+static char *ngx_check_ngx_overflow_threshold_bounds(ngx_conf_t *cf,
+                                                     void *post, void *data);
 
 
 static sigset_t        set;
@@ -55,7 +59,7 @@ static struct pollfd  *overflow_list;
 static ngx_str_t      rtsig_name = ngx_string("rtsig");
 
 static ngx_conf_num_bounds_t  ngx_overflow_threshold_bounds = {
-    ngx_conf_check_num_bounds, 2, 10
+    ngx_check_ngx_overflow_threshold_bounds, 2, 10
 };
 
 
@@ -644,6 +648,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
             rev = c->read;
 
             if (rev->active
+                && !rev->closed
                 && rev->event_handler
                 && (overflow_list[i].revents
                                           & (POLLIN|POLLERR|POLLHUP|POLLNVAL)))
@@ -663,6 +668,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
             wev = c->write;
 
             if (wev->active
+                && !wev->closed
                 && wev->event_handler
                 && (overflow_list[i].revents
                                          & (POLLOUT|POLLERR|POLLHUP|POLLNVAL)))
@@ -686,39 +692,58 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
         if (tested >= rtscf->overflow_test) {
 
-            /*
-             * Check the current rt queue length to prevent the new overflow.
-             *
-             * Learn the /proc/sys/kernel/rtsig-max value because
-             * it can be changed sisnce the last checking.
-             */
+            if (ngx_linux_rtsig_max) {
 
-            name[0] = CTL_KERN;
-            name[1] = KERN_RTSIGMAX;
-            len = sizeof(rtsig_max);
-            if (sysctl(name, sizeof(name), &rtsig_max, &len, NULL, 0) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, errno,
-                              "sysctl(KERN_RTSIGMAX) failed");
-                return NGX_ERROR;
-            }
+                /*
+                 * Check the current rt queue length to prevent
+                 * the new overflow.
+                 *
+                 * Learn the /proc/sys/kernel/rtsig-max value because
+                 * it can be changed sisnce the last checking.
+                 */
 
-            name[0] = CTL_KERN;
-            name[1] = KERN_RTSIGNR;
-            len = sizeof(rtsig_nr);
-            if (sysctl(name, sizeof(name), &rtsig_nr, &len, NULL, 0) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, errno,
-                              "sysctl(KERN_RTSIGNR) failed");
-                return NGX_ERROR;
-            }
+                name[0] = CTL_KERN;
+                name[1] = KERN_RTSIGMAX;
+                len = sizeof(rtsig_max);
+                if (sysctl(name, sizeof(name), &rtsig_max, &len, NULL, 0) == -1)
+                {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, errno,
+                                  "sysctl(KERN_RTSIGMAX) failed");
+                    return NGX_ERROR;
+                }
 
-            /*
-             * drain rt signal queue if the /proc/sys/kernel/rtsig-nr is bigger
-             * than "/proc/sys/kernel/rtsig-max / rtsig_overflow_threshold"
-             */
+                name[0] = CTL_KERN;
+                name[1] = KERN_RTSIGNR;
+                len = sizeof(rtsig_nr);
+                if (sysctl(name, sizeof(name), &rtsig_nr, &len, NULL, 0) == -1)
+                {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, errno,
+                                  "sysctl(KERN_RTSIGNR) failed");
+                    return NGX_ERROR;
+                }
 
-            if (rtsig_max / rtscf->overflow_threshold < rtsig_nr) {
-                ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                               "rtsig queue state: %d/%d", rtsig_nr, rtsig_max);
+                /*
+                 * drain rt signal queue if the /proc/sys/kernel/rtsig-nr
+                 * is bigger than
+                 *    /proc/sys/kernel/rtsig-max / rtsig_overflow_threshold
+                 */
+
+                if (rtsig_max / rtscf->overflow_threshold < rtsig_nr) {
+                    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                                   "rtsig queue state: %d/%d",
+                                   rtsig_nr, rtsig_max);
+                    while (ngx_rtsig_process_events(cycle) == NGX_OK) {
+                        /* void */
+                    }
+                }
+
+            } else {
+
+                /*
+                 * Linux has not KERN_RTSIGMAX since 2.6.6-mm2
+                 * so drain rt signal queue unconditionally
+                 */
+
                 while (ngx_rtsig_process_events(cycle) == NGX_OK) { /* void */ }
             }
 
@@ -771,6 +796,21 @@ static char *ngx_rtsig_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(rtscf->overflow_events, 16);
     ngx_conf_init_value(rtscf->overflow_test, 32);
     ngx_conf_init_value(rtscf->overflow_threshold, 10);
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_check_ngx_overflow_threshold_bounds(ngx_conf_t *cf,
+                                                     void *post, void *data)
+{
+    if (ngx_linux_rtsig_max) {
+        return ngx_conf_check_num_bounds(cf, post, data);
+    }
+
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "\"rtsig_overflow_threshold\" is not supported "
+                       "since Linux 2.6.6-mm2, ignored");
 
     return NGX_CONF_OK;
 }

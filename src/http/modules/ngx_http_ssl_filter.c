@@ -22,12 +22,12 @@ typedef struct {
 
 typedef struct {
     SSL       *ssl;
-
-    unsigned   accepted;
 } ngx_http_ssl_ctx_t;
 
 
 static ngx_http_ssl_ctx_t *ngx_http_ssl_create_ctx(ngx_http_request_t *r);
+static ngx_chain_t *ngx_http_ssl_write(ngx_http_request_t *r, ngx_chain_t *in,
+                                       off_t limit);
 static void ngx_http_ssl_error(ngx_uint_t level, ngx_log_t *log, int err,
                                char *fmt, ...);
 static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
@@ -152,7 +152,7 @@ ngx_int_t ngx_http_ssl_read(ngx_http_request_t *r, u_char *buf, size_t n)
     }
 
     ngx_http_ssl_error(NGX_LOG_ALERT, r->connection->log, rc,
-                       "SSL_accept() failed");
+                       "SSL_read() failed");
 
     SSL_set_shutdown(ctx->ssl, SSL_RECEIVED_SHUTDOWN);
 
@@ -160,11 +160,8 @@ ngx_int_t ngx_http_ssl_read(ngx_http_request_t *r, u_char *buf, size_t n)
 }
 
 
-ngx_int_t ngx_http_ssl_write(ngx_http_request_t *r, ngx_chain_t *in,
-                             off_t limit)
+ngx_int_t ngx_http_ssl_writer(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    int                  rc;
-    size_t               send, size;
     ngx_http_ssl_ctx_t  *ctx;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssl_filter_module);
@@ -175,7 +172,12 @@ ngx_int_t ngx_http_ssl_write(ngx_http_request_t *r, ngx_chain_t *in,
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "SSL_shutdown: %d", rc);
 
+        if (rc == 0) {
+            return NGX_AGAIN;
+        }
+
         if (rc == 1) {
+            SSL_free(ctx->ssl);
             return NGX_OK;
         }
 
@@ -188,8 +190,27 @@ ngx_int_t ngx_http_ssl_write(ngx_http_request_t *r, ngx_chain_t *in,
             return NGX_AGAIN;
         }
 
+        ngx_http_ssl_error(NGX_LOG_ALERT, r->connection->log, rc,
+                           "SSL_shutdown() failed");
+
         return NGX_ERROR;
     }
+
+    ch = ngx_http_ssl_write(r, ctx, in, 0);
+
+    return NGX_OK;
+}
+
+
+static ngx_chain_t *ngx_http_ssl_write(ngx_http_request_t *r,
+                                       ngx_http_ssl_ctx_t *ctx,
+                                       ngx_chain_t *in,
+                                       off_t limit)
+{
+    int                  rc;
+    size_t               send, size;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_ssl_filter_module);
 
     send = 0;
 
@@ -205,9 +226,20 @@ ngx_int_t ngx_http_ssl_write(ngx_http_request_t *r, ngx_chain_t *in,
         }
 
         rc = SSL_write(ctx->ssl, in->buf->pos, size);
+
+        if (rc > 0) {
+            in->buf->pos += rc;
+
+            if (rc == size) {
+                continue;
+            }
+
+            r->connection->write->ready = 0;
+            return in;
+        }
     }
 
-    return NGX_OK;
+    return in;
 }
 
 

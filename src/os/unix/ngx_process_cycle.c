@@ -614,6 +614,10 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             continue;
         }
 
+        if (n == ngx_process_slot) {
+            continue;
+        }
+
         if (close(ngx_processes[n].channel[1]) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "close() failed");

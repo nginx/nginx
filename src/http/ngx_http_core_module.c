@@ -206,6 +206,20 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, send_lowat),
       &ngx_http_lowat_post },
 
+    { ngx_string("postpone_output"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, postpone_output),
+      NULL },
+
+    { ngx_string("limit_rate"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, limit_rate),
+      NULL },
+
     { ngx_string("keepalive_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -1251,6 +1265,8 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->tcp_nopush = NGX_CONF_UNSET;
     lcf->send_timeout = NGX_CONF_UNSET_MSEC;
     lcf->send_lowat = NGX_CONF_UNSET_SIZE;
+    lcf->postpone_output = NGX_CONF_UNSET_SIZE;
+    lcf->limit_rate = NGX_CONF_UNSET_SIZE;
     lcf->discarded_buffer_size = NGX_CONF_UNSET_SIZE;
     lcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     lcf->lingering_time = NGX_CONF_UNSET_MSEC;
@@ -1334,6 +1350,9 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 60000);
     ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
+    ngx_conf_merge_size_value(conf->postpone_output, prev->postpone_output,
+                              1460);
+    ngx_conf_merge_size_value(conf->limit_rate, prev->limit_rate, 0);
     ngx_conf_merge_size_value(conf->discarded_buffer_size,
                               prev->discarded_buffer_size, 1500);
     ngx_conf_merge_msec_value(conf->keepalive_timeout,

@@ -6,40 +6,11 @@
 
 
 typedef struct {
-    size_t  postpone_output;         /* postpone_output */
-    size_t  limit_rate;              /* limit_rate */
-} ngx_http_write_filter_conf_t;
-
-
-typedef struct {
     ngx_chain_t  *out;
 } ngx_http_write_filter_ctx_t;
 
 
-static void *ngx_http_write_filter_create_conf(ngx_conf_t *cf);
-static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
-                                              void *parent, void *child);
 static ngx_int_t ngx_http_write_filter_init(ngx_cycle_t *cycle);
-
-
-static ngx_command_t  ngx_http_write_filter_commands[] = {
-
-    { ngx_string("postpone_output"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_write_filter_conf_t, postpone_output),
-      NULL },
-
-    { ngx_string("limit_rate"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_write_filter_conf_t, limit_rate),
-      NULL },
-
-      ngx_null_command
-};
 
 
 ngx_http_module_t  ngx_http_write_filter_module_ctx = {
@@ -51,15 +22,15 @@ ngx_http_module_t  ngx_http_write_filter_module_ctx = {
     NULL,                                  /* create server configuration */
     NULL,                                  /* merge server configuration */
 
-    ngx_http_write_filter_create_conf,     /* create location configuration */
-    ngx_http_write_filter_merge_conf       /* merge location configuration */
+    NULL,                                  /* create location configuration */
+    NULL,                                  /* merge location configuration */
 };
 
 
 ngx_module_t  ngx_http_write_filter_module = {
     NGX_MODULE,
     &ngx_http_write_filter_module_ctx,     /* module context */
-    ngx_http_write_filter_commands,        /* module directives */
+    NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_write_filter_init,            /* init module */
     NULL                                   /* init process */
@@ -68,11 +39,11 @@ ngx_module_t  ngx_http_write_filter_module = {
 
 ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    int                            last;
-    off_t                          size, flush, sent;
-    ngx_chain_t                   *cl, *ln, **ll, *chain;
-    ngx_http_write_filter_ctx_t   *ctx;
-    ngx_http_write_filter_conf_t  *conf;
+    int                           last;
+    off_t                         size, flush, sent;
+    ngx_chain_t                  *cl, *ln, **ll, *chain;
+    ngx_http_core_loc_conf_t     *clcf;
+    ngx_http_write_filter_ctx_t  *ctx;
 
     ctx = ngx_http_get_module_ctx(r->main ? r->main : r,
                                   ngx_http_write_filter_module);
@@ -125,8 +96,8 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                    "http write filter: l:%d f:" OFF_T_FMT " s:" OFF_T_FMT,
                    last, flush, size);
 
-    conf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                        ngx_http_write_filter_module);
+    clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
+                                        ngx_http_core_module);
 
     /*
      * avoid the output if there is no last buf, no flush point,
@@ -134,7 +105,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
      * is smaller than "postpone_output" directive
      */
 
-    if (!last && flush == 0 && in && size < (off_t) conf->postpone_output) {
+    if (!last && flush == 0 && in && size < (off_t) clcf->postpone_output) {
         return NGX_OK;
     }
 
@@ -153,17 +124,17 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     sent = r->connection->sent;
 
     chain = ngx_write_chain(r->connection, ctx->out,
-                            conf->limit_rate ? conf->limit_rate:
+                            clcf->limit_rate ? clcf->limit_rate:
                                                OFF_T_MAX_VALUE);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http write filter %X", chain);
 
-    if (conf->limit_rate) {
+    if (clcf->limit_rate) {
         sent = r->connection->sent - sent;
         r->connection->write->delayed = 1;
         ngx_add_timer(r->connection->write,
-                      (ngx_msec_t) sent * 1000 / conf->limit_rate);
+                      (ngx_msec_t) (sent * 1000 / clcf->limit_rate));
     }
 
     if (chain == NGX_CHAIN_ERROR) {
@@ -177,36 +148,6 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     return NGX_AGAIN;
-}
-
-
-static void *ngx_http_write_filter_create_conf(ngx_conf_t *cf)
-{
-    ngx_http_write_filter_conf_t *conf;
-
-    ngx_test_null(conf,
-                  ngx_palloc(cf->pool, sizeof(ngx_http_write_filter_conf_t)),
-                  NULL);
-
-    conf->postpone_output = NGX_CONF_UNSET_SIZE;
-    conf->limit_rate = NGX_CONF_UNSET_SIZE;
-
-    return conf;
-}
-
-
-static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
-                                              void *parent, void *child)
-{
-    ngx_http_write_filter_conf_t *prev = parent;
-    ngx_http_write_filter_conf_t *conf = child;
-
-    ngx_conf_merge_size_value(conf->postpone_output, prev->postpone_output,
-                              1460);
-
-    ngx_conf_merge_size_value(conf->limit_rate, prev->limit_rate, 0);
-
-    return NULL;
 }
 
 

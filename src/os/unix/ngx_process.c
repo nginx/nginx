@@ -2,6 +2,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+#include <ngx_channel.h>
 
 
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
@@ -49,6 +50,11 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
                           "socketpair() failed while spawning \"%s\"", name);
             return NGX_ERROR;
         }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                       "channel %d:%d",
+                       ngx_processes[s].channel[0],
+                       ngx_processes[s].channel[1]);
 
         if (ngx_nonblocking(ngx_processes[s].channel[0]) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -269,16 +275,4 @@ void ngx_process_get_status()
             ngx_processes[i].respawn = 0;
         }
     }
-}
-
-
-void ngx_close_channel(ngx_fd_t *fd, ngx_log_t *log)
-{
-    if (close(fd[0]) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() failed");
-    } 
-
-    if (close(fd[1]) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() failed");
-    } 
 }

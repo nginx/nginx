@@ -134,6 +134,8 @@ typedef struct {
     size_t        discarded_buffer_size;   /* discarded_buffer_size */
     size_t        client_body_buffer_size; /* client_body_buffer_size */
     size_t        send_lowat;              /* send_lowat */
+    size_t        postpone_output;         /* postpone_output */
+    size_t        limit_rate;              /* limit_rate */
 
     ngx_msec_t    client_body_timeout;     /* client_body_timeout */
     ngx_msec_t    send_timeout;            /* send_timeout */

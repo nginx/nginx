@@ -84,7 +84,7 @@ int ngx_os_init(ngx_log_t *log)
     size = sizeof(ngx_freebsd_kern_ostype);
     if (sysctlbyname("kern.ostype",
                      ngx_freebsd_kern_ostype, &size, NULL, 0) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, errno,
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                       "sysctlbyname(kern.ostype) failed");
         return NGX_ERROR;
     }
@@ -92,7 +92,7 @@ int ngx_os_init(ngx_log_t *log)
     size = sizeof(ngx_freebsd_kern_osrelease);
     if (sysctlbyname("kern.osrelease",
                      ngx_freebsd_kern_osrelease, &size, NULL, 0) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, errno,
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                       "sysctlbyname(kern.osrelease) failed");
         return NGX_ERROR;
     }
@@ -104,7 +104,7 @@ int ngx_os_init(ngx_log_t *log)
     size = sizeof(int);
     if (sysctlbyname("kern.osreldate",
                      &ngx_freebsd_kern_osreldate, &size, NULL, 0) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, errno,
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                       "sysctlbyname(kern.osreldate) failed");
         return NGX_ERROR;
     }
@@ -169,7 +169,7 @@ int ngx_os_init(ngx_log_t *log)
         size = sysctls[i].size;
         if (sysctlbyname(sysctls[i].name, sysctls[i].value, &size, NULL, 0)
                                                                        == -1) {
-            err = errno;
+            err = ngx_errno;
             if (err != NGX_ENOENT) {
                 if (sysctls[i].value == &ngx_freebsd_machdep_hlt_logical_cpus) {
                     continue;

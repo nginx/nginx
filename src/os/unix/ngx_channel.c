@@ -205,7 +205,7 @@ ngx_int_t ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd,
 
     ev->event_handler = handler;
 
-    if (ngx_add_conn) {
+    if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
         if (ngx_add_conn(c) == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -217,4 +217,16 @@ ngx_int_t ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd,
     }
 
     return NGX_OK;
+}
+
+
+void ngx_close_channel(ngx_fd_t *fd, ngx_log_t *log)
+{
+    if (close(fd[0]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() failed");
+    }
+
+    if (close(fd[1]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() failed");
+    }
 }

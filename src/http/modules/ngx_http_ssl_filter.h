@@ -14,6 +14,8 @@
 
 
 ngx_int_t ngx_http_ssl_read(ngx_http_request_t *r, u_char *buf, size_t n);
+ngx_int_t ngx_http_ssl_writer(ngx_http_request_t *r, ngx_chain_t *in);
+
 void ngx_http_ssl_close_connection(SSL *ssl, ngx_log_t *log);
 
 

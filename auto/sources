@@ -190,8 +190,8 @@ HTTP_MODULES="ngx_http_module \
 
 HTTP_FILE_CACHE_MODULE=ngx_http_cache_module
 
-HTTP_FILTER_MODULES="ngx_http_write_filter_module \
-            ngx_http_header_filter_module"
+HTTP_WRITE_FILTER_MODULE="ngx_http_write_filter_module"
+HTTP_HEADER_FILTER_MODULE="ngx_http_header_filter_module"
 
 HTTP_CHUNKED_FILTER_MODULE=ngx_http_chunked_filter_module
 HTTP_HEADERS_FILTER_MODULE=ngx_http_headers_filter_module
