@@ -38,14 +38,18 @@
 
 
 #define NGX_HTTP_OK                     200
+
 #define NGX_HTTP_SPECIAL_RESPONSE       300
 #define NGX_HTTP_MOVED_PERMANENTLY      301
 #define NGX_HTTP_MOVED_TEMPORARILY      302
 #define NGX_HTTP_NOT_MODIFIED           304
+
 #define NGX_HTTP_BAD_REQUEST            400
 #define NGX_HTTP_FORBIDDEN              403
 #define NGX_HTTP_NOT_FOUND              404
+#define NGX_HTTP_REQUEST_TIME_OUT       408
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE  414
+
 #define NGX_HTTP_INTERNAL_SERVER_ERROR  500
 #define NGX_HTTP_NOT_IMPLEMENTED        501
 #define NGX_HTTP_BAD_GATEWAY            502
@@ -59,9 +63,8 @@
 
 
 typedef struct {
-    size_t  len;
-    char   *data;
-    int     offset;
+    ngx_str_t  name;
+    int        offset;
 } ngx_http_header_t;
 
 
@@ -71,8 +74,9 @@ typedef struct {
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
     ngx_table_elt_t  *if_modified_since;
-    ngx_table_elt_t  *user_agent;
     ngx_table_elt_t  *accept_encoding;
+
+    ngx_table_elt_t  *user_agent;
 
     ngx_table_t      *headers;
 } ngx_http_headers_in_t;
@@ -101,34 +105,34 @@ typedef struct {
 typedef struct ngx_http_request_s ngx_http_request_t;
 
 struct ngx_http_request_s {
-    ngx_file_t  file;
+    ngx_connection_t    *connection;
 
-    void  **ctx;
-    void  **srv_conf;
-    void  **loc_conf;
+    void               **ctx;
+    void               **srv_conf;
+    void               **loc_conf;
 
-    ngx_pool_t  *pool;
-    ngx_hunk_t  *header_in;
+    ngx_file_t           file;
+
+    ngx_pool_t          *pool;
+    ngx_hunk_t          *header_in;
 
     ngx_http_headers_in_t   headers_in;
     ngx_http_headers_out_t  headers_out;
 
     int  (*handler)(ngx_http_request_t *r);
 
-    int    method;
-
     time_t  lingering_time;
 
-    int    http_version;
-    int    http_major;
-    int    http_minor;
+    int                  method;
+    int                  http_version;
+    int                  http_major;
+    int                  http_minor;
 
-    ngx_str_t  request_line;
-    ngx_str_t  uri;
-    ngx_str_t  exten;
-    ngx_http_request_t *main;
-
-    ngx_connection_t  *connection;
+    ngx_str_t            request_line;
+    ngx_str_t            uri;
+    ngx_str_t            args;
+    ngx_str_t            exten;
+    ngx_http_request_t  *main;
 
     u_int       in_addr;
 
@@ -192,32 +196,6 @@ typedef int (*ngx_http_output_body_filter_p)
                                    (ngx_http_request_t *r, ngx_chain_t *chain);
 
 
-
-typedef struct {
-    int      index;
-
-    void  *(*create_srv_conf)(ngx_pool_t *p);
-    char  *(*init_srv_conf)(ngx_pool_t *p, void *conf);
-    void  *(*create_loc_conf)(ngx_pool_t *p);
-    char  *(*merge_loc_conf)(ngx_pool_t *p, void *prev, void *conf);
-
-    int    (*translate_handler)(ngx_http_request_t *r);
-
-    int    (*output_header_filter) (ngx_http_request_t *r);
-    int    (*next_output_header_filter) (ngx_http_request_t *r);
-
-    int    (*output_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
-    int    (*next_output_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
-} ngx_http_module_t;
-
-
-#define NGX_HTTP_MODULE        0x80000000
-
-#define NGX_HTTP_MODULE_TYPE   0x50545448   /* "HTTP" */
-
-
-#define ngx_http_get_module_srv_conf(r, module)  r->srv_conf[module.index]
-#define ngx_http_get_module_loc_conf(r, module)  r->loc_conf[module.index]
 #define ngx_http_get_module_ctx(r, module)       r->ctx[module.index]
 
 #define ngx_http_create_ctx(r, cx, module, size, error)                       \
@@ -243,7 +221,7 @@ int ngx_http_handler(ngx_http_request_t *r);
 
 
 int ngx_http_send_header(ngx_http_request_t *r);
-int ngx_http_special_response(ngx_http_request_t *r, int error);
+int ngx_http_special_response_handler(ngx_http_request_t *r, int error);
 
 
 time_t ngx_http_parse_time(char *value, size_t len);
@@ -269,10 +247,8 @@ extern int  ngx_http_discarded_buffer_size;
 
 extern int  ngx_http_url_in_error_log;
 
+extern ngx_array_t  ngx_http_translate_handlers;
 extern ngx_array_t  ngx_http_index_handlers;
-
-
-extern ngx_http_module_t  *ngx_http_modules[];
 
 
 /* STUB */

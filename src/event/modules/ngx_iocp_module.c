@@ -110,6 +110,7 @@ int ngx_iocp_process_events(ngx_log_t *log)
 
     if (timer != INFINITE) {
         delta = ngx_msec() - delta;
+        ngx_event_expire_timers(delta);
     }
 
     if (ovlp) {
@@ -118,6 +119,7 @@ int ngx_iocp_process_events(ngx_log_t *log)
 ngx_log_debug(log, "iocp ev: %08x" _ ev);
 
         if (ev == e) {
+            /* it's not AcceptEx() completion */
             ev->ready = 1;
             ev->available = bytes;
         }
@@ -127,10 +129,6 @@ ngx_log_debug(log, "iocp ev: %08x" _ ev->event_handler);
         if (ev->event_handler(ev) == NGX_ERROR) {
             ev->close_handler(ev);
         }
-    }
-
-    if (timer != INFINITE) {
-        ngx_event_expire_timers(delta);
     }
 
     return NGX_OK;

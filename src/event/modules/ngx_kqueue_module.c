@@ -110,6 +110,13 @@ int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
     ev->active = 1;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
 
+    /* The event addition or change should be always passed to a kernel
+       because there can be case when event was passed to a kernel then
+       added again to the change_list and then deleted from the change_list
+       by ngx_kqueue_del_event() so the first event still remains in a kernel */
+
+#if 0
+
     if (nchanges > 0
         && ev->index < nchanges
         && change_list[ev->index].udata == ev)
@@ -118,11 +125,16 @@ int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
         ngx_connection_t *c = (ngx_connection_t *) ev->data;
         ngx_log_debug(ev->log, "kqueue add event: %d: ft:%d" _ c->fd _ event);
 #endif
+
+        /* if the event is still not passed to a kernel we change it */
+
         change_list[ev->index].filter = event;
         change_list[ev->index].flags = flags;
 
         return NGX_OK;
     }
+
+#endif
 
     return ngx_kqueue_set_event(ev, event, EV_ADD | flags);
 }
@@ -142,6 +154,9 @@ int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
         ngx_connection_t *c = (ngx_connection_t *) ev->data;
         ngx_log_debug(ev->log, "kqueue del event: %d: ft:%d" _ c->fd _ event);
 #endif
+
+        /* if the event is still not passed to a kernel we will not pass it */
+
         if (ev->index < --nchanges) {
             e = (ngx_event_t *) change_list[nchanges].udata;
             change_list[ev->index] = change_list[nchanges];
@@ -150,6 +165,9 @@ int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
         return NGX_OK;
     }
+
+    /* when a socket is closed kqueue automatically deletes its filters 
+       so we do not need to delete a event explicity before a socket closing */
 
     if (flags & NGX_CLOSE_EVENT) {
         return NGX_OK;
@@ -257,6 +275,11 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
 
+        /* Expired timers must be deleted before the events processing
+           because the new timers can be added during the processing */
+
+        ngx_event_expire_timers(delta);
+
     } else {
         if (events == 0) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
@@ -295,6 +318,9 @@ int ngx_kqueue_process_events(ngx_log_t *log)
 
         ev = (ngx_event_t *) event_list[i].udata;
 
+        /* It's a stale event from a socket
+           that was just closed in this iteration */
+
         if (!ev->active) {
            continue;
         }
@@ -303,6 +329,29 @@ int ngx_kqueue_process_events(ngx_log_t *log)
 
         case EVFILT_READ:
         case EVFILT_WRITE:
+
+            if (ev->first) {
+                if (nchanges > 0
+                    && ev->index < nchanges
+                    && change_list[ev->index].udata == ev) {
+
+                    /* It's a stale event from a socket that was just closed
+                       in this iteration and during processing another socket
+                       was opened with the same number by accept() or socket()
+                       and its event has been added the event to the change_list
+                       but has not been passed to a kernel.  Nevertheless
+                       there's small chance that ngx_kqueue_set_event() has
+                       flushed the new event if the change_list was filled up.
+                       In this very rare case we would get EAGAIN while
+                       a reading or a writing */
+
+                    continue;
+
+                } else {
+                    ev->first = 0;
+                }
+            }
+ 
             ev->available = event_list[i].data;
 
             if (event_list[i].flags & EV_EOF) {
@@ -330,10 +379,6 @@ int ngx_kqueue_process_events(ngx_log_t *log)
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "unknown kevent filter %d" _ event_list[i].filter);
         }
-    }
-
-    if (timer) {
-        ngx_event_expire_timers(delta);
     }
 
     return NGX_OK;

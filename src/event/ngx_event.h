@@ -63,6 +63,7 @@ struct ngx_event_s {
 #endif
     unsigned         write:1;
 
+    unsigned         first:1;
     unsigned         active:1;
     unsigned         ready:1;
     unsigned         timedout:1;
@@ -179,8 +180,8 @@ typedef struct {
 #define NGX_USE_LEVEL_EVENT     0x00010000
 
 
-/* Event filter is deleted before closing file. Has no meaning
-   for select, poll, epoll.
+/* Event filter is deleted before closing file.
+   Has no meaning for select, poll, epoll.
 
    kqueue:     kqueue deletes event filters for file that closed
                so we need only to delete filters in user-level batch array
@@ -193,16 +194,24 @@ typedef struct {
 #define NGX_READ_EVENT     EVFILT_READ
 #define NGX_WRITE_EVENT    EVFILT_WRITE
 
+#define NGX_ENABLE_EVENT   EV_ENABLE
+#define NGX_DISABLE_EVENT  EV_DISABLE
+
+/* NGX_CLOSE_EVENT is the module flag and it would not go into a kernel
+   so we need to choose the value that would not interfere with any existent
+   and future flags. kqueue has such values - EV_FLAG1, EV_EOF and EV_ERROR.
+   They are reserved and cleared on a kernel entrance */
+#undef  NGX_CLOSE_EVENT
+#define NGX_CLOSE_EVENT    EV_FLAG1
+
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  EV_ONESHOT
+#define NGX_CLEAR_EVENT    EV_CLEAR
 
 #ifndef HAVE_CLEAR_EVENT
 #define HAVE_CLEAR_EVENT   1
 #endif
 
-#if (HAVE_CLEAR_EVENT)
-#define NGX_CLEAR_EVENT    EV_CLEAR
-#endif
 
 #elif (HAVE_POLL) || (HAVE_DEVPOLL)
 

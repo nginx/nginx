@@ -39,6 +39,14 @@ static char error_404_page[] =
 ;
 
 
+static char error_408_page[] =
+"<html>" CRLF
+"<head><title>408 Request Time-out</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>408 Request Time-out</h1></center>" CRLF
+;
+
+
 static char error_414_page[] =
 "<html>" CRLF
 "<head><title>414 Request-URI Too Large</title></head>" CRLF
@@ -55,35 +63,54 @@ static char error_500_page[] =
 ;
 
 
+static char error_502_page[] =
+"<html>" CRLF
+"<head><title>502 Bad Gateway</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>502 Bad Gateway</h1></center>" CRLF
+;
+
+
+static char error_504_page[] =
+"<html>" CRLF
+"<head><title>504 Gateway Time-out</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>504 Gateway Time-out</h1></center>" CRLF
+;
+
+
 static ngx_str_t error_pages[] = {
-    { 0, NULL},  /* 301 */
-    { 0, NULL},  /* 302 */
-    { 0, NULL},  /* 303 */
-    { 0, NULL},  /* 304 */
+    ngx_null_string,             /* 301 */
+    ngx_null_string,             /* 302 */
+    ngx_null_string,             /* 303 */
 
-    { sizeof(error_400_page) - 1, error_400_page },
-    { 0, NULL},  /* 401 */
-    { 0, NULL},  /* 402 */
-    { sizeof(error_403_page) - 1, error_403_page },
-    { sizeof(error_404_page) - 1, error_404_page },
-    { 0, NULL},  /* 405 */
-    { 0, NULL},  /* 406 */
-    { 0, NULL},  /* 407 */
-    { 0, NULL},  /* 408 */
-    { 0, NULL},  /* 409 */
-    { 0, NULL},  /* 410 */
-    { 0, NULL},  /* 411 */
-    { 0, NULL},  /* 412 */
-    { 0, NULL},  /* 413 */
-    { sizeof(error_414_page) - 1, error_414_page },
-    { 0, NULL},  /* 415 */
-    { 0, NULL},  /* 416 */
+    ngx_string(error_400_page),
+    ngx_null_string,             /* 401 */
+    ngx_null_string,             /* 402 */
+    ngx_string(error_403_page),
+    ngx_string(error_404_page),
+    ngx_null_string,             /* 405 */
+    ngx_null_string,             /* 406 */
+    ngx_null_string,             /* 407 */
+    ngx_string(error_408_page),
+    ngx_null_string,             /* 409 */
+    ngx_null_string,             /* 410 */
+    ngx_null_string,             /* 411 */
+    ngx_null_string,             /* 412 */
+    ngx_null_string,             /* 413 */
+    ngx_string(error_414_page),
+    ngx_null_string,             /* 415 */
+    ngx_null_string,             /* 416 */
 
-    { sizeof(error_500_page) - 1, error_500_page }
+    ngx_string(error_500_page),
+    ngx_null_string,             /* 501 */
+    ngx_string(error_502_page),
+    ngx_null_string,             /* 503 */
+    ngx_string(error_504_page)
 };
 
 
-int ngx_http_special_response(ngx_http_request_t *r, int error)
+int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
     int          err, len;
     ngx_hunk_t  *message, *tail;
@@ -96,10 +123,10 @@ int ngx_http_special_response(ngx_http_request_t *r, int error)
         err = error - NGX_HTTP_MOVED_PERMANENTLY;
 
     } else if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
-        err = error - NGX_HTTP_BAD_REQUEST + 4;
+        err = error - NGX_HTTP_BAD_REQUEST + 3;
 
     } else {
-        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 4 + 17;
+        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 3 + 17;
     }
 
     if (r->keepalive != 0) {

@@ -5,6 +5,7 @@
 #include <ngx_alloc.h>
 #include <ngx_time.h>
 #include <ngx_http.h>
+#include <ngx_http_config.h>
 
 
 ngx_http_module_t  ngx_http_log_module;

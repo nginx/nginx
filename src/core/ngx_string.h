@@ -49,6 +49,7 @@ typedef struct {
 #define ngx_cpymem(dst, src, n)   memcpy(dst, src, n) + n
 
 char *ngx_cpystrn(char *dst, char *src, size_t n);
+int ngx_atoi(char *line, size_t n);
 
 
 #endif /* _NGX_STRING_H_INCLUDED_ */

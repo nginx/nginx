@@ -236,6 +236,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
     if ((int) timer != INFTIM) {
         gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
+        ngx_event_expire_timers(delta);
 
     } else {
         if (events == 0) {
@@ -303,10 +304,6 @@ int ngx_devpoll_process_events(ngx_log_t *log)
                           "ioctl(DP_POLL) error on %d:%d",
                           event_list[i].fd, event_list[i].revents);
         }
-    }
-
-    if ((int) timer != INFTIM) {
-        ngx_event_expire_timers(delta);
     }
 
     return NGX_OK;

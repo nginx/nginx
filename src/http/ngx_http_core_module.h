@@ -57,12 +57,13 @@ typedef struct {
     void      **loc_conf;      /* pointer to modules loc_conf,
                                   used in translation handler */
 
-    ngx_str_t   doc_root;      /* 'root' */
+    ngx_str_t   doc_root;                /* root */
 
-    time_t      send_timeout;  /* 'send_timeout' */
-    size_t      discarded_buffer_size;   /* 'discarded_buffer_size */
-    time_t      lingering_time;          /* 'lingering_time */
-    ngx_msec_t  lingering_timeout;       /* 'lingering_timeout */
+    time_t      send_timeout;            /* send_timeout */
+    size_t      send_lowat;              /* send_lowa */
+    size_t      discarded_buffer_size;   /* discarded_buffer_size */
+    time_t      lingering_time;          /* lingering_time */
+    ngx_msec_t  lingering_timeout;       /* lingering_timeout */
 } ngx_http_core_loc_conf_t;
 
 
@@ -87,7 +88,9 @@ int ngx_http_core_translate_handler(ngx_http_request_t *r);
 
 int ngx_http_internal_redirect(ngx_http_request_t *r, ngx_str_t uri);
 int ngx_http_error(ngx_http_request_t *r, int error);
-int ngx_http_close_request(ngx_http_request_t *r);
+
+int ngx_http_finalize_request(ngx_http_request_t *r, int error);
+int ngx_http_close_request(ngx_http_request_t *r, int error);
 
 
 #endif /* _NGX_HTTP_CORE_H_INCLUDED_ */

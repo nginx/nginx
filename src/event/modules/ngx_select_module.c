@@ -243,6 +243,7 @@ int ngx_select_process_events(ngx_log_t *log)
 
     if (timer) {
         delta = ngx_msec() - delta;
+        ngx_event_expire_timers(delta);
 
     } else {
         if (ready == 0) {
@@ -310,10 +311,6 @@ int ngx_select_process_events(ngx_log_t *log)
 
     if (ready != 0) {
         ngx_log_error(NGX_LOG_ALERT, log, 0, "select ready != events");
-    }
-
-    if (timer) {
-        ngx_event_expire_timers(delta);
     }
 
     return NGX_OK;

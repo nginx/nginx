@@ -19,12 +19,15 @@ int ngx_http_proxy_handler(ngx_http_request_t *r);
 
 static int ngx_http_core_index_handler(ngx_http_request_t *r);
 
-static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy);
-static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
-                                                                  char *dummy);
+static int ngx_http_core_init(ngx_pool_t *pool);
+
 static void *ngx_http_core_create_srv_conf(ngx_pool_t *pool);
 static char *ngx_http_core_init_srv_conf(ngx_pool_t *pool, void *conf);
 static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool);
+
+static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy);
+static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
+                                                                  char *dummy);
 static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 
 
@@ -108,24 +111,18 @@ static ngx_command_t  ngx_http_core_commands[] = {
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, lingering_timeout)},
 
-    {ngx_string(""), 0, NULL, 0, 0}
+    {ngx_null_string, 0, NULL, 0, 0}
 };
 
 
 ngx_http_module_t  ngx_http_core_module_ctx = {
-    NGX_HTTP_MODULE,
-
     ngx_http_core_create_srv_conf,         /* create server config */
     ngx_http_core_init_srv_conf,           /* init server config */
+
     ngx_http_core_create_loc_conf,         /* create location config */
     NULL,                                  /* merge location config */
 
-    ngx_http_core_translate_handler,       /* translate handler */
-
-    NULL,                                  /* output header filter */
-    NULL,                                  /* next output header filter */
-    NULL,                                  /* output body filter */
-    NULL                                   /* next output body filter */
+    NULL                                   /* init filters */
 };
 
 
@@ -134,13 +131,14 @@ ngx_module_t  ngx_http_core_module = {
     &ngx_http_core_module_ctx,             /* module context */
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
-    NULL                                   /* init module */
+    ngx_http_core_init                     /* init module */
 };
 
 
 int ngx_http_handler(ngx_http_request_t *r)
 {
     int                      rc, a, n, i;
+    ngx_http_handler_pt     *h;
     ngx_http_module_t       *module;
     ngx_http_conf_ctx_t     *ctx;
     ngx_http_in_port_t      *in_port;
@@ -149,8 +147,8 @@ int ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->unexpected_eof = 0;
 
+    r->keepalive = 1;
     r->lingering_close = 1;
-    r->keepalive = 0;
 
 #if 1
     r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
@@ -213,34 +211,25 @@ ngx_log_debug(r->connection->log, "srv_conf: %0x" _ r->srv_conf);
 ngx_log_debug(r->connection->log, "loc_conf: %0x" _ r->loc_conf);
 
     /* run translation phase */
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_HTTP_MODULE_TYPE) {
+
+    h = (ngx_http_handler_pt *) ngx_http_translate_handlers.elts;
+    for (i = 0; i < ngx_http_translate_handlers.nelts; i++) {
+        rc = h[i](r);
+
+        if (rc == NGX_DECLINED) {
             continue;
         }
 
-        module = (ngx_http_module_t *) ngx_modules[i]->ctx;
-
-        if (module->translate_handler == NULL) {
-            continue;
-        }
-
-        rc = module->translate_handler(r);
         if (rc == NGX_OK) {
             break;
         }
 
         if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-            return ngx_http_special_response(r, rc);
+            return rc;
         }
     }
 
-    rc = r->handler(r);
-
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-        return ngx_http_special_response(r, rc);
-    }
-
-    return rc;
+    return r->handler(r);
 }
 
 
@@ -252,27 +241,27 @@ int ngx_http_core_translate_handler(ngx_http_request_t *r)
     ngx_table_elt_t            *h;
     ngx_http_server_name_t     *s_name;
     ngx_http_core_srv_conf_t   *scf;
-    ngx_http_core_loc_conf_t  **lcf, *loc_conf;
+    ngx_http_core_loc_conf_t   *lcf, **plcf;
 
     scf = (ngx_http_core_srv_conf_t *)
-                     ngx_http_get_module_srv_conf(r, ngx_http_core_module_ctx);
+                         ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
     /* find location config */
-    lcf = (ngx_http_core_loc_conf_t **) scf->locations.elts;
+    plcf = (ngx_http_core_loc_conf_t **) scf->locations.elts;
     for (i = 0; i < scf->locations.nelts; i++) {
-ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
-         if (r->uri.len < lcf[i]->name.len) {
+ngx_log_debug(r->connection->log, "trans: %s" _ plcf[i]->name.data);
+         if (r->uri.len < plcf[i]->name.len) {
              continue;
          }
 
-         rc = ngx_strncmp(r->uri.data, lcf[i]->name.data, lcf[i]->name.len);
+         rc = ngx_strncmp(r->uri.data, plcf[i]->name.data, plcf[i]->name.len);
 
          if (rc < 0) {
              break;
          }
 
          if (rc == 0) {
-             r->loc_conf = lcf[i]->loc_conf;
+             r->loc_conf = plcf[i]->loc_conf;
          }
     }
 
@@ -286,10 +275,10 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
         return NGX_OK;
     }
 
-    loc_conf = (ngx_http_core_loc_conf_t *)
-                     ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
+    lcf = (ngx_http_core_loc_conf_t *)
+                         ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-ngx_log_debug(r->connection->log, "doc_root: %08x" _ &loc_conf->doc_root);
+ngx_log_debug(r->connection->log, "doc_root: %08x" _ &lcf->doc_root);
 
     s_name = (ngx_http_server_name_t *) scf->server_names.elts;
 
@@ -314,14 +303,14 @@ ngx_log_debug(r->connection->log, "doc_root: %08x" _ &loc_conf->doc_root);
     port_len = (r->port != 80) ? r->port_name.len : 0;
 
     /* "+ 7" is "http://" */
-    if (loc_conf->doc_root.len > 7 + s_name[0].name.len + port_len) {
-        len = loc_conf->doc_root.len;
+    if (lcf->doc_root.len > 7 + s_name[0].name.len + port_len) {
+        len = lcf->doc_root.len;
         f_offset = 0;
         l_offset = len - (7 + s_name[0].name.len + port_len);
 
     } else {
         len = 7 + s_name[0].name.len + port_len;
-        f_offset = len - loc_conf->doc_root.len;
+        f_offset = len - lcf->doc_root.len;
         l_offset = 0;
     }
 
@@ -334,8 +323,8 @@ ngx_log_debug(r->connection->log, "doc_root: %08x" _ &loc_conf->doc_root);
     r->file.name.data = buf + f_offset;
     location = buf + l_offset;
 
-    last = ngx_cpystrn(ngx_cpystrn(r->file.name.data, loc_conf->doc_root.data,
-                                   loc_conf->doc_root.len + 1),
+    last = ngx_cpystrn(ngx_cpystrn(r->file.name.data, lcf->doc_root.data,
+                                   lcf->doc_root.len + 1),
                        r->uri.data, r->uri.len + 1);
 
     r->file.name.len = last - r->file.name.data;
@@ -344,9 +333,9 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
 
 #if (WIN9X)
 
-    /* There is no way to open file or directory in Win9X with
-       one syscall: Win9X has not FILE_FLAG_BACKUP_SEMANTICS flag.
-       so we need to check its type before opening */
+    /* There is no way to open a file or a directory in Win9X with
+       one syscall: Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag.
+       so we need to check its type before the opening */
 
     r->file.info.dwFileAttributes = GetFileAttributes(r->file.name.data);
     if (r->file.info.dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
@@ -451,7 +440,7 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
 
-    /* TODO: r->handler = loc_conf->default_handler; */
+    /* TODO: r->handler = lcf->default_handler; */
     /* STUB */ r->handler = ngx_http_static_handler;
 
     return NGX_OK;
@@ -503,7 +492,7 @@ int ngx_http_redirect(ngx_http_request_t *r, int redirect)
 
     /* log request */
 
-    return ngx_http_close_request(r);
+    return ngx_http_close_request(r, 0);
 }
 
 
@@ -514,17 +503,20 @@ int ngx_http_error(ngx_http_request_t *r, int error)
 
     /* log request */
 
-    ngx_http_special_response(r, error);
-    return ngx_http_close_request(r);
+    ngx_http_special_response_handler(r, error);
+    return ngx_http_close_request(r, 0);
 }
 
 
-int ngx_http_close_request(ngx_http_request_t *r)
+int ngx_http_close_request(ngx_http_request_t *r, int error)
 {
     ngx_connection_t    *c;
     ngx_http_log_ctx_t  *ctx;
 
     c = r->connection;
+    if (error) {
+        r->headers_out.status = error;
+    }
 
     ngx_http_log_handler(r);
 
@@ -573,14 +565,26 @@ int ngx_http_internal_redirect(ngx_http_request_t *r, ngx_str_t uri)
 }
 
 
+static int ngx_http_core_init(ngx_pool_t *pool)
+{
+    ngx_http_handler_pt  *h;
+
+    ngx_test_null(h, ngx_push_array(&ngx_http_translate_handlers), NGX_ERROR);
+
+    *h = ngx_http_core_translate_handler;
+
+    return NGX_OK;
+}
+
+
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 {
-    int                        i, j;
-    char                      *rv;
-    ngx_http_module_t         *module;
-    ngx_http_conf_ctx_t       *ctx, *prev;
-    ngx_http_core_srv_conf_t  *scf;
-    ngx_http_core_loc_conf_t **lcf;
+    int                         i, j;
+    char                       *rv;
+    ngx_http_module_t          *module;
+    ngx_http_conf_ctx_t        *ctx, *prev;
+    ngx_http_core_srv_conf_t   *scf;
+    ngx_http_core_loc_conf_t  **plcf;
 
     ngx_test_null(ctx,
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
@@ -604,13 +608,13 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         module = (ngx_http_module_t *) ngx_modules[i]->ctx;
 
         if (module->create_srv_conf) {
-            ngx_test_null(ctx->srv_conf[module->index],
+            ngx_test_null(ctx->srv_conf[ngx_modules[i]->index],
                           module->create_srv_conf(cf->pool),
                           NGX_CONF_ERROR);
         }
 
         if (module->create_loc_conf) {
-            ngx_test_null(ctx->loc_conf[module->index],
+            ngx_test_null(ctx->loc_conf[ngx_modules[i]->index],
                           module->create_loc_conf(cf->pool),
                           NGX_CONF_ERROR);
         }
@@ -625,10 +629,10 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         return rv;
 
 
-    scf = ctx->srv_conf[ngx_http_core_module_ctx.index];
+    scf = ctx->srv_conf[ngx_http_core_module.index];
     scf->ctx = ctx;
 
-    lcf = (ngx_http_core_loc_conf_t **)scf->locations.elts;
+    plcf = (ngx_http_core_loc_conf_t **)scf->locations.elts;
 
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_HTTP_MODULE_TYPE) {
@@ -639,7 +643,7 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 
         if (module->init_srv_conf) {
             if (module->init_srv_conf(cf->pool,
-                                      ctx->srv_conf[module->index])
+                                      ctx->srv_conf[ngx_modules[i]->index])
                                                            == NGX_CONF_ERROR) {
                 return NGX_CONF_ERROR;
             }
@@ -647,16 +651,16 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 
         if (module->merge_loc_conf) {
             if (module->merge_loc_conf(cf->pool,
-                                       prev->loc_conf[module->index],
-                                       ctx->loc_conf[module->index])
+                                       prev->loc_conf[ngx_modules[i]->index],
+                                       ctx->loc_conf[ngx_modules[i]->index])
                                                            == NGX_CONF_ERROR) {
                 return NGX_CONF_ERROR;
             }
 
             for (j = 0; j < scf->locations.nelts; j++) {
                 if (module->merge_loc_conf(cf->pool,
-                                           ctx->loc_conf[module->index],
-                                           lcf[j]->loc_conf[module->index])
+                                      ctx->loc_conf[ngx_modules[i]->index],
+                                      plcf[j]->loc_conf[ngx_modules[i]->index])
                                                            == NGX_CONF_ERROR) {
                     return NGX_CONF_ERROR;
                 }
@@ -676,7 +680,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     ngx_http_module_t         *module;
     ngx_http_conf_ctx_t       *ctx, *prev;
     ngx_http_core_srv_conf_t  *scf;
-    ngx_http_core_loc_conf_t  *lcf, **loc;
+    ngx_http_core_loc_conf_t  *lcf, **plcf;
 
     ngx_test_null(ctx,
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
@@ -697,7 +701,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         module = (ngx_http_module_t *) ngx_modules[i]->ctx;
 
         if (module->create_loc_conf) {
-            ngx_test_null(ctx->loc_conf[module->index],
+            ngx_test_null(ctx->loc_conf[ngx_modules[i]->index],
                           module->create_loc_conf(cf->pool),
                           NGX_CONF_ERROR);
         }
@@ -712,8 +716,8 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 
     scf = (ngx_http_core_srv_conf_t *)
                                      ctx->srv_conf[ngx_http_core_module.index];
-    ngx_test_null(loc, ngx_push_array(&scf->locations), NGX_CONF_ERROR);
-    *loc = lcf;
+    ngx_test_null(plcf, ngx_push_array(&scf->locations), NGX_CONF_ERROR);
+    *plcf = lcf;
 
     cf->ctx = ctx;
     rv = ngx_conf_parse(cf, NULL);
@@ -789,7 +793,7 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool)
     lcf->doc_root.len = 4;
     lcf->doc_root.data = "html";
 
-    lcf->send_timeout = 10;
+    lcf->send_timeout = 10000;
     lcf->discarded_buffer_size = 1500;
     lcf->lingering_time = 30000;
     lcf->lingering_timeout = 5000;

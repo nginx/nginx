@@ -16,6 +16,8 @@
 static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool);
 static char *ngx_http_write_filter_merge_conf(ngx_pool_t *pool,
                                               void *parent, void *child);
+static void ngx_http_write_filter_init(ngx_pool_t *pool,
+                                       ngx_http_conf_filter_t *cf);
 
 
 static ngx_command_t ngx_http_write_filter_commands[] = {
@@ -31,19 +33,13 @@ static ngx_command_t ngx_http_write_filter_commands[] = {
 
 
 ngx_http_module_t  ngx_http_write_filter_module_ctx = {
-    NGX_HTTP_MODULE,
-
     NULL,                                  /* create server config */
     NULL,                                  /* init server config */
+
     ngx_http_write_filter_create_conf,     /* create location config */
     ngx_http_write_filter_merge_conf,      /* merge location config */
 
-    NULL,                                  /* translate handler */
-
-    NULL,                                  /* output header filter */
-    NULL,                                  /* next output header filter */
-    ngx_http_write_filter,                 /* output body filter */
-    NULL,                                  /* next output body filter */
+    ngx_http_write_filter_init             /* init filters */
 };
 
 
@@ -153,6 +149,13 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     } else {
         return NGX_AGAIN;
     }
+}
+
+
+static void ngx_http_write_filter_init(ngx_pool_t *pool,
+                                       ngx_http_conf_filter_t *cf)
+{
+    cf->output_body_filter = ngx_http_write_filter;
 }
 
 

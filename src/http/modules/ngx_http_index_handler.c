@@ -35,20 +35,13 @@ static ngx_command_t ngx_http_index_commands[] = {
 
 
 ngx_http_module_t  ngx_http_index_module_ctx = {
-    NGX_HTTP_MODULE,
-
     NULL,                                  /* create server config */
     NULL,                                  /* init server config */
+
     ngx_http_index_create_conf,            /* create location config */
     ngx_http_index_merge_conf,             /* merge location config */
 
-    NULL,                                  /* translate handler */
-
-    NULL,                                  /* output header filter */
-    NULL,                                  /* next output header filter */
-    NULL,                                  /* output body filter */
-    NULL,                                  /* next output body filter */
-
+    NULL                                   /* init filters */
 };
 
 
@@ -288,18 +281,18 @@ static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
 static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
                                       char *conf)
 {
-    ngx_http_index_conf_t *icf = (ngx_http_index_conf_t *) conf;
+    ngx_http_index_conf_t *lcf = (ngx_http_index_conf_t *) conf;
     int  i;
     ngx_str_t  *index, *value;
 
     value = (ngx_str_t *) cf->args->elts;
     for (i = 1; i < cf->args->nelts; i++) {
-        ngx_test_null(index, ngx_push_array(icf->indices), NGX_CONF_ERROR);
+        ngx_test_null(index, ngx_push_array(lcf->indices), NGX_CONF_ERROR);
         index->len = value[i].len;
         index->data = value[i].data;
 
-        if (icf->max_index_len < index->len) {
-            icf->max_index_len = index->len;
+        if (lcf->max_index_len < index->len) {
+            lcf->max_index_len = index->len;
         }
     }
 

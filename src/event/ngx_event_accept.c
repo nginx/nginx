@@ -117,6 +117,7 @@ int ngx_event_accept(ngx_event_t *ev)
         c->fd = s;
         c->unexpected_eof = 1;
         wev->write = 1;
+        rev->first = wev->first = 1;
 
 #if (HAVE_AIO_EVENT)
         if (!(ngx_event_flags & NGX_HAVE_AIO_EVENT)) {

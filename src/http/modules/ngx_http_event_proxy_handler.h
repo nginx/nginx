@@ -20,6 +20,41 @@ typedef struct {
 } ngx_http_proxy_loc_conf_t;
 
 
+typedef struct {
+    ngx_str_t  host;
+    ngx_str_t  uri;
+    ngx_str_t  host_header;
+    ngx_str_t  port_name;
+    int        port;
+} ngx_http_proxy_upstream_url_t;
+
+
+typedef struct {
+    struct     sockaddr_in;
+    ngx_str_t  name;
+    time_t     access;
+    int        fails;
+} ngx_http_proxy_upstream_t;
+
+
+typedef struct {
+    int                         amount;
+    ngx_http_proxy_upstream_t  *upstreams;
+} ngx_http_proxy_upstream_farm_t;
+
+
+#if 0
+/* location /one/ { proxy_pass  http://localhost:9000/two/; } */
+
+typedef struct {
+                           /* "/one/" */
+                           /* "http://localhost:9000/two/" */
+                           /* "/two/" */
+                *upstream_farm;
+} ngx_http_proxy_pass_t;
+#endif
+
+
 typedef struct ngx_http_proxy_ctx_s  ngx_http_proxy_ctx_t;
 
 struct ngx_http_proxy_ctx_s {
@@ -30,8 +65,15 @@ struct ngx_http_proxy_ctx_s {
 
     int           hunk_n;
 
-    ngx_connection_t  *connection;
+    ngx_connection_t             *connection;
+    ngx_http_request_t           *request;
     ngx_http_proxy_headers_in_t  *headers_in;
+
+    ngx_http_proxy_upstream_farm_t   *upstream;
+    int                               cur_upstream;
+    int                               upstreams;
+
+    ngx_log_t    *log;
 
     ngx_hunk_t  *header_in;
     int          state;
@@ -41,6 +83,14 @@ struct ngx_http_proxy_ctx_s {
     char        *request_end;
     int        (*state_handler)(ngx_http_request_t *r, ngx_http_proxy_ctx_t *p);
 };
+
+
+typedef struct {
+    char  *action;
+    char  *upstream;
+    char  *client;
+    char  *url;
+} ngx_http_proxy_log_ctx_t;
 
 
 extern ngx_module_t  ngx_http_proxy_module;

@@ -28,6 +28,7 @@ int  ngx_http_large_client_header = 1;
 int  ngx_http_url_in_error_log = 1;
 
 
+ngx_array_t  ngx_http_translate_handlers;
 ngx_array_t  ngx_http_index_handlers;
 
 
@@ -61,13 +62,12 @@ ngx_module_t  ngx_http_module = {
 
 static void ngx_http_init_filters(ngx_pool_t *pool, ngx_module_t **modules)
 {
-    int  i;
-    ngx_http_module_t  *module;
-    int (*ohf)(ngx_http_request_t *r);
-    int (*obf)(ngx_http_request_t *r, ngx_chain_t *ch);
+    int                      i;
+    ngx_http_module_t       *module;
+    ngx_http_conf_filter_t   cf;
 
-    ohf = NULL;
-    obf = NULL;
+    cf.output_header_filter = NULL;
+    cf.output_body_filter = NULL;
 
     for (i = 0; modules[i]; i++) {
         if (modules[i]->type != NGX_HTTP_MODULE_TYPE) {
@@ -76,18 +76,12 @@ static void ngx_http_init_filters(ngx_pool_t *pool, ngx_module_t **modules)
 
         module = (ngx_http_module_t *) modules[i]->ctx;
 
-        if (module->output_header_filter) {
-            module->next_output_header_filter = ohf;
-            ohf = module->output_header_filter;
-        }
-
-        if (module->output_body_filter) {
-            module->next_output_body_filter = obf;
-            obf = module->output_body_filter;
+        if (module->init_filters) {
+            module->init_filters(pool, &cf);
         }
     }
 
-    ngx_http_top_header_filter = ohf;
+    ngx_http_top_header_filter = cf.output_header_filter;
 }
 
 
@@ -119,10 +113,6 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
             continue;
         }
 
-        /* STUB */
-        module = (ngx_http_module_t *) ngx_modules[i]->ctx;
-        module->index = ngx_http_max_module;
-
         ngx_modules[i]->index = ngx_http_max_module++;
     }
 
@@ -139,7 +129,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
         module = (ngx_http_module_t *) ngx_modules[i]->ctx;
 
         if (module->create_loc_conf) {
-            ngx_test_null(ctx->loc_conf[module->index],
+            ngx_test_null(ctx->loc_conf[ngx_modules[i]->index],
                           module->create_loc_conf(cf->pool),
                           NGX_CONF_ERROR);
         }
@@ -172,6 +162,9 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     }
     /**/
 #endif
+
+    ngx_init_array(ngx_http_translate_handlers,
+                   cf->pool, 10, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
 
     ngx_init_array(ngx_http_index_handlers,
                    cf->pool, 3, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
