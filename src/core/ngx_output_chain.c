@@ -12,7 +12,7 @@
 #define NGX_NONE      1
 
 
-ngx_inline static ngx_int_t
+static ngx_inline ngx_int_t
     ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf);
 static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
                                            ngx_uint_t sendfile);
@@ -188,7 +188,7 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 }
 
 
-ngx_inline static ngx_int_t
+static ngx_inline ngx_int_t
     ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
 {
     if (ngx_buf_special(buf)) {

@@ -165,6 +165,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, temp_path),
       (void *) ngx_garbage_collector_temp_handler },
 
+    { ngx_string("proxy_max_temp_file_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, max_temp_file_size),
+      NULL },
+
     { ngx_string("proxy_temp_file_write_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
@@ -954,12 +961,7 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->read_timeout = NGX_CONF_UNSET_MSEC;
     conf->busy_buffers_size = NGX_CONF_UNSET_SIZE;
 
-    /*
-     * "proxy_max_temp_file_size" is hardcoded to 1G for reverse proxy,
-     * it should be configurable in the generic proxy
-     */
-    conf->max_temp_file_size = 1024 * 1024 * 1024;
-
+    conf->max_temp_file_size = NGX_CONF_UNSET_SIZE;
     conf->temp_file_write_size = NGX_CONF_UNSET_SIZE;
 
     /* "proxy_cyclic_temp_file" is disabled */
@@ -1059,11 +1061,25 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
                               prev->max_temp_file_size, NGX_CONF_UNSET_SIZE);
 
     if (conf->max_temp_file_size == NGX_CONF_UNSET_SIZE) {
-        conf->max_temp_file_size = 2 * size;
 
-    } else if (conf->max_temp_file_size < size) {
+        /*
+         * "proxy_max_temp_file_size" is set to 1G for reverse proxy,
+         * it should be much less in the generic proxy
+         */
+
+        conf->max_temp_file_size = 1024 * 1024 * 1024;
+
+#if 0
+        conf->max_temp_file_size = 2 * size;
+#endif
+
+
+    } else if (conf->max_temp_file_size != 0
+               && conf->max_temp_file_size < size)
+    {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-             "\"proxy_max_temp_file_size\" must be equal or bigger than "
+             "\"proxy_max_temp_file_size\" must be equal to zero to disable "
+             "the temporary files usage or must be equal or bigger than "
              "maximum of the value of \"proxy_header_buffer_size\" and "
              "one of the \"proxy_buffers\"");
 

@@ -3,6 +3,7 @@
 
 
 cat << END                                                        >> $MAKEFILE
+
 install:
 	test -d $PREFIX || mkdir -p $PREFIX
 

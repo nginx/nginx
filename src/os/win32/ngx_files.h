@@ -44,7 +44,7 @@
 #define NGX_FILE_APPEND             0
 
 
-int ngx_file_append_mode(ngx_fd_t fd);
+ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_file_append_mode_n      "SetFilePointer()"
 
 
@@ -71,10 +71,11 @@ int ngx_file_append_mode(ngx_fd_t fd);
 
 #define ngx_rename_file             MoveFile
 #define ngx_rename_file_n           "MoveFile()"
-int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool);
+ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
+                                ngx_pool_t *pool);
 
 
-int ngx_file_info(u_char *filename, ngx_file_info_t *fi);
+ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 #define ngx_file_info_n             "GetFileAttributesEx()"
 
 
@@ -109,11 +110,11 @@ int ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 #define NGX_DIR_MASK_LEN            2
 
 
-int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
+ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_open_dir_n              "FindFirstFile()"
 
 
-int ngx_read_dir(ngx_dir_t *dir);
+ngx_int_t ngx_read_dir(ngx_dir_t *dir);
 #define ngx_read_dir_n              "FindNextFile()"
 
 

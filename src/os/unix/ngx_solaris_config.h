@@ -49,14 +49,6 @@
 #include <ngx_auto_config.h>
 
 
-#ifndef HAVE_SELECT
-#define HAVE_SELECT  1
-#endif
-
-
-#ifndef HAVE_POLL
-#define HAVE_POLL  1
-#endif
 #if (HAVE_POLL)
 #include <poll.h>
 #endif

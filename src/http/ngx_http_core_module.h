@@ -142,6 +142,8 @@ struct ngx_http_core_loc_conf_s {
 #endif
 
     unsigned      exact_match:1;
+    unsigned      noregex:1;
+
     unsigned      auto_redirect:1;
     unsigned      alias:1;
 

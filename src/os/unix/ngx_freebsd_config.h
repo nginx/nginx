@@ -60,41 +60,23 @@
 #include <ngx_auto_config.h>
 
 
-#ifndef HAVE_SELECT
-#define HAVE_SELECT  1
-#endif
-
-
-#ifndef HAVE_POLL
-#define HAVE_POLL  1
-#endif
 #if (HAVE_POLL)
 #include <poll.h>
 #endif
 
-       /* FreeBSD aio supported via kqueue */
-
-#if (__FreeBSD__ == 4 && __FreeBSD_version >= 430000) \
-    || __FreeBSD_version >= 500014
-
-#ifndef HAVE_AIO
-#define HAVE_AIO  1
-#endif
-
-#endif
 
 #if (HAVE_AIO)
 #include <aio.h>
 #endif
 
 
-#if defined SO_ACCEPTFILTER && !defined HAVE_DEFERRED_ACCEPT
-#define HAVE_DEFERRED_ACCEPT  1
+#if (HAVE_KQUEUE)
+#include <sys/event.h>
 #endif
 
 
-#if (HAVE_KQUEUE)
-#include <sys/event.h>
+#if defined SO_ACCEPTFILTER && !defined HAVE_DEFERRED_ACCEPT
+#define HAVE_DEFERRED_ACCEPT  1
 #endif
 
 

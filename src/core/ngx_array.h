@@ -26,7 +26,7 @@ void ngx_destroy_array(ngx_array_t *a);
 void *ngx_push_array(ngx_array_t *a);
 
 
-ngx_inline static ngx_int_t ngx_array_init(ngx_array_t *array, ngx_pool_t *pool,
+static ngx_inline ngx_int_t ngx_array_init(ngx_array_t *array, ngx_pool_t *pool,
                                            ngx_uint_t n, size_t size)
 {
     if (!(array->elts = ngx_palloc(pool, n * size))) {

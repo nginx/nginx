@@ -30,8 +30,9 @@ ngx_os_io_t ngx_os_io = {
 
 ngx_int_t ngx_os_init(ngx_log_t *log)
 {
-    int     name[2];
-    size_t  len;
+    int        name[2];
+    size_t     len;
+    ngx_err_t  err;
 
     name[0] = CTL_KERN;
     name[1] = KERN_OSTYPE;
@@ -58,10 +59,16 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     name[1] = KERN_RTSIGMAX;
     len = sizeof(ngx_linux_rtsig_max);
     if (sysctl(name, sizeof(name), &ngx_linux_rtsig_max, &len, NULL, 0) == -1) {
-        ngx_log_error(NGX_LOG_INFO, log, ngx_errno,
-                      "sysctl(KERN_RTSIGMAX) failed");
-        ngx_linux_rtsig_max = 0;
+        err = ngx_errno;
 
+        if (err != NGX_ENOTDIR) {
+            ngx_log_error(NGX_LOG_ALERT, log, err,
+                          "sysctl(KERN_RTSIGMAX) failed");
+
+            return NGX_ERROR;
+        }
+
+        ngx_linux_rtsig_max = 0;
     }
 
     ngx_init_setproctitle(log);

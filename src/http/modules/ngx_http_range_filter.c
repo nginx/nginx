@@ -340,7 +340,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    boundary = ngx_next_temp_number(0);
+    boundary = (uint32_t) ngx_next_temp_number(0);
 
     /*
      * The boundary header of the range:

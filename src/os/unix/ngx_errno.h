@@ -34,6 +34,7 @@ typedef int               ngx_err_t;
 #define NGX_ETIMEDOUT     ETIMEDOUT
 #define NGX_ECONNREFUSED  ECONNREFUSED
 #define NGX_EHOSTUNREACH  EHOSTUNREACH
+#define NGX_ENOSYS        ENOSYS
 #define NGX_ECANCELED     ECANCELED
 #define NGX_ENOMOREFILES  0
 

@@ -52,6 +52,8 @@ HTTP_PROXY=YES
 
 IMAP=NO
 
+MODULES=
+
 USE_PCRE=NO
 PCRE=NONE
 PCRE_OPT=
@@ -117,6 +119,8 @@ do
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
 
         --with-imap)                     IMAP=YES                   ;;
+
+        --with-module=*)                 NGX_MODULES="$NGX_MODULES $values" ;;
 
         --with-cc=*)                     CC="$value"                ;;
         --with-cpp=*)                    CPP="$value"               ;;

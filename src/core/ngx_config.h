@@ -109,7 +109,7 @@ typedef long               ngx_flag_t;
 
 /* TODO: auto_conf: ngx_inline   inline __inline __inline__ */
 #ifndef ngx_inline
-#define ngx_inline   inline
+#define ngx_inline   __inline
 #endif
 
 #define NGX_ACCEPT_THRESHOLD   100

@@ -9,71 +9,8 @@
 #include <ngx_garbage_collector.h>
 
 
-int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
-                                       ngx_dir_t *dir);
 
-
-static int ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level);
-
-
-
-#if 0
-
-{
-    ngx_test_null(cycle->timer_events,
-                  ngx_alloc(sizeof(ngx_event_t) * TIMERS, cycle->log),
-                  NGX_ERROR);
-
-    ngx_event_timer_init(cycle);
-}
-
-
-void garbage_collector()
-{
-    ngx_msec_t        timer;
-    struct timeval    tv;
-    ngx_epoch_msec_t  delta;
-
-    for ( ;; ) {
-        timer = ngx_event_find_timer();
-
-        ngx_gettimeofday(&tv);
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
-        msleep(timer);
-
-        ngx_gettimeofday(&tv);
-
-        ngx_cached_time = tv.tv_sec;
-        ngx_time_update();
-
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
-
-        ngx_event_expire_timers((ngx_msec_t) delta);
-    }
-}
-
-#endif
-
-
-void stub_init(ngx_cycle_t *cycle)
-{
-    ngx_uint_t    i;
-    ngx_gc_t      ctx;
-    ngx_path_t  **path;
-
-    path = cycle->pathes.elts;
-    for (i = 0; i < cycle->pathes.nelts; i++) {
-        ctx.path = path[i];
-        ctx.log = cycle->log;
-        ctx.handler = path[i]->gc_handler;
-
-        ngx_collect_garbage(&ctx, &path[i]->name, 0);
-    }
-}
-
-
-static int ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level)
+ngx_int_t ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level)
 {
     int         rc;
     u_char     *last;
@@ -224,7 +161,8 @@ static int ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level)
 
         } else {
             ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
-                          "\"%s\" has unknown file type, deleting", fname.data);
+                          "the file \"%s\" has unknown type, deleting",
+                          fname.data);
 
             if (ngx_delete_file(fname.data) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
@@ -249,8 +187,8 @@ static int ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level)
 }
 
 
-int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
-                                       ngx_dir_t *dir)
+ngx_int_t ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
+                                             ngx_dir_t *dir)
 {
     /*
      * We use mtime only and do not use atime because:
@@ -264,7 +202,7 @@ int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
     }
 
     ngx_log_error(NGX_LOG_NOTICE, ctx->log, 0,
-                  "delete stale temporary \"%s\"", name->data);
+                  "delete the stale temporary file \"%s\"", name->data);
 
     if (ngx_delete_file(name->data) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,

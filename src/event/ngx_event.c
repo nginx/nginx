@@ -12,31 +12,12 @@
 #define DEFAULT_CONNECTIONS  512
 
 
-extern ngx_module_t ngx_select_module;
-extern ngx_event_module_t ngx_select_module_ctx;
-
-#if (HAVE_KQUEUE)
-#include <ngx_kqueue_module.h>
-#endif
-
-#if (HAVE_DEVPOLL)
+extern ngx_module_t ngx_kqueue_module;
 extern ngx_module_t ngx_devpoll_module;
-extern ngx_event_module_t ngx_devpoll_module_ctx;
-#endif
-
-#if (HAVE_EPOLL)
 extern ngx_module_t ngx_epoll_module;
-extern ngx_event_module_t ngx_epoll_module_ctx;
-#endif
-
-#if (HAVE_RTSIG)
 extern ngx_module_t ngx_rtsig_module;
-extern ngx_event_module_t ngx_rtsig_module_ctx;
-#endif
+extern ngx_module_t ngx_select_module;
 
-#if (HAVE_AIO)
-#include <ngx_aio_module.h>
-#endif
 
 static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle);
 static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle);
@@ -631,13 +612,13 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     && old_ecf->use != ecf->use)
                 {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                        "when the server runs without a master process "
-                        "the \"%V\" event type must be the same as "
-                        "in previous configuration - \"%s\" "
-                        "and it can not be changed on the fly, "
-                        "to change it you need to stop server "
-                        "and start it again",
-                        &value[1], old_ecf->name);
+                               "when the server runs without a master process "
+                               "the \"%V\" event type must be the same as "
+                               "in previous configuration - \"%s\" "
+                               "and it can not be changed on the fly, "
+                               "to change it you need to stop server "
+                               "and start it again",
+                               &value[1], old_ecf->name);
 
                     return NGX_CONF_ERROR;
                 }
@@ -726,99 +707,122 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_event_conf_t  *ecf = conf;
+
+    int                  fd, rtsig;
+    ngx_int_t            i, connections;
+    ngx_module_t        *module;
+    ngx_core_conf_t     *ccf;
+    ngx_event_module_t  *event_module;
+
+    connections = NGX_CONF_UNSET_UINT;
+    module = NULL;
+    rtsig = 0;
+    fd = 0;
+
+#if (HAVE_EPOLL) && !(TEST_BUILD_EPOLL)
+
+    fd = epoll_create(100);
+
+    if (fd != -1) {
+        close(fd);
+        connections = DEFAULT_CONNECTIONS;
+        module = &ngx_epoll_module;
+
+    } else if (ngx_errno != NGX_ENOSYS) {
+        connections = DEFAULT_CONNECTIONS;
+        module = &ngx_epoll_module;
+    }
+
+#endif
+
 #if (HAVE_RTSIG)
-    ngx_core_conf_t  *ccf;
+
+    if (module == NULL) {
+        connections = DEFAULT_CONNECTIONS;
+        module = &ngx_rtsig_module;
+        rtsig = 1;
+    }
+
+#endif
+
+#if (HAVE_DEVPOLL)
+
+    connections = DEFAULT_CONNECTIONS;
+    module = &ngx_devpoll_module;
+
 #endif
 
 #if (HAVE_KQUEUE)
 
-    ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-    ngx_conf_init_unsigned_value(ecf->use, ngx_kqueue_module.ctx_index);
-    ngx_conf_init_ptr_value(ecf->name, ngx_kqueue_module_ctx.name->data);
+    connections = DEFAULT_CONNECTIONS;
+    module = &ngx_kqueue_module;
 
-#elif (HAVE_DEVPOLL)
-
-    ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-    ngx_conf_init_unsigned_value(ecf->use, ngx_devpoll_module.ctx_index);
-    ngx_conf_init_ptr_value(ecf->name, ngx_devpoll_module_ctx.name->data);
-
-#elif (HAVE_EPOLL)
-
-    ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-    ngx_conf_init_unsigned_value(ecf->use, ngx_epoll_module.ctx_index);
-    ngx_conf_init_ptr_value(ecf->name, ngx_epoll_module_ctx.name->data);
-
-#elif (HAVE_RTSIG)
-
-    ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-    ngx_conf_init_unsigned_value(ecf->use, ngx_rtsig_module.ctx_index);
-    ngx_conf_init_ptr_value(ecf->name, ngx_rtsig_module_ctx.name->data);
-
-#elif (HAVE_SELECT)
-
-#if (NGX_WIN32)
-    ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-#else
-    ngx_conf_init_unsigned_value(ecf->connections,
-          FD_SETSIZE < DEFAULT_CONNECTIONS ? FD_SETSIZE : DEFAULT_CONNECTIONS);
 #endif
 
-    ngx_conf_init_unsigned_value(ecf->use, ngx_select_module.ctx_index);
-    ngx_conf_init_ptr_value(ecf->name, ngx_select_module_ctx.name->data);
+#if (HAVE_SELECT)
 
+    if (module == NULL) {
+
+#if (NGX_WIN32)
+        connections = DEFAULT_CONNECTIONS;
 #else
+        connections = FD_SETSIZE < DEFAULT_CONNECTIONS ? FD_SETSIZE:
+                                                         DEFAULT_CONNECTIONS;
+#endif
+        module = &ngx_select_module;
+    }
 
-    ngx_int_t            i, m;
-    ngx_event_module_t  *module;
+#endif
 
-    m = -1;
-    module = NULL;
+    if (module == NULL) {
+        for (i = 0; ngx_modules[i]; i++) {
+            if (ngx_modules[i]->type == NGX_EVENT_MODULE) {
+                event_module = ngx_modules[i]->ctx;
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type == NGX_EVENT_MODULE) {
-            module = ngx_modules[i]->ctx;
+                if (ngx_strcmp(event_module->name->data, event_core_name.data)
+                                                                          == 0)
+                {
+                    continue;
+                }
 
-            if (ngx_strcmp(module->name->data, event_core_name.data) == 0) {
-                continue;
+                module = ngx_modules[i];
+                break;
             }
-
-            m = ngx_modules[i]->ctx_index;
-            break;
         }
     }
 
-    if (m == -1) {
+    if (module == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "no events module found");
         return NGX_CONF_ERROR;
     }
 
-    ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-
-    ngx_conf_init_unsigned_value(ecf->use, m);
-    ngx_conf_init_ptr_value(ecf->name, module->name->data);
-
-#endif
-
+    ngx_conf_init_unsigned_value(ecf->connections, connections);
     cycle->connection_n = ecf->connections;
+
+    ngx_conf_init_unsigned_value(ecf->use, module->ctx_index);
+
+    event_module = module->ctx;
+    ngx_conf_init_ptr_value(ecf->name, event_module->name->data);
 
     ngx_conf_init_value(ecf->multi_accept, 0);
     ngx_conf_init_value(ecf->accept_mutex, 1);
     ngx_conf_init_msec_value(ecf->accept_mutex_delay, 500);
 
-#if (HAVE_RTSIG)
-    if (ecf->use == ngx_rtsig_module.ctx_index && ecf->accept_mutex == 0) {
-        ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
-                                               ngx_core_module);
-        if (ccf->worker_processes) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "the \"rtsig\" method requires "
-                          "\"accept_mutex\" to be on");
-            return NGX_CONF_ERROR;
-        }
-    }
-#endif
 
-    return NGX_CONF_OK;
+    if (!rtsig || ecf->accept_mutex) {
+        return NGX_CONF_OK;
+    }
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ccf->worker_processes == 0) {
+        return NGX_CONF_OK;
+    }
+
+    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                  "the \"rtsig\" method requires \"accept_mutex\" to be on");
+
+    return NGX_CONF_ERROR;
 }
 
 

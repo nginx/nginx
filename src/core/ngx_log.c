@@ -155,7 +155,14 @@ static void ngx_log_write(ngx_log_t *log, u_char *errstr, size_t len)
 
     errstr[len++] = CR;
     errstr[len++] = LF;
+
     WriteFile(log->file->fd, errstr, len, &written, NULL);
+
+#if 0
+    if (WriteFile(log->file->fd, errstr, len, &written, NULL) == 0) {
+        ngx_message_box("nginx", MB_OK, ngx_errno, "WriteFile() failed");
+    }
+#endif
 
 #else
 
@@ -164,6 +171,7 @@ static void ngx_log_write(ngx_log_t *log, u_char *errstr, size_t len)
     }
 
     errstr[len++] = LF;
+
     write(log->file->fd, errstr, len);
 
 #endif

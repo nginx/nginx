@@ -2,36 +2,22 @@
 # Copyright (C) Igor Sysoev
 
 
-case "$CC" in
+case "$NGX_CC_NAME" in
 
-    cl)
-        makefile=makefile.msvc
-        opt="CPU_OPT=$CPU_OPT LIBC=$LIBC"
+    msvc*)
+        ngx_makefile=makefile.msvc
+        ngx_opt="CPU_OPT=$CPU_OPT LIBC=$LIBC"
 
     ;;
 
-    wcl386)
-        makefile=makefile.owc
-        opt="CPU_OPT=$CPU_OPT"
+    owc*)
+        ngx_makefile=makefile.owc
+        ngx_opt="CPU_OPT=$CPU_OPT"
     ;;
 
-    bcc32)
-        makefile=makefile.bcc
-        opt="-DCPU_OPT=$CPU_OPT"
-    ;;
-
-esac
-
-
-case $PLATFORM in
-
-    win32)
-        line=`echo $ZLIB/zlib.lib: | sed -e "s/\//$ngx_regex_dirsep/g"`
-        echo "$line"                                              >> $MAKEFILE
-    ;;
-
-    *)
-        echo "$ZLIB/libz.a:"                                      >> $MAKEFILE
+    bcc)
+        ngx_makefile=makefile.bcc
+        ngx_opt="-DCPU_OPT=$CPU_OPT"
     ;;
 
 esac
@@ -43,12 +29,16 @@ done=NO
 case $PLATFORM in
 
     win32)
-        zlib=`echo $ZLIB | sed -e "s/\//$ngx_regex_dirsep/g"`
+        cp auto/lib/zlib/$ngx_makefile $ZLIB
 
-        cp auto/lib/zlib/$makefile $ZLIB
-        echo "	cd $zlib"                                         >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile $opt"                       >> $MAKEFILE
-        echo "	cd ..\\..\\.."                                    >> $MAKEFILE
+        cat << END                                            >> $NGX_MAKEFILE
+
+`echo "$ZLIB/zlib.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
+	cd `echo $ZLIB | sed -e "s/\//$ngx_regex_dirsep/g"`
+	\$(MAKE) -f $ngx_makefile $ngx_opt
+	cd ..\\..\\..
+
+END
 
         done=YES
     ;;
@@ -59,23 +49,35 @@ case $PLATFORM in
     *:i386 | *:i686)
         case $ZLIB_ASM in
             pentium)
-                echo "	cd $ZLIB \\"                              >> $MAKEFILE
-                echo "	&& cp contrib/asm586/match.S . \\"        >> $MAKEFILE
-                echo "	&& CFLAGS=\"$ZLIB_OPT -DASMV\" \\"        >> $MAKEFILE
-                echo "		CC=\"\$(CC)\" \\"                 >> $MAKEFILE
-                echo "		./configure \\"                   >> $MAKEFILE
-                echo "	&& \$(MAKE) OBJA=match.o libz.a"          >> $MAKEFILE
+
+                cat << END                                    >> $NGX_MAKEFILE
+
+$ZLIB/libz.a:	$NGX_MAKEFILE
+	cd $ZLIB \\
+	&& make clean \\
+	&& cp contrib/asm586/match.S . \\
+	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" \\
+		./configure \\
+	&& \$(MAKE) OBJA=match.o libz.a
+
+END
 
                 done=YES
             ;;
 
             pentiumpro)
-                echo "	cd $ZLIB \\"                              >> $MAKEFILE
-                echo "	&& cp contrib/asm686/match.S . \\"        >> $MAKEFILE
-                echo "	&& CFLAGS=\"$ZLIB_OPT -DASMV\" \\"        >> $MAKEFILE
-                echo "		CC=\"\$(CC)\" \\"                 >> $MAKEFILE
-                echo "		./configure \\"                   >> $MAKEFILE
-                echo "	&& \$(MAKE) OBJA=match.o libz.a"          >> $MAKEFILE
+
+                cat << END                                    >> $NGX_MAKEFILE
+
+$ZLIB/libz.a:	$NGX_MAKEFILE
+	cd $ZLIB \\
+	&& make clean \\
+	&& cp contrib/asm686/match.S . \\
+	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" \\
+		./configure \\
+	&& \$(MAKE) OBJA=match.o libz.a
+
+END
 
                 done=YES
             ;;
@@ -97,11 +99,16 @@ esac
 
 
 if [ $done = NO ]; then
-    echo "	cd $ZLIB \\"                                      >> $MAKEFILE
-    echo "	&& CFLAGS=\"$ZLIB_OPT\" CC=\"\$(CC)\" \\"         >> $MAKEFILE
-    echo "		./configure \\"                           >> $MAKEFILE
-    echo "	&& \$(MAKE) libz.a"                               >> $MAKEFILE
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+$ZLIB/libz.a:	$NGX_MAKEFILE
+	cd $ZLIB \\
+	&& make clean \\
+	&& CFLAGS="$ZLIB_OPT" CC="\$(CC)" \\
+		./configure \\
+	&& \$(MAKE) libz.a
+
+END
+
 fi
-
-
-echo                                                              >> $MAKEFILE

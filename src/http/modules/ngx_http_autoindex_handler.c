@@ -304,10 +304,9 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
                + 1                                          /* 1 is for "/" */
                + entry[i].name.len + entry[i].escape
                + sizeof("\">") - 1
-               + NGX_HTTP_AUTOINDEX_NAME_LEN
+               + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
                + sizeof("</a>") - 1
-               + 1
-               + sizeof("28-Sep-1970 12:00 ") - 1
+               + sizeof(" 28-Sep-1970 12:00 ") - 1
                + sizeof("1023G") - 1
                + 2;
     }

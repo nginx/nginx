@@ -6,18 +6,50 @@
             title="nginx">
 
 
+<changes ver="0.1.8" date="20.11.2004">
+
+<change type="bugfix">
+<para lang="ru">
+ошибка в модуле ngx_http_autoindex_module при показе длинных имён файлов.
+</para>
+<para lang="en">
+in the ngx_http_autoindex_module if the long file names were in the listing.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модификатор "^~" в директиве location.
+</para>
+<para lang="en">
+the "^~" modifier in the location directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_max_temp_file_size.
+</para>
+<para lang="en">
+the proxy_max_temp_file_size directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.7" date="12.11.2004">
 
 <change type="bugfix">
 <para lang="ru">
 при использовании sendfile, если передаваемый файл менялся, то мог
 произойти segmentation fault на FreeBSD;
-ошибка появилась в 0.1.2.
+ошибка появилась в 0.1.5.
 </para>
 <para lang="en">
 on FreeBSD the segmentation fault may occure if the size of the transferred
 file was changed;
-bug appeared in 0.1.2.
+bug appeared in 0.1.5.
 </para>
 </change>
 

@@ -63,18 +63,10 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
-
-#ifndef HAVE_SELECT
-#define HAVE_SELECT  1
-#endif
-
-
-#ifndef HAVE_POLL
-#define HAVE_POLL  1
-#endif
 #if (HAVE_POLL)
 #include <poll.h>
 #endif
+
 
 #if (HAVE_EPOLL)
 #include <sys/epoll.h>

@@ -496,7 +496,7 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 
 
 
-ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, u_int flags)
+static ngx_inline ngx_int_t ngx_handle_read_event(ngx_event_t *rev, u_int flags)
 {
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
@@ -540,7 +540,7 @@ ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, u_int flags)
 }
 
 
-ngx_inline static int ngx_handle_level_read_event(ngx_event_t *rev)
+static ngx_inline ngx_int_t ngx_handle_level_read_event(ngx_event_t *rev)
 {
     if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
         if (!rev->active && !rev->ready) {
@@ -566,7 +566,8 @@ ngx_inline static int ngx_handle_level_read_event(ngx_event_t *rev)
 }
 
 
-ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
+static ngx_inline ngx_int_t ngx_handle_write_event(ngx_event_t *wev,
+                                                   size_t lowat)
 {
     ngx_connection_t  *c;
 
@@ -622,7 +623,7 @@ ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 }
 
 
-ngx_inline static int ngx_handle_level_write_event(ngx_event_t *wev)
+static ngx_inline ngx_int_t ngx_handle_level_write_event(ngx_event_t *wev)
 {
     if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
         if (!wev->active && !wev->ready) {

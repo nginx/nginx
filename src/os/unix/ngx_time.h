@@ -57,6 +57,7 @@ void ngx_localtime(ngx_tm_t *tm);
 
 #define ngx_gettimeofday(tp)  gettimeofday(tp, NULL);
 #define ngx_msleep(ms)        usleep(ms * 1000)
+#define ngx_sleep(s)          sleep(s)
 
 
 #endif /* _NGX_TIME_H_INCLUDED_ */

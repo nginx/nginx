@@ -42,7 +42,7 @@ extern ngx_thread_volatile ngx_rbtree_t  *ngx_event_timer_rbtree;
 extern ngx_rbtree_t                       ngx_event_timer_sentinel;
 
 
-ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
+static ngx_inline void ngx_event_del_timer(ngx_event_t *ev)
 {
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "event timer del: %d: %d",
@@ -68,7 +68,7 @@ ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
 }
 
 
-ngx_inline static void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
+static ngx_inline void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_int_t  key;
 

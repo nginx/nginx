@@ -13,7 +13,8 @@
 
 #define NGX_HTTP_LOCATION_EXACT           1
 #define NGX_HTTP_LOCATION_AUTO_REDIRECT   2
-#define NGX_HTTP_LOCATION_REGEX           3
+#define NGX_HTTP_LOCATION_NOREGEX         3
+#define NGX_HTTP_LOCATION_REGEX           4
 
 
 static void ngx_http_phase_event_handler(ngx_event_t *rev);
@@ -564,12 +565,13 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
                                         ngx_array_t *locations, size_t len)
 {
     ngx_int_t                  n, rc;
-    ngx_uint_t                 i, found;
+    ngx_uint_t                 i, found, noregex;
     ngx_http_core_loc_conf_t  *clcf, **clcfp;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "find location");
 
     found = 0;
+    noregex = 0;
 
     clcfp = locations->elts;
     for (i = 0; i < locations->nelts; i++) {
@@ -619,6 +621,7 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
             }
 
             r->loc_conf = clcfp[i]->loc_conf;
+            noregex = clcfp[i]->noregex;
             found = 1;
         }
     }
@@ -636,6 +639,10 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
     }
 
 #if (NGX_PCRE)
+
+    if (noregex) {
+        return NGX_HTTP_LOCATION_NOREGEX;
+    }
 
     /* regex matches */
 
@@ -1068,6 +1075,13 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         if (value[1].len == 1 && value[1].data[0] == '=') {
             clcf->name = value[2];
             clcf->exact_match = 1;
+
+        } else if (value[1].len == 2
+                   && value[1].data[0] == '^'
+                   && value[1].data[1] == '~')
+        {
+            clcf->name = value[2];
+            clcf->noregex = 1;
 
         } else if ((value[1].len == 1 && value[1].data[0] == '~')
                    || (value[1].len == 2

@@ -36,7 +36,7 @@ void *ngx_create_shared_memory(size_t size, ngx_log_t *log)
 
     if (fd == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "open(/dev/zero) failed");
+                      "open(\"/dev/zero\") failed");
         return NULL;
     }
 
@@ -49,7 +49,8 @@ void *ngx_create_shared_memory(size_t size, ngx_log_t *log)
     }
 
     if (close(fd) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() failed");
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                      "close(\"/dev/zero\") failed");
     }
 
     return p;

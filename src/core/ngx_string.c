@@ -135,6 +135,11 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                     fmt++;
                     continue;
 
+                case 'm':
+                    width = NGX_INT_T_LEN;
+                    fmt++;
+                    continue;
+
                 case 'X':
                     hexadecimal = 2;
                     sign = 0;

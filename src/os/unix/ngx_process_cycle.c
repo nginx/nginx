@@ -12,15 +12,18 @@
 
 static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
                                        ngx_int_t type);
+static void ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type);
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo);
 static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle);
 static void ngx_master_exit(ngx_cycle_t *cycle);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
+static void ngx_worker_process_init(ngx_cycle_t *cycle);
 static void ngx_channel_handler(ngx_event_t *ev);
 #if (NGX_THREADS)
 static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle);
 static void *ngx_worker_thread_cycle(void *data);
 #endif
+static void ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data);
 
 
 ngx_uint_t    ngx_process;
@@ -109,6 +112,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     ngx_start_worker_processes(cycle, ccf->worker_processes,
                                NGX_PROCESS_RESPAWN);
+    ngx_start_garbage_collector(cycle, NGX_PROCESS_RESPAWN);
 
     ngx_new_binary = 0;
     delay = 0;
@@ -179,6 +183,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
             if (!ngx_noaccepting) {
                 ngx_start_worker_processes(cycle, ccf->worker_processes,
                                            NGX_PROCESS_JUST_RESPAWN);
+                ngx_start_garbage_collector(cycle, NGX_PROCESS_JUST_RESPAWN);
                 live = 1;
                 ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
@@ -193,6 +198,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
 
                 ngx_start_worker_processes(cycle, ccf->worker_processes,
                                            NGX_PROCESS_RESPAWN);
+                ngx_start_garbage_collector(cycle, NGX_PROCESS_RESPAWN);
                 ngx_noaccepting = 0;
 
                 continue;
@@ -211,6 +217,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
                                                    ngx_core_module);
             ngx_start_worker_processes(cycle, ccf->worker_processes,
                                        NGX_PROCESS_JUST_RESPAWN);
+            ngx_start_garbage_collector(cycle, NGX_PROCESS_JUST_RESPAWN);
             live = 1;
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
@@ -220,6 +227,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
             ngx_restart = 0;
             ngx_start_worker_processes(cycle, ccf->worker_processes,
                                        NGX_PROCESS_RESPAWN);
+            ngx_start_garbage_collector(cycle, NGX_PROCESS_RESPAWN);
             live = 1;
         }
 
@@ -348,6 +356,47 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
     if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "setitimer() failed");
+    }
+}
+
+
+static void ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type)
+{
+    ngx_int_t         i;
+    ngx_channel_t     ch;
+
+    return;
+
+    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "start garbage collector");
+
+    ch.command = NGX_CMD_OPEN_CHANNEL;
+
+    ngx_spawn_process(cycle, ngx_garbage_collector_cycle, NULL,
+                      "garbage collector", type);
+
+    ch.pid = ngx_processes[ngx_process_slot].pid;
+    ch.slot = ngx_process_slot;
+    ch.fd = ngx_processes[ngx_process_slot].channel[0];
+
+    for (i = 0; i < ngx_last_process; i++) {
+
+        if (i == ngx_process_slot
+            || ngx_processes[i].pid == -1
+            || ngx_processes[i].channel[0] == -1)
+        {
+            continue;
+        }
+
+        ngx_log_debug6(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                      "pass channel s:%d pid:%P fd:%d to s:%i pid:%P fd:%d",
+                      ch.slot, ch.pid, ch.fd,
+                      i, ngx_processes[i].pid,
+                      ngx_processes[i].channel[0]);
+
+        /* TODO: NGX_AGAIN */
+
+        ngx_write_channel(ngx_processes[i].channel[0],
+                          &ch, sizeof(ngx_channel_t), cycle->log);
     }
 }
 
@@ -558,116 +607,7 @@ static void ngx_master_exit(ngx_cycle_t *cycle)
 
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
-    sigset_t           set;
-    ngx_err_t          err;
-    ngx_int_t          n;
-    ngx_uint_t         i;
-    struct timeval     tv;
-    ngx_listening_t   *ls;
-    ngx_core_conf_t   *ccf;
-    ngx_connection_t  *c;
-
-
-    ngx_gettimeofday(&tv);
-
-    ngx_start_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
-    ngx_old_elapsed_msec = 0;
-    ngx_elapsed_msec = 0;
-
-
-    ngx_process = NGX_PROCESS_WORKER;
-
-    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
-
-    if (geteuid() == 0) {
-        if (setgid(ccf->group) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "setgid(%d) failed", ccf->group);
-            /* fatal */
-            exit(2);
-        }
-
-        if (setuid(ccf->user) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "setuid(%d) failed", ccf->user);
-            /* fatal */
-            exit(2);
-        }
-    }
-
-#if (NGX_HAVE_PR_SET_DUMPABLE)
-
-    /* allow coredump after setuid() in Linux 2.4.x */
-
-    if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "prctl(PR_SET_DUMPABLE) failed");
-    }
-
-#endif
-
-    sigemptyset(&set);
-
-    if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "sigprocmask() failed");
-    }
-
-    ngx_init_temp_number();
-
-    /*
-     * disable deleting previous events for the listening sockets because
-     * in the worker processes there are no events at all at this point
-     */ 
-    ls = cycle->listening.elts;
-    for (i = 0; i < cycle->listening.nelts; i++) {
-        ls[i].remain = 0;
-    }
-
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->init_process) {
-            if (ngx_modules[i]->init_process(cycle) == NGX_ERROR) {
-                /* fatal */
-                exit(2);
-            }
-        }
-    }
-
-    for (n = 0; n < ngx_last_process; n++) {
-
-        if (ngx_processes[n].pid == -1) {
-            continue;
-        }
-
-        if (n == ngx_process_slot) {
-            continue;
-        }
-
-        if (ngx_processes[n].channel[1] == -1) {
-            continue;
-        }
-
-        if (close(ngx_processes[n].channel[1]) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "close() failed");
-        }
-    }
-
-    if (close(ngx_processes[ngx_process_slot].channel[0]) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "close() failed");
-    }
-
-#if 0
-    ngx_last_process = 0;
-#endif
-
-    if (ngx_add_channel_event(cycle, ngx_channel, NGX_READ_EVENT,
-                                             ngx_channel_handler) == NGX_ERROR)
-    {
-        /* fatal */
-        exit(2);
-    }
+    ngx_worker_process_init(cycle);
 
     ngx_setproctitle("worker process");
 
@@ -772,11 +712,128 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 }
 
 
+static void ngx_worker_process_init(ngx_cycle_t *cycle)
+{
+    sigset_t           set;
+    ngx_int_t          n;
+    ngx_uint_t         i;
+    struct timeval     tv;
+    ngx_core_conf_t   *ccf;
+    ngx_listening_t   *ls;
+
+    ngx_gettimeofday(&tv);
+
+    ngx_start_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    ngx_old_elapsed_msec = 0;
+    ngx_elapsed_msec = 0;
+
+
+    ngx_process = NGX_PROCESS_WORKER;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (geteuid() == 0) {
+        if (setgid(ccf->group) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "setgid(%d) failed", ccf->group);
+            /* fatal */
+            exit(2);
+        }
+
+        if (setuid(ccf->user) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "setuid(%d) failed", ccf->user);
+            /* fatal */
+            exit(2);
+        }
+    }
+
+#if (NGX_HAVE_PR_SET_DUMPABLE)
+
+    /* allow coredump after setuid() in Linux 2.4.x */
+
+    if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "prctl(PR_SET_DUMPABLE) failed");
+    }
+
+#endif
+
+    sigemptyset(&set);
+
+    if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed");
+    }
+
+    ngx_init_temp_number();
+
+    /*
+     * disable deleting previous events for the listening sockets because
+     * in the worker processes there are no events at all at this point
+     */ 
+    ls = cycle->listening.elts;
+    for (i = 0; i < cycle->listening.nelts; i++) {
+        ls[i].remain = 0;
+    }
+
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->init_process) {
+            if (ngx_modules[i]->init_process(cycle) == NGX_ERROR) {
+                /* fatal */
+                exit(2);
+            }
+        }
+    }
+
+    for (n = 0; n < ngx_last_process; n++) {
+
+        if (ngx_processes[n].pid == -1) {
+            continue;
+        }
+
+        if (n == ngx_process_slot) {
+            continue;
+        }
+
+        if (ngx_processes[n].channel[1] == -1) {
+            continue;
+        }
+
+        if (close(ngx_processes[n].channel[1]) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "close() channel failed");
+        }
+    }
+
+    if (close(ngx_processes[ngx_process_slot].channel[0]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "close() channel failed");
+    }
+
+#if 0
+    ngx_last_process = 0;
+#endif
+
+    if (ngx_add_channel_event(cycle, ngx_channel, NGX_READ_EVENT,
+                                             ngx_channel_handler) == NGX_ERROR)
+    {
+        /* fatal */
+        exit(2);
+    }
+}
+
+
 static void ngx_channel_handler(ngx_event_t *ev)
 {
     ngx_int_t          n;
     ngx_channel_t      ch;
     ngx_connection_t  *c;
+
+    if (ev->timedout) {
+        ev->timedout = 0;
+        return;
+    }
 
     c = ev->data;
 
@@ -834,7 +891,8 @@ static void ngx_channel_handler(ngx_event_t *ev)
                        ngx_processes[ch.slot].channel[0]);
 
         if (close(ngx_processes[ch.slot].channel[0]) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, "close() failed");
+            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
+                          "close() channel failed");
         }
 
         ngx_processes[ch.slot].channel[0] = -1;
@@ -896,7 +954,6 @@ static void *ngx_worker_thread_cycle(void *data)
     ngx_err_t         err;
     ngx_core_tls_t   *tls;
     ngx_cycle_t      *cycle;
-    struct timeval    tv;
 
     thr->cv->tid = ngx_thread_self();
 
@@ -972,3 +1029,51 @@ static void *ngx_worker_thread_cycle(void *data)
 }
 
 #endif
+
+
+static void ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data)
+{
+    ngx_uint_t         i;
+    ngx_gc_t           ctx;
+    ngx_path_t       **path;
+    ngx_event_t       *ev;
+
+    ngx_worker_process_init(cycle);
+
+    ev = &cycle->read_events[ngx_channel];
+
+    ngx_accept_mutex = NULL;
+
+    ngx_setproctitle("garbage collector");
+
+#if 0
+    ngx_add_timer(ev, 60 * 1000);
+#endif
+
+    for ( ;; ) {
+
+        if (ngx_terminate || ngx_quit) {
+            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
+            exit(0);
+        }
+
+        if (ngx_reopen) {
+            ngx_reopen = 0;
+            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");
+            ngx_reopen_files(cycle, -1);
+        }
+
+        path = cycle->pathes.elts;
+        for (i = 0; i < cycle->pathes.nelts; i++) {
+            ctx.path = path[i];
+            ctx.log = cycle->log;
+            ctx.handler = path[i]->gc_handler;
+
+            ngx_collect_garbage(&ctx, &path[i]->name, 0);
+        }
+
+        ngx_add_timer(ev, 60 * 60 * 1000);
+
+        ngx_process_events(cycle);
+    }
+}

@@ -109,7 +109,7 @@ ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 }
 
 
-int ngx_open_tempfile(u_char *name, ngx_uint_t persistent)
+ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent)
 {
     ngx_fd_t  fd;
 
@@ -216,7 +216,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 }
 
 
-int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
+ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
     dir->dir = opendir((const char *) name->data);
 

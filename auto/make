@@ -12,7 +12,7 @@ ngx_objs_dir=$NGX_OBJS$ngx_regex_dirsep
 ngx_use_pch=`echo $NGX_USE_PCH | sed -e "s/\//$ngx_regex_dirsep/g"`
 
 
-cat << END                                                    >> $NGX_MAKEFILE
+cat << END                                                     > $NGX_MAKEFILE
 
 CC =	$CC
 CFLAGS = $CFLAGS
@@ -49,7 +49,7 @@ ngx_all_srcs="$CORE_SRCS"
 
 # the core dependences and include pathes
 
-ngx_deps=`echo $CORE_DEPS $NGX_PCH \
+ngx_deps=`echo $CORE_DEPS $NGX_AUTO_CONFIG_H $NGX_PCH \
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
 

@@ -10,7 +10,7 @@
 
 /* 32-bit crc16 */
 
-ngx_inline static uint32_t ngx_crc(char *data, size_t len)
+static ngx_inline uint32_t ngx_crc(char *data, size_t len)
 {
     uint32_t  sum;
 

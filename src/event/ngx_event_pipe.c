@@ -14,10 +14,10 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p);
 static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p);
 
 static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p);
-ngx_inline static void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf);
-ngx_inline static void ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free,
+static ngx_inline void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf);
+static ngx_inline void ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free,
                                                           ngx_buf_t *buf);
-ngx_inline static void ngx_event_pipe_add_free_buf(ngx_chain_t **chain,
+static ngx_inline void ngx_event_pipe_add_free_buf(ngx_chain_t **chain,
                                                    ngx_chain_t *cl);
 static ngx_int_t ngx_event_pipe_drain_chains(ngx_event_pipe_t *p);
 
@@ -676,7 +676,7 @@ ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 }
 
 
-ngx_inline static void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
+static ngx_inline void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
 {
     ngx_buf_t  *b, *next;
 
@@ -706,7 +706,7 @@ ngx_inline static void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
 }
 
 
-ngx_inline static void ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free,
+static ngx_inline void ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free,
                                                           ngx_buf_t *buf)
 {
     ngx_buf_t    *s;
@@ -735,7 +735,7 @@ ngx_inline static void ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free,
 }
 
 
-ngx_inline static void ngx_event_pipe_add_free_buf(ngx_chain_t **chain,
+static ngx_inline void ngx_event_pipe_add_free_buf(ngx_chain_t **chain,
                                                    ngx_chain_t *cl)
 {
     if (*chain == NULL) {

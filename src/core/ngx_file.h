@@ -17,44 +17,48 @@ typedef struct ngx_path_s  ngx_path_t;
 
 
 struct ngx_file_s {
-    ngx_fd_t         fd;
-    ngx_str_t        name;
-    ngx_file_info_t  info;
+    ngx_fd_t            fd;
+    ngx_str_t           name;
+    ngx_file_info_t     info;
 
-    off_t            offset;
-    off_t            sys_offset;
+    off_t               offset;
+    off_t               sys_offset;
 
-    ngx_log_t       *log;
+    ngx_log_t          *log;
 
-    ngx_uint_t       valid_info:1;  /* unsigned  valid_info:1; */
+    ngx_uint_t          valid_info:1;  /* unsigned  valid_info:1; */
 };
 
 #define NGX_MAX_PATH_LEVEL  3
 
 struct ngx_path_s {
     ngx_str_t           name;
-    u_int               len;
-    u_int               level[3];
+    ngx_uint_t          len;
+    ngx_uint_t          level[3];
     ngx_gc_handler_pt   gc_handler;
+
+    u_char             *conf_file;
+    ngx_uint_t          line;
 };
 
 
 typedef struct {
-    ngx_file_t   file;
-    off_t        offset;
-    ngx_path_t  *path;
-    ngx_pool_t  *pool;
-    char        *warn;
+    ngx_file_t          file;
+    off_t               offset;
+    ngx_path_t         *path;
+    ngx_pool_t         *pool;
+    char               *warn;
 
-    unsigned     persistent:1;
+    unsigned            persistent:1;
 } ngx_temp_file_t;
 
 
-int ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain);
-int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
-                         ngx_pool_t *pool, int persistent);
+ssize_t ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain);
+ngx_int_t ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
+                               ngx_pool_t *pool, int persistent);
 void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path);
-int ngx_create_path(ngx_file_t *file, ngx_path_t *path);
+ngx_int_t ngx_create_path(ngx_file_t *file, ngx_path_t *path);
+ngx_int_t ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user);
 
 void ngx_init_temp_number();
 ngx_uint_t ngx_next_temp_number(ngx_uint_t collision);

@@ -37,7 +37,7 @@
 #define ngx_delete_file_n        "unlink()"
 
 
-int ngx_open_tempfile(u_char *name, ngx_uint_t persistent);
+ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent);
 #define ngx_open_tempfile_n      "open()"
 
 
@@ -77,7 +77,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 #define NGX_DIR_MASK_LEN         0
 
 
-int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
+ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_open_dir_n           "opendir()"
 
 

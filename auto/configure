@@ -11,6 +11,8 @@ test -d $OBJS || mkdir $OBJS
 
 echo > $NGX_AUTO_HEADERS_H
 echo > $NGX_AUTO_CONFIG_H
+echo > $NGX_AUTOCONF_ERR
+
 
 if [ $DEBUG = YES ]; then
     have=NGX_DEBUG . auto/have

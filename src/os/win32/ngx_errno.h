@@ -21,7 +21,10 @@ typedef DWORD                      ngx_err_t;
 
 #define NGX_ENOENT                 ERROR_FILE_NOT_FOUND
 #define NGX_EACCES                 ERROR_ACCESS_DENIED
+#if 0
 #define NGX_EEXIST                 ERROR_FILE_EXISTS
+#endif
+#define NGX_EEXIST                 ERROR_ALREADY_EXISTS
 #define NGX_ENOTDIR                ERROR_PATH_NOT_FOUND
 #define NGX_EPIPE                  EPIPE
 #define NGX_EAGAIN                 WSAEWOULDBLOCK

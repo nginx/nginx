@@ -7,6 +7,7 @@ if [ $EVENT_SELECT = NO -a $EVENT_FOUND = NO ]; then
 fi
 
 if [ $EVENT_SELECT = YES ]; then
+    have=HAVE_SELECT . auto/have
     CORE_SRCS="$CORE_SRCS $SELECT_SRCS"
     EVENT_MODULES="$EVENT_MODULES $SELECT_MODULE"
 fi
@@ -17,6 +18,7 @@ if [ $EVENT_POLL = NO -a $EVENT_FOUND = NO ]; then
 fi
 
 if [ $EVENT_POLL = YES ]; then
+    have=HAVE_POLL . auto/have
     CORE_SRCS="$CORE_SRCS $POLL_SRCS"
     EVENT_MODULES="$EVENT_MODULES $POLL_MODULE"
 fi

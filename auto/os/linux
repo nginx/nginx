@@ -48,7 +48,7 @@ fi
 
 ngx_feature="epoll"
 ngx_feature_name="epoll"
-ngx_feature_run=yes
+ngx_feature_run=no
 ngx_feature_incs="#include <sys/epoll.h>"
 ngx_feature_libs=
 ngx_feature_test="int efd = 0, fd = 1, n;

@@ -14,6 +14,11 @@
 #endif
 
 
+#if 0
+#define _REENTRANT
+#endif
+
+
 #include <sys/types.h>
 #include <sys/time.h>
 #if (NGX_HAVE_UNISTD_H)
@@ -65,14 +70,6 @@
 #include <ngx_auto_config.h>
 
 
-#ifndef HAVE_SELECT
-#define HAVE_SELECT  1
-#endif
-
-
-#ifndef HAVE_POLL
-#define HAVE_POLL  1
-#endif
 #if (HAVE_POLL)
 #include <poll.h>
 #endif
@@ -104,7 +101,11 @@
 #endif
 
 
+#if (NGX_HAVE_SETPROCTITLE)
+#define ngx_setproctitle        setproctitle
+#else
 #define ngx_setproctitle(title)
+#endif
 
 
 #define NGX_POSIX_IO  1

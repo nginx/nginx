@@ -52,11 +52,12 @@ else
             . auto/cc/icc
         ;;
 
-#        ccc)
+        ccc)
 #            # Compaq C V6.5-207
 #
 #            . auto/cc/ccc
-#        ;;
+             ngx_include_opt="-I "
+        ;;
 
 #        acc)
 #            # aCC: HP ANSI C++ B3910B A.03.55.02
@@ -95,7 +96,7 @@ if [ "$PLATFORM" != win32 ]; then
 
     if test -n "$NGX_LD_OPT"; then
         ngx_feature=--with-ld-opt=\"$NGX_LD_OPT\"
-        ngx_feature_name=DUMMY
+        ngx_feature_name="DUMMY"
         ngx_feature_run=no
         ngx_feature_incs=
         ngx_feature_libs=
@@ -110,7 +111,7 @@ if [ "$PLATFORM" != win32 ]; then
     fi
 
     ngx_feature="gcc variadic macros"
-    ngx_feature_name=HAVE_GCC_VARIADIC_MACROS
+    ngx_feature_name="HAVE_GCC_VARIADIC_MACROS"
     ngx_feature_run=yes
     ngx_feature_incs="#include <stdio.h>
 #define var(dummy, args...)  sprintf(args)"
@@ -122,7 +123,7 @@ if [ "$PLATFORM" != win32 ]; then
 
 
     ngx_feature="C99 variadic macros"
-    ngx_feature_name=HAVE_C99_VARIADIC_MACROS
+    ngx_feature_name="HAVE_C99_VARIADIC_MACROS"
     ngx_feature_run=yes
     ngx_feature_incs="#include <stdio.h>
 #define var(dummy, ...) sprintf(__VA_ARGS__)"
@@ -131,5 +132,17 @@ if [ "$PLATFORM" != win32 ]; then
                       var(0, buf, \"%d\", 1);
                       if (buf[0] != '1') return 1"
     . auto/feature
+
+
+#    ngx_feature="inline"
+#    ngx_feature_name="DUMMY"
+#    ngx_feature_run=no
+#    ngx_feature_incs="int inline f(void) { return 1 }"
+#    ngx_feature_libs=
+#    ngx_feature_test=
+#    . auto/feature
+#
+#    if [ $ngx_found = yes ]; then
+#    fi
 
 fi

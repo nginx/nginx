@@ -171,7 +171,8 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 }
 
 
-int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
+ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
+                                ngx_pool_t *pool)
 {
     int         rc, collision;
     u_int       num;
@@ -229,7 +230,7 @@ int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 
 #if 0
 
-int ngx_file_info(char *file, ngx_file_info_t *sb)
+ngx_int_t ngx_file_info(char *file, ngx_file_info_t *sb)
 {
     WIN32_FILE_ATTRIBUTE_DATA  fa;
 
@@ -252,7 +253,7 @@ int ngx_file_info(char *file, ngx_file_info_t *sb)
 #endif
 
 
-int ngx_file_info(u_char *file, ngx_file_info_t *sb)
+ngx_int_t ngx_file_info(u_char *file, ngx_file_info_t *sb)
 {
     /* Win95 */
 
@@ -266,7 +267,7 @@ int ngx_file_info(u_char *file, ngx_file_info_t *sb)
 }
 
 
-int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
+ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
     ngx_cpystrn(name->data + name->len, NGX_DIR_MASK, NGX_DIR_MASK_LEN + 1);
 
@@ -283,7 +284,7 @@ int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 }
 
 
-int ngx_read_dir(ngx_dir_t *dir)
+ngx_int_t ngx_read_dir(ngx_dir_t *dir)
 {
     if (dir->ready) {
         dir->ready = 0;
@@ -298,13 +299,25 @@ int ngx_read_dir(ngx_dir_t *dir)
 }
 
 
-int ngx_file_append_mode(ngx_fd_t fd)
+ngx_int_t ngx_file_append_mode(ngx_fd_t fd)
 {
+#if 0
+    if (LockFile(fd, 0, 0, 0xffffffff, 0xffffffff) == 0) {
+        return NGX_ERROR;
+    }
+#endif
+
     if (SetFilePointer(fd, 0, NULL, FILE_END) == INVALID_SET_FILE_POINTER) {
         if (ngx_errno != NO_ERROR) {
             return NGX_ERROR;
         }
     }
+
+#if 0
+    if (UnlockFile(fd, 0, 0, 0xffffffff, 0xffffffff) == 0) {
+        return NGX_ERROR;
+    }
+#endif
 
     return NGX_OK;
 }

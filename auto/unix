@@ -73,6 +73,15 @@ ngx_param=TIME_T_LEN; ngx_value=$ngx_max_len; . auto/types/value
 # syscalls, libc calls and some features
 
 
+ngx_feature="setproctitle()"
+ngx_feature_name="HAVE_SETPROCTITLE"
+ngx_feature_run=no
+ngx_feature_incs=
+ngx_feature_libs=
+ngx_feature_test="setproctitle(\"test\");"
+. auto/feature
+
+
 ngx_feature="pread()"
 ngx_feature_name="pread"
 ngx_feature_run=no

@@ -2,35 +2,21 @@
 # Copyright (C) Igor Sysoev
 
 
-case "$CC" in
+case "$NGX_CC_NAME" in
 
-    cl)
-        makefile=makefile.msvc
-        opt="CPU_OPT=$CPU_OPT LIBC=$LIBC MD5_ASM=$MD5_ASM"
+    msvc*)
+        ngx_makefile=makefile.msvc
+        ngx_opt="CPU_OPT=$CPU_OPT LIBC=$LIBC MD5_ASM=$MD5_ASM"
     ;;
 
-    wcl386)
-        makefile=makefile.owc
-        opt="CPU_OPT=$CPU_OPT"
+    owc*)
+        ngx_makefile=makefile.owc
+        ngx_opt="CPU_OPT=$CPU_OPT"
     ;;
 
-    bcc32)
-        makefile=makefile.bcc
-        opt="-DCPU_OPT=$CPU_OPT -DMD5_ASM=$MD5_ASM"
-    ;;
-
-esac
-
-
-case $PLATFORM in
-
-    win32)
-        line=`echo $MD5/md5.lib: | sed -e "s/\//$ngx_regex_dirsep/g"`
-        echo "$line"                                              >> $MAKEFILE
-    ;;
-
-    *)
-        echo "$MD5/libmd5.a:"                                     >> $MAKEFILE
+    bcc)
+        ngx_makefile=makefile.bcc
+        ngx_opt="-DCPU_OPT=$CPU_OPT -DMD5_ASM=$MD5_ASM"
     ;;
 
 esac
@@ -42,12 +28,16 @@ done=NO
 case $PLATFORM in
 
     win32)
-        md5=`echo $MD5 | sed -e "s/\//$ngx_regex_dirsep/g"`
+        cp auto/lib/md5/$ngx_makefile $MD5
 
-        cp auto/lib/md5/$makefile $MD5
-        echo "	cd $md5"                                          >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile $opt"                       >> $MAKEFILE
-        echo "	cd ..\\..\\.."                                    >> $MAKEFILE
+        cat << END                                        >> $NGX_MAKEFILE
+
+`echo "$MD5/md5.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
+	cd `echo $MD5 | sed -e "s/\//$ngx_regex_dirsep/g"`
+	\$(MAKE) -f $ngx_makefile $ngx_opt
+	cd ..\\..\\..
+
+END
 
         done=YES
     ;;
@@ -55,13 +45,15 @@ case $PLATFORM in
     SunOS:*:i86pc)
         if [ $MD5_ASM = YES ]; then
 
-            MD5_OPT="CFLAGS=\"$MD5_OPT -DSOL -DMD5_ASM -DL_ENDIAN\""
+            cat << END                                        >> $NGX_MAKEFILE
 
-            echo "	cd $MD5 \\"                               >> $MAKEFILE
-            echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE
-            echo "		MD5_ASM_OBJ=asm/mx86-sol.o \\"    >> $MAKEFILE
-            echo "		CC=\"\$(CC)\" CPP=\"\$(CPP)\" \\" >> $MAKEFILE
-            echo "		libmd5.a"                         >> $MAKEFILE
+$MD5/libmd5.a:	$NGX_MAKEFILE
+	cd $MD5 \\
+	&& \$(MAKE) CFLAGS="$MD5_OPT -DSOL -DMD5_ASM -DL_ENDIAN" \\
+		CC="\$(CC)" CPP="\$(CPP)" \\
+		MD5_ASM_OBJ=asm/mx86-sol.o clean libmd5.a
+
+END
 
             done=YES
         fi
@@ -73,13 +65,15 @@ case $PLATFORM in
     *:i386 | *:i686)
         if [ $MD5_ASM = YES ]; then
 
-            MD5_OPT="CFLAGS=\"$MD5_OPT -DELF -DMD5_ASM -DL_ENDIAN\""
+            cat << END                                        >> $NGX_MAKEFILE
 
-            echo "	cd $MD5 \\"                               >> $MAKEFILE
-            echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE
-            echo "		MD5_ASM_OBJ=asm/mx86-elf.o \\"    >> $MAKEFILE
-            echo "		CC=\"\$(CC)\" CPP=\"\$(CPP)\" \\" >> $MAKEFILE
-            echo "		libmd5.a"                         >> $MAKEFILE
+$MD5/libmd5.a:	$NGX_MAKEFILE
+	cd $MD5 \\
+	&& \$(MAKE) CFLAGS="$MD5_OPT -DELF -DMD5_ASM -DL_ENDIAN" \\
+		CC="\$(CC)" CPP="\$(CPP)" \\
+		MD5_ASM_OBJ=asm/mx86-elf.o clean libmd5.a
+
+END
 
             done=YES
         fi
@@ -89,10 +83,14 @@ esac
 
 
 if [ $done = NO ]; then
-    echo "	cd $MD5 \\"                                       >> $MAKEFILE
-    echo "	&& \$(MAKE) CFLAGS=\"$MD5_OPT\" \\"               >> $MAKEFILE
-    echo "		MD5_ASM_OBJ= CC=\"\$(CC)\" libmd5.a"      >> $MAKEFILE
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+$MD5/libmd5.a:	$NGX_MAKEFILE
+	cd $MD5 \\
+	&& \$(MAKE) CFLAGS="$MD5_OPT" \\
+		CC="\$(CC)" MD5_ASM_OBJ= clean libmd5.a
+
+END
+
 fi
-
-
-echo                                                              >> $MAKEFILE

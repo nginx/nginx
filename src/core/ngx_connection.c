@@ -299,7 +299,7 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
             }
         }
 
-        if (ngx_close_socket(ls[i].fd) == -1) {
+        if (ngx_close_socket(fd) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
                           ngx_close_socket_n " %V failed", &ls[i].addr_text);
         }

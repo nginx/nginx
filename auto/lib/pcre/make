@@ -2,21 +2,21 @@
 # Copyright (C) Igor Sysoev
 
 
-case "$CC" in
+case "$NGX_CC_NAME" in
 
-    cl)
-        makefile=makefile.msvc
-        opt="CPU_OPT=$CPU_OPT LIBC=$LIBC"
+    msvc*)
+        ngx_makefile=makefile.msvc
+        ngx_opt="CPU_OPT=$CPU_OPT LIBC=$LIBC"
     ;;
 
-    wcl386)
-        makefile=makefile.owc
-        opt="CPU_OPT=$CPU_OPT"
+    owc*)
+        ngx_makefile=makefile.owc
+        ngx_opt="CPU_OPT=$CPU_OPT"
     ;;
 
-    bcc32)
-        makefile=makefile.bcc
-        opt="-DCPU_OPT=$CPU_OPT"
+    bcc)
+        ngx_makefile=makefile.bcc
+        ngx_opt="-DCPU_OPT=$CPU_OPT"
     ;;
 
 esac
@@ -27,39 +27,45 @@ case $PLATFORM in
     win32)
         cp auto/lib/pcre/patch.pcre.in $PCRE
         cp auto/lib/pcre/patch.config.in $PCRE
-        cp auto/lib/pcre/$makefile $PCRE
+        cp auto/lib/pcre/$ngx_makefile $PCRE
 
-        pcre=`echo $PCRE | sed -e "s/\//$ngx_regex_dirsep/g"`
-        line=`echo $PCRE/pcre.h: | sed -e "s/\//$ngx_regex_dirsep/g"`
+        ngx_pcre=`echo $PCRE | sed -e "s/\//$ngx_regex_dirsep/g"`
 
-        echo "$line"                                              >> $MAKEFILE
-        echo "	cd $pcre"                                         >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile pcre.h"                     >> $MAKEFILE
-        echo "	cd ..\\..\\.."                                    >> $MAKEFILE
-        echo                                                      >> $MAKEFILE
+        cat << END                                            >> $NGX_MAKEFILE
 
-        line="$PCRE/pcre.lib:	$PCRE/pcre.h"
-        line=`echo $line | sed -e "s/\//$ngx_regex_dirsep/g"`
+`echo "$PCRE/pcre.h:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
+	cd $ngx_pcre
+	\$(MAKE) -f $ngx_makefile pcre.h
+	cd ..\\..\\..
 
-        echo "$line"                                              >> $MAKEFILE
-        echo "	cd $pcre"                                         >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile $opt"                       >> $MAKEFILE
-        echo "	cd ..\\..\\.."                                    >> $MAKEFILE
+
+`echo "$PCRE/pcre.lib:	$PCRE/pcre.h" | sed -e "s/\//$ngx_regex_dirsep/g"`
+	cd $ngx_pcre
+	\$(MAKE) -f $ngx_makefile $ngx_opt
+	cd ..\\..\\..
+
+END
+
     ;;
 
     *)
-        PCRE_OPT="CFLAGS=\"$PCRE_OPT\""
+        cat << END                                            >> $NGX_MAKEFILE
 
-        echo "$PCRE/pcre.h:"                                      >> $MAKEFILE
-        echo "	cd $PCRE \\"                                      >> $MAKEFILE
-        echo "	&& CC=\"\$(CC)\" $PCRE_OPT \\"                    >> $MAKEFILE
-        echo "	./configure --disable-shared"                     >> $MAKEFILE
-        echo                                                      >> $MAKEFILE
-        echo "$PCRE/.libs/libpcre.a:	$PCRE/pcre.h"             >> $MAKEFILE
-        echo "	cd $PCRE \\"                                      >> $MAKEFILE
-        echo "	&& \$(MAKE) libpcre.la"                           >> $MAKEFILE
+$PCRE/pcre.h:	$NGX_MAKEFILE
+	cd $PCRE \\
+	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi
+
+	cd $PCRE \\
+	&& CC="\$(CC)" CFLAGS="$PCRE_OPT" \\
+	./configure --disable-shared
+
+
+$PCRE/.libs/libpcre.a:	$PCRE/pcre.h
+	cd $PCRE \\
+	&& \$(MAKE) libpcre.la
+
+END
+
     ;;
 
 esac
-
-echo                                                              >> $MAKEFILE
