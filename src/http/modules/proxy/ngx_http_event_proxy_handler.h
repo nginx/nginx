@@ -4,6 +4,7 @@
 
 #include <ngx_config.h>
 #include <ngx_array.h>
+#include <ngx_event_proxy.h>
 #include <ngx_http.h>
 
 
@@ -70,6 +71,7 @@ typedef struct {
 
     int   block_size;
     int   max_block_size;
+    int   file_block_size;
 
     ngx_path_t  *temp_path;
     int   temp_file_warn;
@@ -94,8 +96,12 @@ typedef struct {
 typedef struct ngx_http_proxy_ctx_s  ngx_http_proxy_ctx_t;
 
 struct ngx_http_proxy_ctx_s {
+    ngx_event_proxy_t  *event_proxy;
+
     ngx_chain_t   *in_hunks;
     ngx_chain_t   *last_in_hunk;
+
+    ngx_chain_t   *shadow_hunks;
 
     ngx_chain_t   *out_hunks;
     ngx_chain_t   *last_out_hunk;

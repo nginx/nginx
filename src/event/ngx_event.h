@@ -178,6 +178,7 @@ typedef struct {
 
 
 #define NGX_USE_LEVEL_EVENT     0x00010000
+#define NGX_USE_AIO_EVENT       0x00020000
 
 
 /* Event filter is deleted before closing file.

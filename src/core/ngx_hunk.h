@@ -11,26 +11,27 @@
 /* hunk type */
 
 /* the hunk is in memory */
-#define NGX_HUNK_IN_MEMORY  0x0001
+#define NGX_HUNK_IN_MEMORY    0x0001
 /* the hunk's content can be changed */
-#define NGX_HUNK_TEMP       0x0002
+#define NGX_HUNK_TEMP         0x0002
 /* the hunk's content is in cache and can not be changed */
-#define NGX_HUNK_MEMORY     0x0004
+#define NGX_HUNK_MEMORY       0x0004
 /* the hunk's content is mmap()ed and can not be changed */
-#define NGX_HUNK_MMAP       0x0008
+#define NGX_HUNK_MMAP         0x0008
 
-#define NGX_HUNK_RECYCLED   0x0010
+#define NGX_HUNK_RECYCLED     0x0010
 
 /* the hunk is in file */
-#define NGX_HUNK_FILE       0x0100
+#define NGX_HUNK_FILE         0x0100
 
 /* hunk flags */
 
 /* in thread state flush means to write the hunk completely before return */
 /* in event state flush means to start to write the hunk */
-#define NGX_HUNK_FLUSH      0x1000
+#define NGX_HUNK_FLUSH        0x1000
 /* last hunk */
-#define NGX_HUNK_LAST       0x2000
+#define NGX_HUNK_LAST         0x2000
+#define NGX_HUNK_LAST_SHADOW  0x4000
 
 
 
@@ -69,7 +70,12 @@ struct ngx_chain_s {
 ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
                                  int before, int after);
 
+#define ngx_alloc_hunk(pool) ngx_palloc(pool, sizeof(ngx_hunk_t))
+#define ngx_alloc_chain_entry(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
+
+/* STUB */
 #define ngx_create_chain_entry(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
+/**/
 
 #define ngx_add_hunk_to_chain(chain, h, pool, error)                         \
             do {                                                             \

@@ -265,7 +265,7 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
             src->file_pos += n;
         }
 
-        if (src->type & NGX_HUNK_LAST && src->pos == src->last) {
+        if ((src->type & NGX_HUNK_LAST) && src->pos == src->last) {
             dst->type |= NGX_HUNK_LAST;
         }
 
@@ -294,7 +294,7 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
         src->file_pos += n;
         dst->last += n;
 
-        if (src->type & NGX_HUNK_LAST && src->file_pos == src->file_last) {
+        if ((src->type & NGX_HUNK_LAST) && src->file_pos == src->file_last) {
             dst->type |= NGX_HUNK_LAST;
         }
     }

@@ -22,7 +22,7 @@
 #define ngx_close_file_n         "close()"
 
 #define ngx_open_tempfile(name, persistent)                                 \
-                                 open(name, O_CREAT|O_EXCL|O_WRONLY, 0600)
+                                 open(name, O_CREAT|O_EXCL|O_RDWR, 0600)
 #define ngx_open_tempfile_n      "open()"
 
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);

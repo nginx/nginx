@@ -18,9 +18,11 @@ ssize_t ngx_recv_chain(ngx_connection_t *c, ngx_chain_t *ce)
     while (ce) {
         ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
         iov->iov_base = ce->hunk->pos;
-        iov->iov_len = ce->hunk->last - ce->hunk->pos;
+        iov->iov_len = ce->hunk->end - ce->hunk->last;
         ce = ce->next;
     }
+
+ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
 
     n = readv(c->fd, (struct iovec *) io.elts, io.nelts);
 
@@ -29,6 +31,7 @@ ssize_t ngx_recv_chain(ngx_connection_t *c, ngx_chain_t *ce)
     if (n == -1) {
         c->read->ready = 0;
 
+        err = ngx_errno;
         if (err == NGX_EAGAIN) {
             ngx_log_error(NGX_LOG_INFO, c->log, err, "readv() returned EAGAIN");
             return NGX_AGAIN;

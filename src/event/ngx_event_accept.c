@@ -119,8 +119,10 @@ int ngx_event_accept(ngx_event_t *ev)
         wev->write = 1;
         rev->first = wev->first = 1;
 
-#if (HAVE_AIO_EVENT)
-        if (!(ngx_event_flags & NGX_HAVE_AIO_EVENT)) {
+#if (USE_KQUEUE)
+        wev->ready = 1;
+#else
+        if ((ngx_event_flags & NGX_USE_AIO_EVENT) == 0) {
             wev->ready = 1;
         }
 #endif

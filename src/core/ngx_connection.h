@@ -85,6 +85,7 @@ extern ngx_chain_t *(*ngx_write_chain_proc)
                                         (ngx_connection_t *c, ngx_chain_t *in);
 
 
+ssize_t ngx_recv_chain(ngx_connection_t *c, ngx_chain_t *ce);
 ngx_chain_t *ngx_write_chain(ngx_connection_t *c, ngx_chain_t *in, off_t flush);
 
 

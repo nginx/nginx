@@ -28,7 +28,7 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
 
     for ( ;; ) {
         snprintf(file->name.data + path->name.len + 1 + path->len, 11,
-                 "%010d", num);
+                 "%010u", num);
 
         ngx_create_hashed_filename(file, path);
 
@@ -49,6 +49,8 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
 
         file->fd = ngx_open_tempfile(file->name.data, persistent);
 
+ngx_log_debug(file->log, "temp fd: %d" _ file->fd);
+
         if (file->fd != NGX_INVALID_FILE) {
             return NGX_OK;
         }
@@ -56,7 +58,7 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
         err = ngx_errno;
 
         if (err == NGX_EEXIST) {
-            num *= step;
+            num = (num + 1) * step;
             continue;
         }
 
