@@ -14,14 +14,16 @@ int ngx_devpoll_process_events(ngx_log_t *log);
 
 
 #if 0
-/* DEBUG */
+/* Solaris */
+
 #define POLLREMOVE   0x0800
+
 #define DP_POLL      0xD001
 
 struct dvpoll {
-    struct pollfd* dp_fds;
-    int dp_nfds;
-    int dp_timeout;
+    struct pollfd  *dp_fds;
+    int             dp_nfds;
+    int             dp_timeout;
 };
 
 #endif

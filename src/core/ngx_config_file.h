@@ -6,9 +6,11 @@
 #include <ngx_files.h>
 #include <ngx_log.h>
 #include <ngx_file.h>
+#include <ngx_string.h>
 #include <ngx_alloc.h>
 #include <ngx_hunk.h>
 #include <ngx_array.h>
+
 
 #define NGX_CONF_NOARGS    1
 #define NGX_CONF_TAKE1     2
@@ -19,8 +21,28 @@
 #define NGX_CONF_UNSET    -1
 
 
-#define NGX_BLOCK_DONE     1
-#define NGX_FILE_DONE      2
+#define NGX_CONF_BLOCK_DONE  1
+#define NGX_CONF_FILE_DONE   2
+
+
+typedef struct ngx_conf_s  ngx_conf_t;
+
+
+typedef struct {
+    ngx_str_t  name;
+    char    *(*set)(ngx_conf_t *cf);
+    int        offset;
+    int        zone;
+    int        type;
+} ngx_command_t;
+
+
+typedef struct {
+    void           *ctx;
+    ngx_command_t  *commands;
+    int             type;
+    int           (*init_module)(ngx_pool_t *p);
+} ngx_module_t;
 
 
 typedef struct {
@@ -29,7 +51,7 @@ typedef struct {
     int          line;
 } ngx_conf_file_t;
 
-typedef struct ngx_conf_s  ngx_conf_t;
+
 struct ngx_conf_s {
     char             *name;
     ngx_array_t      *args;
@@ -38,27 +60,17 @@ struct ngx_conf_s {
     ngx_conf_file_t  *conf_file;
     ngx_log_t        *log;
 
+    ngx_module_t     *modules;
+
     void             *ctx;
     int             (*handler)(ngx_conf_t *cf);
 };
 
 
-
-typedef struct {
-    char    *name;
-    char  *(*set)();
-    int      offset;
-    int      zone;
-    int      type;
-    char    *description;
-} ngx_command_t;
+int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
 
-int ngx_conf_read_token(ngx_conf_t *cf);
-
-
-char *ngx_conf_set_size_slot(char *conf, int offset, char *value);
-char *ngx_conf_set_time_slot(char *conf, int offset, char *value);
+char *ngx_conf_set_size_slot(ngx_conf_t *cf);
 
 
 #endif _NGX_HTTP_CONFIG_FILE_H_INCLUDED_

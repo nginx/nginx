@@ -10,8 +10,11 @@ typedef struct {
     char   *data;
 } ngx_str_t;
 
-#if (WIN32)
 
+#define ngx_string(str)  { sizeof(str) - 1, str }
+
+
+#if (WIN32)
 
 #define ngx_memzero               ZeroMemory
 

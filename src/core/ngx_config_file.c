@@ -12,14 +12,18 @@ static int argument_number[] = {
     NGX_CONF_TAKE2
 };
 
-#if 1
+static int ngx_conf_read_token(ngx_conf_t *cf);
+static ngx_command_t *ngx_conf_find_token(ngx_conf_t *cf,
+                                          ngx_http_module_t **modules);
+
 
 int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
-    int    rc;
-    char  *error;
-    ngx_fd_t  fd;
+    int               rc;
+    char             *error;
+    ngx_fd_t          fd;
     ngx_conf_file_t  *prev;
+    ngx_command_t    *cmd;
 
     if (filename) {
 
@@ -56,15 +60,11 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     for ( ;; ) {
         rc = ngx_conf_read_token(cf);
 
-        /* ??? NGX_OK, NGX_ERROR, NGX_CONF_FILE_DONE, NGX_CONF_BLOCK_DONE */
+        /* NGX_OK, NGX_ERROR, NGX_CONF_FILE_DONE, NGX_CONF_BLOCK_DONE */
 
-        if (rc != NGX_OK) {
+        if (rc == NGX_ERROR || rc == NGX_CONF_FILE_DONE) {
             return rc;
         }
-
-        /* ????
-           "listen address:port;"
-           "location /images/ {" */
 
         if (cf->handler) {
 
@@ -74,6 +74,8 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
             continue;
         }
+
+        cmd = ngx_conf_find_token(cf);
 
 #if 0
         cmd = ngx_conf_find_token(cf);
@@ -164,14 +166,13 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     return NGX_OK;
 }
 
-#endif
 
-#if 1
-
-int ngx_conf_read_token(ngx_conf_t *cf)
+static int ngx_conf_read_token(ngx_conf_t *cf)
 {
     char        *start, ch, *src, *dst;
-    int          found, need_space, last_space, len, quoted, s_quoted, d_quoted;
+    int          len;
+    int          found, need_space, last_space, sharp_comment;
+    int          quoted, s_quoted, d_quoted;
     ssize_t      n;
     ngx_str_t   *word;
     ngx_hunk_t  *h;
@@ -179,6 +180,7 @@ int ngx_conf_read_token(ngx_conf_t *cf)
     found = 0;
     need_space = 0;
     last_space = 1;
+    sharp_comment = 0;
     quoted = s_quoted = d_quoted = 0;
 
     cf->args->nelts = 0;
@@ -192,7 +194,7 @@ ngx_log_debug(cf->log, "TOKEN START");
         if (h->pos.mem >= h->last.mem) {
             if (cf->conf_file->file.offset
                                   >= ngx_file_size(cf->conf_file->file.info)) {
-                return NGX_FILE_DONE;
+                return NGX_CONF_FILE_DONE;
             }
 
             if (h->pos.mem - start) {
@@ -223,6 +225,14 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
 
         if (ch == LF) {
             cf->conf_file->line++;
+
+            if (sharp_comment) {
+                sharp_comment = 0;
+            }
+        }
+
+        if (sharp_comment) {
+            continue;
         }
 
         if (quoted) {
@@ -255,7 +265,30 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
 
             case ';':
             case '{':
+                if (cf->args->nelts == 0) {
+                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                  "unexpected '%c' in %s:%d",
+                                  ch, cf->conf_file->file.name.data,
+                                  cf->conf_file->line);
+                    return NGX_ERROR;
+                }
+
                 return NGX_OK;
+
+            case '}':
+                if (cf->args->nelts > 0) {
+                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                  "unexpected '}' in %s:%d",
+                                  cf->conf_file->file.name.data,
+                                  cf->conf_file->line);
+                    return NGX_ERROR;
+                }
+
+                return NGX_CONF_BLOCK_DONE;
+
+            case '#':
+                sharp_comment = 1;
+                continue;
 
             case '\\':
                 quoted = 1;
@@ -334,28 +367,60 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
     }
 }
 
-#endif
 
-char *ngx_conf_set_size_slot(char *conf, int offset, char *value)
+static ngx_command_t *ngx_conf_find_token(ngx_conf_t *cf)
 {
-    int size;
+    int  i;
+    ngx_command_t  *cmd;
 
-    size = atoi(value);
-    if (size < 0)
+    for (i = 0; cf->modules[i]; i++) {
+         cmd = cf->modules[i]->commands;
+         if (cmd == NULL) {
+             continue;
+         }
+
+         while (cmd->name) {
+
+ngx_log_debug(cf->log, "command '%s'" _ cmd->name);
+
+             cmd++;
+         }
+
+    }
+}
+
+
+char *ngx_conf_set_size_slot(ngx_conf_t *cf, char *conf)
+{
+    int         size;
+    ngx_str_t  *value;
+
+    value = (ngx_str_t *) cf->args->elts;
+
+    size = atoi(value.data);
+    if (size < 0) {
         return "value must be greater or equal to zero";
+    }
 
-    *(int *) (conf + offset) = size;
+    *(int *) (conf + cf->offset) = size;
+
     return NULL;
 }
 
-char *ngx_conf_set_time_slot(char *conf, int offset, char *value)
-{
-    int size;
 
-    size = atoi(value);
-    if (size < 0)
+char *ngx_conf_set_time_slot(ngx_conf_t *cf, char *conf)
+{
+    int         size;
+    ngx_str_t  *value;
+
+    value = (ngx_str_t *) cf->args->elts;
+
+    size = atoi(value.data);
+    if (size < 0) {
         return "value must be greater or equal to zero";
+    }
 
     *(int *) (conf + offset) = size;
+
     return NULL;
 }

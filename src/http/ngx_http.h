@@ -180,23 +180,32 @@ typedef struct {
 } ngx_http_log_ctx_t;
 
 
+typedef int (*ngx_http_output_header_filter_p)(ngx_http_request_t *r);
+
+typedef int (*ngx_http_output_body_filter_p)
+                                   (ngx_http_request_t *r, ngx_chain_t *chain);
+
+
+
 typedef struct {
     int               index;
 
     void           *(*create_srv_conf)(ngx_pool_t *p);
     void           *(*create_loc_conf)(ngx_pool_t *p);
-    ngx_command_t    *commands;
-
-    int             (*init_module)(ngx_pool_t *p);
 
     int             (*translate_handler)(ngx_http_request_t *r);
 
     int             (*output_header_filter) (ngx_http_request_t *r);
     int             (*next_output_header_filter) (ngx_http_request_t *r);
 
+    ngx_http_output_body_filter_p  output_body_filter;
+    ngx_http_output_body_filter_p  next_output_body_filter;
+
+#if 0
     int             (*output_body_filter)();
     int             (*next_output_body_filter)
                                       (ngx_http_request_t *r, ngx_chain_t *ch);
+#endif
 
 #if 0
     int             (*next_output_body_filter)(int (**next_filter)
@@ -205,10 +214,19 @@ typedef struct {
 } ngx_http_module_t;
 
 
-#define NGX_HTTP_MODULE  0
+#define NGX_HTTP_MODULE        0x80000000
 
+#define NGX_HTTP_MODULE_TYPE   0x50545448   /* "HTTP" */
+
+
+/* STUB */
 #define ngx_get_module_loc_conf(r, module)  r->loc_conf[module.index]
 #define ngx_get_module_ctx(r, module)  r->ctx[module.index]
+/**/
+
+#define ngx_http_get_module_srv_conf(r, module)  r->srv_conf[module.index]
+#define ngx_http_get_module_loc_conf(r, module)  r->loc_conf[module.index]
+#define ngx_http_get_module_ctx(r, module)       r->ctx[module.index]
 
 #define ngx_http_create_ctx(r, cx, module, size)                              \
             do {                                                              \

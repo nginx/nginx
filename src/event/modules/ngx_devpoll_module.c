@@ -189,7 +189,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
     ngx_err_t          err;
     ngx_event_t       *ev;
     ngx_connection_t  *c;
-    struct dvpoll      dvpoll;
+    struct dvpoll      dvp;
     struct timeval     tv;
 
     if (timer_queue.timer_next != &timer_queue) {
@@ -212,10 +212,10 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    dvpoll.dp_fds = event_list;
-    dvpoll.dp_nfds = nevents;
-    dvpoll.dp_timeout = timer;
-    events = ioctl(dp, DP_POLL, &dvpoll);
+    dvp.dp_fds = event_list;
+    dvp.dp_nfds = nevents;
+    dvp.dp_timeout = timer;
+    events = ioctl(dp, DP_POLL, &dvp);
 
     if (events == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "ioctl(DP_POLL) failed");
