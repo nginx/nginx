@@ -121,15 +121,18 @@ int ngx_os_init(ngx_log_t *log)
 #if (HAVE_SENDFILE)
 
     /*
-     * The determination of the sendfile() nbytes bug is complex enough.
+     * The determination of the sendfile() "nbytes bug" is complex enough.
      * There are two sendfile() syscalls: a new #393 has no bug while
      * an old #336 has the bug in some versions and has not in others.
      * Besides libc_r wrapper also emulates the bug in some versions.
      * There's no way to say exactly if a given FreeBSD version has the bug.
-     * Here is the algorithm that works at least for RELEASEs
+     * We use the algorithm that is correct at least for RELEASEs
      * and for syscalls only (not libc_r wrapper).
      *
-     * We detect the new sendfile() version available at the compile time
+     * 4.6.1-RELEASE and below have the bug
+     * 4.6.2-RELEASE and above have the new syscall
+     *
+     * We detect the new sendfile() syscall available at the compile time
      * to allow an old binary to run correctly on an updated FreeBSD system.
      */
 
@@ -142,7 +145,7 @@ int ngx_os_init(ngx_log_t *log)
 
 #else
 
-    /* an old syscall that can have the bug */
+    /* an old syscall that may have the bug */
 
     ngx_freebsd_sendfile_nbytes_bug = 1;
 

@@ -46,6 +46,7 @@ CC_WARN=$CC_STRONG
 ngx_fmt_collect=no
 
 ngx_fmt_name=OFF_T_FMT; ngx_type="off_t"; . auto/types/sizeof
+ngx_type_max_value=OFF_T_MAX_VALUE; . auto/types/maxvalue
 eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
 
 ngx_fmt_name=TIME_T_FMT; ngx_type="time_t"; . auto/types/sizeof

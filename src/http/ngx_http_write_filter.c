@@ -69,7 +69,7 @@ ngx_module_t  ngx_http_write_filter_module = {
 ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                            last;
-    off_t                          size, flush;
+    off_t                          size, flush, sent;
     ngx_chain_t                   *cl, *ln, **ll, *chain;
     ngx_http_write_filter_ctx_t   *ctx;
     ngx_http_write_filter_conf_t  *conf;
@@ -138,7 +138,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_OK;
     }
 
-    if (r->connection->write->delayed) {
+    if (r->delayed) {
         return NGX_AGAIN;
     }
 
@@ -150,10 +150,18 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_OK;
     }
 
+    sent = r->connection->sent;
+
     chain = ngx_write_chain(r->connection, ctx->out);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http write filter %X", chain);
+
+#if 1
+    sent = r->connection->sent - sent;
+    r->delayed = 1;
+    ngx_add_timer(r->connection->write, sent * 1000 / (4 * 1024));
+#endif
 
     if (chain == NGX_CHAIN_ERROR) {
         return NGX_ERROR;

@@ -763,26 +763,30 @@ int ngx_worker_thread_cycle(void *data)
 ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
                             ngx_log_t *log) 
 {
-    ssize_t          n;
-    ngx_err_t        err;
-    struct iovec     iov[1];
-    struct msghdr    msg;
-    struct cmsghdr   cm;
+    ssize_t             n;
+    ngx_err_t           err;
+    struct iovec        iov[1];
+    struct msghdr       msg;
 
 #if (HAVE_MSGHDR_MSG_CONTROL)
+
+    union {
+        struct cmsghdr  cm;
+        char            space[CMSG_SPACE(sizeof(int))];
+    } cmsg;
 
     if (ch->fd == -1) {
         msg.msg_control = NULL;
         msg.msg_controllen = 0;
 
     } else {
-        msg.msg_control = (caddr_t) &cm;
-        msg.msg_controllen = sizeof(struct cmsghdr) +  sizeof(int);
+        msg.msg_control = (caddr_t) &cmsg;
+        msg.msg_controllen = sizeof(cmsg);
 
-        cm.cmsg_len = sizeof(struct cmsghdr) +  sizeof(int);
-        cm.cmsg_level = SOL_SOCKET; 
-        cm.cmsg_type = SCM_RIGHTS;
-        *((int *) ((char *) &cm + sizeof(struct cmsghdr))) = ch->fd;
+        cmsg.cm.cmsg_len = sizeof(cmsg);
+        cmsg.cm.cmsg_level = SOL_SOCKET; 
+        cmsg.cm.cmsg_type = SCM_RIGHTS;
+        *(int *) CMSG_DATA(&cmsg) = ch->fd;
     }
 
 #else
@@ -825,12 +829,19 @@ ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
 ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
                            ngx_log_t *log)
 {   
-    int              fd;
-    ssize_t          n;
-    ngx_err_t        err;
-    struct iovec     iov[1];
-    struct msghdr    msg;
-    struct cmsghdr   cm;
+    ssize_t             n;
+    ngx_err_t           err;
+    struct iovec        iov[1];
+    struct msghdr       msg;
+
+#if (HAVE_MSGHDR_MSG_CONTROL)
+    union {
+        struct cmsghdr  cm;
+        char            space[CMSG_SPACE(sizeof(int))];
+    } cmsg;
+#else
+    int                 fd;
+#endif
 
     iov[0].iov_base = (char *) ch;
     iov[0].iov_len = size;
@@ -841,8 +852,8 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     msg.msg_iovlen = 1;
 
 #if (HAVE_MSGHDR_MSG_CONTROL)
-    msg.msg_control = (caddr_t) &cm;
-    msg.msg_controllen = sizeof(struct cmsghdr) +  sizeof(int);
+    msg.msg_control = (caddr_t) &cmsg;
+    msg.msg_controllen = sizeof(cmsg);
 #else
     msg.msg_accrights = (caddr_t) &fd;
     msg.msg_accrightslen = sizeof(int);
@@ -870,20 +881,22 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
 
     if (ch->command == NGX_CMD_OPEN_CHANNEL) {
 
-        if (cm.cmsg_len < sizeof(struct cmsghdr) + sizeof(int)) {
+        if (cmsg.cm.cmsg_len < sizeof(cmsg)) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "recvmsg() returned too small ancillary data");
             return NGX_ERROR;
         }
 
-        if (cm.cmsg_level != SOL_SOCKET || cm.cmsg_type != SCM_RIGHTS) {
+        if (cmsg.cm.cmsg_level != SOL_SOCKET || cmsg.cm.cmsg_type != SCM_RIGHTS)
+        {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "recvmsg() returned invalid ancillary data "
-                          "level %d or type %d", cm.cmsg_level, cm.cmsg_type);
+                          "level %d or type %d",
+                          cmsg.cm.cmsg_level, cmsg.cm.cmsg_type);
             return NGX_ERROR;
         }
 
-        ch->fd = *((int *) ((char *) &cm + sizeof(struct cmsghdr)));
+        ch->fd = *(int *) CMSG_DATA(&cmsg);
     }
 
     if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {

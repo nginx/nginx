@@ -1050,13 +1050,15 @@ static void ngx_http_set_write_handler(ngx_http_request_t *r)
     wev = r->connection->write;
     wev->event_handler = ngx_http_writer;
 
-    if (wev->delayed && wev->ready) {
+    if (wev->ready && r->delayed) {
         return;
     }
 
     clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                         ngx_http_core_module);
-    ngx_add_timer(wev, clcf->send_timeout);
+    if (!r->delayed) {
+        ngx_add_timer(wev, clcf->send_timeout);
+    }
 
     wev->available = clcf->send_lowat;
     if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
@@ -1080,15 +1082,36 @@ void ngx_http_writer(ngx_event_t *wev)
     c = wev->data;
     r = c->data;
 
-#if 0 /* TODO: THINK */
-    if (wev->delayed) {
-        return;
-    }
-#endif
-
     if (wev->timedout) {
-        ngx_http_client_error(r, 0, NGX_HTTP_REQUEST_TIME_OUT);
-        return;
+        if (!r->delayed) {
+            ngx_http_client_error(r, 0, NGX_HTTP_REQUEST_TIME_OUT);
+            return;
+        }
+
+        wev->timedout = 0;
+        r->delayed = 0;
+
+        if (!wev->ready) {
+            clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
+                                                ngx_http_core_module);
+            ngx_add_timer(wev, clcf->send_timeout);
+
+            wev->available = clcf->send_lowat;
+
+            if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
+                ngx_http_close_request(r, 0);
+                ngx_http_close_connection(r->connection);
+            }
+
+            return;
+        }
+
+    } else {
+        if (r->delayed) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0,
+                           "http writer delayed");
+            return;
+        }
     }
 
     rc = ngx_http_output_filter(r, NULL);
@@ -1097,13 +1120,15 @@ void ngx_http_writer(ngx_event_t *wev)
                   "http writer output filter: %d", rc);
 
     if (rc == NGX_AGAIN) {
-        if (!wev->ready) {
-            clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                                ngx_http_core_module);
+        clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
+                                            ngx_http_core_module);
+        if (!wev->ready && !r->delayed) {
             ngx_add_timer(wev, clcf->send_timeout);
         }
 
-        if (ngx_handle_level_write_event(wev) == NGX_ERROR) {
+        wev->available = clcf->send_lowat;
+
+        if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
             ngx_http_close_request(r, 0);
             ngx_http_close_connection(r->connection);
         }

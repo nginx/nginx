@@ -91,15 +91,7 @@ void ngx_event_expire_timers(ngx_msec_t timer)
 
             ngx_del_timer(ev);
 
-            if (ev->delayed) {
-                ev->delayed = 0;
-                if (ev->ready == 0) {
-                    continue;
-                }
-
-            } else {
-                ev->timedout = 1;
-            }
+            ev->timedout = 1;
 
             if (ngx_threaded) {
                 if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {

@@ -11,9 +11,9 @@
 
 /*
  * Although FreeBSD sendfile() allows to pass a header and a trailer
- * it never sends a header with a part of the file in one packet until
+ * it can not send a header with a part of the file in one packet until
  * FreeBSD 5.2-STABLE.  Besides over the fast ethernet connection sendfile()
- * can send the partially filled packets, i.e. the 8 file pages can be sent
+ * may send the partially filled packets, i.e. the 8 file pages may be sent
  * as the 11 full 1460-bytes packets, then one incomplete 324-bytes packet,
  * and then again the 11 full 1460-bytes packets.
  *
@@ -22,7 +22,7 @@
  * of the file in one packet but also sends file pages in the full packets.
  *
  * But until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush a pending
- * data that less than MSS so that data can be sent with 5 second delay.
+ * data that less than MSS so that data may be sent with 5 second delay.
  * So we do not use TCP_NOPUSH on FreeBSD prior to 4.5 although it can be used
  * for non-keepalive HTTP connections.
  */
@@ -32,10 +32,10 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int              rc;
     u_char          *prev;
-    off_t            sent, fprev;
+    off_t            sent, fprev, send, limit;
     size_t           hsize, fsize;
     ssize_t          size;
-    ngx_int_t        eintr, eagain;
+    ngx_uint_t       eintr, eagain, ready;
     struct iovec    *iov;
     struct sf_hdtr   hdtr;
     ngx_err_t        err;
@@ -62,12 +62,20 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
 #endif
 
+#if 1
+    limit = 4096;
+#else
+    limit = OFF_T_MAX_VALUE;
+#endif
+
     do {
         file = NULL;
         fsize = 0;
         hsize = 0;
+        send = 0;
         eintr = 0;
         eagain = 0;
+        ready = 0;
 
         ngx_init_array(header, c->pool, 10, sizeof(struct iovec),
                        NGX_CHAIN_ERROR);
@@ -88,40 +96,50 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                 break;
             }
 
+            size = cl->buf->last - cl->buf->pos;
+
+            if (send + size > limit) {
+                size = limit - send;
+            }
+
             if (prev == cl->buf->pos) {
-                iov->iov_len += cl->buf->last - cl->buf->pos;
+                iov->iov_len += size;
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
                 iov->iov_base = (void *) cl->buf->pos;
-                iov->iov_len = cl->buf->last - cl->buf->pos;
+                iov->iov_len = size;
             }
 
-            prev = cl->buf->last;
-            hsize += cl->buf->last - cl->buf->pos;
+            prev = cl->buf->pos + size;
+            hsize += size;
+            send += size;
         }
 
         /* get the file buf */
 
         if (cl && cl->buf->in_file) {
             file = cl->buf;
-            fsize = (size_t) (file->file_last - file->file_pos);
-            fprev = file->file_last;
-            cl = cl->next;
+            fsize = 0;
 
             /* coalesce the neighbouring file bufs */
 
-            while (cl && cl->buf->in_file) {
-                if (file->file->fd != cl->buf->file->fd
-                    || fprev != cl->buf->file_pos)
-                {
-                    break;
+            do {
+                size = (size_t) (cl->buf->file_last - cl->buf->file_pos);
+
+                if (send + size > limit) {
+                    size = limit - send;
                 }
 
-                fsize += (size_t) (cl->buf->file_last - cl->buf->file_pos);
-                fprev = cl->buf->file_last;
+                fsize += size;
+                send += size;
+                fprev = cl->buf->file_pos + size;
                 cl = cl->next;
-            }
+
+            } while (cl
+                     && cl->buf->in_file
+                     && file->file->fd == cl->buf->file->fd
+                     && fprev == cl->buf->file_pos);
         }
 
         if (file) {
@@ -139,17 +157,24 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                     break;
                 }
 
+                size = cl->buf->last - cl->buf->pos;
+
+                if (send + size > limit) {
+                    size = limit - send;
+                }
+
                 if (prev == cl->buf->pos) {
-                    iov->iov_len += cl->buf->last - cl->buf->pos;
+                    iov->iov_len += size;
 
                 } else {
                     ngx_test_null(iov, ngx_push_array(&trailer),
                                   NGX_CHAIN_ERROR);
                     iov->iov_base = (void *) cl->buf->pos;
-                    iov->iov_len = cl->buf->last - cl->buf->pos;
+                    iov->iov_len = size;
                 }
 
-                prev = cl->buf->last;
+                prev = cl->buf->pos + size;
+                send += size;
             }
         }
 
@@ -261,6 +286,10 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             sent = rc > 0 ? rc : 0;
         }
 
+        if (send == sent) {
+            ready = 1;
+        }
+
         c->sent += sent;
 
         for (cl = in; cl; cl = cl->next) {
@@ -298,6 +327,10 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             }
 
             break;
+        }
+
+        if (ready) {
+            return cl;
         }
 
         in = cl;

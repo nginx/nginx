@@ -35,6 +35,22 @@
 #include <sys/sysctl.h>
 #include <netinet/tcp.h>        /* TCP_NOPUSH */
 
+
+#if __FreeBSD_version < 400017
+
+#include <sys/param.h>          /* ALIGN() */
+
+/* FreeBSD 3.x has no CMSG_SPACE() at all and has the broken CMSG_DATA() */
+
+#undef  CMSG_SPACE
+#define CMSG_SPACE(l)       (ALIGN(sizeof(struct cmsghdr)) + ALIGN(l))
+
+#undef  CMSG_DATA
+#define CMSG_DATA(cmsg)     ((u_char *)(cmsg) + ALIGN(sizeof(struct cmsghdr)))
+
+#endif
+
+
 #include <ngx_auto_config.h>
 
 
