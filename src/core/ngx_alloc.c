@@ -67,6 +67,10 @@ void ngx_destroy_pool(ngx_pool_t *pool)
 #if (NGX_DEBUG_ALLOC)
     for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
         ngx_log_debug(pool->log, "free: %08x" _ p);
+
+        if (n == NULL) {
+            break;
+        }
     }
 #endif
 

@@ -208,7 +208,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
 #endif
 
             ngx_http_create_ctx(r, ctx, ngx_http_range_filter_module,
-                               sizeof(ngx_http_range_filter_ctx_t), NGX_ERROR);
+                                sizeof(ngx_http_range_filter_ctx_t), NGX_ERROR);
 
             len = 4 + 10 + 2 + 14 + r->headers_out.content_type->value.len
                                   + 2 + 21 + 1;

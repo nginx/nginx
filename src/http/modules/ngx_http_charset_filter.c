@@ -60,6 +60,11 @@ static int ngx_http_charset_header_filter(ngx_http_request_t *r)
 {
     ngx_http_charset_loc_conf_t  *lcf;
 
+    if (ngx_strncasecmp(r->headers_out.content_type->value.data, "text/", 5)
+                                                                        != 0) {
+        return next_header_filter(r);
+    }
+
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
 
     if (r->headers_out.status == NGX_HTTP_MOVED_PERMANENTLY
