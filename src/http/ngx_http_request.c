@@ -1423,7 +1423,7 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
     ngx_connection_t    *c;
     ngx_http_log_ctx_t  *ctx;
 
-    c = (ngx_connection_t *) rev->data;
+    c = rev->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http keepalive handler");
 
@@ -1725,6 +1725,26 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
 }
 
 
+#if (NGX_HTTP_SSL)
+
+void ngx_ssl_close_handler(ngx_event_t *ev)
+{
+    ngx_connection_t  *c;
+
+    c = ev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "http ssl close handler");
+
+    if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
+        return;
+    }
+
+    ngx_http_close_connection(c);
+}
+
+#endif
+
+
 void ngx_http_close_connection(ngx_connection_t *c)
 {
     ngx_socket_t  fd;
@@ -1736,6 +1756,18 @@ void ngx_http_close_connection(ngx_connection_t *c)
         ngx_log_error(NGX_LOG_ALERT, c->log, 0, "connection already closed");
         return;
     }
+
+#if (NGX_HTTP_SSL)
+
+    if (c->ssl) {
+        if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
+            c->read->event_handler = ngx_ssl_close_handler;
+            c->write->event_handler = ngx_ssl_close_handler;
+            return;
+        }
+    }
+
+#endif
 
     if (c->read->timer_set) {
         ngx_del_timer(c->read);

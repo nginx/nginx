@@ -42,6 +42,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     int                           last;
     off_t                         size, flush, sent;
     ngx_chain_t                  *cl, *ln, **ll, *chain;
+    ngx_http_core_srv_conf_t     *cscf;
     ngx_http_core_loc_conf_t     *clcf;
     ngx_http_write_filter_ctx_t  *ctx;
 
@@ -123,20 +124,11 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     sent = r->connection->sent;
 
-/* STUB */
-#if (NGX_OPENSSL)
-    if (r->connection->ssl) {
-        chain = ngx_http_ssl_write(r->connection, ctx->out,
-                                   clcf->limit_rate ? clcf->limit_rate:
-                                                      OFF_T_MAX_VALUE);
-    } else {
-#endif
-        chain = ngx_write_chain(r->connection, ctx->out,
-                                clcf->limit_rate ? clcf->limit_rate:
-                                                   OFF_T_MAX_VALUE);
-#if (NGX_OPENSSL)
-    }
-#endif
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    chain = cscf->send_chain(r->connection, ctx->out,
+                             clcf->limit_rate ? clcf->limit_rate:
+                                                OFF_T_MAX_VALUE);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http write filter %X", chain);
