@@ -826,7 +826,7 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     int                          m;
     char                        *rv;
     ngx_http_module_t           *module;
-    ngx_conf_t                   pcf;
+    ngx_conf_t                   pvcf;
     ngx_http_conf_ctx_t         *ctx, *hctx;
     ngx_http_core_main_conf_t   *cmcf;
     ngx_http_core_srv_conf_t    *cscf, **cscfp;
@@ -881,14 +881,11 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
     /* parse inside server{} */
 
-    pcf = *cf;
-#if 0
-    pctx = cf->ctx;
-#endif
+    pvcf = *cf;
     cf->ctx = ctx;
     cf->cmd_type = NGX_HTTP_SRV_CONF;
     rv = ngx_conf_parse(cf, NULL);
-    *cf = pcf;
+    *cf = pvcf;
 
     if (rv != NGX_CONF_OK) {
         return rv;

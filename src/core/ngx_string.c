@@ -88,12 +88,12 @@ ngx_int_t ngx_hextoi(u_char *line, size_t n)
         }
 
         if (ch >= 'A' && ch <= 'F') {
-            value = value * 16 + (*line - 'A');
+            value = value * 16 + (ch - 'A' + 10);
             continue;
         }
 
         if (ch >= 'a' && ch <= 'f') {
-            value = value * 16 + (*line - 'a');
+            value = value * 16 + (ch - 'a' + 10);
             continue;
         }
 
