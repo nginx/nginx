@@ -20,3 +20,4 @@ pcre.lib:	pcre.h
 pcre.h:
 	patch -o pcre.h pcre.in patch.pcre.in
 	patch -o config.h config.in patch.config.in
+	patch -o pcre.c pcre.c patch.pcre.c

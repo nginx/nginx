@@ -6,18 +6,18 @@ case "$NGX_CC_NAME" in
 
     msvc*)
         ngx_makefile=makefile.msvc
-        ngx_opt="CPU_OPT=$CPU_OPT LIBC=$LIBC"
+        ngx_opt="CPU_OPT=\"$CPU_OPT\" LIBC=$LIBC"
 
     ;;
 
     owc*)
         ngx_makefile=makefile.owc
-        ngx_opt="CPU_OPT=$CPU_OPT"
+        ngx_opt="CPU_OPT=\"$CPU_OPT\""
     ;;
 
     bcc)
         ngx_makefile=makefile.bcc
-        ngx_opt="-DCPU_OPT=$CPU_OPT"
+        ngx_opt="-DCPU_OPT=\"$CPU_OPT\""
     ;;
 
 esac

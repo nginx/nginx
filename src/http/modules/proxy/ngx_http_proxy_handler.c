@@ -362,7 +362,9 @@ static ngx_str_t cache_reasons[] = {
 };
 
 
+#if (NGX_PCRE)
 static ngx_str_t ngx_http_proxy_uri = ngx_string("/");
+#endif
 
 
 static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r)
@@ -812,9 +814,11 @@ u_char *ngx_http_proxy_log_error(ngx_log_t *log, u_char *buf, size_t len)
     peer = &ctx->proxy->upstream->peer;
 
     p = ngx_snprintf(buf, len,
-                     " while %s, client: %V, URL: %V, upstream: http://%V%s%V",
+                     " while %s, client: %V, host: %V, URL: \"%V\","
+                     " upstream: http://%V%s%V",
                      ctx->proxy->action,
                      &r->connection->addr_text,
+                     &r->server_name,
                      &r->unparsed_uri,
                      &peer->peers->peer[peer->cur_peer].name,
                      ctx->proxy->lcf->upstream->uri_separator,

@@ -46,6 +46,7 @@
 #include <sys/systeminfo.h>
 #include <limits.h>             /* IOV_MAX */
 #include <inttypes.h>
+#include <crypt.h>
 
 #include <ngx_auto_config.h>
 

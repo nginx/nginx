@@ -58,11 +58,17 @@ static const char *debug_levels[] = {
 
 
 #if (NGX_HAVE_VARIADIC_MACROS)
-void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
-                        const char *fmt, ...)
+
+void
+ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+    const char *fmt, ...)
+
 #else
-void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
-                        const char *fmt, va_list args)
+
+void
+ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+    const char *fmt, va_list args)
+
 #endif
 {
 #if (NGX_HAVE_VARIADIC_MACROS)
@@ -144,7 +150,8 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 }
 
 
-static void ngx_log_write(ngx_log_t *log, u_char *errstr, size_t len)
+static void
+ngx_log_write(ngx_log_t *log, u_char *errstr, size_t len)
 {
 #if (NGX_WIN32)
     u_long  written;
@@ -180,8 +187,9 @@ static void ngx_log_write(ngx_log_t *log, u_char *errstr, size_t len)
 
 #if !(NGX_HAVE_VARIADIC_MACROS)
 
-void ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
-                   const char *fmt, ...)
+void ngx_cdecl
+ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+    const char *fmt, ...)
 {
     va_list  args;
 
@@ -193,7 +201,8 @@ void ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 }
 
 
-void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...)
+void ngx_cdecl
+ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...)
 {
     va_list  args;
 
@@ -205,7 +214,8 @@ void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...)
 #endif
 
 
-ngx_log_t *ngx_log_init(void)
+ngx_log_t *
+ngx_log_init(void)
 {
     ngx_log.file = &ngx_stderr;
     ngx_log.log_level = NGX_LOG_NOTICE;
@@ -240,7 +250,8 @@ ngx_log_t *ngx_log_init(void)
 }
 
 
-ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
+ngx_log_t *
+ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
 {
     ngx_log_t  *log;
     ngx_str_t  *value, *name;
@@ -267,7 +278,8 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
 }
 
 
-char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
+char *
+ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
 {
     ngx_uint_t   i, n, d;
     ngx_str_t   *value;
@@ -320,7 +332,8 @@ char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
 }
 
 
-static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *
+ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t  *value;
 

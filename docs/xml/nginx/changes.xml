@@ -9,6 +9,42 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.26" date="22.03.2005">
+
+<change type="change">
+<para lang="ru">
+неверные строки заголовка, переданные клиентом, теперь игнорируется и
+записываются в error_log на уровне info.
+</para>
+<para lang="en">
+the invalid client header lines are now ignored and logged at the info level.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+при записи ошибок в лог записывается так же имя хоста, при обращении
+к которому, произошла ошибка.
+</para>
+<para lang="en">
+the host name is also logged in error log.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_auth_basic_module и директивы auth_basic и
+auth_basic_user_file.
+</para>
+<para lang="en">
+the ngx_http_auth_basic_module module and the auth_basic and
+auth_basic_user_file directives.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.25" date="19.03.2005">
 
 <change type="bugfix">

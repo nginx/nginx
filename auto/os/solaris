@@ -13,8 +13,6 @@ END
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $SOLARIS_DEPS"
 CORE_SRCS="$UNIX_SRCS $SOLARIS_SRCS "
-EVENT_MODULES="$EVENT_MODULES"
-
 CORE_LIBS="$CORE_LIBS -lsocket -lnsl -lrt"
 
 # Solaris's make does not support a blank line between target and rules

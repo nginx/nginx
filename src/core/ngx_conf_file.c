@@ -9,6 +9,7 @@
 
 
 static ngx_int_t ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last);
+static ngx_int_t ngx_conf_read_token(ngx_conf_t *cf);
 static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
@@ -35,7 +36,6 @@ ngx_module_t  ngx_conf_module = {
 };
 
 
-
 /* The ten fixed arguments */
 
 static int argument_number[] = {
@@ -49,10 +49,9 @@ static int argument_number[] = {
     NGX_CONF_TAKE7
 };
 
-static ngx_int_t ngx_conf_read_token(ngx_conf_t *cf);
 
-
-char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
+char *
+ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
     char             *rv;
     ngx_fd_t          fd;
@@ -173,7 +172,8 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 }
 
 
-static ngx_int_t ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
+static ngx_int_t
+ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 {
     char           *rv;
     void           *conf, **confp;
@@ -331,7 +331,8 @@ static ngx_int_t ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 }
 
 
-static ngx_int_t ngx_conf_read_token(ngx_conf_t *cf)
+static ngx_int_t
+ngx_conf_read_token(ngx_conf_t *cf)
 {
     u_char      *start, ch, *src, *dst;
     int          len;
@@ -576,7 +577,8 @@ static ngx_int_t ngx_conf_read_token(ngx_conf_t *cf)
 }
 
 
-static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *
+ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t  *value, file;
 
@@ -593,7 +595,8 @@ static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-ngx_int_t ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
+ngx_int_t
+ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
 {
     u_char     *p;
     ngx_str_t   old;
@@ -641,7 +644,8 @@ ngx_int_t ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
 }
 
 
-ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
+ngx_open_file_t *
+ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
 {
     ngx_str_t         full;
     ngx_uint_t        i;
@@ -703,8 +707,9 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
 }
 
 
-void ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
-                        char *fmt, ...)
+void ngx_cdecl
+ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
+    char *fmt, ...)
 {
     u_char   errstr[NGX_MAX_CONF_ERRSTR], *buf, *last;
     va_list  args;
@@ -729,7 +734,8 @@ void ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
 }
 
 
-char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
@@ -768,7 +774,8 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
@@ -794,7 +801,8 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
@@ -824,7 +832,8 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
@@ -854,7 +863,8 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
@@ -888,7 +898,8 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
@@ -922,7 +933,8 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char *p = conf;
 
@@ -951,7 +963,8 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
@@ -987,7 +1000,8 @@ char *ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
@@ -1032,13 +1046,15 @@ char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     return "unsupported on this platform";
 }
 
 
-char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data)
+char *
+ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data)
 {
     ngx_conf_num_bounds_t  *bounds = post;
     ngx_int_t  *np = data;

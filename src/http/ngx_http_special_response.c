@@ -53,9 +53,9 @@ static char error_400_page[] =
 
 static char error_401_page[] =
 "<html>" CRLF
-"<head><title>401 Unauthorized</title></head>" CRLF
+"<head><title>401 Authorization Required</title></head>" CRLF
 "<body bgcolor=\"white\">" CRLF
-"<center><h1>401 Unauthorized</h1></center>" CRLF
+"<center><h1>401 Authorization Required</h1></center>" CRLF
 ;
 
 

@@ -722,6 +722,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 {
     ssize_t              n;
     ngx_int_t            rc, rv, i;
+    ngx_str_t            header;
     ngx_table_elt_t     *h, **cookie;
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
@@ -770,6 +771,19 @@ ngx_http_process_request_headers(ngx_event_t *rev)
         rc = ngx_http_parse_header_line(r, r->header_in);
 
         if (rc == NGX_OK) {
+
+            if (r->invalid_header) {
+
+                /* there was error while a header line parsing */
+
+                header.len = r->header_end - r->header_name_start;
+                header.data = r->header_name_start;
+
+                ngx_log_error(NGX_LOG_INFO, rev->log, 0,
+                              "client sent invalid header: \"%V\", ignored,",
+                              &header);
+                continue;
+            }
 
             /* a header line has been parsed successfully */
 
@@ -2370,6 +2384,11 @@ ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len)
     }
 
     len -= p - buf;
+
+    if (ctx->request->server_name.data) {
+        p = ngx_snprintf(p, len, ", host: %V", &ctx->request->server_name);
+        len -= p - buf;
+    }
 
     p = ngx_snprintf(p, len, ", URL: \"%V\"", &ctx->request->unparsed_uri);
 

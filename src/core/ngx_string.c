@@ -75,7 +75,7 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  */
 
 
-u_char *
+u_char * ngx_cdecl
 ngx_sprintf(u_char *buf, const char *fmt, ...)
 {
     u_char   *p;
@@ -89,7 +89,7 @@ ngx_sprintf(u_char *buf, const char *fmt, ...)
 }
 
 
-u_char *
+u_char * ngx_cdecl
 ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
 {
     u_char   *p;

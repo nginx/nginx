@@ -497,9 +497,10 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_space_before_value,
         sw_value,
         sw_space_after_value,
+        sw_ignore_line,
+        sw_skip_line,
         sw_almost_done,
-        sw_header_almost_done,
-        sw_ignore_line
+        sw_header_almost_done
     } state;
 
     state = r->state;
@@ -511,6 +512,8 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         /* first char */
         case sw_start:
+            r->invalid_header = 0;
+
             switch (ch) {
             case CR:
                 r->header_end = p;
@@ -528,7 +531,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                     break;
                 }
 
-                if (ch == '-' || ch == '_' || ch == '~' || ch == '.') {
+                if (ch == '-') {
                     break;
                 }
 
@@ -536,7 +539,9 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                     break;
                 }
 
-                return NGX_HTTP_PARSE_INVALID_HEADER;
+                r->invalid_header = 1;
+                state = sw_skip_line;
+                break;
 
             }
             break;
@@ -554,7 +559,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                 break;
             }
 
-            if (ch == '-' || ch == '_' || ch == '~' || ch == '.') {
+            if (ch == '-') {
                 break;
             }
 
@@ -572,7 +577,9 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                 break;
             }
 
-            return NGX_HTTP_PARSE_INVALID_HEADER;
+            r->invalid_header = 1;
+            state = sw_skip_line;
+            break;
 
         /* space* before header value */
         case sw_space_before_value:
@@ -632,6 +639,21 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
             case LF:
                 state = sw_start;
                 break;
+            default:
+                break;
+            }
+            break;
+
+        /* skip header line */
+        case sw_skip_line:
+            switch (ch) {
+            case CR:
+                r->header_end = p;
+                state = sw_almost_done;
+                break;
+            case LF:
+                r->header_end = p;
+                goto done;
             default:
                 break;
             }

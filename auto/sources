@@ -123,6 +123,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_thread.h \
             src/os/unix/ngx_socket.h \
             src/os/unix/ngx_os.h \
+            src/os/unix/ngx_user.h \
             src/os/unix/ngx_process_cycle.h"
 
 UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
@@ -142,6 +143,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_daemon.c \
             src/os/unix/ngx_setproctitle.c \
             src/os/unix/ngx_posix_init.c \
+            src/os/unix/ngx_user.c \
             src/os/unix/ngx_process_cycle.c"
 
 POSIX_DEPS=src/os/unix/ngx_posix_config.h
@@ -180,6 +182,7 @@ WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_thread.h \
             src/os/win32/ngx_socket.h \
             src/os/win32/ngx_os.h \
+            src/os/win32/ngx_user.h \
             src/os/win32/ngx_gui.h \
             src/os/win32/ngx_gui_resources.h \
             src/os/win32/ngx_process_cycle.h"
@@ -198,6 +201,7 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_wsarecv_chain.c \
             src/os/win32/ngx_wsasend_chain.c \
             src/os/win32/ngx_win32_init.c \
+            src/os/win32/ngx_user.c \
             src/os/win32/ngx_gui.c \
             src/os/win32/ngx_process_cycle.c \
             src/event/ngx_event_acceptex.c"
@@ -288,6 +292,10 @@ HTTP_USERID_SRCS=src/http/modules/ngx_http_userid_filter_module.c
 
 HTTP_ACCESS_MODULE=ngx_http_access_module
 HTTP_ACCESS_SRCS=src/http/modules/ngx_http_access_module.c
+
+
+HTTP_AUTH_BASIC_MODULE=ngx_http_auth_basic_module
+HTTP_AUTH_BASIC_SRCS=src/http/modules/ngx_http_auth_basic_module.c
 
 
 HTTP_AUTOINDEX_MODULE=ngx_http_autoindex_module

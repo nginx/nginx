@@ -11,8 +11,8 @@
 #define NGX_MAX_TEXT   2048
 
 
-void ngx_message_box(char *title, ngx_uint_t type, ngx_err_t err,
-                     const char *fmt, ...)
+void ngx_cdecl ngx_message_box(char *title, ngx_uint_t type, ngx_err_t err,
+    const char *fmt, ...)
 {
     va_list  args;
     u_char   text[NGX_MAX_TEXT], *p, *last;
@@ -59,8 +59,8 @@ void ngx_message_box(char *title, ngx_uint_t type, ngx_err_t err,
 }
 
 
-ngx_int_t ngx_system_tray_icon(HWND window, u_long action,
-                               HICON icon, u_char *tip)
+ngx_int_t
+ngx_system_tray_icon(HWND window, u_long action, HICON icon, u_char *tip)
 {
     NOTIFYICONDATA  ni;
 

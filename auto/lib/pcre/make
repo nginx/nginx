@@ -6,17 +6,17 @@ case "$NGX_CC_NAME" in
 
     msvc*)
         ngx_makefile=makefile.msvc
-        ngx_opt="CPU_OPT=$CPU_OPT LIBC=$LIBC"
+        ngx_opt="CPU_OPT=\"$CPU_OPT\" LIBC=$LIBC"
     ;;
 
     owc*)
         ngx_makefile=makefile.owc
-        ngx_opt="CPU_OPT=$CPU_OPT"
+        ngx_opt="CPU_OPT=\"$CPU_OPT\""
     ;;
 
     bcc)
         ngx_makefile=makefile.bcc
-        ngx_opt="-DCPU_OPT=$CPU_OPT"
+        ngx_opt="-DCPU_OPT=\"$CPU_OPT\""
     ;;
 
 esac
@@ -26,7 +26,9 @@ case "$NGX_PLATFORM" in
 
     win32)
         cp auto/lib/pcre/patch.pcre.in $PCRE
+        cp auto/lib/pcre/patch.pcre.in.owc $PCRE
         cp auto/lib/pcre/patch.config.in $PCRE
+        cp auto/lib/pcre/patch.pcre.c $PCRE
         cp auto/lib/pcre/$ngx_makefile $PCRE
 
         ngx_pcre=`echo $PCRE | sed -e "s/\//$ngx_regex_dirsep/g"`

@@ -15,5 +15,5 @@ pcre.lib:	pcre.h
 
 
 pcre.h:
-	patch -o pcre.h pcre.in patch.pcre.in
+	patch -o pcre.h pcre.in patch.pcre.in.owc
 	patch -o config.h config.in patch.config.in

@@ -93,15 +93,23 @@
 
 
 #define ngx_inline        __inline
+#define ngx_cdecl         __cdecl
 
 
 #ifdef _MSC_VER
 typedef unsigned __int32  uint32_t;
 typedef __int32           int32_t;
+#define ngx_libc_cdecl    __cdecl
 
-#else /* __WATCOMC__ and __BORLANDC__ */
+#elif defined __WATCOMC__
 typedef unsigned int      uint32_t;
 typedef int               int32_t;
+#define ngx_libc_cdecl
+
+#else /* __BORLANDC__ */
+typedef unsigned int      uint32_t;
+typedef int               int32_t;
+#define ngx_libc_cdecl    __cdecl
 #endif
 
 typedef __int64           int64_t;

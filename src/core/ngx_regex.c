@@ -8,22 +8,24 @@
 #include <ngx_core.h>
 
 
-static void *ngx_regex_malloc(size_t size);
-static void ngx_regex_free(void *p);
+static void * ngx_libc_cdecl ngx_regex_malloc(size_t size);
+static void ngx_libc_cdecl ngx_regex_free(void *p);
 
 
 static ngx_pool_t  *ngx_pcre_pool;
 
 
-void ngx_regex_init(void)
+void
+ngx_regex_init(void)
 {
     pcre_malloc = ngx_regex_malloc;
     pcre_free = ngx_regex_free;
 }
 
 
-ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
-                               ngx_pool_t *pool, ngx_str_t *err)
+ngx_regex_t *
+ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options, ngx_pool_t *pool,
+    ngx_str_t *err)
 {
     int              erroff;
     const char      *errstr;
@@ -79,7 +81,8 @@ ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
 }
 
 
-ngx_int_t ngx_regex_capture_count(ngx_regex_t *re)
+ngx_int_t
+ngx_regex_capture_count(ngx_regex_t *re)
 {
     int  rc, n;
 
@@ -95,8 +98,8 @@ ngx_int_t ngx_regex_capture_count(ngx_regex_t *re)
 }
 
 
-ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s,
-                         int *captures, ngx_int_t size)
+ngx_int_t
+ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures, ngx_int_t size)
 {
     int  rc;
 
@@ -111,7 +114,8 @@ ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s,
 }
 
 
-static void *ngx_regex_malloc(size_t size)
+static void * ngx_libc_cdecl
+ngx_regex_malloc(size_t size)
 {
     ngx_pool_t      *pool;
 #if (NGX_THREADS)
@@ -135,7 +139,8 @@ static void *ngx_regex_malloc(size_t size)
 }
 
 
-static void ngx_regex_free(void *p)
+static void ngx_libc_cdecl
+ngx_regex_free(void *p)
 {
     return;
 }

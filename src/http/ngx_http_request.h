@@ -55,6 +55,7 @@
 #define NGX_HTTP_NOT_MODIFIED              304
 
 #define NGX_HTTP_BAD_REQUEST               400
+#define NGX_HTTP_UNAUTHORIZED              401
 #define NGX_HTTP_FORBIDDEN                 403
 #define NGX_HTTP_NOT_FOUND                 404
 #define NGX_HTTP_NOT_ALLOWED               405
@@ -157,6 +158,9 @@ typedef struct {
     ngx_table_elt_t                  *accept_language;
 #endif
 
+    ngx_str_t                         user;
+    ngx_str_t                         passwd;
+
     ngx_array_t                       cookies;
 
     size_t                            host_name_len;
@@ -194,6 +198,7 @@ typedef struct {
     ngx_table_elt_t                  *last_modified;
     ngx_table_elt_t                  *content_range;
     ngx_table_elt_t                  *accept_ranges;
+    ngx_table_elt_t                  *www_authenticate;
     ngx_table_elt_t                  *expires;
     ngx_table_elt_t                  *cache_control;
     ngx_table_elt_t                  *etag;
@@ -335,6 +340,8 @@ struct ngx_http_request_s {
 
     unsigned                          uri_changed:1;
     unsigned                          uri_changes:4;
+
+    unsigned                          invalid_header:1;
 
     unsigned                          low_case_exten:1;
     unsigned                          header_timeout_set:1;

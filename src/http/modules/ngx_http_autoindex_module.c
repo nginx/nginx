@@ -39,7 +39,8 @@ typedef struct {
 #define NGX_HTTP_AUTOINDEX_NAME_LEN  50
 
 
-static int ngx_http_autoindex_cmp_entries(const void *one, const void *two);
+static int ngx_libc_cdecl ngx_http_autoindex_cmp_entries(const void *one,
+    const void *two);
 static ngx_int_t ngx_http_autoindex_error(ngx_http_request_t *r,
     ngx_dir_t *dir, u_char *name);
 static ngx_int_t ngx_http_autoindex_init(ngx_cycle_t *cycle);
@@ -446,7 +447,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 }
 
 
-static int
+static int ngx_libc_cdecl
 ngx_http_autoindex_cmp_entries(const void *one, const void *two)
 {
     ngx_http_autoindex_entry_t *first = (ngx_http_autoindex_entry_t *) one;

@@ -63,6 +63,9 @@
 #define NGX_CHANGEBIN_SIGNAL     USR2
 #endif
 
+#define ngx_cdecl
+#define ngx_libc_cdecl
+
 #endif
 
 

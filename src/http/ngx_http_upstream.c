@@ -1148,9 +1148,11 @@ ngx_http_upstream_log_error(ngx_log_t *log, u_char *buf, size_t len)
     peer = &u->peer;
 
     p = ngx_snprintf(buf, len,
-                     " while %s, client: %V, URL: %V, upstream: %V%V%s%V",
+                     " while %s, client: %V, host: %V, URL: \"%V\","
+                     " upstream: %V%V%s%V",
                      log->action,
                      &r->connection->addr_text,
+                     &r->server_name,
                      &r->unparsed_uri,
                      &u->schema,
                      &peer->peers->peer[peer->cur_peer].name,

@@ -119,7 +119,7 @@ ngx_module_t  ngx_core_module = {
 ngx_uint_t  ngx_max_module;
 
 
-int
+int ngx_cdecl
 main(int argc, char *const *argv)
 {
     ngx_int_t         i;

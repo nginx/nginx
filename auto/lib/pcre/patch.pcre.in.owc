@@ -13,14 +13,3 @@
  
  /* Win32 uses DLL by default */
  
-@@ -143,8 +143,8 @@
- have to be different again. */
- 
- #ifndef VPCOMPAT
--PCRE_DATA_SCOPE void *(*pcre_malloc)(size_t);
--PCRE_DATA_SCOPE void  (*pcre_free)(void *);
-+PCRE_DATA_SCOPE void *(__cdecl *pcre_malloc)(size_t);
-+PCRE_DATA_SCOPE void  (__cdecl *pcre_free)(void *);
- PCRE_DATA_SCOPE int   (*pcre_callout)(pcre_callout_block *);
- #else   /* VPCOMPAT */
- extern void *pcre_malloc(size_t);

@@ -21,6 +21,11 @@ case $CPU in
     ;;
 esac
 
+# __stdcall
+#CPU_OPT="$CPU_OPT -ps"
+# __fastcall
+CPU_OPT="$CPU_OPT -pr"
+
 CFLAGS="$CFLAGS $CPU_OPT"
 
 # multithreaded

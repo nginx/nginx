@@ -883,7 +883,8 @@ static char *ngx_accept_mutex_check(ngx_conf_t *cf, void *post, void *data)
     *fp = 0;
 
     ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                       "\"accept_mutex\" is not supported, ignored");
+                       "\"accept_mutex\" is not supported on this platform, "
+                       "ignored");
 
 #endif
 

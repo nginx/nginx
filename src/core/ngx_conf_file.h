@@ -148,7 +148,7 @@ struct ngx_conf_s {
 
 
 typedef char *(*ngx_conf_post_handler_pt) (ngx_conf_t *cf,
-                                           void *data, void *conf);
+    void *data, void *conf);
 
 typedef struct {
     ngx_conf_post_handler_pt  post_handler;
@@ -274,8 +274,8 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
 ngx_int_t ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name);
 ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name);
-void ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
-                        char *fmt, ...);
+void ngx_cdecl ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf,
+    ngx_err_t err, char *fmt, ...);
 
 
 char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);

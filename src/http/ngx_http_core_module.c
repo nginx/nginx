@@ -35,7 +35,8 @@ static char *ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd,
     void *dummy);
 static char *ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd,
     void *dummy);
-static int ngx_http_core_cmp_locations(const void *first, const void *second);
+static int ngx_libc_cdecl ngx_http_core_cmp_locations(const void *first,
+    const void *second);
 
 static char *ngx_http_core_types(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -1257,7 +1258,7 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 }
 
 
-static int
+static int ngx_libc_cdecl
 ngx_http_core_cmp_locations(const void *one, const void *two)
 {
     ngx_int_t                  rc;

@@ -203,7 +203,7 @@ ngx_event_accept(ngx_event_t *ev)
 
         if (*(&c->lock)) {
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                           "spinlock in accept, fd:%", s);
+                           "spinlock in accept, fd:%d", s);
             ngx_spinlock(&c->lock, 1000);
             ngx_unlock(&c->lock);
         }

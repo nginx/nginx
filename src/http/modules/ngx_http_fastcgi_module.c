@@ -153,7 +153,9 @@ static ngx_str_t ngx_http_fastcgi_methods[] = {
 };
 
 
+#if (NGX_PCRE)
 static ngx_str_t ngx_http_fastcgi_uri = ngx_string("/");
+#endif
 
 
 static ngx_http_header_t ngx_http_fastcgi_headers_in[] = {

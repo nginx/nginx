@@ -48,6 +48,7 @@
 #include <malloc.h>             /* memalign() */
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
+#include <crypt.h>
 
 
 #include <ngx_auto_config.h>

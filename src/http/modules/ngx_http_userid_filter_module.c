@@ -605,7 +605,7 @@ ngx_http_userid_domain(ngx_conf_t *cf, void *post, void *data)
 
     u_char  *p, *new;
 
-    if (domain->len == 4 && ngx_strcmp(domain->data, "none") == 0) {
+    if (ngx_strcmp(domain->data, "none") == 0) {
         domain->len = 0;
         domain->data = (u_char *) "";
 
@@ -690,7 +690,7 @@ ngx_http_userid_p3p(ngx_conf_t *cf, void *post, void *data)
 {
     ngx_str_t  *p3p = data;
 
-    if (p3p->len == 4 && ngx_strcmp(p3p->data, "none") == 0) {
+    if (ngx_strcmp(p3p->data, "none") == 0) {
         p3p->len = 0;
         p3p->data = (u_char *) "";
     }
