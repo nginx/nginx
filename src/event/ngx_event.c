@@ -190,10 +190,7 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    if (ecf->accept_mutex) {
-        ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
-    }
-
+    ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
     ngx_connection_counter = (ngx_atomic_t *) (shared + 128);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -220,11 +217,10 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     ngx_iocp_conf_t     *iocpcf;
 #endif
 
-
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
-    if (ccf->worker_processes > 1 && ngx_accept_mutex_ptr) {
+    if (ccf->worker_processes > 1 && ecf->accept_mutex) {
         ngx_accept_mutex = ngx_accept_mutex_ptr;
         ngx_accept_mutex_held = 1;
         ngx_accept_mutex_delay = ecf->accept_mutex_delay;
