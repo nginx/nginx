@@ -20,17 +20,16 @@ case $USE_THREADS in
         esac
     ;;
 
-    pthread)
+    pthreads)
         have=NGX_THREADS . auto/have
         CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
         CORE_LIBS="$CORE_LIBS -lpthread"
     ;;
 
-    freebsd4)
+    libthr)
         have=NGX_THREADS . auto/have
-        CFLAGS="$CFLAGS -pthread"
         CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
-        CORE_LIBS="$CORE_LIBS -pthread"
+        CORE_LIBS="$CORE_LIBS -lthr"
     ;;
 
     linuxthreads)
@@ -42,22 +41,30 @@ case $USE_THREADS in
         CORE_LIBS="$CORE_LIBS -L /usr/local/lib -llthread -llgcc_r"
     ;;
 
-    lc_r)
-        have=NGX_THREADS . auto/have
-        CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
-        CORE_LIBS="$CORE_LIBS -lc_r"
+    libc_r)
+        case $PLATFORM in
+            FreeBSD:[34]*)
+                have=NGX_THREADS . auto/have
+                CFLAGS="$CFLAGS -pthread"
+                CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
+                CORE_LIBS="$CORE_LIBS -pthread"
+            ;;
+
+            FreeBSD:5*)
+                have=NGX_THREADS . auto/have
+                CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
+                CORE_LIBS="$CORE_LIBS -lc_r"
+            ;;
+        esac
     ;;
 
-    lthr)
-        have=NGX_THREADS . auto/have
-        CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
-        CORE_LIBS="$CORE_LIBS -lthr"
+    NO)
     ;;
 
-    lkse)
+    *)
         have=NGX_THREADS . auto/have
         CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
-        CORE_LIBS="$CORE_LIBS -lkse"
+        CORE_LIBS="$CORE_LIBS -l$USE_THREADS"
     ;;
 
 esac

@@ -98,6 +98,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, preserve_host),
       NULL },
 
+    { ngx_string("proxy_set_x_url"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, set_x_url),
+      NULL },
+
     { ngx_string("proxy_set_x_real_ip"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -894,6 +901,7 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->send_lowat = NGX_CONF_UNSET_SIZE;
 
     conf->preserve_host = NGX_CONF_UNSET;
+    conf->set_x_url = NGX_CONF_UNSET;
     conf->set_x_real_ip = NGX_CONF_UNSET;
     conf->add_x_forwarded_for = NGX_CONF_UNSET;
 
@@ -938,6 +946,7 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
 
     ngx_conf_merge_value(conf->preserve_host, prev->preserve_host, 0);
+    ngx_conf_merge_value(conf->set_x_url, prev->set_x_url, 0);
     ngx_conf_merge_value(conf->set_x_real_ip, prev->set_x_real_ip, 0);
     ngx_conf_merge_value(conf->add_x_forwarded_for,
                          prev->add_x_forwarded_for, 0);
@@ -1146,6 +1155,10 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
         }
 
         lcf->peers->number = i;
+
+        /* STUB */
+        lcf->peers->max_fails = 1;
+        lcf->peers->fail_timeout = 60;
 
         for (i = 0; h->h_addr_list[i] != NULL; i++) {
             lcf->peers->peers[i].host.data = host;

@@ -1012,7 +1012,7 @@ static int ngx_cmp_locations(const void *one, const void *two)
         return 1;
     }
 
-    return rc;
+    return (int) rc;
 }
 
 

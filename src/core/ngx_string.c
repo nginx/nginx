@@ -41,6 +41,7 @@ u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n)
  *    %[0][width]ui    ngx_uint_t
  *    %[0][width]uxi   ngx_uint_t in hex
  *    %s               null-terminated string
+ *    %c               char
  *    %%               %
  *
  */
@@ -219,6 +220,13 @@ u_char *ngx_sprintf(u_char *buf, char *fmt, ...)
                 while (*p) {
                     *buf++ = *p++;
                 }
+                fmt++;
+
+                continue;
+
+            case 'c':
+                d = va_arg(arg, int);
+                *buf++ = (u_char) (d & 0xff);
                 fmt++;
 
                 continue;

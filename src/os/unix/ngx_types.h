@@ -19,7 +19,8 @@ typedef struct {
     DIR              *dir;
     struct dirent    *de;
     struct stat       info;
-    unsigned          info_valid;
+
+    ngx_uint_t        valid_info:1;  /* unsigned  valid_info:1; */
 } ngx_dir_t;
 
 

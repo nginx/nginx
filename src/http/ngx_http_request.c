@@ -84,6 +84,8 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 #if (NGX_HTTP_PROXY)
     { ngx_string("X-Forwarded-For"),
                            offsetof(ngx_http_headers_in_t, x_forwarded_for) },
+    { ngx_string("X-Real-IP"), offsetof(ngx_http_headers_in_t, x_real_ip) },
+    { ngx_string("X-URL"), offsetof(ngx_http_headers_in_t, x_url) },
 #endif
     
     { ngx_null_string, 0 }
@@ -351,7 +353,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
 #endif
 
     server_name = cscf->server_names.elts;
-    r->server_name = &server_name->name;
+    r->server_name = server_name->name;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     c->log->file = clcf->err_log->file;
@@ -1122,7 +1124,14 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 
             r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
             r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
-            r->server_name = &name[i].name;
+
+            if (name[i].wildcard) {
+                r->server_name.len = r->headers_in.host_name_len;
+                r->server_name.data = r->headers_in.host->value.data;
+
+            } else {
+                r->server_name = name[i].name;
+            }
 
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             r->connection->log->file = clcf->err_log->file;

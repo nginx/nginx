@@ -619,6 +619,8 @@ static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 
         b->in_file = 1;
         b->temp_file = 1;
+        b->temporary = 0;
+        b->recycled = 0;
 
         ngx_chain_add_link(p->out, p->last_out, cl);
 

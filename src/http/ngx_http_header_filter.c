@@ -220,7 +220,7 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
     {
         r->headers_out.location->key.len = 0;
         len += sizeof("Location: http://") - 1
-               + r->server_name->len + r->headers_out.location->value.len + 2;
+               + r->server_name.len + r->headers_out.location->value.len + 2;
 
         if (r->port != 80) {
             len += r->port_text->len;
@@ -356,8 +356,8 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
         p = b->last + sizeof("Location: ") - 1;
         b->last = ngx_cpymem(b->last, "Location: http://",
                              sizeof("Location: http://") - 1);
-        b->last = ngx_cpymem(b->last, r->server_name->data,
-                             r->server_name->len);
+        b->last = ngx_cpymem(b->last, r->server_name.data,
+                             r->server_name.len);
         if (r->port != 80) {
             b->last = ngx_cpymem(b->last, r->port_text->data,
                                  r->port_text->len);

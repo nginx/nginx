@@ -26,7 +26,7 @@ struct ngx_file_s {
 
     ngx_log_t       *log;
 
-    unsigned         info_valid:1;
+    ngx_uint_t       valid_info:1;  /* unsigned  valid_info:1; */
 };
 
 #define NGX_MAX_PATH_LEVEL  3

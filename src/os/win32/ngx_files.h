@@ -129,7 +129,7 @@ int ngx_read_dir(ngx_dir_t *dir);
 #define ngx_delete_dir_n            "RemoveDirectory()"
 
 
-#define ngx_de_name(dir)            (dir)->fd.cFileName
+#define ngx_de_name(dir)            ((u_char *) (dir)->fd.cFileName)
 #define ngx_de_namelen(dir)         ngx_strlen((dir)->fd.cFileName)
 #define ngx_de_info(name, dir)      NGX_OK
 #define ngx_de_info_n               "dummy()"

@@ -19,8 +19,9 @@ typedef uint64_t                    ngx_file_uniq_t;
 typedef struct {
     HANDLE            dir;
     WIN32_FIND_DATA   fd;
-    unsigned          info_valid;
-    unsigned          ready;
+
+    unsigned          valid_info:1;
+    unsigned          ready:1;
 } ngx_dir_t;
 
 

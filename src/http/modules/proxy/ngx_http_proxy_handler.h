@@ -75,6 +75,7 @@ typedef struct {
     ngx_flag_t                       cyclic_temp_file;
     ngx_flag_t                       cache;
     ngx_flag_t                       preserve_host;
+    ngx_flag_t                       set_x_url;
     ngx_flag_t                       set_x_real_ip;
     ngx_flag_t                       add_x_forwarded_for;
     ngx_flag_t                       pass_server;

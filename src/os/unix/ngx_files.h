@@ -98,7 +98,7 @@ int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_delete_dir_n         "rmdir()"
 
 
-#define ngx_de_name(dir)         (dir)->de->d_name
+#define ngx_de_name(dir)         ((u_char *) (dir)->de->d_name)
 #if (NGX_FREEBSD)
 #define ngx_de_namelen(dir)      (dir)->de->d_namlen
 #else

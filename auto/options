@@ -42,6 +42,7 @@ HTTP_SSL=NO
 HTTP_SSI=NO
 HTTP_ACCESS=YES
 HTTP_USERID=YES
+HTTP_AUTOINDEX=YES
 HTTP_STATUS=NO
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
@@ -107,6 +108,7 @@ do
         --without-http_ssi_module)       HTTP_SSI=NO                ;;
         --without-http_userid_module)    HTTP_USERID=NO             ;;
         --without-http_access_module)    HTTP_ACCESS=NO             ;;
+        --without-http_autoindex_module) HTTP_AUTOINDEX=NO          ;;
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;

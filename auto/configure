@@ -23,12 +23,13 @@ fi
 
 . auto/cc/conf
 . auto/os/conf
-. auto/modules
-. auto/lib/conf
 
 if [ "$PLATFORM" != win32 ]; then
     . auto/threads
 fi
+
+. auto/modules
+. auto/lib/conf
 
 . auto/make
 . auto/lib/make

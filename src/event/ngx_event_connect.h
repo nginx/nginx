@@ -31,7 +31,7 @@ typedef struct {
     ngx_int_t           current;
     ngx_int_t           number;
     ngx_int_t           max_fails;
-    ngx_int_t           fail_timeout;
+    time_t              fail_timeout;
     ngx_int_t           last_cached;
 
  /* ngx_mutex_t        *mutex; */

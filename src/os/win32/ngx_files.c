@@ -276,7 +276,7 @@ int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
         return NGX_ERROR; 
     }
     
-    dir->info_valid = 1;
+    dir->valid_info = 1;
     dir->ready = 1;
 
     return NGX_OK;

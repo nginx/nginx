@@ -100,7 +100,7 @@ ngx_module_t  ngx_http_index_module = {
  * that path contains the usual file in place of the directory.
  */
 
-ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
+static ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
 {
     u_char                     *name;
     ngx_fd_t                    fd;

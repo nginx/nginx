@@ -43,6 +43,7 @@ static char *upstream_header_errors[] = {
 
 static char  http_version[] = " HTTP/1.0" CRLF;
 static char  host_header[] = "Host: ";
+static char  x_url_header[] = "X-URL: http";
 static char  x_real_ip_header[] = "X-Real-IP: ";
 static char  x_forwarded_for_header[] = "X-Forwarded-For: ";
 static char  connection_close_header[] = "Connection: close" CRLF;
@@ -142,18 +143,36 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     }
 
     len += uc->uri.len
-           + r->uri.len - uc->location->len + escape
-           + 1 + r->args.len                                 /* 1 is for "?" */
-           + sizeof(http_version) - 1
-           + sizeof(connection_close_header) - 1
-           + 2;                         /* 2 is for "\r\n" at the header end */
+        + r->uri.len - uc->location->len + escape
+        + 1 + r->args.len                                   /* 1 is for "?" */
+        + sizeof(http_version) - 1
+        + sizeof(connection_close_header) - 1
+        + 2;                           /* 2 is for "\r\n" at the header end */
+
+
+    if (p->lcf->set_x_url) {
+        len += sizeof(x_url_header) - 1
+            + 4                                          /* 4 is for "s://" */
+            + r->port_text->len
+            + r->unparsed_uri.len
+            + 2;                        /* 2 is for "\r\n" at the header end */
+
+        if (r->headers_in.host) {
+            len += r->headers_in.host_name_len;
+
+        } else {
+            len += r->server_name.len;
+        }
+
+    }
+
 
     if (p->lcf->preserve_host && r->headers_in.host) {
         len += sizeof(host_header) - 1
-               + r->headers_in.host_name_len
-               + 1                                           /* 1 is for ":" */
-               + uc->port_text.len
-               + 2;                                       /* 2 is for "\r\n" */
+            + r->headers_in.host_name_len
+            + 1                                              /* 1 is for ":" */
+            + uc->port_text.len
+            + 2;                                          /* 2 is for "\r\n" */
     } else {                                              /* 2 is for "\r\n" */
         len += sizeof(host_header) - 1 + uc->host_header.len + 2;
     }
@@ -167,10 +186,10 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     if (p->lcf->add_x_forwarded_for) {
         if (r->headers_in.x_forwarded_for) {
             len += sizeof(x_forwarded_for_header) - 1
-                   + r->headers_in.x_forwarded_for->value.len
-                   + 2                                      /* 2 is ofr ", " */
-                   + INET_ADDRSTRLEN - 1
-                   + 2;                                   /* 2 is for "\r\n" */
+                + r->headers_in.x_forwarded_for->value.len
+                + 2                                         /* 2 is ofr ", " */
+                + INET_ADDRSTRLEN - 1
+                + 2;                                      /* 2 is for "\r\n" */
         } else {
             len += sizeof(x_forwarded_for_header) - 1 + INET_ADDRSTRLEN - 1 + 2;
                                                           /* 2 is for "\r\n" */
@@ -271,6 +290,39 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     *(b->last++) = CR; *(b->last++) = LF;
 
 
+    /* the "X-URL" header */
+
+    if (p->lcf->set_x_url) {
+
+        b->last = ngx_cpymem(b->last, x_url_header,
+                             sizeof(x_url_header) - 1);
+
+#if (NGX_OPENSSL)
+
+        if (r->connection->ssl) {
+            *(b->last++) = 's';
+        }
+
+#endif
+
+        *(b->last++) = ':'; *(b->last++) = '/'; *(b->last++) = '/';
+
+        if (r->headers_in.host) {
+            b->last = ngx_cpymem(b->last, r->headers_in.host->value.data,
+                                 r->headers_in.host_name_len);
+        } else {
+            b->last = ngx_cpymem(b->last, r->server_name.data,
+                                 r->server_name.len);
+        }
+
+        b->last = ngx_cpymem(b->last, r->port_text->data, r->port_text->len);
+        b->last = ngx_cpymem(b->last, r->unparsed_uri.data,
+                             r->unparsed_uri.len);
+
+        *(b->last++) = CR; *(b->last++) = LF;
+    }
+
+
     /* the "X-Real-IP" header */
 
     if (p->lcf->set_x_real_ip) {
@@ -336,6 +388,14 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
         if (&header[i] == r->headers_in.x_forwarded_for
             && p->lcf->add_x_forwarded_for)
         {
+            continue;
+        }
+
+        if (&header[i] == r->headers_in.x_real_ip && p->lcf->set_x_real_ip) {
+            continue;
+        }
+
+        if (&header[i] == r->headers_in.x_url && p->lcf->set_x_url) {
             continue;
         }
 

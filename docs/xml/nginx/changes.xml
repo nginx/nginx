@@ -6,6 +6,38 @@
             title="nginx">
 
 
+<changes ver="0.1.3" date="25.10.2004">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_autoindex_module и директива autoindex.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module and the autoindex directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_set_x_url.
+</para>
+<para lang="en">
+the proxy_set_x_url directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль проксировании мог привести к зацикливанию, если не использовался
+sendfile.
+</para>
+<para lang="en">
+proxy module may get caught in an endless loop when sendfile is not used.
+</para>
+</change>
+
+</changes>
+
 <changes ver="0.1.2" date="21.10.2004">
 
 <change type="feature">
@@ -38,12 +70,12 @@ the portability improvements.
 <change type="bugfix">
 <para lang="ru">
 нельзя переконфигурировать nginx, если конфигурационный файл указан
-в командной строке,
+в командной строке;
 ошибка появилась в 0.1.1.
 </para>
 <para lang="en">
 if configuration file was set in command line, the reconfiguration
-was impossible,
+was impossible;
 bug appeared in 0.1.1.
 </para>
 </change>
@@ -61,12 +93,12 @@ proxy module may get caught in an endless loop when sendfile is not used.
 <change type="bugfix">
 <para lang="ru">
 при использовании sendfile текст ответа не перекодировался
-согласно директивам модуля charset,
+согласно директивам модуля charset;
 ошибка появилась в 0.1.1.
 </para>
 <para lang="en">
 with sendfile the response was not recoded according to the charset
-module directives,
+module directives;
 bug appeared in 0.1.1.
 </para>
 </change>

@@ -153,7 +153,7 @@ static int ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level)
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
                        "gc path: \"%s\"", fname.data);
 
-        if (!dir.info_valid) {
+        if (!dir.valid_info) {
             if (ngx_de_info(fname.data, &dir) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
                               ngx_de_info_n " \"%s\" failed", fname.data);

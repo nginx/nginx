@@ -15,7 +15,7 @@ ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     ngx_log_debug4(NGX_LOG_DEBUG_CORE, file->log, 0,
                    "read: %d, %X, %d, " OFF_T_FMT, file->fd, buf, size, offset);
 
-#if (HAVE_PREAD)
+#if (NGX_PREAD)
 
     n = pread(file->fd, buf, size, offset);
 
@@ -57,7 +57,7 @@ ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
     ssize_t n;
 
-#if (HAVE_PWRITE)
+#if (NGX_PWRITE)
 
     n = pwrite(file->fd, buf, size, offset);
 
@@ -206,7 +206,7 @@ int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
         return NGX_ERROR;
     }
 
-    dir->info_valid = 0;
+    dir->valid_info = 0;
 
     return NGX_OK;
 }

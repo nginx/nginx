@@ -51,6 +51,8 @@ ngx_int_t ngx_strerror_r(int err, char *errstr, size_t size);
 
 #else
 
+/* Solaris has threads-safe strerror() */
+
 #define ngx_strerror_r(err, errstr, size)  \
              (char *) ngx_cpystrn(errstr, strerror(err), size) - (errstr)
 

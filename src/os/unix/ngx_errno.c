@@ -8,7 +8,7 @@
 #include <ngx_core.h>
 
 
-#if (HAVE_STRERROR_R)
+#if (NGX_STRERROR_R)
 
 ngx_int_t ngx_strerror_r(int err, char *errstr, size_t size)
 {
@@ -31,7 +31,7 @@ ngx_int_t ngx_strerror_r(int err, char *errstr, size_t size)
     return len;
 }
 
-#elif (HAVE_GNU_STRERROR_R)
+#elif (NGX_GNU_STRERROR_R)
 
 /* Linux strerror_r() */
 

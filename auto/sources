@@ -272,6 +272,10 @@ HTTP_ACCESS_MODULE=ngx_http_access_module
 HTTP_ACCESS_SRCS=src/http/modules/ngx_http_access_handler.c
 
 
+HTTP_AUTOINDEX_MODULE=ngx_http_autoindex_module
+HTTP_AUTOINDEX_SRCS=src/http/modules/ngx_http_autoindex_handler.c
+
+
 HTTP_STATUS_MODULE=ngx_http_status_module
 HTTP_STATUS_SRCS=src/http/modules/ngx_http_status_handler.c
 

@@ -146,6 +146,8 @@ typedef struct {
 
 #if (NGX_HTTP_PROXY)
     ngx_table_elt_t  *x_forwarded_for;
+    ngx_table_elt_t  *x_real_ip;
+    ngx_table_elt_t  *x_url;
 #endif
 
     ngx_array_t       cookies;
@@ -283,7 +285,7 @@ struct ngx_http_request_s {
     uint32_t             in_addr;
     ngx_uint_t           port;
     ngx_str_t           *port_text;    /* ":80" */
-    ngx_str_t           *server_name;
+    ngx_str_t            server_name;
     ngx_array_t         *virtual_names;
 
     ngx_uint_t           phase;
