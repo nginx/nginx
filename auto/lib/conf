@@ -2,7 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-if [ $USE_PCRE = YES ]; then
+if [ $USE_PCRE = YES -o $PCRE != NONE ]; then
     . auto/lib/pcre/conf
 fi
 

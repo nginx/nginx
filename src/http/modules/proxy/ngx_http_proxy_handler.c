@@ -1351,6 +1351,7 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
         lcf->upstream->port_text = inet_upstream.port_text;
         lcf->upstream->uri = inet_upstream.uri;
         lcf->upstream->uri_separator = "";
+        lcf->upstream->default_port = inet_upstream.default_port;
     }
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);

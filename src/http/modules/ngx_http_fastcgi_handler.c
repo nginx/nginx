@@ -144,6 +144,9 @@ static ngx_str_t ngx_http_fastcgi_methods[] = {
 };
 
 
+static ngx_str_t ngx_http_fastcgi_uri = ngx_string("/");
+
+
 static ngx_http_header_t ngx_http_fastcgi_headers_in[] = {
     { ngx_string("Status"), offsetof(ngx_http_fastcgi_headers_in_t, status) },
 
@@ -474,8 +477,8 @@ static ngx_int_t ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     }
 
     if (flcf->params & NGX_HTTP_FASTCGI_REQUEST_URI) {
-        len += 1 + ((r->uri.len > 127) ? 4 : 1)
-                 + sizeof("REQUEST_URI") - 1 + r->uri.len;
+        len += 1 + ((r->unparsed_uri.len > 127) ? 4 : 1)
+                 + sizeof("REQUEST_URI") - 1 + r->unparsed_uri.len;
     }
 
     if (flcf->params & NGX_HTTP_FASTCGI_SCRIPT_NAME) {
@@ -734,7 +737,7 @@ static ngx_int_t ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     if (flcf->params & NGX_HTTP_FASTCGI_REQUEST_URI) {
         *b->last++ = sizeof("REQUEST_URI") - 1;
 
-        len = r->uri.len;
+        len = r->unparsed_uri.len;
         if (len > 127) {
             *b->last++ = (u_char) (((len >> 24) & 0x7f) | 0x80);
             *b->last++ = (u_char) ((len >> 16) & 0xff);
@@ -746,7 +749,7 @@ static ngx_int_t ngx_http_fastcgi_create_request(ngx_http_request_t *r)
         }
 
         b->last = ngx_cpymem(b->last, "REQUEST_URI", sizeof("REQUEST_URI") - 1);
-        b->last = ngx_cpymem(b->last, r->uri.data, len);
+        b->last = ngx_cpymem(b->last, r->unparsed_uri.data, len);
     }
 
 
@@ -1718,7 +1721,6 @@ static char *ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
         unix_upstream.name = value[1];
         unix_upstream.url = value[1];
 
-
         if (!(lcf->peers = ngx_unix_upstream_parse(cf, &unix_upstream))) {
             return NGX_CONF_ERROR;
         }
@@ -1744,8 +1746,9 @@ static char *ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
-    lcf->location = &clcf->name;
     clcf->handler = ngx_http_fastcgi_handler;
+
+    lcf->location = clcf->regex ? &ngx_http_fastcgi_uri: &clcf->name;
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;

@@ -252,9 +252,19 @@ ngx_int_t ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
             for (n = 0; n < 3; n++) {
                 if (p[i]->level[n] != path->level[n]) {
                     if (path->conf_file == NULL) {
+                        if (p[i]->conf_file == NULL) {
+                            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                      "the default path name \"%V\" has "
+                                      "the same name as another default path, "
+                                      "but the different levels, you need to "
+                                      "redefine one of them in http section",
+                                      &p[i]->name);
+                            return NGX_ERROR;
+                        }
+
                         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                                       "the path name \"%V\" in %s:%ui has "
-                                      "the same name as default path but "
+                                      "the same name as default path, but "
                                       "the different levels, you need to "
                                       "define default path in http section",
                                       &p[i]->name, p[i]->conf_file, p[i]->line);

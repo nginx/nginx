@@ -6,6 +6,94 @@
             title="nginx">
 
 
+<changes ver="0.1.15" date="19.01.2005">
+
+<change type="bugfix">
+<para lang="ru">
+ошибка соединения с FastCGI-сервером вызывала segmentation fault.
+</para>
+<para lang="en">
+the error while the connecting to the FastCGI server caused
+segmentation fault.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+корректная обработка регулярного выражения, в котором число
+выделенных частей не совпадает с числом подстановок.
+</para>
+<para lang="en">
+the correct handling of the regular exporession, that
+has different number of the captures and substitutions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+location, который передаётся FastCGI-серверу, может быть задан
+с помощью регулярного выражения.
+</para>
+<para lang="en">
+the location, that is passed to the FastCGI server, can be
+regualar expression.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр FastCGI REQUEST_URI теперь передаётся вместе с аргументами
+и в том виде, в котором был получен от клиента.
+</para>
+<para lang="en">
+the FastCGI's parameter REQUEST_URI is now passed with the arguments
+and in the original state.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+для использования регулярных выражений в location нужно было
+собирать nginx вместе с ngx_http_rewrite_module.
+</para>
+<para lang="en">
+the ngx_http_rewrite_module module was required to be built to use
+the regular expressions in locations.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если бэкенд слушал на 80-ом порту, то при использовании директивы
+<nobr>"proxy_preserve_host  on"</nobr> в заголовке "Host" указывался
+также порт 80;
+ошибка появилась в 0.1.14.
+</para>
+<para lang="en">
+the directive <nobr>"proxy_preserve_host  on"</nobr> adds port 80
+to the "Host" headers, if upstream listen on port 80;
+bug appeared in 0.1.14.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если задать одинаковые пути в параметрах автоконфигурации
+--http-client-body-temp-path=PATH и --http-proxy-temp-path=PATH
+или --http-client-body-temp-path=PATH и --http-fastcgi-temp-path=PATH,
+то происходил segmentation fault.
+</para>
+<para lang="en">
+the same pathes in autoconfiguration paramters
+--http-client-body-temp-path=PATH and --http-proxy-temp-path=PATH,
+or --http-client-body-temp-path=PATH nad --http-fastcgi-temp-path=PATH
+caused segmentation fault.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.14" date="18.01.2005">
 
 <change type="feature">

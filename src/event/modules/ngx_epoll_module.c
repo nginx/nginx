@@ -229,7 +229,7 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     ee.events = event | flags;
-    ee.data.ptr = (void *) ((uintptr_t) c | ev->instance);
+    ee.data.u64 = (uintptr_t) c | ev->instance;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "epoll add event: fd:%d op:%d ev:%08XD",
@@ -282,7 +282,7 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
     if (e->active) {
         op = EPOLL_CTL_MOD;
         ee.events = prev | flags;
-        ee.data.ptr = (void *) ((uintptr_t) c | ev->instance);
+        ee.data.u64 = (uintptr_t) c | ev->instance;
 
     } else {
         op = EPOLL_CTL_DEL;
@@ -311,7 +311,7 @@ static int ngx_epoll_add_connection(ngx_connection_t *c)
     struct epoll_event  ee;
 
     ee.events = EPOLLIN|EPOLLOUT|EPOLLET;
-    ee.data.ptr = (void *) ((uintptr_t) c | c->read->instance);
+    ee.data.u64 = (uintptr_t) c | c->read->instance;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "epoll add connection: fd:%d ev:%08XD", c->fd, ee.events);
@@ -351,7 +351,7 @@ static int ngx_epoll_del_connection(ngx_connection_t *c, u_int flags)
 
     op = EPOLL_CTL_DEL;
     ee.events = 0;
-    ee.data.ptr = NULL;
+    ee.data.u64 = 0;
 
     if (epoll_ctl(ep, op, c->fd, &ee) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,

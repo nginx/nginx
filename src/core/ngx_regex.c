@@ -79,16 +79,28 @@ ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
 }
 
 
+ngx_uint_t ngx_regex_capture_count(ngx_regex_t *re)
+{
+    int  rc, n;
+
+    n = 0;
+
+    rc = pcre_fullinfo(re, NULL, PCRE_INFO_CAPTURECOUNT, &n);
+
+    return (ngx_uint_t) n;
+}
+
+
 ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s,
-                         int *matches, ngx_int_t size)
+                         int *captures, ngx_int_t size)
 {
     int  rc;
 
     rc = pcre_exec(re, NULL, (const char *) s->data, s->len, 0, 0,
-                   matches, size);
+                   captures, size);
 
     if (rc == -1) {
-        return NGX_DECLINED;
+        return NGX_REGEX_NO_MATCHED;
     }
 
     return rc;

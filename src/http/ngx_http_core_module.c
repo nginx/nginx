@@ -678,7 +678,7 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
 
         n = ngx_regex_exec(clcfp[i]->regex, &r->uri, NULL, 0);
 
-        if (n == NGX_DECLINED) {
+        if (n == NGX_REGEX_NO_MATCHED) {
             continue;
         }
 

@@ -1034,7 +1034,7 @@ static void ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         r->connection->log->handler = u->saved_handler;
     }
 
-    if (u->pipe.temp_file->file.fd) {
+    if (u->pipe.temp_file) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http upstream temp fd: %d",
                        u->pipe.temp_file->file.fd);
@@ -1048,7 +1048,7 @@ static void ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     }
 #endif
 
-    if (u->pipe.temp_file->file.fd) {
+    if (u->pipe.temp_file) {
         r->file.fd = u->pipe.temp_file->file.fd;
 
 #if 0

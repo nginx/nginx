@@ -23,7 +23,7 @@ typedef struct {
 
 typedef struct {
     ngx_regex_t  *regex;
-    ngx_uint_t    msize;
+    ngx_uint_t    ncaptures;
 
     ngx_array_t   ops;
     ngx_uint_t    size;
@@ -113,7 +113,7 @@ ngx_module_t  ngx_http_rewrite_module = {
 
 static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
 {
-    int                          *matches;
+    int                          *captures;
     u_char                       *p;
     size_t                        len;
     uintptr_t                     data;
@@ -132,18 +132,20 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
     rule = scf->rules.elts;
     for (i = 0; i < scf->rules.nelts; i++) {
 
-        if (rule[i].msize) {
-            if (!(matches = ngx_palloc(r->pool, rule[i].msize * sizeof(int)))) {
+        if (rule[i].ncaptures) {
+            captures = ngx_palloc(r->pool, rule[i].ncaptures * sizeof(int));
+            if (captures == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
         } else {
-            matches = NULL;
+            captures = NULL;
         }
 
-        rc = ngx_regex_exec(rule[i].regex, &r->uri, matches, rule[i].msize);
+        rc = ngx_regex_exec(rule[i].regex, &r->uri,
+                            captures, rule[i].ncaptures);
 
-        if (rc == NGX_DECLINED) {
+        if (rc == NGX_REGEX_NO_MATCHED) {
             if (scf->log) {
                 ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                               "\"%V\" does not match \"%V\"",
@@ -174,7 +176,7 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
         uri.len = rule[i].size;
 
         for (n = 1; n < (ngx_uint_t) rc; n++) {
-           uri.len += matches[2 * n + 1] - matches[2 * n];
+           uri.len += captures[2 * n + 1] - captures[2 * n];
         }
 
         if (!(uri.data = ngx_palloc(r->pool, uri.len))) {
@@ -198,10 +200,12 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
 
             } else { /* NGX_HTTP_REWRITE_COPY_MATCH */
                 m = 2 * op[n].data;
-                p = ngx_cpymem(p, &r->uri.data[matches[m]],
-                               matches[m + 1] - matches[m]);
+                p = ngx_cpymem(p, &r->uri.data[captures[m]],
+                               captures[m + 1] - captures[m]);
             }
         }
+
+        uri.len = p - uri.data;
 
         if (scf->log) {
             ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
@@ -309,7 +313,7 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
     u_char                   *data, *p;
     size_t                    len;
     ngx_str_t                *value, err;
-    ngx_uint_t                i;
+    ngx_uint_t                i, n;
     ngx_http_rewrite_op_t    *op;
     ngx_http_rewrite_rule_t  *rule;
     u_char                    errstr[NGX_MAX_CONF_ERRSTR];
@@ -321,7 +325,7 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_init_array(rule->ops, cf->pool, 5, sizeof(ngx_http_rewrite_op_t),
                    NGX_CONF_ERROR);
 
-    rule->msize = 0;
+    rule->ncaptures = 0;
     rule->size = 0;
     rule->status = 0;
     rule->last = 0;
@@ -371,8 +375,8 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
                 op->op = NGX_HTTP_REWRITE_COPY_MATCH; 
                 op->data = value[2].data[++i] - '0';
 
-                if (rule->msize < op->data) {
-                    rule->msize = op->data;
+                if (rule->ncaptures < op->data) {
+                    rule->ncaptures = op->data;
                 }
 
                 i++;
@@ -414,9 +418,22 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
             }
         }
 
-        if (rule->msize) {
-            rule->msize++;
-            rule->msize *= 3;
+        n = ngx_regex_capture_count(rule->regex);
+
+        if (rule->ncaptures > n) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "pattern \"%V\" has less captures "
+                               "than referrenced in substitution \"%V\"",
+                               &value[1], &value[2]);
+            return NGX_CONF_ERROR;
+        }
+
+        if (rule->ncaptures < n) {
+            rule->ncaptures = n;
+        }
+
+        if (rule->ncaptures) {
+            rule->ncaptures = (rule->ncaptures + 1) * 3;
         }
 
         if (cf->args->nelts > 3) {

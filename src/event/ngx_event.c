@@ -318,6 +318,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     rev = cycle->read_events;
     for (i = 0; i < cycle->connection_n; i++) {
         rev[i].closed = 1;
+        rev[i].instance = 1;
 #if (NGX_THREADS)
         rev[i].lock = &c[i].lock;
         rev[i].own_lock = &c[i].lock;
@@ -325,7 +326,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     }
 
     cycle->write_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
-                                   cycle->log);
+                                    cycle->log);
     if (cycle->write_events == NULL) {
         return NGX_ERROR;
     }
@@ -361,6 +362,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 
         ngx_memzero(c, sizeof(ngx_connection_t));
         ngx_memzero(rev, sizeof(ngx_event_t));
+        ngx_memzero(wev, sizeof(ngx_event_t));
 
         c->fd = s[i].fd;
         c->listening = &s[i];
