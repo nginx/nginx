@@ -15,13 +15,14 @@
 
 
 typedef struct {
+    ngx_hunk_t       *hunk;
     ngx_table_elt_t  *param;
     ngx_str_t         command;
     ngx_array_t       params;
     int               state;
     int               looked;
     char             *pos;
-    ngx_chain_t      *out;
+    ngx_chain_t      *incoming;
     int               new_hunk;
     u_int             value_len;
 } ngx_http_ssi_ctx_t;
@@ -75,12 +76,13 @@ static int ngx_http_ssi_header_filter(ngx_http_request_t *r)
 
 static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
+    int                  rc;
     ngx_chain_t          chain;
     ngx_http_ssi_ctx_t  *ctx;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
-    if ((ctx == NULL) || (in == NULL && ctx->out == NULL)) {
+    if ((ctx == NULL) || (in == NULL && ctx->incoming == NULL)) {
         return next_body_filter(r, NULL);
     }
 
@@ -115,16 +117,16 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 #if 0
 
-    add in to ctx->out chain
+    add in to ctx->incoming chain
 
-    while (ctx->out) {
+    while (ctx->incoming) {
         rc == ngx_http_ssi_exec(r, ctx);
 
         if (rc != NGX_ERROR) {
             return rc;
         }
 
-        ctx->out = ctx->out->next;
+        ctx->incoming = ctx->incoming->next;
     }
 
 #endif
@@ -136,8 +138,8 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #if 0
 
 
-    while (ctx->out) {
-        rc = ngx_http_ssi_parse(r, ctx, ctx->out->hunk);
+    while (ctx->incoming) {
+        rc = ngx_http_ssi_parse(r, ctx, ctx->incoming->hunk);
 
         if (rc == NGX_ERROR) {
             return rc;
@@ -155,13 +157,13 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             - looked
 
-            chain.hunk = ctx->out->hunk;
+            chain.hunk = ctx->incoming->hunk;
             chain.next = NULL;
 
             rc = next_body_filter(r, &chain);
 
             if (rc != NGX_OK) {
-                ctx->out = ctx->out->next;
+                ctx->incoming = ctx->incoming->next;
                 return rc;
             }
 
@@ -171,7 +173,7 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         } else if (rc == NGX_HTTP_SSI_LONG_VALUE) {
         }
 
-        ctx->out = ctx->out->next;
+        ctx->incoming = ctx->incoming->next;
     }
 
 #endif
@@ -190,7 +192,7 @@ static int ngx_http_ssi_copy_opcode(ngx_http_request_t *r,
     ngx_hunk_t   *h;
     ngx_chain_t   chain;
 
-    h = ctx->out->hunk;
+    h = ctx->incoming->hunk;
 
     if (ctx->looked == 0 && ctx->pos == h->last) {
         chain.hunk = h;

@@ -8,15 +8,27 @@
 #include <ngx_http.h>
 
 
+typedef struct {
+    ngx_msec_t    send_timeout;
+    ngx_peers_t  *peers;
+} ngx_http_proxy_loc_conf_t;
+
+
 typedef struct ngx_http_proxy_ctx_s  ngx_http_proxy_ctx_t;
 
 struct ngx_http_proxy_ctx_s {
-    ngx_peer_connection_t   upstream;
-    ngx_peer_t             *peer;
+    ngx_peer_connection_t       upstream;
+    ngx_peer_t                 *peer;
 
-    ngx_http_request_t     *request;
+    ngx_connection_t           *connection;
 
-    char                   *action;
+    ngx_http_request_t         *request;
+
+    ngx_http_proxy_loc_conf_t  *lcf;
+
+    ngx_chain_t                *request_hunks;
+
+    char                       *action;
 };
 
 

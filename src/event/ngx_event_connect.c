@@ -1,6 +1,7 @@
 
 #include <ngx_event_connect.h>
 
+
 /* AF_INET only */
 
 int ngx_event_connect_peer(ngx_peer_connection_t *pc)
@@ -10,7 +11,6 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_socket_t         s;
     struct sockaddr_in  *addr;
 
-
     now = ngx_time();
 
     /* ngx_lock_mutex(pc->peers->mutex); */
@@ -19,7 +19,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
         /* cached connection */
 
-        pc->connection = pc->peers->cached[pc->peers->last_cached]
+        pc->connection = pc->peers->cached[pc->peers->last_cached];
         pc->peers->last_cached--;
 
         /* ngx_unlock_mutex(pc->peers->mutex); */
@@ -188,4 +188,10 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     c->data = ???;
 
 
+}
+
+
+void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc)
+{
+    return;
 }
