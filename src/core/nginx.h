@@ -2,7 +2,7 @@
 #define _NGINX_H_INCLUDED_
 
 
-#define NGINX_VER          "nginx/0.0.2"
+#define NGINX_VER          "nginx/0.0.3"
 #define NGINX_CONF         (u_char *) "nginx.conf"
 #define NGINX_PID          "nginx.pid"
 #define NGINX_NEW_PID_EXT  ".newbin"

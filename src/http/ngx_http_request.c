@@ -64,6 +64,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
     c->addr_text.len = ngx_sock_ntop(c->listening->family, c->sockaddr,
                                      c->addr_text.data,
                                      c->listening->addr_text_max_len);
+
     if (c->addr_text.len == 0) {
         ngx_http_close_connection(c);
         return;

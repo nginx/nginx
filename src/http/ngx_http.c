@@ -496,8 +496,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->addr_text.len =
                         ngx_snprintf((char *) ls->addr_text.data
                                      + ngx_inet_ntop(AF_INET,
-                                                     (u_char *)
-                                                               &in_addr[a].addr,
+                                                     &in_addr[a].addr,
                                                      ls->addr_text.data,
                                                      INET_ADDRSTRLEN),
                                      6, ":%d", in_port[p].port);
@@ -597,7 +596,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         in_addr = in_port[p].addrs.elts;
         for (a = 0; a < in_port[p].addrs.nelts; a++) {
             u_char ip[20];
-            ngx_inet_ntop(AF_INET, (u_char *) &in_addr[a].addr, ip, 20);
+            ngx_inet_ntop(AF_INET, &in_addr[a].addr, ip, 20);
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, cf->log, 0,
                            "%s %08x", ip, in_addr[a].core_srv_conf);
             s_name = in_addr[a].names.elts;

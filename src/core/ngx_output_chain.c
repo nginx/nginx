@@ -265,7 +265,13 @@ int ngx_chain_writer(void *data, ngx_chain_t *in)
         ctx->last = &cl->next;
     }
 
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
+                   "WRITER0: %X", ctx->out);
+
     ctx->out = ngx_write_chain(ctx->connection, ctx->out);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
+                   "WRITER1: %X", ctx->out);
 
     if (ctx->out == NGX_CHAIN_ERROR) {
         return NGX_ERROR;

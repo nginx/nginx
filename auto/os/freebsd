@@ -53,7 +53,7 @@ fi
 if [ \( $version -lt 500000 -a $version -ge 430000 \) \
      -o $version -ge 500018 ]
 then
-    echo " + using kqueue's NOTE_LAWAT"
+    echo " + using kqueue's NOTE_LOWAT"
 
     have=HAVE_LOWAT_EVENT . auto/have
 fi

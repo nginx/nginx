@@ -984,7 +984,7 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
                           NGX_CONF_ERROR);
 
             len = ngx_inet_ntop(AF_INET,
-                                (u_char *) &lcf->peers->peers[i].addr,
+                                &lcf->peers->peers[i].addr,
                                 lcf->peers->peers[i].addr_port_text.data,
                                 len);
 

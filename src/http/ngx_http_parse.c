@@ -458,7 +458,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
                 state = sw_name;
                 r->header_name_start = p - 1;
 
-                c = (char) (ch | 0x20);
+                c = (u_char) (ch | 0x20);
                 if (c >= 'a' && c <= 'z') {
                     break;
                 }
@@ -778,15 +778,15 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
         case sw_quoted:
             if (ch >= '0' && ch <= '9') {
-                decoded = (char) (ch - '0');
+                decoded = (u_char) (ch - '0');
                 state = sw_quoted_second;
                 ch = *p++;
                 break;
             }
 
-            c = (char) (ch | 0x20);
+            c = (u_char) (ch | 0x20);
             if (c >= 'a' && c <= 'f') {
-                decoded = (char) (c - 'a' + 10);
+                decoded = (u_char) (c - 'a' + 10);
                 state = sw_quoted_second;
                 ch = *p++;
                 break;
@@ -796,7 +796,7 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
         case sw_quoted_second:
             if (ch >= '0' && ch <= '9') {
-                ch = (char) ((decoded << 4) + ch - '0');
+                ch = (u_char) ((decoded << 4) + ch - '0');
                 if (ch == '%') {
                     state = sw_usual;
                     *u++ = ch;
@@ -807,9 +807,9 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 break;
             }
 
-            c = (char) (ch | 0x20);
+            c = (u_char) (ch | 0x20);
             if (c >= 'a' && c <= 'f') {
-                ch = (char) ((decoded << 4) + c - 'a' + 10);
+                ch = (u_char) ((decoded << 4) + c - 'a' + 10);
                 if (ch == '%') {
                     state = sw_usual;
                     *u++ = ch;

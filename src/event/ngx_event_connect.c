@@ -207,8 +207,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     addr.sin_port = (u_short) peer->port;
     addr.sin_addr.s_addr = peer->addr;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, 0,
-                   "connect to %s", peer->addr_port_text.data);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0,
+                   "connect to %s, #%d", peer->addr_port_text.data, c->number);
 
     rc = connect(s, (struct sockaddr *) &addr, sizeof(struct sockaddr_in));
 
