@@ -41,16 +41,17 @@ if [ $MD5 != NONE ]; then
 else
 
     if [ $PLATFORM != win32 ]; then
-            MD5=NO
+        MD5=NO
+        ngx_lib_cflags=
 
-            # Solaris 8/9
+        # Solaris 8/9
 
-            ngx_lib_inc="#include <sys/types.h>
+        ngx_lib_inc="#include <sys/types.h>
 #include <md5.h>"
-            ngx_lib="rsaref md5 library"
-            ngx_lib_test="MD5_CTX md5; MD5Init(&md5)"
-            ngx_libs=-lmd5
-            . auto/lib/test
+        ngx_lib="rsaref md5 library"
+        ngx_lib_test="MD5_CTX md5; MD5Init(&md5)"
+        ngx_libs=-lmd5
+        . auto/lib/test
 
 
         if [ $ngx_found = yes ]; then
@@ -64,7 +65,7 @@ else
 
             ngx_lib="rsaref md library"
             ngx_lib_test="MD5_CTX md5; MD5Init(&md5)"
-            ngx_libs=-lmd
+            #ngx_libs=-lmd
             . auto/lib/test
         fi
 
@@ -76,13 +77,16 @@ else
             ngx_found=no
 
         else
-            # OpenSSL crypto library
+            if [ $MD5 = NO ]; then
 
-            ngx_inc="#include <openssl/md5.h>"
-            ngx_lib="OpenSSL md5 crypto library"
-            ngx_lib_test="MD5_CTX md5; MD5_Init(&md5)"
-            ngx_libs=-lcrypto
-            . auto/lib/test
+               # OpenSSL crypto library
+
+               ngx_lib_inc="#include <openssl/md5.h>"
+               ngx_lib="OpenSSL md5 crypto library"
+               ngx_lib_test="MD5_CTX md5; MD5_Init(&md5)"
+               ngx_libs=-lcrypto
+               . auto/lib/test
+            fi
         fi
 
 

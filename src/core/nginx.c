@@ -140,11 +140,19 @@ int main(int argc, char *const *argv)
 
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
+        if (ngx_test_config) {
+            ngx_log_error(NGX_LOG_EMERG, log, 0,
+                          "the configuration file %s test failed",
+                          init_cycle.conf_file.data);
+        }
+
         return 1;
     }
 
     if (ngx_test_config) {
-        ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "config syntax is ok");
+        ngx_log_error(NGX_LOG_INFO, log, 0,
+                      "the configuration file %s was tested successfully",
+                      init_cycle.conf_file.data);
         return 0;
     }
 

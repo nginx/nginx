@@ -35,8 +35,11 @@ if [ $ZLIB != NONE ]; then
 else
 
     if [ $PLATFORM != win32 ]; then
-        ngx_lib_inc="#include <zlib.h>"
 
+        # FreeBSD, Solaris, Linux
+
+        ngx_lib_cflags=
+        ngx_lib_inc="#include <zlib.h>"
         ngx_lib="zlib library"
         ngx_lib_test="z_stream z; deflate(&z, Z_NO_FLUSH)"
         ngx_libs=-lz

@@ -20,7 +20,7 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
     ngx_chain_t  *cl, *out, **last_out;
 
     /*
-     * the short path for the case when the chain ctx->in is empty
+     * the short path for the case when the ctx->in chain is empty
      * and the incoming chain is empty too or it has the single hunk
      * that does not require the copy
      */
@@ -54,9 +54,14 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
         while (ctx->in) {
 
+            /*
+             * cycle while there are the ctx->in hunks
+             * or there are the free output hunks to copy in
+             */
+
             if (!ngx_output_chain_need_to_copy(ctx, ctx->in->hunk)) {
 
-                /* move the chain link to the chain out */
+                /* move the chain link to the output chain */
 
                 cl = ctx->in;
                 ctx->in = cl->next;
@@ -133,7 +138,7 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 return rc;
             }
 
-            /* delete the completed hunk from the chain ctx->in */
+            /* delete the completed hunk from the ctx->in chain */
 
             if (ngx_hunk_size(ctx->in->hunk) == 0) {
                 ctx->in = ctx->in->next;
@@ -157,6 +162,10 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
         ngx_chain_update_chains(&ctx->free, &ctx->busy, &out, ctx->tag);
         last_out = &out;
+
+        if (last == NGX_ERROR) {
+            return last;
+        }
     }
 }
 

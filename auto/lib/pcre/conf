@@ -41,6 +41,9 @@ else
 
     if [ $PLATFORM != win32 ]; then
             PCRE=NO
+            ngx_lib_cflags=
+
+            # Linux
 
             ngx_lib_inc="#include <pcre.h>"
             ngx_lib="PCRE library"
@@ -55,6 +58,7 @@ else
             CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
             CORE_LIBS="$CORE_LIBS $ngx_libs"
             PCRE=YES
+            ngx_found=no
 
         else
             # FreeBSD PCRE port.

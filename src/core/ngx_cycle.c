@@ -138,6 +138,12 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         return NULL;
     }
 
+    if (ngx_test_config) {
+        ngx_log_error(NGX_LOG_INFO, log, 0,
+                      "the configuration file %s syntax is ok",
+                      cycle->conf_file.data);
+    }
+
 
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_CORE_MODULE) {
@@ -274,10 +280,12 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 #if !(WIN32)
 
-    if (dup2(cycle->log->file->fd, STDERR_FILENO) == NGX_ERROR) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "dup2(STDERR) failed");
-        failed = 1;
+    if (!failed && !ngx_test_config) {
+        if (dup2(cycle->log->file->fd, STDERR_FILENO) == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          "dup2(STDERR) failed");
+            failed = 1;
+        }
     }
 
 #endif
@@ -297,6 +305,11 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                               ngx_close_file_n " \"%s\" failed",
                               file[i].name.data);
             }
+        }
+
+        if (ngx_test_config) {
+            ngx_destroy_pool(pool);
+            return NULL;
         }
 
         ls = cycle->listening.elts;
