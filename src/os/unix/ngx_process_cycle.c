@@ -326,6 +326,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 {
     ngx_uint_t  i;
+    ngx_err_t   err;
 
     for (i = 0; i < ngx_last_process; i++) {
 
@@ -349,9 +350,17 @@ static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
                        ngx_processes[i].pid, signo);
 
         if (kill(ngx_processes[i].pid, signo) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+            err = ngx_errno;
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
                           "kill(%d, %d) failed",
                           ngx_processes[i].pid, signo);
+
+            if (err == NGX_ESRCH) {
+                ngx_processes[i].exited = 1;
+                ngx_processes[i].exiting = 0;
+                ngx_reap = 1;
+            }
+
             continue;
         }
 
@@ -368,6 +377,8 @@ static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
     ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exit");
 
+    ngx_destroy_pool(cycle->pool);
+
     exit(0);
 }
 
@@ -375,7 +386,7 @@ static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     sigset_t          set;
-    ngx_uint_t        i;
+    ngx_uint_t        i, exiting;
     ngx_listening_t  *ls;
     ngx_core_conf_t  *ccf;
 #if (NGX_THREADS)
@@ -463,13 +474,22 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
 #endif
 
+    exiting = 0;
+
     for ( ;; ) {
+        if (exiting && ngx_event_timer_rbtree == &ngx_event_timer_sentinel) {
+            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
+            ngx_destroy_pool(cycle->pool);
+            exit(0);
+        }
+
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
         ngx_process_events(cycle);
 
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
+            ngx_destroy_pool(cycle->pool);
             exit(0);
         }
 
@@ -477,27 +497,12 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
                           "gracefully shutting down");
             ngx_setproctitle("worker process is shutting down");
-            break;
+
+            if (!exiting) {
+                ngx_close_listening_sockets(cycle);
+                exiting = 1;
+            }
         }
-
-        if (ngx_reopen) {
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");
-            ngx_reopen_files(cycle, -1);
-            ngx_reopen = 0;
-        }
-    }
-
-    ngx_close_listening_sockets(cycle);
-
-    for ( ;; ) {
-        if (ngx_event_timer_rbtree == &ngx_event_timer_sentinel) {
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
-            exit(0);
-        }
-
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
-
-        ngx_process_events(cycle);
 
         if (ngx_reopen) {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");

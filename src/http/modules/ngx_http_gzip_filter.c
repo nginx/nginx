@@ -502,7 +502,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ctx->in_hunk = ctx->in->hunk;
                 ctx->in = ctx->in->next;
 
-                ctx->zstream.next_in = (u_char *) ctx->in_hunk->pos;
+                ctx->zstream.next_in = ctx->in_hunk->pos;
                 ctx->zstream.avail_in = ctx->in_hunk->last - ctx->in_hunk->pos;
 
                 if (ctx->in_hunk->type & NGX_HUNK_LAST) {
@@ -543,7 +543,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     break;
                 }
 
-                ctx->zstream.next_out = (u_char *) ctx->out_hunk->pos;
+                ctx->zstream.next_out = ctx->out_hunk->pos;
                 ctx->zstream.avail_out = conf->bufs.size;
             }
 
