@@ -56,7 +56,7 @@ static ngx_http_header_t headers_in[] = {
     { ngx_string("Host"), offsetof(ngx_http_headers_in_t, host) },
     { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection) },
     { ngx_string("If-Modified-Since"), 
-                          offsetof(ngx_http_headers_in_t,if_modified_since) },
+                         offsetof(ngx_http_headers_in_t, if_modified_since) },
 
     { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent) },
 

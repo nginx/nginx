@@ -405,12 +405,14 @@ int ngx_read_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
                 break;
             }
 
-            if (ch == '/') {
-                /* IIS can send duplicate "HTTP/1.1 ..." lines */
-                if (r->proxy && ngx_strncmp(r->header_start, "HTTP", 4) == 0) {
-                    state = sw_ignore_line;
-                    break;
-                }
+            /* IIS can send duplicate "HTTP/1.1 ..." lines */
+            if (ch == '/'
+                && r->proxy
+                && p - r->header_start == 5
+                && ngx_strncmp(r->header_start, "HTTP", 4) == 0)
+            {
+                state = sw_ignore_line;
+                break;
             }
 
             return NGX_HTTP_PARSE_INVALID_HEADER;

@@ -11,7 +11,14 @@
 #define NGX_HTTP_PARSE_TOO_LONG_STATUS_LINE     21
 
 typedef struct {
-    int dummy;
+    ngx_table_elt_t  *date;
+    ngx_table_elt_t  *server;
+    ngx_table_elt_t  *connection;
+    ngx_table_elt_t  *content_type;
+    ngx_table_elt_t  *content_length;
+    ngx_table_elt_t  *last_modified;
+
+    ngx_table_t      *headers;
 } ngx_http_proxy_headers_in_t;
 
 
@@ -88,13 +95,13 @@ struct ngx_http_proxy_ctx_s {
 
     int           last_hunk;
     ngx_array_t   hunks;
-    int           hunks_number;
+    int           nhunks;
 
     int           hunk_n;
 
     ngx_connection_t               *connection;
     ngx_http_request_t             *request;
-    ngx_http_proxy_headers_in_t    *headers_in;
+    ngx_http_proxy_headers_in_t     headers_in;
 
     ngx_http_proxy_upstream_url_t  *upstream_url;
     ngx_http_proxy_upstreams_t     *upstreams;
@@ -123,6 +130,8 @@ struct ngx_http_proxy_ctx_s {
     int        (*state_handler)(ngx_http_proxy_ctx_t *p);
 
     int          last_error;
+
+    unsigned     accel:1;
 
     unsigned     cached_connection:1;
 };
