@@ -19,7 +19,7 @@ static char *ngx_http_index_set_index(ngx_pool_t *p, void *conf,
 
 static ngx_command_t ngx_http_index_commands[] = {
 
-    {"index", ngx_http_index_set_index, NULL,
+    {"index", ngx_http_index_set_index, 0,
      NGX_HTTP_LOC_CONF, NGX_CONF_ITERATE,
      "set index files"},
 

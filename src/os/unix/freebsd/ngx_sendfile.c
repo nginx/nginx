@@ -1,5 +1,8 @@
 
 #include <ngx_config.h>
+
+#if (HAVE_FREEBSD_SENDFILE)
+
 #include <ngx_core.h>
 #include <ngx_types.h>
 #include <ngx_file.h>
@@ -10,12 +13,10 @@
 #include <ngx_sendfile.h>
 
 /*
-  TODO:
-    FreeBSD:
+  CHECK:
        check sent if errno == EINTR then should return right sent.
 */
 
-#if (HAVE_FREEBSD_SENDFILE)
 
 int ngx_sendfile(ngx_socket_t s,
                  ngx_iovec_t *headers, int hdr_cnt,

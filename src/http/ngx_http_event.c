@@ -104,11 +104,11 @@ int ngx_http_init_connection(ngx_connection_t *c)
     ngx_test_null(c->addr_text.data, ngx_palloc(c->pool, c->addr_text.len),
                   NGX_ERROR);
 
-    ngx_test_null(c->addr_text.len,
-                  ngx_inet_ntop(c->family,
-                                (char *)c->sockaddr + c->addr,
-                                c->addr_text.data, c->addr_text.len),
-                  NGX_ERROR);
+    c->addr_text.len = ngx_inet_ntop(c->family,
+                                     (char *)c->sockaddr + c->addr,
+                                     c->addr_text.data, c->addr_text.len);
+    if (c->addr_text.len = 0)
+       return NGX_ERROR;
 
     ngx_test_null(ctx, ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t)),
                   NGX_ERROR);

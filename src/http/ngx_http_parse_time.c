@@ -207,7 +207,7 @@ time_t ngx_http_parse_time(char *value, size_t len)
        month += 12;
        year -= 1;
     }
-           /* Gauss's formula for days from 1 March 1 BC */
+           /* Gauss's formula for Grigorian days from 1 March 1 BC */
     return (365 * year + year / 4 - year / 100 + year / 400
                                                + 367 * month / 12 + day - 31
            /* 719527 days are between 1 March 1 BC and 1 March 1970,

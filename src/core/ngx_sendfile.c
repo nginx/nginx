@@ -1,5 +1,8 @@
 
 #include <ngx_config.h>
+
+#if !(HAVE_SENDFILE)
+
 #include <ngx_core.h>
 #include <ngx_log.h>
 #include <ngx_socket.h>
@@ -18,3 +21,5 @@ int ngx_sendfile(ngx_socket_t s,
 
     return NGX_ERROR;
 }
+
+#endif

@@ -107,6 +107,7 @@
 #define HAVE_INHERITED_NONBLOCK  1
 #endif
 
+/* FreeBSD sendfile */
 #if __FreeBSD_version >= 300007
 
 #ifndef HAVE_FREEBSD_SENDFILE
@@ -117,8 +118,9 @@
 #define HAVE_FREEBSD_SENDFILE_NBYTES_BUG  2
 #endif
 
-#endif
+#endif /* FreeBSD sendfile */
 
+/* FreeBSD sendfile nbytes bug */
 #if (__FreeBSD__ == 4 && __FreeBSD_version >= 460100) \
     || __FreeBSD_version == 460001
     || __FreeBSD_version >= 500029
@@ -127,13 +129,14 @@
 #define HAVE_FREEBSD_SENDFILE_NBYTES_BUG  0
 #endif
 
-#endif
+#endif /* FreeBSD sendfile nbytes bug */
 
 #if (HAVE_FREEBSD_SENDFILE)
 #define HAVE_SENDFILE  1
 #endif
 
 
+/* FreeBSD kqueue */
 #if (__FreeBSD__ == 4 && __FreeBSD_version >= 410000) \
     || __FreeBSD_version >= 500011
 
@@ -142,7 +145,7 @@
 #include <sys/event.h>
 #endif
 
-#endif
+#endif /* FreeBSD kqueue */
 
 
 #endif /* __FreeBSD__ */
