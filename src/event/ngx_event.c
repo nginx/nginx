@@ -16,6 +16,7 @@ extern ngx_event_module_t ngx_select_module_ctx;
 
 #if (HAVE_DEVPOLL)
 extern ngx_module_t ngx_devpoll_module;
+extern ngx_event_module_t ngx_devpoll_module_ctx;
 #endif
 
 #if (HAVE_AIO)
@@ -386,6 +387,7 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         old_ecf = NULL;
     }
 
+
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
             continue;
@@ -397,14 +399,19 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 ecf->use = ngx_modules[m]->ctx_index;
                 ecf->name = module->name->data;
 
-                if (old_ecf && old_ecf->use != ecf->use) {
+                if (ngx_process == NGX_PROCESS_SINGLE
+                    && old_ecf
+                    && old_ecf->use != ecf->use)
+                {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                        "when the server runs without a master process "
                         "the \"%s\" event type must be the same as "
                         "in previous configuration - \"%s\" "
                         "and it can not be changed on the fly, "
                         "to change it you need to stop server "
                         "and start it again",
                         value[1].data, old_ecf->name);
+
                     return NGX_CONF_ERROR;
                 }
 

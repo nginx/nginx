@@ -49,6 +49,7 @@ ngx_pid_t ngx_exec(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 void ngx_respawn_processes(ngx_cycle_t *cycle);
 void ngx_process_get_status(void);
 
+extern ngx_pid_t      ngx_pid;
 extern ngx_uint_t     ngx_last_process;
 extern ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
 

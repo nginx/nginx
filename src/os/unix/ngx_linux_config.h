@@ -26,13 +26,6 @@
 #include <sys/sysctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
-
-#if (HAVE_SENDFILE64)
-#include <sys/sendfile.h>
-#else
-extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
-#endif
-
 #include <netinet/in.h>
 #include <netinet/tcp.h>        /* TCP_CORK */
 #include <arpa/inet.h>
@@ -40,6 +33,14 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #include <grp.h>
 #include <netdb.h>
 #include <dirent.h>
+
+#include <ngx_auto_config.h>
+
+#if (HAVE_SENDFILE64)
+#include <sys/sendfile.h>
+#else
+extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
+#endif
 
 
 

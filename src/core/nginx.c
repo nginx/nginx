@@ -82,6 +82,7 @@ ngx_int_t   ngx_max_module;
 ngx_uint_t  ngx_connection_counter;
 
 ngx_int_t   ngx_process;
+ngx_pid_t   ngx_pid;
 ngx_pid_t   ngx_new_binary;
 
 ngx_int_t   ngx_inherited;
@@ -122,6 +123,7 @@ int main(int argc, char *const *argv, char **envp)
 #endif
 
     log = ngx_log_init_errlog();
+    ngx_pid = ngx_getpid();
 
     /* init_cycle->log is required for signal handlers */
 
@@ -177,12 +179,6 @@ int main(int argc, char *const *argv, char **envp)
         if (ngx_daemon(cycle->log) == NGX_ERROR) {
             return 1;
         }
-    }
-
-    if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      "dup2(STDERR) failed");
-        return 1;
     }
 
     if (ccf->pid.len == 0) {

@@ -46,6 +46,7 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
         return NGX_ERROR;
 
     case 0:
+        ngx_pid = ngx_getpid();
         proc(cycle, data);
         break;
 

@@ -32,6 +32,8 @@
 #include <netdb.h>
 #include <dirent.h>
 
+#include <ngx_auto_config.h>
+
 
 #ifndef HAVE_SELECT
 #define HAVE_SELECT  1

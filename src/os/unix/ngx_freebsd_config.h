@@ -28,6 +28,8 @@
 #include <dirent.h>
 #include <osreldate.h>
 
+#include <ngx_auto_config.h>
+
 
 #ifndef HAVE_SELECT
 #define HAVE_SELECT  1

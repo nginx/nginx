@@ -19,6 +19,8 @@ int ngx_daemon(ngx_log_t *log)
         exit(0);
     }
 
+    ngx_pid = ngx_getpid();
+
     if (setsid() == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "setsid() failed");
         return NGX_ERROR;

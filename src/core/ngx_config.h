@@ -2,9 +2,6 @@
 #define _NGX_CONFIG_H_INCLUDED_
 
 
-#include <ngx_auto_config.h>
-
-
 #if 1
 /* STUB to allocate a big ngx_connections */
 #undef  FD_SETSIZE
@@ -35,6 +32,8 @@
 
 
 #else /* posix */
+
+#include <ngx_auto_config.h>
 
 #endif
 

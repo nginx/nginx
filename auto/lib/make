@@ -12,7 +12,18 @@ if [ "$PLATFORM" != "win32" ]; then
 
     if [ $MD5 != NO ]; then
         echo "$MD5/libmd5.a:"                          >> $MAKEFILE
-        echo "	cd $MD5 && \$(MAKE) x86-elf"           >> $MAKEFILE
+
+        case $PLATFORM in
+
+        SunOS:*)
+            echo "	cd $MD5 && \$(MAKE) x86-solaris" >> $MAKEFILE
+        ;;
+
+        *)
+            echo "	cd $MD5 && \$(MAKE) x86-elf"   >> $MAKEFILE
+        ;;
+        esac
+
         echo                                           >> $MAKEFILE
     fi
 

@@ -228,6 +228,14 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
+    /* TODO: Win32 DuplicateHandle ? */
+    if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "dup2(STDERR) failed");
+        failed = 1;
+    }
+
+
     if (failed) {
 
         /* rollback the new cycle configuration */
@@ -261,6 +269,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         ngx_destroy_pool(pool);
         return NULL;
     }
+
 
     /* commit the new cycle configuration */
 
@@ -437,6 +446,12 @@ void ngx_reopen_files(ngx_cycle_t *cycle, uid_t user)
         }
 
         file[i].fd = fd;
+    }
+
+    /* TODO: Win32 DuplicateHandle ? */
+    if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "dup2(STDERR) failed");
     }
 }
 
