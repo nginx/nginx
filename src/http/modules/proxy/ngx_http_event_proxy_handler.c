@@ -822,11 +822,17 @@ static int ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
             r->headers_out.date = p->headers_in.date;
         }
 
+        /* TODO: look "Content-Length" */
+        p->block_size = p->lcf->block_size;
+
         r->headers_out.status = p->status;
 
-        /* STUB */ r->header_only = 1;
-
         rc = ngx_http_send_header(r);
+
+        /* STUB */
+        p->header_in->type |= NGX_HUNK_LAST;
+        rc = ngx_http_output_filter(r, p->header_in);
+        ngx_http_proxy_finalize_request(p, NGX_OK);
 
         /* STUB */ return NGX_DONE;
     }
@@ -1024,25 +1030,106 @@ static int ngx_http_proxy_process_upstream_header_line(ngx_http_proxy_ctx_t *p)
 
 static int ngx_http_proxy_read_upstream_body(ngx_event_t *rev)
 {
+    ngx_hunk_t            *h;
+    ngx_chain_t           *chain, ce;
+    ngx_connection_t      *c;
+    ngx_http_request_t    *r;
+    ngx_http_proxy_ctx_t  *p;
+
+    c = (ngx_connection_t *) rev->data;
+    r = (ngx_http_request_t *) c->data;
+    p = (ngx_http_proxy_ctx_t *)
+                         ngx_http_get_module_ctx(r, ngx_http_proxy_module_ctx);
+
+    ce.next = NULL;
+
     do {
-        if (free) {
-            buf = get
-        else if (kqueue and eof) {
-            buf = &buf;
-            size = 0;
-        else if (p->cur_hunks < p->nhunks)
-            palloc
-            p->cur_hunks++;
-        else
-            write first
-            add file hunk to out
+
+#if (USE_KQUEUE)
+
+        if (ev->eof && ev->available == 0) {
+            break;
         }
 
-        n = ngx_event_recv(c, buf, size);
+#elif (HAVE_KQUEUE)
+
+        if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT
+            && ev->eof && ev->available == 0)
+        {
+            break;
+        }
+
+#endif
+
+        if (p->free_hunks) {
+            chain = p->free_hunks;
+
+        } else if (p->allocated < p->lcf->max_block_size) {
+            ngx_test_null(h,
+                          ngx_create_temp_hunk(r->pool, p->block_size, 50, 50),
+                          NGX_ERROR);
+
+            p->allocated += p->block_size;
+            ce.hunk = h;
+            chain = &ce;
+
+        } else {
+            if (p->temp_fd == NGX_INVALID_FILE) {
+                rc = ngx_create_temp_file(p->temp_file, r->cachable);
+
+                if (rc != NGX_OK) {
+                    return rc;
+                }
+
+                if (p->lcf->temp_file_warn) {
+                    ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                                  "an upstream response is buffered "
+                                  "to a temporary file");
+                }
+            }
+
+            n = ngx_write_chain_to_file(p->temp_file, p->in_hunks,
+                                        p->temp_offset);
+
+            if (n == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            ngx_test_null(h, ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)),
+                          NGX_ERROR);
+
+            h->type = NGX_HUNK_FILE
+                      |NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP|NGX_HUNK_RECYCLED;
+
+            h->file_pos = p->temp_offset;
+            p->temp_offset += n;
+            h->file_last = p->temp_offset;
+
+            h->file->fd = p->temp_file.fd;
+            h->file->log = p->log;
+
+            h->pos = p->in_hunks->hunk->pos;
+            h->last = p->in_hunks->hunk->last;
+            h->start = p->in_hunks->hunk->start;
+            h->end = p->in_hunks->hunk->end;
+            h->pre_start = p->in_hunks->hunk->pre_start;
+            h->post_end = p->in_hunks->hunk->post_end;
+
+            ngx_add_hunk_to_chain(p->last_out_hunk, h, r->pool, NGX_ERROR);
+
+            ce.hunk = p->in_hunks->next;
+            p->in_hunks = p->in_hunks->next;
+            chain = &ce;
+        }
+
+        n = ngx_recv_chain(c, chain);
+
+        h->last += n;
+        left = hunk->end - hunk->last;
 
     } while (n > 0 && left == 0);
 
-    if (out && p->request->connection->write->ready) {
+    if (p->out_hunks && p->request->connection->write->ready) {
         ngx_http_proxy_write_upstream_body(p->request->connection->write);
     }
 }

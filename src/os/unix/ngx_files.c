@@ -12,7 +12,7 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
     n = pread(file->fd, buf, size, offset);
 
     if (n == -1) {
-        ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "read() failed");
+        ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "pread() failed");
         return NGX_ERROR;
     }
 
@@ -20,6 +20,30 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 
     return n;
 }
+
+
+ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
+{
+    ssize_t n;
+
+    n = pwrite(file->fd, buf, size, offset);
+
+    if (n == -1) {
+        ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "pwrite() failed");
+        return NGX_ERROR;
+    }
+
+    if (n != size) {
+        ngx_log_error(NGX_LOG_ERR, file->log, 0,
+                      "pwrite() has written only %d of %d", n, size);
+        return NGX_ERROR;
+    }
+
+    file->offset += n;
+
+    return n;
+}
+
 
 #if 0
 

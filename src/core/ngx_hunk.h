@@ -91,8 +91,4 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
             } while (0);
 
 
-
-
-
-
 #endif /* _NGX_CHUNK_H_INCLUDED_ */
