@@ -15,7 +15,7 @@ void *ngx_alloc(size_t size, ngx_log_t *log)
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "malloc() %d bytes failed", size);
 
-    ngx_log_debug(log, "malloc: %x" _ p);
+    ngx_log_debug(log, "malloc: %x:%d" _ p _ size);
 
     return p;
 }
@@ -51,10 +51,13 @@ void ngx_destroy_pool(ngx_pool_t *pool)
     ngx_pool_t        *p, *n;
     ngx_pool_large_t  *l;
 
-    for (l = pool->large; l; l = l->next)
+    for (l = pool->large; l; l = l->next) {
+        ngx_log_debug(pool->log, "free: %x" _ l->alloc);
         free(l->alloc);
+    }
 
     for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
+        ngx_log_debug(pool->log, "free: %x" _ p);
         free(p);
 
         if (n == NULL)
@@ -110,6 +113,7 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
         if (large == NULL) {
             ngx_test_null(large, ngx_palloc(pool, sizeof(ngx_pool_large_t)),
                           NULL);
+            large->next = NULL;
         }
 
         ngx_test_null(p, ngx_alloc(size, pool->log), NULL);

@@ -4,6 +4,7 @@
 #include <ngx_socket.h>
 #include <ngx_listen.h>
 #include <ngx_http.h>
+#include <ngx_http_config.h>
 
 extern ngx_array_t *ngx_listening_sockets;
 
@@ -28,13 +29,18 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
 #else
     ngx_http_server.doc_root = "/home/is/work/xml/site-1.0.0/html";
 #endif
-    ngx_http_server.doc_root = "html";
     ngx_http_server.doc_root_len = strlen(ngx_http_server.doc_root) + 1;
 
 
-    ngx_http_output_filter_init();
-    ngx_http_write_filter_init();
+    ngx_http_config_modules(pool, ngx_http_modules);
 
+    /* STUB */
+    ngx_http_output_filter_set_stub(pool, ngx_http_modules);
+    ngx_http_write_filter_set_stub(pool, ngx_http_modules);
+    ngx_http_index_set_stub(pool, ngx_http_modules);
+
+    ngx_http_init_modules(pool, ngx_http_modules);
+    ngx_http_init_filters(pool, ngx_http_modules);
 
     ls = ngx_push_array(ngx_listening_sockets);
     ngx_memzero(ls, sizeof(ngx_listen_t));

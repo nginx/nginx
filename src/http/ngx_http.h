@@ -7,6 +7,7 @@
 #include <ngx_hunk.h>
 #include <ngx_files.h>
 #include <ngx_connection.h>
+#include <ngx_config_command.h>
 
 
 #define NGX_HTTP_GET   1
@@ -139,13 +140,25 @@ typedef struct {
 
 
 typedef struct {
-    int    index;
+    int               index;
+    void           *(*create_srv_conf)(ngx_pool_t *p);
+    void           *(*create_loc_conf)(ngx_pool_t *p);
+    ngx_command_t    *commands;
+    int             (*init_module)(ngx_pool_t *p);
+    int             (*init_output_body_filter)(int (**next_filter)
+                                     (ngx_http_request_t *r, ngx_chain_t *ch));
 } ngx_http_module_t;
 
 #define NGX_HTTP_MODULE  0
 
 #define ngx_get_module_loc_conf(r, module)  r->loc_conf[module.index]
 #define ngx_get_module_ctx(r, module)  r->ctx[module.index]
+
+#define ngx_http_create_ctx(r, ctx, module, size)                             \
+            do {                                                              \
+               ngx_test_null(ctx, ngx_pcalloc(r->pool, size), NGX_ERROR);     \
+               r->ctx[module.index] = ctx;                                    \
+            } while (0)
 
 
 
@@ -157,6 +170,12 @@ typedef struct {
 int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log);
 
 int ngx_http_init_connection(ngx_connection_t *c);
+
+
+extern int ngx_max_module;
+
+extern ngx_http_module_t *ngx_http_modules[];
+
 
 
 #endif /* _NGX_HTTP_H_INCLUDED_ */

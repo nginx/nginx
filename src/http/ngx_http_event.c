@@ -7,13 +7,14 @@
 #include <ngx_alloc.h>
 #include <ngx_hunk.h>
 #include <ngx_connection.h>
-
 #include <ngx_http.h>
+#include <ngx_http_config.h>
 
 /* STUB */
 #include <ngx_http_output_filter.h>
-
 int ngx_http_static_handler(ngx_http_request_t *r);
+int ngx_http_index_handler(ngx_http_request_t *r);
+/* */
 
 
 int ngx_http_init_connection(ngx_connection_t *c);
@@ -131,7 +132,13 @@ int ngx_http_init_request(ngx_event_t *ev)
     r->connection = c;
     r->server = srv;
 
+    r->srv_conf = ngx_srv_conf;
+    r->loc_conf = ngx_loc_conf;
+
     ngx_test_null(r->pool, ngx_create_pool(srv->request_pool_size, ev->log),
+                  ngx_http_close_request(r));
+
+    ngx_test_null(r->ctx, ngx_pcalloc(r->pool, sizeof(void *) * ngx_max_module),
                   ngx_http_close_request(r));
 
     ngx_test_null(r->header_in,
@@ -432,6 +439,16 @@ static int ngx_http_handler(ngx_http_request_t *r)
 */
 }
 
+int ngx_http_internal_redirect(ngx_http_request_t *r, char *uri)
+{
+    ngx_log_debug(r->connection->log, "internal redirect: '%s'" _ uri);
+
+    r->uri = uri;
+    r->uri_start = uri;
+    r->uri_end = uri + strlen(uri);
+    return ngx_http_handler(r);
+}
+
 static int ngx_http_set_default_handler(ngx_http_request_t *r)
 {
     int   err, rc;
@@ -442,11 +459,8 @@ static int ngx_http_set_default_handler(ngx_http_request_t *r)
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
     if (*(r->uri_end - 1) == '/') {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-#if 0
         r->handler = ngx_http_index_handler;
         return NGX_OK;
-#endif
     }
 
     /* 20 bytes is spare space for some index name, i.e. index.html */

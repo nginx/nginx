@@ -45,16 +45,17 @@ int ngx_http_static_handler(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
                       "ngx_http_static_handler: "
                       ngx_open_file_n " %s failed", r->filename);
-        /* STUB */
-        return -1;
+
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     if (ngx_stat_fd(r->fd, &r->fileinfo) == -1) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
                       "ngx_http_static_handler: "
                       ngx_stat_fd_n " %s failed", r->filename);
-        /* STUB */
-        return -1;
+
+        /* close fd */
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     r->headers_out->status = NGX_HTTP_OK;
