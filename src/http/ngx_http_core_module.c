@@ -514,7 +514,13 @@ ngx_log_debug(r->connection->log, "trans: %s: %d" _
     }
 
     if (clcf->handler) {
+        /*
+         * if the location already has content handler then skip
+         * the translation phase
+         */
+
         r->content_handler = clcf->handler;
+        r->phase++;
     }
 
     return NGX_OK;

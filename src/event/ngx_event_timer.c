@@ -23,7 +23,7 @@ void ngx_event_timer_done(ngx_cycle_t *cycle)
 }
 
 
-int ngx_event_find_timer(void)
+ngx_msec_t ngx_event_find_timer(void)
 {
     ngx_rbtree_t  *node;
 
@@ -33,7 +33,8 @@ int ngx_event_find_timer(void)
         return 0;
 
     } else {
-        return node->key * NGX_TIMER_RESOLUTION - ngx_elapsed_msec;
+        return (ngx_msec_t)
+                         (node->key * NGX_TIMER_RESOLUTION - ngx_elapsed_msec);
     }
 }
 
@@ -50,11 +51,11 @@ void ngx_event_expire_timers(ngx_msec_t timer)
             break;
         }
 
-        if ((ngx_msec_t) node->key <=
+        if ((ngx_msec_t) node->key <= (ngx_msec_t)
                              (ngx_elapsed_msec + timer) / NGX_TIMER_RESOLUTION)
         {
             ev = (ngx_event_t *)
-                               ((char *) node - offsetof(ngx_event_t, rbtree));
+                           ((char *) node - offsetof(ngx_event_t, rbtree_key));
 
             ngx_del_timer(ev);
 

@@ -13,7 +13,7 @@ struct ngx_rbtree_s {
    ngx_rbtree_t   *left;
    ngx_rbtree_t   *right;
    ngx_rbtree_t   *parent;
-   void           *data;
+   char            color;
 };
 
 extern ngx_rbtree_t  sentinel;

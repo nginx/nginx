@@ -31,8 +31,6 @@ struct ngx_event_s {
     ngx_event_t     *prev;
     ngx_event_t     *next;
 
-    ngx_rbtree_t     rbtree;
-
 #if 0
     ngx_event_t     *timer_prev;
     ngx_event_t     *timer_next;
@@ -41,6 +39,69 @@ struct ngx_event_s {
 #endif
 
     ngx_log_t       *log;
+
+    /*
+     * ngx_rbtree_t     rbtree;
+     */
+
+    ngx_int_t        rbtree_key;
+    void            *rbtree_left;
+    void            *rbtree_right;
+    void            *rbtree_parent;
+    char             rbtree_color;
+
+    unsigned char    oneshot:1;
+
+    unsigned char    write:1;
+
+    /* used to detect the stale events in kqueue, rt signals and epoll */
+    unsigned char    instance:1;
+
+    /*
+     * the event was passed or would be passed to a kernel;
+     * in aio mode - operation was posted.
+     */
+    unsigned char    active:1;
+
+    /* the ready event; in aio mode 0 means that no operation can be posted */
+    unsigned char    ready:1;
+
+    /* aio operation is complete */
+    unsigned char    complete:1;
+
+    unsigned char    eof:1;
+    unsigned char    error:1;
+
+    unsigned short   timedout:1;
+    unsigned short   timer_set:1;
+
+    unsigned short   delayed:1;
+
+    unsigned short   read_discarded:1;
+
+    unsigned short   ignore_econnreset:1;
+    unsigned short   unexpected_eof:1;
+
+    unsigned short   deferred_accept:1;
+
+    /* TODO: aio_eof and kq_eof can be the single pending_eof */
+    /* the pending eof in aio chain operation */
+    unsigned short   aio_eof:1;
+
+    /* the pending eof reported by kqueue */
+    unsigned short   kq_eof:1;
+
+#if (WIN32)
+    /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was succesfull */
+    unsigned short   accept_context_updated:1;
+#endif
+
+#if (HAVE_KQUEUE)
+    unsigned short   kq_vnode:1;
+
+    /* the pending errno reported by kqueue */
+    int              kq_errno;
+#endif
 
     /*
      * kqueue only:
@@ -57,60 +118,7 @@ struct ngx_event_s {
 #if (HAVE_KQUEUE)
     int              available;
 #else
-    unsigned         available:1;
-#endif
-
-    unsigned         oneshot:1;
-
-    unsigned         write:1;
-
-    /* used to detect the stale events in kqueue, rt signals and epoll */
-    unsigned         instance:1;
-
-    /*
-     * the event was passed or would be passed to a kernel;
-     * in aio mode - operation was posted.
-     */
-    unsigned         active:1;
-
-    /* the ready event; in aio mode 0 means that no operation can be posted */
-    unsigned         ready:1;
-
-    /* aio operation is complete */
-    unsigned         complete:1;
-
-    unsigned         eof:1;
-    unsigned         error:1;
-
-    unsigned         timedout:1;
-    unsigned         timer_set:1;
-
-    unsigned         delayed:1;
-
-    unsigned         read_discarded:1;
-
-    unsigned         ignore_econnreset:1;
-    unsigned         unexpected_eof:1;
-
-    unsigned         deferred_accept:1;
-
-    /* TODO: aio_eof and kq_eof can be the single pending_eof */
-    /* the pending eof in aio chain operation */
-    unsigned         aio_eof:1;
-
-    /* the pending eof reported by kqueue */
-    unsigned         kq_eof:1;
-
-#if (WIN32)
-    /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was succesfull */
-    unsigned         accept_context_updated:1;
-#endif
-
-#if (HAVE_KQUEUE)
-    unsigned         kq_vnode:1;
-
-    /* the pending errno reported by kqueue */
-    int              kq_errno;
+    unsigned short   available:1;
 #endif
 
 

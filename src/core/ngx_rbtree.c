@@ -8,12 +8,11 @@
  * to Algorithms" by Cormen, Leiserson and Rivest.
  */
 
-#define ngx_rbt_red(node)           ((uintptr_t) (node)->data |= 1)
-#define ngx_rbt_black(node)         ((uintptr_t) (node)->data &= ~1)
-#define ngx_rbt_is_red(node)        ((uintptr_t) (node)->data & 1)
+#define ngx_rbt_red(node)           ((node)->color = 1)
+#define ngx_rbt_black(node)         ((node)->color = 0)
+#define ngx_rbt_is_red(node)        ((node)->color)
 #define ngx_rbt_is_black(node)      (!ngx_rbt_is_red(node))
-#define ngx_rbt_copy_color(n1, n2)                                            \
-                         ((uintptr_t) (n1)->data |= (uintptr_t) (n2)->data & 1)
+#define ngx_rbt_copy_color(n1, n2)  (n1->color = n2->color)
 
 
 ngx_inline void ngx_rbtree_left_rotate(ngx_rbtree_t **root, ngx_rbtree_t *node);
@@ -166,7 +165,7 @@ void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *node)
 
     if (subst != node) {
         node->key = subst->key;
-        node->data = subst->data;
+        node->color = subst->color;
     }
 
     if (ngx_rbt_is_red(subst)) {

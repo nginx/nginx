@@ -35,6 +35,9 @@ case $PLATFORM in
 
         CFLAGS="$CFLAGS -D HAVE_AIO=1 -D HAVE_IOCP=1"
         CORE_LIBS="$CORE_LIBS ws2_32.lib"
+
+        # msvcrt.dll
+        CORE_LIBS="$CORE_LIBS msvcrt.lib"
     ;;
 
 esac

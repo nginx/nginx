@@ -95,8 +95,13 @@ case $CC in
 
          # link flags
          CORE_LINK="$CORE_LINK -link"
-         CORE_LINK="$CORE_LINK -nodefaultlib:msvcrt"
-         CORE_LINK="$CORE_LINK -nodefaultlib:libcpmt"
+
+         # msvcrt.dll
+         CORE_LINK="$CORE_LINK -nodefaultlib:libcmt"
+
+         # static libc
+         #CORE_LINK="$CORE_LINK -nodefaultlib:msvcrt"
+
          CORE_LINK="$CORE_LINK -verbose:lib"
 
          # debug
