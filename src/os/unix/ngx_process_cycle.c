@@ -65,10 +65,11 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     signo = 0;
     live = 0;
 
-    ngx_accept_mutex = mmap(NULL, sizeof(ngx_atomic_t), PROT_READ|PROT_WRITE,
-                            MAP_ANON|MAP_SHARED, -1, 0);
+    ngx_accept_mutex_ptr = mmap(NULL, sizeof(ngx_atomic_t),
+                                PROT_READ|PROT_WRITE,
+                                MAP_ANON|MAP_SHARED, -1, 0);
 
-    if (ngx_accept_mutex == NULL) {
+    if (ngx_accept_mutex_ptr == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "mmap(MAP_ANON|MAP_SHARED) failed");
         /* fatal */
@@ -375,11 +376,12 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_process = NGX_PROCESS_WORKER;
     ngx_last_process = 0;
 
-    if (ngx_accept_mutex) {
-        ngx_accept_token = 1;
-    }
-
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ccf->worker_processes > 1) {
+        ngx_accept_mutex = ngx_accept_mutex_ptr;
+        ngx_accept_mutex_held = 1;
+    }
 
     if (ccf->group != (gid_t) NGX_CONF_UNSET) {
         if (setuid(ccf->group) == -1) {
@@ -482,6 +484,8 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     }
 
     ngx_close_listening_sockets(cycle);
+
+    ngx_accept_mutex = NULL;
 
     for ( ;; ) {
         if (ngx_event_timer_rbtree == &ngx_event_timer_sentinel) {

@@ -14,7 +14,7 @@ static ngx_int_t ngx_iocp_init(ngx_cycle_t *cycle);
 static void ngx_iocp_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key);
 static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, u_int flags);
-static ngx_int_t ngx_iocp_process_events(ngx_log_t *log);
+static ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle);
 static void *ngx_iocp_create_conf(ngx_cycle_t *cycle);
 static char *ngx_iocp_init_conf(ngx_cycle_t *cycle, void *conf);
 
@@ -160,7 +160,7 @@ static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
 }
 
 
-static ngx_int_t ngx_iocp_process_events(ngx_log_t *log)
+static ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
 {
     int                rc;
     u_int              key;
@@ -179,7 +179,7 @@ static ngx_int_t ngx_iocp_process_events(ngx_log_t *log)
         timer = INFINITE;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "iocp timer: %d", timer);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "iocp timer: %d", timer);
 
     rc = GetQueuedCompletionStatus(iocp, &bytes, (LPDWORD) &key,
                                    (LPOVERLAPPED *) &ovlp, timer);
@@ -193,7 +193,7 @@ static ngx_int_t ngx_iocp_process_events(ngx_log_t *log)
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
-    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
+    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "iocp: %d b:%d k:%d ov:" PTR_FMT, rc, bytes, key, ovlp);
 
     delta = ngx_elapsed_msec;
@@ -202,7 +202,7 @@ static ngx_int_t ngx_iocp_process_events(ngx_log_t *log)
     if (err) {
         if (ovlp == NULL) {
             if (err != WAIT_TIMEOUT) {
-                ngx_log_error(NGX_LOG_ALERT, log, err,
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
                               "GetQueuedCompletionStatus() failed");
 
                 return NGX_ERROR;
@@ -216,14 +216,15 @@ static ngx_int_t ngx_iocp_process_events(ngx_log_t *log)
     if (timer != INFINITE) {
         delta = ngx_elapsed_msec - delta;
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "iocp timer: %d, delta: %d", timer, (int) delta);
     }
 
     if (ovlp) {
         ev = ovlp->event;
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "iocp event:" PTR_FMT, ev);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "iocp event:" PTR_FMT, ev);
 
         switch (key) {
 
@@ -244,7 +245,7 @@ static ngx_int_t ngx_iocp_process_events(ngx_log_t *log)
 
         ev->available = bytes;
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "iocp event handler: " PTR_FMT, ev->event_handler);
 
         ev->event_handler(ev);

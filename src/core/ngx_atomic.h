@@ -70,10 +70,14 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 
 #elif (WIN32)
 
-#define ngx_atomic_inc(x)                    InterlockedIncrement
-#define ngx_atomic_dec(x)                    InterlockedDecrement
+#define ngx_atomic_inc(p)       InterlockedIncrement((long *) p)
+#define ngx_atomic_dec(p)       InterlockedDecrement((long *) p)
+/* STUB */
+#define ngx_atomic_cmp_set(lock, old, set)   1
+#if 0
 #define ngx_atomic_cmp_set(lock, old, set)                                   \
                                   InterlockedCompareExchange(lock, set, old)
+#endif
 
 
 #else
@@ -83,7 +87,7 @@ typedef volatile uint32_t  ngx_atomic_t;
 /* STUB */
 #define ngx_atomic_inc(x)   (*(x))++;
 #define ngx_atomic_dec(x)   (*(x))--;
-#define ngx_atomic_cmp_set(lock, old, set)   1;
+#define ngx_atomic_cmp_set(lock, old, set)   1
 /**/
 
 #endif

@@ -14,8 +14,9 @@ typedef struct {
 static size_t ngx_accept_log_error(void *data, char *buf, size_t len);
 
 
+ngx_atomic_t  *ngx_accept_mutex_ptr;
 ngx_atomic_t  *ngx_accept_mutex;
-ngx_uint_t     ngx_accept_token;
+ngx_uint_t     ngx_accept_mutex_held;
 
 
 void ngx_event_accept(ngx_event_t *ev)
@@ -311,23 +312,24 @@ ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "accept mutex locked");
 
-        if (!ngx_accept_token) {
+        if (!ngx_accept_mutex_held) {
             if (ngx_enable_accept_events(cycle) == NGX_ERROR) {
+                *ngx_accept_mutex = 0;
                 return NGX_ERROR;
             }
 
-            ngx_accept_token = 1;
+            ngx_accept_mutex_held = 1;
         }
 
         return NGX_OK;
     }
 
-    if (ngx_accept_token) {
+    if (ngx_accept_mutex_held) {
         if (ngx_disable_accept_events(cycle) == NGX_ERROR) {
             return NGX_ERROR;
         }
 
-        ngx_accept_token = 0;
+        ngx_accept_mutex_held = 0;
     }
 
     return NGX_OK;

@@ -36,6 +36,6 @@ if [ "$PLATFORM" != win32 ]; then
     . auto/unix
 fi
 
-#have NGX_SMP . auto/have
+have NGX_SMP . auto/have
 
 . auto/summary

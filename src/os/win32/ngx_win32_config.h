@@ -31,6 +31,7 @@
 /* disable some "-W4" level warnings */
 
 #pragma warning(disable:4054)
+#pragma warning(disable:4054)
 #pragma warning(disable:4055)
 /* unreferenced formal parameter */
 #pragma warning(disable:4100)
@@ -43,6 +44,8 @@
 
 
 #ifdef __WATCOMC__
+/* unreachable code */
+#pragma disable_message(201)
 /* disable "Symbol 'ngx_rbtree_min' has been defined, but not referenced" */
 #pragma disable_message(202)
 #endif
@@ -86,6 +89,7 @@ typedef long              time_t;
 typedef __int64           off_t;
 typedef uint32_t          in_addr_t;
 typedef int               sig_atomic_t;
+typedef uint32_t          ngx_atomic_t;
 
 
 #define OFF_T_FMT         "%I64d"

@@ -396,8 +396,15 @@ extern ngx_thread_volatile ngx_event_t  *ngx_posted_events;
 #if (NGX_THREADS)
 extern ngx_mutex_t           *ngx_posted_events_mutex;
 #endif
+
+extern ngx_atomic_t          *ngx_accept_mutex_ptr;
 extern ngx_atomic_t          *ngx_accept_mutex;
-extern ngx_uint_t             ngx_accept_token;
+extern ngx_uint_t             ngx_accept_mutex_held;
+
+#define ngx_accept_mutex_unlock()                                             \
+           if (ngx_accept_mutex_held) {                                       \
+               *ngx_accept_mutex = 0;                                         \
+           }
 
 
 extern int                    ngx_event_flags;

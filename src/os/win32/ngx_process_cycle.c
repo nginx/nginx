@@ -48,6 +48,6 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     for ( ;; ) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
-        ngx_process_events(cycle->log);
+        ngx_process_events(cycle);
     }
 }

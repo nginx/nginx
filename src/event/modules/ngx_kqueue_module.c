@@ -375,8 +375,8 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-#if 1
-        if (ngx_accept_token == 0 && timer == 0) {
+#if 0
+        if (ngx_accept_mutex_held == 0 && timer == 0) {
             /* STUB */ timer = 500;
         }
 #endif
@@ -416,11 +416,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
     if (err) {
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
                       cycle->log, err, "kevent() failed");
-
-        if (ngx_accept_token) {
-            *ngx_accept_mutex = 0;
-        }
-
+        ngx_accept_mutex_unlock();
         return NGX_ERROR;
     }
 
@@ -434,21 +430,13 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         if (events == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "kevent() returned no events without timeout");
-
-            if (ngx_accept_token) {
-                *ngx_accept_mutex = 0;
-            }
-
+            ngx_accept_mutex_unlock();
             return NGX_ERROR;
         }
     }
 
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-
-        if (ngx_accept_token) {
-            *ngx_accept_mutex = 0;
-        }
-
+        ngx_accept_mutex_unlock();
         return NGX_ERROR;
     }
 
@@ -532,7 +520,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 #if 0
         if (ngx_threaded || ngx_accept_token) {
 #endif
-        if (ngx_accept_token) {
+        if (ngx_accept_mutex_held) {
 
             if (ev->accept) {
                 ngx_mutex_unlock(ngx_posted_events_mutex);
@@ -540,11 +528,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
                 ev->event_handler(ev);
 
                 if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-
-                    if (ngx_accept_token) {
-                        *ngx_accept_mutex = 0;
-                    }
-
+                    ngx_accept_mutex_unlock();
                     return NGX_ERROR;
                 }
 
@@ -561,9 +545,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
     ngx_mutex_unlock(ngx_posted_events_mutex);
 
-    if (ngx_accept_token) {
-        *ngx_accept_mutex = 0;
-    }
+    ngx_accept_mutex_unlock();
 
     if (timer && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);

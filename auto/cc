@@ -24,6 +24,9 @@ case $CC in
              ;;
          esac
 
+         # STUB for batch builds
+         if [ $CC = gcc27 ]; then CPU_OPT=; fi
+
          CFLAGS="$CFLAGS $PIPE $CPU_OPT"
 
          if [ ".$PCRE_OPT" = "." ]; then
