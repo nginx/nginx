@@ -60,8 +60,13 @@ static int ngx_http_charset_header_filter(ngx_http_request_t *r)
 {
     ngx_http_charset_loc_conf_t  *lcf;
 
-    if (ngx_strncasecmp(r->headers_out.content_type->value.data, "text/", 5)
-                                                                        != 0) {
+    if (r->headers_out.content_type == NULL
+        || ngx_strncasecmp(r->headers_out.content_type->value.data,
+                                                           "text/", 5) != 0
+        || ngx_strstr(r->headers_out.content_type->value.data, "charset")
+                                                                       != NULL
+       )
+    {
         return next_header_filter(r);
     }
 

@@ -14,6 +14,15 @@ typedef struct {
     ssize_t       header_size;
     ngx_msec_t    read_timeout;
 
+    /* STUB */
+    int           block_size;
+    int           max_block_size;
+    int           max_temp_file_size;
+    int           temp_file_write_size;
+    /* */
+
+    ngx_path_t   *temp_path;
+
     ngx_peers_t  *peers;
 } ngx_http_proxy_loc_conf_t;
 
@@ -25,6 +34,7 @@ typedef struct {
     ngx_table_elt_t  *content_type;
     ngx_table_elt_t  *content_length;
     ngx_table_elt_t  *last_modified;
+    ngx_table_elt_t  *accept_ranges;
 
     ngx_table_t      *headers;
 } ngx_http_proxy_headers_in_t;
@@ -51,6 +61,12 @@ struct ngx_http_proxy_ctx_s {
     ngx_str_t                   uri;
     int                         location_len;
     ngx_str_t                   host_header;
+
+    ngx_event_proxy_t          *event_proxy;
+
+    unsigned                    accel:1;
+    unsigned                    fatal_error:1;
+    unsigned                    header_sent:1;
 
     /* used to parse an upstream HTTP header */
     char                       *status_start;

@@ -1,4 +1,7 @@
 
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_event.h>
 #include <ngx_event_proxy.h>
 
 
@@ -46,7 +49,7 @@ ngx_log_debug(p->log, "read upstream");
 
 #if (HAVE_KQUEUE) /* kqueue notifies about the end of file or a pending error */
 
-            if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT) {
+            if (ngx_event_flags == NGX_HAVE_KQUEUE_EVENT) {
 
                 if (p->upstream->read->error) {
                     ngx_log_error(NGX_LOG_ERR, p->log,
