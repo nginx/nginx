@@ -31,12 +31,27 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     struct sf_hdtr   hdtr;
     ngx_err_t        err;
     ngx_array_t      header, trailer;
+    ngx_event_t     *wev;
     ngx_hunk_t      *file;
     ngx_chain_t     *cl, *tail;
 
-    if (!c->write->ready) {
+    wev = c->write;
+
+    if (!wev->ready) {
         return in;
     }
+
+#if (HAVE_KQUEUE)
+
+    if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && wev->kq_eof) {
+        ngx_log_error(NGX_LOG_ERR, c->log, wev->kq_errno,
+                      "kevent() reported about closed connection");
+
+        wev->error = 1;
+        return NGX_CHAIN_ERROR;
+    }
+
+#endif
 
     do {
         cl = in;
@@ -181,7 +196,7 @@ ngx_log_debug(c->log, "NOPUSH");
                                   "sendfile() sent only %qd bytes", sent);
 
                 } else {
-                    c->write->error = 1;
+                    wev->error = 1;
                     ngx_log_error(NGX_LOG_CRIT, c->log, err,
                                   "sendfile() failed");
                     return NGX_CHAIN_ERROR;
@@ -194,7 +209,7 @@ ngx_log_debug(c->log, "NOPUSH");
 #endif
 
         } else {
-            rc = writev(c->fd, (struct iovec *) header.elts, header.nelts);
+            rc = writev(c->fd, header.elts, header.nelts);
 
             if (rc == -1) {
                 err = ngx_errno;
@@ -206,7 +221,7 @@ ngx_log_debug(c->log, "NOPUSH");
                     ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EINTR");
 
                 } else {
-                    c->write->error = 1;
+                    wev->error = 1;
                     ngx_log_error(NGX_LOG_CRIT, c->log, err, "writev() failed");
                     return NGX_CHAIN_ERROR;
                 }
@@ -268,7 +283,7 @@ ngx_log_debug(c->log, "NOPUSH");
              * return EAGAIN right away and would not send anything
              */
 
-            c->write->ready = 0;
+            wev->ready = 0;
             break;
         }
 
@@ -277,7 +292,7 @@ ngx_log_debug(c->log, "NOPUSH");
     } while ((tail && tail == in) || eintr);
 
     if (in) {
-        c->write->ready = 0;
+        wev->ready = 0;
     }
 
     return in;

@@ -12,7 +12,7 @@ int ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
     int  rc;
 
     if (tf->file.fd == NGX_INVALID_FILE) {
-        rc = ngx_create_temp_file(&tf->file, &tf->path, tf->pool,
+        rc = ngx_create_temp_file(&tf->file, tf->path, tf->pool,
                                   tf->persistent);
     
         if (rc == NGX_ERROR || rc == NGX_AGAIN) {
@@ -24,7 +24,7 @@ int ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
         }
     }
 
-    return ngx_write_chain_to_file(&tf->file, chain, tf->file.offset, tf->pool);
+    return ngx_write_chain_to_file(&tf->file, chain, tf->offset, tf->pool);
 }
 
 

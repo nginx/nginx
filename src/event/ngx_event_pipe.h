@@ -54,7 +54,6 @@ struct ngx_event_pipe_s {
 
     size_t             busy_size;
 
-    off_t              temp_offset;
     off_t              max_temp_file_size;
     int                temp_file_write_size;
 
@@ -71,9 +70,8 @@ struct ngx_event_pipe_s {
     ngx_chain_t       *preread_hunks;
     int                preread_size;
 
-    ngx_file_t        *temp_file;
-    ngx_path_t        *temp_path;
-    char              *temp_file_warn;
+    ngx_temp_file_t   *temp_file;
+
     /* STUB */ int     num;
 };
 

@@ -380,7 +380,9 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     for (i = 0; i < events; i++) {
 
 #if (NGX_DEBUG_EVENT)
-        if (event_list[i].ident > 0x8000000) {
+        if (event_list[i].ident > 0x8000000
+            && event_list[i].ident != (unsigned) -1)
+        {
             ngx_log_debug(log,
                           "kevent: %08x: ft:%d fl:%08x ff:%08x d:%d ud:%08x" _
                           event_list[i].ident _ event_list[i].filter _

@@ -20,7 +20,7 @@
 #define NGX_HUNK_RECYCLED     0x0010
 
 /* the hunk is in file */
-#define NGX_HUNK_FILE         0x0100
+#define NGX_HUNK_FILE         0x0020
 
 #define NGX_HUNK_STORAGE      (NGX_HUNK_IN_MEMORY                            \
                                |NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP  \
@@ -30,9 +30,12 @@
 
 /* in thread state flush means to write the hunk completely before return */
 /* in event state flush means to start to write the hunk */
-#define NGX_HUNK_FLUSH        0x1000
+#define NGX_HUNK_FLUSH        0x0100
 /* last hunk */
-#define NGX_HUNK_LAST         0x2000
+#define NGX_HUNK_LAST         0x0200
+
+
+#define NGX_HUNK_PREREAD      0x2000
 #define NGX_HUNK_LAST_SHADOW  0x4000
 #define NGX_HUNK_TEMP_FILE    0x8000
 

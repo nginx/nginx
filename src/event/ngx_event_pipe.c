@@ -42,24 +42,28 @@ int ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
         do_write = 1;
     }
 
-    rev = p->upstream->read;
+    if (p->upstream->fd != -1) {
+        rev = p->upstream->read;
 
-    if (ngx_handle_read_event(rev, (rev->eof || rev->error)) == NGX_ERROR) {
-        return NGX_ABORT;
+        if (ngx_handle_read_event(rev, (rev->eof || rev->error)) == NGX_ERROR) {
+            return NGX_ABORT;
+        }
+
+        if (rev->active) {
+            ngx_add_timer(rev, p->read_timeout);
+        }
     }
 
-    if (rev->active) {
-        ngx_add_timer(rev, p->read_timeout);
-    }
+    if (p->downstream->fd != -1) {
+        wev = p->downstream->write;
 
-    wev = p->downstream->write;
+        if (ngx_handle_write_event(wev, p->send_lowat) == NGX_ERROR) {
+            return NGX_ABORT;
+        }
 
-    if (ngx_handle_write_event(wev, p->send_lowat) == NGX_ERROR) {
-        return NGX_ABORT;
-    }
-
-    if (wev->active) {
-        ngx_add_timer(wev, p->send_timeout);
+        if (wev->active) {
+            ngx_add_timer(wev, p->send_timeout);
+        }
     }
 
     return NGX_OK;
@@ -166,7 +170,9 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                 break;
 
-            } else if (p->cachable || p->temp_offset < p->max_temp_file_size) {
+            } else if (p->cachable
+                       || p->temp_file->offset < p->max_temp_file_size)
+            {
 
                 /*
                  * if it's allowed then save some hunks from r->in
@@ -175,7 +181,7 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                 rc = ngx_event_pipe_write_chain_to_temp_file(p);
 
-                ngx_log_debug(p->log, "temp offset: %d" _ p->temp_offset);
+                ngx_log_debug(p->log, "temp offset: %d" _ p->temp_file->offset);
 
                 if (rc == NGX_AGAIN) {
                     if (ngx_event_flags & NGX_USE_LEVEL_EVENT
@@ -414,8 +420,8 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
                 /* reset p->temp_offset if all hunks had been sent */
 
-                if (cl->hunk->file_last == p->temp_offset) {
-                    p->temp_offset = 0;
+                if (cl->hunk->file_last == p->temp_file->offset) {
+                    p->temp_file->offset = 0;
                 }
             }
         }
@@ -428,29 +434,21 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 static int ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 {
     int           rc, size, hsize;
+    char         *save_pos;
     ngx_hunk_t   *h;
     ngx_chain_t  *cl, *tl, *next, *out, **ll, **last_free;
 
     ngx_log_debug(p->log, "write to file");
 
-    if (p->temp_file->fd == NGX_INVALID_FILE) {
-        rc = ngx_create_temp_file(p->temp_file, p->temp_path, p->pool,
-                                  p->cachable);
-
-        if (rc == NGX_ERROR) {
-            return NGX_ABORT;
-        }
-
-        if (rc == NGX_AGAIN) {
-            return NGX_AGAIN;
-        }
-
-        if (!p->cachable && p->temp_file_warn) {
-            ngx_log_error(NGX_LOG_WARN, p->log, 0, p->temp_file_warn);
-        }
-    }
-
     out = p->in;
+
+    if (out->hunk->type & NGX_HUNK_PREREAD) {
+        save_pos = out->hunk->pos;
+        out->hunk->pos = out->hunk->start;
+
+    } else {
+        save_pos = NULL;
+    }
 
     if (!p->cachable) {
 
@@ -458,7 +456,7 @@ static int ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         cl = p->in;
         ll = NULL;
 
-ngx_log_debug(p->log, "offset: %d" _ p->temp_offset);
+ngx_log_debug(p->log, "offset: %d" _ p->temp_file->offset);
 
         do {
             hsize = cl->hunk->last - cl->hunk->pos;
@@ -466,7 +464,7 @@ ngx_log_debug(p->log, "offset: %d" _ p->temp_offset);
 ngx_log_debug(p->log, "hunk size: %d" _ hsize);
 
             if ((size + hsize > p->temp_file_write_size)
-                || (p->temp_offset + size + hsize > p->max_temp_file_size))
+               || (p->temp_file->offset + size + hsize > p->max_temp_file_size))
             {
                 break;
             }
@@ -493,8 +491,7 @@ ngx_log_debug(p->log, "size: %d" _ size);
         p->last_in = &p->in;
     }
 
-    if (ngx_write_chain_to_file(p->temp_file, out, p->temp_offset,
-                                                       p->pool) == NGX_ERROR) {
+    if (ngx_write_chain_to_temp_file(p->temp_file, out) == NGX_ERROR) {
         return NGX_ABORT;
     }
 
@@ -505,15 +502,21 @@ ngx_log_debug(p->log, "size: %d" _ size);
         /* void */
     }
 
+    if (out->hunk->type & NGX_HUNK_PREREAD) {
+        p->temp_file->offset += save_pos - out->hunk->pos;
+        out->hunk->pos = save_pos;
+        out->hunk->type &= ~NGX_HUNK_PREREAD;
+    }
+
     for (cl = out; cl; cl = next) {
         next = cl->next;
         cl->next = NULL;
 
         h = cl->hunk;
-        h->file = p->temp_file;
-        h->file_pos = p->temp_offset;
-        p->temp_offset += h->last - h->pos;
-        h->file_last = p->temp_offset;
+        h->file = &p->temp_file->file;
+        h->file_pos = p->temp_file->offset;
+        p->temp_file->offset += h->last - h->pos;
+        h->file_last = p->temp_file->offset;
 
         if (p->cachable) {
             h->type |= NGX_HUNK_FILE;

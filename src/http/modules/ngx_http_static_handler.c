@@ -39,6 +39,7 @@ ngx_module_t  ngx_http_static_module = {
 
 int ngx_http_static_translate_handler(ngx_http_request_t *r)
 {
+    int                        rc, level;
     char                      *location, *last;
     ngx_err_t                  err;
     ngx_http_core_loc_conf_t  *clcf;
@@ -116,18 +117,24 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
 
     if (r->file.fd == NGX_INVALID_FILE) {
         err = ngx_errno;
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
-                      ngx_open_file_n " \"%s\" failed", r->file.name.data);
 
         if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
-            return NGX_HTTP_NOT_FOUND;
+            level = NGX_LOG_ERR;
+            rc = NGX_HTTP_NOT_FOUND;
 
         } else if (err == NGX_EACCES) {
-            return NGX_HTTP_FORBIDDEN;
+            level = NGX_LOG_ERR;
+            rc = NGX_HTTP_FORBIDDEN;
 
         } else {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            level = NGX_LOG_CRIT;
+            rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
+
+        ngx_log_error(level, r->connection->log, ngx_errno,
+                      ngx_open_file_n " \"%s\" failed", r->file.name.data);
+
+        return rc;
     }
 
 ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);

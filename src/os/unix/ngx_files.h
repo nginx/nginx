@@ -45,6 +45,10 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
                                 off_t offset, ngx_pool_t *pool);
 
 
+#define ngx_rename_file          rename
+#define ngx_rename_file_n        "rename"
+
+
 #define ngx_mkdir(name)          mkdir(name, 0700)
 #define ngx_mkdir_n              "mkdir()"
 

@@ -169,8 +169,12 @@ ngx_inline static int ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx,
         return 0;
     }
 
-    if (!ctx->sendfile && (!(hunk->type & NGX_HUNK_IN_MEMORY))) {
-        return 1;
+    if (!ctx->sendfile) {
+        if (!(hunk->type & NGX_HUNK_IN_MEMORY)) {
+            return 1;
+        }
+
+        hunk->type &= ~NGX_HUNK_FILE;
     }
 
     if (ctx->need_in_memory && (!(hunk->type & NGX_HUNK_IN_MEMORY))) {

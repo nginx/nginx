@@ -95,6 +95,8 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
             return;
         }
 
+        r->temp_file->offset += n;
+
         r->request_body_hunk->pos = r->request_body_hunk->start;
         r->request_body_hunk->last = r->request_body_hunk->start;
     }

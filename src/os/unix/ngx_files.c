@@ -50,9 +50,10 @@ ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 }
 
 
-ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
+ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
                                 off_t offset, ngx_pool_t *pool)
 {
+    char          *prev;
     size_t         size;
     ssize_t        n;
     struct iovec  *iov;
@@ -61,20 +62,39 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 
     /* use pwrite() if there's the only hunk in a chain */
 
-    if (ce->next == NULL) {
-        return ngx_write_file(file, ce->hunk->pos,
-                              ce->hunk->last - ce->hunk->pos, offset);
+    if (cl->next == NULL) {
+        return ngx_write_file(file, cl->hunk->pos,
+                              cl->hunk->last - cl->hunk->pos, offset);
     }
 
-    ngx_init_array(io, pool, 10, sizeof(struct iovec), NGX_ERROR);
+    prev = NULL;
+    iov = NULL;
     size = 0;
 
-    while (ce) {
-        ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
-        iov->iov_base = ce->hunk->pos;
-        iov->iov_len = ce->hunk->last - ce->hunk->pos;
-        size += ce->hunk->last - ce->hunk->pos;
-        ce = ce->next;
+    ngx_init_array(io, pool, 10, sizeof(struct iovec), NGX_ERROR);
+
+    /* create the iovec and coalesce the neighbouring hunks */
+
+    while (cl) {
+        if (prev == cl->hunk->pos) {
+            iov->iov_len += cl->hunk->last - cl->hunk->pos;
+
+        } else {
+            ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
+            iov->iov_base = cl->hunk->pos;
+            iov->iov_len = cl->hunk->last - cl->hunk->pos;
+        }
+
+        size += cl->hunk->last - cl->hunk->pos;
+        prev = cl->hunk->last;
+        cl = cl->next;
+    }
+
+    /* use pwrite() if there's the only iovec buffer */
+
+    if (io.nelts == 1) {
+        iov = io.elts;
+        return ngx_write_file(file, iov[0].iov_base, iov[0].iov_len, offset);
     }
 
     if (file->offset != offset) {
@@ -84,7 +104,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
         }
     }
 
-    n = writev(file->fd, (struct iovec *) io.elts, io.nelts);
+    n = writev(file->fd, io.elts, io.nelts);
 
     if (n == -1) {
         ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "writev() failed");

@@ -376,10 +376,7 @@ ngx_log_debug(r->connection->log, "trans: %s" _ clcfp[i]->name.data);
             continue;
         }
 
-        rc = ngx_strncmp(r->uri.data, clcfp[i]->name.data,
-                         clcfp[i]->name.len);
-
-ngx_log_debug(r->connection->log, "rc: %d" _ rc);
+        rc = ngx_strncmp(r->uri.data, clcfp[i]->name.data, clcfp[i]->name.len);
 
         if (rc < 0) {
             break;

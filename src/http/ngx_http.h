@@ -6,6 +6,7 @@
 #include <ngx_core.h>
 #include <ngx_http_request.h>
 #include <ngx_http_config.h>
+#include <ngx_http_cache.h>
 #include <ngx_http_filter.h>
 #include <ngx_http_core_module.h>
 

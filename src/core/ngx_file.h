@@ -28,7 +28,8 @@ typedef struct {
 
 typedef struct {
     ngx_file_t   file;
-    ngx_path_t   path;
+    off_t        offset;
+    ngx_path_t  *path;
     ngx_pool_t  *pool;
     char        *warn;
 

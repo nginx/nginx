@@ -22,6 +22,7 @@ typedef struct {
 
 struct ngx_event_s {
     void            *data;
+    /* TODO rename to handler, move flags to struct start */
     void           (*event_handler)(ngx_event_t *ev);
 
     void            *context;

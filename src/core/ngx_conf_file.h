@@ -150,6 +150,8 @@ typedef struct {
 } ngx_conf_num_bounds_t;
 
 
+#define NGX_CONF_BITMASK_SET  1
+
 typedef struct {
     ngx_str_t  name;
     int        mask;
