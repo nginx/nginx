@@ -8,29 +8,21 @@
 
 
 #define ngx_post_event(ev)                                                    \
-            if (!ev->posted) {                                                \
+            if (ev->prev == NULL) {                                           \
                 ev->next = (ngx_event_t *) ngx_posted_events;                 \
+                ev->prev = (ngx_event_t **) &ngx_posted_events;               \
                 ngx_posted_events = ev;                                       \
-                ev->posted = 1;                                               \
-\
-   ngx_log_debug3(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0, \
-               "POST: %08X %08X %08X", ngx_posted_events, \
-               (ngx_posted_events ? ngx_posted_events->next: 0), \
-               ((ngx_posted_events && ngx_posted_events->next) ? \
-                               ngx_posted_events->next->next: 0)); \
-\
-}
+                ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0,         \
+                               "post event " PTR_FMT, ev);                    \
+            }
 
-/*
-\
-{ int i; ngx_event_t *e;\
-  e = (ngx_event_t *) ngx_posted_events; \
-for (i = 0; e && i < 10; e = e->next, i++) { \
-   ngx_log_debug2(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0, \
-                  "POST: %d %08X", i, e);\
-}} \
-\
-*/
+#define ngx_delete_posted_event(ev)                                           \
+        *(ev->prev) = ev->next;                                               \
+        if (ev->next) {                                                       \
+            ev->next->prev = ev->prev;                                        \
+        }                                                                     \
+        ev->prev = NULL;
+
 
 
 void ngx_event_process_posted(ngx_cycle_t *cycle);

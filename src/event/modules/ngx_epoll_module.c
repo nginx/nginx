@@ -264,7 +264,6 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 
     if (flags & NGX_CLOSE_EVENT) {
         ev->active = 0;
-        ev->posted = 0;
         return NGX_OK;
     }
 
@@ -301,7 +300,6 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     ev->active = 0;
-    ev->posted = 0;
 
     return NGX_OK;
 }

@@ -237,12 +237,6 @@ static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
     ev->active = 0;
     ev->disabled = 0;
 
-    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-        return NGX_ERROR;
-    } 
-    ev->posted = 0;
-    ngx_mutex_unlock(ngx_posted_events_mutex);
-
     if (ngx_thread_main()
         && nchanges > 0
         && ev->index < (u_int) nchanges
@@ -512,7 +506,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
             instance = (uintptr_t) ev & 1;
             ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
 
-            if (!ev->active || ev->instance != instance) {
+            if (ev->closed || ev->instance != instance) {
 
                 /*
                  * the stale event from a file descriptor
@@ -530,7 +524,9 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
             ev->returned_instance = instance;
 
-            if (!ev->accept && (ngx_threaded || ngx_accept_mutex_held)) {
+#if (NGX_THREADS)
+
+            if (ngx_threaded && !ev->accept) {
                 ev->posted_ready = 1;
                 ev->posted_available += event_list[i].data;
 
@@ -544,10 +540,12 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
                 continue;
             }
 
+#endif
+
             ev->available = event_list[i].data;
 
             if (event_list[i].flags & EV_EOF) {
-                ev->kq_eof = 1;
+                ev->pending_eof = 1;
                 ev->kq_errno = event_list[i].fflags;
             }
 
@@ -578,12 +576,10 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
             continue;
         }
 
-#if 0
         if (!ev->accept) {
             ngx_post_event(ev);
             continue;
         }
-#endif
 
         if (ngx_accept_disabled > 0) {
             continue;

@@ -203,7 +203,6 @@ static ngx_int_t ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
     c = ev->data;
 
     ev->active = 0;
-    ev->posted = 0;
 
     if (ev->index == NGX_INVALID_INDEX) {
         return NGX_OK;

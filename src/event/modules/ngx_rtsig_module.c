@@ -249,8 +249,6 @@ static ngx_int_t ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags)
     if (flags & NGX_CLOSE_EVENT) {
         c->read->active = 0;
         c->write->active = 0;
-        c->read->posted = 0;
-        c->write->posted = 0;
         return NGX_OK;
     }
 
@@ -262,8 +260,6 @@ static ngx_int_t ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags)
 
     c->read->active = 0;
     c->write->active = 0;
-    c->read->posted = 0;
-    c->write->posted = 0;
 
     return NGX_OK;
 }

@@ -13,7 +13,7 @@ ssize_t ngx_aio_read_chain(ngx_connection_t *c, ngx_chain_t *cl)
     ssize_t       total;
     ngx_err_t     err;
 
-    if (c->read->aio_eof) {
+    if (c->read->pending_eof) {
         c->read->ready = 0;
         return 0;
     }
@@ -53,7 +53,7 @@ ssize_t ngx_aio_read_chain(ngx_connection_t *c, ngx_chain_t *cl)
         }
 
         if (n == 0) {
-            c->read->aio_eof = 1;
+            c->read->pending_eof = 1;
             if (total) {
                 c->read->eof = 0;
                 c->read->ready = 1;

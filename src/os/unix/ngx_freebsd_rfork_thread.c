@@ -390,7 +390,7 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
 
                 op.sem_num = 0;
                 op.sem_op = -1;
-                op.sem_flg = SEM_UNDO;
+                op.sem_flg = 0;
 
                 if (semop(m->semid, &op, 1) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
@@ -514,7 +514,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 
             op.sem_num = 0;
             op.sem_op = 1;
-            op.sem_flg = SEM_UNDO;
+            op.sem_flg = 0;
 
             if (semop(m->semid, &op, 1) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
@@ -590,7 +590,7 @@ ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
 
     op.sem_num = 0;
     op.sem_op = -1;
-    op.sem_flg = SEM_UNDO;
+    op.sem_flg = 0;
 
     if (semop(cv->semid, &op, 1) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,
@@ -618,7 +618,7 @@ ngx_int_t ngx_cond_signal(ngx_cond_t *cv)
 
     op.sem_num = 0;
     op.sem_op = 1;
-    op.sem_flg = SEM_UNDO;
+    op.sem_flg = 0;
 
     if (semop(cv->semid, &op, 1) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,

@@ -276,10 +276,20 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+    rev = cycle->read_events;
+    for (i = 0; i < cycle->connection_n; i++) {
+        rev[i].closed = 1;
+    }
+
     cycle->write_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
                                    cycle->log);
     if (cycle->write_events == NULL) {
         return NGX_ERROR;
+    }
+
+    wev = cycle->write_events;
+    for (i = 0; i < cycle->connection_n; i++) {
+        wev[i].closed = 1;
     }
 
     /* for each listening socket */

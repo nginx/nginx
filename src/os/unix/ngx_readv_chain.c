@@ -20,10 +20,10 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "readv: eof:%d, avail:%d, err:%d",
-                       rev->kq_eof, rev->available, rev->kq_errno);
+                       rev->pending_eof, rev->available, rev->kq_errno);
 
         if (rev->available == 0) {
-            if (rev->kq_eof) {
+            if (rev->pending_eof) {
                 rev->ready = 0;
                 rev->eof = 1;
 
@@ -85,7 +85,7 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
                  */
 
                 if (rev->available <= 0) {
-                    if (!rev->kq_eof) {
+                    if (!rev->pending_eof) {
                         rev->ready = 0;
                     }
 

@@ -660,7 +660,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
 
     if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)
         && !p->request_sent
-        && c->write->kq_eof)
+        && c->write->pending_eof)
     {
         ngx_log_error(NGX_LOG_ERR, c->log, c->write->kq_errno,
                       "connect() failed");

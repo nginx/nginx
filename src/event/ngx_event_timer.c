@@ -88,7 +88,17 @@ void ngx_event_expire_timers(ngx_msec_t timer)
                            ((char *) node - offsetof(ngx_event_t, rbtree_key));
 
 #if (NGX_THREADS)
-            if (ngx_trylock(ev->lock) == 0) {
+
+            if (ngx_threaded && ngx_trylock(ev->lock) == 0) {
+
+                /*
+                 * We can not change the timer of the event that is been
+                 * handling by another thread.  And we can not easy walk
+                 * the rbtree to find a next expired timer so we exit the loop.
+                 * However it should be rare case when the event that is
+                 * been handling has expired timer.
+                 */
+
                 break;
             }
 #endif
@@ -111,17 +121,23 @@ void ngx_event_expire_timers(ngx_msec_t timer)
 
             ev->timer_set = 0;
 
+#if (NGX_THREADS)
             if (ngx_threaded) {
                 if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
                     return;
                 }
 
                 ev->posted_timedout = 1;
+                ev->returned_instance = ev->instance;
                 ngx_post_event(ev);
 
                 ngx_mutex_unlock(ngx_posted_events_mutex);
+
+                ngx_unlock(ev->lock);
+
                 continue;
             }
+#endif
 
             ev->timedout = 1;
 

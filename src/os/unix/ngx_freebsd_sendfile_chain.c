@@ -53,7 +53,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
 
 #if (HAVE_KQUEUE)
 
-    if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && wev->kq_eof) {
+    if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && wev->pending_eof) {
         ngx_log_error(NGX_LOG_INFO, c->log, wev->kq_errno,
                       "kevent() reported about an closed connection");
 

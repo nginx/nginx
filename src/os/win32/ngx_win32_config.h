@@ -40,9 +40,6 @@
 /* conditional expression is constant */
 #pragma warning(disable:4127)
 
-/* nonstandard extension used : bit field types other than int */
-#pragma warning(disable:4214)
-
 /* unreachable code */
 #pragma warning(disable:4702)
 

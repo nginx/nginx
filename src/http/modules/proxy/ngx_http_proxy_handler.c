@@ -385,7 +385,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 
     if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
 
-        if (!ev->kq_eof) {
+        if (!ev->pending_eof) {
             return;
         }
 
@@ -641,11 +641,11 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
         ngx_del_conn(c, NGX_CLOSE_EVENT);
 
     } else {
-        if (c->read->active || c->read->posted) {
+        if (c->read->active || c->read->disabled) {
             ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
         }
 
-        if (c->write->active || c->read->posted) {
+        if (c->write->active || c->read->disabled) {
             ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
         }
     }

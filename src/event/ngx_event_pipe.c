@@ -120,7 +120,7 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
              */
 
             if (p->upstream->read->available == 0
-                && (p->upstream->read->kq_eof || p->upstream->read->aio_eof))
+                && p->upstream->read->pending_eof)
             {
                 p->upstream->read->ready = 0;
                 p->upstream->read->eof = 0;

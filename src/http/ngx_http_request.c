@@ -1017,7 +1017,7 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
         ngx_del_timer(r->connection->write);
     }
 
-    if (r->connection->read->kq_eof) {
+    if (r->connection->read->pending_eof) {
 #if (NGX_KQUEUE)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log,
                        r->connection->read->kq_errno,
@@ -1730,11 +1730,11 @@ void ngx_http_close_connection(ngx_connection_t *c)
         ngx_del_conn(c, NGX_CLOSE_EVENT);
 
     } else {
-        if (c->read->active || c->read->posted || c->read->disabled) {
+        if (c->read->active || c->read->disabled) {
             ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
         }
 
-        if (c->write->active || c->write->posted || c->write->disabled) {
+        if (c->write->active || c->write->disabled) {
             ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
         }
     }
@@ -1745,25 +1745,48 @@ void ngx_http_close_connection(ngx_connection_t *c)
      * before we clean the connection
      */
 
-    fd = c->fd;
-    c->fd = (ngx_socket_t) -1;
-    c->data = NULL;
-    ngx_destroy_pool(c->pool);
-
 #if (NGX_THREADS)
 
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_OK) {
+
         ngx_unlock(&c->lock);
         c->read->locked = 0;
         c->write->locked = 0;
 
+        c->read->closed = 1;
+        c->write->closed = 1;
+
+        if (c->read->prev) {
+            ngx_delete_posted_event(c->read);
+        }
+
+        if (c->write->prev) {
+            ngx_delete_posted_event(c->write);
+        }
+
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                   "connection lock: %d " PTR_FMT, c->lock, &c->lock);
+#else
+
+    c->read->closed = 1;
+    c->write->closed = 1;
+
+    if (c->read->prev) {
+        ngx_delete_posted_event(c->read);
+    }
+
+    if (c->write->prev) {
+        ngx_delete_posted_event(c->write);
+    }
 
 #endif
+
+    fd = c->fd;
+    c->fd = (ngx_socket_t) -1;
+    c->data = NULL;
+
+    ngx_destroy_pool(c->pool);
 
     if (ngx_close_socket(fd) == -1) {
 

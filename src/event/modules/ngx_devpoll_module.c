@@ -236,7 +236,6 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     ev->active = 0;
-    ev->posted = 0;
 
     if (flags & NGX_CLOSE_EVENT) {
         return NGX_OK;

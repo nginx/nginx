@@ -27,13 +27,17 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
             return;
         }
 
-        ngx_posted_events = ev->next;
+        ngx_delete_posted_event(ev);
+
+#if 0
+        /* do not check instance ??? */
 
         if (ev->accept) {
             continue;
         }
+#endif
 
-        if ((!ev->posted && !ev->active)
+        if (ev->closed
             || (ev->use_instance && ev->instance != ev->returned_instance))
         {
             /*
@@ -46,10 +50,6 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ev->posted) {
-            ev->posted = 0;
-        }
-
         ev->event_handler(ev);
     }
 }
@@ -59,12 +59,11 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
 
 ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 {
-    ngx_event_t  *ev, **ep;
+    ngx_event_t  *ev;
 
     for ( ;; ) {
 
         ev = (ngx_event_t *) ngx_posted_events;
-        ep = (ngx_event_t **) &ngx_posted_events;
 
         for ( ;; ) {
 
@@ -76,23 +75,22 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
                 return NGX_OK;
             }
 
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                          "posted event lock:%d " PTR_FMT,
-                          *(ev->lock), ev->lock);
-
             if (ngx_trylock(ev->lock) == 0) {
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                "posted event " PTR_FMT " is busy", ev);
 
-                ep = &ev->next;
                 ev = ev->next;
                 continue;
             }
 
-            *ep = ev->next;
+            ngx_delete_posted_event(ev);
 
-            if ((!ev->posted && !ev->active)
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                          "event instance: c:%d i:%d r:%d",
+                          ev->closed, ev->instance, ev->returned_instance);
+
+            if (ev->closed
                 || (ev->use_instance && ev->instance != ev->returned_instance))
             {
                 /*
@@ -102,7 +100,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
                  */
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
-                               "kevent: stale event " PTR_FMT, ev);
+                               "stale posted event " PTR_FMT, ev);
 
                 ngx_unlock(ev->lock);
 
@@ -113,16 +111,21 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 
             ev->locked = 1;
 
-            if (ev->posted) {
-                ev->ready = ev->posted_ready;
-                ev->timedout = ev->posted_timedout;
-                ev->available = ev->posted_available;
-                ev->kq_eof = ev->posted_eof;
+            ev->ready |= ev->posted_ready;
+            ev->timedout |= ev->posted_timedout;
+            ev->available |= ev->posted_available;
+            ev->pending_eof |= ev->posted_eof;
 #if (HAVE_KQUEUE)
-                ev->kq_errno = ev->posted_errno;
+            ev->kq_errno |= ev->posted_errno;
 #endif
-                ev->posted = 0;
-            }
+
+            ev->posted_ready = 0;
+            ev->posted_timedout = 0;
+            ev->posted_available = 0;
+            ev->posted_eof = 0;
+#if (HAVE_KQUEUE)
+            ev->posted_errno = 0;
+#endif
 
             ngx_mutex_unlock(ngx_posted_events_mutex);
 

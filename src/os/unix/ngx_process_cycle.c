@@ -760,10 +760,10 @@ int ngx_worker_thread_cycle(void *data)
     sigset_t        set;
     struct timeval  tv;
 
-    sigfillset(&set);
-    sigdelset(&set, SIGALRM);
-    sigdelset(&set, ngx_signal_value(NGX_TERMINATE_SIGNAL));
-    sigdelset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+    sigemptyset(&set);
+    sigaddset(&set, ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
+    sigaddset(&set, ngx_signal_value(NGX_REOPEN_SIGNAL));
+    sigaddset(&set, ngx_signal_value(NGX_CHANGEBIN_SIGNAL));
 
     err = ngx_thread_sigmask(SIG_BLOCK, &set, NULL);
     if (err) {

@@ -34,89 +34,57 @@ typedef struct {
 struct ngx_event_s {
     void            *data;
 
-    /* TODO rename to handler */
-    ngx_event_handler_pt  event_handler;
+    unsigned         write:1;
 
-    u_int            index;
+    unsigned         accept:1;
 
-    /* the link of the posted queue or the event mutecies queues */
-    ngx_event_t     *next;
-
-    ngx_log_t       *log;
-
-    /*
-     * The inline of "ngx_rbtree_t  rbtree;".
-     *
-     * It allows to pack the rbtree_color and the various event bit flags into
-     * the single "int".  We also use "unsigned char" and then "unsigned short"
-     * because otherwise MSVC 6.0 uses an additional "int" for the bit flags.
-     * We use "char rbtree_color" instead of "unsigned int rbtree_color:1"
-     * because it preserves the bits order on the big endian platforms.
-     */
-
-    ngx_int_t        rbtree_key;
-    void            *rbtree_left;
-    void            *rbtree_right;
-    void            *rbtree_parent;
-    char             rbtree_color;
-
-    unsigned char    oneshot:1;
-
-    unsigned char    write:1;
+    unsigned         oneshot:1;
 
     /* used to detect the stale events in kqueue, rt signals and epoll */
-    unsigned char    use_instance:1;
-    unsigned char    instance:1;
-    unsigned char    returned_instance:1;
+    unsigned         use_instance:1;
+    unsigned         instance:1;
+    unsigned         returned_instance:1;
 
     /*
      * the event was passed or would be passed to a kernel;
      * in aio mode - operation was posted.
      */
-    unsigned char    active:1;
+    unsigned         active:1;
 
-    unsigned char    disabled:1;
-
-    unsigned char    posted:1;
+    unsigned         disabled:1;
 
     /* the ready event; in aio mode 0 means that no operation can be posted */
-    unsigned short   ready:1;
+    unsigned         ready:1;
 
     /* aio operation is complete */
-    unsigned short   complete:1;
+    unsigned         complete:1;
 
-    unsigned short   eof:1;
-    unsigned short   error:1;
+    unsigned         eof:1;
+    unsigned         error:1;
 
-    unsigned short   timedout:1;
-    unsigned short   timer_set:1;
+    unsigned         timedout:1;
+    unsigned         timer_set:1;
 
-    unsigned short   delayed:1;
+    unsigned         delayed:1;
 
-    unsigned short   read_discarded:1;
+    unsigned         read_discarded:1;
 
-    unsigned short   unexpected_eof:1;
+    unsigned         unexpected_eof:1;
 
-    unsigned short   accept:1;
+    unsigned         deferred_accept:1;
 
-    unsigned short   deferred_accept:1;
+    unsigned         overflow:1;
 
-    unsigned short   overflow:1;
-
-    /* TODO: aio_eof and kq_eof can be the single pending_eof */
-    /* the pending eof in aio chain operation */
-    unsigned short   aio_eof:1;
-
-    /* the pending eof reported by kqueue */
-    unsigned short   kq_eof:1;
+    /* the pending eof reported by kqueue or in aio chain operation */
+    unsigned         pending_eof:1;
 
 #if (WIN32)
     /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was succesfull */
-    unsigned short   accept_context_updated:1;
+    unsigned         accept_context_updated:1;
 #endif
 
 #if (HAVE_KQUEUE)
-    unsigned short   kq_vnode:1;
+    unsigned         kq_vnode:1;
 
     /* the pending errno reported by kqueue */
     int              kq_errno;
@@ -139,8 +107,11 @@ struct ngx_event_s {
 #if (HAVE_KQUEUE) || (HAVE_IOCP)
     int              available;
 #else
-    unsigned short   available:1;
+    unsigned         available:1;
 #endif
+
+    /* TODO rename to handler */
+    ngx_event_handler_pt  event_handler;
 
 
 #if (HAVE_AIO)
@@ -153,10 +124,26 @@ struct ngx_event_s {
 
 #endif
 
+    u_int            index;
+
+    ngx_log_t       *log;
+
+    /* TODO: threads: padding to cache line */
+
+    /*
+     * STUB: The inline of "ngx_rbtree_t  rbtree;"
+     */
+
+    ngx_int_t        rbtree_key;
+    void            *rbtree_left;
+    void            *rbtree_right;
+    void            *rbtree_parent;
+    char             rbtree_color;
+
+
+    unsigned         closed:1;
 
 #if (NGX_THREADS)
-
-    ngx_atomic_t    *lock;
 
     unsigned         locked:1;
 
@@ -175,7 +162,13 @@ struct ngx_event_s {
     unsigned         posted_available:1;
 #endif
 
+    ngx_atomic_t    *lock;
+
 #endif
+
+    /* the links of the posted queue */
+    ngx_event_t     *next;
+    ngx_event_t    **prev;
 
 
 #if 0
