@@ -190,6 +190,9 @@ struct ngx_http_request_s {
 #endif
     unsigned             pipeline:1;
 
+    /* can we use sendfile ? */
+    unsigned             sendfile:1;
+
     unsigned             chunked:1;
     unsigned             header_only:1;
     unsigned             keepalive:1;

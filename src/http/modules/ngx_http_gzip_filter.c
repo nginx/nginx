@@ -287,6 +287,8 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                   ngx_create_temp_hunk(r->pool, conf->bufs.size,
                                                        0, 0),
                                   ngx_http_gzip_error(ctx));
+                    ctx->out_hunk->tag = (ngx_hunk_tag_t)
+                                                  &ngx_http_gzip_filter_module;
                     ctx->out_hunk->type |= NGX_HUNK_RECYCLED;
                     ctx->hunks++;
 
@@ -417,7 +419,8 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
             return ngx_http_gzip_error(ctx);
         }
 
-        ngx_chain_update_chains(&ctx->free, &ctx->busy, &ctx->out);
+        ngx_chain_update_chains(&ctx->free, &ctx->busy, &ctx->out,
+                                (ngx_hunk_tag_t) &ngx_http_gzip_filter_module);
         ctx->last_out = &ctx->out;
     }
 }

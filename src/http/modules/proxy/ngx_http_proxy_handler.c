@@ -410,6 +410,7 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
+        p->header_in->tag = (ngx_hunk_tag_t) &ngx_http_proxy_module;
     }
 
     n = ngx_http_proxy_read_upstream_header(p);
@@ -712,6 +713,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->output_filter = (ngx_event_pipe_output_filter_pt)
                                                         ngx_http_output_filter;
     ep->output_ctx = r;
+    ep->tag = (ngx_hunk_tag_t) &ngx_http_proxy_module;
     ep->bufs = p->lcf->bufs;
     ep->max_busy_len = p->lcf->max_busy_len;
     ep->upstream = p->upstream.connection;
@@ -720,7 +722,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->log = r->connection->log;
     ep->temp_path = p->lcf->temp_path;
 
-    ep->temp_file = ngx_palloc(r->pool, sizeof(ngx_file_t));
+    ep->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
     if (ep->temp_file == NULL) {
         ngx_http_proxy_finalize_request(p, 0);
         return;
@@ -750,10 +752,23 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
      */
     p->header_in->last = p->header_in->pos;
 
-    /* STUB */ ep->cachable = 1;
-#if 0
-    ep->max_temp_file_size = 1000000000;
-#endif
+    /* STUB */ ep->cachable = 0;
+
+    if (p->lcf->cyclic_temp_file) {
+
+        /*
+         * we need to disable the use of sendfile() if we use cyclic temp file
+         * because the writing a new data can interfere with sendfile
+         * that uses the same kernel file pages
+         */
+
+        ep->cyclic_temp_file = 1;
+        r->sendfile = 0;
+
+    } else {
+        ep->cyclic_temp_file = 0;
+        r->sendfile = 1;
+    }
 
     p->event_pipe = ep;
 
@@ -1162,16 +1177,17 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->header_size = 4096;
     conf->read_timeout = 30000;
 
-    conf->bufs.num = 10;
+    conf->bufs.num = 5;
     conf->bufs.size = 4096;
     conf->max_busy_len = 8192;
 
 
     /* CHECK in _init conf->max_temp_size >= conf->bufs.size !!! */
-    conf->max_temp_file_size = 4096 * 6;
+    conf->max_temp_file_size = 4096 * 3;
 
 
-    conf->temp_file_write_size = 4096 * 1;
+    conf->temp_file_write_size = 4096 * 2;
+    conf->cyclic_temp_file= 1;
 
     ngx_test_null(conf->temp_path, ngx_pcalloc(cf->pool, sizeof(ngx_path_t)),
                   NULL);

@@ -39,13 +39,16 @@ struct ngx_event_pipe_s {
     unsigned           read:1;
     unsigned           cachable:1;
     unsigned           upstream_done:1;
-    unsigned           upstream_eof:1;
     unsigned           upstream_error:1;
+    unsigned           upstream_eof:1;
+    unsigned           upstream_blocked:1;
     unsigned           downstream_done:1;
     unsigned           downstream_error:1;
+    unsigned           cyclic_temp_file:1;
 
     int                hunks;
     ngx_bufs_t         bufs;
+    ngx_hunk_tag_t     tag;
 
     size_t             max_busy_len;
 
@@ -65,6 +68,7 @@ struct ngx_event_pipe_s {
     ngx_file_t        *temp_file;
     ngx_path_t        *temp_path;
     char              *temp_file_warn;
+    /* STUB */ int     num;
 };
 
 

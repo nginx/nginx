@@ -26,10 +26,11 @@ typedef struct {
 
     ngx_bufs_t                  bufs;
 
-    /* STUB */
+    /* STUB names */
     int                         max_busy_len;
     int                         max_temp_file_size;
     int                         temp_file_write_size;
+    int                         cyclic_temp_file;
     /* */
 
     ngx_path_t                 *temp_path;

@@ -32,7 +32,8 @@ typedef struct {
 } ngx_http_output_filter_ctx_t;
 
 
-static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src);
+static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
+                                            int sendfile);
 static void *ngx_http_output_filter_create_conf(ngx_conf_t *cf);
 static char *ngx_http_output_filter_merge_conf(ngx_conf_t *cf,
                                                void *parent, void *child);
@@ -77,7 +78,8 @@ ngx_module_t  ngx_http_output_filter_module = {
 
 #define need_to_copy(r, hunk)                                             \
             (!ngx_hunk_special(hunk)                                      \
-             && (((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)            \
+             && (!r->sendfile                                             \
+                 || ((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)         \
                    && (hunk->type & NGX_HUNK_IN_MEMORY) == 0)             \
                  || ((r->filter & NGX_HTTP_FILTER_NEED_TEMP)              \
                   && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP)))))
@@ -162,6 +164,8 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                   ngx_create_temp_hunk(r->pool, conf->bufs.size,
                                                        0, 0),
                                   NGX_ERROR);
+                    ctx->hunk->tag = (ngx_hunk_tag_t)
+                                                &ngx_http_output_filter_module;
                     ctx->hunk->type |= NGX_HUNK_RECYCLED;
                     ctx->hunks++;
 
@@ -170,7 +174,8 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 }
             }
 
-            rc = ngx_http_output_filter_copy_hunk(ctx->hunk, ctx->in->hunk);
+            rc = ngx_http_output_filter_copy_hunk(ctx->hunk, ctx->in->hunk,
+                                                  r->sendfile);
 
             if (rc == NGX_ERROR) {
                 return rc;
@@ -215,13 +220,15 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         last = ngx_next_filter(r, ctx->out);
 
-        ngx_chain_update_chains(&ctx->free, &ctx->busy, &ctx->out);
+        ngx_chain_update_chains(&ctx->free, &ctx->busy, &ctx->out,
+                               (ngx_hunk_tag_t) &ngx_http_output_filter_module);
         ctx->last_out = &ctx->out;
     }
 }
 
 
-static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
+static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
+                                            int sendfile)
 {
     ssize_t  n, size;
 
@@ -278,6 +285,10 @@ ngx_log_debug(src->file->log, "READ: %qd:%qd %X:%X %X:%X" _
 
         src->file_pos += n;
         dst->last += n;
+
+        if (!sendfile) {
+            dst->type &= ~NGX_HUNK_FILE;
+        }
 
         if ((src->type & NGX_HUNK_LAST) && src->file_pos == src->file_last) {
             dst->type |= NGX_HUNK_LAST;

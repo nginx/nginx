@@ -34,25 +34,28 @@
 /* last hunk */
 #define NGX_HUNK_LAST         0x2000
 #define NGX_HUNK_LAST_SHADOW  0x4000
+#define NGX_HUNK_TEMP_FILE    0x8000
 
 
+typedef void *                   ngx_hunk_tag_t;
 
 typedef struct ngx_hunk_s        ngx_hunk_t;
 
 struct ngx_hunk_s {
-    char        *pos;
-    char        *last;
-    off_t        file_pos;
-    off_t        file_last;
+    char            *pos;
+    char            *last;
+    off_t            file_pos;
+    off_t            file_last;
 
-    int          type;
-    char        *start;         /* start of hunk */
-    char        *end;           /* end of hunk */
-    char        *pre_start;     /* start of pre-allocated hunk */
-    char        *post_end;      /* end of post-allocated hunk */
-    int          tag;
-    ngx_file_t  *file;
-    ngx_hunk_t  *shadow;
+    int              type;
+    char            *start;         /* start of hunk */
+    char            *end;           /* end of hunk */
+    char            *pre_start;     /* start of pre-allocated hunk */
+    char            *post_end;      /* end of post-allocated hunk */
+    ngx_hunk_tag_t   tag;
+    ngx_file_t      *file;
+    ngx_hunk_t      *shadow;
+    /* STUB */ int   num;
 };
 
 
@@ -119,7 +122,7 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
 
 int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **ch, ngx_chain_t *in);
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
-                             ngx_chain_t **out);
+                             ngx_chain_t **out, ngx_hunk_tag_t tag);
 
 
 

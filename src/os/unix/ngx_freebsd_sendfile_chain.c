@@ -83,9 +83,9 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         if (ce && (ce->hunk->type & NGX_HUNK_FILE)) {
             file = ce->hunk;
-            ce = ce->next;
             fsize = (size_t) (file->file_last - file->file_pos);
             fprev = file->file_last;
+            ce = ce->next;
 
             /* coalesce the neighbouring file hunks */
 

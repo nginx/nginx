@@ -77,14 +77,14 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
         ce = ce->next;
     }
 
-    if (lseek(file->fd, offset, SEEK_SET) == -1) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
-        return NGX_ERROR;
+    if (file->offset != offset) {
+        if (lseek(file->fd, offset, SEEK_SET) == -1) {
+            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
+            return NGX_ERROR;
+        }
     }
 
     n = writev(file->fd, (struct iovec *) io.elts, io.nelts);
-
-    ngx_destroy_array(&io);
 
     if (n == -1) {
         ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "writev() failed");

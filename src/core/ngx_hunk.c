@@ -125,7 +125,7 @@ int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **ch, ngx_chain_t *in)
 
 
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
-                             ngx_chain_t **out)
+                             ngx_chain_t **out, ngx_hunk_tag_t tag)
 {
     ngx_chain_t  *te;
 
@@ -154,9 +154,7 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
         }
 #endif
 
-        /* TODO: change to hunk->tag */
-
-        if (!((*busy)->hunk->type & NGX_HUNK_TEMP)) {
+        if ((*busy)->hunk->tag != tag) {
             *busy = (*busy)->next;
             continue;
         }
