@@ -623,7 +623,7 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         }
 
         output->free->buf = r->request_body->buf;
-        output->free->buf = NULL;
+        output->free->next = NULL;
         output->allocated = 1;
 
         r->request_body->buf->pos = r->request_body->buf->start;
