@@ -46,7 +46,7 @@ typedef struct {
  * msvc and icc compile memset() to inline "rep stos"
  * while ZeroMemory and bzero are calls.
  */
-#define ngx_memzero(buf, n)       memset(buf, n, 0)
+#define ngx_memzero(buf, n)       memset(buf, 0, n)
 
 /* msvc and icc compile memcpy() to inline "rep movs" */
 #define ngx_memcpy(dst, src, n)   memcpy(dst, src, n)

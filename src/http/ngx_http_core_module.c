@@ -422,11 +422,14 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
 static int ngx_http_core_index_handler(ngx_http_request_t *r)
 {
-    int  i, rc;
-    ngx_http_handler_pt  *h;
+    int                         i, rc;
+    ngx_http_handler_pt        *h;
+    ngx_http_core_main_conf_t  *cmcf;
 
-    h = (ngx_http_handler_pt *) ngx_http_index_handlers.elts;
-    for (i = ngx_http_index_handlers.nelts; i > 0; /* void */) {
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    h = cmcf->index_handlers.elts;
+    for (i = cmcf->index_handlers.nelts; i > 0; /* void */) {
         rc = h[--i](r);
 
         if (rc != NGX_DECLINED) {
@@ -528,9 +531,14 @@ int ngx_http_internal_redirect(ngx_http_request_t *r,
 
 static int ngx_http_core_init(ngx_cycle_t *cycle, ngx_log_t *log)
 {
-    ngx_http_handler_pt  *h;
+    ngx_http_handler_pt        *h;
+    ngx_http_conf_ctx_t        *ctx;
+    ngx_http_core_main_conf_t  *cmcf;
 
-    ngx_test_null(h, ngx_push_array(&ngx_http_translate_handlers), NGX_ERROR);
+    ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
+    cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+
+    ngx_test_null(h, ngx_push_array(&cmcf->translate_handlers), NGX_ERROR);
 
     *h = ngx_http_core_translate_handler;
 

@@ -15,16 +15,11 @@ void  ****ngx_conf_ctx;
 ngx_os_io_t  ngx_io;
 
 
+ngx_cycle_t  *cycle;
+
 int     ngx_max_module;
-#if 0
-void   *ctx_conf;
-#endif
 
 int ngx_connection_counter;
-
-#if 0
-ngx_array_t  ngx_listening_sockets;
-#endif
 
 
 #if 1
@@ -33,8 +28,7 @@ int main(int argc, char *const *argv)
 {
     int           i;
     ngx_log_t    *log;
-    ngx_conf_t    conf;
-    ngx_cycle_t  *cycle, *new_cycle;
+    ngx_cycle_t  *new_cycle;
 
     /* TODO */ ngx_max_sockets = -1;
 
@@ -60,9 +54,15 @@ int main(int argc, char *const *argv)
 
     for ( ;; ) {
 
+        /* STUB */
+        ngx_io = ngx_os_io;
+
         /* forks */
 
         ngx_init_temp_number();
+
+        /* STUB */
+        ngx_pre_thread(&cycle->listening, cycle->pool, cycle->log);
 
         /* threads */
 
@@ -107,12 +107,6 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     }
     cycle->pool = pool;
 
-    cycle->log = ngx_log_create_errlog(cycle);
-    if (cycle->log == NULL) {
-        ngx_destroy_pool(pool);
-        return NULL;
-    }
-
     n = old_cycle ? old_cycle->open_files.nelts : 20;
     cycle->open_files.elts = ngx_pcalloc(pool, n * sizeof(ngx_open_file_t));
     if (cycle->open_files.elts == NULL) {
@@ -123,6 +117,12 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     cycle->open_files.size = sizeof(ngx_open_file_t);
     cycle->open_files.nalloc = n;
     cycle->open_files.pool = pool;
+
+    cycle->log = ngx_log_create_errlog(cycle);
+    if (cycle->log == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
 
     n = old_cycle ? old_cycle->listening.nelts : 10;
     cycle->listening.elts = ngx_pcalloc(pool, n * sizeof(ngx_listening_t));
@@ -151,7 +151,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
     conf.ctx = cycle->conf_ctx;
     conf.cycle = cycle;
-    /* STUB */ conf.pool = cycle->pool;
+    /* STUB */ conf.pool = cycle->pool; ngx_conf_ctx = cycle->conf_ctx;
     conf.log = log;
     conf.module_type = NGX_CORE_MODULE;
     conf.cmd_type = NGX_MAIN_CONF;
@@ -200,25 +200,27 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     }
 
     if (!failed) {
-        ls = old_cycle->listening.elts;
-        for (i = 0; i < old_cycle->listening.nelts; i++) {
-            ls[i].remain = 0;
-        }
-
-        nls = cycle->listening.elts;
-        for (n = 0; n < cycle->listening.nelts; n++) {
+        if (old_cycle) {
+            ls = old_cycle->listening.elts;
             for (i = 0; i < old_cycle->listening.nelts; i++) {
-                if (ngx_memcmp(nls[n].sockaddr,
-                               ls[i].sockaddr, ls[i].socklen) == 0)
-                {
-                    nls[n].fd = ls[i].fd;
-                    ls[i].remain = 1;
-                    break;
-                }
+                ls[i].remain = 0;
             }
 
-            if (nls[n].fd == -1) {
-                nls[n].new = 1;
+            nls = cycle->listening.elts;
+            for (n = 0; n < cycle->listening.nelts; n++) {
+                for (i = 0; i < old_cycle->listening.nelts; i++) {
+                    if (ngx_memcmp(nls[n].sockaddr,
+                                   ls[i].sockaddr, ls[i].socklen) == 0)
+                    {
+                        nls[n].fd = ls[i].fd;
+                        ls[i].remain = 1;
+                        break;
+                    }
+                }
+
+                if (nls[n].fd == -1) {
+                    nls[n].new = 1;
+                }
             }
         }
 
@@ -275,6 +277,12 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
         }
     }
 
+    pool->log = cycle->log;
+
+    if (old_cycle == NULL) {
+        return cycle;
+    }
+
     ls = old_cycle->listening.elts;
     for (i = 0; i < old_cycle->listening.nelts; i++) {
         if (ls[i].remain) {
@@ -300,8 +308,6 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
                           file->name.data);
         }
     }
-
-    pool->log = cycle->log;
 
     ngx_destroy_pool(old_cycle->pool);
 

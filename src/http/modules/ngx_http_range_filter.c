@@ -9,7 +9,7 @@ typedef struct {
 } ngx_http_range_filter_ctx_t;
 
 
-static int ngx_http_range_filter_init(ngx_pool_t *pool);
+static int ngx_http_range_filter_init(ngx_cycle_t *cycle, ngx_log_t *log);
 
 
 static ngx_http_module_t  ngx_http_range_filter_module_ctx = {
@@ -29,7 +29,9 @@ ngx_module_t  ngx_http_range_filter_module = {
     &ngx_http_range_filter_module_ctx,     /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
-    ngx_http_range_filter_init             /* init module */
+    ngx_http_range_filter_init,            /* init module */
+    NULL,                                  /* commit module */
+    NULL                                   /* rollback module */
 };
 
 
@@ -354,7 +356,7 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 }
 
 
-static int ngx_http_range_filter_init(ngx_pool_t *pool)
+static int ngx_http_range_filter_init(ngx_cycle_t *cycle, ngx_log_t *log)
 {
     next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_range_header_filter;

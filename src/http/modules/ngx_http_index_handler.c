@@ -14,7 +14,7 @@ typedef struct {
 
 
 static int ngx_http_index_test_dir(ngx_http_request_t *r);
-static int ngx_http_index_init(ngx_pool_t *pool);
+static int ngx_http_index_init(ngx_cycle_t *cycle, ngx_log_t *log);
 static void *ngx_http_index_create_conf(ngx_pool_t *pool);
 static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent,
                                                                   void *child);
@@ -52,7 +52,9 @@ ngx_module_t  ngx_http_index_module = {
     &ngx_http_index_module_ctx,            /* module context */
     ngx_http_index_commands,               /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
-    ngx_http_index_init                    /* init module */
+    ngx_http_index_init,                   /* init module */
+    NULL,                                  /* commit module */
+    NULL                                   /* rollback module */
 };
 
 
@@ -202,11 +204,16 @@ ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
 }
 
 
-static int ngx_http_index_init(ngx_pool_t *pool)
+static int ngx_http_index_init(ngx_cycle_t *cycle, ngx_log_t *log)
 {
-    ngx_http_handler_pt  *h;
+    ngx_http_handler_pt        *h;
+    ngx_http_conf_ctx_t        *ctx;
+    ngx_http_core_main_conf_t  *cmcf;
 
-    ngx_test_null(h, ngx_push_array(&ngx_http_index_handlers), NGX_ERROR);
+    ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
+    cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+
+    ngx_test_null(h, ngx_push_array(&cmcf->index_handlers), NGX_ERROR);
 
     *h = ngx_http_index_handler;
 

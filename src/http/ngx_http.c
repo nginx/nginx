@@ -11,10 +11,6 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 int  ngx_http_max_module;
 
 
-ngx_array_t  ngx_http_translate_handlers;
-ngx_array_t  ngx_http_index_handlers;
-
-
 int  (*ngx_http_top_header_filter) (ngx_http_request_t *r);
 int  (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
@@ -210,11 +206,11 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /* init list of the handlers */
 
-    ngx_init_array(ngx_http_translate_handlers,
-                   cf->pool, 10, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
+    ngx_init_array(cmcf->translate_handlers, cf->cycle->pool,
+                   10, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
 
-    ngx_init_array(ngx_http_index_handlers,
-                   cf->pool, 3, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
+    ngx_init_array(cmcf->index_handlers, cf->cycle->pool,
+                   3, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
 
 
     /* create the lists of the ports, the addresses and the server names
@@ -429,7 +425,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         in_addr = in_port[p].addrs.elts;
         while (a < in_port[p].addrs.nelts) {
 
-            ngx_test_null(ls, ngx_push_array(&ngx_listening_sockets),
+            ngx_test_null(ls, ngx_push_array(&cf->cycle->listening),
                           NGX_CONF_ERROR);
             ngx_memzero(ls, sizeof(ngx_listening_t));
 
@@ -453,6 +449,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                                      INET_ADDRSTRLEN),
                                      6, ":%d", in_port[p].port);
 
+            ls->fd = -1;
             ls->family = AF_INET;
             ls->type = SOCK_STREAM;
             ls->protocol = IPPROTO_IP;

@@ -20,6 +20,7 @@ typedef struct {
 typedef struct {
     ngx_array_t  servers;              /* array of ngx_http_core_srv_conf_t */
     ngx_array_t  translate_handlers;
+    ngx_array_t  index_handlers;
 } ngx_http_core_main_conf_t;
 
 
