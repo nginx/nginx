@@ -323,7 +323,7 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
     }
 
     if (r->header_in->last.mem >= r->header_in->end) {
-        rc == NGX_HTTP_PARSE_TOO_LONG_URI;
+        rc = NGX_HTTP_PARSE_TOO_LONG_URI;
 
     } else if (rc == NGX_AGAIN) {
         return NGX_AGAIN;
@@ -495,10 +495,11 @@ static int ngx_http_event_handler(ngx_http_request_t *r)
 
     rc = ngx_http_handler(r);
 
+    /* handler is still busy */
     if (rc == NGX_WAITING)
         return rc;
 
-    /* transfer not completed */
+    /* handler has done its work but transfer is not completed */
     if (rc == NGX_AGAIN) {
 #if (HAVE_CLEAR_EVENT)
         if (ngx_add_event(r->connection->write, NGX_WRITE_EVENT,
@@ -567,7 +568,7 @@ static int ngx_http_handler(ngx_http_request_t *r)
     r->connection->read->event_handler = ngx_http_block_read;
 
     /* STUB: should find handler */
-#if 1
+#if 0
     r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
 #endif
     rc = ngx_http_set_default_handler(r);

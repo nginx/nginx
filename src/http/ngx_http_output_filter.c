@@ -126,7 +126,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
                      ctx->in = ce->next;
             }
 
-            if (rc == NGX_OK)
+            if (rc == NGX_OK && ctx->hunk)
                 ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
             else
                 return rc;
@@ -218,7 +218,8 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
         return NGX_OK;
 
     if (rc == NGX_OK) {
-        ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
+        if (ctx->hunk)
+            ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
 #if level_event
         ngx_del_event(r->connection->write, NGX_WRITE_EVENT);
 #endif

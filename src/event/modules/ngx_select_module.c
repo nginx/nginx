@@ -126,6 +126,8 @@ int ngx_select_del_event(ngx_event_t *ev, int event)
     ngx_connection_t *c;
     c = (ngx_connection_t *) ev->data;
 
+    ngx_log_debug(c->log, "del event: %d" _ c->fd);
+
 #if (WIN32)
     if (event == NGX_READ_EVENT) {
         FD_CLR(c->fd, &master_read_fd_set);
@@ -146,12 +148,12 @@ int ngx_select_del_event(ngx_event_t *ev, int event)
         max_fd = -1;
 #endif
 
+    nevents--;
+
     if (ev->index < nevents) {
         event_index[ev->index] = event_index[nevents];
         event_index[ev->index]->index = ev->index;
     }
-
-    nevents--;
 
     return NGX_OK;
 }

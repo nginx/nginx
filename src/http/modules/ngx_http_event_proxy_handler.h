@@ -7,19 +7,33 @@
 #include <ngx_http.h>
 
 
+#define NGX_HTTP_PROXY_PARSE_NO_HEADER          20
+#define NGX_HTTP_PARSE_TOO_LONG_STATUS_LINE     21
+
 typedef struct {
     int dummy;
-} ngx_http_proxy_header_in_t;
+} ngx_http_proxy_headers_in_t;
 
-typedef struct {
+typedef struct ngx_http_proxy_ctx_s  ngx_http_proxy_ctx_t;
+
+struct ngx_http_proxy_ctx_s {
     ngx_chain_t  *out;
 
-    ngx_hunk_t   *hunk;
     int           last_hunk;
     ngx_array_t  *hunks;
 
-    ngx_http_proxy_header_in_t  *header_in;
-} ngx_http_proxy_ctx_t;
+    int           hunk_n;
+
+    ngx_http_proxy_headers_in_t  *headers_in;
+
+    ngx_hunk_t  *header_in;
+    int          state;
+    int          status;
+    int          status_count;
+    char        *status_text;
+    char        *request_end;
+    int        (*state_handler)(ngx_http_request_t *r, ngx_http_proxy_ctx_t *p);
+};
 
 
 extern ngx_http_module_t  ngx_http_proxy_module;

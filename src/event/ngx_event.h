@@ -22,8 +22,8 @@ struct ngx_event_s {
 
     int              index;
 
-    ngx_event_t     *prev;     /* queue in select(), poll(), mutex(),        */
-    ngx_event_t     *next;     /*   aio_read(), aio_write()                  */
+    ngx_event_t     *prev;     /* queue in mutex(), aio_read(), aio_write()  */
+    ngx_event_t     *next;     /*                                            */
 
     int            (*timer_handler)(ngx_event_t *ev);
     ngx_event_t     *timer_prev;
@@ -43,9 +43,9 @@ struct ngx_event_s {
                                 /*   accept: 1 if accept many, 0 otherwise   */
 
     /* flags - int are probably faster on write then bits ??? */
-#if !(USE_KQUEUE)
+
     unsigned         oneshot:1;
-#endif
+
     unsigned         listening:1;
     unsigned         write:1;
 
