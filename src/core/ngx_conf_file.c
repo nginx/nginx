@@ -85,8 +85,8 @@ ngx_log_debug(cf->log, "token %d" _ rc);
 
             } else {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                             "%s %s in %s:%d",
-                             name->data, rv,
+                             "%s in %s:%d",
+                             rv,
                              cf->conf_file->file.name.data,
                              cf->conf_file->line);
                 return NGX_CONF_ERROR;
@@ -493,8 +493,8 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
-    int         size, total, len, scale, i;
-    u_int       max;
+    int         size, total, len, scale;
+    u_int       max, i;
     char        last, *start;
     ngx_str_t  *value;
 
@@ -584,8 +584,8 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
 char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
-    int         size, total, len, scale, i;
-    u_int       max;
+    int         size, total, len, scale;
+    u_int       max, i;
     char        last, *start;
     ngx_str_t  *value;
 

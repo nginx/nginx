@@ -31,7 +31,7 @@
 #define NGX_HTTP_PARSE_INVALID_METHOD     10
 #define NGX_HTTP_PARSE_INVALID_REQUEST    11
 #define NGX_HTTP_PARSE_TOO_LONG_URI       12
-#define NGX_HTTP_PARSE_INVALID_HEAD       13
+#define NGX_HTTP_PARSE_INVALID_09_METHOD  13
 #define NGX_HTTP_PARSE_INVALID_HEADER     14
 #define NGX_HTTP_PARSE_TOO_LONG_HEADER    15
 #define NGX_HTTP_PARSE_NO_HOST_HEADER     16
@@ -234,6 +234,7 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log);
 void ngx_http_init_connection(ngx_connection_t *c);
 int ngx_parse_http_request_line(ngx_http_request_t *r);
 int ngx_parse_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h);
+int ngx_http_find_server_conf(ngx_http_request_t *r);
 void ngx_http_handler(ngx_http_request_t *r);
 void ngx_http_finalize_request(ngx_http_request_t *r, int error);
 void ngx_http_set_write_handler(ngx_http_request_t *r);

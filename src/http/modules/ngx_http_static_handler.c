@@ -34,7 +34,12 @@ int ngx_http_static_handler(ngx_http_request_t *r)
 
 #endif
 
-    ngx_http_discard_body(r);
+    rc = ngx_http_discard_body(r);
+
+    if (rc != NGX_OK) {
+        return rc;
+    }
+
     ctx = r->connection->log->data;
     ctx->action = "sending response";
 
@@ -74,7 +79,7 @@ int ngx_http_static_handler(ngx_http_request_t *r)
         r->file.info_valid = 1;
     }
 
-#if !(WIN32) /* not regular files is probably Unix specific */
+#if !(WIN32) /* the not regular files are probably Unix specific */
 
     if (!ngx_is_file(r->file.info)) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,

@@ -13,6 +13,10 @@ ssize_t ngx_recv_chain(ngx_connection_t *c, ngx_chain_t *entry)
     ngx_err_t      err;
     ngx_array_t    io;
 
+#if (NGX_SUPPRESS_WARN)
+    iov = NULL;
+#endif
+
     ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_ERROR);
 
     while (entry) {

@@ -23,6 +23,11 @@ ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
     ngx_log_debug(ev->log, "del timer: %d" _ *(int *)(ev->data));
 #endif
 
+    if (!ev->timer_next || !ev->timer_prev) {
+        ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "timer already deleted");
+        return;
+    }
+
     if (ev->timer_prev) {
         ev->timer_prev->timer_next = ev->timer_next;
     }

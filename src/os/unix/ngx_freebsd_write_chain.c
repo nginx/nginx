@@ -54,6 +54,7 @@ ngx_chain_t *ngx_freebsd_write_chain(ngx_connection_t *c, ngx_chain_t *in)
             if (ngx_freebsd_sendfile_nbytes_bug) {
                 hsize += ce->hunk->last - ce->hunk->pos;
             }
+
             ce = ce->next;
         }
     }

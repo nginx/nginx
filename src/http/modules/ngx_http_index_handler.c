@@ -28,9 +28,10 @@ static ngx_command_t ngx_http_index_commands[] = {
      NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
      ngx_http_index_set_index,
      NGX_HTTP_LOC_CONF_OFFSET,
-     0},
+     0,
+     NULL},
 
-    {ngx_string(""), 0, NULL, 0, 0}
+    {ngx_string(""), 0, NULL, 0, 0, NULL}
 };
 
 

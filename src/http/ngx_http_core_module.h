@@ -31,8 +31,9 @@ typedef struct {
 
 typedef struct {
     int           port;
-    ngx_array_t   addr;        /* array of ngx_http_in_addr_t */
+    ngx_array_t   addrs;       /* array of ngx_http_in_addr_t */
 } ngx_http_in_port_t;
+
 
 typedef struct {
     u_int32_t                  addr;
@@ -42,7 +43,9 @@ typedef struct {
     int                        flags;    
 } ngx_http_in_addr_t;
 
+/* ngx_http_in_addr_t's flags */
 #define NGX_HTTP_DEFAULT_SERVER  1
+
 
 typedef struct {
     ngx_str_t                  name;
@@ -54,7 +57,7 @@ typedef struct {
 
 #define ngx_http_types_hash_key(key, ext)                                   \
         {                                                                   \
-            int n;                                                          \
+            uint n;                                                         \
             for (key = 0, n = 0; n < ext.len; n++) {                        \
                 key += ext.data[n];                                         \
             }                                                               \
@@ -79,10 +82,10 @@ typedef struct {
     ngx_array_t  *types;
 
     int         sendfile;                /* sendfile */
-    time_t      send_timeout;            /* send_timeout */
+    ngx_msec_t  send_timeout;            /* send_timeout */
     size_t      send_lowat;              /* send_lowa */
     size_t      discarded_buffer_size;   /* discarded_buffer_size */
-    time_t      lingering_time;          /* lingering_time */
+    ngx_msec_t  lingering_time;          /* lingering_time */
     ngx_msec_t  lingering_timeout;       /* lingering_timeout */
 
 } ngx_http_core_loc_conf_t;

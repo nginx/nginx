@@ -17,6 +17,10 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
     ngx_hunk_t   *h, *nh;
     ngx_chain_t  *chain, *temp, *entry, *next;
 
+#if (NGX_SUPPRESS_WARN)
+    entry = NULL;
+#endif
+
 #if (NGX_EVENT_COPY_FILTER)
 
     if (p->input_filter == NULL) {

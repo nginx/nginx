@@ -314,11 +314,11 @@ int ngx_parse_http_request_line(ngx_http_request_t *r)
         r->http_version = r->http_major * 1000 + r->http_minor;
         r->state = sw_start;
 
-        if (r->http_version == 9 && r->method == NGX_HTTP_HEAD) {
-            return NGX_HTTP_PARSE_INVALID_HEAD;
-        } else {
-            return NGX_OK;
+        if (r->http_version == 9 && r->method != NGX_HTTP_GET) {
+            return NGX_HTTP_PARSE_INVALID_09_METHOD;
         }
+
+        return NGX_OK;
 
     } else {
         r->state = state;

@@ -6,6 +6,7 @@
 #include <ngx_files.h>
 #include <ngx_log.h>
 #include <ngx_file.h>
+#include <ngx_time.h>
 #include <ngx_string.h>
 #include <ngx_alloc.h>
 #include <ngx_hunk.h>
@@ -13,20 +14,21 @@
 
 
 /*
- *      AAAA  number of agruments
- *    TT      command flags
- *  LL        command location
+ *        AAAA  number of agruments
+ *      FF      command flags
+ *    TT        command type, i.e. HTTP "location" or "server" command
+ *  00
  */
 
-#define NGX_CONF_NOARGS      1
-#define NGX_CONF_TAKE1       2
-#define NGX_CONF_TAKE2       4
-#define NGX_CONF_ARGS_NUMBER 0x00ffff
-#define NGX_CONF_ANY         0x010000
-#define NGX_CONF_BLOCK       0x020000
-#define NGX_CONF_FLAG        0x040000
+#define NGX_CONF_NOARGS      0x0000000001
+#define NGX_CONF_TAKE1       0x0000000002
+#define NGX_CONF_TAKE2       0x0000000004
+#define NGX_CONF_ARGS_NUMBER 0x000000ffff
+#define NGX_CONF_ANY         0x0000010000
+#define NGX_CONF_BLOCK       0x0000020000
+#define NGX_CONF_FLAG        0x0000040000
 
-#define NGX_MAIN_CONF        0x1000000
+#define NGX_MAIN_CONF        0x0001000000
 
 
 
@@ -101,8 +103,8 @@ struct ngx_conf_s {
     }
 
 #define ngx_conf_msec_merge(conf, prev, default)                             \
-    if (conf == NGX_CONF_UNSET) {                                            \
-        conf = (prev == NGX_CONF_UNSET) ? default : prev;                    \
+    if (conf == (ngx_msec_t) NGX_CONF_UNSET) {                               \
+        conf = (prev == (ngx_msec_t) NGX_CONF_UNSET) ? default : prev;       \
     }
 
 #define ngx_conf_size_merge(conf, prev, default)                             \

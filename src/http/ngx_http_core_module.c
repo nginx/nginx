@@ -40,93 +40,108 @@ static ngx_command_t  ngx_http_core_commands[] = {
      NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
      ngx_server_block,
      0,
-     0},
+     0,
+     NULL,},
 
     {ngx_string("post_accept_timeout"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
      0,
-     addressof(ngx_http_post_accept_timeout)},
+     addressof(ngx_http_post_accept_timeout),
+     NULL},
 
     {ngx_string("connection_pool_size"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
      0,
-     addressof(ngx_http_connection_pool_size)},
+     addressof(ngx_http_connection_pool_size),
+     NULL},
 
     {ngx_string("request_pool_size"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
      0,
-     addressof(ngx_http_request_pool_size)},
+     addressof(ngx_http_request_pool_size),
+     NULL},
 
     {ngx_string("client_header_timeout"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
      0,
-     addressof(ngx_http_client_header_timeout)},
+     addressof(ngx_http_client_header_timeout),
+     NULL},
 
     {ngx_string("client_header_buffer_size"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
      0,
-     addressof(ngx_http_client_header_buffer_size)},
+     addressof(ngx_http_client_header_buffer_size),
+     NULL},
 
     {ngx_string("large_client_header"),
      NGX_HTTP_MAIN_CONF|NGX_CONF_FLAG,
      ngx_conf_set_flag_slot,
      0,
-     addressof(ngx_http_large_client_header)},
+     addressof(ngx_http_large_client_header),
+     NULL},
 
     {ngx_string("location"),
      NGX_HTTP_SRV_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE1,
      ngx_location_block,
      NGX_HTTP_SRV_CONF_OFFSET,
-     0},
+     0,
+     NULL},
 
     {ngx_string("listen"),
      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
      ngx_set_listen,
      NGX_HTTP_SRV_CONF_OFFSET,
-     0},
+     0,
+     NULL},
 
     {ngx_string("types"),
      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
      ngx_types_block,
      NGX_HTTP_LOC_CONF_OFFSET,
-     0},
+     0,
+     NULL},
 
     {ngx_string("root"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_str_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_core_loc_conf_t, doc_root)},
+     offsetof(ngx_http_core_loc_conf_t, doc_root),
+     NULL},
 
     {ngx_string("sendfile"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_flag_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_core_loc_conf_t, sendfile)},
+     offsetof(ngx_http_core_loc_conf_t, sendfile),
+     NULL},
 
     {ngx_string("send_timeout"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_core_loc_conf_t, send_timeout)},
+     offsetof(ngx_http_core_loc_conf_t, send_timeout),
+     NULL},
 
     {ngx_string("lingering_time"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_core_loc_conf_t, lingering_time)},
+     offsetof(ngx_http_core_loc_conf_t, lingering_time),
+     NULL},
 
     {ngx_string("lingering_timeout"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_core_loc_conf_t, lingering_timeout)},
+     offsetof(ngx_http_core_loc_conf_t, lingering_timeout),
+     NULL},
 
-    {ngx_null_string, 0, NULL, 0, 0}
+    {ngx_null_string, 0, NULL, 0, 0, NULL}
 };
 
 
@@ -150,72 +165,76 @@ ngx_module_t  ngx_http_core_module = {
 };
 
 
-void ngx_http_handler(ngx_http_request_t *r)
+int ngx_http_find_server_conf(ngx_http_request_t *r)
 {
-    int                         rc, a, n, i;
-    ngx_http_handler_pt        *h;
-    ngx_http_module_t          *module;
-    ngx_http_conf_ctx_t        *ctx;
-    ngx_http_in_port_t         *in_port;
-    ngx_http_in_addr_t         *in_addr;
-    ngx_http_server_name_t     *name;
-    ngx_http_core_srv_conf_t   *scf;
-    ngx_http_core_loc_conf_t   *lcf, **plcf;
+    int                      a, n;
+    socklen_t                len;
+    struct sockaddr_in       addr_in;
+    ngx_http_in_port_t      *in_port;
+    ngx_http_in_addr_t      *in_addr;
+    ngx_http_conf_ctx_t     *ctx;
+    ngx_http_server_name_t  *name;
 
-    r->connection->unexpected_eof = 0;
+    /* AF_INET only */
 
-    r->keepalive = 0;
-    r->lingering_close = 1;
+    in_port = (ngx_http_in_port_t *) r->connection->servers;
+    in_addr = (ngx_http_in_addr_t *) in_port->addrs.elts;
 
-#if 0
-ngx_log_debug(r->connection->log, "servers: %0x" _ r->connection->servers);
-#endif
+    r->port = in_port->port;
 
-    /* find server config */
+    a = 0;
 
-    if (r->connection->servers == NULL) {
-        ctx = (ngx_http_conf_ctx_t *) r->connection->ctx;
+    if (in_port->addrs.nelts > 1) {
 
-    } else {
+        /* there're the several addresses on this port and one of them
+           is "*:port" so getsockname() is needed to determine
+           the server address */
 
-         /* AF_INET only */
+        len = sizeof(struct sockaddr_in);
+        if (getsockname(r->connection->fd, (struct sockaddr *) &addr_in, &len)
+                                                                       == -1) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_socket_errno,
+                          "getsockname() failed");
+            return NGX_ERROR;
+        }
 
-        in_port = (ngx_http_in_port_t *) r->connection->servers;
-        in_addr = (ngx_http_in_addr_t *) in_port->addr.elts;
+        r->in_addr = addr_in.sin_addr.s_addr;
 
-        a = 0;
-
-        if (in_port->addr.nelts > 1) {
-            /* find r->in_addr, getsockname() */ 
-
-            for ( /* void */ ; a < in_port->addr.nelts; a++) {
-
-                if (in_addr[a].addr == INADDR_ANY) {
-                    break;
-                }
-
-                if (in_addr[a].addr == r->in_addr) {
-                    break;
-                }
+        for ( /* void */ ; a < in_port->addrs.nelts; a++) {
+            if (in_addr[a].addr == r->in_addr) {
+ngx_log_debug(r->connection->log, "FOUND");
+                break;
             }
         }
 
-        ctx = in_addr[a].core_srv_conf->ctx;
+if (a == in_port->addrs.nelts) {
+    ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                  "addr not found");
+    exit(1);
+}
 
-        if (r->headers_in.host_name_len > 0) {
+    } else {
+        r->in_addr = in_addr[0].addr;
+    }
 
-            name = (ngx_http_server_name_t *) in_addr[a].names.elts;
-            for (n = 0; n < in_addr[a].names.nelts; n++) {
-                if (r->headers_in.host_name_len != name[n].name.len) {
-                    continue;
-                }
+    /* the default server configuration for this address:port */
+    ctx = in_addr[a].core_srv_conf->ctx;
 
-                if (ngx_strncasecmp(r->headers_in.host->value.data,
-                                    name[n].name.data,
-                                    r->headers_in.host_name_len) == 0) {
-                    ctx = name->core_srv_conf->ctx;
-                    break;
-                }
+    if (r->headers_in.host_name_len > 0) {
+
+        /* find the name based server configuration */
+
+        name = (ngx_http_server_name_t *) in_addr[a].names.elts;
+        for (n = 0; n < in_addr[a].names.nelts; n++) {
+            if (r->headers_in.host_name_len != name[n].name.len) {
+                continue;
+            }
+
+            if (ngx_strncasecmp(r->headers_in.host->value.data,
+                                name[n].name.data,
+                                r->headers_in.host_name_len) == 0) {
+                ctx = name->core_srv_conf->ctx;
+                break;
             }
         }
     }
@@ -229,7 +248,30 @@ ngx_log_debug(r->connection->log, "srv_conf: %0x" _ r->srv_conf);
 ngx_log_debug(r->connection->log, "loc_conf: %0x" _ r->loc_conf);
 #endif
 
-    /* run rewrite url phase */
+    return NGX_OK;
+}
+
+
+void ngx_http_handler(ngx_http_request_t *r)
+{
+    int                        rc, i;
+    ngx_http_handler_pt       *h;
+    ngx_http_module_t         *module;
+    ngx_http_core_loc_conf_t  *lcf, **plcf;
+    ngx_http_core_srv_conf_t  *scf;
+
+    r->connection->unexpected_eof = 0;
+
+    r->keepalive = 0;
+
+    if (r->headers_in.content_length_n > 0) {
+        r->lingering_close = 1;
+    }
+
+    /* TEST STUB */ r->lingering_close = 1;
+
+
+    /* TODO: run rewrite url phase */
 
 
     /* find location config */
@@ -383,7 +425,6 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
     if (r->file.info.dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
         err = ngx_errno;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                      "ngx_http_core_translate_handler: "
                       ngx_file_type_n " \"%s\" failed", r->file.name.data);
 
         if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
@@ -406,7 +447,6 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
     if (r->file.fd == NGX_INVALID_FILE) {
         err = ngx_errno;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
-                      "ngx_http_core_handler: "
                       ngx_open_file_n " \"%s\" failed", r->file.name.data);
 
         if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
@@ -423,12 +463,10 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
     if (!r->file.info_valid) {
         if (ngx_stat_fd(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          "ngx_http_core_handler: "
                           ngx_stat_fd_n " \"%s\" failed", r->file.name.data);
 
             if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                              "ngx_http_core_handler: "
                               ngx_close_file_n " \"%s\" failed",
                               r->file.name.data);
             }
@@ -446,7 +484,6 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 #if !(WIN9X)
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                          "ngx_http_core_handler: "
                           ngx_close_file_n " \"%s\" failed", r->file.name.data);
         }
 #endif
@@ -842,13 +879,13 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool)
                   ngx_pcalloc(pool, sizeof(ngx_http_core_loc_conf_t)), 
                   NGX_CONF_ERROR);
 
-/*
-    ngx_pcalloc():
+    /* set by ngx_pcalloc():
 
     lcf->doc_root.len = 0;
     lcf->doc_root.data = NULL;
     lcf->types = NULL;
-*/
+
+    */
 
     lcf->sendfile = NGX_CONF_UNSET;
 
@@ -933,23 +970,45 @@ static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
 
 static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
+    uint                p;
+    char               *addr;
     ngx_str_t          *args;
     ngx_http_listen_t  *ls;
     ngx_http_core_srv_conf_t *scf = (ngx_http_core_srv_conf_t *) conf;
+
+    /* TODO: check duplicate 'listen' directives */
 
     ngx_test_null(ls, ngx_push_array(&scf->listen), NGX_CONF_ERROR);
 
     /* AF_INET only */
 
     ls->family = AF_INET;
-    ls->addr = INADDR_ANY;
     ls->flags = 0;
     ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
 
     args = (ngx_str_t *) cf->args->elts;
+    addr = args[1].data;
 
-    ls->port = ngx_atoi(args[1].data, args[1].len);
+    for (p = 0; p < args[1].len; p++) {
+        if (addr[p] == ':') {
+            addr[p++] = '\0';
+
+            ls->addr = inet_addr(addr);
+            if (ls->addr == INADDR_NONE) {
+                return "bad addr";
+            }
+
+            break;
+        }
+    }
+
+    if (p == args[1].len) {
+        ls->addr = INADDR_ANY;
+        p = 0;
+    }
+
+    ls->port = ngx_atoi(&addr[p], args[1].len - p);
     if (ls->port < 1 || ls->port > 65536) {
         return "port must be between 1 and 65535";
     }
