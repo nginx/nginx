@@ -275,6 +275,10 @@ ngx_int_t ngx_chain_writer(void *data, ngx_chain_t *in)
 
 
     for (/* void */; in; in = in->next) {
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
+                       "WRITER buf: %d", ngx_buf_size(in->buf));
+
         ngx_alloc_link_and_set_buf(cl, in->buf, ctx->pool, NGX_ERROR);
         *ctx->last = cl;
         ctx->last = &cl->next;

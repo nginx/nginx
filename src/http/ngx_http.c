@@ -257,6 +257,11 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     *h = ngx_http_find_location_config;
 
 
+    ngx_init_array(cmcf->phases[NGX_HTTP_MISC_PHASE].handlers,
+                   cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
+                   NGX_CONF_ERROR);
+    cmcf->phases[NGX_HTTP_MISC_PHASE].type = NGX_DECLINED;
+
     ngx_init_array(cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
                    cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
                    NGX_CONF_ERROR);

@@ -627,6 +627,8 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         output->allocated = 1;
 
         r->request_body->buf->pos = r->request_body->buf->start;
+        r->request_body->buf->last = r->request_body->buf->start;
+        r->request_body->buf->tag = (ngx_buf_tag_t) &ngx_http_proxy_module;
     }
 
     p->request_sent = 0;

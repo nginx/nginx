@@ -138,6 +138,8 @@ typedef struct {
     ngx_table_elt_t  *x_forwarded_for;
 #endif
 
+    ngx_array_t       cookies;
+
     size_t            host_name_len;
     ssize_t           content_length_n;
     size_t            connection_type;

@@ -126,7 +126,7 @@ void ngx_md5_text(u_char *text, u_char *md5)
 ngx_int_t ngx_encode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
 {
     u_char         *d, *s;
-    ngx_uint_t      i;
+    size_t          len;
     static u_char   basis64[] =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -136,24 +136,28 @@ ngx_int_t ngx_encode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
 
     dst->data = d;
     s = src->data;
+    len = src->len;
 
-    for (i = 0; i < src->len - 2; i += 3) {
-        *d++ = basis64[(s[i] >> 2) & 0x3f];
-        *d++ = basis64[((s[i] & 3) << 4) | (s[i + 1] >> 4)];
-        *d++ = basis64[((s[i + 1] & 0x0f) << 2) | (s[i + 2] >> 6)];
-        *d++ = basis64[s[i + 2] & 0x3f];
+    while (len > 2) {
+        *d++ = basis64[(s[0] >> 2) & 0x3f];
+        *d++ = basis64[((s[0] & 3) << 4) | (s[1] >> 4)];
+        *d++ = basis64[((s[1] & 0x0f) << 2) | (s[2] >> 6)];
+        *d++ = basis64[s[2] & 0x3f];
+
+        s += 3;
+        len -= 3;
     }
 
-    if (i < src->len) {
-        *d++ = basis64[(s[i] >> 2) & 0x3f];
+    if (len) {
+        *d++ = basis64[(s[0] >> 2) & 0x3f];
 
-        if (i == src->len - 1) {
-            *d++ = basis64[(s[i] & 3) << 4];
+        if (len == 1) {
+            *d++ = basis64[(s[0] & 3) << 4];
             *d++ = '=';
 
         } else {
-            *d++ = basis64[((s[i] & 3) << 4) | (s[i + 1] >> 4)];
-            *d++ = basis64[(s[i + 1] & 0x0f) << 2];
+            *d++ = basis64[((s[0] & 3) << 4) | (s[1] >> 4)];
+            *d++ = basis64[(s[1] & 0x0f) << 2];
         }
 
         *d++ = '=';
@@ -168,33 +172,68 @@ ngx_int_t ngx_encode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
 
 ngx_int_t ngx_decode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
 {
-    u_char  *d, *s, c;
+    size_t          len;
+    u_char         *d, *s;
+    static u_char   basis64[] =
+        { 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 62, 77, 77, 77, 63,
+          52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 77, 77, 77, 77, 77, 77,
+          77,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+          15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 77, 77, 77, 77, 77,
+          77, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+          41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 77, 77, 77, 77, 77,
 
-    if (!(d = ngx_palloc(pool, ((src->len + 3) / 4) * 3))) {
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+          77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77 };
+
+    for (len = 0; len < src->len; len++) {
+        if (src->data[len] == '=') {
+            break;
+        }
+
+        if (basis64[src->data[len]] == 77) {
+            return NGX_ERROR;
+        }
+    }
+
+    if (len % 4 == 1) {
+        return NGX_ERROR;
+    }
+
+    if (!(d = ngx_palloc(pool, ((len + 3) / 4) * 3 + 1))) {
         return NGX_ABORT;
     }
 
     dst->data = d;
+
     s = src->data;
 
-    if (*s == '+') {
-        c = 62;
+    while (len > 3) {
+        *d++ = basis64[s[0]] << 2 | basis64[s[1]] >> 4;
+        *d++ = basis64[s[1]] << 4 | basis64[s[2]] >> 2;
+        *d++ = basis64[s[2]] << 6 | basis64[s[3]];
 
-    } else if (*s == '/') {
-        c = 63;
-
-    } else if (*s >= '0' && *s <= '9') {
-        c = *s - '0' + 52;
-
-    } else if (*s >= 'A' && *s <= 'Z') {
-        c = *s - 'A';
-
-    } else if (*s >= 'a' && *s <= 'z') {
-        c = *s - 'a' + 26;
-
-    } else {
-        return NGX_ERROR;
+        s += 4;
+        len -= 4;
     }
+
+    if (len > 1) {
+        *d++ = basis64[s[0]] << 2 | basis64[s[1]] >> 4;
+    }
+
+    if (len > 2) {
+        *d++ = basis64[s[1]] << 4 | basis64[s[2]] >> 2;
+    }
+
+    dst->len = d - dst->data;
+    *d++ = '\0';
 
     return NGX_OK;
 }

@@ -261,6 +261,10 @@ HTTP_ACCESS_MODULE=ngx_http_access_module
 HTTP_ACCESS_SRCS=src/http/modules/ngx_http_access_handler.c
 
 
+HTTP_USERID_MODULE=ngx_http_userid_module
+HTTP_USERID_SRCS=src/http/modules/ngx_http_userid_handler.c
+
+
 HTTP_STATUS_MODULE=ngx_http_status_module
 HTTP_STATUS_SRCS=src/http/modules/ngx_http_status_handler.c
 

@@ -617,11 +617,27 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             return;
         }
 
-        /* r->headers_in.headers.elts = NULL; */
         /* r->headers_in.headers.nelts = 0; */
         r->headers_in.headers.size = sizeof(ngx_table_elt_t);
         r->headers_in.headers.nalloc = 20;
         r->headers_in.headers.pool = r->pool;
+
+
+        /* init the r->headers_in.cookies array */
+
+        r->headers_in.cookies.elts = ngx_pcalloc(r->pool,
+                                                 5 * sizeof(ngx_uint_t));
+        if (r->headers_in.cookies.elts == NULL) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        /* r->headers_in.cookies.nelts = 0; */
+        r->headers_in.cookies.size = sizeof(ngx_uint_t);
+        r->headers_in.cookies.nalloc = 5;
+        r->headers_in.cookies.pool = r->pool;
+
 
         ctx = c->log->data;
         ctx->action = "reading client request headers";
@@ -715,6 +731,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 {
     ssize_t                    n;
     ngx_int_t                  rc, i, offset;
+    ngx_uint_t                *cookie;
     ngx_table_elt_t           *h;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
@@ -783,17 +800,31 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
                 h->value.data[h->value.len] = '\0';
             }
 
-            for (i = 0; ngx_http_headers_in[i].name.len != 0; i++) {
-                if (ngx_http_headers_in[i].name.len != h->key.len) {
-                    continue;
+            if (h->key.len == sizeof("Cookie") - 1
+                && ngx_strcasecmp(h->key.data, "Cookie") == 0)
+            {
+                if (!(cookie = ngx_push_array(&r->headers_in.cookies))) {
+                    ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                    ngx_http_close_connection(c);
+                    return;
                 }
 
-                if (ngx_strcasecmp(ngx_http_headers_in[i].name.data,
-                                   h->key.data) == 0)
-                {
-                    *((ngx_table_elt_t **) ((char *) &r->headers_in
+                *cookie = r->headers_in.headers.nelts - 1;
+
+            } else {
+
+                for (i = 0; ngx_http_headers_in[i].name.len != 0; i++) {
+                    if (ngx_http_headers_in[i].name.len != h->key.len) {
+                        continue;
+                    }
+
+                    if (ngx_strcasecmp(ngx_http_headers_in[i].name.data,
+                                       h->key.data) == 0)
+                    {
+                        *((ngx_table_elt_t **) ((char *) &r->headers_in
                                          + ngx_http_headers_in[i].offset)) = h;
-                    break;
+                        break;
+                    }
                 }
             }
 
