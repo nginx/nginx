@@ -40,14 +40,25 @@
 #define NGX_LOG_DEBUG_ALL         0x7ffffff0
 
 
-typedef u_char *(*ngx_log_handler_pt) (void *ctx, u_char *buf, size_t len);
+typedef u_char *(*ngx_log_handler_pt) (ngx_log_t *log, u_char *buf, size_t len);
 
 
 struct ngx_log_s {
     ngx_uint_t           log_level;
     ngx_open_file_t     *file;
-    void                *data;
+
+    ngx_uint_t           connection;
+
     ngx_log_handler_pt   handler;
+    void                *data;
+
+    /*
+     * we declare "action" as "char *" because the actions are usually
+     * the static strings and in the "u_char *" case we have to override
+     * their types all the time
+     */
+
+    char                *action;
 };
 
 
@@ -60,11 +71,15 @@ struct ngx_log_s {
 
 #define NGX_HAVE_VARIADIC_MACROS  1
 
-#define ngx_log_error(level, log, args...) \
+#define ngx_log_error(level, log, args...)                                    \
         if (log->log_level >= level) ngx_log_error_core(level, log, args)
 
 void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
+
+#define ngx_log_debug(level, log, args...)                                    \
+    if (log->log_level & level)                                               \
+        ngx_log_error_core(NGX_LOG_DEBUG, log, args)
 
 /*********************************/
 
@@ -72,11 +87,15 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
 #define NGX_HAVE_VARIADIC_MACROS  1
 
-#define ngx_log_error(level, log, ...) \
+#define ngx_log_error(level, log, ...)                                        \
         if (log->log_level >= level) ngx_log_error_core(level, log, __VA_ARGS__)
 
 void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
+
+#define ngx_log_debug(level, log, ...)                                        \
+    if (log->log_level & level)                                               \
+        ngx_log_error_core(NGX_LOG_DEBUG, log, __VA_ARGS__)
 
 /*********************************/
 
@@ -100,79 +119,58 @@ void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...);
 
 #if (NGX_HAVE_VARIADIC_MACROS)
 
-#define ngx_log_debug0(level, log, err, fmt) \
-    if (log->log_level & level) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt)
-
-#define ngx_log_debug1(level, log, err, fmt, arg1) \
-    if (log->log_level & level) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, arg1)
-
-#define ngx_log_debug2(level, log, err, fmt, arg1, arg2) \
-    if (log->log_level & level) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, arg1, arg2)
-
-#define ngx_log_debug3(level, log, err, fmt, arg1, arg2, arg3) \
-    if (log->log_level & level) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, arg1, arg2, arg3)
-
-#define ngx_log_debug4(level, log, err, fmt, arg1, arg2, arg3, arg4) \
-    if (log->log_level & level) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, arg1, arg2, arg3, arg4)
-
-#define ngx_log_debug5(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5) \
-    if (log->log_level & level) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, \
-                           arg1, arg2, arg3, arg4, arg5)
-
-#define ngx_log_debug6(level, log, err, fmt, \
-                       arg1, arg2, arg3, arg4, arg5, arg6) \
-    if (log->log_level & level) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, \
-                           arg1, arg2, arg3, arg4, arg5, arg6)
-
-#define ngx_log_debug7(level, log, err, fmt, \
-                       arg1, arg2, arg3, arg4, arg5, arg6, arg7) \
-    if (log->log_level & level) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, \
-                           arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+#define ngx_log_debug0  ngx_log_debug
+#define ngx_log_debug1  ngx_log_debug
+#define ngx_log_debug2  ngx_log_debug
+#define ngx_log_debug3  ngx_log_debug
+#define ngx_log_debug4  ngx_log_debug
+#define ngx_log_debug5  ngx_log_debug
+#define ngx_log_debug6  ngx_log_debug
+#define ngx_log_debug7  ngx_log_debug
+#define ngx_log_debug8  ngx_log_debug
 
 #else /* NO VARIADIC MACROS */
 
-#define ngx_log_debug0(level, log, err, fmt) \
-    if (log->log_level & level) \
+#define ngx_log_debug0(level, log, err, fmt)                                  \
+    if (log->log_level & level)                                               \
         ngx_log_debug_core(log, err, fmt)
 
-#define ngx_log_debug1(level, log, err, fmt, arg1) \
-    if (log->log_level & level) \
+#define ngx_log_debug1(level, log, err, fmt, arg1)                            \
+    if (log->log_level & level)                                               \
         ngx_log_debug_core(log, err, fmt, arg1)
 
-#define ngx_log_debug2(level, log, err, fmt, arg1, arg2) \
-    if (log->log_level & level) \
+#define ngx_log_debug2(level, log, err, fmt, arg1, arg2)                      \
+    if (log->log_level & level)                                               \
         ngx_log_debug_core(log, err, fmt, arg1, arg2)
 
-#define ngx_log_debug3(level, log, err, fmt, arg1, arg2, arg3) \
-    if (log->log_level & level) \
+#define ngx_log_debug3(level, log, err, fmt, arg1, arg2, arg3)                \
+    if (log->log_level & level)                                               \
         ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3)
 
-#define ngx_log_debug4(level, log, err, fmt, arg1, arg2, arg3, arg4) \
-    if (log->log_level & level) \
+#define ngx_log_debug4(level, log, err, fmt, arg1, arg2, arg3, arg4)          \
+    if (log->log_level & level)                                               \
         ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3, arg4)
 
-#define ngx_log_debug5(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5) \
-    if (log->log_level & level) \
+#define ngx_log_debug5(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5)    \
+    if (log->log_level & level)                                               \
         ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3, arg4, arg5)
 
-#define ngx_log_debug6(level, log, err, fmt, \
-                       arg1, arg2, arg3, arg4, arg5, arg6) \
-    if (log->log_level & level) \
+#define ngx_log_debug6(level, log, err, fmt,                                  \
+                       arg1, arg2, arg3, arg4, arg5, arg6)                    \
+    if (log->log_level & level)                                               \
         ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 
-#define ngx_log_debug7(level, log, err, fmt, \
-                       arg1, arg2, arg3, arg4, arg5, arg6, arg7) \
-    if (log->log_level & level) \
-        ngx_log_debug_core(log, err, fmt, \
+#define ngx_log_debug7(level, log, err, fmt,                                  \
+                       arg1, arg2, arg3, arg4, arg5, arg6, arg7)              \
+    if (log->log_level & level)                                               \
+        ngx_log_debug_core(log, err, fmt,                                     \
                        arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+
+#define ngx_log_debug8(level, log, err, fmt,                                  \
+                       arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)        \
+    if (log->log_level & level)                                               \
+        ngx_log_debug_core(log, err, fmt,                                     \
+                       arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 
 #endif
 
@@ -187,6 +185,8 @@ void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...);
 #define ngx_log_debug6(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 #define ngx_log_debug7(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5,    \
                        arg6, arg7)
+#define ngx_log_debug8(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5,    \
+                       arg6, arg7, arg8)
 
 #endif
 

@@ -351,12 +351,9 @@ ngx_module_t  ngx_http_core_module = {
 
 void ngx_http_handler(ngx_http_request_t *r)
 {
-    ngx_http_log_ctx_t  *ctx;
+    r->connection->log->action = NULL;
 
     r->connection->unexpected_eof = 0;
-
-    ctx = r->connection->log->data;
-    ctx->action = NULL;
 
     switch (r->headers_in.connection_type) {
     case 0:
@@ -539,6 +536,10 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
 
     } else {
         r->connection->sendfile = 0;
+    }
+
+    if (r->keepalive && clcf->keepalive_timeout == 0) {
+        r->keepalive = 0;
     }
 
     if (!clcf->tcp_nopush) {

@@ -111,10 +111,6 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
          *    NGX_CONF_FILE_DONE    the configuration file is done
          */
 
-#if 0
-ngx_log_debug(cf->log, "token %d" _ rc);
-#endif
-
         if (rc == NGX_ERROR) {
             break;
         }
@@ -173,9 +169,7 @@ ngx_log_debug(cf->log, "token %d" _ rc);
                 {
 
                     found = 1;
-#if 0
-ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
-#endif
+
                     /* is the directive's location right ? */
 
                     if ((cmd->type & cf->cmd_type) == 0) {
@@ -284,10 +278,6 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
                     rv = cmd->set(cf, cmd, conf);
 
-#if 0
-ngx_log_debug(cf->log, "rv: %d" _ rv);
-#endif
-
                     if (rv == NGX_CONF_OK) {
                         break;
 
@@ -366,10 +356,6 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
     b = cf->conf_file->buffer;
     start = b->pos;
 
-#if 0
-ngx_log_debug(cf->log, "TOKEN START");
-#endif
-
     for ( ;; ) {
 
         if (b->pos >= b->last) {
@@ -397,12 +383,6 @@ ngx_log_debug(cf->log, "TOKEN START");
         }
 
         ch = *b->pos++;
-
-#if 0
-ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
-              last_space _ need_space _
-              quoted _ s_quoted _ d_quoted _ ch);
-#endif
 
         if (ch == LF) {
             cf->conf_file->line++;
@@ -573,10 +553,6 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
                 }
                 *dst = '\0';
                 word->len = len;
-
-#if 0
-ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
-#endif
 
                 if (ch == ';') {
                     return NGX_OK;

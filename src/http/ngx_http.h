@@ -36,15 +36,6 @@ typedef struct ngx_http_in_addr_s  ngx_http_in_addr_t;
 
 
 struct ngx_http_log_ctx_s {
-    ngx_uint_t         connection;
-
-    /*
-     * we declare "action" as "char *" because the actions are usually
-     * the static strings and in the "u_char *" case we have to override
-     * all the time their types
-     */
-
-    char                *action;
     ngx_str_t           *client;
     ngx_http_request_t  *request;
 };

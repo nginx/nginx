@@ -80,7 +80,17 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
             if (bsize == 0 && !ngx_buf_special(ctx->in->buf)) {
 
                 ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, 0,
-                              "zero size buf in output");
+                              "zero size buf in output "
+                              "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                              ctx->in->buf->temporary,
+                              ctx->in->buf->recycled,
+                              ctx->in->buf->in_file,
+                              ctx->in->buf->start,
+                              ctx->in->buf->pos,
+                              ctx->in->buf->last,
+                              ctx->in->buf->file,
+                              ctx->in->buf->file_pos,
+                              ctx->in->buf->file_last);
 
                 ngx_debug_point();
 

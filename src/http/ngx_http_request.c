@@ -35,7 +35,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *ev);
 
 static void ngx_http_client_error(ngx_http_request_t *r,
                                   int client_error, int error);
-static u_char *ngx_http_log_error(void *data, u_char *buf, size_t len);
+static u_char *ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
 /* NGX_HTTP_PARSE_... errors */
@@ -111,12 +111,14 @@ void ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
-    ctx->connection = c->number;
     ctx->client = &c->addr_text;
-    ctx->action = "reading client request line";
     ctx->request = NULL;
-    c->log->data = ctx;
+
+    c->log->connection = c->number;
     c->log->handler = ngx_http_log_error;
+    c->log->data = ctx;
+    c->log->action = "reading client request line";
+
     c->log_error = NGX_ERROR_INFO;
 
     rev = c->read;
@@ -634,7 +636,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
                 return;
             }
 
-            ctx->action = "reading client request headers";
+            c->log->action = "reading client request headers";
 
             rev->event_handler = ngx_http_process_request_headers;
             ngx_http_process_request_headers(rev);
@@ -1099,7 +1101,7 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
         }
     }
 
-    if (r->method == NGX_HTTP_POST && r->headers_in.content_length_n <= 0) {
+    if (r->method == NGX_HTTP_POST && r->headers_in.content_length_n == -1) {
         return NGX_HTTP_PARSE_POST_WO_CL_HEADER;
     }
 
@@ -1608,7 +1610,6 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     ngx_event_t               *rev, *wev;
     ngx_connection_t          *c;
     ngx_http_connection_t     *hc;
-    ngx_http_log_ctx_t        *ctx;
     ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -1617,8 +1618,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "set http keepalive handler");
 
-    ctx = c->log->data;
-    ctx->action = "closing request";
+    c->log->action = "closing request";
 
     hc = r->http_connection;
     b = r->header_in;
@@ -1682,7 +1682,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "pipelined request");
 
         hc->pipeline = 1;
-        ctx->action = "reading client pipelined request line";
+        c->log->action = "reading client pipelined request line";
         ngx_http_init_request(rev);
         return;
     }
@@ -1760,7 +1760,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
         }
     }
 
-    ctx->action = "keepalive";
+    c->log->action = "keepalive";
 
     if (c->tcp_nopush == NGX_TCP_NOPUSH_SET) {
         if (ngx_tcp_push(c->fd) == NGX_ERROR) {
@@ -1776,8 +1776,10 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
         tcp_nodelay = 1;
     }
 
-    if (tcp_nodelay && clcf->tcp_nodelay && !c->tcp_nodelay) {
-
+    if (tcp_nodelay
+        && clcf->tcp_nodelay
+        && c->tcp_nodelay == NGX_TCP_NODELAY_UNSET)
+    {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "tcp_nodelay");
 
         if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
@@ -1789,7 +1791,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
             return;
         }
 
-        c->tcp_nodelay = 1;
+        c->tcp_nodelay = NGX_TCP_NODELAY_SET;
     }
 
 #if 0
@@ -1809,7 +1811,6 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
     ssize_t                 n;
     ngx_buf_t              *b;
     ngx_connection_t       *c;
-    ngx_http_log_ctx_t     *ctx;
     ngx_http_connection_t  *hc;
 
     c = rev->data;
@@ -1821,16 +1822,14 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
         return;
     }
 
-    ctx = (ngx_http_log_ctx_t *) rev->log->data;
-
 #if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
         if (rev->pending_eof) {
-            rev->log->handler = NULL;
+            c->log->handler = NULL;
             ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
                           "kevent() reported that client %V closed "
-                          "keepalive connection", ctx->client);
+                          "keepalive connection", &c->addr_text);
 #if (NGX_HTTP_SSL)
             if (c->ssl) {
                 c->ssl->no_send_shut = 1;
@@ -1889,18 +1888,19 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
         return;
     }
 
-    rev->log->handler = NULL;
+    c->log->handler = NULL;
 
     if (n == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, ngx_socket_errno,
-                      "client %V closed keepalive connection", ctx->client);
+                      "client %V closed keepalive connection", &c->addr_text);
         ngx_http_close_connection(c);
         return;
     }
 
     b->last += n;
-    rev->log->handler = ngx_http_log_error;
-    ctx->action = "reading client request line";
+
+    c->log->handler = ngx_http_log_error;
+    c->log->action = "reading client request line";
 
     ngx_http_init_request(rev);
 }
@@ -2302,16 +2302,17 @@ static void ngx_http_client_error(ngx_http_request_t *r,
 }
 
 
-static u_char *ngx_http_log_error(void *data, u_char *buf, size_t len)
+static u_char *ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
-    ngx_http_log_ctx_t *ctx = data;
-
-    u_char *p;
+    u_char              *p;
+    ngx_http_log_ctx_t  *ctx;
 
     p = buf;
 
-    if (ctx->action) {
-        p = ngx_snprintf(p, len, " while %s", ctx->action);
+    ctx = log->data;
+
+    if (log->action) {
+        p = ngx_snprintf(p, len, " while %s", log->action);
         len -= p - buf;
     }
 

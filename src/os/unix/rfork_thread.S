@@ -4,7 +4,6 @@
  */
 
 
-
 #include <sys/syscall.h>
 #include <machine/asm.h>
 
@@ -19,14 +18,14 @@ ENTRY(rfork_thread)
 	mov	%esp, %ebp
 	push	%esi
 
-	mov	12(%ebp), %esi	# the stack address
+	mov	12(%ebp), %esi	# the thread stack address
 
 	sub	$4, %esi
 	mov	20(%ebp), %eax	# the thread argument
 	mov	%eax, (%esi)
 
 	sub	$4, %esi
-	mov	16(%ebp), %eax	# the start thread address
+	mov	16(%ebp), %eax	# the thread start address
 	mov	%eax, (%esi)
 
 	push	8(%ebp)		# rfork(2) flags
@@ -41,8 +40,7 @@ ENTRY(rfork_thread)
 parent:
 	add	$8, %esp
 	pop	%esi
-	mov	%ebp, %esp
-	pop	%ebp
+	leave
 	ret
 
 child:
@@ -59,8 +57,7 @@ child:
 error:
 	add	$8, %esp
 	pop	%esi
-	mov	%ebp, %esp
-	pop	%ebp
+	leave
 	PIC_PROLOGUE
 
 	/* libc's cerror: jmp  PIC_PLT(HIDENAME(cerror)) */

@@ -310,7 +310,7 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 
 int ngx_devpoll_process_events(ngx_cycle_t *cycle)
 {
-    int                 events;
+    int                 events, revents;
     ngx_int_t           i;
     ngx_uint_t          j, lock, accept_lock, expire;
     size_t              n;
@@ -463,30 +463,40 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
         }
 #endif
 
+        revents = event_list[i].revents;
+
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "devpoll: fd:%d, ev:%04Xd, rev:%04Xd",
-                       event_list[i].fd,
-                       event_list[i].events, event_list[i].revents);
+                       event_list[i].fd, event_list[i].events, revents);
 
-        if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+        if (revents & (POLLERR|POLLHUP|POLLNVAL)) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "ioctl(DP_POLL) error fd:%d ev:%04Xd rev:%04Xd",
-                          event_list[i].fd,
-                          event_list[i].events, event_list[i].revents);
+                          event_list[i].fd, event_list[i].events, revents);
         }
 
-        if (event_list[i].revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL))
-        {
+        if (revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL)) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "strange ioctl(DP_POLL) events "
                           "fd:%d ev:%04Xd rev:%04Xd",
-                          event_list[i].fd,
-                          event_list[i].events, event_list[i].revents);
+                          event_list[i].fd, event_list[i].events, revents);
+        }
+
+        if ((revents & (POLLERR|POLLHUP|POLLNVAL))
+             && (revents & (POLLIN|POLLOUT)) == 0)
+        {
+            /*
+             * if the error events were returned without POLLIN or POLLOUT,
+             * then add these flags to handle the events at least in one
+             * active handler 
+             */
+
+            revents |= POLLIN|POLLOUT;
         }
 
         wev = c->write;
 
-        if ((event_list[i].events & (POLLOUT|POLLERR|POLLHUP)) && wev->active) {
+        if ((revents & POLLOUT) && wev->active) {
             wev->ready = 1;
 
             if (!ngx_threaded && !ngx_accept_mutex_held) {
@@ -505,7 +515,7 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
 
         rev = c->read;
 
-        if ((event_list[i].events & (POLLIN|POLLERR|POLLHUP)) && rev->active) {
+        if ((revents & POLLIN) && rev->active) {
             rev->ready = 1;
 
             if (!ngx_threaded && !ngx_accept_mutex_held) {

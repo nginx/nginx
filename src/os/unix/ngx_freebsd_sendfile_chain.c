@@ -279,11 +279,17 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                 }
             }
 
-            if (rc == 0 && sent == 0) {
+            /*
+             * sendfile() in FreeBSD 3.x-4.x may return value >= 0
+             * on success, although only 0 is documented
+             */
+
+            if (rc >= 0 && sent == 0) {
 
                 /*
-                 * rc and sent equal to zero when someone has truncated
-                 * the file, so the offset became beyond the end of the file
+                 * if rc is OK and sent equal to zero, then someone
+                 * has truncated the file, so the offset became beyond
+                 * the end of the file
                  */
 
                 ngx_log_error(NGX_LOG_ALERT, c->log, 0,

@@ -9,9 +9,10 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_REWRITE_COPY_MATCH  0
-#define NGX_HTTP_REWRITE_COPY_SHORT  1
-#define NGX_HTTP_REWRITE_COPY_LONG   2
+#define NGX_HTTP_REWRITE_COPY_CAPTURE  0
+#define NGX_HTTP_REWRITE_COPY_SHORT    1
+#define NGX_HTTP_REWRITE_COPY_LONG     2
+#define NGX_HTTP_REWRITE_START_ARGS    3
 
 
 typedef struct {
@@ -119,7 +120,7 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
     uintptr_t                     data;
     ngx_int_t                     rc;
     ngx_uint_t                    i, m, n;
-    ngx_str_t                     uri;
+    ngx_str_t                     uri, args;
     ngx_http_rewrite_op_t        *op;
     ngx_http_rewrite_rule_t      *rule;
     ngx_http_rewrite_srv_conf_t  *scf;
@@ -176,13 +177,14 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
         uri.len = rule[i].size;
 
         for (n = 1; n < (ngx_uint_t) rc; n++) {
-           uri.len += captures[2 * n + 1] - captures[2 * n];
+            uri.len += captures[2 * n + 1] - captures[2 * n];
         }
 
         if (!(uri.data = ngx_palloc(r->pool, uri.len))) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
+        args.data = NULL;
         p = uri.data;
 
         op = rule[i].ops.elts;
@@ -198,21 +200,33 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
             } else if (op[n].op == NGX_HTTP_REWRITE_COPY_LONG) {
                 p = ngx_cpymem(p, (void *) op[n].data, op[n].len);
 
-            } else { /* NGX_HTTP_REWRITE_COPY_MATCH */
+            } else if (op[n].op == NGX_HTTP_REWRITE_START_ARGS) {
+                args.data = p;
+
+            } else { /* NGX_HTTP_REWRITE_COPY_CAPTURE */
                 m = 2 * op[n].data;
                 p = ngx_cpymem(p, &r->uri.data[captures[m]],
                                captures[m + 1] - captures[m]);
             }
         }
 
-        uri.len = p - uri.data;
+        if (args.data) {
+            uri.len = args.data - uri.data;
+            args.len = p - args.data;
 
-        if (scf->log) {
-            ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                          "rewritten uri: \"%V\"", &uri);
+            r->args = args;
+
+        } else {
+            uri.len = p - uri.data;
+            args.len = 0;
         }
 
         r->uri = uri;
+
+        if (scf->log) {
+            ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                          "rewritten uri: \"%V\", args: \"%V\"", &uri, &args);
+        }
 
         if (ngx_http_set_exten(r) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -359,7 +373,9 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
             return NGX_CONF_ERROR;
         }
 
-        for (i = 0; i < value[2].len; /* void */) {
+        i = 0;
+
+        while (i < value[2].len) {
 
             if (!(op = ngx_push_array(&rule->ops))) {
                 return NGX_CONF_ERROR;
@@ -372,7 +388,8 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
                 && value[2].data[i + 1] >= '1'
                 && value[2].data[i + 1] <= '9')
             {
-                op->op = NGX_HTTP_REWRITE_COPY_MATCH; 
+                op->op = NGX_HTTP_REWRITE_COPY_CAPTURE; 
+                op->len = 0;
                 op->data = value[2].data[++i] - '0';
 
                 if (rule->ncaptures < op->data) {
@@ -381,39 +398,53 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
 
                 i++;
 
-            } else {
+                continue;
+            }
+
+            if (value[2].data[i] == '?') {
+                op->op = NGX_HTTP_REWRITE_START_ARGS; 
+                op->len = 0;
+                op->data = 0;
+
                 i++;
 
-                while (i < value[2].len && value[2].data[i] != '$') {
-                    i++;
-                }
+                continue;
+            }
 
-                len = &value[2].data[i] - data;
-                rule->size += len;
+            i++;
 
-                if (len) {
+            while (i < value[2].len
+                   && value[2].data[i] != '$'
+                   && value[2].data[i] != '?')
+            {
+                i++;
+            }
 
-                    op->len = len;
+            len = &value[2].data[i] - data;
+            rule->size += len;
 
-                    if (len <= sizeof(uintptr_t)) {
-                        op->op = NGX_HTTP_REWRITE_COPY_SHORT; 
-                        op->data = 0;
+            if (len) {
 
-                        while (len--) {
-                            op->data <<= 8;
-                            op->data |= data[len];
-                        }
+                op->len = len;
 
-                    } else {
-                        op->op = NGX_HTTP_REWRITE_COPY_LONG;
+                if (len <= sizeof(uintptr_t)) {
+                    op->op = NGX_HTTP_REWRITE_COPY_SHORT; 
+                    op->data = 0;
 
-                        if (!(p = ngx_palloc(cf->pool, len))) {
-                            return NGX_CONF_ERROR;
-                        }
-
-                        ngx_memcpy(p, data, len);
-                        op->data = (uintptr_t) p;
+                    while (len--) {
+                        op->data <<= 8;
+                        op->data |= data[len];
                     }
+
+                } else {
+                    op->op = NGX_HTTP_REWRITE_COPY_LONG;
+
+                    if (!(p = ngx_palloc(cf->pool, len))) {
+                        return NGX_CONF_ERROR;
+                    }
+
+                    ngx_memcpy(p, data, len);
+                    op->data = (uintptr_t) p;
                 }
             }
         }

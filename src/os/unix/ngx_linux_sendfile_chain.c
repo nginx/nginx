@@ -89,7 +89,18 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
 #if 1
             if (!ngx_buf_in_memory(cl->buf) && !cl->buf->in_file) {
                 ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                              "zero size buf in sendfile");
+                              "zero size buf in sendfile "
+                              "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                              cl->buf->temporary,
+                              cl->buf->recycled,
+                              cl->buf->in_file,
+                              cl->buf->start,
+                              cl->buf->pos,
+                              cl->buf->last,
+                              cl->buf->file,
+                              cl->buf->file_pos,
+                              cl->buf->file_last);
+
                 ngx_debug_point();
             }
 #endif
@@ -129,7 +140,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
         {
             /* the TCP_CORK and TCP_NODELAY are mutually exclusive */
 
-            if (c->tcp_nodelay) {
+            if (c->tcp_nodelay == NGX_TCP_NODELAY_SET) {
 
                 tcp_nodelay = 0;
 
@@ -146,20 +157,20 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
 
                     if (err != NGX_EINTR) { 
                         wev->error = 1;
-                        ngx_connection_error(c, ngx_socket_errno,
+                        ngx_connection_error(c, err,
                                              "setsockopt(TCP_NODELAY) failed");
                         return NGX_CHAIN_ERROR;
                     }
 
                 } else {
-                    c->tcp_nodelay = 0;
+                    c->tcp_nodelay = NGX_TCP_NODELAY_UNSET;
 
                     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                                    "no tcp_nodelay");
                 }
             }
 
-            if (!c->tcp_nodelay) {
+            if (c->tcp_nodelay == NGX_TCP_NODELAY_UNSET) {
 
                 if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
                     err = ngx_errno;

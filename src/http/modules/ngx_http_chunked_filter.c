@@ -67,7 +67,7 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
     ngx_buf_t    *b;
     ngx_chain_t   out, tail, *cl, *tl, **ll;
 
-    if (in == NULL || !r->chunked) {
+    if (in == NULL || !r->chunked || r->header_only) {
         return ngx_http_next_body_filter(r, in);
     }
 

@@ -8,10 +8,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_event_connect.h>
-#include <nginx.h>
 
-
-/* AF_INET only */
 
 ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
@@ -170,6 +167,7 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
     }
 
 #if (NGX_WIN32)
+
     /*
      * Winsock assignes a socket number divisible by 4
      * so to find a connection we divide a socket number by 4.
@@ -232,6 +230,11 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     c->log_error = pc->log_error;
 
+    if (peer->sockaddr->sa_family != AF_INET) {
+        c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
+        c->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
+    }
+
     pc->connection = c;
 
     /*
@@ -289,6 +292,9 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
  
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pc->log, 0, "connected");
+
+        wev->ready = 1;
+
         return NGX_OK;
     }
 

@@ -198,37 +198,40 @@ static void ngx_epoll_done(ngx_cycle_t *cycle)
 
 static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
-    int                  op, prev;
+    int                  op;
+    uint32_t             events, prev;
     ngx_event_t         *e;
     ngx_connection_t    *c;
     struct epoll_event   ee;
 
     c = ev->data;
 
+    events = (uint32_t) event;
+
     if (event == NGX_READ_EVENT) {
         e = c->write;
         prev = EPOLLOUT;
 #if (NGX_READ_EVENT != EPOLLIN)
-        event = EPOLLIN;
+        events = EPOLLIN;
 #endif
 
     } else {
         e = c->read;
         prev = EPOLLIN;
 #if (NGX_WRITE_EVENT != EPOLLOUT)
-        event = EPOLLOUT;
+        events = EPOLLOUT;
 #endif
     }
 
     if (e->active) {
         op = EPOLL_CTL_MOD;
-        event |= prev;
+        events |= prev;
 
     } else {
         op = EPOLL_CTL_ADD;
     }
 
-    ee.events = event | flags;
+    ee.events = events | flags;
     ee.data.u64 = (uintptr_t) c | ev->instance;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
@@ -252,14 +255,15 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
-    int                  op, prev;
+    int                  op;
+    uint32_t             prev;
     ngx_event_t         *e;
     ngx_connection_t    *c;
     struct epoll_event   ee;
 
     /*
-     * when the file descriptor is closed the epoll automatically deletes
-     * it from its queue so we do not need to delete explicity the event
+     * when the file descriptor is closed, the epoll automatically deletes
+     * it from its queue, so we do not need to delete explicity the event
      * before the closing the file descriptor
      */
 
@@ -370,6 +374,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
 {
     int                events;
     size_t             n;
+    uint32_t           revents;
     ngx_int_t          instance, i;
     ngx_uint_t         lock, accept_lock, expire;
     ngx_err_t          err;
@@ -521,27 +526,40 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         log = c->log ? c->log : cycle->log;
 #endif
 
+        revents = event_list[i].events;
+
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
                        "epoll: fd:%d ev:%04XD d:%p",
-                       c->fd, event_list[i].events, event_list[i].data);
+                       c->fd, revents, event_list[i].data);
 
-        if (event_list[i].events & (EPOLLERR|EPOLLHUP)) {
+        if (revents & (EPOLLERR|EPOLLHUP)) {
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                            "epoll_wait() error on fd:%d ev:%04XD",
-                           c->fd, event_list[i].events);
+                           c->fd, revents);
         }
 
-        if (event_list[i].events & ~(EPOLLIN|EPOLLOUT|EPOLLERR|EPOLLHUP)) {
+        if (revents & ~(EPOLLIN|EPOLLOUT|EPOLLERR|EPOLLHUP)) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "strange epoll_wait() events fd:%d ev:%04XD",
-                          c->fd, event_list[i].events);
+                          c->fd, revents);
+        }
+
+        if ((revents & (EPOLLERR|EPOLLHUP))
+             && (revents & (EPOLLIN|EPOLLOUT)) == 0)
+        {
+            /*
+             * if the error events were returned without EPOLLIN or EPOLLOUT,
+             * then add these flags to handle the events at least in one
+             * active handler
+             */
+
+            revents |= EPOLLIN|EPOLLOUT;
         }
 
         wev = c->write;
 
-        if ((event_list[i].events & (EPOLLOUT|EPOLLERR|EPOLLHUP))
-            && wev->active)
-        {
+        if ((revents & EPOLLOUT) && wev->active) {
+
             if (ngx_threaded) {
                 wev->posted_ready = 1;
                 ngx_post_event(wev);
@@ -564,9 +582,8 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
          * if the accept event is the last one.
          */
 
-        if ((event_list[i].events & (EPOLLIN|EPOLLERR|EPOLLHUP))
-            && rev->active)
-        {
+        if ((revents & EPOLLIN) && rev->active) {
+
             if (ngx_threaded && !rev->accept) {
                 rev->posted_ready = 1;
 

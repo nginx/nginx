@@ -64,9 +64,16 @@ typedef enum {
 
 
 typedef enum {
-     NGX_TCP_NOPUSH_DISABLED = -1,
+     NGX_TCP_NODELAY_UNSET = 0,
+     NGX_TCP_NODELAY_SET,
+     NGX_TCP_NODELAY_DISABLED
+} ngx_connection_tcp_nodelay_e;
+
+
+typedef enum {
      NGX_TCP_NOPUSH_UNSET = 0,
-     NGX_TCP_NOPUSH_SET
+     NGX_TCP_NOPUSH_SET,
+     NGX_TCP_NOPUSH_DISABLED
 } ngx_connection_tcp_nopush_e;
 
 
@@ -109,7 +116,7 @@ struct ngx_connection_s {
 
     ngx_uint_t          number;
 
-    unsigned            log_error:2;  /* ngx_connection_log_error_e */
+    unsigned            log_error:2;     /* ngx_connection_log_error_e */
 
     unsigned            buffered:1;
     unsigned            single_connection:1;
@@ -118,8 +125,8 @@ struct ngx_connection_s {
 
     unsigned            sendfile:1;
     unsigned            sndlowat:1;
-    unsigned            tcp_nodelay:1;
-    signed              tcp_nopush:2;
+    unsigned            tcp_nodelay:2;   /* ngx_connection_tcp_nodelay_e */
+    unsigned            tcp_nopush:2;    /* ngx_connection_tcp_nopush_e */
 
 #if (NGX_HAVE_IOCP)
     unsigned            accept_context_updated:1;

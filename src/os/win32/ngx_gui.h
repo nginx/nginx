@@ -10,11 +10,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-
-
-#define NGX_WM_TRAY    WM_USER
-#define NGX_WM_EXIT    WM_USER + 1
-#define NGX_WM_ABOUT   WM_USER + 2
+#include <ngx_gui_resources.h>
 
 
 void ngx_message_box(char *title, ngx_uint_t type, ngx_err_t err,

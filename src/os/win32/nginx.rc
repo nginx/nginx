@@ -1,10 +1,10 @@
 
 // Copyright (C) Igor Sysoev
 
-#include <ngx_gui.h>
+#include <ngx_gui_resources.h>
 
 nginx   icon  discardable  "src\\os\\win32\\nginx.ico"
-tray    icon  discardable  "src\\os\\win32\\tray.ico"
+tray    icon  discardable  "src\\os\\win32\\nginx_tray.ico"
 
 nginx   menu  discardable 
 begin

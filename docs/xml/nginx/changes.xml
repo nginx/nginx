@@ -5,6 +5,86 @@
 <change_log link="/nginx/changes.html" path="/nginx/" root=".."
             title="nginx">
 
+<title lang="ru">Изменения в nginx</title>
+<title lang="en">nginx changelog</title>
+
+
+<changes ver="0.1.16" date="25.01.2005">
+
+<change type="bugfix">
+<para lang="ru">
+если ответ передавался chunk'ами, то при запросе HEAD выдавался
+завершающий chunk. 
+</para>
+<para lang="en">
+if the response were transferred by chunks, then on the HEAD request
+the final chunk was issued.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+заголовок "Connection: keep-alive" выдавался, даже если директива
+keepalive_timeout запрещала использование keep-alive.
+</para>
+<para lang="en">
+the "Connection: keep-alive" header were issued, even if the
+keepalive_timeout derective forbade the keep-alive use.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки в модуле ngx_http_fastcgi_module вызывали segmentation fault.
+</para>
+<para lang="en">
+the errors in the ngx_http_fastcgi_module caused the segmentation faults.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании SSL сжатый ответ мог передаваться не до конца.
+</para>
+<para lang="en">
+the compressed response encrypted by SSL may not transferred complete.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+опции TCP_NODELAY, TCP_NOPSUH и TCP_CORK, специфичные для TCP сокетов,
+не используются для unix domain сокетов.
+</para>
+<para lang="en">
+the TCP-specific TCP_NODELAY, TCP_NOPSUH, and TCP_CORK options,
+are not used for the unix domain sockets.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива rewrite поддерживает перезаписывание аргументов.
+</para>
+<para lang="en">
+the rewrite directive supports the agruments rewriting.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на запрос POST с заголовком "Content-Length: 0" возвращался ответ 400;
+ошибка появилась в 0.1.14.
+</para>
+<para lang="en">
+the response code 400 was returend for the POST request with the
+"Content-Length: 0" header;
+bug appeared in 0.1.14.
+</para>
+</change>
+
+</changes>
+
 
 <changes ver="0.1.15" date="19.01.2005">
 

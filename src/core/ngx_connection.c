@@ -13,8 +13,8 @@ ngx_os_io_t  ngx_io;
 
 
 ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
-                                                 in_addr_t addr,
-                                                 in_port_t port)
+                                                  in_addr_t addr,
+                                                  in_port_t port)
 {
     size_t               len;
     ngx_listening_t     *ls;

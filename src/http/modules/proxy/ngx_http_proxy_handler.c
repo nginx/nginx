@@ -778,17 +778,17 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
 }
 
 
-u_char *ngx_http_proxy_log_error(void *data, u_char *buf, size_t len)
+u_char *ngx_http_proxy_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
-    ngx_http_proxy_log_ctx_t *ctx = data;
-
     u_char                          *p;
     ngx_int_t                        escape;
     ngx_str_t                        uri;
     ngx_http_request_t              *r;
     ngx_peer_connection_t           *peer;
+    ngx_http_proxy_log_ctx_t        *ctx;
     ngx_http_proxy_upstream_conf_t  *uc;
 
+    ctx = log->data;
     r = ctx->proxy->request;
     uc = ctx->proxy->lcf->upstream;
     peer = &ctx->proxy->upstream->peer;

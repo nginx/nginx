@@ -10,29 +10,22 @@
 #include <nginx.h>
 
 
-typedef struct {
-    int         flag;
-    ngx_str_t  *name;
-} ngx_accept_log_ctx_t;
-
-
 static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log);
-static u_char *ngx_accept_log_error(void *data, u_char *buf, size_t len);
+static u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
 void ngx_event_accept(ngx_event_t *ev)
 {
-    ngx_uint_t             instance, accepted;
-    socklen_t              len;
-    struct sockaddr       *sa;
-    ngx_err_t              err;
-    ngx_log_t             *log;
-    ngx_pool_t            *pool;
-    ngx_socket_t           s;
-    ngx_event_t           *rev, *wev;
-    ngx_connection_t      *c, *ls;
-    ngx_event_conf_t      *ecf;
-    ngx_accept_log_ctx_t  *ctx;
+    ngx_uint_t         instance, accepted;
+    socklen_t          len;
+    struct sockaddr   *sa;
+    ngx_err_t          err;
+    ngx_log_t         *log;
+    ngx_pool_t        *pool;
+    ngx_socket_t       s;
+    ngx_event_t       *rev, *wev;
+    ngx_connection_t  *c, *ls;
+    ngx_event_conf_t  *ecf;
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
@@ -81,16 +74,7 @@ void ngx_event_accept(ngx_event_t *ev)
         ngx_memcpy(log, ls->log, sizeof(ngx_log_t));
         pool->log = log;
 
-        if (!(ctx = ngx_palloc(pool, sizeof(ngx_accept_log_ctx_t)))) {
-            ngx_destroy_pool(pool);
-            return;
-        }
-
-        /* -1 disables the connection number logging */
-        ctx->flag = -1;
-        ctx->name = &ls->listening->addr_text;
-
-        log->data = ctx;
+        log->data = &ls->listening->addr_text;
         log->handler = ngx_accept_log_error;
 
         len = ls->listening->socklen;
@@ -467,9 +451,7 @@ static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log)
 }
 
 
-static u_char *ngx_accept_log_error(void *data, u_char *buf, size_t len)
+static u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
-    ngx_accept_log_ctx_t  *ctx = data;
-
-    return ngx_snprintf(buf, len, " while accept() on %V", ctx->name);
+    return ngx_snprintf(buf, len, " while accept() on %V", log->data);
 }

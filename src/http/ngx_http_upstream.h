@@ -92,8 +92,8 @@ struct ngx_http_upstream_s {
 
     ngx_http_log_ctx_t         *log_ctx;
     ngx_log_handler_pt          log_handler;
-    ngx_http_log_ctx_t         *saved_ctx;
-    ngx_log_handler_pt          saved_handler;
+    ngx_http_log_ctx_t         *saved_log_ctx;
+    ngx_log_handler_pt          saved_log_handler;
 
     /* used to parse an upstream HTTP header */
     ngx_uint_t                  status;
@@ -113,7 +113,7 @@ struct ngx_http_upstream_s {
 
 
 void ngx_http_upstream_init(ngx_http_request_t *r);
-u_char *ngx_http_upstream_log_error(void *data, u_char *buf, size_t len);
+u_char *ngx_http_upstream_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
 extern char *ngx_http_upstream_header_errors[];

@@ -38,6 +38,8 @@ ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
         *(int *) CMSG_DATA(&cmsg.cm) = ch->fd;
     }
 
+    msg.msg_flags = 0;
+
 #else
 
     if (ch->fd == -1) {
@@ -58,7 +60,6 @@ ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     msg.msg_namelen = 0;
     msg.msg_iov = iov;
     msg.msg_iovlen = 1;
-    msg.msg_flags = 0;
 
     n = sendmsg(s, &msg, 0);
 

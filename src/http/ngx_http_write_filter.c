@@ -81,7 +81,18 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                              "zero size buf in writer");
+                          "zero size buf in writer "
+                          "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                          cl->buf->temporary,
+                          cl->buf->recycled,
+                          cl->buf->in_file,
+                          cl->buf->start,
+                          cl->buf->pos,
+                          cl->buf->last,
+                          cl->buf->file,
+                          cl->buf->file_pos,
+                          cl->buf->file_last);
+
             ngx_debug_point();
         }
 #endif
@@ -120,7 +131,18 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                              "zero size buf in writer");
+                          "zero size buf in writer "
+                          "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                          cl->buf->temporary,
+                          cl->buf->recycled,
+                          cl->buf->in_file,
+                          cl->buf->start,
+                          cl->buf->pos,
+                          cl->buf->last,
+                          cl->buf->file,
+                          cl->buf->file_pos,
+                          cl->buf->file_last);
+
             ngx_debug_point();
         }
 #endif
@@ -161,15 +183,16 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (size == 0 && !c->buffered) {
-        if (!last) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                          "the http output chain is empty");
-
-            ngx_debug_point();
-
-            return NGX_ERROR;
+        if (last) {
+            return NGX_OK;
         }
-        return NGX_OK;
+
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "the http output chain is empty");
+
+        ngx_debug_point();
+
+        return NGX_ERROR;
     }
 
     sent = c->sent;
@@ -192,7 +215,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ctx->out = chain;
 
-    if (chain || c->buffered) {
+    if (chain || (last && c->buffered)) {
         return NGX_AGAIN;
     }
 

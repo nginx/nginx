@@ -1385,7 +1385,7 @@ static ngx_int_t ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p,
                                                ngx_buf_t *buf)
 {
     ngx_int_t                rc;
-    ngx_buf_t               *b;
+    ngx_buf_t               *b, **prev;
     ngx_str_t                line;
     ngx_chain_t             *cl;
     ngx_http_request_t      *r;
@@ -1399,6 +1399,7 @@ static ngx_int_t ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p,
     f = ngx_http_get_module_ctx(r, ngx_http_fastcgi_module);
 
     b = NULL;
+    prev = &buf->shadow;
 
     f->pos = buf->pos;
     f->last = buf->last;
@@ -1510,11 +1511,14 @@ static ngx_int_t ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p,
         ngx_memzero(b, sizeof(ngx_buf_t));
 
         b->pos = f->pos;
-        b->shadow = buf;
+        b->start = buf->start;
+        b->end = buf->end;
         b->tag = p->tag;
         b->temporary = 1;
         b->recycled = 1;
-        buf->shadow = b;
+
+        *prev = b;
+        prev = &b->shadow;
 
         if (!(cl = ngx_alloc_chain_link(p->pool))) {
             return NGX_ERROR;
@@ -1522,6 +1526,8 @@ static ngx_int_t ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p,
 
         cl->buf = b;
         cl->next = NULL;
+
+        /* STUB */ b->num = buf->num;
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "input buf #%d", b->num);
 
@@ -1563,7 +1569,16 @@ static ngx_int_t ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p,
     }
 
     if (b) {
+        b->shadow = buf;
         b->last_shadow = 1;
+
+        return NGX_OK;
+    }
+
+    /* there is no data record in the buf, add it to free chain */
+
+    if (ngx_event_pipe_add_free_buf(p, buf) != NGX_OK) {
+        return NGX_ERROR;
     }
 
     return NGX_OK;

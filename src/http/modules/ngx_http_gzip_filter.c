@@ -471,8 +471,8 @@ static ngx_int_t ngx_http_gzip_body_filter(ngx_http_request_t *r,
 
         /*
          * We preallocate a memory for zlib in one buffer (200K-400K), this
-         * dicreases a number of malloc() and free() calls and also probably
-         * dicreases a number of syscalls (sbrk() and so on).
+         * decreases a number of malloc() and free() calls and also probably
+         * decreases a number of syscalls (sbrk() and so on).
          * Besides we free this memory as soon as the gzipping will complete
          * and do not wait while a whole response will be sent to a client.
          *

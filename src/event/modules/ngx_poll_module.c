@@ -262,7 +262,7 @@ static ngx_int_t ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
 static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
 {
-    int                 ready;
+    int                 ready, revents;
     ngx_int_t           i, nready;
     ngx_uint_t          n, found, lock, expire;
     ngx_msec_t          timer;
@@ -378,33 +378,30 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
 
     for (i = 0; i < nevents && ready; i++) {
 
+        revents = event_list[i].revents;
+
 #if 0
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "poll: %d: fd:%d ev:%04Xd rev:%04Xd",
-                       i, event_list[i].fd,
-                       event_list[i].events, event_list[i].revents);
+                       i, event_list[i].fd, event_list[i].events, revents);
 #else
-        if (event_list[i].revents) {
+        if (revents) {
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                            "poll: %d: fd:%d ev:%04Xd rev:%04Xd",
-                           i, event_list[i].fd,
-                           event_list[i].events, event_list[i].revents);
+                           i, event_list[i].fd, event_list[i].events, revents);
         }
 #endif
 
-        if (event_list[i].revents & POLLNVAL) {
+        if (revents & POLLNVAL) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "poll() error fd:%d ev:%04Xd rev:%04Xd",
-                          event_list[i].fd,
-                          event_list[i].events, event_list[i].revents);
+                          event_list[i].fd, event_list[i].events, revents);
         }
 
-        if (event_list[i].revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL))
-        {
+        if (revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL)) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "strange poll() events fd:%d ev:%04Xd rev:%04Xd",
-                          event_list[i].fd,
-                          event_list[i].events, event_list[i].revents);
+                          event_list[i].fd, event_list[i].events, revents);
         }
 
         if (event_list[i].fd == -1) {
@@ -447,9 +444,21 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
             continue;
         }
 
+        if ((revents & (POLLERR|POLLHUP|POLLNVAL))
+             && (revents & (POLLIN|POLLOUT)) == 0)
+        {
+            /*
+             * if the error events were returned without POLLIN or POLLOUT,
+             * then add these flags to handle the events at least in one
+             * active handler
+             */
+
+            revents |= POLLIN|POLLOUT;
+        }
+
         found = 0;
 
-        if (event_list[i].revents & (POLLIN|POLLERR|POLLHUP|POLLNVAL)) {
+        if (revents & POLLIN) {
             found = 1;
 
             ev = c->read;
@@ -474,7 +483,7 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
 #endif
         }
 
-        if (event_list[i].revents & (POLLOUT|POLLERR|POLLHUP|POLLNVAL)) {
+        if (revents & POLLOUT) {
             found = 1;
             ev = c->write;
             ev->ready = 1;

@@ -76,7 +76,6 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     ngx_chain_t                  out;
     ngx_file_info_t              fi;
     ngx_http_cleanup_t          *file_cleanup, *redirect_cleanup;
-    ngx_http_log_ctx_t          *ctx;
     ngx_http_core_loc_conf_t    *clcf;
     ngx_http_static_loc_conf_t  *slcf;
 #if (NGX_HTTP_CACHE)
@@ -476,8 +475,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
 
 #endif
 
-    ctx = log->data;
-    ctx->action = "sending response to client";
+    log->action = "sending response to client";
 
     file_cleanup->data.file.fd = fd;
     file_cleanup->data.file.name = name.data;

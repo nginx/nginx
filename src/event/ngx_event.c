@@ -201,7 +201,7 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
     }
 
 
-    /* TODO: 128 is cache line size */
+    /* TODO: adjust cache line size, 128 is P4 cache line size */
 
     size = 128            /* ngx_accept_mutex */
            + 128;         /* ngx_connection_counter */
