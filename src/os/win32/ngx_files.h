@@ -85,6 +85,12 @@ int ngx_file_type(char *filename, ngx_file_info_t *fi);
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
 #define ngx_read_file_n             "ReadFile()"
 
+ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
+
+ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
+                                off_t offset, ngx_pool_t *pool);
+
+
 
 #define STDERR_FILENO               (HANDLE) 2
 

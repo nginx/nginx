@@ -335,8 +335,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 #if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
         p = h->last;
 #endif
-        h->last += ngx_http_get_time(h->last,
-                                     r->headers_out.last_modified_time);
+        h->last += ngx_http_time(h->last, r->headers_out.last_modified_time);
 
 #if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
         r->headers_out.last_modified = ngx_palloc(r->pool,

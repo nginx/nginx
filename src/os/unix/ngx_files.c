@@ -14,12 +14,32 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
     ngx_log_debug(file->log, "read: %d, %x, %d, %qd" _
                   file->fd _ buf _ size _ offset);
 
+#if (HAVE_PREAD)
+
     n = pread(file->fd, buf, size, offset);
 
     if (n == -1) {
         ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "pread() failed");
         return NGX_ERROR;
     }
+
+#else
+
+    if (file->offset != offset) {
+        if (lseek(file->fd, offset, SEEK_SET) == -1) {
+            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
+            return NGX_ERROR;
+        }
+    }
+
+    n = read(file->fd, buf, size);
+
+    if (n == -1) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "read() failed");
+        return NGX_ERROR;
+    }
+
+#endif
 
     file->offset += n;
 
@@ -30,6 +50,8 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 {
     ssize_t n;
+
+#if (HAVE_PWRITE)
 
     n = pwrite(file->fd, buf, size, offset);
 
@@ -43,6 +65,30 @@ ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
                       "pwrite() has written only %d of %d", n, size);
         return NGX_ERROR;
     }
+
+#else
+
+    if (file->offset != offset) {
+        if (lseek(file->fd, offset, SEEK_SET) == -1) {
+            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
+            return NGX_ERROR;
+        }
+    }
+
+    n = write(file->fd, buf, size);
+
+    if (n == -1) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "write() failed");
+        return NGX_ERROR;
+    }
+
+    if ((size_t) n != size) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, 0,
+                      "write() has written only %d of %d", n, size);
+        return NGX_ERROR;
+    }
+
+#endif
 
     file->offset += n;
 

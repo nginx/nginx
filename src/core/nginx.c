@@ -70,7 +70,9 @@ int main(int argc, char *const *argv)
     ngx_log_t        *log;
     ngx_cycle_t      *cycle;
     ngx_open_file_t  *file;
+#if !(WIN32)
     ngx_core_conf_t  *ccf;
+#endif
 
 #if (NGX_DEBUG) && (__FreeBSD__)
 #if __FreeBSD_version >= 500014
@@ -82,6 +84,8 @@ int main(int argc, char *const *argv)
 #endif
 
     /* TODO */ ngx_max_sockets = -1;
+
+    ngx_init_time();
 
     log = ngx_log_init_errlog();
 

@@ -76,6 +76,12 @@
 #endif
 
 
+/* STUB */
+#define HAVE_PREAD         1
+#define HAVE_PWRITE        1
+#define HAVE_LOCALTIME_R   1
+
+
        /* FreeBSD sendfile */
 
 #if __FreeBSD_version >= 300007

@@ -2,7 +2,13 @@
 #define _NGX_WIN32_CONFIG_H_INCLUDED_
 
 
-#define WIN32 1
+#define WIN32       1
+
+/* STUB */
+#define NGX_WIN_NT  200000
+extern int  ngx_win32_version;
+/**/
+
 
 
 #include <winsock2.h>
@@ -11,8 +17,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-
-#include <time.h>      /* gmtime, strftime */
 
 
 #define ngx_inline   __inline
