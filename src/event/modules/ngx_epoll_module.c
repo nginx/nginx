@@ -434,10 +434,6 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
             c->write->returned_instance = instance;
         }
 
-#if (NGX_DEBUG)
-        log = c->log ? c->log : cycle->log;
-#endif
-
         if (c->read->instance != instance) {
 
             /*
@@ -445,10 +441,14 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
              * that was just closed in this iteration
              */
 
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                            "epoll: stale event " PTR_FMT, c);
             continue;
         }
+
+#if (NGX_DEBUG)
+        log = c->log ? c->log : cycle->log;
+#endif
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
                        "epoll: fd:%d ev:%04X d:" PTR_FMT,

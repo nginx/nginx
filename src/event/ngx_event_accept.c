@@ -328,7 +328,6 @@ ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
     if (*ngx_accept_mutex == 0
         && ngx_atomic_cmp_set(ngx_accept_mutex, 0, ngx_pid))
     {
-
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "accept mutex locked");
 

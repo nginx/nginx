@@ -425,6 +425,10 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 
     n = recv(c->fd, buf, 1, MSG_PEEK);
 
+    if (ev->write && n >= 0) {
+        return;
+    }
+
     if (n > 0) {
         if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && ev->active) {
             if (ngx_del_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {

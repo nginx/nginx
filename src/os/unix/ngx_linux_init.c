@@ -9,10 +9,15 @@ char ngx_linux_kern_osrelease[20];
 
 ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
+    ngx_readv_chain,
     NULL,
-    NULL,
+#if (HAVE_SENDFILE)
     ngx_linux_sendfile_chain,
     NGX_IO_SENDFILE
+#else
+    ngx_writev_chain,
+    0
+#endif
 };
 
 
