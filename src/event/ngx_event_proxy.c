@@ -40,6 +40,27 @@ ngx_log_debug(p->log, "read upstream");
 
         } else {
 
+#if (HAVE_KQUEUE) /* kqueue notifies about the end of file or a pending error */
+
+            if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT) {
+
+                if (p->upstream->read->error) {
+                    ngx_log_error(NGX_LOG_ERR, p->log,
+                                  p->upstream->read->error,
+                                  "readv() failed");
+                    p->upstream_error = 1;
+
+                    return NGX_ERROR;
+
+                } else if (p->upstream->read->eof
+                           && p->upstream->read->available == 0) {
+                    p->upstream_eof = 1;
+                    p->block_upstream = 0;
+
+                    break;
+                }
+            }
+#endif
             /* use the free hunks if they exist */
 
             if (p->free_hunks) {
@@ -151,6 +172,7 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
             }
             p->upstream_eof = 1;
             p->block_upstream = 0;
+
             break;
         }
 
@@ -399,7 +421,8 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
     ngx_hunk_t   *h;
     ngx_chain_t  *entry;
 
-    if (p->downstream_level == 0
+    if (p->upstream_level == 0
+        && p->downstream_level == 0
         && p->busy_hunk == NULL
         && p->out_hunks == NULL
         && p->in_hunks == NULL

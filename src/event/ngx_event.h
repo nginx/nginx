@@ -146,31 +146,33 @@ typedef struct {
 } ngx_event_actions_t;
 
 
-/* Event filter requires to read/write the whole data -
+/* The event filter requires to read/write the whole data -
    select, poll, /dev/poll, kqueue. */
 #define NGX_HAVE_LEVEL_EVENT    1
 
-/* Event filter is deleted after notification - select, poll, kqueue.
-   Using /dev/poll it can be implemented with additional syscall */
+/* The event filter is deleted after a notification without an additional
+   syscall - select, poll, kqueue.  */
 #define NGX_HAVE_ONESHOT_EVENT  2
 
-/* Event filter notifies only changes and initial level - kqueue */
+/* The event filter notifies only the changes and an initial level - kqueue */
 #define NGX_HAVE_CLEAR_EVENT    4
 
-/* Event filter has kqueue features - eof flag, errno, available data, etc */
+/* The event filter has kqueue features - the eof flag, errno,
+   available data, etc */
 #define NGX_HAVE_KQUEUE_EVENT   8
 
-/* Event filter supports low water mark - kqueue's NOTE_LOWAT,
-   early kqueue implementations have no NOTE_LOWAT so we need a separate flag */
+/* The event filter supports low water mark - kqueue's NOTE_LOWAT.
+   Early kqueue implementations have no NOTE_LOWAT so we need a separate flag */
 #define NGX_HAVE_LOWAT_EVENT    0x00000010
 
-/* Event filter notifies only changes (edges) but not initial level - epoll */
+/* The event filter notifies only the changes (the edges)
+   but not an initial level - epoll */
 #define NGX_HAVE_EDGE_EVENT     0x00000020
 
-/* No need to add or delete event filters - rt signals */
+/* No need to add or delete the event filters - rt signals */
 #define NGX_HAVE_SIGIO_EVENT    0x00000040
 
-/* No need to add or delete event filters - overlapped, aio_read, aioread */
+/* No need to add or delete the event filters - overlapped, aio_read, aioread */
 #define NGX_HAVE_AIO_EVENT      0x00000080
 
 /* Need to add socket or handle only once - i/o completion port.
@@ -281,6 +283,11 @@ extern ngx_connection_t     *ngx_connections;
 extern ngx_event_actions_t   ngx_event_actions;
 extern ngx_event_type_e      ngx_event_type;
 extern int                   ngx_event_flags;
+#endif
+
+
+#if !(HAVE_EPOLL)
+#define  ngx_edge_add_event(ev)  NGX_ERROR
 #endif
 
 

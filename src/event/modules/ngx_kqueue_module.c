@@ -12,19 +12,15 @@
 #include <ngx_event_timer.h>
 #include <ngx_kqueue_module.h>
 
-#if (USE_KQUEUE) && !(HAVE_KQUEUE)
-#error "kqueue is not supported on this platform"
-#endif
-
 
 /* STUB */
 #define KQUEUE_NCHANGES  512
 #define KQUEUE_NEVENTS   512
 
 
-/* should be per-thread */
+/* should be per-thread if threads are used without thread pool */
 #if 1
-int              kq;
+int                     kq;
 #else
 static int              kq;
 #endif
@@ -60,7 +56,6 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
         return NGX_ERROR;
     }
 
-#if !(USE_KQUEUE)
     ngx_event_actions.add = ngx_kqueue_add_event;
     ngx_event_actions.del = ngx_kqueue_del_event;
     ngx_event_actions.timer = ngx_event_add_timer;
@@ -88,8 +83,6 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
                      |NGX_HAVE_KQUEUE_EVENT;
 
     ngx_write_chain_proc = ngx_freebsd_write_chain;
-
-#endif
 
 #endif
 
