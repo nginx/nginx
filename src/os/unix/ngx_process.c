@@ -112,7 +112,7 @@ static void ngx_exec_proc(ngx_cycle_t *cycle, void *data)
 }
 
 
-void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signal)
+void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signo)
 {
     ngx_uint_t  i;
 
@@ -122,24 +122,26 @@ void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signal)
             continue;
         }
 
+#if 0
         if (ngx_processes[i].exited) {
             if (i != --ngx_last_process) {
                 ngx_processes[i--] = ngx_processes[ngx_last_process];
             }
             continue;
         }
+#endif
 
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                        "kill (" PID_T_FMT ", %d)" ,
-                       ngx_processes[i].pid, signal);
+                       ngx_processes[i].pid, signo);
 
-        if (kill(ngx_processes[i].pid, signal) == -1) {
+        if (kill(ngx_processes[i].pid, signo) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "kill(%d, %d) failed", ngx_processes[i].pid, signal);
+                          "kill(%d, %d) failed", ngx_processes[i].pid, signo);
             continue;
         }
 
-        if (signal != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
+        if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
             ngx_processes[i].exiting = 1;
         }
     }
@@ -151,7 +153,7 @@ void ngx_respawn_processes(ngx_cycle_t *cycle)
     ngx_uint_t  i;
 
     for (i = 0; i < ngx_last_process; i++) {
-        if (!ngx_processes[i].exited) {
+        if (ngx_processes[i].exiting || !ngx_processes[i].exited) {
             continue;
         }
 
@@ -212,11 +214,7 @@ void ngx_process_get_status()
         for (i = 0; i < ngx_last_process; i++) {
             if (ngx_processes[i].pid == pid) {
                 ngx_processes[i].status = status;
-
-                if (!ngx_processes[i].exiting) {
-                    ngx_processes[i].exited = 1;
-                }
-
+                ngx_processes[i].exited = 1;
                 process = ngx_processes[i].name;
                 break;
             }

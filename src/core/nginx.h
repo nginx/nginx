@@ -5,6 +5,7 @@
 #define NGINX_VER      "nginx/0.0.1"
 #define NGINX_CONF     "nginx.conf"
 #define NGINX_PID      "nginx.pid"
+#define NGINX_NEW_PID  NGINX_PID ".newbin"
 
 #define NGINX_VAR      "NGINX="
 #define NGINX_VAR_LEN  (sizeof(NGINX_VAR) - 1)

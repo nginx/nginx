@@ -13,7 +13,6 @@ void ngx_signal_handler(int signo);
 typedef struct {
      int     signo;
      char   *signame;
-     char   *action;
      void  (*handler)(int signo);
 } ngx_signal_t;
 
@@ -21,39 +20,33 @@ typedef struct {
 ngx_signal_t  signals[] = {
     { ngx_signal_value(NGX_RECONFIGURE_SIGNAL),
       "SIG" ngx_value(NGX_RECONFIGURE_SIGNAL),
-      ", reconfiguring",
       ngx_signal_handler },
 
     { ngx_signal_value(NGX_REOPEN_SIGNAL),
       "SIG" ngx_value(NGX_REOPEN_SIGNAL),
-      ", reopen logs",
       ngx_signal_handler },
 
-    { ngx_signal_value(NGX_INTERRUPT_SIGNAL),
-      "SIG" ngx_value(NGX_INTERRUPT_SIGNAL),
-      ", exiting",
+    { ngx_signal_value(NGX_PAUSE_SIGNAL),
+      "SIG" ngx_value(NGX_PAUSE_SIGNAL),
       ngx_signal_handler },
 
     { ngx_signal_value(NGX_TERMINATE_SIGNAL),
       "SIG" ngx_value(NGX_TERMINATE_SIGNAL),
-      ", exiting",
       ngx_signal_handler },
 
     { ngx_signal_value(NGX_SHUTDOWN_SIGNAL),
       "SIG" ngx_value(NGX_SHUTDOWN_SIGNAL),
-      ", shutdowning",
       ngx_signal_handler },
 
     { ngx_signal_value(NGX_CHANGEBIN_SIGNAL),
       "SIG" ngx_value(NGX_CHANGEBIN_SIGNAL),
-      ", changing binary",
       ngx_signal_handler },
 
-    { SIGCHLD, "SIGCHLD", "", ngx_signal_handler },
+    { SIGCHLD, "SIGCHLD", ngx_signal_handler },
 
-    { SIGPIPE, "SIGPIPE, SIG_IGN", NULL, SIG_IGN },
+    { SIGPIPE, "SIGPIPE, SIG_IGN", SIG_IGN },
 
-    { 0, NULL, NULL, NULL }
+    { 0, NULL, NULL }
 };
 
 
@@ -98,6 +91,7 @@ int ngx_posix_init(ngx_log_t *log)
 
 void ngx_signal_handler(int signo)
 {
+    char            *action;
     struct timeval   tv;
     ngx_err_t        err;
     ngx_signal_t    *sig;
@@ -113,37 +107,88 @@ void ngx_signal_handler(int signo)
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
+    action = "";
+
+    switch (ngx_process) {
+
+    case NGX_PROCESS_MASTER:
+    case NGX_PROCESS_QUITING:
+    case NGX_PROCESS_PAUSED:
+        switch (signo) {
+
+        case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
+            ngx_quit = 1;
+            action = ", shutdowning";
+            break;
+
+        case ngx_signal_value(NGX_TERMINATE_SIGNAL):
+            ngx_terminate = 1;
+            action = ", exiting";
+            break;
+
+        case ngx_signal_value(NGX_PAUSE_SIGNAL):
+            ngx_pause = 1;
+            action = ", pausing";
+            break;
+
+        case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
+            ngx_reconfigure = 1;
+            action = ", reconfiguring";
+            break;
+
+        case ngx_signal_value(NGX_REOPEN_SIGNAL):
+            ngx_reopen = 1;
+            action = ", reopen logs";
+            break;
+
+        case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
+            ngx_change_binary = 1;
+            action = ", changing binary";
+            break;
+
+        case SIGCHLD:
+            ngx_reap = 1;
+            break;
+        }
+
+        break;
+
+    case NGX_PROCESS_WORKER:
+        switch (signo) {
+
+        case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
+            ngx_quit = 1;
+            action = ", shutdowning";
+            break;
+
+        case ngx_signal_value(NGX_TERMINATE_SIGNAL):
+            ngx_terminate = 1;
+            action = ", exiting";
+            break;
+
+#if 0
+        case ngx_signal_value(NGX_REOPEN_SIGNAL):
+            ngx_reopen = 1;
+            action = ", reopen logs";
+            break;
+#endif
+
+        case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
+        case ngx_signal_value(NGX_REOPEN_SIGNAL):
+        case ngx_signal_value(NGX_PAUSE_SIGNAL):
+        case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
+            action = ", ignoring";
+            break;
+        }
+
+        break;
+    }
+
     ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
-                  "signal %d (%s) received%s",
-                  signo, sig->signame, sig->action);
+                  "signal %d (%s) received%s", signo, sig->signame, action);
 
-    switch (signo) {
-
-    case SIGCHLD:
-        ngx_reap = 1;
+    if (signo == SIGCHLD) {
         ngx_process_get_status();
-        break;
-
-    case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
-        ngx_quit = 1;
-        break;
-
-    case ngx_signal_value(NGX_TERMINATE_SIGNAL):
-    case ngx_signal_value(NGX_INTERRUPT_SIGNAL):
-        ngx_terminate = 1;
-        break;
-
-    case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
-        ngx_reconfigure = 1;
-        break;
-
-    case ngx_signal_value(NGX_REOPEN_SIGNAL):
-        ngx_reopen = 1;
-        break;
-
-    case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
-        ngx_change_binary = 1;
-        break;
     }
 
     ngx_set_errno(err);

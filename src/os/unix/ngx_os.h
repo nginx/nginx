@@ -54,6 +54,7 @@ extern ngx_int_t    ngx_process;
 extern ngx_int_t    ngx_reap;
 extern ngx_int_t    ngx_quit;
 extern ngx_int_t    ngx_terminate;
+extern ngx_int_t    ngx_pause;
 extern ngx_int_t    ngx_reconfigure;
 extern ngx_int_t    ngx_reopen;
 extern ngx_int_t    ngx_change_binary;

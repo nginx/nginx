@@ -29,10 +29,11 @@ typedef struct {
 } ngx_exec_ctx_t;
 
 
-#define NGX_PROCESS_SINGLE       0
-#define NGX_PROCESS_MASTER       1
-#define NGX_PROCESS_WORKER       2
-#define NGX_PROCESS_MASTER_QUIT  3
+#define NGX_PROCESS_SINGLE   0
+#define NGX_PROCESS_MASTER   1
+#define NGX_PROCESS_WORKER   2
+#define NGX_PROCESS_QUITING  3
+#define NGX_PROCESS_PAUSED   4
 
 #define NGX_MAX_PROCESSES  1024
 
@@ -47,7 +48,7 @@ ngx_int_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,
                             char *name, ngx_int_t respawn);
 ngx_int_t ngx_exec(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
-void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signal);
+void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signo);
 void ngx_respawn_processes(ngx_cycle_t *cycle);
 void ngx_process_get_status(void);
 

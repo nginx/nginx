@@ -63,11 +63,11 @@ typedef u_int  ngx_uint_t;
 #define ngx_signal_value(n)      ngx_signal_helper(n)
 
 /* TODO: #ifndef */
-#define NGX_RECONFIGURE_SIGNAL   HUP
-#define NGX_REOPEN_SIGNAL        USR1
 #define NGX_SHUTDOWN_SIGNAL      QUIT
 #define NGX_TERMINATE_SIGNAL     TERM
-#define NGX_INTERRUPT_SIGNAL     INT
+#define NGX_PAUSE_SIGNAL         INT
+#define NGX_RECONFIGURE_SIGNAL   HUP
+#define NGX_REOPEN_SIGNAL        USR1
 #define NGX_CHANGEBIN_SIGNAL     USR2
 
 #endif
