@@ -17,7 +17,9 @@ static ngx_int_t ngx_pop3_read_command(ngx_imap_session_t *s);
 
 
 static u_char pop3_greeting[] = "+OK " NGINX_VER " ready" CRLF;
+#if 0
 static u_char imap_greeting[] = "* OK " NGINX_VER " ready" CRLF;
+#endif
 
 static u_char pop3_ok[] = "+OK" CRLF;
 static u_char pop3_invalid_command[] = "-ERR invalid command" CRLF;
@@ -69,7 +71,8 @@ static void ngx_imap_init_session(ngx_event_t *rev)
         return;
     }
 
-    if (!(s = ngx_pcalloc(c->pool, sizeof(ngx_imap_session_t)))) {
+    s = ngx_pcalloc(c->pool, sizeof(ngx_imap_session_t));
+    if (s == NULL) {
         ngx_imap_close_connection(c);
         return;
     }
@@ -307,5 +310,5 @@ void ngx_imap_close_connection(ngx_connection_t *c)
 
     ngx_close_connection(c);
 
-    ngx_destroy_pool(c->pool);
+    ngx_destroy_pool(pool);
 }

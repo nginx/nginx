@@ -32,7 +32,7 @@ typedef struct {
 ngx_int_t ngx_http_ssl_read(ngx_http_request_t *r, u_char *buf, size_t size);
 ngx_int_t ngx_http_ssl_shutdown(ngx_http_request_t *r);
 ngx_chain_t *ngx_http_ssl_write(ngx_connection_t *c, ngx_chain_t *in,
-                                off_t limit);
+    off_t limit);
 
 void ngx_http_ssl_close_connection(SSL *ssl, ngx_log_t *log);
 

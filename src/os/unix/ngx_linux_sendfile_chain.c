@@ -121,7 +121,8 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                 iov->iov_len += (size_t) size;
 
             } else {
-                if (!(iov = ngx_array_push(&header))) {
+                iov = ngx_array_push(&header);
+                if (iov == NULL) {
                     return NGX_CHAIN_ERROR;
                 }
 

@@ -218,10 +218,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         if (ngx_read_dir(&dir) == NGX_ERROR) {
             err = ngx_errno;
 
-            if (err == NGX_ENOMOREFILES) {
-                rc = NGX_OK;
-
-            } else {
+            if (err != NGX_ENOMOREFILES) {
                 ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
                               ngx_read_dir_n " \"%s\" failed", dname.data);
                 return ngx_http_autoindex_error(r, &dir, dname.data);
@@ -251,7 +248,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
             if (dname.len + 1 + len > fname.len) {
                 fname.len = dname.len + 1 + len + 32;
 
-                if (!(fname.data = ngx_palloc(pool, fname.len))) {
+                fname.data = ngx_palloc(pool, fname.len);
+                if (fname.data == NULL) {
                     return ngx_http_autoindex_error(r, &dir, dname.data);
                 }
 
@@ -280,7 +278,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
             }
         }
 
-        if (!(entry = ngx_array_push(&entries))) {
+        entry = ngx_array_push(&entries);
+        if (entry == NULL) {
             return ngx_http_autoindex_error(r, &dir, dname.data);
         }
 
@@ -288,7 +287,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         entry->escape = 2 * ngx_escape_uri(NULL, ngx_de_name(&dir), len,
                                            NGX_ESCAPE_HTML);
 
-        if (!(entry->name.data = ngx_palloc(pool, len + entry->escape + 1))) {
+        entry->name.data = ngx_palloc(pool, len + entry->escape + 1);
+        if (entry->name.data == NULL) {
             return ngx_http_autoindex_error(r, &dir, dname.data);
         }
 
@@ -326,7 +326,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                + 2;
     }
 
-    if (!(b = ngx_create_temp_buf(r->pool, len))) {
+    b = ngx_create_temp_buf(r->pool, len);
+    if (b == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -481,11 +482,13 @@ ngx_http_autoindex_alloc(ngx_http_autoindex_ctx_t *ctx, size_t size)
         ctx->size += ctx->buf->last - ctx->buf->pos;
     }
 
-    if (!(ctx->buf = ngx_create_temp_buf(ctx->pool, ctx->alloc_size))) {
+    ctx->buf = ngx_create_temp_buf(ctx->pool, ctx->alloc_size);
+    if (ctx->buf == NULL) {
         return NULL;
     }
 
-    if (!(cl = ngx_alloc_chain_link(ctx->pool))) {
+    cl = ngx_alloc_chain_link(ctx->pool);
+    if (cl == NULL) {
         return NULL;
     }
 

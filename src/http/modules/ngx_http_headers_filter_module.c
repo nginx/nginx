@@ -23,7 +23,8 @@ static ngx_int_t ngx_http_headers_filter_init(ngx_cycle_t *cycle);
 static void *ngx_http_headers_create_conf(ngx_conf_t *cf);
 static char *ngx_http_headers_merge_conf(ngx_conf_t *cf,
                                          void *parent, void *child);
-char *ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 
 static ngx_command_t  ngx_http_headers_filter_commands[] = {
@@ -66,7 +67,8 @@ ngx_module_t  ngx_http_headers_filter_module = {
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 
 
-static ngx_int_t ngx_http_headers_filter(ngx_http_request_t *r)
+static ngx_int_t
+ngx_http_headers_filter(ngx_http_request_t *r)
 {
     size_t                    len;
     ngx_table_elt_t          *expires, *cc;
@@ -80,13 +82,15 @@ static ngx_int_t ngx_http_headers_filter(ngx_http_request_t *r)
 
     if (conf->expires != NGX_HTTP_EXPIRES_OFF) {
 
-        if (!(expires = ngx_list_push(&r->headers_out.headers))) {
+        expires = ngx_list_push(&r->headers_out.headers);
+        if (expires == NULL) {
             return NGX_ERROR;
         }
 
         r->headers_out.expires = expires;
 
-        if (!(cc = ngx_list_push(&r->headers_out.headers))) {
+        cc = ngx_list_push(&r->headers_out.headers);
+        if (cc == NULL) {
             return NGX_ERROR;
         }
 
@@ -147,7 +151,8 @@ static ngx_int_t ngx_http_headers_filter(ngx_http_request_t *r)
 }
 
 
-static ngx_int_t ngx_http_headers_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_http_headers_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_headers_filter;
@@ -156,11 +161,13 @@ static ngx_int_t ngx_http_headers_filter_init(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_http_headers_create_conf(ngx_conf_t *cf)
+static void *
+ngx_http_headers_create_conf(ngx_conf_t *cf)
 {   
     ngx_http_headers_conf_t  *conf;
 
-    if (!(conf = ngx_palloc(cf->pool, sizeof(ngx_http_headers_conf_t)))) {
+    conf = ngx_palloc(cf->pool, sizeof(ngx_http_headers_conf_t));
+    if (conf == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -170,8 +177,8 @@ static void *ngx_http_headers_create_conf(ngx_conf_t *cf)
 }
 
 
-static char *ngx_http_headers_merge_conf(ngx_conf_t *cf,
-                                         void *parent, void *child)
+static char *
+ngx_http_headers_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_headers_conf_t *prev = parent;
     ngx_http_headers_conf_t *conf = child;
@@ -185,7 +192,8 @@ static char *ngx_http_headers_merge_conf(ngx_conf_t *cf,
 }
 
 
-char *ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *
+ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_headers_conf_t *hcf = conf;
 
@@ -223,6 +231,7 @@ char *ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     hcf->expires = ngx_parse_time(&value[1], 1);
+
     if (hcf->expires == NGX_ERROR) {
         return "invalid value";
     }

@@ -214,7 +214,6 @@ void ngx_process_get_status()
     ngx_err_t        err;
     ngx_int_t        i;
     ngx_uint_t       one;
-    struct timeval   tv;
 
     one = 0;
 

@@ -12,11 +12,13 @@ ngx_array_t *ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size)
 {
     ngx_array_t *a;
 
-    if (!(a = ngx_palloc(p, sizeof(ngx_array_t)))) {
+    a = ngx_palloc(p, sizeof(ngx_array_t));
+    if (a == NULL) {
         return NULL;
     }
 
-    if (!(a->elts = ngx_palloc(p, n * size))) {
+    a->elts = ngx_palloc(p, n * size);
+    if (a->elts == NULL) {
         return NULL;
     }
 
@@ -72,7 +74,8 @@ void *ngx_array_push(ngx_array_t *a)
         } else {
             /* allocate a new array */
 
-            if (!(new = ngx_palloc(p, 2 * size))) {
+            new = ngx_palloc(p, 2 * size);
+            if (new == NULL) {
                 return NULL;
             }
 
@@ -120,7 +123,8 @@ void *ngx_array_push_n(ngx_array_t *a, ngx_uint_t n)
 
             nalloc = 2 * ((n >= a->nalloc) ? n : a->nalloc);
 
-            if (!(new = ngx_palloc(p, nalloc * a->size))) {
+            new = ngx_palloc(p, nalloc * a->size);
+            if (new == NULL) {
                 return NULL;
             }
 

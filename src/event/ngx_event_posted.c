@@ -43,10 +43,10 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
 void ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
 {
     ngx_int_t     i;
+#if 0
     ngx_uint_t    busy;
     ngx_event_t  *ev;
 
-#if 0
     busy = 1;
 
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {

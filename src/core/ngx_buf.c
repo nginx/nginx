@@ -13,11 +13,13 @@ ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
 {
     ngx_buf_t *b;
 
-    if (!(b = ngx_calloc_buf(pool))) {
+    b = ngx_calloc_buf(pool);
+    if (b == NULL) {
         return NULL;
     }
 
-    if (!(b->start = ngx_palloc(pool, size))) {
+    b->start = ngx_palloc(pool, size);
+    if (b->start == NULL) {
         return NULL;
     }
 
@@ -49,14 +51,17 @@ ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
     ngx_buf_t    *b;
     ngx_chain_t  *chain, *cl, **ll;
 
-    if (!(p = ngx_palloc(pool, bufs->num * bufs->size))) {
+    p = ngx_palloc(pool, bufs->num * bufs->size);
+    if (p == NULL) {
         return NULL;
     }
 
     ll = &chain;
 
     for (i = 0; i < bufs->num; i++) {
-        if (!(b = ngx_calloc_buf(pool))) {
+
+        b = ngx_calloc_buf(pool);
+        if (b == NULL) {
             return NULL;
         }
 
@@ -79,7 +84,8 @@ ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
         p += bufs->size;
         b->end = p;
 
-        if (!(cl = ngx_alloc_chain_link(pool))) {
+        cl = ngx_alloc_chain_link(pool);
+        if (cl == NULL) {
             return NULL;
         }
 
@@ -106,7 +112,10 @@ ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in)
     }
 
     while (in) {
-        ngx_test_null(cl, ngx_alloc_chain_link(pool), NGX_ERROR);
+        cl = ngx_alloc_chain_link(pool);
+        if (cl == NULL) {
+            return NGX_ERROR;
+        }
 
         cl->buf = in->buf;
         *ll = cl;

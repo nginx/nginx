@@ -17,7 +17,6 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in,
     off_t         send, sent;
     size_t        len;
     ssize_t       n, size;
-    ngx_err_t     err;
     ngx_chain_t  *cl;
 
     /* the maximum limit size is the maximum size_t value - the page size */

@@ -42,7 +42,8 @@ ngx_module_t  ngx_http_write_filter_module = {
 };
 
 
-ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
+ngx_int_t
+ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     off_t                         size, sent;
     ngx_uint_t                    last, flush;
@@ -55,8 +56,13 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                   ngx_http_write_filter_module);
 
     if (ctx == NULL) {
-        ngx_http_create_ctx(r, ctx, ngx_http_write_filter_module,
-                            sizeof(ngx_http_write_filter_ctx_t), NGX_ERROR);
+
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_write_filter_ctx_t));
+        if (ctx == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_http_set_ctx(r, ctx, ngx_http_write_filter_module);
     }
 
     size = 0;
@@ -112,7 +118,8 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     /* add the new chain to the existent one */
 
     for (ln = in; ln; ln = ln->next) {
-        if (!(cl = ngx_alloc_chain_link(r->pool))) {
+        cl = ngx_alloc_chain_link(r->pool);
+        if (cl == NULL) {
             return NGX_ERROR;
         }
 
@@ -190,7 +197,11 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
 
         if (flush) {
-            while ((ctx->out = ctx->out->next)) { /* void */ }
+            do {
+                ctx->out = ctx->out->next;
+            }
+            while (ctx->out);
+
             return NGX_OK;
         }
 
@@ -230,7 +241,8 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 }
 
 
-static ngx_int_t ngx_http_write_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_http_write_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_top_body_filter = ngx_http_write_filter;
 

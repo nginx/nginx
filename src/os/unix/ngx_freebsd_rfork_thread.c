@@ -227,13 +227,15 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 
     /* create the thread errno' array */
 
-    if (!(errnos = ngx_calloc(n * sizeof(int), cycle->log))) {
+    errnos = ngx_calloc(n * sizeof(int), cycle->log);
+    if (errnos == NULL) {
         return NGX_ERROR;
     }
 
     /* create the thread tids array */
 
-    if (!(tids = ngx_calloc((n + 1) * sizeof(ngx_tid_t), cycle->log))) {
+    tids = ngx_calloc((n + 1) * sizeof(ngx_tid_t), cycle->log);
+    if (tids == NULL) {
         return NGX_ERROR;
     }
 
@@ -264,8 +266,7 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 
 ngx_tid_t ngx_thread_self()
 {
-    int        tid;
-    ngx_tid_t  pid;
+    ngx_int_t  tid;
 
     tid = ngx_gettid();
 
@@ -305,7 +306,8 @@ ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
     ngx_mutex_t  *m;
     union semun   op;
 
-    if (!(m = ngx_alloc(sizeof(ngx_mutex_t), log))) {
+    m = ngx_alloc(sizeof(ngx_mutex_t), log);
+    if (m == NULL) {
         return NULL;
     }
 
@@ -353,7 +355,7 @@ void ngx_mutex_destroy(ngx_mutex_t *m)
 
 ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
 {
-    uint32_t       lock, new, old;
+    uint32_t       lock, old;
     ngx_uint_t     tries;
     struct sembuf  op;
 
@@ -483,7 +485,7 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
 
 ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 {
-    uint32_t       lock, new, old;
+    uint32_t       lock, old;
     struct sembuf  op;
 
     if (!ngx_threaded) {
@@ -576,7 +578,8 @@ ngx_cond_t *ngx_cond_init(ngx_log_t *log)
 {
     ngx_cond_t  *cv;
 
-    if (!(cv = ngx_alloc(sizeof(ngx_cond_t), log))) {
+    cv = ngx_alloc(sizeof(ngx_cond_t), log);
+    if (cv == NULL) {
         return NULL;
     }
 

@@ -241,27 +241,27 @@ HTTP_DEPS="src/http/ngx_http.h \
            src/http/ngx_http_variables.h \
            src/http/ngx_http_upstream.h \
            src/http/ngx_http_busy_lock.h \
-           src/http/ngx_http_log_handler.h"
+           src/http/ngx_http_log_module.h"
 
 HTTP_SRCS="src/http/ngx_http.c \
            src/http/ngx_http_core_module.c \
            src/http/ngx_http_special_response.c \
            src/http/ngx_http_request.c \
            src/http/ngx_http_parse.c \
-           src/http/ngx_http_header_filter.c \
-           src/http/ngx_http_write_filter.c \
-           src/http/ngx_http_copy_filter.c \
-           src/http/ngx_http_log_handler.c \
+           src/http/ngx_http_header_filter_module.c \
+           src/http/ngx_http_write_filter_module.c \
+           src/http/ngx_http_copy_filter_module.c \
+           src/http/ngx_http_log_module.c \
            src/http/ngx_http_request_body.c \
            src/http/ngx_http_variables.c \
            src/http/ngx_http_upstream.c \
            src/http/ngx_http_parse_time.c \
-           src/http/modules/ngx_http_static_handler.c \
-           src/http/modules/ngx_http_index_handler.c \
-           src/http/modules/ngx_http_chunked_filter.c \
-           src/http/modules/ngx_http_range_filter.c \
-           src/http/modules/ngx_http_headers_filter.c \
-           src/http/modules/ngx_http_not_modified_filter.c"
+           src/http/modules/ngx_http_static_module.c \
+           src/http/modules/ngx_http_index_module.c \
+           src/http/modules/ngx_http_chunked_filter_module.c \
+           src/http/modules/ngx_http_range_filter_module.c \
+           src/http/modules/ngx_http_headers_filter_module.c \
+           src/http/modules/ngx_http_not_modified_filter_module.c"
 
 # STUB
 HTTP_SRCS="$HTTP_SRCS src/http/ngx_http_busy_lock.c"
@@ -271,31 +271,31 @@ HTPP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
 
 
 HTTP_CHARSET_FILTER_MODULE=ngx_http_charset_filter_module
-HTTP_CHARSET_SRCS=src/http/modules/ngx_http_charset_filter.c
+HTTP_CHARSET_SRCS=src/http/modules/ngx_http_charset_filter_module.c
 
 
 HTTP_GZIP_FILTER_MODULE=ngx_http_gzip_filter_module
-HTTP_GZIP_SRCS=src/http/modules/ngx_http_gzip_filter.c
+HTTP_GZIP_SRCS=src/http/modules/ngx_http_gzip_filter_module.c
 
 
 HTTP_SSI_FILTER_MODULE=ngx_http_ssi_filter_module
-HTTP_SSI_SRCS=src/http/modules/ngx_http_ssi_filter.c
+HTTP_SSI_SRCS=src/http/modules/ngx_http_ssi_filter_module.c
 
 
 HTTP_USERID_FILTER_MODULE=ngx_http_userid_filter_module
-HTTP_USERID_SRCS=src/http/modules/ngx_http_userid_filter.c
+HTTP_USERID_SRCS=src/http/modules/ngx_http_userid_filter_module.c
 
 
 HTTP_ACCESS_MODULE=ngx_http_access_module
-HTTP_ACCESS_SRCS=src/http/modules/ngx_http_access_handler.c
+HTTP_ACCESS_SRCS=src/http/modules/ngx_http_access_module.c
 
 
 HTTP_AUTOINDEX_MODULE=ngx_http_autoindex_module
-HTTP_AUTOINDEX_SRCS=src/http/modules/ngx_http_autoindex_handler.c
+HTTP_AUTOINDEX_SRCS=src/http/modules/ngx_http_autoindex_module.c
 
 
 HTTP_STATUS_MODULE=ngx_http_status_module
-HTTP_STATUS_SRCS=src/http/modules/ngx_http_status_handler.c
+HTTP_STATUS_SRCS=src/http/modules/ngx_http_status_module.c
 
 
 HTTP_GEO_MODULE=ngx_http_geo_module
@@ -303,7 +303,7 @@ HTTP_GEO_SRCS=src/http/modules/ngx_http_geo_module.c
 
 
 HTTP_REWRITE_MODULE=ngx_http_rewrite_module
-HTTP_REWRITE_SRCS=src/http/modules/ngx_http_rewrite_handler.c
+HTTP_REWRITE_SRCS=src/http/modules/ngx_http_rewrite_module.c
 
 
 HTTP_SSL_MODULE=ngx_http_ssl_module
@@ -324,7 +324,7 @@ HTTP_PROXY_SRCS="src/http/modules/proxy/ngx_http_proxy_handler.c \
 
 
 HTTP_FASTCGI_MODULE=ngx_http_fastcgi_module
-HTTP_FASTCGI_SRCS=src/http/modules/ngx_http_fastcgi_handler.c
+HTTP_FASTCGI_SRCS=src/http/modules/ngx_http_fastcgi_module.c
 
 
 IMAP_INCS="src/imap"

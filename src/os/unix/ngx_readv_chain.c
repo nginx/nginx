@@ -9,16 +9,20 @@
 #include <ngx_event.h>
 
 
+#define NGX_IOVS  16
+
+
 #if (NGX_HAVE_KQUEUE)
 
-ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
+ssize_t
+ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
     u_char        *prev;
     ssize_t        n, size;
     ngx_err_t      err;
-    ngx_array_t    io;
+    ngx_array_t    vec;
     ngx_event_t   *rev;
-    struct iovec  *iov;
+    struct iovec  *iov, iovs[NGX_IOVS];
 
     rev = c->read; 
 
@@ -53,7 +57,11 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     iov = NULL;
     size = 0;
 
-    ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_ERROR);
+    vec.elts = iovs;
+    vec.nelts = 0;
+    vec.size = sizeof(struct iovec);
+    vec.nalloc = NGX_IOVS;
+    vec.pool = c->pool;
 
     /* coalesce the neighbouring bufs */
 
@@ -62,7 +70,11 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
             iov->iov_len += chain->buf->end - chain->buf->last;
 
         } else {
-            ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
+            iov = ngx_array_push(&vec);
+            if (iov == NULL) {
+                return NGX_ERROR;
+            }
+
             iov->iov_base = (void *) chain->buf->last;
             iov->iov_len = chain->buf->end - chain->buf->last;
         }
@@ -73,12 +85,12 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "readv: %d, last:%d", io.nelts, iov->iov_len);
+                   "readv: %d, last:%d", vec.nelts, iov->iov_len);
 
     rev = c->read;
 
     do {
-        n = readv(c->fd, (struct iovec *) io.elts, io.nelts);
+        n = readv(c->fd, (struct iovec *) vec.elts, vec.nelts);
 
         if (n >= 0) {
             if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
@@ -138,20 +150,25 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
 #else /* ! NGX_HAVE_KQUEUE */
 
-ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
+ssize_t
+ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
     u_char        *prev;
     ssize_t        n, size;
     ngx_err_t      err;
-    ngx_array_t    io;
+    ngx_array_t    vec;
     ngx_event_t   *rev;
-    struct iovec  *iov;
+    struct iovec  *iov, iovs[NGX_IOVS];
 
     prev = NULL;
     iov = NULL;
     size = 0;
 
-    ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_ERROR);
+    vec.elts = iovs;
+    vec.nelts = 0;
+    vec.size = sizeof(struct iovec);
+    vec.nalloc = NGX_IOVS;
+    vec.pool = c->pool;
 
     /* coalesce the neighbouring bufs */
 
@@ -160,7 +177,11 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
             iov->iov_len += chain->buf->end - chain->buf->last;
 
         } else {
-            ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
+            iov = ngx_array_push(&vec);
+            if (iov == NULL) {
+                return NGX_ERROR;
+            }
+
             iov->iov_base = chain->buf->last;
             iov->iov_len = chain->buf->end - chain->buf->last;
         }
@@ -171,12 +192,12 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "readv: %d:%d", io.nelts, iov->iov_len);
+                   "readv: %d:%d", vec.nelts, iov->iov_len);
 
     rev = c->read;
 
     do {
-        n = readv(c->fd, (struct iovec *) io.elts, io.nelts);
+        n = readv(c->fd, (struct iovec *) vec.elts, vec.nelts);
 
         if (n == 0) {
             rev->ready = 0;

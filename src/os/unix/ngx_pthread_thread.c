@@ -75,7 +75,8 @@ ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
     int           err;
     ngx_mutex_t  *m;
 
-    if (!(m = ngx_alloc(sizeof(ngx_mutex_t), log))) {
+    m = ngx_alloc(sizeof(ngx_mutex_t), log);
+    if (m == NULL) {
         return NULL;
     }
     
@@ -189,7 +190,8 @@ ngx_cond_t *ngx_cond_init(ngx_log_t *log)
     int          err;
     ngx_cond_t  *cv;
 
-    if (!(cv = ngx_alloc(sizeof(ngx_cond_t), log))) {
+    cv = ngx_alloc(sizeof(ngx_cond_t), log);
+    if (cv == NULL) {
         return NULL;
     }
     

@@ -165,13 +165,15 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                 /* allocate a new buf if it's still allowed */
 
-                if (!(b = ngx_create_temp_buf(p->pool, p->bufs.size))) {
+                b = ngx_create_temp_buf(p->pool, p->bufs.size);
+                if (b == NULL) {
                     return NGX_ABORT;
                 }
 
                 p->allocated++;
 
-                if (!(chain = ngx_alloc_chain_link(p->pool))) {
+                chain = ngx_alloc_chain_link(p->pool);
+                if (chain == NULL) {
                     return NGX_ABORT;
                 }
 
@@ -495,7 +497,13 @@ static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             }
 
             cl->next = NULL;
-            ngx_chain_add_link(out, ll, cl);
+
+            if (out) {
+                *ll = cl;
+            } else {
+                out = cl;
+            }
+            ll = &cl->next;
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
@@ -635,11 +643,17 @@ static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         b->in_file = 1;
         b->temp_file = 1;
 
-        ngx_chain_add_link(p->out, p->last_out, cl);
+        if (p->out) {
+            *p->last_out = cl;
+        } else {
+            p->out = cl;
+        }
+        p->last_out = &cl->next;
 
         if (b->last_shadow) {
 
-            if (!(tl = ngx_alloc_chain_link(p->pool))) {
+            tl = ngx_alloc_chain_link(p->pool);
+            if (tl == NULL) {
                 return NGX_ABORT;
             }
 
@@ -676,7 +690,8 @@ ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         p->free = p->free->next;
 
     } else {
-        if (!(b = ngx_alloc_buf(p->pool))) {
+        b = ngx_alloc_buf(p->pool);
+        if (b == NULL) {
             return NGX_ERROR;
         }
     }
@@ -688,7 +703,8 @@ ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
     b->recycled = 1;
     buf->shadow = b;
 
-    if (!(cl = ngx_alloc_chain_link(p->pool))) {
+    cl = ngx_alloc_chain_link(p->pool);
+    if (cl == NULL) {
         return NGX_ERROR;
     }
 
@@ -697,7 +713,12 @@ ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "input buf #%d", b->num);
 
-    ngx_chain_add_link(p->in, p->last_in, cl);
+    if (p->in) {
+        *p->last_in = cl;
+    } else {
+        p->in = cl;
+    }
+    p->last_in = &cl->next;
 
     return NGX_OK;
 }
@@ -766,7 +787,8 @@ ngx_int_t ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b)
 {
     ngx_chain_t  *cl;
 
-    if (!(cl = ngx_alloc_chain_link(p->pool))) {
+    cl = ngx_alloc_chain_link(p->pool);
+    if (cl == NULL) {
         return NGX_ERROR;
     }
 

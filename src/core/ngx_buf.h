@@ -119,25 +119,7 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
 #define ngx_alloc_buf(pool)  ngx_palloc(pool, sizeof(ngx_buf_t))
 #define ngx_calloc_buf(pool) ngx_pcalloc(pool, sizeof(ngx_buf_t))
 
-
 #define ngx_alloc_chain_link(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
-
-
-#define ngx_alloc_link_and_set_buf(chain, b, pool, error)                    \
-    do {                                                                     \
-        ngx_test_null(chain, ngx_alloc_chain_link(pool), error);             \
-        chain->buf = b;                                                      \
-        chain->next = NULL;                                                  \
-    } while (0);
-
-
-#define ngx_chain_add_link(chain, last, cl)                                  \
-    if (chain) {                                                             \
-        *last = cl;                                                          \
-    } else {                                                                 \
-        chain = cl;                                                          \
-    }                                                                        \
-    last = &cl->next
 
 
 ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in);

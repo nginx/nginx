@@ -56,7 +56,7 @@ extern char    *ngx_freebsd_kern_usrstack;
 extern size_t   ngx_thread_stack_size;
 
 
-static inline int ngx_gettid()
+static ngx_inline ngx_int_t ngx_gettid()
 {
     char  *sp;
 

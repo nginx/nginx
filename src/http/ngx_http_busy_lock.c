@@ -205,13 +205,15 @@ char *ngx_http_set_busy_lock_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     }
 
     /* ngx_calloc_shared() */
-    if (!(bl = ngx_pcalloc(cf->pool, sizeof(ngx_http_busy_lock_t)))) {
+    bl = ngx_pcalloc(cf->pool, sizeof(ngx_http_busy_lock_t));
+    if (bl == NULL) {
         return NGX_CONF_ERROR;
     }
     *blp = bl;
 
     /* ngx_calloc_shared() */
-    if (!(bl->mutex = ngx_pcalloc(cf->pool, sizeof(ngx_event_mutex_t)))) {
+    bl->mutex = ngx_pcalloc(cf->pool, sizeof(ngx_event_mutex_t));
+    if (bl->mutex == NULL) {
         return NGX_CONF_ERROR;
     }
 

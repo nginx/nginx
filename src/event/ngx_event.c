@@ -219,7 +219,8 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 
 #endif
 
-    if (!(shared = ngx_create_shared_memory(size, cycle->log))) {
+    shared = ngx_create_shared_memory(size, cycle->log);
+    if (shared == NULL) {
         return NGX_ERROR;
     }
 
@@ -272,7 +273,8 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     }
 
 #if (NGX_THREADS)
-    if (!(ngx_posted_events_mutex = ngx_mutex_init(cycle->log, 0))) {
+    ngx_posted_events_mutex = ngx_mutex_init(cycle->log, 0);
+    if (ngx_posted_events_mutex == NULL) {
         return NGX_ERROR;
     }
 #endif
@@ -497,42 +499,47 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat)
 
 static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    int                    m;
-    char                  *rv;
+    char                 *rv;
     void               ***ctx;
+    ngx_uint_t            i;
     ngx_conf_t            pcf;
-    ngx_event_module_t   *module;
+    ngx_event_module_t   *m;
 
     /* count the number of the event modules and set up their indices */
 
     ngx_event_max_module = 0;
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->type != NGX_EVENT_MODULE) {
             continue;
         }
 
-        ngx_modules[m]->ctx_index = ngx_event_max_module++;
+        ngx_modules[i]->ctx_index = ngx_event_max_module++;
     }
 
-    ngx_test_null(ctx, ngx_pcalloc(cf->pool, sizeof(void *)), NGX_CONF_ERROR);
+    ctx = ngx_pcalloc(cf->pool, sizeof(void *));
+    if (ctx == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
-    ngx_test_null(*ctx,
-                  ngx_pcalloc(cf->pool, ngx_event_max_module * sizeof(void *)),
-                  NGX_CONF_ERROR);
+    *ctx = ngx_pcalloc(cf->pool, ngx_event_max_module * sizeof(void *));
+    if (*ctx == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     *(void **) conf = ctx;
 
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->type != NGX_EVENT_MODULE) {
             continue;
         }
 
-        module = ngx_modules[m]->ctx;
+        m = ngx_modules[i]->ctx;
 
-        if (module->create_conf) {
-            ngx_test_null((*ctx)[ngx_modules[m]->ctx_index],
-                          module->create_conf(cf->cycle),
-                          NGX_CONF_ERROR);
+        if (m->create_conf) {
+            (*ctx)[ngx_modules[i]->ctx_index] = m->create_conf(cf->cycle);
+            if ((*ctx)[ngx_modules[i]->ctx_index] == NULL) {
+                return NGX_CONF_ERROR;
+            }
         }
     }
 
@@ -540,22 +547,23 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cf->ctx = ctx;
     cf->module_type = NGX_EVENT_MODULE;
     cf->cmd_type = NGX_EVENT_CONF;
+
     rv = ngx_conf_parse(cf, NULL);
+
     *cf = pcf;
 
     if (rv != NGX_CONF_OK)
         return rv;
 
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->type != NGX_EVENT_MODULE) {
             continue;
         }
 
-        module = ngx_modules[m]->ctx;
+        m = ngx_modules[i]->ctx;
 
-        if (module->init_conf) {
-            rv = module->init_conf(cf->cycle,
-                                   (*ctx)[ngx_modules[m]->ctx_index]);
+        if (m->init_conf) {
+            rv = m->init_conf(cf->cycle, (*ctx)[ngx_modules[i]->ctx_index]);
             if (rv != NGX_CONF_OK) {
                 return rv;
             }
@@ -668,7 +676,8 @@ static char *ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd,
 
     /* AF_INET only */
 
-    if (!(addr = ngx_push_array(&ecf->debug_connection))) {
+    addr = ngx_array_push(&ecf->debug_connection);
+    if (addr == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -704,8 +713,10 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
 {
     ngx_event_conf_t  *ecf;
 
-    ngx_test_null(ecf, ngx_palloc(cycle->pool, sizeof(ngx_event_conf_t)),
-                  NGX_CONF_ERROR);
+    ecf = ngx_palloc(cycle->pool, sizeof(ngx_event_conf_t));
+    if (ecf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     ecf->connections = NGX_CONF_UNSET_UINT;
     ecf->use = NGX_CONF_UNSET_UINT;
@@ -715,8 +726,13 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
     ecf->name = (void *) NGX_CONF_UNSET;
 
 #if (NGX_DEBUG)
-    ngx_init_array(ecf->debug_connection, cycle->pool, 4, sizeof(in_addr_t),
-                   NGX_CONF_ERROR);
+
+    if (ngx_array_init(&ecf->debug_connection, cycle->pool, 4,
+                       sizeof(in_addr_t)) == NGX_ERROR)
+    {
+        return NGX_CONF_ERROR;
+    }
+
 #endif
 
     return ecf;
@@ -727,7 +743,12 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_event_conf_t  *ecf = conf;
 
-    int                  fd, rtsig;
+#if (NGX_HAVE_EPOLL) && !(NGX_TEST_BUILD_EPOLL)
+    int                  fd;
+#endif
+#if (NGX_HAVE_RTSIG)
+    ngx_uint_t           rtsig;
+#endif
     ngx_int_t            i, connections;
     ngx_module_t        *module;
     ngx_core_conf_t     *ccf;
@@ -735,8 +756,6 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
     connections = NGX_CONF_UNSET_UINT;
     module = NULL;
-    rtsig = 0;
-    fd = 0;
 
 #if (NGX_HAVE_EPOLL) && !(NGX_TEST_BUILD_EPOLL)
 
@@ -760,6 +779,9 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
         connections = DEFAULT_CONNECTIONS;
         module = &ngx_rtsig_module;
         rtsig = 1;
+
+    } else {
+        rtsig = 0;
     }
 
 #endif
@@ -782,11 +804,10 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
     if (module == NULL) {
 
-#if (NGX_WIN32)
+#if (NGX_WIN32 || FD_SETSIZE >= DEFAULT_CONNECTIONS)
         connections = DEFAULT_CONNECTIONS;
 #else
-        connections = FD_SETSIZE < DEFAULT_CONNECTIONS ? FD_SETSIZE:
-                                                         DEFAULT_CONNECTIONS;
+        connections = FD_SETSIZE;
 #endif
         module = &ngx_select_module;
     }
@@ -828,7 +849,15 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_msec_value(ecf->accept_mutex_delay, 500);
 
 
-    if (!rtsig || ecf->accept_mutex) {
+#if (NGX_HAVE_RTSIG)
+
+    if (!rtsig) {
+        return NGX_CONF_OK;
+    }
+
+#endif
+
+    if (ecf->accept_mutex) {
         return NGX_CONF_OK;
     }
 

@@ -244,7 +244,8 @@ ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 
         u->port = u->default_port_value;
 
-        if (!(u->port_text.data = ngx_palloc(cf->pool, sizeof("65536") - 1))) {
+        u->port_text.data = ngx_palloc(cf->pool, sizeof("65536") - 1);
+        if (u->port_text.data == NULL) {
             return NULL;
         }
 
@@ -271,7 +272,8 @@ ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 
     u->port = htons(u->port);
 
-    if (!(host = ngx_palloc(cf->pool, u->host.len + 1))) {
+    host = ngx_palloc(cf->pool, u->host.len + 1);
+    if (host == NULL) {
         return NULL;
     }
 
@@ -297,7 +299,6 @@ ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 
         peers = ngx_pcalloc(cf->pool,
                             sizeof(ngx_peers_t) + sizeof(ngx_peer_t) * (i - 1));
-
         if (peers == NULL) {
             return NULL;
         }
@@ -307,7 +308,8 @@ ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 
         for (i = 0; h->h_addr_list[i] != NULL; i++) {
 
-            if (!(sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in)))) {
+            sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
+            if (sin == NULL) {
                 return NULL;
             }
 
@@ -320,7 +322,8 @@ ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 
             len = INET_ADDRSTRLEN - 1 + 1 + u->port_text.len;
     
-            if (!(peers->peer[i].name.data = ngx_palloc(cf->pool, len))) {
+            peers->peer[i].name.data = ngx_palloc(cf->pool, len);
+            if (peers->peer[i].name.data == NULL) {
                 return NULL;
             }
 
@@ -345,11 +348,13 @@ ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 
         /* MP: ngx_shared_palloc() */
 
-        if (!(peers = ngx_pcalloc(cf->pool, sizeof(ngx_peers_t)))) {
+        peers = ngx_pcalloc(cf->pool, sizeof(ngx_peers_t));
+        if (peers == NULL) {
             return NULL;
         }
 
-        if (!(sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in)))) {
+        sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
+        if (sin == NULL) {
             return NULL;
         }
 
@@ -366,7 +371,8 @@ ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 
         peers->peer[0].name.len = len;
 
-        if (!(peers->peer[0].name.data = ngx_palloc(cf->pool, len))) {
+        peers->peer[0].name.data = ngx_palloc(cf->pool, len);
+        if (peers->peer[0].name.data == NULL) {
             return NULL;
         }
 

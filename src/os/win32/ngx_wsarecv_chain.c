@@ -9,16 +9,21 @@
 #include <ngx_event.h>
 
 
-ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
+#define NGX_WSABUFS  8 
+
+
+ssize_t
+ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
     int           rc;
     u_char       *prev;
     u_long        bytes, flags;
     size_t        size;
-    WSABUF       *wsabuf;
     ngx_err_t     err;
-    ngx_array_t   io;
+    ngx_array_t   vec;
     ngx_event_t  *rev;
+    LPWSABUF      wsabuf;
+    WSABUF        wsabufs[NGX_WSABUFS];
 
     prev = NULL;
     wsabuf = NULL;
@@ -26,7 +31,11 @@ ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     size = 0;
     bytes = 0;
 
-    ngx_init_array(io, c->pool, 10, sizeof(WSABUF), NGX_ERROR);
+    vec.elts = wsabufs;
+    vec.nelts = 0;
+    vec.size = sizeof(WSABUF);
+    vec.nalloc = NGX_WSABUFS; 
+    vec.pool = c->pool;
 
     /* coalesce the neighbouring bufs */
 
@@ -35,7 +44,11 @@ ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
             wsabuf->len += chain->buf->end - chain->buf->last;
 
         } else {
-            ngx_test_null(wsabuf, ngx_push_array(&io), NGX_ERROR);
+            wsabuf = ngx_array_push(&vec);
+            if (wsabuf == NULL) {
+                return NGX_ERROR;
+            }
+
             wsabuf->buf = (char *) chain->buf->last;
             wsabuf->len = chain->buf->end - chain->buf->last;
         }
@@ -46,10 +59,10 @@ ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "WSARecv: %d:%d", io.nelts, wsabuf->len);
+                   "WSARecv: %d:%d", vec.nelts, wsabuf->len);
 
 
-    rc = WSARecv(c->fd, io.elts, io.nelts, &bytes, &flags, NULL, NULL);
+    rc = WSARecv(c->fd, vec.elts, vec.nelts, &bytes, &flags, NULL, NULL);
 
     rev = c->read;
 

@@ -31,7 +31,8 @@ ngx_event_timer_init(ngx_log_t *log)
     ngx_event_timer_rbtree = &ngx_event_timer_sentinel;
 
 #if (NGX_THREADS)
-    if (!(ngx_event_timer_mutex = ngx_mutex_init(log, 0))) {
+    ngx_event_timer_mutex = ngx_mutex_init(log, 0);
+    if (ngx_event_timer_mutex == NULL) {
         return NGX_ERROR;
     }
 #endif

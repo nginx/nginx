@@ -19,11 +19,13 @@ void *ngx_list_push(ngx_list_t *l)
 
         /* the last part is full, allocate a new list part */
 
-        if (!(last = ngx_palloc(l->pool, sizeof(ngx_list_part_t)))) {
+        last = ngx_palloc(l->pool, sizeof(ngx_list_part_t));
+        if (last == NULL) {
             return NULL;
         }
 
-        if (!(last->elts = ngx_palloc(l->pool, l->nalloc * l->size))) {
+        last->elts = ngx_palloc(l->pool, l->nalloc * l->size);
+        if (last->elts == NULL) {
             return NULL;
         }
 

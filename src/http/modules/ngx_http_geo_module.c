@@ -64,9 +64,9 @@ static ngx_http_variable_value_t  ngx_http_geo_null_value =
 /* AF_INET only */
 
 static ngx_http_variable_value_t *
-ngx_http_geo_variable(ngx_http_request_t *r, void *data)
+ngx_http_geo_variable(ngx_http_request_t *r, uintptr_t data)
 {
-    ngx_radix_tree_t *tree = data;
+    ngx_radix_tree_t *tree = (ngx_radix_tree_t *) data;
 
     struct sockaddr_in         *sin;
     ngx_http_variable_value_t  *var;
@@ -90,33 +90,46 @@ static char *
 ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                 *rv;
-    ngx_str_t            *value;
+    ngx_str_t            *value, name;
     ngx_conf_t            save;
     ngx_pool_t           *pool;
     ngx_radix_tree_t     *tree;
     ngx_http_geo_conf_t   geo;
     ngx_http_variable_t  *var;
 
-    if (!(var = ngx_http_add_variable(cf))) {
-        return NGX_CONF_ERROR;
-    }
-
-    if (!(tree = ngx_radix_tree_create(cf->pool, -1))) {
-        return NGX_CONF_ERROR;
-    }
-
     value = cf->args->elts;
 
-    var->name = value[1];
+    name = value[1];
+
+    if (name.data[0] != '$') {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "\"%V\" variable name should start with '$'",
+                           &value[1]);
+    } else {
+        name.len--;
+        name.data++;
+    }
+
+    var = ngx_http_add_variable(cf, &name, 1);
+    if (var == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    tree = ngx_radix_tree_create(cf->pool, -1);
+    if (tree == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
     var->handler = ngx_http_geo_variable;
-    var->data = tree;
+    var->data = (uintptr_t) tree;
 
     /*
      * create the temporary pool of a huge initial size
      * to process quickly a large number of geo lines
      */
 
-    if (!(pool = ngx_create_pool(512 * 1024, cf->log))) {
+    pool = ngx_create_pool(512 * 1024, cf->log);
+    if (pool == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -212,7 +225,12 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
     if (n == NGX_ERROR) {
         for (i = 0; i < geo->values.nelts; i++) {
-            if (ngx_strcmp(value[1].data, v[i]->text.data) == 0) {
+            if (v[i]->text.len != value[1].len) {
+                continue;
+            }
+
+            if (ngx_strncmp(value[1].data, v[i]->text.data, value[1].len) == 0)
+            {
                 var = v[i];
                 break;
             }
@@ -227,20 +245,22 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         }
     }
 
-    if (i == geo->values.nelts) {
+    if (var == NULL) {
         var = ngx_palloc(geo->pool, sizeof(ngx_http_variable_value_t));
         if (var == NULL) {
             return NGX_CONF_ERROR;
         }
 
         var->text.len = value[1].len;
-        if (!(var->text.data = ngx_pstrdup(geo->pool, &value[1]))) {
+        var->text.data = ngx_pstrdup(geo->pool, &value[1]);
+        if (var->text.data == NULL) {
             return NGX_CONF_ERROR;
         }
 
         var->value = (n == NGX_ERROR) ? 0 : n;
 
-        if (!(v = ngx_array_push(&geo->values))) {
+        v = ngx_array_push(&geo->values);
+        if (v == NULL) {
             return NGX_CONF_ERROR;
         }
 

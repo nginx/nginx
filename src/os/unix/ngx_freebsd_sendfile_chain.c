@@ -21,19 +21,19 @@
  * to postpone the sending - it not only sends a header and the first part of
  * the file in one packet, but also sends the file pages in the full packets.
  *
- * But until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush a pending
- * data that less than MSS so that data may be sent with 5 second delay.
- * So we do not use TCP_NOPUSH on FreeBSD prior to 4.5 although it can be used
+ * But until FreeBSD 4.5 turning TCP_NOPUSH off does not flush a pending
+ * data that less than MSS, so that data may be sent with 5 second delay.
+ * So we do not use TCP_NOPUSH on FreeBSD prior to 4.5, although it can be used
  * for non-keepalive HTTP connections.
  */
 
 
 #define NGX_HEADERS   8
-#define NGX_TRAILERS  4
+#define NGX_TRAILERS  8
 
 
-ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
-                                        off_t limit)
+ngx_chain_t *
+ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     int              rc;
     u_char          *prev;
@@ -123,7 +123,8 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                 iov->iov_len += (size_t) size;
 
             } else {
-                if (!(iov = ngx_array_push(&header))) {
+                iov = ngx_array_push(&header);
+                if (iov == NULL) {
                     return NGX_CHAIN_ERROR;
                 }
 
@@ -197,7 +198,8 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                     iov->iov_len += (size_t) size;
 
                 } else {
-                    if (!(iov = ngx_array_push(&trailer))) {
+                    iov = ngx_array_push(&trailer);
+                    if (iov == NULL) {
                         return NGX_CHAIN_ERROR;
                     }
 

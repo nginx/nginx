@@ -123,11 +123,13 @@ ngx_kqueue_init(ngx_cycle_t *cycle)
 
 #if (NGX_THREADS)
 
-        if (!(list_mutex = ngx_mutex_init(cycle->log, 0))) {
+        list_mutex = ngx_mutex_init(cycle->log, 0);
+        if (list_mutex == NULL) {
             return NGX_ERROR;
         }
 
-        if (!(kevent_mutex = ngx_mutex_init(cycle->log, 0))) {
+        kevent_mutex = ngx_mutex_init(cycle->log, 0);
+        if (kevent_mutex == NULL) {
             return NGX_ERROR;
         }
 
@@ -797,8 +799,10 @@ ngx_kqueue_create_conf(ngx_cycle_t *cycle)
 {
     ngx_kqueue_conf_t  *kcf;
 
-    ngx_test_null(kcf, ngx_palloc(cycle->pool, sizeof(ngx_kqueue_conf_t)),
-                  NGX_CONF_ERROR);
+    kcf = ngx_palloc(cycle->pool, sizeof(ngx_kqueue_conf_t));
+    if (kcf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     kcf->changes = NGX_CONF_UNSET;
     kcf->events = NGX_CONF_UNSET;

@@ -20,8 +20,6 @@ static void ngx_ssl_read_handler(ngx_event_t *rev);
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
-    ENGINE  *engine;
-
     SSL_library_init();
     SSL_load_error_strings();
     ENGINE_load_builtin_engines();
@@ -36,11 +34,13 @@ ngx_ssl_create_session(ngx_ssl_ctx_t *ssl_ctx, ngx_connection_t *c,
 {   
     ngx_ssl_t  *ssl;
 
-    if (!(ssl = ngx_pcalloc(c->pool, sizeof(ngx_ssl_t)))) {
+    ssl = ngx_pcalloc(c->pool, sizeof(ngx_ssl_t));
+    if (ssl == NULL) {
         return NGX_ERROR;
     }
 
-    if (!(ssl->buf = ngx_create_temp_buf(c->pool, NGX_SSL_BUFSIZE))) {
+    ssl->buf = ngx_create_temp_buf(c->pool, NGX_SSL_BUFSIZE);
+    if (ssl->buf == NULL) {
         return NGX_ERROR;
     }
 
@@ -586,7 +586,7 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
     p = ngx_vsnprintf(errstr, sizeof(errstr) - 1, fmt, args);
     va_end(args);
 
-    p = ngx_cpystrn(p, " (SSL: ", last - p);
+    p = ngx_cpystrn(p, (u_char *) " (SSL: ", last - p);
 
     ERR_error_string_n(ERR_get_error(), (char *) p, last - p);
 

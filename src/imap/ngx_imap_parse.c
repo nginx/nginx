@@ -122,7 +122,8 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
             case ' ':
             case CR:
             case LF:
-                if (!(arg = ngx_array_push(&s->args))) {
+                arg = ngx_array_push(&s->args);
+                if (arg == NULL) {
                     return NGX_ERROR;
                 }
                 arg->len = p - 1 - s->arg_start;
@@ -169,7 +170,8 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
 
     if (state == sw_done) {
         if (s->arg_start) {
-            if (!(arg = ngx_array_push(&s->args))) {
+            arg = ngx_array_push(&s->args);
+            if (arg == NULL) {
                 return NGX_ERROR;
             }
             arg->len = s->arg_end - s->arg_start;

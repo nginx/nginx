@@ -253,11 +253,13 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
         name = NULL;
     }
 
-    if (!(log = ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)))) {
+    log = ngx_pcalloc(cycle->pool, sizeof(ngx_log_t));
+    if (log == NULL) {
         return NULL;
     }
 
-    if (!(log->file = ngx_conf_open_file(cycle, name))) {
+    log->file = ngx_conf_open_file(cycle, name);
+    if (log->file == NULL) {
         return NULL;
     }
 

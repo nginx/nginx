@@ -19,7 +19,7 @@ static void *ngx_http_ssl_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
-                                         void *parent, void *child);
+    void *parent, void *child);
 
 
 static ngx_command_t  ngx_http_ssl_commands[] = {
@@ -87,11 +87,13 @@ ngx_module_t  ngx_http_ssl_module = {
 };
 
 
-static void *ngx_http_ssl_create_main_conf(ngx_conf_t *cf)
+static void *
+ngx_http_ssl_create_main_conf(ngx_conf_t *cf)
 {
     ngx_http_ssl_main_conf_t  *mcf;
 
-    if (!(mcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_main_conf_t)))) {
+    mcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_main_conf_t));
+    if (mcf == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -106,7 +108,8 @@ static void *ngx_http_ssl_create_main_conf(ngx_conf_t *cf)
 }
 
 
-static char *ngx_http_ssl_init_main_conf(ngx_conf_t *cf, void *conf)
+static char *
+ngx_http_ssl_init_main_conf(ngx_conf_t *cf, void *conf)
 {
     ngx_http_ssl_main_conf_t *mcf = conf;
 
@@ -137,11 +140,13 @@ static char *ngx_http_ssl_init_main_conf(ngx_conf_t *cf, void *conf)
 }
 
 
-static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
+static void *
+ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
 {
     ngx_http_ssl_srv_conf_t  *scf;
 
-    if (!(scf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_srv_conf_t)))) {
+    scf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_srv_conf_t));
+    if (scf == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -162,8 +167,8 @@ static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
 }
 
 
-static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
-                                         void *parent, void *child)
+static char *
+ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_ssl_srv_conf_t *prev = parent;
     ngx_http_ssl_srv_conf_t *conf = child;
@@ -226,7 +231,8 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
 
 #if 0
 
-static ngx_int_t ngx_http_ssl_init_process(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_http_ssl_init_process(ngx_cycle_t *cycle)
 {
     ngx_uint_t                   i;
     ngx_http_ssl_srv_conf_t     *sscf;

@@ -98,10 +98,7 @@ extern LPFN_GETACCEPTEXSOCKADDRS  getacceptexsockaddrs;
 extern LPFN_TRANSMITFILE          transmitfile;
 
 
-static ngx_inline int ngx_tcp_push(ngx_socket_t s) {
-     return 0;
-}
-
+int ngx_tcp_push(ngx_socket_t s);
 #define ngx_tcp_push_n        "tcp_push()"
 
 

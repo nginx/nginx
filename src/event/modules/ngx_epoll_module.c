@@ -133,7 +133,6 @@ ngx_module_t  ngx_epoll_module = {
 static ngx_int_t
 ngx_epoll_init(ngx_cycle_t *cycle)
 {
-    size_t             n;
     ngx_event_conf_t  *ecf;
     ngx_epoll_conf_t  *epcf;
 
@@ -380,7 +379,6 @@ static ngx_int_t
 ngx_epoll_process_events(ngx_cycle_t *cycle)
 {
     int                events;
-    size_t             n;
     uint32_t           revents;
     ngx_int_t          instance, i;
     ngx_uint_t         lock, accept_lock, expire;
@@ -663,8 +661,10 @@ ngx_epoll_create_conf(ngx_cycle_t *cycle)
 {
     ngx_epoll_conf_t  *epcf;
 
-    ngx_test_null(epcf, ngx_palloc(cycle->pool, sizeof(ngx_epoll_conf_t)),
-                  NGX_CONF_ERROR);
+    epcf = ngx_palloc(cycle->pool, sizeof(ngx_epoll_conf_t));
+    if (epcf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     epcf->events = NGX_CONF_UNSET;
 

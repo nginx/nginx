@@ -70,8 +70,8 @@ static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
-
-void ngx_time_init(void)
+void
+ngx_time_init(void)
 {
     struct timeval  tv;
 
@@ -104,9 +104,12 @@ void ngx_time_init(void)
 
 #if (NGX_THREADS)
 
-ngx_int_t ngx_time_mutex_init(ngx_log_t *log)
+ngx_int_t
+ngx_time_mutex_init(ngx_log_t *log)
 {
-    if (!(ngx_time_mutex = ngx_mutex_init(log, NGX_MUTEX_LIGHT))) {
+    ngx_time_mutex = ngx_mutex_init(log, NGX_MUTEX_LIGHT);
+
+    if (ngx_time_mutex == NULL) {
         return NGX_ERROR;
     }
 
@@ -116,7 +119,8 @@ ngx_int_t ngx_time_mutex_init(ngx_log_t *log)
 #endif
 
 
-void ngx_time_update(time_t s)
+void
+ngx_time_update(time_t s)
 {
     u_char    *p;
     ngx_tm_t   tm;
@@ -209,7 +213,8 @@ void ngx_time_update(time_t s)
 }
 
 
-u_char *ngx_http_time(u_char *buf, time_t t)
+u_char *
+ngx_http_time(u_char *buf, time_t t)
 {
     ngx_tm_t  tm;
 
@@ -226,7 +231,8 @@ u_char *ngx_http_time(u_char *buf, time_t t)
 }
 
 
-u_char *ngx_http_cookie_time(u_char *buf, time_t t)
+u_char *
+ngx_http_cookie_time(u_char *buf, time_t t)
 {
     ngx_tm_t  tm;
 
@@ -252,7 +258,8 @@ u_char *ngx_http_cookie_time(u_char *buf, time_t t)
 }
 
 
-void ngx_gmtime(time_t t, ngx_tm_t *tp)
+void
+ngx_gmtime(time_t t, ngx_tm_t *tp)
 {
     ngx_int_t  sec, min, hour, mday, mon, year, wday, yday, days;
 

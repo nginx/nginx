@@ -153,6 +153,7 @@ do
         --with-pcre-opt=*)               PCRE_OPT="$value"          ;;
 
         --with-openssl=*)                OPENSSL="$value"           ;;
+        --with-openssl-opt=*)            OPENSSL_OPT="$value"       ;;
 
         --with-md5=*)                    MD5="$value"               ;;
         --with-md5-opt=*)                MD5_OPT="$value"           ;;
@@ -203,6 +204,7 @@ cat << END
   --with-http_ssl_module             enable ngx_http_ssl_module
   --without-http_charset_module      disable ngx_http_charset_module
   --without-http_gzip_module         disable ngx_http_gzip_module
+  --without-http_ssi_module          disable ngx_http_ssi_module
   --without-http_userid_module       disable ngx_http_userid_module
   --without-http_access_module       disable ngx_http_access_module
   --without-http_autoindex_module    disable ngx_http_autoindex_module
@@ -241,6 +243,7 @@ cat << END
                                      pentium, pentiumpro
 
   --with-openssl=DIR                 set path to OpenSSL library sources
+  --with-openssl-opt=OPTIONS         set additional options for OpenSSL building
 
   --with-debug                       enable the debugging logging
 

@@ -70,7 +70,8 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 #define ngx_conf_merge_path_value(curr, prev, path, l1, l2, l3, clean, cf)    \
     if (curr == NULL) {                                                       \
         if (prev == NULL) {                                                   \
-            if (!(curr = ngx_palloc(cf->pool, sizeof(ngx_path_t)))) {         \
+            curr = ngx_palloc(cf->pool, sizeof(ngx_path_t));                  \
+            if (curr == NULL) {                                               \
                 return NGX_CONF_ERROR;                                        \
             }                                                                 \
                                                                               \

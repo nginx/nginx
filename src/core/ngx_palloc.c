@@ -8,11 +8,13 @@
 #include <ngx_core.h>
 
 
-ngx_pool_t *ngx_create_pool(size_t size, ngx_log_t *log)
+ngx_pool_t *
+ngx_create_pool(size_t size, ngx_log_t *log)
 {
     ngx_pool_t  *p;
 
-    if (!(p = ngx_alloc(size, log))) {
+    p = ngx_alloc(size, log);
+    if (p == NULL) {
        return NULL;
     }
 
@@ -26,7 +28,8 @@ ngx_pool_t *ngx_create_pool(size_t size, ngx_log_t *log)
 }
 
 
-void ngx_destroy_pool(ngx_pool_t *pool)
+void
+ngx_destroy_pool(ngx_pool_t *pool)
 {
     ngx_pool_t        *p, *n;
     ngx_pool_large_t  *l;
@@ -68,7 +71,8 @@ void ngx_destroy_pool(ngx_pool_t *pool)
 }
 
 
-void *ngx_palloc(ngx_pool_t *pool, size_t size)
+void *
+ngx_palloc(ngx_pool_t *pool, size_t size)
 {
     u_char            *m;
     ngx_pool_t        *p, *n;
@@ -94,7 +98,8 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
 
         /* allocate a new pool block */
 
-        if (!(n = ngx_create_pool((size_t) (p->end - (u_char *) p), p->log))) {
+        n = ngx_create_pool((size_t) (p->end - (u_char *) p), p->log);
+        if (n == NULL) {
             return NULL;
         }
 
@@ -125,7 +130,8 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
     }
 
     if (large == NULL) {
-        if (!(large = ngx_palloc(pool, sizeof(ngx_pool_large_t)))) {
+        large = ngx_palloc(pool, sizeof(ngx_pool_large_t));
+        if (large == NULL) {
             return NULL;
         }
 
@@ -133,11 +139,13 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
     }
 
 #if 0
-    if (!(p = ngx_memalign(ngx_pagesize, size, pool->log))) {
+    p = ngx_memalign(ngx_pagesize, size, pool->log);
+    if (p == NULL) {
         return NULL;
     }
 #else
-    if (!(p = ngx_alloc(size, pool->log))) {
+    p = ngx_alloc(size, pool->log);
+    if (p == NULL) {
         return NULL;
     }
 #endif
@@ -155,7 +163,8 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
 }
 
 
-ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p)
+ngx_int_t
+ngx_pfree(ngx_pool_t *pool, void *p)
 {
     ngx_pool_large_t  *l;
 
@@ -174,7 +183,8 @@ ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p)
 }
 
 
-void *ngx_pcalloc(ngx_pool_t *pool, size_t size)
+void *
+ngx_pcalloc(ngx_pool_t *pool, size_t size)
 {
     void *p;
 
@@ -188,7 +198,8 @@ void *ngx_pcalloc(ngx_pool_t *pool, size_t size)
 
 #if 0
 
-static void *ngx_get_cached_block(size_t size)
+static void *
+ngx_get_cached_block(size_t size)
 {
     void                     *p;
     ngx_cached_block_slot_t  *slot;

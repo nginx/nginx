@@ -145,7 +145,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     size_t                     len;
     ngx_uint_t                 status, i;
     ngx_buf_t                 *b;
-    ngx_chain_t               *ln;
+    ngx_chain_t                out;
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
     ngx_http_core_loc_conf_t  *clcf;
@@ -311,7 +311,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
                + sizeof(CRLF) - 1;
     }
 
-    if (!(b = ngx_create_temp_buf(r->pool, len))) {
+    b = ngx_create_temp_buf(r->pool, len);
+    if (b == NULL) {
         return NGX_ERROR;
     }
 
@@ -461,14 +462,10 @@ ngx_http_header_filter(ngx_http_request_t *r)
         b->last_buf = 1;
     }
 
-    if (!(ln = ngx_alloc_chain_link(r->pool))) {
-        return NGX_ERROR;
-    }
+    out.buf = b;
+    out.next = NULL;
 
-    ln->buf = b;
-    ln->next = NULL;
-
-    return ngx_http_write_filter(r, ln);
+    return ngx_http_write_filter(r, &out);
 }
 
 

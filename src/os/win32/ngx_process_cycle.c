@@ -206,7 +206,7 @@ static void *ngx_worker_thread_cycle(void *data)
 
     cycle = (ngx_cycle_t *) ngx_cycle;
 
-    for ( ;; ) {
+    while (!ngx_quit) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
         ngx_process_events(cycle);

@@ -7,7 +7,7 @@
 # optimizations
 
 CFLAGS="$CFLAGS -O"
-# inline functions declared with __inline
+# inline the functions declared with __inline
 #CFLAGS="$CFLAGS -Ob1"
 # inline any function, at the compiler's discretion
 CFLAGS="$CFLAGS -Ob2"
@@ -54,14 +54,34 @@ fi
 
 # warnings
 
-CFLAGS="$CFLAGS -w1"
-#CFLAGS="$CFLAGS -w2"
+CFLAGS="$CFLAGS -w2"
 
-# disable the ICC 8.1 errors:
-#    error #181: argument is incompatible with corresponding format
-#                string conversion
-#    error #269: invalid format string conversion
-CFLAGS="$CFLAGS -wd181 -wd269"
+# disable some warnings
+
+# invalid type conversion: "int" to "char *"
+CFLAGS="$CFLAGS -wd171"
+# argument is incompatible with corresponding format string conversion
+CFLAGS="$CFLAGS -wd181"
+# zero used for undefined preprocessing identifier
+CFLAGS="$CFLAGS -wd193"
+# invalid format string conversion
+CFLAGS="$CFLAGS -wd269"
+# conversion from "long long" to "size_t" may lose significant bits
+CFLAGS="$CFLAGS -wd810"
+# parameter was never referenced
+CFLAGS="$CFLAGS -wd869"
+
+# STUB
+# enumerated type mixed with another type
+CFLAGS="$CFLAGS -wd188"
+# controlling expression is constant
+CFLAGS="$CFLAGS -wd279"
+# operands are evaluated in unspecified order
+CFLAGS="$CFLAGS -wd981"
+# external definition with no prior declaration
+CFLAGS="$CFLAGS -wd1418"
+# external declaration in primary source file
+CFLAGS="$CFLAGS -wd1419"
 
 # stop on warning
 CFLAGS="$CFLAGS -Werror"

@@ -34,8 +34,7 @@ u_char *ngx_strerror_r(int err, u_char *errstr, size_t size)
 
 u_char *ngx_strerror_r(int err, u_char *errstr, size_t size)
 {
-    char    *str;
-    size_t   len;
+    char  *str;
 
     if (size == 0) {
         return 0;

@@ -131,7 +131,6 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
     u_char        *prev;
     size_t         size;
     ssize_t        n;
-    ngx_err_t      err;
     ngx_array_t    vec;
     struct iovec  *iov, iovs[NGX_IOVS];
 
@@ -162,7 +161,8 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
                 iov->iov_len += cl->buf->last - cl->buf->pos;
 
             } else {
-                if (!(iov = ngx_array_push(&vec))) {
+                iov = ngx_array_push(&vec);
+                if (iov == NULL) {
                     return NGX_ERROR;
                 }
 

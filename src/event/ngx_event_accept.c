@@ -16,7 +16,10 @@ static u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
 void
 ngx_event_accept(ngx_event_t *ev)
 {
-    ngx_uint_t         instance, accepted;
+    ngx_uint_t         instance;
+#if 0
+    ngx_uint_t         accepted;
+#endif
     socklen_t          len;
     struct sockaddr   *sa;
     ngx_err_t          err;
@@ -43,8 +46,10 @@ ngx_event_accept(ngx_event_t *ev)
                    &ls->listening->addr_text, ev->available);
 
     ev->ready = 0;
-    accepted = 0;
     pool = NULL;
+#if 0
+    accepted = 0;
+#endif
 
     do {
 
@@ -56,17 +61,20 @@ ngx_event_accept(ngx_event_t *ev)
              * case and besides the pool can be got from the free pool list.
              */
 
-            if (!(pool = ngx_create_pool(ls->listening->pool_size, ev->log))) {
+            pool = ngx_create_pool(ls->listening->pool_size, ev->log);
+            if (pool == NULL) {
                 return;
             }
         }
 
-        if (!(sa = ngx_palloc(pool, ls->listening->socklen))) {
+        sa = ngx_palloc(pool, ls->listening->socklen);
+        if (sa == NULL) {
             ngx_destroy_pool(pool);
             return;
         }
 
-        if (!(log = ngx_palloc(pool, sizeof(ngx_log_t)))) {
+        log = ngx_palloc(pool, sizeof(ngx_log_t));
+        if (log == NULL) {
             ngx_destroy_pool(pool);
             return;
         }
@@ -331,7 +339,9 @@ ngx_event_accept(ngx_event_t *ev)
             ev->available--;
         }
 
+#if 0
         accepted++;
+#endif
 
     } while (ev->available);
 }

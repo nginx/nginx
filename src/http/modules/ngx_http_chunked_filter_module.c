@@ -40,7 +40,8 @@ static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
-static ngx_int_t ngx_http_chunked_header_filter(ngx_http_request_t *r)
+static ngx_int_t
+ngx_http_chunked_header_filter(ngx_http_request_t *r)
 {
     if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED) {
         return ngx_http_next_header_filter(r);
@@ -59,8 +60,8 @@ static ngx_int_t ngx_http_chunked_header_filter(ngx_http_request_t *r)
 }
 
 
-static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
-                                              ngx_chain_t *in)
+static ngx_int_t
+ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     u_char       *chunk;
     off_t         size;
@@ -85,7 +86,8 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
 
         if (cl->buf->flush || ngx_buf_in_memory(cl->buf) || cl->buf->in_file) {
 
-            if (!(tl = ngx_alloc_chain_link(r->pool))) {
+            tl = ngx_alloc_chain_link(r->pool);
+            if (tl == NULL) {
                 return NGX_ERROR;
             }
 
@@ -102,9 +104,12 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
     }
 
     if (size) {
-        if (!(b = ngx_calloc_buf(r->pool))) {
+        b = ngx_calloc_buf(r->pool);
+        if (b == NULL) {
             return NGX_ERROR;
         }
+
+        /* the "0000000000000000" is 64-bit hexadimal string */
 
         chunk = ngx_palloc(r->pool, sizeof("0000000000000000" CRLF) - 1);
         if (chunk == NULL) {
@@ -119,7 +124,8 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
     }
 
     if (cl->buf->last_buf) {
-        if (!(b = ngx_calloc_buf(r->pool))) {
+        b = ngx_calloc_buf(r->pool);
+        if (b == NULL) {
             return NGX_ERROR;
         }
 
@@ -144,7 +150,8 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
             return ngx_http_next_body_filter(r, out.next);
         }
 
-        if (!(b = ngx_calloc_buf(r->pool))) {
+        b = ngx_calloc_buf(r->pool);
+        if (b == NULL) {
             return NGX_ERROR;
         }
 
@@ -161,7 +168,8 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
 }
 
 
-static ngx_int_t ngx_http_chunked_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_http_chunked_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_chunked_header_filter;

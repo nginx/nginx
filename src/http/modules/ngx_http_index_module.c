@@ -93,10 +93,10 @@ ngx_module_t  ngx_http_index_module = {
 /*
  * Try to open the first index file before the test of the directory existence
  * because the valid requests should be many more than invalid ones.
- * If open() failed then stat() should be more quickly because some data
+ * If open() would fail, then stat() should be more quickly because some data
  * is already cached in the kernel.
- * Besides Win32 has ERROR_PATH_NOT_FOUND (NGX_ENOTDIR).
- * Unix has ENOTDIR error, although it less helpfull - it shows only
+ * Besides, Win32 has ERROR_PATH_NOT_FOUND (NGX_ENOTDIR).
+ * Unix has ENOTDIR error, although it less helpfull - it points only
  * that path contains the usual file in place of the directory.
  */
 
@@ -137,9 +137,13 @@ static ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_index_module);
     if (ctx == NULL) {
-        ngx_http_create_ctx(r, ctx, ngx_http_index_module,
-                            sizeof(ngx_http_index_ctx_t),
-                            NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_index_ctx_t));
+        if (ctx == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        ngx_http_set_ctx(r, ctx, ngx_http_index_module);
 
 #if (NGX_HTTP_CACHE)
 
@@ -417,7 +421,7 @@ static ngx_int_t ngx_http_index_init(ngx_cycle_t *cycle)
 
     cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
 
-    h = ngx_push_array(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;
     }
@@ -432,11 +436,17 @@ static void *ngx_http_index_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_index_loc_conf_t  *conf;
 
-    ngx_test_null(conf, ngx_palloc(cf->pool, sizeof(ngx_http_index_loc_conf_t)),
-                  NGX_CONF_ERROR);
+    conf = ngx_palloc(cf->pool, sizeof(ngx_http_index_loc_conf_t));
+    if (conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
-    ngx_init_array(conf->indices, cf->pool, 3, sizeof(ngx_str_t),
-                   NGX_CONF_ERROR);
+    if (ngx_array_init(&conf->indices, cf->pool, 2, sizeof(ngx_str_t))
+                                                                  == NGX_ERROR)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     conf->max_index_len = 0;
 
     conf->index_cache = NULL;
@@ -461,7 +471,11 @@ static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
             return NGX_CONF_OK;
         }
 
-        ngx_test_null(index, ngx_push_array(&conf->indices), NGX_CONF_ERROR);
+        index = ngx_array_push(&conf->indices);
+        if (index == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
         index->len = sizeof(NGX_HTTP_DEFAULT_INDEX) - 1;
         index->data = (u_char *) NGX_HTTP_DEFAULT_INDEX;
         conf->max_index_len = sizeof(NGX_HTTP_DEFAULT_INDEX);
@@ -475,8 +489,11 @@ static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
 
         prev_index = prev->indices.elts;
         for (i = 0; i < prev->indices.nelts; i++) {
-            ngx_test_null(index, ngx_push_array(&conf->indices),
-                          NGX_CONF_ERROR);
+            index = ngx_array_push(&conf->indices);
+            if (index == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
             index->len = prev_index[i].len;
             index->data = prev_index[i].data;
         }
@@ -524,7 +541,11 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
             return NGX_CONF_ERROR;
         }
 
-        ngx_test_null(index, ngx_push_array(&ilcf->indices), NGX_CONF_ERROR);
+        index = ngx_array_push(&ilcf->indices);
+        if (index == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
         index->len = value[i].len;
         index->data = value[i].data;
 

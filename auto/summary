@@ -17,7 +17,7 @@ case $USE_THREADS in
 esac
 
 if [ $USE_PCRE = DISABLED ]; then
-    echo " + PCRE library is disabled"
+    echo "  + PCRE library is disabled"
 
 else
     case $PCRE in

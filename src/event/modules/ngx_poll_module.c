@@ -73,10 +73,11 @@ ngx_poll_init(ngx_cycle_t *cycle)
         || cycle->old_cycle == NULL
         || cycle->old_cycle->connection_n < cycle->connection_n)
     {
-        ngx_test_null(list,
-                      ngx_alloc(sizeof(struct pollfd) * cycle->connection_n,
-                                cycle->log),
-                      NGX_ERROR);
+        list = ngx_alloc(sizeof(struct pollfd) * cycle->connection_n,
+                         cycle->log);
+        if (list == NULL) {
+            return NGX_ERROR;
+        }
 
         if (event_list) {
             ngx_memcpy(list, event_list, sizeof(ngx_event_t *) * nevents);
@@ -90,10 +91,11 @@ ngx_poll_init(ngx_cycle_t *cycle)
             ngx_free(ready_index);
         }
 
-        ngx_test_null(ready_index,
-                      ngx_alloc(sizeof(ngx_event_t *) * 2 * cycle->connection_n,
-                                cycle->log),
-                      NGX_ERROR);
+        ready_index = ngx_alloc(sizeof(ngx_event_t *) * 2 * cycle->connection_n,
+                                cycle->log);
+        if (ready_index == NULL) {
+            return NGX_ERROR;
+        }
 #endif
     }
 

@@ -12,7 +12,8 @@
 #define NGX_IOVS  16
 
 
-ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
+ngx_chain_t *
+ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     u_char        *prev;
     ssize_t        n, size, sent;
@@ -88,7 +89,8 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 iov->iov_len += size;
 
             } else {
-                if (!(iov = ngx_array_push(&vec))) {
+                iov = ngx_array_push(&vec);
+                if (iov == NULL) {
                     return NGX_CHAIN_ERROR;
                 }
 

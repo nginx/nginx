@@ -14,6 +14,7 @@ char ngx_freebsd_kern_osrelease[128];
 int ngx_freebsd_kern_osreldate;
 int ngx_freebsd_hw_ncpu;
 int ngx_freebsd_net_inet_tcp_sendspace;
+int ngx_freebsd_kern_ipc_somaxconn;
 
 /* FreeBSD 4.9 */
 int ngx_freebsd_machdep_hlt_logical_cpus;
@@ -61,6 +62,10 @@ sysctl_t sysctls[] = {
       &ngx_freebsd_net_inet_tcp_sendspace,
       sizeof(int), 0 },
 
+    { "kern.ipc.somaxconn",
+      &ngx_freebsd_kern_ipc_somaxconn,
+      sizeof(int), 0 },
+
     { "kern.ipc.zero_copy.send",
       &ngx_freebsd_kern_ipc_zero_copy_send,
       sizeof(int), 0 },
@@ -85,7 +90,7 @@ void ngx_debug_init()
 
 ngx_int_t ngx_os_init(ngx_log_t *log)
 {
-    int         version;
+    int         version, somaxconn;
     size_t      size;
     ngx_err_t   err;
     ngx_uint_t  i;
@@ -203,6 +208,18 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
         ngx_ncpu = ngx_freebsd_hw_ncpu;
     }
 
+    if (version < 600008) {
+        somaxconn = 32767;
+    } else {
+        somaxconn = 65535;
+    }
+
+    if (ngx_freebsd_kern_ipc_somaxconn > somaxconn) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      "sysctl kern.ipc.somaxconn must be no more than %d",
+                      somaxconn);
+        return NGX_ERROR;
+    }
 
     ngx_tcp_nodelay_and_tcp_nopush = 1;
 

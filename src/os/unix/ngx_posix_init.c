@@ -182,7 +182,7 @@ void ngx_signal_handler(int signo)
 
         case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
             ngx_noaccept = 1;
-            action = ", stop the accepting connections";
+            action = ", stop accepting connections";
             break;
 
         case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):

@@ -75,10 +75,13 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     ngx_buf_t                   *b;
     ngx_chain_t                  out;
     ngx_file_info_t              fi;
-    ngx_http_cleanup_t          *file_cleanup, *redirect_cleanup;
-    ngx_http_core_loc_conf_t    *clcf;
-    ngx_http_static_loc_conf_t  *slcf;
+    ngx_http_cleanup_t          *file_cleanup;
 #if (NGX_HTTP_CACHE)
+    ngx_http_cleanup_t          *redirect_cleanup;
+#endif
+    ngx_http_core_loc_conf_t    *clcf;
+#if (NGX_HTTP_CACHE)
+    ngx_http_static_loc_conf_t  *slcf;
     uint32_t                     file_crc, redirect_crc;
     ngx_http_cache_t            *file, *redirect;
 #endif
@@ -176,14 +179,18 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
 
     /* allocate cleanups */
 
-    if (!(file_cleanup = ngx_push_array(&r->cleanup))) {
+    file_cleanup = ngx_array_push(&r->cleanup);
+    if (file_cleanup == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     file_cleanup->valid = 0;
 
+#if (NGX_HTTP_CACHE)
+
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_static_module);
     if (slcf->redirect_cache) {
-        if (!(redirect_cleanup = ngx_push_array(&r->cleanup))) {
+        redirect_cleanup = ngx_array_push(&r->cleanup);
+        if (redirect_cleanup == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         redirect_cleanup->valid = 0;
@@ -191,8 +198,6 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     } else {
         redirect_cleanup = NULL;
     }
-
-#if (NGX_HTTP_CACHE)
 
     /* look up an open files cache */
 
@@ -232,9 +237,9 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
              * should keep more popular redirects in cache.
              */
 
-            if (!(r->headers_out.location =
-                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
-            {
+            r->headers_out.location = ngx_http_add_header(&r->headers_out,
+                                                          ngx_http_headers_out);
+            if (r->headers_out.location == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
@@ -283,9 +288,9 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                            "HTTP DIR: \"%s\"", name.data);
 
-            if (!(r->headers_out.location =
-                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
-            {
+            r->headers_out.location = ngx_http_add_header(&r->headers_out,
+                                                          ngx_http_headers_out);
+            if (r->headers_out.location == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
@@ -506,11 +511,13 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     if (!r->header_only) {
         /* we need to allocate all before the header would be sent */
 
-        if (!(b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t)))) {
+        b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+        if (b == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        if (!(b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t)))) {
+        b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
+        if (b->file == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
@@ -547,7 +554,8 @@ static void *ngx_http_static_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_static_loc_conf_t  *conf;
 
-    if (!(conf = ngx_palloc(cf->pool, sizeof(ngx_http_static_loc_conf_t)))) {
+    conf = ngx_palloc(cf->pool, sizeof(ngx_http_static_loc_conf_t));
+    if (conf == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -578,7 +586,7 @@ static ngx_int_t ngx_http_static_init(ngx_cycle_t *cycle)
 
     cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
     
-    h = ngx_push_array(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;
     }

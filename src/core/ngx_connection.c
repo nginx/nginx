@@ -20,13 +20,15 @@ ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
     ngx_listening_t     *ls;
     struct sockaddr_in  *sin;
 
-    if (!(ls = ngx_array_push(&cf->cycle->listening))) {
+    ls = ngx_array_push(&cf->cycle->listening);
+    if (ls == NULL) {
         return NULL;
     }
 
     ngx_memzero(ls, sizeof(ngx_listening_t));
 
-    if (!(sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in)))) {
+    sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
+    if (sin == NULL) {
         return NULL;
     }
 
@@ -45,7 +47,6 @@ ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
 
     ls->addr_text.len = ngx_sprintf(ls->addr_text.data + len, ":%d", port)
                         - ls->addr_text.data;
-
 
     ls->fd = (ngx_socket_t) -1;
     ls->family = AF_INET;

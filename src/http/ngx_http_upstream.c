@@ -129,13 +129,14 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     u->writer.pool = r->pool;
 
     if (ngx_array_init(&u->states, r->pool, u->peer.peers->number,
-                               sizeof(ngx_http_upstream_state_t)) == NGX_ERROR)
+                       sizeof(ngx_http_upstream_state_t)) != NGX_OK)
     {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
 
-    if (!(u->state = ngx_push_array(&u->states))) {
+    u->state = ngx_array_push(&u->states);
+    if (u->state == NULL) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
@@ -317,7 +318,8 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (r->request_body->buf) {
         if (r->request_body->temp_file) {
 
-            if (!(u->output.free = ngx_alloc_chain_link(r->pool))) {
+            u->output.free = ngx_alloc_chain_link(r->pool);
+            if (u->output.free == NULL) {
                 ngx_http_upstream_finalize_request(r, u,
                                                 NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
@@ -392,7 +394,8 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     /* add one more state */
 
-    if (!(u->state = ngx_push_array(&u->states))) {
+    u->state = ngx_array_push(&u->states);
+    if (u->state == NULL) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -739,7 +742,8 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     
     p->cachable = u->cachable;
 
-    if (!(p->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t)))) {
+    p->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t));
+    if (p->temp_file == NULL) {
         ngx_http_upstream_finalize_request(r, u, 0);
         return;
     }
@@ -759,7 +763,8 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->max_temp_file_size = u->conf->max_temp_file_size;
     p->temp_file_write_size = u->conf->temp_file_write_size;
 
-    if (!(p->preread_bufs = ngx_alloc_chain_link(r->pool))) {
+    p->preread_bufs = ngx_alloc_chain_link(r->pool);
+    if (p->preread_bufs == NULL) {
         ngx_http_upstream_finalize_request(r, u, 0);
         return;
     }

@@ -88,7 +88,8 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
            + 6 + 3 * NGX_ATOMIC_T_LEN
            + sizeof("Reading:  Writing:  Waiting:  \n") + 3 * NGX_ATOMIC_T_LEN;
 
-    if (!(b = ngx_create_temp_buf(r->pool, size))) {
+    b = ngx_create_temp_buf(r->pool, size);
+    if (b == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 

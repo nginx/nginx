@@ -9,6 +9,123 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.25" date="19.03.2005">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не работал на Linux parisc.
+</para>
+<para lang="en">
+nginx did run on Linux parisc.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+nginx теперь не запускается под FreeBSD, если значение
+sysctl kern.ipc.somaxconn слишком большое.
+</para>
+<para lang="en">
+nginx now does not start under FreeBSD if the sysctl kern.ipc.somaxconn
+value is too big.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если модуль ngx_http_index_module делал внутреннее перенаправление запроса
+в модули ngx_http_proxy_module или ngx_http_fastcgi_module, то файл индекса
+не закрывался после обслуживания запроса.
+</para>
+<para lang="en">
+if a request was internally redirected by the ngx_http_index_module
+module to the ngx_http_proxy_module or ngx_http_fastcgi_module modules,
+then the index file was not closed after request completion.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_pass может использоваться в location, заданных регулярным
+выражением.
+</para>
+<para lang="en">
+the "proxy_pass" can be used in location with regular expression.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_rewrite_filter_module поддерживает условия вида
+"if ($HTTP_USER_AGENT ~ MSIE)".
+</para>
+<para lang="en">
+the ngx_http_rewrite_filter_module module supports the condition like
+"if ($HTTP_USER_AGENT ~ MSIE)".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx очень медленно запускался при большом количестве адресов и
+использовании текстовых значений в директиве geo.
+</para>
+<para lang="en">
+nginx started too slow if the large number of addresses and text values
+were used in the "geo" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+имя переменной в директиве geo нужно указывать, как $name.
+Прежний вариант без "$" пока работает, но вскоре будет убран.
+</para>
+<para lang="en">
+a variable name must be declared as "$name" in the "geo" directive.
+The previous variant without "$" is still supported, but will be removed soon.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр лога "%{VARIABLE}v".
+</para>
+<para lang="en">
+the "%{VARIABLE}v" logging parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива "set $name value".
+</para>
+<para lang="en">
+the "set $name value" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с gcc 4.0.
+</para>
+<para lang="en">
+gcc 4.0 compatibility.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр автоконфигурации --with-openssl-opt=OPTIONS.
+</para>
+<para lang="en">
+the --with-openssl-opt=OPTIONS autoconfiguration directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.24" date="04.03.2005">
 
 <change type="feature">

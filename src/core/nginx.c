@@ -141,7 +141,8 @@ main(int argc, char *const *argv)
 
     ngx_pid = ngx_getpid();
 
-    if (!(log = ngx_log_init())) {
+    log = ngx_log_init();
+    if (log == NULL) {
         return 1;
     }
 
@@ -155,7 +156,8 @@ main(int argc, char *const *argv)
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
 
-    if (!(init_cycle.pool = ngx_create_pool(1024, log))) {
+    init_cycle.pool = ngx_create_pool(1024, log);
+    if (init_cycle.pool == NULL) {
         return 1;
     }
 
@@ -255,9 +257,9 @@ main(int argc, char *const *argv)
 static ngx_int_t
 ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
-    u_char              *p, *v, *inherited;
-    ngx_socket_t         s;
-    ngx_listening_t     *ls;
+    u_char           *p, *v, *inherited;
+    ngx_int_t         s;
+    ngx_listening_t  *ls;
 
     inherited = (u_char *) getenv(NGINX_VAR);
 
@@ -287,11 +289,12 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 
             v = p + 1;
 
-            if (!(ls = ngx_array_push(&cycle->listening))) {
+            ls = ngx_array_push(&cycle->listening);
+            if (ls == NULL) {
                 return NGX_ERROR;
             }
 
-            ls->fd = s;
+            ls->fd = (ngx_socket_t) s;
         }
     }
 
@@ -315,7 +318,7 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     ctx.argv = argv;
 
     var = ngx_alloc(sizeof(NGINX_VAR)
-                            + cycle->listening.nelts * (NGX_INT32_LEN + 1) + 2,
+                    + cycle->listening.nelts * (NGX_INT32_LEN + 1) + 2,
                     cycle->log);
 
     p = ngx_cpymem(var, NGINX_VAR "=", sizeof(NGINX_VAR));
@@ -411,27 +414,29 @@ static ngx_int_t ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
 static ngx_int_t
 ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 {
+#if (NGX_FREEBSD)
+
+    ngx_os_argv = (char **) argv;
+    ngx_argc = argc;
+    ngx_argv = (char **) argv;
+
+#else
     size_t     len;
     ngx_int_t  i;
 
     ngx_os_argv = (char **) argv;
-
     ngx_argc = argc;
 
-#if (NGX_FREEBSD)
-
-    ngx_argv = (char **) argv;
-
-#else
-
-    if (!(ngx_argv = ngx_alloc((argc + 1) * sizeof(char *), cycle->log))) {
+    ngx_argv = ngx_alloc((argc + 1) * sizeof(char *), cycle->log);
+    if (ngx_argv == NULL) {
         return NGX_ERROR;
     }
 
     for (i = 0; i < argc; i++) {
         len = ngx_strlen(argv[i]) + 1;
 
-        if (!(ngx_argv[i] = ngx_alloc(len, cycle->log))) {
+        ngx_argv[i] = ngx_alloc(len, cycle->log);
+        if (ngx_argv[i] == NULL) {
             return NGX_ERROR;
         }
 
@@ -451,7 +456,8 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
 {
     ngx_core_conf_t  *ccf;
 
-    if (!(ccf = ngx_pcalloc(cycle->pool, sizeof(ngx_core_conf_t)))) {
+    ccf = ngx_pcalloc(cycle->pool, sizeof(ngx_core_conf_t));
+    if (ccf == NULL) {
         return NULL;
     }
 
@@ -534,7 +540,8 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ccf->newpid.len = ccf->pid.len + sizeof(NGX_NEWPID_EXT);
 
-    if (!(ccf->newpid.data = ngx_palloc(cycle->pool, ccf->newpid.len))) {
+    ccf->newpid.data = ngx_palloc(cycle->pool, ccf->newpid.len);
+    if (ccf->newpid.data == NULL) {
         return NGX_CONF_ERROR;
     }
 

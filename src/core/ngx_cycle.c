@@ -54,15 +54,18 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     log = old_cycle->log;
 
-    if (!(pool = ngx_create_pool(16 * 1024, log))) {
+    pool = ngx_create_pool(16 * 1024, log);
+    if (pool == NULL) {
         return NULL;
     }
     pool->log = log;
 
-    if (!(cycle = ngx_pcalloc(pool, sizeof(ngx_cycle_t)))) {
+    cycle = ngx_pcalloc(pool, sizeof(ngx_cycle_t));
+    if (cycle == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
+
     cycle->pool = pool;
     cycle->log = log;
     cycle->old_cycle = old_cycle;
@@ -72,10 +75,13 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     n = old_cycle->pathes.nelts ? old_cycle->pathes.nelts : 10;
-    if (!(cycle->pathes.elts = ngx_pcalloc(pool, n * sizeof(ngx_path_t *)))) {
+
+    cycle->pathes.elts = ngx_pcalloc(pool, n * sizeof(ngx_path_t *));
+    if (cycle->pathes.elts == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
+
     cycle->pathes.nelts = 0;
     cycle->pathes.size = sizeof(ngx_path_t *);
     cycle->pathes.nalloc = n;
@@ -100,7 +106,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    if (!(cycle->new_log = ngx_log_create_errlog(cycle, NULL))) {
+    cycle->new_log = ngx_log_create_errlog(cycle, NULL);
+    if (cycle->new_log == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
@@ -109,11 +116,13 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     n = old_cycle->listening.nelts ? old_cycle->listening.nelts : 10;
+
     cycle->listening.elts = ngx_pcalloc(pool, n * sizeof(ngx_listening_t));
     if (cycle->listening.elts == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
+
     cycle->listening.nelts = 0;
     cycle->listening.size = sizeof(ngx_listening_t);
     cycle->listening.nalloc = n;
@@ -147,7 +156,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     ngx_memzero(&conf, sizeof(ngx_conf_t));
     /* STUB: init array ? */
-    conf.args = ngx_create_array(pool, 10, sizeof(ngx_str_t));
+    conf.args = ngx_array_create(pool, 10, sizeof(ngx_str_t));
     if (conf.args == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
@@ -516,7 +525,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     ngx_temp_pool->log = cycle->log;
 
-    old = ngx_push_array(&ngx_old_cycles);
+    old = ngx_array_push(&ngx_old_cycles);
     if (old == NULL) {
         exit(1);
     }
@@ -562,7 +571,7 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
 {
     ngx_uint_t        trunc;
     size_t            len;
-    u_char           *name, pid[NGX_INT64_LEN];
+    u_char            pid[NGX_INT64_LEN];
     ngx_file_t        file;
     ngx_core_conf_t  *ccf, *old_ccf;
 

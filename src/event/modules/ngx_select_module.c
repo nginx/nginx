@@ -72,7 +72,8 @@ ngx_module_t  ngx_select_module = {
 };
 
 
-static ngx_int_t ngx_select_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_select_init(ngx_cycle_t *cycle)
 {
     ngx_event_t  **index;
 
@@ -86,10 +87,11 @@ static ngx_int_t ngx_select_init(ngx_cycle_t *cycle)
         || cycle->old_cycle == NULL
         || cycle->old_cycle->connection_n < cycle->connection_n)
     {
-        ngx_test_null(index,
-                      ngx_alloc(sizeof(ngx_event_t *) * 2 * cycle->connection_n,
-                                cycle->log),
-                      NGX_ERROR);
+        index = ngx_alloc(sizeof(ngx_event_t *) * 2 * cycle->connection_n,
+                          cycle->log);
+        if (index == NULL) {
+            return NGX_ERROR;
+        }
 
         if (event_index) {
             ngx_memcpy(index, event_index, sizeof(ngx_event_t *) * nevents);
@@ -101,10 +103,12 @@ static ngx_int_t ngx_select_init(ngx_cycle_t *cycle)
         if (ready_index) {
             ngx_free(ready_index);
         }
-        ngx_test_null(ready_index,
-                      ngx_alloc(sizeof(ngx_event_t *) * 2 * cycle->connection_n,
-                      cycle->log),
-                      NGX_ERROR);
+
+        ready_index = ngx_alloc(sizeof(ngx_event_t *) * 2 * cycle->connection_n,
+                                cycle->log);
+        if (ready_index == NULL) {
+            return NGX_ERROR;
+        }
 #endif
     }
 
@@ -124,7 +128,8 @@ static ngx_int_t ngx_select_init(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_select_done(ngx_cycle_t *cycle)
+static void
+ngx_select_done(ngx_cycle_t *cycle)
 {
     ngx_free(event_index);
 #if 0
@@ -135,7 +140,8 @@ static void ngx_select_done(ngx_cycle_t *cycle)
 }
 
 
-static ngx_int_t ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_connection_t  *c;
 
@@ -196,7 +202,8 @@ static ngx_int_t ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static ngx_int_t ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t
+ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_connection_t  *c;
 
@@ -248,7 +255,8 @@ static ngx_int_t ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_select_process_events(ngx_cycle_t *cycle)
 {
     int                       ready, nready;
     ngx_uint_t                i, found, lock, expire;
@@ -592,7 +600,8 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
 }
 
 
-static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
+static char *
+ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_event_conf_t  *ecf;
 

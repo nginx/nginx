@@ -22,8 +22,8 @@ typedef struct {
 } ngx_mutex_t;
 
 
-ngx_err_t ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
-                            ngx_log_t *log);
+ngx_err_t ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg),
+    void *arg, ngx_log_t *log);
 ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle);
 
 ngx_err_t ngx_thread_key_create(ngx_tls_key_t *key);
@@ -41,14 +41,15 @@ ngx_err_t ngx_thread_set_tls(ngx_tls_key_t *key, void *data);
 
 ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags);
 
+ngx_int_t ngx_mutex_lock(ngx_mutex_t *m);
+ngx_int_t ngx_mutex_trylock(ngx_mutex_t *m);
+
 
 /* STUB */
 #define NGX_MUTEX_LIGHT             0
 
-#define ngx_mutex_lock(m)           NGX_OK
-#define ngx_mutex_trylock(m)        NGX_OK
 #define ngx_mutex_unlock(m)
-/* */
+/**/
 
 
 extern ngx_int_t  ngx_threads_n;

@@ -155,7 +155,8 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                         }
                     }
 
-                    if (!(ctx->buf = ngx_create_temp_buf(ctx->pool, size))) {
+                    ctx->buf = ngx_create_temp_buf(ctx->pool, size);
+                    if (ctx->buf == NULL) {
                         return NGX_ERROR;
                     }
 
@@ -186,9 +187,11 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 ctx->in = ctx->in->next;
             }
 
-            if (!(cl = ngx_alloc_chain_link(ctx->pool))) {
+            cl = ngx_alloc_chain_link(ctx->pool);
+            if (cl == NULL) {
                 return NGX_ERROR;
             }
+
             cl->buf = ctx->buf;
             cl->next = NULL;
             *last_out = cl;
@@ -269,7 +272,8 @@ ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
 
     while (in) {
 
-        if (!(cl = ngx_alloc_chain_link(pool))) {
+        cl = ngx_alloc_chain_link(pool);
+        if (cl == NULL) {
             return NGX_ERROR;
         }
 
@@ -281,7 +285,8 @@ ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
             && buf->file_pos < NGX_SENDFILE_LIMIT
             && buf->file_last > NGX_SENDFILE_LIMIT)
         {
-            if (!(b = ngx_calloc_buf(pool))) {
+            b = ngx_calloc_buf(pool);
+            if (b == NULL) {
                 return NGX_ERROR;
             }
 
@@ -431,9 +436,11 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
                        "chain writer buf size: %uz", ngx_buf_size(in->buf));
 
-        if (!(cl = ngx_alloc_chain_link(ctx->pool))) {
+        cl = ngx_alloc_chain_link(ctx->pool);
+        if (cl == NULL) {
             return NGX_ERROR;
         }
+
         cl->buf = in->buf;
         cl->next = NULL;
         *ctx->last = cl;

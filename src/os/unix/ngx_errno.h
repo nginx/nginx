@@ -25,7 +25,7 @@ typedef int               ngx_err_t;
 #define NGX_ENOTDIR       ENOTDIR
 #define NGX_EINVAL        EINVAL
 #define NGX_EPIPE         EPIPE
-#define NGX_EAGAIN        EWOULDBLOCK
+#define NGX_EAGAIN        EAGAIN
 #define NGX_EINPROGRESS   EINPROGRESS
 #define NGX_EADDRINUSE    EADDRINUSE
 #define NGX_ECONNABORTED  ECONNABORTED
@@ -52,10 +52,10 @@ u_char *ngx_strerror_r(int err, u_char *errstr, size_t size);
 
 #else
 
-/* Solaris has threads-safe strerror() */
+/* Solaris has thread-safe strerror() */
 
 #define ngx_strerror_r(err, errstr, size)  \
-             ngx_cpystrn(errstr, (u_char *) strerror(err), size)
+    ngx_cpystrn(errstr, (u_char *) strerror(err), size)
 
 #endif
 

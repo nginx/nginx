@@ -2,8 +2,15 @@
 # Copyright (C) Igor Sysoev
 
 
-# gcc 2.7.2.3, 2.8.1, 2.95.4,
+# gcc 2.7.2.3, 2.8.1, 2.95.4, egcs-1.1.2
 #     3.0.4, 3.1.1, 3.2.3, 3.3.2, 3.3.3, 3.3.4, 3.4.0, 3.4.2
+#     4.0.0
+
+
+NGX_GCC_VER=`$CC -v 2>&1 | grep 'gcc version' 2>&1 \
+                         | sed -e 's/^.* version \(.*\)/\1/'`
+
+echo " + gcc version: $NGX_GCC_VER"
 
 
 # Solaris 7's /usr/ccs/bin/as does not support "-pipe"
@@ -23,7 +30,6 @@ CC_TEST_FLAGS=
 if [ $ngx_found = yes ]; then
     PIPE="-pipe"
 fi
-
 
 # optimizations
 
@@ -61,8 +67,12 @@ case $CPU in
 esac
 
 
-# STUB for batch builds
-if [ $CC = gcc27 ]; then CPU_OPT=; fi
+case "$NGX_GCC_VER" in
+    2.7*)
+        # batch build
+        CPU_OPT=
+    ;;
+esac
 
 
 CFLAGS="$CFLAGS $PIPE $CPU_OPT"
@@ -95,8 +105,21 @@ CFLAGS="$CFLAGS -Wall -Wpointer-arith"
 #CFLAGS="$CFLAGS -Wconversion" 
 #CFLAGS="$CFLAGS -Winline"
 
-# we have a lot of the unused function arguments
-CFLAGS="$CFLAGS -Wno-unused"
+
+case "$NGX_GCC_VER" in
+    3.* | 4.* )
+        # we have a lot of the unused function arguments
+        CFLAGS="$CFLAGS -Wno-unused-parameter"
+        CFLAGS="$CFLAGS -Wno-unused-function"
+        #CFLAGS="$CFLAGS -Wunreachable-code"
+    ;;
+
+    *)
+        # we have a lot of the unused function arguments
+        CFLAGS="$CFLAGS -Wno-unused"
+    ;;
+esac
+
 
 # stop on warning
 CFLAGS="$CFLAGS -Werror"

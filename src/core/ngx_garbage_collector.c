@@ -77,7 +77,8 @@ ngx_int_t ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, ngx_int_t level)
 
             buf.len = dname->len + 1 + len + NGX_DIR_MASK_LEN;
 
-            if (!(buf.data = ngx_alloc(buf.len + 1, ctx->log))) {
+            buf.data = ngx_alloc(buf.len + 1, ctx->log);
+            if (buf.data == NULL) {
                 return NGX_ABORT;
             }
         }

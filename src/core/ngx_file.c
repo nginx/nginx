@@ -43,7 +43,8 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
 
     file->name.len = path->name.len + 1 + path->len + NGX_ATOMIC_T_LEN;
 
-    if (!(file->name.data = ngx_palloc(pool, file->name.len + 1))) {
+    file->name.data = ngx_palloc(pool, file->name.len + 1);
+    if (file->name.data == NULL) {
         return NGX_ERROR;
     }
 
@@ -203,7 +204,8 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    if (!(path = ngx_pcalloc(cf->pool, sizeof(ngx_path_t)))) {
+    path = ngx_pcalloc(cf->pool, sizeof(ngx_path_t));
+    if (path == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -292,7 +294,8 @@ ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
         }
     }
 
-    if (!(p = ngx_array_push(&cf->cycle->pathes))) {
+    p = ngx_array_push(&cf->cycle->pathes);
+    if (p == NULL) {
         return NGX_ERROR;
     }
 

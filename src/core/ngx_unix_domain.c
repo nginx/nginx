@@ -59,11 +59,13 @@ ngx_peers_t *ngx_unix_upstream_parse(ngx_conf_t *cf,
 
     /* MP: ngx_shared_palloc() */
 
-    if (!(peers = ngx_pcalloc(cf->pool, sizeof(ngx_peers_t)))) {
+    peers = ngx_pcalloc(cf->pool, sizeof(ngx_peers_t));
+    if (peers == NULL) {
         return NULL;
     }
 
-    if (!(sun = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_un)))) {
+    sun = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_un));
+    if (sun == NULL) {
         return NULL;
     }
 

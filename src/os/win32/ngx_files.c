@@ -179,7 +179,8 @@ ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
     ngx_uint_t          collision;
     ngx_atomic_uint_t   num;
 
-    if (!(name = ngx_palloc(pool, to->len + 1 + 10 + 1 + sizeof("DELETE")))) {
+    name = ngx_palloc(pool, to->len + 1 + 10 + 1 + sizeof("DELETE"));
+    if (name == NULL) {
         return NGX_ERROR;
     }
 
@@ -298,6 +299,20 @@ ngx_int_t ngx_read_dir(ngx_dir_t *dir)
     }
 
     return NGX_OK; 
+}
+
+
+ngx_int_t
+ngx_de_info(u_char *name, ngx_dir_t *dir)
+{
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_de_link_info(u_char *name, ngx_dir_t *dir)
+{
+    return NGX_OK;
 }
 
 

@@ -11,7 +11,9 @@
 
 
 static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r);
+#if 0
 static ngx_int_t ngx_http_proxy_cache_get(ngx_http_proxy_ctx_t *p);
+#endif
 
 static size_t ngx_http_proxy_log_proxy_state_getlen(ngx_http_request_t *r,
                                                     uintptr_t data);
@@ -33,8 +35,6 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
 
 static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
                                      void *conf);
-static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
-                                           ngx_http_proxy_upstream_conf_t *u);
 
 static char *ngx_http_proxy_set_x_var(ngx_conf_t *cf, ngx_command_t *cmd,
                                       void *conf);
@@ -362,13 +362,20 @@ static ngx_str_t cache_reasons[] = {
 };
 
 
+static ngx_str_t ngx_http_proxy_uri = ngx_string("/");
+
+
 static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r)
 {
     ngx_http_proxy_ctx_t  *p;
 
-    ngx_http_create_ctx(r, p, ngx_http_proxy_module,
-                        sizeof(ngx_http_proxy_ctx_t),
-                        NGX_HTTP_INTERNAL_SERVER_ERROR);
+    p = ngx_pcalloc(r->pool, sizeof(ngx_http_proxy_ctx_t));
+    if (p == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    ngx_http_set_ctx(r, p, ngx_http_proxy_module);
+
 
     p->lcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
     p->request = r;
@@ -382,7 +389,8 @@ static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (!(p->state = ngx_array_push(&p->states))) {
+    p->state = ngx_array_push(&p->states);
+    if (p->state == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -439,7 +447,8 @@ static ngx_int_t ngx_http_proxy_cache_get(ngx_http_proxy_ctx_t *p)
     u = p->lcf->upstream;
 
     ctx.key.len = u->url.len + r->uri.len - u->location->len + r->args.len;
-    if (!(ctx.key.data = ngx_palloc(r->pool, ctx.key.len))) {
+    ctx.key.data = ngx_palloc(r->pool, ctx.key.len);
+    if (ctx.key.data == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -1072,7 +1081,8 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_proxy_loc_conf_t  *conf;
 
-    if (!(conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_proxy_loc_conf_t)))) {
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_proxy_loc_conf_t));
+    if (conf == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -1332,7 +1342,8 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
         unix_upstream.url.data = url->data + 7;
         unix_upstream.uri_part = 1;
 
-        if (!(lcf->peers = ngx_unix_upstream_parse(cf, &unix_upstream))) {
+        lcf->peers = ngx_unix_upstream_parse(cf, &unix_upstream);
+        if (lcf->peers == NULL) {
             return NGX_CONF_ERROR;
         }
 
@@ -1359,7 +1370,8 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
         inet_upstream.default_port_value = 80;
         inet_upstream.uri_part = 1;
 
-        if (!(lcf->peers = ngx_inet_upstream_parse(cf, &inet_upstream))) {
+        lcf->peers = ngx_inet_upstream_parse(cf, &inet_upstream);
+        if (lcf->peers == NULL) {
             return NGX_CONF_ERROR;
         }
 
@@ -1372,8 +1384,13 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
-    lcf->upstream->location = &clcf->name;
     clcf->handler = ngx_http_proxy_handler;
+
+#if (NGX_PCRE)
+    lcf->upstream->location = clcf->regex ? &ngx_http_proxy_uri : &clcf->name;
+#else
+    lcf->upstream->location = &clcf->name;
+#endif
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;
@@ -1409,7 +1426,8 @@ static char *ngx_http_proxy_set_x_var(ngx_conf_t *cf, ngx_command_t *cmd,
     for (i = 0; i < cmcf->variables.nelts; i++) {
         if (ngx_strcasecmp(var[i].name.data, value[1].data) == 0) {
 
-            if (!(index = ngx_array_push(lcf->x_vars))) {
+            index = ngx_array_push(lcf->x_vars);
+            if (index == NULL) {
                 return NGX_CONF_ERROR;
             }
 

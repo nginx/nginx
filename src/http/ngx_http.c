@@ -92,7 +92,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /* the main http context */
 
-    if (!(ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)))) {
+    ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));
+    if (ctx == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -162,19 +163,22 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (module->create_main_conf) {
-            if (!(ctx->main_conf[mi] = module->create_main_conf(cf))) {
+            ctx->main_conf[mi] = module->create_main_conf(cf);
+            if (ctx->main_conf[mi] == NULL) {
                 return NGX_CONF_ERROR;
             }
         }
 
         if (module->create_srv_conf) {
-            if (!(ctx->srv_conf[mi] = module->create_srv_conf(cf))) {
+            ctx->srv_conf[mi] = module->create_srv_conf(cf);
+            if (ctx->srv_conf[mi] == NULL) {
                 return NGX_CONF_ERROR;
             }
         }
 
         if (module->create_loc_conf) {
-            if (!(ctx->loc_conf[mi] = module->create_loc_conf(cf))) {
+            ctx->loc_conf[mi] = module->create_loc_conf(cf);
+            if (ctx->loc_conf[mi] == NULL) {
                 return NGX_CONF_ERROR;
             }
         }
@@ -261,13 +265,14 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     /* we needed http{}'s cf->ctx while the merging configuration */
+
     *cf = pcf;
 
 
     /* init lists of the handlers */
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt)) == NGX_ERROR)
+                       cf->pool, 1, sizeof(ngx_http_handler_pt)) != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -278,14 +283,14 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     /* the special find config phase for a single handler */
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt)) == NGX_ERROR)
+                       cf->pool, 1, sizeof(ngx_http_handler_pt)) != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
     cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].type = NGX_OK;
 
-    h = ngx_push_array(&cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers);
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers);
     if (h == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -294,7 +299,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt)) == NGX_ERROR)
+                       cf->pool, 1, sizeof(ngx_http_handler_pt)) != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -303,7 +308,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,
-                       cf->pool, 4, sizeof(ngx_http_handler_pt)) == NGX_ERROR)
+                       cf->pool, 4, sizeof(ngx_http_handler_pt)) != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -317,7 +322,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
      */
 
     if (ngx_array_init(&in_ports, cf->pool, 10, sizeof(ngx_http_in_port_t))
-                                                                  == NGX_ERROR)
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -354,7 +359,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                             /* the address is already in the address list */
 
                             if (ngx_http_add_names(cf, &in_addr[a], cscfp[s])
-                                                                  == NGX_ERROR)
+                                != NGX_OK)
                             {
                                 return NGX_CONF_ERROR;
                             }
@@ -386,7 +391,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                             /* the INADDR_ANY is always the last address */
 
-                            if (!(inaddr = ngx_array_push(&in_port[p].addrs))) {
+                            inaddr = ngx_array_push(&in_port[p].addrs);
+                            if (inaddr == NULL) {
                                 return NGX_CONF_ERROR;
                             }
 
@@ -407,7 +413,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                             in_addr[a].core_srv_conf = cscfp[s];
 
                             if (ngx_http_add_names(cf, &in_addr[a], cscfp[s])
-                                                                  == NGX_ERROR)
+                                != NGX_OK)
                             {
                                 return NGX_CONF_ERROR;
                             }
@@ -426,7 +432,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                          */
 
                         if (ngx_http_add_address(cf, &in_port[p], &lscf[l],
-                                                        cscfp[s]) == NGX_ERROR)
+                                                 cscfp[s]) != NGX_OK)
                         {
                             return NGX_CONF_ERROR;
                         }
@@ -438,14 +444,16 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 /* add the port to the in_port list */
 
-                if (!(in_port = ngx_array_push(&in_ports))) {
+                in_port = ngx_array_push(&in_ports);
+                if (in_port == NULL) {
                     return NGX_CONF_ERROR;
                 }
 
                 in_port->port = lscf[l].port;
                 in_port->addrs.elts = NULL;
 
-                if (!(in_port->port_text.data = ngx_palloc(cf->pool, 7))) {
+                in_port->port_text.data = ngx_palloc(cf->pool, 7);
+                if (in_port->port_text.data == NULL) {
                     return NGX_CONF_ERROR;
                 }
 
@@ -454,7 +462,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                          - in_port->port_text.data;
 
                 if (ngx_http_add_address(cf, in_port, &lscf[l], cscfp[s])
-                                                                  == NGX_ERROR)
+                    != NGX_OK)
                 {
                     return NGX_CONF_ERROR;
                 }
@@ -484,7 +492,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             for (n = 0; n < in_addr[a].names.nelts; n++) {
                 if (in_addr[a].core_srv_conf != name[n].core_srv_conf
                     || name[n].core_srv_conf->restrict_host_names
-                                                 != NGX_HTTP_RESTRICT_HOST_OFF)
+                       != NGX_HTTP_RESTRICT_HOST_OFF)
                 {
                     virtual_names = 1;
                     break;
@@ -496,7 +504,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 for (n = 0; n < in_addr[a].wildcards.nelts; n++) {
                     if (in_addr[a].core_srv_conf != name[n].core_srv_conf
                         || name[n].core_srv_conf->restrict_host_names
-                                                 != NGX_HTTP_RESTRICT_HOST_OFF)
+                           != NGX_HTTP_RESTRICT_HOST_OFF)
                     {
                         virtual_names = 1;
                         break;
@@ -532,7 +540,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 for (n = 0; n < cmcf->server_names_hash; n++) {
                     if (ngx_array_init(&in_addr[a].hash[n], cf->pool, 5,
-                                  sizeof(ngx_http_server_name_t)) == NGX_ERROR)
+                                     sizeof(ngx_http_server_name_t)) != NGX_OK)
                     {
                         return NGX_CONF_ERROR;
                     }
@@ -544,7 +552,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                                    name[s].name.len,
                                                    cmcf->server_names_hash);
 
-                    if (!(s_name = ngx_array_push(&in_addr[a].hash[key]))) {
+                    s_name = ngx_array_push(&in_addr[a].hash[key]);
+                    if (s_name == NULL) {
                         return NGX_CONF_ERROR;
                     }
 
@@ -575,13 +584,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
 
             ls->backlog = -1;
-#if 0
-#if 0
-            ls->nonblocking = 1;
-#else
-            ls->nonblocking = 0;
-#endif
-#endif
+
             ls->addr_ntop = 1;
 
             ls->handler = ngx_http_init_connection;
@@ -612,19 +615,21 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                      * the separate ngx_http_in_port_t for the all bindings
                      */
 
-                    ngx_test_null(inport,
-                                  ngx_palloc(cf->pool,
-                                             sizeof(ngx_http_in_port_t)),
-                                  NGX_CONF_ERROR);
+                    inport = ngx_palloc(cf->pool, sizeof(ngx_http_in_port_t));
+                    if (inport == NULL) {
+                        return NGX_CONF_ERROR;
+                    }
 
                     inport->port = in_port[p].port;
                     inport->port_text = in_port[p].port_text;
 
                     /* init list of the addresses ... */
 
-                    ngx_init_array(inport->addrs, cf->pool, 1,
-                                   sizeof(ngx_http_in_addr_t),
-                                   NGX_CONF_ERROR);
+                    if (ngx_array_init(&inport->addrs, cf->pool, 1,
+                                       sizeof(ngx_http_in_addr_t)) != NGX_OK)
+                    {
+                        return NGX_CONF_ERROR;
+                    }
 
                     /* ... and set up it with the first address */
 
@@ -636,7 +641,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     /* prepare for the next cycle */
 
                     in_port[p].addrs.elts = (char *) in_port[p].addrs.elts
-                                                       + in_port[p].addrs.size;
+                                                      + in_port[p].addrs.size;
                     in_port[p].addrs.nelts--;
 
                     in_addr = (ngx_http_in_addr_t *) in_port[p].addrs.elts;
@@ -705,13 +710,14 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_in_port_t *in_port,
 
     if (in_port->addrs.elts == NULL) {
         if (ngx_array_init(&in_port->addrs, cf->pool, 10,
-                                      sizeof(ngx_http_in_addr_t)) == NGX_ERROR)
+                           sizeof(ngx_http_in_addr_t)) != NGX_OK)
         {
             return NGX_ERROR;
         }
     }
 
-    if (!(in_addr = ngx_array_push(&in_port->addrs))) {
+    in_addr = ngx_array_push(&in_port->addrs);
+    if (in_addr == NULL) {
         return NGX_ERROR;
     }
 
@@ -750,7 +756,7 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_in_addr_t *in_addr,
 
     if (in_addr->names.elts == NULL) {
         if (ngx_array_init(&in_addr->names, cf->pool, 10,
-                                  sizeof(ngx_http_server_name_t)) == NGX_ERROR)
+                           sizeof(ngx_http_server_name_t)) != NGX_OK)
         {
             return NGX_ERROR;
         }
@@ -758,7 +764,7 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_in_addr_t *in_addr,
 
     if (in_addr->wildcards.elts == NULL) {
         if (ngx_array_init(&in_addr->wildcards, cf->pool, 10,
-                                  sizeof(ngx_http_server_name_t)) == NGX_ERROR)
+                           sizeof(ngx_http_server_name_t)) != NGX_OK)
         {
             return NGX_ERROR;
         }
@@ -785,7 +791,8 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_in_addr_t *in_addr,
             array = &in_addr->names;
         }
 
-        if (!(name = ngx_array_push(array))) {
+        name = ngx_array_push(array);
+        if (name == NULL) {
             return NGX_ERROR;
         }
 

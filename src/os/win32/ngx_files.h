@@ -132,10 +132,13 @@ ngx_int_t ngx_read_dir(ngx_dir_t *dir);
 
 #define ngx_de_name(dir)            ((u_char *) (dir)->fd.cFileName)
 #define ngx_de_namelen(dir)         ngx_strlen((dir)->fd.cFileName)
-#define ngx_de_info(name, dir)      NGX_OK
+
+ngx_int_t ngx_de_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_info_n               "dummy()"
-#define ngx_de_link_info(name, dir) NGX_OK
+
+ngx_int_t ngx_de_link_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_link_info_n          "dummy()"
+
 #define ngx_de_is_dir(dir)                                                    \
     ((dir)->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #define ngx_de_is_file(dir)                                                   \

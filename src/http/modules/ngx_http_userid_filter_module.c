@@ -618,7 +618,7 @@ ngx_http_userid_domain(ngx_conf_t *cf, void *post, void *data)
     }
 
     p = ngx_cpymem(new, "; domain=", sizeof("; domain=") - 1);
-    p = ngx_cpymem(p, domain->data, domain->len);
+    ngx_memcpy(p, domain->data, domain->len);
 
     domain->len += sizeof("; domain=") - 1;
     domain->data = new;
@@ -640,7 +640,7 @@ ngx_http_userid_path(ngx_conf_t *cf, void *post, void *data)
     }
 
     p = ngx_cpymem(new, "; path=", sizeof("; path=") - 1);
-    p = ngx_cpymem(p, path->data, path->len);
+    ngx_memcpy(p, path->data, path->len);
 
     path->len += sizeof("; path=") - 1;
     path->data = new;

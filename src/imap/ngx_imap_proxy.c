@@ -13,7 +13,6 @@
 
 static void ngx_imap_proxy_block_read(ngx_event_t *rev);
 static void ngx_imap_proxy_auth_handler(ngx_event_t *rev);
-static void ngx_imap_proxy_init_handler(ngx_event_t *wev);
 static void ngx_imap_proxy_dummy_handler(ngx_event_t *ev);
 static ngx_int_t ngx_imap_proxy_read_response(ngx_imap_session_t *s);
 static void ngx_imap_proxy_handler(ngx_event_t *ev);
@@ -27,7 +26,8 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
     struct sockaddr_in    *sin;
     ngx_imap_proxy_ctx_t  *p;
 
-    if (!(p = ngx_pcalloc(s->connection->pool, sizeof(ngx_imap_proxy_ctx_t)))) {
+    p = ngx_pcalloc(s->connection->pool, sizeof(ngx_imap_proxy_ctx_t));
+    if (p == NULL) {
         ngx_imap_close_connection(s->connection);
         return;
     }
@@ -36,7 +36,8 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
 
     /**/
 
-    if (!(peers = ngx_pcalloc(s->connection->pool, sizeof(ngx_peers_t)))) {
+    peers = ngx_pcalloc(s->connection->pool, sizeof(ngx_peers_t));
+    if (peers == NULL) {
         ngx_imap_close_connection(s->connection);
         return;
     }
@@ -45,7 +46,8 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
     p->upstream.log = s->connection->log;
     p->upstream.log_error = NGX_ERROR_ERR;
 
-    if (!(sin = ngx_pcalloc(s->connection->pool, sizeof(struct sockaddr_in)))) {
+    sin = ngx_pcalloc(s->connection->pool, sizeof(struct sockaddr_in));
+    if (sin == NULL) {
         ngx_imap_close_connection(s->connection);
         return;
     }
@@ -146,14 +148,15 @@ static void ngx_imap_proxy_auth_handler(ngx_event_t *rev)
         ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap proxy send user");
 
         line.len = sizeof("USER ") + s->login.len - 1 + 2;
-        if (!(line.data = ngx_palloc(c->pool, line.len))) {
+        line.data = ngx_palloc(c->pool, line.len);
+        if (line.data == NULL) {
             ngx_imap_proxy_close_session(s);
             return;
         }
 
         p = ngx_cpymem(line.data, "USER ", sizeof("USER ") - 1);
         p = ngx_cpymem(p, s->login.data, s->login.len);
-        *p++ = CR; *p++ = LF;
+        *p++ = CR; *p = LF;
 
         if (ngx_send(c, line.data, line.len) < (ssize_t) line.len) {
             /*
@@ -175,14 +178,15 @@ static void ngx_imap_proxy_auth_handler(ngx_event_t *rev)
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap proxy send pass");
 
     line.len = sizeof("PASS ") + s->passwd.len - 1 + 2;
-    if (!(line.data = ngx_palloc(c->pool, line.len))) {
+    line.data = ngx_palloc(c->pool, line.len);
+    if (line.data == NULL) {
         ngx_imap_proxy_close_session(s);
         return;
     }
 
     p = ngx_cpymem(line.data, "PASS ", sizeof("PASS ") - 1);
     p = ngx_cpymem(p, s->passwd.data, s->passwd.len);
-    *p++ = CR; *p++ = LF;
+    *p++ = CR; *p = LF;
 
     if (ngx_send(c, line.data, line.len) < (ssize_t) line.len) {
         /*

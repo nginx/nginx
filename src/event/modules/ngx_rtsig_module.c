@@ -274,9 +274,8 @@ static ngx_int_t
 ngx_rtsig_process_events(ngx_cycle_t *cycle)
 {
     int                 signo;
-    ngx_int_t           instance, i;
+    ngx_int_t           instance;
     ngx_uint_t          expire;
-    size_t              n;
     ngx_msec_t          timer;
     ngx_err_t           err;
     siginfo_t           si;
@@ -777,8 +776,10 @@ ngx_rtsig_create_conf(ngx_cycle_t *cycle)
 {
     ngx_rtsig_conf_t  *rtscf;
 
-    ngx_test_null(rtscf, ngx_palloc(cycle->pool, sizeof(ngx_rtsig_conf_t)),
-                  NGX_CONF_ERROR);
+    rtscf = ngx_palloc(cycle->pool, sizeof(ngx_rtsig_conf_t));
+    if (rtscf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     rtscf->signo = NGX_CONF_UNSET;
     rtscf->overflow_events = NGX_CONF_UNSET;

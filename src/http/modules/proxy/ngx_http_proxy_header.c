@@ -87,7 +87,8 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
 
         /* copy some header pointers and set up r->headers_out */
 
-        if (!(ho = ngx_list_push(&r->headers_out.headers))) {
+        ho = ngx_list_push(&r->headers_out.headers);
+        if (ho == NULL) {
             return NGX_ERROR;
         }
 
@@ -162,7 +163,8 @@ static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
     r = p->request;
     uc = p->lcf->upstream;
 
-    if (!(location = ngx_list_push(&r->headers_out.headers))) {
+    location = ngx_list_push(&r->headers_out.headers);
+    if (location == NULL) {
         return NGX_ERROR;
     }
 
@@ -189,7 +191,8 @@ static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
 
     location->value.len = uc->location->len
                                           + (loc->value.len - uc->url.len) + 1;
-    if (!(location->value.data = ngx_palloc(r->pool, location->value.len))) {
+    location->value.data = ngx_palloc(r->pool, location->value.len);
+    if (location->value.data == NULL) {
         return NGX_ERROR;
     }
 

@@ -153,7 +153,8 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
         c->recv = ngx_recv;
         c->send_chain = ngx_send_chain;
 
-        if (!(c->pool = ngx_create_pool(ls->pool_size, ls->log))) {
+        c->pool = ngx_create_pool(ls->pool_size, ls->log);
+        if (c->pool == NULL) {
             return NGX_ERROR;
         }
 
@@ -164,15 +165,18 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
             return NGX_ERROR;
         }
 
-        if (!(c->local_sockaddr = ngx_palloc(c->pool, ls->socklen))) {
+        c->local_sockaddr = ngx_palloc(c->pool, ls->socklen);
+        if (c->local_sockaddr == NULL) {
             return NGX_ERROR;
         }
 
-        if (!(c->sockaddr = ngx_palloc(c->pool, ls->socklen))) {
+        c->sockaddr = ngx_palloc(c->pool, ls->socklen);
+        if (c->sockaddr == NULL) {
             return NGX_ERROR;
         }
 
-        if (!(c->log = ngx_palloc(c->pool, sizeof(ngx_log_t)))) {
+        c->log = ngx_palloc(c->pool, sizeof(ngx_log_t));
+        if (c->log == NULL) {
             return NGX_ERROR;
         }
 

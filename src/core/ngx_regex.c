@@ -79,7 +79,7 @@ ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
 }
 
 
-ngx_uint_t ngx_regex_capture_count(ngx_regex_t *re)
+ngx_int_t ngx_regex_capture_count(ngx_regex_t *re)
 {
     int  rc, n;
 
@@ -87,7 +87,11 @@ ngx_uint_t ngx_regex_capture_count(ngx_regex_t *re)
 
     rc = pcre_fullinfo(re, NULL, PCRE_INFO_CAPTURECOUNT, &n);
 
-    return (ngx_uint_t) n;
+    if (rc < 0) {
+        return (ngx_int_t) rc;
+    }
+
+    return (ngx_int_t) n;
 }
 
 

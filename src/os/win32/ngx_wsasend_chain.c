@@ -12,8 +12,8 @@
 #define NGX_WSABUFS  8
 
 
-ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
-                               off_t limit)
+ngx_chain_t *
+ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     int           rc;
     u_char       *prev;
@@ -22,9 +22,9 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
     ngx_err_t     err;
     ngx_event_t  *wev;
     ngx_array_t   vec;
+    ngx_chain_t  *cl;
     LPWSABUF      wsabuf;
     WSABUF        wsabufs[NGX_WSABUFS];
-    ngx_chain_t  *cl;
 
     wev = c->write;
 
@@ -78,7 +78,8 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
                 wsabuf->len += cl->buf->last - cl->buf->pos;
 
             } else {
-                if (!(wsabuf = ngx_array_push(&vec))) {
+                wsabuf = ngx_array_push(&vec);
+                if (wsabuf == NULL) {
                     return NGX_CHAIN_ERROR;
                 }
 
@@ -154,18 +155,18 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
 }
 
 
-ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
-                                          off_t limit)
+ngx_chain_t *
+ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     int               rc;
     u_char           *prev;
     u_long            size, send, sent;
-    LPWSABUF          wsabuf;
     ngx_err_t         err;
     ngx_event_t      *wev;
     ngx_array_t       vec;
     ngx_chain_t      *cl;
     LPWSAOVERLAPPED   ovlp;
+    LPWSABUF          wsabuf;
     WSABUF            wsabufs[NGX_WSABUFS];
 
     wev = c->write;
@@ -222,7 +223,8 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
                 wsabuf->len += cl->buf->last - cl->buf->pos;
 
             } else {
-                if (!(wsabuf = ngx_array_push(&vec))) {
+                wsabuf = ngx_array_push(&vec);
+                if (wsabuf == NULL) {
                     return NGX_CHAIN_ERROR;
                 }
 

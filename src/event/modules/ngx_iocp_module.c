@@ -90,7 +90,8 @@ ngx_os_io_t ngx_iocp_io = {
 static HANDLE  iocp;
 
 
-static ngx_int_t ngx_iocp_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_iocp_init(ngx_cycle_t *cycle)
 {
     ngx_iocp_conf_t  *cf;
 
@@ -117,7 +118,8 @@ static ngx_int_t ngx_iocp_init(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_iocp_done(ngx_cycle_t *cycle)
+static void
+ngx_iocp_done(ngx_cycle_t *cycle)
 {
     if (CloseHandle(iocp) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -128,7 +130,8 @@ static void ngx_iocp_done(ngx_cycle_t *cycle)
 }
 
 
-static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
+static ngx_int_t
+ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
 {
     ngx_connection_t  *c;
 
@@ -150,7 +153,8 @@ static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
 }
 
 
-static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
+static ngx_int_t
+ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
 {
 #if 0
     if (flags & NGX_CLOSE_EVENT) {
@@ -167,7 +171,8 @@ static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
 }
 
 
-static ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
+static
+ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
 {
     int                rc;
     u_int              key;
@@ -301,12 +306,15 @@ static ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_iocp_create_conf(ngx_cycle_t *cycle)
+static void *
+ngx_iocp_create_conf(ngx_cycle_t *cycle)
 {
     ngx_iocp_conf_t  *cf;
 
-    ngx_test_null(cf, ngx_palloc(cycle->pool, sizeof(ngx_iocp_conf_t)),
-                  NGX_CONF_ERROR);
+    cf = ngx_palloc(cycle->pool, sizeof(ngx_iocp_conf_t));
+    if (cf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     cf->threads = NGX_CONF_UNSET;
     cf->post_acceptex = NGX_CONF_UNSET;
@@ -316,7 +324,8 @@ static void *ngx_iocp_create_conf(ngx_cycle_t *cycle)
 }
 
 
-static char *ngx_iocp_init_conf(ngx_cycle_t *cycle, void *conf)
+static char *
+ngx_iocp_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_iocp_conf_t *cf = conf;
 

@@ -11,11 +11,13 @@
 int ngx_pagesize;
 
 
-void *ngx_alloc(size_t size, ngx_log_t *log)
+void *
+ngx_alloc(size_t size, ngx_log_t *log)
 {
     void  *p;
 
-    if (!(p = malloc(size))) {
+    p = malloc(size);
+    if (p == NULL) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "malloc() %uz bytes failed", size);
     }
@@ -26,7 +28,8 @@ void *ngx_alloc(size_t size, ngx_log_t *log)
 }
 
 
-void *ngx_calloc(size_t size, ngx_log_t *log)
+void *
+ngx_calloc(size_t size, ngx_log_t *log)
 {
     void  *p;
 
@@ -42,7 +45,8 @@ void *ngx_calloc(size_t size, ngx_log_t *log)
 
 #if (NGX_HAVE_POSIX_MEMALIGN)
 
-void *ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
+void *
+ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 {
     void  *p;
 
@@ -60,11 +64,13 @@ void *ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 
 #elif (NGX_HAVE_MEMALIGN)
 
-void *ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
+void *
+ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 {
     void  *p;
 
-    if (!(p = memalign(alignment, size))) {
+    p = memalign(alignment, size);
+    if (p == NULL) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "memalign() %uz bytes aligned to %uz failed",
                       size, alignment);

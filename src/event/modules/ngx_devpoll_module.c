@@ -134,19 +134,21 @@ ngx_devpoll_init(ngx_cycle_t *cycle)
             ngx_free(change_list);
         }
 
-        ngx_test_null(change_list,
-                      ngx_alloc(sizeof(struct pollfd) * dpcf->changes,
-                                cycle->log),
-                      NGX_ERROR);
+        change_list = ngx_alloc(sizeof(struct pollfd) * dpcf->changes,
+                                cycle->log);
+        if (change_list == NULL) {
+            return NGX_ERROR;
+        }
 
         if (change_index) {
             ngx_free(change_index);
         }
 
-        ngx_test_null(change_index,
-                      ngx_alloc(sizeof(ngx_event_t *) * dpcf->changes,
-                                cycle->log),
-                      NGX_ERROR);
+        change_index = ngx_alloc(sizeof(ngx_event_t *) * dpcf->changes,
+                                 cycle->log);
+        if (change_index == NULL) {
+            return NGX_ERROR;
+        }
     }
 
     max_changes = dpcf->changes;
@@ -156,10 +158,11 @@ ngx_devpoll_init(ngx_cycle_t *cycle)
             ngx_free(event_list);
         }
 
-        ngx_test_null(event_list,
-                      ngx_alloc(sizeof(struct pollfd) * dpcf->events,
-                                cycle->log),
-                      NGX_ERROR);
+        event_list = ngx_alloc(sizeof(struct pollfd) * dpcf->events,
+                               cycle->log);
+        if (event_list == NULL) {
+            return NGX_ERROR;
+        }
     }
 
     nevents = dpcf->events;
@@ -318,11 +321,13 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle)
 {
     int                 events, revents;
     ngx_int_t           i;
-    ngx_uint_t          j, lock, accept_lock, expire;
+    ngx_uint_t          lock, accept_lock, expire;
     size_t              n;
     ngx_msec_t          timer;
     ngx_err_t           err;
+#if 0
     ngx_cycle_t       **old_cycle;
+#endif
     ngx_event_t        *rev, *wev;
     ngx_connection_t   *c;
     ngx_epoch_msec_t    delta;
@@ -580,8 +585,10 @@ ngx_devpoll_create_conf(ngx_cycle_t *cycle)
 {
     ngx_devpoll_conf_t  *dpcf;
 
-    ngx_test_null(dpcf, ngx_palloc(cycle->pool, sizeof(ngx_devpoll_conf_t)),
-                  NGX_CONF_ERROR);
+    dpcf = ngx_palloc(cycle->pool, sizeof(ngx_devpoll_conf_t));
+    if (dpcf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     dpcf->changes = NGX_CONF_UNSET;
     dpcf->events = NGX_CONF_UNSET;

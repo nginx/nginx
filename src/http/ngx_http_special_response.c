@@ -17,7 +17,7 @@ static u_char error_tail[] =
 ;
 
 
-static u_char msie_stub[] =
+static u_char ngx_http_msie_stub[] =
 "<!-- The padding to disable MSIE's friendly error page -->" CRLF
 "<!-- The padding to disable MSIE's friendly error page -->" CRLF
 "<!-- The padding to disable MSIE's friendly error page -->" CRLF
@@ -234,9 +234,9 @@ ngx_int_t
 ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 {
     ngx_int_t                  rc;
-    ngx_uint_t                 err, i, msie_padding;
+    ngx_uint_t                 i, err, msie_padding;
     ngx_buf_t                 *b;
-    ngx_chain_t               *out, **ll, *cl;
+    ngx_chain_t               *out, *cl;
     ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -327,7 +327,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
             && error >= NGX_HTTP_BAD_REQUEST
             && error != NGX_HTTP_REQUEST_URI_TOO_LARGE)
         {
-            r->headers_out.content_length_n += sizeof(msie_stub) - 1;
+            r->headers_out.content_length_n += sizeof(ngx_http_msie_stub) - 1;
             msie_padding = 1;
         }
 
@@ -360,43 +360,64 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         return NGX_OK;
     }
 
-    out = NULL;
-    ll = NULL;
 
-    if (!(b = ngx_calloc_buf(r->pool))) {
+    b = ngx_calloc_buf(r->pool);
+    if (b == NULL) {
         return NGX_ERROR;
     }
+
     b->memory = 1;
     b->pos = error_pages[err].data;
     b->last = error_pages[err].data + error_pages[err].len;
 
-    ngx_alloc_link_and_set_buf(cl, b, r->pool, NGX_ERROR);
-    ngx_chain_add_link(out, ll, cl);
-
-
-    if (!(b = ngx_calloc_buf(r->pool))) {
+    cl = ngx_alloc_chain_link(r->pool);
+    if (cl == NULL) {
         return NGX_ERROR;
     }
+
+    cl->buf = b;
+    out = cl;
+
+
+    b = ngx_calloc_buf(r->pool);
+    if (b == NULL) {
+        return NGX_ERROR;
+    }
+
     b->memory = 1;
     b->pos = error_tail;
     b->last = error_tail + sizeof(error_tail) - 1;
 
-    ngx_alloc_link_and_set_buf(cl, b, r->pool, NGX_ERROR);
-    ngx_chain_add_link(out, ll, cl);
+    cl->next = ngx_alloc_chain_link(r->pool);
+    if (cl->next == NULL) {
+        return NGX_ERROR;
+    }
+
+    cl = cl->next;
+    cl->buf = b;
 
     if (msie_padding) {
-        if (!(b = ngx_calloc_buf(r->pool))) {
+        b = ngx_calloc_buf(r->pool);
+        if (b == NULL) {
             return NGX_ERROR;
         }
-        b->memory = 1;
-        b->pos = msie_stub;
-        b->last = msie_stub + sizeof(msie_stub) - 1;
 
-        ngx_alloc_link_and_set_buf(cl, b, r->pool, NGX_ERROR);
-        ngx_chain_add_link(out, ll, cl);
+        b->memory = 1;
+        b->pos = ngx_http_msie_stub;
+        b->last = ngx_http_msie_stub + sizeof(ngx_http_msie_stub) - 1;
+
+        cl->next = ngx_alloc_chain_link(r->pool);
+        if (cl->next == NULL) {
+            return NGX_ERROR;
+        }
+
+        cl = cl->next;
+        cl->buf = b;
     }
 
     b->last_buf = 1;
+
+    cl->next = NULL;
 
     return ngx_http_output_filter(r, out);
 }

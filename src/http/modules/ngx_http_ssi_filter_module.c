@@ -98,8 +98,6 @@ typedef enum {
 } ngx_http_ssi_state_e;
 
 
-static ngx_int_t ngx_http_ssi_error(ngx_http_request_t *r,
-    ngx_http_ssi_ctx_t *ctx);
 static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ctx);
 
@@ -1147,21 +1145,25 @@ static ngx_int_t
 ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
+    ngx_uint_t                  i;
     ngx_buf_t                  *b;
     ngx_str_t                  *var, *value;
     ngx_chain_t                *cl;
-    ngx_http_variable_value_t  *v;
+    ngx_http_variable_value_t  *vv;
 
     var = params[NGX_HTTP_SSI_ECHO_VAR];
-    value = NULL;
 
-    v = ngx_http_get_variable(r, var);
+    for (i = 0; i < var->len; i++) {
+        var->data[i] = ngx_toupper(var->data[i]);
+    }
 
-    if (v == NULL) {
+    vv = ngx_http_get_variable(r, var);
+
+    if (vv == NULL) {
         return NGX_HTTP_SSI_ERROR;
     }
 
-    if (v == NGX_HTTP_VARIABLE_NOT_FOUND) {
+    if (vv == NGX_HTTP_VARIABLE_NOT_FOUND) {
         value = params[NGX_HTTP_SSI_ECHO_DEFAULT];
 
         if (value == NULL) {
@@ -1172,7 +1174,7 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         }
 
     } else {
-        value = &v->text;
+        value = &vv->text;
 
         if (value->len == 0) {
             return NGX_OK;

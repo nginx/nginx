@@ -25,10 +25,10 @@ typedef struct {
 
 static ngx_int_t ngx_http_access_handler(ngx_http_request_t *r);
 static char *ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd,
-                                  void *conf);
+    void *conf);
 static void *ngx_http_access_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_access_merge_loc_conf(ngx_conf_t *cf,
-                                            void *parent, void *child);
+    void *parent, void *child);
 static ngx_int_t ngx_http_access_init(ngx_cycle_t *cycle);
 
 
@@ -77,7 +77,8 @@ ngx_module_t  ngx_http_access_module = {
 };
 
 
-static ngx_int_t ngx_http_access_handler(ngx_http_request_t *r)
+static ngx_int_t
+ngx_http_access_handler(ngx_http_request_t *r)
 {
     ngx_uint_t                   i;
     struct sockaddr_in          *sin;
@@ -117,8 +118,8 @@ static ngx_int_t ngx_http_access_handler(ngx_http_request_t *r)
 }
 
 
-static char *ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd,
-                                  void *conf)
+static char *
+ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_access_loc_conf_t *alcf = conf;
 
@@ -127,14 +128,15 @@ static char *ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_http_access_rule_t  *rule;
 
     if (alcf->rules == NULL) {
-        alcf->rules = ngx_create_array(cf->pool, 4,
+        alcf->rules = ngx_array_create(cf->pool, 4,
                                        sizeof(ngx_http_access_rule_t));
         if (alcf->rules == NULL) {
             return NGX_CONF_ERROR;
         }
     }
 
-    if (!(rule = ngx_push_array(alcf->rules))) {
+    rule = ngx_array_push(alcf->rules);
+    if (rule == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -170,11 +172,13 @@ static char *ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd,
 }
 
 
-static void *ngx_http_access_create_loc_conf(ngx_conf_t *cf)
+static void *
+ngx_http_access_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_access_loc_conf_t  *conf;
 
-    if (!(conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_access_loc_conf_t)))) {
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_access_loc_conf_t));
+    if (conf == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -182,8 +186,8 @@ static void *ngx_http_access_create_loc_conf(ngx_conf_t *cf)
 }
 
 
-static char *ngx_http_access_merge_loc_conf(ngx_conf_t *cf,
-                                            void *parent, void *child)
+static char *
+ngx_http_access_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_access_loc_conf_t  *prev = parent;
     ngx_http_access_loc_conf_t  *conf = child;
@@ -196,14 +200,15 @@ static char *ngx_http_access_merge_loc_conf(ngx_conf_t *cf,
 }
 
 
-static ngx_int_t ngx_http_access_init(ngx_cycle_t *cycle)
+static ngx_int_t
+ngx_http_access_init(ngx_cycle_t *cycle)
 {
     ngx_http_handler_pt        *h;
     ngx_http_core_main_conf_t  *cmcf;
 
     cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
 
-    h = ngx_push_array(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;
     }

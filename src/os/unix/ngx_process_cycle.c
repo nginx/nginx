@@ -11,7 +11,7 @@
 
 
 static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
-                                       ngx_int_t type);
+    ngx_int_t type);
 static void ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type);
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo);
 static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle);
@@ -23,7 +23,9 @@ static void ngx_channel_handler(ngx_event_t *ev);
 static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle);
 static void *ngx_worker_thread_cycle(void *data);
 #endif
+#if 0
 static void ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data);
+#endif
 
 
 ngx_uint_t    ngx_process;
@@ -59,7 +61,8 @@ ngx_int_t              ngx_threads_n;
 u_char  master_process[] = "master process";
 
 
-void ngx_master_process_cycle(ngx_cycle_t *cycle)
+void
+ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
     char              *title;
     u_char            *p;
@@ -254,7 +257,8 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
 }
 
 
-void ngx_single_process_cycle(ngx_cycle_t *cycle)
+void
+ngx_single_process_cycle(ngx_cycle_t *cycle)
 {
     ngx_uint_t  i;
 
@@ -300,8 +304,8 @@ void ngx_single_process_cycle(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
-                                       ngx_int_t type)
+static void
+ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 {
     ngx_int_t         i;
     ngx_channel_t     ch;
@@ -359,12 +363,12 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
 }
 
 
-static void ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type)
+static void
+ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type)
 {
-    ngx_int_t         i;
-    ngx_channel_t     ch;
-
-    return;
+#if 0
+    ngx_int_t      i;
+    ngx_channel_t  ch;
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start garbage collector");
 
@@ -397,15 +401,16 @@ static void ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type)
         ngx_write_channel(ngx_processes[i].channel[0],
                           &ch, sizeof(ngx_channel_t), cycle->log);
     }
+#endif
 }
 
 
-static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
+static void
+ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 {
     ngx_int_t      i;
     ngx_err_t      err;
     ngx_channel_t  ch;
-
 
     switch (signo) {
 
@@ -492,7 +497,8 @@ static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 }
 
 
-static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
+static ngx_uint_t
+ngx_reap_childs(ngx_cycle_t *cycle)
 {
     ngx_int_t      i, n;
     ngx_uint_t     live;
@@ -619,7 +625,8 @@ static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_master_exit(ngx_cycle_t *cycle)
+static void
+ngx_master_exit(ngx_cycle_t *cycle)
 {
     ngx_delete_pidfile(cycle);
 
@@ -631,11 +638,14 @@ static void ngx_master_exit(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
+static void
+ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
+#if (NGX_THREADS)
     ngx_int_t          n;
     ngx_err_t          err;
     ngx_core_conf_t   *ccf;
+#endif
 
     ngx_worker_process_init(cycle, 1);
 
@@ -668,7 +678,9 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         for (n = 0; n < ngx_threads_n; n++) {
 
-            if (!(ngx_threads[n].cv = ngx_cond_init(cycle->log))) {
+            ngx_threads[n].cv = ngx_cond_init(cycle->log);
+
+            if (ngx_threads[n].cv == NULL) {
                 /* fatal */
                 exit(2);
             }
@@ -748,7 +760,8 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 }
 
 
-static void ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
+static void
+ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
 {
     sigset_t           set;
     ngx_int_t          n;
@@ -873,7 +886,8 @@ static void ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
 }
 
 
-static void ngx_channel_handler(ngx_event_t *ev)
+static void
+ngx_channel_handler(ngx_event_t *ev)
 {
     ngx_int_t          n;
     ngx_channel_t      ch;
@@ -952,7 +966,8 @@ static void ngx_channel_handler(ngx_event_t *ev)
 
 #if (NGX_THREADS)
 
-static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle)
+static void
+ngx_wakeup_worker_threads(ngx_cycle_t *cycle)
 {
     ngx_int_t   i;
     ngx_uint_t  live;
@@ -994,7 +1009,8 @@ static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_worker_thread_cycle(void *data)
+static void *
+ngx_worker_thread_cycle(void *data)
 {
     ngx_thread_t  *thr = data;
 
@@ -1022,7 +1038,8 @@ static void *ngx_worker_thread_cycle(void *data)
 
     ngx_setthrtitle("worker thread");
 
-    if (!(tls = ngx_calloc(sizeof(ngx_core_tls_t), cycle->log))) {
+    tls = ngx_calloc(sizeof(ngx_core_tls_t), cycle->log);
+    if (tls == NULL) {
         return (void *) 1;
     }
 
@@ -1077,7 +1094,10 @@ static void *ngx_worker_thread_cycle(void *data)
 #endif
 
 
-static void ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data)
+#if 0
+
+static void
+ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data)
 {
     ngx_uint_t         i;
     ngx_gc_t           ctx;
@@ -1123,3 +1143,5 @@ static void ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data)
         ngx_process_events(cycle);
     }
 }
+
+#endif

@@ -37,7 +37,6 @@
 
 #pragma warning(default:4201)
 
-
 /* disable some "-W4" level warnings */
 
 /* 'type cast': from function pointer to data pointer */
@@ -49,14 +48,13 @@
 /* unreferenced formal parameter */
 #pragma warning(disable:4100)
 
-/* conditional expression is constant */
+/* FD_SET() and FD_CLR(): conditional expression is constant */
 #pragma warning(disable:4127)
 
-/* unreachable code */
-#pragma warning(disable:4702)
-
+#if 0
 /* assignment within conditional expression */
 #pragma warning(disable:4706)
+#endif
 
 /* function 'ngx_handle_write_event' not inlined */
 #pragma warning(disable:4710)
@@ -65,9 +63,6 @@
 
 
 #ifdef __WATCOMC__
-
-/* unreachable code */
-#pragma disable_message(201)
 
 /* symbol 'ngx_rbtree_min' has been defined, but not referenced */
 #pragma disable_message(202)
@@ -80,25 +75,16 @@
 /* the end of the precompiled headers */
 #pragma hdrstop
 
-/*
- * 'fd' is assigned a value that is never used in function ngx_event_init_conf
- */
-#pragma warn -8004
-
-/* condition is always false */
-#pragma warn -8008
-
 /* functions containing (for|while|some if) are not expanded inline */
 #pragma warn -8027
 
 /* unreferenced formal parameter */
 #pragma warn -8057
 
+#if 0
 /* assignment within conditional expression */
 #pragma warn -8060
-
-/* unreachable code */
-#pragma warn -8066
+#endif
 
 #endif
 

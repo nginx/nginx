@@ -16,6 +16,8 @@ typedef struct ngx_http_request_s  ngx_http_request_t;
 typedef struct ngx_http_log_ctx_s  ngx_http_log_ctx_t;
 typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 typedef struct ngx_http_in_addr_s  ngx_http_in_addr_t;
+typedef struct ngx_http_variable_value_s  ngx_http_variable_value_t;
+
 
 #if (NGX_HTTP_CACHE)
 #include <ngx_http_cache.h>
@@ -27,7 +29,7 @@ typedef struct ngx_http_in_addr_s  ngx_http_in_addr_t;
 #include <ngx_http_request.h>
 #include <ngx_http_config.h>
 #include <ngx_http_busy_lock.h>
-#include <ngx_http_log_handler.h>
+#include <ngx_http_log_module.h>
 #include <ngx_http_core_module.h>
 #include <ngx_http_variables.h>
 
@@ -46,16 +48,7 @@ struct ngx_http_log_ctx_s {
 #define ngx_http_get_module_err_ctx(r, module)                                \
     ((r)->err_ctx ? (r)->err_ctx[module.ctx_index] : (r)->ctx[module.ctx_index])
 
-/* STUB */
-#define ngx_http_create_ctx(r, cx, module, size, error)                       \
-            do {                                                              \
-                ngx_test_null(cx, ngx_pcalloc(r->pool, size), error);         \
-                r->ctx[module.ctx_index] = cx;                                \
-            } while (0)
-/**/
-
 #define ngx_http_set_ctx(r, c, module)         r->ctx[module.ctx_index] = c;
-
 #define ngx_http_delete_ctx(r, module)         r->ctx[module.ctx_index] = NULL;
 
 

@@ -22,7 +22,8 @@
 
 #if (NGX_HAVE_FIONBIO)
 
-int ngx_nonblocking(ngx_socket_t s)
+int
+ngx_nonblocking(ngx_socket_t s)
 {
     u_long  nb;
 
@@ -32,7 +33,8 @@ int ngx_nonblocking(ngx_socket_t s)
 }
 
 
-int ngx_blocking(ngx_socket_t s)
+int
+ngx_blocking(ngx_socket_t s)
 {
     u_long  nb;
 
@@ -46,7 +48,8 @@ int ngx_blocking(ngx_socket_t s)
 
 #if (NGX_FREEBSD)
 
-int ngx_tcp_nopush(ngx_socket_t s)
+int
+ngx_tcp_nopush(ngx_socket_t s)
 {
     int  tcp_nopush;
 
@@ -57,7 +60,8 @@ int ngx_tcp_nopush(ngx_socket_t s)
 }
 
 
-int ngx_tcp_push(ngx_socket_t s)
+int
+ngx_tcp_push(ngx_socket_t s)
 {
     int  tcp_nopush;
 
@@ -69,7 +73,8 @@ int ngx_tcp_push(ngx_socket_t s)
 
 #elif (NGX_LINUX)
 
-int ngx_tcp_nopush(ngx_socket_t s)
+int
+ngx_tcp_nopush(ngx_socket_t s)
 {
     int  cork;
 
@@ -79,7 +84,8 @@ int ngx_tcp_nopush(ngx_socket_t s)
                       (const void *) &cork, sizeof(int));
 }
 
-int ngx_tcp_push(ngx_socket_t s)
+int
+ngx_tcp_push(ngx_socket_t s)
 {
     int  cork;
 
@@ -91,14 +97,16 @@ int ngx_tcp_push(ngx_socket_t s)
 
 #else
 
-int ngx_tcp_nopush(ngx_socket_t s)
+int
+ngx_tcp_nopush(ngx_socket_t s)
 {
-    return NGX_OK;
+    return 0;
 }
 
-int ngx_tcp_push(ngx_socket_t s)
+int
+ngx_tcp_push(ngx_socket_t s)
 {
-    return NGX_OK;
+    return 0;
 }
 
 #endif

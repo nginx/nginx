@@ -47,7 +47,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
     sendfilevec_t  *sfv, sfvs[NGX_SENDFILEVECS];
     ngx_array_t     vec;
     ngx_event_t    *wev;
-    ngx_chain_t    *cl, *tail;
+    ngx_chain_t    *cl;
 
     wev = c->write;
 
@@ -107,7 +107,8 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                     sfv->sfv_len += (size_t) size;
 
                 } else {
-                    if (!(sfv = ngx_array_push(&vec))) {
+                    sfv = ngx_array_push(&vec);
+                    if (sfv == NULL) {
                         return NGX_CHAIN_ERROR;
                     }
 
@@ -140,7 +141,8 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                     sfv->sfv_len += (size_t) size;
 
                 } else {
-                    if (!(sfv = ngx_array_push(&vec))) {
+                    sfv = ngx_array_push(&vec);
+                    if (sfv == NULL) {
                         return NGX_CHAIN_ERROR;
                     }
 

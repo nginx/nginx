@@ -12,7 +12,7 @@
 
 static void ngx_http_read_client_request_body_handler(ngx_event_t *rev);
 static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r,
-                                                      ngx_connection_t *c);
+    ngx_connection_t *c);
 
 /*
  * on completion ngx_http_read_client_request_body() adds to
@@ -21,21 +21,34 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r,
  *    *) one memory or file buf that contains the rest of the body
  */
 
-ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
-                                  ngx_http_client_body_handler_pt post_handler)
+ngx_int_t
+ngx_http_read_client_request_body(ngx_http_request_t *r,
+    ngx_http_client_body_handler_pt post_handler)
 
 {
     ssize_t                    size;
     ngx_buf_t                 *b;
     ngx_chain_t               *cl;
+    ngx_connection_t          *c;
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (!(rb = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t)))) {
+    rb = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t));
+    if (rb == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     r->request_body = rb;
+
+    /* STUB */
+    if (r->file.fd != NGX_INVALID_FILE) {
+        if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                          ngx_close_file_n " \"%V\" failed", &r->file.name);
+        }
+        r->file.fd = NGX_INVALID_FILE;
+    }
+    /**/
 
     if (r->headers_in.content_length_n <= 0) {
         post_handler(r);
@@ -58,7 +71,8 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
 
         /* there is the pre-read part of the request body */
 
-        if (!(b = ngx_calloc_buf(r->pool))) {
+        b = ngx_calloc_buf(r->pool);
+        if (b == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
@@ -66,7 +80,8 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
         b->start = b->pos = r->header_in->pos;
         b->end = b->last = r->header_in->last;
 
-        if (!(rb->bufs = ngx_alloc_chain_link(r->pool))) {
+        rb->bufs = ngx_alloc_chain_link(r->pool);
+        if (rb->bufs == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
@@ -103,11 +118,13 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
         size = clcf->client_body_buffer_size;
     }
 
-    if (!(rb->buf = ngx_create_temp_buf(r->pool, size))) {
+    rb->buf = ngx_create_temp_buf(r->pool, size);
+    if (rb->buf == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (!(cl = ngx_alloc_chain_link(r->pool))) {
+    cl = ngx_alloc_chain_link(r->pool);
+    if (cl == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -121,14 +138,16 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
         rb->bufs = cl;
     }
 
-    r->connection->read->event_handler =
-                                     ngx_http_read_client_request_body_handler;
+    c = r->connection;
 
-    return ngx_http_do_read_client_request_body(r, r->connection);
+    c->read->event_handler = ngx_http_read_client_request_body_handler;
+
+    return ngx_http_do_read_client_request_body(r, c);
 }
 
 
-static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
+static void
+ngx_http_read_client_request_body_handler(ngx_event_t *rev)
 {
     ngx_int_t            rc;
     ngx_connection_t    *c;
@@ -150,8 +169,9 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
 }
 
 
-static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r,
-                                                      ngx_connection_t *c)
+static ngx_int_t
+ngx_http_do_read_client_request_body(ngx_http_request_t *r,
+    ngx_connection_t *c)
 {
     size_t                     size;
     ssize_t                    n;
@@ -169,7 +189,8 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r,
         if (rb->buf->last == rb->buf->end) {
 
             if (rb->temp_file == NULL) {
-                if (!(tf = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t)))) {
+                tf = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t));
+                if (tf == NULL) {
                     return NGX_ERROR;
                 }
 
@@ -268,7 +289,8 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r,
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        if (!(b = ngx_calloc_buf(r->pool))) {
+        b = ngx_calloc_buf(r->pool);
+        if (b == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 

@@ -229,9 +229,13 @@ time_t ngx_http_parse_time(u_char *value, size_t len)
         return NGX_ERROR;
     }
 
-    if (sizeof(time_t) <= 4 && year >= 2038) {
+#if (NGX_TIME_T_SIZE <= 4)
+
+    if (year >= 2038) {
         return NGX_ERROR;
     }
+
+#endif
 
     /*
      * shift new year to March 1 and start months from 1 (not 0),

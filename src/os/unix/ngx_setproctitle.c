@@ -43,7 +43,8 @@ ngx_init_setproctitle(ngx_log_t *log)
         size += ngx_strlen(environ[i]) + 1;
     }
 
-    if (!(p = ngx_alloc(size, log))) {
+    p = ngx_alloc(size, log);
+    if (p == NULL) {
         return NGX_ERROR;
     }
 
