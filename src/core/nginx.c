@@ -235,7 +235,7 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     ngx_uint_t      i, live;
     sigset_t        set, wset;
 
-    delay = 1000;
+    delay = 125;
 
     sigemptyset(&set);
     sigaddset(&set, SIGCHLD);
@@ -299,7 +299,7 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                    "quit cycle");
 
-                    if (delay < 10000) {
+                    if (delay < 15000) {
                         delay *= 2;
                     }
 
@@ -345,15 +345,20 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                             }
                         }
 
-                        if (live == 0 && ngx_process == NGX_PROCESS_QUITING) {
-                            if (ngx_delete_file(ctx->pid.name.data)
+                        if (live == 0) {
+                            if (ngx_process == NGX_PROCESS_QUITING) {
+                                if (ngx_delete_file(ctx->pid.name.data)
                                                              == NGX_FILE_ERROR)
-                            {
-                                ngx_log_error(NGX_LOG_ALERT, cycle->log,
-                                              ngx_errno,
-                                              ngx_delete_file_n
-                                              " \"%s\" failed",
-                                              ctx->pid.name.data);
+                                {
+                                    ngx_log_error(NGX_LOG_ALERT, cycle->log,
+                                                  ngx_errno,
+                                                  ngx_delete_file_n
+                                                  " \"%s\" failed",
+                                                  ctx->pid.name.data);
+                                }
+
+                            } else { /* NGX_PROCESS_PAUSED */
+                                ngx_pause = 0;
                             }
 
                             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exit");
@@ -363,8 +368,12 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                 }
 
                 if (ngx_terminate) {
-                    ngx_signal_processes(cycle,
+                    if (delay > 10000) {
+                        ngx_signal_processes(cycle, SIGKILL);
+                    } else {
+                        ngx_signal_processes(cycle,
                                        ngx_signal_value(NGX_TERMINATE_SIGNAL));
+                    }
                     ngx_process = NGX_PROCESS_QUITING;
                 }
 
@@ -374,7 +383,7 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     ngx_process = NGX_PROCESS_QUITING;
                 }
 
-                if (ngx_pause || ngx_process != NGX_PROCESS_PAUSED) {
+                if (ngx_pause) {
                     ngx_signal_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
                     ngx_process = NGX_PROCESS_PAUSED;
@@ -404,10 +413,18 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     ngx_reopen = 0;
                 }
 
+                if (first) {
+                    for (i = 0; i < ngx_last_process; i++) {
+                        if (!ngx_processes[i].detached) {
+                            ngx_processes[i].signal = 1;
+                        }
+                    }
+                    first = 1;
+                }
+
             }
 
-            if (ngx_pause) {
-                ngx_pause = 0;
+            if (ngx_process == NGX_PROCESS_PAUSED) {
                 ngx_process = NGX_PROCESS_MASTER;
 
             } else {
