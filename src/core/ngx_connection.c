@@ -78,7 +78,7 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
     /* TODO: tries configurable */
 
-    for (tries = 10; tries; tries--) {
+    for (tries = /* STUB */ 1; tries; tries--) {
         failed = 0;
 
         /* for each listening socket */

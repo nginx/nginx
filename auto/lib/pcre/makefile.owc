@@ -1,0 +1,14 @@
+
+CFLAGS =	-c -zq -bt=nt -ot -op -oi -oe -s -bm $(OWC_OPT)
+PCREFLAGS =	-DPCRE_STATIC -DPOSIX_MALLOC_THRESHOLD=10
+
+
+pcre.lib:
+	patch -o pcre.h pcre.in patch.pcre
+	patch -o config.h config.in patch.config
+
+	wcl386 -zq -bt=nt -l=nt -fe=dftables dftables.c
+	dftables > chartables.c
+
+	wcl386 $(CFLAGS) $(PCREFLAGS) maketables.c get.c study.c pcre.c
+	wlib -n pcre.lib maketables.obj get.obj study.obj pcre.obj

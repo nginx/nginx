@@ -8,8 +8,7 @@
 #define NGINX_NEW_PID_EXT  ".newbin"
 #define NGINX_NEW_PID      NGINX_PID NGINX_NEW_PID_EXT
 
-#define NGINX_VAR          "NGINX="
-#define NGINX_VAR_LEN      (sizeof(NGINX_VAR) - 1)
+#define NGINX_VAR          "NGINX"
 
 extern ngx_module_t        ngx_core_module;
 

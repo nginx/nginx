@@ -227,9 +227,13 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 #if (WIN32)
+#if 0
     /* TODO: TEST */
+fprintf(stderr, "BEFORE\n");
     CloseHandle(GetStdHandle(STD_ERROR_HANDLE));
     SetStdHandle(STD_ERROR_HANDLE, cycle->log->file->fd);
+fprintf(stderr, "AFTER\n");
+#endif
 #else
     if (dup2(cycle->log->file->fd, STDERR_FILENO) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,

@@ -1,0 +1,15 @@
+--- pcre.in.orig	Thu Aug 21 14:43:07 2003
++++ pcre.in		Sun Mar  7 02:10:11 2004
+@@ -10,9 +10,9 @@
+ /* The file pcre.h is build by "configure". Do not edit it; instead
+ make changes to pcre.in. */
+ 
+-#define PCRE_MAJOR          @PCRE_MAJOR@
+-#define PCRE_MINOR          @PCRE_MINOR@
+-#define PCRE_DATE           @PCRE_DATE@
++#define PCRE_MAJOR          4
++#define PCRE_MINOR          4
++#define PCRE_DATE           21-August-2003
+ 
+ /* Win32 uses DLL by default */
+ 

@@ -64,7 +64,7 @@ ssize_t ngx_overlapped_wsarecv(ngx_connection_t *c, char *buf, size_t size)
     rev = c->read;
 
     if (!rev->ready) {
-        ngx_log_error(NGX_LOG_ALERT, rev->log, 0, "second wsa post");
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "second wsa post");
         return NGX_AGAIN;
     }
 

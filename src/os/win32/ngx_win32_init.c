@@ -17,6 +17,13 @@ ngx_os_io_t ngx_os_io = {
 };
 
 
+typedef struct {
+    WORD  wServicePackMinor;
+    WORD  wSuiteMask;
+    BYTE  wProductType;
+} ngx_osviex_stub_t;
+
+
 /* Should these pointers be per protocol ? */
 LPFN_ACCEPTEX              acceptex;
 LPFN_GETACCEPTEXSOCKADDRS  getacceptexsockaddrs;
@@ -29,11 +36,12 @@ static GUID tf_guid = WSAID_TRANSMITFILE;
 
 int ngx_os_init(ngx_log_t *log)
 {
-    u_int            osviex;
-    DWORD            bytes;
-    SOCKET           s;
-    WSADATA          wsd;
-    OSVERSIONINFOEX  osvi;
+    u_int               osviex;
+    DWORD               bytes;
+    SOCKET              s;
+    WSADATA             wsd;
+    OSVERSIONINFOEX     osvi;
+    ngx_osviex_stub_t  *osviex_stub;
 
     /* get Windows version */
 
@@ -75,17 +83,16 @@ int ngx_os_init(ngx_log_t *log)
         ngx_win32_version += osvi.wServicePackMajor * 10
                              + osvi.wServicePackMinor;
 
-        ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "OS: %u build:%u, \"%s\", suite:%x, type:%u",
-                      ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
-                      osvi.wReserved[0], osvi.wReserved[1]);
+        /*
+         * the MSVC 6.0 SP2 defines wSuiteMask and wProductType
+         * as WORD wReserved[2]
+         */
+        osviex_stub = (ngx_osviex_stub_t *) &osvi.wServicePackMinor;
 
-#if 0
         ngx_log_error(NGX_LOG_INFO, log, 0,
                       "OS: %u build:%u, \"%s\", suite:%x, type:%u",
                       ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
-                      osvi.wSuiteMask, osvi.wProductType);
-#endif
+                      osviex_stub->wSuiteMask, osviex_stub->wProductType);
 
     } else {
         if (osvi.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
@@ -121,6 +128,10 @@ int ngx_os_init(ngx_log_t *log)
         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                       "WSAStartup() failed");
         return NGX_ERROR;
+    }
+
+    if (ngx_win32_version < NGX_WIN_NT) {
+        return NGX_OK;
     }
 
     /* get AcceptEx(), GetAcceptExSockAddrs() and TransmitFile() addresses */

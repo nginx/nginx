@@ -12,13 +12,25 @@ if [ $MD5 != NONE ]; then
 
     CORE_INCS="$CORE_INCS -I $MD5"
 
-    if [ "$PLATFORM" = "win32" ]; then
-        CORE_LIBS="$CORE_LIBS md5.lib"
-        CORE_LINK="$CORE_LINK -libpath:$MD5"
-    else 
-        LINK_DEPS="$LINK_DEPS $MD5/libmd5.a"
-        CORE_LIBS="$CORE_LIBS -L $MD5 -lmd5"
-    fi
+    case $CC in
+
+        cl)
+            LINK_DEPS="$LINK_DEPS $MD5/md5.lib"
+            CORE_LIBS="$CORE_LIBS md5.lib"
+            CORE_LINK="$CORE_LINK -libpath:$MD5"
+        ;;
+
+        wcl386)
+            LINK_DEPS="$LINK_DEPS $MD5/md5.lib"
+            CORE_LIBS="$CORE_LIBS $MD5/md5.lib"
+        ;;
+
+        *)
+            LINK_DEPS="$LINK_DEPS $MD5/libmd5.a"
+            CORE_LIBS="$CORE_LIBS -L $MD5 -lmd5"
+        ;;
+
+    esac
 
 else
 

@@ -4,37 +4,54 @@ if [ $PCRE != NONE ]; then
     CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
     CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
 
-    if [ "$PLATFORM" = "win32" ]; then
-        have=HAVE_PCRE . auto/have
-        have=PCRE_STATIC . auto/have
-        CORE_LIBS="$CORE_LIBS pcre.lib"
-        CORE_LINK="$CORE_LINK -libpath:$PCRE"
-    else
-        have=HAVE_PCRE . auto/have
-        CORE_DEPS="$CORE_DEPS $PCRE/.libs/libpcre.a"
-        CORE_LIBS="$CORE_LIBS -L $PCRE/.libs -lpcre"
-    fi
+    case $CC in
+
+        cl)
+            have=HAVE_PCRE . auto/have
+            have=PCRE_STATIC . auto/have
+            CORE_DEPS="$CORE_DEPS $PCRE/pcre.lib"
+            #CORE_DEPS="$PCRE/pcre.lib $CORE_DEPS"
+            CORE_LIBS="$CORE_LIBS pcre.lib"
+            CORE_LINK="$CORE_LINK -libpath:$PCRE"
+        ;;
+
+        wcl386)
+            have=HAVE_PCRE . auto/have
+            have=PCRE_STATIC . auto/have
+            CORE_DEPS="$CORE_DEPS $PCRE/pcre.lib"
+            CORE_LIBS="$CORE_LIBS $PCRE/pcre.lib"
+        ;;
+
+        *)
+            have=HAVE_PCRE . auto/have
+            CORE_DEPS="$CORE_DEPS $PCRE/.libs/libpcre.a"
+            CORE_LIBS="$CORE_LIBS -L $PCRE/.libs -lpcre"
+        ;;
+
+    esac
 
 else
 
-    ngx_lib_inc="#include <pcre.h>"
+    if [ $PLATFORM != win32 ]; then
+        ngx_lib_inc="#include <pcre.h>"
 
-    ngx_lib="PCRE"
-    ngx_lib_test="pcre *re; pcre_compile(re, 0, NULL, 0, NULL)"
-    ngx_libs=-lpcre
-    . auto/lib/test
+        ngx_lib="PCRE"
+        ngx_lib_test="pcre *re; pcre_compile(re, 0, NULL, 0, NULL)"
+        ngx_libs=-lpcre
+        . auto/lib/test
 
 
-    if [ $ngx_found = yes ]; then
-        have=HAVE_PCRE . auto/have
+        if [ $ngx_found = yes ]; then
+            have=HAVE_PCRE . auto/have
 
-        CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
-        CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
-        CORE_LIBS="$CORE_LIBS $ngx_libs"
+            CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
+            CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
+            CORE_LIBS="$CORE_LIBS $ngx_libs"
 
-        PCRE=YES
-    else
-        PCRE=NO
+            PCRE=YES
+        else
+            PCRE=NO
+        fi
     fi
 
 fi

@@ -2,13 +2,25 @@
 if [ $ZLIB != NONE ]; then
     CORE_INCS="$CORE_INCS -I $ZLIB"
 
-    if [ "$PLATFORM" = "win32" ]; then
-        CORE_LIBS="$CORE_LIBS zlib.lib"
-        CORE_LINK="$CORE_LINK -libpath:$ZLIB"
-    else
-        LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
-        CORE_LIBS="$CORE_LIBS -L $ZLIB -lz"
-    fi
+    case $CC in
+
+        cl)
+            LINK_DEPS="$LINK_DEPS $ZLIB/zlib.lib"
+            CORE_LIBS="$CORE_LIBS zlib.lib"
+            CORE_LINK="$CORE_LINK -libpath:$ZLIB"
+        ;;
+
+        wcl386)
+            LINK_DEPS="$LINK_DEPS $ZLIB/zlib.lib"
+            CORE_LIBS="$CORE_LIBS $ZLIB/zlib.lib"
+        ;;
+
+        *)
+            LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
+            CORE_LIBS="$CORE_LIBS -L $ZLIB -lz"
+        ;;
+
+    esac
 
 else
 

@@ -245,7 +245,7 @@ static ngx_int_t ngx_iocp_process_events(ngx_log_t *log)
         ev->available = bytes;
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
-                       "iocp event handler: %08x" PTR_FMT, ev->event_handler);
+                       "iocp event handler: " PTR_FMT, ev->event_handler);
 
         ev->event_handler(ev);
     }

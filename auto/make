@@ -5,7 +5,28 @@ mkdir -p $OBJS/src/core $OBJS/src/event $OBJS/src/event/modules \
 
 
 echo "CC = $CC"                                                   > $MAKEFILE
+echo "LINK = $LINK"                                               >> $MAKEFILE
+if [ $CC = wcl386 ]; then
+    echo MAKE = wmake                                             >> $MAKEFILE
+fi
 echo "CFLAGS = $CFLAGS"                                           >> $MAKEFILE
+echo                                                              >> $MAKEFILE
+
+
+if [ $MAKE_SL = YES ]; then
+    echo                                                          >> $MAKEFILE
+fi
+
+all_inc="$CORE_INCS -I $OBJS $HTTP_INCS"
+if [ $INC_EQ = YES ]; then
+    all_inc=`echo $all_inc | sed -e "s/-I /-i=/g"`
+fi
+
+if [ $MAKE_BS = YES ]; then
+    all_inc=`echo $all_inc | sed -e "s/\//\\\\\\/g"`
+fi
+
+echo "ALL_INCS = $all_inc"                                        >> $MAKEFILE
 echo                                                              >> $MAKEFILE
 
 
@@ -96,9 +117,9 @@ echo                                                              >> $MAKEFILE
 # nginx
 
 if [ $MAKE_SL = YES ]; then
-    echo $ngx_n "nginx:	" $ngx_c                                  >> $MAKEFILE
+    echo $ngx_n "nginx$BINEXT:	" $ngx_c                          >> $MAKEFILE
 else
-    echo "nginx: \\"                                              >> $MAKEFILE
+    echo "nginx$BINEXT: \\"                                       >> $MAKEFILE
 fi
 
 
@@ -140,9 +161,9 @@ echo                                                              >> $MAKEFILE
 # nginx build
 
 if [ $MAKE_SL = YES ]; then
-    echo $ngx_n "	\$(CC) ${BINOUT}nginx" $ngx_c             >> $MAKEFILE
+    echo $ngx_n "	\$(LINK) ${BINOUT}nginx" $ngx_c           >> $MAKEFILE
 else
-    echo "	\$(CC) ${BINOUT}nginx \\"                         >> $MAKEFILE
+    echo "	\$(LINK) ${BINOUT}nginx \\"                       >> $MAKEFILE
 fi
 
 
@@ -190,7 +211,12 @@ fi
 # ngx_modules.c
 
 deps="\$(CORE_DEPS)"
-args="\$(CFLAGS) \$(CORE_INCS)"
+
+if [ $PCH != NO ]; then
+    args="\$(CFLAGS) $USEPCH \$(ALL_INCS)"
+else
+    args="\$(CFLAGS) $USEPCH \$(CORE_INCS)"
+fi
 
 if [ $MAKE_SL = YES ]; then
     echo "$obj: $NGX_MODULES_C $deps"                             >> $MAKEFILE
@@ -237,7 +263,12 @@ done
 # http sources
 
 deps="\$(CORE_DEPS) \$(HTTP_DEPS)"
-args="\$(CFLAGS) \$(CORE_INCS) \$(HTTP_INCS)"
+
+if [ $PCH != NO ]; then
+    args="\$(CFLAGS) $USEPCH \$(ALL_INCS)"
+else
+    args="\$(CFLAGS) $USEPCH \$(CORE_INCS) \$(HTTP_INCS)"
+fi
 
 for src in $HTTP_SRCS
 do
@@ -262,3 +293,23 @@ do
         echo                                                      >> $MAKEFILE
     fi
 done
+
+
+# precompiled headers
+
+if [ $PCH != NO ]; then
+    echo "#include <ngx_config.h>" > $OBJS/pch.c
+
+    pch="$PCH:	src/core/ngx_config.h $OS_CONFIG $OBJS/ngx_auto_config.h"
+    src="\$(CC) \$(CFLAGS) $BUILDPCH $COMPILEONLY \$(ALL_INCS)"
+    src="$src $OBJOUT$OBJS/pch.obj $OBJS/pch.c"
+
+    if [ $MAKE_BS = YES ]; then
+        pch=`echo $pch | sed -e "s/\//\\\\\\/g"`
+        src=`echo $src | sed -e "s/\//\\\\\\/g"`
+    fi
+
+    echo "$pch"                                                   >> $MAKEFILE
+    echo "	$src"                                             >> $MAKEFILE
+    echo                                                          >> $MAKEFILE
+fi

@@ -1,18 +1,18 @@
 
-CC =		cl
 CFLAGS =	-O2 -Ob1 -Oi -Gs -MT
-LINK =		link
-
 PCREFLAGS =	-DPCRE_STATIC -DPOSIX_MALLOC_THRESHOLD=10
 
 
-all:
-	$(CC) -Fedftables dftables.c
+pcre.lib:
+	patch -o pcre.h pcre.in patch.pcre
+	patch -o config.h config.in patch.config
+
+	cl -Fedftables dftables.c
 
 	dftables > chartables.c
 
-	$(CC) -nologo -c $(CFLAGS) $(PCREFLAGS)				\
+	cl -nologo -c $(CFLAGS) $(PCREFLAGS)				\
 		maketables.c get.c study.c pcre.c
 
-	$(LINK) -lib -out:pcre.lib -verbose:lib				\
+	link -lib -out:pcre.lib -verbose:lib				\
 		maketables.obj get.obj study.obj pcre.obj

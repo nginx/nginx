@@ -1,7 +1,47 @@
 
-echo "$PCRE/.libs/libpcre.a:"                            >> $MAKEFILE
-echo "	cd $PCRE \\"                                     >> $MAKEFILE
-echo "	&& ./configure --disable-shared \\"              >> $MAKEFILE
-echo "	&& \$(MAKE)"                                     >> $MAKEFILE
-echo                                                     >> $MAKEFILE
+case $CC in
 
+    cl)
+        makefile=makefile.msvc
+    ;;
+
+    wcl386)
+        makefile=makefile.owc
+    ;;
+
+esac
+
+
+case $PLATFORM in
+
+    win32)
+        echo "$PCRE/pcre.lib:"                                    >> $MAKEFILE
+    ;;
+
+    *)
+        echo "$PCRE/.libs/libpcre.a:"                             >> $MAKEFILE
+    ;;
+
+esac
+
+
+case $PLATFORM in
+
+    win32)
+        cp auto/lib/pcre/patch.pcre $PCRE
+        cp auto/lib/pcre/patch.config $PCRE
+        cp auto/lib/pcre/$makefile $PCRE
+        echo "	cd $PCRE"                                         >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile OWC_OPT=$OWC_OPT"           >> $MAKEFILE
+        echo "	cd ..\\..\\.."                                    >> $MAKEFILE
+    ;;
+
+    *)
+        echo "	cd $PCRE \\"                                      >> $MAKEFILE
+        echo "	&& ./configure --disable-shared \\"               >> $MAKEFILE
+        echo "	&& \$(MAKE)"                                      >> $MAKEFILE
+    ;;
+
+esac
+
+echo                                                              >> $MAKEFILE

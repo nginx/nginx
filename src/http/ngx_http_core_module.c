@@ -844,13 +844,16 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
     char                      *rv;
     ngx_int_t                  m;
-    ngx_str_t                 *value, err;
+    ngx_str_t                 *value;
     ngx_http_module_t         *module;
     ngx_conf_t                 pvcf;
     ngx_http_conf_ctx_t       *ctx, *pvctx;
     ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf, **clcfp;
+#if (HAVE_PCRE)
+    ngx_str_t                  err;
     char                       errstr[NGX_MAX_CONF_ERRSTR];
+#endif
 
     if (!(ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)))) {
         return NGX_CONF_ERROR;

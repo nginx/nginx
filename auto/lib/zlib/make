@@ -1,19 +1,52 @@
 
-echo "$ZLIB/libz.a:"                                     >> $MAKEFILE
+case $CC in
 
-case $PLATFORM in
-
-    *:i386)
-        echo "	cd $ZLIB \\"                             >> $MAKEFILE
-        echo "	&& cp contrib/asm686/match.S . \\"       >> $MAKEFILE
-        echo "	&& CFLAGS=\"-O3 -DASMV\" ./configure \\" >> $MAKEFILE
-        echo "	&& \$(MAKE) OBJA=match.o"                >> $MAKEFILE
+    cl)
+        makefile=makefile.msvc
     ;;
 
-    *)
-        echo "	cd $ZLIB && ./configure && \$(MAKE)"     >> $MAKEFILE
+    wcl386)
+        makefile=makefile.owc
     ;;
 
 esac
 
-echo                                                     >> $MAKEFILE
+
+case $PLATFORM in
+
+    win32)
+        echo "$ZLIB/zlib.lib:"                                    >> $MAKEFILE
+    ;;
+
+    *)
+        echo "$ZLIB/libz.a:"                                      >> $MAKEFILE
+    ;;
+
+esac
+
+
+case $PLATFORM in
+
+    win32)
+
+        cp auto/lib/zlib/$makefile $ZLIB
+        echo "	cd $ZLIB"                                         >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile OWC_OPT=$OWC_OPT"           >> $MAKEFILE
+        echo "	cd ..\\..\\.."                                    >> $MAKEFILE
+    ;;
+
+
+    *:i386)
+        echo "	cd $ZLIB \\"                                      >> $MAKEFILE
+        echo "	&& cp contrib/asm686/match.S . \\"                >> $MAKEFILE
+        echo "	&& CFLAGS=\"-O3 -DASMV\" ./configure \\"          >> $MAKEFILE
+        echo "	&& \$(MAKE) OBJA=match.o"                         >> $MAKEFILE
+    ;;
+
+    *)
+        echo "	cd $ZLIB && ./configure && \$(MAKE)"              >> $MAKEFILE
+    ;;
+
+esac
+
+echo                                                              >> $MAKEFILE

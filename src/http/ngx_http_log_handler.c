@@ -95,9 +95,6 @@ ngx_module_t  ngx_http_log_module = {
 static ngx_str_t http_access_log = ngx_string("access.log");
 
 
-static char *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
 static ngx_str_t ngx_http_combined_fmt =
     ngx_string("%addr - - [%time] \"%request\" %status %apache_length "
                "\"%{Referer}i\" \"%{User-Agent}i\"");

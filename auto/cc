@@ -31,8 +31,10 @@ case $CC in
 
          have=HAVE_GCC_VARIADIC_MACROS . auto/have
 
+         LINK="\$(CC)"
+
          OBJEXT=o
-         COMPILEONLY="-c "
+         COMPILEONLY="-c"
          OBJOUT="-o "
          BINOUT="-o "
 
@@ -58,8 +60,10 @@ case $CC in
 
          have=HAVE_C99_VARIADIC_MACROS . auto/have
 
+         LINK="\$(CC)"
+
          OBJEXT=o
-         COMPILEONLY="-c "
+         COMPILEONLY="-c"
          OBJOUT="-o "
          BINOUT="-o "
 
@@ -100,11 +104,14 @@ case $CC in
          # disable logo
          CFLAGS="$CFLAGS -nologo"
 
+         LINK="\$(CC)"
+
          # link flags
          CORE_LINK="$CORE_LINK -link"
 
          # msvcrt.dll
          CORE_LINK="$CORE_LINK -nodefaultlib:libcmt"
+         CORE_LIBS="$CORE_LIBS msvcrt.lib"
 
          # static libc
          #CORE_LINK="$CORE_LINK -nodefaultlib:msvcrt"
@@ -115,16 +122,23 @@ case $CC in
          CFLAGS="$CFLAGS -Yd"
          CORE_LINK="$CORE_LINK -debug -debugtype:coff"
 
+         # precompiled headers
+         CORE_DEPS="$CORE_DEPS ngx_config.pch"
+         PCH="ngx_config.pch"
+         BUILDPCH="-Ycngx_config.h"
+         USEPCH="-Yungx_config.h"
+
          OBJEXT=obj
-         COMPILEONLY="-c "
+         COMPILEONLY="-c"
          OBJOUT="-Fo"
          BINOUT="-Fe"
+         BINEXT=.exe
 
          CC_STRONG="$CC -W3 -WX"
     ;;
 
 
-    wcc386)
+    wcl386)
          # Open Watcom 1.0
 
          # optimization
@@ -139,16 +153,18 @@ case $CC in
          CFLAGS="$CFLAGS -oe"
          # disable stack checking calls
          CFLAGS="$CFLAGS -s"
-         # optimize for Pentium Pro
-         #CFLAGS="$CFLAGS -6r"
-         CFLAGS="$CFLAGS -6s"
+         # optimize for Pentium Pro, register-based arguments
+         OWC_OPT="-6r"
+         # optimize for Pentium Pro, stack-based arguments
+         #OWC_OPT="-6s"
+         CFLAGS="$CFLAGS $OWC_OPT"
 
          # warnings
          #CFLAGS="$CFLAGS -w3"
          CFLAGS="$CFLAGS -wx"
 
          # stop on warning
-         #CFLAGS="$CFLAGS -we"
+         CFLAGS="$CFLAGS -we"
 
          # built target is NT
          CFLAGS="$CFLAGS -bt=nt"
@@ -162,13 +178,23 @@ case $CC in
          # quiet
          CFLAGS="$CFLAGS -zq"
 
-         # link traget is NT
+         # precompiled headers
+         CORE_DEPS="$CORE_DEPS $OBJS\\ngx_config.pch"
+         PCH="$OBJS\\ngx_config.pch"
+         BUILDPCH="-fhq=$OBJS\\ngx_config.pch"
+         USEPCH="-fh=$OBJS\\ngx_config.pch"
+
+         LINK="\$(CC)"
+
+         # link flags
          CORE_LINK="$CORE_LINK -l=nt"
 
          OBJEXT=obj
-         COMPILEONLY=
+         COMPILEONLY="-c"
          OBJOUT="-fo"
-         BINOUT="-fo"
+         BINOUT="-fe="
+         BINEXT=.exe
+
          INC_EQ=YES
          MAKE_BS=YES
          MAKE_SL=YES

@@ -35,7 +35,7 @@ static int ngx_worker_thread_cycle(void *data);
 
 #endif
 
-static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle, char **envp);
+static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
 static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle);
 static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle);
 static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -112,7 +112,7 @@ ngx_int_t     ngx_reopen;
 ngx_int_t     ngx_change_binary;
 
 
-int main(int argc, char *const *argv, char **envp)
+int main(int argc, char *const *argv)
 {
     ngx_int_t          i;
     ngx_log_t         *log;
@@ -145,6 +145,10 @@ int main(int argc, char *const *argv, char **envp)
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
 
+#if 0
+    /* STUB */ log->log_level = NGX_LOG_DEBUG_ALL;
+#endif
+
     ngx_memzero(&ctx, sizeof(ngx_master_ctx_t));
     ctx.argc = argc;
     ctx.argv = argv;
@@ -172,7 +176,7 @@ int main(int argc, char *const *argv, char **envp)
         return 1;
     }
 
-    if (ngx_add_inherited_sockets(&init_cycle, envp) == NGX_ERROR) {
+    if (ngx_add_inherited_sockets(&init_cycle) == NGX_ERROR) {
         return 1;
     }
 
@@ -256,49 +260,48 @@ int main(int argc, char *const *argv, char **envp)
 }
 
 
-static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle, char **envp)
+static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
-    char                *p, *v;
+    char                *p, *v, *inherited;
     ngx_socket_t         s;
     ngx_listening_t     *ls;
 
-    for ( /* void */ ; *envp; envp++) {
-        if (ngx_strncmp(*envp, NGINX_VAR, NGINX_VAR_LEN) != 0) {
-            continue;
-        }
+    inherited = getenv(NGINX_VAR);
 
-        ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
-                      "using inherited sockets from \"%s\"", *envp);
-
-        ngx_init_array(cycle->listening, cycle->pool,
-                       10, sizeof(ngx_listening_t), NGX_ERROR);
-
-        for (p = *envp + NGINX_VAR_LEN, v = p; *p; p++) {
-            if (*p == ':' || *p == ';') {
-                s = ngx_atoi(v, p - v);
-                if (s == NGX_ERROR) {
-                    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                                  "invalid socket number \"%s\" "
-                                  "in NGINX enviroment variable, "
-                                  "ignoring the rest of the variable", v);
-                    break;
-                }
-                v = p + 1;
-
-                if (!(ls = ngx_push_array(&cycle->listening))) {
-                    return NGX_ERROR;
-                }
-
-                ls->fd = s;
-            }
-        }
-
-        ngx_inherited = 1;
-
-        return ngx_set_inherited_sockets(cycle);
+    if (inherited == NULL) {
+        return NGX_OK;
     }
 
-    return NGX_OK;
+    ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
+                  "using inherited sockets from \"%s\"", inherited);
+
+    ngx_init_array(cycle->listening, cycle->pool,
+                   10, sizeof(ngx_listening_t), NGX_ERROR);
+
+    for (p = inherited, v = p; *p; p++) {
+        if (*p == ':' || *p == ';') {
+            s = ngx_atoi(v, p - v);
+            if (s == NGX_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                              "invalid socket number \"%s\" in "
+                              NGINX_VAR " enviroment variable, "
+                              "ignoring the rest of the variable", v);
+                break;
+            }
+
+        v = p + 1;
+
+        if (!(ls = ngx_push_array(&cycle->listening))) {
+                return NGX_ERROR;
+        }
+
+            ls->fd = s;
+        }
+    }
+
+    ngx_inherited = 1;
+
+    return ngx_set_inherited_sockets(cycle);
 }
 
 
@@ -314,16 +317,18 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     ctx.name = "new binary process";
     ctx.argv = argv;
 
-    var = ngx_alloc(NGINX_VAR_LEN
-                            + cycle->listening.nelts * (NGX_INT32_LEN + 1) + 1,
+    var = ngx_alloc(sizeof(NGINX_VAR)
+                            + cycle->listening.nelts * (NGX_INT32_LEN + 1) + 2,
                     cycle->log);
 
-    p = ngx_cpymem(var, NGINX_VAR, NGINX_VAR_LEN);
+    p = ngx_cpymem(var, NGINX_VAR "=", sizeof(NGINX_VAR));
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
         p += ngx_snprintf(p, NGX_INT32_LEN + 2, "%u;", ls[i].fd);
     }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0, "inherited: %s", var);
 
     env[0] = var;
     env[1] = NULL;

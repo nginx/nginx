@@ -1,24 +1,56 @@
 
-echo "$MD5/libmd5.a:"                                    >> $MAKEFILE
+case $CC in
+
+    cl)
+        makefile=makefile.msvc
+    ;;
+
+    wcl386)
+        makefile=makefile.owc
+    ;;
+
+esac
+
 
 case $PLATFORM in
 
+    win32)
+        echo "$MD5/md5.lib:"                                      >> $MAKEFILE
+    ;;
+
+    *)
+        echo "$MD5/libmd5.a:"                                     >> $MAKEFILE
+    ;;
+
+esac
+
+
+case $PLATFORM in
+
+    win32)
+
+        cp auto/lib/md5/$makefile $MD5
+        echo "	cd $MD5"                                          >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile OWC_OPT=$OWC_OPT"           >> $MAKEFILE
+        echo "	cd ..\\..\\.."                                    >> $MAKEFILE
+    ;;
+
     SunOS:*:i386)
-        echo "	cd $MD5 && \$(MAKE) x86-solaris"         >> $MAKEFILE
+        echo "	cd $MD5 && \$(MAKE) x86-solaris"                  >> $MAKEFILE
     ;;
 
     *:i386)
-        echo "	cd $MD5 && \$(MAKE) x86-elf"             >> $MAKEFILE
+        echo "	cd $MD5 && \$(MAKE) x86-elf"                      >> $MAKEFILE
     ;;
 
     *)
         if [ $CC = gcc ]; then
-            echo "	cd $MD5 && \$(MAKE) gcc"         >> $MAKEFILE
+            echo "	cd $MD5 && \$(MAKE) gcc"                  >> $MAKEFILE
         else
-            echo "	cd $MD5 && \$(MAKE) cc"          >> $MAKEFILE
+            echo "	cd $MD5 && \$(MAKE) cc"                   >> $MAKEFILE
         fi
     ;;
 
 esac
 
-echo                                                     >> $MAKEFILE
+echo                                                              >> $MAKEFILE

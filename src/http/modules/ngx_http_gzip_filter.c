@@ -549,9 +549,9 @@ static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
 
 static void ngx_http_gzip_filter_free(void *opaque, void *address)
 {
+#if 0
     ngx_http_gzip_ctx_t *ctx = opaque;
 
-#if 0
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ctx->request->connection->log, 0,
                    "gzip free: %X", address);
 #endif

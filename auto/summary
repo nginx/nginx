@@ -8,6 +8,7 @@ if [ $USE_PCRE = DISABLED ]; then
 else
     case $PCRE in
         YES)   echo " + using system PCRE library" ;;
+        NONE)  echo " + PCRE library is not used" ;;
         NO)    echo " + PCRE library is not found" ;;
         *)     echo " + using PCRE library: $PCRE" ;;
     esac

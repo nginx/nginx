@@ -148,6 +148,8 @@ WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_os.h \
             src/os/win32/ngx_process_cycle.h"
 
+WIN32_CONFIG=src/os/win32/ngx_win32_config.h
+
 WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_errno.c \
             src/os/win32/ngx_files.c \
