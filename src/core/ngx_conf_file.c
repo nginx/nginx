@@ -61,7 +61,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         }
 
         ngx_test_null(cf->conf_file->hunk,
-                      ngx_create_temp_hunk(cf->pool, 1024, 0, 0),
+                      ngx_create_temp_hunk(cf->pool, 1024),
                       NGX_CONF_ERROR);
 
         cf->conf_file->file.fd = fd;
@@ -722,7 +722,7 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    char  *p = conf;
+    char *p = conf;
 
     ngx_str_t   *value;
     ngx_bufs_t  *bufs;
@@ -743,6 +743,51 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     bufs->size = ngx_parse_size(&value[2]);
     if (bufs->size == NGX_ERROR || bufs->size == 0) {
         return "invalid value";
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    int                 *np, i, m;
+    ngx_str_t           *value;
+    ngx_conf_bitmask_t  *mask;
+
+
+    np = (int *) (p + cmd->offset);
+    value = (ngx_str_t *) cf->args->elts;
+    mask = cmd->post;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+        for (m = 0; mask[m].name.len != 0; m++) {
+
+            if (mask[m].name.len != value[i].len
+                && ngx_strcasecmp(mask[m].name.data, value[i].data) != 0)
+            {
+                continue;
+            }
+
+            if (*np & mask[m].mask) {
+                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                   "duplicate value \"%s\"", value[i].data);
+
+            } else {
+                *np |= mask[m].mask;
+            }
+
+            break;
+        }
+
+        if (mask[m].name.len == 0) {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                               "invalid value \"%s\"", value[i].data);
+
+            return NGX_CONF_ERROR;
+        }
     }
 
     return NGX_CONF_OK;

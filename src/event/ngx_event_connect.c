@@ -204,12 +204,13 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
 
     if (ngx_event_flags & NGX_USE_AIO_EVENT) {
         /* aio, iocp */
-        rev->ready = 1;
  
 #if 1
         /* TODO: NGX_EINPROGRESS */
 
+        rev->ready = 1;
         wev->ready = 1;
+
         return NGX_OK;
 #endif
     }

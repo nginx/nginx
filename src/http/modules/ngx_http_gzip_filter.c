@@ -190,9 +190,9 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
                         sizeof(ngx_http_gzip_ctx_t), NGX_ERROR);
     ctx->request = r;
 
-    if (!(r->headers_out.content_encoding =
-                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
-    {
+    r->headers_out.content_encoding =
+                    ngx_http_add_header(&r->headers_out, ngx_http_headers_out);
+    if (r->headers_out.content_encoding == NULL) {
         return NGX_ERROR;
     }
 
@@ -222,9 +222,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_gzip_ctx_t   *ctx;
     ngx_http_gzip_conf_t  *conf;
 
-    ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module);
-
-    if (ctx == NULL) {
+    if (!(ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module))) {
         return ngx_http_next_body_filter(r, in);
     }
 
@@ -344,9 +342,8 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 } else if (ctx->hunks < conf->bufs.num) {
                     ngx_test_null(ctx->out_hunk,
-                                  ngx_create_temp_hunk(r->pool, conf->bufs.size,
-                                                       0, 0),
-                                  ngx_http_gzip_error(ctx));
+                                 ngx_create_temp_hunk(r->pool, conf->bufs.size),
+                                 ngx_http_gzip_error(ctx));
                     ctx->out_hunk->tag = (ngx_hunk_tag_t)
                                                   &ngx_http_gzip_filter_module;
                     ctx->out_hunk->type |= NGX_HUNK_RECYCLED;
@@ -429,7 +426,7 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
 
                     } else {
                         ngx_test_null(h,
-                                      ngx_create_temp_hunk(r->pool, 8, 0, 0),
+                                      ngx_create_temp_hunk(r->pool, 8),
                                       ngx_http_gzip_error(ctx));
 
                         h->type |= NGX_HUNK_LAST;

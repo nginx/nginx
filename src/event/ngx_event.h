@@ -61,18 +61,15 @@ struct ngx_event_s {
 
     /*
      * the event was passed or would be passed to a kernel;
-     * aio mode: 1 - the posted aio operation,
-     *           0 - the complete aio operation or no aio operation.
+     * in aio mode - operation was posted.
      */
     unsigned         active:1;
 
-    /*
-     * the ready event;
-     * in aio mode "ready" is always set - it makes things simple
-     * to learn whether the aio operation complete use aio_complete flag
-     */
+    /* the ready event; in aio mode 0 means that no operation can be posted */
     unsigned         ready:1;
-    unsigned         aio_complete:1;
+
+    /* aio operation is complete */
+    unsigned         complete:1;
 
     unsigned         eof:1;
     unsigned         error:1;
@@ -89,12 +86,20 @@ struct ngx_event_s {
 
     unsigned         deferred_accept:1;
 
+    /* TODO: aio_eof and kq_eof can be the single pending_eof */
+    /* the pending eof in aio chain operation */
+    unsigned         aio_eof:1;
+
+    /* the pending eof reported by kqueue */
+    unsigned         kq_eof:1;
+
 #if (WIN32)
+    /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was succesfull */
     unsigned         accept_context_updated:1;
 #endif
 
 #if (HAVE_KQUEUE)
-    unsigned         kq_eof:1;
+    /* the pending errno reported by kqueue */
     int              kq_errno;
 #endif
 

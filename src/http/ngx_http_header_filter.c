@@ -210,7 +210,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         len += header[i].key.len + 2 + header[i].value.len + 2;
     }
 
-    ngx_test_null(h, ngx_create_temp_hunk(r->pool, len, 0, 0), NGX_ERROR);
+    ngx_test_null(h, ngx_create_temp_hunk(r->pool, len), NGX_ERROR);
 
     /* "HTTP/1.x " */
     h->last = ngx_cpymem(h->last, "HTTP/1.1 ", sizeof("HTTP/1.x ") - 1);

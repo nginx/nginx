@@ -120,6 +120,9 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
         wev->write = 1;
         rev->event_handler = ngx_event_acceptex;
 
+        rev->ready = 1;
+        wev->ready = 1;
+
         ngx_test_null(c->pool,
                       ngx_create_pool(ls->pool_size, ls->log),
                       NGX_ERROR);
@@ -127,8 +130,7 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
         ngx_test_null(c->buffer,
                       ngx_create_temp_hunk(c->pool,
                                            ls->post_accept_buffer_size
-                                           + 2 * (c->listening->socklen + 16),
-                                           0, 0),
+                                           + 2 * (c->listening->socklen + 16)),
                       NGX_ERROR);
 
         ngx_test_null(c->local_sockaddr, ngx_palloc(c->pool, ls->socklen),

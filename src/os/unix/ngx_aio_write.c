@@ -24,13 +24,13 @@ ssize_t ngx_aio_write(ngx_connection_t *c, char *buf, size_t size)
 
     wev = c->write;
 
-    if (wev->active) {
+    if (!wev->ready) {
         return NGX_AGAIN;
     }
 
-ngx_log_debug(wev->log, "aio: wev->aio_complete: %d" _ wev->aio_complete);
+ngx_log_debug(wev->log, "aio: wev->complete: %d" _ wev->complete);
 
-    if (!wev->aio_complete) {
+    if (!wev->complete) {
         ngx_memzero(&wev->aiocb, sizeof(struct aiocb));
 
         wev->aiocb.aio_fildes = c->fd;
@@ -52,9 +52,10 @@ ngx_log_debug(wev->log, "aio: wev->aio_complete: %d" _ wev->aio_complete);
         ngx_log_debug(wev->log, "aio_write: OK");
 
         wev->active = 1;
+        wev->ready = 0;
     }
 
-    wev->aio_complete = 0;
+    wev->complete = 0;
 
     n = aio_error(&wev->aiocb);
     if (n == -1) {
@@ -65,15 +66,28 @@ ngx_log_debug(wev->log, "aio: wev->aio_complete: %d" _ wev->aio_complete);
 
     if (n != 0) {
         if (n == NGX_EINPROGRESS) {
-            if (!wev->active) {
+            if (wev->ready) {
                 ngx_log_error(NGX_LOG_ALERT, wev->log, n,
                               "aio_write() still in progress");
+                wev->ready = 0;
             }
             return NGX_AGAIN;
         }
 
         ngx_log_error(NGX_LOG_CRIT, wev->log, n, "aio_write() failed");
         wev->error = 1;
+        wev->ready = 0;
+
+#if 1
+        n = aio_return(&wev->aiocb);
+        if (n == -1) {
+            ngx_log_error(NGX_LOG_ALERT, wev->log, ngx_errno,
+                          "aio_return() failed");
+        }
+
+        ngx_log_error(NGX_LOG_CRIT, wev->log, n, "aio_return() %d", n);
+#endif
+
         return NGX_ERROR;
     }
 
@@ -83,16 +97,15 @@ ngx_log_debug(wev->log, "aio: wev->aio_complete: %d" _ wev->aio_complete);
                       "aio_return() failed");
 
         wev->error = 1;
+        wev->ready = 0;
         return NGX_ERROR;
     }
 
-    wev->active = 0;
 
     ngx_log_debug(wev->log, "aio_write: %d" _ n);
 
-    if (n == 0) {
-        wev->eof = 1;
-    }
+    wev->active = 0;
+    wev->ready = 1;
 
     return n;
 }

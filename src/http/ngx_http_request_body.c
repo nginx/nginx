@@ -47,8 +47,7 @@ int ngx_http_read_client_request_body(ngx_http_request_t *r,
         size = request_buffer_size;
     }
 
-    ngx_test_null(r->request_body_hunk,
-                  ngx_create_temp_hunk(r->pool, size, 0, 0),
+    ngx_test_null(r->request_body_hunk, ngx_create_temp_hunk(r->pool, size),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
     r->connection->read->event_handler =

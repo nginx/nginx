@@ -68,8 +68,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
-    lctx = ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t));
-    if (lctx == NULL) {
+    if (!(lctx = ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t)))) {
         ngx_http_close_connection(c);
         return;
     }
@@ -133,8 +132,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         ngx_memzero(r, sizeof(ngx_http_request_t));
 
     } else {
-        r = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t));
-        if (r == NULL) {
+        if (!(r = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t)))) {
             ngx_http_close_connection(c);
             return;
         }
@@ -212,23 +210,20 @@ ngx_log_debug(rev->log, "IN: %08x" _ in_port);
     c->log->log_level = clcf->err_log->log_level;
 
     if (c->buffer == NULL) {
-        c->buffer = ngx_create_temp_hunk(c->pool,
-                                         cscf->client_header_buffer_size,
-                                         0, 0);
+        c->buffer =
+                ngx_create_temp_hunk(c->pool, cscf->client_header_buffer_size);
         if (c->buffer == NULL) {
             ngx_http_close_connection(c);
             return;
         }
     }
 
-    r->pool = ngx_create_pool(cscf->request_pool_size, c->log);
-    if (r->pool == NULL) {
+    if (!(r->pool = ngx_create_pool(cscf->request_pool_size, c->log))) {
         ngx_http_close_connection(c);
         return;
     }
 
-    r->headers_out.headers = ngx_create_table(r->pool, 20);
-    if (r->headers_out.headers == NULL) {
+    if (!(r->headers_out.headers = ngx_create_table(r->pool, 20))) {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         ngx_http_close_connection(c);
         return;
@@ -290,7 +285,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         /* the request line has been parsed successfully */
 
-        /* STUB: we need to handle such URIs */
+        /* TODO: we need to handle such URIs */
         if (r->complex_uri || r->unusual_uri) {
             r->request_line.len = r->request_end - r->request_start;
             r->request_line.data = r->request_start;
@@ -323,8 +318,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             r->uri.len = r->uri_end - r->uri_start;
         }
 
-        r->uri.data = ngx_palloc(r->pool, r->uri.len + 1);
-        if (r->uri.data == NULL) {
+        if (!(r->uri.data = ngx_palloc(r->pool, r->uri.len + 1))) {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             ngx_http_close_connection(c);
             return;
@@ -378,8 +372,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
                 r->exten.len = r->uri_end - r->uri_ext;
             }
 
-            r->exten.data = ngx_palloc(r->pool, r->exten.len + 1);
-            if (r->exten.data == NULL) {
+            if (!(r->exten.data = ngx_palloc(r->pool, r->exten.len + 1))) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 ngx_http_close_connection(c);
                 return;
@@ -393,8 +386,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         if (r->args_start && r->uri_end > r->args_start) {
             r->args.len = r->uri_end - r->args_start;
 
-            r->args.data = ngx_palloc(r->pool, r->args.len + 1);
-            if (r->args.data == NULL) {
+            if (!(r->args.data = ngx_palloc(r->pool, r->args.len + 1))) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 ngx_http_close_connection(c);
                 return;
@@ -531,8 +523,8 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
             /* a header line has been parsed successfully */
 
-            if (!(h = ngx_http_add_header(&r->headers_in, ngx_http_headers_in)))
-            {
+            h = ngx_http_add_header(&r->headers_in, ngx_http_headers_in);
+            if (h == NULL) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 ngx_http_close_connection(c);
                 return;

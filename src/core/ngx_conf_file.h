@@ -150,6 +150,12 @@ typedef struct {
 } ngx_conf_num_bounds_t;
 
 
+typedef struct {
+    ngx_str_t  name;
+    int        mask;
+} ngx_conf_bitmask_t;
+
+
 char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 
 
@@ -214,6 +220,11 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
         }                                                                    \
     }
 
+#define ngx_conf_merge_bitmask_value(conf, prev, default)                    \
+    if (conf == 0) {                                                         \
+        conf = (prev == 0) ? default : prev;                                 \
+    }
+
 
 #define addressof(addr)  ((int) &addr)
 
@@ -233,6 +244,7 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);

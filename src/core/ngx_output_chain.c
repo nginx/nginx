@@ -108,7 +108,7 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                     }
 
                     ngx_test_null(ctx->hunk,
-                                  ngx_create_temp_hunk(ctx->pool, size, 0, 0),
+                                  ngx_create_temp_hunk(ctx->pool, size),
                                   NGX_ERROR);
                     ctx->hunk->tag = ctx->tag;
                     ctx->hunk->type |= NGX_HUNK_RECYCLED;
@@ -253,9 +253,9 @@ ngx_log_debug(src->file->log, "READ: %qd:%qd %X:%X %X:%X" _
 }
 
 
-int ngx_chain_write(void *data, ngx_chain_t *in)
+int ngx_chain_writer(void *data, ngx_chain_t *in)
 {
-    ngx_chain_write_ctx_t *ctx = data;
+    ngx_chain_writer_ctx_t *ctx = data;
 
     ngx_chain_t  *cl;
 

@@ -24,12 +24,15 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
 
     rev = c->read;
 
-    if (rev->active) {
+    if (!rev->ready) {
         ngx_log_error(NGX_LOG_ALERT, rev->log, 0, "SECOND AIO POST");
         return NGX_AGAIN;
     }
 
-    if (!rev->aio_complete) {
+    ngx_log_debug(rev->log, "rev->complete: %d" _ rev->complete);
+    ngx_log_debug(rev->log, "aio size: %d" _ size);
+
+    if (!rev->complete) {
         ngx_memzero(&rev->aiocb, sizeof(struct aiocb));
 
         rev->aiocb.aio_fildes = c->fd;
@@ -49,12 +52,13 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
             return NGX_ERROR;
         }
 
-        ngx_log_debug(rev->log, "aio_read: OK");
+        ngx_log_debug(rev->log, "aio_read: #%d OK" _ c->fd);
 
         rev->active = 1;
+        rev->ready = 0;
     }
 
-    rev->aio_complete = 0;
+    rev->complete = 0;
 
     n = aio_error(&rev->aiocb);
     if (n == -1) {
@@ -65,15 +69,17 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
 
     if (n != 0) {
         if (n == NGX_EINPROGRESS) {
-            if (!rev->active) {
+            if (rev->ready) {
                 ngx_log_error(NGX_LOG_ALERT, rev->log, n,
                               "aio_read() still in progress");
+                rev->ready = 0;
             }
             return NGX_AGAIN;
         }
 
         ngx_log_error(NGX_LOG_CRIT, rev->log, n, "aio_read() failed");
         rev->error = 1;
+        rev->ready = 0;
         return NGX_ERROR;
     }
 
@@ -83,16 +89,20 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
                       "aio_return() failed");
 
         rev->error = 1;
+        rev->ready = 0;
         return NGX_ERROR;
     }
 
-    rev->active = 0;
-
-    ngx_log_debug(rev->log, "aio_read: %d" _ n);
+    ngx_log_debug(rev->log, "aio_read: #%d %d" _ c->fd _ n);
 
     if (n == 0) {
         rev->eof = 1;
+        rev->ready = 0;
+    } else {
+        rev->ready = 1;
     }
+
+    rev->active = 0;
 
     return n;
 }

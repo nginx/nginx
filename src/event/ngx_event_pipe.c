@@ -101,71 +101,52 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
         } else {
 
-#if (HAVE_KQUEUE)
-
             /*
              * kqueue notifies about the end of file or a pending error.
              * This test allows not to allocate a hunk on these conditions
              * and not to call ngx_recv_chain().
              */
 
-            if (ngx_event_flags == NGX_HAVE_KQUEUE_EVENT) {
+            if (p->upstream->read->available == 0
+                && (p->upstream->read->kq_eof || p->upstream->read->aio_eof))
+            {
+                p->upstream->read->ready = 0;
+                p->upstream->read->eof = 0;
+                p->upstream_eof = 1;
+                p->read = 1;
 
-                if (p->upstream->read->available == 0) {
-                    if (p->upstream->read->kq_eof) {
-                        p->upstream->read->ready = 0;
-                        p->upstream->read->eof = 0;
-                        p->upstream_eof = 1;
-                        p->read = 1;
-
-                        if (p->upstream->read->kq_errno) {
-                            p->upstream->read->error = 1;
-                            p->upstream_error = 1;
-                            p->upstream_eof = 0;
-
-                            ngx_log_error(NGX_LOG_ERR, p->log,
-                                          p->upstream->read->kq_errno,
-                                          "readv() failed");
-                        }
-
-                        break;
-                    }
-                }
-
-#if 0
+#if (HAVE_KQUEUE)
                 if (p->upstream->read->kq_errno) {
+                    p->upstream->read->error = 1;
+                    p->upstream_error = 1;
+                    p->upstream_eof = 0;
+
                     ngx_log_error(NGX_LOG_ERR, p->log,
                                   p->upstream->read->kq_errno,
                                   "readv() failed");
-                    p->upstream_error = 1;
-
-                    break;
-
-                } else if (p->upstream->read->kq_eof
-                           && p->upstream->read->available == 0) {
-                    p->upstream_eof = 1;
-                    p->read = 1;
-
-                    break;
                 }
 #endif
 
+                break;
             }
-#endif
 
             if (p->free_raw_hunks) {
 
                 /* use the free hunks if they exist */
 
                 chain = p->free_raw_hunks;
-                p->free_raw_hunks = NULL;
+                if (p->single_buf) {
+                    p->free_raw_hunks = p->free_raw_hunks->next;
+                    chain->next = NULL;
+                } else {
+                    p->free_raw_hunks = NULL;
+                }
 
             } else if (p->hunks < p->bufs.num) {
 
                 /* allocate a new hunk if it's still allowed */
 
-                ngx_test_null(h, ngx_create_temp_hunk(p->pool,
-                                                      p->bufs.size, 0, 0),
+                ngx_test_null(h, ngx_create_temp_hunk(p->pool, p->bufs.size),
                               NGX_ABORT);
                 p->hunks++;
 
@@ -214,7 +195,12 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 }
 
                 chain = p->free_raw_hunks;
-                p->free_raw_hunks = NULL;
+                if (p->single_buf) {
+                    p->free_raw_hunks = p->free_raw_hunks->next;
+                    chain->next = NULL;
+                } else {
+                    p->free_raw_hunks = NULL;
+                }
 
             } else {
 
@@ -229,6 +215,9 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
             ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
+            if (p->free_raw_hunks) {
+                chain->next = p->free_raw_hunks;
+            }
             p->free_raw_hunks = chain;
 
             if (n == NGX_ERROR) {
@@ -237,6 +226,10 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             }
 
             if (n == NGX_AGAIN) {
+                if (p->single_buf) {
+                    ngx_event_pipe_remove_shadow_links(chain->hunk);
+                }
+
                 break;
             }
 
@@ -283,8 +276,11 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             return NGX_ABORT;
         }
 
-        /* TODO: p->free_raw_hunk->next can be free()ed */
         p->free_raw_hunks = p->free_raw_hunks->next;
+
+        for (cl = p->free_raw_hunks; cl; cl = cl->next) {
+            ngx_pfree(p->pool, cl->hunk->start); 
+        }
     }
 
     if (p->cachable && p->in) {

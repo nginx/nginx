@@ -26,7 +26,7 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         /* we can post the single aio operation only */
 
-        if (c->write->active) {
+        if (!c->write->ready) {
             return cl;
         }
 

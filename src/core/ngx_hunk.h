@@ -50,8 +50,6 @@ struct ngx_hunk_s {
     int              type;
     char            *start;         /* start of hunk */
     char            *end;           /* end of hunk */
-    char            *pre_start;     /* start of pre-allocated hunk */
-    char            *post_end;      /* end of post-allocated hunk */
     ngx_hunk_tag_t   tag;
     ngx_file_t      *file;
     ngx_hunk_t      *shadow;
@@ -100,7 +98,7 @@ typedef struct {
     ngx_chain_t                **last;
     ngx_connection_t            *connection;
     ngx_pool_t                  *pool;
-} ngx_chain_write_ctx_t;
+} ngx_chain_writer_ctx_t;
 
 
 #define NGX_CHAIN_ERROR     (ngx_chain_t *) NGX_ERROR
@@ -123,8 +121,7 @@ typedef struct {
                                          (size_t) (h->file_last - h->file_pos))
 
 
-ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
-                                 int before, int after);
+ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size);
 
 #define ngx_alloc_hunk(pool) ngx_palloc(pool, sizeof(ngx_hunk_t))
 #define ngx_calloc_hunk(pool) ngx_pcalloc(pool, sizeof(ngx_hunk_t))
@@ -151,7 +148,7 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
 
 
 int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in);
-int ngx_chain_write(void *data, ngx_chain_t *in);
+int ngx_chain_writer(void *data, ngx_chain_t *in);
 
 int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in);
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,

@@ -21,16 +21,16 @@ static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
 static int ngx_http_write_filter_init(ngx_cycle_t *cycle);
 
 
-static ngx_command_t ngx_http_write_filter_commands[] = {
+static ngx_command_t  ngx_http_write_filter_commands[] = {
 
-    {ngx_string("buffer_output"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_size_slot,
-     NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_write_filter_conf_t, buffer_output),
-     NULL},
+    { ngx_string("buffer_output"),
+      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_write_filter_conf_t, buffer_output),
+      NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 
