@@ -30,15 +30,27 @@
 
 /* disable some "-W4" level warnings */
 
-#pragma warning(disable:4054)
+/* disable warnings about some 'type cast */
 #pragma warning(disable:4054)
 #pragma warning(disable:4055)
+
 /* unreferenced formal parameter */
 #pragma warning(disable:4100)
+
+/* conditional expression is constant */
 #pragma warning(disable:4127)
+
+/* nonstandard extension used : bit field types other than int */
 #pragma warning(disable:4214)
+
+/* unreachable code */
 #pragma warning(disable:4702)
+
+/* assignment within conditional expression */
 #pragma warning(disable:4706)
+
+/* disable "function 'ngx_handle_write_event' not inlined" */
+#pragma warning(disable:4710)
 
 #endif
 
@@ -119,6 +131,9 @@ typedef uint32_t          ngx_atomic_t;
 #if (HAVE_WIN32_TRANSMITPACKETS) || (HAVE_WIN32_TRANSMITFILE)
 #define HAVE_SENDFILE  1
 #endif
+
+
+#define OFF_T_MAX_VALUE  9223372036854775807
 
 
 /* STUB */

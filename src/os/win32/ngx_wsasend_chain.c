@@ -4,7 +4,8 @@
 #include <ngx_event.h>
 
 
-ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
+ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
+                               off_t limit)
 {
     int           rc;
     u_char       *prev;
@@ -99,7 +100,8 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
 }
 
 
-ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
+ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
+                                          off_t limit)
 {
     int               rc;
     u_char           *prev;

@@ -26,7 +26,8 @@ typedef struct {
     ssize_t       (*recv)(ngx_connection_t *c, u_char *buf, size_t size);
     ssize_t       (*recv_chain)(ngx_connection_t *c, ngx_chain_t *in);
     ssize_t       (*send)(ngx_connection_t *c, u_char *buf, size_t size);
-    ngx_chain_t  *(*send_chain)(ngx_connection_t *c, ngx_chain_t *in);
+    ngx_chain_t  *(*send_chain)(ngx_connection_t *c, ngx_chain_t *in,
+                                off_t limit);
     int             flags;
 } ngx_os_io_t;
 
@@ -36,8 +37,10 @@ int ngx_os_init(ngx_log_t *log);
 ssize_t ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size);
 ssize_t ngx_overlapped_wsarecv(ngx_connection_t *c, u_char *buf, size_t size);
 ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain);
-ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in);
-ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in);
+ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
+                               off_t limit);
+ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
+                                          off_t limit);
 
 
 extern ngx_os_io_t  ngx_os_io;

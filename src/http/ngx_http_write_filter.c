@@ -162,7 +162,8 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (conf->limit_rate) {
         sent = r->connection->sent - sent;
         r->connection->write->delayed = 1;
-        ngx_add_timer(r->connection->write, sent * 1000 / conf->limit_rate);
+        ngx_add_timer(r->connection->write,
+                      (ngx_msec_t) sent * 1000 / conf->limit_rate);
     }
 
     if (chain == NGX_CHAIN_ERROR) {

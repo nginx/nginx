@@ -7,7 +7,7 @@ case $CC in
          # gcc 2.7.2.3, 2.8.1, 2.95.4,
          #     3.0.4, 3.1.1, 3.2.3, 3.3.2, 3.3.3, 3.3.4, 3.4
 
-         # optimization
+         # optimizations
          #CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"
 
          case $CPU in
@@ -92,7 +92,7 @@ case $CC in
     *icc)
          # Intel C++ compiler 7.1, 8.0
 
-         # optimization
+         # optimizations
          CFLAGS="$CFLAGS -O"
          # inline functions declared with __inline
          #CFLAGS="$CFLAGS -Ob1"
@@ -165,7 +165,7 @@ case $CC in
     cl)
          # MSVC 6.0 SP2
 
-         # optimization
+         # optimizations
 
          # maximize speed
          CFLAGS="$CFLAGS -O2"
@@ -244,7 +244,7 @@ case $CC in
     wcl386)
          # Open Watcom C 1.0, 1.2
 
-         # optimization
+         # optimizations
 
          # maximize speed
          CFLAGS="$CFLAGS -ot"
@@ -325,7 +325,7 @@ case $CC in
     bcc32)
          # Borland C++ 5.5
 
-         # optimization
+         # optimizations
 
          # maximize speed
          CFLAGS="$CFLAGS -O2"
