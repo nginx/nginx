@@ -78,6 +78,14 @@ static char error_408_page[] =
 ;
 
 
+static char error_413_page[] =
+"<html>" CRLF
+"<head><title>413 Request Entity Too Large</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>413 Request Entity Too Large</h1></center>" CRLF
+;
+
+
 static char error_414_page[] =
 "<html>" CRLF
 "<head><title>414 Request-URI Too Large</title></head>" CRLF
@@ -110,6 +118,14 @@ static char error_502_page[] =
 ;
 
 
+static char error_503_page[] =
+"<html>" CRLF
+"<head><title>503 Service Temporarily Unavailable</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>503 Service Temporarily Unavailable</h1></center>" CRLF
+;
+
+
 static char error_504_page[] =
 "<html>" CRLF
 "<head><title>504 Gateway Time-out</title></head>" CRLF
@@ -137,7 +153,7 @@ static ngx_str_t error_pages[] = {
     ngx_null_string,             /* 410 */
     ngx_null_string,             /* 411 */
     ngx_null_string,             /* 412 */
-    ngx_null_string,             /* 413 */
+    ngx_string(error_413_page),
     ngx_string(error_414_page),
     ngx_null_string,             /* 415 */
     ngx_string(error_416_page),
@@ -145,7 +161,7 @@ static ngx_str_t error_pages[] = {
     ngx_string(error_500_page),
     ngx_null_string,             /* 501 */
     ngx_string(error_502_page),
-    ngx_null_string,             /* 503 */
+    ngx_string(error_503_page),
     ngx_string(error_504_page)
 };
 
@@ -181,6 +197,7 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     if (r->keepalive != 0) {
         switch (error) {
             case NGX_HTTP_BAD_REQUEST:
+            case NGX_HTTP_REQUEST_ENTITY_TOO_LARGE:
             case NGX_HTTP_REQUEST_URI_TOO_LARGE:
             case NGX_HTTP_INTERNAL_SERVER_ERROR:
                 r->keepalive = 0;

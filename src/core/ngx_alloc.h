@@ -17,6 +17,8 @@
 
 #define ngx_test_null(p, alloc, rc)  if ((p = alloc) == NULL) { return rc; }
 
+#define ngx_is_null(p, alloc)   if ((p = alloc) == NULL)
+
 
 typedef struct ngx_pool_large_s  ngx_pool_large_t;
 

@@ -1,6 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_event.h>
 
 
 #define NGX_NONE      1
@@ -30,8 +31,7 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
             return ctx->output_filter(ctx->output_ctx, in);
         }
 
-        if (!ctx->copy_chain
-            && in->next == NULL
+        if (in->next == NULL
             && (!ngx_output_chain_need_to_copy(ctx, in->hunk)))
         {
             return ctx->output_filter(ctx->output_ctx, in);
@@ -249,4 +249,32 @@ ngx_log_debug(src->file->log, "READ: %qd:%qd %X:%X %X:%X" _
     }
 
     return NGX_OK;
+}
+
+
+int ngx_chain_write(void *data, ngx_chain_t *in)
+{
+    ngx_chain_write_ctx_t *ctx = data;
+
+    ngx_chain_t  *cl;
+
+
+    for (/* void */; in; in = in->next) {
+        ngx_alloc_link_and_set_hunk(cl, in->hunk, ctx->pool, NGX_ERROR);
+        *ctx->last = cl;
+        ctx->last = &cl->next;
+    }
+
+    ctx->out = ngx_write_chain(ctx->connection, ctx->out);
+
+    if (ctx->out == NGX_CHAIN_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (ctx->out == NULL) {
+        ctx->last = &ctx->out;
+        return NGX_OK;
+    }
+
+    return NGX_AGAIN;
 }

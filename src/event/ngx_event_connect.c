@@ -189,7 +189,7 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
     if (rc == -1) {
         err = ngx_socket_errno;
         if (err != NGX_EINPROGRESS) {
-            ngx_log_error(NGX_LOG_CRIT, pc->log, err, "connect() failed");
+            ngx_log_error(NGX_LOG_ERR, pc->log, err, "connect() failed");
 
             if (ngx_close_socket(s) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
@@ -211,6 +211,10 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
         event = NGX_LEVEL_EVENT;
     }
 
+    if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     if (rc == -1) {
 
         /* NGX_EINPROGRESS */
@@ -223,10 +227,6 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
     }
 
     wev->ready = 1;
-
-    if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
-        return NGX_ERROR;
-    }
 
     return NGX_OK;
 }

@@ -130,6 +130,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
      offsetof(ngx_http_core_loc_conf_t, doc_root),
      NULL},
 
+    {ngx_string("client_body_timeout"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_msec_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_core_loc_conf_t, client_body_timeout),
+     NULL},
+
     {ngx_string("sendfile"),
      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_flag_slot,
@@ -842,6 +849,7 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
 
     */
 
+    lcf->client_body_timeout = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->send_timeout = NGX_CONF_UNSET;
     lcf->discarded_buffer_size = NGX_CONF_UNSET;
@@ -913,6 +921,8 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_str_value(conf->default_type,
                              prev->default_type, "text/plain");
 
+    ngx_conf_merge_msec_value(conf->client_body_timeout,
+                              prev->client_body_timeout, 10000);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 10000);
     ngx_conf_merge_size_value(conf->discarded_buffer_size,

@@ -30,8 +30,11 @@ int ngx_http_read_client_request_body(ngx_http_request_t *r,
 
         if (size >= r->headers_in.content_length_n) {
             r->header_in->pos += r->headers_in.content_length_n;
+
             return NGX_OK;
         }
+
+        r->header_in->pos = r->header_in->last;
     }
 
     r->request_body_len = r->headers_in.content_length_n - size;
@@ -73,10 +76,11 @@ int ngx_http_read_client_request_body(ngx_http_request_t *r,
 
 static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
 {
-    ssize_t              n, size;
-    ngx_hunk_t          *h;
-    ngx_connection_t    *c;
-    ngx_http_request_t  *r;
+    ssize_t                    n, size;
+    ngx_hunk_t                *h;
+    ngx_connection_t          *c;
+    ngx_http_request_t        *r;
+    ngx_http_core_loc_conf_t  *clcf;
 
     c = rev->data;
     r = c->data;
@@ -86,6 +90,11 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
                                r->request_hunks->next ? r->request_hunks->next:
                                                         r->request_hunks);
         /* TODO: n == 0 or not complete and level event */
+
+        if (n == NGX_ERROR) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
 
         r->request_body_hunk->pos = r->request_body_hunk->start;
         r->request_body_hunk->last = r->request_body_hunk->start;
@@ -100,6 +109,9 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
     n = ngx_recv(c, r->request_body_hunk->last, size);
 
     if (n == NGX_AGAIN) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_add_timer(rev, clcf->client_body_timeout);
+
         if (ngx_handle_read_event(rev) == NGX_ERROR) {
             ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -132,6 +144,10 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
                                                         r->request_hunks);
         /* TODO: n == 0 or not complete and level event */
 
+        if (n == NGX_ERROR) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
 
         h = ngx_calloc_hunk(r->pool);
         if (h == NULL) {

@@ -32,27 +32,28 @@
 #define NGX_HTTP_PARSE_INVALID_CL_HEADER  17
 
 
-#define NGX_HTTP_OK                     200
-#define NGX_HTTP_PARTIAL_CONTENT        206
+#define NGX_HTTP_OK                        200
+#define NGX_HTTP_PARTIAL_CONTENT           206
 
-#define NGX_HTTP_SPECIAL_RESPONSE       300
-#define NGX_HTTP_MOVED_PERMANENTLY      301
-#define NGX_HTTP_MOVED_TEMPORARILY      302
-#define NGX_HTTP_NOT_MODIFIED           304
+#define NGX_HTTP_SPECIAL_RESPONSE          300
+#define NGX_HTTP_MOVED_PERMANENTLY         301
+#define NGX_HTTP_MOVED_TEMPORARILY         302
+#define NGX_HTTP_NOT_MODIFIED              304
 
-#define NGX_HTTP_BAD_REQUEST            400
-#define NGX_HTTP_FORBIDDEN              403
-#define NGX_HTTP_NOT_FOUND              404
-#define NGX_HTTP_NOT_ALLOWED            405
-#define NGX_HTTP_REQUEST_TIME_OUT       408
-#define NGX_HTTP_REQUEST_URI_TOO_LARGE  414
-#define NGX_HTTP_RANGE_NOT_SATISFIABLE  416
+#define NGX_HTTP_BAD_REQUEST               400
+#define NGX_HTTP_FORBIDDEN                 403
+#define NGX_HTTP_NOT_FOUND                 404
+#define NGX_HTTP_NOT_ALLOWED               405
+#define NGX_HTTP_REQUEST_TIME_OUT          408
+#define NGX_HTTP_REQUEST_ENTITY_TOO_LARGE  413
+#define NGX_HTTP_REQUEST_URI_TOO_LARGE     414
+#define NGX_HTTP_RANGE_NOT_SATISFIABLE     416
 
-#define NGX_HTTP_INTERNAL_SERVER_ERROR  500
-#define NGX_HTTP_NOT_IMPLEMENTED        501
-#define NGX_HTTP_BAD_GATEWAY            502
-#define NGX_HTTP_SERVICE_UNAVAILABLE    503
-#define NGX_HTTP_GATEWAY_TIME_OUT       504
+#define NGX_HTTP_INTERNAL_SERVER_ERROR     500
+#define NGX_HTTP_NOT_IMPLEMENTED           501
+#define NGX_HTTP_BAD_GATEWAY               502
+#define NGX_HTTP_SERVICE_UNAVAILABLE       503
+#define NGX_HTTP_GATEWAY_TIME_OUT          504
 
 
 
