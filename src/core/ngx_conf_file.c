@@ -127,6 +127,7 @@ ngx_log_debug(cf->log, "token %d" _ rc);
                     && ngx_strcmp(name->data, cmd->name.data) == 0)
                 {
 
+                    found = 1;
 #if 0
 ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 #endif
@@ -204,7 +205,6 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
 #endif
 
                     if (rv == NGX_CONF_OK) {
-                        found = 1;
                         break;
 
                     } else if (rv == NGX_CONF_ERROR) {
@@ -220,7 +220,7 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
                                          cf->conf_file->line);
                         } else {
                             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                         "%s %s in %s:%d",
+                                         "\"%s\" directive %s in %s:%d",
                                          name->data, rv,
                                          cf->conf_file->file.name.data,
                                          cf->conf_file->line);
@@ -243,6 +243,10 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
                           cf->conf_file->line);
 
             rc = NGX_ERROR;
+            break;
+        }
+
+        if (rc == NGX_ERROR) {
             break;
         }
     }
@@ -468,6 +472,30 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
             }
         }
     }
+}
+
+
+void ngx_conf_log_error(int level, ngx_conf_t *cf, ngx_err_t err,
+                        char *fmt, ...)
+{
+    int      len;
+    char     errstr[MAX_CONF_ERRSTR];
+    va_list  args;
+
+    va_start(args, fmt);
+    len = ngx_vsnprintf(errstr, sizeof(errstr) - 1, fmt, args);
+    va_end(args);
+
+    if (err) {
+        len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
+                            " (%d: ", err);
+        len += ngx_strerror_r(err, errstr + len, sizeof(errstr) - len - 1);
+        errstr[len++] = ')';
+        errstr[len++] = '\0';
+    }
+
+    ngx_log_error(level, cf->log, 0, "%s in %s:%d",
+                  errstr, cf->conf_file->file.name.data, cf->conf_file->line);
 }
 
 

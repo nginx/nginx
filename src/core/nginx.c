@@ -71,7 +71,12 @@ int main(int argc, char *const *argv)
     ngx_core_conf_t  *ccf;
 
 #if (NGX_DEBUG) && (__FreeBSD__)
-    malloc_options = "J";
+#if __FreeBSD_version >= 500014
+    _malloc_options
+#else
+    malloc_options
+#endif
+                    = "J";
 #endif
 
     /* TODO */ ngx_max_sockets = -1;

@@ -124,6 +124,7 @@ struct ngx_conf_s {
 #define ngx_get_conf(conf_ctx, module)  conf_ctx[module.index]
 
 
+
 #define ngx_conf_init_value(conf, default)                                   \
     if (conf == NGX_CONF_UNSET) {                                            \
         conf = default;                                                      \
@@ -177,6 +178,10 @@ struct ngx_conf_s {
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
 
+void ngx_conf_log_error(int level, ngx_conf_t *cf, ngx_err_t err,
+                        char *fmt, ...);
+
+
 char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -185,7 +190,7 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
-                                                                   void *conf);
+                                  void *conf);
 
 extern ngx_module_t     *ngx_modules[];
 extern ngx_cycle_t      *ngx_cycle;

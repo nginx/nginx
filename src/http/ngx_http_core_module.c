@@ -821,6 +821,12 @@ static char *ngx_http_core_merge_srv_conf(ngx_pool_t *pool,
                       NGX_CONF_ERROR);
 
         if (gethostname(n->name.data, NGX_MAXHOSTNAMELEN) == -1) {
+#if 0
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                               "gethostname() failed");
+            return NGX_CONF_ERROR;
+#endif
+
             err = ngx_errno;
             len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
                                "gethostname() failed (%d: ", err);
@@ -994,11 +1000,12 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     } else if ((ls->port == NGX_ERROR && p != 0) /* "listen host:NONNUMBER" */
                || (ls->port < 1 || ls->port > 65536)) { /* "listen 99999" */
 
-        ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                     "invalid port \"%s\", "
-                     "it must be a number between 1 and 65535",
-                     &addr[p]);
-        return ngx_conf_errstr;
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid port \"%s\" in \"%s\" directive, "
+                           "it must be a number between 1 and 65535",
+                           &addr[p], cmd->name.data);
+
+        return NGX_CONF_ERROR;
 
     } else if (p == 0) {
         ls->addr = INADDR_ANY;
@@ -1010,9 +1017,10 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         h = gethostbyname(addr);
 
         if (h == NULL || h->h_addr_list[0] == NULL) {
-            ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                         "can not resolve host \"%s\"", addr);
-            return ngx_conf_errstr;
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                              "can not resolve host \"%s\" "
+                              "in \"%s\" directive", addr, cmd->name.data);
+            return NGX_CONF_ERROR;
         }
 
         ls->addr = *(u_int32_t *)(h->h_addr_list[0]);
@@ -1037,9 +1045,11 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
         if (value[i].len == 0) {
-            ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                         "server name \"%s\" is invalid", value[i].data);
-            return ngx_conf_errstr;
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "server name \"%s\" is invalid "
+                               "in \"%s\" directive",
+                               value[i].data, cmd->name.data);
+            return NGX_CONF_ERROR;
         }
 
         ngx_test_null(sn, ngx_push_array(&scf->server_names), NGX_CONF_ERROR);

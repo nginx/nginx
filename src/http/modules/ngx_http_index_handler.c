@@ -290,16 +290,19 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
     value = cf->args->elts;
 
     if (value[1].data[0] == '/' && icf->indices.nelts == 0) {
-        ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                     "first index \"%s\" must not be absolute", value[1].data);
-        return ngx_conf_errstr;
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "first index \"%s\" in \"%s\" directive "
+                           "must not be absolute",
+                           value[1].data, cmd->name.data);
+        return NGX_CONF_ERROR;
     }
 
     for (i = 1; i < cf->args->nelts; i++) {
         if (value[i].len == 0) {
-            ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
-                         "index \"%s\" is invalid", value[i].data);
-            return ngx_conf_errstr;
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "index \"%s\" in \"%s\" directive is invalid",
+                               value[1].data, cmd->name.data);
+            return NGX_CONF_ERROR;
         }
 
         ngx_test_null(index, ngx_push_array(&icf->indices), NGX_CONF_ERROR);
