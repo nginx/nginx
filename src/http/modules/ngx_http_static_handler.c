@@ -141,6 +141,8 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     if (r->header_only)
         return rc;
 
+#if 0
+
     h->type = NGX_HUNK_FILE|NGX_HUNK_LAST;
     h->pos.file = 0;
     h->last.file = ngx_file_size(r->file.info);
@@ -151,6 +153,43 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     rc = ngx_http_output_filter(r, h);
 
     ngx_log_debug(r->connection->log, "0 output_filter: %d" _ rc);
+
+#else
+
+#define BLK 10000
+
+    {
+    int  i, s;
+    s = ngx_file_size(r->file.info);
+
+    for (i = 0; i < s; i += BLK) {
+        ngx_test_null(h, ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)),
+                      NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+        ngx_test_null(h->file, ngx_pcalloc(r->pool, sizeof(ngx_file_t)),
+                      NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+        h->type = NGX_HUNK_FILE;
+        if (s - i <= BLK) {
+            h->type |= NGX_HUNK_LAST;
+        }
+
+        h->pos.file = i;
+        h->last.file = i + BLK;
+        if (h->last.file > s) {
+            h->last.file = s;
+        }
+
+        h->file->fd = r->file.fd;
+        h->file->log = r->connection->log;
+
+        rc = ngx_http_output_filter(r, h);
+
+        ngx_log_debug(r->connection->log, "0 output_filter: %d" _ rc);
+    }
+    }
+
+#endif
 
     return rc;
 }

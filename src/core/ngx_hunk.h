@@ -55,11 +55,16 @@ struct ngx_hunk_s {
     ngx_file_t  *file;
 };
 
+
+
 typedef struct ngx_chain_s  ngx_chain_t;
 struct ngx_chain_s {
     ngx_hunk_t  *hunk;
     ngx_chain_t *next;
 };
+
+
+#define NGX_CHAIN_ERROR     (ngx_chain_t *) NGX_ERROR
 
 
 ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,

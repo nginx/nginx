@@ -18,9 +18,10 @@ typedef struct {
 
 
 typedef struct {
-    ngx_hunk_t   *hunk;
-    ngx_chain_t  *in;
-    ngx_chain_t   out;
+    ngx_hunk_t   *hunk;         /* the temporary hunk to copy */
+    ngx_chain_t  *incoming;
+    ngx_chain_t   in;           /* one chain entry for input */
+    ngx_chain_t   out;          /* one chain entry for output */
 } ngx_http_output_filter_ctx_t;
 
 

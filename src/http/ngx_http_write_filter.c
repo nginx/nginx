@@ -57,9 +57,9 @@ ngx_module_t  ngx_http_write_filter_module = {
 
 int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    int    last;
-    off_t  size, flush;
-    ngx_chain_t  *ch, **prev, *chain;
+    int                           last;
+    off_t                         size, flush;
+    ngx_chain_t                  *ce, **le, *chain;
     ngx_http_write_filter_ctx_t  *ctx;
     ngx_http_write_filter_conf_t *conf;
 
@@ -74,51 +74,51 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     size = flush = 0;
     last = 0;
-    prev = &ctx->out;
+    le = &ctx->out;
 
-    /* find size, flush point and last link of saved chain */
-    for (ch = ctx->out; ch; ch = ch->next) {
-        prev = &ch->next;
-        size += ch->hunk->last.file - ch->hunk->pos.file;
+    /* find the size, the flush point and the last entry of saved chain */
+    for (ce = ctx->out; ce; ce = ce->next) {
+        le = &ce->next;
+        size += ce->hunk->last.file - ce->hunk->pos.file;
 
-#if (NGX_DEBUG_WRITE_FILTER)
+#if (NGX_DEBUG_WRITE_FILTER0)
         ngx_log_debug(r->connection->log, "write filter: old chunk: %x "
                       QX_FMT " " QD_FMT _
-                      ch->hunk->type _ ch->hunk->pos.file _
-                      ch->hunk->last.file - ch->hunk->pos.file);
+                      ce->hunk->type _ ce->hunk->pos.file _
+                      ce->hunk->last.file - ce->hunk->pos.file);
 #endif
 
-        if (ch->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
+        if (ce->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
             flush = size;
         }
 
-        if (ch->hunk->type & NGX_HUNK_LAST) {
+        if (ce->hunk->type & NGX_HUNK_LAST) {
             last = 1;
         }
     }
 
-    /* add new chain to existent one */
+    /* add the new chain to the existent one */
     for (/* void */; in; in = in->next) {
-        ngx_test_null(ch, ngx_palloc(r->pool, sizeof(ngx_chain_t)), NGX_ERROR);
+        ngx_test_null(ce, ngx_palloc(r->pool, sizeof(ngx_chain_t)), NGX_ERROR);
 
-        ch->hunk = in->hunk;
-        ch->next = NULL;
-        *prev = ch;
-        prev = &ch->next;
-        size += ch->hunk->last.file - ch->hunk->pos.file;
+        ce->hunk = in->hunk;
+        ce->next = NULL;
+        *le = ce;
+        le = &ce->next;
+        size += ce->hunk->last.file - ce->hunk->pos.file;
 
-#if (NGX_DEBUG_WRITE_FILTER)
-        ngx_log_debug(r->connection->log, "write filter: new chunk: %x "
+#if (NGX_DEBUG_WRITE_FILTER0)
+        ngx_log_debug(r->connection->log, "write filter: new hunk: %x "
                       QX_FMT " " QD_FMT _
-                      ch->hunk->type _ ch->hunk->pos.file _
-                      ch->hunk->last.file - ch->hunk->pos.file);
+                      ce->hunk->type _ ce->hunk->pos.file _
+                      ce->hunk->last.file - ce->hunk->pos.file);
 #endif
 
-        if (ch->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
+        if (ce->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
             flush = size;
         }
 
-        if (ch->hunk->type & NGX_HUNK_LAST) {
+        if (ce->hunk->type & NGX_HUNK_LAST) {
             last = 1;
         }
     }
@@ -127,25 +127,35 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                              ngx_http_write_filter_module);
 
-#if (NGX_DEBUG_WRITE_FILTER)
+#if (NGX_DEBUG_WRITE_FILTER0)
     ngx_log_debug(r->connection->log, "write filter: last:%d flush:%d" _
                   last _ flush);
 #endif
 
+    /* avoid the output if there is no last hunk, no flush point and
+       size of the hunks is smaller then 'write_buffer' */
     if (!last && flush == 0 && size < conf->buffer_output) {
         return NGX_OK;
     }
 
     chain = ngx_event_write(r->connection, ctx->out, flush);
-    if (chain == (ngx_chain_t *) -1) {
+
+#if (NGX_DEBUG_WRITE_FILTER)
+    ngx_log_debug(r->connection->log, "write filter %x" _ chain);
+#endif
+
+    if (chain == NGX_CHAIN_ERROR) {
         return NGX_ERROR;
     }
 
     ctx->out = chain;
 
-    ngx_log_debug(r->connection->log, "write filter %x" _ chain);
+    if (chain == NULL) {
+        return NGX_OK;
 
-    return (chain ? NGX_AGAIN : NGX_OK);
+    } else {
+        return NGX_AGAIN;
+    }
 }
 
 
