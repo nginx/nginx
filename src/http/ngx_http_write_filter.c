@@ -133,7 +133,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
      * the size of the hunks is smaller than "postpone_output" directive
      */
 
-    if (!last && flush == 0 && size < conf->postpone_output) {
+    if (!last && flush == 0 && size < (off_t) conf->postpone_output) {
         return NGX_OK;
     }
 
