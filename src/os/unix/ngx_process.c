@@ -9,7 +9,7 @@ ngx_uint_t     ngx_last_process;
 ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
 
 
-ngx_int_t ngx_spawn_process(ngx_cycle_t *cycle,
+ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,
                             char *name, ngx_int_t respawn)
 {
@@ -59,7 +59,7 @@ ngx_int_t ngx_spawn_process(ngx_cycle_t *cycle,
     if (respawn >= 0) {
         ngx_processes[respawn].pid = pid;
         ngx_processes[respawn].exited = 0;
-        return NGX_OK;
+        return pid;
     }
 
     ngx_processes[ngx_last_process].pid = pid;
@@ -81,7 +81,7 @@ ngx_int_t ngx_spawn_process(ngx_cycle_t *cycle,
         return NGX_ERROR;
     }
 
-    return NGX_OK;
+    return pid;
 }
 
 

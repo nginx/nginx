@@ -26,8 +26,8 @@ ngx_signal_t  signals[] = {
       "SIG" ngx_value(NGX_REOPEN_SIGNAL),
       ngx_signal_handler },
 
-    { ngx_signal_value(NGX_PAUSE_SIGNAL),
-      "SIG" ngx_value(NGX_PAUSE_SIGNAL),
+    { ngx_signal_value(NGX_NOACCEPT_SIGNAL),
+      "SIG" ngx_value(NGX_NOACCEPT_SIGNAL),
       ngx_signal_handler },
 
     { ngx_signal_value(NGX_TERMINATE_SIGNAL),
@@ -96,6 +96,8 @@ void ngx_signal_handler(int signo)
     ngx_err_t        err;
     ngx_signal_t    *sig;
 
+    ngx_signal = 1;
+
     err = ngx_errno;
 
     for (sig = signals; sig->signo != 0; sig++) {
@@ -112,8 +114,6 @@ void ngx_signal_handler(int signo)
     switch (ngx_process) {
 
     case NGX_PROCESS_MASTER:
-    case NGX_PROCESS_QUITING:
-    case NGX_PROCESS_PAUSED:
         switch (signo) {
 
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
@@ -122,13 +122,14 @@ void ngx_signal_handler(int signo)
             break;
 
         case ngx_signal_value(NGX_TERMINATE_SIGNAL):
+        case SIGINT:
             ngx_terminate = 1;
             action = ", exiting";
             break;
 
-        case ngx_signal_value(NGX_PAUSE_SIGNAL):
-            ngx_pause = 1;
-            action = ", pausing";
+        case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
+            ngx_noaccept = 1;
+            action = ", stop the accepting connections";
             break;
 
         case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
@@ -162,6 +163,7 @@ void ngx_signal_handler(int signo)
             break;
 
         case ngx_signal_value(NGX_TERMINATE_SIGNAL):
+        case SIGINT:
             ngx_terminate = 1;
             action = ", exiting";
             break;
@@ -175,7 +177,7 @@ void ngx_signal_handler(int signo)
 
         case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
         case ngx_signal_value(NGX_REOPEN_SIGNAL):
-        case ngx_signal_value(NGX_PAUSE_SIGNAL):
+        case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
             action = ", ignoring";
             break;
