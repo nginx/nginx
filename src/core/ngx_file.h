@@ -13,6 +13,8 @@ struct ngx_file_s {
     ngx_str_t        name;
     ngx_file_info_t  info;
 
+    off_t            offset;
+
     ngx_log_t       *log;
 
     unsigned         info_valid:1;

@@ -183,7 +183,6 @@ int ngx_conf_read_token(ngx_conf_t *cf)
                 return NGX_ERROR;
             }
 
-            cf->conf_file.file.offset += n;
             h->pos.mem = h->start + (h->pos.mem - start);
             start = h->start;
             h->last.mem = h->pos.mem + n;
