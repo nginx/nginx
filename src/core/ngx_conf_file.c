@@ -3,7 +3,34 @@
 #include <ngx_core.h>
 
 
-/* Ten fixed arguments */
+static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+
+static ngx_command_t  ngx_conf_commands[] = {
+
+    { ngx_string("include"),
+      NGX_ANY_CONF|NGX_CONF_TAKE1,
+      ngx_conf_include,
+      0,
+      0,
+      NULL },
+
+      ngx_null_command
+};
+
+
+ngx_module_t  ngx_conf_module = {
+    NGX_MODULE,
+    NULL,                                  /* module context */
+    ngx_conf_commands,                     /* module directives */
+    NGX_CONF_MODULE,                       /* module type */
+    NULL,                                  /* init module */
+    NULL                                   /* init child */
+};
+
+
+
+/* The ten fixed arguments */
 
 static int argument_number[] = {
     NGX_CONF_NOARGS,
@@ -510,6 +537,27 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
             }
         }
     }
+}
+
+
+static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t  *value, file;
+
+    value = cf->args->elts;
+
+    file.len = cf->cycle->root.len + value[1].len;
+    if (!(file.data = ngx_palloc(cf->pool, file.len + 1))) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_cpystrn(ngx_cpymem(file.data, cf->cycle->root.data,
+                           cf->cycle->root.len),
+                value[1].data, value[1].len + 1);
+
+    ngx_log_error(NGX_LOG_INFO, cf->log, 0, "include %s", file.data);
+
+    return ngx_conf_parse(cf, &file);
 }
 
 

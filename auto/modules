@@ -77,6 +77,9 @@ if [ $HTTP_PROXY = YES ]; then
     HTTP_SRCS="$HTTP_SRCS $HTTP_PROXY_SRCS"
 fi
 
+if [ -r $OBJS/auto ]; then
+    . $OBJS/auto
+fi
 
 modules="$CORE_MODULES $EVENT_MODULES $HTTP_MODULES $HTTP_FILTER_MODULES \
          $HTTP_HEADERS_FILTER_MODULE \

@@ -63,6 +63,11 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 #define ngx_file_uniq(sb)        (sb)->st_ino
 
 
+
+#define ngx_getcwd(buf, size)    (getcwd(buf, size) != NULL)
+#define ngx_getcwd_n             "getcwd()"
+#define NGX_MAX_PATH             PATH_MAX
+
 #define NGX_DIR_MASK_LEN         0
 
 

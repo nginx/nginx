@@ -26,6 +26,10 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
             continue;
         }
 
+        if (&h[i] == headers_in->x_pad) {
+            continue;
+        }
+
         if (p->accel) {
             if (&h[i] == headers_in->date
                 || &h[i] == headers_in->accept_ranges) {

@@ -66,12 +66,16 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     ngx_test_null(out, ngx_alloc_chain_link(r->pool), NGX_ERROR);
+    out->hunk = NULL;
     ll = &out->next;
 
     size = 0;
     cl = in;
 
     for ( ;; ) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http chunk: %d", ngx_hunk_size(cl->hunk));
+
         size += ngx_hunk_size(cl->hunk);
 
         ngx_test_null(tl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
@@ -86,25 +90,41 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         cl = cl->next;
     }
 
-    ngx_test_null(chunk, ngx_palloc(r->pool, 11), NGX_ERROR);
-    len = ngx_snprintf((char *) chunk, 11, SIZE_T_X_FMT CRLF, size);
+    if (size) {
+        ngx_test_null(chunk, ngx_palloc(r->pool, 11), NGX_ERROR);
+        len = ngx_snprintf((char *) chunk, 11, SIZE_T_X_FMT CRLF, size);
 
-    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
-    h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
-    h->pos = chunk;
-    h->last = chunk + len;
+        ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
+        h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
+        h->pos = chunk;
+        h->last = chunk + len;
 
-    out->hunk = h;
-
-    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
+        out->hunk = h;
+    }
 
     if (cl->hunk->type & NGX_HUNK_LAST) {
-        cl->hunk->type &= ~NGX_HUNK_LAST;
+
+        ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_MEMORY|NGX_HUNK_LAST;
         h->pos = (u_char *) CRLF "0" CRLF CRLF;
         h->last = h->pos + 7;
 
+        cl->hunk->type &= ~NGX_HUNK_LAST;
+
+        if (size == 0) {
+            out->hunk = h;
+            out->next = NULL;
+
+            return ngx_http_next_body_filter(r, out);
+        }
+
     } else {
+        if (size == 0) {
+            *ll = NULL;
+            return ngx_http_next_body_filter(r, out->next);
+        }
+
+        ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_MEMORY;
         h->pos = (u_char *) CRLF;
         h->last = h->pos + 2;

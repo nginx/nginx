@@ -94,6 +94,11 @@ int ngx_file_info(u_char *filename, ngx_file_info_t *fi);
                                           - 116444736000000000) / 10000000)
 
 
+#define ngx_getcwd(buf, size)       GetCurrentDirectory(size, buf)
+#define ngx_getcwd_n                "GetCurrentDirectory()"
+#define NGX_MAX_PATH                MAX_PATH
+
+
 #define NGX_DIR_MASK                (u_char *) "/*"
 #define NGX_DIR_MASK_LEN            2
 

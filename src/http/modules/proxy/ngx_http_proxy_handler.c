@@ -278,6 +278,7 @@ ngx_http_header_t ngx_http_proxy_headers_in[] = {
                              offsetof(ngx_http_proxy_headers_in_t, location) },
     { ngx_string("Accept-Ranges"),
                         offsetof(ngx_http_proxy_headers_in_t, accept_ranges) },
+    { ngx_string("X-Pad"), offsetof(ngx_http_proxy_headers_in_t, x_pad) },
 
     { ngx_null_string, 0 }
 };

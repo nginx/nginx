@@ -24,6 +24,7 @@ static ngx_connection_t  dumb;
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void               *rv;
+    u_char             *root;
     ngx_uint_t          i, n, failed;
     ngx_log_t          *log;
     ngx_conf_t          conf;
@@ -33,6 +34,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_open_file_t    *file;
     ngx_listening_t    *ls, *nls;
     ngx_core_module_t  *module;
+    char                cwd[NGX_MAX_PATH + 1];
 
     log = old_cycle->log;
 
@@ -49,6 +51,42 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->log = log;
     cycle->old_cycle = old_cycle;
     cycle->conf_file = old_cycle->conf_file;
+
+
+    for (i = cycle->conf_file.len; i > 0; i--) {
+        if (cycle->conf_file.data[i] == '/') {
+            break;
+        }
+    }
+
+    if (i == 0 && cycle->conf_file.data[i] != '/') {
+        if (ngx_getcwd(cwd, NGX_MAX_PATH) == 0) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          ngx_getcwd_n " failed");
+            ngx_destroy_pool(pool);
+            return NULL;
+        }
+
+        for ( /* void */; i < NGX_MAX_PATH && cwd[i]; i++) /* void */;
+        cwd[i] = '/';
+        cwd[i + 1] = '\0';
+
+        root = (u_char *) cwd;
+
+    } else {
+        root = cycle->conf_file.data;
+    }
+
+    cycle->root.len = ++i;
+    cycle->root.data = ngx_palloc(pool, ++i);
+    if (cycle->root.data == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
+    ngx_cpystrn(cycle->root.data, root, i);
+
+    ngx_log_error(NGX_LOG_INFO, log, 0, "root: %s", cycle->root.data);
 
 
     n = old_cycle->pathes.nelts ? old_cycle->pathes.nelts : 10;
