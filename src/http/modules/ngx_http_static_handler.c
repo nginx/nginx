@@ -483,22 +483,32 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     r->headers_out.content_length_n = ngx_file_size(&fi);
     r->headers_out.last_modified_time = ngx_file_mtime(&fi);
 
+    if (r->headers_out.content_length_n == 0) {
+        r->header_only = 1;
+    }
+
     if (ngx_http_set_content_type(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+#if (NGX_SUPPRESS_WARN)
+    b = NULL;
+#endif
 
-    /* we need to allocate all before the header would be sent */
+    if (!r->header_only) {
+        /* we need to allocate all before the header would be sent */
 
-    if (!(b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t)))) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        if (!(b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t)))) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        if (!(b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t)))) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        r->filter_allow_ranges = 1;
     }
 
-    if (!(b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t)))) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    r->filter_allow_ranges = 1;
     rc = ngx_http_send_header(r);
 
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {

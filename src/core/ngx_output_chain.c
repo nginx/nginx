@@ -59,6 +59,17 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
              * or there are the free output bufs to copy in
              */
 
+            bsize = ngx_buf_size(ctx->in->buf);
+
+            if (bsize == 0 && !ngx_buf_special(ctx->in->buf)) {
+
+                ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, 0,
+                              "zero size buf");
+
+                ctx->in = ctx->in->next;
+                continue;
+            }
+
             if (!ngx_output_chain_need_to_copy(ctx, ctx->in->buf)) {
 
                 /* move the chain link to the output chain */
@@ -70,13 +81,6 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 last_out = &cl->next;
                 cl->next = NULL;
 
-                continue;
-            }
-
-            bsize = ngx_buf_size(ctx->in->buf);
-
-            if (bsize == 0) {
-                ctx->in = ctx->in->next;
                 continue;
             }
 
