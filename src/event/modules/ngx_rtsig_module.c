@@ -114,7 +114,7 @@ static int ngx_rtsig_init(ngx_cycle_t *cycle)
 
     ngx_event_actions = ngx_rtsig_module_ctx.actions;
 
-    ngx_event_flags = NGX_USE_SIGIO_EVENT
+    ngx_event_flags = NGX_USE_RTSIG_EVENT
                       |NGX_HAVE_GREEDY_EVENT
                       |NGX_HAVE_INSTANCE_EVENT;
 
@@ -423,7 +423,7 @@ static int ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 {
     if (ngx_poll_module_ctx.actions.process(cycle) == NGX_OK) {
         ngx_event_actions = ngx_rtsig_module_ctx.actions;
-        ngx_event_flags = NGX_USE_SIGIO_EVENT;
+        ngx_event_flags = NGX_USE_RTSIG_EVENT;
     }
 
     return NGX_OK;

@@ -90,7 +90,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
     /* STUB: epoll edge */ c->write->event_handler = ngx_http_empty_handler;
 
     if (rev->ready) {
-        /* deferred accept, aio, iocp */
+        /* the deferred accept(), rtsig, aio, iocp */
 
         if (ngx_accept_mutex) {
             if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
@@ -1542,10 +1542,12 @@ int ngx_http_send_last(ngx_http_request_t *r)
 
 void ngx_http_close_request(ngx_http_request_t *r, int error)
 {
-    ngx_uint_t           i;
-    ngx_log_t           *log;
-    ngx_http_log_ctx_t  *ctx;
-    ngx_http_cleanup_t  *cleanup;
+    ngx_uint_t                 i;
+    ngx_log_t                 *log;
+    ngx_http_log_ctx_t        *ctx;
+    ngx_http_cleanup_t        *cleanup;
+    ngx_http_core_loc_conf_t  *clcf;
+    struct linger              l;
 
     log = r->connection->log;
 
@@ -1607,6 +1609,22 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           ngx_close_file_n " deleted file \"%s\" failed",
                           r->request_body->temp_file->file.name.data);
+        }
+    }
+
+    if (r->connection->timedout) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        if (clcf->reset_timedout_connection) {
+            l.l_onoff = 1;
+            l.l_linger = 0;
+
+            if (setsockopt(r->connection->fd, SOL_SOCKET, SO_LINGER,
+                           (const void *) &l, sizeof(struct linger)) == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
+                              "setsockopt(SO_LINGER) failed");
+            }
         }
     }
 
@@ -1676,6 +1694,7 @@ static void ngx_http_client_error(ngx_http_request_t *r,
     if (error == NGX_HTTP_REQUEST_TIME_OUT) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, NGX_ETIMEDOUT,
                       "client timed out");
+        r->connection->timedout = 1;
         ngx_http_close_request(r, error);
         ngx_http_close_connection(r->connection);
         return;

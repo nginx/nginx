@@ -38,7 +38,7 @@ typedef struct tm      ngx_tm_t;
 #if (SOLARIS)
 #define HAVE_TIMEZONE  1
 
-#define ngx_timezone() (-((daylight) ? altzone : timezone) / 60)
+#define ngx_timezone() (- (daylight ? altzone : timezone) / 60)
 
 #elif defined __linux__
 #define HAVE_TIMEZONE  1

@@ -227,6 +227,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, lingering_timeout),
       NULL },
 
+    { ngx_string("reset_timedout_connection"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, reset_timedout_connection),
+      NULL },
+
     { ngx_string("msie_padding"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -1238,7 +1245,7 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     lcf->lingering_time = NGX_CONF_UNSET_MSEC;
     lcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
-
+    lcf->reset_timedout_connection = NGX_CONF_UNSET;
     lcf->msie_padding = NGX_CONF_UNSET;
 
     return lcf;
@@ -1326,6 +1333,8 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_msec_value(conf->lingering_timeout,
                               prev->lingering_timeout, 5000);
 
+    ngx_conf_merge_value(conf->reset_timedout_connection,
+                         prev->reset_timedout_connection, 0);
     ngx_conf_merge_value(conf->msie_padding, prev->msie_padding, 1);
 
     if (conf->open_files == NULL) {

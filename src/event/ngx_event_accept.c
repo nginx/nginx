@@ -30,7 +30,7 @@ void ngx_event_accept(ngx_event_t *ev)
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
-    if (ngx_event_flags & (NGX_USE_EDGE_EVENT|NGX_USE_SIGIO_EVENT)) {
+    if (ngx_event_flags & (NGX_USE_EDGE_EVENT|NGX_USE_RTSIG_EVENT)) {
         ev->available = 1;
 
     } else if (!(ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)) {
@@ -52,9 +52,9 @@ void ngx_event_accept(ngx_event_t *ev)
         if (pool == NULL) {
 
             /*
-             * Create the pool before accept() to avoid copy the sockaddr.
-             * Although accept() can fail it's an uncommon case
-             * and besides the pool can be got from the free pool list
+             * Create the pool before accept() to avoid the copying of
+             * the sockaddr.  Although accept() can fail it is uncommon
+             * case and besides the pool can be got from the free pool list
              */
 
             if (!(pool = ngx_create_pool(ls->listening->pool_size, ev->log))) {
@@ -80,7 +80,7 @@ void ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
-        /* -1 disable logging the connection number */
+        /* -1 disables the connection number logging */
         ctx->flag = -1;
         ctx->name = ls->listening->addr_text.data;
 
@@ -95,7 +95,7 @@ void ngx_event_accept(ngx_event_t *ev)
 
             if (err == NGX_EAGAIN) {
                 if (!(ngx_event_flags
-                      & (NGX_USE_EDGE_EVENT|NGX_USE_SIGIO_EVENT)))
+                      & (NGX_USE_EDGE_EVENT|NGX_USE_RTSIG_EVENT)))
                 {
                     ngx_log_error(NGX_LOG_NOTICE, log, err,
                                   "EAGAIN after %d accepted connection(s)",
@@ -167,7 +167,7 @@ void ngx_event_accept(ngx_event_t *ev)
             }
 
         } else {
-            if (!(ngx_event_flags & NGX_USE_AIO_EVENT)) {
+            if (!(ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_RTSIG_EVENT))) {
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
                                   ngx_nonblocking_n " failed");
@@ -246,9 +246,9 @@ void ngx_event_accept(ngx_event_t *ev)
         wev->ready = 1;
 
         if (ngx_event_flags
-            & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT|NGX_USE_SIGIO_EVENT))
+            & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT|NGX_USE_RTSIG_EVENT))
         {
-            /* aio, iocp, sigio, epoll */
+            /* epoll, rtsig, aio, iocp */
             rev->ready = 1;
         }
 
@@ -366,12 +366,12 @@ ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle)
     for (i = 0; i < cycle->listening.nelts; i++) {
 
         /*
-         * we do not need to handle the Winsock sockets here (divde a socket
+         * we do not need to handle the Winsock sockets here (divide a socket
          * number by 4) because this function would never called
          * in the Winsock environment
          */
 
-        if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
+        if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
             if (ngx_add_conn(&cycle->connections[s[i].fd]) == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -398,12 +398,12 @@ ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle)
     for (i = 0; i < cycle->listening.nelts; i++) {
 
         /*
-         * we do not need to handle the Winsock sockets here (divde a socket
+         * we do not need to handle the Winsock sockets here (divide a socket
          * number by 4) because this function would never called
          * in the Winsock environment
          */
 
-        if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
+        if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
             if (!cycle->connections[s[i].fd].read->active) {
                 continue;
             }

@@ -30,7 +30,7 @@ char       *ngx_freebsd_kern_usrstack;
 size_t      ngx_thread_stack_size;
 
 
-static size_t       rz_size = /* STUB: PAGE_SIZE */ 4096;
+static size_t       rz_size;
 static size_t       usable_stack_size;
 static char        *last_stack;
 
@@ -187,6 +187,7 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
     }
 
     /* the main thread stack red zone */
+    rz_size = ngx_pagesize;
     red_zone = ngx_freebsd_kern_usrstack - (size + rz_size);
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,

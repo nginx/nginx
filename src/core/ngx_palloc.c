@@ -3,35 +3,6 @@
 #include <ngx_core.h>
 
 
-void *ngx_alloc(size_t size, ngx_log_t *log)
-{
-    void  *p;
-
-    if (!(p = malloc(size))) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "malloc() " SIZE_T_FMT " bytes failed", size);
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0,
-                   "malloc: " PTR_FMT ":" SIZE_T_FMT, p, size);
-
-    return p;
-}
-
-
-void *ngx_calloc(size_t size, ngx_log_t *log)
-{
-    void  *p;
-
-    p = ngx_alloc(size, log);
-    if (p) {
-        ngx_memzero(p, size);
-    }
-
-    return p;
-}
-
-
 ngx_pool_t *ngx_create_pool(size_t size, ngx_log_t *log)
 {
     ngx_pool_t  *p;
@@ -99,7 +70,7 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
     ngx_pool_t        *p, *n;
     ngx_pool_large_t  *large, *last;
 
-    if (size <= NGX_MAX_ALLOC_FROM_POOL) {
+    if (size <= (size_t) NGX_MAX_ALLOC_FROM_POOL) {
 
         for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
             m = ngx_align(p->last);
@@ -155,7 +126,7 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
         large->next = NULL;
     }
 
-    if (!(p = ngx_alloc(size, pool->log))) {
+    if (!(p = ngx_memalign(ngx_pagesize, size, pool->log))) {
         return NULL;
     }
 
@@ -198,3 +169,30 @@ void *ngx_pcalloc(ngx_pool_t *pool, size_t size)
 
     return p;
 }
+
+#if 0
+
+static void *ngx_get_cached_block(size_t size)
+{
+    void                     *p;
+    ngx_cached_block_slot_t  *slot;
+
+    if (ngx_cycle->cache == NULL) {
+        return NULL;
+    }
+
+    slot = &ngx_cycle->cache[(size + ngx_pagesize - 1) / ngx_pagesize];
+
+    slot->tries++;
+
+    if (slot->number) {
+        p = slot->block;
+        slot->block = slot->block->next;
+        slot->number--;
+        return p;
+    }
+
+    return NULL;
+}
+
+#endif

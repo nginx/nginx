@@ -375,7 +375,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
+        if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
             if (ngx_add_conn(c) == NGX_ERROR) {
                 return NGX_ERROR;
             }

@@ -113,7 +113,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
     if (r->http_version < NGX_HTTP_VERSION_10
         || r->headers_out.status != NGX_HTTP_OK
         || r->headers_out.content_length_n == -1
-        || !(r->filter & NGX_HTTP_FILTER_ALLOW_RANGES))
+        || !r->filter_allow_ranges)
     {
         return ngx_http_next_header_filter(r);
     }

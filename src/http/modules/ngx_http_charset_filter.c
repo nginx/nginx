@@ -184,7 +184,7 @@ static int ngx_http_charset_header_filter(ngx_http_request_t *r)
     ngx_http_create_ctx(r, ctx, ngx_http_charset_filter_module,
                         sizeof(ngx_http_charset_ctx_t), NGX_ERROR);
 
-    r->filter |= NGX_HTTP_FILTER_NEED_IN_MEMORY;
+    r->filter_need_in_memory = 1;
 
     return ngx_http_next_header_filter(r);
 }

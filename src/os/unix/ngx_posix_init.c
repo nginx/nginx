@@ -60,6 +60,8 @@ int ngx_posix_init(ngx_log_t *log)
     struct rlimit      rlmt;
     struct sigaction   sa;
 
+    ngx_pagesize = getpagesize();
+
     for (sig = signals; sig->signo != 0; sig++) {
         ngx_memzero(&sa, sizeof(struct sigaction));
         sa.sa_handler = sig->handler;

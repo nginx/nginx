@@ -317,7 +317,7 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
         r->headers_out.content_length->key.len = 0;
         r->headers_out.content_length = NULL;
     }
-    r->filter |= NGX_HTTP_FILTER_NEED_IN_MEMORY;
+    r->filter_need_in_memory = 1;
 
     return ngx_http_next_header_filter(r);
 }
@@ -438,12 +438,12 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
          * We preallocate a memory for zlib in one buffer (200K-400K), this
          * dicreases a number of malloc() and free() calls and also probably
          * dicreases a number of syscalls (sbrk() or so).
-         * Besides we free() this memory as soon as the gzipping will complete
+         * Besides we free this memory as soon as the gzipping will complete
          * and do not wait while a whole response will be sent to a client.
          *
          * 8K is for zlib deflate_state (~6K).
          *
-         * TODO: 64-bit, round to PAGE_SIZE, autoconf of deflate_state size
+         * TODO: 64-bit, autoconf of deflate_state size
          */
 
         ctx->allocated = 8192 + (1 << (wbits + 2)) + (1 << (memlevel + 9));
@@ -739,10 +739,12 @@ static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
     alloc = items * size;
     if (alloc % 512 != 0) {
 
-        /* we allocate 8K for zlib deflate_state (~6K) */
-        /* TODO: PAGE_SIZE */
+        /*
+         * allocate the zlib deflate_state, it takes about 6K on x86,
+         * we allocate 8K
+         */
 
-        alloc = (alloc + 4095) & ~4095;
+        alloc = (alloc + ngx_pagesize - 1) & ~(ngx_pagesize - 1);
     }
 
     if (alloc <= ctx->allocated) {
@@ -900,8 +902,7 @@ static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
 
-    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 4,
-                              /* STUB: PAGE_SIZE */ 4096);
+    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 4, ngx_pagesize);
 
     ngx_conf_merge_unsigned_value(conf->http_version, prev->http_version,
                                   NGX_HTTP_VERSION_11);

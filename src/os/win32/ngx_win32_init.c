@@ -40,6 +40,7 @@ int ngx_os_init(ngx_log_t *log)
     DWORD               bytes;
     SOCKET              s;
     WSADATA             wsd;
+    SYSTEM_INFO         si;
     OSVERSIONINFOEX     osvi;
     ngx_osviex_stub_t  *osviex_stub;
 
@@ -120,6 +121,9 @@ int ngx_os_init(ngx_log_t *log)
                           osvi.szCSDVersion);
         }
     }
+
+    GetSystemInfo(&si);
+    ngx_pagesize = si.dwPageSize;
 
 
     /* init Winsock */

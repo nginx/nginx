@@ -101,6 +101,8 @@ struct ngx_event_s {
 
     unsigned short   deferred_accept:1;
 
+    unsigned short   overflow:1;
+
     /* TODO: aio_eof and kq_eof can be the single pending_eof */
     /* the pending eof in aio chain operation */
     unsigned short   aio_eof:1;
@@ -244,7 +246,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 /*
  * No need to add or delete the event filters - rt signals.
  */
-#define NGX_USE_SIGIO_EVENT      0x00000100
+#define NGX_USE_RTSIG_EVENT      0x00000100
 
 /*
  * The alternative event method after the rt signals queue overflow.

@@ -75,8 +75,8 @@ ngx_int_t ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
                             sizeof(ngx_output_chain_ctx_t), NGX_ERROR);
 
         ctx->sendfile = r->sendfile;
-        ctx->need_in_memory = r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY;
-        ctx->need_in_temp = r->filter & NGX_HTTP_FILTER_NEED_TEMP;
+        ctx->need_in_memory = r->filter_need_in_memory;
+        ctx->need_in_temp = r->filter_need_temporary;
 
         ctx->pool = r->pool;
         ctx->bufs = conf->bufs;

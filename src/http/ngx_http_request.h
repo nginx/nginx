@@ -287,8 +287,10 @@ struct ngx_http_request_s {
     unsigned             lingering_close:1;
     unsigned             closed:1;
 
-    /* TODO: use the filter flags or the separate bits ???? */
-    u_int                filter;
+    unsigned             filter_need_in_memory:1;
+    unsigned             filter_ssi_need_in_memory:1;
+    unsigned             filter_need_temporary:1;
+    unsigned             filter_allow_ranges:1;
 
     /* used to parse HTTP headers */
     ngx_int_t            state;

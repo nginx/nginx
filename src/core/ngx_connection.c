@@ -228,7 +228,7 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
         fd /= 4;
 #endif
 
-        if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
+        if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
             if (cycle->connections[fd].read->active) {
                 ngx_del_conn(&cycle->connections[fd], NGX_CLOSE_EVENT);
             }

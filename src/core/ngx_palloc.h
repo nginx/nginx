@@ -1,5 +1,5 @@
-#ifndef _NGX_ALLOC_H_INCLUDED_
-#define _NGX_ALLOC_H_INCLUDED_
+#ifndef _NGX_PALLOC_H_INCLUDED_
+#define _NGX_PALLOC_H_INCLUDED_
 
 
 #include <ngx_config.h>
@@ -7,11 +7,11 @@
 
 
 /*
- * NGX_MAX_ALLOC_FROM_POOL should be (NGX_PAGE_SIZE - 1), i.e. 4095 on x86.
+ * NGX_MAX_ALLOC_FROM_POOL should be (ngx_page_size - 1), i.e. 4095 on x86.
  * On FreeBSD 5.x it allows to use zero copy send.
  * On Windows NT it decreases a number of locked pages in a kernel.
  */
-#define NGX_MAX_ALLOC_FROM_POOL 4095
+#define NGX_MAX_ALLOC_FROM_POOL  (ngx_pagesize - 1)
 
 #define NGX_DEFAULT_POOL_SIZE   (16 * 1024)
 
@@ -48,7 +48,4 @@ void *ngx_pcalloc(ngx_pool_t *pool, size_t size);
 void ngx_pfree(ngx_pool_t *pool, void *p);
 
 
-#define ngx_free   free
-
-
-#endif /* _NGX_ALLOC_H_INCLUDED_ */
+#endif /* _NGX_PALLOC_H_INCLUDED_ */

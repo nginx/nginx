@@ -110,3 +110,15 @@ ngx_func="localtime_r()"
 ngx_func_inc="#include <time.h>"
 ngx_func_test="struct tm t; time_t c=0; localtime_r(&c, &t)"
 . auto/func
+
+
+ngx_func="posix_memalign()"
+ngx_func_inc="#include <stdlib.h>"
+ngx_func_test="void *p, int n; n = posix_memalign(&p, 4096, 4096)"
+. auto/func
+
+
+ngx_func="memalign()"
+ngx_func_inc="#include <stdlib.h>"
+ngx_func_test="void *p; p = memalign(4096, 4096)"
+. auto/func

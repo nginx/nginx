@@ -40,17 +40,7 @@
 /* STUB: autoconf */
 typedef int    ngx_int_t;
 typedef u_int  ngx_uint_t;
-
-
 typedef int    ngx_flag_t;
-
-
-#ifndef NGX_SERVER_ROOT
-#define NGX_SERVER_ROOT   "./"
-#if 0
-#define NGX_SERVER_ROOT   "/usr/local/nginx/"
-#endif
-#endif
 
 
 #if !(WIN32)

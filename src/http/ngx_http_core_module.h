@@ -137,6 +137,7 @@ typedef struct {
 
     ngx_flag_t    sendfile;                /* sendfile */
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */
+    ngx_flag_t    reset_timedout_connection; /* reset_timedout_connection */
     ngx_flag_t    msie_padding;            /* msie_padding */
 
     ngx_array_t  *error_pages;             /* error_page */
@@ -170,6 +171,19 @@ ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 
 int ngx_http_internal_redirect(ngx_http_request_t *r,
                                ngx_str_t *uri, ngx_str_t *args);
+
+
+typedef int (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);
+typedef int (*ngx_http_output_body_filter_pt)
+                                   (ngx_http_request_t *r, ngx_chain_t *chain);
+
+
+int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);
+int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
+
+
+extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
+extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
 
 
 #endif /* _NGX_HTTP_CORE_H_INCLUDED_ */

@@ -16,7 +16,6 @@ typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 #include <ngx_http_request.h>
 #include <ngx_http_config.h>
 #include <ngx_http_busy_lock.h>
-#include <ngx_http_filter.h>
 #include <ngx_http_log_handler.h>
 #include <ngx_http_core_module.h>
 

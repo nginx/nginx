@@ -103,6 +103,7 @@ struct ngx_connection_s {
 
     unsigned          pipeline:1;
     unsigned          unexpected_eof:1;
+    unsigned          timedout:1;
     signed            tcp_nopush:2;
 #if (HAVE_IOCP)
     unsigned          accept_context_updated:1;
