@@ -19,8 +19,12 @@ typedef struct {
     ngx_hunk_t    *hunk;
 
     ngx_chain_t   *in;
+
+    /* TODO: out and last_out should be local variables */
     ngx_chain_t   *out;
     ngx_chain_t  **last_out;
+    /* */
+
     ngx_chain_t   *free;
     ngx_chain_t   *busy;
 
@@ -180,6 +184,9 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
 #if (NGX_FILE_AIO_READ)
             if (rc == NGX_AGAIN) {
+                if (ctx->out) {
+                    break;
+                }
                 return rc;
             }
 #endif

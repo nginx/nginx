@@ -110,7 +110,7 @@ ngx_log_debug(p->log, "new hunk: %08X" _ chain->hunk);
 ngx_log_debug(p->log, "file hunk: %08X" _ chain->hunk _
               chain->hunk->end - chain->hunk->last);
 
-            } else if (p->cachable == 0 && p->downstream->write->ready) {
+            } else if (!p->cachable && p->downstream->write->ready) {
 
                 /*
                  * if the hunks are not needed to be saved in a cache and
@@ -390,6 +390,80 @@ ngx_log_debug(p->log, "upstream level: %d" _ p->upstream_level);
         return NGX_AGAIN;
     }
 }
+
+
+int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
+{
+    ngx_chain_t                   *out, *ce;
+    ngx_event_proxy_downstream_t  *d;
+
+    d = &p->downstream;
+
+    for ( ;; ) {
+
+        if (!d->write->ready || p->busy_hunks_num == p->max_busy_hunks) {
+            break;
+        }
+
+        if (p->out) {
+            out = p->out;
+            p->out = p->out->next;
+
+        } else if (!p->cachable && p->in) {
+            out = p->in;
+            p->in = p->in->next;
+
+        } else {
+            break;
+        }
+
+        out->next = NULL;
+
+        rc = p->output_filter(p->output_data, out->hunk);
+
+        ngx_chain_update_chains(p->shadow_free, p->busy, out);
+
+        for (ce = p->shadow_free; ce; ce = ce->next) {
+
+            if (ce->hunk->type & NGX_LAST_SHADOW_HUNK) {
+                h = ce->hunk->shadow;
+                h->type = (NGX_HUNK_TEMP|NGX_HUNK_IN_MEMORY|NGX_HUNK_RECYCLED);
+                h->pos = p->last = h->start;
+                h->shadow = NULL;
+
+                ngx_alloc_ce_and_set_hunk(te, h, p->pool, NGX_ABORT);
+                te->next = p->free;
+                p->free = te;
+            }
+        }
+
+        p->busy_hunks_num = 0;
+        for (ce = p->busy; ce; ce = ce->next) {
+            if (ce->hunk->type & NGX_LAST_SHADOW_HUNK) {
+                p->busy_hunks_num++;
+            }
+        }
+
+        if (p->upstream.read->ready)
+            if (ngx_event_proxy_read_upstream(p) == NGX_ERROR) {
+                return NGX_ABORT;
+            }
+        }
+    }
+
+    if (d->level == 0) {
+        if (ngx_handler_write_event(d->write) == NGX_ERROR) {
+            return NGX_ABORT;
+        }
+    }
+
+    if (p->upstream_done && p->in == NULL && p->out == NULL) {
+        p->downstream_done = 1;
+    }
+
+    return NGX_OK;
+}
+
 
 
 int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
@@ -686,7 +760,7 @@ static int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p,
 
     if (p->upstream_eof) {
 
-        /* THINK comment */
+        /* TODO: comment */
 
         ce = p->free_hunks;
 
