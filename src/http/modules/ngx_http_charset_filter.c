@@ -291,8 +291,8 @@ static char *ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd,
     }
 
     for (i = 0; i < 128; i++) {
-        table->src2dst[i] = i;
-        table->dst2src[i] = i;
+        table->src2dst[i] = (char) i;
+        table->dst2src[i] = (char) i;
     }
 
     for (/* void */; i < 256; i++) {
@@ -313,8 +313,6 @@ static char *ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd,
 
 static char *ngx_charset_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
-    ngx_http_charset_main_conf_t  *mcf = conf;
-
     ngx_int_t                   src, dst;
     ngx_str_t                  *value;
     ngx_http_charset_tables_t  *table;
@@ -342,8 +340,8 @@ static char *ngx_charset_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
     table = cf->ctx;
 
-    table->src2dst[src] = dst;
-    table->dst2src[dst] = src;
+    table->src2dst[src] = (char) dst;
+    table->dst2src[dst] = (char) src;
 
     return NGX_CONF_OK;
 }
@@ -449,7 +447,7 @@ static char *ngx_http_charset_init_main_conf(ngx_conf_t *cf, void *conf)
     ngx_http_charset_main_conf_t *mcf = conf;
 
     ngx_uint_t                  i, n;
-    ngx_http_charset_t         *charset, *c;
+    ngx_http_charset_t         *charset;
     ngx_http_charset_tables_t  *tables;
 
     tables = mcf->tables.elts;
@@ -531,13 +529,12 @@ static char *ngx_http_charset_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
     ngx_conf_merge_value(conf->autodetect, prev->autodetect, 0);
 
-    if (conf->default_charset == NGX_CONF_UNSET) {
-        conf->default_charset = prev->default_charset;
-    }
-
     if (conf->source_charset == NGX_CONF_UNSET) {
         conf->source_charset = prev->source_charset;
     }
+
+    ngx_conf_merge_value(conf->default_charset, prev->default_charset,
+                         conf->source_charset);
 
     return NGX_CONF_OK;
 }

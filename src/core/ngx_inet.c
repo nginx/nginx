@@ -164,3 +164,38 @@ size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len)
                         "%u.%u.%u.%u", p[0], p[1], p[2], p[3]);
 #endif
 }
+
+
+/* AF_INET only */
+
+ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr)
+{
+    ngx_uint_t        i;
+    ngx_inet_cidr_t  *in_cidr;
+
+    in_cidr = cidr;
+
+    for (i = 0; i < text->len; i++) {
+        if (text->data[i] == '/') {
+            break;
+        }
+    }
+
+    if (i == text->len) {
+        return NGX_ERROR;
+    }
+
+    text->data[i] = '\0';
+    in_cidr->addr = inet_addr((char *) text->data);
+    text->data[i] = '/';
+    if (in_cidr->addr == INADDR_NONE) {
+        return NGX_ERROR;
+    }
+
+    in_cidr->mask = ngx_atoi(&text->data[i + 1], text->len - (i + 1));
+    if (in_cidr->mask == (in_addr_t) NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
