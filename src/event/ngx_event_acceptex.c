@@ -29,6 +29,22 @@ int ngx_event_acceptex(ngx_event_t *ev)
         return NGX_OK;
     }
 
+#if 0
+
+    /* can we do SO_UPDATE_ACCEPT_CONTEXT just before shutdown() ???
+       or AcceptEx's context will be lost ??? */
+
+     /* SO_UPDATE_ACCEPT_CONTEXT is required for shutdown() to work */
+    if (setsockopt(context->accept_socket, SOL_SOCKET,
+                    SO_UPDATE_ACCEPT_CONTEXT, (char *)&nsd,
+                     sizeof(nsd))) {
+          ap_log_error(APLOG_MARK, APLOG_ERR, WSAGetLastError(), server_conf,
+                       "setsockopt(SO_UPDATE_ACCEPT_CONTEXT) failed.");
+
+         /* non fatal - we can not only do lingering close */
+
+#endif
+
     getacceptexsockaddrs(c->data, 0,
                          c->socklen + 16, c->socklen + 16,
                          &c->local_sockaddr, &c->local_socklen,

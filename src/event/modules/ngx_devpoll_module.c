@@ -10,7 +10,7 @@
 #include <ngx_event.h>
 
 
-#if (TEST_DEVPOLL)
+#if (TEST_BUILD_DEVPOLL)
 
 /* Solaris declarations */
 

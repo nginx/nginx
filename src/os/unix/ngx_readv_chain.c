@@ -1,12 +1,9 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_errno.h>
-#include <ngx_log.h>
-#include <ngx_connection.h>
 
 
-ssize_t ngx_recv_chain(ngx_connection_t *c, ngx_chain_t *entry)
+ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *entry)
 {
     ssize_t        n;
     struct iovec  *iov;

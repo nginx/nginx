@@ -65,39 +65,28 @@ void ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
+        /* set a blocking mode for aio and non-blocking mode for others */
 
-#if (HAVE_INHERITED_NONBLOCK)
+        if (ngx_inherited_nonblocking) {
+            if ((ngx_event_flags & NGX_USE_AIO_EVENT)) {
+                if (ngx_blocking(s) == -1) {
+                    ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                                  ngx_blocking_n " %s failed",
+                                  ls->addr_text.data);
+                    return;
+                }
+            }
 
-#if (HAVE_AIO_EVENT)
-        if ((ngx_event_flags & NGX_HAVE_AIO_EVENT)) {
-            if (ngx_blocking(s) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
-                              ngx_blocking_n " %s failed", ls->addr_text.data);
-                return;
+        } else {
+            if ((ngx_event_flags & NGX_USE_AIO_EVENT) == 0) {
+                if (ngx_nonblocking(s) == -1) {
+                    ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                                  ngx_nonblocking_n " %s failed",
+                                  ls->addr_text.data);
+                    return;
+                }
             }
         }
-#endif
-
-#else /* !HAVE_INHERITED_NONBLOCK */
-
-#if (HAVE_AIO_EVENT)
-        if (!(ngx_event_flags & NGX_HAVE_AIO_EVENT)) {
-            if (ngx_nonblocking(s) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
-                           ngx_nonblocking_n " %s failed", ls->addr_text.data);
-                return;
-            }
-        }
-#else
-        if (ngx_nonblocking(s) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
-                          ngx_nonblocking_n " %s failed", ls->addr_text.data);
-            return;
-        }
-#endif
-
-#endif /* HAVE_INHERITED_NONBLOCK */
-
 
         rev = &ngx_read_events[s];
         wev = &ngx_write_events[s];
@@ -130,15 +119,9 @@ void ngx_event_accept(ngx_event_t *ev)
         c->unexpected_eof = 1;
         wev->write = 1;
 
-#if (USE_KQUEUE)
-        wev->ready = 1;
-#else
         if ((ngx_event_flags & NGX_USE_AIO_EVENT) == 0) {
             wev->ready = 1;
         }
-#endif
-
-        /* STUB ? */ wev->timer = rev->timer = 10000;
 
         c->ctx = ls->ctx;
         c->servers = ls->servers;
@@ -174,17 +157,10 @@ void ngx_event_accept(ngx_event_t *ev)
 
         ls->handler(c);
 
-#if (USE_KQUEUE)
-
-        ev->available--;
-
-#elif (HAVE_KQUEUE)
-
         if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
             ev->available--;
         }
 
-#endif
     } while (ev->available);
   
     return;

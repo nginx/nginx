@@ -25,9 +25,9 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
 
     return h;
 }
-    
+
 ngx_hunk_t *ngx_create_hunk_before(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
-{    
+{
     ngx_hunk_t *h;
 
     ngx_test_null(h, ngx_palloc(pool, sizeof(ngx_hunk_t)), NULL);
@@ -47,7 +47,7 @@ ngx_hunk_t *ngx_create_hunk_before(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 
     } else {
         ngx_test_null(h->pre_start, ngx_palloc(pool, size), NULL);
-        h->start = h->pos = h->last = h->pre_start; 
+        h->start = h->pos = h->last = h->pre_start;
         h->end = h->post_end = h->start + size;
         h->file_pos = h->file_last = 0;
 
@@ -84,7 +84,7 @@ ngx_hunk_t *ngx_create_hunk_after(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 
     } else {
         ngx_test_null(h->pre_start, ngx_palloc(pool, size), NULL);
-        h->start = h->pos = h->last = h->pre_start; 
+        h->start = h->pos = h->last = h->pre_start;
         h->end = h->post_end = h->start + size;
         h->file_pos = h->file_last = 0;
 

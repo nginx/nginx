@@ -100,6 +100,7 @@ typedef struct {
     ngx_msec_t  send_timeout;            /* send_timeout */
     size_t      send_lowat;              /* send_lowa */
     size_t      discarded_buffer_size;   /* discarded_buffer_size */
+    ngx_msec_t  keepalive_timeout;       /* keepalive_timeout */
     ngx_msec_t  lingering_time;          /* lingering_time */
     ngx_msec_t  lingering_timeout;       /* lingering_timeout */
 

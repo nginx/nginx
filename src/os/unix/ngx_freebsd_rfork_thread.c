@@ -168,7 +168,7 @@ ngx_tid_t ngx_thread_self()
 
 
 static inline int ngx_gettid()
-{   
+{
     char  *sp;
 
     if (stack_size == 0) {

@@ -3,61 +3,30 @@
 #include <ngx_core.h>
 
 
-int  ngx_max_sockets;
+/* STUB */
+ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size);
+ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in);
+int ngx_posix_init(ngx_log_t *log);
+int ngx_posix_post_conf_init(ngx_log_t *log);
+/* */
 
 
-int ngx_unix_init(ngx_log_t *log)
+ngx_os_io_t ngx_os_io = {
+    ngx_unix_recv,
+    NULL,
+    NULL,
+    ngx_writev_chain,
+    NGX_HAVE_ZEROCOPY
+};
+
+
+int ngx_os_init(ngx_log_t *log)
 {
-    struct sigaction sa;
-    struct rlimit  rlmt;
-
-    ngx_memzero(&sa, sizeof(struct sigaction));
-    sa.sa_handler = SIG_IGN;
-    sigemptyset(&sa.sa_mask);
-
-    if (sigaction(SIGPIPE, &sa, NULL) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "sigaction(SIGPIPE, SIG_IGN) failed");
-        return NGX_ERROR;
-    }
-
-
-    if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, errno,
-                      "getrlimit(RLIMIT_NOFILE) failed)");
-        return NGX_ERROR;
-    }
-
-    ngx_log_error(NGX_LOG_INFO, log, 0,
-                  "getrlimit(RLIMIT_NOFILE): %qd:%qd",
-                  rlmt.rlim_cur, rlmt.rlim_max);
-
-    ngx_max_sockets = rlmt.rlim_cur;
-
-    return NGX_OK;
+    return ngx_posix_init(log);
 }
 
 
-int ngx_unix_post_conf_init(ngx_log_t *log)
+int ngx_os_post_conf_init(ngx_log_t *log)
 {
-    ngx_fd_t  pp[2];
-
-    if (pipe(pp) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "pipe() failed");
-        return NGX_ERROR;
-    }
-
-    if (dup2(pp[1], STDERR_FILENO) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, errno, "dup2(STDERR) failed");
-        return NGX_ERROR;
-    }
-
-    if (pp[1] > STDERR_FILENO) {
-        if (close(pp[1]) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, log, errno, "close() failed");
-            return NGX_ERROR;
-        }
-    }
-
-    return NGX_OK;
+    return ngx_posix_post_conf_init(log);
 }

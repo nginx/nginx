@@ -66,7 +66,7 @@ ngx_event_module_t  ngx_kqueue_module_ctx = {
         NULL,                              /* delete an connection */
         ngx_kqueue_process_events,         /* process the events */
         ngx_kqueue_init,                   /* init the events */
-        ngx_kqueue_done,                   /* done the events */
+        ngx_kqueue_done                    /* done the events */
     }
 
 };
@@ -343,21 +343,22 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         }
 
         ev = (ngx_event_t *) event_list[i].udata;
-        instance = (uintptr_t) ev & 1;
-        ev = (void *) ((uintptr_t) ev & ~1);
-
-        /* It's a stale event from a file descriptor
-           that was just closed in this iteration */
-
-        if (ev->active == 0 || ev->instance != instance) {
-            ngx_log_debug(log, "stale kevent");
-            continue;
-        }
 
         switch (event_list[i].filter) {
 
         case EVFILT_READ:
         case EVFILT_WRITE:
+
+            instance = (uintptr_t) ev & 1;
+            ev = (void *) ((uintptr_t) ev & ~1);
+
+            /* It's a stale event from a file descriptor
+               that was just closed in this iteration */
+
+            if (ev->active == 0 || ev->instance != instance) {
+                ngx_log_debug(log, "stale kevent");
+                continue;
+            }
 
             ev->available = event_list[i].data;
 

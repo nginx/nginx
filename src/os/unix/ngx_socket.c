@@ -2,12 +2,15 @@
 #include <ngx_socket.h>
 
 
-/* ioctl(FIONBIO) set blocking mode with one syscall only while
+/*
+   ioctl(FIONBIO) set blocking mode with one syscall only while
    fcntl(F_SETFL, ~O_NONBLOCK) need to know previous state
    using fcntl(F_GETFL).
-   On FreeBSD both are syscall */
 
-#ifdef __FreeBSD__
+   ioctl() and fcntl() are syscalls on FreeBSD, Solaris 7/8 and Linux
+*/
+
+#if 1
 
 int ngx_nonblocking(ngx_socket_t s)
 {

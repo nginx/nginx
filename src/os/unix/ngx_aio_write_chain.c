@@ -1,14 +1,7 @@
 
 #include <ngx_config.h>
-
 #include <ngx_core.h>
-#include <ngx_types.h>
-#include <ngx_alloc.h>
-#include <ngx_array.h>
-#include <ngx_hunk.h>
-#include <ngx_connection.h>
-#include <ngx_sendv.h>
-#include <ngx_sendfile.h>
+#include <ngx_aio.h>
 
 
 ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
@@ -25,19 +18,19 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
 
     while (ce) {
 
-ngx_log_debug(c->log, "aio_write ce: %x" _ ce->hunk->pos.mem);
+ngx_log_debug(c->log, "aio_write ce: %x" _ ce->hunk->pos);
 
-        buf = prev = ce->hunk->pos.mem;
+        buf = prev = ce->hunk->pos;
         size = 0;
 
         /* coalesce the neighbouring chain entries */
-        while (ce && prev == ce->hunk->pos.mem) {
-            size += ce->hunk->last.mem - ce->hunk->pos.mem;
-            prev = ce->hunk->last.mem;
+        while (ce && prev == ce->hunk->pos) {
+            size += ce->hunk->last - ce->hunk->pos;
+            prev = ce->hunk->last;
             ce = ce->next;
         }
 
-        rc = ngx_event_aio_write(c, buf, size);
+        rc = ngx_aio_write(c, buf, size);
 
 ngx_log_debug(c->log, "aio_write rc: %d" _ rc);
 
@@ -62,27 +55,27 @@ ngx_log_debug(c->log, "aio_write rc: %d" _ rc);
 #if (NGX_DEBUG_WRITE_CHAIN)
         ngx_log_debug(c->log, "write chain: %x %qx %qd" _
                       ce->hunk->type _
-                      ce->hunk->pos.file _
-                      ce->hunk->last.file - ce->hunk->pos.file);
+                      ce->hunk->file_pos _
+                      ce->hunk->file_last - ce->hunk->file_pos);
 #endif
 
-        if (sent >= ce->hunk->last.file - ce->hunk->pos.file) {
-            sent -= ce->hunk->last.file - ce->hunk->pos.file;
-            ce->hunk->pos.file = ce->hunk->last.file;
+        if (sent >= ce->hunk->file_last - ce->hunk->file_pos) {
+            sent -= ce->hunk->file_last - ce->hunk->file_pos;
+            ce->hunk->file_pos = ce->hunk->file_last;
 
 #if (NGX_DEBUG_WRITE_CHAIN)
             ngx_log_debug(c->log, "write chain done: %qx %qd" _
-                          ce->hunk->pos.file _ sent);
+                          ce->hunk->file_pos _ sent);
 #endif
             continue;
         }
 
-        ce->hunk->pos.file += sent;
+        ce->hunk->file_pos += sent;
 
 #if (NGX_DEBUG_WRITE_CHAIN)
         ngx_log_debug(c->log, "write chain rest: %qx %qd" _
-                      ce->hunk->pos.file _
-                      ce->hunk->last.file - ce->hunk->pos.file);
+                      ce->hunk->file_pos _
+                      ce->hunk->file_last - ce->hunk->file_pos);
 #endif
 
         break;

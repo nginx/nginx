@@ -327,7 +327,7 @@ extern int                   ngx_event_flags;
 typedef struct {
     int   connections;
     int   timer_queues;
-    int   type;
+    int   use;
 } ngx_event_conf_t;
 
 

@@ -147,7 +147,7 @@ void ngx_log_stderr(ngx_event_t *ev)
         n = read((ngx_fd_t) ev->data, errstr, sizeof(errstr - 1));
 
         if (n == -1) {
-            err = ngx_errno;            
+            err = ngx_errno;
             if (err == NGX_EAGAIN) {
                 return;
             }

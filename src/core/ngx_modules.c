@@ -17,6 +17,9 @@ extern ngx_module_t  ngx_kqueue_module;
 #if (HAVE_DEVPOLL)
 extern ngx_module_t  ngx_devpoll_module;
 #endif
+#if (HAVE_AIO)
+extern ngx_module_t  ngx_aio_module;
+#endif
 
 
 extern ngx_module_t  ngx_http_module;
@@ -46,6 +49,9 @@ ngx_module_t *ngx_modules[] = {
 #endif
 #if (HAVE_DEVPOLL)
     &ngx_devpoll_module,
+#endif
+#if (HAVE_AIO)
+    &ngx_aio_module,
 #endif
 
     /* http */

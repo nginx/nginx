@@ -31,7 +31,7 @@ extern ngx_event_module_t ngx_devpoll_module_ctx;
 
 
 static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy);
-static char *ngx_event_set_type(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
+static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 static void *ngx_event_create_conf(ngx_pool_t *pool);
 static char *ngx_event_init_conf(ngx_pool_t *pool, void *conf);
 
@@ -84,9 +84,9 @@ static ngx_command_t  ngx_event_commands[] = {
      offsetof(ngx_event_conf_t, connections),
      NULL},
 
-    {ngx_string("type"),
+    {ngx_string("use"),
      NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_event_set_type,
+     ngx_event_use,
      0,
      0,
      NULL},
@@ -135,7 +135,7 @@ int ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
     ecf = ngx_event_get_conf(ngx_event_module_ctx);
 
 ngx_log_debug(log, "CONN: %d" _ ecf->connections);
-ngx_log_debug(log, "TYPE: %d" _ ecf->type);
+ngx_log_debug(log, "TYPE: %d" _ ecf->use);
 
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_EVENT_MODULE_TYPE) {
@@ -143,7 +143,7 @@ ngx_log_debug(log, "TYPE: %d" _ ecf->type);
         }
 
         module = ngx_modules[m]->ctx;
-        if (module->index == ecf->type) {
+        if (module->index == ecf->use) {
             if (module->actions.init(log) == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -317,7 +317,7 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 }
 
 
-static char *ngx_event_set_type(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
     ngx_event_conf_t *ecf = (ngx_event_conf_t *) conf;
 
@@ -325,8 +325,8 @@ static char *ngx_event_set_type(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     ngx_str_t            *args;
     ngx_event_module_t   *module;
 
-    if (ecf->type != NGX_CONF_UNSET) {
-        return "duplicate event type" ;
+    if (ecf->use != NGX_CONF_UNSET) {
+        return "is duplicate" ;
     }
 
     args = cf->args->elts;
@@ -339,7 +339,7 @@ static char *ngx_event_set_type(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
         module = ngx_modules[m]->ctx;
         if (module->name->len == args[1].len) {
             if (ngx_strcmp(module->name->data, args[1].data) == 0) {
-                ecf->type = module->index;
+                ecf->use = module->index;
                 return NGX_CONF_OK;
             }
         }
@@ -358,7 +358,7 @@ static void *ngx_event_create_conf(ngx_pool_t *pool)
 
     ecf->connections = NGX_CONF_UNSET;
     ecf->timer_queues = NGX_CONF_UNSET;
-    ecf->type = NGX_CONF_UNSET;
+    ecf->use = NGX_CONF_UNSET;
 
     return ecf;
 }
@@ -380,19 +380,19 @@ static char *ngx_event_init_conf(ngx_pool_t *pool, void *conf)
 #endif
 
     ngx_conf_init_value(ecf->connections, DEF_CONNECTIONS);
-    ngx_conf_init_value(ecf->type, ngx_kqueue_module_ctx.index);
+    ngx_conf_init_value(ecf->use, ngx_kqueue_module_ctx.index);
 
 #elif (HAVE_DEVPOLL)
 
     ngx_conf_init_value(ecf->connections, DEF_CONNECTIONS);
-    ngx_conf_init_value(ecf->type, ngx_devpoll_module_ctx.index);
+    ngx_conf_init_value(ecf->use, ngx_devpoll_module_ctx.index);
 
 #else /* HAVE_SELECT */
 
     ngx_conf_init_value(ecf->connections,
                   FD_SETSIZE < DEF_CONNECTIONS ? FD_SETSIZE : DEF_CONNECTIONS);
 
-    ngx_conf_init_value(ecf->type, ngx_select_module_ctx.index);
+    ngx_conf_init_value(ecf->use, ngx_select_module_ctx.index);
 
 #endif
 

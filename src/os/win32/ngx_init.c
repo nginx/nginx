@@ -7,17 +7,10 @@ int  ngx_max_sockets;
 
 
 ngx_os_io_t ngx_os_io = {
-#if 0
-    ngx_unix_recv,
-    NULL,
-    NULL,
-    ngx_freebsd_write_chain
-#else
-    NULL,
+    ngx_wsarecv,
     NULL,
     NULL,
     NULL
-#endif
 };
 
 

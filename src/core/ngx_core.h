@@ -37,6 +37,12 @@ typedef struct ngx_event_s       ngx_event_t;
 */
 
 
+#define LF     10
+#define CR     13
+#define CRLF   "\x0d\x0a"
+
+
+
 #define NGX_MAXHOSTNAMELEN 32
 /*
 #define NGX_MAXHOSTNAMELEN MAXHOSTNAMELEN

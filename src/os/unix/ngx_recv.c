@@ -17,7 +17,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
 
 #if (HAVE_KQUEUE) /* DEBUG */
     if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
-        ngx_log_debug(c->log, "ngx_recv: eof:%d, avail:%d, err:%d" _
+        ngx_log_debug(c->log, "recv: eof:%d, avail:%d, err:%d" _
                       ev->eof _ ev->available _ ev->error);
     }
 #endif
@@ -38,7 +38,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
     } else {
         n = recv(c->fd, buf, size, 0);
 
-ngx_log_debug(c->log, "ngx_recv: read:%d:%d" _ n _ size);
+ngx_log_debug(c->log, "recv: read:%d:%d" _ n _ size);
 
         if (n == -1) {
             err = ngx_socket_errno;
@@ -48,6 +48,8 @@ ngx_log_debug(c->log, "ngx_recv: read:%d:%d" _ n _ size);
 #else /* not kqueue */
 
     n = recv(c->fd, buf, size, 0);
+
+ngx_log_debug(c->log, "recv: read:%d:%d" _ n _ size);
 
     if (n == -1) {
         err = ngx_socket_errno;

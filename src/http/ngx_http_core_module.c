@@ -134,6 +134,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
      offsetof(ngx_http_core_loc_conf_t, send_timeout),
      NULL},
 
+    {ngx_string("keepalive_timeout"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_msec_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_core_loc_conf_t, keepalive_timeout),
+     NULL},
+
     {ngx_string("lingering_time"),
      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_msec_slot,
@@ -912,6 +919,7 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool)
 
     lcf->send_timeout = NGX_CONF_UNSET;
     lcf->discarded_buffer_size = NGX_CONF_UNSET;
+    lcf->keepalive_timeout = NGX_CONF_UNSET;
     lcf->lingering_time = NGX_CONF_UNSET;
     lcf->lingering_timeout = NGX_CONF_UNSET;
 
@@ -981,6 +989,8 @@ static char *ngx_http_core_merge_loc_conf(ngx_pool_t *pool,
 
     ngx_conf_merge_size_value(conf->discarded_buffer_size,
                               prev->discarded_buffer_size, 1500);
+    ngx_conf_merge_msec_value(conf->keepalive_timeout, prev->keepalive_timeout,
+                              70000);
     ngx_conf_merge_msec_value(conf->lingering_time, prev->lingering_time,
                               30000);
     ngx_conf_merge_msec_value(conf->lingering_timeout, prev->lingering_timeout,

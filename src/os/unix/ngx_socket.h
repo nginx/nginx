@@ -4,10 +4,6 @@
 
 #include <ngx_config.h>
 
-#ifdef __FreeBSD__
-#include <sys/ioctl.h>
-#endif
-
 
 #define NGX_WRITE_SHUTDOWN SHUT_WR
 
@@ -17,7 +13,7 @@ typedef int  ngx_socket_t;
 #define ngx_socket_n        "socket()"
 
 
-#ifdef __FreeBSD__
+#if 1
 
 int ngx_nonblocking(ngx_socket_t s);
 int ngx_blocking(ngx_socket_t s);

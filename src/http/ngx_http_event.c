@@ -996,6 +996,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     ngx_connection_t           *c;
     ngx_http_log_ctx_t         *ctx;
     ngx_http_core_main_conf_t  *cmcf;
+    ngx_http_core_loc_conf_t   *clcf;
 
     c = (ngx_connection_t *) r->connection;
     rev = c->read;
@@ -1003,6 +1004,17 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     ctx = (ngx_http_log_ctx_t *) c->log->data;
     ctx->action = "closing request";
     ngx_http_close_request(r, 0);
+
+    if (rev->timer_set) {
+        ngx_del_timer(rev);
+    } else {
+        rev->timer_set = 1;
+    }
+
+    clcf = (ngx_http_core_loc_conf_t *)
+                     ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
+
+    ngx_add_timer(rev, clcf->keepalive_timeout);
 
     if (rev->blocked && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {
         if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) == NGX_ERROR) {

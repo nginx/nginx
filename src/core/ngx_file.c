@@ -81,7 +81,7 @@ ngx_log_debug(file->log, "temp fd: %d" _ file->fd);
 
         if (ngx_create_path(file, path) == NGX_ERROR) {
             return NGX_ERROR;
-        }        
+        }
     }
 }
 

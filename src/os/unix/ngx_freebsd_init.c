@@ -12,9 +12,10 @@ int ngx_freebsd_sendfile_nbytes_bug;
 
 ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
+    ngx_readv_chain,
     NULL,
-    NULL,
-    ngx_freebsd_write_chain
+    ngx_freebsd_write_chain,
+    NGX_HAVE_SENDFILE|NGX_HAVE_ZEROCOPY
 };
 
 
@@ -107,5 +108,5 @@ int ngx_os_init(ngx_log_t *log)
     ngx_log_error(NGX_LOG_INFO, log, 0, "net.inet.tcp.sendspace: %d",
                   ngx_freebsd_net_inet_tcp_sendspace);
 
-    return ngx_unix_init(log);
+    return ngx_posix_init(log);
 }
