@@ -52,7 +52,7 @@ fi
 if [ $ngx_ptr_bytes = 4 ]; then
     fmtX="%0`expr 2 \* $ngx_ptr_bytes`"
 else
-    fmtX="%$ngx_ptr_bytes'
+    fmtX="%"
 fi
 
 ngx_fmt=`echo $ngx_fmt | sed -e "s/d/X/" -e "s/^%/$fmtX/"`
