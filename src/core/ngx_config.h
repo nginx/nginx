@@ -29,6 +29,11 @@
 #endif
 
 
+/* STUB: ngx_mutex.h */
+#define ngx_mutex_lock(m)
+#define ngx_mutex_unlock(m)
+
+
 /* STUB: autoconf */
 typedef int    ngx_int_t;
 typedef u_int  ngx_uint_t;

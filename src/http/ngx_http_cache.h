@@ -44,8 +44,8 @@ typedef struct {
     ngx_http_cache_t         *elts;
     size_t                    hash;
     size_t                    nelts;
-    time_t                    life_time;
-    time_t                    check_time;
+    time_t                    life;
+    time_t                    update;
     ngx_pool_t               *pool;
 } ngx_http_cache_hash_t;
 
@@ -74,6 +74,13 @@ typedef struct {
 } ngx_http_cache_conf_t;
 
 
+#define ngx_http_cache_unlock(ch, ce)                                        \
+            ngx_mutex_lock(&ch->mutex);                                      \
+            ce->refs--;                                                      \
+            ngx_mutex_unlock(&ch->mutex);
+
+
+
 #define NGX_HTTP_CACHE_STALE     1
 #define NGX_HTTP_CACHE_AGED      2
 #define NGX_HTTP_CACHE_THE_SAME  3
@@ -92,6 +99,9 @@ ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *cache,
 
 int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
                                              ngx_dir_t *dir);
+
+char *ngx_http_set_cache_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
 
 extern ngx_module_t  ngx_http_cache_module;
 

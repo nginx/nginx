@@ -88,8 +88,9 @@ ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *cache,
 
     *crc = ngx_crc(key->data, key->len);
 
-    c = cache->elts
-                + *crc % cache->hash * cache->nelts * sizeof(ngx_http_cache_t);
+    c = cache->elts + *crc % cache->hash * cache->nelts;
+
+    ngx_mutex_lock(&cache->mutex);
 
     for (i = 0; i < cache->nelts; i++) {
         if (c[i].crc == *crc
@@ -97,9 +98,12 @@ ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *cache,
             && ngx_rstrncmp(c[i].key.data, key->data, key->len) == 0)
         {
             c[i].refs++;
+            ngx_mutex_unlock(&cache->mutex);
             return &c[i];
         }
     }
+
+    ngx_mutex_unlock(&cache->mutex);
 
     return NULL;
 }
@@ -113,24 +117,28 @@ ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *cache,
     ngx_uint_t         i;
     ngx_http_cache_t  *c, *found;
 
-    old = ngx_time() + 1;
+    old = ngx_cached_time + 1;
     found = NULL;
 
-    c = cache->elts
-                 + crc % cache->hash * cache->nelts * sizeof(ngx_http_cache_t);
+    c = cache->elts + crc % cache->hash * cache->nelts;
+
+    ngx_mutex_lock(&cache->mutex);
 
     for (i = 0; i < cache->nelts; i++) {
+        if (c[i].refs > 0) {
+            /* a busy entry */
+            continue;
+        }
+
         if (c[i].key.data == NULL) {
-
             /* a free entry is found */
-
             found = &c[i];
             break;
         }
 
-        /* looking for the oldest cache entry that is not been using */
+        /* looking for the oldest cache entry */
 
-        if (c[i].refs == 0 && old > c[i].accessed) {
+        if (old > c[i].accessed) {
 
             old = c[i].accessed;
             found = &c[i];
@@ -148,6 +156,7 @@ ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *cache,
         if (found->key.data == NULL) {
             found->key.data = ngx_alloc(key->len, log);
             if (found->key.data == NULL) {
+                ngx_mutex_unlock(&cache->mutex);
                 return NULL;
             }
         }
@@ -157,8 +166,11 @@ ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *cache,
         found->crc = crc;
         found->key.len = key->len;
         found->refs = 1;
+        found->count = 0;
         found->deleted = 0;
     }
+
+    ngx_mutex_unlock(&cache->mutex);
 
     return found;
 }
@@ -380,6 +392,11 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_http_cache_conf_t *conf = child;
 
     if (conf->open_files == NULL) {
+        conf->open_files = prev->open_files;
+    }
+
+#if 0
+    if (conf->open_files == NULL) {
         if (prev->open_files) {
             conf->open_files = prev->open_files;
 
@@ -401,6 +418,129 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                 return NGX_CONF_ERROR;
             }
         }
+    }
+#endif
+
+    return NGX_CONF_OK;
+}
+
+
+char *ngx_http_set_cache_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_int_t              i, dup, invalid;
+    ngx_str_t              *value, line;
+    ngx_http_cache_hash_t  *ch, **chp;
+
+    chp = (ngx_http_cache_hash_t **) (p + cmd->offset);
+    if (*chp) {
+        return "is duplicate";
+    }
+
+    if (!(ch = ngx_pcalloc(cf->pool, sizeof(ngx_http_cache_hash_t)))) {
+        return NGX_CONF_ERROR;
+    }
+    *chp = ch;
+
+    dup = 0;
+    invalid = 0;
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        if (value[i].data[1] != '=') {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid value \"%s\"", value[i].data);
+            return NGX_CONF_ERROR;
+        }
+
+        switch (value[i].data[0]) {
+
+        case 'h':
+            if (ch->hash) {
+                dup = 1;
+                break;
+            }
+
+            ch->hash = ngx_atoi(value[i].data + 2, value[i].len - 2);
+            if (ch->hash == (size_t)  NGX_ERROR || ch->hash == 0) {
+                invalid = 1;
+                break;
+            }
+
+            continue;
+
+        case 'n':
+            if (ch->nelts) {
+                dup = 1;
+                break;
+            }
+
+            ch->nelts = ngx_atoi(value[i].data + 2, value[i].len - 2);
+            if (ch->nelts == (size_t) NGX_ERROR || ch->nelts == 0) {
+                invalid = 1;
+                break;
+            }
+
+            continue;
+
+        case 'l':
+            if (ch->life) {
+                dup = 1;
+                break;
+            }
+
+            line.len = value[i].len - 2;
+            line.data = value[i].data + 2;
+
+            ch->life = ngx_parse_time(&line, 1);
+            if (ch->life == NGX_ERROR || ch->life == 0) {
+                invalid = 1;
+                break;
+            }
+
+            continue;
+
+        case 'u':
+            if (ch->update) {
+                dup = 1;
+                break;
+            }
+
+            line.len = value[i].len - 2;
+            line.data = value[i].data + 2;
+
+            ch->update = ngx_parse_time(&line, 1);
+            if (ch->update == NGX_ERROR || ch->update == 0) {
+                invalid = 1;
+                break;
+            }
+
+            continue;
+
+        default:
+            invalid = 1;
+        }
+
+        if (dup) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "duplicate value \"%s\"", value[i].data);
+            return NGX_CONF_ERROR;
+        }
+
+        if (invalid) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid value \"%s\"", value[i].data);
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    ch->elts = ngx_pcalloc(cf->pool,
+                           ch->hash * ch->nelts * sizeof(ngx_http_cache_t));
+    if (ch->elts == NULL) {
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;

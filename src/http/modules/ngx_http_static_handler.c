@@ -97,7 +97,7 @@ ngx_log_debug(r->connection->log, "cache get: %x" _ cache);
 
         if (cache
             && ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)
-                || ccf->open_files->check_time >= ngx_time() - cache->updated))
+                || ccf->open_files->update >= ngx_cached_time - cache->updated))
         {
             cache->refs++;
             r->file.fd = cache->fd;
