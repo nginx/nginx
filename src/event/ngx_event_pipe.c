@@ -132,7 +132,7 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 p->upstream_eof = 1;
                 p->read = 1;
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
                 if (p->upstream->read->kq_errno) {
                     p->upstream->read->error = 1;
                     p->upstream_error = 1;

@@ -10,7 +10,7 @@
 
 void ngx_localtime(ngx_tm_t *tm)
 {
-#if (HAVE_LOCALTIME_R)
+#if (NGX_HAVE_LOCALTIME_R)
     time_t     now;
 
     now = ngx_time();

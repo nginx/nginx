@@ -297,7 +297,7 @@ void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
 
     if (rc == NGX_AGAIN) {
 
-        if ((ngx_event_flags & (NGX_USE_CLEAR_EVENT|NGX_HAVE_KQUEUE_EVENT))
+        if ((ngx_event_flags & (NGX_USE_CLEAR_EVENT|NGX_USE_KQUEUE_EVENT))
             && !p->request->connection->write->active)
         {
             /*

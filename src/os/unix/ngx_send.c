@@ -17,7 +17,7 @@ ssize_t ngx_unix_send(ngx_connection_t *c, u_char *buf, size_t size)
 
     wev = c->write;
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
     if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT) && wev->pending_eof) {
         ngx_log_error(NGX_LOG_INFO, c->log, wev->kq_errno,

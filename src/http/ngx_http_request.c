@@ -532,6 +532,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
                 r->uri.len = r->uri_end - r->uri_start;
             }
 
+
             if (r->complex_uri || r->quoted_uri) {
 
                 if (!(r->uri.data = ngx_palloc(r->pool, r->uri.len + 1))) {
@@ -556,6 +557,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             } else {
                 r->uri.data = r->uri_start;
             }
+
 
             r->unparsed_uri.len = r->uri_end - r->uri_start;
             r->unparsed_uri.data = r->uri_start;
@@ -1751,7 +1753,7 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
 
     ctx = (ngx_http_log_ctx_t *) rev->log->data;
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
         if (rev->pending_eof) {

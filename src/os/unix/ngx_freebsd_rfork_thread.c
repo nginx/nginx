@@ -381,7 +381,7 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
                 return NGX_AGAIN;
             }
 
-            if (ngx_freebsd_hw_ncpu > 1 && tries++ < 1000) {
+            if (ngx_ncpu > 1 && tries++ < 1000) {
 
                 /* the spinlock is used only on the SMP system */
 
@@ -581,7 +581,7 @@ ngx_cond_t *ngx_cond_init(ngx_log_t *log)
     }
 
     cv->signo = NGX_CV_SIGNAL;
-    cv->tid = 0;
+    cv->tid = -1;
     cv->log = log;
     cv->kq = -1;
 
@@ -640,6 +640,8 @@ ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
             ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno, "kevent() failed");
             return NGX_ERROR;
         }
+
+        cv->tid = ngx_thread_self();
     }
 
     if (ngx_mutex_unlock(m) == NGX_ERROR) {
@@ -713,6 +715,10 @@ ngx_int_t ngx_cond_signal(ngx_cond_t *cv)
     ngx_log_debug3(NGX_LOG_DEBUG_CORE, cv->log, 0,
                    "cv %p to signal %P %d",
                    cv, cv->tid, cv->signo);
+
+    if (cv->tid == -1) {
+        return NGX_OK;
+    }
 
     if (kill(cv->tid, cv->signo) == -1) {
 

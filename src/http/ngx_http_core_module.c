@@ -1828,7 +1828,7 @@ static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data)
         return NGX_CONF_ERROR;
     }
 
-#elif !(HAVE_SO_SNDLOWAT)
+#elif !(NGX_HAVE_SO_SNDLOWAT)
 
     ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                        "\"send_lowat\" is not supported, ignored");

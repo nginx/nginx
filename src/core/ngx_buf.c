@@ -140,7 +140,7 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
             break;
         }
 
-#if (HAVE_WRITE_ZEROCOPY)
+#if (NGX_HAVE_WRITE_ZEROCOPY)
         if ((*busy)->buf->zerocopy_busy) {
             break;
         }

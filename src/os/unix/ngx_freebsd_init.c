@@ -30,7 +30,7 @@ ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
     ngx_readv_chain,
     ngx_unix_send,
-#if (HAVE_SENDFILE)
+#if (NGX_HAVE_SENDFILE)
     ngx_freebsd_sendfile_chain,
     NGX_IO_SENDFILE
 #else
@@ -128,7 +128,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     version = ngx_freebsd_kern_osreldate;
 
 
-#if (HAVE_SENDFILE)
+#if (NGX_HAVE_SENDFILE)
 
     /*
      * The determination of the sendfile() "nbytes bug" is complex enough.
@@ -161,7 +161,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
 
 #endif
 
-#endif /* HAVE_SENDFILE */
+#endif /* NGX_HAVE_SENDFILE */
 
 
     if ((version < 500000 && version >= 440003) || version >= 500017) {

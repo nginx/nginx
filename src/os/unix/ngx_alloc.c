@@ -40,7 +40,7 @@ void *ngx_calloc(size_t size, ngx_log_t *log)
 }
 
 
-#if (HAVE_POSIX_MEMALIGN)
+#if (NGX_HAVE_POSIX_MEMALIGN)
 
 void *ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 {
@@ -58,7 +58,7 @@ void *ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
     return p;
 }
 
-#elif (HAVE_MEMALIGN)
+#elif (NGX_HAVE_MEMALIGN)
 
 void *ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 {

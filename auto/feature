@@ -14,9 +14,7 @@ END
 ngx_found=no
 
 if test -n "$ngx_feature_name"; then
-    ngx_have_feature=`echo NGX_$ngx_feature_name | tr '[a-z]' '[A-Z]'`
-    # STUB
-    ngx_have_feature0=`echo HAVE_$ngx_feature_name | tr '[a-z]' '[A-Z]'`
+    ngx_have_feature=`echo $ngx_feature_name | tr '[a-z]' '[A-Z]'`
 fi
 
 cat << END > $NGX_AUTOTEST.c
@@ -51,11 +49,6 @@ if [ -x $NGX_AUTOTEST ]; then
                have=$ngx_have_feature . auto/have
            fi
 
-           #STUB
-           if test -n "$ngx_feature_name"; then
-               have=$ngx_have_feature0 . auto/have
-           fi
-
        else
            echo " found but is not working"
        fi
@@ -66,11 +59,6 @@ if [ -x $NGX_AUTOTEST ]; then
 
        if test -n "$ngx_feature_name"; then
            have=$ngx_have_feature . auto/have
-       fi
-
-       #STUB
-       if test -n "$ngx_feature_name"; then
-           have=$ngx_have_feature0 . auto/have
        fi
 
     fi

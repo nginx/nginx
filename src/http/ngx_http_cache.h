@@ -14,10 +14,11 @@
 
 
 /*
- * The 7 uses before an allocation.
+ * The 3 bits allows the 7 uses before the cache entry allocation.
  * We can use maximum 7 bits, i.e up to the 127 uses.
  */
 #define NGX_HTTP_CACHE_LAZY_ALLOCATION_BITS  3
+
 
 typedef struct {
     uint32_t         crc;
@@ -45,7 +46,7 @@ typedef struct {
         off_t        size;
         ngx_str_t    value;
     } data;
-} ngx_http_cache_t;
+} ngx_http_cache_entry_t;
 
 
 typedef struct {
@@ -62,7 +63,7 @@ typedef struct {
 #define NGX_HTTP_CACHE_NELTS  4
 
 typedef struct {
-    ngx_http_cache_t         *elts;
+    ngx_http_cache_entry_t   *elts;
     size_t                    hash;
     size_t                    nelts;
     time_t                    life;
@@ -76,9 +77,9 @@ typedef struct {
 
 typedef struct {
     ngx_http_cache_hash_t    *hash;
-    ngx_http_cache_t         *cache;
+    ngx_http_cache_entry_t   *cache;
     ngx_file_t                file;
-    ngx_str_t                 key;
+    ngx_array_t               key;
     uint32_t                  crc;
     u_char                    md5[16];
     ngx_path_t               *path;
@@ -90,7 +91,10 @@ typedef struct {
     ssize_t                   header_size;
     size_t                    file_start;
     ngx_log_t                *log;
-} ngx_http_cache_ctx_t;
+
+    /* STUB */
+    ngx_str_t                 key0;
+} ngx_http_cache_t;
 
 
 
@@ -98,6 +102,8 @@ typedef struct {
 #define NGX_HTTP_CACHE_AGED      2
 #define NGX_HTTP_CACHE_THE_SAME  3
 
+
+#if 0
 
 ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *cache,
                                      ngx_http_cleanup_t *cleanup,
@@ -126,6 +132,8 @@ int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
                                              ngx_dir_t *dir);
 
 char *ngx_http_set_cache_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+#endif
 
 
 #endif /* _NGX_HTTP_CACHE_H_INCLUDED_ */

@@ -48,7 +48,7 @@ typedef struct {
     unsigned          nonblocking_accept:1;
     unsigned          nonblocking:1;
     unsigned          shared:1;    /* shared between threads or processes */
-#if (HAVE_DEFERRED_ACCEPT)
+#if (NGX_HAVE_DEFERRED_ACCEPT)
     unsigned          deferred_accept:1;
 #endif
 
@@ -101,7 +101,7 @@ struct ngx_connection_s {
     ngx_ssl_t          *ssl;
 #endif
 
-#if (HAVE_IOCP)
+#if (NGX_HAVE_IOCP)
     struct sockaddr    *local_sockaddr;
     socklen_t           local_socklen;
 #endif
@@ -122,7 +122,7 @@ struct ngx_connection_s {
     unsigned            tcp_nodelay:1;
     signed              tcp_nopush:2;
 
-#if (HAVE_IOCP)
+#if (NGX_HAVE_IOCP)
     unsigned            accept_context_updated:1;
 #endif
 

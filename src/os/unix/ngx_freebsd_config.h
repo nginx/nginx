@@ -60,23 +60,23 @@
 #include <ngx_auto_config.h>
 
 
-#if (HAVE_POLL)
+#if (NGX_HAVE_POLL)
 #include <poll.h>
 #endif
 
 
-#if (HAVE_AIO)
+#if (NGX_HAVE_AIO)
 #include <aio.h>
 #endif
 
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 #include <sys/event.h>
 #endif
 
 
-#if defined SO_ACCEPTFILTER && !defined HAVE_DEFERRED_ACCEPT
-#define HAVE_DEFERRED_ACCEPT  1
+#if defined SO_ACCEPTFILTER && !defined NGX_HAVE_DEFERRED_ACCEPT
+#define NGX_HAVE_DEFERRED_ACCEPT  1
 #endif
 
 
@@ -91,8 +91,8 @@ pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);
 #endif
 
 
-#ifndef HAVE_INHERITED_NONBLOCK
-#define HAVE_INHERITED_NONBLOCK  1
+#ifndef NGX_HAVE_INHERITED_NONBLOCK
+#define NGX_HAVE_INHERITED_NONBLOCK  1
 #endif
 
 

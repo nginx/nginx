@@ -162,12 +162,12 @@ void ngx_time_update(time_t s)
     ngx_cached_http_time.data = p;
 
 
-#if (HAVE_GETTIMEZONE)
+#if (NGX_HAVE_GETTIMEZONE)
 
     ngx_gmtoff = ngx_gettimezone();
     ngx_gmtime(s + ngx_gmtoff * 60, &tm);
 
-#elif (HAVE_GMTOFF)
+#elif (NGX_HAVE_GMTOFF)
 
     ngx_localtime(&tm);
     ngx_gmtoff = tm.ngx_tm_gmtoff / 60;

@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 
 
-#if (TEST_BUILD_RTSIG)
+#if (NGX_TEST_BUILD_RTSIG)
 
 #define F_SETSIG       10
 #define SIGRTMIN       33
@@ -217,7 +217,7 @@ static ngx_int_t ngx_rtsig_add_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-#if (HAVE_ONESIGFD)
+#if (NGX_HAVE_ONESIGFD)
     if (fcntl(c->fd, F_SETAUXFL, O_ONESIGFD) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
                       "fcntl(F_SETAUXFL) failed");

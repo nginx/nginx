@@ -49,35 +49,35 @@
 #include <ngx_auto_config.h>
 
 
-#if (HAVE_POLL)
+#if (NGX_HAVE_POLL)
 #include <poll.h>
 #endif
 
 
-#if (HAVE_SENDFILE)
+#if (NGX_HAVE_SENDFILE)
 #include <sys/sendfile.h>
 #endif
 
 
-#if (HAVE_AIO)
+#if (NGX_HAVE_AIO)
 #include <aio.h>
 #endif
 
 
-#if (HAVE_DEVPOLL)
+#if (NGX_HAVE_DEVPOLL)
 #include <sys/ioctl.h>
 #include <sys/devpoll.h>
 #endif
 
 
-#ifndef HAVE_INHERITED_NONBLOCK
-#define HAVE_INHERITED_NONBLOCK  1
+#ifndef NGX_HAVE_INHERITED_NONBLOCK
+#define NGX_HAVE_INHERITED_NONBLOCK  1
 #endif
 
 
-#ifndef HAVE_SO_SNDLOWAT
+#ifndef NGX_HAVE_SO_SNDLOWAT
 /* setsockopt(SO_SNDLOWAT) returns error "Option not supported by protocol" */
-#define HAVE_SO_SNDLOWAT         0
+#define NGX_HAVE_SO_SNDLOWAT         0
 #endif
 
 

@@ -220,7 +220,7 @@ struct ngx_http_cleanup_s {
 
         struct {
             ngx_http_cache_hash_t   *hash;
-            ngx_http_cache_t        *cache;
+            ngx_http_cache_entry_t  *cache;
         } cache;
     } data;
 
@@ -254,7 +254,7 @@ struct ngx_http_request_s {
     void                    **srv_conf;
     void                    **loc_conf;
 
-    ngx_http_cache_t         *cache;
+    ngx_http_cache_entry_t   *cache;
 
     ngx_file_t                file;
 

@@ -46,7 +46,7 @@ typedef int               ngx_err_t;
 #define ngx_set_socket_errno(err)  errno = err
 
 
-#if (HAVE_STRERROR_R || HAVE_GNU_STRERROR_R)
+#if (NGX_HAVE_STRERROR_R || NGX_HAVE_GNU_STRERROR_R)
 
 u_char *ngx_strerror_r(int err, u_char *errstr, size_t size);
 

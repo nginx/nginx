@@ -371,7 +371,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 
         rev->accept = 1;
 
-#if (HAVE_DEFERRED_ACCEPT)
+#if (NGX_HAVE_DEFERRED_ACCEPT)
         rev->deferred_accept = s[i].deferred_accept;
 #endif
 
@@ -719,7 +719,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     rtsig = 0;
     fd = 0;
 
-#if (HAVE_EPOLL) && !(TEST_BUILD_EPOLL)
+#if (NGX_HAVE_EPOLL) && !(NGX_TEST_BUILD_EPOLL)
 
     fd = epoll_create(100);
 
@@ -735,7 +735,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #endif
 
-#if (HAVE_RTSIG)
+#if (NGX_HAVE_RTSIG)
 
     if (module == NULL) {
         connections = DEFAULT_CONNECTIONS;
@@ -745,21 +745,21 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #endif
 
-#if (HAVE_DEVPOLL)
+#if (NGX_HAVE_DEVPOLL)
 
     connections = DEFAULT_CONNECTIONS;
     module = &ngx_devpoll_module;
 
 #endif
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
     connections = DEFAULT_CONNECTIONS;
     module = &ngx_kqueue_module;
 
 #endif
 
-#if (HAVE_SELECT)
+#if (NGX_HAVE_SELECT)
 
     if (module == NULL) {
 

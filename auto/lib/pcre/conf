@@ -42,14 +42,14 @@ if [ $PCRE != NONE ]; then
 
 else
 
-    if [ $PLATFORM != win32 ]; then
+    if [ $NGX_PLATFORM != win32 ]; then
         PCRE=NO
 
         # FreeBSD PCRE port requires --with-cc-opt="-I /usr/local/include"
         #                            --with-ld-opt="-L /usr/local/lib"
         
         ngx_feature="PCRE library"
-        ngx_feature_name="PCRE"
+        ngx_feature_name="NGX_PCRE"
         ngx_feature_run=no
         ngx_feature_incs="#include <pcre.h>"
         ngx_feature_libs="-lpcre"

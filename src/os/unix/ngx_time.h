@@ -36,7 +36,7 @@ typedef struct tm      ngx_tm_t;
 #define ngx_tm_wday_t  int
 
 
-#if (HAVE_GMTOFF)
+#if (NGX_HAVE_GMTOFF)
 #define ngx_tm_gmtoff  tm_gmtoff
 #define ngx_tm_zone    tm_zone
 #endif

@@ -7,26 +7,26 @@
 . auto/init
 . auto/sources
 
-test -d $OBJS || mkdir $OBJS
+test -d $NGX_OBJS || mkdir $NGX_OBJS
 
 echo > $NGX_AUTO_HEADERS_H
 echo > $NGX_AUTO_CONFIG_H
 echo > $NGX_AUTOCONF_ERR
 
 
-if [ $DEBUG = YES ]; then
+if [ $NGX_DEBUG = YES ]; then
     have=NGX_DEBUG . auto/have
 fi
 
 
-if [ "$PLATFORM" != win32 ]; then
+if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/headers
 fi
 
 . auto/cc/conf
 . auto/os/conf
 
-if [ "$PLATFORM" != win32 ]; then
+if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/threads
 fi
 
@@ -37,21 +37,21 @@ fi
 . auto/lib/make
 . auto/install
 
-if [ "$PLATFORM" != win32 ]; then
+if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/unix
 fi
 
 # STUB
 . auto/stubs
 
-have=NGX_PREFIX value="\"$PREFIX/\"" . auto/define
-have=NGX_SBIN_PATH value="\"$SBIN_PATH\"" . auto/define
-have=NGX_CONF_PATH value="\"$CONF_PATH\"" . auto/define
-have=NGX_PID_PATH value="\"$PID_PATH\"" . auto/define
-if [ ".$ERROR_LOG_PATH" != "." ]; then
-    have=NGX_ERROR_LOG_PATH value="\"$ERROR_LOG_PATH\"" . auto/define
+have=NGX_PREFIX value="\"$NGX_PREFIX/\"" . auto/define
+have=NGX_SBIN_PATH value="\"$NGX_SBIN_PATH\"" . auto/define
+have=NGX_CONF_PATH value="\"$NGX_CONF_PATH\"" . auto/define
+have=NGX_PID_PATH value="\"$NGX_PID_PATH\"" . auto/define
+if test -n "$NGX_ERROR_LOG_PATH"; then
+    have=NGX_ERROR_LOG_PATH value="\"$NGX_ERROR_LOG_PATH\"" . auto/define
 fi
-have=NGX_HTTP_LOG_PATH value="\"$HTTP_LOG_PATH\"" . auto/define
+have=NGX_HTTP_LOG_PATH value="\"$NGX_HTTP_LOG_PATH\"" . auto/define
 
 have=NGX_USER value="\"$NGX_USER\"" . auto/define
 have=NGX_GROUP value="\"$NGX_GROUP\"" . auto/define

@@ -8,7 +8,7 @@
 #include <ngx_core.h>
 
 
-#if (HAVE_MAP_ANON)
+#if (NGX_HAVE_MAP_ANON)
 
 void *ngx_create_shared_memory(size_t size, ngx_log_t *log)
 {
@@ -25,7 +25,7 @@ void *ngx_create_shared_memory(size_t size, ngx_log_t *log)
     return p;
 }
 
-#elif (HAVE_MAP_DEVZERO)
+#elif (NGX_HAVE_MAP_DEVZERO)
 
 void *ngx_create_shared_memory(size_t size, ngx_log_t *log)
 {
@@ -56,7 +56,7 @@ void *ngx_create_shared_memory(size_t size, ngx_log_t *log)
     return p;
 }
 
-#elif (HAVE_SYSVSHM)
+#elif (NGX_HAVE_SYSVSHM)
 
 #include <sys/ipc.h>
 #include <sys/shm.h>

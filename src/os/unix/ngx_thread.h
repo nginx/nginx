@@ -53,7 +53,6 @@ typedef struct {
 
 typedef struct {
     pthread_cond_t    cond;
-    ngx_tid_t         tid;
     ngx_log_t        *log;
 } ngx_cond_t;
 

@@ -45,7 +45,7 @@ fi
 if [ $osreldate -gt 300007 ]; then
     echo " + using sendfile()"
 
-    have=HAVE_SENDFILE . auto/have
+    have=NGX_HAVE_SENDFILE . auto/have
     CORE_SRCS="$CORE_SRCS $FREEBSD_SENDFILE_SRCS"
 fi
 
@@ -57,8 +57,8 @@ if [ \( $osreldate -lt 500000 -a $osreldate -ge 410000 \) \
 then
     echo " + using kqueue"
 
-    have=HAVE_KQUEUE . auto/have
-    have=HAVE_CLEAR_EVENT . auto/have
+    have=NGX_HAVE_KQUEUE . auto/have
+    have=NGX_HAVE_CLEAR_EVENT . auto/have
     EVENT_MODULES="$EVENT_MODULES $KQUEUE_MODULE"
     CORE_SRCS="$CORE_SRCS $KQUEUE_SRCS"
     EVENT_FOUND=YES
@@ -73,7 +73,7 @@ if [ \( $version -lt 500000 -a $version -ge 430000 \) \
      -o $version -ge 500018 ]
 then
     echo " + using kqueue's NOTE_LOWAT"
-    have=HAVE_LOWAT_EVENT . auto/have
+    have=NGX_HAVE_LOWAT_EVENT . auto/have
 fi
 
 
@@ -85,7 +85,7 @@ if [ $USE_THREADS = "rfork" ]; then
 #
 #    if [ $version -gt 460101 ]; then
 #        echo " + kqueue's EVFILT_SIGNAL is safe"
-#        have=HAVE_SAFE_EVFILT_SIGNAL . auto/have
+#        have=NGX_HAVE_SAFE_EVFILT_SIGNAL . auto/have
 #    else
 #        echo "$0: error: the kqueue's EVFILT_SIGNAL is unsafe on this"
 #        echo "FreeBSD version, so --with-threads=rfork could not be used"
@@ -100,7 +100,7 @@ if [ $EVENT_AIO = YES ]; then
     if [ \( $version -lt 500000 -a $version -ge 430000 \) \
          -o $version -ge 500014 ]
     then
-        have=HAVE_AIO . auto/have
+        have=NGX_HAVE_AIO . auto/have
         EVENT_MODULES="$EVENT_MODULES $AIO_MODULE"
         CORE_SRCS="$CORE_SRCS $AIO_SRCS"
     else

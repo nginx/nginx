@@ -77,15 +77,15 @@ CORE_LINK="$CORE_LINK -debug -debugtype:coff"
 
 # precompiled headers
 if [ $NGX_CC_NAME != msvc7 ]; then
-    CORE_DEPS="$CORE_DEPS $OBJS/ngx_config.pch"
-    NGX_PCH="$OBJS/ngx_config.pch"
-    NGX_BUILD_PCH="-Ycngx_config.h -Fp$OBJS/ngx_config.pch"
-    NGX_USE_PCH="-Yungx_config.h -Fp$OBJS/ngx_config.pch"
+    CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.pch"
+    NGX_PCH="$NGX_OBJS/ngx_config.pch"
+    NGX_BUILD_PCH="-Ycngx_config.h -Fp$NGX_OBJS/ngx_config.pch"
+    NGX_USE_PCH="-Yungx_config.h -Fp$NGX_OBJS/ngx_config.pch"
 fi
 
 
 # the resource file
-NGX_RES="$OBJS/nginx.res"
+NGX_RES="$NGX_OBJS/nginx.res"
 NGX_RCC="rc -fo$NGX_RES \$(CORE_INCS) $NGX_WIN32_RC"
 CORE_LINK="$NGX_RES $CORE_LINK"
 

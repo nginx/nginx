@@ -37,13 +37,13 @@ if [ $ZLIB != NONE ]; then
 
 else
 
-    if [ $PLATFORM != win32 ]; then
+    if [ $NGX_PLATFORM != win32 ]; then
         ZLIB=NO
 
         # FreeBSD, Solaris, Linux
 
         ngx_feature="zlib library"
-        ngx_feature_name="zlib"
+        ngx_feature_name=
         ngx_feature_run=no
         ngx_feature_incs="#include <zlib.h>"
         ngx_feature_libs="-lz"

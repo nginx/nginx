@@ -74,7 +74,7 @@ ngx_param=TIME_T_LEN; ngx_value=$ngx_max_len; . auto/types/value
 
 
 ngx_feature="setproctitle()"
-ngx_feature_name="HAVE_SETPROCTITLE"
+ngx_feature_name="NGX_HAVE_SETPROCTITLE"
 ngx_feature_run=no
 ngx_feature_incs=
 ngx_feature_libs=
@@ -83,7 +83,7 @@ ngx_feature_test="setproctitle(\"test\");"
 
 
 ngx_feature="pread()"
-ngx_feature_name="pread"
+ngx_feature_name="NGX_HAVE_PREAD"
 ngx_feature_run=no
 ngx_feature_incs=
 ngx_feature_libs=
@@ -92,7 +92,7 @@ ngx_feature_test="char buf[1]; ssize_t n; n = pread(0, buf, 1, 0)"
 
 
 ngx_feature="pwrite()"
-ngx_feature_name="pwrite"
+ngx_feature_name="NGX_HAVE_PWRITE"
 ngx_feature_run=no
 ngx_feature_incs=
 ngx_feature_libs=
@@ -101,7 +101,7 @@ ngx_feature_test="char buf[1]; ssize_t n; n = pwrite(1, buf, 1, 0)"
 
 
 ngx_feature="strerror_r()"
-ngx_feature_name="strerror_r"
+ngx_feature_name="NGX_HAVE_STRERROR_R"
 ngx_feature_run=yes
 ngx_feature_incs="#include <string.h>"
 ngx_feature_libs=
@@ -113,7 +113,7 @@ ngx_feature_test="char buf[32]; int n; n = strerror_r(1, buf, 32);
 # GNU style strerror_r() returns not length, but pointer
 
 ngx_feature="gnu style strerror_r()"
-ngx_feature_name="gnu_strerror_r"
+ngx_feature_name="NGX_HAVE_GNU_STRERROR_R"
 ngx_feature_run=yes
 ngx_feature_incs="#include <string.h>"
 ngx_feature_libs=
@@ -123,7 +123,7 @@ ngx_feature_test="char buf[32]; int n; n = strerror_r(1, buf, 32);
 
 
 ngx_feature="localtime_r()"
-ngx_feature_name="localtime_r"
+ngx_feature_name="NGX_HAVE_LOCALTIME_R"
 ngx_feature_run=no
 ngx_feature_incs="#include <time.h>"
 ngx_feature_libs=
@@ -132,7 +132,7 @@ ngx_feature_test="struct tm t; time_t c=0; localtime_r(&c, &t)"
 
 
 ngx_feature="posix_memalign()"
-ngx_feature_name="posix_memalign"
+ngx_feature_name="NGX_HAVE_POSIX_MEMALIGN"
 ngx_feature_run=no
 ngx_feature_incs="#include <stdlib.h>"
 ngx_feature_libs=
@@ -141,7 +141,7 @@ ngx_feature_test="void *p; int n; n = posix_memalign(&p, 4096, 4096)"
 
 
 ngx_feature="memalign()"
-ngx_feature_name="memalign"
+ngx_feature_name="NGX_HAVE_MEMALIGN"
 ngx_feature_run=no
 ngx_feature_incs="#include <stdlib.h>"
 ngx_feature_libs=
@@ -150,7 +150,7 @@ ngx_feature_test="void *p; p = memalign(4096, 4096)"
 
 
 ngx_feature="sched_yield()"
-ngx_feature_name="HAVE_SCHED_YIELD"
+ngx_feature_name="NGX_HAVE_SCHED_YIELD"
 ngx_feature_run=no
 ngx_feature_incs="#include <sched.h>"
 ngx_feature_libs=
@@ -159,7 +159,7 @@ ngx_feature_test="sched_yield()"
 
 
 ngx_feature="mmap(MAP_ANON|MAP_SHARED)"
-ngx_feature_name="MAP_ANON"
+ngx_feature_name="NGX_HAVE_MAP_ANON"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/mman.h>"
 ngx_feature_libs=
@@ -171,7 +171,7 @@ ngx_feature_test="void *p;
 
 
 ngx_feature='mmap("/dev/zero", MAP_SHARED)'
-ngx_feature_name="MAP_DEVZERO"
+ngx_feature_name="NGX_HAVE_MAP_DEVZERO"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/mman.h>
 #include <sys/stat.h>
@@ -185,7 +185,7 @@ ngx_feature_test='void *p; int  fd;
 
 
 ngx_feature="System V shared memory"
-ngx_feature_name="SYSVSHM"
+ngx_feature_name="NGX_HAVE_SYSVSHM"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/ipc.h>
 #include <sys/shm.h>"
@@ -198,7 +198,7 @@ ngx_feature_test="int  id;
 
 
 ngx_feature="struct msghdr.msg_control"
-ngx_feature_name="msghdr_msg_control"
+ngx_feature_name="NGX_HAVE_MSGHDR_MSG_CONTROL"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/socket.h>"
 ngx_feature_libs=
@@ -207,7 +207,7 @@ ngx_feature_test="struct msghdr  msg; msg.msg_control = NULL"
 
 
 ngx_feature="ioctl(FIONBIO)"
-ngx_feature_name="FIONBIO"
+ngx_feature_name="NGX_HAVE_FIONBIO"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/ioctl.h>
 $NGX_INCLUDE_SYS_FILIO_H"
@@ -217,7 +217,7 @@ ngx_feature_test="int i; i = FIONBIO"
 
 
 ngx_feature="struct tm.tm_gmtoff"
-ngx_feature_name="gmtoff"
+ngx_feature_name="NGX_HAVE_GMTOFF"
 ngx_feature_run=no
 ngx_feature_incs="#include <time.h>"
 ngx_feature_libs=

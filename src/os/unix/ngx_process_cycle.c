@@ -607,6 +607,10 @@ static void ngx_master_exit(ngx_cycle_t *cycle)
 
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
+    ngx_int_t          n;
+    ngx_err_t          err;
+    ngx_core_conf_t   *ccf;
+
     ngx_worker_process_init(cycle);
 
     ngx_setproctitle("worker process");
@@ -617,6 +621,8 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         /* fatal */
         exit(2);
     }
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ngx_threads_n) {
         if (ngx_init_threads(ngx_threads_n,
@@ -914,10 +920,9 @@ static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle)
 
         for (i = 0; i < ngx_threads_n; i++) {
             if (ngx_threads[i].state < NGX_THREAD_EXIT) {
-                ngx_cond_signal(ngx_threads[i].cv);
-
-                if (ngx_threads[i].cv->tid == (ngx_tid_t) -1) {
+                if (ngx_cond_signal(ngx_threads[i].cv) == NGX_ERROR) {
                     ngx_threads[i].state = NGX_THREAD_DONE;
+
                 } else {
                     live = 1;
                 }
@@ -954,8 +959,6 @@ static void *ngx_worker_thread_cycle(void *data)
     ngx_err_t         err;
     ngx_core_tls_t   *tls;
     ngx_cycle_t      *cycle;
-
-    thr->cv->tid = ngx_thread_self();
 
     cycle = (ngx_cycle_t *) ngx_cycle;
 

@@ -23,7 +23,7 @@ ngx_spacer=
 CC_AUX_FLAGS="-D_FILE_OFFSET_BITS=64 -lrt"
 
 
-case $PLATFORM in
+case $NGX_PLATFORM in
 
     *:sun4u)
         # "-mcpu=v9" enables the "casa" assembler instruction
@@ -43,7 +43,7 @@ fi
 
 
 ngx_feature="sendfilev()"
-ngx_feature_name="sendfile"
+ngx_feature_name="NGX_HAVE_SENDFILE"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/sendfile.h>"
 ngx_feature_libs="-lsendfile"
@@ -54,7 +54,6 @@ ngx_feature_test="int fd = 1; sendfilevec_t vec[1];
 
 
 if [ $ngx_found = yes ]; then
-    have=HAVE_SENDFILE . auto/have
     CORE_SRCS="$CORE_SRCS $SOLARIS_SENDFILEV_SRCS"
     CORE_LIBS="$CORE_LIBS -lsendfile"
 fi

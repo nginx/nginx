@@ -20,7 +20,7 @@
  */
 
 
-#if (HAVE_FIONBIO)
+#if (NGX_HAVE_FIONBIO)
 
 int ngx_nonblocking(ngx_socket_t s)
 {

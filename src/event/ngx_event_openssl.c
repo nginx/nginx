@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 
 
-static ngx_int_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size);
+static ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size);
 
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log)
@@ -58,7 +58,7 @@ ngx_int_t ngx_ssl_create_session(ngx_ssl_ctx_t *ssl_ctx, ngx_connection_t *c,
 }
 
 
-ngx_int_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
+ssize_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
     int         n, sslerr;
     ngx_err_t   err;
@@ -239,7 +239,7 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
 }
 
 
-static ngx_int_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
+static ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 {
     int         n, sslerr;
     ngx_err_t   err;

@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 #include <ngx_aio.h>
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 #include <ngx_kqueue_module.h>
 #endif
 
@@ -46,7 +46,7 @@ ssize_t ngx_aio_read(ngx_connection_t *c, u_char *buf, size_t size)
         rev->aiocb.aio_buf = buf;
         rev->aiocb.aio_nbytes = size;
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
         rev->aiocb.aio_sigevent.sigev_notify_kqueue = ngx_kqueue;
         rev->aiocb.aio_sigevent.sigev_notify = SIGEV_KEVENT;
         rev->aiocb.aio_sigevent.sigev_value.sigval_ptr = rev;

@@ -2,7 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-if [ ".$PLATFORM" = "." ]; then
+if test -z "$NGX_PLATFORM"; then
     echo "checking for OS"
 
     SYSTEM=`uname -s 2>/dev/null`
@@ -11,12 +11,12 @@ if [ ".$PLATFORM" = "." ]; then
 
     echo " + $SYSTEM $RELEASE $MACHINE"
 
-    PLATFORM="$SYSTEM:$RELEASE:$MACHINE";
+    NGX_PLATFORM="$SYSTEM:$RELEASE:$MACHINE";
 else
-    echo "building for $PLATFORM"
+    echo "building for $NGX_PLATFORM"
 fi
 
-case $PLATFORM in
+case $NGX_PLATFORM in
 
     FreeBSD:* | DragonFly:*)
         . auto/os/freebsd
@@ -43,7 +43,7 @@ case $PLATFORM in
 esac
 
 
-if [ $PLATFORM != win32 ]; then
+if [ $NGX_PLATFORM != win32 ]; then
 
     if test -z "$NGX_USER"; then
         NGX_USER=nobody
@@ -52,7 +52,7 @@ if [ $PLATFORM != win32 ]; then
 
 
     ngx_feature="/dev/poll"
-    ngx_feature_name="devpoll"
+    ngx_feature_name="NGX_HAVE_DEVPOLL"
     ngx_feature_run=no
     ngx_feature_incs="#include <sys/devpoll.h>"
     ngx_feature_libs=
@@ -65,7 +65,6 @@ if [ $PLATFORM != win32 ]; then
     . auto/feature
 
     if [ $ngx_found = yes ]; then
-        have=HAVE_DEVPOLL . auto/have
         CORE_SRCS="$CORE_SRCS $DEVPOLL_SRCS"
         EVENT_MODULES="$EVENT_MODULES $DEVPOLL_MODULE"
         EVENT_FOUND=YES
@@ -74,7 +73,7 @@ if [ $PLATFORM != win32 ]; then
 
     if test -z "$NGX_KQUEUE_CHECKED"; then
         ngx_feature="kqueue"
-        ngx_feature_name="kqueue"
+        ngx_feature_name="NGX_HAVE_KQUEUE"
         ngx_feature_run=no
         ngx_feature_incs="#include <sys/event.h>"
         ngx_feature_libs=
@@ -83,14 +82,13 @@ if [ $PLATFORM != win32 ]; then
 
         if [ $ngx_found = yes ]; then
 
-            have=HAVE_KQUEUE . auto/have
-            have=HAVE_CLEAR_EVENT . auto/have
+            have=NGX_HAVE_CLEAR_EVENT . auto/have
             EVENT_MODULES="$EVENT_MODULES $KQUEUE_MODULE"
             CORE_SRCS="$CORE_SRCS $KQUEUE_SRCS"
             EVENT_FOUND=YES
 
             ngx_feature="kqueue's NOTE_LOWAT"
-            ngx_feature_name="HAVE_LOWAT_EVENT"
+            ngx_feature_name="NGX_HAVE_LOWAT_EVENT"
             ngx_feature_run=no
             ngx_feature_incs="#include <sys/event.h>"
             ngx_feature_libs=

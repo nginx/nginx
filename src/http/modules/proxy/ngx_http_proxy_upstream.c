@@ -782,7 +782,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http proxy send request");
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
     if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT)
         && !p->request_sent
@@ -1287,8 +1287,8 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
         header->length = r->headers_out.content_length_n;
         p->cache->ctx.length = r->headers_out.content_length_n;
 
-        header->key_len = p->cache->ctx.key.len;
-        ngx_memcpy(&header->key, p->cache->ctx.key.data, header->key_len);
+        header->key_len = p->cache->ctx.key0.len;
+        ngx_memcpy(&header->key, p->cache->ctx.key0.data, header->key_len);
         header->key[header->key_len] = LF;
     }
 

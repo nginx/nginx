@@ -55,7 +55,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
         return in;
     }
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
     if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT) && wev->pending_eof) {
         ngx_log_error(NGX_LOG_INFO, c->log, wev->kq_errno,

@@ -414,7 +414,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
                    "http proxy check client, write event:%d", ev->write);
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
 
@@ -563,9 +563,9 @@ void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
      */
 
 #if 0
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
-    if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && rev->kq_eof) {
+    if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT) && rev->kq_eof) {
         ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
 
         ngx_del_timer(rev);
@@ -1400,7 +1400,7 @@ static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data)
         return NGX_CONF_ERROR;
     }
 
-#elif !(HAVE_SO_SNDLOWAT)
+#elif !(NGX_HAVE_SO_SNDLOWAT)
 
     ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                        "\"proxy_send_lowat\" is not supported, ignored");

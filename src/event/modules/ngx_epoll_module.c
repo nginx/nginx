@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 
 
-#if (TEST_BUILD_EPOLL)
+#if (NGX_TEST_BUILD_EPOLL)
 
 /* epoll declarations */
 
@@ -168,7 +168,7 @@ static int ngx_epoll_init(ngx_cycle_t *cycle)
 
     ngx_event_actions = ngx_epoll_module_ctx.actions;
 
-#if (HAVE_CLEAR_EVENT)
+#if (NGX_HAVE_CLEAR_EVENT)
     ngx_event_flags = NGX_USE_CLEAR_EVENT
 #else
     ngx_event_flags = NGX_USE_LEVEL_EVENT

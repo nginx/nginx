@@ -7,7 +7,7 @@ if [ $MD5 != NONE ]; then
     if grep MD5_Init $MD5/md5.h >/dev/null; then
         # OpenSSL md5
         OPENSSL_MD5=YES
-        have=HAVE_OPENSSL_MD5 . auto/have
+        have=NGX_HAVE_OPENSSL_MD5 . auto/have
     else
         # rsaref md5
         OPENSSL_MD5=NO
@@ -43,13 +43,13 @@ if [ $MD5 != NONE ]; then
 
 else
 
-    if [ $PLATFORM != win32 ]; then
+    if [ $NGX_PLATFORM != win32 ]; then
         MD5=NO
 
         # Solaris 8/9
 
         ngx_feature="rsaref md5 library"
-        ngx_feature_name="rsaref_md5"
+        ngx_feature_name=
         ngx_feature_run=no
         ngx_feature_incs="#include <md5.h>"
         ngx_feature_libs="-lmd5"
@@ -66,7 +66,7 @@ else
             # FreeBSD
 
             ngx_feature="rsaref md library"
-            ngx_feature_name="rsaref_md5"
+            ngx_feature_name=
             ngx_feature_run=no
             ngx_feature_incs="#include <md5.h>"
             ngx_feature_libs="-lmd"
@@ -87,7 +87,7 @@ else
                # OpenSSL crypto library
 
                ngx_feature="OpenSSL md5 crypto library"
-               ngx_feature_name="OpenSSL_md5"
+               ngx_feature_name="NGX_OPENSSL_MD5"
                ngx_feature_run=no
                ngx_feature_incs="#include <openssl/md5.h>"
                ngx_feature_libs="-lcrypto"
@@ -98,7 +98,7 @@ else
 
 
         if [ $ngx_found = yes ]; then
-            have=HAVE_OPENSSL_MD5_H . auto/have
+            have=NGX_HAVE_OPENSSL_MD5_H . auto/have
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             MD5=YES
             MD5_LIB=crypto

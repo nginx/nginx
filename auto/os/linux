@@ -37,7 +37,8 @@ version=`grep "#define LINUX_VERSION_CODE" /usr/include/linux/version.h \
 
 if [ $version -ge 131609 -o $EVENT_RTSIG = YES ]; then
     echo " + using rt signals"
-    have=HAVE_RTSIG . auto/have
+    have=NGX_HAVE_RTSIG . auto/have
+    have=NGX_HAVE_POLL . auto/have
     EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"
     CORE_SRCS="$CORE_SRCS $RTSIG_SRCS"
     EVENT_FOUND=YES
@@ -47,7 +48,7 @@ fi
 # epoll, EPOLLET version
 
 ngx_feature="epoll"
-ngx_feature_name="epoll"
+ngx_feature_name="NGX_HAVE_EPOLL"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/epoll.h>"
 ngx_feature_libs=
@@ -60,8 +61,7 @@ ngx_feature_test="int efd = 0, fd = 1, n;
 . auto/feature
 
 if [ $ngx_found = yes ]; then
-    have=HAVE_EPOLL . auto/have
-    have=HAVE_CLEAR_EVENT . auto/have
+    have=NGX_HAVE_CLEAR_EVENT . auto/have
     CORE_SRCS="$CORE_SRCS $EPOLL_SRCS"
     EVENT_MODULES="$EVENT_MODULES $EPOLL_MODULE"
     EVENT_FOUND=YES
@@ -72,7 +72,7 @@ fi
 
 CC_AUX_FLAGS="-D_GNU_SOURCE"
 ngx_feature="sendfile()"
-ngx_feature_name="sendfile"
+ngx_feature_name="NGX_HAVE_SENDFILE"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/sendfile.h>"
 ngx_feature_libs=
@@ -90,7 +90,7 @@ fi
 
 CC_AUX_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 ngx_feature="sendfile64()"
-ngx_feature_name="HAVE_SENDFILE64"
+ngx_feature_name="NGX_HAVE_SENDFILE64"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/sendfile.h>"
 ngx_feature_libs=
@@ -105,7 +105,7 @@ ngx_include="sys/prctl.h"; . auto/include
 # prctl(PR_SET_DUMPABLE)
 
 ngx_feature="prctl(PR_SET_DUMPABLE)"
-ngx_feature_name="HAVE_PR_SET_DUMPABLE"
+ngx_feature_name="NGX_HAVE_PR_SET_DUMPABLE"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/prctl.h>"
 ngx_feature_libs=

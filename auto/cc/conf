@@ -92,11 +92,11 @@ fi
 CFLAGS="$CFLAGS $NGX_CC_OPT"
 
 
-if [ "$PLATFORM" != win32 ]; then
+if [ "$NGX_PLATFORM" != win32 ]; then
 
     if test -n "$NGX_LD_OPT"; then
         ngx_feature=--with-ld-opt=\"$NGX_LD_OPT\"
-        ngx_feature_name="DUMMY"
+        ngx_feature_name=
         ngx_feature_run=no
         ngx_feature_incs=
         ngx_feature_libs=
@@ -111,7 +111,7 @@ if [ "$PLATFORM" != win32 ]; then
     fi
 
     ngx_feature="gcc variadic macros"
-    ngx_feature_name="HAVE_GCC_VARIADIC_MACROS"
+    ngx_feature_name="NGX_HAVE_GCC_VARIADIC_MACROS"
     ngx_feature_run=yes
     ngx_feature_incs="#include <stdio.h>
 #define var(dummy, args...)  sprintf(args)"
@@ -123,7 +123,7 @@ if [ "$PLATFORM" != win32 ]; then
 
 
     ngx_feature="C99 variadic macros"
-    ngx_feature_name="HAVE_C99_VARIADIC_MACROS"
+    ngx_feature_name="NGX_HAVE_C99_VARIADIC_MACROS"
     ngx_feature_run=yes
     ngx_feature_incs="#include <stdio.h>
 #define var(dummy, ...) sprintf(__VA_ARGS__)"
@@ -135,7 +135,7 @@ if [ "$PLATFORM" != win32 ]; then
 
 
 #    ngx_feature="inline"
-#    ngx_feature_name="DUMMY"
+#    ngx_feature_name=
 #    ngx_feature_run=no
 #    ngx_feature_incs="int inline f(void) { return 1 }"
 #    ngx_feature_libs=

@@ -9,19 +9,20 @@
 #include <ngx_http.h>
 
 
-#if (HAVE_OPENSSL_MD5_H)
+#if (NGX_HAVE_OPENSSL_MD5_H)
 #include <openssl/md5.h>
 #else
 #include <md5.h>
 #endif
 
-#if (HAVE_OPENSSL_MD5)
+#if (NGX_OPENSSL_MD5)
 #define  MD5Init    MD5_Init
 #define  MD5Update  MD5_Update
 #define  MD5Final   MD5_Final
 #endif
 
 
+#if 0
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
 {
@@ -237,3 +238,5 @@ int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
 
     return NGX_OK;
 }
+
+#endif

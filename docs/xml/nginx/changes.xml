@@ -6,6 +6,54 @@
             title="nginx">
 
 
+<changes ver="0.1.9" date="25.11.2004">
+
+<change type="bugfix">
+<para lang="ru">
+если в запросе есть "//", "/./", "/../" или "%XX", то проксируемый
+запрос передавался без аргументов.
+</para>
+<para lang="en">
+the proxied request was sent without arguments if the request contains
+"//", "/./", "/../" or "%XX".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при сжатии больших ответов иногда они передавались не полностью.
+</para>
+<para lang="en">
+the large compressed responses may be transferred not completely.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+не передавались файлы больше 2G на Linux, неподдерживающем sendfile64().
+</para>
+<para lang="en">
+the files bigger than 2G was not transferred on Linux that does not support
+sendfile64().
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на Linux при конфигурации сборки нужно было обязательно использовать
+параметр --with-poll_module;
+ошибка появилась в 0.1.8.
+</para>
+<para lang="en">
+while the build configuration on Linux the --with-poll_module parameter
+was required;
+bug appeared in 0.1.8.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.8" date="20.11.2004">
 
 <change type="bugfix">

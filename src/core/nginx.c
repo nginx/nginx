@@ -112,7 +112,7 @@ ngx_uint_t  ngx_max_module;
 
 
 
-int main(int argc, char *const *argv, char *const *envp)
+int main(int argc, char *const *argv)
 {
     ngx_int_t         i;
     ngx_log_t        *log;

@@ -25,7 +25,7 @@ void *ngx_calloc(size_t size, ngx_log_t *log);
  * allocations bigger than page size at the page boundary.
  */
 
-#if (HAVE_POSIX_MEMALIGN || HAVE_MEMALIGN)
+#if (NGX_HAVE_POSIX_MEMALIGN || NGX_HAVE_MEMALIGN)
 
 void *ngx_memalign(size_t alignment, size_t size, ngx_log_t *log);
 

@@ -12,9 +12,8 @@ NGX_AUTOTEST=$NGX_OBJS/autotest
 NGX_AUTOCONF_ERR=$NGX_OBJS/autoconf.err
 
 # STUBs
-OBJS=$NGX_OBJS
-NGX_ERR=$OBJS/autoconf.err
-MAKEFILE=$OBJS/Makefile
+NGX_ERR=$NGX_OBJS/autoconf.err
+MAKEFILE=$NGX_OBJS/Makefile
 
 
 NGX_PCH=
@@ -54,9 +53,9 @@ clean:
 	rm -rf Makefile $NGX_OBJS
 
 upgrade:
-	$SBIN_PATH -t
-	kill -USR2 \`cat $PID_PATH\`
+	$NGX_SBIN_PATH -t
+	kill -USR2 \`cat $NGX_PID_PATH\`
 	sleep 1
-	test -f $PID_PATH.newbin
-	kill -WINCH \`cat $PID_PATH\`
+	test -f $NGX_PID_PATH.newbin
+	kill -WINCH \`cat $NGX_PID_PATH\`
 END

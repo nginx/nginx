@@ -26,5 +26,5 @@ if [ $EVENT_SELECT = NO ]; then
     EVENT_MODULES="$EVENT_MODULES $SELECT_MODULE"
 fi
 
-have=HAVE_AIO . auto/have
-have=HAVE_IOCP . auto/have
+have=NGX_HAVE_AIO . auto/have
+have=NGX_HAVE_IOCP . auto/have

@@ -10,19 +10,19 @@
 
 
 typedef struct {
-    ngx_array_t             indices;
-    size_t                  max_index_len;
-    ngx_http_cache_hash_t  *index_cache;
+    ngx_array_t              indices;
+    size_t                   max_index_len;
+    ngx_http_cache_hash_t   *index_cache;
 } ngx_http_index_loc_conf_t;
 
 
 typedef struct {
-    ngx_uint_t         index;
-    u_char            *last;
-    ngx_str_t          path;
-    ngx_str_t          redirect;
-    ngx_http_cache_t  *cache;
-    unsigned           tested:1;
+    ngx_uint_t               index;
+    u_char                  *last;
+    ngx_str_t                path;
+    ngx_str_t                redirect;
+    ngx_http_cache_entry_t  *cache;
+    ngx_uint_t               tested; /* unsigned  tested:1 */
 } ngx_http_index_ctx_t;
 
 

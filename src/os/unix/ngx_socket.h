@@ -19,7 +19,7 @@ typedef int  ngx_socket_t;
 #define ngx_socket_n        "socket()"
 
 
-#if (HAVE_FIONBIO)
+#if (NGX_HAVE_FIONBIO)
 
 int ngx_nonblocking(ngx_socket_t s);
 int ngx_blocking(ngx_socket_t s);

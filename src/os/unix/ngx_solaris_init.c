@@ -17,7 +17,7 @@ ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
     ngx_readv_chain,
     ngx_unix_send,
-#if (HAVE_SENDFILE)
+#if (NGX_HAVE_SENDFILE)
     ngx_solaris_sendfilev_chain,
     NGX_IO_SENDFILE
 #else

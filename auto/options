@@ -4,29 +4,29 @@
 
 help=no
 
-PREFIX=
-SBIN_PATH=
-CONF_PATH=
-ERROR_LOG_PATH=
-PID_PATH=
+NGX_PREFIX=
+NGX_SBIN_PATH=
+NGX_CONF_PATH=
+NGX_ERROR_LOG_PATH=
+NGX_PID_PATH=
 NGX_USER=
 NGX_GROUP=
-HTTP_LOG_PATH=
+NGX_HTTP_LOG_PATH=
 
 CC=${CC:-gcc}
 CPP=
 NGX_OBJS=objs
 
-DEBUG=NO
+NGX_DEBUG=NO
 NGX_CC_OPT=
 NGX_LD_OPT=
 CPU=NO
 
-TEST_BUILD_DEVPOLL=NO
-TEST_BUILD_EPOLL=NO
-TEST_BUILD_RTSIG=NO
+NGX_TEST_BUILD_DEVPOLL=NO
+NGX_TEST_BUILD_EPOLL=NO
+NGX_TEST_BUILD_RTSIG=NO
 
-PLATFORM=
+NGX_PLATFORM=
 NGX_WINE=
 
 EVENT_FOUND=NO
@@ -52,7 +52,7 @@ HTTP_PROXY=YES
 
 IMAP=NO
 
-MODULES=
+NGX_MODULES=
 
 USE_PCRE=NO
 PCRE=NONE
@@ -82,15 +82,15 @@ do
     case "$option" in
         --help)                          help=yes                   ;;
 
-        --prefix=*)                      PREFIX="$value"            ;;
-        --sbin-path=*)                   SBIN_PATH="$value"         ;;
-        --conf-path=*)                   CONF_PATH="$value"         ;;
-        --error-log-path=*)              ERROR_LOG_PATH="$value"    ;;
-        --pid-path=*)                    PID_PATH="$value"          ;;
+        --prefix=*)                      NGX_PREFIX="$value"        ;;
+        --sbin-path=*)                   NGX_SBIN_PATH="$value"     ;;
+        --conf-path=*)                   NGX_CONF_PATH="$value"     ;;
+        --error-log-path=*)              NGX_ERROR_LOG_PATH="$value";;
+        --pid-path=*)                    NGX_PID_PATH="$value"      ;;
         --user=*)                        NGX_USER="$value"          ;;
         --group=*)                       NGX_GROUP="$value"         ;;
 
-        --crossbuild=*)                  PLATFORM="$value"          ;;
+        --crossbuild=*)                  NGX_PLATFORM="$value"      ;;
 
         --builddir=*)                    NGX_OBJS="$value"          ;;
 
@@ -105,7 +105,7 @@ do
         --with-threads)                  USE_THREADS="pthreads"     ;;
 
         --without-http)                  HTTP=NO                    ;;
-        --http-log-path=*)               HTTP_LOG_PATH="$value"     ;;
+        --http-log-path=*)               NGX_HTTP_LOG_PATH="$value" ;;
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
@@ -127,7 +127,7 @@ do
         --with-cc-opt=*)                 NGX_CC_OPT="$value"        ;;
         --with-ld-opt=*)                 NGX_LD_OPT="$value"        ;;
         --with-cpu-opt=*)                CPU="$value"               ;;
-        --with-debug)                    DEBUG=YES                  ;;
+        --with-debug)                    NGX_DEBUG=YES              ;;
 
         --without-pcre)                  USE_PCRE=DISABLED          ;;
         --with-pcre=*)                   PCRE="$value"              ;;
@@ -143,9 +143,9 @@ do
         --with-zlib-opt=*)               ZLIB_OPT="$value"          ;;
         --with-zlib-asm=*)               ZLIB_ASM="$value"          ;;
 
-        --test-build-devpoll)            TEST_BUILD_DEVPOLL=YES     ;;
-        --test-build-epoll)              TEST_BUILD_EPOLL=YES       ;;
-        --test-build-rtsig)              TEST_BUILD_RTSIG=YES       ;;
+        --test-build-devpoll)            NGX_TEST_BUILD_DEVPOLL=YES ;;
+        --test-build-epoll)              NGX_TEST_BUILD_EPOLL=YES   ;;
+        --test-build-rtsig)              NGX_TEST_BUILD_RTSIG=YES   ;;
 
         *)
             echo "$0: error: invalid option \"$option\""
@@ -202,13 +202,13 @@ if [ $HTTP = NO ]; then
 fi
 
 
-if [ ".$PLATFORM" = ".win32" ]; then
+if [ ".$NGX_PLATFORM" = ".win32" ]; then
     NGX_WINE=$WINE
 fi
 
 
-if test -z "$PREFIX"; then
-    PREFIX=/usr/local/nginx
+if test -z "$NGX_PREFIX"; then
+    NGX_PREFIX=/usr/local/nginx
 fi
 
 
@@ -217,75 +217,75 @@ if test -z "$NGX_GROUP"; then
 fi
 
 
-case ".$SBIN_PATH" in
+case ".$NGX_SBIN_PATH" in
     ./*)
     ;;
 
     .)
-        SBIN_PATH=$PREFIX/sbin/nginx
+        NGX_SBIN_PATH=$NGX_PREFIX/sbin/nginx
     ;;
 
     *)
-        SBIN_PATH=$PREFIX/$SBIN_PATH
+        NGX_SBIN_PATH=$NGX_PREFIX/$NGX_SBIN_PATH
     ;;
 esac
 
 
-case ".$CONF_PATH" in
+case ".$NGX_CONF_PATH" in
     ./*)
     ;;
 
     .)
-        CONF_PATH=$PREFIX/conf/nginx.conf
+        NGX_CONF_PATH=$NGX_PREFIX/conf/nginx.conf
     ;;
 
     *)
-        CONF_PATH=$PREFIX/$CONF_PATH
+        NGX_CONF_PATH=$NGX_PREFIX/$NGX_CONF_PATH
     ;;
 esac
 
 
-case ".$PID_PATH" in
+case ".$NGX_PID_PATH" in
     ./*)
     ;;
 
     .)
-        PID_PATH=$PREFIX/logs/nginx.pid
+        NGX_PID_PATH=$NGX_PREFIX/logs/nginx.pid
     ;;
 
     *)
-        PID_PATH=$PREFIX/$PID_PATH
+        NGX_PID_PATH=$NGX_PREFIX/$NGX_PID_PATH
     ;;
 esac
 
 
-case ".$ERROR_LOG_PATH" in
+case ".$NGX_ERROR_LOG_PATH" in
     ./*)
     ;;
 
     .)
-        ERROR_LOG_PATH=$PREFIX/logs/error.log
+        NGX_ERROR_LOG_PATH=$NGX_PREFIX/logs/error.log
     ;;
 
     .stderr)
-        ERROR_LOG_PATH=
+        NGX_ERROR_LOG_PATH=
     ;;
 
     *)
-        ERROR_LOG_PATH=$PREFIX/$ERROR_LOG_PATH
+        NGX_ERROR_LOG_PATH=$NGX_PREFIX/$NGX_ERROR_LOG_PATH
     ;;
 esac
 
 
-case ".$HTTP_LOG_PATH" in
+case ".$NGX_HTTP_LOG_PATH" in
     ./*)
     ;;
 
     .)
-        HTTP_LOG_PATH=$PREFIX/logs/access.log
+        NGX_HTTP_LOG_PATH=$NGX_PREFIX/logs/access.log
     ;;
 
     *)
-        HTTP_LOG_PATH=$PREFIX/$HTTP_LOG_PATH
+        NGX_HTTP_LOG_PATH=$NGX_PREFIX/$NGX_HTTP_LOG_PATH
     ;;
 esac

@@ -686,7 +686,7 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
     ch = *p++;
 
-    while (p < r->uri_start + r->uri.len + 1 && r->args_start == NULL) {
+    while (p < r->uri_end && r->args_start == NULL) {
 
         /*
          * we use "ch = *p++" inside the cycle but this operation is safe

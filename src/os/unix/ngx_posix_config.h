@@ -70,17 +70,17 @@
 #include <ngx_auto_config.h>
 
 
-#if (HAVE_POLL)
+#if (NGX_HAVE_POLL)
 #include <poll.h>
 #endif
 
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 #include <sys/event.h>
 #endif
 
 
-#if (HAVE_DEVPOLL)
+#if (NGX_HAVE_DEVPOLL)
 #include <sys/ioctl.h>
 #include <sys/devpoll.h>
 #endif

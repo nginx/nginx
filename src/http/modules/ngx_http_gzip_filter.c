@@ -237,14 +237,14 @@ static ngx_http_log_op_name_t ngx_http_gzip_log_fmt_ops[] = {
 
 static u_char  gzheader[10] = { 0x1f, 0x8b, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3 };
 
-#if (HAVE_LITTLE_ENDIAN)
+#if (NGX_HAVE_LITTLE_ENDIAN)
 
 struct gztrailer {
     uint32_t  crc32;
     uint32_t  zlen;
 };
 
-#else /* HAVE_BIG_ENDIAN */
+#else /* NGX_HAVE_BIG_ENDIAN */
 
 struct gztrailer {
     u_char  crc32[4];
@@ -437,7 +437,8 @@ static ngx_int_t ngx_http_gzip_proxied(ngx_http_request_t *r,
 static ngx_int_t ngx_http_gzip_body_filter(ngx_http_request_t *r,
                                            ngx_chain_t *in)
 {
-    int                    rc, wbits, memlevel, last;
+    int                    rc, wbits, memlevel;
+    ngx_int_t              last;
     struct gztrailer      *trailer;
     ngx_buf_t             *b;
     ngx_chain_t           *cl;
@@ -469,7 +470,7 @@ static ngx_int_t ngx_http_gzip_body_filter(ngx_http_request_t *r,
         /*
          * We preallocate a memory for zlib in one buffer (200K-400K), this
          * dicreases a number of malloc() and free() calls and also probably
-         * dicreases a number of syscalls (sbrk() or so).
+         * dicreases a number of syscalls (sbrk() and so on).
          * Besides we free this memory as soon as the gzipping will complete
          * and do not wait while a whole response will be sent to a client.
          *
@@ -512,8 +513,19 @@ static ngx_int_t ngx_http_gzip_body_filter(ngx_http_request_t *r,
         }
         cl->buf = b;
         cl->next = NULL;
-        ctx->out = cl;
-        ctx->last_out = &cl->next;
+
+        /*
+         * We pass the gzheader to the next filter now to avoid its linking
+         * to the ctx->busy chain.  zlib does not usually output the compressed
+         * data in the initial iterations, so the gzheader that was linked
+         * to the ctx->busy chain would be flushed by ngx_http_write_filter().
+         */
+
+        if (ngx_http_next_body_filter(r, cl) == NGX_ERROR) {
+            return ngx_http_gzip_error(ctx);
+        }
+
+        ctx->last_out = &ctx->out;
 
         ctx->crc32 = crc32(0L, Z_NULL, 0);
         ctx->flush = Z_NO_FLUSH;
@@ -727,7 +739,7 @@ static ngx_int_t ngx_http_gzip_body_filter(ngx_http_request_t *r,
                     b->last += 8;
                 }
 
-#if (HAVE_LITTLE_ENDIAN)
+#if (NGX_HAVE_LITTLE_ENDIAN)
                 trailer->crc32 = ctx->crc32;
                 trailer->zlen = ctx->zin;
 #else
@@ -763,7 +775,7 @@ static ngx_int_t ngx_http_gzip_body_filter(ngx_http_request_t *r,
             }
         }
 
-        if (last == NGX_AGAIN) {
+        if (last == NGX_AGAIN && !ctx->done) {
             return NGX_AGAIN;
         }
 
@@ -881,7 +893,9 @@ static int ngx_http_gzip_error(ngx_http_gzip_ctx_t *ctx)
 {
     deflateEnd(&ctx->zstream);
 
-    ngx_pfree(ctx->request->pool, ctx->preallocated);
+    if (ctx->preallocated) {
+        ngx_pfree(ctx->request->pool, ctx->preallocated);
+    }
 
     ctx->zstream.avail_in = 0;
     ctx->zstream.avail_out = 0;

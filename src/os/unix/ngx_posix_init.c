@@ -121,7 +121,7 @@ ngx_int_t ngx_posix_init(ngx_log_t *log)
 
     ngx_max_sockets = rlmt.rlim_cur;
 
-#if (HAVE_INHERITED_NONBLOCK)
+#if (NGX_HAVE_INHERITED_NONBLOCK)
     ngx_inherited_nonblocking = 1;
 #else
     ngx_inherited_nonblocking = 0;

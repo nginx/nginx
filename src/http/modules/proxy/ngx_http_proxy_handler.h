@@ -142,7 +142,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_http_cache_ctx_t             ctx;
+    ngx_http_cache_t                 ctx;
     ngx_uint_t                       status;
     ngx_str_t                        status_line;
 

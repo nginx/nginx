@@ -9,7 +9,7 @@ case $USE_THREADS in
         CORE_DEPS="$CORE_DEPS $FREEBSD_RFORK_DEPS"
         CORE_SRCS="$CORE_SRCS $FREEBSD_RFORK_SRCS"
 
-        case $PLATFORM in
+        case $NGX_PLATFORM in
             *:i386)
                 if [ \( $version -gt 500000 -a $version -lt 501000 \) \
                      -o $version -lt 491000 ]
@@ -42,7 +42,7 @@ case $USE_THREADS in
     ;;
 
     libc_r)
-        case $PLATFORM in
+        case $NGX_PLATFORM in
             FreeBSD:[34]*)
                 have=NGX_THREADS . auto/have
                 CFLAGS="$CFLAGS -pthread"

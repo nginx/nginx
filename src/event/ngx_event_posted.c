@@ -120,7 +120,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
             ev->ready |= ev->posted_ready;
             ev->timedout |= ev->posted_timedout;
             ev->pending_eof |= ev->posted_eof;
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
             ev->kq_errno |= ev->posted_errno;
 #endif
             if (ev->posted_available) {
@@ -130,7 +130,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
             ev->posted_ready = 0;
             ev->posted_timedout = 0;
             ev->posted_eof = 0;
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
             ev->posted_errno = 0;
 #endif
             ev->posted_available = 0;

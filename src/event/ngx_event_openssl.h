@@ -41,7 +41,7 @@ ngx_int_t ngx_ssl_create_session(ngx_ssl_ctx_t *ctx, ngx_connection_t *c,
 
 #define ngx_ssl_handshake(c)     NGX_OK
 
-ngx_int_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size);
+ssize_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size);
 ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
                                 off_t limit);
 ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c);

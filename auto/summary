@@ -95,14 +95,14 @@ END
 fi
 
 
-echo "  nginx path prefix: $PREFIX"
-echo "  nginx binary file: $SBIN_PATH"
-echo "  nginx configuration file: $CONF_PATH"
-echo "  nginx pid file: $PID_PATH"
-if [ ".$ERROR_LOG_PATH" != "." ]; then
-    echo "  nginx error log file: $ERROR_LOG_PATH"
+echo "  nginx path prefix: $NGX_PREFIX"
+echo "  nginx binary file: $NGX_SBIN_PATH"
+echo "  nginx configuration file: $NGX_CONF_PATH"
+echo "  nginx pid file: $NGX_PID_PATH"
+if test -n "$NGX_ERROR_LOG_PATH"; then
+    echo "  nginx error log file: $NGX_ERROR_LOG_PATH"
 else
     echo "  nginx logs errors to stderr"
 fi
-echo "  nginx http access log file: $HTTP_LOG_PATH"
+echo "  nginx http access log file: $NGX_HTTP_LOG_PATH"
 echo

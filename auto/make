@@ -2,10 +2,11 @@
 # Copyright (C) Igor Sysoev
 
 
-mkdir -p $OBJS/src/core $OBJS/src/event $OBJS/src/event/modules \
-         $OBJS/src/os/unix $OBJS/src/os/win32 \
-         $OBJS/src/http $OBJS/src/http/modules $OBJS/src/http/modules/proxy \
-         $OBJS/src/imap
+mkdir -p $NGX_OBJS/src/core $NGX_OBJS/src/event $NGX_OBJS/src/event/modules \
+         $NGX_OBJS/src/os/unix $NGX_OBJS/src/os/win32 \
+         $NGX_OBJS/src/http $NGX_OBJS/src/http/modules \
+	 $NGX_OBJS/src/http/modules/proxy \
+         $NGX_OBJS/src/imap
 
 
 ngx_objs_dir=$NGX_OBJS$ngx_regex_dirsep
@@ -33,7 +34,7 @@ fi
 
 # ALL_INCS, required by OpenWatcom C precompiled headers
 
-ngx_incs=`echo $CORE_INCS $OBJS $HTTP_INCS $IMAP_INCS\
+ngx_incs=`echo $CORE_INCS $NGX_OBJS $HTTP_INCS $IMAP_INCS\
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
 
@@ -53,7 +54,7 @@ ngx_deps=`echo $CORE_DEPS $NGX_AUTO_CONFIG_H $NGX_PCH \
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
 
-ngx_incs=`echo $CORE_INCS $OBJS \
+ngx_incs=`echo $CORE_INCS $NGX_OBJS \
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
 
@@ -287,13 +288,13 @@ fi
 # the precompiled headers
 
 if test -n "$NGX_PCH"; then
-    echo "#include <ngx_config.h>" > $OBJS/ngx_pch.c
+    echo "#include <ngx_config.h>" > $NGX_OBJS/ngx_pch.c
 
-    ngx_pch="src/core/ngx_config.h $OS_CONFIG $OBJS/ngx_auto_config.h"
+    ngx_pch="src/core/ngx_config.h $OS_CONFIG $NGX_OBJS/ngx_auto_config.h"
     ngx_pch=`echo "$NGX_PCH:	$ngx_pch" | sed -e "s/\//$ngx_regex_dirsep/g"`
 
     ngx_src="\$(CC) \$(CFLAGS) $NGX_BUILD_PCH $ngx_compile_opt \$(ALL_INCS)"
-    ngx_src="$ngx_src $ngx_objout$OBJS/ngx_pch.obj $OBJS/ngx_pch.c"
+    ngx_src="$ngx_src $ngx_objout$NGX_OBJS/ngx_pch.obj $NGX_OBJS/ngx_pch.c"
     ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
 
     cat << END                                                >> $NGX_MAKEFILE

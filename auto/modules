@@ -7,7 +7,7 @@ if [ $EVENT_SELECT = NO -a $EVENT_FOUND = NO ]; then
 fi
 
 if [ $EVENT_SELECT = YES ]; then
-    have=HAVE_SELECT . auto/have
+    have=NGX_HAVE_SELECT . auto/have
     CORE_SRCS="$CORE_SRCS $SELECT_SRCS"
     EVENT_MODULES="$EVENT_MODULES $SELECT_MODULE"
 fi
@@ -18,29 +18,29 @@ if [ $EVENT_POLL = NO -a $EVENT_FOUND = NO ]; then
 fi
 
 if [ $EVENT_POLL = YES ]; then
-    have=HAVE_POLL . auto/have
+    have=NGX_HAVE_POLL . auto/have
     CORE_SRCS="$CORE_SRCS $POLL_SRCS"
     EVENT_MODULES="$EVENT_MODULES $POLL_MODULE"
 fi
 
 
-if [ $TEST_BUILD_DEVPOLL = YES ]; then
-    have=HAVE_DEVPOLL . auto/have
-    have=TEST_BUILD_DEVPOLL . auto/have
+if [ $NGX_TEST_BUILD_DEVPOLL = YES ]; then
+    have=NGX_HAVE_DEVPOLL . auto/have
+    have=NGX_TEST_BUILD_DEVPOLL . auto/have
     EVENT_MODULES="$EVENT_MODULES $DEVPOLL_MODULE"
     CORE_SRCS="$CORE_SRCS $DEVPOLL_SRCS"
 fi
 
-if [ $TEST_BUILD_EPOLL = YES ]; then
-    have=HAVE_EPOLL . auto/have
-    have=TEST_BUILD_EPOLL . auto/have
+if [ $NGX_TEST_BUILD_EPOLL = YES ]; then
+    have=NGX_HAVE_EPOLL . auto/have
+    have=NGX_TEST_BUILD_EPOLL . auto/have
     EVENT_MODULES="$EVENT_MODULES $EPOLL_MODULE"
     CORE_SRCS="$CORE_SRCS $EPOLL_SRCS"
 fi
 
-if [ $TEST_BUILD_RTSIG = YES ]; then
-    have=HAVE_RTSIG . auto/have
-    have=TEST_BUILD_RTSIG . auto/have
+if [ $NGX_TEST_BUILD_RTSIG = YES ]; then
+    have=NGX_HAVE_RTSIG . auto/have
+    have=NGX_TEST_BUILD_RTSIG . auto/have
     EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"
     CORE_SRCS="$CORE_SRCS $RTSIG_SRCS"
 fi
@@ -135,8 +135,11 @@ if [ $HTTP_PROXY = YES ]; then
     HTTP_SRCS="$HTTP_SRCS $HTTP_PROXY_SRCS"
 fi
 
-if [ -r $OBJS/auto ]; then
-    . $OBJS/auto
+# STUB
+#HTTP_SRCS="$HTTP_SRCS $HTPP_FILE_CACHE_SRCS"
+
+if [ -r $NGX_OBJS/auto ]; then
+    . $NGX_OBJS/auto
 fi
 
 modules="$CORE_MODULES $EVENT_MODULES"

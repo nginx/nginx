@@ -189,7 +189,7 @@ static ngx_int_t ngx_kqueue_init(ngx_cycle_t *cycle)
     ngx_event_actions = ngx_kqueue_module_ctx.actions;
 
     ngx_event_flags = NGX_USE_ONESHOT_EVENT
-#if (HAVE_CLEAR_EVENT)
+#if (NGX_HAVE_CLEAR_EVENT)
                      |NGX_USE_CLEAR_EVENT
 #else
                      |NGX_USE_LEVEL_EVENT

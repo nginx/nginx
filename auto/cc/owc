@@ -63,10 +63,10 @@ CFLAGS="$CFLAGS -zq"
 
 
 # the precompiled headers 
-CORE_DEPS="$CORE_DEPS $OBJS/ngx_config.pch"
-NGX_PCH="$OBJS/ngx_config.pch"
-NGX_BUILD_PCH="-fhq=$OBJS/ngx_config.pch"
-NGX_USE_PCH="-fh=$OBJS/ngx_config.pch"
+CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.pch"
+NGX_PCH="$NGX_OBJS/ngx_config.pch"
+NGX_BUILD_PCH="-fhq=$NGX_OBJS/ngx_config.pch"
+NGX_USE_PCH="-fh=$NGX_OBJS/ngx_config.pch"
 
 
 LINK="\$(CC)"
@@ -76,7 +76,8 @@ CORE_LINK="$CORE_LINK -l=nt_win"
 
 
 # the resource file
-NGX_RCC="wrc \$(CORE_INCS) -fo=$OBJS/nginx.res $NGX_WIN32_RC $OBJS/nginx.exe"
+NGX_RCC="wrc \$(CORE_INCS) -fo=$NGX_OBJS/nginx.res "
+NGX_RCC="$NGX_RCC $NGX_WIN32_RC $NGX_OBJS/nginx.exe"
 
 
 ngx_include_opt="-i="

@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
 ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
@@ -115,7 +115,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
     return n;
 }
 
-#else /* ! NAVE_KQUEUE */
+#else /* ! NGX_HAVE_KQUEUE */
 
 ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
@@ -170,4 +170,4 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
     return n;
 }
 
-#endif /* NAVE_KQUEUE */
+#endif /* NGX_HAVE_KQUEUE */

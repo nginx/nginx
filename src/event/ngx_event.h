@@ -15,7 +15,7 @@
 #define NGX_INVALID_INDEX  0xd0d0d0d0
 
 
-#if (HAVE_IOCP)
+#if (NGX_HAVE_IOCP)
 
 typedef struct {
     WSAOVERLAPPED    ovlp;
@@ -86,7 +86,7 @@ struct ngx_event_s {
     unsigned         accept_context_updated:1;
 #endif
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
     unsigned         kq_vnode:1;
 
     /* the pending errno reported by kqueue */
@@ -107,7 +107,7 @@ struct ngx_event_s {
      *   accept:     1 if accept many, 0 otherwise
      */
 
-#if (HAVE_KQUEUE) || (HAVE_IOCP)
+#if (NGX_HAVE_KQUEUE) || (NGX_HAVE_IOCP)
     int              available;
 #else
     unsigned         available:1;
@@ -117,9 +117,9 @@ struct ngx_event_s {
     ngx_event_handler_pt  event_handler;
 
 
-#if (HAVE_AIO)
+#if (NGX_HAVE_AIO)
 
-#if (HAVE_IOCP)
+#if (NGX_HAVE_IOCP)
     ngx_event_ovlp_t ovlp;
 #else
     struct aiocb     aiocb;
@@ -154,12 +154,12 @@ struct ngx_event_s {
     unsigned         posted_timedout:1;
     unsigned         posted_eof:1;
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
     /* the pending errno reported by kqueue */
     int              posted_errno;
 #endif
 
-#if (HAVE_KQUEUE) || (HAVE_IOCP)
+#if (NGX_HAVE_KQUEUE) || (NGX_HAVE_IOCP)
     int              posted_available;
 #else
     unsigned         posted_available:1;
@@ -272,7 +272,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * Need to add socket or handle only once - i/o completion port.
- * It also requires HAVE_AIO and NGX_USE_AIO_EVENT to be set.
+ * It also requires NGX_HAVE_AIO and NGX_USE_AIO_EVENT to be set.
  */
 #define NGX_USE_IOCP_EVENT       0x00000200
 
@@ -296,7 +296,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_VNODE_EVENT    0
 
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
 #define NGX_READ_EVENT     EVFILT_READ
 #define NGX_WRITE_EVENT    EVFILT_WRITE
@@ -325,7 +325,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_DISABLE_EVENT  EV_DISABLE
 
 
-#elif (HAVE_DEVPOLL)
+#elif (NGX_HAVE_DEVPOLL)
 
 #define NGX_READ_EVENT     POLLIN
 #define NGX_WRITE_EVENT    POLLOUT
@@ -334,7 +334,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_ONESHOT_EVENT  1
 
 
-#elif (HAVE_EPOLL)
+#elif (NGX_HAVE_EPOLL)
 
 #define NGX_READ_EVENT     EPOLLIN
 #define NGX_WRITE_EVENT    EPOLLOUT
@@ -347,7 +347,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #endif
 
 
-#elif (HAVE_POLL)
+#elif (NGX_HAVE_POLL)
 
 #define NGX_READ_EVENT     POLLIN
 #define NGX_WRITE_EVENT    POLLOUT
@@ -364,10 +364,10 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  1
 
-#endif /* HAVE_KQUEUE */
+#endif /* NGX_HAVE_KQUEUE */
 
 
-#if (HAVE_IOCP)
+#if (NGX_HAVE_IOCP)
 #define NGX_IOCP_ACCEPT      0
 #define NGX_IOCP_IO          1
 #define NGX_IOCP_CONNECT     2

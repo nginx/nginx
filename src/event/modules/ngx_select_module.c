@@ -258,7 +258,7 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
     ngx_connection_t         *c;
     ngx_epoch_msec_t          delta;
     struct timeval            tv, *tp;
-#if (HAVE_SELECT_CHANGE_TIMEOUT)
+#if (NGX_HAVE_SELECT_CHANGE_TIMEOUT)
     static ngx_epoch_msec_t   deltas = 0;
 #endif
 
@@ -362,7 +362,7 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
         err = 0;
     }
 
-#if (HAVE_SELECT_CHANGE_TIMEOUT)
+#if (NGX_HAVE_SELECT_CHANGE_TIMEOUT)
 
     if (timer != NGX_TIMER_INFINITE) {
         delta = timer - (tv.tv_sec * 1000 + tv.tv_usec / 1000);
@@ -403,7 +403,7 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
         }
     }
 
-#else /* !(HAVE_SELECT_CHANGE_TIMEOUT) */
+#else /* !(NGX_HAVE_SELECT_CHANGE_TIMEOUT) */
 
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
@@ -427,7 +427,7 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
         }
     }
 
-#endif /* HAVE_SELECT_CHANGE_TIMEOUT */
+#endif /* NGX_HAVE_SELECT_CHANGE_TIMEOUT */
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "select ready %d", ready);

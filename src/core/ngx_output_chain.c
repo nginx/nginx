@@ -9,11 +9,18 @@
 #include <ngx_event.h>
 
 
-#define NGX_NONE      1
+#if 0
+#define NGX_SENDFILE_LIMIT  4096
+#endif
+
+
+#define NGX_NONE            1
 
 
 static ngx_inline ngx_int_t
     ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf);
+static ngx_int_t ngx_output_chain_add_copy(ngx_pool_t *pool,
+                                          ngx_chain_t **chain, ngx_chain_t *in);
 static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
                                            ngx_uint_t sendfile);
 
@@ -26,17 +33,20 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
     if (ctx->in == NULL && ctx->busy == NULL) {
 
-       /*
-        * the short path for the case when the ctx->in and ctx->busy chains
-        * are empty, the incoming chain is empty too or has the single buf
-        * that does not require the copy
-        */
+        /*
+         * the short path for the case when the ctx->in and ctx->busy chains
+         * are empty, the incoming chain is empty too or has the single buf
+         * that does not require the copy
+         */
 
         if (in == NULL) {
             return ctx->output_filter(ctx->filter_ctx, in);
         }
 
         if (in->next == NULL
+#if (NGX_SENDFILE_LIMIT)
+            && !(in->buf->in_file && in->buf->file_last > NGX_SENDFILE_LIMIT)
+#endif
             && (!ngx_output_chain_need_to_copy(ctx, in->buf)))
         {
             return ctx->output_filter(ctx->filter_ctx, in);
@@ -46,7 +56,7 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
     /* add the incoming buf to the chain ctx->in */
 
     if (in) {
-        if (ngx_chain_add_copy(ctx->pool, &ctx->in, in) == NGX_ERROR) {
+        if (ngx_output_chain_add_copy(ctx->pool, &ctx->in, in) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
@@ -191,11 +201,23 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 static ngx_inline ngx_int_t
     ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
 {
+    ngx_uint_t  sendfile;
+
     if (ngx_buf_special(buf)) {
         return 0;
     }
 
-    if (!ctx->sendfile) {
+    sendfile = ctx->sendfile;
+
+#if (NGX_SENDFILE_LIMIT)
+
+    if (buf->in_file && buf->file_pos >= NGX_SENDFILE_LIMIT) {
+        sendfile = 0;
+    }
+
+#endif
+
+    if (!sendfile) {
 
         if (!ngx_buf_in_memory(buf)) {
             return 1;
@@ -216,6 +238,71 @@ static ngx_inline ngx_int_t
 }
 
 
+static ngx_int_t ngx_output_chain_add_copy(ngx_pool_t *pool,
+                                           ngx_chain_t **chain, ngx_chain_t *in)
+{
+    ngx_chain_t  *cl, **ll;
+#if (NGX_SENDFILE_LIMIT)
+    ngx_buf_t    *b, *buf;
+#endif
+
+    ll = chain;
+
+    for (cl = *chain; cl; cl = cl->next) {
+        ll = &cl->next;
+    }
+
+    while (in) {
+
+        if (!(cl = ngx_alloc_chain_link(pool))) {
+            return NGX_ERROR;
+        }
+
+#if (NGX_SENDFILE_LIMIT)
+
+        buf = in->buf;
+
+        if (buf->in_file
+            && buf->file_pos < NGX_SENDFILE_LIMIT
+            && buf->file_last > NGX_SENDFILE_LIMIT)
+        {
+            if (!(b = ngx_calloc_buf(pool))) {
+                return NGX_ERROR;
+            }
+
+            ngx_memcpy(b, buf, sizeof(ngx_buf_t));
+
+            if (ngx_buf_in_memory(buf)) {
+                buf->pos += (ssize_t) (NGX_SENDFILE_LIMIT - buf->file_pos);
+                b->last = buf->pos;
+            }
+
+            buf->file_pos = NGX_SENDFILE_LIMIT;
+            b->file_last = NGX_SENDFILE_LIMIT;
+
+            cl->buf = b;
+
+        } else {
+            cl->buf = buf;
+            in = in->next;
+        }
+
+#else
+        cl->buf = in->buf;
+        in = in->next;
+
+#endif
+
+        *ll = cl;
+        ll = &cl->next;
+    }
+
+    *ll = NULL;
+
+    return NGX_OK;
+}
+
+
 static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
                                            ngx_uint_t sendfile)
 {
@@ -227,6 +314,14 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
     if (size > (size_t) (dst->end - dst->pos)) {
         size = dst->end - dst->pos;
     }
+
+#if (NGX_SENDFILE_LIMIT)
+
+    if (src->in_file && src->file_pos >= NGX_SENDFILE_LIMIT) {
+        sendfile = 0;
+    }
+
+#endif
 
     if (ngx_buf_in_memory(src)) {
         ngx_memcpy(dst->pos, src->pos, size);

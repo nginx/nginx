@@ -17,7 +17,7 @@ ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     struct iovec        iov[1];
     struct msghdr       msg;
 
-#if (HAVE_MSGHDR_MSG_CONTROL)
+#if (NGX_HAVE_MSGHDR_MSG_CONTROL)
 
     union {
         struct cmsghdr  cm;
@@ -83,7 +83,7 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     struct iovec        iov[1];
     struct msghdr       msg;
 
-#if (HAVE_MSGHDR_MSG_CONTROL)
+#if (NGX_HAVE_MSGHDR_MSG_CONTROL)
     union {
         struct cmsghdr  cm;
         char            space[CMSG_SPACE(sizeof(int))];
@@ -100,7 +100,7 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     msg.msg_iov = iov;
     msg.msg_iovlen = 1;
 
-#if (HAVE_MSGHDR_MSG_CONTROL)
+#if (NGX_HAVE_MSGHDR_MSG_CONTROL)
     msg.msg_control = (caddr_t) &cmsg;
     msg.msg_controllen = sizeof(cmsg);
 #else
@@ -131,7 +131,7 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
         return NGX_ERROR;
     }
 
-#if (HAVE_MSGHDR_MSG_CONTROL)
+#if (NGX_HAVE_MSGHDR_MSG_CONTROL)
 
     if (ch->command == NGX_CMD_OPEN_CHANNEL) {
 

@@ -13,7 +13,7 @@
  * On Linux up to 2.4.21 sendfile() (syscall #187) works with 32-bit
  * offsets only and the including <sys/sendfile.h> breaks the compiling
  * if off_t is 64 bit wide.  So we use own sendfile() definition where offset
- * parameter is int32_t and use sendfile() with the file parts below 2G.
+ * parameter is int32_t and use sendfile() for the file parts below 2G only.
  *
  * Linux 2.4.21 has a new sendfile64() syscall #239.
  */

@@ -56,35 +56,37 @@
 #include <sys/prctl.h>
 #endif
 
+
 #if (NGX_HAVE_SENDFILE64)
 #include <sys/sendfile.h>
 #else
 extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
+#define NGX_SENDFILE_LIMIT  (NGX_MAX_UINT32_VALUE + 1)
 #endif
 
 
-#if (HAVE_POLL)
+#if (NGX_HAVE_POLL)
 #include <poll.h>
 #endif
 
 
-#if (HAVE_EPOLL)
+#if (NGX_HAVE_EPOLL)
 #include <sys/epoll.h>
-#endif /* HAVE_EPOLL */
-
-
-#if defined TCP_DEFER_ACCEPT && !defined HAVE_DEFERRED_ACCEPT
-#define HAVE_DEFERRED_ACCEPT  1
 #endif
 
 
-#ifndef HAVE_INHERITED_NONBLOCK
-#define HAVE_INHERITED_NONBLOCK  0
+#if defined TCP_DEFER_ACCEPT && !defined NGX_HAVE_DEFERRED_ACCEPT
+#define NGX_HAVE_DEFERRED_ACCEPT  1
 #endif
 
 
-#ifndef HAVE_SELECT_CHANGE_TIMEOUT
-#define HAVE_SELECT_CHANGE_TIMEOUT   1
+#ifndef NGX_HAVE_INHERITED_NONBLOCK
+#define NGX_HAVE_INHERITED_NONBLOCK  0
+#endif
+
+
+#ifndef NGX_HAVE_SELECT_CHANGE_TIMEOUT
+#define NGX_HAVE_SELECT_CHANGE_TIMEOUT   1
 #endif
 
 #ifndef NGX_SETPROCTITLE_USES_ENV

@@ -63,7 +63,7 @@ ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *hash,
 
             c[i].refs++;
 
-            if ((!(c[i].notify && (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)))
+            if ((!(c[i].notify && (ngx_event_flags & NGX_USE_KQUEUE_EVENT)))
                 && (ngx_cached_time - c[i].updated >= hash->update))
             {
                 c[i].expired = 1;

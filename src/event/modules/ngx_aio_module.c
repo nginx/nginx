@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 #include <ngx_aio.h>
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 #include <ngx_kqueue_module.h>
 #endif
 
@@ -27,7 +27,7 @@ ngx_os_io_t ngx_os_aio = {
     ngx_aio_read_chain,
     ngx_aio_write,
     ngx_aio_write_chain,
-    NGX_HAVE_ZEROCOPY
+    0
 };
 
 
@@ -64,7 +64,7 @@ ngx_module_t  ngx_aio_module = {
 
 
 
-#if (HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
 
 static int ngx_aio_init(ngx_cycle_t *cycle)
 {
@@ -152,7 +152,7 @@ static int ngx_aio_process_events(ngx_cycle_t *cycle)
     return ngx_kqueue_module_ctx.actions.process_events(cycle);
 }
 
-#endif /* HAVE_KQUEUE */
+#endif /* NGX_HAVE_KQUEUE */
 
 
 #if 0

@@ -39,7 +39,7 @@ typedef FILETIME       ngx_mtime_t;
 
 #define ngx_msleep       Sleep
 
-#define HAVE_GETTIMEZONE  1
+#define NGX_HAVE_GETTIMEZONE  1
 
 ngx_int_t ngx_gettimezone(void);
 void ngx_gettimeofday(struct timeval *tp);
