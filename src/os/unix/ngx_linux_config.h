@@ -36,8 +36,10 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #include <netinet/in.h>
 #include <netinet/tcp.h>        /* TCP_CORK */
 #include <arpa/inet.h>
-#include <dirent.h>
+#include <pwd.h>
+#include <grp.h>
 #include <netdb.h>
+#include <dirent.h>
 
 
 
@@ -72,6 +74,9 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #ifndef HAVE_SELECT_CHANGE_TIMEOUT
 #define HAVE_SELECT_CHANGE_TIMEOUT   1
 #endif
+
+
+#define ngx_setproctitle(title)
 
 
 #endif /* _NGX_LINUX_CONFIG_H_INCLUDED_ */

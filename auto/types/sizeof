@@ -7,8 +7,10 @@ ngx_bytes=
 
 cat << END > $NGX_AUTOTEST.c
 
+#include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+$NGX_UNISTD_H
 $NGX_INTTYPES_H
 $NGX_AUTO_CONFIG
 

@@ -21,11 +21,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>        /* TCP_NOPUSH */
-#include <dirent.h>
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <pwd.h>
 #include <grp.h>
+#include <netdb.h>
+#include <dirent.h>
 #include <osreldate.h>
 
 
@@ -75,6 +75,10 @@
 #ifndef HAVE_FIONBIO
 #define HAVE_FIONBIO   1
 #endif
+
+
+/* STUB: autoconf */
+#define ngx_setproctitle  setproctitle
 
 
 /* STUB */

@@ -48,7 +48,10 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
+/* STUB: autoconf & set sin_len in ls[i].sockaddr in ngx_http.c */
+#if __FreeBSD__
         addr_in->sin_len = 0;
+#endif
 
         ls[i].family = addr_in->sin_family;
         ls[i].addr_text.len = ngx_sock_ntop(ls[i].family, ls[i].sockaddr,

@@ -52,8 +52,6 @@ typedef int    ngx_flag_t;
 /* STUB: autoconf */
 #define PTR_FMT  "%08X"
 
-/* STUB: autoconf */
-#define ngx_setproctitle  setproctitle
 
 #include <ngx_auto_config.h>
 

@@ -202,7 +202,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * The event filter has kqueue features - the eof flag, errno,
- * available data, etc
+ * available data, etc.
  */
 #define NGX_HAVE_KQUEUE_EVENT  0x00000008
 

@@ -21,6 +21,10 @@ typedef struct {
 
 
 typedef struct {
+} ngx_http_ssi_command_t;
+
+
+typedef struct {
     ngx_hunk_t        *buf;
 
     char              *start;
@@ -38,8 +42,16 @@ typedef struct {
 
     int                state;
     size_t             saved;
-    ngx_int_t          err;
 } ngx_http_ssi_ctx_t;
+
+
+typedef ngx_int_t (*ngx_http_ssi_opcode_pt) (ngx_http_request_t *r,
+                                             ngx_http_ssi_ctx_t *ctx);
+
+typedef struct {
+    ngx_str_t               name;
+    ngx_http_ssi_opcode_pt  op;
+} ngx_http_ssi_op_t;
 
 
 typedef enum {
@@ -58,18 +70,32 @@ typedef enum {
     ssi_double_quoted_value_quote_state,
     ssi_quoted_value_state,
     ssi_quoted_value_quote_state,
-    ssi_error_state,
     ssi_comment_end0_state,
-    ssi_comment_end1_state
+    ssi_comment_end1_state,
+    ssi_error_state,
+    ssi_error_end0_state,
+    ssi_error_end1_state
 } ngx_http_ssi_state_e;
 
 
+static ngx_int_t ngx_http_ssi_error(ngx_http_request_t *r,
+                                    ngx_http_ssi_ctx_t *ctx);
 static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
                                     ngx_http_ssi_ctx_t *ctx);
+
+static ngx_int_t ngx_http_ssi_echo(ngx_http_request_t *r,
+                                   ngx_http_ssi_ctx_t *ctx);
+
 static void *ngx_http_ssi_create_conf(ngx_conf_t *cf);
 static char *ngx_http_ssi_merge_conf(ngx_conf_t *cf,
                                      void *parent, void *child);
 static int ngx_http_ssi_filter_init(ngx_cycle_t *cycle);
+
+
+static ngx_http_ssi_op_t  ngx_http_ssi_commands[] = {
+    { ngx_string("echo"), ngx_http_ssi_echo },
+    { ngx_null_string, NULL }
+};
 
 
 static ngx_command_t  ngx_http_ssi_filter_commands[] = {
@@ -111,13 +137,14 @@ ngx_module_t  ngx_http_ssi_filter_module = {
 
 
 static int (*ngx_http_next_header_filter) (ngx_http_request_t *r);
-static int (*ngx_http_next_body_filter) (ngx_http_request_t *r, ngx_chain_t *in);
-
+static int (*ngx_http_next_body_filter) (ngx_http_request_t *r,
+                                         ngx_chain_t *in);
 
 
 static char ssi_string[] = "<!--#";
 static char error_string[] = "[an error occurred while processing "
                              "the directive]";
+static char stub_string[] = "[a stub ssi string]";
 
 
 static int ngx_http_ssi_header_filter(ngx_http_request_t *r)
@@ -157,9 +184,10 @@ static int ngx_http_ssi_header_filter(ngx_http_request_t *r)
 static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     size_t               len;
-    ngx_int_t            rc;
+    ngx_int_t            rc, found;
     ngx_hunk_t          *hunk;
     ngx_chain_t         *cl, *tl;
+    ngx_http_ssi_op_t   *cmd;
     ngx_http_ssi_ctx_t  *ctx;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
@@ -209,12 +237,18 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         while (ctx->pos < ctx->buf->last) {
 
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "saved: %d", ctx->saved);
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "saved: %d state: %d", ctx->saved, ctx->state);
 
             rc = ngx_http_ssi_parse(r, ctx);
 
-            if (rc == NGX_ERROR) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "parse: %d", rc);
+
+            if (rc == NGX_AGAIN) {
+                continue;
+
+            } else if (rc == NGX_ERROR) {
                 return rc;
 
             } else if (rc == NGX_HTTP_SSI_COPY) {
@@ -261,6 +295,28 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 continue;
 
+            } else if (rc >= NGX_HTTP_SSI_INVALID_COMMAND) {
+
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                               "saved: %d error: %d",
+                               ctx->saved, rc);
+
+                if (ngx_http_ssi_error(r, ctx) == NGX_ERROR) {
+                    return NGX_ERROR;
+                }
+
+                if (rc == NGX_HTTP_SSI_INVALID_COMMAND) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "invalid SSI command \"%s\" found",
+                                  ctx->command.data);
+
+                } else if (rc == NGX_HTTP_SSI_INVALID_PARAM) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "invalid parameter \"%s\" found "
+                                  "in SSI command \"%s\"",
+                                  ctx->param->key.data, ctx->command.data);
+                }
+
 #if 0
             } else if (rc == NGX_HTTP_SSI_INVALID_COMMAND) {
             } else if (rc == NGX_HTTP_SSI_INVALID_PARAM) {
@@ -269,18 +325,47 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #endif
 
             } else {
+
+                found = 0;
+
+                for (cmd = ngx_http_ssi_commands; cmd->name.len; cmd++) {
+                     if (ctx->command.len != cmd->name.len) {
+                         continue;
+                     }
+
+                     if (ngx_strncmp(ctx->command.data, cmd->name.data,
+                                                           cmd->name.len) != 0)
+                     {
+                         continue;
+                     }
+
+                     found = 1;
+
+                     if (cmd->op(r, ctx) == NGX_ERROR) {
+                         return NGX_ERROR;
+                     }
+                }
+
+                if (!found) {
+                    if (ngx_http_ssi_error(r, ctx) == NGX_ERROR) {
+                        return NGX_ERROR;
+                    }
+                }
+
+#if 0
                 if (!(hunk = ngx_calloc_hunk(r->pool))) {
                     return NGX_ERROR;
                 }
 
                 hunk->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
-                hunk->pos = error_string;
-                hunk->last = error_string + sizeof(error_string) - 1;
+                hunk->pos = stub_string;
+                hunk->last = stub_string + sizeof(stub_string) - 1;
 
                 ngx_alloc_link_and_set_hunk(cl, hunk, r->pool, NGX_ERROR);
 
                 *ctx->last_out = cl;
                 ctx->last_out = &cl->next;
+#endif
             }
         }
 
@@ -312,13 +397,44 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 break;
             }
 
-            if (ctx->busy->hunk->shadow) {
-                ctx->busy->hunk->shadow->pos = ctx->busy->hunk->pos;
+            /* TODO: NGX_HUNK_ZEROCOPY_BUSY */
+
+            hunk = ctx->busy->hunk->shadow;
+            if (hunk) {
+                hunk->pos = ctx->busy->hunk->pos;
+
+                len = hunk->last - hunk->pos;
+                if (len < 5 && ngx_strncmp(hunk->pos, ssi_string, len) == 0) {
+                    hunk->pos = hunk->last;
+                }
             }
 
             ctx->busy = ctx->busy->next;
         }
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t ngx_http_ssi_error(ngx_http_request_t *r,
+                                    ngx_http_ssi_ctx_t *ctx)
+{
+    ngx_hunk_t   *hunk;
+    ngx_chain_t  *cl;
+
+    if (!(hunk = ngx_calloc_hunk(r->pool))) {
+        return NGX_ERROR;
+    }
+
+    hunk->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
+    hunk->pos = error_string;
+    hunk->last = error_string + sizeof(error_string) - 1;
+
+    ngx_alloc_link_and_set_hunk(cl, hunk, r->pool, NGX_ERROR);
+
+    *ctx->last_out = cl;
+    ctx->last_out = &cl->next;
 
     return NGX_OK;
 }
@@ -522,7 +638,6 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
 
                 ctx->command.data[0] = ch;
                 ctx->command.len = 1;
-                ctx->err = NGX_OK;
                 state = ssi_command_state;
                 break;
             }
@@ -546,9 +661,13 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
 
             default:
                 if (ctx->command.len >= NGX_HTTP_SSI_COMMAND_LEN) {
-                    ctx->err = NGX_HTTP_SSI_INVALID_COMMAND;
-                    state = ssi_error_state;
-                    break;
+                    ctx->command.data[NGX_HTTP_SSI_COMMAND_LEN] = 0;
+
+                    ctx->last = last;
+                    ctx->pos = p;
+                    ctx->state = ssi_error_state;
+
+                    return NGX_HTTP_SSI_INVALID_COMMAND;
                 }
 
                 ctx->command.data[ctx->command.len++] = ch;
@@ -569,6 +688,11 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
                 break;
 
             default:
+                if (ctx->params.elts == NULL) {
+                    ngx_init_array(ctx->params, r->pool,
+                                   5, sizeof(ngx_table_elt_t), NGX_ERROR);
+                }
+
                 if (!(ctx->param = ngx_push_array(&ctx->params))) {
                     return NGX_ERROR;
                 }
@@ -609,11 +733,22 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
                 state = ssi_prevalue_state;
                 break;
 
+            case '-':
+                ctx->last = last;
+                ctx->pos = p;
+                ctx->state = ssi_error_end0_state;
+
+                return NGX_HTTP_SSI_INVALID_PARAM;
+
             default:
                 if (ctx->param->key.len >= NGX_HTTP_SSI_PARAM_LEN) {
-                    ctx->err = NGX_HTTP_SSI_INVALID_PARAM;
-                    state = ssi_error_state;
-                    break;
+                    ctx->param->key.data[NGX_HTTP_SSI_PARAM_LEN] = 0;
+
+                    ctx->last = last;
+                    ctx->pos = p;
+                    ctx->state = ssi_error_state;
+
+                    return NGX_HTTP_SSI_INVALID_PARAM;
                 }
 
                 ctx->param->key.data[ctx->param->key.len++] = ch;
@@ -633,10 +768,19 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
                 state = ssi_prevalue_state;
                 break;
 
+            case '-':
+                ctx->last = last;
+                ctx->pos = p;
+                ctx->state = ssi_error_end0_state;
+
+                return NGX_HTTP_SSI_INVALID_PARAM;
+
             default:
-                ctx->err = NGX_HTTP_SSI_INVALID_PARAM;
-                state = ssi_error_state;
-                break;
+                ctx->last = last;
+                ctx->pos = p;
+                ctx->state = ssi_error_state;
+
+                return NGX_HTTP_SSI_INVALID_PARAM;
             }
 
             break;
@@ -657,10 +801,19 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
                 state = ssi_quoted_value_state;
                 break;
 
+            case '-':
+                ctx->last = last;
+                ctx->pos = p;
+                ctx->state = ssi_error_end0_state;
+
+                return NGX_HTTP_SSI_INVALID_VALUE;
+
             default:
-                ctx->err = NGX_HTTP_SSI_INVALID_VALUE;
-                state = ssi_error_state;
-                break;
+                ctx->last = last;
+                ctx->pos = p;
+                ctx->state = ssi_error_state;
+
+                return NGX_HTTP_SSI_INVALID_VALUE;
             }
 
             break;
@@ -677,9 +830,11 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
 
             default:
                 if ((ssize_t) ctx->param->value.len >= conf->value_len) {
-                    ctx->err = NGX_HTTP_SSI_LONG_VALUE;
-                    state = ssi_error_state;
-                    break;
+                    ctx->last = last;
+                    ctx->pos = p;
+                    ctx->state = ssi_error_state;
+
+                    return NGX_HTTP_SSI_LONG_VALUE;
                 }
 
                 ctx->param->value.data[ctx->param->value.len++] = ch;
@@ -689,9 +844,11 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
 
         case ssi_double_quoted_value_quote_state:
             if ((ssize_t) ctx->param->value.len >= conf->value_len) {
-                ctx->err = NGX_HTTP_SSI_LONG_VALUE;
-                state = ssi_error_state;
-                break;
+                ctx->last = last;
+                ctx->pos = p;
+                ctx->state = ssi_error_state;
+
+                return NGX_HTTP_SSI_LONG_VALUE;
             }
 
             ctx->param->value.data[ctx->param->value.len++] = ch;
@@ -711,9 +868,11 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
 
             default:
                 if ((ssize_t) ctx->param->value.len >= conf->value_len) {
-                    ctx->err = NGX_HTTP_SSI_LONG_VALUE;
-                    state = ssi_error_state;
-                    break;
+                    ctx->last = last;
+                    ctx->pos = p;
+                    ctx->state = ssi_error_state;
+
+                    return NGX_HTTP_SSI_LONG_VALUE;
                 }
 
                 ctx->param->value.data[ctx->param->value.len++] = ch;
@@ -723,26 +882,16 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
 
         case ssi_quoted_value_quote_state:
             if ((ssize_t) ctx->param->value.len >= conf->value_len) {
-                ctx->err = NGX_HTTP_SSI_LONG_VALUE;
-                state = ssi_error_state;
-                break;
+                ctx->last = last;
+                ctx->pos = p;
+                ctx->state = ssi_error_state;
+
+                return NGX_HTTP_SSI_LONG_VALUE;
             }
 
             ctx->param->value.data[ctx->param->value.len++] = ch;
 
             state = ssi_quoted_value_state;
-            break;
-
-        case ssi_error_state:
-            switch (ch) {
-            case '-':
-                state = ssi_comment_end1_state;
-                break;
-
-            default:
-                break;
-            }
-
             break;
 
         case ssi_comment_end0_state:
@@ -752,9 +901,11 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
                 break;
 
             default:
-                ctx->err = NGX_HTTP_SSI_INVALID_COMMAND;
-                state = ssi_error_state;
-                break;
+                ctx->last = last;
+                ctx->pos = p;
+                ctx->state = ssi_error_state;
+
+                return NGX_HTTP_SSI_INVALID_COMMAND;
             }
 
             break;
@@ -765,10 +916,54 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
                 ctx->state = ssi_start_state;
                 ctx->start = p;
                 ctx->pos = p;
-                return ctx->err;
+
+                return NGX_OK;
 
             default:
-                ctx->err = NGX_HTTP_SSI_INVALID_COMMAND;
+                ctx->last = last;
+                ctx->pos = p;
+                ctx->state = ssi_error_state;
+
+                return NGX_HTTP_SSI_INVALID_COMMAND;
+            }
+
+            break;
+
+        case ssi_error_state:
+            switch (ch) {
+            case '-':
+                state = ssi_error_end0_state;
+                break;
+
+            default:
+                break;
+            }
+
+            break;
+
+        case ssi_error_end0_state:
+            switch (ch) {
+            case '-':
+                state = ssi_error_end1_state;
+                break;
+
+            default:
+                state = ssi_error_state;
+                break;
+            }
+
+            break;
+
+        case ssi_error_end1_state:
+            switch (ch) {
+            case '>':
+                ctx->state = ssi_start_state;
+                ctx->start = p;
+                ctx->pos = p;
+
+                return NGX_AGAIN;
+
+            default:
                 state = ssi_error_state;
                 break;
             }
@@ -782,6 +977,13 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
     ctx->pos = p;
 
     return NGX_HTTP_SSI_COPY;
+}
+
+
+static ngx_int_t ngx_http_ssi_echo(ngx_http_request_t *r,
+                                   ngx_http_ssi_ctx_t *ctx)
+{
+    return NGX_OK;
 }
 
 

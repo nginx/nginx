@@ -496,6 +496,8 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 }
 
 
+#if 0
+
 static void ngx_kqueue_thread_handler(ngx_event_t *ev, ngx_log_t *log)
 {
     ngx_int_t  instance;
@@ -517,6 +519,8 @@ static void ngx_kqueue_thread_handler(ngx_event_t *ev, ngx_log_t *log)
                    "kevent: stale event " PTR_FMT, ev);
 
 }
+
+#endif
 
 
 static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle)

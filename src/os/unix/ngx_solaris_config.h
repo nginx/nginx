@@ -27,6 +27,8 @@
 #include <sys/systeminfo.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pwd.h>
+#include <grp.h>
 #include <netdb.h>
 #include <dirent.h>
 
@@ -63,6 +65,9 @@
 #ifndef HAVE_FIONBIO
 #define HAVE_FIONBIO   1
 #endif
+
+
+#define ngx_setproctitle(title)
 
 
 #endif /* _NGX_SOLARIS_CONFIG_H_INCLUDED_ */
