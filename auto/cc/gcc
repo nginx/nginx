@@ -104,6 +104,3 @@ if [ ".$CPP" = "." ]; then
 fi
 
 LINK="\$(CC)"
-
-
-CC_STRONG="-Wall -Werror"

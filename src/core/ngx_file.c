@@ -55,9 +55,8 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
     num = ngx_next_temp_number(0);
 
     for ( ;; ) {
-        ngx_snprintf((char *)
-                            (file->name.data + path->name.len + 1 + path->len),
-                     11, "%010u", num);
+        ngx_sprintf(file->name.data + path->name.len + 1 + path->len,
+                    "%010ud%Z", num);
 
         ngx_create_hashed_filename(file, path);
 
@@ -83,7 +82,7 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
 
         if ((path->level[0] == 0)
             || (err != NGX_ENOENT
-#if (WIN32)
+#if (NGX_WIN32)
                 && err != NGX_ENOTDIR
 #endif
         )) {

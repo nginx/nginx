@@ -32,17 +32,31 @@ CFLAGS="$CFLAGS -w!"
 # disable logo
 CFLAGS="$CFLAGS -q"
 
+
 # precompiled headers
 CORE_DEPS="$CORE_DEPS $OBJS/ngx_config.csm"
 NGX_PCH="$OBJS/ngx_config.csm"
 NGX_BUILD_PCH="-H=$OBJS/ngx_config.csm"
 NGX_USE_PCH="-Hu -H=$OBJS/ngx_config.csm"
 
-LINK="\$(CC)"
+
+# Win32 GUI mode application
+LINK="\$(CC) -laa"
+
+
+# the resource file
+NGX_RES="$OBJS/nginx.res"
+NGX_RCC="brcc32 -fo$OBJS/nginx.res \$(CORE_INCS) $NGX_WIN32_RC"
+# the pragma allows to link the resource file using bcc32 and
+# to avoid the direct ilink32 calling and the c0w32.obj's WinMain/main problem
+NGX_PRAGMA="#pragma resource \"$OBJS/nginx.res\""
+
 
 ngx_include_opt="-I"
 ngx_objout="-o"
 ngx_binout="-e"
 ngx_objext="obj"
 ngx_binext=".exe"
-ngx_dirsep='\\'
+
+ngx_regex_dirsep='\\'
+ngx_dirsep="\\"

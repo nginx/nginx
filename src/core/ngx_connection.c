@@ -30,28 +30,27 @@ ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
         return NULL;
     }
 
-#if (HAVE_SIN_LEN)
-    addr_in->sin_len = sizeof(struct sockaddr_in);
-#endif
     addr_in->sin_family = AF_INET;
     addr_in->sin_addr.s_addr = addr;
     addr_in->sin_port = htons(port);
 
-    if (!(ls->addr_text.data = ngx_palloc(cf->pool, INET_ADDRSTRLEN + 6))) {
+
+    ls->addr_text.data = ngx_palloc(cf->pool,
+                                    INET_ADDRSTRLEN - 1 + sizeof(":65535") - 1);
+    if (ls->addr_text.data == NULL) {
         return NULL;
     }
 
     len = ngx_inet_ntop(AF_INET, &addr, ls->addr_text.data, INET_ADDRSTRLEN);
-    ls->addr_text.len = ngx_snprintf((char *) ls->addr_text.data + len,
-                                     6, ":%d", port);
+
+    ls->addr_text.len = ngx_sprintf(ls->addr_text.data + len, ":%d", port)
+                        - ls->addr_text.data;
+
 
     ls->fd = (ngx_socket_t) -1;
     ls->family = AF_INET;
     ls->type = SOCK_STREAM;
     ls->protocol = IPPROTO_IP;
-#if (WIN32)
-    ls->flags = WSA_FLAG_OVERLAPPED;
-#endif
     ls->sockaddr = (struct sockaddr *) addr_in;
     ls->socklen = sizeof(struct sockaddr_in);
     ls->addr = offsetof(struct sockaddr_in, sin_addr);
@@ -63,6 +62,7 @@ ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
 
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
+    size_t               len;
     ngx_uint_t           i;
     ngx_listening_t     *ls;
     struct sockaddr_in  *addr_in;
@@ -95,20 +95,26 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             ls[i].ignore = 1;
             continue;
         }
+
         ls[i].addr_text_max_len = INET_ADDRSTRLEN;
 
-        ls[i].addr_text.data = ngx_palloc(cycle->pool, ls[i].addr_text_max_len);
+
+        ls[i].addr_text.data = ngx_palloc(cycle->pool, INET_ADDRSTRLEN - 1
+                                                       + sizeof(":65535") - 1);
         if (ls[i].addr_text.data == NULL) {
             return NGX_ERROR;
         }
 
         ls[i].family = addr_in->sin_family;
-        ls[i].addr_text.len = ngx_sock_ntop(ls[i].family, ls[i].sockaddr,
-                                            ls[i].addr_text.data,
-                                            ls[i].addr_text_max_len);
-        if (ls[i].addr_text.len == 0) {
+        len = ngx_sock_ntop(ls[i].family, ls[i].sockaddr,
+                            ls[i].addr_text.data, INET_ADDRSTRLEN);
+        if (len == 0) {
             return NGX_ERROR;
         }
+
+        ls[i].addr_text.len = ngx_sprintf(ls[i].addr_text.data + len, ":%d",
+                                        ntohs(addr_in->sin_port))
+                              - ls[i].addr_text.data;
     }
 
     return NGX_OK;
@@ -157,16 +163,15 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 continue;
             }
 
-            s = ngx_socket(ls[i].family, ls[i].type, ls[i].protocol,
-                           ls[i].flags);
+            s = ngx_socket(ls[i].family, ls[i].type, ls[i].protocol);
 
             if (s == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              ngx_socket_n " %s failed", ls[i].addr_text.data);
+                              ngx_socket_n " %V failed", &ls[i].addr_text);
                 return NGX_ERROR;
             }
 
-#if (WIN32)
+#if (NGX_WIN32)
             /*
              * Winsock assignes a socket number divisible by 4
              * so to find a connection we divide a socket number by 4.
@@ -182,8 +187,8 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
             if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
                            (const void *) &reuseaddr, sizeof(int)) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              "setsockopt(SO_REUSEADDR) %s failed",
-                              ls[i].addr_text.data);
+                              "setsockopt(SO_REUSEADDR) %V failed",
+                              &ls[i].addr_text);
                 return NGX_ERROR;
             }
 
@@ -192,8 +197,8 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
             if (!(ngx_event_flags & NGX_USE_AIO_EVENT)) {
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                                  ngx_nonblocking_n " %s failed",
-                                  ls[i].addr_text.data);
+                                  ngx_nonblocking_n " %V failed",
+                                  &ls[i].addr_text);
                     return NGX_ERROR;
                 }
             }
@@ -202,8 +207,8 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
             if (ls[i].nonblocking) {
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                                  ngx_nonblocking_n " %s failed",
-                                  ls[i].addr_text.data);
+                                  ngx_nonblocking_n " %V failed",
+                                  &ls[i].addr_text);
                     return NGX_ERROR;
                 }
             }
@@ -212,15 +217,15 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
             if (bind(s, ls[i].sockaddr, ls[i].socklen) == -1) {
                 err = ngx_socket_errno;
                 ngx_log_error(NGX_LOG_EMERG, log, err,
-                              "bind() to %s failed", ls[i].addr_text.data);
+                              "bind() to %V failed", &ls[i].addr_text);
 
                 if (err != NGX_EADDRINUSE)
                     return NGX_ERROR;
 
                 if (ngx_close_socket(s) == -1)
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                                  ngx_close_socket_n " %s failed",
-                                  ls[i].addr_text.data);
+                                  ngx_close_socket_n " %V failed",
+                                  &ls[i].addr_text);
 
                 failed = 1;
                 continue;
@@ -228,7 +233,7 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
             if (listen(s, ls[i].backlog) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              "listen() to %s failed", ls[i].addr_text.data);
+                              "listen() to %V failed", &ls[i].addr_text);
                 return NGX_ERROR;
             }
 
@@ -273,7 +278,7 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
     for (i = 0; i < cycle->listening.nelts; i++) {
         fd = ls[i].fd;
 
-#if (WIN32)
+#if (NGX_WIN32)
         /*
          * Winsock assignes a socket number divisible by 4
          * so to find a connection we divide a socket number by 4.
@@ -296,8 +301,7 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
         if (ngx_close_socket(ls[i].fd) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
-                          ngx_close_socket_n " %s failed",
-                          ls[i].addr_text.data);
+                          ngx_close_socket_n " %V failed", &ls[i].addr_text);
         }
 
         cycle->connections[fd].fd = (ngx_socket_t) -1;
@@ -408,7 +412,7 @@ ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
     }
 
     if (err == NGX_ECONNRESET
-#if !(WIN32)
+#if !(NGX_WIN32)
         || err == NGX_EPIPE
 #endif
         || err == NGX_ENOTCONN

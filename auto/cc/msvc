@@ -2,7 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-# MSVC 6.0 SP2
+# MSVC 6.0 SP2, MSVC Toolkit 2003 (7.1)
 
 # optimizations
 
@@ -31,8 +31,8 @@ case $CPU in
     ;;
 
     pentium4)
-        # optimize for Pentium 4
-        #CPU_OPT="-G7"
+        # optimize for Pentium 4, MSVC 7
+        CPU_OPT="-G7"
     ;;
 esac
 
@@ -47,30 +47,48 @@ CFLAGS="$CFLAGS -W4"
 # stop on warning
 CFLAGS="$CFLAGS -WX"
 
-# link with libcmt.lib, multithreaded
-#LIBC="-MT"
-# link with msvcrt.dll
-LIBC="-MD"
-
-CFLAGS="$CFLAGS $LIBC"
-
 # disable logo
 CFLAGS="$CFLAGS -nologo"
 
+
 LINK="\$(CC)"
 
-# link flags
+# the link flags
 CORE_LINK="$CORE_LINK -link -verbose:lib"
+
+if [ $NGX_CC_NAME = msvc7 ]; then
+    # link with libcmt.lib, multithreaded
+    LIBC="-MT"
+else
+    # link with msvcrt.dll
+    LIBC="-MD"
+fi
+
+CFLAGS="$CFLAGS $LIBC"
+
+# Win32 GUI mode application
+CORE_LIBS="$CORE_LIBS kernel32.lib user32.lib"
+CORE_LINK="$CORE_LINK -subsystem:windows -entry:mainCRTStartup"
 
 # debug
 CFLAGS="$CFLAGS -Yd"
 CORE_LINK="$CORE_LINK -debug -debugtype:coff"
 
+
 # precompiled headers
-CORE_DEPS="$CORE_DEPS $OBJS/ngx_config.pch"
-NGX_PCH="$OBJS/ngx_config.pch"
-NGX_BUILD_PCH="-Ycngx_config.h -Fp$OBJS/ngx_config.pch"
-NGX_USE_PCH="-Yungx_config.h -Fp$OBJS/ngx_config.pch"
+if [ $NGX_CC_NAME != msvc7 ]; then
+    CORE_DEPS="$CORE_DEPS $OBJS/ngx_config.pch"
+    NGX_PCH="$OBJS/ngx_config.pch"
+    NGX_BUILD_PCH="-Ycngx_config.h -Fp$OBJS/ngx_config.pch"
+    NGX_USE_PCH="-Yungx_config.h -Fp$OBJS/ngx_config.pch"
+fi
+
+
+# the resource file
+NGX_RES="$OBJS/nginx.res"
+NGX_RCC="rc -fo$NGX_RES \$(CORE_INCS) $NGX_WIN32_RC"
+CORE_LINK="$NGX_RES $CORE_LINK"
+
 
 ngx_objout="-Fo"
 ngx_binout="-Fe"

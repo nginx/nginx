@@ -168,7 +168,7 @@ int ngx_http_cache_update_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
 
         err = ngx_errno;
 
-#if (WIN32)
+#if (NGX_WIN32)
         if (err == NGX_EEXIST) {
             if (ngx_win32_rename_file(temp_file, &ctx->file.name, r->pool)
                                                                   == NGX_ERROR)

@@ -191,7 +191,7 @@ ngx_module_t  ngx_event_core_module = {
 
 static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 {
-#if !(WIN32)
+#if !(NGX_WIN32)
 
     size_t             size;
     char              *shared;
@@ -240,7 +240,7 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 #endif
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "counter: " PTR_FMT ", %d",
+                   "counter: %p, %d",
                    ngx_connection_counter, *ngx_connection_counter);
 
 #endif
@@ -259,7 +259,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     ngx_core_conf_t     *ccf;
     ngx_event_conf_t    *ecf;
     ngx_event_module_t  *module;
-#if (WIN32)
+#if (NGX_WIN32)
     ngx_iocp_conf_t     *iocpcf;
 #endif
 
@@ -352,7 +352,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 
         fd = s[i].fd;
 
-#if (WIN32)
+#if (NGX_WIN32)
         /*
          * Winsock assignes a socket number divisible by 4
          * so to find a connection we divide a socket number by 4.
@@ -412,10 +412,10 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
             }
         }
 
-#if (WIN32)
+#if (NGX_WIN32)
 
         if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
-            rev->event_handler = &ngx_event_acceptex;
+            rev->event_handler = ngx_event_acceptex;
 
             if (ngx_add_event(rev, 0, NGX_IOCP_ACCEPT) == NGX_ERROR) {
                 return NGX_ERROR;
@@ -429,7 +429,8 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
             }
 
         } else {
-            rev->event_handler = &ngx_event_accept;
+            rev->event_handler = ngx_event_accept;
+
             if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -437,7 +438,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 
 #else
 
-        rev->event_handler = &ngx_event_accept;
+        rev->event_handler = ngx_event_accept;
 
         if (ngx_accept_mutex) {
             continue;
@@ -580,7 +581,7 @@ static char *ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd,
     ecf->connections = ngx_atoi(value[1].data, value[1].len);
     if (ecf->connections == (ngx_uint_t) NGX_ERROR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid number \"%s\"", value[1].data);
+                           "invalid number \"%V\"", &value[1]);
 
         return NGX_CONF_ERROR;
     }
@@ -631,12 +632,12 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "when the server runs without a master process "
-                        "the \"%s\" event type must be the same as "
+                        "the \"%V\" event type must be the same as "
                         "in previous configuration - \"%s\" "
                         "and it can not be changed on the fly, "
                         "to change it you need to stop server "
                         "and start it again",
-                        value[1].data, old_ecf->name);
+                        &value[1], old_ecf->name);
 
                     return NGX_CONF_ERROR;
                 }
@@ -647,7 +648,7 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "invalid event type \"%s\"", value[1].data);
+                       "invalid event type \"%V\"", &value[1]);
 
     return NGX_CONF_ERROR;
 }
@@ -681,7 +682,7 @@ static char *ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd,
 
     if (h == NULL || h->h_addr_list[0] == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "host %s not found", value[1].data);
+                           "host \"%s\" not found", value[1].data);
         return NGX_CONF_ERROR;
     }
 
@@ -755,7 +756,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #elif (HAVE_SELECT)
 
-#if (WIN32)
+#if (NGX_WIN32)
     ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
 #else
     ngx_conf_init_unsigned_value(ecf->connections,

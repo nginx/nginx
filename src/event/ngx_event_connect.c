@@ -13,7 +13,7 @@
 
 /* AF_INET only */
 
-int ngx_event_connect_peer(ngx_peer_connection_t *pc)
+ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     int                  rc;
     ngx_uint_t           instance;
@@ -107,7 +107,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     /* ngx_unlock_mutex(pc->peers->mutex); */
 
 
-    s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP, 0);
+    s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 
     if (s == -1) {
         ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
@@ -165,7 +165,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
         return NGX_ERROR;
     }
 
-#if (WIN32)
+#if (NGX_WIN32)
     /*
      * Winsock assignes a socket number divisible by 4
      * so to find a connection we divide a socket number by 4.
@@ -261,7 +261,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     addr.sin_addr.s_addr = peer->addr;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0,
-                   "connect to %s, #%d", peer->addr_port_text.data, c->number);
+                   "connect to %V, #%d", &peer->addr_port_text, c->number);
 
     rc = connect(s, (struct sockaddr *) &addr, sizeof(struct sockaddr_in));
 

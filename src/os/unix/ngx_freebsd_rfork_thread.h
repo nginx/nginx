@@ -18,7 +18,7 @@ typedef pid_t  ngx_tid_t;
 #define ngx_log_pid    ngx_thread_self()
 #define ngx_log_tid    0
 
-#define TID_T_FMT      PID_T_FMT
+#define NGX_TID_T_FMT  "%P"
 
 
 #define NGX_MUTEX_LIGHT      1
@@ -91,10 +91,10 @@ typedef ngx_uint_t               ngx_tls_key_t;
 
 extern void    **ngx_tls;
 
-ngx_int_t ngx_thread_key_create(ngx_tls_key_t *key);
+ngx_err_t ngx_thread_key_create(ngx_tls_key_t *key);
 #define ngx_thread_key_create_n  "the tls key creation"
 
-ngx_int_t ngx_thread_set_tls(ngx_tls_key_t key, void *value);
+ngx_err_t ngx_thread_set_tls(ngx_tls_key_t key, void *value);
 #define ngx_thread_set_tls_n     "the tls key setting"
 
 

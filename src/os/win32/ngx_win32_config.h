@@ -8,8 +8,6 @@
 #define _NGX_WIN32_CONFIG_H_INCLUDED_
 
 
-#define WIN32       1
-
 #define STRICT
 #define WIN32_LEAN_AND_MEAN
 
@@ -25,6 +23,7 @@
 
 #include <winsock2.h>
 #include <mswsock.h>
+#include <shellapi.h>
 #include <stddef.h>    /* offsetof() */
 #include <stdio.h>
 #include <stdlib.h>
@@ -96,8 +95,10 @@
 
 #ifdef _MSC_VER
 typedef unsigned __int32  uint32_t;
+typedef __int32           int32_t;
 #else /* __WATCOMC__ */
 typedef unsigned int      uint32_t;
+typedef int               int32_t;
 #endif
 
 typedef __int64           int64_t;
@@ -115,15 +116,11 @@ typedef uint32_t          ngx_atomic_t;
 
 #define TIME_T_LEN        sizeof("-2147483648") - 1
 
-#define OFF_T_FMT         "%I64d"
-#define SIZE_T_FMT        "%d"
-#define SIZE_T_X_FMT      "%x"
-#define PID_T_FMT         "%d"
-#define TIME_T_FMT        "%lu"
-#define PTR_FMT           "%08X"
-
 
 #define NGX_WIN_NT        200000
+
+
+#define NGX_THREADS       1
 
 
 #ifndef HAVE_INHERITED_NONBLOCK

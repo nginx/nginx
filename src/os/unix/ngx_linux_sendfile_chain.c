@@ -195,7 +195,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
             sent = rc > 0 ? rc : 0;
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "sendfile: %d, @" OFF_T_FMT " %d:%d",
+                           "sendfile: %d, @%O %z:%uz",
                            rc, file->file_pos, sent, fsize);
 
         } else {
@@ -221,7 +221,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
 
             sent = rc > 0 ? rc : 0;
 
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "writev: %d", sent);
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "writev: %z", sent);
         }
 
         if (send - sprev == sent) {

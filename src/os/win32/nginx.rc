@@ -1,0 +1,16 @@
+
+// Copyright (C) Igor Sysoev
+
+#include <ngx_gui.h>
+
+nginx   icon  discardable  "src\\os\\win32\\nginx.ico"
+tray    icon  discardable  "src\\os\\win32\\tray.ico"
+
+nginx   menu  discardable 
+begin
+    popup "&nginx"
+    begin
+        menuitem "&Exit",   NGX_WM_EXIT
+        menuitem "&About",  NGX_WM_ABOUT
+    end
+end

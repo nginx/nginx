@@ -32,7 +32,7 @@ ngx_module_t  ngx_http_chunked_filter_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_chunked_filter_init,          /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -84,7 +84,11 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
         size += ngx_buf_size(cl->buf);
 
         if (cl->buf->flush || ngx_buf_in_memory(cl->buf) || cl->buf->in_file) {
-            ngx_test_null(tl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
+
+            if (!(tl = ngx_alloc_chain_link(r->pool))) {
+                return NGX_ERROR;
+            }
+
             tl->buf = cl->buf;
             *ll = tl;
             ll = &tl->next;
@@ -102,30 +106,22 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        if (!(chunk = ngx_palloc(r->pool, 11))) {
+        if (!(chunk = ngx_palloc(r->pool, sizeof("00000000" CRLF) - 1))) {
             return NGX_ERROR;
         }
 
         b->temporary = 1;
         b->pos = chunk;
-        b->last = ngx_sprintf(chunk, "%uxS" CRLF, size);
+        b->last = ngx_sprintf(chunk, "%xz" CRLF, size);
 
         out.buf = b;
-#if 0
-        ngx_test_null(chunk, ngx_palloc(r->pool, 11), NGX_ERROR);
-        len = ngx_snprintf((char *) chunk, 11, SIZE_T_X_FMT CRLF, size);
-
-        ngx_test_null(b, ngx_calloc_buf(r->pool), NGX_ERROR);
-        b->temporary = 1;
-        b->pos = chunk;
-        b->last = chunk + len;
-
-        out.buf = b;
-#endif
     }
 
     if (cl->buf->last_buf) {
-        ngx_test_null(b, ngx_calloc_buf(r->pool), NGX_ERROR);
+        if (!(b = ngx_calloc_buf(r->pool))) {
+            return NGX_ERROR;
+        }
+
         b->memory = 1;
         b->last_buf = 1;
         b->pos = (u_char *) CRLF "0" CRLF CRLF;
@@ -147,7 +143,10 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
             return ngx_http_next_body_filter(r, out.next);
         }
 
-        ngx_test_null(b, ngx_calloc_buf(r->pool), NGX_ERROR);
+        if (!(b = ngx_calloc_buf(r->pool))) {
+            return NGX_ERROR;
+        }
+
         b->memory = 1;
         b->pos = (u_char *) CRLF;
         b->last = b->pos + 2;

@@ -45,6 +45,12 @@ esac
 
 if [ $PLATFORM != win32 ]; then
 
+    if test -z "$NGX_USER"; then
+        NGX_USER=nobody
+        NGX_GROUP=nobody
+    fi
+
+
     ngx_feature="/dev/poll"
     ngx_feature_name="devpoll"
     ngx_feature_run=no

@@ -69,6 +69,12 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (cl = ctx->out; cl; cl = cl->next) {
         ll = &cl->next;
 
+#if 1
+        if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
+            ngx_debug_point();
+        }
+#endif
+
         size += ngx_buf_size(cl->buf);
 
         if (cl->buf->flush || cl->buf->recycled) {
@@ -83,9 +89,19 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     /* add the new chain to the existent one */
 
     for (ln = in; ln; ln = ln->next) {
-        ngx_alloc_link_and_set_buf(cl, ln->buf, r->pool, NGX_ERROR);
+        if (!(cl = ngx_alloc_chain_link(r->pool))) {
+            return NGX_ERROR;
+        }
+
+        cl->buf = ln->buf;
         *ll = cl;
         ll = &cl->next;
+
+#if 1
+        if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
+            ngx_debug_point();
+        }
+#endif
 
         size += ngx_buf_size(cl->buf);
 
@@ -98,11 +114,12 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
+    *ll = NULL;
+
     c = r->connection;
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http write filter: l:%d f:" OFF_T_FMT " s:" OFF_T_FMT,
-                   last, flush, size);
+                   "http write filter: l:%d f:%O s:%O", last, flush, size);
 
     clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                         ngx_http_core_module);
@@ -125,6 +142,9 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         if (!last) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           "the http output chain is empty");
+
+            ngx_debug_point();
+
             return NGX_ERROR;
         }
         return NGX_OK;
@@ -136,7 +156,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                           clcf->limit_rate ? clcf->limit_rate: OFF_T_MAX_VALUE);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http write filter %X", chain);
+                   "http write filter %p", chain);
 
     if (clcf->limit_rate) {
         sent = c->sent - sent;

@@ -18,8 +18,7 @@ void *ngx_create_shared_memory(size_t size, ngx_log_t *log)
 
     if (p == MAP_FAILED) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "mmap(MAP_ANON|MAP_SHARED, " SIZE_T_FMT ") failed",
-                      size);
+                      "mmap(MAP_ANON|MAP_SHARED, %uz) failed", size);
         return NULL;
     }
 
@@ -45,8 +44,7 @@ void *ngx_create_shared_memory(size_t size, ngx_log_t *log)
 
     if (p == MAP_FAILED) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "mmap(/dev/zero, MAP_SHARED, " SIZE_T_FMT ") failed",
-                      size);
+                      "mmap(/dev/zero, MAP_SHARED, %uz) failed", size);
         p = NULL;
     }
 
@@ -72,7 +70,7 @@ void *ngx_create_shared_memory(size_t size, ngx_log_t *log)
 
     if (id == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "shmget(" SIZE_T_FMT ") failed", size);
+                      "shmget(%uz) failed", size);
         return NULL;
     }
 

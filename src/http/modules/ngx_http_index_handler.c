@@ -143,7 +143,7 @@ static ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
                                             &r->uri, &crc);
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                           "http index cache get: " PTR_FMT, ctx->cache);
+                           "http index cache get: %p", ctx->cache);
 
             if (ctx->cache && !ctx->cache->expired) {
 
@@ -251,7 +251,7 @@ static ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
             err = ngx_errno;
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, err,
-                           ngx_open_file_n " %s failed", name);
+                           ngx_open_file_n " \"%s\" failed", name);
 
             if (err == NGX_ENOTDIR) {
                 return ngx_http_index_error(r, ctx, err);
@@ -275,7 +275,7 @@ static ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
             }
 
             ngx_log_error(NGX_LOG_ERR, log, err,
-                          ngx_open_file_n " %s failed", name);
+                          ngx_open_file_n " \"%s\" failed", name);
 
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -331,7 +331,7 @@ static ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
             ctx->redirect.len--;
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                           "http index cache alloc: " PTR_FMT, ctx->cache);
+                           "http index cache alloc: %p", ctx->cache);
 
             if (ctx->cache) {
                 ctx->cache->fd = NGX_INVALID_FILE;
@@ -373,7 +373,7 @@ static ngx_int_t ngx_http_index_test_dir(ngx_http_request_t *r,
         }
 
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
-                      ngx_file_info_n " %s failed", ctx->path.data);
+                      ngx_file_info_n " \"%s\" failed", ctx->path.data);
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -502,17 +502,17 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
 
     if (value[1].data[0] == '/' && ilcf->indices.nelts == 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "first index \"%s\" in \"%s\" directive "
+                           "first index \"%V\" in \"%V\" directive "
                            "must not be absolute",
-                           value[1].data, cmd->name.data);
+                           &value[1], &cmd->name);
         return NGX_CONF_ERROR;
     }
 
     for (i = 1; i < cf->args->nelts; i++) {
         if (value[i].len == 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "index \"%s\" in \"%s\" directive is invalid",
-                               value[1].data, cmd->name.data);
+                               "index \"%V\" in \"%V\" directive is invalid",
+                               &value[1], &cmd->name);
             return NGX_CONF_ERROR;
         }
 

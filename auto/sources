@@ -175,8 +175,10 @@ WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_shared.h \
             src/os/win32/ngx_process.h \
             src/os/win32/ngx_atomic.h \
+            src/os/win32/ngx_thread.h \
             src/os/win32/ngx_socket.h \
             src/os/win32/ngx_os.h \
+            src/os/win32/ngx_gui.h \
             src/os/win32/ngx_process_cycle.h"
 
 WIN32_CONFIG=src/os/win32/ngx_win32_config.h
@@ -187,13 +189,18 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_files.c \
             src/os/win32/ngx_time.c \
             src/os/win32/ngx_process.c \
+            src/os/win32/ngx_thread.c \
             src/os/win32/ngx_socket.c \
             src/os/win32/ngx_wsarecv.c \
             src/os/win32/ngx_wsarecv_chain.c \
             src/os/win32/ngx_wsasend_chain.c \
             src/os/win32/ngx_win32_init.c \
+            src/os/win32/ngx_gui.c \
             src/os/win32/ngx_process_cycle.c \
             src/event/ngx_event_acceptex.c"
+
+NGX_WIN32_ICONS="src/os/win32/nginx.ico src/os/win32/tray.ico"
+NGX_WIN32_RC="src/os/win32/nginx.rc"
 
 
 HTTP_MODULES="ngx_http_module \

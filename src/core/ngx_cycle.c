@@ -9,6 +9,7 @@
 #include <ngx_event.h>
 
 
+static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *s1, struct sockaddr *s2);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
 
 
@@ -195,7 +196,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     failed = 0;
 
 
-#if !(WIN32)
+#if !(NGX_WIN32)
     if (ngx_create_pidfile(cycle, old_cycle) == NGX_ERROR) {
         failed = 1;
     }
@@ -203,6 +204,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     if (!failed) {
+
+        /* open the new files */
 
         part = &cycle->open_files.part;
         file = part->elts;
@@ -227,7 +230,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                                        NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 
             ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
-                           "log: %0X %d \"%s\"",
+                           "log: %p %d \"%s\"",
                            &file[i], file[i].fd, file[i].name.data);
 
             if (file[i].fd == NGX_INVALID_FILE) {
@@ -238,7 +241,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                 break;
             }
 
-#if (WIN32)
+#if (NGX_WIN32)
             if (ngx_file_append_mode(file[i].fd) == NGX_ERROR) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                               ngx_file_append_mode_n " \"%s\" failed",
@@ -266,6 +269,9 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     if (!failed) {
+
+        /* handle the listening sockets */
+
         if (old_cycle->listening.nelts) {
             ls = old_cycle->listening.elts;
             for (i = 0; i < old_cycle->listening.nelts; i++) {
@@ -274,16 +280,17 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
             nls = cycle->listening.elts;
             for (n = 0; n < cycle->listening.nelts; n++) {
+
                 for (i = 0; i < old_cycle->listening.nelts; i++) {
                     if (ls[i].ignore) {
                         continue;
                     }
 
-                    if (ngx_memcmp(nls[n].sockaddr,
-                                   ls[i].sockaddr, ls[i].socklen) == 0)
+                    if (ngx_cmp_sockaddr(nls[n].sockaddr, ls[i].sockaddr)
+                                                                     == NGX_OK)
                     {
                         fd = ls[i].fd;
-#if (WIN32)
+#if (NGX_WIN32)
                         /*
                          * Winsock assignes a socket number divisible by 4 so
                          * to find a connection we divide a socket number by 4.
@@ -294,10 +301,10 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                         if (fd >= (ngx_socket_t) cycle->connection_n) {
                             ngx_log_error(NGX_LOG_EMERG, log, 0,
                                         "%d connections is not enough to hold "
-                                        "an open listening socket on %s, "
+                                        "an open listening socket on %V, "
                                         "required at least %d connections",
                                         cycle->connection_n,
-                                        ls[i].addr_text.data, fd);
+                                        &ls[i].addr_text, fd);
                             failed = 1;
                             break;
                         }
@@ -372,8 +379,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
             if (ngx_close_socket(ls[i].fd) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              ngx_close_socket_n " %s failed",
-                              ls[i].addr_text.data);
+                              ngx_close_socket_n " %V failed",
+                              &ls[i].addr_text);
             }
         }
 
@@ -384,12 +391,12 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     /* commit the new cycle configuration */
 
-#if !(WIN32)
+#if !(NGX_WIN32)
 
     if (!ngx_test_config && cycle->log->file->fd != STDERR_FILENO) {
 
         ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
-                       "dup2: %0X %d \"%s\"",
+                       "dup2: %p %d \"%s\"",
                        cycle->log->file,
                        cycle->log->file->fd, cycle->log->file->name.data);
 
@@ -426,8 +433,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         if (ngx_close_socket(ls[i].fd) == -1) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                          ngx_close_socket_n " %s failed",
-                          ls[i].addr_text.data);
+                          ngx_close_socket_n " %V failed",
+                          &ls[i].addr_text);
         }
     }
 
@@ -512,13 +519,38 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 }
 
 
-#if !(WIN32)
+static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *s1, struct sockaddr *s2)
+{
+    struct sockaddr_in  *sin1, *sin2;
+
+    /* AF_INET only */
+
+    if (s1->sa_family != AF_INET || s2->sa_family != AF_INET) {
+        return NGX_DECLINED;
+    }
+
+    sin1 = (struct sockaddr_in *) s1;
+    sin2 = (struct sockaddr_in *) s2;
+
+    if (sin1->sin_addr.s_addr != sin2->sin_addr.s_addr) {
+        return NGX_DECLINED;
+    }
+
+    if (sin1->sin_port != sin2->sin_port) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
+}
+
+
+#if !(NGX_WIN32)
 
 ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
 {
     ngx_uint_t        trunc;
     size_t            len;
-    u_char           *name, pid[NGX_INT64_LEN + 1];
+    u_char           *name, pid[NGX_INT64_LEN];
     ngx_file_t        file;
     ngx_core_conf_t  *ccf, *old_ccf;
 
@@ -548,8 +580,6 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
         }
     }
 
-    len = ngx_snprintf((char *) pid, NGX_INT64_LEN + 1, PID_T_FMT, ngx_pid);
-
     ngx_memzero(&file, sizeof(ngx_file_t));
     file.name = (ngx_inherited && getppid() > 1) ? ccf->newpid : ccf->pid;
     file.log = cycle->log;
@@ -566,6 +596,8 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
     }
 
     if (!ngx_test_config) {
+        len = ngx_sprintf(pid, "%P", ngx_pid) - pid;
+
         if (ngx_write_file(&file, pid, len, 0) == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -615,7 +647,7 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
     ngx_uint_t        i;
     ngx_list_part_t  *part;
     ngx_open_file_t  *file;
-#if !(WIN32)
+#if !(NGX_WIN32)
     ngx_file_info_t   fi;
 #endif
 
@@ -649,7 +681,7 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
             continue;
         }
 
-#if (WIN32)
+#if (NGX_WIN32)
         if (ngx_file_append_mode(fd) == NGX_ERROR) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           ngx_file_append_mode_n " \"%s\" failed",
@@ -730,7 +762,7 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
         file[i].fd = fd;
     }
 
-#if !(WIN32)
+#if !(NGX_WIN32)
 
     if (cycle->log->file->fd != STDERR_FILENO) {
         if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {

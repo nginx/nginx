@@ -322,11 +322,10 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
             }
 
             ngx_log_debug6(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                           "pass channel s:%d pid:" PID_T_FMT
-                           " fd:%d to s:%d pid:" PID_T_FMT " fd:%d",
-                           ch.slot, ch.pid, ch.fd,
-                           i, ngx_processes[i].pid,
-                           ngx_processes[i].channel[0]);
+                          "pass channel s:%d pid:%P fd:%d to s:%i pid:%P fd:%d",
+                          ch.slot, ch.pid, ch.fd,
+                          i, ngx_processes[i].pid,
+                          ngx_processes[i].channel[0]);
 
             /* TODO: NGX_AGAIN */
 
@@ -384,7 +383,7 @@ static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
     for (i = 0; i < ngx_last_process; i++) {
 
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "child: %d " PID_T_FMT " e:%d t:%d d:%d r:%d j:%d",
+                       "child: %d %P e:%d t:%d d:%d r:%d j:%d",
                        i,
                        ngx_processes[i].pid,
                        ngx_processes[i].exiting,
@@ -421,13 +420,12 @@ static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "kill (" PID_T_FMT ", %d)" ,
-                       ngx_processes[i].pid, signo);
+                       "kill (%P, %d)" , ngx_processes[i].pid, signo);
 
         if (kill(ngx_processes[i].pid, signo) == -1) {
             err = ngx_errno;
             ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
-                          "kill(%d, %d) failed",
+                          "kill(%P, %d) failed",
                           ngx_processes[i].pid, signo);
 
             if (err == NGX_ESRCH) {
@@ -459,7 +457,7 @@ static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
     for (i = 0; i < ngx_last_process; i++) {
 
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "child: %d " PID_T_FMT " e:%d t:%d d:%d r:%d j:%d",
+                       "child: %d %P e:%d t:%d d:%d r:%d j:%d",
                        i,
                        ngx_processes[i].pid,
                        ngx_processes[i].exiting,
@@ -492,8 +490,8 @@ static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
                     }
 
                     ngx_log_debug3(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "pass close channel s:%d pid:" PID_T_FMT
-                       " to:" PID_T_FMT, ch.slot, ch.pid, ngx_processes[n].pid);
+                                   "pass close channel s:%i pid:%P to:%P",
+                                   ch.slot, ch.pid, ngx_processes[n].pid);
 
                     /* TODO: NGX_AGAIN */
 
@@ -786,9 +784,19 @@ static void ngx_channel_handler(ngx_event_t *ev)
 
     n = ngx_read_channel(c->fd, &ch, sizeof(ngx_channel_t), ev->log);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %d", n);
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %i", n);
 
-    if (n <= 0) {
+    if (n == NGX_ERROR) {
+        if (close(c->fd) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
+                          "close() channel failed");
+        }
+
+        c->fd = -1;
+        return;
+    }
+
+    if (n == NGX_AGAIN) {
         return;
     }
 
@@ -812,8 +820,7 @@ static void ngx_channel_handler(ngx_event_t *ev)
     case NGX_CMD_OPEN_CHANNEL:
 
         ngx_log_debug3(NGX_LOG_DEBUG_CORE, ev->log, 0,
-                       "get channel s:%d pid:" PID_T_FMT " fd:%d",
-                       ch.slot, ch.pid, ch.fd);
+                       "get channel s:%i pid:%P fd:%d", ch.slot, ch.pid, ch.fd);
 
         ngx_processes[ch.slot].pid = ch.pid;
         ngx_processes[ch.slot].channel[0] = ch.fd;
@@ -822,8 +829,7 @@ static void ngx_channel_handler(ngx_event_t *ev)
     case NGX_CMD_CLOSE_CHANNEL:
 
         ngx_log_debug4(NGX_LOG_DEBUG_CORE, ev->log, 0,
-                       "close channel s:%d pid:" PID_T_FMT " our:" PID_T_FMT
-                       " fd:%d",
+                       "close channel s:%i pid:%P our:%P fd:%d",
                        ch.slot, ch.pid, ngx_processes[ch.slot].pid,
                        ngx_processes[ch.slot].channel[0]);
 
@@ -882,7 +888,7 @@ static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle)
 }
 
 
-static void* ngx_worker_thread_cycle(void *data)
+static void *ngx_worker_thread_cycle(void *data)
 {
     ngx_thread_t  *thr = data;
 
@@ -909,7 +915,7 @@ static void* ngx_worker_thread_cycle(void *data)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                   "thread " TID_T_FMT " started", ngx_thread_self());
+                   "thread " NGX_TID_T_FMT " started", ngx_thread_self());
 
     ngx_setthrtitle("worker thread");
 
@@ -941,7 +947,8 @@ static void* ngx_worker_thread_cycle(void *data)
             ngx_mutex_unlock(ngx_posted_events_mutex);
 
             ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                           "thread %d is done", ngx_thread_self());
+                           "thread " NGX_TID_T_FMT " is done",
+                           ngx_thread_self());
 
             return (void *) 0;
         }

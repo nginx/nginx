@@ -8,17 +8,17 @@ ngx_fmt_collect=yes
 # C types
 
 ngx_type="int"; . auto/types/sizeof
-ngx_formats="%d"; . auto/fmt/fmt
+#ngx_formats="%d"; . auto/fmt/fmt
 
 ngx_type="long"; . auto/types/sizeof
-ngx_formats="%ld"; . auto/fmt/fmt
+#ngx_formats="%ld"; . auto/fmt/fmt
 
 ngx_type="long long"; . auto/types/sizeof
-ngx_formats="%lld %qd"; . auto/fmt/fmt
+#ngx_formats="%lld %qd"; . auto/fmt/fmt
 
 ngx_type="void *"; . auto/types/sizeof; ngx_ptr_size=$ngx_size
-ngx_fmt_name=PTR_FMT;
-eval ngx_formats=\${ngx_${ngx_ptr_size}_fmt}; . auto/fmt/ptrfmt
+#ngx_fmt_name=PTR_FMT;
+#eval ngx_formats=\${ngx_${ngx_ptr_size}_fmt}; . auto/fmt/ptrfmt
 
 
 # POSIX types
@@ -46,28 +46,28 @@ ngx_type="rlim_t"; ngx_types="int"; . auto/types/typedef
 
 # printf() formats
 
-CC_WARN=$CC_STRONG
-ngx_fmt_collect=no
-
-ngx_fmt_name=OFF_T_FMT; ngx_type="off_t"; . auto/types/sizeof
+#CC_WARN=$CC_STRONG
+#ngx_fmt_collect=no
+#
+#ngx_fmt_name=OFF_T_FMT; ngx_type="off_t"; . auto/types/sizeof
 ngx_param=OFF_T_MAX_VALUE; ngx_value=$ngx_max_value; . auto/types/value
-eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
-
-ngx_fmt_name=TIME_T_FMT; ngx_type="time_t"; . auto/types/sizeof
+#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
+#
+#ngx_fmt_name=TIME_T_FMT; ngx_type="time_t"; . auto/types/sizeof
 ngx_param=TIME_T_SIZE; ngx_value=$ngx_size; . auto/types/value
 ngx_param=TIME_T_LEN; ngx_value=$ngx_max_len; . auto/types/value
-eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
-
-ngx_fmt_name=SIZE_T_FMT; ngx_type="size_t"; . auto/types/sizeof
-eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
-
-ngx_fmt_name=SIZE_T_X_FMT; . auto/fmt/xfmt
-
-ngx_fmt_name=PID_T_FMT; ngx_type="pid_t"; . auto/types/sizeof
-eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
-
-ngx_fmt_name=RLIM_T_FMT; ngx_type="rlim_t"; . auto/types/sizeof
-eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
+#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
+#
+#ngx_fmt_name=SIZE_T_FMT; ngx_type="size_t"; . auto/types/sizeof
+#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
+#
+#ngx_fmt_name=SIZE_T_X_FMT; . auto/fmt/xfmt
+#
+#ngx_fmt_name=PID_T_FMT; ngx_type="pid_t"; . auto/types/sizeof
+#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
+#
+#ngx_fmt_name=RLIM_T_FMT; ngx_type="rlim_t"; . auto/types/sizeof
+#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
 
 
 # syscalls, libc calls and some features
@@ -93,19 +93,23 @@ ngx_feature_test="char buf[1]; ssize_t n; n = pwrite(1, buf, 1, 0)"
 
 ngx_feature="strerror_r()"
 ngx_feature_name="strerror_r"
-ngx_feature_run=no
+ngx_feature_run=yes
 ngx_feature_incs="#include <string.h>"
 ngx_feature_libs=
-ngx_feature_test="char buf[20]; int n; n = strerror_r(1, buf, 20)"
+ngx_feature_test="char buf[32]; int n; n = strerror_r(1, buf, 32);
+                  if (n > 32) return 1;"
 . auto/feature
 
 
-ngx_feature="gnu_strerror_r()"
+# GNU style strerror_r() returns not length, but pointer
+
+ngx_feature="gnu style strerror_r()"
 ngx_feature_name="gnu_strerror_r"
-ngx_feature_run=no
+ngx_feature_run=yes
 ngx_feature_incs="#include <string.h>"
 ngx_feature_libs=
-ngx_feature_test="char buf[20], *str; str = strerror_r(1, buf, 20)"
+ngx_feature_test="char buf[32]; int n; n = strerror_r(1, buf, 32);
+                  if (n < 32) return 1;"
 . auto/feature
 
 
@@ -181,16 +185,6 @@ ngx_feature_test="int  id;
                   id = shmget(IPC_PRIVATE, 4096, (SHM_R|SHM_W|IPC_CREAT));
                   if (id == -1) return 1;
                   shmctl(id, IPC_RMID, NULL);"
-. auto/feature
-
-
-ngx_feature="struct sockaddr_in.sin_len"
-ngx_feature_name="sin_len"
-ngx_feature_run=no
-ngx_feature_incs="#include <sys/socket.h>
-#include <netinet/in.h>"
-ngx_feature_libs=
-ngx_feature_test="struct sockaddr_in sa; sa.sin_len = 5"
 . auto/feature
 
 

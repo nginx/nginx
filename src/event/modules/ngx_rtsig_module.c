@@ -383,7 +383,7 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
     } else {
         err = 0;
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "rtsig signo:%d fd:%d band:%X",
+                       "rtsig signo:%d fd:%d band:%04Xd",
                        signo, si.si_fd, si.si_band);
     }
 
@@ -434,7 +434,7 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
             ngx_accept_mutex_unlock();
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "rtsig: stale event " PTR_FMT, c);
+                           "rtsig: stale event %p", c);
 
             return NGX_OK;
         }

@@ -199,7 +199,7 @@ void ngx_iocp_wait_events(int main)
 
         ngx_log_error(NGX_LOG_ALERT, c[n].log, 0,
                       "WSAWaitForMultipleEvents() "
-                      "returned unexpected network event %lu",
+                      "returned unexpected network event %ul",
                       ne.lNetworkEvents);
     }
 }

@@ -18,6 +18,13 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf);
 static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
+static ngx_conf_enum_t  ngx_debug_points[] = {
+    { ngx_string("stop"), NGX_DEBUG_POINTS_STOP },
+    { ngx_string("abort"), NGX_DEBUG_POINTS_ABORT },
+    { ngx_null_string, 0 }
+};  
+
+
 static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("daemon"),
@@ -40,6 +47,13 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       offsetof(ngx_core_conf_t, worker_processes),
       NULL },
+
+    { ngx_string("debug_points"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      0,
+      offsetof(ngx_core_conf_t, debug_points),
+      &ngx_debug_points },
 
 #if (NGX_THREADS)
 
@@ -97,6 +111,7 @@ ngx_module_t  ngx_core_module = {
 ngx_uint_t  ngx_max_module;
 
 
+
 int main(int argc, char *const *argv, char *const *envp)
 {
     ngx_int_t         i;
@@ -118,7 +133,7 @@ int main(int argc, char *const *argv, char *const *envp)
 
     ngx_pid = ngx_getpid();
 
-    if (!(log = ngx_log_init_stderr())) {
+    if (!(log = ngx_log_init())) {
         return 1;
     }
 
@@ -165,7 +180,7 @@ int main(int argc, char *const *argv, char *const *envp)
     if (cycle == NULL) {
         if (ngx_test_config) {
             ngx_log_error(NGX_LOG_EMERG, log, 0,
-                          "the configuration file %s test failed",
+                          "the configuration file \"%s\" test failed",
                           init_cycle.conf_file.data);
         }
 
@@ -174,7 +189,7 @@ int main(int argc, char *const *argv, char *const *envp)
 
     if (ngx_test_config) {
         ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "the configuration file %s was tested successfully",
+                      "the configuration file \"%s\" was tested successfully",
                       cycle->conf_file.data);
         return 0;
     }
@@ -187,7 +202,7 @@ int main(int argc, char *const *argv, char *const *envp)
 
     ngx_process = ccf->master ? NGX_PROCESS_MASTER : NGX_PROCESS_SINGLE;
 
-#if (WIN32)
+#if (NGX_WIN32)
 
 #if 0
 
@@ -241,11 +256,14 @@ static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle)
         return NGX_OK;
     }
 
-    ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                   "using inherited sockets from \"%s\"", inherited);
 
-    ngx_init_array(cycle->listening, cycle->pool,
-                   10, sizeof(ngx_listening_t), NGX_ERROR);
+    if (ngx_array_init(&cycle->listening, cycle->pool, 10,
+                                         sizeof(ngx_listening_t)) == NGX_ERROR)
+    {
+        return NGX_ERROR;
+    }
 
     for (p = inherited, v = p; *p; p++) {
         if (*p == ':' || *p == ';') {
@@ -260,7 +278,7 @@ static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 
             v = p + 1;
 
-            if (!(ls = ngx_push_array(&cycle->listening))) {
+            if (!(ls = ngx_array_push(&cycle->listening))) {
                 return NGX_ERROR;
             }
 
@@ -276,7 +294,8 @@ static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 
 ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 {
-    char             *env[3], *var, *p;
+    char             *env[3], *var;
+    u_char           *p;
     ngx_uint_t        i;
     ngx_pid_t         pid;
     ngx_exec_ctx_t    ctx;
@@ -290,12 +309,14 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
                             + cycle->listening.nelts * (NGX_INT32_LEN + 1) + 2,
                     cycle->log);
 
-    p = (char *) ngx_cpymem(var, NGINX_VAR "=", sizeof(NGINX_VAR));
+    p = ngx_cpymem(var, NGINX_VAR "=", sizeof(NGINX_VAR));
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
-        p += ngx_snprintf(p, NGX_INT32_LEN + 2, "%u;", ls[i].fd);
+        p = ngx_sprintf(p, "%ud;", ls[i].fd);
     }
+
+    *p = '\0';
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0, "inherited: %s", var);
 
@@ -303,7 +324,7 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 
 #if (NGX_SETPROCTITLE_USES_ENV)
 
-    /* allocate spare 300 bytes for the new binary process title */
+    /* allocate the spare 300 bytes for the new binary process title */
 
     env[1] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
              "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -430,12 +451,13 @@ static void *ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->daemon = NGX_CONF_UNSET;
     ccf->master = NGX_CONF_UNSET;
     ccf->worker_processes = NGX_CONF_UNSET;
-#if (NGX_THREADS)
-    ccf->worker_threads = NGX_CONF_UNSET;
-    ccf->thread_stack_size = NGX_CONF_UNSET;
-#endif
+    ccf->debug_points = NGX_CONF_UNSET;
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET;
     ccf->group = (ngx_gid_t) NGX_CONF_UNSET;
+#if (NGX_THREADS)
+    ccf->worker_threads = NGX_CONF_UNSET;
+    ccf->thread_stack_size = NGX_CONF_UNSET_SIZE;
+#endif
 
     return ccf;
 }
@@ -445,7 +467,7 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_core_conf_t  *ccf = conf;
 
-#if !(WIN32)
+#if !(NGX_WIN32)
     struct passwd    *pwd;
     struct group     *grp;
 #endif
@@ -453,6 +475,7 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
     ngx_conf_init_value(ccf->worker_processes, 1);
+    ngx_conf_init_value(ccf->debug_points, 0);
 
 #if (NGX_THREADS)
     ngx_conf_init_value(ccf->worker_threads, 0);
@@ -460,9 +483,9 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_size_value(ccf->thread_stack_size, 2 * 1024 * 1024);
 #endif
 
-#if !(WIN32)
+#if !(NGX_WIN32)
 
-    if (ccf->user == (uid_t) NGX_CONF_UNSET) {
+    if (ccf->user == (uid_t) NGX_CONF_UNSET && geteuid() == 0) {
 
         pwd = getpwnam(NGX_USER);
         if (pwd == NULL) {
@@ -509,7 +532,7 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-#if (WIN32)
+#if (NGX_WIN32)
 
     ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                        "\"user\" is not supported, ignored");

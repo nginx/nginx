@@ -19,12 +19,8 @@ typedef SOCKET  ngx_socket_t;
 typedef int     socklen_t;
 
 
-#define ngx_socket(af, type, proto, flags)   socket(af, type, proto)
-
-#if 0
-#define ngx_socket(af, type, proto, flags)                                    \
-            WSASocket(af, type, proto, NULL, 0, flags)
-#endif
+#define ngx_socket(af, type, proto)                                         \
+                   WSASocket(af, type, proto, NULL, 0, WSA_FLAG_OVERLAPPED)
 
 #define ngx_socket_n        "WSASocket()"
 

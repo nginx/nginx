@@ -73,7 +73,7 @@ ngx_int_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
     }
 
     if (!SSL_is_init_finished(c->ssl->ssl)) {
-        handshake = "in SSL handshake";
+        handshake = " in SSL handshake";
 
     } else {
         handshake = "";
@@ -269,7 +269,7 @@ static ngx_int_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     if (sslerr == SSL_ERROR_WANT_READ) {
 
         if (!SSL_is_init_finished(c->ssl->ssl)) {
-            handshake = "in SSL handshake";
+            handshake = " in SSL handshake";
 
         } else {
             handshake = "";
@@ -310,6 +310,9 @@ ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c)
     }
 
     again = 0;
+#if (NGX_SUPPRESS_WARN)
+    sslerr = 0;
+#endif
 
     for ( ;; ) {
         n = SSL_shutdown(c->ssl->ssl);
@@ -366,23 +369,18 @@ ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c)
 void ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                    char *fmt, ...)
 {   
-    int        len;
-    char       errstr[NGX_MAX_CONF_ERRSTR];
-    va_list    args;
+    u_char   errstr[NGX_MAX_CONF_ERRSTR], *p, *last;
+    va_list  args;
+
+    last = errstr + NGX_MAX_CONF_ERRSTR;
 
     va_start(args, fmt);
-    len = ngx_vsnprintf(errstr, sizeof(errstr) - 1, fmt, args);
+    p = ngx_vsnprintf(errstr, sizeof(errstr) - 1, fmt, args);
     va_end(args);
 
-    errstr[len++] = ' ';
-    errstr[len++] = '(';
-    errstr[len++] = 'S';
-    errstr[len++] = 'S';
-    errstr[len++] = 'L';
-    errstr[len++] = ':';
-    errstr[len++] = ' ';
+    p = ngx_cpystrn(p, " (SSL: ", last - p);
 
-    ERR_error_string_n(ERR_get_error(), errstr + len, sizeof(errstr) - len - 1);
+    ERR_error_string_n(ERR_get_error(), (char *) p, last - p);
 
     ngx_log_error(level, log, err, "%s)", errstr);
 }

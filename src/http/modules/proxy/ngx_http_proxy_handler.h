@@ -245,7 +245,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev);
 void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev);
 void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p);
 
-size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len);
+u_char *ngx_http_proxy_log_error(void *data, u_char *buf, size_t len);
 void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc);
 void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p);
 

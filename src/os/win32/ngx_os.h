@@ -10,6 +10,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_gui.h>
 
 #define NGX_IO_SENDFILE    1
 #define NGX_IO_ZEROCOPY    2
@@ -56,6 +57,7 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
 
 extern ngx_os_io_t  ngx_os_io;
 extern ngx_uint_t   ngx_ncpu;
+extern ngx_uint_t   ngx_max_wsabufs;
 extern ngx_int_t    ngx_max_sockets;
 extern ngx_uint_t   ngx_inherited_nonblocking;
 extern ngx_uint_t   ngx_win32_version;

@@ -6,6 +6,92 @@
             title="nginx">
 
 
+<changes ver="0.1.5" date="11.11.2004">
+
+<change type="bugfix">
+<para lang="ru">
+на Solaris и Linux могло быть очень много сообщений "recvmsg() returned
+not enough data".
+</para>
+<para lang="en">
+on Solaris and Linux there may be too many "recvmsg() returned not enough data"
+alerts.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в режиме прокси без использования sendfile на Solaris возникала
+ошибка "writev() failed (22: Invalid argument)". На других платформах,
+не поддерживающих sendfile, процесс зацикливался.
+</para>
+<para lang="en">
+there were the "writev() failed (22: Invalid argument)" errors on
+Solaris in proxy mode without sendfile. On other platforms that do not
+support sendfile at all the process got caught in an endless loop.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании sendfile в режиме прокси на Solaris возникал
+segmentation fault.
+</para>
+<para lang="en">
+segmentation fault on Solaris in proxy mode and using sendfile.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+segmentation fault на Solaris.
+</para>
+<para lang="en">
+segmentation fault on Solaris.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+обновление исполняемого файла на лету не работало на Linux.
+</para>
+<para lang="en">
+on-line upgrade did not work on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в списке файлов, выдаваемом модулем ngx_http_autoindex_module,
+не перекодировались пробелы, кавычки и знаки процента.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module module did not escape the spaces,
+the quotes, and the percent signs in the directory listing.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уменьшение операций копирования.
+</para>
+<para lang="en">
+the decrease of the copy operations.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива userid_p3p.
+</para>
+<para lang="en">
+the userid_p3p directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.4" date="26.10.2004">
 
 <change type="bugfix">

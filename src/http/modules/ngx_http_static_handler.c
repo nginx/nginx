@@ -197,7 +197,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
                                   &name, &file_crc);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                       "http open file cache get: " PTR_FMT, file);
+                       "http open file cache get: %p", file);
 
         if (file && !file->expired) {
             r->cache = file;
@@ -216,7 +216,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
                                       &name, &redirect_crc);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                       "http redirect cache get: " PTR_FMT, redirect);
+                       "http redirect cache get: %p", redirect);
 
         if (redirect && !redirect->expired) {
 
@@ -247,7 +247,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
 
     /* open file */
 
-#if (WIN9X)
+#if (NGX_WIN9X)
 
     /* TODO: redirect cache */
 
@@ -276,7 +276,8 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         }
 
         if (ngx_is_dir(&fi)) {
-            ngx_log_debug(log, "HTTP DIR: '%s'" _ name.data);
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+                           "HTTP DIR: \"%s\"", name.data);
 
             if (!(r->headers_out.location =
                    ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
@@ -384,7 +385,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
             location.len--;
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                           "http redirect cache alloc: " PTR_FMT, redirect);
+                           "http redirect cache alloc: %p", redirect);
 
             if (redirect) {
                 redirect->fd = NGX_INVALID_FILE;
@@ -403,11 +404,11 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
 
-#if !(WIN32) /* the not regular files are probably Unix specific */
+#if !(NGX_WIN32) /* the not regular files are probably Unix specific */
 
     if (!ngx_is_file(&fi)) {
         ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
-                      "%s is not a regular file", name.data);
+                      "\"%s\" is not a regular file", name.data);
 
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
@@ -459,7 +460,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
 #endif
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                       "http open file cache alloc: " PTR_FMT, file);
+                       "http open file cache alloc: %p", file);
 
         if (file) {
             file->fd = fd;

@@ -146,8 +146,8 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
         if (rc == NGX_DECLINED) {
             if (scf->log) {
                 ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                              "\"%s\" does not match \"%s\"",
-                              rule[i].re_name.data, r->uri.data);
+                              "\"%V\" does not match \"%V\"",
+                              &rule[i].re_name, &r->uri);
             }
 
             continue;
@@ -156,15 +156,15 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
         if (rc < 0) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           ngx_regex_exec_n
-                          " failed: %d on \"%s\" using \"%s\"",
-                          rc, r->uri.data, rule[i].re_name.data);
+                          " failed: %d on \"%V\" using \"%V\"",
+                          rc, &r->uri, &rule[i].re_name);
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
         if (scf->log) {
             ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                          "\"%s\" matches \"%s\"",
-                          rule[i].re_name.data, r->uri.data);
+                          "\"%V\" matches \"%V\"",
+                          &rule[i].re_name, &r->uri);
         }
 
         if (rule[i].status) {
@@ -177,7 +177,7 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
            uri.len += matches[2 * n + 1] - matches[2 * n];
         }
 
-        if (!(uri.data = ngx_palloc(r->pool, uri.len + 1))) {
+        if (!(uri.data = ngx_palloc(r->pool, uri.len))) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
@@ -203,11 +203,9 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
             }
         }
 
-        *p = '\0';
-
         if (scf->log) {
             ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                          "rewritten uri: \"%s\"", uri.data);
+                          "rewritten uri: \"%V\"", &uri);
         }
 
         r->uri = uri;
@@ -353,7 +351,7 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
             }
 
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid parameter \"%s\"", value[3].data);
+                               "invalid parameter \"%V\"", &value[3]);
             return NGX_CONF_ERROR;
         }
 
@@ -427,7 +425,7 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
 
             } else {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "invalid parameter \"%s\"", value[3].data);
+                                   "invalid parameter \"%V\"", &value[3]);
                 return NGX_CONF_ERROR;
             }
         }

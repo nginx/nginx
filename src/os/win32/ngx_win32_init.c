@@ -10,6 +10,7 @@
 
 ngx_uint_t  ngx_win32_version;
 ngx_uint_t  ngx_ncpu;
+ngx_uint_t  ngx_max_wsabufs;
 ngx_int_t   ngx_max_sockets;
 ngx_uint_t  ngx_inherited_nonblocking = 1;
 ngx_fd_t    ngx_stderr_fileno;
@@ -31,6 +32,9 @@ typedef struct {
 } ngx_osviex_stub_t;
 
 
+static u_int               osviex;
+static OSVERSIONINFOEX     osvi;
+
 /* Should these pointers be per protocol ? */
 LPFN_ACCEPTEX              acceptex;
 LPFN_GETACCEPTEXSOCKADDRS  getacceptexsockaddrs;
@@ -43,13 +47,10 @@ static GUID tf_guid = WSAID_TRANSMITFILE;
 
 ngx_int_t ngx_os_init(ngx_log_t *log)
 {
-    u_int               osviex;
-    DWORD               bytes;
-    SOCKET              s;
-    WSADATA             wsd;
-    SYSTEM_INFO         si;
-    OSVERSIONINFOEX     osvi;
-    ngx_osviex_stub_t  *osviex_stub;
+    DWORD        bytes;
+    SOCKET       s;
+    WSADATA      wsd;
+    SYSTEM_INFO  si;
 
     /* get Windows version */
 
@@ -90,43 +91,6 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     if (osviex) {
         ngx_win32_version += osvi.wServicePackMajor * 10
                              + osvi.wServicePackMinor;
-
-        /*
-         * the MSVC 6.0 SP2 defines wSuiteMask and wProductType
-         * as WORD wReserved[2]
-         */
-        osviex_stub = (ngx_osviex_stub_t *) &osvi.wServicePackMinor;
-
-        ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "OS: %u build:%u, \"%s\", suite:%x, type:%u",
-                      ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
-                      osviex_stub->wSuiteMask, osviex_stub->wProductType);
-
-    } else {
-        if (osvi.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
-
-            /* Win9x build */
-
-            ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %u build:%u.%u.%u, \"%s\"",
-                          ngx_win32_version,
-                          osvi.dwBuildNumber >> 24,
-                          (osvi.dwBuildNumber >> 16) & 0xff,
-                          osvi.dwBuildNumber & 0xffff,
-                          osvi.szCSDVersion);
-
-        } else {
-
-            /*
-             * VER_PLATFORM_WIN32_NT
-             *
-             * we do not currently support VER_PLATFORM_WIN32_CE
-             * and we do not support VER_PLATFORM_WIN32s at all
-             */
-
-            ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %u build:%u, \"%s\"",
-                          ngx_win32_version, osvi.dwBuildNumber,
-                          osvi.szCSDVersion);
-        }
     }
 
     GetSystemInfo(&si);
@@ -143,15 +107,19 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     }
 
     if (ngx_win32_version < NGX_WIN_NT) {
+        ngx_max_wsabufs = 16;
         return NGX_OK;
     }
 
+    /* STUB: ngx_uint_t max */
+    ngx_max_wsabufs = 1024 * 1024;
+
     /* get AcceptEx(), GetAcceptExSockAddrs() and TransmitFile() addresses */
 
-    s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP, 0);
+    s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (s == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                      ngx_socket_n " %s falied");
+                      ngx_socket_n " falied");
         return NGX_ERROR;
     }
 
@@ -194,4 +162,46 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
 
 void ngx_os_status(ngx_log_t *log)
 {
+    ngx_osviex_stub_t  *osviex_stub;
+
+    if (osviex) {
+
+        /*
+         * the MSVC 6.0 SP2 defines wSuiteMask and wProductType
+         * as WORD wReserved[2]
+         */
+        osviex_stub = (ngx_osviex_stub_t *) &osvi.wServicePackMinor;
+
+        ngx_log_error(NGX_LOG_INFO, log, 0,
+                      "OS: %ud build:%ud, \"%s\", suite:%Xd, type:%ud",
+                      ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
+                      osviex_stub->wSuiteMask, osviex_stub->wProductType);
+
+    } else {
+        if (osvi.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
+
+            /* Win9x build */
+
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                          "OS: %u build:%ud.%ud.%ud, \"%s\"",
+                          ngx_win32_version,
+                          osvi.dwBuildNumber >> 24,
+                          (osvi.dwBuildNumber >> 16) & 0xff,
+                          osvi.dwBuildNumber & 0xffff,
+                          osvi.szCSDVersion);
+
+        } else {
+
+            /*
+             * VER_PLATFORM_WIN32_NT
+             *
+             * we do not currently support VER_PLATFORM_WIN32_CE
+             * and we do not support VER_PLATFORM_WIN32s at all
+             */
+
+            ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %ud build:%ud, \"%s\"",
+                          ngx_win32_version, osvi.dwBuildNumber,
+                          osvi.szCSDVersion);
+        }
+    }
 }

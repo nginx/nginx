@@ -171,10 +171,7 @@ static ngx_int_t ngx_http_status(ngx_http_status_ctx_t *ctx)
                 return NGX_ERROR;
             }
 
-            b->last += ngx_snprintf((char *) b->last,
-                                    /* STUB: should be NGX_PID_T_LEN */
-                                    NGX_INT64_LEN + NGX_INT32_LEN,
-                                    PID_T_FMT " %4u", ngx_pid, i);
+            b->last = ngx_sprintf(b->last, "%P %5ui", ngx_pid, i);
 
             switch (r->http_state) {
             case NGX_HTTP_INITING_REQUEST_STATE:
@@ -250,10 +247,7 @@ static ngx_int_t ngx_http_status(ngx_http_status_ctx_t *ctx)
                 return NGX_ERROR;
             }
 
-            b->last += ngx_snprintf((char *) b->last,
-                                    /* STUB: should be NGX_PID_T_LEN */
-                                    NGX_INT64_LEN + NGX_INT32_LEN,
-                                    PID_T_FMT " %4u", ngx_pid, i);
+            b->last = ngx_sprintf(b->last, "%P %5ui", ngx_pid, i);
 
             *(b->last++) = ' ';
             *(b->last++) = 's';

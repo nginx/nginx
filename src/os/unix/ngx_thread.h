@@ -29,9 +29,9 @@ typedef pthread_t                    ngx_tid_t;
 #define ngx_log_tid                  (int) ngx_thread_self()
 
 #if (NGX_FREEBSD) && !(NGX_LINUXTHREADS)
-#define TID_T_FMT                    PTR_FMT
+#define NGX_TID_T_FMT                "%p"
 #else
-#define TID_T_FMT                    "%d"
+#define NGX_TID_T_FMT                "%d"
 #endif
 
 
@@ -92,11 +92,11 @@ extern volatile ngx_thread_t  ngx_threads[NGX_MAX_THREADS];
 
 
 ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle);
-int ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
-                      ngx_log_t *log);
+ngx_err_t ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
+                            ngx_log_t *log);
 
 
-ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, uint flags);
+ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags);
 void ngx_mutex_destroy(ngx_mutex_t *m);
 
 
@@ -110,8 +110,8 @@ ngx_int_t ngx_cond_signal(ngx_cond_t *cv);
 
 #define ngx_thread_volatile
 
-#define ngx_log_tid  0
-#define TID_T_FMT    "%d"
+#define ngx_log_tid           0
+#define NGX_TID_T_FMT         "%d"
 
 #define ngx_mutex_trylock(m)  NGX_OK
 #define ngx_mutex_lock(m)     NGX_OK

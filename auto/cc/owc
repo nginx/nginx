@@ -59,18 +59,25 @@ CFLAGS="$CFLAGS -d2"
 CFLAGS="$CFLAGS -zq"
 
 # Open Watcom C 1.2
-#have=HAVE_C99_VARIADIC_MACROS . auto/have
+#have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
 
-# precompiled headers 
+
+# the precompiled headers 
 CORE_DEPS="$CORE_DEPS $OBJS/ngx_config.pch"
 NGX_PCH="$OBJS/ngx_config.pch"
 NGX_BUILD_PCH="-fhq=$OBJS/ngx_config.pch"
 NGX_USE_PCH="-fh=$OBJS/ngx_config.pch"
 
+
 LINK="\$(CC)"
 
-# link flags
-CORE_LINK="$CORE_LINK -l=nt"
+# the link flags, built target is NT GUI mode application
+CORE_LINK="$CORE_LINK -l=nt_win"
+
+
+# the resource file
+NGX_RCC="wrc \$(CORE_INCS) -fo=$OBJS/nginx.res $NGX_WIN32_RC $OBJS/nginx.exe"
+
 
 ngx_include_opt="-i="
 ngx_objout="-fo"

@@ -23,7 +23,7 @@ static fd_set         master_write_fd_set;
 static fd_set         work_read_fd_set;
 static fd_set         work_write_fd_set;
 
-#if (WIN32)
+#if (NGX_WIN32)
 static int            max_read;
 static int            max_write;
 #else
@@ -114,7 +114,7 @@ static ngx_int_t ngx_select_init(ngx_cycle_t *cycle)
 
     ngx_event_flags = NGX_USE_LEVEL_EVENT|NGX_USE_ONESHOT_EVENT;
 
-#if (WIN32)
+#if (NGX_WIN32)
     max_read = max_write = 0;
 #else
     max_fd = -1;
@@ -150,7 +150,7 @@ static ngx_int_t ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_OK;
     }
 
-#if (WIN32)
+#if (NGX_WIN32)
 
     if ((event == NGX_READ_EVENT) && (max_read >= FD_SETSIZE)
         || (event == NGX_WRITE_EVENT) && (max_write >= FD_SETSIZE))
@@ -211,7 +211,7 @@ static ngx_int_t ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "select del event fd:%d ev:%d", c->fd, event);
 
-#if (WIN32)
+#if (NGX_WIN32)
 
     if (event == NGX_READ_EVENT) {
         FD_CLR(c->fd, &master_read_fd_set);
@@ -280,7 +280,7 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
 
     expire = 1;
 
-#if !(WIN32)
+#if !(NGX_WIN32)
 
     if (ngx_accept_mutex) {
         if (ngx_accept_disabled > 0) {
@@ -324,7 +324,7 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
                            "select event: fd:%d wr:%d", c->fd, ev->write);
         }
 
-#if !(WIN32)
+#if !(NGX_WIN32)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "max_fd: %d", max_fd);
 #endif
@@ -348,9 +348,9 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
     work_write_fd_set = master_write_fd_set;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "select read fd_set: %08X", *(int *) &work_read_fd_set);
+                   "select read fd_set: %08Xd", *(int *) &work_read_fd_set);
 
-#if (WIN32)
+#if (NGX_WIN32)
     ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp);
 #else
     ready = select(max_fd + 1, &work_read_fd_set, &work_write_fd_set, NULL, tp);
@@ -433,7 +433,7 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
                    "select ready %d", ready);
 
     if (err) {
-#if (WIN32)
+#if (NGX_WIN32)
         ngx_log_error(NGX_LOG_ALERT, cycle->log, err, "select() failed");
 #else
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
@@ -534,7 +534,7 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
     for ( ;; ) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                      "accept event " PTR_FMT, ev);
+                      "accept event %p", ev);
 
         if (ev == NULL) {
             break;
@@ -597,7 +597,7 @@ static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
 
     /* disable warning: the default FD_SETSIZE is 1024U in FreeBSD 5.x */
 
-#if !(WIN32)
+#if !(NGX_WIN32)
     if ((unsigned) ecf->connections > FD_SETSIZE) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "the maximum number of files "
@@ -606,7 +606,7 @@ static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
     }
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_THREADS) && !(NGX_WIN32)
     ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                   "select() is not supported in the threaded mode");
     return NGX_CONF_ERROR;

@@ -25,7 +25,8 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev);
 static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *);
 static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p);
 static void ngx_http_proxy_process_body(ngx_event_t *ev);
-static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p, int ft_type);
+static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p,
+                                         ngx_uint_t ft_type);
 
 
 static ngx_str_t http_methods[] = {
@@ -137,7 +138,8 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     if (r->quoted_uri) {
         escape = 2 * ngx_escape_uri(NULL, r->uri.data + uc->location->len,
-                                    r->uri.len - uc->location->len);
+                                    r->uri.len - uc->location->len,
+                                    NGX_ESCAPE_URI);
     } else {
         escape = 0;
     }
@@ -246,7 +248,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     if (escape) {
         ngx_escape_uri(b->last, r->uri.data + uc->location->len,
-                       r->uri.len - uc->location->len);
+                       r->uri.len - uc->location->len, NGX_ESCAPE_URI);
         b->last += r->uri.len - uc->location->len + escape;
 
     } else {
@@ -409,8 +411,8 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
         *(b->last++) = CR; *(b->last++) = LF;
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http proxy header: \"%s: %s\"",
-                       header[i].key.data, header[i].value.data);
+                       "http proxy header: \"%V: %V\"",
+                       &header[i].key, &header[i].value);
     }
 
     /* add "\r\n" at the header end */
@@ -670,7 +672,7 @@ void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
 
 static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
 {
-    int                      rc;
+    ngx_int_t                rc;
     ngx_connection_t        *c;
     ngx_http_request_t      *r;
     ngx_output_chain_ctx_t  *output;
@@ -683,7 +685,7 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     rc = ngx_event_connect_peer(&p->upstream->peer);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, p->request->connection->log, 0,
-                   "http proxy connect: %d", rc);
+                   "http proxy connect: %i", rc);
 
     if (rc == NGX_ERROR) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -704,6 +706,8 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     c->data = p;
     c->write->event_handler = ngx_http_proxy_send_request_handler;
     c->read->event_handler = ngx_http_proxy_process_upstream_status_line;
+
+    c->sendfile = r->connection->sendfile;
 
     c->pool = r->pool;
     c->read->log = c->write->log = c->log = r->connection->log;
@@ -1028,8 +1032,8 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
                 p->upstream->status_line.len + 1);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, rev->log, 0,
-                   "http proxy status %d \"%s\"",
-                   p->upstream->status, p->upstream->status_line.data);
+                   "http proxy status %ui \"%V\"",
+                   p->upstream->status, &p->upstream->status_line);
 
 
     /* init or reinit the p->upstream->headers_in.headers table */
@@ -1143,8 +1147,7 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http proxy header: \"%s: %s\"",
-                           h->key.data, h->value.data);
+                           "http proxy header: \"%V: %V\"", &h->key, &h->value);
 
             continue;
 
@@ -1467,7 +1470,7 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
 
         if (ep->upstream_done || ep->upstream_eof || ep->upstream_error) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
-                           "http proxy upstream exit: " PTR_FMT, ep->out);
+                           "http proxy upstream exit: %p", ep->out);
             ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
             ngx_http_proxy_finalize_request(p, 0);
             return;
@@ -1484,12 +1487,13 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
 }
 
 
-static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p, int ft_type)
+static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p,
+                                         ngx_uint_t ft_type)
 {
-    int  status;
+    ngx_uint_t  status;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, p->request->connection->log, 0,
-                   "http proxy next upstream: %d", ft_type);
+                   "http proxy next upstream: %ui", ft_type);
 
     ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
 

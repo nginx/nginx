@@ -79,7 +79,8 @@ ngx_int_t ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
 
 ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 {
-    int           n, rc, size;
+    ssize_t       n, size;
+    ngx_int_t     rc;
     ngx_buf_t    *b;
     ngx_chain_t  *chain, *cl, *tl;
 
@@ -109,7 +110,7 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             n = p->preread_size;
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                           "pipe preread: %d", n);
+                           "pipe preread: %z", n);
 
             if (n) {
                 p->read = 1;
@@ -197,7 +198,7 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 rc = ngx_event_pipe_write_chain_to_temp_file(p);
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                               "pipe temp offset: %d", p->temp_file->offset);
+                               "pipe temp offset: %O", p->temp_file->offset);
 
                 if (rc == NGX_AGAIN) {
                     if (ngx_event_flags & NGX_USE_LEVEL_EVENT
@@ -237,7 +238,7 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             n = ngx_recv_chain(p->upstream, chain);
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                           "pipe recv chain: %d", n);
+                           "pipe recv chain: %z", n);
 
             if (p->free_raw_bufs) {
                 chain->next = p->free_raw_bufs;
@@ -303,7 +304,7 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
     for (cl = p->busy; cl; cl = cl->next) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe buf busy " PTR_FMT ", pos " PTR_FMT ", size: %d",
+                       "pipe buf busy %p, pos %p, size: %z",
                        cl->buf->start, cl->buf->pos,
                        cl->buf->last - cl->buf->pos);
     }
@@ -311,9 +312,8 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
     for (cl = p->out; cl; cl = cl->next) {
         if (cl->buf->in_file && cl->buf->temporary) {
             ngx_log_debug5(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                           "pipe buf out shadow "
-                           PTR_FMT ", pos " PTR_FMT ", size: %d "
-                           "file: " OFF_T_FMT ", size: %d",
+                           "pipe buf out shadow %p, pos %p, size: %z "
+                           "file: %O, size: %z",
                            cl->buf->start, cl->buf->pos,
                            cl->buf->last - cl->buf->pos,
                            cl->buf->file_pos,
@@ -321,13 +321,12 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
         } else if (cl->buf->in_file) {
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                           "pipe buf out file " OFF_T_FMT ", size: %d",
+                           "pipe buf out file %O, size: %z",
                            cl->buf->file_pos,
                            cl->buf->file_last - cl->buf->file_pos);
         } else {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                           "pipe buf out " PTR_FMT ", pos " PTR_FMT
-                           ", size: %d",
+                           "pipe buf out %p, pos %p, size: %z",
                            cl->buf->start, cl->buf->pos,
                            cl->buf->last - cl->buf->pos);
         }
@@ -335,14 +334,14 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
     for (cl = p->in; cl; cl = cl->next) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe buf in " PTR_FMT ", pos " PTR_FMT ", size: %d",
+                       "pipe buf in %p, pos %p, size: %z",
                        cl->buf->start, cl->buf->pos,
                        cl->buf->last - cl->buf->pos);
     }
 
     for (cl = p->free_raw_bufs; cl; cl = cl->next) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe buf free " PTR_FMT ", last " PTR_FMT ", size: %d",
+                       "pipe buf free %p, last %p, size: %z",
                        cl->buf->start, cl->buf->last,
                        cl->buf->end - cl->buf->last);
     }
@@ -443,7 +442,7 @@ ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe write busy: " SIZE_T_FMT, bsize);
+                       "pipe write busy: %uz", bsize);
 
         out = NULL;
         ll = NULL;
@@ -482,7 +481,7 @@ ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe write: out:" PTR_FMT ", f:%d", out, flush);
+                       "pipe write: out:%p, f:%d", out, flush);
 
         if (out == NULL && !flush) {
             break;
@@ -553,13 +552,13 @@ static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         ll = NULL;
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe offset: %d", p->temp_file->offset);
+                       "pipe offset: %O", p->temp_file->offset);
 
         do {
             bsize = cl->buf->last - cl->buf->pos;
 
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                           "pipe buf " PTR_FMT ", pos " PTR_FMT ", size: %d",
+                           "pipe buf %p, pos %p, size: %z",
                            cl->buf->start, cl->buf->pos, bsize);
 
             if ((size + bsize > p->temp_file_write_size)
@@ -574,7 +573,7 @@ static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 
         } while (cl);
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "size: %d", size);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "size: %z", size);
 
         if (cl) {
            p->in = cl;

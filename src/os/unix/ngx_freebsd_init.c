@@ -9,8 +9,8 @@
 
 
 /* FreeBSD 3.0 at least */
-char ngx_freebsd_kern_ostype[20];
-char ngx_freebsd_kern_osrelease[20];
+char ngx_freebsd_kern_ostype[16];
+char ngx_freebsd_kern_osrelease[128];
 int ngx_freebsd_kern_osreldate;
 int ngx_freebsd_hw_ncpu;
 int ngx_freebsd_net_inet_tcp_sendspace;
@@ -95,7 +95,12 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
                      ngx_freebsd_kern_ostype, &size, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                       "sysctlbyname(kern.ostype) failed");
-        return NGX_ERROR;
+
+        if (ngx_errno != NGX_ENOMEM) {
+            return NGX_ERROR;
+        }
+
+        ngx_freebsd_kern_ostype[size - 1] = '\0';
     }
 
     size = sizeof(ngx_freebsd_kern_osrelease);
@@ -103,7 +108,12 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
                      ngx_freebsd_kern_osrelease, &size, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                       "sysctlbyname(kern.osrelease) failed");
-        return NGX_ERROR;
+
+        if (ngx_errno != NGX_ENOMEM) {
+            return NGX_ERROR;
+        }
+
+        ngx_freebsd_kern_osrelease[size - 1] = '\0';
     }
 
 

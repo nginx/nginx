@@ -120,9 +120,14 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
         return NGX_ERROR;
     }
 
+    if (n == 0) {
+        ngx_log_debug0(NGX_LOG_DEBUG_CORE, log, 0, "recvmsg() returned zero");
+        return NGX_ERROR;
+    }
+
     if ((size_t) n < sizeof(ngx_channel_t)) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
-                      "recvmsg() returned not enough data");
+                      "recvmsg() returned not enough data: %uz", n);
         return NGX_ERROR;
     }
 

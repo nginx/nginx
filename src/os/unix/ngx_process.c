@@ -143,7 +143,7 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                   "spawn %s: " PID_T_FMT, name, pid);
+                   "spawn %s: %P", name, pid);
 
     ngx_processes[s].pid = pid;
     ngx_processes[s].exited = 0;
@@ -282,22 +282,40 @@ void ngx_process_get_status()
 
         if (WTERMSIG(status)) {
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                          "%s " PID_T_FMT " exited on signal %d%s",
+                          "%s %P exited on signal %d%s",
                           process, pid, WTERMSIG(status),
                           WCOREDUMP(status) ? " (core dumped)" : "");
 
         } else {
             ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
-                          "%s " PID_T_FMT " exited with code %d",
+                          "%s %P exited with code %d",
                           process, pid, WEXITSTATUS(status));
         }
 
         if (WEXITSTATUS(status) == 2 && ngx_processes[i].respawn) {
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                          "%s " PID_T_FMT
-                          " exited with fatal code %d and could not respawn",
-                          process, pid, WEXITSTATUS(status));
+                        "%s %P exited with fatal code %d and could not respawn",
+                        process, pid, WEXITSTATUS(status));
             ngx_processes[i].respawn = 0;
         }
+    }
+}
+
+
+void ngx_debug_point()
+{
+    ngx_core_conf_t  *ccf;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                           ngx_core_module);
+
+    switch (ccf->debug_points) {
+
+    case NGX_DEBUG_POINTS_STOP:
+        raise(SIGSTOP);
+        break;
+
+    case NGX_DEBUG_POINTS_ABORT:
+        abort();
     }
 }

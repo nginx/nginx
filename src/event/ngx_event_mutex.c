@@ -13,7 +13,7 @@ ngx_int_t ngx_event_mutex_timedlock(ngx_event_mutex_t *m, ngx_msec_t timer,
                                     ngx_event_t *ev)
 {
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "lock event mutex " PTR_FMT " lock:%X", m, m->lock);
+                   "lock event mutex %p lock:%XD", m, m->lock);
 
     if (m->lock) {
 
@@ -48,13 +48,12 @@ ngx_int_t ngx_event_mutex_unlock(ngx_event_mutex_t *m, ngx_log_t *log)
 
     if (m->lock == 0) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
-                      "tring to unlock the free event mutex " PTR_FMT, m);
+                      "tring to unlock the free event mutex %p", m);
         return NGX_ERROR;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
-                   "unlock event mutex " PTR_FMT ", next event: " PTR_FMT,
-                   m, m->events);
+                   "unlock event mutex %p, next event: %p", m, m->events);
 
     m->lock = 0;
 

@@ -11,13 +11,13 @@
 
 
 typedef struct {
-    int      flag;
-    u_char  *name;
+    int         flag;
+    ngx_str_t  *name;
 } ngx_accept_log_ctx_t;
 
 
 static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log);
-static size_t ngx_accept_log_error(void *data, char *buf, size_t len);
+static u_char *ngx_accept_log_error(void *data, u_char *buf, size_t len);
 
 
 void ngx_event_accept(ngx_event_t *ev)
@@ -46,8 +46,8 @@ void ngx_event_accept(ngx_event_t *ev)
     ls = ev->data;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "accept on %s, ready: %d",
-                   ls->listening->addr_text.data, ev->available);
+                   "accept on %V, ready: %d",
+                   &ls->listening->addr_text, ev->available);
 
     ev->ready = 0;
     accepted = 0;
@@ -88,7 +88,7 @@ void ngx_event_accept(ngx_event_t *ev)
 
         /* -1 disables the connection number logging */
         ctx->flag = -1;
-        ctx->name = ls->listening->addr_text.data;
+        ctx->name = &ls->listening->addr_text;
 
         log->data = ctx;
         log->handler = ngx_accept_log_error;
@@ -114,8 +114,7 @@ void ngx_event_accept(ngx_event_t *ev)
             }
 
             ngx_log_error(NGX_LOG_ALERT, ev->log, err,
-                          "accept() on %s failed",
-                          ls->listening->addr_text.data);
+                          "accept() on %V failed", &ls->listening->addr_text);
 
             if (err == NGX_ECONNABORTED) {
                 if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
@@ -144,10 +143,10 @@ void ngx_event_accept(ngx_event_t *ev)
         if ((ngx_uint_t) s >= ecf->connections) {
 
             ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                          "accept() on %s returned socket #%d while "
+                          "accept() on %V returned socket #%d while "
                           "only %d connections was configured, "
                           "closing the connection",
-                          ls->listening->addr_text.data, s, ecf->connections);
+                          &ls->listening->addr_text, s, ecf->connections);
 
             ngx_close_accepted_socket(s, log);
             ngx_destroy_pool(pool);
@@ -185,7 +184,7 @@ void ngx_event_accept(ngx_event_t *ev)
             }
         }
 
-#if (WIN32)
+#if (NGX_WIN32)
         /*
          * Winsock assignes a socket number divisible by 4
          * so to find a connection we divide a socket number by 4.
@@ -193,9 +192,9 @@ void ngx_event_accept(ngx_event_t *ev)
 
         if (s % 4) {
             ngx_log_error(NGX_LOG_EMERG, ev->log, 0,
-                          "accept() on %s returned socket #%d, "
+                          "accept() on %V returned socket #%d, "
                           "not divisible by 4",
-                          ls->listening->addr_text.data, s);
+                          &ls->listening->addr_text, s);
             exit(1);
         }
 
@@ -467,9 +466,9 @@ static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log)
 }
 
 
-static size_t ngx_accept_log_error(void *data, char *buf, size_t len)
+static u_char *ngx_accept_log_error(void *data, u_char *buf, size_t len)
 {
     ngx_accept_log_ctx_t  *ctx = data;
 
-    return ngx_snprintf(buf, len, " while accept() on %s", ctx->name);
+    return ngx_snprintf(buf, len, " while accept() on %V", ctx->name);
 }

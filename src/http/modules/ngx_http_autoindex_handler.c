@@ -24,6 +24,7 @@ typedef struct {
 
 typedef struct {
     ngx_str_t      name;
+    ngx_uint_t     escape;
     ngx_uint_t     dir;
     time_t         mtime;
     off_t          size;
@@ -269,10 +270,13 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
         }
 
         entry->name.len = len;        
+        entry->escape = 2 * ngx_escape_uri(NULL, ngx_de_name(&dir), len,
+                                           NGX_ESCAPE_HTML);
 
-        if (!(entry->name.data = ngx_palloc(pool, len + 1))) {
+        if (!(entry->name.data = ngx_palloc(pool, len + entry->escape + 1))) {
             return ngx_http_autoindex_error(r, &dir, dname.data);
         }
+
         ngx_cpystrn(entry->name.data, ngx_de_name(&dir), len + 1);
 
         entry->dir = ngx_de_is_dir(&dir);
@@ -298,7 +302,7 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
     for (i = 0; i < entries.nelts; i++) {
         len += sizeof("<a href=\"") - 1
                + 1                                          /* 1 is for "/" */
-               + entry[i].name.len
+               + entry[i].name.len + entry[i].escape
                + sizeof("\">") - 1
                + NGX_HTTP_AUTOINDEX_NAME_LEN
                + sizeof("</a>") - 1
@@ -329,7 +333,17 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     for (i = 0; i < entries.nelts; i++) {
         b->last = ngx_cpymem(b->last, "<a href=\"", sizeof("<a href=\"") - 1);
-        b->last = ngx_cpymem(b->last, entry[i].name.data, entry[i].name.len);
+
+        if (entry[i].escape) {
+            ngx_escape_uri(b->last, entry[i].name.data, entry[i].name.len,
+                           NGX_ESCAPE_HTML);
+
+            b->last += entry[i].name.len + entry[i].escape;
+
+        } else {
+            b->last = ngx_cpymem(b->last, entry[i].name.data,
+                                 entry[i].name.len);
+        }
 
         if (entry[i].dir) {
             *b->last++ = '/';
@@ -375,7 +389,7 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
         } else {
             length = entry[i].size;
 
-            if (length > 1024 * 1024 * 1024) {
+            if (length > 1024 * 1024 * 1024 - 1) {
                 size = (ngx_int_t) (length / (1024 * 1024 * 1024));
                 if ((length % (1024 * 1024 * 1024))
                                                 > (1024 * 1024 * 1024 / 2 - 1))
@@ -384,7 +398,7 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
                 }
                 scale = 'G';
 
-            } else if (length > 1024 * 1024) {
+            } else if (length > 1024 * 1024 - 1) {
                 size = (ngx_int_t) (length / (1024 * 1024));
                 if ((length % (1024 * 1024)) > (1024 * 1024 / 2 - 1)) {
                     size++;

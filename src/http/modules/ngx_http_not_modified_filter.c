@@ -33,7 +33,7 @@ ngx_module_t  ngx_http_not_modified_filter_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_not_modified_filter_init,     /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 

@@ -25,7 +25,7 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
         ev = (ngx_event_t *) ngx_posted_events;
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                      "posted event " PTR_FMT, ev);
+                      "posted event %p", ev);
 
         if (ev == NULL) {
             return;
@@ -38,7 +38,7 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
 }
 
 
-#if (NGX_THREADS)
+#if (NGX_THREADS) && !(NGX_WIN32)
 
 void ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
 {
@@ -87,7 +87,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
         for ( ;; ) {
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                          "posted event " PTR_FMT, ev);
+                          "posted event %p", ev);
 
             if (ev == NULL) {
                 return NGX_OK;
@@ -96,7 +96,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
             if (ngx_trylock(ev->lock) == 0) {
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                               "posted event " PTR_FMT " is busy", ev);
+                               "posted event %p is busy", ev);
 
                 ev = ev->next;
                 continue;
@@ -105,8 +105,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
             if (ev->lock != ev->own_lock) {
                 if (*(ev->own_lock)) {
                     ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                                  "the own lock of the posted event "
-                                  PTR_FMT " is busy", ev);
+                             "the own lock of the posted event %p is busy", ev);
                     ngx_unlock(ev->lock);
                     ev = ev->next;
                     continue;
@@ -153,7 +152,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
             }
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "posted event " PTR_FMT " is done", ev);
+                           "posted event %p is done", ev);
 
             break;
         }

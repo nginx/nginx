@@ -125,7 +125,7 @@ ngx_module_t  ngx_http_charset_filter_module = {
     ngx_http_charset_filter_commands,      /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_charset_filter_init,          /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -287,8 +287,7 @@ static char *ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd,
     if (src == dst) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"charset_map\" between the same charsets "
-                           "\"%s\" and \"%s\"",
-                           value[1].data, value[2].data);
+                           "\"%V\" and \"%V\"", &value[1], &value[2]);
         return NGX_CONF_ERROR;
     }
 
@@ -299,8 +298,7 @@ static char *ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd,
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "duplicate \"charset_map\" between "
-                               "\"%s\" and \"%s\"",
-                               value[1].data, value[2].data);
+                               "\"%V\" and \"%V\"", &value[1], &value[2]);
             return NGX_CONF_ERROR;
         }
     }
@@ -357,14 +355,14 @@ static char *ngx_charset_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     src = ngx_hextoi(value[0].data, value[0].len);
     if (src == NGX_ERROR || src > 255) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid value \"%s\"", value[0].data);
+                           "invalid value \"%V\"", &value[0]);
         return NGX_CONF_ERROR;
     }
 
     dst = ngx_hextoi(value[1].data, value[1].len);
     if (dst == NGX_ERROR || dst > 255) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid value \"%s\"", value[1].data);
+                           "invalid value \"%V\"", &value[1]);
         return NGX_CONF_ERROR;
     }
 
@@ -525,8 +523,8 @@ static char *ngx_http_charset_init_main_conf(ngx_conf_t *cf, void *conf)
 
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           " no \"charset_map\" between the charsets "
-                          "\"%s\" and \"%s\"",
-                          charset[i].name.data, charset[n].name.data);
+                          "\"%V\" and \"%V\"",
+                          &charset[i].name, &charset[n].name);
             return NGX_CONF_ERROR;
         }
     }

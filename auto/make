@@ -132,7 +132,15 @@ ngx_all_objs=`echo $ngx_all_srcs \
 
 ngx_modules_obj=`echo $ngx_modules_c | sed -e "s/\(.*\.\)c/\1$ngx_objext/"`
 
-ngx_deps=`echo $ngx_all_objs $ngx_modules_obj $LINK_DEPS \
+
+if test -n "$NGX_RES"; then
+   ngx_res=$NGX_RES
+else
+   ngx_res="$NGX_RC $NGX_ICONS"
+   ngx_rcc=`echo $NGX_RCC | sed -e "s/\//$ngx_regex_dirsep/g"`
+fi
+
+ngx_deps=`echo $ngx_all_objs $ngx_modules_obj $ngx_res $LINK_DEPS \
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
 
@@ -146,10 +154,12 @@ ngx_libs=${CORE_LIBS:+`echo $NGX_LD_OPT $CORE_LIBS \
 ngx_link=${CORE_LINK:+`echo $CORE_LINK \
     | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_regex_cont/"`}
 
+
 cat << END                                                    >> $NGX_MAKEFILE
 
 $NGX_OBJS${ngx_dirsep}nginx${ngx_binext}:	$ngx_deps$ngx_spacer
 	\$(LINK) ${ngx_binout}$NGX_OBJS${ngx_dirsep}nginx$ngx_cont$ngx_objs$ngx_libs$ngx_link
+	$ngx_rcc
 
 END
 
@@ -252,6 +262,24 @@ $ngx_obj:	\$(CORE_DEPS) \$(IMAP_DEPS)$ngx_cont$ngx_src
 END
 
      done
+
+fi
+
+
+# Win32 resource file
+
+if test -n "$NGX_RES"; then
+
+    ngx_res=`echo "$NGX_RES:	$NGX_RC $NGX_ICONS" \
+                 | sed -e "s/\//$ngx_regex_dirsep/g"`
+    ngx_rcc=`echo $NGX_RCC | sed -e "s/\//$ngx_regex_dirsep/g"`
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+$ngx_res
+	$ngx_rcc
+
+END
 
 fi
 

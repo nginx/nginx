@@ -40,15 +40,11 @@ char *ngx_http_script_request_line(ngx_http_request_t *r, char *p, size_t len)
 
 char *ngx_http_script_status(ngx_http_request_t *r, char *p, size_t len)
 {
-    p += ngx_snprintf(p, len, "%d", r->headers_out.status);
-
-    return p;
+    return ngx_snprintf(p, len, "%d", r->headers_out.status);
 }
 
 
 char *ngx_http_script_sent(ngx_http_request_t *r, char *p, size_t len)
 {
-    p += ngx_snprintf(p, len, OFF_FMT, r->connection->sent);
-
-    return p;
+    return ngx_sprintf(p, "%O", r->connection->sent);
 }

@@ -162,7 +162,11 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 ctx->in = ctx->in->next;
             }
 
-            ngx_alloc_link_and_set_buf(cl, ctx->buf, ctx->pool, NGX_ERROR);
+            if (!(cl = ngx_alloc_chain_link(ctx->pool))) {
+                return NGX_ERROR;
+            }
+            cl->buf = ctx->buf;
+            cl->next = NULL;
             *last_out = cl;
             last_out = &cl->next;
             ctx->buf = NULL;
@@ -266,7 +270,7 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
 
         if ((size_t) n != size) {
             ngx_log_error(NGX_LOG_ALERT, src->file->log, 0,
-                          ngx_read_file_n " reads only %d of %d from file",
+                          ngx_read_file_n " reads only %z of %uz from file",
                           n, size);
             if (n == 0) {
                 return NGX_ERROR;
@@ -306,20 +310,24 @@ ngx_int_t ngx_chain_writer(void *data, ngx_chain_t *in)
     for (/* void */; in; in = in->next) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
-                       "WRITER buf: %d", ngx_buf_size(in->buf));
+                       "chain writer buf size: %uz", ngx_buf_size(in->buf));
 
-        ngx_alloc_link_and_set_buf(cl, in->buf, ctx->pool, NGX_ERROR);
+        if (!(cl = ngx_alloc_chain_link(ctx->pool))) {
+            return NGX_ERROR;
+        }
+        cl->buf = in->buf;
+        cl->next = NULL;
         *ctx->last = cl;
         ctx->last = &cl->next;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
-                   "WRITER0: %X", ctx->out);
+                   "chain writer in: %p", ctx->out);
 
     ctx->out = ngx_send_chain(ctx->connection, ctx->out, ctx->limit);
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
-                   "WRITER1: %X", ctx->out);
+                   "chain writer out: %p", ctx->out);
 
     if (ctx->out == NGX_CHAIN_ERROR) {
         return NGX_ERROR;

@@ -9,14 +9,14 @@
 #include <ngx_event.h>
 
 
-#define NGX_IOVS  8
+#define NGX_IOVS  16
 
 
 ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     u_char        *prev;
-    ssize_t        n, size;
-    off_t          send, sprev, sent;
+    ssize_t        n, size, sent;
+    off_t          send, sprev;
     ngx_uint_t     eintr, complete;
     ngx_err_t      err;
     ngx_array_t    vec;
@@ -66,6 +66,12 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 continue;
             }
 
+#if 1
+            if (!ngx_buf_in_memory(cl->buf)) {
+                ngx_debug_point();
+            }
+#endif
+
             size = cl->buf->last - cl->buf->pos;
 
             if (send + size > limit) {
@@ -110,8 +116,7 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         sent = n > 0 ? n : 0;
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "writev: " OFF_T_FMT, sent);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "writev: %z", sent);
 
         if (send - sprev == sent) {
             complete = 1;
@@ -119,7 +124,8 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         c->sent += sent;
 
-        for (cl = in; cl && sent > 0; cl = cl->next) {
+        for (cl = in; cl; cl = cl->next) {
+
             if (ngx_buf_special(cl->buf)) {
                 continue;
             }

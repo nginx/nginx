@@ -33,7 +33,7 @@ typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 
 
 typedef struct {
-    u_int     connection;
+    u_int              connection;
 
     /*
      * we declare "action" as "char *" because the actions are usually
@@ -41,9 +41,9 @@ typedef struct {
      * all the time their types
      */
 
-    char     *action;
-    u_char   *client;
-    u_char   *url;
+    char                *action;
+    ngx_str_t           *client;
+    ngx_http_request_t  *request;
 } ngx_http_log_ctx_t;
 
 

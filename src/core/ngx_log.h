@@ -40,7 +40,7 @@
 #define NGX_LOG_DEBUG_ALL         0x7ffffff0
 
 
-typedef size_t  (*ngx_log_handler_pt) (void *ctx, char *buf, size_t len);
+typedef u_char *(*ngx_log_handler_pt) (void *ctx, u_char *buf, size_t len);
 
 
 struct ngx_log_s {
@@ -50,7 +50,8 @@ struct ngx_log_s {
     ngx_log_handler_pt   handler;
 };
 
-#define MAX_ERROR_STR	 2048
+
+#define NGX_MAX_ERROR_STR   2048
 
 
 /*********************************/
@@ -88,7 +89,6 @@ void ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, va_list args);
 void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...);
-void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 
 
 #endif /* VARIADIC MACROS */
@@ -195,10 +195,7 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 #define ngx_log_alloc_log(pool, log)  ngx_palloc(pool, log, sizeof(ngx_log_t))
 #define ngx_log_copy_log(new, old)    ngx_memcpy(new, old, sizeof(ngx_log_t))
 
-ngx_log_t *ngx_log_init_stderr();
-#if 0
-ngx_int_t ngx_log_init_error_log();
-#endif
+ngx_log_t *ngx_log_init();
 ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args);
 char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log);
 

@@ -367,7 +367,7 @@ static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
     c = ev->data;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "kevent set event: %d: ft:%d fl:%04X",
+                   "kevent set event: %d: ft:%d fl:%04Xd",
                    c->fd, filter, flags);
 
     if (nchanges >= max_changes) {
@@ -599,7 +599,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
                  */
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                               "kevent: stale event " PTR_FMT, ev);
+                               "kevent: stale event %p", ev);
                 continue;
             }
 
@@ -776,9 +776,8 @@ static ngx_inline void ngx_kqueue_dump_event(ngx_log_t *log, struct kevent *kev)
 {
     ngx_log_debug6(NGX_LOG_DEBUG_EVENT, log, 0,
                    (kev->ident > 0x8000000 && kev->ident != (unsigned) -1) ?
-                    "kevent: " PTR_FMT ": ft:%d fl:%04X ff:%08X d:%d ud:"
-                                                                       PTR_FMT:
-                    "kevent: %d: ft:%d fl:%04X ff:%08X d:%d ud:" PTR_FMT,
+                    "kevent: %p: ft:%d fl:%04Xd ff:%08Xd d:%d ud:%p":
+                    "kevent: %d: ft:%d fl:%04Xd ff:%08Xd d:%d ud:%p",
                     kev->ident, kev->filter,
                     kev->flags, kev->fflags,
                     kev->data, kev->udata);

@@ -22,15 +22,12 @@ typedef struct {
 #define ngx_null_string  { 0, NULL }
 
 
-#if (WIN32)
+#if (NGX_WIN32)
 
 #define ngx_strncasecmp(s1, s2, n)                                           \
                            strnicmp((const char *) s1, (const char *) s2, n)
 #define ngx_strcasecmp(s1, s2)                                               \
                            stricmp((const char *) s1, (const char *) s2)
-
-#define ngx_snprintf       _snprintf
-#define ngx_vsnprintf      _vsnprintf
 
 #else
 
@@ -39,20 +36,19 @@ typedef struct {
 #define ngx_strcasecmp(s1, s2)                                               \
                            strcasecmp((const char *) s1, (const char *) s2)
 
-#define ngx_snprintf       snprintf
-#define ngx_vsnprintf      vsnprintf
-
 #endif
 
 
-#define ngx_strncmp(s1, s2, n)                                               \
-                            strncmp((const char *) s1, (const char *) s2, n)
+#define ngx_strncmp(s1, s2, n)  strncmp((const char *) s1, (const char *) s2, n)
+
 
 /* msvc and icc compile strcmp() to inline loop */
 #define ngx_strcmp(s1, s2)  strcmp((const char *) s1, (const char *) s2)
 
+
 #define ngx_strstr(s1, s2)  strstr((const char *) s1, (const char *) s2)
 #define ngx_strlen(s)       strlen((const char *) s)
+
 
 /*
  * msvc and icc compile memset() to the inline "rep stos"
@@ -62,15 +58,20 @@ typedef struct {
 #define ngx_memzero(buf, n)       memset(buf, 0, n)
 #define ngx_memset(buf, c, n)     memset(buf, c, n)
 
+
 /* msvc and icc compile memcpy() to the inline "rep movs" */
 #define ngx_memcpy(dst, src, n)   memcpy(dst, src, n)
 #define ngx_cpymem(dst, src, n)   ((u_char *) memcpy(dst, src, n)) + n
 
+
 /* msvc and icc compile memcmp() to the inline loop */
 #define ngx_memcmp                memcmp
 
+
 u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n);
-u_char *ngx_sprintf(u_char *buf, char *fmt, ...);
+u_char *ngx_sprintf(u_char *buf, const char *fmt, ...);
+u_char *ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...);
+u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args);
 
 ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n);
 ngx_int_t ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n);
@@ -86,7 +87,13 @@ void ngx_md5_text(u_char *text, u_char *md5);
 
 void ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src);
 ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src);
-ngx_int_t ngx_escape_uri(u_char *dst, u_char *src, size_t size);
+
+
+#define NGX_ESCAPE_URI   0
+#define NGX_ESCAPE_HTML  1
+
+ngx_uint_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
+                          ngx_uint_t type);
 
 
 #define  ngx_qsort                qsort

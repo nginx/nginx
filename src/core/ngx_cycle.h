@@ -12,6 +12,10 @@
 #include <ngx_core.h>
 
 
+#define NGX_DEBUG_POINTS_STOP   1
+#define NGX_DEBUG_POINTS_ABORT  2
+
+
 struct ngx_cycle_s {
     void           ****conf_ctx;
     ngx_pool_t        *pool;
@@ -40,6 +44,7 @@ typedef struct {
      ngx_flag_t  master;
 
      ngx_int_t   worker_processes;
+     ngx_int_t   debug_points;
 
      ngx_uid_t   user;
      ngx_gid_t   group;

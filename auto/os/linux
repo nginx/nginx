@@ -20,6 +20,13 @@ ngx_spacer='
 
 CC_AUX_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 
+
+if test -z "$NGX_USER"; then
+    NGX_USER=nobody
+    NGX_GROUP=nogroup
+fi
+
+
 # Linux kernel version
 
 version=`grep "#define LINUX_VERSION_CODE" /usr/include/linux/version.h \

@@ -22,10 +22,10 @@
                     ev->next->prev = &ev->next;                               \
                 }                                                             \
                 ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,                \
-                               "post event " PTR_FMT, ev);                    \
+                               "post event %p", ev);                          \
             } else  {                                                         \
                 ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,                \
-                               "update posted event " PTR_FMT, ev);           \
+                               "update posted event %p", ev);                 \
             }
 
 #define ngx_delete_posted_event(ev)                                           \
@@ -35,7 +35,7 @@
         }                                                                     \
         ev->prev = NULL;                                                      \
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,                        \
-                       "delete posted event " PTR_FMT, ev);
+                       "delete posted event %p", ev);
 
 
 

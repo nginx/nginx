@@ -154,9 +154,14 @@ if [ $IMAP = YES ]; then
 fi
 
 
-echo "#include <ngx_config.h>"                > $NGX_MODULES_C
-echo "#include <ngx_core.h>"                  >> $NGX_MODULES_C
-echo                                          >> $NGX_MODULES_C
+cat << END                                    > $NGX_MODULES_C
+
+#include <ngx_config.h>
+#include <ngx_core.h>
+
+$NGX_PRAGMA
+
+END
 
 for mod in $modules
 do
@@ -171,5 +176,8 @@ do
     echo "    &$mod,"                         >> $NGX_MODULES_C
 done
 
-echo "    NULL"                               >> $NGX_MODULES_C
-echo "};"                                     >> $NGX_MODULES_C
+cat << END                                    >> $NGX_MODULES_C
+    NULL
+};
+
+END

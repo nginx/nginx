@@ -148,7 +148,7 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         n = c->recv(c, r->request_body->buf->last, size);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http client request body recv " SIZE_T_FMT, n);
+                       "http client request body recv %z", n);
 
         if (n == NGX_AGAIN) {
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -184,7 +184,7 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http client request body rest " SIZE_T_FMT,
+                   "http client request body rest %uz",
                    r->request_body->rest);
 
     if (r->request_body->rest) {

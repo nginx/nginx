@@ -199,7 +199,7 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
             break;
 
-        /* check "/.", "//", and "%" in URI */
+        /* check "/.", "//", "%", and "\" (Win32) in URI */
         case sw_after_slash_in_uri:
             switch (ch) {
             case CR:
@@ -224,6 +224,11 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->quoted_uri = 1;
                 state = sw_uri;
                 break;
+#if (NGX_WIN32)
+            case '\\':
+                r->complex_uri = 1;
+                break;
+#endif
             case '/':
                 r->complex_uri = 1;
                 break;
@@ -237,7 +242,7 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
             break;
 
-        /* check "/" and "%" in URI */
+        /* check "/", "%" and "\" (Win32) in URI */
         case sw_check_uri:
             switch (ch) {
             case CR:
@@ -257,6 +262,12 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             case '.':
                 r->uri_ext = p;
                 break;
+#if (NGX_WIN32)
+            case '\\':
+                r->complex_uri = 1;
+                state = sw_after_slash_in_uri;
+                break;
+#endif
             case '/':
                 r->uri_ext = NULL;
                 state = sw_after_slash_in_uri;
@@ -657,7 +668,7 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
         sw_slash,
         sw_dot,
         sw_dot_dot,
-#if (WIN32)
+#if (NGX_WIN32)
         sw_dot_dot_dot,
 #endif
         sw_quoted,
@@ -671,17 +682,42 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
     p = r->uri_start;
     u = r->uri.data;
     r->uri_ext = NULL;
+    r->args_start = NULL;
 
     ch = *p++;
 
-    while (p < r->uri_start + r->uri.len + 1) {
+    while (p < r->uri_start + r->uri.len + 1 && r->args_start == NULL) {
+
+        /*
+         * we use "ch = *p++" inside the cycle but this operation is safe
+         * because after the URI there is always at least one charcter:
+         * the line feed
+         */
 
         ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "s:%d in:'%x:%c', out:'%c'", state, ch, ch, *u);
+                       "s:%d in:'%Xd:%c', out:'%c'", state, ch, ch, *u);
 
         switch (state) {
         case sw_usual:
             switch(ch) {
+#if (NGX_WIN32)
+            case '\\':
+                r->uri_ext = NULL;
+
+                if (p == r->uri_start + r->uri.len) {
+
+                    /*
+                     * we omit the last "\" to cause redirect because
+                     * the browsers do not treat "\" as "/" in relative URL path
+                     */
+
+                    break;
+                }
+
+                state = sw_slash;
+                *u++ = '/';
+                break;
+#endif
             case '/':
                 r->uri_ext = NULL;
                 state = sw_slash;
@@ -690,6 +726,9 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
             case '%':
                 quoted_state = state;
                 state = sw_quoted;
+                break;
+            case '?':
+                r->args_start = p;
                 break;
             case '.':
                 r->uri_ext = u + 1;
@@ -702,6 +741,10 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
         case sw_slash:
             switch(ch) {
+#if (NGX_WIN32)
+            case '\\':
+                break;
+#endif
             case '/':
                 break;
             case '.':
@@ -722,6 +765,10 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
         case sw_dot:
             switch(ch) {
+#if (NGX_WIN32)
+            case '\\':
+                /* fall through */
+#endif
             case '/':
                 state = sw_slash;
                 u--;
@@ -744,6 +791,10 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
         case sw_dot_dot:
             switch(ch) {
+#if (NGX_WIN32)
+            case '\\':
+                /* fall through */
+#endif
             case '/':
                 state = sw_slash;
                 u -= 4;
@@ -758,7 +809,7 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 quoted_state = state;
                 state = sw_quoted;
                 break;
-#if (WIN32)
+#if (NGX_WIN32)
             case '.':
                 state = sw_dot_dot_dot;
                 *u++ = ch;
@@ -772,9 +823,10 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
             ch = *p++;
             break;
 
-#if (WIN32)
+#if (NGX_WIN32)
         case sw_dot_dot_dot:
             switch(ch) {
+            case '\\':
             case '/':
                 state = sw_slash;
                 u -= 5;
@@ -857,12 +909,7 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
     if (r->uri_ext) {
         r->exten.len = u - r->uri_ext;
-
-        if (!(r->exten.data = ngx_palloc(r->pool, r->exten.len + 1))) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        ngx_cpystrn(r->exten.data, r->uri_ext, r->exten.len + 1);
+        r->exten.data = r->uri_ext;
     }
 
     r->uri_ext = NULL;

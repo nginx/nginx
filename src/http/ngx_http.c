@@ -83,7 +83,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_srv_conf_t   **cscfp, *cscf;
     ngx_http_core_loc_conf_t    *clcf;
     ngx_http_core_main_conf_t   *cmcf;
-#if (WIN32)
+#if (NGX_WIN32)
     ngx_iocp_conf_t             *iocpcf;
 #endif
 
@@ -343,9 +343,8 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                                 if (in_addr[a].default_server) {
                                     ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-                                        "the duplicate default server in %s:%d",
-                                        lscf[l].file_name.data,
-                                        lscf[l].line);
+                                        "the duplicate default server in %V:%d",
+                                        &lscf[l].file_name, lscf[l].line);
 
                                     return NGX_CONF_ERROR;
                                 }
@@ -516,7 +515,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             clcf = cscf->ctx->loc_conf[ngx_http_core_module.ctx_index];
             ls->log = clcf->err_log;
 
-#if (WIN32)
+#if (NGX_WIN32)
             iocpcf = ngx_event_get_conf(cf->cycle->conf_ctx, ngx_iocp_module);
             if (iocpcf->acceptex_read) {
                 ls->post_accept_buffer_size = cscf->client_header_buffer_size;
@@ -582,18 +581,18 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     in_port = in_ports.elts;
     for (p = 0; p < in_ports.nelts; p++) {
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                      "port: %d %08x", in_port[p].port, &in_port[p]);
+                      "port: %d %p", in_port[p].port, &in_port[p]);
         in_addr = in_port[p].addrs.elts;
         for (a = 0; a < in_port[p].addrs.nelts; a++) {
             ngx_inet_ntop(AF_INET, &in_addr[a].addr, address, 20);
             ngx_log_debug3(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                           "%s:%d %08x",
+                           "%s:%d %p",
                            address, in_port[p].port, in_addr[a].core_srv_conf);
             s_name = in_addr[a].names.elts;
             for (n = 0; n < in_addr[a].names.nelts; n++) {
                  ngx_log_debug4(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                                "%s:%d %s %08x",
-                                address, in_port[p].port, s_name[n].name.data,
+                                "%s:%d %V %p",
+                                address, in_port[p].port, &s_name[n].name,
                                 s_name[n].core_srv_conf);
             }
         }
@@ -671,7 +670,7 @@ static ngx_int_t ngx_http_add_names(ngx_conf_t *cf,
     for (i = 0; i < cscf->server_names.nelts; i++) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                       "name: %s", server_names[i].name.data);
+                       "name: %V", &server_names[i].name);
 
         /* TODO: duplicate names can be checked here */
 

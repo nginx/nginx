@@ -47,14 +47,14 @@ typedef int               ngx_err_t;
 
 #if (HAVE_STRERROR_R || HAVE_GNU_STRERROR_R)
 
-ngx_int_t ngx_strerror_r(int err, char *errstr, size_t size);
+u_char *ngx_strerror_r(int err, u_char *errstr, size_t size);
 
 #else
 
 /* Solaris has threads-safe strerror() */
 
 #define ngx_strerror_r(err, errstr, size)  \
-             (char *) ngx_cpystrn(errstr, strerror(err), size) - (errstr)
+             ngx_cpystrn(errstr, (u_char *) strerror(err), size)
 
 #endif
 

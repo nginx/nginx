@@ -136,8 +136,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                 }
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, err,
-                              "sendfilev() sent only " SIZE_T_FMT " bytes",
-                              sent);
+                              "sendfilev() sent only %z bytes", sent);
 
             } else {
                 wev->error = 1;
@@ -147,7 +146,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "sendfilev: %d " SIZE_T_FMT, n, sent);
+                       "sendfilev: %z %z", n, sent);
 
         if (send - sprev == sent) {
             complete = 1;

@@ -10,7 +10,7 @@
 #include <ngx_http.h>
 #include <nginx.h>
 
-/* STUB */
+
 #define NGX_HTTP_LOCATION_EXACT           1
 #define NGX_HTTP_LOCATION_AUTO_REDIRECT   2
 #define NGX_HTTP_LOCATION_REGEX           3
@@ -329,12 +329,12 @@ ngx_module_t  ngx_http_core_module = {
 
 void ngx_http_handler(ngx_http_request_t *r)
 {
-    ngx_http_log_ctx_t  *lcx;
+    ngx_http_log_ctx_t  *ctx;
 
     r->connection->unexpected_eof = 0;
 
-    lcx = r->connection->log->data;
-    lcx->action = NULL;
+    ctx = r->connection->log->data;
+    ctx->action = NULL;
 
     switch (r->headers_in.connection_type) {
     case 0:
@@ -526,17 +526,15 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
 
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http cl: " SIZE_T_FMT " max: " SIZE_T_FMT,
-                   r->headers_in.content_length_n,
-                   clcf->client_max_body_size);
+                   "http cl:%z max:%uz",
+                   r->headers_in.content_length_n, clcf->client_max_body_size);
 
     if (r->headers_in.content_length_n != -1
         && clcf->client_max_body_size
         && clcf->client_max_body_size < (size_t) r->headers_in.content_length_n)
     {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "client intented to send too large body: "
-                      SIZE_T_FMT " bytes",
+                      "client intented to send too large body: %z bytes",
                       r->headers_in.content_length_n);
 
         return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
@@ -583,9 +581,8 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
 #endif
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "find location: %s\"%s\"",
-                       clcfp[i]->exact_match ? "= " : "",
-                       clcfp[i]->name.data);
+                       "find location: %s\"%V\"",
+                       clcfp[i]->exact_match ? "= " : "", &clcfp[i]->name);
 
         if (clcfp[i]->auto_redirect
             && r->uri.len == clcfp[i]->name.len - 1
@@ -649,8 +646,7 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "find location: ~ \"%s\"",
-                       clcfp[i]->name.data);
+                       "find location: ~ \"%V\"", &clcfp[i]->name);
 
         n = ngx_regex_exec(clcfp[i]->regex, &r->uri, NULL, 0);
 
@@ -661,8 +657,8 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
         if (n < 0) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           ngx_regex_exec_n
-                          " failed: %d on \"%s\" using \"%s\"",
-                          n, r->uri.data, clcfp[i]->name.data);
+                          " failed: %d on \"%V\" using \"%V\"",
+                          n, &r->uri, &clcfp[i]->name);
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
@@ -809,14 +805,12 @@ ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
                                      ngx_str_t *uri, ngx_str_t *args)
 {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "internal redirect: \"%s\"", uri->data);
+                   "internal redirect: \"%V\"", uri);
 
-    r->uri.len = uri->len;
-    r->uri.data = uri->data;
+    r->uri = *uri;
 
     if (args) {
-        r->args.len = args->len;
-        r->args.data = args->data;
+        r->args = *args;
     }
 
     if (ngx_http_set_exten(r) != NGX_OK) {
@@ -1092,16 +1086,14 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
             clcf->name = value[2];
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "the using of the regex \"%s\" "
-                               "requires PCRE library",
-                               value[2].data);
+                               "the using of the regex \"%V\" "
+                               "requires PCRE library", &value[2]);
             return NGX_CONF_ERROR;
 #endif
 
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid location modifier \"%s\"",
-                               value[1].data);
+                               "invalid location modifier \"%V\"", &value[1]);
             return NGX_CONF_ERROR;
         }
 
@@ -1123,9 +1115,9 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
         if (pclcf->exact_match) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "location \"%s\" could not be inside "
-                               "the exact location \"%s\"",
-                               clcf->name.data, pclcf->name.data);
+                               "location \"%V\" could not be inside "
+                               "the exact location \"%V\"",
+                               &clcf->name, &pclcf->name);
             return NGX_CONF_ERROR;
         }
 
@@ -1139,8 +1131,8 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 #endif
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "location \"%s\" is outside location \"%s\"",
-                               clcf->name.data, pclcf->name.data);
+                               "location \"%V\" is outside location \"%V\"",
+                               &clcf->name, &pclcf->name);
             return NGX_CONF_ERROR;
         }
 
@@ -1301,7 +1293,7 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
     if (conf->listen.nelts == 0) {
         ngx_test_null(l, ngx_push_array(&conf->listen), NGX_CONF_ERROR);
         l->addr = INADDR_ANY;
-#if (WIN32)
+#if (NGX_WIN32)
         l->port = 80;
 #else
         /* STUB: getuid() should be cached */
@@ -1561,9 +1553,9 @@ static char *ngx_http_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                || (port < 1 || port > 65536)) { /* "listen 99999" */
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid port \"%s\" in \"%s\" directive, "
+                           "invalid port \"%s\" in \"%V\" directive, "
                            "it must be a number between 1 and 65535",
-                           &addr[p], cmd->name.data);
+                           &addr[p], &cmd->name);
 
         return NGX_CONF_ERROR;
 
@@ -1583,7 +1575,7 @@ static char *ngx_http_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (h == NULL || h->h_addr_list[0] == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                               "can not resolve host \"%s\" "
-                              "in \"%s\" directive", addr, cmd->name.data);
+                              "in \"%V\" directive", addr, &cmd->name);
             return NGX_CONF_ERROR;
         }
 
@@ -1612,9 +1604,9 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (i = 1; i < cf->args->nelts; i++) {
         if (value[i].len == 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "server name \"%s\" is invalid "
-                               "in \"%s\" directive",
-                               value[i].data, cmd->name.data);
+                               "server name \"%V\" is invalid "
+                               "in \"%V\" directive",
+                               &value[i], &cmd->name);
             return NGX_CONF_ERROR;
         }
 
@@ -1659,13 +1651,13 @@ static char *ngx_set_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if ((ngx_uint_t) lcf->alias == alias) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "\"%s\" directive is duplicate",
-                               cmd->name.data);
+                               "\"%V\" directive is duplicate",
+                               &cmd->name);
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "\"%s\" directive is duplicate, "
+                               "\"%V\" directive is duplicate, "
                                "\"%s\" directive is specified before",
-                               cmd->name.data, lcf->alias ? "alias" : "root");
+                               &cmd->name, lcf->alias ? "alias" : "root");
         }
 
         return NGX_CONF_ERROR;
@@ -1708,7 +1700,7 @@ static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (value[i].data[0] == '=') {
         if (i == 1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid value \"%s\"", value[i].data);
+                               "invalid value \"%V\"", &value[i]);
             return NGX_CONF_ERROR;
         }
 
@@ -1716,7 +1708,7 @@ static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (overwrite == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid value \"%s\"", value[i].data);
+                               "invalid value \"%V\"", value[i]);
             return NGX_CONF_ERROR;
         }
 
@@ -1735,14 +1727,14 @@ static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         err->status = ngx_atoi(value[i].data, value[i].len);
         if (err->status == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid value \"%s\"", value[i].data);
+                               "invalid value \"%V\"", &value[i]);
             return NGX_CONF_ERROR;
         }
 
         if (err->status < 400 || err->status > 599) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "value \"%s\" must be between 400 and 599",
-                               value[i].data);
+                               "value \"%V\" must be between 400 and 599",
+                               &value[i]);
             return NGX_CONF_ERROR;
         }
 

@@ -44,6 +44,7 @@
 #include <netdb.h>
 
 #include <time.h>               /* tzset() */
+#include <malloc.h>             /* memalign() */
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 

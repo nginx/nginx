@@ -64,8 +64,8 @@ else
 #            . auto/cc/acc
 #        ;;
 
-        msvc)
-            # MSVC 6.0 SP2
+        msvc*)
+            # MSVC++ 6.0 SP2, MSVC++ Toolkit 2003
 
             . auto/cc/msvc
         ;;
@@ -92,6 +92,22 @@ CFLAGS="$CFLAGS $NGX_CC_OPT"
 
 
 if [ "$PLATFORM" != win32 ]; then
+
+    if test -n "$NGX_LD_OPT"; then
+        ngx_feature=--with-ld-opt=\"$NGX_LD_OPT\"
+        ngx_feature_name=DUMMY
+        ngx_feature_run=no
+        ngx_feature_incs=
+        ngx_feature_libs=
+        ngx_feature_test=
+        . auto/feature
+
+        if [ $ngx_found = no ]; then
+            echo $0: error: the invalid value in --with-ld-opt=\"$NGX_LD_OPT\"
+            echo
+            exit 1
+        fi
+    fi
 
     ngx_feature="gcc variadic macros"
     ngx_feature_name=HAVE_GCC_VARIADIC_MACROS

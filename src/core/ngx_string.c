@@ -30,42 +30,92 @@ u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n)
 
 /*
  * supported formats:
- *    %[0][width]O     off_t
- *    %[0][width]T     time_t
- *    %[0][width]S     ssize_t
- *    %[0][width]uS    size_t
- *    %[0][width]uxS   size_t in hex
- *    %[0][width]l     long
- *    %[0][width]d     int
- *    %[0][width]i     ngx_int_t
- *    %[0][width]ui    ngx_uint_t
- *    %[0][width]uxi   ngx_uint_t in hex
- *    %s               null-terminated string
- *    %c               char
- *    %%               %
+ *    %[0][width]O              off_t
+ *    %[0][width]T              time_t
+ *    %[0][width][u][x|X]z      ssize_t/size_t
+ *    %[0][width][u][x|X]d      int/u_int
+ *    %[0][width][u][x|X]l      long
+ *    %[0][width|m][u][x|X]i    ngx_int_t/ngx_uint_t
+ *    %[0][width][u][x|X]D      int32_t/uint32_t
+ *    %[0][width][u][x|X]L      int64_t/uint64_t
+ *    %P                        ngx_pid_t
+ *    %r                        rlim_t
+ *    %p                        pointer
+ *    %V                        pointer to ngx_str_t
+ *    %s                        null-terminated string
+ *    %Z                        '\0'
+ *    %c                        char
+ *    %%                        %
  *
+ *  TODO:
+ *    %M                        ngx_msec_t
+ *    %A                        ngx_atomic_t
+ *
+ *  reserved:
+ *    %t                        ptrdiff_t
+ *    %S                        null-teminated wchar string
+ *    %C                        wchar
  */
 
-u_char *ngx_sprintf(u_char *buf, char *fmt, ...)
+
+u_char *ngx_sprintf(u_char *buf, const char *fmt, ...)
 {
-    u_char        *p, c, temp[NGX_MAX_INT_LEN];
-    int            d;
-    long           l;
-    off_t          offset;
-    size_t         size, len;
-    ssize_t        ssize;
-    time_t         sec;
-    va_list        arg;
-    ngx_int_t      i;
-    ngx_uint_t     ui, zero, width, sign, hexadecimal;
-    static u_char  hex[] = "0123456789abcdef";
+    u_char   *p;
+    va_list   args;
 
-    va_start(arg, fmt);
+    va_start(args, fmt);
+    p = ngx_vsnprintf(buf, /* STUB */ 65536, fmt, args);
+    va_end(args);
 
-    while (*fmt) {
+    return p;
+}
+
+
+u_char *ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
+{
+    u_char   *p;
+    va_list   args;
+
+    va_start(args, fmt);
+    p = ngx_vsnprintf(buf, max, fmt, args);
+    va_end(args);
+
+    return p;
+}
+
+
+u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
+{
+    u_char         *p, zero, *last, temp[NGX_MAX_INT_LEN];
+    int             d;
+    size_t          len;
+    uint32_t        ui32;
+    int64_t         i64;
+    uint64_t        ui64;
+    ngx_str_t      *s;
+    ngx_uint_t      width, sign, hexadecimal;
+    static u_char   hex[] = "0123456789abcdef";
+    static u_char   HEX[] = "0123456789ABCDEF";
+
+    if (max == 0) {
+        return buf;
+    }
+
+    last = buf + max;
+
+    while (*fmt && buf < last) {
+
+        /*
+         * "buf < last" means that we could copy at least one character:
+         * the plain character, "%%", "%c", and minus without the checking
+         */
+
         if (*fmt == '%') {
 
-            zero = (*++fmt == '0') ? 1 : 0;
+            i64 = 0;
+            ui64 = 0;
+
+            zero = (u_char) ((*++fmt == '0') ? '0' : ' ');
             width = 0;
             sign = 1;
             hexadecimal = 0;
@@ -85,8 +135,15 @@ u_char *ngx_sprintf(u_char *buf, char *fmt, ...)
                     fmt++;
                     continue;
 
+                case 'X':
+                    hexadecimal = 2;
+                    sign = 0;
+                    fmt++;
+                    continue;
+
                 case 'x':
                     hexadecimal = 1;
+                    sign = 0;
                     fmt++;
                     continue;
 
@@ -100,133 +157,112 @@ u_char *ngx_sprintf(u_char *buf, char *fmt, ...)
 
             switch (*fmt) {
 
-            case 'O':
-                offset = va_arg(arg, off_t);
+            case 'V':
+                s = va_arg(args, ngx_str_t *);
 
-                if (offset < 0) {
-                    *buf++ = '-';
-                    offset = -offset;
-                }
+                len = (buf + s->len < last) ? s->len : (size_t) (last - buf);
+                buf = ngx_cpymem(buf, s->data, len);
+                fmt++;
 
-                do {
-                    *--p = (u_char) (offset % 10 + '0');
-                } while (offset /= 10);
-
-                break;
-
-            case 'T':
-                sec = va_arg(arg, time_t);
-
-                if (sec < 0) {
-                    *buf++ = '-';
-                    sec = -sec;
-                }
-
-                do {
-                    *--p = (u_char) (sec % 10 + '0');
-                } while (sec /= 10);
-
-                break;
-
-            case 'S':
-                if (sign) {
-                    ssize = va_arg(arg, ssize_t);
-
-                    if (ssize < 0) {
-                        *buf++ = '-';
-                        size = (size_t) -ssize;
-
-                    } else {
-                        size = (size_t) ssize;
-                    }
-
-                } else {
-                    size = va_arg(arg, size_t);
-                }
-
-                if (hexadecimal) {
-                    do {
-                        *--p = hex[size & 0xf];
-                    } while (size >>= 4);
-
-                } else {
-                    do {
-                        *--p = (u_char) (size % 10 + '0');
-                    } while (size /= 10);
-                }
-
-                break;
-
-            case 'l':
-                l = va_arg(arg, long);
-
-                if (l < 0) {
-                    *buf++ = '-';
-                    l = -l;
-                }
-
-                do {
-                    *--p = (u_char) (l % 10 + '0');
-                } while (l /= 10);
-
-                break;
-
-            case 'd':
-                d = va_arg(arg, int);
-
-                if (d < 0) {
-                    *buf++ = '-';
-                    d = -d;
-                }
-
-                do {
-                    *--p = (u_char) (d % 10 + '0');
-                } while (d /= 10);
-
-                break;
-
-            case 'i':
-                if (sign) {
-                    i = va_arg(arg, ngx_int_t);
-
-                    if (i < 0) {
-                        *buf++ = '-';
-                        ui = (ngx_uint_t) -i;
-
-                    } else {
-                        ui = (ngx_uint_t) i;
-                    }
-
-                } else {
-                    ui = va_arg(arg, ngx_uint_t);
-                }
-
-                if (hexadecimal) {
-                    do {
-                        *--p = hex[ui & 0xf];
-                    } while (ui >>= 4);
-
-                } else {
-                    do {
-                        *--p = (u_char) (ui % 10 + '0');
-                    } while (ui /= 10);
-                }
-
-                break;
+                continue;
 
             case 's':
-                p = va_arg(arg, u_char *);
+                p = va_arg(args, u_char *);
 
-                while (*p) {
+                while (*p && buf < last) {
                     *buf++ = *p++;
                 }
                 fmt++;
 
                 continue;
 
+            case 'O':
+                i64 = (int64_t) va_arg(args, off_t);
+                sign = 1;
+                break;
+
+            case 'P':
+                i64 = (int64_t) va_arg(args, ngx_pid_t);
+                sign = 1;
+                break;
+
+            case 'T':
+                i64 = (int64_t) va_arg(args, time_t);
+                sign = 1;
+                break;
+
+            case 'z':
+                if (sign) {
+                    i64 = (int64_t) va_arg(args, ssize_t);
+                } else {
+                    ui64 = (uint64_t) va_arg(args, size_t);
+                }
+                break;
+
+            case 'i':
+                if (sign) {
+                    i64 = (int64_t) va_arg(args, ngx_int_t);
+                } else {
+                    ui64 = (uint64_t) va_arg(args, ngx_uint_t);
+                }
+                break;
+
+            case 'd':
+                if (sign) {
+                    i64 = (int64_t) va_arg(args, int);
+                } else {
+                    ui64 = (uint64_t) va_arg(args, u_int);
+                }
+                break;
+
+            case 'l':
+                if (sign) {
+                    i64 = (int64_t) va_arg(args, long);
+                } else {
+                    ui64 = (uint64_t) va_arg(args, u_long);
+                }
+                break;
+
+            case 'D':
+                if (sign) {
+                    i64 = (int64_t) va_arg(args, int32_t);
+                } else {
+                    ui64 = (uint64_t) va_arg(args, uint32_t);
+                }
+                break;
+
+            case 'L':
+                if (sign) {
+                    i64 = va_arg(args, int64_t);
+                } else {
+                    ui64 = va_arg(args, uint64_t);
+                }
+                break;
+
+#if !(NGX_WIN32)
+            case 'r':
+                i64 = (int64_t) va_arg(args, rlim_t);
+                sign = 1;
+                break;
+#endif
+
+            case 'p':
+                ui64 = (uintptr_t) va_arg(args, void *);
+                hexadecimal = 2;
+                sign = 0;
+                zero = '0';
+                width = 8;
+                break;
+
             case 'c':
-                d = va_arg(arg, int);
+                d = va_arg(args, int);
                 *buf++ = (u_char) (d & 0xff);
+                fmt++;
+
+                continue;
+
+            case 'Z':
+                *buf++ = '\0';
                 fmt++;
 
                 continue;
@@ -243,15 +279,71 @@ u_char *ngx_sprintf(u_char *buf, char *fmt, ...)
                 continue;
             }
 
-            len = (temp + NGX_MAX_INT_LEN) - p;
+            if (sign) {
+                if (i64 < 0) {
+                    *buf++ = '-';
+                    ui64 = (uint64_t) -i64;
 
-            c = (u_char) (zero ? '0' : ' ');
-
-            while (len++ < width) {
-                *buf++ = c;
+                } else {
+                    ui64 = (uint64_t) i64;
+                }
             }
 
-            buf = ngx_cpymem(buf, p, ((temp + NGX_MAX_INT_LEN) - p));
+            if (hexadecimal == 1) {
+                do {
+
+                    /* the "(uint32_t)" cast disables the BCC's warning */
+                    *--p = hex[(uint32_t) (ui64 & 0xf)];
+
+                } while (ui64 >>= 4);
+
+            } else if (hexadecimal == 2) {
+                do {
+
+                    /* the "(uint32_t)" cast disables the BCC's warning */
+                    *--p = HEX[(uint32_t) (ui64 & 0xf)];
+
+                } while (ui64 >>= 4);
+
+            } else if (ui64 <= NGX_MAX_UINT32_VALUE) {
+
+                /*
+                 * To divide 64-bit number and to find the remainder
+                 * on the x86 platform gcc and icc call the libc functions
+                 * [u]divdi3() and [u]moddi3(), they call another function
+                 * in return.  On FreeBSD it is the qdivrem() function,
+                 * its source code is about 170 lines of the code.
+                 * The glibc counterpart is about 150 lines of the code.
+                 *
+                 * For 32-bit numbers gcc and icc use the inlined
+                 * multiplication and shifts.  For example, unsigned
+                 * "i32 / 10" is compiled to "(i32 * 0xCCCCCCCD) >> 35".
+                 */
+
+                ui32 = (uint32_t) ui64;
+
+                do {
+                    *--p = (u_char) (ui32 % 10 + '0');
+                } while (ui32 /= 10);
+
+            } else {
+                do {
+                    *--p = (u_char) (ui64 % 10 + '0');
+                } while (ui64 /= 10);
+            }
+
+            len = (temp + NGX_MAX_INT_LEN) - p;
+
+            while (len++ < width && buf < last) {
+                *buf++ = zero;
+            }
+
+            len = (temp + NGX_MAX_INT_LEN) - p;
+            if (buf + len > last) {
+                len = last - buf;
+            }
+
+            buf = ngx_cpymem(buf, p, len);
 
             fmt++;
 
@@ -259,10 +351,6 @@ u_char *ngx_sprintf(u_char *buf, char *fmt, ...)
             *buf++ = *fmt++;
         }
     }
-
-    va_end(arg);
-
-    *buf = '\0';
 
     return buf;
 }
@@ -505,12 +593,14 @@ ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
 }
 
 
-ngx_int_t ngx_escape_uri(u_char *dst, u_char *src, size_t size)
+ngx_uint_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
+                          ngx_uint_t type)
 {
-    ngx_int_t         n;
-    ngx_uint_t        i;
+    ngx_uint_t        i, n;
+    uint32_t         *escape;
     static u_char     hex[] = "0123456789abcdef";
-    static uint32_t   escape[] =
+
+    static uint32_t   uri[] =
         { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
 
                       /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
@@ -526,6 +616,31 @@ ngx_int_t ngx_escape_uri(u_char *dst, u_char *src, size_t size)
           0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
           0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
           0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */ };
+
+    static uint32_t   html[] =
+        { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+
+                      /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+          0x80000021, /* 0000 0000 0000 0000  0000 0000 1010 0101 */
+
+                      /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+          0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+
+                      /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+          0x80000000, /* 1000 0000 0000 0000  0000 0000 0000 0000 */
+
+          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+          0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */ };
+
+
+    if (type == NGX_ESCAPE_HTML) {
+        escape = html;
+
+    } else {
+        escape = uri;
+    }
 
     if (dst == NULL) {
 
@@ -555,5 +670,5 @@ ngx_int_t ngx_escape_uri(u_char *dst, u_char *src, size_t size)
         }
     }
 
-    return NGX_OK;
+    return 0;
 }

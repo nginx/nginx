@@ -89,7 +89,7 @@ ngx_inline static void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 
         if (abs(key - ev->rbtree_key) < 100 / NGX_TIMER_RESOLUTION) {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                           "event timer: %d, old: %d, new: %d",
+                           "event timer: %d, old: %i, new: %i",
                             ngx_event_ident(ev->data), ev->rbtree_key, key);
             return;
         }
@@ -100,7 +100,7 @@ ngx_inline static void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     ev->rbtree_key = key;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "event timer add: %d: %d",
+                   "event timer add: %d: %i",
                     ngx_event_ident(ev->data), ev->rbtree_key);
 
     if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {

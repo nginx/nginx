@@ -64,6 +64,3 @@ CFLAGS="$CFLAGS -Werror"
 CFLAGS="$CFLAGS -g"
 
 LINK="\$(CC)"
-
-
-CC_STRONG="-w1 -Werror"

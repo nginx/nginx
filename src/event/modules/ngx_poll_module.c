@@ -302,7 +302,7 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
     if (cycle->log->log_level & NGX_LOG_DEBUG_ALL) {
         for (i = 0; i < nevents; i++) {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "poll: %d: fd:%d ev:%04X",
+                           "poll: %d: fd:%d ev:%04Xd",
                            i, event_list[i].fd, event_list[i].events);
         }
     }
@@ -380,13 +380,13 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
 
 #if 0
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "poll: %d: fd:%d ev:%04X rev:%04X",
+                       "poll: %d: fd:%d ev:%04Xd rev:%04Xd",
                        i, event_list[i].fd,
                        event_list[i].events, event_list[i].revents);
 #else
         if (event_list[i].revents) {
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "poll: %d: fd:%d ev:%04X rev:%04X",
+                           "poll: %d: fd:%d ev:%04Xd rev:%04Xd",
                            i, event_list[i].fd,
                            event_list[i].events, event_list[i].revents);
         }
@@ -394,7 +394,7 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
 
         if (event_list[i].revents & POLLNVAL) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "poll() error fd:%d ev:%04X rev:%04X",
+                          "poll() error fd:%d ev:%04Xd rev:%04Xd",
                           event_list[i].fd,
                           event_list[i].events, event_list[i].revents);
         }
@@ -402,7 +402,7 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
         if (event_list[i].revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL))
         {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "strange poll() events fd:%d ev:%04X rev:%04X",
+                          "strange poll() events fd:%d ev:%04Xd rev:%04Xd",
                           event_list[i].fd,
                           event_list[i].events, event_list[i].revents);
         }
@@ -529,7 +529,7 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
     for ( ;; ) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                      "accept event " PTR_FMT, ev);
+                      "accept event %p", ev);
 
         if (ev == NULL) {
             break;

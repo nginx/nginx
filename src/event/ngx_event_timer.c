@@ -110,14 +110,13 @@ void ngx_event_expire_timers(ngx_msec_t timer)
                  */
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                               "event " PTR_FMT " is busy in expire timers",
-                               ev);
+                               "event %p is busy in expire timers", ev);
                 break;
             }
 #endif
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                           "event timer del: %d: %d",
+                           "event timer del: %d: %i",
                             ngx_event_ident(ev->data), ev->rbtree_key);
 
             ngx_rbtree_delete((ngx_rbtree_t **) &ngx_event_timer_rbtree,

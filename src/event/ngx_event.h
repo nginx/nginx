@@ -81,7 +81,7 @@ struct ngx_event_s {
     unsigned         posted_ready:1;
 #endif
 
-#if (WIN32)
+#if (NGX_WIN32)
     /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was succesfull */
     unsigned         accept_context_updated:1;
 #endif
@@ -473,7 +473,7 @@ ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle);
 ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
 
 
-#if (WIN32)
+#if (NGX_WIN32)
 void ngx_event_acceptex(ngx_event_t *ev);
 int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
 #endif
@@ -490,7 +490,7 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 #include <ngx_event_posted.h>
 #include <ngx_event_busy_lock.h>
 
-#if (WIN32)
+#if (NGX_WIN32)
 #include <ngx_iocp_module.h>
 #endif
 

@@ -39,7 +39,7 @@
 #endif
 
 
-#if !(WIN32)
+#if !(NGX_WIN32)
 
 #define ngx_signal_helper(n)     SIG##n
 #define ngx_signal_value(n)      ngx_signal_helper(n)
@@ -72,8 +72,6 @@ typedef int                ngx_int_t;
 typedef u_int              ngx_uint_t;
 typedef int                ngx_flag_t;
 #define NGX_INT_T_LEN      sizeof("-2147483648") - 1
-#define NGX_INT_T_FMT      "d"
-#define NGX_UINT_T_FMT     "u"
 
 #else
 
@@ -81,8 +79,6 @@ typedef long               ngx_int_t;
 typedef u_long             ngx_uint_t;
 typedef long               ngx_flag_t;
 #define NGX_INT_T_LEN      sizeof("-9223372036854775808") - 1
-#define NGX_INT_T_FMT      "lld"
-#define NGX_UINT_T_FMT     "llu"
 
 #endif
 
@@ -130,6 +126,13 @@ typedef long               ngx_flag_t;
 /*
 #define NGX_MAXHOSTNAMELEN MAXHOSTNAMELEN
 */
+
+#if ((__GNU__ == 2) && (__GNUC_MINOR__ < 8))
+#define NGX_MAX_UINT32_VALUE  0xffffffffLL
+#else
+#define NGX_MAX_UINT32_VALUE  0xffffffff
+#endif
+
 
 
 #endif /* _NGX_CONFIG_H_INCLUDED_ */

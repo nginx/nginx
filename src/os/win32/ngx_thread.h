@@ -12,21 +12,46 @@
 #include <ngx_core.h>
 
 
-#if (NGX_THREADS)
+typedef HANDLE  ngx_tid_t;
+typedef DWORD   ngx_tls_key_t;
+
+
+typedef struct {
+    HANDLE      mutex;
+    ngx_log_t   *log;
+} ngx_mutex_t;
+
+
+ngx_err_t ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
+                            ngx_log_t *log);
+ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle);
+
+ngx_err_t ngx_thread_key_create(ngx_tls_key_t *key);
+#define ngx_thread_key_create_n     "TlsAlloc()"
+ngx_err_t ngx_thread_set_tls(ngx_tls_key_t *key, void *data);
+#define ngx_thread_set_tls_n         "TlsSetValue()"
+#define ngx_thread_get_tls           TlsGetValue
+
 
 #define ngx_thread_volatile  volatile
 
-#else /* !NGX_THREADS */
+#define ngx_log_tid                 GetCurrentThreadId()
+#define NGX_TID_T_FMT               "%ud"
 
-#define ngx_thread_volatile
 
-#define ngx_log_tid  0
-#define TID_T_FMT    "%d"
+ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags);
 
-#define ngx_mutex_lock(m)     NGX_OK
+
+/* STUB */
+#define NGX_MUTEX_LIGHT             0
+
+#define ngx_mutex_lock(m)           NGX_OK
+#define ngx_mutex_trylock(m)        NGX_OK
 #define ngx_mutex_unlock(m)
+/* */
 
-#endif
+
+extern ngx_int_t  ngx_threads_n;
 
 
 #endif /* _NGX_THREAD_H_INCLUDED_ */

@@ -232,7 +232,7 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
     ee.data.ptr = (void *) ((uintptr_t) c | ev->instance);
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "epoll add event: fd:%d op:%d ev:%08X",
+                   "epoll add event: fd:%d op:%d ev:%08XD",
                    c->fd, op, ee.events);
 
     if (epoll_ctl(ep, op, c->fd, &ee) == -1) {
@@ -291,7 +291,7 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "epoll del event: fd:%d op:%d ev:%08X",
+                   "epoll del event: fd:%d op:%d ev:%08XD",
                    c->fd, op, ee.events);
 
     if (epoll_ctl(ep, op, c->fd, &ee) == -1) {
@@ -314,7 +314,7 @@ static int ngx_epoll_add_connection(ngx_connection_t *c)
     ee.data.ptr = (void *) ((uintptr_t) c | c->read->instance);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "epoll add connection: fd:%d ev:%08X", c->fd, ee.events);
+                   "epoll add connection: fd:%d ev:%08XD", c->fd, ee.events);
 
     if (epoll_ctl(ep, EPOLL_CTL_ADD, c->fd, &ee) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -513,7 +513,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
              */
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "epoll: stale event " PTR_FMT, c);
+                           "epoll: stale event %p", c);
             continue;
         }
 
@@ -522,18 +522,18 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
 #endif
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
-                       "epoll: fd:%d ev:%04X d:" PTR_FMT,
+                       "epoll: fd:%d ev:%04XD d:%p",
                        c->fd, event_list[i].events, event_list[i].data);
 
         if (event_list[i].events & (EPOLLERR|EPOLLHUP)) {
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
-                           "epoll_wait() error on fd:%d ev:%04X",
+                           "epoll_wait() error on fd:%d ev:%04XD",
                            c->fd, event_list[i].events);
         }
 
         if (event_list[i].events & ~(EPOLLIN|EPOLLOUT|EPOLLERR|EPOLLHUP)) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
-                          "strange epoll_wait() events fd:%d ev:%04X",
+                          "strange epoll_wait() events fd:%d ev:%04XD",
                           c->fd, event_list[i].events);
         }
 

@@ -173,8 +173,8 @@ static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p)
     ngx_cpystrn(c->status_line.data, p->status_start, c->status_line.len + 1);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http cache status %d \"%s\"", 
-                   c->status, c->status_line.data);
+                   "http cache status %ui \"%V\"", 
+                   c->status, &c->status_line);
 
     /* TODO: ngx_init_table */
     c->headers_in.headers = ngx_create_table(r->pool, 20);
@@ -219,8 +219,7 @@ static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p)
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http cache header: \"%s: %s\"",
-                           h->key.data, h->value.data);
+                           "http cache header: \"%V: %V\"", &h->key, &h->value);
 
             continue;
 
@@ -614,7 +613,7 @@ int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p)
     ep = p->upstream->event_pipe;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, p->request->connection->log, 0,
-                   "http cache update len: " OFF_T_FMT ":" OFF_T_FMT,
+                   "http cache update len: %O:%O",
                    p->cache->ctx.length, ep->read_length);
 
     if (p->cache->ctx.length == -1) {

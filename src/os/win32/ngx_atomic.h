@@ -18,7 +18,7 @@
 #define ngx_atomic_inc(p)       InterlockedIncrement((long *) p)
 
 
-#if defined( __WATCOMC__ ) || defined( __BORLANDC__ )
+#if defined( __WATCOMC__ ) || defined( __BORLANDC__ ) || ( _MSC_VER >= 1300 )
 
 /* the new SDK headers */
 

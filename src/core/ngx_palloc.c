@@ -33,8 +33,7 @@ void ngx_destroy_pool(ngx_pool_t *pool)
 
     for (l = pool->large; l; l = l->next) {
 
-        ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
-                       "free: " PTR_FMT, l->alloc);
+        ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0, "free: %p", l->alloc);
 
         if (l->alloc) {
             free(l->alloc);
@@ -50,8 +49,7 @@ void ngx_destroy_pool(ngx_pool_t *pool)
 
     for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
         ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
-                       "free: " PTR_FMT ", unused: " SIZE_T_FMT,
-                       p, p->end - p->last);
+                       "free: %p, unused: %uz", p, p->end - p->last);
 
         if (n == NULL) {
             break;
@@ -164,7 +162,7 @@ ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p)
     for (l = pool->large; l; l = l->next) {
         if (p == l->alloc) {
             ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
-                           "free: " PTR_FMT, l->alloc);
+                           "free: %p", l->alloc);
             free(l->alloc);
             l->alloc = NULL;
 

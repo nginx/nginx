@@ -110,6 +110,10 @@ static int ngx_aio_del_connection(ngx_connection_t *c, u_int flags)
         return NGX_OK;
     }
 
+    if (flags & NGX_CLOSE_EVENT) {
+        return NGX_OK;
+    }
+
     rc = aio_cancel(c->fd, NULL);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "aio_cancel: %d", rc);

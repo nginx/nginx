@@ -265,7 +265,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                     }
 
                     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, err,
-                                   "sendfile() sent only " OFF_T_FMT " bytes",
+                                   "sendfile() sent only %O bytes",
                                    sent);
 
                 } else {
@@ -290,14 +290,14 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
             }
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "sendfile: %d, @" OFF_T_FMT " " OFF_T_FMT ":%d",
+                           "sendfile: %d, @%O %O:%uz",
                            rc, file->file_pos, sent, fsize + hsize);
 
         } else {
             rc = writev(c->fd, header.elts, header.nelts);
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "writev: %d of " SIZE_T_FMT, rc, hsize);
+                           "writev: %d of %uz", rc, hsize);
 
             if (rc == -1) {
                 err = ngx_errno;

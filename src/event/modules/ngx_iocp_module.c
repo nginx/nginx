@@ -82,7 +82,7 @@ ngx_os_io_t ngx_iocp_io = {
     ngx_overlapped_wsarecv,
     NULL,
     NULL,
-    ngx_wsasend_chain,
+    ngx_overlapped_wsasend_chain,
     0
 };
 
@@ -138,7 +138,7 @@ static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
     c->write->active = 1;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "iocp add: fd:%d k:%d ov:" PTR_FMT, c->fd, key, &ev->ovlp);
+                   "iocp add: fd:%d k:%d ov:%p", c->fd, key, &ev->ovlp);
 
     if (CreateIoCompletionPort((HANDLE) c->fd, iocp, key, 0) == NULL) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -152,10 +152,16 @@ static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
 
 static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
 {
+#if 0
+    if (flags & NGX_CLOSE_EVENT) {
+        return NGX_OK;
+    }
+
     if (CancelIo((HANDLE) c->fd) == 0) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno, "CancelIo() failed");
         return NGX_ERROR;
     }
+#endif
 
     return NGX_OK;
 }
@@ -195,11 +201,18 @@ static ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
     ngx_time_update(tv.tv_sec);
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "iocp: %d b:%d k:%d ov:" PTR_FMT, rc, bytes, key, ovlp);
+                   "iocp: %d b:%d k:%d ov:%p", rc, bytes, key, ovlp);
 
     delta = ngx_elapsed_msec;
     ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
                                           + tv.tv_usec / 1000 - ngx_start_msec;
+
+    if (timer != INFINITE) {
+        delta = ngx_elapsed_msec - delta;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "iocp timer: %d, delta: %d", timer, (int) delta);
+    }
 
     if (err) {
         if (ovlp == NULL) {
@@ -210,48 +223,75 @@ static ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
                 return NGX_ERROR;
             }
 
-        } else {
-            ovlp->error = err;
-        }
-    }
-
-    if (timer != INFINITE) {
-        delta = ngx_elapsed_msec - delta;
-
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "iocp timer: %d, delta: %d", timer, (int) delta);
-    }
-
-    if (ovlp) {
-        ev = ovlp->event;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "iocp event:" PTR_FMT, ev);
-
-        switch (key) {
-
-        case NGX_IOCP_ACCEPT:
-            if (bytes) {
-                ev->ready = 1;
+            if (timer != INFINITE && delta) {
+                ngx_event_expire_timers((ngx_msec_t) delta);
             }
-            break;
 
-        case NGX_IOCP_IO:
-            ev->complete = 1;
-            ev->ready = 1;
-            break;
-
-        case NGX_IOCP_CONNECT:
-            ev->ready = 1;
+            return NGX_OK;
         }
 
-        ev->available = bytes;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "iocp event handler: " PTR_FMT, ev->event_handler);
-
-        ev->event_handler(ev);
+        ovlp->error = err;
     }
+
+    if (ovlp == NULL) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "GetQueuedCompletionStatus() returned no operation");
+        return NGX_ERROR;
+    }
+
+
+    ev = ovlp->event;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, err, "iocp event:%p", ev);
+
+
+    if (err == ERROR_NETNAME_DELETED /* the socket was closed */
+        || err == ERROR_OPERATION_ABORTED /* the operation was canceled */)
+    {
+
+        /*
+         * the WSA_OPERATION_ABORTED completion notification
+         * for a file descriptor that was closed
+         */
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, err,
+                       "iocp: aborted event %p", ev); 
+
+        if (timer != INFINITE && delta) {
+            ngx_event_expire_timers((ngx_msec_t) delta);
+        }
+
+        return NGX_OK;
+    }
+
+    if (err) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
+                      "GetQueuedCompletionStatus() returned operation error");
+    }
+
+    switch (key) {
+
+    case NGX_IOCP_ACCEPT:
+        if (bytes) {
+            ev->ready = 1;
+        }
+        break;
+
+    case NGX_IOCP_IO:
+        ev->complete = 1;
+        ev->ready = 1;
+        break;
+
+    case NGX_IOCP_CONNECT:
+        ev->ready = 1;
+    }
+
+    ev->available = bytes;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "iocp event handler: %p", ev->event_handler);
+
+    ev->event_handler(ev);
 
     if (timer != INFINITE && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);

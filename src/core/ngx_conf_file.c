@@ -73,7 +73,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         fd = ngx_open_file(filename->data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
         if (fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
-                          ngx_open_file_n " %s failed", filename->data);
+                          ngx_open_file_n " \"%s\" failed", filename->data);
             return NGX_CONF_ERROR;
         }
 
@@ -84,7 +84,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         if (ngx_fd_info(fd, &cf->conf_file->file.info) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
-                          ngx_fd_info_n " %s failed", filename->data);
+                          ngx_fd_info_n " \"%s\" failed", filename->data);
         }
 
         if (!(cf->conf_file->buffer = ngx_create_temp_buf(cf->pool, 1024))) {
@@ -103,8 +103,12 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         rc = ngx_conf_read_token(cf);
 
         /*
-         * ngx_conf_read_token() returns NGX_OK, NGX_ERROR,
-         * NGX_CONF_FILE_DONE or NGX_CONF_BLOCK_DONE
+         * ngx_conf_read_token() may return
+         *    NGX_ERROR             there is error
+         *    NGX_OK                the token terminated by ";" was found
+         *    NGX_CONF_BLOCK_START  the token terminated by "{" was found
+         *    NGX_CONF_BLOCK_DONE   the "}" was found
+         *    NGX_CONF_FILE_DONE    the configuration file is done
          */
 
 #if 0
@@ -115,13 +119,16 @@ ngx_log_debug(cf->log, "token %d" _ rc);
             break;
         }
 
-        if (rc != NGX_OK) {
+        if (rc != NGX_OK && rc != NGX_CONF_BLOCK_START) {
             break;
         }
 
         if (cf->handler) {
 
-            /* custom handler, i.e. used in http "types { ... }" directive */
+            /*
+             * the custom handler, i.e., that is used in the http's
+             * "types { ... }" directive
+             */
 
             rv = (*cf->handler)(cf, NULL, cf->handler_conf);
             if (rv == NGX_CONF_OK) {
@@ -175,6 +182,31 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                                       "directive \"%s\" in %s:%d "
                                       "is not allowed here",
+                                      name->data,
+                                      cf->conf_file->file.name.data,
+                                      cf->conf_file->line);
+                        rc = NGX_ERROR;
+                        break;
+                    }
+
+                    if (!(cmd->type & NGX_CONF_BLOCK) && rc != NGX_OK)
+                    {
+                        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                      "directive \"%s\" in %s:%d "
+                                      "is not terminated by \";\"",
+                                      name->data,
+                                      cf->conf_file->file.name.data,
+                                      cf->conf_file->line);
+                        rc = NGX_ERROR;
+                        break;
+                    }
+
+                    if ((cmd->type & NGX_CONF_BLOCK)
+                        && rc != NGX_CONF_BLOCK_START)
+                    {
+                        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                      "directive \"%s\" in %s:%d "
+                                      "has not the opening \"{\"",
                                       name->data,
                                       cf->conf_file->file.name.data,
                                       cf->conf_file->line);
@@ -396,8 +428,12 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
                 continue;
             }
 
-            if (ch == ';' || ch == '{') {
+            if (ch == ';') {
                 return NGX_OK;
+            }
+
+            if (ch == '{') {
+                return NGX_CONF_BLOCK_START;
             }
 
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
@@ -425,6 +461,10 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
                                   ch, cf->conf_file->file.name.data,
                                   cf->conf_file->line);
                     return NGX_ERROR;
+                }
+
+                if (ch == '{') {
+                    return NGX_CONF_BLOCK_START;
                 }
 
                 return NGX_OK;
@@ -538,8 +578,12 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
 ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 #endif
 
-                if (ch == ';' || ch == '{') {
+                if (ch == ';') {
                     return NGX_OK;
+                }
+
+                if (ch == '{') {
+                    return NGX_CONF_BLOCK_START;
                 }
 
                 found = 0;
@@ -574,6 +618,18 @@ ngx_int_t ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
     if (name->data[0] == '/') {
         return NGX_OK;
     }
+
+#if (NGX_WIN32)
+
+    if (name->len > 2
+        && name->data[1] == ':'
+        && ((name->data[0] >= 'a' && name->data[0] <= 'z')
+             || (name->data[0] >= 'A' && name->data[0] <= 'Z')))
+    {
+        return NGX_OK;
+    }
+
+#endif
 
     old = *name;
 
@@ -664,20 +720,22 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
 void ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
                         char *fmt, ...)
 {
-    int      len;
-    char     errstr[NGX_MAX_CONF_ERRSTR];
+    u_char   errstr[NGX_MAX_CONF_ERRSTR], *buf, *last;
     va_list  args;
 
+    last = errstr + NGX_MAX_CONF_ERRSTR;
+
     va_start(args, fmt);
-    len = ngx_vsnprintf(errstr, sizeof(errstr) - 1, fmt, args);
+    buf = ngx_vsnprintf(errstr, last - errstr, fmt, args);
     va_end(args);
 
+    *buf = '\0';
+
     if (err) {
-        len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                            " (%d: ", err);
-        len += ngx_strerror_r(err, errstr + len, sizeof(errstr) - len - 1);
-        errstr[len++] = ')';
-        errstr[len] = '\0';
+        buf = ngx_snprintf(buf, last - buf - 1, " (%d: ", err);
+        buf = ngx_strerror_r(err, buf, last - buf - 1);
+        *buf++ = ')';
+        *buf = '\0';
     }
 
     ngx_log_error(level, cf->log, 0, "%s in %s:%d",

@@ -94,7 +94,7 @@ void ngx_time_init()
     ngx_old_elapsed_msec = 0;
     ngx_elapsed_msec = 0;
 
-#if !(WIN32)
+#if !(NGX_WIN32)
     tzset();
 #endif
 
@@ -150,15 +150,14 @@ void ngx_time_update(time_t s)
 
     p = cached_http_time[slot];
 
-    ngx_snprintf((char *) p, sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
-                 "%s, %02d %s %4d %02d:%02d:%02d GMT",
-                 week[ngx_cached_gmtime.ngx_tm_wday],
-                 ngx_cached_gmtime.ngx_tm_mday,
-                 months[ngx_cached_gmtime.ngx_tm_mon - 1],
-                 ngx_cached_gmtime.ngx_tm_year,
-                 ngx_cached_gmtime.ngx_tm_hour,
-                 ngx_cached_gmtime.ngx_tm_min,
-                 ngx_cached_gmtime.ngx_tm_sec);
+    ngx_sprintf(p, "%s, %02d %s %4d %02d:%02d:%02d GMT",
+                week[ngx_cached_gmtime.ngx_tm_wday],
+                ngx_cached_gmtime.ngx_tm_mday,
+                months[ngx_cached_gmtime.ngx_tm_mon - 1],
+                ngx_cached_gmtime.ngx_tm_year,
+                ngx_cached_gmtime.ngx_tm_hour,
+                ngx_cached_gmtime.ngx_tm_min,
+                ngx_cached_gmtime.ngx_tm_sec);
 
     ngx_cached_http_time.data = p;
 
@@ -183,24 +182,22 @@ void ngx_time_update(time_t s)
 
     p = cached_err_log_time[slot];
 
-    ngx_snprintf((char *) p, sizeof("1970/09/28 12:00:00"),
-                 "%4d/%02d/%02d %02d:%02d:%02d",
-                 tm.ngx_tm_year, tm.ngx_tm_mon,
-                 tm.ngx_tm_mday, tm.ngx_tm_hour,
-                 tm.ngx_tm_min, tm.ngx_tm_sec);
+    ngx_sprintf(p, "%4d/%02d/%02d %02d:%02d:%02d",
+                tm.ngx_tm_year, tm.ngx_tm_mon,
+                tm.ngx_tm_mday, tm.ngx_tm_hour,
+                tm.ngx_tm_min, tm.ngx_tm_sec);
 
     ngx_cached_err_log_time.data = p;
 
 
     p = cached_http_log_time[slot];
 
-    ngx_snprintf((char *) p, sizeof("28/Sep/1970:12:00:00 +0600"),
-                 "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
-                 tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
-                 tm.ngx_tm_year, tm.ngx_tm_hour,
-                 tm.ngx_tm_min, tm.ngx_tm_sec,
-                 ngx_gmtoff < 0 ? '-' : '+',
-                 abs(ngx_gmtoff / 60), abs(ngx_gmtoff % 60));
+    ngx_sprintf(p, "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
+                tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
+                tm.ngx_tm_year, tm.ngx_tm_hour,
+                tm.ngx_tm_min, tm.ngx_tm_sec,
+                ngx_gmtoff < 0 ? '-' : '+',
+                abs(ngx_gmtoff / 60), abs(ngx_gmtoff % 60));
 
     ngx_cached_http_log_time.data = p;
 
@@ -213,9 +210,6 @@ void ngx_time_update(time_t s)
 
 
 u_char *ngx_http_time(u_char *buf, time_t t)
-#if 0
-size_t ngx_http_time(u_char *buf, time_t t)
-#endif
 {
     ngx_tm_t  tm;
 
@@ -229,25 +223,10 @@ size_t ngx_http_time(u_char *buf, time_t t)
                        tm.ngx_tm_hour,
                        tm.ngx_tm_min,
                        tm.ngx_tm_sec);
-
-#if 0
-    return ngx_snprintf((char *) buf, sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
-                                      "%s, %02d %s %4d %02d:%02d:%02d GMT",
-                                      week[tm.ngx_tm_wday],
-                                      tm.ngx_tm_mday,
-                                      months[tm.ngx_tm_mon - 1],
-                                      tm.ngx_tm_year,
-                                      tm.ngx_tm_hour,
-                                      tm.ngx_tm_min,
-                                      tm.ngx_tm_sec);
-#endif
 }
 
 
 u_char *ngx_http_cookie_time(u_char *buf, time_t t)
-#if 0
-size_t ngx_http_cookie_time(u_char *buf, time_t t)
-#endif
 {
     ngx_tm_t  tm;
 
@@ -270,32 +249,6 @@ size_t ngx_http_cookie_time(u_char *buf, time_t t)
                        tm.ngx_tm_hour,
                        tm.ngx_tm_min,
                        tm.ngx_tm_sec);
-
-#if 0
-    if (tm.ngx_tm_year > 2037) {
-        return ngx_snprintf((char *) buf,
-                                      sizeof("Mon, 28-Sep-1970 06:00:00 GMT"),
-                                      "%s, %02d-%s-%d %02d:%02d:%02d GMT",
-                                      week[tm.ngx_tm_wday],
-                                      tm.ngx_tm_mday,
-                                      months[tm.ngx_tm_mon - 1],
-                                      tm.ngx_tm_year,
-                                      tm.ngx_tm_hour,
-                                      tm.ngx_tm_min,
-                                      tm.ngx_tm_sec);
-    } else {
-        return ngx_snprintf((char *) buf,
-                                      sizeof("Mon, 28-Sep-70 06:00:00 GMT"),
-                                      "%s, %02d-%s-%02d %02d:%02d:%02d GMT",
-                                      week[tm.ngx_tm_wday],
-                                      tm.ngx_tm_mday,
-                                      months[tm.ngx_tm_mon - 1],
-                                      tm.ngx_tm_year % 100,
-                                      tm.ngx_tm_hour,
-                                      tm.ngx_tm_min,
-                                      tm.ngx_tm_sec);
-    }
-#endif
 }
 
 

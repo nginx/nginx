@@ -26,6 +26,9 @@ TEST_BUILD_DEVPOLL=NO
 TEST_BUILD_EPOLL=NO
 TEST_BUILD_RTSIG=NO
 
+PLATFORM=
+NGX_WINE=
+
 EVENT_FOUND=NO
 
 EVENT_RTSIG=NO
@@ -195,9 +198,8 @@ if [ $HTTP = NO ]; then
 fi
 
 
-if [ ".$PLATFORM" = ".win32" -a $EVENT_POLL = YES ]; then
-    EVENT_POLL=NO
-    echo "$0: warning: --with-poll_module option is ignored for win32"
+if [ ".$PLATFORM" = ".win32" ]; then
+    NGX_WINE=$WINE
 fi
 
 
@@ -208,12 +210,6 @@ fi
 
 if test -z "$NGX_GROUP"; then
     NGX_GROUP=NGX_USER
-fi
-
-
-if test -z "$NGX_USER"; then
-    NGX_USER=nobody
-    NGX_GROUP=nobody
 fi
 
 

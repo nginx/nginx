@@ -133,7 +133,7 @@ ngx_int_t ngx_http_log_handler(ngx_http_request_t *r)
     ngx_http_log_t           *log;
     ngx_http_log_op_t        *op;
     ngx_http_log_loc_conf_t  *lcf;
-#if (WIN32)
+#if (NGX_WIN32)
     u_long                    written;
 #endif
 
@@ -160,7 +160,7 @@ ngx_int_t ngx_http_log_handler(ngx_http_request_t *r)
             }
         }
 
-#if (WIN32)
+#if (NGX_WIN32)
         len += 2;
 #else
         len++;
@@ -186,7 +186,7 @@ ngx_int_t ngx_http_log_handler(ngx_http_request_t *r)
             }
         }
 
-#if (WIN32)
+#if (NGX_WIN32)
         *p++ = CR; *p++ = LF;
         WriteFile(log[l].file->fd, line, p - line, &written, NULL);
 #else
@@ -211,12 +211,6 @@ static u_char *ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
                                      uintptr_t data)
 {
     return ngx_sprintf(buf, "%ui", r->connection->number);
-
-#if 0
-    return buf + ngx_snprintf((char *) buf, NGX_INT_T_LEN + 1,
-                              "%" NGX_UINT_T_FMT,
-                              r->connection->number);
-#endif
 }
 
 
@@ -249,11 +243,6 @@ static u_char *ngx_http_log_msec(ngx_http_request_t *r, u_char *buf,
     ngx_gettimeofday(&tv);
 
     return ngx_sprintf(buf, "%l.%03l", tv.tv_sec, tv.tv_usec / 1000);
-
-#if 0
-    return buf + ngx_snprintf((char *) buf, TIME_T_LEN + 5, "%ld.%03ld",
-                              tv.tv_sec, tv.tv_usec / 1000);
-#endif
 }
 
 
@@ -274,11 +263,6 @@ static u_char *ngx_http_log_status(ngx_http_request_t *r, u_char *buf,
 {
     return ngx_sprintf(buf, "%ui",
                        r->err_status ? r->err_status : r->headers_out.status);
-
-#if 0
-    return buf + ngx_snprintf((char *) buf, 4, "%" NGX_UINT_T_FMT,
-                        r->err_status ? r->err_status : r->headers_out.status);
-#endif
 }
 
 
@@ -286,11 +270,6 @@ static u_char *ngx_http_log_length(ngx_http_request_t *r, u_char *buf,
                                    uintptr_t data)
 {
     return ngx_sprintf(buf, "%O", r->connection->sent);
-
-#if 0
-    return buf + ngx_snprintf((char *) buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
-                              r->connection->sent);
-#endif
 }
 
 
@@ -298,10 +277,6 @@ static u_char *ngx_http_log_apache_length(ngx_http_request_t *r, u_char *buf,
                                           uintptr_t data)
 {
     return ngx_sprintf(buf, "%O", r->connection->sent - r->header_size);
-#if 0
-    return buf + ngx_snprintf((char *) buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
-                              r->connection->sent - r->header_size);
-#endif
 }
 
 
@@ -470,9 +445,7 @@ static u_char *ngx_http_log_header_out(ngx_http_request_t *r, u_char *buf,
                 if (buf == NULL) {
                     return (u_char *) NGX_OFF_T_LEN;
                 }
-                return buf + ngx_snprintf((char *) buf,
-                                          NGX_OFF_T_LEN + 2, OFF_T_FMT,
-                                          r->headers_out.content_length_n);
+                return ngx_sprintf(buf, "%O", r->headers_out.content_length_n);
             }
 
             if (data == offsetof(ngx_http_headers_out_t, last_modified)) {

@@ -18,19 +18,20 @@ ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     if (ngx_win32_version < NGX_WIN_NT) {
 
         /*
-         * in Win9X the overlapped pointer must be NULL
-         * so we need to use SetFilePointer() to set the offset
+         * under Win9X the overlapped pointer must be NULL
+         * so we have to use SetFilePointer() to set the offset
          */
 
         if (file->offset != offset) {
 
             /*
-             * the maximum file size on FAT16 is 2G, but on FAT32
-             * the size is 4G so we need to use high_offset
+             * the maximum file size on the FAT16 is 2G, but on the FAT32
+             * the size is 4G so we have to use the high_offset
              * because a single offset is signed value
              */
 
             high_offset = (long) (offset >> 32);
+
             if (SetFilePointer(file->fd, (long) offset, &high_offset,
                                FILE_BEGIN) == INVALID_SET_FILE_POINTER)
             {
@@ -81,15 +82,15 @@ ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     if (ngx_win32_version < NGX_WIN_NT) {
 
         /*
-         * in Win9X the overlapped pointer must be NULL
-         * so we need to use SetFilePointer() to set the offset
+         * under Win9X the overlapped pointer must be NULL
+         * so we have to use SetFilePointer() to set the offset
          */
 
         if (file->offset != offset) {
 
             /*
-             * the maximum file size on FAT16 is 2G, but on FAT32
-             * the size is 4G so we need to use high_offset
+             * the maximum file size on the FAT16 is 2G, but on the FAT32
+             * the size is 4G so we have to use high_offset
              * because a single offset is signed value
              */
 
@@ -189,8 +190,7 @@ int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
     do {
         num = ngx_next_temp_number(collision);
 
-        ngx_snprintf((char *) name + to->len, 1 + 10 + 1 + sizeof("DELETE"),
-                     ".%010u.DELETE", num);
+        ngx_sprintf(name + to->len, ".%010u.DELETE", num);
 
         if (MoveFile((const char *) to->data, (const char *) name) == 0) {
             collision = 1;

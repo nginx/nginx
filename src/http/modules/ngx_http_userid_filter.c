@@ -27,15 +27,13 @@ typedef struct {
     ngx_str_t   domain;
     ngx_str_t   path;
     time_t      expires;
-
-    ngx_int_t   p3p;
-    ngx_str_t   p3p_string;
+    ngx_str_t   p3p;
 } ngx_http_userid_conf_t;
 
 
 typedef struct {
-    uint32_t          uid_got[4];
-    uint32_t          uid_set[4];
+    uint32_t    uid_got[4];
+    uint32_t    uid_set[4];
 } ngx_http_userid_ctx_t;
 
 
@@ -56,8 +54,10 @@ static ngx_int_t ngx_http_userid_pre_conf(ngx_conf_t *cf);
 static void *ngx_http_userid_create_conf(ngx_conf_t *cf);
 static char *ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent,
                                         void *child);
-char *ngx_conf_check_domain(ngx_conf_t *cf, void *post, void *data);
+char *ngx_http_userid_domain(ngx_conf_t *cf, void *post, void *data);
+char *ngx_http_userid_path(ngx_conf_t *cf, void *post, void *data);
 char *ngx_http_userid_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_http_userid_p3p(ngx_conf_t *cf, void *post, void *data);
 
 
 static uint32_t  sequencer_v1 = 1;
@@ -79,8 +79,11 @@ static ngx_conf_enum_t  ngx_http_userid_state[] = {
 };
 
 
-static ngx_conf_post_handler_pt  ngx_conf_check_domain_p =
-                                                         ngx_conf_check_domain;
+static ngx_conf_post_handler_pt  ngx_http_userid_domain_p =
+                                                        ngx_http_userid_domain;
+
+static ngx_conf_post_handler_pt  ngx_http_userid_path_p = ngx_http_userid_path;
+static ngx_conf_post_handler_pt  ngx_http_userid_p3p_p = ngx_http_userid_p3p;
 
 
 static ngx_command_t  ngx_http_userid_commands[] = {
@@ -111,14 +114,14 @@ static ngx_command_t  ngx_http_userid_commands[] = {
       ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_userid_conf_t, domain),
-      &ngx_conf_check_domain_p },
+      &ngx_http_userid_domain_p },
 
     { ngx_string("userid_path"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_userid_conf_t, path),
-      NULL },
+      &ngx_http_userid_path_p },
 
     { ngx_string("userid_expires"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -126,6 +129,13 @@ static ngx_command_t  ngx_http_userid_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
+
+    { ngx_string("userid_p3p"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_userid_conf_t, p3p),
+      &ngx_http_userid_p3p_p },
 
     ngx_null_command
 };
@@ -210,40 +220,44 @@ static ngx_int_t ngx_http_userid_get_uid(ngx_http_request_t *r,
 
     for (i = 0; i < r->headers_in.cookies.nelts; i++) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "cookie: \"%s\"", cookies[i]->value.data);
+                       "cookie: \"%V\"", &cookies[i]->value);
 
+        if (conf->name.len >= cookies[i]->value.len) {
+            continue;
+        }
+
+        start = cookies[i]->value.data;
         end = cookies[i]->value.data + cookies[i]->value.len;
 
-        for (start = cookies[i]->value.data; start < end; /* void */) {
+        while (start < end) {
 
-            if (conf->name.len >= cookies[i]->value.len
-                || ngx_strncmp(start, conf->name.data, conf->name.len) != 0)
-            {
-                start += conf->name.len;
+            if (ngx_strncmp(start, conf->name.data, conf->name.len) != 0) {
+
                 while (start < end && *start++ != ';') { /* void */ }
-
-                for (/* void */; start < end && *start == ' '; start++) { /**/ }
+                while (start < end && *start == ' ') { start++; }
 
                 continue;
             }
 
-            for (start += conf->name.len; start < end && *start == ' '; start++)
-            {
-                /* void */
-            }
+            start += conf->name.len;
 
-            if (*start != '=') {
+            while (start < end && *start == ' ') { start++; }
+
+            if (start == end || *start++ != '=') {
+                /* the invalid "Cookie" header */
                 break;
             }
 
-            for (start++; start < end && *start == ' '; start++) { /* void */ }
+            while (start < end && *start == ' ') { start++; }
 
-            for (last = start; last < end && *last != ';'; last++) { /**/ }
+            last = start;
+
+            while (last < end && *last++ != ';') { /* void */ }
 
             if (last - start < 22) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "client sent too short userid cookie \"%s\"",
-                              cookies[i]->value.data);
+                              "client sent too short userid cookie \"%V\"",
+                              &cookies[i]->value);
                 break;
             }
 
@@ -259,13 +273,13 @@ static ngx_int_t ngx_http_userid_get_uid(ngx_http_request_t *r,
 
             if (ngx_decode_base64(&dst, &src) == NGX_ERROR) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "client sent invalid userid cookie \"%s\"",
-                              cookies[i]->value.data);
+                              "client sent invalid userid cookie \"%V\"",
+                              &cookies[i]->value);
                 break;
             }
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "uid: %08X%08X%08X%08X",
+                           "uid: %08XD%08XD%08XD%08XD",
                            ctx->uid_got[0], ctx->uid_got[1],
                            ctx->uid_got[2], ctx->uid_got[3]);
 
@@ -280,14 +294,13 @@ static ngx_int_t ngx_http_userid_get_uid(ngx_http_request_t *r,
 static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
                                          ngx_http_userid_ctx_t *ctx,
                                          ngx_http_userid_conf_t *conf)
-
 {
     u_char              *cookie, *p;
     size_t               len;
     socklen_t            slen;
     struct sockaddr_in   addr_in;
     ngx_str_t            src, dst;
-    ngx_table_elt_t     *set_cookie;
+    ngx_table_elt_t     *set_cookie, *p3p;
 
     /* TODO: mutex for sequencers */
 
@@ -333,18 +346,14 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
         }
     }
 
-    len = conf->name.len + 1 + ngx_base64_encoded_length(16) + 1;
+    len = conf->name.len + 1 + ngx_base64_encoded_length(16) + conf->path.len;
 
     if (conf->expires) {
         len += sizeof(expires) - 1 + 2;
     }
 
     if (conf->domain.len > 1) {
-        len += sizeof("; domain=") - 1 + conf->domain.len;
-    }
-
-    if (conf->path.len) {
-        len += sizeof("; path=") - 1 + conf->path.len;
+        len += conf->domain.len;
     }
 
     if (!(cookie = ngx_palloc(r->pool, len))) {
@@ -371,19 +380,10 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
     }
 
     if (conf->domain.len > 1) {
-        p = ngx_cpymem(p, "; domain=", sizeof("; domain=") - 1);
         p = ngx_cpymem(p, conf->domain.data, conf->domain.len);
     }
 
-    if (conf->path.len) {
-        p = ngx_cpymem(p, "; path=", sizeof("; path=") - 1);
-        p = ngx_cpymem(p, conf->path.data, conf->path.len);
-    }
-
-    *p = '\0';
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "uid cookie: \"%s\"", cookie);
+    p = ngx_cpymem(p, conf->path.data, conf->path.len);
 
     if (!(set_cookie = ngx_list_push(&r->headers_out.headers))) {
         return NGX_ERROR;
@@ -393,6 +393,21 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
     set_cookie->key.data = (u_char *) "Set-Cookie";
     set_cookie->value.len = p - cookie;
     set_cookie->value.data = cookie;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "uid cookie: \"%V\"", &set_cookie->value);
+
+    if (conf->p3p.len == 1) {
+        return NGX_OK;
+    }
+
+    if (!(p3p = ngx_list_push(&r->headers_out.headers))) {
+        return NGX_ERROR;
+    }
+
+    p3p->key.len = sizeof("P3P") - 1;
+    p3p->key.data = (u_char *) "P3P";
+    p3p->value = conf->p3p;
 
     return NGX_OK;
 }
@@ -425,9 +440,9 @@ static u_char *ngx_http_userid_log_uid_got(ngx_http_request_t *r, u_char *buf,
 
     *buf++ = '=';
 
-    return buf + ngx_snprintf((char *) buf, 33, "%08X%08X%08X%08X",
-                              ctx->uid_got[0], ctx->uid_got[1],
-                              ctx->uid_got[2], ctx->uid_got[3]);
+    return ngx_sprintf(buf, "%08XD%08XD%08XD%08XD",
+                       ctx->uid_got[0], ctx->uid_got[1],
+                       ctx->uid_got[2], ctx->uid_got[3]);
 }
 
 
@@ -458,9 +473,9 @@ static u_char *ngx_http_userid_log_uid_set(ngx_http_request_t *r, u_char *buf,
 
     *buf++ = '=';
 
-    return buf + ngx_snprintf((char *) buf, 33, "%08X%08X%08X%08X",
-                              ctx->uid_set[0], ctx->uid_set[1],
-                              ctx->uid_set[2], ctx->uid_set[3]);
+    return ngx_sprintf(buf, "%08XD%08XD%08XD%08XD",
+                       ctx->uid_set[0], ctx->uid_set[1],
+                       ctx->uid_set[2], ctx->uid_set[3]);
 }
 
 
@@ -510,6 +525,8 @@ static void *ngx_http_userid_create_conf(ngx_conf_t *cf)
     conf->domain.date = NULL;
     conf->path.len = 0;
     conf->path.date = NULL;
+    conf->p3p.len = 0;
+    conf->p3p.date = NULL;
 
     */
 
@@ -531,7 +548,8 @@ static char *ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent,
 
     ngx_conf_merge_str_value(conf->name, prev->name, "uid");
     ngx_conf_merge_str_value(conf->domain, prev->domain, ".");
-    ngx_conf_merge_str_value(conf->path, prev->path, "/");
+    ngx_conf_merge_str_value(conf->path, prev->path, "; path=/");
+    ngx_conf_merge_str_value(conf->p3p, prev->p3p, ".");
 
     ngx_conf_merge_value(conf->service, prev->service, NGX_CONF_UNSET);
     ngx_conf_merge_sec_value(conf->expires, prev->expires, 0);
@@ -540,14 +558,48 @@ static char *ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent,
 }
 
 
-char *ngx_conf_check_domain(ngx_conf_t *cf, void *post, void *data)
+char *ngx_http_userid_domain(ngx_conf_t *cf, void *post, void *data)
 {
     ngx_str_t  *domain = data;
+
+    u_char  *p, *new;
 
     if (domain->len == 4 && ngx_strcmp(domain->data, "none") == 0) {
         domain->len = 1;
         domain->data = (u_char *) ".";
+
+        return NGX_CONF_OK;
     }
+
+    if (!(new = ngx_palloc(cf->pool, sizeof("; domain=") - 1 + domain->len))) {
+        return NGX_CONF_ERROR;
+    }
+
+    p = ngx_cpymem(new, "; domain=", sizeof("; domain=") - 1);
+    p = ngx_cpymem(p, domain->data, domain->len);
+
+    domain->len += sizeof("; domain=") - 1;
+    domain->data = new;
+
+    return NGX_CONF_OK;
+}
+
+
+char *ngx_http_userid_path(ngx_conf_t *cf, void *post, void *data)
+{
+    ngx_str_t  *path = data;
+
+    u_char  *p, *new;
+
+    if (!(new = ngx_palloc(cf->pool, sizeof("; path=") - 1 + path->len))) {
+        return NGX_CONF_ERROR;
+    }
+
+    p = ngx_cpymem(new, "; path=", sizeof("; path=") - 1);
+    p = ngx_cpymem(p, path->data, path->len);
+
+    path->len += sizeof("; path=") - 1;
+    path->data = new;
 
     return NGX_CONF_OK;
 }
@@ -582,6 +634,19 @@ char *ngx_http_userid_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ucf->expires == NGX_PARSE_LARGE_TIME) {
         return "value must be less than 68 years";
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+char *ngx_http_userid_p3p(ngx_conf_t *cf, void *post, void *data)
+{
+    ngx_str_t  *p3p = data;
+
+    if (p3p->len == 4 && ngx_strcmp(p3p->data, "none") == 0) {
+        p3p->len = 1;
+        p3p->data = (u_char *) ".";
     }
 
     return NGX_CONF_OK;

@@ -208,7 +208,7 @@ static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
 #if (NGX_DEBUG)
     c = ev->data;
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "devpoll add event: fd:%d ev:%04X", c->fd, event);
+                   "devpoll add event: fd:%d ev:%04Xd", c->fd, event);
 #endif
 
     ev->active = 1;
@@ -229,7 +229,7 @@ static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
 #endif
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "devpoll del event: fd:%d ev:%04X", c->fd, event);
+                   "devpoll del event: fd:%d ev:%04Xd", c->fd, event);
 
     if (ngx_devpoll_set_event(ev, POLLREMOVE, flags) == NGX_ERROR) {
         return NGX_ERROR;
@@ -268,7 +268,7 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
     c = ev->data;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "devpoll fd:%d ev:%04X fl:%04X", c->fd, event, flags);
+                   "devpoll fd:%d ev:%04Xd fl:%04Xd", c->fd, event, flags);
 
     if (nchanges >= max_changes) {
         ngx_log_error(NGX_LOG_WARN, ev->log, 0,
@@ -453,13 +453,13 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
         }
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "devpoll: fd:%d, ev:%04X, rev:%04X",
+                       "devpoll: fd:%d, ev:%04Xd, rev:%04Xd",
                        event_list[i].fd,
                        event_list[i].events, event_list[i].revents);
 
         if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "ioctl(DP_POLL) error fd:%d ev:%04X rev:%04X",
+                          "ioctl(DP_POLL) error fd:%d ev:%04Xd rev:%04Xd",
                           event_list[i].fd,
                           event_list[i].events, event_list[i].revents);
         }
@@ -468,7 +468,7 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
         {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "strange ioctl(DP_POLL) events "
-                          "fd:%d ev:%04X rev:%04X",
+                          "fd:%d ev:%04Xd rev:%04Xd",
                           event_list[i].fd,
                           event_list[i].events, event_list[i].revents);
         }
