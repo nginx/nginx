@@ -221,7 +221,7 @@ int main(int argc, char *const *argv, char **envp)
 }
 
 
-/* TODO: broken single process */
+/* TODO: broken NGX_PROCESS_SINGLE */
 
 static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
@@ -634,6 +634,12 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
         ngx_process_events(cycle->log);
+
+        if (ngx_reopen) {
+            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");
+            ngx_reopen_files(cycle, -1);
+            ngx_reopen = 0;
+        }
     }
 }
 

@@ -144,14 +144,9 @@ void ngx_signal_handler(int signo)
             break;
 
         case ngx_signal_value(NGX_REOPEN_SIGNAL):
-            if (ngx_noaccept) {
-                action = ", ignoring";
-
-            } else {
-                ngx_reopen = 1;
-                action = ", reopen logs";
-                break;
-            }
+            ngx_reopen = 1;
+            action = ", reopen logs";
+            break;
 
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
             if ((ngx_inherited && getppid() > 1)

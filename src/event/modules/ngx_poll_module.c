@@ -312,6 +312,13 @@ static int ngx_poll_process_events(ngx_log_t *log)
                           event_list[i].events, event_list[i].revents);
         }
 
+        if (event_list[i].fd == -1) {
+
+            /* the disabled event, workaround for our possible bug */
+
+            continue;
+        }
+
         c = &ngx_cycle->connections[event_list[i].fd];
 
         if (c->fd == -1) {
