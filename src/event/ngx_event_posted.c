@@ -92,12 +92,15 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
                 || (ev->use_instance && ev->instance != ev->returned_instance))
             {
                 /*
-                 * the stale event from a file descriptor
-                 * that was just closed in this iteration
+                 * The stale event from a file descriptor that was just
+                 * closed in this iteration.  We use ngx_cycle->log
+                 * because ev->log may be already destoyed.
                  */
 
-                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
                                "kevent: stale event " PTR_FMT, ev);
+
+                ngx_unlock(ev->lock);
 
                 ev = ev->next;
 

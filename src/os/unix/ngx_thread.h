@@ -77,6 +77,8 @@ static inline int ngx_gettid()
 }
 
 
+#define ngx_thread_main()   (ngx_gettid() == 0)
+
 
 #else /* use pthreads */
 
@@ -123,6 +125,10 @@ ngx_int_t ngx_cond_signal(ngx_cond_t *cv);
 
 #define ngx_mutex_lock(m)     NGX_OK
 #define ngx_mutex_unlock(m)
+
+#define ngx_cond_signal(cv)
+
+#define ngx_thread_main()     1
 
 #endif
 

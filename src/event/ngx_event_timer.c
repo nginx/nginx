@@ -87,9 +87,11 @@ void ngx_event_expire_timers(ngx_msec_t timer)
             ev = (ngx_event_t *)
                            ((char *) node - offsetof(ngx_event_t, rbtree_key));
 
+#if (NGX_THREADS)
             if (ngx_trylock(ev->lock) == 0) {
                 break;
             }
+#endif
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                            "event timer del: %d: %d",
@@ -109,7 +111,9 @@ void ngx_event_expire_timers(ngx_msec_t timer)
 
             ev->timer_set = 0;
             ev->timedout = 1;
+#if (NGX_THREADS)
             ngx_unlock(ev->lock);
+#endif
 
             if (ngx_threaded) {
                 if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {

@@ -1708,6 +1708,8 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
 
 void ngx_http_close_connection(ngx_connection_t *c)
 {
+    ngx_socket_t  fd;
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "close http connection: %d", c->fd);
 
@@ -1737,15 +1739,24 @@ void ngx_http_close_connection(ngx_connection_t *c)
         }
     }
 
-    if (ngx_close_socket(c->fd) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
-                      ngx_close_socket_n " failed");
-    }
+    fd = c->fd;
 
     c->fd = (ngx_socket_t) -1;
     c->data = NULL;
-
     ngx_destroy_pool(c->pool);
+
+    /*
+     * we has to clean the connection before the closing because another thread
+     * may reopen the same file descriptor before we clean the connection
+     */
+
+    if (ngx_close_socket(fd) == -1) {
+
+        /* we use ngx_cycle->log because c->log was in c->pool */
+
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
+                      ngx_close_socket_n " failed");
+    }
 
     return;
 }

@@ -193,7 +193,8 @@ static ngx_int_t ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
     ev->disabled = 0;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 
-    if (nchanges > 0
+    if (ngx_thread_main()
+        && nchanges > 0
         && ev->index < (u_int) nchanges
         && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
                                                              == (uintptr_t) ev)
@@ -237,7 +238,8 @@ static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
     ev->disabled = 0;
     ev->posted = 0;
 
-    if (nchanges > 0
+    if (ngx_thread_main()
+        && nchanges > 0
         && ev->index < (u_int) nchanges
         && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
                                                              == (uintptr_t) ev)
@@ -280,6 +282,7 @@ static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 {
     struct timespec    ts;
     ngx_connection_t  *c;
+    struct kevent     *kev, kv;
 
     c = ev->data;
 
@@ -287,7 +290,7 @@ static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
                    "kevent set event: %d: ft:%d fl:%04X",
                    c->fd, filter, flags);
 
-    if (nchanges >= max_changes) {
+    if (ngx_thread_main() && nchanges >= max_changes) {
         ngx_log_error(NGX_LOG_WARN, ev->log, 0,
                       "kqueue change list is filled up");
 
@@ -302,40 +305,52 @@ static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
         nchanges = 0;
     }
 
-    change_list[nchanges].ident = c->fd;
-    change_list[nchanges].filter = filter;
-    change_list[nchanges].flags = flags;
-    change_list[nchanges].udata = (void *) ((uintptr_t) ev | ev->instance);
+    kev = ngx_thread_main() ? &change_list[nchanges] : &kv;
+
+    kev->ident = c->fd;
+    kev->filter = filter;
+    kev->flags = flags;
+    kev->udata = (void *) ((uintptr_t) ev | ev->instance);
 
     if (filter == EVFILT_VNODE) {
-        change_list[nchanges].fflags = NOTE_DELETE|NOTE_WRITE|NOTE_EXTEND
-                                       |NOTE_ATTRIB|NOTE_RENAME
+        kev->fflags = NOTE_DELETE|NOTE_WRITE|NOTE_EXTEND
+                                 |NOTE_ATTRIB|NOTE_RENAME
 #if (__FreeBSD__ == 4 && __FreeBSD_version >= 430000) \
     || __FreeBSD_version >= 500018
-                                       |NOTE_REVOKE
+                                 |NOTE_REVOKE
 #endif
                                        ;
-        change_list[nchanges].data = 0;
+        kev->data = 0;
 
     } else {
 #if (HAVE_LOWAT_EVENT)
         if (flags & NGX_LOWAT_EVENT) {
-            change_list[nchanges].fflags = NOTE_LOWAT;
-            change_list[nchanges].data = ev->available;
+            kev->fflags = NOTE_LOWAT;
+            kev->data = ev->available;
 
         } else {
-            change_list[nchanges].fflags = 0;
-            change_list[nchanges].data = 0;
+            kev->fflags = 0;
+            kev->data = 0;
         }
 #else
-        change_list[nchanges].fflags = 0;
-        change_list[nchanges].data = 0;
+        kev->fflags = 0;
+        kev->data = 0;
 #endif
     }
 
-    ev->index = nchanges;
+    if (ngx_thread_main()) {
+        ev->index = nchanges;
+        nchanges++;
 
-    nchanges++;
+    } else {
+        ts.tv_sec = 0;
+        ts.tv_nsec = 0;
+
+        if (kevent(ngx_kqueue, &kv, 1, NULL, 0, &ts) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, "kevent() failed");
+            return NGX_ERROR;
+        }
+    }
 
     return NGX_OK;
 }

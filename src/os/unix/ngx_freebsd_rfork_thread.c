@@ -399,6 +399,10 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
                     return NGX_ERROR;
                 }
 
+                ngx_log_debug2(NGX_LOG_DEBUG_CORE, m->log, 0,
+                               "mutex waked up " PTR_FMT " lock:%X",
+                               m, m->lock);
+
                 tries = 0;
                 old = m->lock;
                 continue;
@@ -504,6 +508,9 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
         if (ngx_atomic_cmp_set(&m->lock, old, lock)) {
 
             /* wake up the thread that waits on semaphore */
+
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0,
+                           "wake up mutex " PTR_FMT "", m);
 
             op.sem_num = 0;
             op.sem_op = 1;

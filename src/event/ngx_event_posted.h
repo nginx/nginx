@@ -8,9 +8,11 @@
 
 
 #define ngx_post_event(ev)                                                    \
+            if (!ev->posted) {                                                \
                 ev->next = (ngx_event_t *) ngx_posted_events;                 \
                 ngx_posted_events = ev;                                       \
-                ev->posted = 1;
+                ev->posted = 1;                                               \
+            }
 
 
 void ngx_event_process_posted(ngx_cycle_t *cycle);
