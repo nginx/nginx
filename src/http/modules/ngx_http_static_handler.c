@@ -39,12 +39,13 @@ ngx_module_t  ngx_http_static_module = {
 };
 
 
-int ngx_http_static_translate_handler(ngx_http_request_t *r)
+ngx_int_t ngx_http_static_translate_handler(ngx_http_request_t *r)
 {
-    int                        rc, level;
+    ngx_int_t                  rc, level;
+    uint32_t                   crc;
     char                      *location, *last;
     ngx_err_t                  err;
-    ngx_http_cache_ctx_t       ctx;
+    ngx_http_cache_t          *cache;
     ngx_http_cache_conf_t     *ccf;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -87,23 +88,16 @@ int ngx_http_static_translate_handler(ngx_http_request_t *r)
 
 ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
 
-
-    /* STUB */
-    ccf = NULL;
-    ctx.key.len = 0;
-
-#if 0
     ccf = ngx_http_get_module_loc_conf(r, ngx_http_cache_module);
 
     if (ccf->open_files) {
-        ctx->hash = ccf->open_files;
-        ctx->key = r->file.name;
+        cache = ngx_http_cache_get(ccf->open_files, &r->file.name, &crc);
 
-        cache = ngx_http_cache_get_data(r, ctx);
+ngx_log_debug(r->connection->log, "cache get: %x" _ cache);
 
         if (cache
             && ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)
-                || ccf->hash->life_time >= ngx_time() - cache->updated))
+                || ccf->open_files->check_time >= ngx_time() - cache->updated))
         {
             cache->refs++;
             r->file.fd = cache->fd;
@@ -116,8 +110,6 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
     } else {
         cache = NULL;
     }
-
-#endif
 
 #if (WIN9X)
 
@@ -213,6 +205,23 @@ ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);
         }
 
         r->file.info_valid = 1;
+    }
+
+    if (ccf->open_files) {
+        if (cache == NULL) {
+            cache = ngx_http_cache_alloc(ccf->open_files, &r->file.name, crc,
+                                         r->connection->log);
+        }
+
+ngx_log_debug(r->connection->log, "cache alloc: %x" _ cache);
+
+        if (cache) {
+            cache->fd = r->file.fd;
+            cache->data.size = ngx_file_size(&r->file.info);
+            cache->accessed = ngx_time();
+            cache->last_modified = ngx_file_mtime(&r->file.info);
+            cache->updated = ngx_time();
+        }
     }
 
     if (ngx_is_dir(&r->file.info)) {

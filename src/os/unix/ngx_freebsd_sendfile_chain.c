@@ -192,7 +192,8 @@ ngx_log_debug(c->log, "NOPUSH");
 
                 if (err == NGX_EAGAIN || err == NGX_EINTR) {
                     ngx_log_error(NGX_LOG_INFO, c->log, err,
-                                  "sendfile() sent only %qd bytes", sent);
+                                  "sendfile() sent only " OFF_T_FMT " bytes",
+                                  sent);
 
                 } else {
                     wev->error = 1;

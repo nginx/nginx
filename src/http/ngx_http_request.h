@@ -144,8 +144,6 @@ typedef struct {
 } ngx_http_headers_out_t;
 
 
-typedef struct ngx_http_request_s ngx_http_request_t;
-
 typedef int (*ngx_http_handler_pt)(ngx_http_request_t *r);
 
 struct ngx_http_request_s {
@@ -155,6 +153,8 @@ struct ngx_http_request_s {
     void               **main_conf;
     void               **srv_conf;
     void               **loc_conf;
+
+    ngx_http_cache_t    *cache;
 
     ngx_file_t           file;
 

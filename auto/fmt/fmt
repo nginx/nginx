@@ -15,7 +15,7 @@ do
     echo "printf(\"${FMT}\", ($NGX_TYPE) $NGX_MAX_SIZE);" >> autotest.c
     echo "return 0; }" >> autotest.c
 
-    eval "$CC_WARN $CC_TEST_FLAGS -o autotest autotest.c > /dev/null 2>&1"
+    eval "$CC_WARN $CC_TEST_FLAGS -o autotest autotest.c > $NGX_ERR 2>&1"
 
     MAX_SIZE=`echo $NGX_MAX_SIZE | sed -e "s/L*\$//"`
 

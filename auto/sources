@@ -107,7 +107,7 @@ LINUX_SENDFILE_SRCS=src/os/unix/ngx_linux_sendfile_chain.c
 
 SOLARIS_DEPS=src/os/unix/ngx_solaris_config.h
 SOLARIS_SRCS=src/os/unix/ngx_solaris_init.c
-SOLARIS_SENDFILE_SRCS=src/os/unix/ngx_solaris_sendfilev_chain.c
+SOLARIS_SENDFILEV_SRCS=src/os/unix/ngx_solaris_sendfilev_chain.c
 
 
 WIN32_INCS="$CORE_INCS $EVENT_INCS -I src/os/win32"

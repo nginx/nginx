@@ -80,81 +80,87 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
 }
 
 
-int ngx_http_cache_get_data(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
+ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *cache,
+                                     ngx_str_t *key, uint32_t *crc)
 {
-    ngx_uint_t  n, i;
+    ngx_uint_t         i;
+    ngx_http_cache_t  *c;
 
-    ctx->crc = ngx_crc(ctx->key.data, ctx->key.len);
+    *crc = ngx_crc(key->data, key->len);
 
-    n = ctx->crc % ctx->hash->hash;
-    for (i = 0; i < ctx->hash->nelts; i++) {
-        if (ctx->hash->cache[n][i].crc == ctx->crc
-            && ctx->hash->cache[n][i].key.len == ctx->key.len
-            && ngx_rstrncmp(ctx->hash->cache[n][i].key.data, ctx->key.data,
-                                                            ctx->key.len) == 0)
+    c = cache->elts
+                + *crc % cache->hash * cache->nelts * sizeof(ngx_http_cache_t);
+
+    for (i = 0; i < cache->nelts; i++) {
+        if (c[i].crc == *crc
+            && c[i].key.len == key->len
+            && ngx_rstrncmp(c[i].key.data, key->data, key->len) == 0)
         {
-            ctx->cache = ctx->hash->cache[n][i].data;
-            ctx->hash->cache[n][i].refs++;
-            return NGX_OK;
+            c[i].refs++;
+            return &c[i];
         }
     }
 
-    return NGX_DECLINED;
+    return NULL;
 }
 
 
-ngx_http_cache_entry_t *ngx_http_cache_get_entry(ngx_http_request_t *r,
-                                                 ngx_http_cache_ctx_t *ctx)
+ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *cache,
+                                       ngx_str_t *key, uint32_t crc,
+                                       ngx_log_t *log)
 {
-    time_t                   old;
-    ngx_uint_t               n, i;
-    ngx_http_cache_entry_t  *ce;
+    time_t             old;
+    ngx_uint_t         i;
+    ngx_http_cache_t  *c, *found;
 
     old = ngx_time() + 1;
-    ce = NULL;
+    found = NULL;
 
-    n = ctx->crc % ctx->hash->hash;
-    for (i = 0; i < ctx->hash->nelts; i++) {
-        if (ctx->hash->cache[n][i].key.data == NULL) {
+    c = cache->elts
+                 + crc % cache->hash * cache->nelts * sizeof(ngx_http_cache_t);
+
+    for (i = 0; i < cache->nelts; i++) {
+        if (c[i].key.data == NULL) {
 
             /* a free entry is found */
 
-            ce = &ctx->hash->cache[n][i];
+            found = &c[i];
             break;
         }
 
-        if (ctx->hash->cache[n][i].refs == 0
-            && old > ctx->hash->cache[n][i].accessed)
-        {
-            /* looking for the oldest cache entry that is not used right now */
+        /* looking for the oldest cache entry that is not been using */
 
-            old = ctx->hash->cache[n][i].accessed;
-            ce = &ctx->hash->cache[n][i];
+        if (c[i].refs == 0 && old > c[i].accessed) {
+
+            old = c[i].accessed;
+            found = &c[i];
         }
     }
 
-    if (ce) {
-        if (ce->key.data) {
-            if (ctx->key.len > ce->key.len) {
-                ngx_free(ce->key.data);
-                ce->key.data = NULL;
+    if (found) {
+        if (found->key.data) {
+            if (key->len > found->key.len) {
+                ngx_free(found->key.data);
+                found->key.data = NULL;
             }
         }
 
-        if (ce->key.data) {
-            ce->key.data = ngx_alloc(ctx->key.len, r->connection->log);
-            if (ce->key.data == NULL) {
+        if (found->key.data == NULL) {
+            found->key.data = ngx_alloc(key->len, log);
+            if (found->key.data == NULL) {
                 return NULL;
             }
         }
 
-        ngx_memcpy(ce->key.data, ctx->key.data, ctx->key.len);
+        ngx_memcpy(found->key.data, key->data, key->len);
 
-        ce->key.len = ctx->key.len;
-        ce->crc = ctx->crc;
+        found->crc = crc;
+        found->key.len = key->len;
+        found->refs = 1;
+        found->deleted = 0;
     }
 
-    return ce;
+    return found;
 }
 
 
@@ -373,24 +379,25 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_http_cache_conf_t *prev = parent;
     ngx_http_cache_conf_t *conf = child;
 
-    if (conf->hash == NULL) {
-        if (prev->hash) {
-            conf->hash = prev->hash;
+    if (conf->open_files == NULL) {
+        if (prev->open_files) {
+            conf->open_files = prev->open_files;
 
         } else {
-            conf->hash = ngx_pcalloc(cf->pool, sizeof(ngx_http_cache_hash_t));
-            if (conf->hash == NULL) {
+            conf->open_files = ngx_pcalloc(cf->pool,
+                                           sizeof(ngx_http_cache_hash_t));
+            if (conf->open_files == NULL) {
                 return NGX_CONF_ERROR;
             }
 
-            conf->hash->hash = NGX_HTTP_CACHE_HASH;
-            conf->hash->nelts = NGX_HTTP_CACHE_NELTS;
+            conf->open_files->hash = NGX_HTTP_CACHE_HASH;
+            conf->open_files->nelts = NGX_HTTP_CACHE_NELTS;
 
-            conf->hash->cache = ngx_pcalloc(cf->pool,
-                                            NGX_HTTP_CACHE_HASH
-                                            * NGX_HTTP_CACHE_NELTS
-                                            * sizeof(ngx_http_cache_entry_t));
-            if (conf->hash->cache == NULL) {
+            conf->open_files->elts = ngx_pcalloc(cf->pool,
+                                                 NGX_HTTP_CACHE_HASH
+                                                 * NGX_HTTP_CACHE_NELTS
+                                                 * sizeof(ngx_http_cache_t));
+            if (conf->open_files->elts == NULL) {
                 return NGX_CONF_ERROR;
             }
         }
@@ -398,103 +405,3 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
 
     return NGX_CONF_OK;
 }
-
-
-#if 0
-
-/*
- * small file in malloc()ed memory, mmap()ed file, file descriptor only,
- * file access time only (to estimate could pages still be in memory),
- * translated URI (ngx_http_index_hanlder),
- * compiled script (ngx_http_ssi_filter).
- */
-
-
-#define NGX_HTTP_CACHE_ENTRY_DELETED  0x00000001
-#define NGX_HTTP_CACHE_ENTRY_MMAPED   0x00000002
-
-/* "/" -> "/index.html" in ngx_http_index_handler */
-#define NGX_HTTP_CACHE_ENTRY_URI      0x00000004
-
-/* 301 location "/dir" -> "dir/" in ngx_http_core_handler */
-
-/* compiled script in ngx_http_ssi_filter  */
-#define NGX_HTTP_CACHE_ENTRY_SCRIPT   0x00000008
-
-#define NGX_HTTP_CACHE_FILTER_FLAGS   0xFFFF0000
-
-
-typedef struct {
-    ngx_fd_t   fd;
-    off_t      size;
-    void      *data;
-    time_t     accessed;
-    time_t     last_modified;
-    time_t     updated;      /* no needed with kqueue */
-    int        refs;
-    int        flags;
-} ngx_http_cache_entry_t;
-
-
-typedef struct {
-    uint32_t           crc;
-    ngx_str_t          uri;
-    ngx_http_cache_t  *cache;
-} ngx_http_cache_hash_entry_t;
-
-
-typedef struct {
-    ngx_http_cache_t  *cache;
-    uint32_t           crc;
-    int                n;
-} ngx_http_cache_handle_t; 
-
-
-int ngx_http_cache_get(ngx_http_cache_hash_t *cache_hash,
-                       ngx_str_t *uri, ngx_http_cache_handle_t *h)
-{
-    int                           hi;
-    ngx_http_cache_hash_entry_t  *entry;
-
-    h->crc = ngx_crc(uri->data, uri->len);
-
-    hi = h->crc % cache_hash->size;
-    entry = cache_hash[hi].elts;
-
-    for (i = 0; i < cache_hash[hi].nelts; i++) {
-        if (entry[i].crc == crc
-            && entry[i].uri.len == uri->len
-            && ngx_strncmp(entry[i].uri.data, uri->data, uri->len) == 0
-        {
-            h->cache = entry[i].cache;
-            h->cache->refs++;
-            h->n = hi;
-            return NGX_OK;
-        }
-    }
-
-    return NGX_ERROR;
-}
-
-
-/* 32-bit crc16 */
-
-int ngx_crc(char *data, size_t len)
-{
-    uint32_t  sum;
-
-    for (sum = 0; len; len--) {
-        /*
-         * gcc 2.95.2 x86 and icc 7.1.006 compile that operator
-         * into the single rol opcode.
-         * msvc 6.0sp2 compiles it into four opcodes.
-         */
-        sum = sum >> 1 | sum << 31;
-
-        sum += *data++;
-    }
-
-    return sum;
-}
-
-#endif

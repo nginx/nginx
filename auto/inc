@@ -1,7 +1,9 @@
 
 echo "checking for $NGX_INC"
 
-inc=`echo $NGX_INC | sed -e 's/\./_/' | tr '[a-z]' '[A-Z]'`
+NGX_FOUND=NO
+
+inc=`echo $NGX_INC | sed -e 's/\./_/' | sed -e 's/\//_/' | tr '[a-z]' '[A-Z]'`
 
 echo "#include <$NGX_INC>" > autotest.c
 echo "int main() { return 0; }" >> autotest.c
@@ -17,6 +19,7 @@ if [ -x autotest ]; then
     echo                          >> $NGX_AUTO_CONFIG_H
 
     eval "NGX_$inc='#include <$NGX_INC>'"
+    NGX_FOUND=YES
 
 else
     echo " + $NGX_INC not found"

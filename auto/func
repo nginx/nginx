@@ -1,13 +1,15 @@
 
 echo "checking for $NGX_FUNC"
 
+NGX_FOUND=NO
+
 func=`echo $NGX_FUNC | sed -e 's/()$//' | tr '[a-z]' '[A-Z]'`
 
 echo "$NGX_UNISTD_H" > autotest.c
 echo "$NGX_FUNC_INC" >> autotest.c
 echo "int main() { $NGX_FUNC_TEST; return 0; }" >> autotest.c
 
-eval "$CC $CC_TEST_FLAGS -o autotest autotest.c > /dev/null 2>&1"
+eval "$CC $CC_TEST_FLAGS -o autotest autotest.c > $NGX_ERR 2>&1"
 
 if [ -x autotest ]; then
     echo " + $NGX_FUNC found"
@@ -16,6 +18,9 @@ if [ -x autotest ]; then
     echo "#define HAVE_$func  1"   >> $NGX_AUTO_CONFIG_H
     echo "#endif"                  >> $NGX_AUTO_CONFIG_H
     echo                           >> $NGX_AUTO_CONFIG_H
+
+    NGX_FOUND=YES
+
 else
     echo " + $NGX_FUNC not found"
 fi

@@ -23,6 +23,7 @@
 #include <sys/filio.h>          /* FIONBIO */
 #include <sys/stropts.h>        /* INFTIM */
 #include <sys/socket.h>
+#include <sys/sendfile.h>
 #include <sys/systeminfo.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

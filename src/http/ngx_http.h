@@ -6,9 +6,11 @@
 #include <ngx_core.h>
 #include <ngx_garbage_collector.h>
 
+typedef struct ngx_http_request_s  ngx_http_request_t;
+
+#include <ngx_http_cache.h>
 #include <ngx_http_request.h>
 #include <ngx_http_config.h>
-#include <ngx_http_cache.h>
 #include <ngx_http_busy_lock.h>
 #include <ngx_http_filter.h>
 #include <ngx_http_log_handler.h>
