@@ -97,3 +97,43 @@ ngx_hunk_t *ngx_create_hunk_after(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 
     return h;
 }
+
+
+void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
+                             ngx_chain_t **out)
+{
+    ngx_chain_t  *te;
+
+    if (*busy == NULL) {
+        *busy = *out;
+
+    } else {
+        for (te = *busy; /* void */ ; te = te->next) {
+            if (te->next == NULL) {
+                te->next = *out;
+                break;
+            }   
+        }
+    }
+
+    *out = NULL;
+
+    while (*busy) {
+        if ((*busy)->hunk->pos != (*busy)->hunk->last) {
+            break;
+        }
+
+#if (HAVE_WRITE_ZEROCOPY)
+        if ((*busy)->hunk->type & NGX_HUNK_ZEROCOPY_BUSY) {
+            break;
+        }
+#endif
+
+        (*busy)->hunk->pos = (*busy)->hunk->last = (*busy)->hunk->start;
+
+        te = *busy;
+        *busy = (*busy)->next;
+        te->next = *free;
+        *free = te;
+    }
+}
