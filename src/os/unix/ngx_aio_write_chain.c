@@ -58,7 +58,7 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
         }
 
 #if (NGX_DEBUG_WRITE_CHAIN)
-        ngx_log_debug(c->log, "aio_write sent: " OFF_FMT _ c->sent);
+        ngx_log_debug(c->log, "aio_write sent: " OFF_T_FMT _ c->sent);
 #endif
 
         for (cl = in; cl; cl = cl->next) {

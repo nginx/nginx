@@ -2,7 +2,10 @@
 #define _NGX_CONFIG_H_INCLUDED_
 
 
-#if 0
+#include <ngx_auto_config.h>
+
+
+#if 1
 /* STUB to allocate a big ngx_connections */
 #undef  FD_SETSIZE
 #define FD_SETSIZE  5000
@@ -51,9 +54,6 @@ typedef int    ngx_flag_t;
 
 /* STUB: autoconf */
 #define PTR_FMT  "%08X"
-
-
-#include <ngx_auto_config.h>
 
 
 #ifndef NGX_SERVER_ROOT

@@ -8,7 +8,6 @@ typedef void (*ngx_spawn_proc_pt) (ngx_cycle_t *cycle, void *data);
 
 typedef struct {
     ngx_pid_t           pid;
-    int                 signal;
     int                 status;
 
     ngx_spawn_proc_pt   proc;

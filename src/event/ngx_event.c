@@ -84,6 +84,13 @@ static ngx_command_t  ngx_event_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("multi_accept"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      0,
+      offsetof(ngx_event_conf_t, multi_accept),
+      NULL },
+
       ngx_null_command
 };
 
@@ -421,8 +428,8 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
                   NGX_CONF_ERROR);
 
     ecf->connections = NGX_CONF_UNSET;
-    ecf->timer_queues = NGX_CONF_UNSET;
     ecf->use = NGX_CONF_UNSET;
+    ecf->multi_accept = NGX_CONF_UNSET;
     ecf->name = (void *) NGX_CONF_UNSET;
 
     return ecf;
@@ -457,7 +464,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
     cycle->connection_n = ecf->connections;
 
-    ngx_conf_init_value(ecf->timer_queues, 10);
+    ngx_conf_init_value(ecf->multi_accept, 1);
 
     return NGX_CONF_OK;
 }

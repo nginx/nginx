@@ -173,7 +173,7 @@ int main(int argc, char *const *argv, char **envp)
 
 #else
 
-    if (ccf->daemon != 0) {
+    if (!ngx_inherited && ccf->daemon != 0) {
         if (ngx_daemon(cycle->log) == NGX_ERROR) {
             return 1;
         }
@@ -356,11 +356,10 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     live = 0;
                     for (i = 0; i < ngx_last_process; i++) {
 
-                        ngx_log_debug6(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                        ngx_log_debug5(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                        "child: " PID_T_FMT
-                                       " s:%d e:%d t:%d d:%d r:%d",
+                                       " e:%d t:%d d:%d r:%d",
                                        ngx_processes[i].pid,
-                                       ngx_processes[i].signal,
                                        ngx_processes[i].exiting,
                                        ngx_processes[i].exited,
                                        ngx_processes[i].detached,
@@ -396,12 +395,9 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                                                ngx_processes[ngx_last_process];
                             }
 
-                        } else if (!ngx_processes[i].detached
-                                   && (ngx_terminate || ngx_quit))
+                        } else if (ngx_processes[i].exiting
+                                   || !ngx_processes[i].detached)
                         {
-                            live = 1;
-
-                        } else if (ngx_processes[i].exiting) {
                             live = 1;
                         }
                     }
@@ -470,44 +466,27 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                 if (signo) {
                     for (i = 0; i < ngx_last_process; i++) {
 
-                        if (!ngx_processes[i].detached) {
-                            ngx_processes[i].signal = signo;
+                        if (ngx_processes[i].detached) {
+                            continue;
+                        }
 
-                            ngx_log_debug2(NGX_LOG_DEBUG_EVENT,
-                                           cycle->log, 0,
-                                           "signal " PID_T_FMT " %d",
-                                           ngx_processes[i].pid, signo);
+                        ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                                       "kill (" PID_T_FMT ", %d)" ,
+                                       ngx_processes[i].pid, signo);
+
+                        if (kill(ngx_processes[i].pid, signo) == -1) {
+                            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                                          "kill(%d, %d) failed",
+                                          ngx_processes[i].pid, signo);
+                            continue;
+                        }
+
+                        if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
+                            ngx_processes[i].exiting = 1;
                         }
                     }
+
                     signo = 0;
-                }
-
-                for (i = 0; i < ngx_last_process; i++) {
-
-                    if (ngx_processes[i].signal == 0) {
-                        continue;
-                    }
-
-                    ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                                   "kill (" PID_T_FMT ", %d)" ,
-                                   ngx_processes[i].pid,
-                                   ngx_processes[i].signal);
-
-                    if (kill(ngx_processes[i].pid, ngx_processes[i].signal)
-                                                                         == -1)
-                    {
-                        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                                      "kill(%d, %d) failed",
-                                      ngx_processes[i].pid,
-                                      ngx_processes[i].signal);
-                        continue;
-                    }
-
-                    if (ngx_processes[i].signal
-                                        != ngx_signal_value(NGX_REOPEN_SIGNAL))
-                    {
-                        ngx_processes[i].exiting = 1;
-                    }
                 }
 
                 if (ngx_reopen || ngx_reconfigure || ngx_timer) {

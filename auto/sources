@@ -41,8 +41,8 @@ CORE_SRCS="src/core/nginx.c \
             src/core/ngx_garbage_collector.c"
 
 
-REGEX_DEPS="src/core/ngx_regex.h"
-REGEX_SRCS="src/core/ngx_regex.c"
+REGEX_DEPS=src/core/ngx_regex.h
+REGEX_SRCS=src/core/ngx_regex.c
 
 
 EVENT_MODULES="ngx_events_module ngx_event_core_module"
@@ -62,29 +62,33 @@ EVENT_SRCS="src/event/ngx_event.c \
             src/event/ngx_event_pipe.c"
 
 
-SELECT_MODULE="ngx_select_module"
+SELECT_MODULE=ngx_select_module
 SELECT_SRCS=src/event/modules/ngx_select_module.c
 
-POLL_MODULE="ngx_poll_module"
+POLL_MODULE=ngx_poll_module
 POLL_SRCS=src/event/modules/ngx_poll_module.c
 
-KQUEUE_MODULE="ngx_kqueue_module"
+KQUEUE_MODULE=ngx_kqueue_module
 KQUEUE_SRCS=src/event/modules/ngx_kqueue_module.c
 
-DEVPOLL_MODULE="ngx_devpoll_module"
+DEVPOLL_MODULE=ngx_devpoll_module
 DEVPOLL_SRCS=src/event/modules/ngx_devpoll_module.c
 
-EPOLL_MODULE="ngx_epoll_module"
+EPOLL_MODULE=ngx_epoll_module
 EPOLL_SRCS=src/event/modules/ngx_epoll_module.c
 
-SIGIO_MODULE="ngx_sigio_module"
+SIGIO_MODULE=ngx_sigio_module
 SIGIO_SRCS=src/event/modules/ngx_sigio_module.c
 
-IOCP_MODULE="ngx_iocp_module"
+IOCP_MODULE=ngx_iocp_module
 IOCP_SRCS=src/event/modules/ngx_iocp_module.c
 
-AIO_MODULE="ngx_aio_module"
-AIO_SRCS=src/event/modules/ngx_aio_module.c
+AIO_MODULE=ngx_aio_module
+AIO_SRCS="src/event/modules/ngx_aio_module.c \
+          src/os/unix/ngx_aio_read.c \
+          src/os/unix/ngx_aio_write.c \
+          src/os/unix/ngx_aio_read_chain.c \
+          src/os/unix/ngx_aio_write_chain.c"
 
 
 UNIX_INCS="$CORE_INCS $EVENT_INCS -I src/os/unix"

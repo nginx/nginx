@@ -55,6 +55,10 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #include <poll.h>
 #endif
 
+#if (HAVE_EPOLL)
+#include <sys/epoll.h>
+#endif /* HAVE_EPOLL */
+
 
 #if defined TCP_DEFER_ACCEPT && !defined HAVE_DEFERRED_ACCEPT
 #define HAVE_DEFERRED_ACCEPT  1
@@ -73,14 +77,6 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 
 #ifndef HAVE_SELECT_CHANGE_TIMEOUT
 #define HAVE_SELECT_CHANGE_TIMEOUT   1
-#endif
-
-
-/* 
- * SuSE 8.2 supports epoll's EPOLLET but misses it in <sys/epoll.h>
- */
-#ifndef EPOLLET  
-#define EPOLLET  0x80000000
 #endif
 
 

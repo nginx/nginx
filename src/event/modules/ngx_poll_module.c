@@ -320,12 +320,12 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
         found = 0;
 
-        if (event_list[i].revents & (POLLIN|POLLERR|POLLHUP)) {
+        if (event_list[i].revents & (POLLIN|POLLERR|POLLHUP|POLLNVAL)) {
             found = 1;
             ready_index[nready++] = c->read;
         }
 
-        if (event_list[i].revents & (POLLOUT|POLLERR|POLLHUP)) {
+        if (event_list[i].revents & (POLLOUT|POLLERR|POLLHUP|POLLNVAL)) {
             found = 1;
             ready_index[nready++] = c->write;
         }

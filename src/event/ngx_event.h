@@ -345,10 +345,10 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 
 typedef struct {
-    int    connections;
-    int    timer_queues;
-    int    use;
-    char  *name;
+    int          connections;
+    int          use;
+    ngx_flag_t   multi_accept;
+    char       *name;
 } ngx_event_conf_t;
 
 

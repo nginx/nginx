@@ -4,7 +4,7 @@ if [ $MD5 != NO ]; then
     if grep MD5_Init $MD5/md5.h >/dev/null; then
         # OpenSSL md5
         OPENSSL_MD5=YES
-        CFLAGS="$CFLAGS -D HAVE_OPENSSL_MD5"
+        have=HAVE_OPENSSL_MD5 . auto/have
     else
         # rsaref md5
         OPENSSL_MD5=NO
@@ -60,7 +60,7 @@ ngx_lib_inc="#include <sys/types.h>
 
 
     if [ $ngx_found = yes ]; then
-        CFLAGS="$CFLAGS -D HAVE_OPENSSL_MD5"
+        have=HAVE_OPENSSL_MD5 . auto/have
         CORE_LIBS="$CORE_LIBS $ngx_libs"
         MD5=YES
     fi

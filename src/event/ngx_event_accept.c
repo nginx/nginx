@@ -23,6 +23,13 @@ void ngx_event_accept(ngx_event_t *ev)
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
+    if (ngx_event_flags & (NGX_USE_EDGE_EVENT|NGX_USE_SIGIO_EVENT)) {
+        ev->available = 1;
+
+    } else if (!(ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)) {
+        ev->available = ecf->multi_accept;
+    }
+
     ls = ev->data;
 
     ngx_log_debug(ev->log, "accept on %s ready: %d" _
@@ -31,26 +38,33 @@ void ngx_event_accept(ngx_event_t *ev)
 
     ev->ready = 0;
     accepted = 0;
+    pool = NULL;
 
     do {
 
-        /*
-         * Create the pool before accept() to avoid copy the sockaddr.
-         * Although accept() can fail it's an uncommon case
-         * and besides the pool can be got from the free pool list
-         */
+        if (pool == NULL) {
 
-        if (!(pool = ngx_create_pool(ls->listening->pool_size, ev->log))) {
-            return;
+            /*
+             * Create the pool before accept() to avoid copy the sockaddr.
+             * Although accept() can fail it's an uncommon case
+             * and besides the pool can be got from the free pool list
+             */
+
+            if (!(pool = ngx_create_pool(ls->listening->pool_size, ev->log))) {
+                return;
+            }
         }
 
         if (!(sa = ngx_palloc(pool, ls->listening->socklen))) {
+            ngx_destroy_pool(pool);
             return;
         }
 
         if (!(log = ngx_palloc(pool, sizeof(ngx_log_t)))) {
+            ngx_destroy_pool(pool);
             return;
         }
+
         ngx_memcpy(log, ls->log, sizeof(ngx_log_t));
         pool->log = log;
 
@@ -67,12 +81,25 @@ void ngx_event_accept(ngx_event_t *ev)
                 ngx_log_error(NGX_LOG_NOTICE, log, err,
                               "EAGAIN after %d accepted connection(s)",
                               accepted);
+
+                ngx_destroy_pool(pool);
                 return;
             }
 
             ngx_log_error(NGX_LOG_ALERT, ev->log, err,
                           "accept() on %s failed",
                           ls->listening->addr_text.data);
+
+            if (err == NGX_ECONNABORTED) {
+                if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+                    ev->available--;
+                }
+
+                if (ev->available) {
+                    /* reuse the previously allocated pool */
+                    continue;
+                }
+            }
 
             ngx_destroy_pool(pool);
             return;
@@ -187,8 +214,10 @@ void ngx_event_accept(ngx_event_t *ev)
         wev->write = 1;
         wev->ready = 1;
 
-        if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT)) {
-            /* aio, iocp, epoll */
+        if (ngx_event_flags
+            & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT|NGX_USE_SIGIO_EVENT))
+        {
+            /* aio, iocp, sigio, epoll */
             rev->ready = 1;
         }
 
@@ -228,6 +257,8 @@ void ngx_event_accept(ngx_event_t *ev)
                 return;
             }
         }
+
+        pool = NULL;
 
         log->data = NULL;
         log->handler = NULL;

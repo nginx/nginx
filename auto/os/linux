@@ -6,19 +6,49 @@ EVENT_MODULES="$EVENT_MODULES $SELECT_MODULE $POLL_MODULE"
 
 ZLIB_LIB="-lz"
 
+CC_TEST_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
 
-NGX_INC="sys/epoll.h"; . auto/inc
 
-if [ $NGX_FOUND=YES ]; then
+# epoll, EPOLLET version
+
+ngx_func="epoll";
+ngx_func_inc="#include <sys/epoll.h>"
+ngx_func_test="int fd = 1; int n;
+               struct epoll_event ee;
+               ee.events = EPOLLIN|EPOLLOUT|EPOLLET;
+               ee.data.ptr = NULL;
+               n = epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ee)"
+. auto/func
+
+if [ $ngx_found = yes ]; then
     CFLAGS="$CFLAGS -D HAVE_EPOLL=1"
-    EVENT_MODULES="$EVENT_MODULES $EPOLL_MODULE"
     CORE_SRCS="$CORE_SRCS $EPOLL_SRCS"
+    EVENT_MODULES="$EVENT_MODULES $EPOLL_MODULE"
+    EVENT_FOUND=YES
 fi
 
 
-# TODO check sendfile64()
+# sendfile()
+
+CC_TEST_FLAGS="-D_GNU_SOURCE"
+ngx_func="sendfile()";
+ngx_func_inc="#include <sys/sendfile.h>"
+ngx_func_test="int s = 0, fd = 1;
+               ssize_t n; off_t off = 0;
+               n = sendfile(s, fd, &off, 1)"
+. auto/func
+
+if [ $ngx_found = yes ]; then
+    CFLAGS="$CFLAGS -D HAVE_SENDFILE=1"
+    CORE_SRCS="$CORE_SRCS $LINUX_SENDFILE_SRCS"
+fi
+
+
+# sendfile64()
 
 CC_TEST_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
+ngx_func="sendfile64()"; . auto/func
 
-# STUB
-CORE_SRCS="$CORE_SRCS $LINUX_SENDFILE_SRCS"
+if [ $ngx_found = yes ]; then
+    CFLAGS="$CFLAGS -D HAVE_SENDFILE64=1"
+fi

@@ -315,14 +315,15 @@ static int ngx_select_process_events(ngx_log_t *log)
         deltas += delta;
         if (deltas > 1000) {
             ngx_gettimeofday(&tv);
-            deltas = tv.tv_usec / 1000;
             ngx_time_update(tv.tv_sec);
+            deltas = tv.tv_usec / 1000;
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                        "select timer: %d, delta: %d", timer, (int) delta);
 
     } else {
+        delta = 0;
         ngx_gettimeofday(&tv);
         ngx_time_update(tv.tv_sec);
 
@@ -438,8 +439,10 @@ static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
     /* disable warning: the default FD_SETSIZE is 1024U in FreeBSD 5.x */
 
     if ((unsigned) ecf->connections > FD_SETSIZE) {
-        return "maximum number of connections "
-               "supported by select() is " ngx_value(FD_SETSIZE);
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "the maximum number of files "
+                      "supported by select() is " ngx_value(FD_SETSIZE));
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;

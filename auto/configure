@@ -3,14 +3,16 @@
 . auto/init
 . auto/sources
 
+echo > $NGX_AUTO_CONFIG_H
+
 . auto/os/conf
+. auto/modules
 
 . auto/cc
 . auto/lib/conf
+
 . auto/make
 . auto/lib/make
-
-echo > $NGX_AUTO_CONFIG_H
 
 if [ "$PLATFORM" != win32 ]; then
     . auto/unix

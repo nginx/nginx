@@ -7,16 +7,6 @@ CORE_SRCS="$UNIX_SRCS $FREEBSD_SRCS"
 MD5_LIB="-lmd"
 ZLIB_LIB="-lz"
 
-if [ $SELECT = YES ]; then
-    CORE_SRCS="$CORE_SRCS $SELECT_SRCS"
-    EVENT_MODULES="$EVENT_MODULES $SELECT_MODULE"
-fi
-
-if [ $POLL = YES ]; then
-    CORE_SRCS="$CORE_SRCS $POLL_SRCS"
-    EVENT_MODULES="$EVENT_MODULES $POLL_MODULE"
-fi
-
 version=`grep "#define __FreeBSD_version" /usr/include/osreldate.h \
          | sed -e 's/^.* \(.*\)$/\1/'`
 
@@ -24,7 +14,7 @@ version=`grep "#define __FreeBSD_version" /usr/include/osreldate.h \
 # sendfile
 
 if [ $version -gt 300007 ]; then
-    CFLAGS="$CFLAGS -D HAVE_SENDFILE=1"
+    have=HAVE_SENDFILE . auto/have
     CORE_SRCS="$CORE_SRCS $FREEBSD_SENDFILE_SRCS"
 fi
 
@@ -34,9 +24,11 @@ fi
 if [ \( $version -lt 500000 -a $version -ge 410000 \) \
      -o $version -ge 500011 ]
 then
-    CFLAGS="$CFLAGS -D HAVE_KQUEUE=1 -D HAVE_CLEAR_EVENT=1"
+    have=HAVE_KQUEUE . auto/have
+    have=HAVE_CLEAR_EVENT . auto/have
     CORE_SRCS="$CORE_SRCS $KQUEUE_SRCS"
     EVENT_MODULES="$EVENT_MODULES $KQUEUE_MODULE"
+    EVENT_FOUND=YES
 fi
 
 
@@ -45,5 +37,11 @@ fi
 if [ \( $version -lt 500000 -a $version -ge 430000 \) \
      -o $version -ge 500018 ]
 then
-    CFLAGS="$CFLAGS -D HAVE_LOWAT_EVENT=1"
+    have=HAVE_LOWAT_EVENT . auto/have
+fi
+
+
+if [ $EVENT_AIO = YES ]; then
+    CORE_SRCS="$CORE_SRCS $AIO_SRCS"
+    EVENT_MODULES="$EVENT_MODULES $AIO_MODULE"
 fi

@@ -6,29 +6,31 @@ EVENT_MODULES="$EVENT_MODULES $SELECT_MODULE $POLL_MODULE"
 
 MD5_LIB="-lmd5"
 ZLIB_LIB="-lz"
+CORE_LIBS="$CORE_LIBS -lsocket -lnsl"
 
 CC_TEST_FLAGS="-D_FILE_OFFSET_BITS=64"
 
-CORE_LIBS="$CORE_LIBS -lsocket -lnsl"
 
+ngx_inc="sys/devpoll.h"; . auto/inc
 
-NGX_INC="sys/devpoll.h"; . auto/inc
-
-if [ $NGX_FOUND=YES ]; then
+if [ $ngx_found = yes ]; then
     CFLAGS="$CFLAGS -D HAVE_DEVPOLL=1"
-    EVENT_MODULES="$EVENT_MODULES $DEVPOLL_MODULE"
     CORE_SRCS="$CORE_SRCS $DEVPOLL_SRCS"
+    EVENT_MODULES="$EVENT_MODULES $DEVPOLL_MODULE"
+    EVENT_FOUND=YES
 fi
 
 
-NGX_FUNC_INC="#include <sys/sendfile.h>"
-NGX_FUNC_LIBS="-lsendfile"
-NGX_FUNC_TEST="int fd = 1; sendfilevec_t vec[1];
+ngx_func="sendfilev()";
+ngx_func_inc="#include <sys/sendfile.h>"
+ngx_func_libs="-lsendfile"
+ngx_func_test="int fd = 1; sendfilevec_t vec[1];
                size_t sent = 1; ssize_t n;
                n = sendfilev(fd, vec, 1, &sent)"
-NGX_FUNC="sendfilev()"; . auto/func
+. auto/func
 
-if [ $NGX_FOUND=YES ]; then
+
+if [ $ngx_found = yes ]; then
     CFLAGS="$CFLAGS -D HAVE_SENDFILE=1"
     CORE_SRCS="$CORE_SRCS $SOLARIS_SENDFILEV_SRCS"
     CORE_LIBS="$CORE_LIBS -lsendfile"

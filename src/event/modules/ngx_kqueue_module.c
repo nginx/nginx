@@ -375,6 +375,8 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "kevent events: %d", events);
+
     delta = ngx_elapsed_msec;
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
