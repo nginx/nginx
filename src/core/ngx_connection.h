@@ -26,6 +26,15 @@ struct ngx_connection_s {
     ngx_server_t     *server;
     ngx_server_t     *servers;
     ngx_pool_t       *pool;
+
+    int               family;
+    struct sockaddr  *sockaddr;
+    socklen_t         socklen;
+    size_t            addr;
+    char             *addr_text;
+    size_t            addr_textlen;
+
+    time_t            post_accept_timeout;
 };
 
 

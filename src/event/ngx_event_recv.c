@@ -14,6 +14,12 @@ int ngx_event_recv_core(ngx_event_t *ev, char *buf, size_t size)
 
     c = (ngx_connection_t *) ev->data;
 
+    if (ev->timedout) {
+        ngx_set_socket_errno(NGX_ETIMEDOUT);
+        ngx_log_error(NGX_LOG_ERR, ev->log, NGX_ETIMEDOUT, "recv() failed");
+        return NGX_ERROR;
+    }
+
 #if (HAVE_KQUEUE)
     ngx_log_debug(ev->log, "ngx_event_recv: eof:%d, avail:%d, err:%d" _
                   ev->eof _ ev->available _ ev->error);
@@ -22,10 +28,7 @@ int ngx_event_recv_core(ngx_event_t *ev, char *buf, size_t size)
 #endif
         if (ev->eof && ev->available == 0) {
             if (ev->error) {
-                ngx_log_error(NGX_LOG_ERR, ev->log, ev->error,
-                              "ngx_event_recv: recv() failed while %s",
-                              ev->log->action);
-
+                ngx_log_error(NGX_LOG_ERR, ev->log, ev->error, "recv() failed");
                 return NGX_ERROR;
             }
 
@@ -39,16 +42,11 @@ int ngx_event_recv_core(ngx_event_t *ev, char *buf, size_t size)
         err = ngx_socket_errno;
 
         if (err == NGX_EAGAIN) {
-            ngx_log_error(NGX_LOG_INFO, ev->log, err,
-                          "ngx_event_recv: recv() returns EAGAIN while %s",
-                          ev->log->action);
+            ngx_log_error(NGX_LOG_INFO, ev->log, err, "recv() returns EAGAIN");
             return NGX_AGAIN;
         }
 
-        ngx_log_error(NGX_LOG_INFO, ev->log, err,
-                      "ngx_event_recv: recv() failed while %s",
-                      ev->log->action);
-
+        ngx_log_error(NGX_LOG_ERR, ev->log, err, "recv() failed");
         return NGX_ERROR;
     }
 

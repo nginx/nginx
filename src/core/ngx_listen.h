@@ -11,22 +11,26 @@
 typedef struct {
     ngx_socket_t  fd;
 
-    void         *addr;
-    size_t        addr_len;
-    char         *addr_text;
+    struct sockaddr  *sockaddr;
+    socklen_t         socklen;
+    size_t            addr;
+    char             *addr_text;
+    size_t            addr_textlen;
 
     int           family;
     int           type;
     int           protocol;
+    int           flags;
 
     ngx_log_t    *log;
     void         *server;
     int         (*handler)(ngx_connection_t *c);
 
     int           backlog;
+    time_t        post_accept_timeout;
 
     unsigned      done:1;
-    unsigned      close:1;
+    unsigned      inherited:1;
     unsigned      nonblocking:1;
 #if 0
     unsigned      overlapped:1;

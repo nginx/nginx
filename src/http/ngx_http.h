@@ -70,7 +70,7 @@ typedef struct ngx_http_request_s ngx_http_request_t;
 struct ngx_http_request_s {
     char  *filename;
     char  *location;
-    ngx_file_t  fd;
+    ngx_fd_t  fd;
 
     ngx_http_headers_out_t *headers_out;
 
@@ -112,6 +112,12 @@ struct ngx_http_request_s {
     int  (*state_handler)(ngx_http_request_t *r);
 #endif
 };
+
+typedef struct {
+    char  *action;
+    char  *client;
+    char  *url;
+} ngx_http_log_ctx_t;
 
 
 #define NGX_INDEX "index.html"

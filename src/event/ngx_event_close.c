@@ -5,7 +5,7 @@
 #include <ngx_event_close.h>
 
 
-int ngx_event_close(ngx_event_t *ev)
+int ngx_event_close_connection(ngx_event_t *ev)
 {
     int rc;
     ngx_connection_t *cn = (ngx_connection_t *) ev->data;

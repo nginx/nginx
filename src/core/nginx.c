@@ -85,43 +85,57 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
         /* for each listening socket */
         ls = (ngx_listen_t *) ngx_listening_sockets->elts;
         for (i = 0; i < ngx_listening_sockets->nelts; i++) {
+
             if (ls[i].done)
                 continue;
 
-#if (WIN32)
-            s = WSASocket(ls[i].family, ls[i].type, ls[i].protocol, NULL, 0, 0);
-#else
-            s = socket(ls[i].family, ls[i].type, ls[i].protocol);
-#endif
-            if (s == -1)
+            if (ls[i].inherited) {
+
+                /* TODO: close on exit */
+                /* TODO: nonblocking */
+                /* TODO: deferred accept */
+
+                ls[i].done = 1;
+                continue;
+            }
+
+            s = ngx_socket(ls[i].family, ls[i].type, ls[i].protocol,
+                           ls[i].flags);
+            if (s == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              "nginx: socket %s falied", ls[i].addr_text);
+                              ngx_socket_n " %s falied", ls[i].addr_text);
+                exit(1);
+            }
 
             if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
-                           (const void *) &reuseaddr, sizeof(int)) == -1)
+                           (const void *) &reuseaddr, sizeof(int)) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              "nginx: setsockopt (SO_REUSEADDR) %s failed",
+                              "setsockopt(SO_REUSEADDR) %s failed",
                               ls[i].addr_text);
+                exit(1);
+            }
 
             /* TODO: close on exit */
 
             if (ls[i].nonblocking) {
-                if (ngx_nonblocking(s) == -1)
+                if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_nonblocking_n " %s failed",
                                   ls[i].addr_text);
+                    exit(1);
+                }
             }
 
-            if (bind(s, (struct sockaddr *) ls[i].addr, ls[i].addr_len) == -1) {
+            if (bind(s, ls[i].sockaddr, ls[i].socklen) == -1) {
                 err = ngx_socket_errno;
-                ngx_log_error(NGX_LOG_ALERT, log, err,
-                              "bind to %s failed", ls[i].addr_text);
+                ngx_log_error(NGX_LOG_EMERG, log, err,
+                              "bind() to %s failed", ls[i].addr_text);
 
                 if (err != NGX_EADDRINUSE)
                     exit(1);
 
                 if (ngx_close_socket(s) == -1)
-                    ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_close_socket_n " %s failed",
                                   ls[i].addr_text);
 
@@ -129,9 +143,11 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
                 continue;
             }
 
-            if (listen(s, ls[i].backlog) == -1)
+            if (listen(s, ls[i].backlog) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              "listen to %s failed", ls[i].addr_text);
+                              "listen() to %s failed", ls[i].addr_text);
+                exit(1);
+            }
 
             /* TODO: deferred accept */
 
@@ -142,10 +158,13 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
         if (!failed)
             break;
 
-        ngx_log_error(NGX_LOG_NOTICE, log, 0, "try to bind again after 500ms");
+        ngx_log_error(NGX_LOG_NOTICE, log, 0,
+                      "try again to bind() after 500ms");
         ngx_msleep(500);
     }
 
-    if (failed)
-        ngx_log_error(NGX_LOG_EMERG, log, 0, "can't bind");
+    if (failed) {
+        ngx_log_error(NGX_LOG_EMERG, log, 0, "can not bind(), exiting");
+        exit(1);
+    }
 }

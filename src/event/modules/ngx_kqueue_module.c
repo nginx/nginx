@@ -18,7 +18,7 @@
 #error "kqueue is not supported on this platform"
 #endif
 
-static void ngx_add_timer(ngx_event_t *ev, u_int timer);
+static void ngx_add_timer_core(ngx_event_t *ev, u_int timer);
 static void ngx_inline ngx_del_timer(ngx_event_t *ev);
 
 
@@ -35,9 +35,11 @@ void ngx_kqueue_init(int max_connections, ngx_log_t *log)
     nchanges = 0;
     nevents = 512;
 
-    if ((kq = kqueue()) == -1)
+    if ((kq = kqueue()) == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "ngx_kqueue_init: kqueue failed");
+                      "kqueue() failed");
+        exit(1);
+    }
 
     change_list = ngx_alloc(size, log);
     event_list = ngx_alloc(size, log);
@@ -56,7 +58,7 @@ void ngx_kqueue_init(int max_connections, ngx_log_t *log)
 int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     if (event == NGX_TIMER_EVENT) {
-        ngx_add_timer(ev, flags);
+        ngx_add_timer_core(ev, flags);
         return 0;
     }
 
@@ -154,8 +156,14 @@ int ngx_kqueue_process_events(ngx_log_t *log)
                 delta -= ev->timer_delta;
                 nx = ev->timer_next;
                 ngx_del_timer(ev);
+#if 1
+                ev->timedout = 1;
+                if (ev->event_handler(ev) == -1)
+                    ev->close_handler(ev);
+#else
                 if (ev->timer_handler(ev) == -1)
                     ev->close_handler(ev);
+#endif
                 ev = nx;
             }
 
@@ -207,7 +215,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
     return 0;
 }
 
-static void ngx_add_timer(ngx_event_t *ev, u_int timer)
+static void ngx_add_timer_core(ngx_event_t *ev, u_int timer)
 {
     ngx_event_t *e;
 

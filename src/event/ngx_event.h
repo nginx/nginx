@@ -51,7 +51,7 @@ struct ngx_event_s {
     unsigned         unexpected_eof:1;
 
 #if (HAVE_DEFERRED_ACCEPT)
-    unsigned         accept_filter:1;
+    unsigned         deferred_accept:1;
 #endif
 #if (HAVE_KQUEUE)
     unsigned         eof:1;
@@ -81,10 +81,12 @@ typedef struct {
 
 
 /*
-NGX_LEVEL_EVENT (default)  select, poll, kqueue
+NGX_LEVEL_EVENT (default)  select, poll, /dev/poll, kqueue
                                 requires to read whole data
-NGX_ONESHOT_EVENT          kqueue
+NGX_ONESHOT_EVENT          select, poll, kqueue
 NGX_CLEAR_EVENT            kqueue
+NGX_AIO_EVENT              overlapped, aio_read, aioread
+                                no need to add or delete events
 */
 
 #if (HAVE_KQUEUE)
@@ -93,6 +95,7 @@ NGX_CLEAR_EVENT            kqueue
 #define NGX_WRITE_EVENT    EVFILT_WRITE
 #define NGX_TIMER_EVENT    (-EVFILT_SYSCOUNT - 1)
 
+#define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  EV_ONESHOT
 #define NGX_CLEAR_EVENT    EV_CLEAR
 
@@ -102,6 +105,7 @@ NGX_CLEAR_EVENT            kqueue
 #define NGX_WRITE_EVENT    1
 #define NGX_TIMER_EVENT    2
 
+#define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  1
 #define NGX_CLEAR_EVENT    2
 
@@ -126,6 +130,8 @@ NGX_CLEAR_EVENT            kqueue
 
 #endif
 
+
+#define ngx_add_timer(ev, time)  ngx_add_event(ev, NGX_TIMER_EVENT, time)
 
 extern ngx_event_t          *ngx_read_events;
 extern ngx_event_t          *ngx_write_events;

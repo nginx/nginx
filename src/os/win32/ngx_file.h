@@ -10,7 +10,9 @@
 #define INVALID_FILE_ATTRIBUTES  0xFFFFFFFF
 #endif
 
-typedef HANDLE                      ngx_file_t;
+typedef HANDLE                      ngx_fd_t;
+typedef unsigned __int64            off_t;
+
 typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
 
 

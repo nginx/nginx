@@ -11,6 +11,7 @@ typedef int               ngx_err_t;
 #define NGX_EINTR         EINTR
 #define NGX_EAGAIN        EWOULDBLOCK
 #define NGX_EADDRINUSE    EADDRINUSE
+#define NGX_ETIMEDOUT     ETIMEDOUT
 
 #define ngx_errno                  errno
 #define ngx_socket_errno           errno

@@ -18,7 +18,7 @@ ngx_hunk_t *ngx_get_hunk(ngx_pool_t *pool, int size, int before, int after)
 
     h->type = NGX_HUNK_TEMP;
     h->tag = 0;
-    h->fd = (ngx_file_t) -1;
+    h->fd = (ngx_fd_t) -1;
 
     return h;
 }
@@ -39,7 +39,7 @@ ngx_hunk_t *ngx_get_hunk_before(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 
         h->type = NGX_HUNK_TEMP;
         h->tag = 0;
-        h->fd = (ngx_file_t) -1;
+        h->fd = (ngx_fd_t) -1;
 
     } else {
         h->pre_start = h->start = h->pos.mem = h->last.mem
@@ -48,7 +48,7 @@ ngx_hunk_t *ngx_get_hunk_before(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 
         h->type = NGX_HUNK_TEMP;
         h->tag = 0;
-        h->fd = (ngx_file_t) -1;
+        h->fd = (ngx_fd_t) -1;
     }
 
     return h;
@@ -71,7 +71,7 @@ ngx_hunk_t *ngx_get_hunk_after(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
                                                                 hunk->last.mem;
         h->type = NGX_HUNK_TEMP;
         h->tag = 0;
-        h->fd = (ngx_file_t) -1;
+        h->fd = (ngx_fd_t) -1;
 
     } else {
         h->pre_start = h->start = h->pos.mem = h->last.mem =
@@ -80,7 +80,7 @@ ngx_hunk_t *ngx_get_hunk_after(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 
         h->type = NGX_HUNK_TEMP;
         h->tag = 0;
-        h->fd = (ngx_file_t) -1;
+        h->fd = (ngx_fd_t) -1;
     }
 
     return h;

@@ -1,4 +1,14 @@
 
+/* 1 */
+int ngx_posix_aio_process_events(ngx_log_t *log)
+{
+    listen via SIGIO;
+    aio_* via SIGxxx;
+
+    sigsuspend()/sigwaitinfo()/sigtimedwait();
+}
+
+/* 2 */
 int ngx_posix_aio_process_events(ngx_log_t *log)
 {
     unmask signal
@@ -18,6 +28,7 @@ int ngx_posix_aio_process_events(ngx_log_t *log)
         aio
 }
 
+/* 3 */
 int ngx_posix_aio_process_events(ngx_log_t *log)
 {
     unmask signal

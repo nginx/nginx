@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-typedef int                      ngx_file_t;
+typedef int                      ngx_fd_t;
 typedef struct stat              ngx_file_info_t;
 
 

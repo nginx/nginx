@@ -46,15 +46,15 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
     int  i, fd;
     ngx_listen_t *s;
 
-    /* per group */
+    /* STUB */
     int max_connections = 512;
 
     ngx_init_events(max_connections, log);
 
+    ngx_connections = ngx_alloc(sizeof(ngx_connection_t)
+                                                       * max_connections, log);
     ngx_read_events = ngx_alloc(sizeof(ngx_event_t) * max_connections, log);
     ngx_write_events = ngx_alloc(sizeof(ngx_event_t) * max_connections, log);
-    ngx_connections = ngx_alloc(sizeof(ngx_connection_t)
-                                                     * max_connections, log);
 
     /* for each listening socket */
     s = (ngx_listen_t *) ls->elts;
@@ -62,16 +62,23 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
 
         fd = s[i].fd;
 
-        ngx_memzero(&ngx_read_events[fd], sizeof(ngx_event_t));
-        ngx_memzero(&ngx_write_events[fd], sizeof(ngx_event_t));
         ngx_memzero(&ngx_connections[fd], sizeof(ngx_connection_t));
+        ngx_memzero(&ngx_read_events[fd], sizeof(ngx_event_t));
 
         ngx_connections[fd].fd = fd;
+        ngx_connections[fd].family = s[i].family;
+        ngx_connections[fd].socklen = s[i].socklen;
+        ngx_connections[fd].sockaddr = ngx_palloc(pool, s[i].socklen);
+        ngx_connections[fd].addr = s[i].addr;
+        ngx_connections[fd].addr_text = s[i].addr_text;
+        ngx_connections[fd].addr_textlen = s[i].addr_textlen;
+        ngx_connections[fd].post_accept_timeout = s[i].post_accept_timeout;
+
         ngx_connections[fd].server = s[i].server;
-        ngx_connections[fd].read = (void *) &ngx_read_events[fd].data;
         ngx_connections[fd].handler = s[i].handler;
-        ngx_read_events[fd].data = &ngx_connections[fd];
-        ngx_read_events[fd].log = ngx_connections[fd].log = s[i].log;
+        ngx_connections[fd].log = s[i].log;
+
+        ngx_read_events[fd].log = ngx_connections[fd].log;
         ngx_read_events[fd].data = &ngx_connections[fd];
         ngx_read_events[fd].event_handler = &ngx_event_accept;
         ngx_read_events[fd].listening = 1;
@@ -79,7 +86,7 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
         ngx_read_events[fd].available = 0;
 
 #if (HAVE_DEFERRED_ACCEPT)
-        ngx_read_events[fd].accept_filter = s[i].accept_filter;
+        ngx_read_events[fd].deferred_accept = s[i].deferred_accept;
 #endif
         ngx_add_event(&ngx_read_events[fd], NGX_READ_EVENT, 0);
     }

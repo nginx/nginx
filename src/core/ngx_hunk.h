@@ -48,7 +48,7 @@ struct ngx_hunk_s {
     char        *pre_start;     /* start of pre-allocated hunk */
     char        *post_end;      /* end of post-allocated hunk */
     int          tag;
-    ngx_file_t   fd;
+    ngx_fd_t     fd;
 };
 
 typedef struct ngx_chain_s  ngx_chain_t;

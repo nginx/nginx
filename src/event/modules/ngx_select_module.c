@@ -23,7 +23,7 @@ static ngx_event_t  event_queue;
 static ngx_event_t  timer_queue;
 
 
-static void ngx_add_timer(ngx_event_t *ev, u_int timer);
+static void ngx_add_timer_core(ngx_event_t *ev, u_int timer);
 static void ngx_inline ngx_del_timer(ngx_event_t *ev);
 
 static fd_set *ngx_select_get_fd_set(ngx_socket_t fd, int event,
@@ -31,19 +31,17 @@ static fd_set *ngx_select_get_fd_set(ngx_socket_t fd, int event,
 
 void ngx_select_init(int max_connections, ngx_log_t *log)
 {
+    if (max_connections > FD_SETSIZE) {
+        ngx_log_error(NGX_LOG_EMERG, log, 0,
 #if (WIN32)
-    if (max_connections > FD_SETSIZE)
-        ngx_log_error(NGX_LOG_EMERG, log, 0,
-                      "ngx_select_init: maximum number of descriptors "
-                      "supported by select() is %d",
-                      FD_SETSIZE);
+                      "maximum number of descriptors "
+                      "supported by select() is %d", FD_SETSIZE);
 #else
-    if (max_connections >= FD_SETSIZE)
-        ngx_log_error(NGX_LOG_EMERG, log, 0,
-                      "ngx_select_init: maximum descriptor number"
-                      "supported by select() is %d",
-                      FD_SETSIZE - 1);
+                      "maximum descriptor number"
+                      "supported by select() is %d", FD_SETSIZE - 1);
 #endif
+        exit(1);
+    }
 
     FD_ZERO(&master_read_fds);
     FD_ZERO(&master_write_fds);
@@ -71,7 +69,7 @@ int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
     ngx_connection_t *cn = (ngx_connection_t *) ev->data;
 
     if (event == NGX_TIMER_EVENT) {
-        ngx_add_timer(ev, flags);
+        ngx_add_timer_core(ev, flags);
         return 0;
     }
 
@@ -271,8 +269,14 @@ int ngx_select_process_events(ngx_log_t *log)
                 delta -= ev->timer_delta;
                 nx = ev->timer_next;
                 ngx_del_timer(ev);
+#if 1
+                ev->timedout = 1;
+                if (ev->event_handler(ev) == -1)
+                    ev->close_handler(ev);
+#else
                 if (ev->timer_handler(ev) == -1)
                     ev->close_handler(ev);
+#endif
                 ev = nx;
             }
 
@@ -316,7 +320,7 @@ int ngx_select_process_events(ngx_log_t *log)
     return 0;
 }
 
-static void ngx_add_timer(ngx_event_t *ev, u_int timer)
+static void ngx_add_timer_core(ngx_event_t *ev, u_int timer)
 {
     ngx_event_t *e;
 

@@ -37,31 +37,15 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 #endif
 
     ngx_localtime(&tm);
-    len = ngx_snprintf(errstr, sizeof(errstr), "%02d:%02d:%02d",
+    len = ngx_snprintf(errstr, sizeof(errstr), "%4d/%02d/%02d %02d:%02d:%02d",
+                       tm.ngx_tm_year + 1900, tm.ngx_tm_mon, tm.ngx_tm_mday,
                        tm.ngx_tm_hour, tm.ngx_tm_min, tm.ngx_tm_sec);
 
-    if (err) {
-        if ((unsigned) err < 0x80000000)
-            len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                            " [%s] (%d)",
-                            err_levels[level], err);
-        else
-            len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                            " [%s] (%X)",
-                            err_levels[level], err);
+    len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
+                        " [%s] ", err_levels[level]);
 
-        len += ngx_strerror_r(err, errstr + len, sizeof(errstr) - len - 1);
-        if (len < sizeof(errstr) - 2) {
-            errstr[len++] = ':';
-            errstr[len++] = ' ';
-        } else {
-            len = sizeof(errstr) - 2;
-        }
-
-    } else {
-        len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                            " [%s] ", err_levels[level]);
-    }
+    len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
+                        "%d#%d: ", getpid(), 0);
 
 #if (HAVE_VARIADIC_MACROS)
     va_start(args, fmt);
@@ -71,15 +55,31 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     len += ngx_vsnprintf(errstr + len, sizeof(errstr) - len - 1, fmt, args);
 #endif
 
+    if (err) {
+        if ((unsigned) err < 0x80000000)
+            len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
+                            " (%d: ", err);
+        else
+            len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
+                            " (%X: ", err);
+
+        len += ngx_strerror_r(err, errstr + len, sizeof(errstr) - len - 1);
+        if (len < sizeof(errstr) - 2) {
+            errstr[len++] = ')';
+        } else {
+            len = sizeof(errstr) - 2;
+        }
+    }
+
+    if (level != NGX_LOG_DEBUG && log->handler)
+        len += log->handler(log->data, errstr + len, sizeof(errstr) - len - 1);
+
     if (len > sizeof(errstr) - 2)
         len = sizeof(errstr) - 2;
     errstr[len] = '\n';
     errstr[len + 1] = '\0';
 
     fputs(errstr, stderr);
-
-    if (level == NGX_LOG_EMERG)
-        exit(1);
 }
 
 #if !(HAVE_VARIADIC_MACROS)

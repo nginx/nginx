@@ -40,10 +40,16 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
     ls->family = AF_INET;
     ls->type = SOCK_STREAM;
     ls->protocol = IPPROTO_IP;
-    ls->addr = &addr;
-    ls->addr_len = sizeof(struct sockaddr_in);
+#if (NGX_OVERLAPPED)
+    ls->flags = WSA_FLAG_OVERLAPPED;
+#endif
+    ls->sockaddr = (struct sockaddr *) &addr;
+    ls->socklen = sizeof(struct sockaddr_in);
+    ls->addr = offsetof(struct sockaddr_in, sin_addr);
     ls->addr_text = addr_text;
+    ls->addr_textlen = INET_ADDRSTRLEN;
     ls->backlog = -1;
+    ls->post_accept_timeout = 10000;
     ls->nonblocking = 1;
 
     ls->handler = ngx_http_init_connection;

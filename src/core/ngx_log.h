@@ -3,6 +3,7 @@
 
 
 #include <ngx_errno.h>
+#include <ngx_file.h>
 
 typedef enum {
     NGX_LOG_EMERG = 0,
@@ -59,13 +60,14 @@ typedef enum {
 */
 
 typedef struct {
-    int    log_level;
-    char  *action;
-    char  *context;
-#if 0
-    void  *data;   /* i.e. ngx_http_proxy_error_context_t */
-    char  *func(ngx_log_t *log);
-#endif
+    int       log_level;
+    ngx_fd_t  fd;
+    void     *data;
+    size_t   (*handler)(void *ctx, char *buf, size_t len);
+/* STUB */
+    char     *action;
+    char     *context;
+/* */
 } ngx_log_t;
 
 #define MAX_ERROR_STR	2048

@@ -5,9 +5,7 @@
 #include <ngx_config.h>
 
 
-typedef HANDLE            ngx_file_t;
 typedef long              time_t;
-typedef unsigned __int64  off_t;
 
 
 #define QD_FMT            "%I64d"

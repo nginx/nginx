@@ -12,8 +12,8 @@ void *ngx_alloc(size_t size, ngx_log_t *log)
 
     p = malloc(size);
     if (p == NULL)
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "ngx_alloc: malloc() %d bytes failed", size);
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "malloc() %d bytes failed", size);
     return p;
 }
 
