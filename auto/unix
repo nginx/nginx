@@ -16,12 +16,7 @@ ngx_formats="%lld %qd"; . auto/fmt/fmt
 ngx_type="void *"; . auto/types/sizeof; ngx_ptr_bytes=$ngx_bytes
 
 
-# headers
-
-ngx_inc="unistd.h"; . auto/inc
-ngx_inc="inttypes.h"; . auto/inc
-
-#POSIX types
+# POSIX types
 
 NGX_AUTO_CONFIG="#include \"../$NGX_AUTO_CONFIG_H\""
 
@@ -41,6 +36,15 @@ ngx_type="rlim_t"
 ngx_types="int"; . auto/types/typedef
 
 . auto/types/uintptr_t
+
+
+ngx_func="sin_len"
+ngx_func_inc="#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>"
+
+ngx_func_test="struct sockaddr_in sa; sa.sin_len = 5"
+. auto/func
 
 
 # printf() formats
@@ -70,19 +74,15 @@ eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
 
 ngx_func="pread()"
 ngx_func_inc=
-ngx_func_test="
-char    buf[1];
-ssize_t n;
-n = pread(0, buf, 1, 0)"
+ngx_func_test="char buf[1]; ssize_t n;
+               n = pread(0, buf, 1, 0)"
 . auto/func
 
 
 ngx_func="pwrite()"
 ngx_func_inc=
-ngx_func_test="
-char    buf[1];
-ssize_t n;
-n = pwrite(1, buf, 1, 0)"
+ngx_func_test="char buf[1]; ssize_t n;
+               n = pwrite(1, buf, 1, 0)"
 . auto/func
 
 
@@ -94,7 +94,7 @@ n = pwrite(1, buf, 1, 0)"
 
 ngx_func="strerror_r()"
 ngx_func_inc="#include <string.h>"
-ngx_func_test="char buf[20]; strerror_r(1, buf, 20)"
+ngx_func_test="char buf[20]; int n; n = strerror_r(1, buf, 20)"
 . auto/func
 
 

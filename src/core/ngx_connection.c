@@ -48,11 +48,6 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-/* STUB: autoconf & set sin_len in ls[i].sockaddr in ngx_http.c */
-#if __FreeBSD__
-        addr_in->sin_len = 0;
-#endif
-
         ls[i].family = addr_in->sin_family;
         ls[i].addr_text.len = ngx_sock_ntop(ls[i].family, ls[i].sockaddr,
                                             ls[i].addr_text.data,
@@ -68,11 +63,11 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
 ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
 {
-    int              tries, failed, reuseaddr, i;
-    ngx_err_t        err;
-    ngx_log_t       *log;
-    ngx_socket_t     s;
-    ngx_listening_t *ls;
+    ngx_int_t         tries, failed, reuseaddr, i;
+    ngx_err_t         err;
+    ngx_log_t        *log;
+    ngx_socket_t      s;
+    ngx_listening_t  *ls;
 
     reuseaddr = 1;
 #if (NGX_SUPPRESS_WARN)
@@ -240,4 +235,40 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
         cycle->connections[fd].fd = -1;
     }
+}
+
+
+ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
+{
+    ngx_int_t  level;
+
+    if (err == NGX_ECONNRESET
+        && c->read->log_error == NGX_ERROR_IGNORE_ECONNRESET)
+    {
+        return 0;
+    }
+
+    if (err == NGX_ECONNRESET || err == NGX_EPIPE || err == NGX_ENOTCONN) {
+
+        switch (c->read->log_error) {
+
+        case NGX_ERROR_INFO:
+            level = NGX_LOG_INFO;
+            break;
+
+        case NGX_ERROR_ERR:
+            level = NGX_LOG_ERR;
+            break;
+
+        default:
+            level = NGX_LOG_CRIT;
+        }
+
+    } else {
+        level = NGX_LOG_CRIT;
+    }
+
+    ngx_log_error(level, c->log, err, text);
+
+    return NGX_ERROR;
 }

@@ -1,11 +1,8 @@
 
-
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $FREEBSD_DEPS"
 CORE_SRCS="$UNIX_SRCS $FREEBSD_SRCS"
 
-MD5_LIB="-lmd"
-ZLIB_LIB="-lz"
 
 version=`grep "#define __FreeBSD_version" /usr/include/osreldate.h \
          | sed -e 's/^.* \(.*\)$/\1/'`

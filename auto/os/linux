@@ -4,7 +4,6 @@ CORE_DEPS="$UNIX_DEPS $LINUX_DEPS"
 CORE_SRCS="$UNIX_SRCS $LINUX_SRCS"
 EVENT_MODULES="$EVENT_MODULES"
 
-ZLIB_LIB="-lz"
 
 CC_TEST_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
 
@@ -13,7 +12,7 @@ CC_TEST_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
 
 ngx_func="epoll";
 ngx_func_inc="#include <sys/epoll.h>"
-ngx_func_test="int fd = 1; int n;
+ngx_func_test="int efd = 0, fd = 1, n;
                struct epoll_event ee;
                ee.events = EPOLLIN|EPOLLOUT|EPOLLET;
                ee.data.ptr = NULL;
@@ -21,7 +20,7 @@ ngx_func_test="int fd = 1; int n;
 . auto/func
 
 if [ $ngx_found = yes ]; then
-    CFLAGS="$CFLAGS -D HAVE_EPOLL=1"
+    have=HAVE_EPOLL . auto/have
     CORE_SRCS="$CORE_SRCS $EPOLL_SRCS"
     EVENT_MODULES="$EVENT_MODULES $EPOLL_MODULE"
     EVENT_FOUND=YES
@@ -39,7 +38,6 @@ ngx_func_test="int s = 0, fd = 1;
 . auto/func
 
 if [ $ngx_found = yes ]; then
-    CFLAGS="$CFLAGS -D HAVE_SENDFILE=1"
     CORE_SRCS="$CORE_SRCS $LINUX_SENDFILE_SRCS"
 fi
 
@@ -49,6 +47,14 @@ fi
 CC_TEST_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
 ngx_func="sendfile64()"; . auto/func
 
+
+# prctl(PR_SET_DUMPABLE)
+
+ngx_func="prctl()";
+ngx_func_inc="#include <sys/prctl.h>"
+ngx_func_test="prctl(PR_SET_DUMPABLE, 1, 0, 0, 0)"
+. auto/func
+
 if [ $ngx_found = yes ]; then
-    CFLAGS="$CFLAGS -D HAVE_SENDFILE64=1"
+    have=HAVE_PR_SET_DUMPABLE . auto/have
 fi

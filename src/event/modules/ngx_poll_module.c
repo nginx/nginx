@@ -286,7 +286,8 @@ static int ngx_poll_process_events(ngx_log_t *log)
     delta = ngx_elapsed_msec;
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "poll ready %d", ready);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "poll ready %d of %d", ready, nevents);
 
     if (err) {
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,

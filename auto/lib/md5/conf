@@ -1,5 +1,5 @@
 
-if [ $MD5 != NO ]; then
+if [ $MD5 != NONE ]; then
 
     if grep MD5_Init $MD5/md5.h >/dev/null; then
         # OpenSSL md5
@@ -24,6 +24,8 @@ else
 
 ngx_lib_inc="#include <sys/types.h>
 #include <md5.h>"
+
+    MD5=NO
 
         # Solaris 8/9
         ngx_lib="rsaref md5"

@@ -202,11 +202,11 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
     }
 #endif
 
-    ee.events = event;
+    ee.events = event|EPOLLET;
     ee.data.ptr = (void *) ((uintptr_t) c | c->read->instance);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "epoll add event: fd:%d ev:%04X", c->fd, ee.events);
+                   "epoll add event: fd:%d ev:%08X", c->fd, ee.events);
 
     if (epoll_ctl(ep, EPOLL_CTL_ADD, c->fd, &ee) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -230,8 +230,8 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
     ee.events = 0;
     ee.data.ptr = NULL;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "epoll del event: fd:%d ev:%04X", c->fd, ee.events);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "epoll del event: fd:%d", c->fd);
 
     if (epoll_ctl(ep, EPOLL_CTL_DEL, c->fd, &ee) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -249,11 +249,11 @@ static int ngx_epoll_add_connection(ngx_connection_t *c)
 {
     struct epoll_event  ee;
 
-    ee.events = EPOLLIN|EPOLLOUT;
+    ee.events = EPOLLIN|EPOLLOUT|EPOLLET;
     ee.data.ptr = (void *) ((uintptr_t) c | c->read->instance);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "epoll add connection: fd:%d ev:%04X", c->fd, ee.events);
+                   "epoll add connection: fd:%d ev:%08X", c->fd, ee.events);
 
     if (epoll_ctl(ep, EPOLL_CTL_ADD, c->fd, &ee) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -355,9 +355,9 @@ int ngx_epoll_process_events(ngx_log_t *log)
         }
 
         if (event_list[i].events & (EPOLLERR|EPOLLHUP)) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
-                          "epoll_wait() error on fd:%d ev:%d",
-                          c->fd, event_list[i].events);
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                           "epoll_wait() error on fd:%d ev:%04X",
+                           c->fd, event_list[i].events);
         }
 
         if (event_list[i].events & ~(EPOLLIN|EPOLLOUT|EPOLLERR|EPOLLHUP)) {

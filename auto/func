@@ -24,15 +24,7 @@ eval "$CC $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c $ngx_func_libs \
 
 if [ -x $NGX_AUTOTEST ]; then
     echo " found"
-
-    cat << END >> $NGX_AUTO_CONFIG_H
-
-#ifndef HAVE_$func
-#define HAVE_$func  1
-#endif
-
-END
-
+    have=HAVE_$func . auto/have
     ngx_found=yes
 
 else

@@ -34,7 +34,16 @@
 #include <netdb.h>
 #include <dirent.h>
 
+
+/* Linux has a broken strerror_r() */
+#define HAVE_STRERROR_R  0
+
 #include <ngx_auto_config.h>
+
+
+#if (HAVE_PRCTL)
+#include <sys/prctl.h>
+#endif
 
 #if (HAVE_SENDFILE64)
 #include <sys/sendfile.h>
@@ -67,7 +76,7 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 
 
 #ifndef HAVE_INHERITED_NONBLOCK
-#define HAVE_INHERITED_NONBLOCK  1
+#define HAVE_INHERITED_NONBLOCK  0
 #endif
 
 

@@ -5,17 +5,20 @@
 
 
 /*
- * FreeBSD's sendfile() often sends 4K pages over ethernet in 3 packets: 2x1460
- * and 1176 or in 6 packets: 5x1460 and 892.  Besides although sendfile()
- * allows to pass the header and the trailer it never sends the header or
- * the trailer with the part of the file in one packet.  So we use TCP_NOPUSH
- * (similar to Linux's TCP_CORK) to postpone the sending - it not only sends
- * the header and the first part of the file in one packet but also sends
- * 4K pages in the full packets.
+ * Although FreeBSD sendfile() allows to pass a header and a trailer
+ * it never sends a header with a part of the file in one packet until
+ * FreeBSD 5.2-STABLE.  Besides over the fast ethernet connection sendfile()
+ * can send the partially filled packets, i.e. the 8 file pages can be sent
+ * as 11 full 1460-bytes packets, then one incomplete 324-bytes packet, and
+ * then again 11 full 1460-bytes packets.
  *
- * Until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush a pending
+ * So we use the TCP_NOPUSH option (similar to Linux's TCP_CORK)
+ * to postpone the sending - it not only sends a header and the first part
+ * of the file in one packet but also sends file pages in the full packets.
+ *
+ * But until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush a pending
  * data that less than MSS so that data can be sent with 5 second delay.
- * We do not use TCP_NOPUSH on FreeBSD prior to 4.5 although it can be used
+ * So we do not use TCP_NOPUSH on FreeBSD prior to 4.5 although it can be used
  * for non-keepalive HTTP connections.
  */
 
@@ -26,7 +29,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     char            *prev;
     off_t            sent, fprev;
     size_t           hsize, fsize, size;
-    ngx_int_t        eintr, eagain, level;
+    ngx_int_t        eintr, eagain;
     struct iovec    *iov;
     struct sf_hdtr   hdtr;
     ngx_err_t        err;
@@ -45,7 +48,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
     if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && wev->kq_eof) {
         ngx_log_error(NGX_LOG_INFO, c->log, wev->kq_errno,
-                      "kevent() reported about closed connection");
+                      "kevent() reported about an closed connection");
 
         wev->error = 1;
         return NGX_CHAIN_ERROR;
@@ -59,7 +62,6 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         hsize = 0;
         eintr = 0;
         eagain = 0;
-        level = NGX_LOG_CRIT;
 
         ngx_init_array(header, c->pool, 10, sizeof(struct iovec),
                        NGX_CHAIN_ERROR);
@@ -152,14 +154,26 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         if (file) {
 
             if (ngx_freebsd_use_tcp_nopush && c->tcp_nopush == 0) {
-                c->tcp_nopush = 1;
-
-                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "tcp_nopush");
 
                 if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
-                    ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
-                                  ngx_tcp_nopush_n " failed");
-                    return NGX_CHAIN_ERROR;
+                    err = ngx_errno;
+
+                    /*
+                     * there is a tiny chance to be interrupted, however
+                     * we continue a processing without the TCP_NOPUSH
+                     */
+
+                    if (err != NGX_EINTR) {
+                        wev->error = 1;
+                        ngx_connection_error(c, err,
+                                             ngx_tcp_nopush_n " failed");
+                        return NGX_CHAIN_ERROR;
+                    }
+
+                } else {
+                    c->tcp_nopush = 1;
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                                   "tcp_nopush");
                 }
             }
 
@@ -185,30 +199,21 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             if (rc == -1) {
                 err = ngx_errno;
 
-                if (err == NGX_EINTR) {
-                    eintr = 1;
-
-                } else if (err == NGX_EAGAIN) {
-                    eagain = 1;
-
-                } else if (err == NGX_EPIPE || err == NGX_ENOTCONN) {
-                    level = NGX_LOG_INFO;
-                }
-
                 if (err == NGX_EAGAIN || err == NGX_EINTR) {
+                    if (err == NGX_EINTR) {
+                        eintr = 1;
+
+                    } else {
+                        eagain = 1;
+                    }
+
                     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, err,
                                    "sendfile() sent only " OFF_T_FMT " bytes",
                                    sent);
 
                 } else {
                     wev->error = 1;
-#if 0
-                    ngx_log_error(level, c->log, err,
-                                  "sendfile() failed");
-#else
-                    ngx_log_error(level, c->log, err,
-                                  "sendfile(#%d) failed", c->fd);
-#endif
+                    ngx_connection_error(c, err, "sendfile() failed");
                     return NGX_CHAIN_ERROR;
                 }
             }
@@ -223,20 +228,17 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             if (rc == -1) {
                 err = ngx_errno;
 
-                if (err == NGX_EINTR) {
-                    eintr = 1;
-
-                } else if (err == NGX_EPIPE) {
-                    level = NGX_LOG_INFO;
-                }
-
                 if (err == NGX_EAGAIN || err == NGX_EINTR) {
+                    if (err == NGX_EINTR) {
+                        eintr = 1;
+                    }
+
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
                                    "writev() not ready");
 
                 } else {
                     wev->error = 1;
-                    ngx_log_error(level, c->log, err, "writev() failed");
+                    ngx_connection_error(c, err, "writev() failed");
                     return NGX_CHAIN_ERROR;
                 }
             }
@@ -292,8 +294,9 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
             /*
              * sendfile() can return EAGAIN even if it has sent
-             * a whole file part and successive sendfile() would
-             * return EAGAIN right away and would not send anything
+             * a whole file part but the successive sendfile() call would
+             * return EAGAIN right away and would not send anything.
+             * We use it as a hint.
              */
 
             wev->ready = 0;

@@ -21,15 +21,7 @@ eval "${CC} -o $NGX_AUTOTEST $NGX_AUTOTEST.c >> $NGX_ERR 2>&1"
 
 if [ -x $NGX_AUTOTEST ]; then
     echo " found"
-
-    cat << END >> $NGX_AUTO_CONFIG_H
-
-#ifndef HAVE_$inc
-#define HAVE_$inc  1
-#endif
-
-END
-
+    have=HAVE_$inc . auto/have
     eval "NGX_$inc='#include <$ngx_inc>'"
     ngx_found=yes
 

@@ -1,5 +1,5 @@
 
-if [ $ZLIB != NO ]; then
+if [ $ZLIB != NONE ]; then
     CORE_INCS="$CORE_INCS -I $ZLIB"
 
     if [ "$PLATFORM" = "win32" ]; then
@@ -23,6 +23,8 @@ else
     if [ $ngx_found = yes ]; then
         CORE_LIBS="$CORE_LIBS $ngx_libs"
         ZLIB=YES
+    else
+        ZLIB=NO
     fi
 
 fi

@@ -377,7 +377,10 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                                      ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                                                    "can not respawn %s",
                                                    ngx_processes[i].name);
+                                     continue;
                                  }
+
+                                 live = 1;
 
                                  continue;
                             }
@@ -443,7 +446,7 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
                     if (ngx_reopen) {
                         if (ngx_process == NGX_PROCESS_MASTER) {
-                            if (ccf->worker_reopen > 0) {
+                            if (ccf->worker_reopen != 0) {
                                 signo = ngx_signal_value(NGX_REOPEN_SIGNAL);
                                 ngx_reopen = 0;
 
@@ -461,7 +464,7 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                         ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
                                       "reopening logs");
                         ngx_reopen_files(cycle,
-                                       ccf->worker_reopen > 0 ? ccf->user : -1);
+                             ccf->worker_reopen != 0 ? ccf->user : (uid_t) -1);
                     }
                 }
 
@@ -573,6 +576,17 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             exit(2);
         }
     }
+
+#if (HAVE_PR_SET_DUMPABLE)
+
+    /* allow coredump after setuid() in Linux 2.4.x */
+
+    if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "prctl(PR_SET_DUMPABLE) failed");
+    }
+
+#endif
 
     sigemptyset(&set);
 

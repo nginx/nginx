@@ -145,7 +145,7 @@ void ngx_event_accept(ngx_event_t *ev)
             }
 
         } else {
-            if ((ngx_event_flags & NGX_USE_AIO_EVENT) == 0) {
+            if (!(ngx_event_flags & NGX_USE_AIO_EVENT)) {
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
                                   ngx_nonblocking_n " failed");

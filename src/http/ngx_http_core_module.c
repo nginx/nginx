@@ -1217,10 +1217,10 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                              prev->default_type, "text/plain");
 
     ngx_conf_merge_msec_value(conf->client_body_timeout,
-                              prev->client_body_timeout, 10000);
+                              prev->client_body_timeout, 60000);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
-    ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 10000);
+    ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 60000);
     ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
     ngx_conf_merge_size_value(conf->discarded_buffer_size,
                               prev->discarded_buffer_size, 1500);

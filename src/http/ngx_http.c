@@ -483,6 +483,9 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                           ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in)),
                           NGX_CONF_ERROR);
 
+#if (HAVE_SIN_LEN)
+            addr_in->sin_len = sizeof(struct sockaddr_in);
+#endif
             addr_in->sin_family = AF_INET;
             addr_in->sin_addr.s_addr = in_addr[a].addr;
             addr_in->sin_port = htons((u_short) in_port[p].port);

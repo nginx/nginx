@@ -4,14 +4,12 @@
 #include <ngx_event.h>
 
 
-static int ngx_unix_recv_error(ngx_event_t *rev, ngx_err_t err);
-
-
 #if (HAVE_KQUEUE)
 
 ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
 {
     ssize_t       n;
+    ngx_err_t     err;
     ngx_event_t  *rev;
 
     rev = c->read;
@@ -26,11 +24,12 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
                 rev->ready = 0;
                 rev->eof = 1;
 
+                ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
+                              "kevent() reported about an closed connection");
+
                 if (rev->kq_errno) {
                     rev->error = 1;
                     ngx_set_socket_errno(rev->kq_errno);
-                    ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
-                                  "kevent() reported about closed connection");
 
                     if (rev->kq_errno == NGX_ECONNRESET
                         && rev->log_error == NGX_ERROR_IGNORE_ECONNRESET)
@@ -52,7 +51,8 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
     do {
         n = recv(c->fd, buf, size, 0);
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,"recv: %d:%d", n, size);
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "recv: fd:%d %d of %d", c->fd, n, size);
 
         if (n >= 0) {
             if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
@@ -87,11 +87,19 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
             return n;
         }
 
-        n = ngx_unix_recv_error(rev, ngx_socket_errno);
+        err = ngx_socket_errno;
 
-    } while (n == NGX_EINTR);
+        if (err == NGX_EAGAIN || err == NGX_EINTR) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, err,
+                           "recv() not ready");
+            n = NGX_AGAIN;
 
-    /* NGX_ERROR || NGX_AGAIN */
+        } else {
+            n = ngx_connection_error(c, err, "recv() failed");
+            break;
+        }
+
+    } while (err == NGX_EINTR);
 
     rev->ready = 0;
 
@@ -107,6 +115,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
 ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
 {
     ssize_t       n;
+    ngx_err_t     err;
     ngx_event_t  *rev;
 
     rev = c->read;
@@ -114,7 +123,8 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
     do {
         n = recv(c->fd, buf, size, 0);
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,"recv: %d:%d", n, size);
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "recv: fd:%d %d of %d", c->fd, n, size);
 
         if (n >= 0) {
             if ((size_t) n < size) {
@@ -128,11 +138,19 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
             return n;
         }
 
-        n = ngx_unix_recv_error(rev, ngx_socket_errno);
+        err = ngx_socket_errno;
 
-    } while (n == NGX_EINTR);
+        if (err == NGX_EAGAIN || err == NGX_EINTR) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, err,
+                           "recv() not ready");
+            n = NGX_AGAIN;
 
-    /* NGX_ERROR || NGX_AGAIN */
+        } else {
+            n = ngx_connection_error(c, err, "recv() failed");
+            break;
+        }
+
+    } while (err == NGX_EINTR);
 
     rev->ready = 0;
 
@@ -144,37 +162,3 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
 }
 
 #endif /* NAVE_KQUEUE */
-
-
-static int ngx_unix_recv_error(ngx_event_t *rev, ngx_err_t err)
-{
-    ngx_int_t  level;
-
-    if (err == NGX_EAGAIN || err == NGX_EINTR) {
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, err, "recv() not ready");
-        return NGX_AGAIN;
-    }
-
-    if (err == NGX_ECONNRESET) {
-
-        switch (rev->log_error) {
-        case NGX_ERROR_IGNORE_ECONNRESET:
-            return 0;
-        case NGX_ERROR_INFO:
-            level = NGX_LOG_INFO;
-            break;
-        case NGX_ERROR_ERR:
-            level = NGX_LOG_ERR;
-            break;
-        default:
-            level = NGX_LOG_CRIT;
-        }
-
-    } else {
-        level = NGX_LOG_CRIT;
-    }
-
-    ngx_log_error(level, rev->log, err, "recv() failed");
-
-    return NGX_ERROR;
-}

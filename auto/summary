@@ -3,21 +3,24 @@ echo
 echo "Configuration summary"
 
 case $PCRE in
-    YES) echo " + using system PCRE library" ;;
-    NO)  echo " + PCRE library is not found" ;;
-    *)   echo " + using PCRE library: $PCRE" ;;
+    YES)   echo " + using system PCRE library" ;;
+    NONE)  echo " + PCRE library is not used" ;;
+    NO)    echo " + PCRE library is not found" ;;
+    *)     echo " + using PCRE library: $PCRE" ;;
 esac
 
 case $MD5 in
-    YES) echo " + using system md5 library" ;;
-    NO)  echo " + md5 library is not found" ;;
-    *)   echo " + using md5 library: $MD5" ;;
+    YES)   echo " + using system md5 library" ;;
+    NONE)  echo " + md5 library is not used" ;;
+    NO)    echo " + md5 library is not found" ;;
+    *)     echo " + using md5 library: $MD5" ;;
 esac
 
 case $ZLIB in
-    YES) echo " + using system zlib library" ;;
-    NO)  echo " + zlib library is not found" ;;
-    *)   echo " + using zlib library: $ZLIB" ;;
+    YES)   echo " + using system zlib library" ;;
+    NONE)  echo " + zlib library is not used" ;;
+    NO)    echo " + zlib library is not found" ;;
+    *)     echo " + using zlib library: $ZLIB" ;;
 esac
 
 echo

@@ -1,0 +1,3 @@
+
+ngx_inc="unistd.h"; . auto/inc
+ngx_inc="inttypes.h"; . auto/inc

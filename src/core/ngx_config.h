@@ -2,7 +2,7 @@
 #define _NGX_CONFIG_H_INCLUDED_
 
 
-#if 1
+#if 0
 /* STUB to allocate a big ngx_connections */
 #undef  FD_SETSIZE
 #define FD_SETSIZE  5000

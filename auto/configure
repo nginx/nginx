@@ -3,7 +3,12 @@
 . auto/init
 . auto/sources
 
+test $OBJ || mkdir $OBJ
 echo > $NGX_AUTO_CONFIG_H
+
+if [ "$PLATFORM" != win32 ]; then
+    . auto/headers
+fi
 
 . auto/os/conf
 . auto/modules

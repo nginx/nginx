@@ -84,6 +84,8 @@ void ngx_http_init_connection(ngx_connection_t *c)
     rev->event_handler = ngx_http_init_request;
     rev->log_error = NGX_ERROR_INFO;
 
+    /* STUB: epoll */ c->write->event_handler = ngx_http_empty_handler;
+
     if (rev->ready) {
         /* deferred accept, aio, iocp, epoll */
         ngx_http_init_request(rev);
@@ -160,7 +162,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
     if (in_port->addrs.nelts > 1) {
 
         /*
-         * There're the several addresses on this port and one of them
+         * There are the several addresses on this port and one of them
          * is "*:port" so getsockname() is needed to determine
          * the server address.
          * AcceptEx() already gave this address.
@@ -215,8 +217,8 @@ static void ngx_http_init_request(ngx_event_t *rev)
     c->log->log_level = clcf->err_log->log_level;
 
     if (c->buffer == NULL) {
-        c->buffer =
-                ngx_create_temp_hunk(c->pool, cscf->client_header_buffer_size);
+        c->buffer = ngx_create_temp_hunk(c->pool,
+                                         cscf->client_header_buffer_size);
         if (c->buffer == NULL) {
             ngx_http_close_connection(c);
             return;
@@ -918,7 +920,7 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
 #if (NGX_KQUEUE)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log,
                        r->connection->read->kq_errno,
-                       "kevent reported about closed connection by client");
+                       "kevent() reported about an closed connection");
 #endif
         ngx_http_close_request(r, 0);
         ngx_http_close_connection(r->connection);

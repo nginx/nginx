@@ -87,8 +87,8 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     }
 
     /*
-     * there is a valid cached open file, i.e by index handler,
-     * and it must be already registered in r->cleanup
+     * there is a valid cached open file, i.e by the index handler,
+     * and it should be already registered in r->cleanup
      */
 
     if (r->cache && !r->cache->expired) {
@@ -100,13 +100,14 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     /*
-     * make a file name
-     * 2 bytes is for a trailing '/' in a possible redirect and for '\0'
+     * make a file name, reserve 2 bytes for a trailing '/'
+     * in a possible redirect and for the last '\0'
      */
 
-    ngx_test_null(name.data,
-                  ngx_palloc(r->pool, clcf->doc_root.len + r->uri.len + 2),
-                  NGX_HTTP_INTERNAL_SERVER_ERROR);
+    name.data = ngx_palloc(r->pool, clcf->doc_root.len + r->uri.len + 2);
+    if (name.data == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     location.data = ngx_cpymem(name.data, clcf->doc_root.data,
                                clcf->doc_root.len);

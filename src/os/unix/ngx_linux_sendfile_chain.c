@@ -6,8 +6,8 @@
 
 /*
  * On Linux up to 2.4.21 sendfile() (syscall #187) works with 32-bit
- * offsets only and the including <sys/sendfile.h> breaks the compiling if
- * off_t is 64 bit wide.  So we use own sendfile() definition where offset
+ * offsets only and the including <sys/sendfile.h> breaks the compiling
+ * if off_t is 64 bit wide.  So we use own sendfile() definition where offset
  * parameter is int32_t and use sendfile() with the file parts below 2G.
  *
  * Linux 2.4.21 has a new sendfile64() syscall #239.
@@ -80,14 +80,24 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             && cl
             && cl->hunk->type & NGX_HUNK_FILE)
         {
-            c->tcp_nopush = 1;
-
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "tcp_nopush");
-
             if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
-                ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
-                              ngx_tcp_nopush_n " failed");
-                return NGX_CHAIN_ERROR;
+                err = ngx_errno;
+
+                /*
+                 * there is a tiny chance to be interrupted, however
+                 * we continue a processing without the TCP_CORK
+                 */
+
+                if (err != NGX_EINTR) { 
+                    wev->error = 1;
+                    ngx_connection_error(c, err, ngx_tcp_nopush_n " failed");
+                    return NGX_CHAIN_ERROR;
+                }
+
+            } else {
+                c->tcp_nopush = 1;
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "tcp_nopush");
             }
         }
 
@@ -132,51 +142,52 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
             if (rc == -1) {
                 err = ngx_errno;
-                if (err == NGX_EAGAIN) {
-                    ngx_log_error(NGX_LOG_INFO, c->log, err,
-                                  "sendfile() EAGAIN");
 
-                } else if (err == NGX_EINTR) {
-                    eintr = 1;
-                    ngx_log_error(NGX_LOG_INFO, c->log, err,
-                                  "sendfile() EINTR");
+                if (err == NGX_EAGAIN || err == NGX_EINTR) {
+                    if (err == NGX_EINTR) {
+                        eintr = 1;
+                    }
+
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                                   "sendfile() is not ready");
 
                 } else {
-                    ngx_log_error(NGX_LOG_CRIT, c->log, err,
-                                  "sendfile() failed");
+                    wev->error = 1;
+                    ngx_connection_error(c, err, "sendfile() failed");
                     return NGX_CHAIN_ERROR;
                 }
             }
 
             sent = rc > 0 ? rc : 0;
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-            ngx_log_debug(c->log, "sendfile: %d, @" OFF_T_FMT " %d:%d" _
-                          rc _ file->file_pos _ sent _ fsize);
-#endif
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "sendfile: %d, @" OFF_T_FMT " %d:%d",
+                           rc, file->file_pos, sent, fsize);
+
         } else {
             rc = writev(c->fd, header.elts, header.nelts);
 
             if (rc == -1) {
                 err = ngx_errno;
-                if (err == NGX_EAGAIN) {
-                    ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EAGAIN");
 
-                } else if (err == NGX_EINTR) {
-                    eintr = 1;
-                    ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EINTR");
+                if (err == NGX_EAGAIN || err == NGX_EINTR) {
+                    if (err == NGX_EINTR) {
+                        eintr = 1;
+                    }
+
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                                   "writev() not ready");
 
                 } else {
-                    ngx_log_error(NGX_LOG_CRIT, c->log, err, "writev() failed");
-                    return NGX_CHAIN_ERROR;
+                    wev->error = 1;
+                    ngx_connection_error(c, err, "writev() failed");
+                    return NGX_CHAIN_ERROR; 
                 }
             }
 
             sent = rc > 0 ? rc : 0;
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-            ngx_log_debug(c->log, "writev: %d" _ sent);
-#endif
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "writev: %d", sent);
         }
 
         c->sent += sent;

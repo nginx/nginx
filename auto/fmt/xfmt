@@ -1,6 +1,8 @@
 
-echo "#ifndef $ngx_fmt_name"                 >> $NGX_AUTO_CONFIG_H
-echo "#define $ngx_fmt_name  \"$ngx_fmt\"" | sed -e 's/d"$/x"/' \
-                                             >> $NGX_AUTO_CONFIG_H
-echo "#endif"                                >> $NGX_AUTO_CONFIG_H
-echo                                         >> $NGX_AUTO_CONFIG_H
+cat << END | sed -e 's/d"$/x"/' >> $NGX_AUTO_CONFIG_H
+
+#ifndef $ngx_fmt_name
+#define $ngx_fmt_name  "$ngx_fmt"
+#endif
+
+END
