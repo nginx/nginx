@@ -12,13 +12,47 @@ ngx_inline static void ngx_add_after_partially_filled_hunk(ngx_chain_t **chain,
                                                            ngx_chain_t *ce);
 
 
+
+int ngx_event_proxy(ngx_event_proxy_t *p, int do_write)
+{
+    for ( ;; ) {
+        if (do_write) {
+            if (ngx_event_proxy_write_to_downstream(p) == NGX_ABORT) {
+                return NGX_ABORT;
+            }
+        }
+
+        p->read = 0;
+
+        if (ngx_event_proxy_read_upstream(p) == NGX_ABORT) {
+            return NGX_ABORT;
+        }
+
+        if (!p->read) {
+            break;
+        }
+
+        do_write = 1;
+    }
+
+    if (ngx_handle_read_event(p->upstream->read) == NGX_ERROR) {
+        return NGX_ABORT;
+    }
+
+    if (ngx_handle_write_event(p->downstream->write,
+                                           /* TODO: lowat */ 0) == NGX_ERROR) {
+        return NGX_ABORT;
+    }
+
+    return NGX_OK;
+}
+
+
 int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
 {
     int           n, rc, size;
     ngx_hunk_t   *h;
     ngx_chain_t  *chain, *ce, *te;
-
-    p->upstream_level++;
 
     ngx_log_debug(p->log, "read upstream: %d" _ p->upstream->read->ready);
 
@@ -29,6 +63,7 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
 
             /* use the pre-read hunks if they exist */
 
+            p->read = 1;
             chain = p->preread_hunks;
             p->preread_hunks = NULL;
             n = p->preread_size;
@@ -57,6 +92,7 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
                 } else if (p->upstream->read->eof
                            && p->upstream->read->available == 0) {
                     p->upstream_eof = 1;
+                    p->read = 1;
 
                     break;
                 }
@@ -146,6 +182,9 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
                 break;
             }
 
+            /* TODO THINK about eof */
+            p->read = 1;
+
             if (n == 0) {
                 p->free_raw_hunks = chain;
                 p->upstream_eof = 1;
@@ -190,33 +229,8 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
         p->free_raw_hunks = p->free_raw_hunks->next;
     }
 
-    if (p->cachable) {
-        if (p->in) {
-            rc = ngx_event_proxy_write_chain_to_temp_file(p);
-
-            if (rc != NGX_OK) {
-                return rc;
-            }
-        }
-
-        if (p->out && p->downstream->write->ready) {
-            if (ngx_event_proxy_write_to_downstream(p) == NGX_ABORT) {
-                return NGX_ABORT;
-            }
-        }
-
-    } else if ((p->out || p->in) && p->downstream->write->ready) {
-        if (ngx_event_proxy_write_to_downstream(p) == NGX_ABORT) {
-            return NGX_ABORT;
-        }
-    }
-
-    p->upstream_level--;
-
-ngx_log_debug(p->log, "upstream level: %d" _ p->upstream_level);
-
-    if (p->upstream_level == 0) {
-        if (ngx_handle_read_event(p->upstream->read) == NGX_ERROR) {
+    if (p->cachable && p->in) {
+        if (ngx_event_proxy_write_chain_to_temp_file(p) == NGX_ABORT) {
             return NGX_ABORT;
         }
     }
@@ -231,7 +245,20 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
     ngx_hunk_t   *h;
     ngx_chain_t  *out, *ce, *te;
 
-    while (p->downstream->write->ready) {
+    ngx_log_debug(p->log, "write downstream: %d" _ p->downstream->write->ready);
+
+    for ( ;; ) {
+
+        if ((p->upstream_eof || p->upstream_error || p->upstream_done)
+            && p->out == NULL && p->in == NULL)
+        {
+            p->downstream_done = 1;
+            break;
+        }
+
+        if (!p->downstream->write->ready) {
+            break;
+        }
 
         if (p->out) {
             out = p->out;
@@ -262,6 +289,10 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
 
         rc = p->output_filter(p->output_ctx, out->hunk);
 
+        if (rc == NGX_ERROR) {
+            /* TODO */
+        }
+
         ngx_chain_update_chains(&p->free, &p->busy, &out);
 
         /* calculate p->busy_len */
@@ -287,18 +318,12 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
             ce->hunk->shadow = NULL;
         }
 
+#if 0 /* TODO THINK p->read_priority ??? */
         if (p->upstream->read->ready) {
-            if (ngx_event_proxy_read_upstream(p) == NGX_ERROR) {
-                return NGX_ABORT;
-            }
+            return;
         }
-    }
+#endif
 
-    if (p->downstream_level == 0) {
-        if (ngx_handle_write_event(p->downstream->write,
-                                           /* TODO: lowat */ 0) == NGX_ERROR) {
-            return NGX_ABORT;
-        }
     }
 
     if (p->upstream_done && p->in == NULL && p->out == NULL) {
@@ -313,7 +338,7 @@ static int ngx_event_proxy_write_chain_to_temp_file(ngx_event_proxy_t *p)
 {
     int           rc, size;
     ngx_hunk_t   *h;
-    ngx_chain_t  *ce, *next, *in, **last;
+    ngx_chain_t  *ce, *te, *next, *in, **last, **last_free;
 
     ngx_log_debug(p->log, "write to file");
 
@@ -362,6 +387,13 @@ static int ngx_event_proxy_write_chain_to_temp_file(ngx_event_proxy_t *p)
         return NGX_ABORT;
     }
 
+    for (last_free = &p->free_raw_hunks;
+         *last_free != NULL;
+         last_free = &(*last)->next)
+    {
+        /* void */
+    }
+
     for (ce = p->in; ce; ce = next) {
         next = ce->next;
         ce->next = NULL;
@@ -373,11 +405,14 @@ static int ngx_event_proxy_write_chain_to_temp_file(ngx_event_proxy_t *p)
         p->temp_offset += h->last - h->pos;
         h->file_last = p->temp_offset;
 
+        ngx_chain_add_ce(p->out, p->last_out, ce);
+
         if (h->type & NGX_HUNK_LAST_SHADOW) {
             h->shadow->last = h->shadow->pos = h->shadow->start;
+            ngx_alloc_ce_and_set_hunk(te, h->shadow, p->pool, NGX_ABORT);
+            *last_free = te;
+            last_free = &te->next;
         }
-
-        ngx_chain_add_ce(p->out, p->last_out, ce);
     }
 
     p->in = in;

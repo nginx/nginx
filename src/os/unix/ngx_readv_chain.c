@@ -17,6 +17,8 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *entry)
 
     ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_ERROR);
 
+    /* TODO: coalesce the neighbouring chain entries */
+
     while (entry) {
         ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
         iov->iov_base = entry->hunk->pos;

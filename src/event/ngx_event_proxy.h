@@ -36,15 +36,13 @@ struct ngx_event_proxy_s {
     ngx_event_proxy_output_filter_pt   output_filter;
     void                              *output_ctx;
 
+    unsigned           read:1;
     unsigned           cachable:1;
     unsigned           upstream_done:1;
     unsigned           upstream_eof:1;
     unsigned           upstream_error:1;
     unsigned           downstream_done:1;
     unsigned           downstream_error:1;
-
-    int                upstream_level;
-    int                downstream_level;
 
     int                hunks;
     ngx_bufs_t         bufs;
@@ -71,9 +69,12 @@ struct ngx_event_proxy_s {
 };
 
 
+int ngx_event_proxy(ngx_event_proxy_t *p, int do_write);
+int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p, ngx_hunk_t *hunk);
+
+/* STUB */
 int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p);
 int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p);
-int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p, ngx_hunk_t *hunk);
 
 
 #endif /* _NGX_EVENT_PROXY_H_INCLUDED_ */

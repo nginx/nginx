@@ -775,7 +775,7 @@ static void ngx_http_proxy_process_upstream(ngx_event_t *rev)
         return;
     }
 
-    if (ngx_event_proxy_read_upstream(p->event_proxy) == NGX_ABORT) {
+    if (ngx_event_proxy(p->event_proxy, 0) == NGX_ABORT) {
         ngx_http_proxy_finalize_request(p, 0);
         return;
     }
@@ -784,7 +784,8 @@ static void ngx_http_proxy_process_upstream(ngx_event_t *rev)
         || p->event_proxy->upstream_error
         || p->event_proxy->upstream_done)
     {
-        ngx_http_proxy_finalize_request(p, ngx_http_send_last(p->request));
+        ngx_http_proxy_close_connection(c);
+        p->upstream.connection = NULL;
         return;
     }
 
@@ -795,11 +796,13 @@ static void ngx_http_proxy_process_upstream(ngx_event_t *rev)
 static void ngx_http_proxy_process_downstream(ngx_event_t *wev)
 {
     ngx_connection_t      *c;
+    ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
 
     c = wev->data;
-    p = c->data;
-
+    r = c->data;
+    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+ 
     ngx_log_debug(wev->log, "http proxy process downstream");
 
     if (wev->timedout) {
@@ -807,13 +810,15 @@ static void ngx_http_proxy_process_downstream(ngx_event_t *wev)
         return;
     }
 
-    if (ngx_event_proxy_write_to_downstream(p->event_proxy) == NGX_ABORT) {
+    if (ngx_event_proxy(p->event_proxy, 1) == NGX_ABORT) {
         ngx_http_proxy_finalize_request(p, 0);
         return;
     }
 
     if (p->event_proxy->downstream_done) {
-        ngx_http_proxy_finalize_request(p, 0);
+ngx_log_debug(wev->log, "http proxy downstream done");
+        ngx_http_proxy_finalize_request(p, r->main ? 0:
+                                           ngx_http_send_last(p->request));
         return;
     }
 
