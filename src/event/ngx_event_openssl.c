@@ -106,27 +106,39 @@ ngx_int_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 }
 
 
+/*
+ * OpenSSL has no SSL_writev() so we copy several bufs into our 16K buffer
+ * before SSL_write() call to decrease a SSL overhead.
+ *
+ * Besides for protocols such as HTTP it is possible to always buffer
+ * the output to decrease a SSL overhead some more.
+ */
+
 ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
                                 off_t limit)
 {
     int          n;
-    ngx_uint_t   flush;
+    ngx_uint_t   flush, last;
     ssize_t      send, size;
     ngx_buf_t   *buf;
 
     buf = c->ssl->buf;
 
-    if (in && in->next == NULL && !c->ssl->buffer && buf->pos == buf->last) {
+    if (in && in->next == NULL && buf->pos == buf->last && !c->ssl->buffer) {
 
         /*
-         * the optimized path without a copy if there is the single incoming
-         * buf, we do not need to buffer output and our buffer is empty
+         * we avoid a buffer copy if the incoming buf is a single,
+         * our buffer is empty, and we do not need to buffer the output
          */
 
         n = ngx_ssl_write(c, in->buf->pos, in->buf->last - in->buf->pos);
 
+        if (n == NGX_ERROR) {
+            return NGX_CHAIN_ERROR;
+        }
+
         if (n < 0) {
-            return (ngx_chain_t *) n;
+            n = 0;
         }
 
         in->buf->pos += n;
@@ -136,15 +148,18 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
 
     send = 0;
     flush = (in == NULL) ? 1 : 0;
+    last = (in == NULL) ? 1 : 0;
 
     for ( ;; ) {
 
         while (in && buf->last < buf->end) {
             if (in->buf->last_buf) {
                 flush = 1;
+                last = 1;
             }
 
             if (ngx_buf_special(in->buf)) {
+                in = in->next;
                 continue;
             }
 
@@ -156,7 +171,7 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
 
             /*
              * TODO: the taking in->buf->flush into account can be
-             *       implemented using the limit
+             *       implemented using the limit on the higher level
              */
 
             if (send + size > limit) {
@@ -179,15 +194,18 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
 
         size = buf->last - buf->pos;
 
-        if (flush || buf->last == buf->end || !c->ssl->buffer) {
-            n = ngx_ssl_write(c, buf->pos, size);
+        if (!flush && buf->last < buf->end && c->ssl->buffer) {
+            break;
+        }
 
-        } else {
-            return NGX_CHAIN_AGAIN;            
+        n = ngx_ssl_write(c, buf->pos, size);
+
+        if (n == NGX_ERROR) {
+            return NGX_CHAIN_ERROR;
         }
 
         if (n < 0) {
-            return (ngx_chain_t *) n;
+            n = 0;
         }
 
         buf->pos += n;
@@ -212,11 +230,11 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
         return in;
     }
 
-    if (buf->pos == buf->last) {
+    if (buf->pos == buf->last || !last) {
         return NULL;
     }
 
-    return NGX_CHAIN_AGAIN;            
+    return NGX_CHAIN_AGAIN;
 }
 
 
