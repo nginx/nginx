@@ -18,7 +18,8 @@ struct ngx_radix_node_s {
 typedef struct {
     ngx_radix_node_t  *root;
     ngx_pool_t        *pool;
-    char              *free;
+    ngx_radix_node_t  *free;
+    char              *start;
     size_t             size;
 } ngx_radix_tree_t;
 

@@ -21,6 +21,7 @@ ngx_radix_tree_t *ngx_radix_tree_create(ngx_pool_t *pool)
     tree->root = NULL;
     tree->pool = pool;
     tree->free = NULL;
+    tree->start = NULL;
     tree->size = 0;
 
     return tree;
@@ -62,6 +63,8 @@ ngx_int_t ngx_radix32tree_insert(ngx_radix_tree_t *tree,
         }
 
         new->value = value;
+        new->right = NULL;
+        new->left = NULL;
 
         if (key & bit) {
             node->right = new;
@@ -81,16 +84,19 @@ ngx_int_t ngx_radix32tree_insert(ngx_radix_tree_t *tree,
 void ngx_radix32tree_delete(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask)
 {
     uint32_t           bit;
-    ngx_radix_node_t  *node;
+    ngx_radix_node_t  *node, **prev;
 
     bit = 0x80000000;
     node = tree->root;
+    prev = NULL;
 
     while (node && (bit & mask)) {
         if (key & bit) {
+            prev = &node->right;;
             node = node->right;
 
         } else {
+            prev = &node->left;;
             node = node->left;
         }
 
@@ -98,7 +104,17 @@ void ngx_radix32tree_delete(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask)
     }
 
     if (node) {
-        node->value = (uintptr_t) 0;
+
+        /* the leaf nodes are moved to the free list only */
+
+        if (node->right == NULL && node->left == NULL) {
+            *prev = NULL;
+            node->right = tree->free;
+            tree->free = node;
+
+        } else {
+            node->value = (uintptr_t) 0;
+        }
     }
 }
 
@@ -110,7 +126,7 @@ uintptr_t ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key)
     ngx_radix_node_t  *node;
 
     bit = 0x80000000;
-    value = NULL;
+    value = (uintptr_t) 0;
     node = tree->root;
 
     while (node) {
@@ -136,16 +152,22 @@ static void *ngx_radix_alloc(ngx_radix_tree_t *tree, size_t size)
 {
     char  *p;
 
+    if (tree->free) {
+        p = (char *) tree->free;
+        tree->free = tree->free->right;
+        return p;
+    }
+
     if (tree->size < size) {
-        if (!(tree->free = ngx_palloc(tree->pool, NGX_RADIX_TREE_POOL_SIZE))) {
+        if (!(tree->start = ngx_palloc(tree->pool, NGX_RADIX_TREE_POOL_SIZE))) {
             return NULL;
         }
 
         tree->size = NGX_RADIX_TREE_POOL_SIZE;
     }
 
-    p = tree->free;
-    tree->free += size;
+    p = tree->start;
+    tree->start += size;
     tree->size -= size;
 
     return p;
