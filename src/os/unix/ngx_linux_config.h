@@ -35,6 +35,7 @@
 #define SIZE_FMT   "%d"
 #define SIZEX_FMT  "%x"
 #define PID_FMT    "%d"
+#define TIME_FMT   "%lu"
 
 
 

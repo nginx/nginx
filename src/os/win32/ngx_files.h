@@ -69,8 +69,8 @@ int ngx_file_type(char *filename, ngx_file_info_t *fi);
 
 #define ngx_file_uniq(fi)   (*(ngx_file_uniq_t *) &fi.nFileIndexHigh)
 
-/* There are 134774 days between 1 Jan 1970 and 1 Jan 1601,
-   11644473600 seconds or 11644473600,000,000,0 100-nanosecond intervals */
+
+/* 116444736000000000 is commented in src/os/win32/ngx_time.c */
 
 #define ngx_file_mtime(fi)                                                  \
    (time_t) (((((unsigned __int64) fi.ftLastWriteTime.dwHighDateTime << 32) \

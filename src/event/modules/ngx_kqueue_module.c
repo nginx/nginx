@@ -311,12 +311,13 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 
 static int ngx_kqueue_process_events(ngx_log_t *log)
 {
-    int              events, instance, i;
-    ngx_err_t        err;
-    ngx_msec_t       timer, delta;
-    ngx_event_t      *ev;
-    struct timeval   tv;
-    struct timespec  ts, *tp;
+    int                events, instance, i;
+    ngx_err_t          err;
+    ngx_msec_t         timer;
+    ngx_event_t       *ev;
+    ngx_epoch_msec_t   delta;
+    struct timeval     tv;
+    struct timespec    ts, *tp;
 
     timer = ngx_event_find_timer();
 
@@ -324,11 +325,11 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         ts.tv_sec = timer / 1000;
         ts.tv_nsec = (timer % 1000) * 1000000;
         tp = &ts;
-        gettimeofday(&tv, NULL);
+
+        ngx_gettimeofday(&tv);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     } else {
-        timer = 0;
         delta = 0;
         tp = NULL;
     }
@@ -347,7 +348,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
     nchanges = 0;
 
-    gettimeofday(&tv, NULL);
+    ngx_gettimeofday(&tv);
 
     if (ngx_cached_time != tv.tv_sec) {
         ngx_cached_time = tv.tv_sec;
@@ -358,7 +359,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
 
 #if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ (int) delta);
 #endif
 
         /*
@@ -366,7 +367,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
          * because the new timers can be added during a processing
          */
 
-        ngx_event_expire_timers(delta);
+        ngx_event_expire_timers((ngx_msec_t) delta);
 
     } else {
         if (events == 0) {
@@ -376,7 +377,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         }
 
 #if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ (int) delta);
 #endif
     }
 

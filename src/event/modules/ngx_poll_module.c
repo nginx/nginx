@@ -224,16 +224,19 @@ static int ngx_poll_process_events(ngx_log_t *log)
 {
     int                 ready, found, j;
     u_int               nready, i;
-    ngx_msec_t          timer, delta;
+    ngx_msec_t          timer;
     ngx_err_t           err;
     ngx_cycle_t       **cycle;
     ngx_event_t        *ev;
+    ngx_epoch_msec_t   delta;
     ngx_connection_t   *c;
+    struct timeval     tv;
 
     timer = ngx_event_find_timer();
 
     if (timer) {
-        delta = ngx_msec();
+        ngx_gettimeofday(&tv);
+        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     } else {
         timer = INFTIM;
@@ -259,15 +262,20 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
     ngx_log_debug(log, "poll ready %d" _ ready);
 
-    /* TODO: time */
+    ngx_gettimeofday(&tv);
+
+    if (ngx_cached_time != tv.tv_sec) {
+        ngx_cached_time = tv.tv_sec;
+        ngx_time_update();
+    }
 
     if ((int) timer != INFTIM) {
-        delta = ngx_msec() - delta;
+        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
 
 #if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "poll timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "poll timer: %d, delta: %d" _ timer _ (int) delta);
 #endif
-        ngx_event_expire_timers(delta);
+        ngx_event_expire_timers((ngx_msec_t) delta);
 
     } else {
         if (ready == 0) {
@@ -277,7 +285,7 @@ static int ngx_poll_process_events(ngx_log_t *log)
         }
 
 #if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "poll timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "poll timer: %d, delta: %d" _ timer _ (int) delta);
 #endif
     }
 

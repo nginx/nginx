@@ -162,14 +162,16 @@ static int ngx_iocp_process_events(ngx_log_t *log)
     u_int              key;
     size_t             bytes;
     ngx_err_t          err;
-    ngx_msec_t         timer, delta;
+    ngx_msec_t         timer;
     ngx_event_t       *ev;
+    ngx_epoch_msec_t   delta;
     ngx_event_ovlp_t  *ovlp;
 
     timer = ngx_event_find_timer();
 
     if (timer) {
-        delta = ngx_msec();
+        ngx_gettimeofday(&tv);
+        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     } else {
         timer = INFINITE;
@@ -189,11 +191,16 @@ static int ngx_iocp_process_events(ngx_log_t *log)
         err = 0;
     }
 
-    /* TODO: timer */
+    ngx_gettimeofday(&tv);
+
+    if (ngx_cached_time != tv.tv_sec) {
+        ngx_cached_time = tv.tv_sec;
+        ngx_time_update();
+    }
 
     if (timer != INFINITE) {
-        delta = ngx_msec() - delta;
-        ngx_event_expire_timers(delta);
+        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
+        ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
     if (err) {

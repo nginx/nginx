@@ -429,7 +429,7 @@ int ngx_http_send_header(ngx_http_request_t *r)
         return NGX_OK;
     }
 
-    if (r->err_status) {
+    if (r->err_ctx) {
         r->headers_out.status = r->err_status;
         r->headers_out.status_line.len = 0;
     }
@@ -499,17 +499,19 @@ int ngx_http_internal_redirect(ngx_http_request_t *r,
         }
     }
 
-    /* clear the modules contexts */
+    if (r->err_ctx) {
 
-    if (r->error_page) {
-        r->err_status = r->headers_out.status;
-        r->err_ctx = r->ctx;
+        /* allocate the new modules contexts */
+
         r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
         if (r->ctx == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
     } else {
+
+        /* clear the modules contexts */
+
         ngx_memzero(r->ctx, sizeof(void *) * ngx_http_max_module);
     }
 

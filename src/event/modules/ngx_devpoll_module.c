@@ -322,9 +322,10 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 int ngx_devpoll_process_events(ngx_log_t *log)
 {
     int                 events, n, i, j;
-    ngx_msec_t          timer, delta;
+    ngx_msec_t          timer;
     ngx_err_t           err;
     ngx_cycle_t       **cycle;
+    ngx_epoch_msec_t   delta;
     ngx_connection_t   *c;
     struct dvpoll       dvp;
     struct timeval      tv;
@@ -332,7 +333,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
     timer = ngx_event_find_timer();
 
     if (timer) {
-        gettimeofday(&tv, NULL);
+        ngx_gettimeofday(&tv);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     } else {
@@ -366,7 +367,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
 
     nchanges = 0;
 
-    gettimeofday(&tv, NULL);
+    ngx_gettimeofday(&tv);
 
     if (ngx_cached_time != tv.tv_sec) {
         ngx_cached_time = tv.tv_sec;
@@ -377,9 +378,9 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
 
 #if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "devpoll timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "devpoll timer: %d, delta: %d" _ timer _ (int)delta);
 #endif
-        ngx_event_expire_timers(delta);
+        ngx_event_expire_timers((ngx_msec_t) delta);
 
     } else {
         if (events == 0) {
@@ -389,7 +390,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         }
 
 #if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "devpoll timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "devpoll timer: %d, delta: %d" _ timer _ (int)delta);
 #endif
     }
 

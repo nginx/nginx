@@ -5,20 +5,22 @@
 
 void ngx_localtime(ngx_tm_t *tm)
 {
+#if (HAVE_LOCALTIME_R)
+
     localtime_r(&ngx_cached_time, tm);
+
+#else
+    ngx_tm_t  *t;
+
+    t = localtime(&ngx_cached_time);
+    *tm = *t;
+
+#endif
 
     tm->ngx_tm_mon++;
     tm->ngx_tm_year += 1900;
 }
 
-u_int ngx_msec(void)
-{
-    struct timeval  tv;
-
-    gettimeofday(&tv, NULL);
-
-    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
-}
 
 
 #if 0

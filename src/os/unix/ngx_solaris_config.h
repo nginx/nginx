@@ -33,6 +33,7 @@ typedef uint32_t  u_int32_t;
 #define SIZE_FMT   "%d"
 #define SIZEX_FMT  "%x"
 #define PID_FMT    "%ld"
+#define TIME_FMT   "%lu"
 
 
 #ifndef HAVE_SELECT

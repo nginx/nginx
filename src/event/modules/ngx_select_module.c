@@ -148,6 +148,7 @@ static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
     }
 
 #if (WIN32)
+
     if ((event == NGX_READ_EVENT) && (max_read >= FD_SETSIZE)
         || (event == NGX_WRITE_EVENT) && (max_write >= FD_SETSIZE))
     {
@@ -165,7 +166,9 @@ static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
         FD_SET(c->fd, &master_write_fd_set);
         max_write++;
     }
+
 #else
+
     if (event == NGX_READ_EVENT) {
         FD_SET(c->fd, &master_read_fd_set);
 
@@ -247,10 +250,14 @@ static int ngx_select_process_events(ngx_log_t *log)
     int                ready, found;
     u_int              i, nready;
     ngx_err_t          err;
-    ngx_msec_t         timer, delta;
+    ngx_msec_t         timer;
     ngx_event_t       *ev;
     ngx_connection_t  *c;
+    ngx_epoch_msec_t   delta;
     struct timeval     tv, *tp;
+#if (HAVE_SELECT_CHANGE_TIMEOUT)
+    static ngx_epoch_msec_t  deltas = 0;
+#endif
 
     work_read_fd_set = master_read_fd_set;
     work_write_fd_set = master_write_fd_set;
@@ -264,7 +271,8 @@ static int ngx_select_process_events(ngx_log_t *log)
 #if (HAVE_SELECT_CHANGE_TIMEOUT)
         delta = 0;
 #else
-        delta = ngx_msec();
+        ngx_gettimeofday(&tv);
+        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 #endif
 
     } else {
@@ -314,32 +322,69 @@ static int ngx_select_process_events(ngx_log_t *log)
     ngx_log_debug(log, "select ready %d" _ ready);
 #endif
 
-    /* TODO: time */
+#if (HAVE_SELECT_CHANGE_TIMEOUT)
 
     if (timer) {
-#if (HAVE_SELECT_CHANGE_TIMEOUT)
         delta = timer - (tv.tv_sec * 1000 + tv.tv_usec / 1000);
 
-#if 0
         /*
-         * update the cached time if the sum of the last deltas
-         * is more than 0.5 seconds
+         * learn the real time and update the cached time
+         * if the sum of the last deltas overcomes 1 second
          */
-        deltas += delta;
-        if (deltas > 500000) {
-            ngx_cached_time = ngx_real_time();
-            deltas = 0;
-        }
-#endif
 
-#else
-        delta = ngx_msec() - delta;
-#endif
+        deltas += delta;
+        if (deltas > 1000) {
+            ngx_gettimeofday(&tv);
+            deltas = tv.tv_usec / 1000;
+
+            if (ngx_cached_time != tv.tv_sec) {
+                ngx_cached_time = tv.tv_sec;
+                ngx_time_update();
+            }
+        }
 
 #if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ (int) delta);
 #endif
-        ngx_event_expire_timers(delta);
+
+        ngx_event_expire_timers((ngx_msec_t) delta);
+
+    } else {
+        ngx_gettimeofday(&tv);
+
+        if (ngx_cached_time != tv.tv_sec) {
+            ngx_cached_time = tv.tv_sec;
+            ngx_time_update();
+        }
+
+        if (ready == 0) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "select() returned no events without timeout");
+            return NGX_ERROR;
+        }
+
+#if (NGX_DEBUG_EVENT)
+        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ (int) delta);
+#endif
+    }
+
+#else /* HAVE_SELECT_CHANGE_TIMEOUT */
+
+    ngx_gettimeofday(&tv);
+
+    if (ngx_cached_time != tv.tv_sec) {
+        ngx_cached_time = tv.tv_sec;
+        ngx_time_update();
+    }
+
+    if (timer) {
+        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
+
+#if (NGX_DEBUG_EVENT)
+        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ (int) delta);
+#endif
+
+        ngx_event_expire_timers((ngx_msec_t) delta);
 
     } else {
         if (ready == 0) {
@@ -349,10 +394,11 @@ static int ngx_select_process_events(ngx_log_t *log)
         }
 
 #if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ delta);
+        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ (int) delta);
 #endif
-        ngx_event_expire_timers(delta);
     }
+
+#endif /* HAVE_SELECT_CHANGE_TIMEOUT */
 
     if (err) {
         ngx_log_error(NGX_LOG_ALERT, log, err, "select() failed");

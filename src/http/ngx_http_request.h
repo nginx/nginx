@@ -205,8 +205,6 @@ struct ngx_http_request_s {
     unsigned             bypass_cache:1;
     unsigned             no_cache:1;
 
-    unsigned             error_page:1;
-
 #if 0
     unsigned             cachable:1;
 #endif
