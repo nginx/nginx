@@ -274,7 +274,7 @@ char *ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
-extern ngx_int_t      ngx_max_module;
+extern ngx_uint_t     ngx_max_module;
 extern ngx_module_t  *ngx_modules[];
 
 

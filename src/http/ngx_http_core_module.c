@@ -1493,14 +1493,14 @@ static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        err->code = ngx_atoi(value[i].data, value[i].len);
-        if (err->code == NGX_ERROR) {
+        err->status = ngx_atoi(value[i].data, value[i].len);
+        if (err->status == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid value \"%s\"", value[i].data);
             return NGX_CONF_ERROR;
         }
 
-        if (err->code < 400 || err->code > 599) {
+        if (err->status < 400 || err->status > 599) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "value \"%s\" must be between 400 and 599",
                                value[i].data);

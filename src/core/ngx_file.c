@@ -76,11 +76,12 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
             continue;
         }
 
-        if (err != NGX_ENOENT
+        if ((path->level[0] == 0)
+            || (err != NGX_ENOENT
 #if (WIN32)
-            && err != NGX_ENOTDIR
+                && err != NGX_ENOTDIR
 #endif
-        ) {
+        )) {
             ngx_log_error(NGX_LOG_CRIT, file->log, err,
                           ngx_open_tempfile_n " \"%s\" failed",
                           file->name.data);

@@ -52,8 +52,9 @@ ngx_module_t  ngx_http_output_filter_module = {
 
 
 
-int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
+ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
+    ngx_int_t                       rc;
     ngx_output_chain_ctx_t         *ctx;
     ngx_http_output_filter_conf_t  *conf;
 
@@ -81,7 +82,16 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     }
 
-    return ngx_output_chain(ctx, in);
+    rc = ngx_output_chain(ctx, in);
+
+    if (rc == NGX_ERROR) {
+
+        /* NGX_ERROR could be returned by any filter */
+
+        r->connection->write->error = 1;
+    }
+
+    return rc;
 }
 
 

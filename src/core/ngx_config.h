@@ -77,7 +77,10 @@ typedef int    ngx_flag_t;
 /* TODO: auto */
 #define NGX_INT32_LEN      sizeof("-2147483648") - 1
 #define NGX_INT64_LEN      sizeof("-9223372036854775808") - 1
+#if 0
 #define NGX_TIME_T_LEN     sizeof("-2147483648") - 1
+#endif
+#define NGX_TIME_T_LEN     sizeof("-9223372036854775808") - 1
 #define NGX_OFF_T_LEN      sizeof("-9223372036854775808") - 1
 
 

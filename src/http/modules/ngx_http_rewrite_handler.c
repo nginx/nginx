@@ -26,6 +26,7 @@ typedef struct {
     ngx_str_t     re_name;
     ngx_str_t     s_name;
 
+    ngx_uint_t    status;
     unsigned      last:1;
 } ngx_http_rewrite_rule_t;
 
@@ -123,7 +124,8 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
         if (rc == NGX_DECLINED) {
             if (scf->log) {
                 ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                              "\"%s\" does not match", rule[i].re_name.data);
+                              "\"%s\" does not match \"%s\"",
+                              rule[i].re_name.data, r->uri.data);
             }
 
             continue;
@@ -139,7 +141,12 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
 
         if (scf->log) {
             ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                          "\"%s\" matches", rule[i].re_name.data);
+                          "\"%s\" matches \"%s\"",
+                          rule[i].re_name.data, r->uri.data);
+        }
+
+        if (rule[i].status) {
+            return rule[i].status;
         }
 
         uri.len = rule[i].size;
@@ -247,6 +254,8 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
 
     rule->msize = 0;
     rule->size = 0;
+    rule->status = 0;
+    rule->last = 0;
 
     value = cf->args->elts;
 
@@ -263,6 +272,19 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
     
         rule->re_name = value[1];
         rule->s_name = value[2];
+
+        if (ngx_strcasecmp(value[2].data, "forbidden:") == 0) {
+
+            if (cf->args->nelts == 3) {
+                rule->status = NGX_HTTP_FORBIDDEN;
+                rule->last = 1;
+                return NGX_CONF_OK;
+            }
+
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%s\"", value[3].data);
+            return NGX_CONF_ERROR;
+        }
 
         for (i = 0; i < value[2].len; /* void */) {
 

@@ -16,28 +16,35 @@ static int ngx_worker_thread_cycle(void *data);
 #endif
 
 
-ngx_int_t     ngx_process;
+ngx_uint_t    ngx_process;
 ngx_pid_t     ngx_pid;
-ngx_int_t     ngx_threaded;
+ngx_uint_t    ngx_threaded;
 
 sig_atomic_t  ngx_reap;
 sig_atomic_t  ngx_timer;
 sig_atomic_t  ngx_terminate;
 sig_atomic_t  ngx_quit;
+ngx_uint_t    ngx_exiting;
 sig_atomic_t  ngx_reconfigure;
 sig_atomic_t  ngx_reopen;
 
 sig_atomic_t  ngx_change_binary;
 ngx_pid_t     ngx_new_binary;
-ngx_int_t     ngx_inherited;
+ngx_uint_t    ngx_inherited;
 
 sig_atomic_t  ngx_noaccept;
 ngx_uint_t    ngx_noaccepting;
 ngx_uint_t    ngx_restart;
 
 
+u_char  master_process[] = "master process";
+
+
 void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
+    char              *title, *p;
+    size_t             size;
+    ngx_int_t          n;
     ngx_uint_t         i;
     sigset_t           set;
     struct timeval     tv;
@@ -64,7 +71,23 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
     sigemptyset(&set);
 
-    ngx_setproctitle("master process");
+
+    size = sizeof(master_process);
+
+    for (n = 0; n < ctx->argc; n++) {
+        size += ngx_strlen(ctx->argv[n]) + 1;
+    }
+
+    title = ngx_palloc(cycle->pool, size);
+
+    p = ngx_cpymem(title, master_process, sizeof(master_process) - 1);
+    for (n = 0; n < ctx->argc; n++) {
+        *p++ = ' ';
+        p = ngx_cpystrn(p, ctx->argv[n], size);
+    }
+
+    ngx_setproctitle(title);
+
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
@@ -386,7 +409,7 @@ static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     sigset_t          set;
-    ngx_uint_t        i, exiting;
+    ngx_uint_t        i;
     ngx_listening_t  *ls;
     ngx_core_conf_t  *ccf;
 #if (NGX_THREADS)
@@ -474,10 +497,10 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
 #endif
 
-    exiting = 0;
-
     for ( ;; ) {
-        if (exiting && ngx_event_timer_rbtree == &ngx_event_timer_sentinel) {
+        if (ngx_exiting
+            && ngx_event_timer_rbtree == &ngx_event_timer_sentinel)
+        {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
             ngx_destroy_pool(cycle->pool);
             exit(0);
@@ -499,9 +522,9 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
                           "gracefully shutting down");
             ngx_setproctitle("worker process is shutting down");
 
-            if (!exiting) {
+            if (!ngx_exiting) {
                 ngx_close_listening_sockets(cycle);
-                exiting = 1;
+                ngx_exiting = 1;
             }
         }
 

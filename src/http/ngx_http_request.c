@@ -991,7 +991,7 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (!ngx_terminate
-         && !ngx_quit
+         && !ngx_exiting
          && r->keepalive != 0
          && clcf->keepalive_timeout > 0)
     {
@@ -1579,6 +1579,19 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           ngx_close_file_n " \"%s\" failed", r->file.name.data);
+        }
+    }
+
+    if (r->request_body
+        && r->request_body->temp_file
+        && r->request_body->temp_file->file.fd != NGX_INVALID_FILE)
+    {
+        if (ngx_close_file(r->request_body->temp_file->file.fd)
+                                                             == NGX_FILE_ERROR)
+        {
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                          ngx_close_file_n " deleted file \"%s\" failed",
+                          r->request_body->temp_file->file.name.data);
         }
     }
 

@@ -51,7 +51,9 @@ typedef struct {
 
     unsigned             flush:4;
     unsigned             redo:1;
+    unsigned             pass:1;
     unsigned             done:1;
+    unsigned             blocked:1;
 
     size_t               zin;
     size_t               zout;
@@ -493,8 +495,8 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             if (ctx->zstream.avail_in == 0
                 && ctx->flush == Z_NO_FLUSH
-                && !ctx->redo) {
-
+                && !ctx->redo)
+            {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "gzip in: " PTR_FMT, ctx->in);
 
@@ -517,6 +519,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 if (ctx->in_hunk->last < ctx->in_hunk->pos) {
                     ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                                   "zstream.avail_in is huge");
+                    ctx->done = 1;
                     return NGX_ERROR;
                 }
 
@@ -555,9 +558,11 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     ctx->hunks++;
 
                 } else {
+                    ctx->blocked = 1;
                     break;
                 }
 
+                ctx->blocked = 0;
                 ctx->zstream.next_out = ctx->out_hunk->pos;
                 ctx->zstream.avail_out = conf->bufs.size;
             }
@@ -585,8 +590,16 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                            "gzip in_hunk:" PTR_FMT " pos:" PTR_FMT,
                            ctx->in_hunk, ctx->in_hunk->pos);
 
+
+#if 0
+            if (!ctx->redo) {
+                ctx->in_hunk->pos = ctx->zstream.next_in;
+                ctx->out_hunk->last = ctx->zstream.next_out;
+            }
+#else
             ctx->in_hunk->pos = ctx->zstream.next_in;
             ctx->out_hunk->last = ctx->zstream.next_out;
+#endif
 
             if (ctx->zstream.avail_out == 0) {
                 ngx_alloc_link_and_set_hunk(cl, ctx->out_hunk, r->pool,
@@ -608,6 +621,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                             ngx_http_gzip_error(ctx));
                 *ctx->last_out = cl;
                 ctx->last_out = &cl->next;
+                ctx->pass = 1;
 
                 break;
             }
@@ -665,6 +679,7 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ctx->zstream.avail_out = 0;
 
                 ctx->done = 1;
+                ctx->pass = 1;
 
                 break;
             }
@@ -674,13 +689,22 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                             ngx_http_gzip_error(ctx));
                 *ctx->last_out = cl;
                 ctx->last_out = &cl->next;
+                ctx->pass = 1;
 
                 break;
             }
         }
 
         if (ctx->out) {
-            if (last == NGX_AGAIN) {
+            if (ctx->pass) {
+                ctx->pass = 0;
+
+            } else if (last == NGX_AGAIN) {
+                return last;
+            }
+
+        } else if (ctx->blocked) {
+            if (last != NGX_NONE) {
                 return last;
             }
 
@@ -803,6 +827,8 @@ ngx_inline static int ngx_http_gzip_error(ngx_http_gzip_ctx_t *ctx)
 
     ctx->zstream.avail_in = 0;
     ctx->zstream.avail_out = 0;
+
+    ctx->done = 1;
 
     return NGX_ERROR;
 }

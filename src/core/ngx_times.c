@@ -31,7 +31,7 @@ static u_char       cached_http_log_time0[] = "28/Sep/1970:12:00:00 +0600";
 static u_char       cached_http_log_time1[] = "28/Sep/1970:12:00:00 +0600";
 
 
-static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fir", "Sat" };
+static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
