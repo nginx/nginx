@@ -6,9 +6,6 @@
 #include <ngx_core.h>
 
 
-typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
-
-
 #define NGX_INVALID_INDEX  0xd0d0d0d0
 
 
@@ -391,7 +388,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 #define ngx_recv             ngx_io.recv
 #define ngx_recv_chain       ngx_io.recv_chain
-#define ngx_write_chain      ngx_io.send_chain
+#define ngx_send_chain       ngx_io.send_chain
 
 
 

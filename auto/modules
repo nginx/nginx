@@ -60,19 +60,6 @@ HTTP_FILTER_MODULES="$HTTP_WRITE_FILTER_MODULE \
                      $HTTP_CHUNKED_FILTER_MODULE \
                      $HTTP_RANGE_HEADER_FILTER_MODULE"
 
-if [ $HTTP_SSL = YES ]; then
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_SSL_FILTER_MODULE"
-    HTTP_DEPS="$HTTP_DEPS $HTTP_SSL_DEPS"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_SSL_SRCS"
-
-    # STUB: move to auto/libs/ssl after md5
-    have=NGX_HTTP_SSL . auto/have
-    have=NGX_OPENSSL . auto/have
-    CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
-    CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
-    CORE_LIBS="$CORE_LIBS -lssl -lcrypto"
-fi
-
 if [ $HTTP_GZIP = YES ]; then
     have=NGX_HTTP_GZIP . auto/have
     USE_ZLIB=YES
@@ -111,6 +98,19 @@ if [ $HTTP_REWRITE = YES -a $USE_PCRE != DISABLED ]; then
     USE_PCRE=YES
     HTTP_MODULES="$HTTP_MODULES $HTTP_REWRITE_MODULE"
     HTTP_SRCS="$HTTP_SRCS $HTTP_REWRITE_SRCS"
+fi
+
+if [ $HTTP_SSL = YES ]; then
+    HTTP_MODULES="$HTTP_MODULES $HTTP_SSL_MODULE"
+    HTTP_DEPS="$HTTP_DEPS $HTTP_SSL_DEPS"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_SSL_SRCS"
+
+    # STUB: move to auto/libs/ssl after md5
+    have=NGX_HTTP_SSL . auto/have
+    have=NGX_OPENSSL . auto/have
+    CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
+    CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
+    CORE_LIBS="$CORE_LIBS -lssl -lcrypto"
 fi
 
 if [ $HTTP_PROXY = YES ]; then

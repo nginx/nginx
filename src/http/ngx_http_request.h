@@ -31,7 +31,8 @@
 #define NGX_HTTP_PARSE_NO_HOST_HEADER      16
 #define NGX_HTTP_PARSE_INVALID_CL_HEADER   17
 #define NGX_HTTP_PARSE_POST_WO_CL_HEADER   18
-#define NGX_HTTP_PARSE_INVALID_HOST        19
+#define NGX_HTTP_PARSE_HTTP_TO_HTTPS       19
+#define NGX_HTTP_PARSE_INVALID_HOST        20
 
 
 #define NGX_HTTP_OK                        200
@@ -217,6 +218,9 @@ struct ngx_http_request_s {
 
     ngx_connection_t         *connection;
 
+    ngx_recv_pt               recv;
+    ngx_send_chain_pt         send_chain;
+
     void                    **ctx;
     void                    **main_conf;
     void                    **srv_conf;
@@ -292,6 +296,7 @@ struct ngx_http_request_s {
     /* can we use sendfile ? */
     unsigned             sendfile:1;
 
+    unsigned             plain_http:1;
     unsigned             chunked:1;
     unsigned             header_only:1;
     unsigned             keepalive:1;

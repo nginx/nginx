@@ -253,11 +253,6 @@ HTTP_GZIP_FILTER_MODULE=ngx_http_gzip_filter_module
 HTTP_GZIP_SRCS=src/http/modules/ngx_http_gzip_filter.c
 
 
-HTTP_SSL_FILTER_MODULE=ngx_http_ssl_filter_module
-HTTP_SSL_DEPS=src/http/modules/ngx_http_ssl_filter.h
-HTTP_SSL_SRCS=src/http/modules/ngx_http_ssl_filter.c
-
-
 HTTP_SSI_FILTER_MODULE=ngx_http_ssi_filter_module
 HTTP_SSI_SRCS=src/http/modules/ngx_http_ssi_filter.c
 
@@ -272,6 +267,11 @@ HTTP_STATUS_SRCS=src/http/modules/ngx_http_status_handler.c
 
 HTTP_REWRITE_MODULE=ngx_http_rewrite_module
 HTTP_REWRITE_SRCS=src/http/modules/ngx_http_rewrite_handler.c
+
+
+HTTP_SSL_MODULE=ngx_http_ssl_module
+HTTP_SSL_DEPS=src/http/modules/ngx_http_ssl_module.h
+HTTP_SSL_SRCS=src/http/modules/ngx_http_ssl_module.c
 
 
 HTTP_PROXY_MODULE=ngx_http_proxy_module

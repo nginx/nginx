@@ -203,7 +203,7 @@ typedef struct {
 } ngx_http_proxy_log_ctx_t;
 
 
-#define NGX_HTTP_PROXY_PARSE_NO_HEADER       20
+#define NGX_HTTP_PROXY_PARSE_NO_HEADER       30
 
 
 #define NGX_HTTP_PROXY_FT_ERROR              0x02

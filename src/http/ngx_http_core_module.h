@@ -47,9 +47,6 @@ typedef struct {
 
 
 typedef struct {
-    ngx_recv_pt           recv;
-    ngx_send_chain_pt     send_chain;
-
     /*
      * array of ngx_http_core_loc_conf_t, used in the translation handler
      * and in the merge phase

@@ -18,7 +18,6 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                                           void *parent, void *child);
 
-static ngx_int_t ngx_http_core_init_process(ngx_cycle_t *cycle);
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
 static int ngx_cmp_locations(const void *first, const void *second);
 static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -304,7 +303,7 @@ ngx_module_t  ngx_http_core_module = {
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init module */
-    ngx_http_core_init_process             /* init process */
+    NULL                                   /* init process */
 };
 
 
@@ -822,6 +821,8 @@ int ngx_http_delay_handler(ngx_http_request_t *r)
 #endif
 
 
+#if 0
+
 static ngx_int_t ngx_http_core_init_process(ngx_cycle_t *cycle)
 {
     ngx_uint_t                   i;
@@ -852,6 +853,8 @@ static ngx_int_t ngx_http_core_init_process(ngx_cycle_t *cycle)
 
     return NGX_OK;
 }
+
+#endif
 
 
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)

@@ -6,6 +6,9 @@
 
 
 static void ngx_http_init_request(ngx_event_t *ev);
+#if (NGX_HTTP_SSL)
+static void ngx_http_check_ssl_handshake(ngx_event_t *rev);
+#endif
 static void ngx_http_process_request_line(ngx_event_t *rev);
 static void ngx_http_process_request_headers(ngx_event_t *rev);
 static ssize_t ngx_http_read_request_header(ngx_http_request_t *r);
@@ -40,6 +43,7 @@ static char *client_header_errors[] = {
     "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s",
     "client %s sent invalid \"Content-Length\" header, URL: %s",
     "client %s sent POST method without \"Content-Length\" header, URL: %s",
+    "client %s sent plain HTTP request to HTTPS port, URL: %s",
     "client %s sent invalid \"Host\" header \"%s\", URL: %s"
 };
 
@@ -232,16 +236,24 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->srv_conf = cscf->ctx->srv_conf;
     r->loc_conf = cscf->ctx->loc_conf;
 
+    rev->event_handler = ngx_http_process_request_line;
+
+    r->recv = ngx_recv;
+    r->send_chain = ngx_send_chain;
+
 #if (NGX_HTTP_SSL)
 
-    sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_filter_module);
+    sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
     if (sscf->enable) {
-        if (ngx_ssl_create_session(sscf->ssl_ctx, c) == NGX_ERROR) {
+        if (ngx_ssl_create_session(sscf->ssl_ctx, c, NGX_SSL_BUFFER)
+                                                                  == NGX_ERROR)
+        {
             ngx_http_close_connection(c);
             return;
         }
 
         r->filter_need_in_memory = 1;
+        rev->event_handler = ngx_http_check_ssl_handshake;
     }
 
 #endif
@@ -321,9 +333,57 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
     r->http_state = NGX_HTTP_READING_REQUEST_STATE;
 
+    rev->event_handler(rev);
+}
+
+
+#if (NGX_HTTP_SSL)
+
+static void ngx_http_check_ssl_handshake(ngx_event_t *rev)
+{
+    int                  n;
+    u_char               buf[1];
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
+
+    c = rev->data;
+    r = c->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "http check ssl handshake");
+
+    if (rev->timedout) {
+        ngx_http_client_error(r, 0, NGX_HTTP_REQUEST_TIME_OUT);
+        return;
+    }
+
+    n = recv(c->fd, buf, 1, MSG_PEEK); 
+
+    if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
+        return;
+    }
+
+    if (n == 1) {
+        if (buf[0] == 0x80 /* SSLv2 */ || buf[0] == 0x16 /* SSLv3/TLSv1 */) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                           "https ssl handshake: 0x%X", buf[0]);
+
+            r->recv = ngx_ssl_recv;
+            r->send_chain = ngx_ssl_send_chain;
+
+        } else {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                           "plain http");
+
+            r->plain_http = 1;
+        }
+    }
+
     rev->event_handler = ngx_http_process_request_line;
     ngx_http_process_request_line(rev);
 }
+
+#endif
 
 
 static void ngx_http_process_request_line(ngx_event_t *rev)
@@ -832,13 +892,12 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
         return NGX_AGAIN;
     }
 
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-    n = cscf->recv(r->connection, r->header_in->last,
-                   r->header_in->end - r->header_in->last);
+    n = r->recv(r->connection, r->header_in->last,
+                r->header_in->end - r->header_in->last);
 
     if (n == NGX_AGAIN) {
         if (!r->header_timeout_set) {
+            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
             ngx_add_timer(rev, cscf->client_header_timeout);
             r->header_timeout_set = 1;
         }
@@ -937,6 +996,10 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 
     if (r->method == NGX_HTTP_POST && r->headers_in.content_length_n <= 0) {
         return NGX_HTTP_PARSE_POST_WO_CL_HEADER;
+    }
+
+    if (r->plain_http) {
+        return NGX_HTTP_PARSE_HTTP_TO_HTTPS;
     }
 
     if (r->headers_in.connection) {
@@ -1873,7 +1936,9 @@ static void ngx_http_client_error(ngx_http_request_t *r,
     r->connection->log->handler = NULL;
 
     if (ctx->url) {
-        if (client_error == NGX_HTTP_PARSE_INVALID_HOST) {
+        switch (client_error) {
+
+        case NGX_HTTP_PARSE_INVALID_HOST:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                     client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
                     ctx->client, r->headers_in.host->value.data, ctx->url);
@@ -1888,7 +1953,14 @@ static void ngx_http_client_error(ngx_http_request_t *r,
                 return;
             }
 
-        } else {
+            break;
+
+        case NGX_HTTP_PARSE_HTTP_TO_HTTPS:
+            error = NGX_HTTP_TO_HTTPS;
+
+            /* fall through */
+
+        default:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                     client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
                     ctx->client, ctx->url);
