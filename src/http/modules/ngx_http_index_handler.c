@@ -109,7 +109,7 @@ static void *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
 
         ngx_test_null(index, ngx_push_array(conf->indices), NULL);
         index->name = NGX_HTTP_INDEX;
-        conf->max_index_len = index->len = sizeof(NGX_HTTP_INDEX);
+        conf->max_index_len = index->len = sizeof(NGX_HTTP_INDEX) + 1;
     }
 
     return conf;
@@ -122,7 +122,7 @@ static char *ngx_http_index_set_index(ngx_pool_t *p, void *conf, char *value)
 
     ngx_test_null(index, ngx_push_array(cf->indices), NULL);
     index->name = value;
-    index->len = strlen(value);
+    index->len = strlen(value) + 1;
 
     if (cf->max_index_len < index->len)
         cf->max_index_len = index->len;

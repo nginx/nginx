@@ -4,6 +4,7 @@
 
 #include <ngx_config.h>
 
+#define NGX_WRITE_SHUTDOWN SHUT_WR
 
 typedef int  ngx_socket_t;
 
@@ -14,6 +15,9 @@ typedef int  ngx_socket_t;
 
 #define ngx_nonblocking(s)  fcntl(s, F_SETFL, O_NONBLOCK)
 #define ngx_nonblocking_n   "fcntl(O_NONBLOCK)"
+
+#define ngx_shutdown_socket    shutdown
+#define ngx_shutdown_socket_n  "shutdown()"
 
 #define ngx_close_socket    close
 #define ngx_close_socket_n  "close()"

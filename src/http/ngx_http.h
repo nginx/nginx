@@ -96,6 +96,8 @@ struct ngx_http_request_s {
 
     int    method;
 
+    time_t  lingering_time;
+
     int    http_version;
     int    http_major;
     int    http_minor;
@@ -110,6 +112,9 @@ struct ngx_http_request_s {
 
     ssize_t   client_content_length;
     char     *discarded_buffer;
+
+    unsigned  keepalive:1;
+    unsigned  lingering_close:1;
 
     unsigned  header_timeout:1;
     unsigned  process_header:1;

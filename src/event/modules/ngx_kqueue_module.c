@@ -57,6 +57,8 @@ void ngx_kqueue_init(int max_connections, ngx_log_t *log)
 
 int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
+    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
+
     return ngx_kqueue_set_event(ev, event, EV_ADD | flags);
 }
 
@@ -186,6 +188,9 @@ int ngx_kqueue_process_events(ngx_log_t *log)
                 ev->error = event_list[i].fflags;
             }
 
+            if (ev->oneshot)
+                ngx_del_timer(ev);
+
             if (ev->event_handler(ev) == NGX_ERROR)
                 ev->close_handler(ev);
 
@@ -206,6 +211,9 @@ void ngx_kqueue_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     ngx_event_t *e;
 
     ngx_log_debug(ev->log, "set timer: %d" _ timer);
+
+    ngx_assert((!ev->timer_next && !ev->timer_prev), return, ev->log,
+               "timer already set");
 
     for (e = timer_queue.timer_next;
          e != &timer_queue && timer > e->timer_delta;

@@ -16,6 +16,9 @@ int ngx_http_static_handler(ngx_http_request_t *r);
 int ngx_http_index_handler(ngx_http_request_t *r);
 /* */
 
+/* STUB */
+#define LINGERING_TIMEOUT    2 
+#define SOME_LINGERING_TIME  30
 
 int ngx_http_init_connection(ngx_connection_t *c);
 
@@ -33,6 +36,8 @@ static int ngx_http_handler(ngx_http_request_t *r);
 static int ngx_http_set_default_handler(ngx_http_request_t *r);
 
 static int ngx_http_writer(ngx_event_t *ev);
+
+static int ngx_http_lingering_close(ngx_event_t *ev);
 
 static int ngx_http_special_response(ngx_http_request_t *r, int error);
 static int ngx_http_redirect(ngx_http_request_t *r, int redirect);
@@ -334,10 +339,15 @@ static int ngx_http_read_discarded_body(ngx_event_t *ev)
         size = r->server->discarded_buffer_size;
 
     n = ngx_event_recv(c, r->discarded_buffer, size);
-    if (n > 0)
-        r->client_content_length -= n;
+    if (n == NGX_ERROR)
+        return NGX_ERROR;
 
-    return n;
+    if (n == NGX_AGAIN)
+        return NGX_OK;
+
+    r->client_content_length -= n;
+    /* XXX: what if r->client_content_length == 0 ? */
+    return NGX_OK;
 }
 
 static int ngx_http_discarded_read(ngx_event_t *ev)
@@ -376,6 +386,7 @@ static int ngx_http_handler(ngx_http_request_t *r)
     r->process_header = 0;
     r->state_handler = NULL;
     r->connection->unexpected_eof = 0;
+    r->lingering_close = 1;
 
     r->connection->read->event_handler = ngx_http_block_read;
 
@@ -426,17 +437,70 @@ static int ngx_http_handler(ngx_http_request_t *r)
 
     /* rc == NGX_OK */
 
-    /* STUB */
-    return ngx_http_close_request(r);
+    if (!r->keepalive) {
+        if (r->lingering_close) {
+            r->lingering_time = ngx_time() + SOME_LINGERING_TIME;
+            r->connection->read->event_handler = ngx_http_lingering_close;
+            ngx_del_timer(r->connection->read);
+            ngx_add_timer(r->connection->read, LINGERING_TIMEOUT * 1000);
+            if (ngx_add_event(r->connection->read, NGX_READ_EVENT,
+                              NGX_ONESHOT_EVENT) == NGX_ERROR) {
+               return ngx_http_close_request(r);
+            }
+            if (ngx_shutdown_socket(r->connection->fd, NGX_WRITE_SHUTDOWN)
+                == NGX_ERROR)
+            {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_socket_errno,
+                              ngx_shutdown_socket_n " failed");
+                return ngx_http_close_request(r);
+            }
+        } else {
+            return ngx_http_close_request(r);
+        }
+    }
+}
 
-/*
-    if (!keepalive)
-        if (linger)
-            set linger timeout on read
-            shutdown socket
-        else
-            close socket
-*/
+static int ngx_http_lingering_close(ngx_event_t *ev)
+{
+    ssize_t  n;
+    ngx_msec_t   timer;
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
+
+    c = (ngx_connection_t *) ev->data;
+    r = (ngx_http_request_t *) c->data;
+
+    ngx_log_debug(ev->log, "http lingering close");
+
+    if (ev->timedout)
+        return NGX_DONE;
+
+    /* STUB */
+    timer = r->lingering_time - ngx_time();
+    if (timer <= 0)
+        return NGX_DONE;
+
+    if (r->discarded_buffer == NULL)
+        ngx_test_null(r->discarded_buffer,
+                      ngx_palloc(r->pool, r->server->discarded_buffer_size),
+                      NGX_ERROR);
+
+    n = ngx_event_recv(c, r->discarded_buffer,
+                       r->server->discarded_buffer_size);
+
+    if (n == NGX_ERROR)
+        return NGX_ERROR;
+
+    if (n == 0)
+        return NGX_DONE;
+
+    if (timer > LINGERING_TIMEOUT)
+        timer = LINGERING_TIMEOUT;
+
+    ngx_del_timer(ev);
+    ngx_add_timer(ev, timer * 1000);
+
+    return NGX_OK;
 }
 
 int ngx_http_internal_redirect(ngx_http_request_t *r, char *uri)
@@ -543,23 +607,34 @@ static int ngx_http_writer(ngx_event_t *ev)
 
     /* rc == NGX_OK */
 
-    return ngx_http_close_request(r);
+    ngx_log_debug(ev->log, "ngx_http_writer done");
 
-/*
-    if (!keepalive)
-        if (linger)
-            shutdown socket
-        else
-            close socket
+    if (!r->keepalive) {
+        if (r->lingering_close) {
+            r->lingering_time = ngx_time() + SOME_LINGERING_TIME;
+            r->connection->read->event_handler = ngx_http_lingering_close;
+            ngx_del_timer(r->connection->read);
+            ngx_add_timer(r->connection->read, LINGERING_TIMEOUT * 1000);
+            if (ngx_add_event(r->connection->read, NGX_READ_EVENT,
+                              NGX_ONESHOT_EVENT) == NGX_ERROR) {
+               return ngx_http_close_request(r);
+            }
+            if (ngx_shutdown_socket(r->connection->fd, NGX_WRITE_SHUTDOWN)
+                == NGX_ERROR)
+            {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_socket_errno,
+                              ngx_shutdown_socket_n " failed");
+                return ngx_http_close_request(r);
+            }
+        } else {
+            return ngx_http_close_request(r);
+        }
+    }
 
-    log http request
-    close http request
-    if (keepalive)
-        return NGX_OK;
-    else
-        close connection
-        return NGX_OK;
-*/
+    /* keepalive */
+    ev = r->connection->read;
+    ngx_http_close_request(r);
+    ev->event_handler = ngx_http_init_request;
 }
 
 #if 0
@@ -672,6 +747,11 @@ static int ngx_process_http_request(ngx_http_request_t *r)
 
 static int ngx_http_close_request(ngx_http_request_t *r)
 {
+/*
+    if (r->logging)
+        ngx_http_log_request(r);
+*/
+
     ngx_destroy_pool(r->pool);
 
     ngx_log_debug(r->connection->log, "http close");
@@ -679,7 +759,7 @@ static int ngx_http_close_request(ngx_http_request_t *r)
     ngx_del_timer(r->connection->read);
     ngx_del_timer(r->connection->write);
 
-    return NGX_ERROR;
+    return NGX_DONE;
 }
 
 
