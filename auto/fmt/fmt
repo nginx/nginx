@@ -1,0 +1,32 @@
+
+echo "Checking for printf() $NGX_TYPE format"
+
+NGX_FMT=NO
+
+for FMT in $NGX_FORMATS
+do
+    echo "int main() {" > autotest.c
+    echo "printf(\"%${FMT}u\", (unsigned $NGX_TYPE) -1);" >> autotest.c
+    echo "return 0; }" >> autotest.c
+
+    eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+
+    if [ -x ./autotest -a "`./autotest`" = $NGX_MAX_SIZE ]; then
+        echo " + \"%${FMT}\" used"
+        NGX_FMT=$FMT
+    else
+        echo " + \"%${FMT}\" is not appropriate"
+    fi
+
+    rm autotest*
+
+    if [ $NGX_FMT != NO ]; then
+        break
+    fi
+done
+
+
+if [ $NGX_FMT = NO ]; then
+    echo "printf() $NGX_TYPE format not found"
+    exit 1
+fi

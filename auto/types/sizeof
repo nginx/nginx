@@ -1,0 +1,31 @@
+
+echo "Checking for $NGX_TYPE size"
+
+BYTES=
+
+echo "int main() {" > autotest.c
+echo "printf(\"%d\", sizeof($NGX_TYPE));" >> autotest.c
+echo "return 0; }" >> autotest.c
+
+eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+
+if [ -x ./autotest ]; then
+    BYTES=`./autotest`
+    echo " + $NGX_TYPE is $BYTES bytes"
+fi
+
+rm autotest*
+
+case $BYTES in
+    4)
+        NGX_MAX_SIZE=4294967295
+    ;;
+
+    8)
+        NGX_MAX_SIZE=18446744073709551615
+    ;;
+
+    *)
+        echo "$0: error: can not detect $NGX_TYPE size"
+        exit 1
+esac

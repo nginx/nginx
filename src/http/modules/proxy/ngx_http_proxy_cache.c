@@ -252,6 +252,8 @@ void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
     rc = ngx_http_busy_lock_cachable(p->lcf->busy_lock, &p->busy_lock,
                                      p->try_busy_lock);
 
+ngx_log_debug(p->request->connection->log, "LOCK CACHABLE: %d" _ rc);
+
     if (rc == NGX_OK) {
         if (p->try_busy_lock) {
             p->busy_locked = 1;
@@ -344,7 +346,7 @@ static void ngx_http_proxy_cache_look_complete_request(ngx_http_proxy_ctx_t *p)
 
     rc = ngx_http_cache_open_file(ctx, ngx_file_uniq(&p->cache->ctx.file.info));
 
-    if (rc == NGX_HTTP_CACHE_THE_SAME) {
+    if (rc == NGX_DECLINED || rc == NGX_HTTP_CACHE_THE_SAME) {
         p->try_busy_lock = 1;
         p->busy_lock.time = 0;
         ngx_http_proxy_cache_busy_lock(p);

@@ -4,6 +4,20 @@ CPP='cc -E'
 
 echo > ngx_auto_config.h
 
+NGX_TYPE="long"; . auto/types/sizeof; NGX_MAX_LONG=$NGX_MAX_SIZE
+NGX_FORMATS="l"; . auto/fmt/fmt
+
+
+NGX_TYPE="long long"; . auto/types/sizeof; NGX_MAX_LONG_LONG=$NGX_MAX_SIZE
+NGX_FORMATS="ll q"; . auto/fmt/fmt
+
+#NGX_TYPE="__int64_t"; . auto/types/typedef; NGX_TIME_T_FMT=$NGX_FMT
+
+#NGX_TYPE="time_t"; . auto/types/typedef; NGX_TIME_T_FMT=$NGX_FMT
+
+
+#exit
+
 . auto/types/time_t
 
 . auto/types/uint64_t

@@ -29,6 +29,8 @@ if [ $found = 0 ]; then
         type="typedef $type  uintptr_t;"
         found=2
     fi
+
+    rm autotest*
 fi
 
 

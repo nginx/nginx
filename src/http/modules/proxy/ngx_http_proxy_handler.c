@@ -448,8 +448,11 @@ void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
 
 void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
 {
-    ngx_log_debug(p->request->connection->log,
-                  "finalize http proxy request");
+    ngx_http_request_t  *r;
+
+    r = p->request;
+
+    ngx_log_debug(r->connection->log, "finalize http proxy request");
 
     if (p->upstream && p->upstream->peer.connection) {
         ngx_http_proxy_close_connection(p);
@@ -462,11 +465,27 @@ void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
     }
 
     if (p->saved_ctx) {
-        p->request->connection->log->data = p->saved_ctx;
-        p->request->connection->log->handler = p->saved_handler;
+        r->connection->log->data = p->saved_ctx;
+        r->connection->log->handler = p->saved_handler;
     }
 
-    ngx_http_finalize_request(p->request, rc);
+    if (p->upstream && p->upstream->event_pipe) {
+ngx_log_debug(r->connection->log, "TEMP FD: %d" _
+              p->upstream->event_pipe->temp_file->file.fd);
+    }
+
+    if (p->cache) {
+ngx_log_debug(r->connection->log, "CACHE FD: %d" _ p->cache->ctx.file.fd);
+    }
+
+    if (p->upstream && p->upstream->event_pipe) {
+        r->file.fd = p->upstream->event_pipe->temp_file->file.fd;
+
+    } else if (p->cache) {
+        r->file.fd = p->cache->ctx.file.fd;
+    }
+
+    ngx_http_finalize_request(r, rc);
 }
 
 

@@ -1,0 +1,32 @@
+
+echo "Checking for $NGX_TYPE definition"
+
+echo "#include <sys/types.h>" > autotest.c
+TYPE=`${CPP} autotest.c | \
+      awk "/^typedef.*$NGX_TYPE/ { for (i = 1; i< NF; i++) print $i}"`
+#rm autotest.c
+
+echo $TYPE
+
+case $TYPE in
+    "long long")
+        echo ' + defined as long long'
+        NGX_FMT=$NGX_LONG_LONG_FMT
+    ;;
+
+    long)
+        echo ' + defined as long'
+        NGX_FMT=$NGX_LONG_FMT
+    ;;
+
+    int)
+        echo ' + defined as int'
+        NGX_FMT=$NGX_INT_FMT
+    ;;
+
+    *)
+        echo "$0: error: unknown $NGX_TYPE definition: \"$TYPE\""
+        exit 1
+    ;;
+
+esac
