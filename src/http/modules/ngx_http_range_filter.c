@@ -43,6 +43,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
     int                           rc, boundary, len, i;
     char                         *p;
     off_t                         start, end;
+    ngx_table_elt_t              *accept_ranges;
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *ctx;
 
@@ -51,11 +52,24 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
         || r->headers_out.status != NGX_HTTP_OK
         || r->headers_out.content_length == -1
         /* STUB: we currently support ranges for file hunks only */
-        || r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY
-        || r->headers_in.range == NULL
+        || r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)
+    {
+        return next_header_filter(r);
+    }
+
+    if (r->headers_in.range == NULL
         || r->headers_in.range->value.len < 7
         || ngx_strncasecmp(r->headers_in.range->value.data, "bytes=", 6) != 0)
     {
+        ngx_test_null(accept_ranges,
+                      ngx_push_table(r->headers_out.headers),
+                      NGX_ERROR);
+
+        accept_ranges->key.len = sizeof("Accept-Ranges") - 1;
+        accept_ranges->key.data = "Accept-Ranges";
+        accept_ranges->value.len = sizeof("bytes") - 1;
+        accept_ranges->value.data = "bytes";
+
         return next_header_filter(r);
     }
 

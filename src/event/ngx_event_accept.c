@@ -179,14 +179,12 @@ ngx_log_debug(ev->log, "ADDR %s" _ ls->listening->addr_text.data);
         c->ctx = ls->ctx;
         c->servers = ls->servers;
 
-#if 0
         c->log = ngx_palloc(c->pool, sizeof(ngx_log_t));
         if (c->log == NULL) {
             return;
         }
         ngx_memcpy(c->log, ev->log, sizeof(ngx_log_t));
-#endif
-        rev->log = wev->log = c->log = ev->log;
+        rev->log = wev->log = c->log;
 
         /* TODO: x86: MT: lock xadd, MP: lock xadd, shared */
         c->number = ngx_connection_counter++;

@@ -184,6 +184,8 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
+char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+                                                                   void *conf);
 
 extern ngx_module_t     *ngx_modules[];
 extern ngx_cycle_t      *ngx_cycle;

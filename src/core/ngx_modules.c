@@ -3,6 +3,7 @@
 #include <ngx_core.h>
 
 
+extern ngx_module_t  ngx_core_module;
 extern ngx_module_t  ngx_errlog_module;
 
 extern ngx_module_t  ngx_events_module;
@@ -46,6 +47,7 @@ ngx_module_t *ngx_modules[] = {
 
     /* core */
 
+    &ngx_core_module,
     &ngx_errlog_module,
 
     /* events */

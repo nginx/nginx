@@ -471,6 +471,13 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 }
 
 
+char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+                                  void *conf)
+{
+    return ngx_conf_set_flag_slot(cf, cmd, *(void **)conf);
+}
+
+
 char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;

@@ -9,9 +9,41 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log);
 static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
 
+
 #if (NGX_DEBUG) && (__FreeBSD__)
 extern char *malloc_options;
 #endif
+
+
+typedef struct {
+     int   daemon;
+} ngx_core_conf_t;
+
+
+static ngx_str_t  core_name = ngx_string("core");
+
+static ngx_command_t  ngx_core_commands[] = {
+
+    {ngx_string("daemon"),
+     NGX_MAIN_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_core_flag_slot,
+     0,
+     offsetof(ngx_core_conf_t, daemon),
+     NULL},
+
+    ngx_null_command
+};
+
+
+ngx_module_t  ngx_core_module = {
+    NGX_MODULE,
+    &core_name,                            /* module context */
+    ngx_core_commands,                     /* module directives */
+    NGX_CORE_MODULE,                       /* module type */
+    NULL,                                  /* init module */
+    NULL                                   /* init child */
+};
+
 
 int           ngx_max_module;
 ngx_os_io_t   ngx_io;
@@ -33,9 +65,10 @@ int rotate;
 
 int main(int argc, char *const *argv)
 {
-    int           i;
-    ngx_log_t    *log;
-    ngx_cycle_t  *cycle;
+    int               i;
+    ngx_log_t        *log;
+    ngx_cycle_t      *cycle;
+    ngx_core_conf_t  *ccf;
 
 #if (NGX_DEBUG) && (__FreeBSD__)
     malloc_options = "J";
@@ -63,14 +96,18 @@ int main(int argc, char *const *argv)
 
 #if !(WIN32)
 
-    if (0) {
-        if (ngx_daemon(cycle->log) == NGX_ERROR) {
+    ccf = (ngx_core_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                           ngx_core_module);
+
+    if (ccf->daemon != 0) {
+        if (ngx_daemon(ngx_cycle->log) == NGX_ERROR) {
             return 1;
         }
     }
 
-    if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "dup2(STDERR) failed");
+    if (dup2(ngx_cycle->log->file->fd, STDERR_FILENO) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, ngx_errno,
+                      "dup2(STDERR) failed");
         return 1;
     }
 
@@ -138,6 +175,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     ngx_conf_t        conf;
     ngx_pool_t       *pool;
     ngx_cycle_t      *cycle, **old;
+    ngx_core_conf_t  *ccf;
     ngx_open_file_t  *file;
     ngx_listening_t  *ls, *nls;
 
@@ -156,6 +194,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
     cycle->old_cycle = old_cycle;
 
+
     n = old_cycle ? old_cycle->open_files.nelts : 20;
     cycle->open_files.elts = ngx_pcalloc(pool, n * sizeof(ngx_open_file_t));
     if (cycle->open_files.elts == NULL) {
@@ -167,11 +206,13 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     cycle->open_files.nalloc = n;
     cycle->open_files.pool = pool;
 
+
     cycle->log = ngx_log_create_errlog(cycle, NULL);
     if (cycle->log == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
+
 
     n = old_cycle ? old_cycle->listening.nelts : 10;
     cycle->listening.elts = ngx_pcalloc(pool, n * sizeof(ngx_listening_t));
@@ -184,11 +225,22 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
     cycle->listening.nalloc = n;
     cycle->listening.pool = pool;
 
+
     cycle->conf_ctx = ngx_pcalloc(pool, ngx_max_module * sizeof(void *));
     if (cycle->conf_ctx == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
+
+
+    ccf = ngx_pcalloc(pool, sizeof(ngx_core_conf_t));
+    if (ccf == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+    ccf->daemon = -1;
+    ((void **)(cycle->conf_ctx))[ngx_core_module.index] = ccf;
+
 
     ngx_memzero(&conf, sizeof(ngx_conf_t));
     /* STUB: init array ? */
@@ -212,6 +264,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
         ngx_destroy_pool(pool);
         return NULL;
     }
+
 
     failed = 0;
 

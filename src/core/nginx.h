@@ -9,5 +9,8 @@
 extern int ngx_max_module;
 extern int ngx_connection_counter;
 
+extern ngx_module_t ngx_core_module;
+
+
 
 #endif /* _NGINX_H_INCLUDED_ */
