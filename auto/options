@@ -6,6 +6,7 @@ OBJS=objs
 
 TEST_BUILD_DEVPOLL=NO
 TEST_BUILD_EPOLL=NO
+TEST_BUILD_SIGIO=NO
 
 SELECT=YES
 POLL=YES
@@ -56,6 +57,7 @@ do
 
         --test-build-devpoll)            TEST_BUILD_DEVPOLL=YES     ;;
         --test-build-epoll)              TEST_BUILD_EPOLL=YES       ;;
+        --test-build-sigio)              TEST_BUILD_SIGIO=YES       ;;
 
         *)
             echo "$0: error: invalid option \"$option\""

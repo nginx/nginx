@@ -378,6 +378,12 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     delta = ngx_elapsed_msec;
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
+    if (err) {
+        ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
+                      log, err, "kevent() failed");
+        return NGX_ERROR;
+    }
+
     if (timer) {
         delta = ngx_elapsed_msec - delta;
 
@@ -390,12 +396,6 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
                           "kevent() returned no events without timeout");
             return NGX_ERROR;
         }
-    }
-
-    if (err) {
-        ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
-                      log, err, "kevent() failed");
-        return NGX_ERROR;
     }
 
     for (i = 0; i < events; i++) {
