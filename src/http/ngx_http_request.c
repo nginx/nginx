@@ -38,7 +38,8 @@ static char *client_header_errors[] = {
     "client %s sent invalid header, URL: %s",
     "client %s sent too long header line, URL: %s",
     "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s",
-    "client %s sent invalid \"Content-Length\" header, URL: %s"
+    "client %s sent invalid \"Content-Length\" header, URL: %s",
+    "client %s wanted to send too large body: " SIZE_T_FMT " bytes, URL: %s"
 };
 
 
@@ -847,6 +848,21 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
         if (r->headers_in.content_length_n == NGX_ERROR) {
             return NGX_HTTP_PARSE_INVALID_CL_HEADER;
         }
+
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http cl: " SIZE_T_FMT " max: " SIZE_T_FMT,
+                       r->headers_in.content_length_n,
+                       clcf->client_max_body_size);
+
+        if (clcf->client_max_body_size
+            && clcf->client_max_body_size
+                                     < (size_t) r->headers_in.content_length_n)
+        {
+            return NGX_HTTP_PARSE_ENTITY_TOO_LARGE;
+        }
+
     }
 
     if (r->headers_in.connection) {
@@ -884,8 +900,8 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
         return;
     }
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http finalize request");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http finalize request: %d", rc);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
 
@@ -1590,9 +1606,19 @@ static void ngx_http_client_error(ngx_http_request_t *r,
     r->connection->log->handler = NULL;
 
     if (ctx->url) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+        if (client_error == NGX_HTTP_PARSE_ENTITY_TOO_LARGE) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                    client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
+                    ctx->client, r->headers_in.content_length_n, ctx->url);
+
+            error = NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
+            r->lingering_close = 1;
+
+        } else {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                     client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
                     ctx->client, ctx->url);
+        }
 
     } else {
         if (error == NGX_HTTP_REQUEST_URI_TOO_LARGE) {

@@ -38,23 +38,25 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     ngx_msec_t         delay;
     ngx_core_conf_t   *ccf;
 
-    sigemptyset(&set);
-    sigaddset(&set, SIGCHLD);
-    sigaddset(&set, SIGALRM);
-    sigaddset(&set, SIGINT);
-    sigaddset(&set, ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
-    sigaddset(&set, ngx_signal_value(NGX_REOPEN_SIGNAL));
-    sigaddset(&set, ngx_signal_value(NGX_NOACCEPT_SIGNAL));
-    sigaddset(&set, ngx_signal_value(NGX_TERMINATE_SIGNAL));
-    sigaddset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
-    sigaddset(&set, ngx_signal_value(NGX_CHANGEBIN_SIGNAL));
+    if (ngx_process == NGX_PROCESS_MASTER) {
+        sigemptyset(&set);
+        sigaddset(&set, SIGCHLD);
+        sigaddset(&set, SIGALRM);
+        sigaddset(&set, SIGINT);
+        sigaddset(&set, ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
+        sigaddset(&set, ngx_signal_value(NGX_REOPEN_SIGNAL));
+        sigaddset(&set, ngx_signal_value(NGX_NOACCEPT_SIGNAL));
+        sigaddset(&set, ngx_signal_value(NGX_TERMINATE_SIGNAL));
+        sigaddset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+        sigaddset(&set, ngx_signal_value(NGX_CHANGEBIN_SIGNAL));
 
-    if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "sigprocmask() failed");
+        if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "sigprocmask() failed");
+        }
+
+        sigemptyset(&set);
     }
-
-    sigemptyset(&set);
 
     ngx_setproctitle("master process");
 

@@ -85,8 +85,8 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
             return NGX_DONE;
         }
 
-        if (rc == NGX_ERROR) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        if (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_ERROR) {
+            return rc;
         }
     }
 
@@ -1243,8 +1243,8 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
 #endif
 
         if (ep->upstream_done || ep->upstream_eof || ep->upstream_error) {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0,
-                           "http proxy upstream exit");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+                           "http proxy upstream exit: " PTR_FMT, ep->out);
             ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
             ngx_http_proxy_finalize_request(p, 0);
             return;

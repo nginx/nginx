@@ -121,6 +121,7 @@ typedef struct {
     ngx_array_t  *types;
     ngx_str_t     default_type;
 
+    size_t        client_max_body_size;    /* client_max_body_size */
     size_t        send_lowat;              /* send_lowat */
     size_t        discarded_buffer_size;   /* discarded_buffer_size */
 

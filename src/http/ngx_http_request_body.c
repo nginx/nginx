@@ -6,11 +6,13 @@
 
 
 static void ngx_http_read_client_request_body_handler(ngx_event_t *rev);
+static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
 
 
 ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
                                             size_t request_buffer_size)
 {
+    ngx_int_t     rc;
     ssize_t       size;
     ngx_hunk_t   *h;
     ngx_chain_t  *cl;
@@ -48,11 +50,6 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_test_null(r->request_body_hunk, ngx_create_temp_hunk(r->pool, size),
                   NGX_ERROR);
 
-    r->connection->read->event_handler =
-                                     ngx_http_read_client_request_body_handler;
-
-    ngx_http_read_client_request_body_handler(r->connection->read);
-
     ngx_alloc_link_and_set_hunk(cl, r->request_body_hunk, r->pool,
                                 NGX_ERROR);
 
@@ -63,25 +60,39 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
         r->request_hunks = cl;
     }
 
-    if (r->request_body_len) {
-        return NGX_AGAIN;
-    }
+    r->connection->read->event_handler =
+                                     ngx_http_read_client_request_body_handler;
 
-    return NGX_OK;
+    return ngx_http_do_read_client_request_body(r);
 }
 
 
 static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
 {
+    ngx_int_t            rc;
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
+
+    c = rev->data;
+    r = c->data;
+
+    rc = ngx_http_do_read_client_request_body(r);
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        ngx_http_finalize_request(r, rc);
+    }
+}
+
+
+static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
+{
     size_t                     size;
     ssize_t                    n;
     ngx_hunk_t                *h;
     ngx_connection_t          *c;
-    ngx_http_request_t        *r;
     ngx_http_core_loc_conf_t  *clcf;
 
-    c = rev->data;
-    r = c->data;
+    c = r->connection;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http read client request body");
@@ -95,8 +106,7 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
             /* TODO: n == 0 or not complete and level event */
 
             if (n == NGX_ERROR) {
-                ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                return;
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
             r->temp_file->offset += n;
@@ -113,15 +123,18 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
 
         n = ngx_recv(c, r->request_body_hunk->last, size);
 
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http client request body recv " SIZE_T_FMT, n);
+
         if (n == NGX_AGAIN) {
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_add_timer(rev, clcf->client_body_timeout);
+            ngx_add_timer(c->read, clcf->client_body_timeout);
 
-            if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
-                ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
-            return;
+            return NGX_AGAIN;
         }
 
         if (n == 0) {
@@ -130,8 +143,7 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
         }
 
         if (n == 0 || n == NGX_ERROR) {
-            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-            return;
+            return NGX_HTTP_BAD_REQUEST;
         }
 
         r->request_body_hunk->last += n;
@@ -142,8 +154,12 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
         }
     }
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http client request body left " SIZE_T_FMT,
+                   r->request_body_len);
+
     if (r->request_body_len) {
-        return;
+        return NGX_AGAIN;
     }
 
     if (r->temp_file->file.fd != NGX_INVALID_FILE) {
@@ -156,14 +172,12 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
         /* TODO: n == 0 or not complete and level event */
 
         if (n == NGX_ERROR) {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
         h = ngx_calloc_hunk(r->pool);
         if (h == NULL) {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
         h->type = NGX_HUNK_FILE;
@@ -180,4 +194,6 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
     }
 
     r->request_body_handler(r->data);
+
+    return NGX_OK;
 }

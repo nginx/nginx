@@ -204,8 +204,6 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     if (r->lingering_close == 1) {
         switch (error) {
             case NGX_HTTP_BAD_REQUEST:
-            case NGX_HTTP_REQUEST_URI_TOO_LARGE:
-            case NGX_HTTP_INTERNAL_SERVER_ERROR:
                 r->lingering_close = 0;
         }
     }

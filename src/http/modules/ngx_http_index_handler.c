@@ -21,7 +21,7 @@ typedef struct {
 } ngx_http_index_ctx_t;
 
 
-#define NGX_HTTP_DEFAULT_INDEX   (u_char *) "index.html"
+#define NGX_HTTP_DEFAULT_INDEX   "index.html"
 
 
 static ngx_int_t ngx_http_index_test_dir(ngx_http_request_t *r,
@@ -98,7 +98,6 @@ ngx_module_t  ngx_http_index_module = {
 int ngx_http_index_handler(ngx_http_request_t *r)
 {
     u_char                     *name;
-    size_t                      len;
     ngx_fd_t                    fd;
     ngx_int_t                   rc;
     ngx_str_t                  *index;
@@ -161,17 +160,37 @@ int ngx_http_index_handler(ngx_http_request_t *r)
 
 #endif
 
-        len = clcf->root.len + r->uri.len + ilcf->max_index_len;
-        if (!(ctx->path.data = ngx_palloc(r->pool, len))) {
+        ctx->path.data = ngx_palloc(r->pool, clcf->root.len + r->uri.len
+                                             + ilcf->max_index_len
+                                             - clcf->alias * clcf->name.len);
+        if (ctx->path.data == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
         ctx->redirect.data = ngx_cpymem(ctx->path.data, clcf->root.data,
                                         clcf->root.len);
-        ctx->last = ngx_cpystrn(ctx->redirect.data, r->uri.data,
-                                r->uri.len + 1);
-        ctx->path.len = ctx->last - ctx->path.data;
+
+        if (clcf->alias) {
+            ctx->last = ngx_cpystrn(ctx->redirect.data,
+                                    r->uri.data + clcf->name.len,
+                                    r->uri.len + 1 - clcf->name.len);
+
+            /*
+             * aliases usually have trailling "/",
+             * set it in the start of the possible redirect
+             */
+
+            if (*ctx->redirect.data != '/') {
+                ctx->redirect.data--; 
+            }
+
+        } else {
+            ctx->last = ngx_cpystrn(ctx->redirect.data, r->uri.data,
+                                    r->uri.len + 1);
+        }
     }
+
+    ctx->path.len = ctx->last - ctx->path.data;
 
     index = ilcf->indices.elts;
     for (/* void */; ctx->index < ilcf->indices.nelts; ctx->index++) {
@@ -398,7 +417,7 @@ static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
 
         ngx_test_null(index, ngx_push_array(&conf->indices), NGX_CONF_ERROR);
         index->len = sizeof(NGX_HTTP_DEFAULT_INDEX) - 1;
-        index->data = NGX_HTTP_DEFAULT_INDEX;
+        index->data = (u_char *) NGX_HTTP_DEFAULT_INDEX;
         conf->max_index_len = sizeof(NGX_HTTP_DEFAULT_INDEX);
 
         return NGX_CONF_OK;
