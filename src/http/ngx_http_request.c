@@ -391,7 +391,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
            /*
             * if the large client headers are enabled then
-            * we need to copy a request line
+            * we need to copy the request line
             */
 
             r->request_line.data = ngx_palloc(r->pool, r->request_line.len + 1);
@@ -493,8 +493,10 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         r->request_line.len = p - r->request_start;
         r->request_line.data = r->request_start;
 
-        ngx_http_client_error(r, rc, NGX_HTTP_BAD_REQUEST);
-
+        ngx_http_client_error(r, rc,
+                              (rc == NGX_HTTP_PARSE_INVALID_METHOD) ?
+                                     NGX_HTTP_NOT_IMPLEMENTED:
+                                     NGX_HTTP_BAD_REQUEST);
         return;
     }
 
@@ -1179,7 +1181,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
         /*
          * Pipelined request.
          *
-         * We do not know here whether a pipelined request is complete
+         * We do not know here whether the pipelined request is complete
          * so if the large client headers are not enabled
          * we need to copy the data to the start of c->buffer.
          * This copy should be rare because clients that support

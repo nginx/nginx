@@ -50,10 +50,10 @@
 #define NGX_HTTP_RANGE_NOT_SATISFIABLE     416
 
 /*
- * HTTP does not define a code for the case when a client closed a connection
- * while we are processing request so we introduce own code to log such
- * situation when client has closed a connection before we even try to
- * send HTTP header to it
+ * HTTP does not define the code for the case when a client closed
+ * the connection while we are processing its request so we introduce
+ * own code to log such situation when a client has closed the connection
+ * before we even try to send the HTTP header to it
  */
 #define NGX_HTTP_CLIENT_CLOSED_REQUEST     499
 
