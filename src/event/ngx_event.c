@@ -153,6 +153,8 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
         if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
             ev->event_handler = &ngx_event_acceptex;
 
+            /* LOOK: we call ngx_iocp_add_event() also
+               in ngx_event_post_acceptex() */
             if (ngx_iocp_add_event(ev) == NGX_ERROR) {
                 return NGX_ERROR;
             }

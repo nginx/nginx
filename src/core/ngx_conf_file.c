@@ -108,7 +108,13 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 #endif
 
                     if (!(cmd->type & NGX_CONF_ANY)
-                        && !(cmd->type & argument_number[cf->args->nelts - 1]))
+                        && ((cmd->type & NGX_CONF_FLAG && cf->args->nelts != 2)
+                            || (!(cmd->type & NGX_CONF_FLAG)
+                                && !(cmd->type
+                                      & argument_number[cf->args->nelts - 1])
+                               )
+                           )
+                       )
                     {
                         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                                       "invalid number arguments in "
@@ -143,7 +149,11 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
 
                     } else {
                         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                     "%s", rv);
+                                     "%s %s in %s:%d",
+                                     name->data, rv,
+                                     cf->conf_file->file.name.data,
+                                     cf->conf_file->line);
+
                         return NGX_CONF_ERROR;
                     }
                 }
@@ -383,6 +393,29 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 }
 
 
+char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+{
+    int         flag;
+    ngx_str_t  *value;
+
+    value = (ngx_str_t *) cf->args->elts;
+
+    if (ngx_strcasecmp(value[1].data, "on") == 0) {
+        flag = 1;
+
+    } else if (ngx_strcasecmp(value[1].data, "off") == 0) {
+        flag = 0;
+
+    } else {
+        return "must be \"on\" or \"off\"";
+    }
+
+    *(int *) (conf + cmd->offset) = flag;
+
+    return NGX_CONF_OK;
+}
+
+
 char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
     ngx_str_t  *field, *value;
@@ -427,7 +460,12 @@ char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
         return "value must be greater or equal to zero";
     }
 
-    *(int *) (conf + cmd->offset) = size;
+    *(int *) (conf + cmd->offset) = size * 1000;
 
     return NGX_CONF_OK;
+}
+
+char *ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+{
+    return "unsupported on this platform";
 }

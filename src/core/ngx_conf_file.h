@@ -18,6 +18,7 @@
 #define NGX_CONF_ARGS_NUMBER 0x00ffff
 #define NGX_CONF_ANY         0x010000
 #define NGX_CONF_BLOCK       0x020000
+#define NGX_CONF_FLAG        0x040000
 
 
 #define NGX_CONF_UNSET       -1
@@ -89,10 +90,13 @@ struct ngx_conf_s {
     }
 
 
+#define addressof(addr)  ((int) &addr)
+
 
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 
 
+char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);

@@ -10,6 +10,8 @@
 #include <ngx_alloc.h>
 #include <ngx_array.h>
 
+/* STUB */
+#define NGX_LOWAT   10000
 
 #define NGX_INVALID_INDEX  0x80000000
 
@@ -79,6 +81,10 @@ struct ngx_event_s {
 #if (HAVE_KQUEUE)
     unsigned         eof:1;
     int              error;
+#endif
+
+#if (HAVE_LOWAT_EVENT) /* kqueue's NOTE_LOWAT */
+    int              lowat;
 #endif
 
 
@@ -151,18 +157,23 @@ typedef struct {
 /* Event filter has kqueue features - eof flag, errno, available data, etc */
 #define NGX_HAVE_KQUEUE_EVENT   8
 
-/* Event filter notifies only changes (edgesi) but not initial level - epoll */
-#define NGX_HAVE_EDGE_EVENT     16
+/* Event filter supports low water mark - kqueue's NOTE_LOWAT,
+   early kqueue implementations have no NOTE_LOWAT so we need separate flag */
+#define NGX_HAVE_LOWAT_EVENT    16
+
+/* Event filter notifies only changes (edges) but not initial level - epoll */
+#define NGX_HAVE_EDGE_EVENT     32
 
 /* No need to add or delete event filters - rt signals */
-#define NGX_HAVE_SIGIO_EVENT    32
+#define NGX_HAVE_SIGIO_EVENT    64
 
 /* No need to add or delete event filters - overlapped, aio_read, aioread */
-#define NGX_HAVE_AIO_EVENT      64
+#define NGX_HAVE_AIO_EVENT      128
 
 /* Need to add socket or halde only once - i/o completion port.
    It also requires to set HAVE_AIO_EVENT and NGX_HAVE_AIO_EVENT */
-#define NGX_HAVE_IOCP_EVENT     128
+#define NGX_HAVE_IOCP_EVENT     256
+
 
 /* Event filter is deleted before closing file. Has no meaning
    for select, poll, epoll.

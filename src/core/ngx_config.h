@@ -189,6 +189,16 @@
 #include <sys/event.h>
 #endif
 
+/* kqueue's NOTE_LOWAT */
+#if (__FreeBSD__ == 4 && __FreeBSD_version >= 430000) \
+    || __FreeBSD_version >= 500018
+
+#ifndef HAVE_LOWAT_EVENT
+#define HAVE_LOWAT_EVENT  1
+#endif
+
+#endif
+
 #endif /* FreeBSD kqueue */
 
 

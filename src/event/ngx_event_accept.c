@@ -148,6 +148,16 @@ int ngx_event_accept(ngx_event_t *ev)
         }
 #endif
 
+#if (HAVE_EDGE_EVENT) /* epoll */
+
+        if (ngx_event_flags & NGX_HAVE_EDGE_EVENT) {
+            if (ngx_edge_add_event(ev) == NGX_ERROR) {
+                return NGX_OK;
+            }
+        }
+
+#endif
+
         ls->handler(c);
 
 #if (USE_KQUEUE)

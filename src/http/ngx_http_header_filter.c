@@ -163,10 +163,10 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         len += 46;
     }
 
-    if (r->keepalive) {
-        len += 24;
-    } else {
+    if (r->keepalive == 0) {
         len += 19;
+    } else {
+        len += 24;
     }
 
     header = (ngx_table_elt_t *) r->headers_out.headers->elts;
@@ -238,13 +238,13 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         *(h->last.mem++) = CR; *(h->last.mem++) = LF;
     }
 
-    if (r->keepalive) {
-        ngx_memcpy(h->last.mem, "Connection: keep-alive" CRLF, 24);
-        h->last.mem += 24;
-
-    } else {
+    if (r->keepalive == 0) {
         ngx_memcpy(h->last.mem, "Connection: close" CRLF, 19);
         h->last.mem += 19;
+
+    } else {
+        ngx_memcpy(h->last.mem, "Connection: keep-alive" CRLF, 24);
+        h->last.mem += 24;
     }
 
     for (i = 0; i < r->headers_out.headers->nelts; i++) {

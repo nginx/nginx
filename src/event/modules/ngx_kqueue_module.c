@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002 Igor Sysoev, http://sysoev.ru
+ * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru
  */
 
 
@@ -77,6 +77,9 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
 #if (HAVE_CLEAR_EVENT)
                      |NGX_HAVE_CLEAR_EVENT
 #endif
+#if (HAVE_LOWAT_EVENT)
+                     |NGX_HAVE_LOWAT_EVENT
+#endif
                      |NGX_HAVE_KQUEUE_EVENT;
 
     ngx_write_chain_proc = ngx_freebsd_write_chain;
@@ -86,6 +89,14 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
 #endif
 
     return NGX_OK;
+}
+
+
+void ngx_kqueue_done(ngx_log_t *log)
+{
+    if (close(kq) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "kqueue close() failed");
+    }
 }
 
 
@@ -173,9 +184,25 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
     change_list[nchanges].ident = c->fd;
     change_list[nchanges].filter = filter;
     change_list[nchanges].flags = flags;
+    change_list[nchanges].udata = ev;
+
+#if (HAVE_LOWAT_EVENT)
+
+    if ((flags & EV_ADD) && ev->lowat > 0) {
+        change_list[nchanges].fflags = NOTE_LOWAT;
+        change_list[nchanges].data = ev->lowat;
+
+    } else {
+        change_list[nchanges].fflags = 0;
+        change_list[nchanges].data = 0;
+    }
+
+#else
+
     change_list[nchanges].fflags = 0;
     change_list[nchanges].data = 0;
-    change_list[nchanges].udata = ev;
+
+#endif
 
     ev->index = nchanges;
 

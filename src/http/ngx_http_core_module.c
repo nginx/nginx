@@ -36,6 +36,42 @@ static ngx_command_t  ngx_http_core_commands[] = {
      0,
      0},
 
+    {ngx_string("post_accept_timeout"),
+     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_time_slot,
+     0,
+     addressof(ngx_http_post_accept_timeout)},
+
+    {ngx_string("connection_pool_size"),
+     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_size_slot,
+     0,
+     addressof(ngx_http_connection_pool_size)},
+
+    {ngx_string("request_pool_size"),
+     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_size_slot,
+     0,
+     addressof(ngx_http_request_pool_size)},
+
+    {ngx_string("client_header_timeout"),
+     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_time_slot,
+     0,
+     addressof(ngx_http_client_header_timeout)},
+
+    {ngx_string("client_header_buffer_size"),
+     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_size_slot,
+     0,
+     addressof(ngx_http_client_header_buffer_size)},
+
+    {ngx_string("large_client_header"),
+     NGX_HTTP_MAIN_CONF|NGX_CONF_FLAG,
+     ngx_conf_set_flag_slot,
+     0,
+     addressof(ngx_http_large_client_header)},
+
     {ngx_string("location"),
      NGX_HTTP_SRV_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE1,
      ngx_location_block,
@@ -468,6 +504,8 @@ int ngx_http_error(ngx_http_request_t *r, int error)
 
 int ngx_http_close_request(ngx_http_request_t *r)
 {
+    ngx_http_log_ctx_t  *ctx;
+
     ngx_log_debug(r->connection->log, "CLOSE#: %d" _ r->file.fd);
 
     ngx_http_log_handler(r);
@@ -487,9 +525,14 @@ int ngx_http_close_request(ngx_http_request_t *r)
         ngx_http_log_request(r);
 */
 
+    ctx = (ngx_http_log_ctx_t *) r->connection->log->data;
+
+    /* ctx->url was allocated from r->pool */
+    ctx->url = NULL;
+
     ngx_destroy_pool(r->pool);
 
-    ngx_log_debug(r->connection->log, "http close");
+    ngx_log_debug(r->connection->log, "http closed");
 
     if (r->connection->read->timer_set) {
         ngx_del_timer(r->connection->read);

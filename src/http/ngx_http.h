@@ -15,7 +15,9 @@
 /* STUB */
 #include <ngx_event_timer.h>
 
+#define NGX_HTTP_VERSION_9           9
 #define NGX_HTTP_VERSION_10       1000
+#define NGX_HTTP_VERSION_11       1001
 
 #define NGX_HTTP_GET   1
 #define NGX_HTTP_HEAD  2
@@ -31,6 +33,8 @@
 #define NGX_HTTP_PARSE_TOO_LONG_URI     12
 #define NGX_HTTP_PARSE_INVALID_HEAD     13
 #define NGX_HTTP_PARSE_INVALID_HEADER   14
+#define NGX_HTTP_PARSE_TOO_LONG_HEADER  15
+#define NGX_HTTP_PARSE_NO_HOST_HEADER   16
 
 
 #define NGX_HTTP_OK                     200
@@ -270,11 +274,13 @@ extern int  ngx_http_connection_pool_size;
 extern int  ngx_http_request_pool_size;
 extern int  ngx_http_client_header_timeout;
 extern int  ngx_http_client_header_buffer_size;
+extern int  ngx_http_large_client_header;
 extern int  ngx_http_discarded_buffer_size;
 
 extern int  ngx_http_lingering_timeout;
 extern int  ngx_http_lingering_time;
 
+extern int  ngx_http_url_in_error_log;
 
 extern ngx_array_t  ngx_http_index_handlers;
 

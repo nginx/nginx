@@ -18,11 +18,14 @@ int  ngx_http_max_module;
 
 ngx_array_t  ngx_http_servers;   /* array of ngx_http_core_srv_conf_t */ 
 
-int  ngx_http_post_accept_timeout = 10000;
+int  ngx_http_post_accept_timeout = 30000;
 int  ngx_http_connection_pool_size = 16384;
 int  ngx_http_request_pool_size = 16384;
-int  ngx_http_client_header_timeout = 20000;
+int  ngx_http_client_header_timeout = 60000;
 int  ngx_http_client_header_buffer_size = 1024;
+int  ngx_http_large_client_header = 1;
+
+int  ngx_http_url_in_error_log = 1;
 
 /* STUB: per location */
 int  ngx_http_lingering_timeout = 5000;
