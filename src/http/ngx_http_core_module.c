@@ -5,9 +5,16 @@
 #include <ngx_http.h>
 #include <nginx.h>
 
+/* STUB */
+#define NGX_HTTP_LOCATION_EXACT           1
+#define NGX_HTTP_LOCATION_AUTO_REDIRECT   2
+#define NGX_HTTP_LOCATION_REGEX           3
+
 
 static void ngx_http_phase_event_handler(ngx_event_t *rev);
 static void ngx_http_run_phases(ngx_http_request_t *r);
+static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
+                                        ngx_array_t *locations);
 
 static void *ngx_http_core_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf);
@@ -103,7 +110,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       &ngx_http_restrict_host_names },
 
     { ngx_string("location"),
-      NGX_HTTP_SRV_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE12,
+      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE12,
       ngx_location_block,
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
@@ -463,120 +470,24 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
 
 ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
 {
-    int                           rc;
-    ngx_uint_t                    i;
-    ngx_str_t                     *auto_redirect;
-    ngx_http_core_loc_conf_t      *clcf, **clcfp;
-    ngx_http_core_srv_conf_t      *cscf;
-#if (HAVE_PCRE)
-    ngx_uint_t                     exact;
-#endif
+    ngx_int_t                  rc;
+    ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_core_srv_conf_t  *cscf;
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-    auto_redirect = NULL;
-#if (HAVE_PCRE)
-    exact = 0;
-#endif
 
-    clcfp = cscf->locations.elts;
-    for (i = 0; i < cscf->locations.nelts; i++) {
+    rc = ngx_http_find_location(r, &cscf->locations);
 
-#if (HAVE_PCRE)
-
-        if (clcfp[i]->regex) {
-            break;
-        }
-#endif
-
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "find location: %s\"%s\"",
-                       clcfp[i]->exact_match ? "= " : "",
-                       clcfp[i]->name.data);
-
-        if (clcfp[i]->auto_redirect
-            && r->uri.len == clcfp[i]->name.len - 1
-            && ngx_strncmp(r->uri.data, clcfp[i]->name.data,
-                           clcfp[i]->name.len - 1) == 0)
-        {
-            auto_redirect = &clcfp[i]->name;
-            continue;
-        }
-
-        if (r->uri.len < clcfp[i]->name.len) {
-            continue;
-        }
-
-        rc = ngx_strncmp(r->uri.data, clcfp[i]->name.data, clcfp[i]->name.len);
-
-        if (rc < 0) {
-            /* locations are lexicographically sorted */
-            break;
-        }
-
-        if (rc == 0) {
-            r->loc_conf = clcfp[i]->loc_conf;
-            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            r->connection->log->file = clcf->err_log->file;
-            if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
-                r->connection->log->log_level = clcf->err_log->log_level;
-            }
-
-            if (clcfp[i]->exact_match && r->uri.len == clcfp[i]->name.len) {
-#if (HAVE_PCRE)
-                exact = 1;
-#endif
-                break;
-            }
-        }
+    if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
+        return rc;
     }
-
-#if (HAVE_PCRE)
-
-    if (!exact && !auto_redirect) {
-        /* regex matches */
-
-        for (/* void */; i < cscf->locations.nelts; i++) {
-
-            if (!clcfp[i]->regex) {
-                continue;
-            }
-
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "find location: %s\"%s\"",
-                           clcfp[i]->exact_match ? "= " :
-                                 clcfp[i]->regex ? "~ " : "",
-                           clcfp[i]->name.data);
-
-            rc = ngx_regex_exec(clcfp[i]->regex, &r->uri, NULL, 0);
-
-            if (rc == NGX_DECLINED) {
-                continue;
-            }
-
-            if (rc < 0) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                              ngx_regex_exec_n
-                              " failed: %d on \"%s\" using \"%s\"",
-                              rc, r->uri.data, clcfp[i]->name.data);
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
-            }
-
-            /* match */
-
-            r->loc_conf = clcfp[i]->loc_conf;
-            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            r->connection->log->file = clcf->err_log->file;
-            if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
-                r->connection->log->log_level = clcf->err_log->log_level;
-            }
-
-            break;
-        }
-    }
-
-#endif /* HAVE_PCRE */
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    r->connection->log->file = clcf->err_log->file;
+    if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
+        r->connection->log->log_level = clcf->err_log->log_level;
+    }
 
     if (!(ngx_io.flags & NGX_IO_SENDFILE) || !clcf->sendfile) {
         r->sendfile = 0;
@@ -609,14 +520,14 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
     }
 
 
-    if (auto_redirect) {
+    if (rc == NGX_HTTP_LOCATION_AUTO_REDIRECT) {
         if (!(r->headers_out.location =
                    ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
         {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        r->headers_out.location->value = *auto_redirect;
+        r->headers_out.location->value = clcf->name;
 
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
@@ -624,6 +535,125 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
     if (clcf->handler) {
         r->content_handler = clcf->handler;
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
+                                        ngx_array_t *locations)
+{
+    ngx_int_t                  n, rc;
+    ngx_uint_t                 i, found;
+    ngx_http_core_loc_conf_t  *clcf, **clcfp;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "find location");
+
+    found = 0;
+
+    clcfp = locations->elts;
+    for (i = 0; i < locations->nelts; i++) {
+
+#if (HAVE_PCRE)
+        if (clcfp[i]->regex) {
+            break;
+        }
+#endif
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "find location: %s\"%s\"",
+                       clcfp[i]->exact_match ? "= " : "",
+                       clcfp[i]->name.data);
+
+        if (clcfp[i]->auto_redirect
+            && r->uri.len == clcfp[i]->name.len - 1
+            && ngx_strncmp(r->uri.data, clcfp[i]->name.data,
+                                                  clcfp[i]->name.len - 1) == 0)
+        {
+            /* the locations are lexicographically sorted */
+
+            r->loc_conf = clcfp[i]->loc_conf;
+
+            return NGX_HTTP_LOCATION_AUTO_REDIRECT;
+        }
+
+        if (r->uri.len < clcfp[i]->name.len) {
+            continue;
+        }
+
+        n = ngx_strncmp(r->uri.data, clcfp[i]->name.data, clcfp[i]->name.len);
+
+        if (n < 0) {
+            /* the locations are lexicographically sorted */
+            break;
+        }
+
+        if (n == 0) {
+            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+            if (clcf->name.len >= clcfp[i]->name.len) {
+                /* the previous match is longer */
+                break;
+            }
+
+            r->loc_conf = clcfp[i]->loc_conf;
+
+            if (clcfp[i]->exact_match && r->uri.len == clcfp[i]->name.len) {
+                return NGX_HTTP_LOCATION_EXACT;
+            }
+
+            found = 1;
+        }
+    }
+
+    if (found) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        if (clcf->locations.nelts) {
+            rc = ngx_http_find_location(r, &clcf->locations);
+
+            if (rc != NGX_OK) {
+                return rc;
+            }
+        }
+    }
+
+#if (HAVE_PCRE)
+
+    /* regex matches */
+
+    for (/* void */; i < locations->nelts; i++) {
+
+        if (!clcfp[i]->regex) {
+            continue;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "find location: ~ \"%s\"",
+                       clcfp[i]->name.data);
+
+        n = ngx_regex_exec(clcfp[i]->regex, &r->uri, NULL, 0);
+
+        if (n == NGX_DECLINED) {
+            continue;
+        }
+
+        if (n < 0) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          ngx_regex_exec_n
+                          " failed: %d on \"%s\" using \"%s\"",
+                          n, r->uri.data, clcfp[i]->name.data);
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        /* match */
+
+        r->loc_conf = clcfp[i]->loc_conf;
+
+        return NGX_HTTP_LOCATION_REGEX;
+    }
+
+#endif /* HAVE_PCRE */
 
     return NGX_OK;
 }
@@ -799,7 +829,7 @@ ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
 }
 
 
-#if 1       /* STUB: test the delay http handler */
+#if 0       /* STUB: test the delay http handler */
 
 int ngx_http_delay_handler(ngx_http_request_t *r)
 {
@@ -863,7 +893,7 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     char                        *rv;
     ngx_http_module_t           *module;
     ngx_conf_t                   pvcf;
-    ngx_http_conf_ctx_t         *ctx, *hctx;
+    ngx_http_conf_ctx_t         *ctx, *http_ctx;
     ngx_http_core_main_conf_t   *cmcf;
     ngx_http_core_srv_conf_t    *cscf, **cscfp;
 
@@ -871,8 +901,8 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
                   NGX_CONF_ERROR);
 
-    hctx = (ngx_http_conf_ctx_t *) cf->ctx;
-    ctx->main_conf = hctx->main_conf;
+    http_ctx = cf->ctx;
+    ctx->main_conf = http_ctx->main_conf;
 
     /* the server{}'s srv_conf */
 
@@ -928,7 +958,7 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     }
 
     ngx_qsort(cscf->locations.elts, (size_t) cscf->locations.nelts,
-              sizeof(void *), ngx_cmp_locations);
+              sizeof(ngx_http_core_loc_conf_t *), ngx_cmp_locations);
 
     return rv;
 }
@@ -936,20 +966,21 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
 static int ngx_cmp_locations(const void *one, const void *two)
 {
-    ngx_http_core_loc_conf_t *first = *(ngx_http_core_loc_conf_t **) one;
-    ngx_http_core_loc_conf_t *second = *(ngx_http_core_loc_conf_t **) two;
+    ngx_int_t                  rc;
+    ngx_http_core_loc_conf_t  *first, *second;
 
-    ngx_int_t  rc;
+    first = *(ngx_http_core_loc_conf_t **) one;
+    second = *(ngx_http_core_loc_conf_t **) two;
 
 #if (HAVE_PCRE)
 
     if (first->regex && !second->regex) {
-        /* shift regex matches to the end */
+        /* shift the regex matches to the end */
         return 1;
     }
 
     if (first->regex || second->regex) {
-        /* do not sort regex matches */
+        /* do not sort the regex matches */
         return 0;
     }
 
@@ -971,11 +1002,11 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     char                      *rv;
     ngx_int_t                  m;
     ngx_str_t                 *value;
+    ngx_conf_t                 pcf;
     ngx_http_module_t         *module;
-    ngx_conf_t                 pvcf;
-    ngx_http_conf_ctx_t       *ctx, *pvctx;
+    ngx_http_conf_ctx_t       *ctx, *pctx;
     ngx_http_core_srv_conf_t  *cscf;
-    ngx_http_core_loc_conf_t  *clcf, **clcfp;
+    ngx_http_core_loc_conf_t  *clcf, *pclcf, **clcfp;
 #if (HAVE_PCRE)
     ngx_str_t                  err;
     u_char                     errstr[NGX_MAX_CONF_ERRSTR];
@@ -985,9 +1016,9 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return NGX_CONF_ERROR;
     }
 
-    pvctx = (ngx_http_conf_ctx_t *) cf->ctx;
-    ctx->main_conf = pvctx->main_conf;
-    ctx->srv_conf = pvctx->srv_conf;
+    pctx = cf->ctx;
+    ctx->main_conf = pctx->main_conf;
+    ctx->srv_conf = pctx->srv_conf;
 
     ctx->loc_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
     if (ctx->loc_conf == NULL) {
@@ -1060,17 +1091,52 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         clcf->name.data = value[1].data;
     }
 
-    cscf = ctx->srv_conf[ngx_http_core_module.ctx_index];
-    if (!(clcfp = ngx_push_array(&cscf->locations))) {
-        return NGX_CONF_ERROR;
+    pclcf = pctx->loc_conf[ngx_http_core_module.ctx_index];
+
+    if (pclcf->name.len == 0) {
+        cscf = ctx->srv_conf[ngx_http_core_module.ctx_index];
+        if (!(clcfp = ngx_push_array(&cscf->locations))) {
+            return NGX_CONF_ERROR;
+        }
+
+    } else {
+        clcf->prev_location = pclcf;
+
+        if (pclcf->exact_match) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "location \"%s\" could not be inside "
+                               "the exact location \"%s\"",
+                               clcf->name.data, pclcf->name.data);
+            return NGX_CONF_ERROR;
+        }
+
+        if (clcf->regex == NULL
+            && ngx_strncmp(clcf->name.data, pclcf->name.data, pclcf->name.len)
+                                                                         != 0)
+        {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "location \"%s\" is outside location \"%s\"",
+                               clcf->name.data, pclcf->name.data);
+            return NGX_CONF_ERROR;
+        }
+
+        if (pclcf->locations.elts == NULL) {
+            ngx_init_array(pclcf->locations, cf->pool, 5, sizeof(void *),
+                           NGX_CONF_ERROR);
+        }
+
+        if (!(clcfp = ngx_push_array(&pclcf->locations))) {
+            return NGX_CONF_ERROR;
+        }
     }
+
     *clcfp = clcf;
 
-    pvcf = *cf;
+    pcf = *cf;
     cf->ctx = ctx;
     cf->cmd_type = NGX_HTTP_LOC_CONF;
     rv = ngx_conf_parse(cf, NULL);
-    *cf = pvcf;
+    *cf = pcf;
 
     return rv;
 }
@@ -1220,9 +1286,12 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
         n->name.len = ngx_strlen(n->name.data);
         n->core_srv_conf = conf;
 
+#if 0
         ctx = (ngx_http_conf_ctx_t *)
                                     cf->cycle->conf_ctx[ngx_http_module.index];
         cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+#endif
+        cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
         if (cmcf->max_server_name_len < n->name.len) {
             cmcf->max_server_name_len = n->name.len;
@@ -1478,8 +1547,11 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     /* TODO: several names */
     /* TODO: warn about duplicate 'server_name' directives */
 
+#if 0
     ctx = (ngx_http_conf_ctx_t *) cf->cycle->conf_ctx[ngx_http_module.index];
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+#endif
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
     value = cf->args->elts;
 

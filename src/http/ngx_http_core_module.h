@@ -124,9 +124,24 @@ typedef struct {
 } ngx_http_err_page_t;
 
 
-typedef struct {
+typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
+
+struct ngx_http_core_loc_conf_s {
     ngx_str_t     name;          /* location name */
-    void        **loc_conf ;     /* pointer to the modules' loc_conf */
+
+#if (HAVE_PCRE)
+    ngx_regex_t  *regex;
+#endif
+
+    unsigned      exact_match:1;
+    unsigned      auto_redirect:1;
+    unsigned      alias:1;
+
+    /* array of inclusive ngx_http_core_loc_conf_t */
+    ngx_array_t   locations;
+
+    /* pointer to the modules' loc_conf */
+    void        **loc_conf ;
 
     ngx_http_handler_pt  handler;
 
@@ -157,16 +172,10 @@ typedef struct {
 
     ngx_http_cache_hash_t  *open_files;
 
-#if (HAVE_PCRE)
-    ngx_regex_t  *regex;
-#endif
-
-    unsigned      exact_match:1;
-    unsigned      auto_redirect:1;
-    unsigned      alias:1;
-
     ngx_log_t    *err_log;
-} ngx_http_core_loc_conf_t;
+
+    ngx_http_core_loc_conf_t  *prev_location;
+};
 
 
 extern ngx_http_module_t  ngx_http_core_module_ctx;

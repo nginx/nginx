@@ -105,7 +105,8 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
         return NGX_CONF_ERROR;
     }
 
-    if (SSL_CTX_use_certificate_file(conf->ssl_ctx, conf->certificate.data,
+    if (SSL_CTX_use_certificate_file(conf->ssl_ctx,
+                                     (char *) conf->certificate.data,
                                      SSL_FILETYPE_PEM) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
                       "SSL_CTX_use_certificate_file(\"%s\") failed",
@@ -113,7 +114,8 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
         return NGX_CONF_ERROR;
     }
 
-    if (SSL_CTX_use_PrivateKey_file(conf->ssl_ctx, conf->certificate_key.data,
+    if (SSL_CTX_use_PrivateKey_file(conf->ssl_ctx,
+                                    (char *) conf->certificate_key.data,
                                     SSL_FILETYPE_PEM) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
                       "SSL_CTX_use_PrivateKey_file(\"%s\") failed",

@@ -1062,7 +1062,6 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     in_addr_t                  addr;
     ngx_str_t                 *value;
     struct hostent            *h;
-    ngx_http_conf_ctx_t       *ctx;
     ngx_http_core_loc_conf_t  *clcf;
 
 
@@ -1177,10 +1176,11 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
                     lcf->upstream->port_text.len + 1);
     }
 
-    ctx = cf->ctx;
-    clcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+
     lcf->upstream->location = &clcf->name;
     clcf->handler = ngx_http_proxy_handler;
+
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;
     }

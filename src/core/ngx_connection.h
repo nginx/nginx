@@ -68,56 +68,64 @@ typedef enum {
 
 
 struct ngx_connection_s {
-    void             *data;
-    ngx_event_t      *read;
-    ngx_event_t      *write;
+    void               *data;
+    ngx_event_t        *read;
+    ngx_event_t        *write;
 
-    ngx_socket_t      fd;
+    ngx_socket_t        fd;
 
-    ngx_listening_t  *listening;
+    ngx_recv_pt         recv;
+    ngx_send_chain_pt   send_chain;
 
-    off_t             sent;
+    ngx_listening_t    *listening;
 
-    void             *ctx;
-    void             *servers;
+    off_t               sent;
+
+    void               *ctx;
+    void               *servers;
 
 
-    ngx_log_t        *log;
+    ngx_log_t          *log;
 
-    ngx_pool_t       *pool;
+    ngx_pool_t         *pool;
 
-    struct sockaddr  *sockaddr;
-    socklen_t         socklen;
-    ngx_str_t         addr_text;
+    struct sockaddr    *sockaddr;
+    socklen_t           socklen;
+    ngx_str_t           addr_text;
 
 #if (NGX_OPENSSL)
-    ngx_ssl_t        *ssl;
+    ngx_ssl_t          *ssl;
 #endif
 
 #if (HAVE_IOCP)
-    struct sockaddr  *local_sockaddr;
-    socklen_t         local_socklen;
+    struct sockaddr    *local_sockaddr;
+    socklen_t           local_socklen;
 #endif
 
-    ngx_buf_t        *buffer;
+    ngx_buf_t          *buffer;
 
-    ngx_uint_t        number;
+    ngx_uint_t          number;
 
-    unsigned          log_error:2;  /* ngx_connection_log_error_e */
+    unsigned            log_error:2;  /* ngx_connection_log_error_e */
 
-    unsigned          single_connection:1;
-    unsigned          pipeline:1;
-    unsigned          unexpected_eof:1;
-    unsigned          timedout:1;
-    signed            tcp_nopush:2;
+    unsigned            single_connection:1;
+    unsigned            pipeline:1;
+    unsigned            unexpected_eof:1;
+    unsigned            timedout:1;
+    signed              tcp_nopush:2;
 #if (HAVE_IOCP)
-    unsigned          accept_context_updated:1;
+    unsigned            accept_context_updated:1;
 #endif
 
 #if (NGX_THREADS)
-    ngx_atomic_t      lock;
+    ngx_atomic_t        lock;
 #endif
 };
+
+
+#ifndef ngx_ssl_set_nosendshut
+#define ngx_ssl_set_nosendshut(ssl)
+#endif
 
 
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);

@@ -258,6 +258,9 @@ void ngx_event_accept(ngx_event_t *ev)
         c->ctx = ls->ctx;
         c->servers = ls->servers;
 
+        c->recv = ngx_recv;
+        c->send_chain = ngx_send_chain;
+
         c->log = log;
         rev->log = log;
         wev->log = log;

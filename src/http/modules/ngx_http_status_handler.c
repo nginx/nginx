@@ -299,11 +299,9 @@ static ngx_int_t ngx_http_status(ngx_http_status_ctx_t *ctx)
 
 static char *ngx_http_set_status(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_conf_ctx_t       *ctx;
     ngx_http_core_loc_conf_t  *clcf;
 
-    ctx = cf->ctx;
-    clcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_status_handler;
 
     return NGX_CONF_OK;

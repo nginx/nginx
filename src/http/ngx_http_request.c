@@ -7,7 +7,7 @@
 
 static void ngx_http_init_request(ngx_event_t *ev);
 #if (NGX_HTTP_SSL)
-static void ngx_http_check_ssl_handshake(ngx_event_t *rev);
+static void ngx_http_ssl_handshake(ngx_event_t *rev);
 #endif
 static void ngx_http_process_request_line(ngx_event_t *rev);
 static void ngx_http_process_request_headers(ngx_event_t *rev);
@@ -238,22 +238,32 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
     rev->event_handler = ngx_http_process_request_line;
 
-    r->recv = ngx_recv;
-    r->send_chain = ngx_send_chain;
-
 #if (NGX_HTTP_SSL)
 
     sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
     if (sscf->enable) {
-        if (ngx_ssl_create_session(sscf->ssl_ctx, c, NGX_SSL_BUFFER)
+
+        if (c->ssl == NULL) {
+            if (ngx_ssl_create_session(sscf->ssl_ctx, c, NGX_SSL_BUFFER)
                                                                   == NGX_ERROR)
-        {
-            ngx_http_close_connection(c);
-            return;
+            {
+                ngx_http_close_connection(c);
+                return;
+            }
+
+            /*
+             * The majority of browsers do not send the "close notify" alert.
+             * Among them are MSIE, Mozilla, Netscape 4, Konqueror, and Links.
+             * And what is more MSIE ignores the server's alert.
+             *
+             * Opera always sends the alert.
+             */
+
+            c->ssl->no_rcv_shut = 1;
+            rev->event_handler = ngx_http_ssl_handshake;
         }
 
         r->filter_need_in_memory = 1;
-        rev->event_handler = ngx_http_check_ssl_handshake;
     }
 
 #endif
@@ -339,9 +349,10 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
 #if (NGX_HTTP_SSL)
 
-static void ngx_http_check_ssl_handshake(ngx_event_t *rev)
+static void ngx_http_ssl_handshake(ngx_event_t *rev)
 {
     int                  n;
+    ngx_int_t            rc;
     u_char               buf[1];
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
@@ -368,8 +379,20 @@ static void ngx_http_check_ssl_handshake(ngx_event_t *rev)
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                            "https ssl handshake: 0x%X", buf[0]);
 
-            r->recv = ngx_ssl_recv;
-            r->send_chain = ngx_ssl_send_chain;
+            c->recv = ngx_ssl_recv;
+            c->send_chain = ngx_ssl_send_chain;
+
+            rc = ngx_ssl_handshake(c);
+
+            if (rc == NGX_ERROR) {
+                ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
+                ngx_http_close_connection(r->connection);
+                return;
+            }
+
+            if (rc != NGX_OK) {
+                return;
+            }
 
         } else {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
@@ -892,8 +915,8 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
         return NGX_AGAIN;
     }
 
-    n = r->recv(r->connection, r->header_in->last,
-                r->header_in->end - r->header_in->last);
+    n = r->connection->recv(r->connection, r->header_in->last,
+                            r->header_in->end - r->header_in->last);
 
     if (n == NGX_AGAIN) {
         if (!r->header_timeout_set) {
@@ -963,7 +986,10 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 
                 clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
                 r->connection->log->file = clcf->err_log->file;
-                r->connection->log->log_level = clcf->err_log->log_level;
+                if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION))
+                {
+                    r->connection->log->log_level = clcf->err_log->log_level;
+                }
 
                 break;
             }
@@ -1040,6 +1066,12 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
             if (ua[4] == ' ' && ua[5] == '4' && ua[6] == '.') {
                 r->headers_in.msie4 = 1;
             }
+
+#if 0
+            /* MSIE ignores the SSL "close notify" alert */
+
+            ngx_ssl_set_nosendshut(r->connection->ssl);
+#endif
         }
     }
 
@@ -1355,7 +1387,8 @@ static ngx_int_t ngx_http_read_discarded_body(ngx_http_request_t *r)
         size = (ssize_t) clcf->discarded_buffer_size;
     }
 
-    n = ngx_recv(r->connection, r->discarded_buffer, size);
+    n = r->connection->recv(r->connection, r->discarded_buffer, size);
+
     if (n == NGX_ERROR) {
 
         r->closed = 1;
@@ -1502,7 +1535,8 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
 
     c->log_error = NGX_ERROR_IGNORE_ECONNRESET;
     ngx_set_socket_errno(0);
-    n = ngx_recv(c, c->buffer->last, c->buffer->end - c->buffer->last);
+
+    n = c->recv(c, c->buffer->last, c->buffer->end - c->buffer->last);
     c->log_error = NGX_ERROR_INFO;
 
     if (n == NGX_AGAIN) {
@@ -1533,7 +1567,7 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
 
 
 static void ngx_http_set_lingering_close(ngx_http_request_t *r)
-{
+{   
     ngx_event_t               *rev, *wev;
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
@@ -1640,7 +1674,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
     }
 
     do {
-        n = ngx_recv(c, r->discarded_buffer, clcf->discarded_buffer_size);
+        n = c->recv(c, r->discarded_buffer, clcf->discarded_buffer_size);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "lingering read: %d", n);
 

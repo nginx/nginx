@@ -218,9 +218,6 @@ struct ngx_http_request_s {
 
     ngx_connection_t         *connection;
 
-    ngx_recv_pt               recv;
-    ngx_send_chain_pt         send_chain;
-
     void                    **ctx;
     void                    **main_conf;
     void                    **srv_conf;

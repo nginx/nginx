@@ -363,7 +363,6 @@ static char *ngx_http_set_charset_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_int_t                     *cp;
     ngx_str_t                     *value;
     ngx_http_charset_t            *charset;
-    ngx_http_conf_ctx_t           *ctx;
     ngx_http_charset_main_conf_t  *mcf;
 
     cp = (ngx_int_t *) (p + cmd->offset);
@@ -372,8 +371,9 @@ static char *ngx_http_set_charset_slot(ngx_conf_t *cf, ngx_command_t *cmd,
         return "is duplicate";
     }
 
-    ctx = cf->ctx;
-    mcf = ctx->main_conf[ngx_http_charset_filter_module.ctx_index];
+    mcf = ngx_http_conf_get_module_main_conf(cf,
+                                             ngx_http_charset_filter_module);
+
     value = cf->args->elts;
 
     *cp = ngx_http_add_charset(&mcf->charsets, &value[1]);

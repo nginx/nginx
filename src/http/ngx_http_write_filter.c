@@ -45,6 +45,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     int                           last;
     off_t                         size, flush, sent;
     ngx_chain_t                  *cl, *ln, **ll, *chain;
+    ngx_connection_t             *c;
     ngx_http_core_loc_conf_t     *clcf;
     ngx_http_write_filter_ctx_t  *ctx;
 
@@ -95,7 +96,9 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    c = r->connection;
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http write filter: l:%d f:" OFF_T_FMT " s:" OFF_T_FMT,
                    last, flush, size);
 
@@ -112,7 +115,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_OK;
     }
 
-    if (r->connection->write->delayed) {
+    if (c->write->delayed) {
         return NGX_AGAIN;
     }
 
@@ -124,17 +127,17 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_OK;
     }
 
-    sent = r->connection->sent;
+    sent = c->sent;
 
-    chain = r->send_chain(r->connection, ctx->out,
+    chain = c->send_chain(c, ctx->out,
                           clcf->limit_rate ? clcf->limit_rate: OFF_T_MAX_VALUE);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http write filter %X", chain);
 
     if (clcf->limit_rate) {
-        sent = r->connection->sent - sent;
-        r->connection->write->delayed = 1;
+        sent = c->sent - sent;
+        c->write->delayed = 1;
         ngx_add_timer(r->connection->write,
                       (ngx_msec_t) (sent * 1000 / clcf->limit_rate));
     }

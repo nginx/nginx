@@ -98,6 +98,7 @@ ngx_module_t  ngx_http_index_module = {
 ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
 {
     u_char                     *name;
+    size_t                      len;
     ngx_fd_t                    fd;
     ngx_int_t                   rc;
     ngx_str_t                  *index;
@@ -160,6 +161,7 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
 
 #endif
 
+#if 0
         ctx->path.data = ngx_palloc(r->pool, clcf->root.len + r->uri.len
                                              + ilcf->max_index_len
                                              - clcf->alias * clcf->name.len);
@@ -169,9 +171,35 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
 
         ctx->redirect.data = ngx_cpymem(ctx->path.data, clcf->root.data,
                                         clcf->root.len);
+#endif
 
         if (clcf->alias) {
-            ctx->last = ngx_cpystrn(ctx->redirect.data,
+            if (clcf->root.len > clcf->name.len) {
+                ctx->path.data = ngx_palloc(r->pool, clcf->root.len
+                                                     + r->uri.len
+                                                     - clcf->name.len
+                                                     + ilcf->max_index_len);
+                if (ctx->path.data == NULL) {
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+
+                ctx->redirect.data = ctx->path.data + clcf->root.len + 1
+                                                              - clcf->name.len;
+
+            } else {
+                ctx->redirect.data = ngx_palloc(r->pool, r->uri.len
+                                                         + ilcf->max_index_len);
+                if (ctx->redirect.data == NULL) {
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+
+                ctx->path.data = ctx->redirect.data + clcf->name.len
+                                                              - clcf->root.len;
+            }
+
+            ngx_memcpy(ctx->path.data, clcf->root.data, clcf->root.len);
+
+            ctx->last = ngx_cpystrn(ctx->path.data + clcf->root.len,
                                     r->uri.data + clcf->name.len,
                                     r->uri.len + 1 - clcf->name.len);
 
@@ -185,6 +213,15 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
             }
 
         } else {
+            ctx->path.data = ngx_palloc(r->pool, clcf->root.len + r->uri.len
+                                                 + ilcf->max_index_len);
+            if (ctx->path.data == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            ctx->redirect.data = ngx_cpymem(ctx->path.data, clcf->root.data,
+                                            clcf->root.len);
+
             ctx->last = ngx_cpystrn(ctx->redirect.data, r->uri.data,
                                     r->uri.len + 1);
         }
@@ -255,8 +292,14 @@ ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
             ctx->redirect.data = index[ctx->index].data;
 
         } else {
-            ctx->redirect.len = r->uri.len + index[ctx->index].len;
+            if (clcf->alias) {
+                ngx_memcpy(ctx->redirect.data, clcf->name.data, clcf->name.len);
+            }
+
+            ctx->redirect.len = r->uri.len + index[ctx->index].len
+                                                - clcf->alias * clcf->name.len;
             r->file.name.len = clcf->root.len + r->uri.len
+                                                - clcf->alias * clcf->name.len
                                                        + index[ctx->index].len;
         }
 
@@ -364,11 +407,9 @@ static ngx_int_t ngx_http_index_error(ngx_http_request_t *r,
 static ngx_int_t ngx_http_index_init(ngx_cycle_t *cycle)
 {
     ngx_http_handler_pt        *h;
-    ngx_http_conf_ctx_t        *ctx;
     ngx_http_core_main_conf_t  *cmcf;
 
-    ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
-    cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
 
     h = ngx_push_array(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
     if (h == NULL) {

@@ -140,7 +140,7 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
             size = r->request_body->rest;
         }
 
-        n = ngx_recv(c, r->request_body->buf->last, size);
+        n = c->recv(c, r->request_body->buf->last, size);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http client request body recv " SIZE_T_FMT, n);

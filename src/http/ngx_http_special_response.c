@@ -104,9 +104,11 @@ static char error_416_page[] =
 
 static char error_497_page[] =
 "<html>" CRLF
-"<head><title>The plain HTTP request was sent to HTTPS port</title></head>" CRLF
+"<head><title>400 The plain HTTP request was sent to HTTPS port</title></head>"
+CRLF
 "<body bgcolor=\"white\">" CRLF
-"<center><h1>The plain HTTP request was sent to HTTPS por</h1></center>" CRLF
+"<center><h1>400 Bad Request</h1></center>" CRLF
+"<center>The plain HTTP request was sent to HTTPS port</center>" CRLF
 ;
 
 
@@ -174,7 +176,7 @@ static ngx_str_t error_pages[] = {
     ngx_null_string,             /* 415 */
     ngx_string(error_416_page),
 
-    ngx_string(error_400_page),  /* 497, http to https */
+    ngx_string(error_497_page),  /* 497, http to https */
     ngx_string(error_404_page),  /* 498, invalid host name */
     ngx_null_string,             /* 499, client closed connection */
 

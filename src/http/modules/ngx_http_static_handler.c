@@ -537,11 +537,9 @@ static char *ngx_http_static_merge_loc_conf(ngx_conf_t *cf,
 static ngx_int_t ngx_http_static_init(ngx_cycle_t *cycle)
 {
     ngx_http_handler_pt        *h;
-    ngx_http_conf_ctx_t        *ctx;
     ngx_http_core_main_conf_t  *cmcf;
-    
-    ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
-    cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+
+    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
     
     h = ngx_push_array(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
     if (h == NULL) {

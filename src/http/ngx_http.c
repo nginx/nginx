@@ -6,7 +6,11 @@
 
 
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-
+static char *ngx_http_merge_locations(ngx_conf_t *cf,
+                                      ngx_array_t *locations,
+                                      void **loc_conf,
+                                      ngx_http_module_t *module,
+                                      ngx_uint_t ctx_index);
 
 int         ngx_http_max_module;
 
@@ -204,7 +208,16 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 /* merge the locations{}' loc_conf's */
 
-                clcfp = (ngx_http_core_loc_conf_t **)cscfp[s]->locations.elts;
+                rv = ngx_http_merge_locations(cf, &cscfp[s]->locations,
+                                              cscfp[s]->ctx->loc_conf,
+                                              module, mi);
+                if (rv != NGX_CONF_OK) {
+                    *cf = pcf;
+                    return rv;
+                }
+
+#if 0
+                clcfp = (ngx_http_core_loc_conf_t **) cscfp[s]->locations.elts;
 
                 for (l = 0; l < cscfp[s]->locations.nelts; l++) {
                     rv = module->merge_loc_conf(cf,
@@ -215,6 +228,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                         return rv;
                     }
                 }
+#endif
             }
         }
     }
@@ -620,6 +634,36 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 #endif
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_http_merge_locations(ngx_conf_t *cf,
+                                      ngx_array_t *locations,
+                                      void **loc_conf,
+                                      ngx_http_module_t *module,
+                                      ngx_uint_t ctx_index)
+{
+    char                       *rv;
+    ngx_uint_t                  i;
+    ngx_http_core_loc_conf_t  **clcfp;
+
+    clcfp = /* (ngx_http_core_loc_conf_t **) */ locations->elts;
+
+    for (i = 0; i < locations->nelts; i++) {
+        rv = module->merge_loc_conf(cf, loc_conf[ctx_index],
+                                    clcfp[i]->loc_conf[ctx_index]);
+        if (rv != NGX_CONF_OK) {
+            return rv;
+        }
+
+        rv = ngx_http_merge_locations(cf, &clcfp[i]->locations,
+                                      clcfp[i]->loc_conf, module, ctx_index);
+        if (rv != NGX_CONF_OK) {
+            return rv;
+        }
+    }
 
     return NGX_CONF_OK;
 }
