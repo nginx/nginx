@@ -4,6 +4,8 @@ help=no
 CC=gcc
 OBJS=objs
 
+CPU_OPT=NO
+
 TEST_BUILD_DEVPOLL=NO
 TEST_BUILD_EPOLL=NO
 TEST_BUILD_RTSIG=NO
@@ -62,11 +64,13 @@ do
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
 
         --with-cc=*)                     CC="$value"                ;;
+        --with-cpu=*)                    CPU_OPT="$value"           ;;
 
         --without-pcre)                  USE_PCRE=DISABLED          ;;
         --with-pcre=*)                   PCRE="$value"              ;;
         --with-md5=*)                    MD5="$value"               ;;
         --with-zlib=*)                   ZLIB="$value"              ;;
+        --with-zlib-opt=*)               ZLIB_OPT="$value"          ;;
 
         --test-build-devpoll)            TEST_BUILD_DEVPOLL=YES     ;;
         --test-build-epoll)              TEST_BUILD_EPOLL=YES       ;;

@@ -32,13 +32,14 @@ case $PLATFORM in
         cp auto/lib/pcre/patch.config $PCRE
         cp auto/lib/pcre/$makefile $PCRE
         echo "	cd $PCRE"                                         >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile OWC_OPT=$OWC_OPT"           >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile LIB_OPT=$LIB_OPT"           >> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
     ;;
 
     *)
         echo "	cd $PCRE \\"                                      >> $MAKEFILE
-        echo "	&& ./configure --disable-shared \\"               >> $MAKEFILE
+        echo $ngx_n "	&& CFLAGS=\"-O2 $LIB_OPT\"" $ngx_c        >> $MAKEFILE
+        echo " ./configure --disable-shared \\"                   >> $MAKEFILE
         echo "	&& \$(MAKE)"                                      >> $MAKEFILE
     ;;
 

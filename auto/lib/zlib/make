@@ -31,12 +31,12 @@ case $PLATFORM in
 
         cp auto/lib/zlib/$makefile $ZLIB
         echo "	cd $ZLIB"                                         >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile OWC_OPT=$OWC_OPT"           >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile LIB_OPT=$LIB_OPT"           >> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
     ;;
 
 
-    *:i386)
+    *:i386 | *:i686)
         echo "	cd $ZLIB \\"                                      >> $MAKEFILE
         echo "	&& cp contrib/asm686/match.S . \\"                >> $MAKEFILE
         echo "	&& CFLAGS=\"-O3 -DASMV\" ./configure \\"          >> $MAKEFILE

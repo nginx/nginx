@@ -1,5 +1,5 @@
 
-CFLAGS = -nologo -c -MT -O2 -Ob1 -Oi -Gs -D MD5_ASM -D L_ENDIAN
+CFLAGS = -nologo -c -MT -O2 -Ob1 -Oi -Gs $(LIB_OPT) -D MD5_ASM -D L_ENDIAN
 
 md5.lib:
 	cl $(CFLAGS) md5_dgst.c

@@ -12,6 +12,19 @@ MAKE_SL=YES
 
 CC_TEST_FLAGS="-D_FILE_OFFSET_BITS=64"
 
+case $PLATFORM in
+
+    SunOS:5.[89]:* | SunOS:5.10:*)
+        CFLAGS="$CFLAGS -pipe"
+    ;;
+
+    *)
+        # Solaris 7's gcc does not support "-pipe"
+    ;;
+
+esac
+
+
 
 ngx_inc="sys/devpoll.h"; . auto/inc
 

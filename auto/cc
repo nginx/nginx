@@ -6,10 +6,20 @@ case $CC in
 
          # optimization
          #CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"
-         # optimize for Pentium Pro, Pentium II and Pentium III
-         #CFLAGS="$CFLAGS -march=pentiumpro"
-         # optimize for Pentium 4, gcc 3.x
-         #CFLAGS="$CFLAGS -march=pentium4"
+
+         case $CPU_OPT in
+             pentiumpro)
+                 # optimize for Pentium Pro, Pentium II and Pentium III
+                 LIB_OPT="-march=pentiumpro"
+             ;;
+             pentium4)
+                 # optimize for Pentium 4, gcc 3.x
+                 LIB_OPT="-march=pentium4"
+             ;;
+         esac
+
+         CFLAGS="$CFLAGS $LIB_OPT"
+         ZLIB_OPT="-O2 -fomit-frame-pointer $LIB_OPT"
 
          # warnings
          CFLAGS="$CFLAGS -O -W"
@@ -47,10 +57,19 @@ case $CC in
 
          # optimization
          CFLAGS="$CFLAGS -O"
-         # optimize for Pentium Pro, Pentium II and Pentium III
-         CFLAGS="$CFLAGS -mcpu=pentiumpro -march=pentiumpro"
-         # optimize for Pentium 4, default
-         #CFLAGS="$CFLAGS -march=pentium4"
+
+         case $CPU_OPT in
+             pentiumpro)
+                 # optimize for Pentium Pro, Pentium II and Pentium III
+                 LIB_OUT="-mcpu=pentiumpro -march=pentiumpro"
+             ;;
+             pentium4)
+                 # optimize for Pentium 4, default
+                 LIB_OPT="-march=pentium4"
+             ;;
+         esac
+
+         CFLAGS="$CFLAGS $LIB_OUT"
 
          # warnings
          CFLAGS="$CFLAGS -w1"
@@ -88,8 +107,19 @@ case $CC in
          CFLAGS="$CFLAGS -Oy"
          # disable stack checking calls
          CFLAGS="$CFLAGS -Gs"
-         # optimize for Pentium Pro
-         CFLAGS="$CFLAGS -G6"
+
+         case $CPU_OPT in
+             pentiumpro)
+                 # optimize for Pentium Pro, Pentium II and Pentium III
+                 LIB_OUT="-G6"
+             ;;
+             pentium4)
+                 # optimize for Pentium 4
+                 #LIB_OUT="-G7"
+             ;;
+         esac
+
+         CFLAGS="$CFLAGS $LIB_OUT"
 
          # warnings
          CFLAGS="$CFLAGS -W3"
@@ -153,11 +183,18 @@ case $CC in
          CFLAGS="$CFLAGS -oe"
          # disable stack checking calls
          CFLAGS="$CFLAGS -s"
-         # optimize for Pentium Pro, register-based arguments
-         OWC_OPT="-6r"
-         # optimize for Pentium Pro, stack-based arguments
-         #OWC_OPT="-6s"
-         CFLAGS="$CFLAGS $OWC_OPT"
+
+         case $CPU_OPT in
+             pentiumpro)
+                 # optimize for Pentium Pro, Pentium II and Pentium III
+                 # register-based arguments passing conventions
+                 LIB_OUT="-6r"
+                 # stack-based arguments passing conventions
+                 #LIB_OUT="-6s"
+             ;;
+         esac
+
+         CFLAGS="$CFLAGS $LIB_OUT"
 
          # warnings
          #CFLAGS="$CFLAGS -w3"

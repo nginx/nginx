@@ -31,11 +31,11 @@ case $PLATFORM in
 
         cp auto/lib/md5/$makefile $MD5
         echo "	cd $MD5"                                          >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile OWC_OPT=$OWC_OPT"           >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile LIB_OPT=$LIB_OPT"           >> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
     ;;
 
-    SunOS:*:i386)
+    SunOS:*:i86pc)
         echo "	cd $MD5 && \$(MAKE) x86-solaris"                  >> $MAKEFILE
     ;;
 
