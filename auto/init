@@ -7,6 +7,8 @@ NGX_MODULES_C=$OBJS/ngx_modules.c
 NGX_AUTOTEST=$OBJS/autotest
 NGX_ERR=$OBJS/autoconf.err
 
+CC_WARN=$CC
+
 
 # checking echo's "-n" option and "\c" capabilties
 

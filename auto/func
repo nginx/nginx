@@ -19,7 +19,7 @@ int main() {
 
 END
 
-eval "$CC $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c $ngx_func_libs \
+eval "$CC_WARN $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c $ngx_func_libs \
      >> $NGX_ERR 2>&1"
 
 if [ -x $NGX_AUTOTEST ]; then
