@@ -25,7 +25,7 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
 
 #endif
 
-    p->level++;
+    p->upstream_level++;
 
 ngx_log_debug(p->log, "read upstream");
 
@@ -52,27 +52,33 @@ ngx_log_debug(p->log, "free hunk: %08X:%d" _ chain->hunk _
             /* allocate a new hunk if it's still allowed */
 
             } else if (p->allocated < p->max_block_size) {
-                ngx_test_null(h,
-                              ngx_create_temp_hunk(p->pool,
-                                                   p->block_size, 20, 20),
-                              NGX_ERROR);
+                h = ngx_create_temp_hunk(p->pool, p->block_size, 20, 20);
+                if (h == NULL) {
+                    p->fatal_error = 1;
+                    return NGX_ERROR;
+                }
 
                 p->allocated += p->block_size;
 
-                ngx_test_null(temp, ngx_alloc_chain_entry(p->pool), NGX_ERROR);
+                temp = ngx_alloc_chain_entry(p->pool);
+                if (temp == NULL) {
+                    p->fatal_error = 1;
+                    return NGX_ERROR;
+                }
+
                 temp->hunk = h;
                 temp->next = NULL;
                 chain = temp;
 
 ngx_log_debug(p->log, "new hunk: %08X" _ chain->hunk);
 
-            /* use the shadow hunks if they exist */
+            /* use the file hunks if they exist */
 
-            } else if (p->shadow_hunks) {
-                chain = p->shadow_hunks;
-                p->shadow_hunks = NULL;
+            } else if (p->file_hunks) {
+                chain = p->file_hunks;
+                p->file_hunks = NULL;
 
-ngx_log_debug(p->log, "shadow hunk: %08X" _ chain->hunk _
+ngx_log_debug(p->log, "file hunk: %08X" _ chain->hunk _
               chain->hunk->end - chain->hunk->last);
 
             /* if the hunks is not needed to be saved in a cache and
@@ -80,13 +86,14 @@ ngx_log_debug(p->log, "shadow hunk: %08X" _ chain->hunk _
 
             } else if (p->cachable == 0 && p->downstream->write->ready) {
 
-                rc = ngx_event_proxy_write_to_downstream(p);
+ngx_log_debug(p->log, "downstream ready");
 
-                continue;
+                break;
 
-            /* if it's allowed then save the incoming hunks
-               to a temporary file, move the saved hunks to a shadow chain,
-               and add the file hunks to an outgoing chain */
+            /* if it's allowed then save the incoming hunks to a temporary
+               file, move the saved read hunks to a file chain,
+               convert the incoming hunks into the file hunks
+               and add them to an outgoing chain */
 
             } else if (p->temp_offset < p->max_temp_file_size) {
                 rc = ngx_event_proxy_write_chain_to_temp_file(p);
@@ -97,18 +104,18 @@ ngx_log_debug(p->log, "temp offset: %d" _ p->temp_offset);
                     return rc;
                 }
 
-                chain = p->shadow_hunks;
-                p->shadow_hunks = NULL;
+                chain = p->file_hunks;
+                p->file_hunks = NULL;
 
-ngx_log_debug(p->log, "new shadow hunk: %08X:%d" _ chain->hunk _
+ngx_log_debug(p->log, "new file hunk: %08X:%d" _ chain->hunk _
               chain->hunk->end - chain->hunk->last);
 
             /* if there're no hunks to read in then disable a level event */
 
             } else {
-                if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
-                    p->block_upstream = 1;
-                }
+                p->block_upstream = 1;
+
+ngx_log_debug(p->log, "no hunks to read in");
     
                 break;
             }
@@ -128,8 +135,10 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
             if (p->upstream->read->blocked) {
                 if (ngx_add_event(p->upstream->read, NGX_READ_EVENT,
                                                NGX_LEVEL_EVENT) == NGX_ERROR) {
+                    p->fatal_error = 1;
                     return NGX_ERROR;
                 }
+                p->block_upstream = 0;
                 p->upstream->read->blocked = 0;
             }
 
@@ -197,14 +206,23 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
                 /* the inline copy input filter */
 
-                ngx_test_null(h, ngx_alloc_hunk(p->pool), NGX_ERROR);
+                h = ngx_alloc_hunk(p->pool);
+                if (h == NULL) {
+                    p->fatal_error = 1;
+                    return NGX_ERROR;
+                }
+
                 ngx_memcpy(h, entry->hunk, sizeof(ngx_hunk_t));
                 h->shadow = entry->hunk;
                 h->type |= NGX_HUNK_LAST_SHADOW|NGX_HUNK_RECYCLED;
                 entry->hunk->shadow = h;
 
-                ngx_test_null(temp, ngx_alloc_chain_entry(p->pool),
-                              NGX_ERROR);
+                temp = ngx_alloc_chain_entry(p->pool);
+                if (temp == NULL) {
+                    p->fatal_error = 1;
+                    return NGX_ERROR;
+                }
+
                 temp->hunk = h;
                 temp->next = NULL;
 
@@ -235,18 +253,19 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
         if (p->input_filter) {
             if (p->input_filter(p, chain) == NGX_ERROR) {
+                p->fatal_error = 1;
                 return NGX_ERROR;
             }
         }
 
 ngx_log_debug(p->log, "rest chain: %08X" _ entry);
 
-        /* if the rest hunks are shadow then move them to a shadow chain
+        /* if the rest hunks are file hunks then move them to a file chain
            otherwise add them to a free chain */
 
         if (entry) {
             if (entry->hunk->shadow) {
-                p->shadow_hunks = entry;
+                p->file_hunks = entry;
 
             } else {
                 if (p->free_hunks) {
@@ -278,11 +297,13 @@ ngx_log_debug(p->log, "eof: %d block: %d" _
 #if (NGX_EVENT_COPY_FILTER)
 
             if (p->input_filter(p, NULL) == NGX_ERROR) {
+                p->fatal_error = 1;
                 return NGX_ERROR;
             }
 #else
             if (p->input_filter) {
                 if (p->input_filter(p, NULL) == NGX_ERROR) {
+                    p->fatal_error = 1;
                     return NGX_ERROR;
                 }
 
@@ -323,34 +344,49 @@ ngx_log_debug(p->log, "eof: %d block: %d" _
     if (p->cachable) {
         if (p->in_hunks) {
             rc = ngx_event_proxy_write_chain_to_temp_file(p);
+
             if (rc != NGX_OK) {
                 return rc;
             }
         }
 
         if (p->out_hunks && p->downstream->write->ready) {
-            rc = ngx_event_proxy_write_to_downstream(p);
+            if (ngx_event_proxy_write_to_downstream(p) == NGX_ERROR
+                && p->fatal_error)
+            {
+                return NGX_ERROR;
+            }
         }
 
     } else if ((p->out_hunks || p->in_hunks) && p->downstream->write->ready) {
-        rc = ngx_event_proxy_write_to_downstream(p);
-    }
-
-    p->level--;
-
-ngx_log_debug(p->log, "level: %d" _ p->level);
-
-    if (p->level == 0 && p->block_upstream) {
-        p->upstream->read->blocked = 1;
-        if (ngx_del_event(p->upstream->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
+        if (ngx_event_proxy_write_to_downstream(p) == NGX_ERROR
+            && p->fatal_error)
+        {
             return NGX_ERROR;
         }
+    }
+
+    p->upstream_level--;
+
+ngx_log_debug(p->log, "upstream level: %d" _ p->upstream_level);
+
+    if (p->upstream_level == 0
+        && p->block_upstream
+        && ngx_event_flags & NGX_USE_LEVEL_EVENT)
+    {
+        if (ngx_del_event(p->upstream->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
+            p->fatal_error = 1;
+            return NGX_ERROR;
+        }
+
+        p->upstream->read->blocked = 1;
 
         return NGX_AGAIN;
     }
 
     if (p->upstream_eof) {
         return NGX_OK;
+
     } else {
         return NGX_AGAIN;
     }
@@ -363,8 +399,27 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
     ngx_hunk_t   *h;
     ngx_chain_t  *entry;
 
+    if (p->downstream_level == 0
+        && p->busy_hunk == NULL
+        && p->out_hunks == NULL
+        && p->in_hunks == NULL
+        && ngx_event_flags & NGX_USE_LEVEL_EVENT)
+    {
+        if (ngx_del_event(p->downstream->write, NGX_WRITE_EVENT, 0)
+                                                                == NGX_ERROR) {
+            p->fatal_error = 1;
+            return NGX_ERROR;
+        }
+
+        p->downstream->write->blocked = 1;
+        return NGX_AGAIN;
+    }
+
+    p->downstream_level++;
+
 ngx_log_debug(p->log, "write to downstream");
 
+    entry = NULL;
     h = p->busy_hunk;
 
     for ( ;; ) {
@@ -376,9 +431,9 @@ ngx_log_debug(p->log, "write to downstream");
                 h = entry->hunk;
                 entry->next = NULL;
 
-                if (p->shadow_hunks) {
-                    if (p->shadow_hunks->hunk == h->shadow) {
-                        p->shadow_hunks = p->shadow_hunks->next;
+                if (p->file_hunks) {
+                    if (p->file_hunks->hunk == h->shadow) {
+                        p->file_hunks = p->file_hunks->next;
                     }
                 }
 
@@ -390,23 +445,19 @@ ngx_log_debug(p->log, "write to downstream");
                 entry->next = NULL;
 
                 if (p->read_hunks) {
-                if (p->read_hunks->hunk == h->shadow) {
-                    p->read_hunks = p->read_hunks->next;
+                    if (p->read_hunks->hunk == h->shadow) {
+                        p->read_hunks = p->read_hunks->next;
 
-                } else {
-                    ngx_log_error(NGX_LOG_CRIT, p->log, 0, "ERROR !!!");
-                }
+                    } else {
+                        ngx_log_error(NGX_LOG_CRIT, p->log, 0, "ERROR0");
+                    }
                 }
             }
 
 ngx_log_debug(p->log, "event proxy write hunk: %08X" _ h);
 
             if (h == NULL) {
-                if (p->upstream->read->ready) {
-                    rc = ngx_event_proxy_read_upstream(p);
-                }
-
-                return NGX_OK;
+                break;
             }
         }
 
@@ -419,23 +470,37 @@ ngx_log_debug(p->log, "event proxy write: %d" _ h->last - h->pos);
 ngx_log_debug(p->log, "event proxy: %d" _ rc);
 
         if (rc == NGX_ERROR) {
+            p->downstream_error = 1;
             return NGX_ERROR;
         }
 
-        if (rc == NGX_AGAIN
+        if (rc == NGX_AGAIN) {
+#if 0
             || (h->type & NGX_HUNK_IN_MEMORY && h->pos < h->last)
-            || (h->type & NGX_HUNK_FILE && h->file_pos < h->file_last))
-        {
+            || (h->type & NGX_HUNK_FILE && h->file_pos < h->file_last)
+#endif
             if (p->busy_hunk == NULL) {
                 p->busy_hunk = h;
             }
+
+            if (p->downstream->write->blocked) {
+                if (ngx_add_event(p->downstream->write, NGX_WRITE_EVENT,
+                                               NGX_LEVEL_EVENT) == NGX_ERROR) {
+                    p->fatal_error = 1;
+                    return NGX_ERROR;
+                }
+                p->downstream->write->blocked = 0;
+            }
+
+            p->downstream_level--;
+
             return NGX_AGAIN;
         }
 
         p->busy_hunk = NULL;
 
-        /* if the complete hunk is the file hunk and it has a shadow hunk
-           then add a shadow hunk to a free chain */
+        /* if the complete hunk is the file hunk and it has a shadow read hunk
+           then add a shadow read hunk to a free chain */
 
         if (h->type & NGX_HUNK_FILE) {
             if (p->cachable == 0 && p->out_hunks == NULL) {
@@ -457,11 +522,17 @@ ngx_log_debug(p->log, "event proxy: %d" _ rc);
 
         if (p->upstream_eof) {
             ngx_free_hunk(p->pool, h);
+            h = NULL;
             continue;
         }
 #endif
 
         h->pos = h->last = h->start;
+
+        if (entry == NULL) {
+            h = NULL;
+            continue;
+        }
 
         entry->hunk = h;
 
@@ -481,6 +552,18 @@ ngx_log_debug(p->log, "event proxy: %d" _ rc);
 
         h = NULL;
     }
+
+    if (p->upstream->read->ready) {
+        if (ngx_event_proxy_read_upstream(p) == NGX_ERROR && p->fatal_error) {
+            return NGX_ERROR;
+        }
+    }
+
+    p->downstream_level--;
+
+ngx_log_debug(p->log, "downstream level: %d" _ p->downstream_level);
+
+    return NGX_OK;
 }
 
 
@@ -496,8 +579,13 @@ ngx_log_debug(p->log, "write to file");
         rc = ngx_create_temp_file(p->temp_file, p->temp_path, p->pool,
                                   p->number, p->random, p->cachable);
 
-        if (rc != NGX_OK) {
-            return rc;
+        if (rc == NGX_ERROR) {
+            p->fatal_error = 1;
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
         }
 
         if (p->cachable == 0 && p->temp_file_warn) {
@@ -542,6 +630,7 @@ ngx_log_debug(p->log, "write to file");
 
     if (ngx_write_chain_to_file(p->temp_file, p->in_hunks, p->temp_offset,
                                 p->pool) == NGX_ERROR) {
+        p->fatal_error = 1;
         return NGX_ERROR;
     }
 
@@ -576,13 +665,14 @@ ngx_log_debug(p->log, "event proxy file hunk: %08X:%08X" _ h _ h->shadow);
         p->last_out_hunk = entry;
     }
 
-    p->shadow_hunks = p->read_hunks;
+    p->file_hunks = p->read_hunks;
 
     p->read_hunks = saved_read;
     p->in_hunks = saved_in;
 
     return NGX_OK;
 }
+
 
 #if (NGX_EVENT_COPY_FILTER)
 

@@ -21,7 +21,7 @@ struct ngx_event_proxy_s {
     ngx_chain_t       *read_hunks;
     ngx_chain_t       *last_read_hunk;
 
-    ngx_chain_t       *shadow_hunks;
+    ngx_chain_t       *file_hunks;
 
     ngx_chain_t       *in_hunks;
     ngx_chain_t       *last_in_hunk;
@@ -43,13 +43,15 @@ struct ngx_event_proxy_s {
     void              *output_data;
 
     unsigned           cachable:1;
+    unsigned           fatal_error:1;
     unsigned           block_upstream:1;
     unsigned           upstream_eof:1;
     unsigned           upstream_error:1;
     unsigned           downstream_eof:1;
     unsigned           downstream_error:1;
 
-    int                level;
+    int                upstream_level;
+    int                downstream_level;
 
     int                allocated;
     int                block_size;
