@@ -1,5 +1,5 @@
 
-CFLAGS =	-c -zq -bt=nt -ot -op -oi -oe -s -bm $(LIB_OPT)
+CFLAGS =	-c -zq -bt=nt -ot -op -oi -oe -s -bm $(CPU_OPT)
 PCREFLAGS =	-DPCRE_STATIC -DPOSIX_MALLOC_THRESHOLD=10
 
 

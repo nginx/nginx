@@ -4,7 +4,7 @@ help=no
 CC=gcc
 OBJS=objs
 
-CPU_OPT=NO
+CPU=NO
 
 TEST_BUILD_DEVPOLL=NO
 TEST_BUILD_EPOLL=NO
@@ -26,12 +26,17 @@ HTTP_PROXY=YES
 
 USE_PCRE=NO
 PCRE=NONE
+PCRE_OPT=NO
 
 USE_MD5=NO
 MD5=NONE
+MD5_OPT=NO
+MD5_ASM=NO
 
 USE_ZLIB=NO
 ZLIB=NONE
+ZLIB_OPT=NO
+ZLIB_ASM=NO
 
 
 for option
@@ -64,13 +69,19 @@ do
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
 
         --with-cc=*)                     CC="$value"                ;;
-        --with-cpu=*)                    CPU_OPT="$value"           ;;
+        --with-cpu-opt=*)                CPU="$value"               ;;
 
         --without-pcre)                  USE_PCRE=DISABLED          ;;
         --with-pcre=*)                   PCRE="$value"              ;;
+        --with-pcre-opt=*)               PCRE_OPT="$value"          ;;
+
         --with-md5=*)                    MD5="$value"               ;;
+        --with-md5-opt=*)                MD5_OPT="$value"           ;;
+        --with-md5-asm)                  MD5_ASM=YES                ;;
+
         --with-zlib=*)                   ZLIB="$value"              ;;
         --with-zlib-opt=*)               ZLIB_OPT="$value"          ;;
+        --with-zlib-asm=*)               ZLIB_ASM="$value"          ;;
 
         --test-build-devpoll)            TEST_BUILD_DEVPOLL=YES     ;;
         --test-build-epoll)              TEST_BUILD_EPOLL=YES       ;;
@@ -105,4 +116,9 @@ if [ $help = yes ]; then
     echo
 
     exit 1
+fi
+
+
+if [ $ZLIB_ASM != NO ]; then
+    ZLIB_ASMV=-DASMV
 fi

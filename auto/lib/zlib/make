@@ -31,20 +31,28 @@ case $PLATFORM in
 
         cp auto/lib/zlib/$makefile $ZLIB
         echo "	cd $ZLIB"                                         >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile LIB_OPT=$LIB_OPT"           >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile CPU_OPT=$CPU_OPT"           >> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
     ;;
 
 
     *:i386 | *:i686)
-        echo "	cd $ZLIB \\"                                      >> $MAKEFILE
-        echo "	&& cp contrib/asm686/match.S . \\"                >> $MAKEFILE
-        echo "	&& CFLAGS=\"-O3 -DASMV\" ./configure \\"          >> $MAKEFILE
-        echo "	&& \$(MAKE) OBJA=match.o"                         >> $MAKEFILE
+        if [ $ZLIB_ASM = pentiumpro ]; then
+            echo "	cd $ZLIB \\"                              >> $MAKEFILE
+            echo "	&& cp contrib/asm686/match.S . \\"        >> $MAKEFILE
+            echo "	&& CC=$CC $ZLIB_OPT ./configure \\"       >> $MAKEFILE
+            echo "	&& \$(MAKE) OBJA=match.o"                 >> $MAKEFILE
+        else
+            echo "	cd $ZLIB \\"                              >> $MAKEFILE
+            echo "	&& CC=$CC $ZLIB_OPT ./configure \\"       >> $MAKEFILE
+            echo "	&& \$(MAKE)"                              >> $MAKEFILE
+        fi
     ;;
 
     *)
-        echo "	cd $ZLIB && ./configure && \$(MAKE)"              >> $MAKEFILE
+        echo "	cd $ZLIB \\"                                      >> $MAKEFILE
+        echo "	&& CC=$CC $ZLIB_OPT ./configure \\"               >> $MAKEFILE
+        echo "	&& \$(MAKE)"                                      >> $MAKEFILE
     ;;
 
 esac

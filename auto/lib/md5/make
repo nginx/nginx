@@ -31,24 +31,34 @@ case $PLATFORM in
 
         cp auto/lib/md5/$makefile $MD5
         echo "	cd $MD5"                                          >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile LIB_OPT=$LIB_OPT"           >> $MAKEFILE
+        echo $ngx_n "	\$(MAKE) -f $makefile" $ngx_c             >> $MAKEFILE
+        echo " CPU_OPT=$CPU_OPT MD5_ASM=$MD5_ASM"                 >> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
     ;;
 
     SunOS:*:i86pc)
-        echo "	cd $MD5 && \$(MAKE) x86-solaris"                  >> $MAKEFILE
+        if [ $MD5_ASM = YES ]; then
+            echo "	cd $MD5 && \$(MAKE) $MD5_OPT x86-solaris" >> $MAKEFILE
+        else
+            echo "	cd $MD5 \\"                               >> $MAKEFILE
+            echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE
+            echo "		MD5_ASM_OBJ= CC=$CC all"          >> $MAKEFILE
+        fi
     ;;
 
     *:i386)
-        echo "	cd $MD5 && \$(MAKE) x86-elf"                      >> $MAKEFILE
+        if [ $MD5_ASM = YES ]; then
+            echo "	cd $MD5 && \$(MAKE) $MD5_OPT x86-elf"     >> $MAKEFILE
+        else
+            echo "	cd $MD5 \\"                               >> $MAKEFILE
+            echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE
+            echo "		MD5_ASM_OBJ= CC=$CC all"          >> $MAKEFILE
+        fi
     ;;
 
     *)
-        if [ $CC = gcc ]; then
-            echo "	cd $MD5 && \$(MAKE) gcc"                  >> $MAKEFILE
-        else
-            echo "	cd $MD5 && \$(MAKE) cc"                   >> $MAKEFILE
-        fi
+        echo "	cd $MD5 \\"                                       >> $MAKEFILE
+        echo "	&& \$(MAKE) $MD5_OPT MD5_ASM_OBJ= CC=$CC all"     >> $MAKEFILE
     ;;
 
 esac

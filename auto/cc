@@ -7,19 +7,30 @@ case $CC in
          # optimization
          #CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"
 
-         case $CPU_OPT in
+         case $CPU in
              pentiumpro)
                  # optimize for Pentium Pro, Pentium II and Pentium III
-                 LIB_OPT="-march=pentiumpro"
+                 CPU_OPT="-march=pentiumpro"
              ;;
              pentium4)
                  # optimize for Pentium 4, gcc 3.x
-                 LIB_OPT="-march=pentium4"
+                 CPU_OPT="-march=pentium4"
              ;;
          esac
 
-         CFLAGS="$CFLAGS $LIB_OPT"
-         ZLIB_OPT="-O2 -fomit-frame-pointer $LIB_OPT"
+         CFLAGS="$CFLAGS $CPU_OPT"
+
+         if [ $PCRE_OPT = NO ]; then
+             PCRE_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $CPU_OPT\""
+         fi
+
+         if [ $MD5_OPT = NO ]; then
+             MD5_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $CPU_OPT\""
+         fi
+
+         if [ $ZLIB_OPT = NO ]; then
+             ZLIB_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $CPU_OPT $ZLIB_ASMV\""
+         fi
 
          # warnings
          CFLAGS="$CFLAGS -O -W"
@@ -57,19 +68,35 @@ case $CC in
 
          # optimization
          CFLAGS="$CFLAGS -O"
+         # inline functions declared with __inline
+         CFLAGS="$CFLAGS -Ob1"
+         # inline any function, at the compiler's discretion
+         #CFLAGS="$CFLAGS -Ob2"
 
-         case $CPU_OPT in
+         case $CPU in
              pentiumpro)
                  # optimize for Pentium Pro, Pentium II and Pentium III
-                 LIB_OUT="-mcpu=pentiumpro -march=pentiumpro"
+                 CPU_OPT="-mcpu=pentiumpro -march=pentiumpro"
              ;;
              pentium4)
                  # optimize for Pentium 4, default
-                 LIB_OPT="-march=pentium4"
+                 CPU_OPT="-march=pentium4"
              ;;
          esac
 
-         CFLAGS="$CFLAGS $LIB_OUT"
+         CFLAGS="$CFLAGS $CPU_OPT"
+
+         if [ $PCRE_OPT = NO ]; then
+             PCRE_OPT="CFLAGS=\"-O $CPU_OPT\""
+         fi
+
+         if [ $MD5_OPT = NO ]; then
+             MD5_OPT="CFLAGS=\"-O $CPU_OPT\""
+         fi
+
+         if [ $ZLIB_OPT = NO ]; then
+             ZLIB_OPT="CFLAGS=\"-O $CPU_OPT $ZLIB_ASMV\""
+         fi
 
          # warnings
          CFLAGS="$CFLAGS -w1"
@@ -108,18 +135,18 @@ case $CC in
          # disable stack checking calls
          CFLAGS="$CFLAGS -Gs"
 
-         case $CPU_OPT in
+         case $CPU in
              pentiumpro)
                  # optimize for Pentium Pro, Pentium II and Pentium III
-                 LIB_OUT="-G6"
+                 CPU_OPT="-G6"
              ;;
              pentium4)
                  # optimize for Pentium 4
-                 #LIB_OUT="-G7"
+                 #CPU_OPT="-G7"
              ;;
          esac
 
-         CFLAGS="$CFLAGS $LIB_OUT"
+         CFLAGS="$CFLAGS $CPU_OPT"
 
          # warnings
          CFLAGS="$CFLAGS -W3"
@@ -184,17 +211,17 @@ case $CC in
          # disable stack checking calls
          CFLAGS="$CFLAGS -s"
 
-         case $CPU_OPT in
+         case $CPU in
              pentiumpro)
                  # optimize for Pentium Pro, Pentium II and Pentium III
                  # register-based arguments passing conventions
-                 LIB_OUT="-6r"
+                 CPU_OPT="-6r"
                  # stack-based arguments passing conventions
-                 #LIB_OUT="-6s"
+                 #CPU_OPT="-6s"
              ;;
          esac
 
-         CFLAGS="$CFLAGS $LIB_OUT"
+         CFLAGS="$CFLAGS $CPU_OPT"
 
          # warnings
          #CFLAGS="$CFLAGS -w3"
