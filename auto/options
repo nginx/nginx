@@ -58,7 +58,7 @@ do
 
         --with-cc=*)                     CC="$value"                ;;
 
-        --without-pcre)                  USE_PCRE=NO                ;;
+        --without-pcre)                  USE_PCRE=DISABLED          ;;
         --with-pcre=*)                   PCRE="$value"              ;;
         --with-md5=*)                    MD5="$value"               ;;
         --with-zlib=*)                   ZLIB="$value"              ;;

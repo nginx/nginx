@@ -118,30 +118,33 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             }
         }
 
-        /* create the tailer iovec and coalesce the neighbouring hunks */
+        if (file) {
+            /* create the tailer iovec and coalesce the neighbouring hunks */
 
-        prev = NULL;
-        iov = NULL;
+            prev = NULL;
+            iov = NULL;
 
-        for ( /* void */; cl && trailer.nelts < IOV_MAX; cl = cl->next) {
-            if (ngx_hunk_special(cl->hunk)) {
-                continue;
+            for ( /* void */; cl && trailer.nelts < IOV_MAX; cl = cl->next) {
+                if (ngx_hunk_special(cl->hunk)) {
+                    continue;
+                }
+
+                if (!ngx_hunk_in_memory_only(cl->hunk)) {
+                    break;
+                }
+
+                if (prev == cl->hunk->pos) {
+                    iov->iov_len += cl->hunk->last - cl->hunk->pos;
+
+                } else {
+                    ngx_test_null(iov, ngx_push_array(&trailer),
+                                  NGX_CHAIN_ERROR);
+                    iov->iov_base = cl->hunk->pos;
+                    iov->iov_len = cl->hunk->last - cl->hunk->pos;
+                }
+
+                prev = cl->hunk->last;
             }
-
-            if (!ngx_hunk_in_memory_only(cl->hunk)) {
-                break;
-            }
-
-            if (prev == cl->hunk->pos) {
-                iov->iov_len += cl->hunk->last - cl->hunk->pos;
-
-            } else {
-                ngx_test_null(iov, ngx_push_array(&trailer), NGX_CHAIN_ERROR);
-                iov->iov_base = cl->hunk->pos;
-                iov->iov_len = cl->hunk->last - cl->hunk->pos;
-            }
-
-            prev = cl->hunk->last;
         }
 
         /*
