@@ -84,7 +84,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
     rev = c->read;
     rev->event_handler = ngx_http_init_request;
 
-    /* STUB: epoll */ c->write->event_handler = ngx_http_empty_handler;
+    /* STUB: epoll edge */ c->write->event_handler = ngx_http_empty_handler;
 
     if (rev->ready) {
         /* deferred accept, aio, iocp, epoll */
@@ -1180,6 +1180,8 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     }
 
     h = c->buffer;
+    wev = c->write;
+    wev->event_handler = ngx_http_empty_handler;
 
     if (h->pos < h->last) {
 
@@ -1214,8 +1216,6 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     h->pos = h->last = h->start;
     rev->event_handler = ngx_http_keepalive_handler;
-    wev = c->write;
-    wev->event_handler = ngx_http_empty_handler;
 
     if (wev->active) {
         if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
@@ -1522,7 +1522,7 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
 void ngx_http_close_connection(ngx_connection_t *c)
 {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "close connection: %d", c->fd);
+                   "close http connection: %d", c->fd);
 
     if (c->pool == NULL) {
         ngx_log_error(NGX_LOG_ALERT, c->log, 0, "connection already closed");

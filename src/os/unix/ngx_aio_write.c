@@ -28,7 +28,8 @@ ssize_t ngx_aio_write(ngx_connection_t *c, char *buf, size_t size)
         return NGX_AGAIN;
     }
 
-ngx_log_debug(wev->log, "aio: wev->complete: %d" _ wev->complete);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, wev->log, 0,
+                   "aio: wev->complete: %d", wev->complete);
 
     if (!wev->complete) {
         ngx_memzero(&wev->aiocb, sizeof(struct aiocb));
@@ -49,7 +50,7 @@ ngx_log_debug(wev->log, "aio: wev->complete: %d" _ wev->complete);
             return NGX_ERROR;
         }
 
-        ngx_log_debug(wev->log, "aio_write: OK");
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, wev->log, 0, "aio_write: OK");
 
         wev->active = 1;
         wev->ready = 0;
@@ -102,7 +103,7 @@ ngx_log_debug(wev->log, "aio: wev->complete: %d" _ wev->complete);
     }
 
 
-    ngx_log_debug(wev->log, "aio_write: %d" _ n);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, wev->log, 0, "aio_write: %d", n);
 
     wev->active = 0;
     wev->ready = 1;

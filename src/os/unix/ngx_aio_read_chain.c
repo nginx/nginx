@@ -41,7 +41,7 @@ ssize_t ngx_aio_read_chain(ngx_connection_t *c, ngx_chain_t *cl)
 
         n = ngx_aio_read(c, buf, size);
 
-        ngx_log_debug(c->log, "aio_read: %d" _ n);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "aio_read: %d", n);
 
         if (n == NGX_AGAIN) {
             return total ? total : NGX_AGAIN;
@@ -64,7 +64,8 @@ ssize_t ngx_aio_read_chain(ngx_connection_t *c, ngx_chain_t *cl)
             total += n;
         }
 
-        ngx_log_debug(c->log, "aio_read total: %d" _ total);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "aio_read total: %d", total);
     }
 
     return total ? total : NGX_AGAIN;

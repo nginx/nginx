@@ -305,7 +305,7 @@ static void ngx_http_phase_event_handler(ngx_event_t *ev)
     c = ev->data;
     r = c->data;
 
-    ngx_log_debug(ev->log, "phase event handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "phase event handler");
 
     ngx_http_run_phases(r);
 
@@ -612,19 +612,6 @@ int ngx_http_redirect(ngx_http_request_t *r, int redirect)
 }
 
 
-int ngx_http_error(ngx_http_request_t *r, int error)
-{
-    /* STUB */
-    ngx_log_debug(r->connection->log, "http error: %d" _ error);
-
-    /* log request */
-
-    ngx_http_special_response_handler(r, error);
-    ngx_http_close_request(r, 0);
-    return NGX_OK;
-}
-
-
 ngx_int_t ngx_http_set_exten(ngx_http_request_t *r)
 {
     ngx_int_t  i;
@@ -706,13 +693,15 @@ int ngx_http_delay_handler(ngx_http_request_t *r)
     static int  on;
 
     if (on++ == 0) {
-        ngx_log_debug(r->connection->log, "SET http delay");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http set delay");
         ngx_add_timer(r->connection->write, 10000);
         return NGX_AGAIN;
     }
 
     r->connection->write->timedout = 0;
-    ngx_log_debug(r->connection->log, "RESET http delay");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http reset delay");
     return NGX_DECLINED;
 }
 

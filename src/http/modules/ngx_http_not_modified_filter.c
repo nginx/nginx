@@ -49,8 +49,8 @@ static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     ims = ngx_http_parse_time(r->headers_in.if_modified_since->value.data,
                               r->headers_in.if_modified_since->value.len);
     
-    ngx_log_debug(r->connection->log, "%d %d" _
-                  ims _ r->headers_out.last_modified_time);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http ims:%d lm:%d", ims, r->headers_out.last_modified_time);
 
     /*
      * I think that the equality of the dates is correcter

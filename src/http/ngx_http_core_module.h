@@ -161,7 +161,6 @@ ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 
 int ngx_http_internal_redirect(ngx_http_request_t *r,
                                ngx_str_t *uri, ngx_str_t *args);
-int ngx_http_error(ngx_http_request_t *r, int error);
 
 
 #endif /* _NGX_HTTP_CORE_H_INCLUDED_ */

@@ -3,6 +3,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_event_connect.h>
+#include <nginx.h>
 
 
 /* AF_INET only */
@@ -180,6 +181,17 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     pc->connection = c;
 
+    /*
+     * TODO: MT: - atomic increment (x86: lock xadd)
+     *             or protection by critical section or mutex
+     *
+     * TODO: MP: - allocated in a shared memory
+     *           - atomic increment (x86: lock xadd)
+     *             or protection by critical section or mutex
+     */
+
+    c->number = ngx_connection_counter++;
+
     if (ngx_add_conn) {
         if (ngx_add_conn(c) == NGX_ERROR) {
             return NGX_ERROR;
@@ -192,7 +204,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     addr.sin_port = peer->port;
     addr.sin_addr.s_addr = peer->addr;
 
-ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, 0,
+                   "connect to %s", peer->addr_port_text.data);
 
     rc = connect(s, (struct sockaddr *) &addr, sizeof(struct sockaddr_in));
 
@@ -269,7 +282,7 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
         return NGX_AGAIN;
     }
 
-ngx_log_debug(pc->log, "CONNECTED");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pc->log, 0, "connected");
 
     wev->ready = 1;
 

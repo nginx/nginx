@@ -4,8 +4,6 @@
 #include <ngx_event.h>
 
 
-static int ngx_readv_error(ngx_event_t *rev, ngx_err_t err);
-
 #if (HAVE_KQUEUE)
 
 ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
@@ -20,18 +18,22 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     rev = c->read; 
 
     if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
-        ngx_log_debug(c->log, "recv: eof:%d, avail:%d, err:%d" _
-                      rev->kq_eof _ rev->available _ rev->kq_errno);
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "readv: eof:%d, avail:%d, err:%d",
+                       rev->kq_eof, rev->available, rev->kq_errno);
 
         if (rev->available == 0) {
             if (rev->kq_eof) {
                 rev->ready = 0;
                 rev->eof = 1;
 
+                ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
+                              "kevent() reported about an closed connection");
+
                 if (rev->kq_errno) {
                     rev->error = 1;
                     ngx_set_socket_errno(rev->kq_errno);
-                    return ngx_readv_error(rev, rev->kq_errno);
+                    return NGX_ERROR;
                 }
 
                 return 0;
@@ -65,7 +67,8 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
         chain = chain->next;
     }
 
-ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "readv: %d:%d", io.nelts, iov->iov_len);
 
     rev = c->read;
 
@@ -105,11 +108,19 @@ ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
             return n;
         }
 
-        n = ngx_readv_error(rev, ngx_socket_errno);
+        err = ngx_socket_errno;
 
-    } while (n == NGX_EINTR);
+        if (err == NGX_EAGAIN || err == NGX_EINTR) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                           "readv() not ready");
+            n = NGX_AGAIN;
 
-    /* NGX_ERROR || NGX_AGAIN */
+        } else {
+            n = ngx_connection_error(c, err, "readv() failed");
+            break;
+        }
+
+    } while (err == NGX_EINTR);
 
     rev->ready = 0;
 
@@ -154,7 +165,8 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
         chain = chain->next;
     }
 
-ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "readv: %d:%d", io.nelts, iov->iov_len);
 
     rev = c->read;
 
@@ -173,11 +185,19 @@ ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
             return n;
         }
 
-        n = ngx_readv_error(rev, ngx_socket_errno);
+        err = ngx_socket_errno;
 
-    } while (n == NGX_EINTR);
+        if (err == NGX_EAGAIN || err == NGX_EINTR) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                           "readv() not ready");
+            n = NGX_AGAIN;
 
-    /* NGX_ERROR || NGX_AGAIN */
+        } else {
+            n = ngx_connection_error(c, err, "readv() failed");
+            break;
+        }
+
+    } while (err == NGX_EINTR);
 
     rev->ready = 0;
 
@@ -189,21 +209,3 @@ ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
 }
 
 #endif /* NAVE_KQUEUE */
-
-
-static int ngx_readv_error(ngx_event_t *rev, ngx_err_t err)
-{
-    if (err == NGX_EAGAIN) {
-        ngx_log_error(NGX_LOG_INFO, rev->log, err, "readv() returned EAGAIN");
-        return NGX_AGAIN;
-    }
-
-    if (err == NGX_EINTR) {
-        ngx_log_error(NGX_LOG_INFO, rev->log, err, "readv() returned EINTR");
-        return NGX_EINTR;
-    }
-
-    ngx_log_error(NGX_LOG_ERR, rev->log, err, "readv() failed");
-
-    return NGX_ERROR;
-}

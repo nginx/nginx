@@ -167,8 +167,9 @@ static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p)
 
     ngx_cpystrn(c->status_line.data, p->status_start, c->status_line.len + 1);
 
-    ngx_log_debug(r->connection->log, "http cache status %d '%s'" _ 
-                  c->status _ c->status_line.data);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http cache status %d \"%s\"", 
+                   c->status, c->status_line.data);
 
     /* TODO: ngx_init_table */
     c->headers_in.headers = ngx_create_table(r->pool, 20);
@@ -212,8 +213,9 @@ static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p)
                 }
             }
 
-            ngx_log_debug(r->connection->log, "HTTP cache header: '%s: %s'" _
-                          h->key.data _ h->value.data);
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http cache header: \"%s: %s\"",
+                           h->key.data, h->value.data);
 
             continue;
 
@@ -221,7 +223,8 @@ static int ngx_http_proxy_process_cached_header(ngx_http_proxy_ctx_t *p)
 
             /* a whole header has been parsed successfully */
 
-            ngx_log_debug(r->connection->log, "HTTP header done");
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http cache header done");
 
             c->ctx.file_start = p->header_in->pos - p->header_in->start;
 
@@ -253,7 +256,8 @@ void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
     rc = ngx_http_busy_lock_cachable(p->lcf->busy_lock, &p->busy_lock,
                                      p->try_busy_lock);
 
-ngx_log_debug(p->request->connection->log, "LOCK CACHABLE: %d" _ rc);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, p->request->connection->log, 0,
+                   "http cache busy lock cachable: %d", rc);
 
     if (rc == NGX_OK) {
         if (p->try_busy_lock) {
@@ -354,8 +358,9 @@ static void ngx_http_proxy_cache_look_complete_request(ngx_http_proxy_ctx_t *p)
         return;
     }
 
-ngx_log_debug(p->request->connection->log, "OLD: %d, NEW: %d" _
-              p->cache->ctx.file.fd _ ctx->file.fd);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, p->request->connection->log, 0,
+                   "http cache old fd:%d, new fd:%d",
+                   p->cache->ctx.file.fd, ctx->file.fd);
 
     if (p->cache->ctx.file.fd != NGX_INVALID_FILE) {
         if (ngx_close_file(p->cache->ctx.file.fd) == NGX_FILE_ERROR) {
@@ -603,8 +608,9 @@ int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p)
 
     ep = p->upstream->event_pipe;
 
-ngx_log_debug(p->request->connection->log, "LEN: " OFF_T_FMT ", " OFF_T_FMT _
-              p->cache->ctx.length _ ep->read_length);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, p->request->connection->log, 0,
+                   "http cache update len: " OFF_T_FMT ":" OFF_T_FMT,
+                   p->cache->ctx.length, ep->read_length);
 
     if (p->cache->ctx.length == -1) {
         /* TODO: test rc */

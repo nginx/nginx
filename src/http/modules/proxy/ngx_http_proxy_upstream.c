@@ -192,15 +192,19 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
         *(h->last++) = CR; *(h->last++) = LF;
 
-        ngx_log_debug(r->connection->log, "proxy: '%s: %s'" _
-                      header[i].key.data _ header[i].value.data);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http proxy header: \"%s: %s\"",
+                       header[i].key.data, header[i].value.data);
     }
 
     /* add "\r\n" at the header end */
     *(h->last++) = CR; *(h->last++) = LF;
 
-    /* STUB */ *(h->last) = '\0';
-    ngx_log_debug(r->connection->log, "PROXY:\n'%s'" _ h->pos);
+#if (NGX_DEBUG)
+    *(h->last) = '\0';
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http proxy header:\n\"%s\"", h->pos);
+#endif
 
     return chain;
 }
@@ -218,8 +222,9 @@ static void ngx_http_proxy_init_upstream(void *data)
 
     r = p->request;
 
-ngx_log_debug(r->connection->log, "timer_set: %d" _
-              r->connection->read->timer_set);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                  "http proxy set timer: %d",
+                  r->connection->read->timer_set);
 
     if (r->connection->read->timer_set) {
         ngx_del_timer(r->connection->read);
@@ -588,7 +593,7 @@ static void ngx_http_proxy_send_request_handler(ngx_event_t *wev)
 
 static void ngx_http_proxy_dummy_handler(ngx_event_t *wev)
 {
-    ngx_log_debug(wev->log, "dummy handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0, "http proxy dummy handler");
 }
 
 
@@ -603,7 +608,8 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
     p = c->data;
     p->action = "reading upstream status line";
 
-    ngx_log_debug(rev->log, "http proxy process status line");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "http proxy process status line");
 
     if (rev->timedout) {
         ngx_http_proxy_next_upstream(p, NGX_HTTP_PROXY_FT_TIMEOUT);
@@ -717,8 +723,9 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
     ngx_cpystrn(p->upstream->status_line.data, p->status_start,
                 p->upstream->status_line.len + 1);
 
-    ngx_log_debug(rev->log, "http proxy status %d '%s'" _
-                  p->upstream->status _ p->upstream->status_line.data);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "http proxy status %d \"%s\"",
+                   p->upstream->status, p->upstream->status_line.data);
 
     if (p->upstream->headers_in.headers) {
         p->upstream->headers_in.headers->nelts = 0;
@@ -747,7 +754,8 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
     r = p->request;
     p->action = "reading upstream headers";
 
-    ngx_log_debug(rev->log, "http proxy process header line");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "http proxy process header line");
 
     if (rev->timedout) {
         ngx_http_proxy_next_upstream(p, NGX_HTTP_PROXY_FT_TIMEOUT);
@@ -818,8 +826,9 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
                 }
             }
 
-            ngx_log_debug(c->log, "HTTP proxy header: '%s: %s'" _
-                          h->key.data _ h->value.data);
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http proxy header: \"%s: %s\"",
+                           h->key.data, h->value.data);
 
             continue;
 
@@ -827,7 +836,8 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
 
             /* a whole header has been parsed successfully */
 
-            ngx_log_debug(c->log, "HTTP header done");
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http proxy header done");
 
             /* TODO: hook to process the upstream header */
 
@@ -1072,13 +1082,15 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
     c = ev->data;
 
     if (ev->write) {
-        ngx_log_debug(ev->log, "http proxy process downstream");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+                       "http proxy process downstream");
         r = c->data;
         p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
         p->action = "sending to client";
 
     } else {
-        ngx_log_debug(ev->log, "http proxy process upstream");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+                       "http proxy process upstream");
         p = c->data;
         r = p->request;
         p->action = "reading upstream body";
@@ -1125,7 +1137,8 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
         }
 
         if (ep->upstream_done || ep->upstream_eof || ep->upstream_error) {
-            ngx_log_debug(ev->log, "http proxy upstream exit");
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+                           "http proxy upstream exit");
             ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
             ngx_http_proxy_finalize_request(p, 0);
             return;
@@ -1133,30 +1146,12 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
     }
 
     if (ep->downstream_error) {
-        ngx_log_debug(ev->log, "http proxy downstream error");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+                       "http proxy downstream error");
         if (!p->cachable && p->upstream->peer.connection) {
             ngx_http_proxy_finalize_request(p, 0);
         }
     }
-
-#if 0
-    if (ep->downstream_done) {
-        ngx_log_debug(ev->log, "http proxy downstream done");
-        ngx_http_proxy_finalize_request(p, 0);
-        return;
-    }
-
-    if (ep->downstream_error) {
-        ngx_log_debug(ev->log, "http proxy downstream error");
-        if (!p->cachable && p->upstream->peer.connection) {
-            ngx_http_proxy_close_connection(p);
-        }
- 
-        if (p->upstream->peer.connection == NULL) {
-            ngx_http_close_request(r);
-        }
-    }
-#endif
 }
 
 
@@ -1164,7 +1159,8 @@ static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p, int ft_type)
 {
     int  status;
 
-ngx_log_debug(p->request->connection->log, "next upstream: %d" _ ft_type);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, p->request->connection->log, 0,
+                   "http proxy next upstream: %d", ft_type);
 
     ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
 

@@ -377,9 +377,11 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ctx->zstream.avail_out = conf->bufs.size;
             }
 
-ngx_log_debug(r->connection->log, "deflate(): %08x %08x %d %d %d" _
-              ctx->zstream.next_in _ ctx->zstream.next_out _
-              ctx->zstream.avail_in _ ctx->zstream.avail_out _ ctx->flush);
+            ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "deflate in: ni:%X no:%X ai:%d ao:%d fl:%d",
+                           ctx->zstream.next_in, ctx->zstream.next_out,
+                           ctx->zstream.avail_in, ctx->zstream.avail_out,
+                           ctx->flush);
 
             rc = deflate(&ctx->zstream, ctx->flush);
             if (rc != Z_OK && rc != Z_STREAM_END) {
@@ -388,9 +390,11 @@ ngx_log_debug(r->connection->log, "deflate(): %08x %08x %d %d %d" _
                 return ngx_http_gzip_error(ctx);
             }
 
-ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
-              ctx->zstream.next_in _ ctx->zstream.next_out _
-              ctx->zstream.avail_in _ ctx->zstream.avail_out _ rc);
+            ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "deflate out: ni:%X no:%X ai:%d ao:%d rc:%d",
+                           ctx->zstream.next_in, ctx->zstream.next_out,
+                           ctx->zstream.avail_in, ctx->zstream.avail_out,
+                           rc);
 
             ctx->in_hunk->pos = (char *) ctx->zstream.next_in;
             ctx->out_hunk->last = (char *) ctx->zstream.next_out;
@@ -512,7 +516,6 @@ static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
     int    alloc;
     void  *p;
 
-
     alloc = items * size;
     if (alloc % 512 != 0) {
 
@@ -527,10 +530,9 @@ static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
         ctx->free_mem += alloc;
         ctx->allocated -= alloc;
 
-#if 1
-        ngx_log_debug(ctx->request->connection->log, "ALLOC: %d:%d:%d:%08X" _
-                      items _ size _ alloc _ p);
-#endif
+        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, ctx->request->connection->log, 0,
+                       "gzip alloc: n:%d s:%d a:%d p:%08X",
+                       items, size, alloc, p);
 
         return p;
     }
@@ -550,7 +552,8 @@ static void ngx_http_gzip_filter_free(void *opaque, void *address)
     ngx_http_gzip_ctx_t *ctx = opaque;
 
 #if 0
-    ngx_log_debug(ctx->request->connection->log, "FREE: %08X" _ address);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ctx->request->connection->log, 0,
+                   "gzip free: %X", address);
 #endif
 }
 

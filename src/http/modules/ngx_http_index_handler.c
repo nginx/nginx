@@ -286,7 +286,8 @@ static ngx_int_t ngx_http_index_test_dir(ngx_http_request_t *r,
     ctx->path.data[ctx->path.len - 1] = '\0';
     ctx->path.data[ctx->path.len] = '\0';
 
-ngx_log_debug(r->connection->log, "IS_DIR: %s" _ ctx->path.data);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http check dir: \"%s\"", ctx->path.data);
 
     if (ngx_file_info(ctx->path.data, &r->file.info) == -1) {
 

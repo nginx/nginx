@@ -42,7 +42,7 @@ static const char *err_levels[] = {
 };
 
 static const char *debug_levels[] = {
-    "debug", "debug_core", "debug_alloc", "debug_event", "debug_http"
+    "debug_core", "debug_alloc", "debug_event", "debug_http"
 };
 
 
@@ -81,9 +81,9 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     len += ngx_snprintf(errstr + len, max - len,
                         PID_T_FMT "#%d: ", ngx_pid, /* STUB */ 0);
 
-    if (log->data) {
+    if (log->data && *(int *) log->data != -1) {
         len += ngx_snprintf(errstr + len, max - len,
-                            "*%u ", * (u_int *) log->data);
+                            "*%u ", *(u_int *) log->data);
     }
 
 #if (HAVE_VARIADIC_MACROS)
@@ -332,7 +332,7 @@ char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
 
     for (i = 2; i < cf->args->nelts; i++) {
 
-        for (n = 1; n < NGX_LOG_DEBUG; n++) {
+        for (n = 1; n <= NGX_LOG_DEBUG; n++) {
             if (ngx_strcmp(value[i].data, err_levels[n]) == 0) {
 
                 if (log->log_level != 0) {
@@ -366,6 +366,10 @@ char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
                                "invalid log level \"%s\"", value[i].data);
             return NGX_CONF_ERROR;
         }
+    }
+
+    if (log->log_level == NGX_LOG_DEBUG) {
+        log->log_level = NGX_LOG_DEBUG_ALL;
     }
 
     return NGX_CONF_OK;

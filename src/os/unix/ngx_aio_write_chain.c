@@ -44,9 +44,7 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         n = ngx_aio_write(c, buf, size);
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-        ngx_log_debug(c->log, "aio_write: %d" _ n);
-#endif
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "aio_write: %d", n);
 
         if (n == NGX_ERROR) {
             return NGX_CHAIN_ERROR;
@@ -57,9 +55,8 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
             c->sent += n;
         }
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-        ngx_log_debug(c->log, "aio_write sent: " OFF_T_FMT _ c->sent);
-#endif
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "aio_write sent: " OFF_T_FMT, c->sent);
 
         for (cl = in; cl; cl = cl->next) {
 

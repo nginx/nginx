@@ -59,7 +59,8 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     char                        *last;
     uint32_t                     file_crc, redirect_crc;
     ngx_fd_t                     fd;
-    ngx_int_t                    rc, level;
+    ngx_int_t                    rc;
+    ngx_uint_t                   level;
     ngx_str_t                    name, location;
     ngx_err_t                    err;
     ngx_log_t                   *log;

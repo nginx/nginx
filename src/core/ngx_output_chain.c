@@ -217,12 +217,6 @@ static int ngx_output_chain_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
     } else {
         n = ngx_read_file(src->file, dst->pos, size, src->file_pos);
 
-if (n == 0) {
-ngx_log_debug(src->file->log, "READ: %qd:%qd %X:%X %X:%X" _
-              src->file_pos _ src->file_last _
-              dst->pos _ dst->last _ dst->start _ dst->end);
-}
-
         if (n == NGX_ERROR) {
             return n;
         }

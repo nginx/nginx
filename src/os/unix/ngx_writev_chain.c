@@ -22,6 +22,18 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
         return in;
     }
 
+#if (HAVE_KQUEUE)
+
+    if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && wev->kq_eof) {
+        ngx_log_error(NGX_LOG_INFO, c->log, wev->kq_errno,
+                      "kevent() reported about an closed connection");
+
+        wev->error = 1;
+        return NGX_CHAIN_ERROR;
+    }
+
+#endif
+
     ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_CHAIN_ERROR);
 
     do {
@@ -49,33 +61,32 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         if (n == -1) {
             err = ngx_errno;
-            if (err == NGX_EAGAIN) {
-                ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EAGAIN");
 
-            } else if (err == NGX_EINTR) {
-                eintr = 1;
-                ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EINTR");
+            if (err == NGX_EAGAIN || err == NGX_EINTR) {
+                if (err == NGX_EINTR) {
+                    eintr = 1;
+                }
+
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                               "writev() not ready");
 
             } else {
                 wev->error = 1;
-                ngx_log_error(NGX_LOG_CRIT, c->log, err, "writev() failed");
+                ngx_connection_error(c, err, "writev() failed");
                 return NGX_CHAIN_ERROR;
             }
         }
 
         sent = n > 0 ? n : 0;
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-        ngx_log_debug(c->log, "writev: " OFF_T_FMT  _ sent);
-#endif
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "writev: " OFF_T_FMT, sent);
 
         c->sent += sent;
 
         for (cl = in; cl && sent > 0; cl = cl->next) {
 
             size = cl->hunk->last - cl->hunk->pos;
-
-ngx_log_debug(c->log, "SIZE: %d" _ size);
 
             if (sent >= size) {
                 sent -= size;

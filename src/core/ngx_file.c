@@ -75,7 +75,8 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
 #endif
         file->fd = ngx_open_tempfile(file->name.data, 1);
 
-ngx_log_debug(file->log, "temp fd: %d" _ file->fd);
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, file->log, 0,
+                       "temp fd:%d", file->fd);
 
         if (file->fd != NGX_INVALID_FILE) {
             return NGX_OK;
@@ -123,15 +124,14 @@ void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
             break;
         }
 
-        ngx_log_debug(file->log, "hashed path: %s" _ file->name.data);
-
         name -= level;
         file->name.data[pos - 1] = '/';
         ngx_memcpy(&file->name.data[pos], &file->name.data[name], level);
         pos += level + 1;
     }
 
-    ngx_log_debug(file->log, "hashed path: %s" _ file->name.data);
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, file->log, 0,
+                   "hashed path: %s", file->name.data);
 }
 
 
@@ -151,7 +151,8 @@ int ngx_create_path(ngx_file_t *file, ngx_path_t *path)
 
         file->name.data[pos] = '\0';
 
-        ngx_log_debug(file->log, "temp: %s" _ file->name.data);
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, file->log, 0,
+                       "temp file: \"%s\"", file->name.data);
 
         if (ngx_create_dir(file->name.data) == NGX_FILE_ERROR) {
             err = ngx_errno;

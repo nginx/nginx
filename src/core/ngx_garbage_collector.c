@@ -79,7 +79,8 @@ static int ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level)
 
     buf.len = 0;
 
-ngx_log_debug(ctx->log, "dir '%s':%d" _ dname->data _ dname->len);
+    ngx_log_debug2(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                   "gc dir \"%s\":%d", dname->data, dname->len);
 
     if (ngx_open_dir(dname, &dir) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
@@ -106,7 +107,8 @@ ngx_log_debug(ctx->log, "dir '%s':%d" _ dname->data _ dname->len);
 
         len = ngx_de_namelen(&dir);
 
-ngx_log_debug(ctx->log, "name '%s':%d" _ ngx_de_name(&dir) _ len);
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                      "gc name \"%s\":%d", ngx_de_name(&dir), len);
 
         if (len == 1 && ngx_de_name(&dir)[0] == '.') {
             continue;
@@ -139,7 +141,8 @@ ngx_log_debug(ctx->log, "name '%s':%d" _ ngx_de_name(&dir) _ len);
         ngx_memcpy(last, ngx_de_name(&dir), len + 1);
         fname.data = buf.data;
 
-ngx_log_debug(ctx->log, "path %s" _ fname.data);
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                       "gc path: \"%s\"", fname.data);
 
         if (!dir.info_valid) {
             if (ngx_de_info(fname.data, &dir) == NGX_FILE_ERROR) {
@@ -151,7 +154,8 @@ ngx_log_debug(ctx->log, "path %s" _ fname.data);
 
         if (ngx_de_is_dir(&dir)) {
 
-ngx_log_debug(ctx->log, "enter %s" _ fname.data);
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                           "gc enter dir \"%s\"", fname.data);
 
             if (level == -1
                    /* there can not be directory on the last level */
@@ -187,7 +191,8 @@ ngx_log_debug(ctx->log, "enter %s" _ fname.data);
 
         } else if (ngx_de_is_file(&dir)) {
 
-ngx_log_debug(ctx->log, "file %s" _ fname.data);
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                           "gc file \"%s\"", fname.data);
 
             if (level == -1
                 || (level < NGX_MAX_PATH_LEVEL && ctx->path->level[level] != 0))
@@ -239,10 +244,10 @@ int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
                                        ngx_dir_t *dir)
 {
     /*
-     * we use mtime only and do not use atime because:
+     * We use mtime only and do not use atime because:
      *    on NTFS access time has a resolution of 1 hour,
      *    on NT FAT access time has a resolution of 1 day,
-     *    Unices have mount option "noatime"
+     *    Unices have the mount option "noatime".
      */
 
     if (ngx_cached_time - ngx_de_mtime(dir) < 3600) {

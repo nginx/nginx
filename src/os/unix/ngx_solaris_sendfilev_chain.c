@@ -82,24 +82,24 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
         if (n == -1) {
             err = ngx_errno;
 
-            if (err == NGX_EINTR) {
-                eintr = 1;
-            }
-
             if (err == NGX_EAGAIN || err == NGX_EINTR) {
-                ngx_log_error(NGX_LOG_INFO, c->log, err,
+                if (err == NGX_EINTR) {
+                    eintr = 1;
+                }
+
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, err,
                               "sendfilev() sent only " SIZE_T_FMT " bytes",
                               sent);
+
             } else {
                 wev->error = 1;
-                ngx_log_error(NGX_LOG_CRIT, c->log, err, "sendfilev() failed");
+                ngx_connection_error(c, err, "sendfilev() failed");
                 return NGX_CHAIN_ERROR;
             }
         }
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-        ngx_log_debug(c->log, "sendfilev: %d " SIZE_T_FMT _ n _ sent);
-#endif
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "sendfilev: %d " SIZE_T_FMT, n, sent);
 
         c->sent += sent;
 

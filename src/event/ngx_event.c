@@ -19,6 +19,11 @@ extern ngx_module_t ngx_devpoll_module;
 extern ngx_event_module_t ngx_devpoll_module_ctx;
 #endif
 
+#if (HAVE_EPOLL)
+extern ngx_module_t ngx_epoll_module;
+extern ngx_event_module_t ngx_epoll_module_ctx;
+#endif
+
 #if (HAVE_AIO)
 #include <ngx_aio_module.h>
 #endif

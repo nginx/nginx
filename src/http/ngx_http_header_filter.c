@@ -333,10 +333,10 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         *(h->last++) = CR; *(h->last++) = LF;
     }
 
-    /* STUB */
+#if (NGX_DEBUG)
     *(h->last) = '\0';
-    ngx_log_debug(r->connection->log, "%s\n" _ h->pos);
-    /**/
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s\n", h->pos);
+#endif
 
     /* the end of HTTP header */
     *(h->last++) = CR; *(h->last++) = LF;

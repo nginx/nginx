@@ -29,8 +29,10 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
         return NGX_AGAIN;
     }
 
-    ngx_log_debug(c->log, "rev->complete: %d" _ rev->complete);
-    ngx_log_debug(c->log, "aio size: %d" _ size);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "rev->complete: %d", rev->complete);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "aio size: %d", size);
 
     if (!rev->complete) {
         ngx_memzero(&rev->aiocb, sizeof(struct aiocb));
@@ -52,7 +54,8 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
             return NGX_ERROR;
         }
 
-        ngx_log_debug(c->log, "aio_read: #%d OK" _ c->fd);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "aio_read: #%d OK", c->fd);
 
         rev->active = 1;
         rev->ready = 0;
@@ -93,7 +96,8 @@ ssize_t ngx_aio_read(ngx_connection_t *c, char *buf, size_t size)
         return NGX_ERROR;
     }
 
-    ngx_log_debug(rev->log, "aio_read: #%d %d" _ c->fd _ n);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, rev->log, 0,
+                   "aio_read: #%d %d", c->fd, n);
 
     if (n == 0) {
         rev->eof = 1;

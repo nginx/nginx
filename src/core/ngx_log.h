@@ -21,9 +21,9 @@
 #define NGX_LOG_DEBUG_EVENT     0x40
 #define NGX_LOG_DEBUG_HTTP      0x80
 
-#define NGX_LOG_DEBUG_FIRST     NGX_LOG_DEBUG
+#define NGX_LOG_DEBUG_FIRST     NGX_LOG_DEBUG_CORE
 #define NGX_LOG_DEBUG_LAST      NGX_LOG_DEBUG_HTTP
-#define NGX_LOG_DEBUG_ALL       0xfffffff8
+#define NGX_LOG_DEBUG_ALL       0xfffffff0
 
 
 /*
@@ -74,15 +74,13 @@ typedef size_t  (*ngx_log_handler_pt) (void *ctx, char *buf, size_t len);
 
 
 struct ngx_log_s {
-    int                  log_level;
+    ngx_uint_t           log_level;
     ngx_open_file_t     *file;
     void                *data;
     ngx_log_handler_pt   handler;
 };
 
 #define MAX_ERROR_STR	2048
-
-#define _               ,
 
 
 /*********************************/
@@ -93,21 +91,6 @@ struct ngx_log_s {
 
 #define ngx_log_error(level, log, args...) \
         if (log->log_level >= level) ngx_log_error_core(level, log, args)
-
-#if (NGX_DEBUG)
-#define ngx_log_debug(log, args...) \
-    if (log->log_level & NGX_LOG_DEBUG) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, 0, args)
-#else
-#define ngx_log_debug(log, args...)
-#endif
-
-#define ngx_assert(assert, fallback, log, args...) \
-        if (!(assert)) { \
-            if (log->log_level >= NGX_LOG_ALERT) \
-                ngx_log_error_core(NGX_LOG_ALERT, log, 0, args); \
-            fallback; \
-        }
 
 void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
@@ -121,21 +104,6 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 #define ngx_log_error(level, log, ...) \
         if (log->log_level >= level) ngx_log_error_core(level, log, __VA_ARGS__)
 
-#if (NGX_DEBUG)
-#define ngx_log_debug(log, ...) \
-    if (log->log_level == NGX_LOG_DEBUG) \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, 0, __VA_ARGS__)
-#else
-#define ngx_log_debug(log, ...)
-#endif
-
-#define ngx_assert(assert, fallback, log, ...) \
-        if (!(assert)) { \
-            if (log->log_level >= NGX_LOG_ALERT) \
-                ngx_log_error_core(NGX_LOG_ALERT, log, 0, __VA_ARGS__); \
-            fallback; \
-        }
-
 void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
 
@@ -144,21 +112,6 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 #else /* NO VARIADIC MACROS */
 
 #define HAVE_VARIADIC_MACROS  0
-
-#if (NGX_DEBUG)
-#define ngx_log_debug(log, text) \
-    if (log->log_level == NGX_LOG_DEBUG) \
-        ngx_log_debug_core(log, 0, text)
-#else
-#define ngx_log_debug(log, text)
-#endif
-
-#define ngx_assert(assert, fallback, log, text) \
-        if (!(assert)) { \
-            if (log->log_level >= NGX_LOG_ALERT) \
-                ngx_assert_core(log, text); \
-            fallback; \
-        }
 
 void ngx_log_error(int level, ngx_log_t *log, ngx_err_t err,
                    const char *fmt, ...);

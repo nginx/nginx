@@ -83,7 +83,8 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         return NGX_OK;
     }
 
-    ngx_log_debug(p->log, "read upstream: %d" _ p->upstream->read->ready);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                   "pipe read upstream: %d", p->upstream->read->ready);
 
     for ( ;; ) {
 
@@ -104,7 +105,8 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             p->preread_hunks = NULL;
             n = p->preread_size;
 
-            ngx_log_debug(p->log, "preread: %d" _ n);
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                           "pipe preread: %d", n);
 
         } else {
 
@@ -169,7 +171,8 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                 p->upstream_blocked = 1;
 
-                ngx_log_debug(p->log, "downstream ready");
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                               "pipe downstream ready");
 
                 break;
 
@@ -184,7 +187,8 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                 rc = ngx_event_pipe_write_chain_to_temp_file(p);
 
-                ngx_log_debug(p->log, "temp offset: %d" _ p->temp_file->offset);
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                               "pipe temp offset: %d", p->temp_file->offset);
 
                 if (rc == NGX_AGAIN) {
                     if (ngx_event_flags & NGX_USE_LEVEL_EVENT
@@ -215,14 +219,16 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                 /* if there're no hunks to read in then disable a level event */
 
-                ngx_log_debug(p->log, "no hunks to read in");
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                               "no pipe hunks to read in");
     
                 break;
             }
 
             n = ngx_recv_chain(p->upstream, chain);
 
-            ngx_log_debug(p->log, "recv_chain: %d" _ n);
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                           "pipe recv chain: %d", n);
 
             if (p->free_raw_hunks) {
                 chain->next = p->free_raw_hunks;
@@ -312,7 +318,8 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
     ngx_hunk_t   *h;
     ngx_chain_t  *out, **ll, *cl, *tl;
 
-    ngx_log_debug(p->log, "write downstream: %d" _ p->downstream->write->ready);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                   "pipe write downstream: %d", p->downstream->write->ready);
 
     for ( ;; ) {
         if (p->downstream_error) {
@@ -383,7 +390,8 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         }
 
         if (out == NULL) {
-            ngx_log_debug(p->log, "no hunks to write BUSY: %d" _ to_write);
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                           "pipe busy hunk data: %d", to_write);
 
             if (!(p->upstream_blocked && to_write)) {
                 break;
@@ -472,12 +480,14 @@ static int ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         cl = out;
         ll = NULL;
 
-ngx_log_debug(p->log, "offset: %d" _ p->temp_file->offset);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                       "pipe offset: %d", p->temp_file->offset);
 
         do {
             hsize = cl->hunk->last - cl->hunk->pos;
 
-ngx_log_debug(p->log, "hunk size: %d" _ hsize);
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                           "pipe hunk size: %d", hsize);
 
             if ((size + hsize > p->temp_file_write_size)
                || (p->temp_file->offset + size + hsize > p->max_temp_file_size))
@@ -491,7 +501,7 @@ ngx_log_debug(p->log, "hunk size: %d" _ hsize);
 
         } while (cl);
 
-ngx_log_debug(p->log, "size: %d" _ size);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "size: %d", size);
 
         if (cl) {
            p->in = cl;
@@ -584,7 +594,9 @@ int ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_hunk_t *hunk)
     hunk->shadow = h;
 
     ngx_alloc_link_and_set_hunk(cl, h, p->pool, NGX_ERROR);
-ngx_log_debug(p->log, "HUNK %d" _ h->num);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "hunk #%d", h->num);
+
     ngx_chain_add_link(p->in, p->last_in, cl);
 
     return NGX_OK;

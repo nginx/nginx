@@ -346,7 +346,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *wev)
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
 
-    ngx_log_debug(wev->log, "http proxy check client");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0, "http proxy check client");
 
     c = wev->data;
     r = c->data;
@@ -362,14 +362,16 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *wev)
 
         if (!p->cachable && p->upstream->peer.connection) {
             ngx_log_error(NGX_LOG_INFO, wev->log, wev->kq_errno,
-                          "client closed prematurely connection, "
+                          "kevent() reported that client have closed "
+                          "prematurely connection, "
                           "so upstream connection is closed too");
             ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
             return;
         }
 
         ngx_log_error(NGX_LOG_INFO, wev->log, wev->kq_errno,
-                      "client closed prematurely connection");
+                      "kevent() reported that client have closed "
+                      "prematurely connection");
 
         if (p->upstream == NULL || p->upstream->peer.connection == NULL) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
@@ -385,7 +387,7 @@ void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
 
-    ngx_log_debug(rev->log, "busy lock");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http proxy busy lock");
 
     c = rev->data;
     r = c->data;
@@ -412,11 +414,12 @@ void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev)
         return;
     }
 
-    ngx_log_debug(rev->log, "client sent while busy lock");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "http proxy: client sent while busy lock");
 
     /*
      * TODO: kevent() notify about error, otherwise we need to
-     * call ngx_peek(): recv(MSG_PEEK) to get errno. THINK about aio
+     * call ngx_peek(): recv(MSG_PEEK) to get errno. THINK about aio.
      * if there's no error we need to disable event.
      */
 
@@ -452,7 +455,8 @@ void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
 
     r = p->request;
 
-    ngx_log_debug(r->connection->log, "finalize http proxy request");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "finalize http proxy request");
 
     if (p->upstream && p->upstream->peer.connection) {
         ngx_http_proxy_close_connection(p);
@@ -470,12 +474,15 @@ void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
     }
 
     if (p->upstream && p->upstream->event_pipe) {
-ngx_log_debug(r->connection->log, "TEMP FD: %d" _
-              p->upstream->event_pipe->temp_file->file.fd);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http proxy temp fd: %d",
+                       p->upstream->event_pipe->temp_file->file.fd);
     }
 
     if (p->cache) {
-ngx_log_debug(r->connection->log, "CACHE FD: %d" _ p->cache->ctx.file.fd);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http proxy cache fd: %d",
+                       p->cache->ctx.file.fd);
     }
 
     if (p->upstream && p->upstream->event_pipe) {
@@ -504,7 +511,8 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
         p->lcf->busy_lock->busy--;
     }
 
-    ngx_log_debug(c->log, "proxy close connection: %d" _ c->fd);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http proxy close connection: %d", c->fd);
 
     if (c->fd == -1) {
 #if 0

@@ -90,7 +90,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
         err = ngx_socket_errno;
 
         if (err == NGX_EAGAIN || err == NGX_EINTR) {
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, err,
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
                            "recv() not ready");
             n = NGX_AGAIN;
 
@@ -141,7 +141,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
         err = ngx_socket_errno;
 
         if (err == NGX_EAGAIN || err == NGX_EINTR) {
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, err,
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
                            "recv() not ready");
             n = NGX_AGAIN;
 

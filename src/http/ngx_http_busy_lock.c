@@ -59,8 +59,9 @@ int ngx_http_busy_lock_cachable(ngx_http_busy_lock_t *bl,
 
     rc = ngx_http_busy_lock_look_cachable(bl, bc, lock);
 
-ngx_log_debug(bc->event->log, "BUSYLOCK: %d %d:%d" _
-              rc _ bl->waiting _ bl->max_waiting);
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, bc->event->log, 0,
+                   "http busylock: %d w:%d mw::%d",
+                   rc, bl->waiting, bl->max_waiting);
 
     if (rc == NGX_OK) {  /* no the same request, there's free slot */
         return NGX_OK;

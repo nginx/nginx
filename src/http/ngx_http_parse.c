@@ -648,8 +648,8 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
     while (p < r->uri_start + r->uri.len + 1) {
 
-ngx_log_debug(r->connection->log, "S: %d UN: '%x:%c', URI: '%c'" _
-              state _ ch _ ch _ *u);
+        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "s:%d in:'%x:%c', out:'%c'", state, ch, ch, *u);
 
         switch (state) {
         case sw_usual:

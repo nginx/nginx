@@ -36,12 +36,14 @@ int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
     ngx_md5_text(ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len,
                  ctx->md5);
 
-ngx_log_debug(r->connection->log, "URL: %s, md5: %s" _ ctx->key.data _
-              ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+               "file cache uri: %s, md5: %s", ctx->key.data,
+               ctx->file.name.data + ctx->path->name.len + 1 + ctx->path->len);
 
     ngx_create_hashed_filename(&ctx->file, ctx->path);
 
-ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "file cache name: %s", ctx->file.name.data);
 
     /* TODO: look open files cache */
 
@@ -129,7 +131,10 @@ int ngx_http_cache_open_file(ngx_http_cache_ctx_t *ctx, ngx_file_uniq_t uniq)
     ctx->buf->last += n;
 
     if (ctx->expires < ngx_time()) {
-ngx_log_debug(ctx->log, "EXPIRED");
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ctx->log, 0,
+                       "http file cache expired");
+
         return NGX_HTTP_CACHE_STALE;
     }
 

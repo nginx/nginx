@@ -5,6 +5,12 @@
 #include <nginx.h>
 
 
+typedef struct {
+    int    flag;
+    char  *name;
+} ngx_accept_log_ctx_t;
+
+
 static size_t ngx_accept_log_error(void *data, char *buf, size_t len);
 
 
@@ -20,6 +26,7 @@ void ngx_event_accept(ngx_event_t *ev)
     ngx_event_t           *rev, *wev;
     ngx_connection_t      *c, *ls;
     ngx_event_conf_t      *ecf;
+    ngx_accept_log_ctx_t  *ctx;
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
@@ -32,9 +39,9 @@ void ngx_event_accept(ngx_event_t *ev)
 
     ls = ev->data;
 
-    ngx_log_debug(ev->log, "accept on %s ready: %d" _
-                  ls->listening->addr_text.data _
-                  ev->available);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "accept on %s, ready: %d",
+                   ls->listening->addr_text.data, ev->available);
 
     ev->ready = 0;
     accepted = 0;
@@ -68,7 +75,16 @@ void ngx_event_accept(ngx_event_t *ev)
         ngx_memcpy(log, ls->log, sizeof(ngx_log_t));
         pool->log = log;
 
-        log->data = ls->listening->addr_text.data;
+        if (!(ctx = ngx_palloc(pool, sizeof(ngx_accept_log_ctx_t)))) {
+            ngx_destroy_pool(pool);
+            return;
+        }
+
+        /* -1 disable logging the connection number */
+        ctx->flag = -1;
+        ctx->name = ls->listening->addr_text.data;
+
+        log->data = ctx;
         log->handler = ngx_accept_log_error;
 
         len = ls->listening->socklen;
@@ -233,8 +249,8 @@ void ngx_event_accept(ngx_event_t *ev)
         wev->log = log;
 
         /*
-         * In the multithreaded model the connection counter is updated by
-         * the main thread only that accept()s connections.
+         * TODO: MT: - atomic increment (x86: lock xadd)
+         *             or protection by critical section or mutex
          *
          * TODO: MP: - allocated in a shared memory
          *           - atomic increment (x86: lock xadd)
@@ -279,7 +295,7 @@ void ngx_event_accept(ngx_event_t *ev)
 
 static size_t ngx_accept_log_error(void *data, char *buf, size_t len)
 {
-    char *sock = data;
+    ngx_accept_log_ctx_t  *ctx = data;
 
-    return ngx_snprintf(buf, len, " while accept() on %s", sock);
+    return ngx_snprintf(buf, len, " while accept() on %s", ctx->name);
 }

@@ -106,7 +106,7 @@ static int ngx_aio_del_connection(ngx_connection_t *c)
 
     rc = aio_cancel(c->fd, NULL);
 
-    ngx_log_debug(c->log, "aio_cancel: %d" _ rc);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "aio_cancel: %d", rc);
 
     if (rc == AIO_CANCELED) {
         c->read->active = c->write->active = 0;

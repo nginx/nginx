@@ -11,15 +11,16 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 {
     ssize_t n;
 
-    ngx_log_debug(file->log, "read: %d, %x, %d, " OFF_T_FMT _
-                  file->fd _ buf _ size _ offset);
+    ngx_log_debug4(NGX_LOG_DEBUG_CORE, file->log, 0,
+                   "read: %d, %X, %d, " OFF_T_FMT, file->fd, buf, size, offset);
 
 #if (HAVE_PREAD)
 
     n = pread(file->fd, buf, size, offset);
 
     if (n == -1) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "pread() failed");
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                      "pread() failed, file \"%s\"", file->name.data);
         return NGX_ERROR;
     }
 

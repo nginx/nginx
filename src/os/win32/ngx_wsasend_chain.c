@@ -64,9 +64,7 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
         }
     }
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-    ngx_log_debug(c->log, "WSASend(): %d" _ sent);
-#endif
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "WSASend(): %d", sent);
 
     c->sent += sent;
 
@@ -207,9 +205,7 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in)
         }
     }
 
-#if (NGX_DEBUG_WRITE_CHAIN)
-    ngx_log_debug(c->log, "WSASend(): %d" _ sent);
-#endif
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "WSASend(): %d", sent);
 
     c->sent += sent;
 
@@ -391,9 +387,7 @@ non-block
         }
     }
 
-#if (NGX_DEBUG_WRITE_CHAIN)
     ngx_log_debug(c->log, "WSASend(): %d" _ sent);
-#endif
 
     c->sent += sent;
 

@@ -464,7 +464,7 @@ static void ngx_clean_old_cycles(ngx_event_t *ev)
     log = ngx_cycle->log;
     ngx_temp_pool->log = log;
 
-    ngx_log_debug(log, "clean old cycles");
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, log, 0, "clean old cycles");
 
     live = 0;
 
@@ -480,7 +480,9 @@ static void ngx_clean_old_cycles(ngx_event_t *ev)
         for (n = 0; n < cycle[i]->connection_n; n++) {
             if (cycle[i]->connections[n].fd != -1) {
                 found = 1;
-                ngx_log_debug(log, "live fd: %d" _ n);
+
+                ngx_log_debug1(NGX_LOG_DEBUG_CORE, log, 0, "live fd:%d", n);
+
                 break;
             }
         }
@@ -490,15 +492,15 @@ static void ngx_clean_old_cycles(ngx_event_t *ev)
             continue;
         }
 
-        ngx_log_debug(log, "clean old cycle: %d" _ i);
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, log, 0, "clean old cycle: %d", i);
+
         ngx_destroy_pool(cycle[i]->pool);
         cycle[i] = NULL;
     }
 
-    ngx_log_debug(log, "old cycles status: %d" _ live);
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, log, 0, "old cycles status: %d", live);
 
     if (live) {
-        ngx_log_debug(log, "TIMER");
         ngx_add_timer(ev, 30000);
 
     } else {

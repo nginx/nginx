@@ -36,9 +36,6 @@
 #include <dirent.h>
 
 
-/* Linux has a broken strerror_r() */
-#define HAVE_STRERROR_R  0
-
 #include <ngx_auto_config.h>
 
 

@@ -6,7 +6,7 @@
 
 
 typedef struct {
-    ssize_t  buffer_output;
+    ssize_t  postpone_output;
 } ngx_http_write_filter_conf_t;
 
 
@@ -23,11 +23,19 @@ static int ngx_http_write_filter_init(ngx_cycle_t *cycle);
 
 static ngx_command_t  ngx_http_write_filter_commands[] = {
 
+    /* STUB */
     { ngx_string("buffer_output"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_write_filter_conf_t, buffer_output),
+      offsetof(ngx_http_write_filter_conf_t, postpone_output),
+      NULL },
+
+    { ngx_string("postpone_output"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_write_filter_conf_t, postpone_output),
       NULL },
 
       ngx_null_command
@@ -112,21 +120,19 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
-#if (NGX_DEBUG_WRITE_FILTER)
-    ngx_log_debug(r->connection->log,
-                  "write filter: last:%d flush:%qd size:%qd" _
-                  last _ flush _ size);
-#endif
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http write filter: l:%d f:" OFF_T_FMT " s:" OFF_T_FMT,
+                   last, flush, size);
 
     conf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                         ngx_http_write_filter_module);
 
     /*
      * avoid the output if there is no last hunk, no flush point and
-     * the size of the hunks is smaller than "buffer_output" directive
+     * the size of the hunks is smaller than "postpone_output" directive
      */
 
-    if (!last && flush == 0 && size < conf->buffer_output) {
+    if (!last && flush == 0 && size < conf->postpone_output) {
         return NGX_OK;
     }
 
@@ -140,9 +146,8 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     chain = ngx_write_chain(r->connection, ctx->out);
 
-#if (NGX_DEBUG_WRITE_FILTER)
-    ngx_log_debug(r->connection->log, "write filter %x" _ chain);
-#endif
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http write filter %X", chain);
 
     if (chain == NGX_CHAIN_ERROR) {
         return NGX_ERROR;
@@ -166,7 +171,7 @@ static void *ngx_http_write_filter_create_conf(ngx_conf_t *cf)
                   ngx_palloc(cf->pool, sizeof(ngx_http_write_filter_conf_t)),
                   NULL);
 
-    conf->buffer_output = NGX_CONF_UNSET;
+    conf->postpone_output = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -178,7 +183,8 @@ static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
     ngx_http_write_filter_conf_t *prev = parent;
     ngx_http_write_filter_conf_t *conf = child;
 
-    ngx_conf_merge_size_value(conf->buffer_output, prev->buffer_output, 1460);
+    ngx_conf_merge_size_value(conf->postpone_output, prev->postpone_output,
+                              1460);
 
     return NULL;
 }
