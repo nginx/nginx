@@ -1,5 +1,4 @@
 
-
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
@@ -10,9 +9,7 @@
 static int ngx_open_listening_sockets(ngx_log_t *log);
 
 
-ngx_log_t       ngx_log;
-ngx_pool_t     *ngx_pool;
-void        ****ngx_conf_ctx;
+void  ****ngx_conf_ctx;
 
 
 ngx_os_io_t  ngx_io;
@@ -28,19 +25,13 @@ ngx_array_t  ngx_listening_sockets;
 
 int main(int argc, char *const *argv)
 {
-    int         i;
+    int          i;
     ngx_str_t    conf_file;
     ngx_log_t   *log;
+    ngx_pool_t  *pool, *old_pool;
     ngx_conf_t   conf;
 
     ngx_max_sockets = -1;
-
-#if 0
-    ngx_log.fd = STDERR_FILENO;
-    ngx_log.log_level = NGX_LOG_INFO;
-
-    /* STUB */ ngx_log.log_level = NGX_LOG_DEBUG;
-#endif
 
     log = ngx_log_init_errlog();
 
@@ -48,33 +39,89 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
-    ngx_pool = ngx_create_pool(16 * 1024, log);
-    /* */
-
     ngx_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {
         ngx_modules[i]->index = ngx_max_module++;
     }
 
+#if 0
+
+    ngx_test_null(cycle->pool, ngx_create_pool(16 * 1024, log), 1);
+
+    if (ngx_init_conf(cycle) == NGX_ERROR) {
+        ngx_destroy_pool(cycle->pool);
+        return 1;
+    }
+
+    /* daemon */
+
     /* life cycle */
 
     {
+
+        /* forks */
+
+        /* threads */
+
+        for ( ;; ) {
+            worker;
+
+            new_cycle = ngx_calloc(sizeof(ngx_cycle_t), cycle->log);
+
+            if (new_cycle == NULL) {
+                continue;
+            }
+
+            new_cycle->pool = ngx_create_pool(16 * 1024, cycle->log);
+
+            if (new_cycle->pool == NULL) {
+                ngx_free(new_cycle);
+                continue;
+            }
+
+            if (ngx_init_conf(new_cycle) == NGX_ERROR) {
+                ngx_destroy_pool(new_cycle->pool);
+                ngx_free(new_cycle);
+                continue;
+            }
+
+            /* update bound listening */
+
+            ngx_destroy_pool(cycle->pool);
+            ngx_free(cycle);
+
+            cycle = new_cycle;
+            break;
+        }
+    }
+
+    return 0;
+
+#endif
+
+    /* life cycle */
+
+    {
+        old_pool = pool;
+
+        pool = ngx_create_pool(16 * 1024, log);
+
         ngx_init_array(ngx_listening_sockets,
-                       ngx_pool, 10, sizeof(ngx_listening_t),
+                       pool, 10, sizeof(ngx_listening_t),
                        1);
 
         ngx_memzero(&conf, sizeof(ngx_conf_t));
 
         ngx_test_null(conf.args,
-                      ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)),
+                      ngx_create_array(pool, 10, sizeof(ngx_str_t)),
                       1);
 
         ngx_test_null(ngx_conf_ctx,
-                      ngx_pcalloc(ngx_pool, ngx_max_module * sizeof(void *)),
+                      ngx_pcalloc(pool, ngx_max_module * sizeof(void *)),
                       1);
 
         conf.ctx = ngx_conf_ctx;
-        conf.pool = ngx_pool;
+        conf.pool = pool;
         conf.log = log;
         conf.module_type = NGX_CORE_MODULE;
         conf.cmd_type = NGX_MAIN_CONF;
@@ -97,7 +144,7 @@ int main(int argc, char *const *argv)
 
         for (i = 0; ngx_modules[i]; i++) {
             if (ngx_modules[i]->init_module) {
-                if (ngx_modules[i]->init_module(ngx_pool) == NGX_ERROR) {
+                if (ngx_modules[i]->init_module(pool) == NGX_ERROR) {
                     return 1;
                 }
             }
@@ -111,7 +158,7 @@ int main(int argc, char *const *argv)
 
         /* TODO: fork */
 
-        ngx_pre_thread(&ngx_listening_sockets, ngx_pool, log);
+        ngx_pre_thread(&ngx_listening_sockets, pool, log);
 
         /* TODO: threads */
 
@@ -122,6 +169,43 @@ int main(int argc, char *const *argv)
     return 0;
 }
 
+#if 0
+
+static int ngx_init_conf(ngx_cycle_t *cycle)
+{
+    ngx_conf_t   conf;
+
+    ngx_init_array(cycle->listening, cycle->pool, 10, sizeof(ngx_listening_t),
+                   NGX_ERROR);
+
+    ngx_memzero(&conf, sizeof(ngx_conf_t));
+
+    ngx_test_null(conf.args,
+                  ngx_create_array(cycle->pool, 10, sizeof(ngx_str_t)),
+                  NGX_ERROR);
+
+    ngx_test_null(ngx_conf_ctx,
+                  ngx_pcalloc(cycle->pool, ngx_max_module * sizeof(void *)),
+                  NGX_ERROR);
+
+    conf.ctx = ngx_conf_ctx;
+    conf.pool = cycle->pool;
+    conf.log = cycle->log;
+    conf.module_type = NGX_CORE_MODULE;
+    conf.cmd_type = NGX_MAIN_CONF;
+
+    conf_file.len = sizeof(NGINX_CONF) - 1;
+    conf_file.data = NGINX_CONF;
+
+    if (ngx_conf_parse(&conf, &conf_file) != NGX_CONF_OK) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+#endif
 
 static int ngx_open_listening_sockets(ngx_log_t *log)
 {

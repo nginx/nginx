@@ -64,10 +64,11 @@ typedef enum {
 
 
 typedef struct {
-    int       log_level;
-    ngx_fd_t  fd;
-    void     *data;
-    size_t   (*handler)(void *ctx, char *buf, size_t len);
+    int               log_level;
+    ngx_open_file_t  *file;
+    void             *data;
+    size_t           (*handler)(void *ctx, char *buf, size_t len);
+
 #if 0
 /* STUB */
     char     *action;

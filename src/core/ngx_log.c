@@ -41,7 +41,8 @@ ngx_module_t  ngx_errlog_module = {
 };
 
 
-static ngx_log_t  ngx_log;
+static ngx_open_file_t  ngx_stderr;
+static ngx_log_t        ngx_log;
 
 
 static const char *err_levels[] = {
@@ -121,12 +122,12 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 #if (WIN32)
     errstr[len++] = '\r';
     errstr[len++] = '\n';
-    if (log->fd) {
-        WriteFile(log->fd, errstr, len, &written, NULL);
+    if (log->file->fd) {
+        WriteFile(log->file->fd, errstr, len, &written, NULL);
     }
 #else
     errstr[len++] = '\n';
-    write(log->fd, errstr, len);
+    write(log->file->fd, errstr, len);
 #endif
 
 
@@ -220,23 +221,24 @@ ngx_log_t *ngx_log_init_errlog()
 {
 #if (WIN32)
 
-    ngx_log.fd = GetStdHandle(STD_ERROR_HANDLE);
+    ngx_stderr.fd = GetStdHandle(STD_ERROR_HANDLE);
 
-    if (ngx_log.fd == NGX_INVALID_FILE) {
+    if (ngx_stderr.fd == NGX_INVALID_FILE) {
         /* TODO: where we can log error ? */
         return NULL;
 
-    } else if (ngx_log.fd == NULL) {
+    } else if (ngx_stderr.fd == NULL) {
         /* there are no associated standard handles */
         /* TODO: where we can log possible errors ? */
     }
 
 #else
 
-    ngx_log.fd = STDERR_FILENO;
+    ngx_stderr.fd = STDERR_FILENO;
 
 #endif
 
+    ngx_log.file = &ngx_stderr;
     ngx_log.log_level = NGX_LOG_INFO;
     /* STUB */ ngx_log.log_level = NGX_LOG_DEBUG;
 
@@ -252,11 +254,11 @@ char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log)
 
     value = cf->args->elts;
 
-    log->fd = ngx_open_file(value[1].data,
+    log->file->fd = ngx_open_file(value[1].data,
                             NGX_FILE_RDWR,
                             NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 
-    if (log->fd == NGX_INVALID_FILE) {
+    if (log->file->fd == NGX_INVALID_FILE) {
         err = ngx_errno;
         len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
                           ngx_open_file_n " \"%s\" failed (%d: ",
@@ -269,7 +271,7 @@ char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log)
     }
 
 #if (WIN32)
-    if (ngx_file_append_mode(log->fd) == NGX_ERROR) {
+    if (ngx_file_append_mode(log->file->fd) == NGX_ERROR) {
         err = ngx_errno;
         len = ngx_snprintf(ngx_conf_errstr, sizeof(ngx_conf_errstr) - 1,
                           ngx_file_append_mode_n " \"%s\" failed (%d: ",

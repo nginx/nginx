@@ -73,6 +73,20 @@ typedef struct {
 } ngx_conf_file_t;
 
 
+struct ngx_open_file_s {
+    ngx_fd_t   fd;
+    ngx_str_t  name;
+};
+
+
+typedef struct {
+    ngx_pool_t   *pool;
+    ngx_log_t    *log;
+    ngx_array_t   listening;
+    ngx_array_t   files;
+} ngx_cycle_t;
+
+
 typedef char *(*ngx_conf_handler_pt)(ngx_conf_t *cf,
                                      ngx_command_t *dummy, void *conf);
 

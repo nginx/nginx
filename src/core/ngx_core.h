@@ -10,6 +10,7 @@
 
 typedef struct ngx_module_s      ngx_module_t;
 typedef struct ngx_conf_s        ngx_conf_t;
+typedef struct ngx_open_file_s   ngx_open_file_t;;
 typedef struct ngx_command_s     ngx_command_t;
 
 typedef struct ngx_file_s        ngx_file_t;
