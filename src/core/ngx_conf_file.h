@@ -83,7 +83,9 @@ typedef struct {
     ngx_pool_t   *pool;
     ngx_log_t    *log;
     ngx_array_t   listening;
-    ngx_array_t   files;
+    ngx_array_t   open_files;
+
+    unsigned      one_process:1;
 } ngx_cycle_t;
 
 
@@ -95,6 +97,7 @@ struct ngx_conf_s {
     char                 *name;
     ngx_array_t          *args;
 
+    ngx_cycle_t          *cycle;
     ngx_pool_t           *pool;
     ngx_conf_file_t      *conf_file;
     ngx_log_t            *log;

@@ -70,7 +70,7 @@ static int ngx_select_init(ngx_log_t *log)
 {
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_module);
+    ecf = ngx_event_get_conf(ngx_event_core_module);
 
     FD_ZERO(&master_read_fd_set);
     FD_ZERO(&master_write_fd_set);
@@ -376,7 +376,7 @@ static char *ngx_select_init_conf(ngx_pool_t *pool, void *conf)
 {
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_module);
+    ecf = ngx_event_get_conf(ngx_event_core_module);
 
     /* the default FD_SETSIZE is 1024U in FreeBSD 5.x */
 

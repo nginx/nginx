@@ -58,7 +58,7 @@ static int ngx_poll_init(ngx_log_t *log)
 {
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_module);
+    ecf = ngx_event_get_conf(ngx_event_core_module);
 
     ngx_test_null(event_list,
                   ngx_alloc(sizeof(struct pollfd) * ecf->connections, log),

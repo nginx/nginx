@@ -6,7 +6,7 @@
 extern ngx_module_t  ngx_errlog_module;
 
 extern ngx_module_t  ngx_events_module;
-extern ngx_module_t  ngx_event_module;
+extern ngx_module_t  ngx_event_core_module;
 extern ngx_module_t  ngx_select_module;
 #if (HAVE_POLL)
 extern ngx_module_t  ngx_poll_module;
@@ -51,7 +51,7 @@ ngx_module_t *ngx_modules[] = {
     /* events */
 
     &ngx_events_module,
-    &ngx_event_module,
+    &ngx_event_core_module,
 
     &ngx_select_module,
 #if (HAVE_POLL)

@@ -15,7 +15,7 @@ int ngx_event_timer_init(ngx_log_t *log)
     ngx_event_t       *new_queue;
     ngx_event_conf_t  *ecf;
 
-    ecf = ngx_event_get_conf(ngx_event_module);
+    ecf = ngx_event_get_conf(ngx_event_core_module);
 
     if (ngx_timer_queue_num < ecf->timer_queues) {
         ngx_test_null(new_queue,

@@ -65,9 +65,9 @@ ngx_module_t  ngx_events_module = {
 };
 
 
-static ngx_str_t  event_name = ngx_string("event");
+static ngx_str_t  event_core_name = ngx_string("event_core");
 
-static ngx_command_t  ngx_event_commands[] = {
+static ngx_command_t  ngx_event_core_commands[] = {
 
     {ngx_string("connections"),
      NGX_EVENT_CONF|NGX_CONF_TAKE1,
@@ -94,8 +94,8 @@ static ngx_command_t  ngx_event_commands[] = {
 };
 
 
-ngx_event_module_t  ngx_event_module_ctx = {
-    &event_name,
+ngx_event_module_t  ngx_event_core_module_ctx = {
+    &event_core_name,
     ngx_event_create_conf,                 /* create configuration */
     ngx_event_init_conf,                   /* init configuration */
 
@@ -103,10 +103,10 @@ ngx_event_module_t  ngx_event_module_ctx = {
 };
 
 
-ngx_module_t  ngx_event_module = {
+ngx_module_t  ngx_event_core_module = {
     NGX_MODULE,
-    &ngx_event_module_ctx,                 /* module context */
-    ngx_event_commands,                    /* module directives */
+    &ngx_event_core_module_ctx,            /* module context */
+    ngx_event_core_commands,               /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
     NULL                                   /* init module */
 };
@@ -125,7 +125,7 @@ int ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
     ngx_iocp_conf_t     *iocpcf;
 #endif
 
-    ecf = ngx_event_get_conf(ngx_event_module);
+    ecf = ngx_event_get_conf(ngx_event_core_module);
 
 ngx_log_debug(log, "CONN: %d" _ ecf->connections);
 ngx_log_debug(log, "TYPE: %d" _ ecf->use);

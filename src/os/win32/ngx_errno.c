@@ -34,7 +34,7 @@ int ngx_strerror_r(ngx_err_t err, char *errstr, size_t size)
     ngx_err_t  format_error;
 
     len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM
-                        | FORMAT_MESSAGE_IGNORE_INSERTS,
+                        |FORMAT_MESSAGE_IGNORE_INSERTS,
                         NULL, err,
                         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                         errstr, size, NULL);

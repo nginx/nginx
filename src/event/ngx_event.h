@@ -345,7 +345,7 @@ typedef struct {
 
 
 extern ngx_module_t        ngx_events_module;
-extern ngx_module_t        ngx_event_module;
+extern ngx_module_t        ngx_event_core_module;
 
 
 #define ngx_event_get_conf(module)                                           \

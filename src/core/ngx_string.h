@@ -18,8 +18,6 @@ typedef struct {
 
 #if (WIN32)
 
-#define ngx_memzero               ZeroMemory
-
 #define ngx_strncasecmp           strnicmp
 #define ngx_strcasecmp            stricmp
 #define ngx_strncmp               strncmp
@@ -31,8 +29,6 @@ typedef struct {
 #define ngx_vsnprintf             _vsnprintf
 
 #else
-
-#define ngx_memzero               bzero
 
 #define ngx_strncasecmp           strncasecmp
 #define ngx_strcasecmp            strcasecmp
@@ -46,8 +42,18 @@ typedef struct {
 
 #endif
 
+/*
+ * msvc and icc compile memset() to inline "rep stos"
+ * while ZeroMemory and bzero are calls.
+ */
+#define ngx_memzero(buf, n)       memset(buf, n, 0)
+
+/* msvc and icc compile memcpy() to inline "rep movs" */
 #define ngx_memcpy(dst, src, n)   memcpy(dst, src, n)
 #define ngx_cpymem(dst, src, n)   ((char *) memcpy(dst, src, n)) + n
+
+/* msvc and icc compile memcmp() to inline loop */
+#define ngx_memcmp                memcmp
 
 char *ngx_cpystrn(char *dst, char *src, size_t n);
 int ngx_rstrncmp(char *s1, char *s2, size_t n);

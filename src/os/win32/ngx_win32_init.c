@@ -77,20 +77,34 @@ int ngx_os_init(ngx_log_t *log)
                              + osvi.wServicePackMinor;
 
         ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "OS: %u build:%u, %s, suite:%x, type:%u",
+                      "OS: %u build:%u, \"%s\", suite:%x, type:%u",
                       ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
                       osvi.wReserved[0], osvi.wReserved[1]);
 
 #if 0
         ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "OS: %u build:%u, %s, suite:%x, type:%u",
+                      "OS: %u build:%u, \"%s\", suite:%x, type:%u",
                       ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
                       osvi.wSuiteMask, osvi.wProductType);
 #endif
 
     } else {
-        ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %u build:%u, %s",
-                      ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion);
+        if (osvi.dwPlatformId == 1) {
+
+            /* Win9x build */
+
+            ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %u build:%u.%u.%u, \"%s\"",
+                          ngx_win32_version,
+                          osvi.dwBuildNumber >> 24,
+                          (osvi.dwBuildNumber >> 16) & 0xff,
+                          osvi.dwBuildNumber & 0xffff,
+                          osvi.szCSDVersion);
+
+        } else {
+            ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %u build:%u, \"%s\"",
+                          ngx_win32_version, osvi.dwBuildNumber,
+                          osvi.szCSDVersion);
+        }
     }
 
 
