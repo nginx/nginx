@@ -108,6 +108,10 @@ struct ngx_connection_s {
 #if (HAVE_IOCP)
     unsigned          accept_context_updated:1;
 #endif
+
+#if (NGX_THREADS)
+    ngx_atomic_t      lock;
+#endif
 };
 
 

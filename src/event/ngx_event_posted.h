@@ -14,14 +14,15 @@
 
 
 void ngx_event_process_posted(ngx_cycle_t *cycle);
-#if (NGX_THREADS)
-void ngx_event_thread_handler(ngx_event_t *ev);
-#endif
-
 
 extern ngx_thread_volatile ngx_event_t  *ngx_posted_events;
+
+
 #if (NGX_THREADS)
+ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle);
+
 extern ngx_mutex_t                      *ngx_posted_events_mutex;
+extern ngx_cv_t                         *ngx_posted_events_cv;
 #endif
 
 

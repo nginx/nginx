@@ -708,7 +708,7 @@ static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf((char *) buf, NGX_TIME_T_LEN,
+        buf += ngx_snprintf((char *) buf, TIME_T_LEN,
                             TIME_T_FMT, p->state->expired);
     }
 
@@ -718,7 +718,7 @@ static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf((char *) buf, NGX_TIME_T_LEN,
+        buf += ngx_snprintf((char *) buf, TIME_T_LEN,
                             TIME_T_FMT, p->state->bl_time);
     }
 
@@ -752,7 +752,7 @@ static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf((char *) buf, NGX_TIME_T_LEN,
+        buf += ngx_snprintf((char *) buf, TIME_T_LEN,
                             TIME_T_FMT, p->state->expires);
     }
 

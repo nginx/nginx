@@ -30,7 +30,7 @@ rm $NGX_AUTOTEST*
 
 
 if [ $found = no ]; then
-    found="uint`expr 8 \* $ngx_ptr_bytes`_t"
+    found="uint`expr 8 \* $ngx_ptr_size`_t"
     echo ", $found used"
 
     echo "typedef $found  uintptr_t;"   >> $NGX_AUTO_CONFIG_H

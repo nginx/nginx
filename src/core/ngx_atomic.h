@@ -93,4 +93,18 @@ typedef volatile uint32_t  ngx_atomic_t;
 #endif
 
 
+static ngx_inline ngx_int_t ngx_trylock(ngx_atomic_t *lock)
+{
+    if (*lock) {
+        return NGX_BUSY;
+    }
+
+    if (ngx_atomic_cmp_set(lock, 0, 1)) {
+        return NGX_OK;
+    }
+
+    return NGX_BUSY;
+}
+
+
 #endif /* _NGX_ATOMIC_H_INCLUDED_ */

@@ -13,31 +13,30 @@ ngx_formats="%ld"; . auto/fmt/fmt
 ngx_type="long long"; . auto/types/sizeof
 ngx_formats="%lld %qd"; . auto/fmt/fmt
 
-ngx_type="void *"; . auto/types/sizeof; ngx_ptr_bytes=$ngx_bytes
+ngx_type="void *"; . auto/types/sizeof; ngx_ptr_size=$ngx_size
 ngx_fmt_name=PTR_FMT;
-eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/ptrfmt
+eval ngx_formats=\${ngx_${ngx_ptr_size}_fmt}; . auto/fmt/ptrfmt
 
 
 # POSIX types
 
 NGX_AUTO_CONFIG="#include \"../$NGX_AUTO_CONFIG_H\""
 
-ngx_type="uint64_t"
-ngx_types="u_int64_t"; . auto/types/typedef
+ngx_type="uint64_t"; ngx_types="u_int64_t"; . auto/types/typedef
 
-ngx_type="sig_atomic_t"
-ngx_types="int"; . auto/types/typedef
+ngx_type="sig_atomic_t"; ngx_types="int"; . auto/types/typedef
+. auto/types/sizeof
+ngx_param=SIG_ATOMIC_T_SIZE; ngx_value=$ngx_size; . auto/types/value
 
-ngx_type="socklen_t"
-ngx_types="uint32_t"; . auto/types/typedef
+ngx_type="socklen_t"; ngx_types="uint32_t"; . auto/types/typedef
 
-ngx_type="in_addr_t"
-ngx_types="uint32_t"; . auto/types/typedef
+ngx_type="in_addr_t"; ngx_types="uint32_t"; . auto/types/typedef
 
-ngx_type="rlim_t"
-ngx_types="int"; . auto/types/typedef
+ngx_type="rlim_t"; ngx_types="int"; . auto/types/typedef
 
 . auto/types/uintptr_t
+
+. auto/endianess
 
 
 # printf() formats
@@ -46,22 +45,24 @@ CC_WARN=$CC_STRONG
 ngx_fmt_collect=no
 
 ngx_fmt_name=OFF_T_FMT; ngx_type="off_t"; . auto/types/sizeof
-ngx_type_max_value=OFF_T_MAX_VALUE; . auto/types/maxvalue
-eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
+ngx_param=OFF_T_MAX_VALUE; ngx_value=$ngx_max_value; . auto/types/value
+eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
 
 ngx_fmt_name=TIME_T_FMT; ngx_type="time_t"; . auto/types/sizeof
-eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
+ngx_param=TIME_T_SIZE; ngx_value=$ngx_size; . auto/types/value
+ngx_param=TIME_T_LEN; ngx_value=$ngx_max_len; . auto/types/value
+eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
 
 ngx_fmt_name=SIZE_T_FMT; ngx_type="size_t"; . auto/types/sizeof
-eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
+eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
 
 ngx_fmt_name=SIZE_T_X_FMT; . auto/fmt/xfmt
 
 ngx_fmt_name=PID_T_FMT; ngx_type="pid_t"; . auto/types/sizeof
-eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
+eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
 
 ngx_fmt_name=RLIM_T_FMT; ngx_type="rlim_t"; . auto/types/sizeof
-eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
+eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
 
 
 # syscalls, libc calls and some features

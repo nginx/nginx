@@ -118,24 +118,22 @@ static ngx_int_t ngx_http_headers_filter(ngx_http_request_t *r)
                 cc->value.data = (u_char *) "max-age=0";
 
             } else {
-                ngx_http_time(expires->value.data,
-                              ngx_cached_time + conf->expires);
+                ngx_http_time(expires->value.data, ngx_time() + conf->expires);
 
                 if (conf->expires < 0) {
                     cc->value.len = sizeof("no-cache") - 1;
                     cc->value.data = (u_char *) "no-cache";
 
                 } else {
-                    cc->value.data = ngx_palloc(r->pool, NGX_TIME_T_LEN + 1);
+                    cc->value.data = ngx_palloc(r->pool, TIME_T_LEN + 1);
                     if (cc->value.data == NULL) {
                         return NGX_ERROR;
                     }
 
                     cc->value.len = ngx_snprintf((char *) cc->value.data,
-                                                 sizeof("max-age=")
-                                                              + NGX_TIME_T_LEN,
-                                                 "max-age=" TIME_T_FMT,
-                                                 conf->expires);
+                                               sizeof("max-age=") + TIME_T_LEN,
+                                               "max-age=" TIME_T_FMT,
+                                               conf->expires);
                 }
             }
         }

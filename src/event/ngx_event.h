@@ -154,6 +154,11 @@ struct ngx_event_s {
 #endif
 
 
+#if (NGX_THREADS)
+    ngx_atomic_t    *lock;
+#endif
+
+
 #if 0
 
     /* the threads support */

@@ -1,6 +1,0 @@
-
-cat << END >> $NGX_AUTO_CONFIG_H
-
-#ifndef $ngx_type_max_value
-#define $ngx_type_max_value  $ngx_max_size
-#endif

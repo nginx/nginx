@@ -582,14 +582,17 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }
 
-    /* TODO: wake up worker thread */
-
     if (expire && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
-    if (!ngx_threaded) {
-        ngx_event_process_posted(cycle);
+    if (ngx_posted_events) {
+        if (ngx_threaded) {
+            ngx_cv_signal(ngx_posted_events_cv);
+
+        } else {
+            ngx_event_process_posted(cycle);
+        }
     }
 
     return NGX_OK;

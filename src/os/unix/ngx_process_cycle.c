@@ -625,6 +625,13 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         exit(2);
     }
 
+    if (!(ngx_posted_events_cv = ngx_cv_init(cycle->log))) {
+        /* fatal */
+        exit(2);
+    }
+
+    ngx_posted_events_mutex = &ngx_posted_events_cv->mutex;
+
     for (i = 0; i < 1; i++) {
         if (ngx_create_thread(&tid, ngx_worker_thread_cycle,
                               cycle, cycle->log) != 0)
@@ -767,23 +774,25 @@ int ngx_worker_thread_cycle(void *data)
         return 1;
     }
 
-
-    /* STUB */
-
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, ngx_errno,
                    "thread %d started", ngx_thread_self());
 
     ngx_setproctitle("worker thread");
 
-    sleep(5);
+    for ( ;; ) {
+        if (ngx_cv_wait(ngx_posted_events_cv) == NGX_ERROR) {
+            return 1;
+        }
 
-    ngx_gettimeofday(&tv);
-    ngx_time_update(tv.tv_sec);
+        if (ngx_event_thread_process_posted(cycle) == NGX_ERROR) {
+            return 1;
+        }
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, ngx_errno,
                    "thread %d done", ngx_thread_self());
 
-    return 1;
+    return 0;
 }
 
 #endif

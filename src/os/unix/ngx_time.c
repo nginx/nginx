@@ -6,13 +6,17 @@
 void ngx_localtime(ngx_tm_t *tm)
 {
 #if (HAVE_LOCALTIME_R)
+    time_t     now;
 
-    localtime_r((time_t *) &ngx_cached_time, tm);
+    now = ngx_time();
+    localtime_r(&now, tm);
 
 #else
+    time_t     now;
     ngx_tm_t  *t;
 
-    t = localtime((time_t *) &ngx_cached_time);
+    now = ngx_time();
+    t = localtime(&now);
     *tm = *t;
 
 #endif

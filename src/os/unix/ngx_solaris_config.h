@@ -76,8 +76,4 @@
 #define ngx_setproctitle(title)
 
 
-/* STUB */
-#define HAVE_LITTLE_ENDIAN  1
-
-
 #endif /* _NGX_SOLARIS_CONFIG_H_INCLUDED_ */

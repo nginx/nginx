@@ -36,6 +36,11 @@ typedef volatile struct {
 } ngx_mutex_t;
 
 
+typedef struct {
+    ngx_mutex_t   mutex;
+} ngx_cv_t;
+
+
 #define ngx_thread_sigmask(how, set, oset)                         \
             (sigprocmask(how, set, oset) == -1) ? ngx_errno : 0
 
@@ -100,6 +105,12 @@ void ngx_mutex_done(ngx_mutex_t *m);
 #define ngx_mutex_lock(m)     ngx_mutex_dolock(m, 0)
 ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try);
 ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m);
+
+
+ngx_cv_t *ngx_cv_init(ngx_log_t *log);
+void ngx_cv_done(ngx_cv_t *cv);
+ngx_int_t ngx_cv_wait(ngx_cv_t *cv);
+ngx_int_t ngx_cv_signal(ngx_cv_t *cv);
 
 
 #else /* !NGX_THREADS */

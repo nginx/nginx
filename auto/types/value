@@ -1,0 +1,6 @@
+
+cat << END >> $NGX_AUTO_CONFIG_H
+
+#ifndef $ngx_param
+#define $ngx_param  $ngx_value
+#endif

@@ -254,7 +254,7 @@ int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
      *    Unices have the mount option "noatime".
      */
 
-    if (ngx_cached_time - ngx_de_mtime(dir) < 3600) {
+    if (ngx_time() - ngx_de_mtime(dir) < 3600) {
         return NGX_OK;
     }
 

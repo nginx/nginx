@@ -8,26 +8,28 @@
 #include <ngx_core.h>
 
 /*
- * The threads implementation uses the rfork(RFPROC|RFTHREAD|RFMEM)
+ * The threads implementation uses the rfork(RFPROC|RFTHREAD|RFMEM) syscall
  * to create threads.  All threads use the stacks of the same size mmap()ed
- * below the main stack.  Thus the stack pointer is used to determine
- * the current thread id.
+ * below the main stack.  Thus the current thread id is determinated through
+ * the stack pointer.
  *
  * The mutex implementation uses the ngx_atomic_cmp_set() operation
- * to acquire mutex and the SysV semaphore to wait on a mutex or to wake up
- * the waiting threads.
+ * to acquire a mutex and the SysV semaphore to wait on a mutex or to wake up
+ * the waiting threads.  The light mutex does not use semaphore, so after
+ * spinning in the lock the thread calls sched_yield().  However the light
+ * mutecies are intended to be used with the "trylock" operation only.
  *
  * The condition variable implementation uses the SysV semaphore set of two
  * semaphores. The first is used by the CV mutex, and the second is used
- * by CV itself.
+ * by the CV to signal.
  *
- * This threads implementation currently works on i486 and amd64
+ * This threads implementation currently works on i386 (486+) and amd64
  * platforms only.
  */
 
 
-char       *ngx_freebsd_kern_usrstack;
-size_t      ngx_thread_stack_size;
+char               *ngx_freebsd_kern_usrstack;
+size_t              ngx_thread_stack_size;
 
 
 static size_t       rz_size;
@@ -261,7 +263,6 @@ ngx_tid_t ngx_thread_self()
 
 ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, uint flags)
 {
-    int           nsem, i;
     ngx_mutex_t  *m;
     union semun   op;
 
@@ -277,27 +278,23 @@ ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, uint flags)
         return m;
     }
 
-    nsem = flags & NGX_MUTEX_CV ? 2 : 1;
-
-    m->semid = semget(IPC_PRIVATE, nsem, SEM_R|SEM_A);
+    m->semid = semget(IPC_PRIVATE, 1, SEM_R|SEM_A);
     if (m->semid == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "semget() failed");
         return NULL;
     }
 
     op.val = 0;
-    for (i = 0; i < nsem; i++) {
-        if (semctl(m->semid, i, SETVAL, op) == -1) {
+
+    if (semctl(m->semid, 0, SETVAL, op) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "semctl(SETVAL) failed");
+
+        if (semctl(m->semid, 0, IPC_RMID) == -1) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                          "semctl(SETVAL) failed");
-
-            if (semctl(m->semid, 0, IPC_RMID) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
-                              "semctl(IPC_RMID) failed");
-            }
-
-            return NULL;
+                          "semctl(IPC_RMID) failed");
         }
+
+        return NULL;
     }
 
     return m;
@@ -388,7 +385,7 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
                  * The number of the waiting threads has been increased
                  * and we would wait on the SysV semaphore.
                  * A semaphore should wake up us more efficiently than
-                 * a simple usleep().
+                 * a simple sched_yield() or usleep().
                  */
 
                 op.sem_num = 0;
@@ -456,7 +453,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 
     if (!(old & NGX_MUTEX_LOCK_BUSY)) {
         ngx_log_error(NGX_LOG_ALERT, m->log, 0,
-                      "tring to unlock the free mutex " PTR_FMT, m);
+                      "trying to unlock the free mutex " PTR_FMT, m);
         return NGX_ERROR;
     }
 
@@ -479,7 +476,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
         return NGX_OK;
     }
 
-    /* check weather we need to wake up a waiting thread */
+    /* check whether we need to wake up a waiting thread */
 
     old = m->lock;
 
@@ -522,6 +519,111 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0,
                    "mutex " PTR_FMT " is unlocked", m);
+
+    return NGX_OK;
+}
+
+
+ngx_cv_t *ngx_cv_init(ngx_log_t *log)
+{
+    ngx_cv_t     *cv;
+    u_short       val[2];
+    union semun   op;
+
+    if (!(cv = ngx_alloc(sizeof(ngx_cv_t), log))) {
+        return NULL;
+    }
+
+    cv->mutex.lock = 0;
+    cv->mutex.log = log;
+
+    cv->mutex.semid = semget(IPC_PRIVATE, 2, SEM_R|SEM_A);
+    if (cv->mutex.semid == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "semget() failed");
+        return NULL;
+    }
+
+    val[0] = 0;
+    val[1] = 0;
+    op.array = val;
+
+    if (semctl(cv->mutex.semid, 0, SETALL, op) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "semctl(SETALL) failed");
+
+        if (semctl(cv->mutex.semid, 0, IPC_RMID) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                          "semctl(IPC_RMID) failed");
+        }
+
+        return NULL;
+    }
+
+    return cv;
+}
+
+
+void ngx_cv_done(ngx_cv_t *cv)
+{
+    if (semctl(cv->mutex.semid, 0, IPC_RMID) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cv->mutex.log, ngx_errno,
+                      "semctl(IPC_RMID) failed");
+    }
+
+    ngx_free(cv);
+}
+
+
+ngx_int_t ngx_cv_wait(ngx_cv_t *cv)
+{
+    struct sembuf  op[2];
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->mutex.log, 0,
+                   "cv " PTR_FMT " wait", cv);
+
+    op[0].sem_num = 0;
+    op[0].sem_op = -1;
+    op[0].sem_flg = SEM_UNDO;
+
+    op[1].sem_num = 1;
+    op[1].sem_op = -1;
+    op[1].sem_flg = SEM_UNDO;
+
+    if (semop(cv->mutex.semid, op, 2) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cv->mutex.log, ngx_errno,
+                      "semop() failed while waiting on cv " PTR_FMT, cv);
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->mutex.log, 0,
+                   "cv " PTR_FMT " is waked up", cv);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t ngx_cv_signal(ngx_cv_t *cv)
+{
+    struct sembuf  op[2];
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->mutex.log, 0,
+                   "cv " PTR_FMT " to signal", cv);
+
+    op[0].sem_num = 0;
+    op[0].sem_op = 1;
+    op[0].sem_flg = SEM_UNDO;
+
+    op[1].sem_num = 1;
+    op[1].sem_op = 1;
+    op[1].sem_flg = SEM_UNDO;
+
+    if (semop(cv->mutex.semid, op, 2) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cv->mutex.log, ngx_errno,
+                      "semop() failed while signaling cv " PTR_FMT, cv);
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->mutex.log, 0,
+                   "cv " PTR_FMT " is signaled", cv);
 
     return NGX_OK;
 }

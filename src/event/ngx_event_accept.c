@@ -278,6 +278,11 @@ void ngx_event_accept(ngx_event_t *ev)
 
         c->number = ngx_atomic_inc(ngx_connection_counter);
 
+#if (NGX_THREADS)
+        rev->lock = &c->lock;
+        wev->lock = &c->lock;
+#endif
+
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                        "accept: fd:%d c:%d", s, c->number);
 

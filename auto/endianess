@@ -1,0 +1,38 @@
+
+echo $ngx_n "checking for system endianess ..." $ngx_c
+echo >> $NGX_ERR
+echo "checking for system endianess" >> $NGX_ERR
+
+
+cat << END > $NGX_AUTOTEST.c
+
+int main() {
+    int i = 0x11223344;
+    char *p;
+
+    p = (char *) &i;
+    if (*p == 0x44) return 0;
+    return 1;
+}
+
+END
+
+eval "${CC} -o $NGX_AUTOTEST $NGX_AUTOTEST.c >> $NGX_ERR 2>&1"
+
+if [ -x $NGX_AUTOTEST ]; then
+    if $NGX_AUTOTEST 2>&1 > /dev/null; then
+        echo " little endianess"
+        have=HAVE_LITTLE_ENDIAN . auto/have
+    else
+        echo " big endianess"
+    fi
+
+    rm $NGX_AUTOTEST*
+
+else
+    rm $NGX_AUTOTEST*
+
+    echo
+    echo "$0: error: can not detect system endianess"
+    exit 1
+fi

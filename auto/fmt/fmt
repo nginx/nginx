@@ -11,15 +11,15 @@ do
 
     cat << END > $NGX_AUTOTEST.c
 
-#include <stdio.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <stdio.h>
 #include <sys/resource.h>
 $NGX_INTTYPES_H
 $NGX_AUTO_CONFIG
 
 int main() {
-    printf("$fmt", ($ngx_type) $ngx_max_size);
+    printf("$fmt", ($ngx_type) $ngx_max_value);
     return 0;
 }
 
@@ -28,10 +28,10 @@ END
     eval "$CC_WARN $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c \
           >> $NGX_ERR 2>&1"
 
-    max_size=`echo $ngx_max_size | sed -e "s/L*\$//"`
+    max_value=`echo $ngx_max_value | sed -e "s/L*\$//"`
 
     if [ -x $NGX_AUTOTEST ]; then
-        if [ "`$NGX_AUTOTEST`" = $max_size ]; then
+        if [ "`$NGX_AUTOTEST`" = $max_value ]; then
             if [ $ngx_fmt_collect = yes ]; then
                 echo $ngx_n "$comma \"${fmt}\" is appropriate" $ngx_c
             else
@@ -45,7 +45,7 @@ END
 
     if [ $ngx_fmt != no ]; then
         if [ $ngx_fmt_collect = yes ]; then
-            eval "ngx_${ngx_bytes}_fmt=\"\${ngx_${ngx_bytes}_fmt} \$ngx_fmt\""
+            eval "ngx_${ngx_size}_fmt=\"\${ngx_${ngx_size}_fmt} \$ngx_fmt\""
             comma=","
             continue
         else

@@ -108,12 +108,7 @@ pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);
 #endif
 
 
-/* STUB: autoconf */
 #define ngx_setproctitle  setproctitle
-
-
-/* STUB */
-#define HAVE_LITTLE_ENDIAN  1
 
 
 extern char *malloc_options;

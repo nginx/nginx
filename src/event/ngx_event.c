@@ -265,6 +265,9 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     for (i = 0; i < cycle->connection_n; i++) {
         c[i].fd = (ngx_socket_t) -1;
         c[i].data = NULL;
+#if (NGX_THREADS)
+        c[i].lock = 0;
+#endif
     }
 
     cycle->read_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,

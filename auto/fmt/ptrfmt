@@ -13,7 +13,7 @@ do
     cat << END > $NGX_AUTOTEST.c
 
 int main() {
-    printf("$fmt", ($ngx_type) $ngx_max_size);
+    printf("$fmt", ($ngx_type) $ngx_max_value);
     return 0;
 }
 
@@ -22,10 +22,10 @@ END
     eval "$CC_WARN $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c \
           >> $NGX_ERR 2>&1"
 
-    max_size=`echo $ngx_max_size | sed -e "s/L*\$//"`
+    max_value=`echo $ngx_max_value | sed -e "s/L*\$//"`
 
     if [ -x $NGX_AUTOTEST ]; then
-        if [ "`$NGX_AUTOTEST`" = $max_size ]; then
+        if [ "`$NGX_AUTOTEST`" = $max_value ]; then
             ngx_fmt=$fmt
         fi
     fi
@@ -49,8 +49,8 @@ if [ $ngx_fmt = no ]; then
 fi
 
 
-if [ $ngx_ptr_bytes = 4 ]; then
-    fmtX="%0`expr 2 \* $ngx_ptr_bytes`"
+if [ $ngx_ptr_size = 4 ]; then
+    fmtX="%0`expr 2 \* $ngx_ptr_size`"
 else
     fmtX="%"
 fi

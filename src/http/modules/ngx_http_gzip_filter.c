@@ -351,7 +351,7 @@ static ngx_int_t ngx_http_gzip_proxied(ngx_http_request_t *r,
             }
 
         } else {
-            date = ngx_cached_time;
+            date = ngx_time();
         }
 
         if (expires < date) {
