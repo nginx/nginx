@@ -5,7 +5,7 @@ echo "checking for $ngx_func" >> $NGX_ERR
 
 ngx_found=no
 
-func=`echo $ngx_func | sed -e 's/()$//' | tr '[a-z.]' '[A-Z_]'`
+func=`echo $ngx_func | sed -e 's/()$//' | tr '[a-z]' '[A-Z]'`
 
 cat << END > $NGX_AUTOTEST.c
 
@@ -20,8 +20,8 @@ int main() {
 
 END
 
-eval "$CC_WARN $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c $ngx_func_libs \
-     >> $NGX_ERR 2>&1"
+test="$CC_WARN $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c $ngx_func_libs"
+eval "$test >> $NGX_ERR 2>&1"
 
 if [ -x $NGX_AUTOTEST ]; then
     echo " found"
@@ -30,6 +30,11 @@ if [ -x $NGX_AUTOTEST ]; then
 
 else
     echo " not found"
+    echo "---------" >> $NGX_ERR
+    cat $NGX_AUTOTEST.c >> $NGX_ERR
+    echo "---------" >> $NGX_ERR
+    echo $test >> $NGX_ERR
+    echo "---------" >> $NGX_ERR
 fi
 
 rm $NGX_AUTOTEST*

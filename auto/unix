@@ -40,14 +40,6 @@ ngx_types="int"; . auto/types/typedef
 . auto/types/uintptr_t
 
 
-ngx_func="sin_len"
-ngx_func_inc="#include <sys/socket.h>
-#include <netinet/in.h>"
-
-ngx_func_test="struct sockaddr_in sa; sa.sin_len = 5"
-. auto/func
-
-
 # printf() formats
 
 CC_WARN=$CC_STRONG
@@ -71,19 +63,21 @@ ngx_fmt_name=RLIM_T_FMT; ngx_type="rlim_t"; . auto/types/sizeof
 eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
 
 
-# syscalls and libc calls
+# syscalls, libc calls and some features
+
+ngx_feature_libs=
+ngx_func_libs=
+
 
 ngx_func="pread()"
 ngx_func_inc=
-ngx_func_test="char buf[1]; ssize_t n;
-               n = pread(0, buf, 1, 0)"
+ngx_func_test="char buf[1]; ssize_t n; n = pread(0, buf, 1, 0)"
 . auto/func
 
 
 ngx_func="pwrite()"
 ngx_func_inc=
-ngx_func_test="char buf[1]; ssize_t n;
-               n = pwrite(1, buf, 1, 0)"
+ngx_func_test="char buf[1]; ssize_t n; n = pwrite(1, buf, 1, 0)"
 . auto/func
 
 
@@ -113,7 +107,7 @@ ngx_func_test="struct tm t; time_t c=0; localtime_r(&c, &t)"
 
 ngx_func="posix_memalign()"
 ngx_func_inc="#include <stdlib.h>"
-ngx_func_test="void *p, int n; n = posix_memalign(&p, 4096, 4096)"
+ngx_func_test="void *p; int n; n = posix_memalign(&p, 4096, 4096)"
 . auto/func
 
 
@@ -123,13 +117,76 @@ ngx_func_test="void *p; p = memalign(4096, 4096)"
 . auto/func
 
 
-ngx_func="msghdr.msg_control"
-ngx_func_inc="#include <sys/socket.h>"
-ngx_func_test="struct msghdr  msg; msg.msg_control = NULL"
-. auto/func
+
+ngx_feature="mmap(MAP_ANON|MAP_SHARED)"
+ngx_feature_name="MAP_ANON"
+ngx_feature_inc="#include <sys/mman.h>"
+ngx_feature_test="void *p;
+                  p = mmap(NULL, 4096, PROT_READ|PROT_WRITE,
+                           MAP_ANON|MAP_SHARED, -1, 0);
+                  if (p == MAP_FAILED) return 1;"
+ngx_feature_run=yes
+. auto/feature
 
 
-ngx_func="FIONBIO"
-ngx_func_inc="#include <sys/filio.h>"
-ngx_func_test="int i; i = FIONBIO"
-. auto/func
+ngx_feature='mmap("/dev/zero", MAP_SHARED)'
+ngx_feature_name="MAP_DEVZERO"
+ngx_feature_inc="#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>"
+ngx_feature_test='void *p; int  fd;
+                  fd = open("/dev/zero", O_RDWR);
+                  p = mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+                  if (p == MAP_FAILED) return 1;'
+. auto/feature
+
+
+ngx_feature="System V shared memory"
+ngx_feature_name="SYSVSHM"
+ngx_feature_inc="#include <sys/ipc.h>
+#include <sys/shm.h>"
+ngx_feature_test="int  id;
+                  id = shmget(IPC_PRIVATE, 4096, (SHM_R|SHM_W|IPC_CREAT));
+                  if (id == -1) return 1;
+                  shmctl(id, IPC_RMID, NULL);"
+. auto/feature
+
+
+
+ngx_feature="struct sockaddr_in.sin_len"
+ngx_feature_name="sin_len"
+ngx_feature_inc="#include <sys/socket.h>
+#include <netinet/in.h>"
+ngx_feature_test="struct sockaddr_in sa; sa.sin_len = 5"
+ngx_feature_run=no
+. auto/feature
+
+
+ngx_feature="struct msghdr.msg_control"
+ngx_feature_name="msghdr_msg_control"
+ngx_feature_inc="#include <sys/socket.h>"
+ngx_feature_test="struct msghdr  msg; msg.msg_control = NULL"
+. auto/feature
+
+
+case $PLATFORM in
+    Linux:*)
+        ngx_feature_inc="#include <sys/ioctl.h>"
+    ;;
+
+    *)
+        ngx_feature_inc="#include <sys/filio.h>"
+    ;;
+esac
+
+ngx_feature="ioctl(FIONBIO)"
+ngx_feature_name="FIONBIO"
+ngx_feature_test="int i; i = FIONBIO"
+. auto/feature
+
+
+ngx_feature="struct tm.tm_gmtoff"
+ngx_feature_name="gmtoff"
+ngx_feature_inc="#include <time.h>"
+ngx_feature_test="struct tm  tm; tm.tm_gmtoff = 0"
+. auto/feature

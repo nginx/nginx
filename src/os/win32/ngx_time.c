@@ -31,7 +31,7 @@ void ngx_gettimeofday(struct timeval *tp)
 }
 
 
-ngx_int_t ngx_timezone(void)
+ngx_int_t ngx_gettimezone(void)
 {
     TIME_ZONE_INFORMATION  tz;
 

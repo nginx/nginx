@@ -9,7 +9,6 @@
 typedef uint64_t       ngx_epoch_msec_t;
 
 typedef ngx_int_t      ngx_msec_t;
-#define NGX_MAX_MSEC   (ngx_msec_t) -1
 
 typedef struct tm      ngx_tm_t;
 
@@ -20,11 +19,7 @@ typedef struct tm      ngx_tm_t;
 #define ngx_tm_mon     tm_mon
 #define ngx_tm_year    tm_year
 #define ngx_tm_wday    tm_wday
-#define ngx_tm_gmtoff  tm_gmtoff
-
-#ifndef SOLARIS
-#define ngx_tm_zone    tm_zone
-#endif
+#define ngx_tm_isdst   tm_isdst
 
 #define ngx_tm_sec_t   int
 #define ngx_tm_min_t   int
@@ -35,16 +30,14 @@ typedef struct tm      ngx_tm_t;
 #define ngx_tm_wday_t  int
 
 
+#if (HAVE_GMTOFF)
+#define ngx_tm_gmtoff  tm_gmtoff
+#define ngx_tm_zone    tm_zone
+#endif
+
+
 #if (SOLARIS)
-#define HAVE_TIMEZONE  1
-
-#define ngx_timezone() (- (daylight ? altzone : timezone) / 60)
-
-#elif defined __linux__
-#define HAVE_TIMEZONE  1
-
-#define ngx_timezone() (- timezone / 60 + daylight * 60)
-
+#define ngx_timezone(isdst) (- (isdst ? altzone : timezone) / 60)
 #endif
 
 

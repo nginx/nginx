@@ -19,6 +19,7 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #include <ngx_time.h>
 #include <ngx_socket.h>
 #include <ngx_errno.h>
+#include <ngx_shared.h>
 #include <ngx_process.h>
 #include <ngx_thread.h>
 #include <ngx_user.h>

@@ -187,11 +187,17 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
     size = 128            /* ngx_accept_mutex */
            + 128;         /* ngx_connection_counter */
 
+#if 0
     shared = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_ANON|MAP_SHARED, -1, 0);
 
     if (shared == MAP_FAILED) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "mmap(MAP_ANON|MAP_SHARED) failed");
+        return NGX_ERROR;
+    }
+#endif
+
+    if (!(shared = ngx_create_shared_memory(size, cycle->log))) {
         return NGX_ERROR;
     }
 
@@ -611,7 +617,7 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
                   NGX_CONF_ERROR);
 
     ecf->connections = NGX_CONF_UNSET_UINT;
-    ecf->use = NGX_CONF_UNSET;
+    ecf->use = NGX_CONF_UNSET_UINT;
     ecf->multi_accept = NGX_CONF_UNSET;
     ecf->accept_mutex = NGX_CONF_UNSET;
     ecf->accept_mutex_delay = NGX_CONF_UNSET_MSEC;
@@ -694,9 +700,9 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    ngx_conf_unsigned_init_value(ecf->connections, DEFAULT_CONNECTIONS);
+    ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
 
-    ngx_conf_unsigned_init_value(ecf->use, m);
+    ngx_conf_init_unsigned_value(ecf->use, m);
     ngx_conf_init_ptr_value(ecf->name, module->name->data);
 
 #endif

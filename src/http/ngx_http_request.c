@@ -943,7 +943,8 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
          * in CPU cache
          */
 
-        ua = ngx_strstr(r->headers_in.user_agent->value.data, "MSIE");
+        ua = (u_char *) ngx_strstr(r->headers_in.user_agent->value.data,
+                                   "MSIE");
         if (ua
             && ua + 8 < r->headers_in.user_agent->value.data
                                          + r->headers_in.user_agent->value.len)

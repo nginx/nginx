@@ -41,11 +41,6 @@
 #include <netinet/tcp.h>        /* TCP_CORK */
 
 
-/* Linux has no <sys/filio.h> so autoconfigure does not find FIONBIO */
-#ifndef HAVE_FIONBIO
-#define HAVE_FIONBIO  1
-#endif
-
 #include <ngx_auto_config.h>
 
 

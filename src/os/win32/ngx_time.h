@@ -9,7 +9,6 @@
 typedef uint64_t       ngx_epoch_msec_t;
 
 typedef ngx_int_t      ngx_msec_t;
-#define NGX_MAX_MSEC   (ngx_msec_t) -1
 
 
 typedef SYSTEMTIME     ngx_tm_t;
@@ -32,11 +31,11 @@ typedef FILETIME       ngx_mtime_t;
 #define ngx_tm_wday_t  u_short
 
 
-#define ngx_msleep     Sleep
+#define ngx_msleep       Sleep
 
-#define HAVE_TIMEZONE  1
+#define HAVE_GETIMEZONE  1
 
-ngx_int_t ngx_timezone(void);
+ngx_int_t ngx_gettimezone(void);
 void ngx_gettimeofday(struct timeval *tp);
 
 
