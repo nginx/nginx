@@ -2,6 +2,10 @@
 #define _NGX_HTTP_REQUEST_H_INCLUDED_
 
 
+#define NGX_HTTP_DISCARD_BUFFER_SIZE       4096
+#define NGX_HTTP_LINGERING_BUFFER_SIZE     4096
+
+
 #define NGX_HTTP_VERSION_9                 9
 #define NGX_HTTP_VERSION_10                1000
 #define NGX_HTTP_VERSION_11                1001

@@ -96,18 +96,11 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_srv_conf_t, client_header_buffer_size),
       NULL },
 
-    { ngx_string("client_large_buffers"),
+    { ngx_string("large_client_header_buffers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE2,
       ngx_conf_set_bufs_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_core_srv_conf_t, client_large_buffers),
-      NULL },
-
-    { ngx_string("large_client_header"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_core_srv_conf_t, large_client_header),
+      offsetof(ngx_http_core_srv_conf_t, large_client_header_buffers),
       NULL },
 
     { ngx_string("restrict_host_names"),
@@ -239,6 +232,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_set_keepalive,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("keepalive_buffers"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, keepalive_buffers),
       NULL },
 
     { ngx_string("lingering_time"),
@@ -1275,7 +1275,6 @@ static void *ngx_http_core_create_srv_conf(ngx_conf_t *cf)
     cscf->request_pool_size = NGX_CONF_UNSET_SIZE;
     cscf->client_header_timeout = NGX_CONF_UNSET_MSEC;
     cscf->client_header_buffer_size = NGX_CONF_UNSET_SIZE;
-    cscf->large_client_header = NGX_CONF_UNSET;
     cscf->restrict_host_names = NGX_CONF_UNSET_UINT;
 
     return cscf;
@@ -1333,7 +1332,7 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
     }
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
-                              prev->connection_pool_size, 16384);
+                              prev->connection_pool_size, 2048);
     ngx_conf_merge_msec_value(conf->post_accept_timeout,
                               prev->post_accept_timeout, 30000);
     ngx_conf_merge_size_value(conf->request_pool_size,
@@ -1342,10 +1341,17 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
                               prev->client_header_timeout, 60000);
     ngx_conf_merge_size_value(conf->client_header_buffer_size,
                               prev->client_header_buffer_size, 1024);
-    ngx_conf_merge_bufs_value(conf->client_large_buffers,
-                              prev->client_large_buffers, 4, ngx_pagesize);
-    ngx_conf_merge_value(conf->large_client_header,
-                         prev->large_client_header, 1);
+    ngx_conf_merge_bufs_value(conf->large_client_header_buffers,
+                              prev->large_client_header_buffers,
+                              4, ngx_pagesize);
+
+    if (conf->large_client_header_buffers.size < conf->connection_pool_size) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the \"large_client_header_buffers\" size must be "
+                           "equal to or bigger than \"connection_pool_size\"");
+        return NGX_CONF_ERROR;
+    }
+
     ngx_conf_merge_unsigned_value(conf->restrict_host_names,
                                   prev->restrict_host_names, 0);
 
@@ -1387,9 +1393,9 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->send_lowat = NGX_CONF_UNSET_SIZE;
     lcf->postpone_output = NGX_CONF_UNSET_SIZE;
     lcf->limit_rate = NGX_CONF_UNSET_SIZE;
-    lcf->discarded_buffer_size = NGX_CONF_UNSET_SIZE;
     lcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     lcf->keepalive_header = NGX_CONF_UNSET;
+    lcf->keepalive_buffers = NGX_CONF_UNSET;
     lcf->lingering_time = NGX_CONF_UNSET_MSEC;
     lcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
     lcf->reset_timedout_connection = NGX_CONF_UNSET;
@@ -1474,12 +1480,11 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_size_value(conf->postpone_output, prev->postpone_output,
                               1460);
     ngx_conf_merge_size_value(conf->limit_rate, prev->limit_rate, 0);
-    ngx_conf_merge_size_value(conf->discarded_buffer_size,
-                              prev->discarded_buffer_size, 1500);
     ngx_conf_merge_msec_value(conf->keepalive_timeout,
                               prev->keepalive_timeout, 75000);
     ngx_conf_merge_sec_value(conf->keepalive_header,
                               prev->keepalive_header, 0);
+    ngx_conf_merge_value(conf->keepalive_buffers, prev->keepalive_buffers, 1);
     ngx_conf_merge_msec_value(conf->lingering_time,
                               prev->lingering_time, 30000);
     ngx_conf_merge_msec_value(conf->lingering_timeout,

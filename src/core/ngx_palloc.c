@@ -44,8 +44,9 @@ void ngx_destroy_pool(ngx_pool_t *pool)
      */
 
     for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
-        ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
-                       "free: " PTR_FMT, p);
+        ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
+                       "free: " PTR_FMT ", unused: " SIZE_T_FMT,
+                       p, p->end - p->last);
 
         if (n == NULL) {
             break;
@@ -71,7 +72,7 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
     ngx_pool_large_t  *large, *last;
 
     if (size <= (size_t) NGX_MAX_ALLOC_FROM_POOL
-        && size <= (size_t) (pool->end - (char *) pool))
+        && size <= (size_t) (pool->end - (char *) pool) - sizeof(ngx_pool_t))
     {
         for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
             m = ngx_align(p->last);
@@ -106,7 +107,7 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
     last = NULL;
 
     if (pool->large) {
-        for (last = pool->large; /* void */; last = last->next) {
+        for (last = pool->large; /* void */ ; last = last->next) {
             if (last->alloc == NULL) {
                 large = last;
                 last = NULL;
@@ -150,7 +151,7 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
 }
 
 
-void ngx_pfree(ngx_pool_t *pool, void *p)
+ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p)
 {
     ngx_pool_large_t  *l;
 
@@ -160,8 +161,12 @@ void ngx_pfree(ngx_pool_t *pool, void *p)
                            "free: " PTR_FMT, l->alloc);
             free(l->alloc);
             l->alloc = NULL;
+
+            return NGX_OK;
         }
     }
+
+    return NGX_DECLINED;
 }
 
 

@@ -66,14 +66,12 @@ typedef struct {
     size_t                request_pool_size;
     size_t                client_header_buffer_size;
 
-    ngx_bufs_t            client_large_buffers;
+    ngx_bufs_t            large_client_header_buffers;
 
     ngx_msec_t            post_accept_timeout;
     ngx_msec_t            client_header_timeout;
 
     ngx_uint_t            restrict_host_names;
-
-    ngx_flag_t            large_client_header;
 } ngx_http_core_srv_conf_t;
 
 
@@ -153,7 +151,6 @@ struct ngx_http_core_loc_conf_s {
     ngx_str_t     default_type;
 
     size_t        client_max_body_size;    /* client_max_body_size */
-    size_t        discarded_buffer_size;   /* discarded_buffer_size */
     size_t        client_body_buffer_size; /* client_body_buffer_size */
     size_t        send_lowat;              /* send_lowat */
     size_t        postpone_output;         /* postpone_output */
@@ -162,10 +159,12 @@ struct ngx_http_core_loc_conf_s {
     ngx_msec_t    client_body_timeout;     /* client_body_timeout */
     ngx_msec_t    send_timeout;            /* send_timeout */
     ngx_msec_t    keepalive_timeout;       /* keepalive_timeout */
-    time_t        keepalive_header;        /* keepalive_timeout */
     ngx_msec_t    lingering_time;          /* lingering_time */
     ngx_msec_t    lingering_timeout;       /* lingering_timeout */
 
+    time_t        keepalive_header;        /* keepalive_timeout */
+
+    ngx_flag_t    keepalive_buffers;       /* keepalive_buffers */
     ngx_flag_t    sendfile;                /* sendfile */
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */
     ngx_flag_t    reset_timedout_connection; /* reset_timedout_connection */

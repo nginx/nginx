@@ -21,6 +21,7 @@ ngx_buf_t *ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
     b->temporary = 1;
 
     /*
+
     b->file_pos = 0;
     b->file_last = 0;
 
@@ -28,7 +29,8 @@ ngx_buf_t *ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
     b->shadow = NULL;
 
     b->tag = 0;
-    */
+
+     */
 
     return b;
 }

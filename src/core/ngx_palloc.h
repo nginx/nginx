@@ -43,7 +43,7 @@ void ngx_destroy_pool(ngx_pool_t *pool);
 
 void *ngx_palloc(ngx_pool_t *pool, size_t size);
 void *ngx_pcalloc(ngx_pool_t *pool, size_t size);
-void ngx_pfree(ngx_pool_t *pool, void *p);
+ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p);
 
 
 #endif /* _NGX_PALLOC_H_INCLUDED_ */
