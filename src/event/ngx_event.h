@@ -27,8 +27,7 @@ struct ngx_event_s {
 
     u_int            index;
 
-    /* queue in mutex(), aio_read(), aio_write()  */
-    ngx_event_t     *prev;
+    /* the link of the posted queue or the event mutecies queues */
     ngx_event_t     *next;
 
     ngx_log_t       *log;
@@ -373,6 +372,8 @@ typedef struct {
 } ngx_event_module_t;
 
 
+
+extern ngx_event_t          *ngx_posted_events;
 
 extern int                   ngx_event_flags;
 extern ngx_module_t          ngx_events_module;

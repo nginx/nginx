@@ -21,6 +21,8 @@
  */
 
 
+ngx_int_t  ngx_threaded;
+
 static inline int ngx_gettid();
 
 
@@ -204,6 +206,8 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
     /* allow the spinlock in libc malloc() */
     __isthreaded = 1;
 
+    ngx_threaded = 1;
+
     return NGX_OK;
 }
 
@@ -314,6 +318,10 @@ ngx_int_t ngx_mutex_do_lock(ngx_mutex_t *m, ngx_int_t try)
     uint32_t       lock, new, old;
     ngx_uint_t     tries;
     struct sembuf  op;
+
+    if (!ngx_threaded) {
+        return NGX_OK;
+    }
 
 #if (NGX_DEBUG)
     if (try) {
@@ -437,6 +445,10 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 {
     uint32_t       lock, new, old;
     struct sembuf  op;
+
+    if (!ngx_threaded) {
+        return NGX_OK;
+    }
 
     old = m->lock;
 

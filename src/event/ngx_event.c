@@ -45,6 +45,7 @@ ngx_event_actions_t  ngx_event_actions;
 
 static int           ngx_event_max_module;
 
+ngx_event_t         *ngx_posted_events;
 
 
 static ngx_str_t  events_name = ngx_string("events");

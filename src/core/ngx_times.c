@@ -77,10 +77,8 @@ void ngx_time_update(time_t s)
     }
 
 #if (NGX_THREADS)
-    if (ngx_time_mutex) {
-        if (ngx_mutex_trylock(ngx_time_mutex) != NGX_OK) {
-            return;
-        }
+    if (ngx_mutex_trylock(ngx_time_mutex) != NGX_OK) {
+        return;
     }
 #endif
 
@@ -119,9 +117,7 @@ void ngx_time_update(time_t s)
                                        tm.ngx_tm_sec);
 
 #if (NGX_THREADS)
-    if (ngx_time_mutex) {
-        ngx_mutex_unlock(ngx_time_mutex);
-    }
+    ngx_mutex_unlock(ngx_time_mutex);
 #endif
 
 }

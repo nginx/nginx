@@ -413,6 +413,12 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
         }
     }
 
+#if (NGX_THREADS0)
+    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+#endif
+
     for (i = 0; i < events; i++) {
 
         ngx_log_debug6(NGX_LOG_DEBUG_EVENT, log, 0,
@@ -468,14 +474,10 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
 
             ev->ready = 1;
 
-            ev->event_handler(ev);
-
             break;
 
         case EVFILT_VNODE:
             ev->kq_vnode = 1;
-
-            ev->event_handler(ev);
 
             break;
 
@@ -483,24 +485,96 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
             ev->complete = 1;
             ev->ready = 1;
 
-            ev->event_handler(ev);
-
             break;
-
 
         default:
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "unexpected kevent() filter %d",
                           event_list[i].filter);
+            continue;
         }
+
+#if (NGX_THREADS0)
+
+        if (ngx_threaded) {
+
+            if (ev->light) {
+
+                /* the accept event */
+
+                ngx_mutex_unlock(ngx_posted_events_mutex);
+
+                ev->event_handler(ev);
+
+                if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+                    return NGX_ERROR;
+                }
+
+            } else {
+                ev->next = ngx_posted_events;
+                ngx_posted_events = ev;
+            }
+
+            continue;
+        }
+
+#endif
+
+        ev->event_handler(ev);
     }
+
+#if (NGX_THREADS0)
+    ngx_mutex_unlock(ngx_posted_events_mutex);
+#endif
 
     if (timer && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
+#if (NGX_THREADS0)
+    if (!ngx_threaded) {
+    }
+#endif
+
+    /* TODO: non-thread mode only */
+
+    ev = ngx_posted_events;
+    ngx_posted_events = NULL;
+
+    while (ev) {
+        ev->event_handler(ev);
+        ev = ev->next;
+    }
+
     return NGX_OK;
 }
+
+
+#if (NGX_THREADS)
+
+static void ngx_kqueue_thread_handler(ngx_event_t *ev)
+{
+    ngx_int_t  instance;
+
+    instance = (uintptr_t) ev & 1;
+    ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
+
+    if (ev->active == 0 || ev->instance != instance) {
+
+        /*
+         * the stale event from a file descriptor
+         * that was just closed in this iteration
+         */
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                       "kevent: stale event " PTR_FMT, ev);
+        return;
+    }
+
+    ev->event_handler(ev);
+}
+
+#endif
 
 
 static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle)
