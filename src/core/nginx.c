@@ -635,8 +635,8 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         if (ngx_quit) {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
-                          "gracefully shutdowning");
-            ngx_setproctitle("worker process is shutdowning");
+                          "gracefully shutting down");
+            ngx_setproctitle("worker process is shutting down");
             break;
         }
 

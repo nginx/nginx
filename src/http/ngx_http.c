@@ -243,8 +243,10 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cmcf->phases[NGX_HTTP_CONTENT_PHASE].type = NGX_OK;
 
 
-    /* create the lists of the ports, the addresses and the server names
-       to allow quickly find the server core module configuration at run-time */
+    /*
+     * create the lists of the ports, the addresses and the server names
+     * to allow quickly find the server core module configuration at run-time
+     */
 
     ngx_init_array(in_ports, cf->pool, 10, sizeof(ngx_http_in_port_t),
                    NGX_CONF_ERROR);
@@ -282,8 +284,10 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                             s_name = cscfp[s]->server_names.elts;
                             for (n = 0; n < cscfp[s]->server_names.nelts; n++) {
 
-                                /* add the server name and server core module
-                                   configuration to the address:port */
+                                /*
+                                 * add the server name and server core module
+                                 * configuration to the address:port
+                                 */
 
                                 /* TODO: duplicate names can be checked here */
 
@@ -295,8 +299,10 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                 name->core_srv_conf = s_name[n].core_srv_conf;
                             }
 
-                            /* check duplicate "default" server that
-                               serves this address:port */
+                            /*
+                             * check duplicate "default" server that
+                             * serves this address:port
+                             */
 
                             if (lscf[l].flags & NGX_HTTP_DEFAULT_SERVER) {
                                 if (in_addr[a].flags
@@ -320,9 +326,11 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                         } else if (in_addr[a].addr == INADDR_ANY) {
 
-                            /* "*:port" must be the last resort so move it
-                               to the end of the address list and add
-                               the new address at its place */
+                            /*
+                             * "*:port" must be the last resort so move it
+                             * to the end of the address list and add
+                             * the new address at its place
+                             */
 
                             ngx_test_null(inaddr,
                                           ngx_push_array(&in_port[p].addrs),
@@ -335,8 +343,10 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                             in_addr[a].flags = lscf[l].flags;
                             in_addr[a].core_srv_conf = cscfp[s];
 
-                            /* create the empty list of the server names that
-                               can be served on this address:port */
+                            /*
+                             * create the empty list of the server names that
+                             * can be served on this address:port
+                             */
 
                             ngx_init_array(inaddr->names, cf->pool, 10,
                                            sizeof(ngx_http_server_name_t),
@@ -350,8 +360,10 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                     if (!addr_found) {
 
-                        /* add the address to the addresses list that
-                           bound to this port */
+                        /*
+                         * add the address to the addresses list that
+                         * bound to this port
+                         */
 
                         ngx_test_null(inaddr,
                                       ngx_push_array(&in_port[p].addrs),
@@ -361,8 +373,10 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                         inaddr->flags = lscf[l].flags;
                         inaddr->core_srv_conf = cscfp[s];
 
-                        /* create the empty list of the server names that
-                           can be served on this address:port */
+                        /*
+                         * create the empty list of the server names that
+                         * can be served on this address:port
+                         */
 
                         ngx_init_array(inaddr->names, cf->pool, 10,
                                        sizeof(ngx_http_server_name_t),
@@ -402,8 +416,10 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 inaddr->flags = lscf[l].flags;
                 inaddr->core_srv_conf = cscfp[s];
 
-                /* create the empty list of the server names that
-                   can be served on this address:port */
+                /*
+                 * create the empty list of the server names that
+                 * can be served on this address:port
+                 */
 
                 ngx_init_array(inaddr->names, cf->pool, 10,
                                sizeof(ngx_http_server_name_t),
@@ -434,16 +450,20 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 }
             }
 
-            /* if the all server names point to the same server
-               then we do not need to check them at run-time */
+            /*
+             * if the all server names point to the same server
+             * then we do not need to check them at run-time
+             */
 
             if (!virtual_names) {
                 in_addr[a].names.nelts = 0;
             }
         }
 
-        /* if there's the binding to "*:port" then we need to bind()
-           to "*:port" only and ignore the other bindings */
+        /*
+         * if there's the binding to "*:port" then we need to bind()
+         * to "*:port" only and ignore the other bindings
+         */
 
         if (in_addr[a - 1].addr == INADDR_ANY) {
             a--;
@@ -522,8 +542,10 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 in_addr = in_port[p].addrs.elts;
                 if (in_addr[in_port[p].addrs.nelts - 1].addr != INADDR_ANY) {
 
-                    /* if this port has not the "*:port" binding then create
-                       the separate ngx_http_in_port_t for the all bindings */
+                    /*
+                     * if this port has not the "*:port" binding then create
+                     * the separate ngx_http_in_port_t for the all bindings
+                     */
 
                     ngx_test_null(inport,
                                   ngx_palloc(cf->pool,

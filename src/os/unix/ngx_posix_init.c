@@ -123,7 +123,7 @@ void ngx_signal_handler(int signo)
 
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
             ngx_quit = 1;
-            action = ", shutdowning";
+            action = ", shutting down";
             break;
 
         case ngx_signal_value(NGX_TERMINATE_SIGNAL):
@@ -184,7 +184,7 @@ void ngx_signal_handler(int signo)
 
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
             ngx_quit = 1;
-            action = ", shutdowning";
+            action = ", shutting down";
             break;
 
         case ngx_signal_value(NGX_TERMINATE_SIGNAL):

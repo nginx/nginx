@@ -75,8 +75,9 @@ static ngx_str_t http_codes[] = {
     ngx_null_string,  /* "412 Precondition Failed" */
     ngx_string("413 Request Entity Too Large"),
     ngx_null_string,  /* "414 Request-URI Too Large" but we never send it
-                         because we treat such requests as the HTTP/0.9 requests
-                         and send only the body without the header */
+                       * because we treat such requests as the HTTP/0.9
+                       * requests and send only a body without a header
+                       */
     ngx_null_string,  /* "415 Unsupported Media Type" */
     ngx_string("416 Requested Range Not Satisfiable"),
 
