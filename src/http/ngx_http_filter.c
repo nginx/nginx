@@ -209,7 +209,12 @@ int ngx_http_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src, ngx_log_t *log)
         if (n == NGX_ERROR) {
             ngx_log_error(NGX_LOG_ERR, log, ngx_errno,
                           ngx_read_file_n " failed for client");
-            return NGX_ERROR;
+            return n;
+
+#if (NGX_FILE_AIO)
+        } else if (n == NGX_AGAIN) {
+            return n;
+#endif
 
         } else {
             ngx_assert((n == size), /* void */ ; , log,
@@ -228,20 +233,4 @@ int ngx_http_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src, ngx_log_t *log)
     }
 
     return NGX_OK;
-}
-
-
-
-
-
-    /* if no hunk is passed and there is no our hunk
-       or our hunk is still busy then call next filter */
-    if (hunk == NULL
-        && (ctx->hunk == NULL
-            || ((ctx->hunk != NULL)
-                && (ctx->hunk->pos.mem < ctx->hunk->last.mem))
-           )
-       )
-        ctx->next_filter(r, NULL);
-    }
 }

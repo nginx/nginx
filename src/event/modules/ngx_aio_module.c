@@ -3,9 +3,11 @@ int ngx_posix_aio_process_events(ngx_log_t *log)
 {
     unmask signal
 
-    listen via signal;
+    listen via SIGIO;
 
-    aio_suspend()/aiowait()/aio_waitcomplete();
+    /* BUG: SIGIO can be delivered before aio_*() */
+
+    aio_suspend()/aiowait()/aio_waitcomplete() with timeout
 
     mask signal
 
@@ -20,7 +22,7 @@ int ngx_posix_aio_process_events(ngx_log_t *log)
 {
     unmask signal
 
-    /* BUG: signal can be delivered before select() */
+    /* BUG: AIO signal can be delivered before select() */
 
     select(listen);
 
