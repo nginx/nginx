@@ -1,9 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_log.h>
 
-/* daemon in Linux */
 
 int ngx_daemon(ngx_log_t *log)
 {
@@ -26,27 +24,8 @@ int ngx_daemon(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-#if (__SVR4 || linux)
-
-    /* need HUP IGN ? check in Solaris and Linux */
-
-    switch (fork()) {
-    case -1:
-        ngx_log_error(NGX_LOG_EMERG, log, errno, "fork() failed");
-        return NGX_ERROR;
-
-    case 0:
-        break;
-
-    default:
-        exit(0);
-    }
-
-#endif
-
     umask(0);
 
-#if 0
     fd = open("/dev/null", O_RDWR);
     if (fd == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, errno, "open(\"/dev/null\") failed");
@@ -63,10 +42,12 @@ int ngx_daemon(ngx_log_t *log)
         return NGX_ERROR;
     }
 
+#if 0
     if (dup2(fd, STDERR_FILENO) == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, errno, "dup2(STDERR) failed");
         return NGX_ERROR;
     }
+#endif
 
     if (fd > STDERR_FILENO) {
         if (close(fd) == -1) {
@@ -74,7 +55,6 @@ int ngx_daemon(ngx_log_t *log)
             return NGX_ERROR;
         }
     }
-#endif
 
     return NGX_OK;
 }

@@ -42,7 +42,6 @@ static int  ngx_event_connections;
 
 
 static ngx_str_t  events_name = ngx_string("events");
-static ngx_str_t  event_name = ngx_string("event");
 
 static ngx_command_t  ngx_events_commands[] = {
 
@@ -66,6 +65,7 @@ ngx_module_t  ngx_events_module = {
 };
 
 
+static ngx_str_t  event_name = ngx_string("event");
 
 static ngx_command_t  ngx_event_commands[] = {
 

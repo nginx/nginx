@@ -2,7 +2,7 @@
 
 /*
  * small file in malloc()ed memory, mmap()ed file, file descriptor only,
- * file access time only (to estimate can pages pages still be in memory),
+ * file access time only (to estimate could pages still be in memory),
  * translated URI (ngx_http_index_hanlder),
  * compiled script (ngx_http_ssi_filter).
  */
@@ -14,7 +14,9 @@
 /* "/" -> "/index.html" in ngx_http_index_handler */
 #define NGX_HTTP_CACHE_ENTRY_URI      0x00000004
 
-/* complied script */
+/* 301 location "/dir" -> "dir/" in ngx_http_core_handler */
+
+/* compiled script in ngx_http_ssi_filter  */
 #define NGX_HTTP_CACHE_ENTRY_SCRIPT   0x00000008
 
 #define NGX_HTTP_CACHE_FILTER_FLAGS   0xFFFF0000

@@ -219,6 +219,7 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 ngx_log_t *ngx_log_init_errlog()
 {
 #if (WIN32)
+
     ngx_log.fd = GetStdHandle(STD_ERROR_HANDLE);
 
     if (ngx_log.fd == NGX_INVALID_FILE) {
@@ -231,7 +232,9 @@ ngx_log_t *ngx_log_init_errlog()
     }
 
 #else
+
     ngx_log.fd = STDERR_FILENO;
+
 #endif
 
     ngx_log.log_level = NGX_LOG_INFO;

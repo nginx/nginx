@@ -102,6 +102,11 @@ struct ngx_conf_s {
         conf = default;                                                      \
     }
 
+#define ngx_conf_init_unsigned_value(conf, default)                          \
+    if (conf == (unsigned) NGX_CONF_UNSET) {                                 \
+        conf = default;                                                      \
+    }
+
 #define ngx_conf_init_size_value(conf, default)                              \
     if (conf == NGX_CONF_UNSET) {                                            \
         conf = default;                                                      \

@@ -41,6 +41,7 @@ int main(int argc, char *const *argv)
 
     /* STUB */ ngx_log.log_level = NGX_LOG_DEBUG;
 #endif
+
     log = ngx_log_init_errlog();
 
     if (ngx_os_init(log) == NGX_ERROR) {
@@ -230,6 +231,9 @@ static int ngx_open_listening_sockets(ngx_log_t *log)
     }
 
     if (failed) {
+
+        /* TODO: configurable */
+
         ngx_log_error(NGX_LOG_EMERG, log, 0, "can not bind(), exiting");
         return NGX_ERROR;
     }

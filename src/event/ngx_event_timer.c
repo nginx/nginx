@@ -12,20 +12,33 @@ static int           ngx_timer_queue_num;
 int ngx_event_timer_init(ngx_log_t *log)
 {
     int                i;
+    ngx_event_t       *new_queue;
     ngx_event_conf_t  *ecf;
 
     ecf = ngx_event_get_conf(ngx_event_module);
 
-    ngx_timer_queue_num = ecf->timer_queues;
-    ngx_timer_cur_queue = 0;
+    if (ngx_timer_queue_num < ecf->timer_queues) {
+        ngx_test_null(new_queue,
+                      ngx_alloc(ecf->timer_queues * sizeof(ngx_event_t), log),
+                      NGX_ERROR);
 
-    ngx_test_null(ngx_timer_queue,
-                  ngx_alloc(ngx_timer_queue_num * sizeof(ngx_event_t), log),
-                  NGX_ERROR);
+        for (i = 0; i < ngx_timer_queue_num; i++) {
+            new_queue[i] = ngx_timer_queue[i];
+        }
 
-    for (i = 0; i < ngx_timer_queue_num; i++) {
-        ngx_timer_queue[i].timer_prev = &ngx_timer_queue[i];
-        ngx_timer_queue[i].timer_next = &ngx_timer_queue[i];
+        if (ngx_timer_queue) {
+            ngx_free(ngx_timer_queue);
+        }
+
+        ngx_timer_queue = new_queue;
+
+        ngx_timer_queue_num = ecf->timer_queues;
+        ngx_timer_cur_queue = 0;
+
+        for (/* void */; i < ngx_timer_queue_num; i++) {
+            ngx_timer_queue[i].timer_prev = &ngx_timer_queue[i];
+            ngx_timer_queue[i].timer_next = &ngx_timer_queue[i];
+        }
     }
 
     return NGX_OK;;
@@ -35,6 +48,7 @@ int ngx_event_timer_init(ngx_log_t *log)
 void ngx_event_timer_done(ngx_log_t *log)
 {
     ngx_free(ngx_timer_queue);
+    ngx_timer_queue = NULL;
 }
 
 

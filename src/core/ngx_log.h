@@ -68,10 +68,12 @@ typedef struct {
     ngx_fd_t  fd;
     void     *data;
     size_t   (*handler)(void *ctx, char *buf, size_t len);
+#if 0
 /* STUB */
     char     *action;
     char     *context;
 /* */
+#endif
 } ngx_log_t;
 
 #define MAX_ERROR_STR	2048
@@ -160,6 +162,9 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 
 #endif /* VARIADIC MACROS */
 
+
+#define ngx_log_alloc_log(pool, log)  ngx_palloc(pool, log, sizeof(ngx_log_t))
+#define ngx_log_copy_log(new, old)    ngx_memcpy(new, old, sizeof(ngx_log_t))
 
 ngx_log_t *ngx_log_init_errlog();
 char *ngx_log_set_errlog(ngx_conf_t *cf, ngx_command_t *cmd, ngx_log_t *log);

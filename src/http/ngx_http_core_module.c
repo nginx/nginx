@@ -359,6 +359,8 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
         }
     }
 
+ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);
+
     if (!r->file.info_valid) {
         if (ngx_stat_fd(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
