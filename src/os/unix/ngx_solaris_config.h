@@ -76,7 +76,7 @@
 
 
 #ifndef NGX_HAVE_SO_SNDLOWAT
-/* setsockopt(SO_SNDLOWAT) returns error "Option not supported by protocol" */
+/* setsockopt(SO_SNDLOWAT) returns ENOPROTOOPT */
 #define NGX_HAVE_SO_SNDLOWAT         0
 #endif
 

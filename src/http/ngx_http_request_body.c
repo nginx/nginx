@@ -42,6 +42,7 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r)
             /* the whole request body was pre-read */
 
             r->header_in->pos += r->headers_in.content_length_n;
+            r->request_length += r->headers_in.content_length_n;
 
             r->request_body->handler(r->request_body->data);
 
@@ -49,6 +50,7 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r)
         }
 
         r->header_in->pos = r->header_in->last;
+        r->request_length += size;
     }
 
 
@@ -173,6 +175,7 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 
         r->request_body->buf->last += n;
         r->request_body->rest -= n;
+        r->request_length += n;
 
         if (r->request_body->rest == 0) {
             break;

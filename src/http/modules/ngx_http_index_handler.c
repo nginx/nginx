@@ -477,11 +477,11 @@ static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
         }
     }
 
-#endif
-
     if (conf->max_index_len < prev->max_index_len) {
         conf->max_index_len = prev->max_index_len;
     }
+
+#endif
 
     if (conf->index_cache == NULL) {
         conf->index_cache = prev->index_cache;

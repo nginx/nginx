@@ -28,6 +28,8 @@ static u_char *ngx_http_log_length(ngx_http_request_t *r, u_char *buf,
                                    uintptr_t data);
 static u_char *ngx_http_log_apache_length(ngx_http_request_t *r, u_char *buf,
                                           uintptr_t data);
+static u_char *ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
+                                           uintptr_t data);
 static u_char *ngx_http_log_header_in(ngx_http_request_t *r, u_char *buf,
                                       uintptr_t data);
 static u_char *ngx_http_log_connection_header_out(ngx_http_request_t *r,
@@ -118,6 +120,8 @@ ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
     { ngx_string("status"), 3, ngx_http_log_status },
     { ngx_string("length"), NGX_OFF_T_LEN, ngx_http_log_length },
     { ngx_string("apache_length"), NGX_OFF_T_LEN, ngx_http_log_apache_length },
+    { ngx_string("request_length"), NGX_OFF_T_LEN,
+                                    ngx_http_log_request_length },
     { ngx_string("i"), NGX_HTTP_LOG_ARG, ngx_http_log_header_in },
     { ngx_string("o"), NGX_HTTP_LOG_ARG, ngx_http_log_header_out },
     { ngx_null_string, 0, NULL }
@@ -280,6 +284,13 @@ static u_char *ngx_http_log_apache_length(ngx_http_request_t *r, u_char *buf,
                                           uintptr_t data)
 {
     return ngx_sprintf(buf, "%O", r->connection->sent - r->header_size);
+}
+
+
+static u_char *ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
+                                           uintptr_t data)
+{
+    return ngx_sprintf(buf, "%O", r->request_length);
 }
 
 

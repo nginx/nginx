@@ -80,6 +80,12 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
+#ifndef NGX_HAVE_SO_SNDLOWAT
+/* setsockopt(SO_SNDLOWAT) returns ENOPROTOOPT */
+#define NGX_HAVE_SO_SNDLOWAT         0
+#endif
+
+
 #ifndef NGX_HAVE_INHERITED_NONBLOCK
 #define NGX_HAVE_INHERITED_NONBLOCK  0
 #endif

@@ -795,6 +795,8 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http header done");
 
+            r->request_length += r->header_in->pos - r->header_in->start;
+
             r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
             rc = ngx_http_process_request_header(r);
@@ -922,6 +924,8 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
         /* the client fills up the buffer with "\r\n" */
 
+        r->request_length += r->header_in->end - r->header_in->start;
+
         r->header_in->pos = r->header_in->start;
         r->header_in->last = r->header_in->start;
 
@@ -981,6 +985,8 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
          * to relocate the parser header pointers
          */
 
+        r->request_length += r->header_in->end - r->header_in->start;
+
         r->header_in = b;
 
         return NGX_OK;
@@ -988,6 +994,8 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http large header copy: %d", r->header_in->pos - old);
+
+    r->request_length += old - r->header_in->start;
 
     new = b->start;
 
@@ -1810,6 +1818,10 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
     c->log_error = NGX_ERROR_INFO;
 
     if (n == NGX_AGAIN) {
+        if (ngx_handle_level_read_event(rev) == NGX_ERROR) {
+            ngx_http_close_connection(c);
+        }
+
         return;
     }
 
@@ -1931,6 +1943,11 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
         }
 
     } while (rev->ready);
+
+    if (ngx_handle_level_read_event(rev) == NGX_ERROR) {
+        ngx_http_close_connection(c);
+        return;
+    }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 

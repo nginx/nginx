@@ -6,6 +6,46 @@
             title="nginx">
 
 
+<changes ver="0.1.12" date="06.12.2004">
+
+<change type="feature">
+<para lang="ru">
+параметр лога %request_length.
+</para>
+<para lang="en">
+the %request_length log parameter.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании /dev/poll, select и poll на платформах, где возможны
+ложные срабатывания указанных методов, могли быть длительные задержки
+при обработке запроса по keep-alive соединению.
+Наблюдалось по крайней мере на Solaris с использованием /dev/poll.
+</para>
+<para lang="en">
+when using the /dev/poll, select and poll on the platforms, where
+these methods may do the false reports, there may be the long delay when
+the request was passed via the keep-alive connection.
+It may be at least on Solaris when using the /dev/poll.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива send_lowat игнорируется на Linux, так как Linux не поддерживает
+опцию SO_SNDLOWAT.
+</para>
+<para lang="en">
+the send_lowat directive is ignored on Linux because Linux does not support
+the SO_SNDLOWAT option.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.11" date="02.12.2004">
 
 <change type="feature">

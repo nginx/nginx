@@ -298,6 +298,8 @@ struct ngx_http_request_s {
     /* used to learn the Apache compatible response length without a header */
     size_t               header_size;
 
+    size_t               request_length;
+
     u_char              *discarded_buffer;
     void               **err_ctx;
     ngx_uint_t           err_status;
