@@ -69,15 +69,15 @@ static void ngx_imap_init_session(ngx_event_t *rev)
     s->connection = c;
 
     if (ngx_array_init(&s->args, c->pool, 2, sizeof(ngx_str_t)) == NGX_ERROR) {
-        ngx_imap_close_connection(s->connection);
+        ngx_imap_close_connection(c);
         return;
     }
 
     size = /* STUB: pop3: 128, imap: configurable 4K default */ 128;
 
-    s->buffer = ngx_create_temp_buf(s->connection->pool, size);
+    s->buffer = ngx_create_temp_buf(c->pool, size);
     if (s->buffer == NULL) {
-        ngx_imap_close_connection(s->connection);
+        ngx_imap_close_connection(c);
         return;
     }
 
@@ -89,10 +89,11 @@ static void ngx_imap_init_session(ngx_event_t *rev)
 
 static void ngx_pop3_auth_state(ngx_event_t *rev)
 {
-    ngx_uint_t           quit;
     u_char              *text;
     ssize_t              size;
     ngx_int_t            rc;
+    ngx_uint_t           quit;
+    ngx_str_t           *arg;
     ngx_connection_t    *c;
     ngx_imap_session_t  *s;
 
@@ -123,6 +124,20 @@ static void ngx_pop3_auth_state(ngx_event_t *rev)
             case NGX_POP3_USER:
                 if (s->args.nelts == 1) {
                     s->imap_state = ngx_pop3_user;
+
+                    arg = s->args.elts;
+                    s->login.len = arg[0].len;
+                    s->login.data = ngx_palloc(c->pool, s->login.len + 1);
+                    if (s->login.data == NULL) {
+                        ngx_imap_close_connection(c);
+                        return;
+                    }
+
+                    ngx_cpystrn(s->login.data, arg[0].data, s->login.len + 1);
+
+                    ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                                   "pop3 login: \"%s\"", s->login.data);
+
                 } else {
                     rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                 }
@@ -148,6 +163,27 @@ static void ngx_pop3_auth_state(ngx_event_t *rev)
             case NGX_POP3_PASS:
                 if (s->args.nelts == 1) {
                     /* STUB */ s->imap_state = ngx_pop3_start;
+
+                    arg = s->args.elts;
+                    s->passwd.len = arg[0].len;
+                    s->passwd.data = ngx_palloc(c->pool, s->passwd.len + 1);
+                    if (s->passwd.data == NULL) {
+                        ngx_imap_close_connection(c);
+                        return;
+                    }
+
+                    ngx_cpystrn(s->passwd.data, arg[0].data, s->passwd.len + 1);
+
+                    ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                                   "pop3 passwd: \"%s\"", s->passwd.data);
+
+                    s->buffer->pos = s->buffer->start;
+                    s->buffer->last = s->buffer->start;
+
+                    ngx_imap_proxy_init(s);
+
+                    return;
+
                 } else {
                     rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                 }

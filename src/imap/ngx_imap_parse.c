@@ -120,7 +120,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
                 if (!(arg = ngx_array_push(&s->args))) {
                     return NGX_ERROR;
                 }
-                arg->len = p - s->arg_start;
+                arg->len = p - 1 - s->arg_start;
                 arg->data = s->arg_start;
                 s->arg_start = NULL;
 

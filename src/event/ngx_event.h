@@ -220,7 +220,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * The event filter is deleted after a notification without an additional
- * syscall - select, poll, kqueue, epoll.
+ * syscall - select, poll, kqueue, epoll, Solaris 10's event ports.
  */
 #define NGX_USE_ONESHOT_EVENT    0x00000002
 

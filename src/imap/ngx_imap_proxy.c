@@ -7,7 +7,7 @@
 
 
 static void ngx_imap_proxy_block_read(ngx_event_t *rev);
-static void ngx_imap_proxy_greeting_handler(ngx_event_t *rev);
+static void ngx_imap_proxy_auth_handler(ngx_event_t *rev);
 static void ngx_imap_proxy_init_handler(ngx_event_t *wev);
 static void ngx_imap_proxy_dummy_handler(ngx_event_t *ev);
 static ngx_int_t ngx_imap_proxy_read_response(ngx_imap_session_t *s);
@@ -57,8 +57,7 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
     p->upstream.connection->pool = s->connection->pool;
 
     s->connection->read->event_handler = ngx_imap_proxy_block_read;
-    p->upstream.connection->read->event_handler =
-                                               ngx_imap_proxy_greeting_handler;
+    p->upstream.connection->read->event_handler = ngx_imap_proxy_auth_handler;
     p->upstream.connection->write->event_handler = ngx_imap_proxy_dummy_handler;
 }
 
@@ -79,15 +78,15 @@ static void ngx_imap_proxy_block_read(ngx_event_t *rev)
 }
 
 
-static void ngx_imap_proxy_greeting_handler(ngx_event_t *rev)
+static void ngx_imap_proxy_auth_handler(ngx_event_t *rev)
 {
+    u_char              *p;
     ngx_int_t            rc;
-    ngx_buf_t           *b;
+    ngx_str_t            line;
     ngx_connection_t    *c;
     ngx_imap_session_t  *s;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0,
-                   "imap proxy greeting handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap proxy auth handler");
 
     c = rev->data;
     s = c->data;
@@ -106,30 +105,71 @@ static void ngx_imap_proxy_greeting_handler(ngx_event_t *rev)
         return;
     }
 
-    if (rc == NGX_OK) {
-        s->connection->read->event_handler = ngx_imap_proxy_handler;
-        s->connection->write->event_handler = ngx_imap_proxy_handler;
-        rev->event_handler = ngx_imap_proxy_handler;
-        c->write->event_handler = ngx_imap_proxy_handler;
+    if (rc == NGX_ERROR) {
+        /* TODO: ngx_imap_proxy_finalize_session(s, NGX_IMAP_INTERNAL_ERROR) */
+        ngx_imap_proxy_close_session(s);
+        return;
+    }
 
-        b = s->proxy->buffer;
-        b->pos = b->start;
-        b->last = b->start;
+    if (s->imap_state == ngx_pop3_start) {
 
-        if (ngx_handle_read_event(s->connection->read, 0) == NGX_ERROR) {
+        ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap proxy send user");
+
+        line.len = sizeof("USER ") + s->login.len - 1 + 2;
+        if (!(line.data = ngx_palloc(c->pool, line.len))) {
             ngx_imap_proxy_close_session(s);
             return;
         }
 
-        if (s->connection->read->ready) {
-            ngx_imap_proxy_handler(s->connection->read);
+        p = ngx_cpymem(line.data, "USER ", sizeof("USER ") - 1);
+        p = ngx_cpymem(p, s->login.data, s->login.len);
+        *p++ = CR; *p++ = LF;
+
+        if (ngx_send(c, line.data, line.len) < (ssize_t) line.len) {
+            /*
+             * we treat the incomplete sending as NGX_ERROR
+             * because it is very strange here
+             */
+            ngx_imap_close_connection(c);
+            return;
         }
+
+        s->imap_state = ngx_pop3_user;
+
+        s->proxy->buffer->pos = s->proxy->buffer->start;
+        s->proxy->buffer->last = s->proxy->buffer->start;
 
         return;
     }
 
-    /* TODO: ngx_imap_proxy_finalize_session(s, NGX_IMAP_INTERNAL_ERROR) */
-    ngx_imap_proxy_close_session(s);
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap proxy send pass");
+
+    line.len = sizeof("PASS ") + s->passwd.len - 1 + 2;
+    if (!(line.data = ngx_palloc(c->pool, line.len))) {
+        ngx_imap_proxy_close_session(s);
+        return;
+    }
+
+    p = ngx_cpymem(line.data, "PASS ", sizeof("PASS ") - 1);
+    p = ngx_cpymem(p, s->passwd.data, s->passwd.len);
+    *p++ = CR; *p++ = LF;
+
+    if (ngx_send(c, line.data, line.len) < (ssize_t) line.len) {
+        /*
+         * we treat the incomplete sending as NGX_ERROR
+         * because it is very strange here
+         */
+        ngx_imap_close_connection(c);
+        return;
+    }
+
+    s->proxy->buffer->pos = s->proxy->buffer->start;
+    s->proxy->buffer->last = s->proxy->buffer->start;
+
+    s->connection->read->event_handler = ngx_imap_proxy_handler;
+    s->connection->write->event_handler = ngx_imap_proxy_handler;
+    rev->event_handler = ngx_imap_proxy_handler;
+    c->write->event_handler = ngx_imap_proxy_handler;
 }
 
 

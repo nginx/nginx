@@ -31,6 +31,9 @@ typedef struct {
 
     ngx_imap_proxy_ctx_t   *proxy;
 
+    ngx_str_t               login;
+    ngx_str_t               passwd;
+
     ngx_uint_t              command;
     ngx_array_t             args;
 
