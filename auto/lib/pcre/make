@@ -28,8 +28,8 @@ esac
 case $PLATFORM in
 
     win32)
-        cp auto/lib/pcre/patch.pcre $PCRE
-        cp auto/lib/pcre/patch.config $PCRE
+        cp auto/lib/pcre/patch.pcre.in $PCRE
+        cp auto/lib/pcre/patch.config.in $PCRE
         cp auto/lib/pcre/$makefile $PCRE
         echo "	cd $PCRE"                                         >> $MAKEFILE
         echo "	\$(MAKE) -f $makefile CPU_OPT=$CPU_OPT"           >> $MAKEFILE
@@ -37,7 +37,11 @@ case $PLATFORM in
     ;;
 
     *)
+        # the patch allows to run the parallel make jobs
+        cp auto/lib/pcre/patch.Makefile.in $PCRE
+
         echo "	cd $PCRE \\"                                      >> $MAKEFILE
+        echo "	&& patch < patch.Makefile.in \\"                  >> $MAKEFILE
         echo "	&& CC=$CC $PCRE_OPT \\"                           >> $MAKEFILE
         echo "	./configure --disable-shared \\"                  >> $MAKEFILE
         echo "	&& \$(MAKE)"                                      >> $MAKEFILE

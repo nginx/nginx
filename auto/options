@@ -4,6 +4,7 @@ help=no
 CC=gcc
 OBJS=objs
 
+DEBUG=NO
 CPU=NO
 
 TEST_BUILD_DEVPOLL=NO
@@ -70,6 +71,7 @@ do
 
         --with-cc=*)                     CC="$value"                ;;
         --with-cpu-opt=*)                CPU="$value"               ;;
+        --with-debug)                    DEBUG=YES                  ;;
 
         --without-pcre)                  USE_PCRE=DISABLED          ;;
         --with-pcre=*)                   PCRE="$value"              ;;

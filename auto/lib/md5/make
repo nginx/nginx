@@ -38,7 +38,9 @@ case $PLATFORM in
 
     SunOS:*:i86pc)
         if [ $MD5_ASM = YES ]; then
-            echo "	cd $MD5 && \$(MAKE) $MD5_OPT x86-solaris" >> $MAKEFILE
+            echo "	cd $MD5 \\"                               >> $MAKEFILE
+            echo "	&& \$(MAKE) $MD5_OPT MAKE=\$(MAKE) \\"    >> $MAKEFILE
+            echo "		x86-solaris"                      >> $MAKEFILE
         else
             echo "	cd $MD5 \\"                               >> $MAKEFILE
             echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE
@@ -46,9 +48,11 @@ case $PLATFORM in
         fi
     ;;
 
-    *:i386)
+    *:i386 | *:i686)
         if [ $MD5_ASM = YES ]; then
-            echo "	cd $MD5 && \$(MAKE) $MD5_OPT x86-elf"     >> $MAKEFILE
+            echo "	cd $MD5 \\"                               >> $MAKEFILE
+            echo "	&& \$(MAKE) $MD5_OPT MAKE=\$(MAKE) \\"    >> $MAKEFILE
+            echo "		x86-elf"                          >> $MAKEFILE
         else
             echo "	cd $MD5 \\"                               >> $MAKEFILE
             echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE

@@ -1,5 +1,5 @@
---- config.in.orig	Thu Aug 21 14:43:07 2003
-+++ config.in		Sun Mar  7 02:37:24 2004
+--- config.in	Thu Aug 21 14:43:07 2003
++++ config.in	Sun Mar  7 02:37:24 2004
 @@ -28,7 +28,7 @@
  found. */
  

@@ -7,6 +7,14 @@
 test -d $OBJS || mkdir $OBJS
 echo > $NGX_AUTO_CONFIG_H
 
+if [ $DEBUG = YES ]; then
+    have=NGX_DEBUG . auto/have
+fi
+
+have=NGX_USE_HTTP_FILE_CACHE_UNIQ . auto/have
+have=NGX_SUPPRESS_WARN . auto/have
+
+
 if [ "$PLATFORM" != win32 ]; then
     . auto/headers
 fi

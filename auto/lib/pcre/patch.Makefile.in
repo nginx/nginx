@@ -1,0 +1,11 @@
+--- Makefile.in	Thu Mar 11 16:19:09 2004
++++ Makefile.in	Thu Mar 11 16:21:16 2004
+@@ -96,7 +96,7 @@
+ OBJ = maketables.@OBJEXT@ get.@OBJEXT@ study.@OBJEXT@ pcre.@OBJEXT@ @POSIX_OBJ@
+ LOBJ = maketables.lo get.lo study.lo pcre.lo @POSIX_LOBJ@
+ 
+-all:            libpcre.la @POSIX_LIB@ pcretest@EXEEXT@ pcregrep@EXEEXT@ @ON_WINDOWS@ winshared
++all:            libpcre.la
+ 
+ pcregrep@EXEEXT@: libpcre.la pcregrep.@OBJEXT@ @ON_WINDOWS@ winshared
+ 		$(LINK) -o pcregrep@EXEEXT@ pcregrep.@OBJEXT@ libpcre.la

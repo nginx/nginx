@@ -18,18 +18,20 @@ case $CC in
              ;;
          esac
 
+         CFLAGS="$CFLAGS $PIPE"
          CFLAGS="$CFLAGS $CPU_OPT"
 
          if [ $PCRE_OPT = NO ]; then
-             PCRE_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $CPU_OPT\""
+             PCRE_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $PIPE $CPU_OPT\""
          fi
 
          if [ $MD5_OPT = NO ]; then
-             MD5_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $CPU_OPT\""
+             MD5_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $PIPE $CPU_OPT\""
          fi
 
          if [ $ZLIB_OPT = NO ]; then
-             ZLIB_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $CPU_OPT $ZLIB_ASMV\""
+             ZLIB_OPT="CFLAGS=\"-O2 -fomit-frame-pointer"
+             ZLIB_OPT="$ZLIB_OPT $PIPE $CPU_OPT $ZLIB_ASMV\""
          fi
 
          # warnings

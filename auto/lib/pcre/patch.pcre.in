@@ -1,5 +1,5 @@
---- pcre.in.orig	Thu Aug 21 14:43:07 2003
-+++ pcre.in		Sun Mar  7 02:10:11 2004
+--- pcre.in	Thu Aug 21 14:43:07 2003
++++ pcre.in	Sun Mar  7 02:10:11 2004
 @@ -10,9 +10,9 @@
  /* The file pcre.h is build by "configure". Do not edit it; instead
  make changes to pcre.in. */

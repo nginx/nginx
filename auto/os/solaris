@@ -15,15 +15,23 @@ CC_TEST_FLAGS="-D_FILE_OFFSET_BITS=64"
 case $PLATFORM in
 
     SunOS:5.[89]:* | SunOS:5.10:*)
-        CFLAGS="$CFLAGS -pipe"
+        PIPE="-pipe"
     ;;
 
     *)
-        # Solaris 7's gcc does not support "-pipe"
+        # Solaris 7's /usr/ccs/bin/as does not support "-pipe"
     ;;
 
 esac
 
+
+if [ $ZLIB_ASM != NO ]; then
+    echo "$0: error: the --with-zlib-asm=CPU option is not supported"
+    echo "on that platform"
+    echo
+
+    exit 1
+fi
 
 
 ngx_inc="sys/devpoll.h"; . auto/inc
