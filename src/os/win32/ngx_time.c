@@ -1,4 +1,9 @@
 
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 
@@ -13,7 +18,7 @@ void ngx_gettimeofday(struct timeval *tp)
     /*
      * A file time is a 64-bit value that represents the number
      * of 100-nanosecond intervals that have elapsed since
-     * 12:00 A.M. January 1, 1601 (UTC).
+     * January 1, 1601 12:00 A.M. UTC.
      *
      * Between January 1, 1970 (Epoch) and January 1, 1601 there were
      * 134744 days,

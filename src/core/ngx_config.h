@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_CONFIG_H_INCLUDED_
 #define _NGX_CONFIG_H_INCLUDED_
 
@@ -115,6 +121,11 @@ typedef long               ngx_flag_t;
 #ifndef INET_ADDRSTRLEN  /* Win32 */
 #define INET_ADDRSTRLEN  16
 #endif
+
+#define NGX_MAXHOSTNAMELEN 64
+/*
+#define NGX_MAXHOSTNAMELEN MAXHOSTNAMELEN
+*/
 
 
 #endif /* _NGX_CONFIG_H_INCLUDED_ */

@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_BUF_H_INCLUDED_
 #define _NGX_BUF_H_INCLUDED_
 
@@ -6,46 +12,9 @@
 #include <ngx_core.h>
 
 
-#if 0
-/* the buf type */
+typedef void *            ngx_buf_tag_t;
 
-/* the buf's content is in memory */
-#define NGX_HUNK_IN_MEMORY    0x0001
-/* the buf's content can be changed */
-#define NGX_HUNK_TEMP         0x0002
-/* the buf's content is in cache and can not be changed */
-#define NGX_HUNK_MEMORY       0x0004
-#define NGX_HUNK_MMAP         0x0008
-
-/* the buf's content is recycled */
-#define NGX_HUNK_RECYCLED     0x0010
-
-/* the buf's content is in a file */
-#define NGX_HUNK_FILE         0x0020
-
-#define NGX_HUNK_STORAGE      (NGX_HUNK_IN_MEMORY                            \
-                               |NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP  \
-                               |NGX_HUNK_RECYCLED|NGX_HUNK_FILE)
-
-/* the buf flags */
-
-/* in thread state flush means to write the buf completely before return */
-/* in event state flush means to start to write the buf */
-#define NGX_HUNK_FLUSH        0x0100
-
-/* the last buf */
-#define NGX_HUNK_LAST         0x0200
-
-
-#define NGX_HUNK_PREREAD      0x2000
-#define NGX_HUNK_LAST_SHADOW  0x4000
-#define NGX_HUNK_TEMP_FILE    0x8000
-#endif
-
-
-typedef void *                   ngx_buf_tag_t;
-
-typedef struct ngx_buf_s         ngx_buf_t;
+typedef struct ngx_buf_s  ngx_buf_t;
 
 struct ngx_buf_s {
     u_char          *pos;
@@ -61,17 +30,18 @@ struct ngx_buf_s {
     ngx_buf_t       *shadow;
 
 
-    /* the buf's content can be changed */
+    /* the buf's content could be changed */
     unsigned         temporary:1;
 
     /*
      * the buf's content is in a memory cache or in a read only memory
-     * and can not be changed
+     * and must not be changed
      */
     unsigned         memory:1;
 
-    /* the buf's content is mmap()ed and can not be changed */
+    /* the buf's content is mmap()ed and must not be changed */
     unsigned         mmap:1;
+
     unsigned         recycled:1;
     unsigned         in_file:1;
     unsigned         flush:1;

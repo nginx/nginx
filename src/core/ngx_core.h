@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_CORE_H_INCLUDED_
 #define _NGX_CORE_H_INCLUDED_
 
@@ -68,13 +74,6 @@ typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
 #define LF     (u_char) 10
 #define CR     (u_char) 13
 #define CRLF   "\x0d\x0a"
-
-
-
-#define NGX_MAXHOSTNAMELEN 64
-/*
-#define NGX_MAXHOSTNAMELEN MAXHOSTNAMELEN
-*/
 
 
 #endif /* _NGX_CORE_H_INCLUDED_ */

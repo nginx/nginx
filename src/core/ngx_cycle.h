@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_CYCLE_H_INCLUDED_
 #define _NGX_CYCLE_H_INCLUDED_
 

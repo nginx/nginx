@@ -1,4 +1,10 @@
 
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
+
 #include <sys/syscall.h>
 #include <machine/asm.h>
 

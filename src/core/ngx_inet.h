@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_INET_H_INCLUDED_
 #define _NGX_INET_H_INCLUDED_
 

@@ -1,4 +1,9 @@
 
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
@@ -656,8 +661,12 @@ ngx_inline static void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
 #if 0
         b->type &= ~(NGX_HUNK_TEMP|NGX_HUNK_IN_MEMORY|NGX_HUNK_RECYCLED);
 #endif
-        b->temporary = 0;
-        b->recycled = 0;
+        b->in_file = 0;
+        b->temp_file = 0;
+        b->flush = 0;
+        b->zerocopy_busy = 0;
+        b->last_shadow = 0;
+
         b->shadow = NULL;
         b = next;
     }
@@ -669,9 +678,10 @@ ngx_inline static void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
                  |NGX_HUNK_LAST_SHADOW);
 #endif
 
-    b->temporary = 0;
-    b->recycled = 0;
-    b->last_shadow = 0;
+    b->in_file = 0;
+    b->temp_file = 0;
+    b->flush = 0;
+    b->zerocopy_busy = 0;
 
     b->shadow = NULL;
 

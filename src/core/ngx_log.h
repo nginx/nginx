@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_LOG_H_INCLUDED_
 #define _NGX_LOG_H_INCLUDED_
 
@@ -24,58 +30,14 @@
 #define NGX_LOG_DEBUG_IMAP        0x200
 
 /*
- * after the adding a new debug level do not forget to update
- * debug_levels[] in src/core/ngx_log.c
+ * do not forget to update debug_levels[] in src/core/ngx_log.c
+ * after the adding a new debug level
  */
 
 #define NGX_LOG_DEBUG_FIRST       NGX_LOG_DEBUG_CORE
 #define NGX_LOG_DEBUG_LAST        NGX_LOG_DEBUG_IMAP
 #define NGX_LOG_DEBUG_CONNECTION  0x80000000
 #define NGX_LOG_DEBUG_ALL         0x7ffffff0
-
-
-/*
-    "[%time] [%level] %pid#%tid: %message:(%errno)%errstr, while %action"
-        " %peer and while processing %context"
-
-    ----
-    message = "recv() failed";
-    errno = 32;
-    action = "reading request headers from client";
-    peer = "192.168.1.1";
-    context = "URL /"
-
-    "[2002/08/20 12:00:00] [error] 412#3: recv() failed (32: Broken pipe)"
-    " while reading request headers from client 192.168.1.1"
-    " and while processing URL /"
-
-    ----
-    message = "recv() failed";
-    errno = 32;
-    ngx_http_proxy_error_context_t:
-        action = "reading headers from server %s for client %s and "
-                 "while processing %s"
-        backend = "127.0.0.1";
-        peer = "192.168.1.1";
-        context = "URL /"
-
-    "[2002/08/20 12:00:00] [error] 412#3: recv() failed (32: Broken pipe)"
-    " while reading headers from backend 127.0.0.1"
-    " for client 192.168.1.1 and while processing URL /"
-
-    ----
-    "[alert] 412#3: ngx_alloc: malloc() 102400 bytes failed (12: Cannot "
-    "allocate memory) while reading request headers from client 192.168.1.1"
-    " and while processing URL /"
-
-
-    OLD:
-    "... while ", action = "reading client request headers"
-    "... while reading client request headers"
-    "... while ", action = "reading client request headers"
-                  context: pop3 user account
-    "... while reading client command for 'john_doe'"
-*/
 
 
 typedef size_t  (*ngx_log_handler_pt) (void *ctx, char *buf, size_t len);
@@ -88,7 +50,7 @@ struct ngx_log_s {
     ngx_log_handler_pt   handler;
 };
 
-#define MAX_ERROR_STR	2048
+#define MAX_ERROR_STR	 2048
 
 
 /*********************************/

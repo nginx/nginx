@@ -1,4 +1,9 @@
 
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
@@ -39,7 +44,7 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
     while (p < b->last && state < sw_done) {
         ch = *p++;
 
-        /* gcc 2.95.2 and vc 6.0 compile this switch as an jump table */
+        /* gcc 2.95.2 and msvc 6.0 compile this switch as an jump table */
 
         switch (state) {
 

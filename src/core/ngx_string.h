@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_STRING_H_INCLUDED_
 #define _NGX_STRING_H_INCLUDED_
 
@@ -19,48 +25,47 @@ typedef struct {
 #if (WIN32)
 
 #define ngx_strncasecmp(s1, s2, n)                                           \
-                          strnicmp((const char *) s1, (const char *) s2, n)
+                           strnicmp((const char *) s1, (const char *) s2, n)
 #define ngx_strcasecmp(s1, s2)                                               \
-                          stricmp((const char *) s1, (const char *) s2)
+                           stricmp((const char *) s1, (const char *) s2)
 
-#define ngx_snprintf              _snprintf
-#define ngx_vsnprintf             _vsnprintf
+#define ngx_snprintf       _snprintf
+#define ngx_vsnprintf      _vsnprintf
 
 #else
 
 #define ngx_strncasecmp(s1, s2, n)                                           \
-                          strncasecmp((const char *) s1, (const char *) s2, n)
+                           strncasecmp((const char *) s1, (const char *) s2, n)
 #define ngx_strcasecmp(s1, s2)                                               \
-                          strcasecmp((const char *) s1, (const char *) s2)
+                           strcasecmp((const char *) s1, (const char *) s2)
 
-#define ngx_snprintf              snprintf
-#define ngx_vsnprintf             vsnprintf
+#define ngx_snprintf       snprintf
+#define ngx_vsnprintf      vsnprintf
 
 #endif
 
 
 #define ngx_strncmp(s1, s2, n)                                               \
-                          strncmp((const char *) s1, (const char *) s2, n)
+                            strncmp((const char *) s1, (const char *) s2, n)
 
 /* msvc and icc compile strcmp() to inline loop */
-#define ngx_strcmp(s1, s2)        strcmp((const char *) s1, (const char *) s2)
+#define ngx_strcmp(s1, s2)  strcmp((const char *) s1, (const char *) s2)
 
-#define ngx_strstr(s1, s2)        strstr((const char *) s1, (const char *) s2)
-#define ngx_strlen(s)             strlen((const char *) s)
+#define ngx_strstr(s1, s2)  strstr((const char *) s1, (const char *) s2)
+#define ngx_strlen(s)       strlen((const char *) s)
 
 /*
- * msvc and icc compile memset() to inline "rep stos"
- * while ZeroMemory and bzero are calls.
- *
- * icc can also inline mov's of a zeroed register for small blocks.
+ * msvc and icc compile memset() to the inline "rep stos"
+ * while ZeroMemory() and bzero() are the calls.
+ * icc may also inline several mov's of a zeroed register for small blocks.
  */
 #define ngx_memzero(buf, n)       memset(buf, 0, n)
 
-/* msvc and icc compile memcpy() to inline "rep movs" */
+/* msvc and icc compile memcpy() to the inline "rep movs" */
 #define ngx_memcpy(dst, src, n)   memcpy(dst, src, n)
 #define ngx_cpymem(dst, src, n)   ((u_char *) memcpy(dst, src, n)) + n
 
-/* msvc and icc compile memcmp() to inline loop */
+/* msvc and icc compile memcmp() to the inline loop */
 #define ngx_memcmp                memcmp
 
 u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n);

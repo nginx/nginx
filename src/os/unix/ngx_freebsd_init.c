@@ -1,20 +1,29 @@
 
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 
 
-/* FreeBSD 3.4 at least */
+/* FreeBSD 3.0 at least */
 char ngx_freebsd_kern_ostype[20];
 char ngx_freebsd_kern_osrelease[20];
 int ngx_freebsd_kern_osreldate;
 int ngx_freebsd_hw_ncpu;
-int ngx_freebsd_machdep_hlt_logical_cpus;
 int ngx_freebsd_net_inet_tcp_sendspace;
-int ngx_freebsd_sendfile_nbytes_bug;
-int ngx_freebsd_use_tcp_nopush;
+
+/* FreeBSD 4.9 */
+int ngx_freebsd_machdep_hlt_logical_cpus;
 
 /* FreeBSD 5.0 */
 int ngx_freebsd_kern_ipc_zero_copy_send;
+
+
+int ngx_freebsd_sendfile_nbytes_bug;
+int ngx_freebsd_use_tcp_nopush;
 
 
 ngx_os_io_t ngx_os_io = {

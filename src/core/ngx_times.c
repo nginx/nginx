@@ -1,4 +1,9 @@
 
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 
@@ -12,7 +17,7 @@ static ngx_int_t  ngx_gmtoff;
 
 
 /*
- * In the threaded mode only one thread updates cached time and strings
+ * In the threaded mode only one thread updates the cached time and strings
  * and these operations are protected by the mutex.  The reading of the cached
  * time and strings is not protected by the mutex.  To avoid the race
  * conditions for non-atomic values we use the NGX_TIME_SLOTS slots to store
@@ -290,6 +295,7 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
     mon += 2;
 
     if (yday >= 306) {
+
         /*
          * there is no "yday" in Win32 SYSTEMTIME
          *

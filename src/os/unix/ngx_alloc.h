@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_ALLOC_H_INCLUDED_
 #define _NGX_ALLOC_H_INCLUDED_
 
@@ -16,7 +22,7 @@ void *ngx_calloc(size_t size, ngx_log_t *log);
  * Linux has memalign() or posix_memalign()
  * Solaris has memalign()
  * FreeBSD has not memalign() or posix_memalign() but its malloc() alignes
- * allocations bigger than page size at page boundary.
+ * allocations bigger than page size at the page boundary.
  */
 
 #if (HAVE_POSIX_MEMALIGN || HAVE_MEMALIGN)

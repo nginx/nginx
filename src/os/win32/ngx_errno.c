@@ -1,9 +1,14 @@
 
 /*
-   TODO:
-     add WSA error messages for NT and 98
-     test for English only messages
-*/
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
+/*
+ * TODO:
+ *   add WSA error messages for NT and 98
+ *   test for English only messages
+ */
 
 #include <ngx_config.h>
 #include <ngx_core.h>

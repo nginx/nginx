@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2002-2004 Igor Sysoev, http://sysoev.ru/en/
+ * Copyright (C) 2002-2004 Igor Sysoev
  */
 
 

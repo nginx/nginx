@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_SOLARIS_CONFIG_H_INCLUDED_
 #define _NGX_SOLARIS_CONFIG_H_INCLUDED_
 

@@ -1,4 +1,10 @@
 
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
+
 #define NGX_SERVICE_CONTROL_SHUTDOWN   128
 #define NGX_SERVICE_CONTROL_REOPEN     129
 

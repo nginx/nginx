@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (C) 2002-2004 Igor Sysoev
+ */
+
+
 #ifndef _NGX_WIN32_CONFIG_H_INCLUDED_
 #define _NGX_WIN32_CONFIG_H_INCLUDED_
 
@@ -8,8 +14,8 @@
 #define WIN32_LEAN_AND_MEAN
 
 /*
- * we need to include windows.h explicity before winsock2.h because
- * the warning 4201 is enabled in windows.h
+ * we need to include <windows.h> explicity before <winsock2.h> because
+ * the warning 4201 is enabled in <windows.h>
  */
 #include <windows.h>
 
