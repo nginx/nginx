@@ -22,10 +22,14 @@ ngx_event_t         *ngx_read_events, *ngx_write_events;
 
 #if !(USE_KQUEUE)
 
+#if (HAVE_KQUEUE)
 #if 1
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
 #else
 ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
+#endif
+#else
+ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
 #endif
 
 ngx_event_actions_t  ngx_event_actions;
