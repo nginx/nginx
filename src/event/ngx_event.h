@@ -119,11 +119,12 @@ typedef struct {
 /* No nedd to add or delete event filters - overlapped, aio_read, aioread */
 #define NGX_HAVE_AIO_EVENT      8
 
-/* Event filter is deleted before closing file. Has no meaning for select, poll.
+/* Event filter is deleted before closing file. Has no meaning
+   for select, poll, epoll.
+
    kqueue:     kqueue deletes event filters for file that closed
                so we need only to delete filters in user-level batch array
-   /dev/poll:  we need to flush POLLREMOVE event before closing file
-   epoll:      ??? */
+   /dev/poll:  we need to flush POLLREMOVE event before closing file */
 #define NGX_CLOSE_EVENT         1
 
 

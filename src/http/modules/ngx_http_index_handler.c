@@ -25,7 +25,7 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_command_t ngx_http_index_commands[] = {
 
     {ngx_string("index"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_ANY,
+     NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
      ngx_http_index_set_index,
      NGX_HTTP_LOC_CONF_OFFSET,
      0},

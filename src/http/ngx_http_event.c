@@ -373,7 +373,7 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
 
 static int ngx_http_process_request_headers(ngx_http_request_t *r)
 {
-    int rc;
+    int                  rc, len;
     ngx_http_log_ctx_t  *ctx;
 
     for ( ;; ) {
@@ -381,20 +381,33 @@ static int ngx_http_process_request_headers(ngx_http_request_t *r)
 
         /* TODO: check too long header, compact buffer */
 
-        if (rc == NGX_OK) {
-            if (ngx_http_process_request_header_line(r) == NGX_ERROR)
+        if (rc == NGX_OK) { /* header line is ready */
+            if (ngx_http_process_request_header_line(r) == NGX_ERROR) {
                 return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
+            }
+
+            return NGX_AGAIN;
 
         } else if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
             ngx_log_debug(r->connection->log, "HTTP header done");
 
-            if (r->http_version > NGX_HTTP_VERSION_10
-                && r->headers_in.host == NULL)
-            {
-                return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
+            if (r->headers_in.host) {
+                 for (len = 0; len < r->headers_in.host->value.len; len++) {
+                     if (r->headers_in.host->value.data[len] == ':') {
+                         break;
+                     }
+                 }
+                 r->headers_in.host_name.len = len;
+                 r->headers_in.host_name.data = r->headers_in.host->value.data;
+
             } else {
-                return NGX_OK;
+                 if (r->http_version > NGX_HTTP_VERSION_10) {
+                     return ngx_http_error(r, NGX_HTTP_BAD_REQUEST);
+                 }
+                 r->headers_in.host_name.len = 0;
             }
+
+            return NGX_OK;
 
         } else if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
@@ -429,11 +442,13 @@ static int ngx_http_process_request_header_line(ngx_http_request_t *r)
     ngx_cpystrn(h->value.data, r->header_start, h->value.len + 1);
 
     for (i = 0; headers_in[i].len != 0; i++) {
-        if (headers_in[i].len == h->key.len) {
-            if (ngx_strcasecmp(headers_in[i].data, h->key.data) == 0) {
-                *((ngx_table_elt_t **)
-                    ((char *) &r->headers_in + headers_in[i].offset)) = h;
-            }
+        if (headers_in[i].len != h->key.len) {
+            continue;
+        }
+
+        if (ngx_strcasecmp(headers_in[i].data, h->key.data) == 0) {
+            *((ngx_table_elt_t **)
+                        ((char *) &r->headers_in + headers_in[i].offset)) = h;
         }
     }
 

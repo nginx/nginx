@@ -51,7 +51,8 @@ typedef struct {
 
 typedef struct {
     ngx_str_t   name;          /* location name */
-    void      **loc_conf;      /* used in translation handler */
+    void      **loc_conf;      /* pointer to modules loc_conf,
+                                  used in translation handler */
 
     ngx_str_t   doc_root;      /* 'root' */
 

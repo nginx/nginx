@@ -121,12 +121,31 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
     if (rv != NGX_CONF_OK)
         return rv;
 
+
+#if 0
+    /* DEBUG STUFF */
+    cscf = (ngx_http_core_srv_conf_t **) ngx_http_servers.elts;
+    for (s = 0; s < ngx_http_servers.nelts; s++) {
+        ngx_http_core_loc_conf_t **loc;
+
+        ngx_log_debug(cf->log, "srv: %08x" _ cscf[s]);
+        loc = (ngx_http_core_loc_conf_t **) cscf[s]->locations.elts;
+        for (l = 0; l < cscf[s]->locations.nelts; l++) {
+            ngx_log_debug(cf->log, "loc: %08x:%s, %08x:%s" _
+                          loc[l] _ loc[l]->name.data _
+                          &loc[l]->doc_root _ loc[l]->doc_root.data);
+        }
+    }
+    /**/
+#endif
+
     ngx_init_array(ngx_http_index_handlers,
                    cf->pool, 3, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
 
     ngx_http_init_filters(cf->pool, ngx_modules);
 
-#if 1
+    /* create lists of ports, addresses and server names */
+
     ngx_init_array(in_ports, cf->pool, 10, sizeof(ngx_http_in_port_t),
                    NGX_CONF_ERROR);
 
@@ -233,7 +252,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                                sizeof(ngx_http_in_addr_t),
                                NGX_CONF_ERROR);
 
-                ngx_test_null(inaddr, ngx_push_array(&in_port[p].addr),
+                ngx_test_null(inaddr, ngx_push_array(&in_port->addr),
                               NGX_CONF_ERROR);
 
                 inaddr->addr = lscf[l].addr;
@@ -246,6 +265,8 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
             }
         }
     }
+
+    /* optimzie lists of ports, addresses and server names */
 
     /* AF_INET only */
 
@@ -330,14 +351,17 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
             if (in_port[p].addr.nelts == 1) {
                 in_addr = (ngx_http_in_addr_t *) in_port[p].addr.elts;
 
+                /* if there is the single address for this port and no virtual
+                   name servers so we do not need to check addresses
+                   at run time */
                 if (in_addr[a].names.nelts == 0) {
                     ls->ctx = in_addr->core_srv_conf->ctx;
                     ls->servers = NULL;
                 }
             }
+ngx_log_debug(cf->log, "ls ctx: %d:%08x" _ in_port[p].port _ ls->ctx);
         }
     }
-#endif
 
     return NGX_CONF_OK;
 }

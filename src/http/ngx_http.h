@@ -74,6 +74,8 @@ typedef struct {
 
 
 typedef struct {
+    ngx_str_t         host_name;
+
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
     ngx_table_elt_t  *if_modified_since;

@@ -21,7 +21,7 @@ static char *ngx_http_output_filter_merge_conf(ngx_pool_t *pool,
 static ngx_command_t  ngx_http_output_filter_commands[] = {
 
     {ngx_string("output_buffer"),
-     NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE1,
+     NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_output_filter_conf_t, hunk_size)},

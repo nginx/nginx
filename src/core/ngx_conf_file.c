@@ -375,11 +375,11 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
     ngx_str_t  *field, *value;
 
-    field = (ngx_str_t *) conf + cmd->offset;
+    field = (ngx_str_t *) (conf + cmd->offset);
     value = (ngx_str_t *) cf->args->elts;
 
-    field->len = value->len;
-    field->data = value->data;
+    field->len = value[1].len;
+    field->data = value[1].data;
 
     return NGX_CONF_OK;
 }
