@@ -334,13 +334,33 @@ void ngx_single_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
                                        ngx_int_t type)
 {
+    ngx_int_t         i;
+    ngx_channel_t     ch;
     struct itimerval  itv;
 
     ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "start worker processes");
 
+    ch.command = NGX_CMD_OPEN_CHANNEL;
+
     while (n--) {
         ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
                           "worker process", type);
+
+        ch.pid = ngx_processes[ngx_process_slot].pid;
+        ch.slot = ngx_process_slot;
+        ch.fd = ngx_processes[ngx_process_slot].channel[0];
+
+        for (i = 0; i < ngx_last_process - 1; i++) {
+
+        ngx_log_debug3(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                       "pass channel s: %d pid:" PID_T_FMT " fd:%d",
+                       ch.slot, ch.pid, ch.fd);
+
+            /* TODO: NGX_AGAIN */
+
+            ngx_write_channel(ngx_processes[i].channel[0],
+                              &ch, sizeof(ngx_channel_t), cycle->log);
+        }
     }
 
     /*
@@ -359,6 +379,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
                       "setitimer() failed");
     }
 }
+
 
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 {
@@ -529,7 +550,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     for (n = 0; n <= ngx_last_process; n++) {
 
-        if (n == ngx_current_slot) {
+        if (n == ngx_process_slot) {
             if (close(ngx_processes[n].channel[0]) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                               "close() failed");
@@ -681,6 +702,16 @@ static void ngx_channel_handler(ngx_event_t *ev)
     case NGX_CMD_REOPEN:
         ngx_reopen = 1;
         break;
+
+    case NGX_CMD_OPEN_CHANNEL:
+
+        ngx_log_debug3(NGX_LOG_DEBUG_CORE, ev->log, 0,
+                       "get channel s:%d pid:" PID_T_FMT " fd:%d",
+                       ch.slot, ch.pid, ch.fd);
+
+        ngx_processes[ch.slot].pid = ch.pid;
+        ngx_processes[ch.slot].channel[0] = ch.fd;
+        break;
     }
 }
 
@@ -775,7 +806,7 @@ ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     msg.msg_iov = iov;
     msg.msg_iovlen = 1;
 
-    n = sendmsg(s, &msg, MSG_DONTWAIT);
+    n = sendmsg(s, &msg, 0);
 
     if (n == -1) {
         err = ngx_errno;
@@ -799,7 +830,7 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     ngx_err_t        err;
     struct iovec     iov[1];
     struct msghdr    msg;
-    struct cmsghdr  *cm;
+    struct cmsghdr   cm;
 
     iov[0].iov_base = (char *) ch;
     iov[0].iov_len = size;
@@ -817,7 +848,7 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     msg.msg_accrightslen = sizeof(int);
 #endif
 
-    n = recvmsg(s, &msg, MSG_DONTWAIT);
+    n = recvmsg(s, &msg, 0);
 
     if (n == -1) {
         err = ngx_errno;
@@ -838,28 +869,21 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
 #if (HAVE_MSGHDR_MSG_CONTROL)
 
     if (ch->command == NGX_CMD_OPEN_CHANNEL) {
-        cm = (struct cmsghdr *) msg.msg_control;
 
-        if (cm == NULL) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0, 
-                          "recvmsg() returned no ancillary data");
-            return NGX_ERROR;
-        }
-
-        if (cm->cmsg_len < sizeof(struct cmsghdr) + sizeof(int)) {
+        if (cm.cmsg_len < sizeof(struct cmsghdr) + sizeof(int)) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "recvmsg() returned too small ancillary data");
             return NGX_ERROR;
         }
 
-        if (cm->cmsg_level != SOL_SOCKET || cm->cmsg_type != SCM_RIGHTS) {
+        if (cm.cmsg_level != SOL_SOCKET || cm.cmsg_type != SCM_RIGHTS) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "recvmsg() returned invalid ancillary data "
-                          "level %d or type %d", cm->cmsg_level, cm->cmsg_type);
+                          "level %d or type %d", cm.cmsg_level, cm.cmsg_type);
             return NGX_ERROR;
         }
 
-        ch->fd = *((int *) ((char *) cm + sizeof(struct cmsghdr)));
+        ch->fd = *((int *) ((char *) &cm + sizeof(struct cmsghdr)));
     }
 
     if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {

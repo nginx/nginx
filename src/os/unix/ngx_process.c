@@ -6,9 +6,9 @@
 
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
 
-ngx_int_t      ngx_current_slot;
-ngx_int_t      ngx_last_process;
+ngx_int_t      ngx_process_slot;
 ngx_socket_t   ngx_channel;
+ngx_int_t      ngx_last_process;
 ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
 
 
@@ -31,6 +31,18 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
         return NGX_ERROR;
     }
 
+    if (ngx_nonblocking(ngx_processes[s].channel[0]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      ngx_nonblocking_n " failed while spawning \"%s\"", name);
+        return NGX_ERROR;
+    }
+
+    if (ngx_nonblocking(ngx_processes[s].channel[1]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      ngx_nonblocking_n " failed while spawning \"%s\"", name);
+        return NGX_ERROR;
+    }
+
     on = 1;
     if (ioctl(ngx_processes[s].channel[0], FIOASYNC, &on) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -45,7 +57,7 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     }
 
     ngx_channel = ngx_processes[s].channel[1];
-    ngx_current_slot = s;
+    ngx_process_slot = s;
 
 
     pid = fork();

@@ -187,16 +187,6 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
     size = 128            /* ngx_accept_mutex */
            + 128;         /* ngx_connection_counter */
 
-#if 0
-    shared = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_ANON|MAP_SHARED, -1, 0);
-
-    if (shared == MAP_FAILED) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      "mmap(MAP_ANON|MAP_SHARED) failed");
-        return NGX_ERROR;
-    }
-#endif
-
     if (!(shared = ngx_create_shared_memory(size, cycle->log))) {
         return NGX_ERROR;
     }
@@ -635,6 +625,9 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_event_conf_t  *ecf = conf;
+#if (HAVE_RTSIG)
+    ngx_core_conf_t  *ccf;
+#endif
 
 #if (HAVE_KQUEUE)
 
@@ -655,8 +648,6 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_ptr_value(ecf->name, ngx_epoll_module_ctx.name->data);
 
 #elif (HAVE_RTSIG)
-
-    ngx_core_conf_t  *ccf;
 
     ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
     ngx_conf_init_unsigned_value(ecf->use, ngx_rtsig_module.ctx_index);
