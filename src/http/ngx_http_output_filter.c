@@ -1,4 +1,5 @@
 
+#include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_files.h>
 #include <ngx_string.h>

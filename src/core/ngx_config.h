@@ -52,6 +52,23 @@
 
 #else /* POSIX */
 
+
+
+/* Solaris */
+#if defined(sun) && (defined(__svr4__) || defined(__SVR4))
+
+#define SOLARIS  1
+
+#define _FILE_OFFSET_BITS  64  /* should be before sys/types.h */
+
+#ifndef HAVE_INHERITED_NONBLOCK
+#define HAVE_INHERITED_NONBLOCK  1
+#endif
+
+#endif /* Solaris */
+
+
+
 #include <unistd.h>
 #include <stddef.h>    /* offsetof */
 #include <stdlib.h>

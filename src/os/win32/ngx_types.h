@@ -11,6 +11,7 @@ typedef long              time_t;
 
 #define QD_FMT            "%I64d"
 #define QX_FMT            "%I64x"
+#define OFF_FMT           "%I64d"
 
 
 #endif /* _NGX_TYPES_H_INCLUDED_ */

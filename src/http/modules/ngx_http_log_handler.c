@@ -22,11 +22,11 @@ int ngx_http_log_handler(ngx_http_request_t *r)
 
     ngx_log_debug(r->connection->log, "log handler");
 
-    /* %a, 20:%c, 22:%d, 3:%s, 20:%b, 5*" ", "2/1: "\r\n" */
+    /* 10:%con, 22:%date, 2:%"%r", 3:%status, 20:%bytes, 5*" ", 2/1: "\r\n" */
 #if (WIN32)
-    len = 2 + 20 + 22 + 3 + 20 + 5 + + 2;
+    len = 10 + 22 + 2 + 3 + 20 + 5 + 2;
 #else
-    len = 2 + 20 + 22 + 3 + 20 + 5 + + 1;
+    len = 10 + 22 + 2 + 3 + 20 + 5 + 1;
 #endif
 
     len += r->connection->addr_text.len;
@@ -67,7 +67,7 @@ int ngx_http_log_handler(ngx_http_request_t *r)
 
     *p++ = ' ';
 
-    p += ngx_snprintf(p, 21, QD_FMT, r->connection->sent);
+    p += ngx_snprintf(p, 21, OFF_FMT, r->connection->sent);
 
 #if (WIN32)
     *p++ = CR; *p++ = LF;
