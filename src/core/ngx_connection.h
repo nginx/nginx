@@ -91,7 +91,7 @@ struct ngx_connection_s {
     ngx_str_t         addr_text;
 
 #if (NGX_OPENSSL)
-    SSL              *ssl;
+    ngx_ssl_t        *ssl;
 #endif
 
 #if (HAVE_IOCP)

@@ -97,6 +97,10 @@ AIO_SRCS="src/event/modules/ngx_aio_module.c \
           src/os/unix/ngx_aio_write_chain.c"
 
 
+OPENSSL_DEPS=src/event/ngx_event_openssl.h
+OPENSSL_SRCS=src/event/ngx_event_openssl.c
+
+
 UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"
 
 UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \

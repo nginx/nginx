@@ -61,11 +61,15 @@ HTTP_FILTER_MODULES="$HTTP_WRITE_FILTER_MODULE \
                      $HTTP_RANGE_HEADER_FILTER_MODULE"
 
 if [ $HTTP_SSL = YES ]; then
-    have=NGX_OPENSSL . auto/have
     HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_SSL_FILTER_MODULE"
     HTTP_DEPS="$HTTP_DEPS $HTTP_SSL_DEPS"
     HTTP_SRCS="$HTTP_SRCS $HTTP_SSL_SRCS"
-    # STUB: move to auto/libs/ssl
+
+    # STUB: move to auto/libs/ssl after md5
+    have=NGX_HTTP_SSL . auto/have
+    have=NGX_OPENSSL . auto/have
+    CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
+    CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
     CORE_LIBS="$CORE_LIBS -lssl -lcrypto"
 fi
 

@@ -3,23 +3,12 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+/* STUB */
+#define NGX_SSL_ERROR   -11
+
 
 #define NGX_DEFLAUT_CERTIFICATE      "cert.pem"
 #define NGX_DEFLAUT_CERTIFICATE_KEY  "cert.pem"
-
-
-typedef struct {
-    ngx_flag_t   enable;
-    ngx_str_t    certificate;
-    ngx_str_t    certificate_key;
-
-    SSL_CTX     *ssl_ctx;
-} ngx_http_ssl_srv_conf_t;
-
-
-typedef struct {
-    SSL       *ssl;
-} ngx_http_ssl_ctx_t;
 
 
 static ngx_int_t ngx_http_ssl_create_ssl(ngx_http_request_t *r);
@@ -28,27 +17,27 @@ static void ngx_http_ssl_error(ngx_uint_t level, ngx_log_t *log, int err,
 static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
                                          void *parent, void *child);
-static ngx_int_t ngx_http_ssl_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_ssl_init_process(ngx_cycle_t *cycle);
 
 
 static ngx_command_t  ngx_http_charset_filter_commands[] = {
 
-    { ngx_string("ssl_"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+    { ngx_string("ssl"),
+      NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, enable),
       NULL },
 
     { ngx_string("ssl_certificate"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, certificate),
       NULL },
 
     { ngx_string("ssl_certificate_key"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, certificate_key),
@@ -75,10 +64,10 @@ static ngx_http_module_t  ngx_http_ssl_filter_module_ctx = {
 ngx_module_t  ngx_http_ssl_filter_module = {
     NGX_MODULE,
     &ngx_http_ssl_filter_module_ctx,       /* module context */
-    NULL,                                  /* module directives */
+    ngx_http_charset_filter_commands,      /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
-    ngx_http_ssl_filter_init,              /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init module */
+    ngx_http_ssl_init_process              /* init process */
 };
 
 
@@ -86,7 +75,6 @@ ngx_int_t ngx_http_ssl_read(ngx_http_request_t *r, u_char *buf, size_t size)
 {
     int                  n;
     SSL                 *ssl;
-    ngx_http_ssl_ctx_t  *ctx;
     ngx_http_log_ctx_t  *log_ctx;
 
     if (r->connection->ssl == NULL) {
@@ -334,17 +322,15 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
 
+    if (conf->enable == 0) {
+        return NGX_CONF_OK;
+    }
+
     ngx_conf_merge_str_value(conf->certificate, prev->certificate,
                              NGX_DEFLAUT_CERTIFICATE);
 
     ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key,
                              NGX_DEFLAUT_CERTIFICATE_KEY);
-
-    /* STUB: where to move ??? */
-    SSL_library_init();
-    SSL_load_error_strings();
-
-    /* TODO: inherit ssl_ctx */
 
     /* TODO: configure methods */
 
@@ -358,14 +344,16 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     if (SSL_CTX_use_certificate_file(conf->ssl_ctx, conf->certificate.data,
                                      SSL_FILETYPE_PEM) == 0) {
         ngx_http_ssl_error(NGX_LOG_EMERG, cf->log, 0,
-                           "SSL_CTX_use_certificate_file() failed");
+                           "SSL_CTX_use_certificate_file(\"%s\") failed",
+                           conf->certificate.data);
         return NGX_CONF_ERROR;
     }
 
     if (SSL_CTX_use_PrivateKey_file(conf->ssl_ctx, conf->certificate_key.data,
                                     SSL_FILETYPE_PEM) == 0) {
         ngx_http_ssl_error(NGX_LOG_EMERG, cf->log, 0,
-                           "SSL_CTX_use_PrivateKey_file() failed");
+                           "SSL_CTX_use_PrivateKey_file(\"%s\") failed",
+                           conf->certificate_key.data);
         return NGX_CONF_ERROR;
     }
 
@@ -373,15 +361,27 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
 }
 
 
-static ngx_int_t ngx_http_ssl_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_ssl_init_process(ngx_cycle_t *cycle)
 {
-#if 0
-    ngx_http_next_header_filter = ngx_http_top_header_filter;
-    ngx_http_top_header_filter = ngx_http_ssl_header_filter;
+    ngx_uint_t                   i;
+    ngx_http_ssl_srv_conf_t     *sscf;
+    ngx_http_core_srv_conf_t   **cscfp;
+    ngx_http_core_main_conf_t   *cmcf;
 
-    ngx_http_next_body_filter = ngx_http_top_body_filter;
-    ngx_http_top_body_filter = ngx_http_ssl_body_filter;
+    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
+
+    cscfp = cmcf->servers.elts;
+
+    for (i = 0; i < cmcf->servers.nelts; i++) {
+        sscf = cscfp[i]->ctx->srv_conf[ngx_http_ssl_filter_module.ctx_index];
+
+        if (sscf->enable) {
+            cscfp[i]->recv = ngx_ssl_recv;
+#if 0
+            cscfp[i]->send_chain = ngx_ssl_send_chain;
 #endif
+        }
+    }
 
     return NGX_OK;
 }

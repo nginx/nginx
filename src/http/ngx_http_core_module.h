@@ -47,26 +47,34 @@ typedef struct {
 
 
 typedef struct {
-    ngx_array_t  locations;    /* array of ngx_http_core_loc_conf_t,
-                                  used in the translation handler
-                                  and in the merge phase */
+    ngx_recv_pt           recv;
+    ngx_send_chain_pt     send_chain;
 
-    ngx_array_t  listen;       /* 'listen', array of ngx_http_listen_t */
-    ngx_array_t  server_names; /* 'server_name',
-                                  array of ngx_http_server_name_t */
+    /*
+     * array of ngx_http_core_loc_conf_t, used in the translation handler
+     * and in the merge phase
+     */
+    ngx_array_t           locations;
 
-    ngx_http_conf_ctx_t *ctx;  /* server ctx */
+    /* "listen", array of ngx_http_listen_t */
+    ngx_array_t           listen;
 
-    size_t       connection_pool_size;
-    size_t       request_pool_size;
-    size_t       client_header_buffer_size;
+    /* "server_name", array of ngx_http_server_name_t */
+    ngx_array_t           server_names;
 
-    ngx_msec_t   post_accept_timeout;
-    ngx_msec_t   client_header_timeout;
+    /* server ctx */
+    ngx_http_conf_ctx_t  *ctx;
 
-    ngx_uint_t   restrict_host_names;
+    size_t                connection_pool_size;
+    size_t                request_pool_size;
+    size_t                client_header_buffer_size;
 
-    ngx_flag_t   large_client_header;
+    ngx_msec_t            post_accept_timeout;
+    ngx_msec_t            client_header_timeout;
+
+    ngx_uint_t            restrict_host_names;
+
+    ngx_flag_t            large_client_header;
 } ngx_http_core_srv_conf_t;
 
 

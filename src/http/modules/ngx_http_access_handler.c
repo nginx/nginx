@@ -193,8 +193,11 @@ static ngx_int_t ngx_http_access_init(ngx_cycle_t *cycle)
     ngx_http_conf_ctx_t        *ctx;
     ngx_http_core_main_conf_t  *cmcf;
 
+#if 0
     ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+#endif
+    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
 
     h = ngx_push_array(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
     if (h == NULL) {

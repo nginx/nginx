@@ -656,7 +656,7 @@ static char *ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent,
                 return NGX_CONF_ERROR;
             }
 
-            lmcf = ngx_http_conf_module_main_conf(cf, ngx_http_log_module);
+            lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
             fmt = lmcf->formats.elts;
             /* the default "combined" format */
             log->ops = fmt[0].ops;
@@ -686,7 +686,7 @@ static char *ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd,
     }
 
     value = cf->args->elts;
-    lmcf = ngx_http_conf_module_main_conf(cf, ngx_http_log_module);
+    lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
 
     if (!(log = ngx_push_array(llcf->logs))) {
         return NGX_CONF_ERROR;

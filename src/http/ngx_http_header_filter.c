@@ -33,9 +33,6 @@ ngx_module_t  ngx_http_header_filter_module = {
 };
 
 
-static ngx_http_output_body_filter_pt    write_filter;
-
-
 static char server_string[] = "Server: " NGINX_VER CRLF;
 
 
@@ -358,15 +355,13 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
     ln->buf = b;
     ln->next = NULL;
 
-    return write_filter(r, ln);
+    return ngx_http_write_filter(r, ln);
 }
 
 
 static ngx_int_t ngx_http_header_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_top_header_filter = ngx_http_header_filter;
-
-    write_filter = ngx_http_top_body_filter;
 
     return NGX_OK;
 }

@@ -43,8 +43,14 @@ typedef struct {
 #define ngx_http_get_module_srv_conf(r, module)  r->srv_conf[module.ctx_index]
 #define ngx_http_get_module_loc_conf(r, module)  r->loc_conf[module.ctx_index]
 
-#define ngx_http_conf_module_main_conf(cf, module)                            \
+#define ngx_http_conf_get_module_main_conf(cf, module)                        \
             ((ngx_http_conf_ctx_t *) cf->ctx)->main_conf[module.ctx_index]
+#define ngx_http_conf_get_module_srv_conf(cf, module)                         \
+        ngx_http_conf_get_module_srv_conf_could_not_be_implemented()
+
+#define ngx_http_cycle_get_module_main_conf(cycle, module)                    \
+       ((ngx_http_conf_ctx_t *)                                               \
+           cycle->conf_ctx[ngx_http_module.index])->main_conf[module.ctx_index]
 
 
 

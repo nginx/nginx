@@ -141,6 +141,9 @@ static void ngx_http_init_request(ngx_event_t *rev)
     ngx_http_server_name_t    *server_name;
     ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf;
+#if (NGX_HTTP_SSL)
+    ngx_http_ssl_srv_conf_t   *sscf;
+#endif
 
     c = rev->data;
 
@@ -229,9 +232,18 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->srv_conf = cscf->ctx->srv_conf;
     r->loc_conf = cscf->ctx->loc_conf;
 
-#if 1
-    r->ssl = 1;
-    r->filter_need_in_memory = 1;
+#if (NGX_HTTP_SSL)
+
+    sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_filter_module);
+    if (sscf->enable) {
+        if (ngx_ssl_create_session(sscf->ssl_ctx, c) == NGX_ERROR) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        r->filter_need_in_memory = 1;
+    }
+
 #endif
 
     server_name = cscf->server_names.elts;
@@ -820,22 +832,13 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
         return NGX_AGAIN;
     }
 
-/* STUB */
-#if (NGX_OPENSSL)
-    if (r->ssl) {
-        n = ngx_http_ssl_read(r, r->header_in->last,
-                              r->header_in->end - r->header_in->last);
-    } else {
-#endif
-        n = ngx_recv(r->connection, r->header_in->last,
-                     r->header_in->end - r->header_in->last);
-#if (NGX_OPENSSL)
-    }
-#endif
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    n = cscf->recv(r->connection, r->header_in->last,
+                   r->header_in->end - r->header_in->last);
 
     if (n == NGX_AGAIN) {
         if (!r->header_timeout_set) {
-            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
             ngx_add_timer(rev, cscf->client_header_timeout);
             r->header_timeout_set = 1;
         }

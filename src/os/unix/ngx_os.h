@@ -22,13 +22,17 @@
 #endif
 
 
+typedef ssize_t (*ngx_recv_pt)(ngx_connection_t *c, u_char *buf, size_t size);
+typedef ssize_t (*ngx_recv_chain_pt)(ngx_connection_t *c, ngx_chain_t *in);
+typedef ssize_t (*ngx_send_pt)(ngx_connection_t *c, u_char *buf, size_t size);
+typedef ngx_chain_t *(*ngx_send_chain_pt)(ngx_connection_t *c, ngx_chain_t *in,
+                                          off_t limit);
 
 typedef struct {
-    ssize_t       (*recv)(ngx_connection_t *c, u_char *buf, size_t size);
-    ssize_t       (*recv_chain)(ngx_connection_t *c, ngx_chain_t *in);
-    ssize_t       (*send)(ngx_connection_t *c, u_char *buf, size_t size);
-    ngx_chain_t  *(*send_chain)(ngx_connection_t *c, ngx_chain_t *in,
-                                off_t limit);
+    ngx_recv_pt        recv;
+    ngx_recv_chain_pt  recv_chain;
+    ngx_send_pt        send;
+    ngx_send_chain_pt  send_chain;
     int             flags;
 } ngx_os_io_t;
 

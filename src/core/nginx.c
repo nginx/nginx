@@ -114,6 +114,10 @@ int main(int argc, char *const *argv)
     log = ngx_log_init_errlog();
     ngx_pid = ngx_getpid();
 
+#if (NGX_OPENSSL)
+    ngx_ssl_init(log);
+#endif
+
     /* init_cycle->log is required for signal handlers and ngx_getopt() */
 
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));

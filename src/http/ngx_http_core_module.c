@@ -18,7 +18,7 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                                           void *parent, void *child);
 
-static ngx_int_t ngx_http_core_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_core_init_process(ngx_cycle_t *cycle);
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
 static int ngx_cmp_locations(const void *first, const void *second);
 static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -303,8 +303,8 @@ ngx_module_t  ngx_http_core_module = {
     &ngx_http_core_module_ctx,             /* module context */
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
-    ngx_http_core_init,                    /* init module */
-    NULL                                   /* init child */
+    NULL,                                  /* init module */
+    ngx_http_core_init_process             /* init process */
 };
 
 
@@ -822,21 +822,33 @@ int ngx_http_delay_handler(ngx_http_request_t *r)
 #endif
 
 
-static ngx_int_t ngx_http_core_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_core_init_process(ngx_cycle_t *cycle)
 {
-#if 0
-    ngx_http_handler_pt        *h;
-    ngx_http_conf_ctx_t        *ctx;
-    ngx_http_core_main_conf_t  *cmcf;
+    ngx_uint_t                   i;
+    ngx_http_core_srv_conf_t   **cscfp;
+    ngx_http_core_main_conf_t   *cmcf;
 
-    ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
-    cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
+
+#if 0
+    ngx_http_core_init_module:
+
+    ngx_http_handler_pt         *h;
 
     ngx_test_null(h, ngx_push_array(
                              &cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers),
                   NGX_ERROR);
     *h = ngx_http_delay_handler;
 #endif
+
+    cscfp = cmcf->servers.elts;
+
+    for (i = 0; i < cmcf->servers.nelts; i++) {
+        if (cscfp[i]->recv == NULL) {
+            cscfp[i]->recv = ngx_io.recv;
+            cscfp[i]->send_chain = ngx_io.send_chain;
+        }
+    }
 
     return NGX_OK;
 }

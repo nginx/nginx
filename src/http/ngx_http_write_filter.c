@@ -53,12 +53,6 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                             sizeof(ngx_http_write_filter_ctx_t), NGX_ERROR);
     }
 
-#if (NGX_OPENSSL)
-    if (r->ssl && in == NULL && ctx->out == NULL) {
-        return ngx_http_ssl_shutdown(r);
-    }
-#endif
-
     size = 0;
     flush = 0;
     last = 0;
@@ -131,7 +125,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 /* STUB */
 #if (NGX_OPENSSL)
-    if (r->ssl) {
+    if (r->connection->ssl) {
         chain = ngx_http_ssl_write(r->connection, ctx->out,
                                    clcf->limit_rate ? clcf->limit_rate:
                                                       OFF_T_MAX_VALUE);
