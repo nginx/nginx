@@ -59,20 +59,25 @@ void ngx_destroy_pool(ngx_pool_t *pool)
         free(l->alloc);
     }
 
-    /* we can use pool->log so we have to free() pool after all */
+    /*
+     * we could allocate pool->log from this pool
+     * so we can not use this log while free()ing the pool
+     */
 
-    for (p = pool->next; p ; p = n) {
 #if (NGX_DEBUG_ALLOC)
+    for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
         ngx_log_debug(pool->log, "free: %08x" _ p);
+    }
 #endif
-        n = p->next;
+
+    for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
         free(p);
+
+        if (n == NULL) {
+            break;
+        }
     }
 
-#if (NGX_DEBUG_ALLOC)
-    ngx_log_debug(pool->log, "free: %08x" _ pool);
-#endif
-    free(pool);
     pool = NULL;
 }
 
