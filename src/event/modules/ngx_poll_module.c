@@ -13,7 +13,7 @@ static int ngx_poll_init(ngx_cycle_t *cycle);
 static void ngx_poll_done(ngx_cycle_t *cycle);
 static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_poll_process_events(ngx_log_t *log);
+int ngx_poll_process_events(ngx_log_t *log);
 
 
 static struct pollfd  *event_list;
@@ -245,7 +245,7 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_poll_process_events(ngx_log_t *log)
+int ngx_poll_process_events(ngx_log_t *log)
 {
     int                 ready;
     ngx_int_t           i, j, nready, found;
@@ -257,12 +257,18 @@ static int ngx_poll_process_events(ngx_log_t *log)
     ngx_connection_t   *c;
     struct timeval      tv;
 
-    timer = ngx_event_find_timer();
-    ngx_old_elapsed_msec = ngx_elapsed_msec; 
+    if (ngx_event_flags & NGX_OVERFLOW_EVENT) {
+        timer = 0;
 
-    if (timer == 0) {
-        timer = (ngx_msec_t) INFTIM;
+    } else {
+        timer = ngx_event_find_timer();
+
+        if (timer == 0) {
+            timer = (ngx_msec_t) INFTIM;
+        }
     }
+
+    ngx_old_elapsed_msec = ngx_elapsed_msec; 
 
 #if (NGX_DEBUG0)
     for (i = 0; i < nevents; i++) {
@@ -307,6 +313,11 @@ static int ngx_poll_process_events(ngx_log_t *log)
                           "poll() returned no events without timeout");
             return NGX_ERROR;
         }
+    }
+
+    if (timer == 0 && ready == 0) {
+        /* the overflowed rt signals queue has been drained */
+        return NGX_OK;
     }
 
     nready = 0;
@@ -431,5 +442,5 @@ static int ngx_poll_process_events(ngx_log_t *log)
         ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
-    return NGX_OK;
+    return nready;
 }

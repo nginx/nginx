@@ -13,7 +13,7 @@ static int ngx_aio_init(ngx_cycle_t *cycle);
 static void ngx_aio_done(ngx_cycle_t *cycle);
 static int ngx_aio_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_aio_del_connection(ngx_connection_t *c);
+static int ngx_aio_del_connection(ngx_connection_t *c, u_int flags);
 static int ngx_aio_process_events(ngx_log_t *log);
 
 
@@ -96,7 +96,7 @@ static int ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_aio_del_connection(ngx_connection_t *c)
+static int ngx_aio_del_connection(ngx_connection_t *c, u_int flags)
 {
     int  rc;
 

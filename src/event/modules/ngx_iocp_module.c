@@ -13,7 +13,7 @@
 static int ngx_iocp_init(ngx_cycle_t *cycle);
 static void ngx_iocp_done(ngx_cycle_t *cycle);
 static int ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key);
-static int ngx_iocp_del_connection(ngx_connection_t *c);
+static int ngx_iocp_del_connection(ngx_connection_t *c, u_int flags);
 static int ngx_iocp_process_events(ngx_log_t *log);
 static void *ngx_iocp_create_conf(ngx_cycle_t *cycle);
 static char *ngx_iocp_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -154,7 +154,7 @@ static int ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
 }
 
 
-static int ngx_iocp_del_connection(ngx_connection_t *c)
+static int ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
 {
     if (CancelIo((HANDLE) c->fd) == 0) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno, "CancelIo() failed");

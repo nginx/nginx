@@ -1538,7 +1538,7 @@ void ngx_http_close_connection(ngx_connection_t *c)
     }
 
     if (ngx_del_conn) {
-        ngx_del_conn(c);
+        ngx_del_conn(c, NGX_CLOSE_EVENT);
 
     } else {
         if (c->read->active || c->read->disabled) {

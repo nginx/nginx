@@ -15,15 +15,9 @@
 #define SIGRTMIN  33
 #define si_fd     __spare__[0]
 
-int sigwaitinfo(const sigset_t *set, siginfo_t *info);
-
 int sigtimedwait(const sigset_t *set, siginfo_t *info,
                  const struct timespec *timeout);
 
-int sigwaitinfo(const sigset_t *set, siginfo_t *info)
-{
-    return -1;
-}
 
 int sigtimedwait(const sigset_t *set, siginfo_t *info,
                  const struct timespec *timeout)
@@ -39,11 +33,14 @@ typedef struct {
 } ngx_rtsig_conf_t;
 
 
+extern ngx_event_module_t  ngx_poll_module_ctx;
+
 static int ngx_rtsig_init(ngx_cycle_t *cycle);
 static void ngx_rtsig_done(ngx_cycle_t *cycle);
 static int ngx_rtsig_add_connection(ngx_connection_t *c);
-static int ngx_rtsig_del_connection(ngx_connection_t *c);
+static int ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags);
 static int ngx_rtsig_process_events(ngx_log_t *log);
+static int ngx_rtsig_process_overlow(ngx_log_t *log);
 
 static void *ngx_rtsig_create_conf(ngx_cycle_t *cycle);
 static char *ngx_rtsig_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -100,6 +97,10 @@ static int ngx_rtsig_init(ngx_cycle_t *cycle)
 {
     ngx_rtsig_conf_t  *rtscf;
 
+    if (ngx_poll_module_ctx.actions.init(cycle) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
     rtscf = ngx_event_get_conf(cycle->conf_ctx, ngx_rtsig_module);
 
     sigemptyset(&set);
@@ -124,6 +125,7 @@ static int ngx_rtsig_init(ngx_cycle_t *cycle)
 
 static void ngx_rtsig_done(ngx_cycle_t *cycle)
 {
+    ngx_poll_module_ctx.actions.done(cycle);
 }
 
 
@@ -169,8 +171,16 @@ static int ngx_rtsig_add_connection(ngx_connection_t *c)
 }
 
 
-static int ngx_rtsig_del_connection(ngx_connection_t *c)
+static int ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags)
 {
+    if (!(flags & NGX_CLOSE_EVENT)) {
+        if (fcntl(c->fd, F_SETFL, O_RDWR|O_NONBLOCK) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
+                          "fcntl(O_RDWR|O_NONBLOCK) failed");
+            return NGX_ERROR;
+        }
+    }
+
     c->read->active = 0;
     c->write->active = 0;
 
@@ -188,7 +198,7 @@ int ngx_rtsig_process_events(ngx_log_t *log)
     ngx_cycle_t       **cycle;
     siginfo_t           si;
     struct timeval      tv;
-    struct timespec     ts;
+    struct timespec     ts, *tp;
     struct sigaction    sa;
     ngx_connection_t   *c;
     ngx_epoch_msec_t    delta;
@@ -200,15 +210,17 @@ int ngx_rtsig_process_events(ngx_log_t *log)
     if (timer) {
         ts.tv_sec = timer / 1000;
         ts.tv_nsec = (timer % 1000) * 1000000;
+        tp = &ts;
+
+    } else {
+        tp = NULL;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "rtsig timer: %d", timer);
 
-    if (timer) {
-        signo = sigtimedwait(&set, &si, &ts);
-    } else {
-        signo = sigwaitinfo(&set, &si);
-    }
+    /* Linux sigwaitinfo() is sigtimedwait() with the NULL timeout pointer */
+
+    signo = sigtimedwait(&set, &si, tp);
 
     if (signo == -1) {
         err = ngx_errno;
@@ -222,10 +234,9 @@ int ngx_rtsig_process_events(ngx_log_t *log)
     delta = ngx_elapsed_msec;
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
-    if (signo == -1) {
+    if (err) {
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
-                      log, err,
-                      timer ? "sigtimedwait() failed" : "sigwaitinfo() failed");
+                      log, err, "sigtimedwait() failed");
         return NGX_ERROR;
     }
 
@@ -267,6 +278,8 @@ int ngx_rtsig_process_events(ngx_log_t *log)
                       "signal queue overflowed: "
                       "SIGIO, fd:%d, band:%X", si.si_fd, si.si_band);
 
+        /* TODO: flush all the used RT signals */
+
         ngx_memzero(&sa, sizeof(struct sigaction));
         sa.sa_handler = SIG_DFL;
         sigemptyset(&sa.sa_mask);
@@ -275,16 +288,33 @@ int ngx_rtsig_process_events(ngx_log_t *log)
                           "sigaction(%d, SIG_DFL) failed", rtscf->signo);
         }
 
+        ngx_event_actions = ngx_poll_module_ctx.actions;
+        ngx_event_actions.process = ngx_rtsig_process_overflow;
+        ngx_event_flags = NGX_OVERFLOW_EVENT
+                          |NGX_USE_LEVEL_EVENT|NGX_USE_ONESHOT_EVENT;
+
+        /* STUB: add events. WHAT to do with fcntl()s ? */
+
+
     } else {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
-                      timer ?  "sigtimedwait() returned unexpected signal: %d":
-                               "sigwaitinfo() returned unexpected signal: %d",
-                      signo);
+                      "sigtimedwait() returned unexpected signal: %d", signo);
         return NGX_ERROR;
     }
 
     if (timer != (ngx_msec_t) -1 && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);
+    }
+
+    return NGX_OK;
+}
+
+
+static int ngx_rtsig_process_overlow(ngx_log_t *log)
+{
+    if (ngx_poll_module_ctx.actions.process(log) == NGX_OK) {
+        ngx_event_actions = ngx_rtsig_module_ctx.actions;
+        ngx_event_flags = NGX_USE_SIGIO_EVENT;
     }
 
     return NGX_OK;

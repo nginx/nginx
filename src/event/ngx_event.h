@@ -163,7 +163,7 @@ typedef struct {
     int   (*disable)(ngx_event_t *ev, int event, u_int flags);
 
     int   (*add_conn)(ngx_connection_t *c);
-    int   (*del_conn)(ngx_connection_t *c);
+    int   (*del_conn)(ngx_connection_t *c, u_int flags);
 
     int   (*process)(ngx_log_t *log);
     int   (*init)(ngx_cycle_t *cycle);
@@ -216,16 +216,21 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_USE_SIGIO_EVENT    0x00000040
 
 /*
+ * The alternative event method after the rt signals queue overflow.
+ */
+#define NGX_OVERFLOW_EVENT     0x00000080
+
+/*
  * No need to add or delete the event filters - overlapped, aio_read,
  * aioread, io_submit.
  */
-#define NGX_USE_AIO_EVENT      0x00000080
+#define NGX_USE_AIO_EVENT      0x00000100
 
 /*
  * Need to add socket or handle only once - i/o completion port.
  * It also requires HAVE_AIO and NGX_USE_AIO_EVENT to be set.
  */
-#define NGX_USE_IOCP_EVENT     0x00000100
+#define NGX_USE_IOCP_EVENT     0x00000200
 
 
 

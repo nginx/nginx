@@ -532,7 +532,7 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
     /* TODO: move connection to the connection pool */
 
     if (ngx_del_conn) {
-        ngx_del_conn(c);
+        ngx_del_conn(c, NGX_CLOSE_EVENT);
 
     } else {
         if (c->read->active) {
