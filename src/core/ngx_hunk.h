@@ -22,8 +22,8 @@
 /* the hunk is in file */
 #define NGX_HUNK_FILE         0x0100
 
-#define NGX_HUNK_STORAGE      (NGX_HUNK_IN_MEMORY
-                               |NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP
+#define NGX_HUNK_STORAGE      (NGX_HUNK_IN_MEMORY                            \
+                               |NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP  \
                                |NGX_HUNK_RECYCLED|NGX_HUNK_FILE)
 
 /* hunk flags */
