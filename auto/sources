@@ -105,6 +105,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_errno.h \
             src/os/unix/ngx_alloc.h \
             src/os/unix/ngx_files.h \
+            src/os/unix/ngx_channel.h \
             src/os/unix/ngx_shared.h \
             src/os/unix/ngx_process.h \
             src/os/unix/ngx_thread.h \
@@ -121,6 +122,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_recv.c \
             src/os/unix/ngx_readv_chain.c \
             src/os/unix/ngx_writev_chain.c \
+            src/os/unix/ngx_channel.c \
             src/os/unix/ngx_shared.c \
             src/os/unix/ngx_process.c \
             src/os/unix/ngx_daemon.c \

@@ -65,6 +65,22 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
             return NGX_ERROR;
         }
 
+        if (fcntl(ngx_processes[s].channel[0], F_SETFD, FD_CLOEXEC) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "fcntl(FD_CLOEXEC) failed while spawning \"%s\"",
+                           name);
+            ngx_close_channel(ngx_processes[s].channel, cycle->log);
+            return NGX_ERROR;
+        }
+
+        if (fcntl(ngx_processes[s].channel[1], F_SETFD, FD_CLOEXEC) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "fcntl(FD_CLOEXEC) failed while spawning \"%s\"",
+                           name);
+            ngx_close_channel(ngx_processes[s].channel, cycle->log);
+            return NGX_ERROR;
+        }
+
         ngx_channel = ngx_processes[s].channel[1];
 
     } else {

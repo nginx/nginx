@@ -72,8 +72,6 @@ ngx_module_t  ngx_core_module = {
 
 ngx_uint_t  ngx_max_module;
 
-ngx_uint_t  ngx_inherited;
-
 
 int main(int argc, char *const *argv)
 {
@@ -162,6 +160,9 @@ int main(int argc, char *const *argv)
 #if (WIN32)
 
 #if 0
+
+    TODO:
+
     if (ccf->run_as_service) {
         if (ngx_service(cycle->log) == NGX_ERROR) {
             return 1;
@@ -177,6 +178,8 @@ int main(int argc, char *const *argv)
         if (ngx_daemon(cycle->log) == NGX_ERROR) {
             return 1;
         }
+
+        ngx_daemonized = 1;
     }
 
     if (ngx_create_pidfile(cycle, NULL) == NGX_ERROR) {
