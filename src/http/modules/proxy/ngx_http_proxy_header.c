@@ -5,6 +5,9 @@
 #include <ngx_http_proxy_handler.h>
 
 
+static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
+                                                  ngx_table_elt_t *loc);
+
 int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
                                ngx_http_proxy_headers_in_t *headers_in)
 {
@@ -34,6 +37,16 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
             } 
     
             if (&h[i] == headers_in->server && !p->lcf->pass_server) {
+                continue;
+            } 
+    
+            if (&h[i] == headers_in->location) {
+                if (ngx_http_proxy_rewrite_location_header(p, &h[i])
+                                                                  == NGX_ERROR)
+                {
+                    return NGX_ERROR;
+                }
+
                 continue;
             } 
         }
@@ -76,6 +89,50 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
             continue;
         }
     }
+
+    return NGX_OK;
+}
+
+
+static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
+                                                  ngx_table_elt_t *loc)
+{
+    char                            *last;
+    ngx_http_request_t              *r;
+    ngx_http_proxy_upstream_conf_t  *uc;
+
+    r = p->request;
+    uc = p->lcf->upstream;
+
+    r->headers_out.location = ngx_http_add_header(&r->headers_out,
+                                                  ngx_http_headers_out);
+    if (r->headers_out.location == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (uc->url.len > loc->value.len
+        || ngx_rstrncmp(loc->value.data, uc->url.data, uc->url.len) != 0)
+    {
+        *r->headers_out.location = *loc;
+        return NGX_OK;
+    }
+
+    /* TODO: proxy_reverse */
+
+    r->headers_out.location->value.len = uc->location->len
+                                         + (loc->value.len - uc->url.len) + 1;
+    r->headers_out.location->value.data =
+                       ngx_palloc(r->pool, r->headers_out.location->value.len); 
+
+    if (r->headers_out.location->value.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    last = ngx_cpymem(r->headers_out.location->value.data,
+                      uc->location->data, uc->location->len);
+
+    ngx_cpystrn(last, loc->value.data + uc->url.len,
+                loc->value.len - uc->url.len + 1);
 
     return NGX_OK;
 }

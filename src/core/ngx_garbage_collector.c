@@ -1,24 +1,11 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_garbage_collector.h>
 
 
-typedef struct ngx_gc_s  ngx_gc_t;
-
-typedef int (*ngx_gc_handler_pt) (ngx_gc_t *ctx, ngx_str_t *name,
-                                  ngx_dir_t *dir);
-
-
-static int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
-                                              ngx_dir_t *dir);
-
-struct ngx_gc_s {
-    ngx_path_t         *path;
-    u_int               deleted;
-    off_t               freed;
-    ngx_gc_handler_pt   handler;
-    ngx_log_t          *log;
-};
+int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
+                                       ngx_dir_t *dir);
 
 
 static int ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level);
@@ -64,27 +51,20 @@ void garbage_collector()
 #endif
 
 
-void stub_init(ngx_log_t *log)
+void stub_init(ngx_cycle_t *cycle)
 {
-    ngx_gc_t    *ctx;
-    ngx_path_t   path;
+    int           i;
+    ngx_gc_t      ctx;
+    ngx_path_t  **path;
 
-    if (!(ctx = ngx_alloc(sizeof(ngx_gc_t), log))) {
-        return;
+    path = cycle->pathes.elts;
+    for (i = 0; i < cycle->pathes.nelts; i++) {
+        ctx.path = path[i];
+        ctx.log = cycle->log;
+        ctx.handler = path[i]->gc_handler;
+
+        ngx_collect_garbage(&ctx, &path[i]->name, 0);
     }
-
-    path.name.len = 4;
-    path.name.data = "temp";
-    path.len = 5;
-    path.level[0] = 1;
-    path.level[1] = 2;
-    path.level[2] = 0;
-
-    ctx->path = &path;
-    ctx->log = log;
-    ctx->handler = ngx_garbage_collector_temp_handler;
-
-    ngx_collect_garbage(ctx, &path.name, 0);
 }
 
 
@@ -254,8 +234,8 @@ ngx_log_debug(ctx->log, "file %s" _ fname.data);
 }
 
 
-static int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
-                                              ngx_dir_t *dir)
+int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
+                                       ngx_dir_t *dir)
 {
     /*
      * we use mtime only and do not use atime because:
@@ -279,5 +259,6 @@ static int ngx_garbage_collector_temp_handler(ngx_gc_t *ctx, ngx_str_t *name,
 
     ctx->deleted++;
     ctx->freed += ngx_de_size(dir);
+
     return NGX_OK;
 }

@@ -51,9 +51,11 @@
 
 /*
  * HTTP does not define a code for the case when a client closed a connection
- * while we are processing request so we introduce own code to log this case
+ * while we are processing request so we introduce own code to log such
+ * situation when client has closed a connection before we even try to
+ * send HTTP header to it
  */
-#define NGX_HTTP_CLIENT_CLOSED_REQUEST     420
+#define NGX_HTTP_CLIENT_CLOSED_REQUEST     499
 
 #define NGX_HTTP_INTERNAL_SERVER_ERROR     500
 #define NGX_HTTP_NOT_IMPLEMENTED           501

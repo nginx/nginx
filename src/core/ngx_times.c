@@ -41,12 +41,6 @@ void ngx_init_time()
 }
 
 
-time_t ngx_time()
-{
-    return ngx_cached_time;
-}
-
-
 void ngx_time_update()
 {
     ngx_tm_t  tm;

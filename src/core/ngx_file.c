@@ -202,8 +202,14 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    ngx_test_null(path, ngx_pcalloc(cf->pool, sizeof(ngx_path_t)), NULL);
+    /* TODO: check duplicate in cf->cycle->pathes */
 
+    ngx_test_null(path, ngx_pcalloc(cf->pool, sizeof(ngx_path_t)),
+                  NGX_CONF_ERROR);
+
+    *pp = path;
+
+    ngx_test_null(pp, ngx_push_array(&cf->cycle->pathes), NGX_CONF_ERROR);
     *pp = path;
 
     value = (ngx_str_t *) cf->args->elts;
@@ -224,6 +230,8 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     while (i < 3) {
         path->level[i++] = 0;
     }
+
+    path->gc_handler = cmd->post;
 
     return NGX_CONF_OK;
 }

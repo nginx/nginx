@@ -93,8 +93,8 @@ typedef uint32_t   socklen_t;
 
 
 /* STUB */
-#define HAVE_PREAD         0
-#define HAVE_PWRITE        0
+#define HAVE_PREAD         1
+#define HAVE_PWRITE        1
 #define HAVE_LOCALTIME_R   1
 
 

@@ -114,14 +114,14 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_conf_set_path_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, cache_path),
-      NULL },
+      ngx_garbage_collector_http_cache_handler },
 
     { ngx_string("proxy_temp_path"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1234,
       ngx_conf_set_path_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, temp_path),
-      NULL },
+      ngx_garbage_collector_temp_handler },
 
     { ngx_string("proxy_temp_file_write_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -255,6 +255,8 @@ ngx_http_header_t ngx_http_proxy_headers_in[] = {
                        offsetof(ngx_http_proxy_headers_in_t, content_length) },
     { ngx_string("Last-Modified"),
                         offsetof(ngx_http_proxy_headers_in_t, last_modified) },
+    { ngx_string("Location"),
+                             offsetof(ngx_http_proxy_headers_in_t, location) },
     { ngx_string("Accept-Ranges"),
                         offsetof(ngx_http_proxy_headers_in_t, accept_ranges) },
 
@@ -932,6 +934,7 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     clcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
     lcf->upstream->location = &clcf->name;
     clcf->handler = ngx_http_proxy_handler;
+    clcf->auto_redirect = 1;
 
     return NULL;
 }

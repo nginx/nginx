@@ -200,8 +200,10 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
         *last++ = '/';
         *last = '\0';
+#if 0
         r->headers_out.location->key.len = 8;
         r->headers_out.location->key.data = "Location" ;
+#endif
         r->headers_out.location->value.len = last - location;
         r->headers_out.location->value.data = location;
 

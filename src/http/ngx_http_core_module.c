@@ -369,16 +369,27 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
 int ngx_http_find_location_config(ngx_http_request_t *r)
 {
     int                            i, rc;
+    ngx_str_t                     *auto_redirect;
     ngx_http_core_loc_conf_t      *clcf, **clcfp;
     ngx_http_core_srv_conf_t      *cscf;
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+    auto_redirect = NULL;
 
     clcfp = cscf->locations.elts;
     for (i = 0; i < cscf->locations.nelts; i++) {
 #if 0
 ngx_log_debug(r->connection->log, "trans: %s" _ clcfp[i]->name.data);
 #endif
+        if (clcfp[i]->auto_redirect
+            && r->uri.len == clcfp[i]->name.len - 1
+            && ngx_strncmp(r->uri.data, clcfp[i]->name.data,
+                           clcfp[i]->name.len - 1) == 0)
+        {
+            auto_redirect = &clcfp[i]->name;
+            continue;
+        }
+
         if (r->uri.len < clcfp[i]->name.len) {
             continue;
         }
@@ -386,6 +397,7 @@ ngx_log_debug(r->connection->log, "trans: %s" _ clcfp[i]->name.data);
         rc = ngx_strncmp(r->uri.data, clcfp[i]->name.data, clcfp[i]->name.len);
 
         if (rc < 0) {
+            /* locations are lexicographically sorted */
             break;
         }
 
@@ -404,6 +416,22 @@ ngx_log_debug(r->connection->log, "trans: %s" _ clcfp[i]->name.data);
 
     } else {
         r->sendfile = 1;
+    }
+
+    if (auto_redirect) {
+        if (!(r->headers_out.location =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+        {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+#if 0
+        r->headers_out.location->key.len = 8;
+        r->headers_out.location->key.data = "Location";
+#endif
+        r->headers_out.location->value = *auto_redirect;
+
+        return NGX_HTTP_MOVED_PERMANENTLY;
     }
 
     if (clcf->handler) {

@@ -3,6 +3,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+
 #include <md5.h>
 
 #if (HAVE_OPENSSL_MD5)
@@ -41,14 +42,13 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
 
     /* TODO: look open files cache */
 
-    return ngx_http_cache_open_file(r, ctx, 0);
+    return ngx_http_cache_open_file(ctx, 0);
 }
 
 
 /* TODO: Win32 inode analogy */
 
-int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
-                             ngx_file_uniq_t uniq)
+int ngx_http_cache_open_file(ngx_http_cache_ctx_t *ctx, ngx_file_uniq_t uniq)
 {
     ssize_t                   n;
     ngx_err_t                 err;
@@ -64,14 +64,14 @@ int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
             return NGX_DECLINED;
         }
 
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+        ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
                       ngx_open_file_n " \"%s\" failed", ctx->file.name.data);
         return NGX_ERROR;
     }
 
     if (uniq) {
         if (ngx_fd_info(ctx->file.fd, &ctx->file.info) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+            ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
                           ngx_fd_info_n " \"%s\" failed", ctx->file.name.data);
 
             return NGX_ERROR;
@@ -79,7 +79,7 @@ int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
 
         if (ngx_file_uniq(&ctx->file.info) == uniq) {
             if (ngx_close_file(ctx->file.fd) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                ngx_log_error(NGX_LOG_ALERT, ctx->log, ngx_errno,
                               ngx_close_file_n " \"%s\" failed",
                               ctx->file.name.data);
             }
@@ -96,7 +96,7 @@ int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
     }
 
     if (n <= ctx->header_size) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_CRIT, ctx->log, 0,
                       "cache file \"%s\" is too small", ctx->file.name.data);
         return NGX_ERROR;
     }
@@ -108,17 +108,18 @@ int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
     ctx->length = h->length;
 
     if (h->key_len > (size_t) (ctx->buf->last - ctx->buf->pos)) {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ALERT, ctx->log, 0,
                       "cache file \"%s\" is probably invalid",
                       ctx->file.name.data);
         return NGX_DECLINED;
     }
 
-    if (h->key_len != ctx->key.len
-        || ngx_strncmp(h->key, ctx->key.data, h->key_len) != 0)
+    if (ctx->key.len
+        && (h->key_len != ctx->key.len
+            || ngx_strncmp(h->key, ctx->key.data, h->key_len) != 0))
     {
         h->key[h->key_len] = '\0';
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ALERT, ctx->log, 0,
                           "md5 collision: \"%s\" and \"%s\"",
                           h->key, ctx->key.data);
         return NGX_DECLINED;
@@ -127,11 +128,55 @@ int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
     ctx->buf->last += n;
 
     if (ctx->expires < ngx_time()) {
-ngx_log_debug(r->connection->log, "EXPIRED");
+ngx_log_debug(ctx->log, "EXPIRED");
         return NGX_HTTP_CACHE_STALE;
     }
 
     /* TODO: NGX_HTTP_CACHE_AGED */
+
+    return NGX_OK;
+}
+
+
+int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
+                                             ngx_dir_t *dir)
+{
+    int                   rc;
+    char                  data[sizeof(ngx_http_cache_header_t)];
+    ngx_hunk_t            buf;
+    ngx_http_cache_ctx_t  ctx;
+
+    ctx.file.fd = NGX_INVALID_FILE;
+    ctx.file.name = *name;
+    ctx.file.log = gc->log;
+
+    ctx.header_size = sizeof(ngx_http_cache_header_t);
+    ctx.buf = &buf;
+    ctx.log = gc->log;
+    ctx.key.len = 0;
+
+    buf.type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
+    buf.pos = data;
+    buf.last = data;
+    buf.start = data;
+    buf.end = data + sizeof(ngx_http_cache_header_t);
+
+    rc = ngx_http_cache_open_file(&ctx, 0);
+
+    /* TODO: NGX_AGAIN */
+
+    if (rc != NGX_ERROR && rc != NGX_DECLINED && rc != NGX_HTTP_CACHE_STALE) {
+        return NGX_OK;
+    }
+
+    if (ngx_delete_file(name->data) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_CRIT, gc->log, ngx_errno,
+                      ngx_delete_file_n " \"%s\" failed", name->data);
+        return NGX_ERROR;
+    }
+
+    gc->deleted++;
+    gc->freed += ngx_de_size(dir);
 
     return NGX_OK;
 }

@@ -43,6 +43,7 @@ typedef struct {
     off_t        length;
     ssize_t      header_size;
     size_t       file_start;
+    ngx_log_t   *log;
 } ngx_http_cache_ctx_t;
 
 
@@ -52,8 +53,9 @@ typedef struct {
 
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx);
-int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
-                             ngx_file_uniq_t uniq);
+int ngx_http_cache_open_file(ngx_http_cache_ctx_t *ctx, ngx_file_uniq_t uniq);
+int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
+                                             ngx_dir_t *dir);
 int ngx_http_cache_update_file(ngx_http_request_t *r,ngx_http_cache_ctx_t *ctx,
                                ngx_str_t *temp_file);
 

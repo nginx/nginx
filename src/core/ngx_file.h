@@ -5,6 +5,10 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+typedef struct ngx_path_s  ngx_path_t;
+
+#include <ngx_garbage_collector.h>
+
 
 struct ngx_file_s {
     ngx_fd_t         fd;
@@ -12,6 +16,7 @@ struct ngx_file_s {
     ngx_file_info_t  info;
 
     off_t            offset;
+    off_t            sys_offset;
 
     ngx_log_t       *log;
 
@@ -20,11 +25,12 @@ struct ngx_file_s {
 
 #define NGX_MAX_PATH_LEVEL  3
 
-typedef struct {
-    ngx_str_t  name;
-    int        len;
-    int        level[3];
-} ngx_path_t;
+struct ngx_path_s {
+    ngx_str_t           name;
+    int                 len;
+    int                 level[3];
+    ngx_gc_handler_pt   gc_handler;
+};
 
 
 typedef struct {

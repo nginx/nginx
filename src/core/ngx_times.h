@@ -7,10 +7,11 @@
 
 
 void ngx_init_time();
-time_t ngx_time();
 void ngx_time_update();
 size_t ngx_http_time(char *buf, time_t t);
 void ngx_gmtime(time_t t, ngx_tm_t *tp);
+
+#define ngx_time()   ngx_cached_time
 
 
 extern time_t     ngx_cached_time;

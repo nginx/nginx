@@ -55,6 +55,7 @@ int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p)
     p->header_in->tag = (ngx_hunk_tag_t) &ngx_http_proxy_module;
 
     c->ctx.buf = p->header_in; 
+    c->ctx.log = r->connection->log;
 
     return ngx_http_proxy_process_cached_response(p,
                                           ngx_http_cache_get_file(r, &c->ctx));
@@ -341,8 +342,7 @@ static void ngx_http_proxy_cache_look_complete_request(ngx_http_proxy_ctx_t *p)
 
     *ctx = p->cache->ctx;
 
-    rc = ngx_http_cache_open_file(p->request, ctx,
-                                  ngx_file_uniq(&p->cache->ctx.file.info));
+    rc = ngx_http_cache_open_file(ctx, ngx_file_uniq(&p->cache->ctx.file.info));
 
     if (rc == NGX_HTTP_CACHE_THE_SAME) {
         p->try_busy_lock = 1;

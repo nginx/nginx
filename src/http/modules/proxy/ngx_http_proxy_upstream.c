@@ -1182,8 +1182,8 @@ ngx_log_debug(p->request->connection->log, "next upstream: %d" _ ft_type);
     }
 
     if (p->request->connection->write->eof) {
-        ngx_http_proxy_finalize_request(p, status ? status:
-                                           NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        return;
     }
 
     if (status) {

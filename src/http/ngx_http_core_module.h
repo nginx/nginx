@@ -128,6 +128,8 @@ typedef struct {
     int           msie_padding;            /* msie_padding */
     ngx_array_t  *error_pages;             /* error_page */
 
+    unsigned      auto_redirect:1;
+
     ngx_log_t    *err_log;
 } ngx_http_core_loc_conf_t;
 
