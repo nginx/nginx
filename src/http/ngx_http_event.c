@@ -270,11 +270,19 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
     c = r->connection;
 
     if (rc == NGX_OK) {
-        ngx_test_null(r->uri,
-                      ngx_palloc(r->pool, r->uri_end - r->uri_start + 1), 
+        len = r->uri_end - r->uri_start + 1;
+        ngx_test_null(r->uri, ngx_palloc(r->pool, len),
                       ngx_http_close_request(r));
-        ngx_cpystrn(r->uri, r->uri_start, r->uri_end - r->uri_start + 1);
+        ngx_cpystrn(r->uri, r->uri_start, len);
 
+        r->request_line.len = r->request_end - r->header_in->start;
+        ngx_test_null(r->request_line.data,
+                      ngx_palloc(r->pool, r->request_line.len + 1),
+                      ngx_http_close_request(r));
+        ngx_cpystrn(r->request_line.data, r->header_in->start,
+                    r->request_line.len + 1);
+
+        /* TEMP */
         ngx_test_null(request, ngx_push_array(c->requests),
                       ngx_http_close_request(r));
 
@@ -288,6 +296,7 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
         ngx_cpystrn(*request, r->header_in->start, len);
 
         ngx_log_debug(c->log, "REQ: '%s'" _ *request);
+        /* */
 
         if (r->uri_ext) {
             ngx_test_null(r->exten,
@@ -372,7 +381,7 @@ static int ngx_http_process_request_header_line(ngx_http_request_t *r)
     int  i;
     ngx_table_elt_t *h;
 
-    ngx_test_null(h, ngx_push_array(r->headers_in.headers), NGX_ERROR);
+    ngx_test_null(h, ngx_push_table(r->headers_in.headers), NGX_ERROR);
 
     h->key.len = r->header_name_end - r->header_name_start;
     ngx_test_null(h->key.data, ngx_palloc(r->pool, h->key.len + 1), NGX_ERROR);
@@ -583,7 +592,7 @@ static int ngx_http_set_default_handler(ngx_http_request_t *r)
     int   err, rc;
     char *name, *loc, *file;
 
-#if 0
+#if 1
     /* STUB */
     r->handler = ngx_http_proxy_handler;
     return NGX_OK;

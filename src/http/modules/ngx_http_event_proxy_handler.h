@@ -8,7 +8,7 @@
 
 
 typedef struct {
-    int dummy;
+    ngx_chain_t  *out;
 } ngx_http_proxy_ctx_t;
 
 

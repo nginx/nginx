@@ -115,6 +115,7 @@ struct ngx_http_request_s {
     int    http_major;
     int    http_minor;
 
+    ngx_str_t  request_line;
     char  *uri;
     char  *exten;
     ngx_http_request_t *main;
