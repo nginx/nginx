@@ -39,7 +39,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
                         s->command = NGX_POP3_USER;
 
                     } else if (c[0] == 'P' && c[1] == 'A'
-                               && c[2] == 'A' && c[3] == 'S')
+                               && c[2] == 'S' && c[3] == 'S')
                     {
                         s->command = NGX_POP3_PASS;
 
@@ -56,10 +56,12 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
 #endif
 
                     } else {
+                        s->state = sw_start;
                         return NGX_IMAP_PARSE_INVALID_COMMAND;
                     }
 
                 } else {
+                    s->state = sw_start;
                     return NGX_IMAP_PARSE_INVALID_COMMAND;
                 }
 
@@ -78,6 +80,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
             }
 
             if (ch < 'A' || ch > 'Z') {
+                s->state = sw_start;
                 return NGX_IMAP_PARSE_INVALID_COMMAND;
             }
 
@@ -98,6 +101,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
                 break;
             default:
                 if (s->args.nelts > 2) {
+                    s->state = sw_start;
                     return NGX_IMAP_PARSE_INVALID_COMMAND;
                 }
 
@@ -145,6 +149,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
                 state = sw_done;
                 break;
             default:
+                s->state = sw_start;
                 return NGX_IMAP_PARSE_INVALID_COMMAND;
             }
             break;
@@ -167,6 +172,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
             s->arg_start = NULL;
         }
 
+        s->state = sw_start;
         return NGX_OK;
 
     } else {

@@ -81,12 +81,15 @@ static void ngx_imap_init_session(ngx_event_t *rev)
         return;
     }
 
+    c->read->event_handler = ngx_pop3_auth_state;
+
     ngx_pop3_auth_state(rev);
 }
 
 
 static void ngx_pop3_auth_state(ngx_event_t *rev)
 {
+    ngx_uint_t           quit;
     u_char              *text;
     ssize_t              size;
     ngx_int_t            rc;
@@ -96,6 +99,8 @@ static void ngx_pop3_auth_state(ngx_event_t *rev)
     c = rev->data;
     s = c->data;
 
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0, "pop3 auth state");
+
     /* TODO: timeout */
 
     rc = ngx_pop3_read_command(s);
@@ -104,15 +109,68 @@ static void ngx_pop3_auth_state(ngx_event_t *rev)
         return;
     }
 
-    s->state = 0;
+    quit = 0;
+    text = pop3_ok;
+    size = sizeof(pop3_ok) - 1;
+
+    if (rc == NGX_OK) {
+        switch (s->imap_state) {
+
+        case ngx_pop3_start:
+
+            switch (s->command) {
+
+            case NGX_POP3_USER:
+                if (s->args.nelts == 1) {
+                    s->imap_state = ngx_pop3_user;
+                } else {
+                    rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                }
+
+                break;
+
+            case NGX_POP3_QUIT:
+                quit = 1;
+                break;
+
+            default:
+                s->imap_state = ngx_pop3_start;
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
+            }
+
+            break;
+
+        case ngx_pop3_user:
+
+            switch (s->command) {
+
+            case NGX_POP3_PASS:
+                if (s->args.nelts == 1) {
+                    /* STUB */ s->imap_state = ngx_pop3_start;
+                } else {
+                    rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                }
+
+                break;
+
+            case NGX_POP3_QUIT:
+                quit = 1;
+                break;
+
+            default:
+                s->imap_state = ngx_pop3_start;
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
+            }
+
+            break;
+        }
+    }
 
     if (rc == NGX_IMAP_PARSE_INVALID_COMMAND) {
         text = pop3_invalid_command;
         size = sizeof(pop3_invalid_command) - 1;
-
-    } else {
-        text = pop3_ok;
-        size = sizeof(pop3_ok) - 1;
     }
 
     if (ngx_send(c, text, size) < size) {
@@ -123,6 +181,15 @@ static void ngx_pop3_auth_state(ngx_event_t *rev)
         ngx_imap_close_connection(c);
         return;
     }
+
+    if (quit) {
+        ngx_imap_close_connection(c);
+        return;
+    }
+
+    s->args.nelts = 0;
+    s->buffer->pos = s->buffer->start;
+    s->buffer->last = s->buffer->start;
 }
 
 

@@ -15,11 +15,19 @@ typedef struct {
 } ngx_imap_proxy_ctx_t;
 
 
+typedef enum {
+    ngx_pop3_start = 0,
+    ngx_pop3_user
+} ngx_imap_state_e;
+
+
 typedef struct {
     uint32_t                signature;         /* "IMAP" */
 
     ngx_connection_t       *connection;
     ngx_buf_t              *buffer;
+
+    ngx_imap_state_e        imap_state;
 
     ngx_imap_proxy_ctx_t   *proxy;
 
