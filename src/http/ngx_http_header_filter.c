@@ -246,7 +246,9 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
          * Konqueror keeps the connection alive for about N seconds.
          */
 
-        if (clcf->keepalive_header) {
+        if (clcf->keepalive_header
+            && (r->headers_in.gecko || r->headers_in.konqueror))
+        {
             len += sizeof("Keep-Alive: timeout=") - 1 + TIME_T_LEN + 2;
         }
 
@@ -378,7 +380,9 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
         b->last = ngx_cpymem(b->last, "Connection: keep-alive" CRLF,
                              sizeof("Connection: keep-alive" CRLF) - 1);
 
-        if (clcf->keepalive_header) {
+        if (clcf->keepalive_header
+            && (r->headers_in.gecko || r->headers_in.konqueror))
+        {
             b->last += ngx_snprintf((char *) b->last,
                             sizeof("Keep-Alive: timeout=") + TIME_T_LEN + 2,
                             "Keep-Alive: timeout=" TIME_T_FMT CRLF,
