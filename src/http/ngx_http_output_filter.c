@@ -26,7 +26,7 @@ static ngx_command_t  ngx_http_output_filter_commands[] = {
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_output_filter_conf_t, hunk_size)},
 
-    {ngx_string(""), 0, NULL, 0, 0}
+    {ngx_null_string, 0, NULL, 0, 0}
 };
 
 
@@ -63,8 +63,8 @@ ngx_module_t  ngx_http_output_filter_module = {
 #define need_to_copy(r, hunk)                                             \
             (((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)                \
                && (hunk->type & NGX_HUNK_FILE))                           \
-            || ((r->filter & NGX_HTTP_FILTER_NEED_TEMP)                   \
-               && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP))))
+             || ((r->filter & NGX_HTTP_FILTER_NEED_TEMP)                  \
+                  && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP))))
 
 
 int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
@@ -81,7 +81,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
     if (ctx == NULL) {
         ngx_http_create_ctx(r, ctx, ngx_http_output_filter_module,
-                            sizeof(ngx_http_output_filter_ctx_t));
+                            sizeof(ngx_http_output_filter_ctx_t), NGX_ERROR);
     }
 
     /* the short path for the case when the chain ctx->incoming is empty
@@ -124,7 +124,12 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
                                                 ngx_http_output_filter_module);
 
         if (hunk->type & NGX_HUNK_LAST) {
-            size = hunk->last.mem - hunk->pos.mem;
+            if (hunk->type & NGX_HUNK_IN_MEMORY) {
+                size = hunk->last - hunk->pos;
+            } else {
+                size = hunk->file_last - hunk->file_pos;
+            }
+
             if (size > conf->hunk_size) {
                 size = conf->hunk_size;
             }
@@ -140,7 +145,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
 
     /* our hunk is still busy */
-    } else if (ctx->hunk->pos.mem < ctx->hunk->last.mem) {
+    } else if (ctx->hunk->pos < ctx->hunk->last) {
         rc = next_filter(r, NULL);
 
         if (rc == NGX_ERROR || rc == NGX_AGAIN) {
@@ -149,7 +154,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
         /* NGX_OK */
         /* set our hunk free */
-        ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
+        ctx->hunk->pos = ctx->hunk->last = ctx->hunk->start;
     }
 
 #if (NGX_SUPPRESS_WARN)
@@ -209,11 +214,20 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
             /* NGX_OK */
             /* set our hunk free */
-            ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
+            ctx->hunk->pos = ctx->hunk->last = ctx->hunk->start;
 
-        /* repeat until we will have copied the whole first hunk from
-           the chain ctx->incoming */
-        } while (ctx->incoming->hunk->pos.mem < ctx->incoming->hunk->last.mem);
+            /* repeat until we will have copied the whole first hunk from
+               the chain ctx->incoming */
+
+            if (ctx->incoming->hunk->type & NGX_HUNK_IN_MEMORY) {
+                size = ctx->incoming->hunk->last - ctx->incoming->hunk->pos;
+
+            } else {
+                size = ctx->incoming->hunk->file_last
+                                               - ctx->incoming->hunk->file_pos;
+            }
+
+        } while (size);
 
     /* delete the completed hunk from the incoming chain */
     ctx->incoming = ctx->incoming->next;
@@ -229,13 +243,31 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
 {
     ssize_t  n, size;
 
-    size = src->last.mem - src->pos.mem;
-    if (size > (dst->end - dst->pos.mem)) {
-        size = dst->end - dst->pos.mem;
+    if (src->type & NGX_HUNK_IN_MEMORY) {
+        size = src->last - src->pos;
+    } else {
+        size = src->file_last - src->file_pos;
     }
 
-    if (src->type & NGX_HUNK_FILE) {
-        n = ngx_read_file(src->file, dst->pos.mem, size, src->pos.file);
+    if (size > (dst->end - dst->pos)) {
+        size = dst->end - dst->pos;
+    }
+
+    if (src->type & NGX_HUNK_IN_MEMORY) {
+        ngx_memcpy(src->pos, dst->pos, size);
+        src->pos += size;
+        dst->last += size;
+
+        if (src->type & NGX_HUNK_FILE) {
+            src->file_pos += n;
+        }
+
+        if (src->type & NGX_HUNK_LAST && src->pos == src->last) {
+            dst->type |= NGX_HUNK_LAST;
+        }
+
+    } else {
+        n = ngx_read_file(src->file, dst->pos, size, src->file_pos);
 
         if (n == NGX_ERROR) {
             return n;
@@ -256,17 +288,12 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
             }
         }
 
-        src->pos.mem += n;
-        dst->last.mem += n;
+        src->file_pos += n;
+        dst->last += n;
 
-    } else {
-        ngx_memcpy(src->pos.mem, dst->pos.mem, size);
-        src->pos.mem += size;
-        dst->last.mem += size;
-    }
-
-    if (src->type & NGX_HUNK_LAST && src->pos.mem == src->last.mem) {
-        dst->type |= NGX_HUNK_LAST;
+        if (src->type & NGX_HUNK_LAST && src->file_pos == src->file_last) {
+            dst->type |= NGX_HUNK_LAST;
+        }
     }
 
     return NGX_OK;

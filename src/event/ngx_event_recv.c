@@ -10,23 +10,34 @@ ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
 {
     int                n;
     ngx_err_t          err;
+    ngx_event_t       *ev;
 
-    if (c->read->timedout) {
+    ev = c->read;
+
+    if (ev->timedout) {
         ngx_set_socket_errno(NGX_ETIMEDOUT);
         ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT, "recv() failed");
         return NGX_ERROR;
     }
 
 #if (HAVE_KQUEUE)
-    ngx_log_debug(c->log, "ngx_event_recv: eof:%d, avail:%d, err:%d" _
-                  c->read->eof _ c->read->available _ c->read->error);
+    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+        ngx_log_debug(c->log, "ngx_event_recv: eof:%d, avail:%d, err:%d" _
+                      ev->eof _ ev->available _ ev->error);
+    }
 #endif
 
 #if (USE_KQUEUE)
 
-    if (c->read->eof && c->read->available == 0) {
-        if (c->read->error) {
-            ngx_log_error(NGX_LOG_ERR, c->log, c->read->error,
+    if (ev->eof && ev->available == 0) {
+        if (ev->error) {
+            ngx_set_socket_errno(ev->error);
+
+            if (ev->error == NGX_ECONNRESET && ev->ignore_econnreset) {
+                return 0;
+            }
+
+            ngx_log_error(NGX_LOG_ERR, c->log, ev->error,
                           "recv() failed");
             return NGX_ERROR;
         }
@@ -36,10 +47,16 @@ ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
 
 #elif (HAVE_KQUEUE)
 
-    if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT) {
-        if (c->read->eof && c->read->available == 0) {
-            if (c->read->error) {
-                ngx_log_error(NGX_LOG_ERR, c->log, c->read->error,
+    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+        if (ev->eof && ev->available == 0) {
+            if (ev->error) {
+                ngx_set_socket_errno(ev->error);
+
+                if (ev->error == NGX_ECONNRESET && ev->ignore_econnreset) {
+                    return 0;
+                }
+
+                ngx_log_error(NGX_LOG_ERR, c->log, ev->error,
                               "recv() failed");
                 return NGX_ERROR;
             }
@@ -55,6 +72,10 @@ ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
     if (n == -1) {
         err = ngx_socket_errno;
 
+        if (ev->error == NGX_ECONNRESET && ev->ignore_econnreset) {
+            return 0;
+        }
+
         if (err == NGX_EAGAIN) {
             ngx_log_error(NGX_LOG_INFO, c->log, err, "recv() returns EAGAIN");
             return NGX_AGAIN;
@@ -66,12 +87,12 @@ ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size)
 
 #if (USE_KQUEUE)
 
-    c->read->available -= n;
+    ev->available -= n;
 
 #elif (HAVE_KQUEUE)
 
-    if (ngx_event_type == NGX_HAVE_KQUEUE_EVENT) {
-        c->read->available -= n;
+    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+        ev->available -= n;
     }
 
 #endif

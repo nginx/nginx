@@ -25,15 +25,10 @@ int ngx_read_http_request_line(ngx_http_request_t *r)
     } state;
 
     state = r->state;
-    p = r->header_in->pos.mem;
+    p = r->header_in->pos;
 
-    while (p < r->header_in->last.mem && state < sw_done) {
+    while (p < r->header_in->last && state < sw_done) {
         ch = *p++;
-
-/*
-printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
-       state, p, r->header_in->last, ch, p);
-*/
 
         /* GCC 2.95.2 and VC 6.0 compile this switch as jump table */
 
@@ -45,7 +40,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
 
             switch (ch) {
             case 'G':
-                if (p + 1 >= r->header_in->last.mem) {
+                if (p + 1 >= r->header_in->last) {
                     return NGX_AGAIN;
                 }
 
@@ -58,7 +53,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 break;
 
             case 'H':
-                if (p + 2 >= r->header_in->last.mem) {
+                if (p + 2 >= r->header_in->last) {
                     return NGX_AGAIN;
                 }
 
@@ -71,7 +66,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 break;
 
             case 'P':
-                if (p + 2 >= r->header_in->last.mem) {
+                if (p + 2 >= r->header_in->last) {
                     return NGX_AGAIN;
                 }
 
@@ -228,9 +223,9 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
 
         /* "TTP/" */
         case sw_http_version:
-            if (p + 2 >= r->header_in->last.mem) {
+            if (p + 2 >= r->header_in->last) {
                 r->state = sw_http_version;
-                r->header_in->pos.mem = p - 1;
+                r->header_in->pos = p - 1;
                 return NGX_AGAIN;
             }
 
@@ -309,7 +304,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
         }
     }
 
-    r->header_in->pos.mem = p;
+    r->header_in->pos = p;
 
     if (state == sw_done) {
         if (r->request_end == NULL) {
@@ -348,15 +343,10 @@ int ngx_read_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
     } state;
 
     state = r->state;
-    p = h->pos.mem;
+    p = h->pos;
 
-    while (p < h->last.mem && state < sw_done) {
+    while (p < h->last && state < sw_done) {
         ch = *p++;
-
-/*
-printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
-       state, p, h->last.mem, ch, p);
-*/
 
         switch (state) {
 
@@ -495,7 +485,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
         }
     }
 
-    h->pos.mem = p;
+    h->pos = p;
 
     if (state == sw_done) {
         r->state = sw_start;

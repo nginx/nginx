@@ -27,11 +27,6 @@ int  ngx_http_large_client_header = 1;
 
 int  ngx_http_url_in_error_log = 1;
 
-/* STUB: per location */
-int  ngx_http_lingering_timeout = 5000;
-int  ngx_http_lingering_time = 30;
-/**/
-
 
 ngx_array_t  ngx_http_index_handlers;
 

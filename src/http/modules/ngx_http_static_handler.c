@@ -144,8 +144,8 @@ int ngx_http_static_handler(ngx_http_request_t *r)
 #if 1
 
     h->type = NGX_HUNK_FILE|NGX_HUNK_LAST;
-    h->pos.file = 0;
-    h->last.file = ngx_file_size(r->file.info);
+    h->file_pos = 0;
+    h->file_last = ngx_file_size(r->file.info);
 
     h->file->fd = r->file.fd;
     h->file->log = r->connection->log;

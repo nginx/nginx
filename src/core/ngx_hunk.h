@@ -10,34 +10,34 @@
 
 /* hunk type */
 
-/* temp means that hunk's content can be changed */
-/* other type means that hunk's content can not be changed */
-#define NGX_HUNK_TEMP       0x0001
-#define NGX_HUNK_MEMORY     0x0002
-#define NGX_HUNK_MMAP       0x0004
-#define NGX_HUNK_FILE       0x0008
+/* the hunk is in memory */
+#define NGX_HUNK_IN_MEMORY  0x0001
+/* the hunk's content can be changed */
+#define NGX_HUNK_TEMP       0x0002
+/* the hunk's content is in cache and can not be changed */
+#define NGX_HUNK_MEMORY     0x0004
+/* the hunk's content is mmap()ed and can not be changed */
+#define NGX_HUNK_MMAP       0x0008
+
+#define NGX_HUNK_RECYCLED   0x0010
+
+/* the hunk is in file */
+#define NGX_HUNK_FILE       0x0100
 
 /* hunk flags */
 
 /* in thread state flush means to write the hunk completely before return */
 /* in event state flush means to start to write the hunk */
-#define NGX_HUNK_FLUSH      0x0100
+#define NGX_HUNK_FLUSH      0x1000
 /* last hunk */
-#define NGX_HUNK_LAST       0x0200
-#if 0
-/* can be used with NGX_HUNK_LAST only */
-#define NGX_HUNK_SHUTDOWN   0x0400 /
-#endif
+#define NGX_HUNK_LAST       0x2000
 
-#define NGX_HUNK_RECYCLED   0x0800
-
-
-#define NGX_HUNK_IN_MEMORY  (NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP)
 
 
 
 typedef struct ngx_hunk_s ngx_hunk_t;
 struct ngx_hunk_s {
+#if 0
     union {
         char    *mem;           /* start of current data */
         off_t    file;   
@@ -46,6 +46,13 @@ struct ngx_hunk_s {
         char    *mem;           /* end of current data */
         off_t    file;   
     } last;
+#endif
+
+    char        *pos;
+    char        *last;
+    off_t        file_pos;
+    off_t        file_last;
+
     int          type;
     char        *start;         /* start of hunk */
     char        *end;           /* end of hunk */
@@ -65,6 +72,10 @@ struct ngx_chain_s {
 
 
 #define NGX_CHAIN_ERROR     (ngx_chain_t *) NGX_ERROR
+
+
+#define ngx_hunk_in_memory_only(h)                                           \
+         ((h->type & (NGX_HUNK_IN_MEMORY|NGX_HUNK_FILE)) == NGX_HUNK_IN_MEMORY)
 
 
 ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,

@@ -12,6 +12,7 @@ typedef struct {
 
 
 #define ngx_string(str)  { sizeof(str) - 1, str }
+#define ngx_null_string  { 0, NULL }
 
 
 #if (WIN32)

@@ -47,27 +47,15 @@
 #define NGX_HTTP_NOT_FOUND              404
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE  414
 #define NGX_HTTP_INTERNAL_SERVER_ERROR  500
+#define NGX_HTTP_NOT_IMPLEMENTED        501
+#define NGX_HTTP_BAD_GATEWAY            502
+#define NGX_HTTP_SERVICE_UNAVAILABLE    503
+#define NGX_HTTP_GATEWAY_TIME_OUT       504
+
 
 
 #define NGX_HTTP_STATIC_HANDLER     0
 #define NGX_HTTP_DIRECTORY_HANDLER  1
-
-
-
-typedef struct {
-    char          *doc_root;
-    size_t         doc_root_len;
-
-    size_t         connection_pool_size;
-    size_t         request_pool_size;
-
-    size_t         header_buffer_size;
-    size_t         discarded_buffer_size;
-
-    ngx_msec_t     header_timeout;
-    ngx_msec_t     lingering_timeout;
-    time_t         lingering_time;
-} ngx_http_server_t;
 
 
 typedef struct {
@@ -232,9 +220,9 @@ typedef struct {
 #define ngx_http_get_module_loc_conf(r, module)  r->loc_conf[module.index]
 #define ngx_http_get_module_ctx(r, module)       r->ctx[module.index]
 
-#define ngx_http_create_ctx(r, cx, module, size)                              \
+#define ngx_http_create_ctx(r, cx, module, size, error)                       \
             do {                                                              \
-                ngx_test_null(cx, ngx_pcalloc(r->pool, size), NGX_ERROR);     \
+                ngx_test_null(cx, ngx_pcalloc(r->pool, size), error);         \
                 r->ctx[module.index] = cx;                                    \
             } while (0)
 
@@ -278,9 +266,6 @@ extern int  ngx_http_client_header_timeout;
 extern int  ngx_http_client_header_buffer_size;
 extern int  ngx_http_large_client_header;
 extern int  ngx_http_discarded_buffer_size;
-
-extern int  ngx_http_lingering_timeout;
-extern int  ngx_http_lingering_time;
 
 extern int  ngx_http_url_in_error_log;
 

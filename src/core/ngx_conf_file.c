@@ -206,7 +206,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
 
     cf->args->nelts = 0;
     h = cf->conf_file->hunk;
-    start = h->pos.mem;
+    start = h->pos;
 
 #if 0
 ngx_log_debug(cf->log, "TOKEN START");
@@ -214,31 +214,31 @@ ngx_log_debug(cf->log, "TOKEN START");
 
     for ( ;; ) {
 
-        if (h->pos.mem >= h->last.mem) {
+        if (h->pos >= h->last) {
             if (cf->conf_file->file.offset
                                   >= ngx_file_size(cf->conf_file->file.info)) {
                 return NGX_CONF_FILE_DONE;
             }
 
-            if (h->pos.mem - start) {
-                ngx_memcpy(h->start, start, h->pos.mem - start);
+            if (h->pos - start) {
+                ngx_memcpy(h->start, start, h->pos - start);
             }
 
             n = ngx_read_file(&cf->conf_file->file,
-                              h->start + (h->pos.mem - start),
-                              h->end - (h->start + (h->pos.mem - start)),
+                              h->start + (h->pos - start),
+                              h->end - (h->start + (h->pos - start)),
                               cf->conf_file->file.offset);
 
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
-            h->pos.mem = h->start + (h->pos.mem - start);
+            h->pos = h->start + (h->pos - start);
             start = h->start;
-            h->last.mem = h->pos.mem + n;
+            h->last = h->pos + n;
         }
 
-        ch = *h->pos.mem++;
+        ch = *h->pos++;
 
 #if 0
 ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
@@ -282,7 +282,7 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
                 continue;
             }
 
-            start = h->pos.mem - 1;
+            start = h->pos - 1;
 
             switch (ch) {
 
@@ -363,11 +363,11 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
             if (found) {
                 ngx_test_null(word, ngx_push_array(cf->args), NGX_ERROR);
                 ngx_test_null(word->data,
-                              ngx_palloc(cf->pool, h->pos.mem - start + 1),
+                              ngx_palloc(cf->pool, h->pos - start + 1),
                               NGX_ERROR);
 
                 for (dst = word->data, src = start, len = 0;
-                     src < h->pos.mem - 1;
+                     src < h->pos - 1;
                      len++)
                 {
                     if (*src == '\\') {

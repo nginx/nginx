@@ -70,7 +70,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                              ngx_http_write_filter_module);
     if (ctx == NULL) {
         ngx_http_create_ctx(r, ctx, ngx_http_write_filter_module,
-                            sizeof(ngx_http_write_filter_ctx_t));
+                            sizeof(ngx_http_write_filter_ctx_t), NGX_ERROR);
     }
 
     size = flush = 0;
@@ -80,14 +80,12 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     /* find the size, the flush point and the last entry of saved chain */
     for (ce = ctx->out; ce; ce = ce->next) {
         le = &ce->next;
-        size += ce->hunk->last.file - ce->hunk->pos.file;
 
-#if (NGX_DEBUG_WRITE_FILTER)
-        ngx_log_debug(r->connection->log, "write filter: old chunk: %x "
-                      QX_FMT " " QD_FMT _
-                      ce->hunk->type _ ce->hunk->pos.file _
-                      ce->hunk->last.file - ce->hunk->pos.file);
-#endif
+        if (ce->hunk->type & NGX_HUNK_IN_MEMORY) {
+            size += ce->hunk->last - ce->hunk->pos;
+        } else {
+            size += ce->hunk->file_last - ce->hunk->file_pos;
+        }
 
         if (ce->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
             flush = size;
@@ -106,14 +104,12 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ce->next = NULL;
         *le = ce;
         le = &ce->next;
-        size += ce->hunk->last.file - ce->hunk->pos.file;
 
-#if (NGX_DEBUG_WRITE_FILTER)
-        ngx_log_debug(r->connection->log, "write filter: new hunk: %x "
-                      QX_FMT " " QD_FMT _
-                      ce->hunk->type _ ce->hunk->pos.file _
-                      ce->hunk->last.file - ce->hunk->pos.file);
-#endif
+        if (ce->hunk->type & NGX_HUNK_IN_MEMORY) {
+            size += ce->hunk->last - ce->hunk->pos;
+        } else {
+            size += ce->hunk->file_last - ce->hunk->file_pos;
+        }
 
         if (ce->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
             flush = size;

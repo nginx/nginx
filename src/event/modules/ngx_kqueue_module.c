@@ -74,12 +74,17 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
 
     ngx_event_flags = NGX_HAVE_LEVEL_EVENT
                      |NGX_HAVE_ONESHOT_EVENT
+
 #if (HAVE_CLEAR_EVENT)
                      |NGX_HAVE_CLEAR_EVENT
+#else
+                     |NGX_USE_LEVEL_EVENT
 #endif
+
 #if (HAVE_LOWAT_EVENT)
                      |NGX_HAVE_LOWAT_EVENT
 #endif
+
                      |NGX_HAVE_KQUEUE_EVENT;
 
     ngx_write_chain_proc = ngx_freebsd_write_chain;

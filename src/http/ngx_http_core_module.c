@@ -96,6 +96,18 @@ static ngx_command_t  ngx_http_core_commands[] = {
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, send_timeout)},
 
+    {ngx_string("lingering_time"),
+     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_time_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_core_loc_conf_t, lingering_time)},
+
+    {ngx_string("lingering_timeout"),
+     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_time_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_core_loc_conf_t, lingering_timeout)},
+
     {ngx_string(""), 0, NULL, 0, 0}
 };
 
@@ -138,7 +150,7 @@ int ngx_http_handler(ngx_http_request_t *r)
     r->connection->unexpected_eof = 0;
 
     r->lingering_close = 1;
-    r->keepalive = 1;
+    r->keepalive = 0;
 
 #if 1
     r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
@@ -263,6 +275,11 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
              r->loc_conf = lcf[i]->loc_conf;
          }
     }
+
+#if 0
+    /* STUB */ r->handler = ngx_http_proxy_handler;
+    return NGX_OK;
+#endif
 
     if (r->uri.data[r->uri.len - 1] == '/') {
         r->handler = ngx_http_core_index_handler;
@@ -504,43 +521,37 @@ int ngx_http_error(ngx_http_request_t *r, int error)
 
 int ngx_http_close_request(ngx_http_request_t *r)
 {
+    ngx_connection_t    *c;
     ngx_http_log_ctx_t  *ctx;
 
-    ngx_log_debug(r->connection->log, "CLOSE#: %d" _ r->file.fd);
+    c = r->connection;
 
     ngx_http_log_handler(r);
 
-    ngx_assert((r->file.fd != NGX_INVALID_FILE), /* void */ ; ,
-               r->connection->log, "file already closed");
-
     if (r->file.fd != NGX_INVALID_FILE) {
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+            ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
                           ngx_close_file_n " failed");
         }
     }
 
-/*
-    if (r->logging)
-        ngx_http_log_request(r);
-*/
-
-    ctx = (ngx_http_log_ctx_t *) r->connection->log->data;
-
     /* ctx->url was allocated from r->pool */
+    ctx = (ngx_http_log_ctx_t *) c->log->data;
     ctx->url = NULL;
 
     ngx_destroy_pool(r->pool);
 
-    ngx_log_debug(r->connection->log, "http closed");
-
-    if (r->connection->read->timer_set) {
-        ngx_del_timer(r->connection->read);
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+        c->read->timer_set = 0;
     }
 
-    if (r->connection->write->timer_set) {
-        ngx_del_timer(r->connection->write);
+    if (c->write->timer_set) {
+        ngx_del_timer(c->write);
+        c->write->timer_set = 0;
     }
+
+    ngx_log_debug(c->log, "http closed");
 
     return NGX_DONE;
 }
@@ -780,7 +791,7 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool)
 
     lcf->send_timeout = 10;
     lcf->discarded_buffer_size = 1500;
-    lcf->lingering_time = 30;
+    lcf->lingering_time = 30000;
     lcf->lingering_timeout = 5000;
 
 /*
@@ -809,8 +820,8 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     args = (ngx_str_t *) cf->args->elts;
 
     ls->port = atoi(args[1].data);
-    if (ls->port < 0) {
-        return "port must be greater or equal to zero";
+    if (ls->port < 1 || ls->port > 65536) {
+        return "port must be between 1 and 65535";
     }
 
     return NGX_CONF_OK;

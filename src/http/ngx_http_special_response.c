@@ -39,6 +39,14 @@ static char error_404_page[] =
 ;
 
 
+static char error_414_page[] =
+"<html>" CRLF
+"<head><title>414 Request-URI Too Large</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>414 Request-URI Too Large</h1></center>" CRLF
+;
+
+
 static char error_500_page[] =
 "<html>" CRLF
 "<head><title>500 Internal Server Error</title></head>" CRLF
@@ -58,6 +66,16 @@ static ngx_str_t error_pages[] = {
     { 0, NULL},  /* 402 */
     { sizeof(error_403_page) - 1, error_403_page },
     { sizeof(error_404_page) - 1, error_404_page },
+    { 0, NULL},  /* 405 */
+    { 0, NULL},  /* 406 */
+    { 0, NULL},  /* 407 */
+    { 0, NULL},  /* 408 */
+    { 0, NULL},  /* 409 */
+    { 0, NULL},  /* 410 */
+    { 0, NULL},  /* 411 */
+    { 0, NULL},  /* 412 */
+    { 0, NULL},  /* 413 */
+    { sizeof(error_414_page) - 1, error_414_page },
 
     { sizeof(error_500_page) - 1, error_500_page }
 };
@@ -79,7 +97,7 @@ int ngx_http_special_response(ngx_http_request_t *r, int error)
         err = error - NGX_HTTP_BAD_REQUEST + 4;
 
     else
-        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 4 + 5;
+        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 4 + 15;
 
     if (error_pages[err].len == 0)
         r->headers_out.content_length = -1;
@@ -97,9 +115,9 @@ int ngx_http_special_response(ngx_http_request_t *r, int error)
 
     ngx_test_null(message, ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)), NGX_ERROR);
 
-    message->type = NGX_HUNK_MEMORY;
-    message->pos.mem = error_pages[err].data;
-    message->last.mem = error_pages[err].data + error_pages[err].len;
+    message->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
+    message->pos = error_pages[err].data;
+    message->last = error_pages[err].data + error_pages[err].len;
 
     if (ngx_http_output_filter(r, message) == NGX_ERROR) {
         return NGX_ERROR;
@@ -107,9 +125,9 @@ int ngx_http_special_response(ngx_http_request_t *r, int error)
 
     ngx_test_null(tail, ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)), NGX_ERROR);
 
-    tail->type = NGX_HUNK_MEMORY|NGX_HUNK_LAST;
-    tail->pos.mem = error_tail;
-    tail->last.mem = error_tail + sizeof(error_tail);
+    tail->type = NGX_HUNK_MEMORY|NGX_HUNK_LAST|NGX_HUNK_IN_MEMORY;
+    tail->pos = error_tail;
+    tail->last = error_tail + sizeof(error_tail);
 
     return ngx_http_output_filter(r, tail);
 }

@@ -56,7 +56,6 @@ struct ngx_event_s {
                                 /* otherwise:                                */
                                 /*   accept: 1 if accept many, 0 otherwise   */
 
-    unsigned         level:1;
     unsigned         oneshot:1;
 
 #if 0
@@ -73,6 +72,7 @@ struct ngx_event_s {
     unsigned         process:1;
     unsigned         read_discarded:1;
 
+    unsigned         ignore_econnreset:1;
     unsigned         unexpected_eof:1;
 
 #if (HAVE_DEFERRED_ACCEPT)
@@ -149,7 +149,7 @@ typedef struct {
 #define NGX_HAVE_LEVEL_EVENT    1
 
 /* Event filter is deleted after notification - select, poll, kqueue.
-   Using /dev/poll, epoll it can be implemented with additional syscall */
+   Using /dev/poll it can be implemented with additional syscall */
 #define NGX_HAVE_ONESHOT_EVENT  2
 
 /* Event filter notifies only changes and initial level - kqueue */
@@ -159,21 +159,24 @@ typedef struct {
 #define NGX_HAVE_KQUEUE_EVENT   8
 
 /* Event filter supports low water mark - kqueue's NOTE_LOWAT,
-   early kqueue implementations have no NOTE_LOWAT so we need separate flag */
-#define NGX_HAVE_LOWAT_EVENT    16
+   early kqueue implementations have no NOTE_LOWAT so we need a separate flag */
+#define NGX_HAVE_LOWAT_EVENT    0x00000010
 
 /* Event filter notifies only changes (edges) but not initial level - epoll */
-#define NGX_HAVE_EDGE_EVENT     32
+#define NGX_HAVE_EDGE_EVENT     0x00000020
 
 /* No need to add or delete event filters - rt signals */
-#define NGX_HAVE_SIGIO_EVENT    64
+#define NGX_HAVE_SIGIO_EVENT    0x00000040
 
 /* No need to add or delete event filters - overlapped, aio_read, aioread */
-#define NGX_HAVE_AIO_EVENT      128
+#define NGX_HAVE_AIO_EVENT      0x00000080
 
-/* Need to add socket or halde only once - i/o completion port.
-   It also requires to set HAVE_AIO_EVENT and NGX_HAVE_AIO_EVENT */
-#define NGX_HAVE_IOCP_EVENT     256
+/* Need to add socket or handle only once - i/o completion port.
+   It also requires HAVE_AIO_EVENT and NGX_HAVE_AIO_EVENT to be set */
+#define NGX_HAVE_IOCP_EVENT     0x00000100
+
+
+#define NGX_USE_LEVEL_EVENT     0x00010000
 
 
 /* Event filter is deleted before closing file. Has no meaning

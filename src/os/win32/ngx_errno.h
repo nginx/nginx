@@ -15,6 +15,7 @@ typedef DWORD             ngx_err_t;
 #define NGX_EAGAIN        WSAEWOULDBLOCK
 #define NGX_EINPROGRESS   WSAEINPROGRESS
 #define NGX_EADDRINUSE    WSAEADDRINUSE
+#define NGX_ECONNRESET    ECONNRESET
 #define NGX_ETIMEDOUT     WSAETIMEDOUT
 
 int ngx_strerror_r(ngx_err_t err, char *errstr, size_t size);

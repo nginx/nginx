@@ -14,6 +14,12 @@ typedef struct {
     int dummy;
 } ngx_http_proxy_headers_in_t;
 
+
+typedef struct {
+    int         large_header;
+} ngx_http_proxy_loc_conf_t;
+
+
 typedef struct ngx_http_proxy_ctx_s  ngx_http_proxy_ctx_t;
 
 struct ngx_http_proxy_ctx_s {
@@ -24,6 +30,7 @@ struct ngx_http_proxy_ctx_s {
 
     int           hunk_n;
 
+    ngx_connection_t  *connection;
     ngx_http_proxy_headers_in_t  *headers_in;
 
     ngx_hunk_t  *header_in;
@@ -36,7 +43,11 @@ struct ngx_http_proxy_ctx_s {
 };
 
 
-extern ngx_http_module_t  ngx_http_proxy_module;
+extern ngx_module_t  ngx_http_proxy_module;
+
+
+static int ngx_http_proxy_error(ngx_http_request_t *r, ngx_http_proxy_ctx_t *p,
+                                int error);
 
 
 #endif /* _NGX_HTTP_PROXY_HANDLER_H_INCLUDED_ */
