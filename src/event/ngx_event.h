@@ -98,12 +98,14 @@ typedef struct {
 /*
 NGX_LEVEL_EVENT (default)  select, poll, /dev/poll, kqueue
                                 requires to read whole data
-NGX_ONESHOT_EVENT          select, poll, kqueue
-NGX_CLEAR_EVENT            kqueue
+NGX_ONESHOT_EVENT          select, poll, /dev/poll(*), kqueue, epoll(*)
+                           (*) - additional syscall
+NGX_CLEAR_EVENT            kqueue, epoll
 NGX_AIO_EVENT              overlapped, aio_read, aioread
                                 no need to add or delete events
 
 NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
+                           /dev/poll: need to flush events before closing
 */
 
 #define NGX_CLOSE_EVENT    1

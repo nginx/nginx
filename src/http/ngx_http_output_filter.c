@@ -14,14 +14,16 @@
 
 static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src);
 static void *ngx_http_output_filter_create_conf(ngx_pool_t *pool);
+static char *ngx_http_output_filter_merge_conf(ngx_pool_t *pool,
+                                               void *parent, void *child);
 
 
 static ngx_command_t  ngx_http_output_filter_commands[] = {
 
     {ngx_string("output_buffer"),
-     NGX_CONF_TAKE1,
+     NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
-     NGX_HTTP_LOC_CONF,
+     NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_output_filter_conf_t, hunk_size)},
 
     {ngx_string(""), 0, NULL, 0, 0}
@@ -34,7 +36,7 @@ static ngx_http_module_t  ngx_http_output_filter_module_ctx = {
     NULL,                                  /* create server config */
     NULL,                                  /* init server config */
     ngx_http_output_filter_create_conf,    /* create location config */
-    NULL,                                  /* merge location config */
+    ngx_http_output_filter_merge_conf,     /* merge location config */
 
     NULL,                                  /* translate handler */
 
@@ -47,6 +49,7 @@ static ngx_http_module_t  ngx_http_output_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_output_filter_module = {
+    0,                                     /* module index */
     &ngx_http_output_filter_module_ctx,    /* module context */
     ngx_http_output_filter_commands,       /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
@@ -249,7 +252,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
         if (ctx->hunk) {
             ctx->hunk->pos.mem = ctx->hunk->last.mem = ctx->hunk->start;
         }
-#if (!NGX_ONESHOT_EVENT)
+#if (NGX_LEVEL_EVENT)
         ngx_del_event(r->connection->write, NGX_WRITE_EVENT);
 #endif
     }
@@ -314,4 +317,18 @@ static void *ngx_http_output_filter_create_conf(ngx_pool_t *pool)
     conf->hunk_size = NGX_CONF_UNSET;
 
     return conf;
+}
+
+
+static char *ngx_http_output_filter_merge_conf(ngx_pool_t *pool,
+                                               void *parent, void *child)
+{
+    ngx_http_output_filter_conf_t *prev =
+                                      (ngx_http_output_filter_conf_t *) parent;
+    ngx_http_output_filter_conf_t *conf =
+                                       (ngx_http_output_filter_conf_t *) child;
+
+    ngx_conf_merge(conf->hunk_size, prev->hunk_size, 32768);
+
+    return NULL;
 }

@@ -114,8 +114,8 @@ struct ngx_http_request_s {
 #endif
 
     void  **ctx;
-    void  **loc_conf;
     void  **srv_conf;
+    void  **loc_conf;
 
     ngx_pool_t  *pool;
     ngx_hunk_t  *header_in;
@@ -139,7 +139,6 @@ struct ngx_http_request_s {
     ngx_http_request_t *main;
 
     ngx_connection_t  *connection;
-    ngx_http_server_t *server;
 
     int       filter;
 
@@ -192,9 +191,9 @@ typedef struct {
     int      index;
 
     void  *(*create_srv_conf)(ngx_pool_t *p);
-    void  *(*init_srv_conf)(ngx_pool_t *p, void *conf);
+    char  *(*init_srv_conf)(ngx_pool_t *p, void *conf);
     void  *(*create_loc_conf)(ngx_pool_t *p);
-    void  *(*merge_loc_conf)(ngx_pool_t *p, void *prev, void *conf);
+    char  *(*merge_loc_conf)(ngx_pool_t *p, void *prev, void *conf);
 
     int    (*translate_handler)(ngx_http_request_t *r);
 
@@ -217,8 +216,8 @@ typedef struct {
 
 #define ngx_http_create_ctx(r, cx, module, size)                              \
             do {                                                              \
-               ngx_test_null(cx, ngx_pcalloc(r->pool, size), NGX_ERROR);      \
-               r->ctx[module.index] = cx;                                     \
+                ngx_test_null(cx, ngx_pcalloc(r->pool, size), NGX_ERROR);     \
+                r->ctx[module.index] = cx;                                    \
             } while (0)
 
 
@@ -237,9 +236,22 @@ int ngx_http_init_connection(ngx_connection_t *c);
 int ngx_http_discard_body(ngx_http_request_t *r);
 
 
-extern int ngx_max_module;
+extern int  ngx_max_module;
+extern ngx_array_t  ngx_http_servers;
 
-extern ngx_http_module_t *ngx_http_modules[];
+
+extern int  ngx_http_post_accept_timeout;
+extern int  ngx_http_connection_pool_size;
+extern int  ngx_http_request_pool_size;
+extern int  ngx_http_client_header_timeout;
+extern int  ngx_http_client_header_buffer_size;
+extern int  ngx_http_discarded_buffer_size;
+
+extern int  ngx_http_lingering_timeout;
+extern int  ngx_http_lingering_time;
+
+
+extern ngx_http_module_t  *ngx_http_modules[];
 
 
 

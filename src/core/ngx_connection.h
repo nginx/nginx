@@ -30,16 +30,18 @@ struct ngx_connection_s {
 
     off_t             sent;
 
-    ngx_log_t        *log;
     int             (*handler)(ngx_connection_t *c);
-    ngx_server_t     *server;
+    void             *ctx;
     ngx_server_t     *servers;
+
     ngx_pool_t       *pool;
+    ngx_log_t        *log;
 
     int               family;
     struct sockaddr  *sockaddr;
     socklen_t         socklen;
-    size_t            addr;
+    int               addr;
+    int               addr_text_max_len;
     ngx_str_t         addr_text;
 
     ngx_hunk_t       *buffer;

@@ -13,10 +13,11 @@ static int argument_number[] = {
 static int ngx_conf_read_token(ngx_conf_t *cf);
 
 
-int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
+char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
-    int               rc, i;
-    char             *error;
+    int               i, rc, found;
+    char             *rv;
+    void             *conf, **pconf;
     ngx_str_t        *name;
     ngx_fd_t          fd;
     ngx_conf_file_t  *prev;
@@ -29,13 +30,13 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
                           "ngx_conf_file: "
                           ngx_open_file_n " %s failed", filename->data);
-            return NGX_ERROR;
+            return NGX_CONF_ERROR;
         }
 
         prev = cf->conf_file;
         ngx_test_null(cf->conf_file,
                       ngx_palloc(cf->pool, sizeof(ngx_conf_file_t)),
-                      NGX_ERROR);
+                      NGX_CONF_ERROR);
 
         if (ngx_stat_fd(fd, &cf->conf_file->file.info) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
@@ -45,7 +46,7 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         ngx_test_null(cf->conf_file->hunk,
                       ngx_create_temp_hunk(cf->pool, 1024, 0, 0),
-                      NGX_ERROR);
+                      NGX_CONF_ERROR);
 
         cf->conf_file->file.fd = fd;
         cf->conf_file->file.name.len = filename->len;
@@ -59,22 +60,29 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         /* NGX_OK, NGX_ERROR, NGX_CONF_FILE_DONE, NGX_CONF_BLOCK_DONE */
 
-        if (rc == NGX_ERROR || rc == NGX_CONF_FILE_DONE) {
-            return rc;
+ngx_log_debug(cf->log, "token %d" _ rc);
+
+        if (rc == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (rc != NGX_OK) {
+            return NGX_CONF_OK;
         }
 
         if (cf->handler) {
 
-            if ((*cf->handler)(cf) == NGX_ERROR) {
-                return NGX_ERROR;
+            if ((*cf->handler)(cf) == NGX_CONF_ERROR) {
+                return NGX_CONF_ERROR;
             }
 
             continue;
         }
 
         name = (ngx_str_t *) cf->args->elts;
+        found = 0;
 
-        for (i = 0; ngx_modules[i]; i++) {
+        for (i = 0; !found && ngx_modules[i]; i++) {
             if (ngx_modules[i]->type != NULL
                 && ngx_modules[i]->type != cf->type)
             {
@@ -93,86 +101,56 @@ int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
 ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
-                    cmd->set(cf, cmd, NULL);
+                    if (!(cmd->type & argument_number[cf->args->nelts - 1])) {
+                        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                      "invalid number arguments in "
+                                      "directive \"%s\" in %s:%d",
+                                      name->data,
+                                      cf->conf_file->file.name.data,
+                                      cf->conf_file->line);
+                        return NGX_CONF_ERROR;
+                    }
+
+                    conf = NULL;
+                    if (cf->ctx) {
+                        pconf = *(void **) ((char *) cf->ctx + cmd->conf);
+
+                        if (pconf) {
+                            conf = pconf[ngx_modules[i]->index];
+                        }
+                    }
+
+                    rv = cmd->set(cf, cmd, conf);
+
+ngx_log_debug(cf->log, "rv: %d" _ rv);
+
+                    if (rv == NGX_CONF_OK) {
+                        found = 1;
+                        break;
+
+                    } else if (rv == NGX_CONF_ERROR) {
+                        return NGX_CONF_ERROR;
+
+                    } else {
+                        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                     "%s", rv);
+                        return NGX_CONF_ERROR;
+                    }
                 }
 
                 cmd++;
             }
-       }
+        }
 
-#if 0
-        cmd = ngx_conf_find_token(cf);
-        if (cmd == NULL) {
+        if (!found) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "unknown directive \"%s\" in %s:%d",
-                          cf->name, cf->file->name, cf->file->line);
-            return NGX_ERROR;
+                          name->data,
+                          cf->conf_file->file.name.data,
+                          cf->conf_file->line);
+
+            return NGX_CONF_ERROR;
         }
-
-        if (cmd->type & argument_number[cf->args->nelts - 1]) {
-            error = cmd->set(cf, cmd->offset, cf->args);
-
-            if (error) {
-                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                               "%s in directive \"%s\" in %s:%d",
-                               error, cf->name, cf->file->name, cf->file->line);
-                return NGX_ERROR;
-            }
-        }
-#endif
-
-#if 0
-        if (cmd->type == NGX_CONF_CONTAINER) {
-            ngx_conf_parse(cf, cmd->container, NULL);
-
-        } else if (cmd->type == NGX_CONF_FLAG) {
-
-            if (cf->args->nelts != 1) {
-                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                              "invalid number of arguments "
-                              "in directive \"%s\" in %s:%d",
-                              cf->name, cf->file->name, cf->file->line);
-                return NGX_ERROR;
-            }
-
-            if (ngx_strcasecmp(cf->args->elts[0], "on") == 0) {
-                flag = 1;
-
-            } else if (ngx_strcasecmp(cf->args->elts[0], "off") == 0) {
-                flag = 0;
-
-            } else {
-                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                              "invalid flag in directive \"%s\" in %s:%d",
-                              cf->name, cf->file->name, cf->file->line);
-                return NGX_ERROR;
-            }
-
-            rv = cmd->set(cf, cmd->offset, flag);
-            if (rv) {
-                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                               "%s in directive \"%s\" in %s:%d",
-                               rv, cf->name, cf->file->name, cf->file->line);
-                return NGX_ERROR;
-            }
-
-        } else if (cmd->type & argument_number[args->nelts]) {
-            rv = cmd->set(cf, cmd->offset, cf->args);
-            if (rv) {
-                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                               "%s in directive \"%s\" in %s:%d",
-                               rv, cf->name, cf->file->name, cf->file->line);
-                return NGX_ERROR;
-            }
-
-        } else {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "invalid number of arguments "
-                          "in directive \"%s\" in %s:%d",
-                          cf->name, cf->file->name, cf->file->line);
-            return NGX_ERROR;
-        }
-#endif
     }
 
     if (filename) {
@@ -182,11 +160,11 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
             ngx_log_error(NGX_LOG_ERR, cf->log, ngx_errno,
                           ngx_close_file_n " %s failed",
                           cf->conf_file->file.name.data);
-            return NGX_ERROR;
+            return NGX_CONF_ERROR;
         }
     }
 
-    return NGX_OK;
+    return NGX_CONF_OK;
 }
 
 
@@ -391,6 +369,20 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 }
 
 
+char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
+{
+    ngx_str_t  *field, *value;
+
+    field = (ngx_str_t *) conf + cmd->offset;
+    value = (ngx_str_t *) cf->args->elts;
+
+    field->len = value->len;
+    field->data = value->data;
+
+    return NGX_CONF_OK;
+}
+
+
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
     int         size;
@@ -405,7 +397,7 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
     *(int *) (conf + cmd->offset) = size;
 
-    return NULL;
+    return NGX_CONF_OK;
 }
 
 
@@ -423,5 +415,5 @@ char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
     *(int *) (conf + cmd->offset) = size;
 
-    return NULL;
+    return NGX_CONF_OK;
 }

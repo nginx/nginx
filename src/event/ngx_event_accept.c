@@ -59,7 +59,7 @@ int ngx_event_accept(ngx_event_t *ev)
         c->family = ac->family;
         c->socklen = ac->socklen;
         c->addr = ac->addr;
-        c->addr_text.len = ac->addr_text.len;
+        c->addr_text_max_len = ac->addr_text_max_len;
         c->post_accept_timeout = ac->post_accept_timeout;
 
         rev->index = wev->index = NGX_INVALID_INDEX;
@@ -77,7 +77,7 @@ int ngx_event_accept(ngx_event_t *ev)
         wev->timer_handler = rev->timer_handler = ngx_event_close_connection;
         wev->close_handler = rev->close_handler = ngx_event_close_connection;
 
-        c->server = ac->server;
+        c->ctx = ac->ctx;
         c->servers = ac->servers;
         c->log = rev->log = wev->log = ev->log;
 

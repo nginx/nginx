@@ -9,12 +9,15 @@
 typedef struct {
     void        **srv_conf;
     void        **loc_conf;
-    ngx_array_t  *locations;
 } ngx_http_conf_ctx_t;
 
 
-#define NGX_HTTP_SRV_CONF  offsetof(ngx_http_conf_ctx_t, srv_conf)
-#define NGX_HTTP_LOC_CONF  offsetof(ngx_http_conf_ctx_t, loc_conf)
+#define NGX_HTTP_MAIN_CONF        0x1000000
+#define NGX_HTTP_SRV_CONF         0x2000000
+#define NGX_HTTP_LOC_CONF         0x6000000
+
+#define NGX_HTTP_SRV_CONF_OFFSET  offsetof(ngx_http_conf_ctx_t, srv_conf)
+#define NGX_HTTP_LOC_CONF_OFFSET  offsetof(ngx_http_conf_ctx_t, loc_conf)
 
 
 int ngx_http_config_modules(ngx_pool_t *pool, ngx_module_t **modules);

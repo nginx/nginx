@@ -43,33 +43,39 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
         case sw_start:
             switch (ch) {
             case 'G':
-                if (p + 1 >= r->header_in->last.mem)
+                if (p + 1 >= r->header_in->last.mem) {
                     return NGX_AGAIN;
+                }
 
-                if (*p != 'E' || *(p + 1) != 'T')
+                if (*p != 'E' || *(p + 1) != 'T') {
                     return NGX_HTTP_PARSE_INVALID_METHOD;
+                }
 
                 r->method = NGX_HTTP_GET;
                 p += 2;
                 break;
 
             case 'H':
-                if (p + 2 >= r->header_in->last.mem)
+                if (p + 2 >= r->header_in->last.mem) {
                     return NGX_AGAIN;
+                }
 
-                if (*p != 'E' || *(p + 1) != 'A' || *(p + 2) != 'D')
+                if (*p != 'E' || *(p + 1) != 'A' || *(p + 2) != 'D') {
                     return NGX_HTTP_PARSE_INVALID_METHOD;
+                }
 
                 r->method = NGX_HTTP_HEAD;
                 p += 3;
                 break;
 
             case 'P':
-                if (p + 2 >= r->header_in->last.mem)
+                if (p + 2 >= r->header_in->last.mem) {
                     return NGX_AGAIN;
+                }
 
-                if (*p != 'O' || *(p + 1) != 'S' || *(p + 2) != 'T')
+                if (*p != 'O' || *(p + 1) != 'S' || *(p + 2) != 'T') {
                     return NGX_HTTP_PARSE_INVALID_METHOD;
+                }
 
                 r->method = NGX_HTTP_POST;
                 p += 3;
@@ -226,8 +232,9 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 return NGX_AGAIN;
             }
 
-            if (ch != 'T' || *p != 'T' || *(p + 1) != 'P' || *(p + 2) != '/')
+            if (ch != 'T' || *p != 'T' || *(p + 1) != 'P' || *(p + 2) != '/') {
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
 
             p += 3;
             state = sw_first_major_digit;
@@ -235,8 +242,9 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
 
         /* first digit of major HTTP version */
         case sw_first_major_digit:
-            if (ch < '1' || ch > '9')
+            if (ch < '1' || ch > '9') {
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
 
             r->http_major = ch - '0';
             state = sw_major_digit;
@@ -249,16 +257,18 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 break;
             }
 
-            if (ch < '0' || ch > '9')
+            if (ch < '0' || ch > '9') {
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
 
             r->http_major = r->http_major * 10 + ch - '0';
             break;
 
         /* first digit of minor HTTP version */
         case sw_first_minor_digit:
-            if (ch < '0' || ch > '9')
+            if (ch < '0' || ch > '9') {
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
 
             r->http_minor = ch - '0';
             state = sw_minor_digit;
@@ -276,8 +286,9 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 break;
             }
 
-            if (ch < '0' || ch > '9')
+            if (ch < '0' || ch > '9') {
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
 
             r->http_minor = r->http_minor * 10 + ch - '0';
             break;
@@ -299,14 +310,19 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
     r->header_in->pos.mem = p;
 
     if (state == sw_done) {
-        if (r->request_end == NULL)
+        if (r->request_end == NULL) {
             r->request_end = p - 1;
+        }
+
         r->http_version = r->http_major * 1000 + r->http_minor;
         r->state = sw_start;
-        if (r->http_version == 9 && r->method == NGX_HTTP_HEAD)
+
+        if (r->http_version == 9 && r->method == NGX_HTTP_HEAD) {
             return NGX_HTTP_PARSE_INVALID_HEAD;
-        else
+        } else {
             return NGX_OK;
+        }
+
     } else {
         r->state = state;
         return NGX_AGAIN;
@@ -358,14 +374,17 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 r->header_name_start = p - 1;
 
                 c = ch | 0x20;
-                if (c >= 'a' && c <= 'z')
+                if (c >= 'a' && c <= 'z') {
                     break;
+                }
 
-                if (ch == '-')
+                if (ch == '-') {
                     break;
+                }
 
-                if (ch >= '0' && ch <= '9')
+                if (ch >= '0' && ch <= '9') {
                     break;
+                }
 
                 return NGX_HTTP_PARSE_INVALID_HEADER;
 
@@ -375,8 +394,9 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
         /* header name */
         case sw_name:
             c = ch | 0x20;
-            if (c >= 'a' && c <= 'z')
+            if (c >= 'a' && c <= 'z') {
                 break;
+            }
 
             if (ch == ':') {
                 r->header_name_end = p - 1;
@@ -384,11 +404,13 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
                 break;
             }
 
-            if (ch == '-')
+            if (ch == '-') {
                 break;
+            }
 
-            if (ch >= '0' && ch <= '9')
+            if (ch >= '0' && ch <= '9') {
                 break;
+            }
 
             return NGX_HTTP_PARSE_INVALID_HEADER;
 
@@ -476,9 +498,11 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
     if (state == sw_done) {
         r->state = sw_start;
         return NGX_OK;
+
     } else if (state == sw_header_done) {
         r->state = sw_start;
         return NGX_HTTP_PARSE_HEADER_DONE;
+
     } else {
         r->state = state;
         return NGX_AGAIN;

@@ -102,7 +102,9 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *c, ngx_chain_t *in,
 
                 sent = rc > 0 ? rc: 0;
 
+#if (NGX_DEBUG_EVENT_WRITE)
                 ngx_log_debug(c->log, "sendv: " QD_FMT _ sent);
+#endif
             }
 #if (HAVE_MAX_SENDFILE_IOVEC)
         }
@@ -115,17 +117,21 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *c, ngx_chain_t *in,
 
         for (ch = in; ch; ch = ch->next) {
 
-            ngx_log_debug(c->log, "ch event write: %x %qx %qd" _
+#if (NGX_DEBUG_EVENT_WRITE)
+            ngx_log_debug(c->log, "event write: %x " QX_FMT " " QD_FMT _
                           ch->hunk->type _
                           ch->hunk->pos.file _
                           ch->hunk->last.file - ch->hunk->pos.file);
+#endif
 
             if (sent >= ch->hunk->last.file - ch->hunk->pos.file) {
                 sent -= ch->hunk->last.file - ch->hunk->pos.file;
                 ch->hunk->pos.file = ch->hunk->last.file;
 
+#if (NGX_DEBUG_EVENT_WRITE)
                 ngx_log_debug(c->log, "event write: " QX_FMT " 0 " QD_FMT _
                               ch->hunk->pos.file _ sent);
+#endif
 
 /*
                 if (ch->hunk->type & NGX_HUNK_LAST)
@@ -137,9 +143,11 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *c, ngx_chain_t *in,
 
             ch->hunk->pos.file += sent;
 
-            ngx_log_debug(c->log, "event write: %qx %qd" _
+#if (NGX_DEBUG_EVENT_WRITE)
+            ngx_log_debug(c->log, "event write: " QX_FMT " " QD_FMT _
                           ch->hunk->pos.file _
                           ch->hunk->last.file - ch->hunk->pos.file);
+#endif
 
             break;
         }

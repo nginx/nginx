@@ -84,8 +84,9 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
     /* STUB */
     int max_connections = 512;
 
-    if (ngx_init_events(max_connections, log) == NGX_ERROR)
+    if (ngx_init_events(max_connections, log) == NGX_ERROR) {
         exit(1);
+    }
 
     ngx_connections = ngx_alloc(sizeof(ngx_connection_t)
                                                        * max_connections, log);
@@ -101,43 +102,44 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
         c = &ngx_connections[fd];
         ev = &ngx_read_events[fd];
 
-        ngx_memzero(&ngx_connections[fd], sizeof(ngx_connection_t));
-        ngx_memzero(&ngx_read_events[fd], sizeof(ngx_event_t));
+        ngx_memzero(c, sizeof(ngx_connection_t));
+        ngx_memzero(ev, sizeof(ngx_event_t));
 
-        ngx_connections[fd].fd = fd;
-        ngx_connections[fd].family = s[i].family;
-        ngx_connections[fd].socklen = s[i].socklen;
-        ngx_connections[fd].sockaddr = ngx_palloc(pool, s[i].socklen);
-        ngx_connections[fd].addr = s[i].addr;
-        ngx_connections[fd].addr_text = s[i].addr_text;
-        ngx_connections[fd].post_accept_timeout = s[i].post_accept_timeout;
+        c->fd = fd;
+        c->family = s[i].family;
+        c->socklen = s[i].socklen;
+        c->sockaddr = ngx_palloc(pool, s[i].socklen);
+        c->addr = s[i].addr;
+        c->addr_text = s[i].addr_text;
+        c->addr_text_max_len = s[i].addr_text_max_len;
+        c->post_accept_timeout = s[i].post_accept_timeout;
 
-        ngx_connections[fd].server = s[i].server;
-        ngx_connections[fd].handler = s[i].handler;
-        ngx_connections[fd].log = s[i].log;
+        c->handler = s[i].handler;
+        c->ctx = s[i].ctx;
+        c->servers = s[i].servers;
+        c->log = s[i].log;
 
-        ngx_test_null(ngx_read_events[fd].log,
+        ngx_test_null(ev->log,
                       ngx_palloc(pool, sizeof(ngx_log_t)), /* void */ ; );
-        ngx_memcpy(ngx_read_events[fd].log, ngx_connections[fd].log,
-                   sizeof(ngx_log_t));
+        ngx_memcpy(ev->log, c->log, sizeof(ngx_log_t));
         c->read = ev;
-        ngx_read_events[fd].data = &ngx_connections[fd];
-        ngx_read_events[fd].event_handler = &ngx_event_accept;
-        ngx_read_events[fd].listening = 1;
+        ev->data = c;
+        ev->event_handler = &ngx_event_accept;
+        ev->listening = 1;
         ev->index = NGX_INVALID_INDEX;
 
-        ngx_read_events[fd].available = 0;
+        ev->available = 0;
 
 #if (HAVE_DEFERRED_ACCEPT)
-        ngx_read_events[fd].deferred_accept = s[i].deferred_accept;
+        ev->deferred_accept = s[i].deferred_accept;
 #endif
-        ngx_add_event(&ngx_read_events[fd], NGX_READ_EVENT, 0);
+        ngx_add_event(ev, NGX_READ_EVENT, 0);
     }
 }
 
 void ngx_worker(ngx_log_t *log)
 {
-    while (1) {
+    for ( ;; ) {
         ngx_log_debug(log, "ngx_worker cycle");
 
         ngx_process_events(log);

@@ -36,7 +36,7 @@ ngx_pool_t   *ngx_pool;
 
 int ngx_connection_counter;
 
-ngx_array_t  *ngx_listening_sockets;
+ngx_array_t  ngx_listening_sockets;
 
 
 int main(int argc, char *const *argv)
@@ -56,9 +56,9 @@ int main(int argc, char *const *argv)
 
     ngx_init_sockets(&ngx_log);
 
-    /* TODO: read config */
+    ngx_init_array(ngx_listening_sockets, ngx_pool, 10, sizeof(ngx_listen_t),
+                   1);
 
-#if 1
     ngx_memzero(&conf, sizeof(ngx_conf_t));
     ngx_test_null(conf.args,
                   ngx_create_array(ngx_pool, 10, sizeof(ngx_str_t)), 1);
@@ -69,16 +69,16 @@ int main(int argc, char *const *argv)
     conf_file.len = sizeof("nginx.conf") - 1;
     conf_file.data = "nginx.conf";
 
-    ngx_conf_parse(&conf, &conf_file);
-#endif
+    if (ngx_conf_parse(&conf, &conf_file) != NGX_CONF_OK) {
+        exit(1);
+    }
 
-    ngx_test_null(ngx_listening_sockets,
-                  ngx_create_array(ngx_pool, 10, sizeof(ngx_listen_t)), 1);
-
+#if 0
     /* STUB */
     /* TODO: init chain of global modules (like ngx_http.c),
        they would init its modules and ngx_listening_sockets */
     ngx_http_init(ngx_pool, &ngx_log);
+#endif
 
     ngx_open_listening_sockets(&ngx_log);
 
@@ -86,7 +86,7 @@ int main(int argc, char *const *argv)
 
     /* TODO: fork */
 
-    ngx_pre_thread(ngx_listening_sockets, ngx_pool, &ngx_log);
+    ngx_pre_thread(&ngx_listening_sockets, ngx_pool, &ngx_log);
 
     /* TODO: threads */
 
@@ -125,10 +125,10 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
          failed = 0;
 
         /* for each listening socket */
-        ls = (ngx_listen_t *) ngx_listening_sockets->elts;
-        for (i = 0; i < ngx_listening_sockets->nelts; i++) {
+        ls = (ngx_listen_t *) ngx_listening_sockets.elts;
+        for (i = 0; i < ngx_listening_sockets.nelts; i++) {
 
-            if (ls[i].done)
+            if (ls[i].bound)
                 continue;
 
             if (ls[i].inherited) {
@@ -137,7 +137,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
                 /* TODO: nonblocking */
                 /* TODO: deferred accept */
 
-                ls[i].done = 1;
+                ls[i].bound = 1;
                 continue;
             }
 
@@ -194,7 +194,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
             /* TODO: deferred accept */
 
             ls[i].fd = s;
-            ls[i].done = 1;
+            ls[i].bound = 1;
         }
 
         if (!failed)

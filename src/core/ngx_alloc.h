@@ -10,7 +10,7 @@
 #define NGX_MAX_ALLOC_FROM_POOL (8192 - sizeof(ngx_pool_t))
 #define NGX_DEFAULT_POOL_SIZE   (16 * 1024)
 
-#define ngx_test_null(p, alloc, rc)  if ((p = alloc) == NULL) return rc
+#define ngx_test_null(p, alloc, rc)  if ((p = alloc) == NULL) { return rc; }
 
 
 typedef struct ngx_pool_large_s  ngx_pool_large_t;

@@ -117,6 +117,9 @@ int ngx_http_static_handler(ngx_http_request_t *r)
         } else if (strcasecmp(r->exten.data, "jpg") == 0) {
             r->headers_out.content_type->value.len = 10;
             r->headers_out.content_type->value.data = "image/jpeg";
+        } else if (strcasecmp(r->exten.data, "pdf") == 0) {
+            r->headers_out.content_type->value.len = 15;
+            r->headers_out.content_type->value.data = "application/pdf";
         }
 
     } else {

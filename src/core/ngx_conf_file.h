@@ -15,15 +15,16 @@
 #define NGX_CONF_NOARGS      1
 #define NGX_CONF_TAKE1       2
 #define NGX_CONF_TAKE2       4
-#define NGX_CONF_ARGS_NUMBER 0x0ffff
-#define NGX_CONF_ANY         0x10000
-#define NGX_CONF_BLOCK       0x20000
+#define NGX_CONF_ARGS_NUMBER 0x00ffff
+#define NGX_CONF_ANY         0x010000
+#define NGX_CONF_BLOCK       0x020000
 
 
 #define NGX_CONF_UNSET       -1
 
 
-#define NGX_CONF_ERROR       (char *) -1
+#define NGX_CONF_OK          NULL
+#define NGX_CONF_ERROR       (void *) -1
 
 #define NGX_CONF_BLOCK_DONE  1
 #define NGX_CONF_FILE_DONE   2
@@ -46,6 +47,7 @@ struct ngx_command_s {
 
 
 typedef struct {
+    int             index;
     void           *ctx;
     ngx_command_t  *commands;
     int             type;
@@ -70,13 +72,21 @@ struct ngx_conf_s {
 
     void             *ctx;
     int               type;
-    int             (*handler)(ngx_conf_t *cf);
+    char           *(*handler)(ngx_conf_t *cf);
 };
 
 
-int ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
+#define ngx_conf_merge(conf, prev, default)                                  \
+    if (conf == NGX_CONF_UNSET) {                                            \
+        conf = (prev == NGX_CONF_UNSET) ? default : prev;                    \
+    }
 
 
+
+char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
+
+
+char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
 

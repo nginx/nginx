@@ -13,14 +13,16 @@
 
 
 static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool);
+static char *ngx_http_write_filter_merge_conf(ngx_pool_t *pool,
+                                              void *parent, void *child);
 
 
 static ngx_command_t ngx_http_write_filter_commands[] = {
 
     {ngx_string("write_buffer"),
-     NGX_CONF_TAKE1, 
+     NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
-     NGX_HTTP_LOC_CONF,
+     NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_write_filter_conf_t, buffer_output)},
 
     {ngx_string(""), 0, NULL, 0, 0}
@@ -33,7 +35,7 @@ ngx_http_module_t  ngx_http_write_filter_module_ctx = {
     NULL,                                  /* create server config */
     NULL,                                  /* init server config */
     ngx_http_write_filter_create_conf,     /* create location config */
-    NULL,                                  /* merge location config */
+    ngx_http_write_filter_merge_conf,      /* merge location config */
 
     NULL,                                  /* translate handler */
 
@@ -45,6 +47,7 @@ ngx_http_module_t  ngx_http_write_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_write_filter_module = {
+    0,                                     /* module index */
     &ngx_http_write_filter_module_ctx,     /* module context */
     ngx_http_write_filter_commands,        /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
@@ -79,9 +82,12 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         prev = &ch->next;
         size += ch->hunk->last.file - ch->hunk->pos.file;
 
-        ngx_log_debug(r->connection->log, "old chunk: %x " QX_FMT " " QD_FMT _
+#if (NGX_DEBUG_WRITE_FILTER)
+        ngx_log_debug(r->connection->log, "write filter: old chunk: %x "
+                      QX_FMT " " QD_FMT _
                       ch->hunk->type _ ch->hunk->pos.file _
                       ch->hunk->last.file - ch->hunk->pos.file);
+#endif
 
         if (ch->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
             flush = size;
@@ -102,9 +108,12 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         prev = &ch->next;
         size += ch->hunk->last.file - ch->hunk->pos.file;
 
-        ngx_log_debug(r->connection->log, "new chunk: %x " QX_FMT " " QD_FMT _
+#if (NGX_DEBUG_WRITE_FILTER)
+        ngx_log_debug(r->connection->log, "write filter: new chunk: %x "
+                      QX_FMT " " QD_FMT _
                       ch->hunk->type _ ch->hunk->pos.file _
                       ch->hunk->last.file - ch->hunk->pos.file);
+#endif
 
         if (ch->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
             flush = size;
@@ -119,7 +128,10 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                              ngx_http_write_filter_module_ctx);
 
-    ngx_log_debug(r->connection->log, "l:%d f:%d" _ last _ flush);
+#if (NGX_DEBUG_WRITE_FILTER)
+    ngx_log_debug(r->connection->log, "write filter: last:%d flush:%d" _
+                  last _ flush);
+#endif
 
     if (!last && flush == 0 && size < conf->buffer_output) {
         return NGX_OK;
@@ -150,3 +162,18 @@ static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool)
 
     return conf;
 }
+
+
+static char *ngx_http_write_filter_merge_conf(ngx_pool_t *pool,
+                                              void *parent, void *child)
+{
+    ngx_http_write_filter_conf_t *prev =
+                                      (ngx_http_write_filter_conf_t *) parent;
+    ngx_http_write_filter_conf_t *conf =
+                                       (ngx_http_write_filter_conf_t *) child;
+
+    ngx_conf_merge(conf->buffer_output, prev->buffer_output, 1460);
+
+    return NULL;
+}
+
