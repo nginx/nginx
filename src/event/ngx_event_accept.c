@@ -66,7 +66,7 @@ ngx_log_debug(ev->log, "ADDR %s" _ ls->listening->addr_text.data);
             return;
         }
 
-        /* disable warnings: Win32 SOCKET is u_int while UNIX socket is int */
+        /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
 
         if ((unsigned) s >= (unsigned) ecf->connections) {
 

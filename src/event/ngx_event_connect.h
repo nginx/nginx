@@ -11,7 +11,7 @@ typedef struct {
     u_int32_t          addr;
     ngx_str_t          host;
     int                port;
-    ngx_str_t          addr_port_name;
+    ngx_str_t          addr_port_text;
 
     int                fails;
     time_t             accessed;
@@ -37,6 +37,8 @@ typedef struct {
     int                tries;
 
     ngx_connection_t  *connection;
+
+    int                rcvbuf;
 
     unsigned           cached:1;
 } ngx_peer_connection_t;

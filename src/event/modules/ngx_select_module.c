@@ -428,7 +428,7 @@ static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
-    /* disable warnings: the default FD_SETSIZE is 1024U in FreeBSD 5.x */
+    /* disable warning: the default FD_SETSIZE is 1024U in FreeBSD 5.x */
 
     if ((unsigned) ecf->connections > FD_SETSIZE) {
         return "maximum number of connections "
