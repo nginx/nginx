@@ -692,12 +692,14 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
 
     /* rc == NGX_OK */
 
-#if 1 /* test only, see below about "post aio operation" */
+#if 0 /* test only, see below about "post aio operation" */
 
     if (c->read->ready) {
         /* post aio operation */
         ngx_http_proxy_process_upstream_status_line(c->read);
+#if 0
         return;
+#endif
     }
 
 #endif
@@ -718,7 +720,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
 
 #if (HAVE_KQUEUE)
 
-    if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)
+    if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT)
         && !p->request_sent
         && c->write->pending_eof)
     {
@@ -776,7 +778,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
 
     ngx_add_timer(c->read, p->lcf->read_timeout);
 
-#if 0
+#if 1
     if (c->read->ready) {
 
         /* post aio operation */

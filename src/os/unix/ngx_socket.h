@@ -37,7 +37,7 @@ int ngx_blocking(ngx_socket_t s);
 int ngx_tcp_nopush(ngx_socket_t s);
 int ngx_tcp_push(ngx_socket_t s);
 
-#ifdef __linux__
+#if (NGX_LINUX)
 
 #define ngx_tcp_nopush_n   "setsockopt(TCP_CORK)"
 #define ngx_tcp_push_n     "setsockopt(!TCP_CORK)"

@@ -126,12 +126,11 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
         *busy = *out;
 
     } else {
-        for (tl = *busy; /* void */ ; tl = tl->next) {
-            if (tl->next == NULL) {
-                tl->next = *out;
-                break;
-            }
+        for (tl = *busy; tl->next; tl = tl->next) {
+            /* void */;
         }
+
+        tl->next = *out;
     }
 
     *out = NULL;

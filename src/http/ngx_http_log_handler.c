@@ -210,9 +210,13 @@ static u_char *ngx_http_log_addr(ngx_http_request_t *r, u_char *buf,
 static u_char *ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
                                      uintptr_t data)
 {
+    return ngx_sprintf(buf, "%ui", r->connection->number);
+
+#if 0
     return buf + ngx_snprintf((char *) buf, NGX_INT_T_LEN + 1,
                               "%" NGX_UINT_T_FMT,
                               r->connection->number);
+#endif
 }
 
 
@@ -244,8 +248,12 @@ static u_char *ngx_http_log_msec(ngx_http_request_t *r, u_char *buf,
 
     ngx_gettimeofday(&tv);
 
+    return ngx_sprintf(buf, "%l.%03l", tv.tv_sec, tv.tv_usec / 1000);
+
+#if 0
     return buf + ngx_snprintf((char *) buf, TIME_T_LEN + 5, "%ld.%03ld",
                               tv.tv_sec, tv.tv_usec / 1000);
+#endif
 }
 
 
@@ -264,24 +272,36 @@ static u_char *ngx_http_log_request(ngx_http_request_t *r, u_char *buf,
 static u_char *ngx_http_log_status(ngx_http_request_t *r, u_char *buf,
                                    uintptr_t data)
 {
+    return ngx_sprintf(buf, "%ui",
+                       r->err_status ? r->err_status : r->headers_out.status);
+
+#if 0
     return buf + ngx_snprintf((char *) buf, 4, "%" NGX_UINT_T_FMT,
                         r->err_status ? r->err_status : r->headers_out.status);
+#endif
 }
 
 
 static u_char *ngx_http_log_length(ngx_http_request_t *r, u_char *buf,
                                    uintptr_t data)
 {
+    return ngx_sprintf(buf, "%O", r->connection->sent);
+
+#if 0
     return buf + ngx_snprintf((char *) buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
                               r->connection->sent);
+#endif
 }
 
 
 static u_char *ngx_http_log_apache_length(ngx_http_request_t *r, u_char *buf,
                                           uintptr_t data)
 {
+    return ngx_sprintf(buf, "%O", r->connection->sent - r->header_size);
+#if 0
     return buf + ngx_snprintf((char *) buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
                               r->connection->sent - r->header_size);
+#endif
 }
 
 
@@ -467,8 +487,7 @@ static u_char *ngx_http_log_header_out(ngx_http_request_t *r, u_char *buf,
                     return (u_char *)
                                    sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1;
                 }
-                return buf + ngx_http_time(buf,
-                                           r->headers_out.last_modified_time);
+                return ngx_http_time(buf, r->headers_out.last_modified_time);
             }
 
             if (buf) {

@@ -26,7 +26,7 @@ esac
 case $PLATFORM in
 
     win32)
-        line=`echo $ZLIB/zlib.lib: | sed -e "s/\//$DIRSEP/g"`
+        line=`echo $ZLIB/zlib.lib: | sed -e "s/\//$ngx_regex_dirsep/g"`
         echo "$line"                                              >> $MAKEFILE
     ;;
 
@@ -43,7 +43,7 @@ done=NO
 case $PLATFORM in
 
     win32)
-        zlib=`echo $ZLIB | sed -e "s/\//$DIRSEP/g"`
+        zlib=`echo $ZLIB | sed -e "s/\//$ngx_regex_dirsep/g"`
 
         cp auto/lib/zlib/$makefile $ZLIB
         echo "	cd $zlib"                                         >> $MAKEFILE

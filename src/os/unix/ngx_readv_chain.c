@@ -22,7 +22,7 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
     rev = c->read; 
 
-    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "readv: eof:%d, avail:%d, err:%d",
                        rev->pending_eof, rev->available, rev->kq_errno);
@@ -81,7 +81,7 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
         n = readv(c->fd, (struct iovec *) io.elts, io.nelts);
 
         if (n >= 0) {
-            if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+            if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
                 rev->available -= n;
 
                 /*
@@ -186,7 +186,7 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
         } else if (n > 0) {
 
-            if (n < size && !(ngx_event_flags & NGX_HAVE_GREEDY_EVENT)) {
+            if (n < size && !(ngx_event_flags & NGX_USE_GREEDY_EVENT)) {
                 rev->ready = 0;
             }
 

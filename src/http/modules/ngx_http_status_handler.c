@@ -159,6 +159,9 @@ static ngx_int_t ngx_http_status(ngx_http_status_ctx_t *ctx)
                   + 1 + (r->server_name ? cmcf->max_server_name_len : 1)
                   + 2;                                /* "\r\n" */
 
+            /* BUG: cmcf->max_server_name_len and "*.domain.tld" */
+
+
             if (r->request_line.len) {
                 len += 1 + 1 + r->request_line.len + 1;
             }

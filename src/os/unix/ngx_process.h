@@ -54,7 +54,13 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
 ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 void ngx_process_get_status(void);
 
+
+#if (NGX_HAVE_SCHED_YIELD)
 #define ngx_sched_yield()  sched_yield()
+#else
+#define ngx_sched_yield()  usleep(1)
+#endif
+
 
 extern int            ngx_argc;
 extern char         **ngx_argv;

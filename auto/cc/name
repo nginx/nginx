@@ -1,0 +1,51 @@
+
+# Copyright (C) Igor Sysoev
+
+
+echo $ngx_n "checking for C compiler ...$ngx_c"
+
+
+if [ $CC = cl ]; then
+    NGX_CC_NAME=msvc
+    echo " using Microsoft Visual C compiler"
+
+else
+if [ $CC = wcl386 ]; then
+    NGX_CC_NAME=owc
+    echo " using Open Watcom C compiler"
+
+else
+if [ $CC = bcc32 ]; then
+    NGX_CC_NAME=bcc
+    echo " using Borland C++ compiler"
+
+else
+if `$CC -v 2>&1 | grep '^gcc version' 2>&1 >/dev/null`; then
+    NGX_CC_NAME=gcc
+    echo " using GNU C compiler"
+
+else
+if `$CC -V 2>&1 | grep '^Intel(R) C++ Compiler' 2>&1 >/dev/null`; then
+    NGX_CC_NAME=icc
+    echo " using Intel C++ compiler"
+
+else
+if `$CC -V 2>&1 | grep '^Compaq C' 2>&1 >/dev/null`; then
+    NGX_CC_NAME=ccc
+    echo " using Compaq C compiler"
+
+else
+if `$CC -V 2>&1 | grep '^aCC: ' 2>&1 >/dev/null`; then
+    NGX_CC_NAME=acc
+    echo " using HP aC++ compiler"
+
+else
+    echo " unknown"
+
+fi # acc
+fi # ccc
+fi # icc
+fi # gcc
+fi # bcc
+fi # owc
+fi # msvc

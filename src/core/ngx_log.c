@@ -57,7 +57,7 @@ static const char *debug_levels[] = {
 };
 
 
-#if (HAVE_VARIADIC_MACROS)
+#if (NGX_HAVE_VARIADIC_MACROS)
 void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...)
 #else
@@ -67,7 +67,7 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 {
     char      errstr[MAX_ERROR_STR];
     size_t    len, max;
-#if (HAVE_VARIADIC_MACROS)
+#if (NGX_HAVE_VARIADIC_MACROS)
     va_list   args;
 #endif
 
@@ -97,7 +97,7 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                             "*%u ", *(u_int *) log->data);
     }
 
-#if (HAVE_VARIADIC_MACROS)
+#if (NGX_HAVE_VARIADIC_MACROS)
 
     va_start(args, fmt);
     len += ngx_vsnprintf(errstr + len, max - len, fmt, args);
@@ -187,7 +187,7 @@ static void ngx_log_write(ngx_log_t *log, char *errstr, size_t len)
 }
 
 
-#if !(HAVE_VARIADIC_MACROS)
+#if !(NGX_HAVE_VARIADIC_MACROS)
 
 void ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                    const char *fmt, ...)
@@ -253,7 +253,7 @@ ngx_log_t *ngx_log_init_stderr()
 #endif
 
     ngx_log.file = &ngx_stderr;
-    ngx_log.log_level = NGX_LOG_ERR;
+    ngx_log.log_level = NGX_LOG_NOTICE;
 
     return &ngx_log;
 }

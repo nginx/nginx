@@ -194,10 +194,10 @@ static ngx_int_t ngx_kqueue_init(ngx_cycle_t *cycle)
 #else
                      |NGX_USE_LEVEL_EVENT
 #endif
-#if (HAVE_LOWAT_EVENT)
-                     |NGX_HAVE_LOWAT_EVENT
+#if (NGX_HAVE_LOWAT_EVENT)
+                     |NGX_USE_LOWAT_EVENT
 #endif
-                     |NGX_HAVE_KQUEUE_EVENT;
+                     |NGX_USE_KQUEUE_EVENT;
 
     return NGX_OK;
 }
@@ -245,6 +245,8 @@ static ngx_int_t ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_ERROR;
     }
 
+#if 1
+
     if (nchanges > 0
         && ev->index < (u_int) nchanges
         && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
@@ -262,7 +264,8 @@ static ngx_int_t ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
                            ngx_event_ident(ev->data), event);
 
             if (ev->index < (u_int) --nchanges) {
-                e = (ngx_event_t *) change_list[nchanges].udata;
+                e = (ngx_event_t *)
+                    ((uintptr_t) change_list[nchanges].udata & (uintptr_t) ~1);
                 change_list[ev->index] = change_list[nchanges];
                 e->index = ev->index;
             }
@@ -281,6 +284,8 @@ static ngx_int_t ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 
         return NGX_ERROR;
     }
+
+#endif
 
     rc = ngx_kqueue_set_event(ev, event, EV_ADD|EV_ENABLE|flags);
 
@@ -302,6 +307,8 @@ static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_ERROR;
     }
 
+#if 1
+
     if (nchanges > 0
         && ev->index < (u_int) nchanges
         && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
@@ -314,7 +321,8 @@ static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
         /* if the event is still not passed to a kernel we will not pass it */
 
         if (ev->index < (u_int) --nchanges) {
-            e = (ngx_event_t *) change_list[nchanges].udata;
+            e = (ngx_event_t *)
+                    ((uintptr_t) change_list[nchanges].udata & (uintptr_t) ~1);
             change_list[ev->index] = change_list[nchanges];
             e->index = ev->index;
         }
@@ -323,6 +331,8 @@ static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
         return NGX_OK;
     }
+
+#endif
 
     /*
      * when the file descriptor is closed the kqueue automatically deletes
@@ -393,7 +403,7 @@ static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
         kev->data = 0;
 
     } else {
-#if (HAVE_LOWAT_EVENT)
+#if (NGX_HAVE_LOWAT_EVENT)
         if (flags & NGX_LOWAT_EVENT) {
             kev->fflags = NOTE_LOWAT;
             kev->data = ev->available;

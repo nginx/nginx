@@ -212,12 +212,25 @@ void ngx_time_update(time_t s)
 }
 
 
+u_char *ngx_http_time(u_char *buf, time_t t)
+#if 0
 size_t ngx_http_time(u_char *buf, time_t t)
+#endif
 {
     ngx_tm_t  tm;
 
     ngx_gmtime(t, &tm);
 
+    return ngx_sprintf(buf, "%s, %02d %s %4d %02d:%02d:%02d GMT",
+                       week[tm.ngx_tm_wday],
+                       tm.ngx_tm_mday,
+                       months[tm.ngx_tm_mon - 1],
+                       tm.ngx_tm_year,
+                       tm.ngx_tm_hour,
+                       tm.ngx_tm_min,
+                       tm.ngx_tm_sec);
+
+#if 0
     return ngx_snprintf((char *) buf, sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
                                       "%s, %02d %s %4d %02d:%02d:%02d GMT",
                                       week[tm.ngx_tm_wday],
@@ -227,10 +240,14 @@ size_t ngx_http_time(u_char *buf, time_t t)
                                       tm.ngx_tm_hour,
                                       tm.ngx_tm_min,
                                       tm.ngx_tm_sec);
+#endif
 }
 
 
+u_char *ngx_http_cookie_time(u_char *buf, time_t t)
+#if 0
 size_t ngx_http_cookie_time(u_char *buf, time_t t)
+#endif
 {
     ngx_tm_t  tm;
 
@@ -241,6 +258,20 @@ size_t ngx_http_cookie_time(u_char *buf, time_t t)
      * 2-digit years more than "37"
      */
 
+    return ngx_sprintf(buf,
+                       (tm.ngx_tm_year > 2037) ?
+                                         "%s, %02d-%s-%d %02d:%02d:%02d GMT":
+                                         "%s, %02d-%s-%02d %02d:%02d:%02d GMT",
+                       week[tm.ngx_tm_wday],
+                       tm.ngx_tm_mday,
+                       months[tm.ngx_tm_mon - 1],
+                       (tm.ngx_tm_year > 2037) ? tm.ngx_tm_year:
+                                                 tm.ngx_tm_year % 100,
+                       tm.ngx_tm_hour,
+                       tm.ngx_tm_min,
+                       tm.ngx_tm_sec);
+
+#if 0
     if (tm.ngx_tm_year > 2037) {
         return ngx_snprintf((char *) buf,
                                       sizeof("Mon, 28-Sep-1970 06:00:00 GMT"),
@@ -264,6 +295,7 @@ size_t ngx_http_cookie_time(u_char *buf, time_t t)
                                       tm.ngx_tm_min,
                                       tm.ngx_tm_sec);
     }
+#endif
 }
 
 

@@ -25,7 +25,7 @@ esac
 case $PLATFORM in
 
     win32)
-        line=`echo $MD5/md5.lib: | sed -e "s/\//$DIRSEP/g"`
+        line=`echo $MD5/md5.lib: | sed -e "s/\//$ngx_regex_dirsep/g"`
         echo "$line"                                              >> $MAKEFILE
     ;;
 
@@ -42,7 +42,7 @@ done=NO
 case $PLATFORM in
 
     win32)
-        md5=`echo $MD5 | sed -e "s/\//$DIRSEP/g"`
+        md5=`echo $MD5 | sed -e "s/\//$ngx_regex_dirsep/g"`
 
         cp auto/lib/md5/$makefile $MD5
         echo "	cd $md5"                                          >> $MAKEFILE

@@ -99,7 +99,7 @@ int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 
 
 #define ngx_de_name(dir)         (dir)->de->d_name
-#ifdef __FreeBSD__
+#if (NGX_FREEBSD)
 #define ngx_de_namelen(dir)      (dir)->de->d_namlen
 #else
 #define ngx_de_namelen(dir)      ngx_strlen((dir)->de->d_name)

@@ -134,10 +134,16 @@ static ngx_int_t ngx_http_headers_filter(ngx_http_request_t *r)
                         return NGX_ERROR;
                     }
 
+                    cc->value.len = ngx_sprintf(cc->value.data, "max-age=%T",
+                                                conf->expires)
+                                    - cc->value.data;
+
+#if 0
                     cc->value.len = ngx_snprintf((char *) cc->value.data,
                                                sizeof("max-age=") + TIME_T_LEN,
                                                "max-age=" TIME_T_FMT,
                                                conf->expires);
+#endif
                 }
             }
         }

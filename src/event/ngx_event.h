@@ -240,19 +240,19 @@ extern ngx_event_actions_t   ngx_event_actions;
  * The event filter has kqueue features - the eof flag, errno,
  * available data, etc.
  */
-#define NGX_HAVE_KQUEUE_EVENT    0x00000008
+#define NGX_USE_KQUEUE_EVENT    0x00000008
 
 /*
  * The event filter supports low water mark - kqueue's NOTE_LOWAT.
  * kqueue in FreeBSD 4.1-4.2 has no NOTE_LOWAT so we need a separate flag.
  */
-#define NGX_HAVE_LOWAT_EVENT     0x00000010
+#define NGX_USE_LOWAT_EVENT     0x00000010
 
 /*
  * The event filter requires to do i/o operation until EAGAIN -
  * epoll, rt signals.
  */
-#define NGX_HAVE_GREEDY_EVENT    0x00000020
+#define NGX_USE_GREEDY_EVENT    0x00000020
 
 /*
  * The event filter is epoll,
@@ -571,7 +571,7 @@ ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
     ngx_connection_t  *c;
 
     if (lowat) {
-        c = wev->data;
+        c = (ngx_connection_t *) wev->data;
 
         if (ngx_send_lowat(c, lowat) == NGX_ERROR) {
             return NGX_ERROR;

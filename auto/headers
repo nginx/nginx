@@ -2,5 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-ngx_inc="unistd.h"; . auto/inc
-ngx_inc="inttypes.h"; . auto/inc
+ngx_include="unistd.h";    . auto/include
+ngx_include="inttypes.h";  . auto/include
+ngx_include="limits.h";    . auto/include
+ngx_include="sys/filio.h"; . auto/include

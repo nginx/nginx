@@ -36,7 +36,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
                                 void *dummy);
 static char *ngx_types_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf);
-static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
                                  void *conf);
 static char *ngx_set_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -126,9 +126,9 @@ static ngx_command_t  ngx_http_core_commands[] = {
 #if 0
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
 #else
-      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE12,
 #endif
-      ngx_set_listen,
+      ngx_http_listen,
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
       NULL },
@@ -576,7 +576,7 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
     clcfp = locations->elts;
     for (i = 0; i < locations->nelts; i++) {
 
-#if (HAVE_PCRE)
+#if (NGX_PCRE)
         if (clcfp[i]->regex) {
             break;
         }
@@ -638,7 +638,7 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
         }
     }
 
-#if (HAVE_PCRE)
+#if (NGX_PCRE)
 
     /* regex matches */
 
@@ -673,7 +673,7 @@ static ngx_int_t ngx_http_find_location(ngx_http_request_t *r,
         return NGX_HTTP_LOCATION_REGEX;
     }
 
-#endif /* HAVE_PCRE */
+#endif /* NGX_PCRE */
 
     return NGX_OK;
 }
@@ -991,7 +991,7 @@ static int ngx_cmp_locations(const void *one, const void *two)
     first = *(ngx_http_core_loc_conf_t **) one;
     second = *(ngx_http_core_loc_conf_t **) two;
 
-#if (HAVE_PCRE)
+#if (NGX_PCRE)
 
     if (first->regex && !second->regex) {
         /* shift the regex matches to the end */
@@ -1026,7 +1026,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     ngx_http_conf_ctx_t       *ctx, *pctx;
     ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf, *pclcf, **clcfp;
-#if (HAVE_PCRE)
+#if (NGX_PCRE)
     ngx_str_t                  err;
     u_char                     errstr[NGX_MAX_CONF_ERRSTR];
 #endif
@@ -1076,7 +1076,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
                        && value[1].data[0] == '~'
                        && value[1].data[1] == '*'))
         {
-#if (HAVE_PCRE)
+#if (NGX_PCRE)
             err.len = NGX_MAX_CONF_ERRSTR;
             err.data = errstr;
 
@@ -1129,7 +1129,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
             return NGX_CONF_ERROR;
         }
 
-#if (HAVE_PCRE)
+#if (NGX_PCRE)
         if (clcf->regex == NULL
             && ngx_strncmp(clcf->name.data, pclcf->name.data, pclcf->name.len)
                                                                          != 0)
@@ -1323,12 +1323,8 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
 
         n->name.len = ngx_strlen(n->name.data);
         n->core_srv_conf = conf;
+        n->wildcard = 0;
 
-#if 0
-        ctx = (ngx_http_conf_ctx_t *)
-                                    cf->cycle->conf_ctx[ngx_http_module.index];
-        cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
-#endif
         cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
         if (cmcf->max_server_name_len < n->name.len) {
@@ -1512,7 +1508,7 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
 }
 
 
-static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *ngx_http_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_srv_conf_t *scf = conf;
 
@@ -1607,13 +1603,8 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_server_name_t     *sn;
     ngx_http_core_main_conf_t  *cmcf;
 
-    /* TODO: several names */
     /* TODO: warn about duplicate 'server_name' directives */
 
-#if 0
-    ctx = (ngx_http_conf_ctx_t *) cf->cycle->conf_ctx[ngx_http_module.index];
-    cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
-#endif
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
     value = cf->args->elts;
@@ -1627,11 +1618,22 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        ngx_test_null(sn, ngx_push_array(&scf->server_names), NGX_CONF_ERROR);
+        if (!(sn = ngx_array_push(&scf->server_names))) {
+            return NGX_CONF_ERROR;
+        }
 
         sn->name.len = value[i].len;
         sn->name.data = value[i].data;
         sn->core_srv_conf = scf;
+
+        if (sn->name.data[0] == '*') {
+            sn->name.len--;
+            sn->name.data++;
+            sn->wildcard = 1;
+
+        } else {
+            sn->wildcard = 0;
+        }
 
         if (cmcf->max_server_name_len < sn->name.len) {
             cmcf->max_server_name_len = sn->name.len;
@@ -1806,7 +1808,7 @@ static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data)
 {
     ssize_t *np = data;
 
-#if __FreeBSD__
+#if (NGX_FREEBSD)
 
     if (*np >= ngx_freebsd_net_inet_tcp_sendspace) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

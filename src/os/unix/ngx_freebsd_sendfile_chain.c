@@ -57,7 +57,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
 
 #if (HAVE_KQUEUE)
 
-    if ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) && wev->pending_eof) {
+    if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT) && wev->pending_eof) {
         ngx_log_error(NGX_LOG_INFO, c->log, wev->kq_errno,
                       "kevent() reported about an closed connection");
 
@@ -131,7 +131,6 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
             send += size;
         }
 
-        /* get the file buf */
 
         if (cl && cl->buf->in_file && send < limit) {
             file = cl->buf;
@@ -164,17 +163,18 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                      && fprev == cl->buf->file_pos);
         }
 
+
         if (file) {
+
             /* create the tailer iovec and coalesce the neighbouring bufs */
 
             prev = NULL;
             iov = NULL;
 
-            for (/* void */;
-                 cl && header.nelts < IOV_MAX && send < limit;
-                 cl = cl->next)
-            {
+            while (cl && header.nelts < IOV_MAX && send < limit) {
+
                 if (ngx_buf_special(cl->buf)) {
+                    cl = cl->next;
                     continue;
                 }
 
@@ -202,6 +202,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
 
                 prev = cl->buf->pos + size;
                 send += size;
+                cl = cl->next;
             }
         }
 
@@ -210,7 +211,6 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
             if (ngx_freebsd_use_tcp_nopush
                 && c->tcp_nopush == NGX_TCP_NOPUSH_UNSET)
             {
-
                 if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
                     err = ngx_errno;
 
@@ -273,6 +273,20 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                     ngx_connection_error(c, err, "sendfile() failed");
                     return NGX_CHAIN_ERROR;
                 }
+            }
+
+            if (rc == 0 && sent == 0) {
+
+                /*
+                 * rc and sent are equals to zero when someone has truncated
+                 * the file, so the offset became beyond the end of the file
+                 */
+
+                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                              "sendfile() reported that \"%s\" was truncated",
+                              file->file->name.data);
+
+                return NGX_CHAIN_ERROR;
             }
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,

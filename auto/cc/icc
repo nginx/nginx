@@ -1,0 +1,69 @@
+
+# Copyright (C) Igor Sysoev
+
+
+# Intel C++ compiler 7.1, 8.0
+
+# optimizations
+
+CFLAGS="$CFLAGS -O"
+# inline functions declared with __inline
+#CFLAGS="$CFLAGS -Ob1"
+# inline any function, at the compiler's discretion
+CFLAGS="$CFLAGS -Ob2"
+
+# single-file IP optimizations
+#IPO="-ip"
+# multi-file IP optimizations
+IPO="-ipo -ipo_obj"
+CFLAGS="$CFLAGS $IPO"
+CORE_LINK="$CORE_LINK $IPO"
+CORE_LINK="$CORE_LINK -opt_report_file=$OBJS/opt_report_file"
+
+case $CPU in
+    pentium)
+        # optimize for Pentium and Athlon
+        CPU_OPT="-march=pentium"
+    ;;
+
+    pentiumpro)
+        # optimize for Pentium Pro, Pentium II and Pentium III
+        CPU_OPT="-mcpu=pentiumpro -march=pentiumpro"
+    ;;
+
+    pentium4)
+        # optimize for Pentium 4, default
+        CPU_OPT="-march=pentium4"
+    ;;
+esac
+
+CFLAGS="$CFLAGS $CPU_OPT"
+
+if [ ".$PCRE_OPT" = "." ]; then
+    PCRE_OPT="-O $IPO $CPU_OPT"
+fi
+
+if [ ".$MD5_OPT" = "." ]; then
+    MD5_OPT="-O $IPO $CPU_OPT"
+fi
+
+if [ ".$ZLIB_OPT" = "." ]; then
+    ZLIB_OPT="-O $IPO $CPU_OPT"
+fi
+
+
+# warnings
+
+CFLAGS="$CFLAGS -w1"
+#CFLAGS="$CFLAGS -w2"
+
+# stop on warning
+CFLAGS="$CFLAGS -Werror"
+
+# debug
+CFLAGS="$CFLAGS -g"
+
+LINK="\$(CC)"
+
+
+CC_STRONG="-w1 -Werror"

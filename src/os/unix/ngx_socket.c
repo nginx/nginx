@@ -44,7 +44,7 @@ int ngx_blocking(ngx_socket_t s)
 #endif
 
 
-#ifdef __FreeBSD__
+#if (NGX_FREEBSD)
 
 int ngx_tcp_nopush(ngx_socket_t s)
 {
@@ -67,7 +67,7 @@ int ngx_tcp_push(ngx_socket_t s)
                       (const void *) &tcp_nopush, sizeof(int));
 }
 
-#elif __linux__
+#elif (NGX_LINUX)
 
 int ngx_tcp_nopush(ngx_socket_t s)
 {

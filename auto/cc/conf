@@ -1,0 +1,119 @@
+
+# Copyright (C) Igor Sysoev
+
+
+ngx_include_opt="-I "
+ngx_compile_opt="-c"
+ngx_objout="-o "
+ngx_binout="-o "
+ngx_objext="o"
+ngx_binext=
+
+ngx_regex_dirsep="\/"
+ngx_dirsep='/'
+
+ngx_regex_cont=' \\\
+	'
+ngx_cont=' \
+	'
+ngx_tab=' \
+		'
+ngx_spacer=
+
+. auto/cc/name
+
+if test -n "$CFLAGS"; then
+
+    CC_TEST_FLAGS="$CFLAGS $NGX_CC_OPT"
+
+    case $NGX_CC_NAME in
+
+        ccc)
+            # Compaq C V6.5-207
+
+            ngx_include_opt="-I"
+        ;;
+
+    esac
+
+else
+
+    case $NGX_CC_NAME in
+        gcc)
+            # gcc 2.7.2.3, 2.8.1, 2.95.4,
+            #     3.0.4, 3.1.1, 3.2.3, 3.3.2, 3.3.3, 3.3.4, 3.4
+
+            . auto/cc/gcc
+        ;;
+
+        icc)
+            # Intel C++ compiler 7.1, 8.0
+
+            . auto/cc/icc
+        ;;
+
+#        ccc)
+#            # Compaq C V6.5-207
+#
+#            . auto/cc/ccc
+#        ;;
+
+#        acc)
+#            # aCC: HP ANSI C++ B3910B A.03.55.02
+#
+#            . auto/cc/acc
+#        ;;
+
+        msvc)
+            # MSVC 6.0 SP2
+
+            . auto/cc/msvc
+        ;;
+
+        owc)
+            # Open Watcom C 1.0, 1.2
+
+            . auto/cc/owc
+        ;;
+
+        bcc)
+            # Borland C++ 5.5
+
+            . auto/cc/bcc
+        ;;
+
+    esac
+
+    CC_TEST_FLAGS=$NGX_CC_OPT
+
+fi
+
+CFLAGS="$CFLAGS $NGX_CC_OPT"
+
+
+if [ "$PLATFORM" != win32 ]; then
+
+    ngx_feature="gcc variadic macros"
+    ngx_feature_name=HAVE_GCC_VARIADIC_MACROS
+    ngx_feature_run=yes
+    ngx_feature_incs="#include <stdio.h>
+#define var(dummy, args...)  sprintf(args)"
+    ngx_feature_libs=
+    ngx_feature_test="char  buf[30]; buf[0] = '0';
+                      var(0, buf, \"%d\", 1);
+                      if (buf[0] != '1') return 1"
+    . auto/feature
+
+
+    ngx_feature="C99 variadic macros"
+    ngx_feature_name=HAVE_C99_VARIADIC_MACROS
+    ngx_feature_run=yes
+    ngx_feature_incs="#include <stdio.h>
+#define var(dummy, ...) sprintf(__VA_ARGS__)"
+    ngx_feature_libs=
+    ngx_feature_test="char  buf[30]; buf[0] = '0';
+                      var(0, buf, \"%d\", 1);
+                      if (buf[0] != '1') return 1"
+    . auto/feature
+
+fi

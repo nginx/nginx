@@ -5,14 +5,14 @@
 if [ $ZLIB != NONE ]; then
     CORE_INCS="$CORE_INCS $ZLIB"
 
-    case "$CC" in
+    case "$NGX_CC_NAME" in
 
-        cl | wcl386 | bcc32)
+        msvc | owc | bcc)
             LINK_DEPS="$LINK_DEPS $ZLIB/zlib.lib"
             CORE_LIBS="$CORE_LIBS $ZLIB/zlib.lib"
         ;;
 
-        *icc)
+        icc)
             LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
 
             # to allow -ipo optimization we link with the *.o but not library
@@ -38,22 +38,23 @@ if [ $ZLIB != NONE ]; then
 else
 
     if [ $PLATFORM != win32 ]; then
+        ZLIB=NO
 
         # FreeBSD, Solaris, Linux
 
-        ngx_lib_cflags=
-        ngx_lib_inc="#include <zlib.h>"
-        ngx_lib="zlib library"
-        ngx_lib_test="z_stream z; deflate(&z, Z_NO_FLUSH)"
-        ngx_libs=-lz
-        . auto/lib/test
+        ngx_feature="zlib library"
+        ngx_feature_name="zlib"
+        ngx_feature_run=no
+        ngx_feature_incs="#include <zlib.h>"
+        ngx_feature_libs="-lz"
+        ngx_feature_test="z_stream z; deflate(&z, Z_NO_FLUSH)"
+        . auto/feature
 
 
         if [ $ngx_found = yes ]; then
-            CORE_LIBS="$CORE_LIBS $ngx_libs"
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             ZLIB=YES
-        else
-            ZLIB=NO
+            ngx_found=no
         fi
     fi
 

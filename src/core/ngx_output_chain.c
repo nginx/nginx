@@ -24,13 +24,13 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
     size_t        size, bsize;
     ngx_chain_t  *cl, *out, **last_out;
 
-    /*
-     * the short path for the case when the ctx->in chain is empty
-     * and the incoming chain is empty too or it has the single buf
-     * that does not require the copy
-     */
+    if (ctx->in == NULL && ctx->busy == NULL) {
 
-    if (ctx->in == NULL) {
+       /*
+        * the short path for the case when the ctx->in and ctx->busy chains
+        * are empty, the incoming chain is empty too or has the single buf
+        * that does not require the copy
+        */
 
         if (in == NULL) {
             return ctx->output_filter(ctx->filter_ctx, in);
@@ -192,6 +192,7 @@ ngx_inline static ngx_int_t
     }
 
     if (!ctx->sendfile) {
+
         if (!ngx_buf_in_memory(buf)) {
             return 1;
         }
@@ -228,12 +229,19 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
         src->pos += size;
         dst->last += size;
 
-        if (src->in_file && sendfile) {
-            dst->in_file = 1;
-            dst->file = src->file;
-            dst->file_pos = src->file_pos;
+        if (src->in_file) {
+
+            if (sendfile) {
+                dst->in_file = 1;
+                dst->file = src->file;
+                dst->file_pos = src->file_pos;
+                dst->file_last = src->file_pos + size;
+
+            } else {
+                dst->in_file = 0;
+            }
+
             src->file_pos += size;
-            dst->file_last = src->file_pos;
 
         } else {
             dst->in_file = 0;
@@ -271,13 +279,13 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
             dst->in_file = 1;
             dst->file = src->file;
             dst->file_pos = src->file_pos;
-            src->file_pos += size;
-            dst->file_last = src->file_pos;
+            dst->file_last = src->file_pos + n;
 
         } else {
             dst->in_file = 0;
-            src->file_pos += n;
         }
+
+        src->file_pos += n;
 
         if (src->last_buf && src->file_pos == src->file_last) {
             dst->last_buf = 1;

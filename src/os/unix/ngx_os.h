@@ -66,17 +66,15 @@ extern ngx_int_t    ngx_inherited_nonblocking;
 
 #define ngx_stderr_fileno  STDERR_FILENO
 
-#ifdef __FreeBSD__
+#if (NGX_FREEBSD)
 #include <ngx_freebsd.h>
-#endif
 
 
-#ifdef __linux__
+#elif (NGX_LINUX)
 #include <ngx_linux.h>
-#endif
 
 
-#ifdef SOLARIS
+#elif (NGX_SOLARIS)
 #include <ngx_solaris.h>
 #endif
 

@@ -837,26 +837,30 @@ static u_char *ngx_http_gzip_log_ratio(ngx_http_request_t *r, u_char *buf,
         return buf + 1;
     }
 
-#if 0
-    return buf + ngx_snprintf((char *) buf, NGX_INT32_LEN + 4, "%.2f",
-                              (float) ctx->zin / ctx->zout);
-#endif
-
     /* we prefer do not use the FPU */
 
     zint = (ngx_uint_t) (ctx->zin / ctx->zout);
     zfrac = (ngx_uint_t) ((ctx->zin * 100 / ctx->zout) % 100);
 
-    if ((ctx->zin * 1000 / ctx->zout) %10 > 4) {
-        if (++zfrac > 99) {
+    if ((ctx->zin * 1000 / ctx->zout) % 10 > 4) {
+
+        /* the rounding, e.g., 2.125 to 2.13 */
+
+        zfrac++;
+
+        if (zfrac > 99) {
             zint++;
             zfrac = 0;
         }
     }
 
+    return ngx_sprintf(buf, "%ui.%02ui", zint, zfrac);
+
+#if 0
     return buf + ngx_snprintf((char *) buf, NGX_INT32_LEN + 4,
                               "%" NGX_UINT_T_FMT ".%02" NGX_UINT_T_FMT,
                               zint, zfrac);
+#endif
 }
 
 

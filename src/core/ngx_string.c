@@ -28,6 +28,238 @@ u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n)
 }
 
 
+/*
+ * supported formats:
+ *    %[0][width]O     off_t
+ *    %[0][width]T     time_t
+ *    %[0][width]S     ssize_t
+ *    %[0][width]uS    size_t
+ *    %[0][width]uxS   size_t in hex
+ *    %[0][width]l     long
+ *    %[0][width]d     int
+ *    %[0][width]i     ngx_int_t
+ *    %[0][width]ui    ngx_uint_t
+ *    %[0][width]uxi   ngx_uint_t in hex
+ *    %s               null-terminated string
+ *    %%               %
+ *
+ */
+
+u_char *ngx_sprintf(u_char *buf, char *fmt, ...)
+{
+    u_char        *p, c, temp[NGX_MAX_INT_LEN];
+    int            d;
+    long           l;
+    off_t          offset;
+    size_t         size, len;
+    ssize_t        ssize;
+    time_t         sec;
+    va_list        arg;
+    ngx_int_t      i;
+    ngx_uint_t     ui, zero, width, sign, hexadecimal;
+    static u_char  hex[] = "0123456789abcdef";
+
+    va_start(arg, fmt);
+
+    while (*fmt) {
+        if (*fmt == '%') {
+
+            zero = (*++fmt == '0') ? 1 : 0;
+            width = 0;
+            sign = 1;
+            hexadecimal = 0;
+
+            p = temp + NGX_MAX_INT_LEN;
+
+            while (*fmt >= '0' && *fmt <= '9') {
+                width = width * 10 + *fmt++ - '0';
+            }
+
+
+            for ( ;; ) {
+                switch (*fmt) {
+
+                case 'u':
+                    sign = 0;
+                    fmt++;
+                    continue;
+
+                case 'x':
+                    hexadecimal = 1;
+                    fmt++;
+                    continue;
+
+                default:
+                    break;
+                }
+
+                break;
+            }
+
+
+            switch (*fmt) {
+
+            case 'O':
+                offset = va_arg(arg, off_t);
+
+                if (offset < 0) {
+                    *buf++ = '-';
+                    offset = -offset;
+                }
+
+                do {
+                    *--p = (u_char) (offset % 10 + '0');
+                } while (offset /= 10);
+
+                break;
+
+            case 'T':
+                sec = va_arg(arg, time_t);
+
+                if (sec < 0) {
+                    *buf++ = '-';
+                    sec = -sec;
+                }
+
+                do {
+                    *--p = (u_char) (sec % 10 + '0');
+                } while (sec /= 10);
+
+                break;
+
+            case 'S':
+                if (sign) {
+                    ssize = va_arg(arg, ssize_t);
+
+                    if (ssize < 0) {
+                        *buf++ = '-';
+                        size = (size_t) -ssize;
+
+                    } else {
+                        size = (size_t) ssize;
+                    }
+
+                } else {
+                    size = va_arg(arg, size_t);
+                }
+
+                if (hexadecimal) {
+                    do {
+                        *--p = hex[size & 0xf];
+                    } while (size >>= 4);
+
+                } else {
+                    do {
+                        *--p = (u_char) (size % 10 + '0');
+                    } while (size /= 10);
+                }
+
+                break;
+
+            case 'l':
+                l = va_arg(arg, long);
+
+                if (l < 0) {
+                    *buf++ = '-';
+                    l = -l;
+                }
+
+                do {
+                    *--p = (u_char) (l % 10 + '0');
+                } while (l /= 10);
+
+                break;
+
+            case 'd':
+                d = va_arg(arg, int);
+
+                if (d < 0) {
+                    *buf++ = '-';
+                    d = -d;
+                }
+
+                do {
+                    *--p = (u_char) (d % 10 + '0');
+                } while (d /= 10);
+
+                break;
+
+            case 'i':
+                if (sign) {
+                    i = va_arg(arg, ngx_int_t);
+
+                    if (i < 0) {
+                        *buf++ = '-';
+                        ui = (ngx_uint_t) -i;
+
+                    } else {
+                        ui = (ngx_uint_t) i;
+                    }
+
+                } else {
+                    ui = va_arg(arg, ngx_uint_t);
+                }
+
+                if (hexadecimal) {
+                    do {
+                        *--p = hex[ui & 0xf];
+                    } while (ui >>= 4);
+
+                } else {
+                    do {
+                        *--p = (u_char) (ui % 10 + '0');
+                    } while (ui /= 10);
+                }
+
+                break;
+
+            case 's':
+                p = va_arg(arg, u_char *);
+
+                while (*p) {
+                    *buf++ = *p++;
+                }
+                fmt++;
+
+                continue;
+
+            case '%':
+                *buf++ = '%';
+                fmt++;
+
+                continue;
+
+            default:
+                *buf++ = *fmt++;
+
+                continue;
+            }
+
+            len = (temp + NGX_MAX_INT_LEN) - p;
+
+            c = (u_char) (zero ? '0' : ' ');
+
+            while (len++ < width) {
+                *buf++ = c;
+            }
+
+            buf = ngx_cpymem(buf, p, ((temp + NGX_MAX_INT_LEN) - p));
+
+            fmt++;
+
+        } else {
+            *buf++ = *fmt++;
+        }
+    }
+
+    va_end(arg);
+
+    *buf = '\0';
+
+    return buf;
+}
+
+
 ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
 {
     if (n == 0) {
@@ -39,6 +271,40 @@ ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
     for ( ;; ) {
         if (s1[n] != s2[n]) {
             return s1[n] - s2[n];
+        }
+
+        if (n == 0) {
+            return 0;
+        }
+
+        n--;
+    }
+}
+
+
+ngx_int_t ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)
+{
+    u_char  c1, c2;
+
+    if (n == 0) {
+        return 0;
+    }
+
+    n--;
+
+    for ( ;; ) {
+        c1 = s1[n];
+        if (c1 >= 'a' && c1 <= 'z') {
+            c1 -= 'a' - 'A';
+        }
+
+        c2 = s2[n];
+        if (c2 >= 'a' && c2 <= 'z') {
+            c2 -= 'a' - 'A';
+        }
+
+        if (c1 != c2) {
+            return c1 - c2;
         }
 
         if (n == 0) {

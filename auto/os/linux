@@ -2,15 +2,23 @@
 # Copyright (C) Igor Sysoev
 
 
+cat << END >> $NGX_AUTO_HEADERS_H
+
+#ifndef NGX_LINUX
+#define NGX_LINUX  1
+#endif
+
+END
+
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $LINUX_DEPS"
 CORE_SRCS="$UNIX_SRCS $LINUX_SRCS"
 EVENT_MODULES="$EVENT_MODULES"
 
-PIPE="-pipe"
+ngx_spacer='
+'
 
-
-CC_TEST_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
+CC_AUX_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 
 # Linux kernel version
 
@@ -31,14 +39,18 @@ fi
 
 # epoll, EPOLLET version
 
-ngx_func="epoll";
-ngx_func_inc="#include <sys/epoll.h>"
-ngx_func_test="int efd = 0, fd = 1, n;
-               struct epoll_event ee;
-               ee.events = EPOLLIN|EPOLLOUT|EPOLLET;
-               ee.data.ptr = NULL;
-               n = epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ee)"
-. auto/func
+ngx_feature="epoll"
+ngx_feature_name="epoll"
+ngx_feature_run=yes
+ngx_feature_incs="#include <sys/epoll.h>"
+ngx_feature_libs=
+ngx_feature_test="int efd = 0, fd = 1, n;
+                  struct epoll_event ee;
+                  ee.events = EPOLLIN|EPOLLOUT|EPOLLET;
+                  ee.data.ptr = NULL;
+                  efd = epoll_create(100);
+                  if (efd == -1) return 1;"
+. auto/feature
 
 if [ $ngx_found = yes ]; then
     have=HAVE_EPOLL . auto/have
@@ -51,13 +63,16 @@ fi
 
 # sendfile()
 
-CC_TEST_FLAGS="-D_GNU_SOURCE"
-ngx_func="sendfile()";
-ngx_func_inc="#include <sys/sendfile.h>"
-ngx_func_test="int s = 0, fd = 1;
-               ssize_t n; off_t off = 0;
-               n = sendfile(s, fd, &off, 1)"
-. auto/func
+CC_AUX_FLAGS="-D_GNU_SOURCE"
+ngx_feature="sendfile()"
+ngx_feature_name="sendfile"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/sendfile.h>"
+ngx_feature_libs=
+ngx_feature_test="int s = 0, fd = 1;
+                  ssize_t n; off_t off = 0;
+                  n = sendfile(s, fd, &off, 1)"
+. auto/feature
 
 if [ $ngx_found = yes ]; then
     CORE_SRCS="$CORE_SRCS $LINUX_SENDFILE_SRCS"
@@ -66,17 +81,26 @@ fi
 
 # sendfile64()
 
-CC_TEST_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
-ngx_func="sendfile64()"; . auto/func
+CC_AUX_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
+ngx_feature="sendfile64()"
+ngx_feature_name="HAVE_SENDFILE64"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/sendfile.h>"
+ngx_feature_libs=
+ngx_feature_test="int s = 0, fd = 1;
+                  ssize_t n; off_t off = 0;
+                  n = sendfile(s, fd, &off, 1)"
+. auto/feature
 
+
+ngx_include="sys/prctl.h"; . auto/include
 
 # prctl(PR_SET_DUMPABLE)
 
-ngx_func="prctl()";
-ngx_func_inc="#include <sys/prctl.h>"
-ngx_func_test="prctl(PR_SET_DUMPABLE, 1, 0, 0, 0)"
-. auto/func
-
-if [ $ngx_found = yes ]; then
-    have=HAVE_PR_SET_DUMPABLE . auto/have
-fi
+ngx_feature="prctl(PR_SET_DUMPABLE)"
+ngx_feature_name="HAVE_PR_SET_DUMPABLE"
+ngx_feature_run=yes
+ngx_feature_incs="#include <sys/prctl.h>"
+ngx_feature_libs=
+ngx_feature_test="if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) return 1"
+. auto/feature

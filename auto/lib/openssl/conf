@@ -19,23 +19,22 @@ if [ $OPENSSL != NONE ]; then
 else
 
     if [ $PLATFORM != win32 ]; then
-            OPENSSL=NO
-            ngx_lib_cflags=
+        OPENSSL=NO
 
-            ngx_lib_inc="#include <openssl/ssl.h>"
-            ngx_lib="OpenSSL library"
-            ngx_lib_test="SSL_library_init()"
-            ngx_libs="-lssl -lcrypto"
-            . auto/lib/test
-
+        ngx_feature="OpenSSL library"
+        ngx_feature_name="OpenSSL"
+        ngx_feature_run=no
+        ngx_feature_incs="#include <openssl/ssl.h>"
+        ngx_feature_libs="-lssl -lcrypto"
+        ngx_feature_test="SSL_library_init()"
+        . auto/feature
 
         if [ $ngx_found = yes ]; then
             have=NGX_OPENSSL . auto/have
             CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
             CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
-            CORE_LIBS="$CORE_LIBS $ngx_libs"
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             OPENSSL=YES
-            ngx_found=no
         fi
 
     fi

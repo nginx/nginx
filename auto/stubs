@@ -1,0 +1,8 @@
+
+# Copyright (C) Igor Sysoev
+
+
+have=NGX_USE_HTTP_FILE_CACHE_UNIQ . auto/have
+have=NGX_SUPPRESS_WARN . auto/have
+
+have=NGX_SMP . auto/have

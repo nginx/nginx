@@ -579,8 +579,18 @@ ngx_int_t ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
 
     name->len = cycle->root.len + old.len;
 
-    if (!(name->data = ngx_palloc(cycle->pool, name->len + 1))) {
-        return  NGX_ERROR;
+    if (cycle->connections) {
+        if (!(name->data = ngx_palloc(cycle->pool, name->len + 1))) {
+            return  NGX_ERROR;
+        }
+
+    } else {
+
+        /* the init_cycle */
+
+        if (!(name->data = ngx_alloc(name->len + 1, cycle->log))) {
+            return  NGX_ERROR;
+        }
     }
 
     p = ngx_cpymem(name->data, cycle->root.data, cycle->root.len),

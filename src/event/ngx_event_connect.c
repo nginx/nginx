@@ -296,6 +296,9 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     if (ngx_event_flags & NGX_USE_AIO_EVENT) {
 
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, ngx_socket_errno,
+                       "connect(): %d", rc);
+
         /* aio, iocp */
 
         if (ngx_blocking(s) == -1) {
@@ -311,8 +314,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
 
         /*
-         * aio allows to post operation on non-connected socket
-         * at least in FreeBSD.
+         * FreeBSD aio allows to post operation on non-connected socket.
          * NT does not support it.
          * 
          * TODO: check in Win32, etc. As workaround we can use NGX_ONESHOT_EVENT

@@ -236,7 +236,7 @@ void ngx_process_get_status()
                 return;
             }
 
-#if (SOLARIS)
+#if (NGX_SOLARIS)
 
             /*
              * Solaris always calls the signal handler for each exited process

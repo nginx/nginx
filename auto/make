@@ -8,353 +8,271 @@ mkdir -p $OBJS/src/core $OBJS/src/event $OBJS/src/event/modules \
          $OBJS/src/imap
 
 
-echo "CC = $CC"                                                   > $MAKEFILE
-echo "CPP = $CPP"                                                 >> $MAKEFILE
-echo "LINK = $LINK"                                               >> $MAKEFILE
+ngx_objs_dir=$NGX_OBJS$ngx_regex_dirsep
+ngx_use_pch=`echo $NGX_USE_PCH | sed -e "s/\//$ngx_regex_dirsep/g"`
+
+
+cat << END                                                    >> $NGX_MAKEFILE
+
+CC =	$CC
+CFLAGS = $CFLAGS
+CPP =	$CPP
+LINK =	$LINK
+
+END
+
 if [ "$CC" = wcl386 ]; then
-    echo MAKE = wmake                                             >> $MAKEFILE
-fi
-echo "CFLAGS = $CFLAGS"                                           >> $MAKEFILE
-echo                                                              >> $MAKEFILE
+    echo MAKE = wmake                                         >> $NGX_MAKEFILE
 
+    ngx_regex_cont=' '
+    ngx_cont=' '
+    ngx_tab=' '
 
-if [ $MAKE_SL = YES ]; then
-    echo                                                          >> $MAKEFILE
 fi
 
-all_inc="$CORE_INCS $OBJS $HTTP_INCS $IMAP_INCS"
-all_inc=`echo " $all_inc" | sed -e "s/ \([^ ]\)/ $INCOPT\1/g"`
-all_inc=`echo $all_inc | sed -e "s/\//$DIRSEP/g"`
 
-echo "ALL_INCS = $all_inc"                                        >> $MAKEFILE
-echo                                                              >> $MAKEFILE
+# ALL_INCS, required by OpenWatcom C precompiled headers
 
-all_srcs="$CORE_SRCS"
+ngx_incs=`echo $CORE_INCS $OBJS $HTTP_INCS $IMAP_INCS\
+    | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
+          -e "s/\//$ngx_regex_dirsep/g"`
 
+cat << END                                                    >> $NGX_MAKEFILE
 
-# CORE_DEPS
+ALL_INCS = $ngx_include_opt$ngx_incs
 
-if [ $MAKE_SL = YES ]; then
-    echo $ngx_n "CORE_DEPS =" $ngx_c                              >> $MAKEFILE
-else
-    echo "CORE_DEPS = \\"                                         >> $MAKEFILE
-fi
-
-for dep in $CORE_DEPS
-do
-    dep=`echo $dep | sed -e "s/\//$DIRSEP/g"`
-
-    if [ $MAKE_SL = YES ]; then
-        echo $ngx_n " $dep" $ngx_c                                >> $MAKEFILE
-    else
-        echo "	$dep \\"                                          >> $MAKEFILE
-    fi
-done
-echo                                                              >> $MAKEFILE
+END
 
 
-# CORE_INCS
+ngx_all_srcs="$CORE_SRCS"
 
-if [ $MAKE_SL = YES ]; then
-    echo                                                          >> $MAKEFILE
-fi
 
-inc="$CORE_INCS $OBJS"
-inc=`echo " $inc" | sed -e "s/ \([^ ]\)/ $INCOPT\1/g" -e "s/\//$DIRSEP/g"`
+# the core dependences and include pathes
 
-echo "CORE_INCS = $inc"                                           >> $MAKEFILE
-echo                                                              >> $MAKEFILE
+ngx_deps=`echo $CORE_DEPS $NGX_PCH \
+    | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
+          -e "s/\//$ngx_regex_dirsep/g"`
 
+ngx_incs=`echo $CORE_INCS $OBJS \
+    | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
+          -e "s/\//$ngx_regex_dirsep/g"`
+
+cat << END                                                    >> $NGX_MAKEFILE
+
+CORE_DEPS = $ngx_deps
+
+
+CORE_INCS = $ngx_include_opt$ngx_incs
+
+END
+
+
+# the http dependences and include pathes
 
 if [ $HTTP = YES ]; then
 
-    all_srcs="$all_srcs $HTTP_SRCS"
+    ngx_all_srcs="$ngx_all_srcs $HTTP_SRCS"
 
-    # HTTP_DEPS
+    ngx_deps=`echo $HTTP_DEPS \
+        | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
+              -e "s/\//$ngx_regex_dirsep/g"`
 
-    if [ $MAKE_SL = YES ]; then
-        echo $ngx_n "HTTP_DEPS =" $ngx_c                          >> $MAKEFILE
-    else
-        echo "HTTP_DEPS = \\"                                     >> $MAKEFILE
-    fi
+    ngx_incs=`echo $HTTP_INCS \
+        | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
+              -e "s/\//$ngx_regex_dirsep/g"`
 
-    for dep in $HTTP_DEPS
-    do
-        dep=`echo $dep | sed -e "s/\//$DIRSEP/g"`
+    cat << END                                                >> $NGX_MAKEFILE
 
-        if [ $MAKE_SL = YES ]; then
-            echo $ngx_n " $dep" $ngx_c                            >> $MAKEFILE
-        else
-            echo "	$dep \\"                                  >> $MAKEFILE
-        fi
-    done
-    echo                                                          >> $MAKEFILE
+HTTP_DEPS = $ngx_deps
 
 
-    # HTTP_INCS
+HTTP_INCS = $ngx_include_opt$ngx_incs
 
-    if [ $MAKE_SL = YES ]; then
-        echo                                                      >> $MAKEFILE
-    fi
-
-    inc="$HTTP_INCS $OBJS"
-    inc=`echo " $inc" | sed -e "s/ \([^ ]\)/ $INCOPT\1/g" -e "s/\//$DIRSEP/g"`
-
-    echo "HTTP_INCS = $inc"                                       >> $MAKEFILE
-    echo                                                          >> $MAKEFILE
+END
 
 fi
 
 
+# the imap dependences and include pathes
+
 if [ $IMAP = YES ]; then
 
-    all_srcs="$all_srcs $IMAP_SRCS"
+    ngx_all_srcs="$ngx_all_srcs $IMAP_SRCS"
 
-    # IMAP_DEPS
+    ngx_deps=`echo $IMAP_DEPS \
+        | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
+              -e "s/\//$ngx_regex_dirsep/g"`
 
-    if [ $MAKE_SL = YES ]; then
-        echo $ngx_n "IMAP_DEPS =" $ngx_c                          >> $MAKEFILE
-    else
-        echo "IMAP_DEPS = \\"                                     >> $MAKEFILE
-    fi
+    ngx_incs=`echo $IMAP_INCS \
+        | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
+              -e "s/\//$ngx_regex_dirsep/g"`
 
-    for dep in $IMAP_DEPS
-    do
-        dep=`echo $dep | sed -e "s/\//$DIRSEP/g"`
+    cat << END                                                >> $NGX_MAKEFILE
 
-        if [ $MAKE_SL = YES ]; then
-            echo $ngx_n " $dep" $ngx_c                            >> $MAKEFILE
-        else
-            echo "	$dep \\"                                  >> $MAKEFILE
-        fi
-    done
-    echo                                                          >> $MAKEFILE
+IMAP_DEPS = $ngx_deps
 
 
-    # IMAP_INCS
+IMAP_INCS = $ngx_include_opt$ngx_incs
 
-    if [ $MAKE_SL = YES ]; then
-        echo                                                      >> $MAKEFILE
-    fi
-
-    inc="$IMAP_INCS $OBJS"
-    inc=`echo " $inc" | sed -e "s/ \([^ ]\)/ $INCOPT\1/g" -e "s/\//$DIRSEP/g"`
-
-    echo "IMAP_INCS = $inc"                                       >> $MAKEFILE
-    echo                                                          >> $MAKEFILE
+END
 
 fi
 
 
 # nginx
 
-if [ $MAKE_SL = YES ]; then
-    echo $ngx_n "nginx$BINEXT:	" $ngx_c                          >> $MAKEFILE
-else
-    echo "nginx$BINEXT: \\"                                       >> $MAKEFILE
-fi
+ngx_all_srcs=`echo $ngx_all_srcs | sed -e "s/\//$ngx_regex_dirsep/g"`
+ngx_modules_c=`echo $NGX_MODULES_C | sed -e "s/\//$ngx_regex_dirsep/g"`
 
+ngx_all_objs=`echo $ngx_all_srcs \
+    | sed -e "s/\([^ ]*\.\)cpp/$NGX_OBJS\/\1$ngx_objext/g" \
+          -e "s/\([^ ]*\.\)cc/$NGX_OBJS\/\1$ngx_objext/g" \
+          -e "s/\([^ ]*\.\)c/$NGX_OBJS\/\1$ngx_objext/g" \
+          -e "s/\([^ ]*\.\)S/$NGX_OBJS\/\1$ngx_objext/g"`
 
-# nginx deps
+ngx_modules_obj=`echo $ngx_modules_c | sed -e "s/\(.*\.\)c/\1$ngx_objext/"`
 
-for src in $all_srcs
-do
-    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
-    obj=`echo $OBJS/$obj | sed -e "s/\//$DIRSEP/g"`
+ngx_deps=`echo $ngx_all_objs $ngx_modules_obj $LINK_DEPS \
+    | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
+          -e "s/\//$ngx_regex_dirsep/g"`
 
-    if [ $MAKE_SL = YES ]; then
-        echo $ngx_n " $obj" $ngx_c                                >> $MAKEFILE
-    else
-        echo "	$obj \\"                                          >> $MAKEFILE
-    fi
-done
+ngx_objs=`echo $ngx_all_objs $ngx_modules_obj \
+    | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
+          -e "s/\//$ngx_regex_dirsep/g"`
 
-for src in $NGX_MODULES_C $LINK_DEPS
-do
-    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
-    obj=`echo $obj | sed -e "s/\//$DIRSEP/g"`
+ngx_libs=${CORE_LIBS:+`echo $NGX_LD_OPT $CORE_LIBS \
+    | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_regex_cont/"`}
 
-    if [ $MAKE_SL = YES ]; then
-        echo $ngx_n " $obj" $ngx_c                                >> $MAKEFILE
-    else
-        echo "	$obj \\"                                          >> $MAKEFILE
-    fi
-done
-echo                                                              >> $MAKEFILE
+ngx_link=${CORE_LINK:+`echo $CORE_LINK \
+    | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_regex_cont/"`}
 
+cat << END                                                    >> $NGX_MAKEFILE
 
-# nginx build
+$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}:	$ngx_deps$ngx_spacer
+	\$(LINK) ${ngx_binout}$NGX_OBJS${ngx_dirsep}nginx$ngx_cont$ngx_objs$ngx_libs$ngx_link
 
-if [ $MAKE_SL = YES ]; then
-    echo $ngx_n "	\$(LINK) ${BINOUT}nginx" $ngx_c           >> $MAKEFILE
-else
-    echo "	\$(LINK) ${BINOUT}nginx \\"                       >> $MAKEFILE
-fi
-
-
-# nginx build sources
-
-for src in $all_srcs
-do
-    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
-    obj=`echo $OBJS/$obj | sed -e "s/\//$DIRSEP/g"`
-
-    if [ $MAKE_SL = YES ]; then
-        echo $ngx_n " $obj" $ngx_c                                >> $MAKEFILE
-    else
-        echo "	$obj \\"                                          >> $MAKEFILE
-    fi
-done
-
-
-# nginx build ngx_modules.c and libs
-
-obj=`echo $NGX_MODULES_C | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\//$DIRSEP/g"`
-src=`echo $NGX_MODULES_C | sed -e "s/\//$DIRSEP/g"`
-libs=`echo $CORE_LIBS | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\//$DIRSEP/g"`
-link=`echo $CORE_LINK | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\//$DIRSEP/g"`
-
-if [ $MAKE_SL = YES ]; then
-    echo " $obj $libs $CORE_LINK"                                 >> $MAKEFILE
-    echo                                                          >> $MAKEFILE
-else
-    echo "	$obj \\"                                          >> $MAKEFILE
-    echo "	$libs \\"                                         >> $MAKEFILE
-    echo "	$link"                                            >> $MAKEFILE
-    echo                                                          >> $MAKEFILE
-fi
+END
 
 
 # ngx_modules.c
 
-deps="\$(CORE_DEPS)"
-
-if [ $PCH != NO ]; then
-    args="\$(CFLAGS) $USEPCH \$(ALL_INCS)"
+if test -n "$NGX_PCH"; then
+    ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) $ngx_use_pch \$(ALL_INCS)"
 else
-    args="\$(CFLAGS) $USEPCH \$(CORE_INCS)"
+    ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) \$(CORE_INCS)"
 fi
 
-if [ $MAKE_SL = YES ]; then
-    echo "$obj: $NGX_MODULES_C $deps"                             >> $MAKEFILE
-    echo $ngx_n "	\$(CC) $COMPOPT $args" $ngx_c             >> $MAKEFILE
-    echo " $OBJOUT$obj $src"                                      >> $MAKEFILE
-    echo                                                          >> $MAKEFILE
-else
-    echo "$obj: \\"                                               >> $MAKEFILE
-    echo "	$NGX_MODULES_C $deps"                             >> $MAKEFILE
-    echo "	\$(CC) $COMPOPT $args \\"                         >> $MAKEFILE
-    echo "		$OBJOUT$obj \\"                           >> $MAKEFILE
-    echo "		$src"                                     >> $MAKEFILE
-    echo                                                          >> $MAKEFILE
-fi
+cat << END                                                    >> $NGX_MAKEFILE
+
+$ngx_modules_obj:	\$(CORE_DEPS)$ngx_cont$ngx_modules_c
+	$ngx_cc$ngx_tab$ngx_objout$ngx_modules_obj$ngx_tab$ngx_modules_c
+
+END
 
 
-# core sources
+# the core sources
 
-for src in $CORE_SRCS
+for ngx_src in $CORE_SRCS
 do
-    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
-    obj=`echo $OBJS/$obj | sed -e "s/\//$DIRSEP/g"`
-    src=`echo $src | sed -e "s/\//$DIRSEP/g"`
 
-    if [ $MAKE_SL = YES ]; then
-        echo "$obj: $src $deps"                                   >> $MAKEFILE
-        echo "	\$(CC) $COMPOPT $args $OBJOUT$obj $src"           >> $MAKEFILE
-        echo                                                      >> $MAKEFILE
-    else
-        echo "$obj: \\"                                           >> $MAKEFILE
-        echo "	$src $deps"                                       >> $MAKEFILE
-        echo "	\$(CC) $COMPOPT $args \\"                         >> $MAKEFILE
-        echo "		$OBJOUT$obj \\"                           >> $MAKEFILE
-        echo "		$src"                                     >> $MAKEFILE
-        echo                                                      >> $MAKEFILE
-    fi
+    ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+    ngx_obj=`echo $ngx_src \
+        | sed -e "s/^\(.*\.\)cpp$/$ngx_objs_dir\1$ngx_objext/g" \
+              -e "s/^\(.*\.\)cc$/$ngx_objs_dir\1$ngx_objext/g" \
+              -e "s/^\(.*\.\)c$/$ngx_objs_dir\1$ngx_objext/g" \
+              -e "s/^\(.*\.\)S$/$ngx_objs_dir\1$ngx_objext/g"`
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+$ngx_obj:	\$(CORE_DEPS)$ngx_cont$ngx_src
+	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src
+
+END
+
 done
 
 
-# http sources
+# the http sources
 
 if [ $HTTP = YES ]; then
 
-    deps="\$(CORE_DEPS) \$(HTTP_DEPS)"
-
-    if [ $PCH != NO ]; then
-        args="\$(CFLAGS) $USEPCH \$(ALL_INCS)"
+    if test -n "$NGX_PCH"; then
+        ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) $ngx_use_pch \$(ALL_INCS)"
     else
-        args="\$(CFLAGS) $USEPCH \$(CORE_INCS) \$(HTTP_INCS)"
+        ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) \$(CORE_INCS) \$(HTTP_INCS)"
     fi
 
-    for src in $HTTP_SRCS
+    for ngx_src in $HTTP_SRCS
     do
-        obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
-        obj=`echo $OBJS/$obj | sed -e "s/\//$DIRSEP/g"`
-        src=`echo $src | sed -e "s/\//$DIRSEP/g"`
 
-        if [ $MAKE_SL = YES ]; then
-            echo "$obj: $src $deps"                               >> $MAKEFILE
-            echo "	\$(CC) $COMPOPT $args $OBJOUT$obj $src"   >> $MAKEFILE
-            echo                                                  >> $MAKEFILE
-        else
-            echo "$obj: \\"                                       >> $MAKEFILE
-            echo "	$src $deps"                               >> $MAKEFILE
-            echo "	\$(CC) $COMPOPT $args \\"                 >> $MAKEFILE
-            echo "		$OBJOUT$obj \\"                   >> $MAKEFILE
-            echo "		$src"                             >> $MAKEFILE
-            echo                                                  >> $MAKEFILE
-        fi
-    done
+        ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+        ngx_obj=`echo $ngx_src \
+            | sed -e "s/^\(.*\.\)cpp$/$ngx_objs_dir\1$ngx_objext/g" \
+                  -e "s/^\(.*\.\)cc$/$ngx_objs_dir\1$ngx_objext/g" \
+                  -e "s/^\(.*\.\)c$/$ngx_objs_dir\1$ngx_objext/g" \
+                  -e "s/^\(.*\.\)S$/$ngx_objs_dir\1$ngx_objext/g"`
+
+        cat << END                                            >> $NGX_MAKEFILE
+
+$ngx_obj:	\$(CORE_DEPS) \$(HTTP_DEPS)$ngx_cont$ngx_src
+	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src
+
+END
+
+     done
 
 fi
 
 
-# imap sources
+# the imap sources
 
 if [ $IMAP = YES ]; then
 
-    deps="\$(CORE_DEPS) \$(IMAP_DEPS)"
-
-    if [ $PCH != NO ]; then
-        args="\$(CFLAGS) $USEPCH \$(ALL_INCS)"
+    if test -n "$NGX_PCH"; then
+        ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) $ngx_use_pch \$(ALL_INCS)"
     else
-        args="\$(CFLAGS) $USEPCH \$(CORE_INCS) \$(IMAP_INCS)"
+        ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) \$(CORE_INCS) \$(IMAP_INCS)"
     fi
 
-    for src in $IMAP_SRCS
+    for ngx_src in $IMAP_SRCS
     do
-        obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
-        obj=`echo $OBJS/$obj | sed -e "s/\//$DIRSEP/g"`
-        src=`echo $src | sed -e "s/\//$DIRSEP/g"`
 
-        if [ $MAKE_SL = YES ]; then
-            echo "$obj: $src $deps"                               >> $MAKEFILE
-            echo "	\$(CC) $COMPOPT $args $OBJOUT$obj $src"   >> $MAKEFILE
-            echo                                                  >> $MAKEFILE
-        else
-            echo "$obj: \\"                                       >> $MAKEFILE
-            echo "	$src $deps"                               >> $MAKEFILE
-            echo "	\$(CC) $COMPOPT $args \\"                 >> $MAKEFILE
-            echo "		$OBJOUT$obj \\"                   >> $MAKEFILE
-            echo "		$src"                             >> $MAKEFILE
-            echo                                                  >> $MAKEFILE
-        fi
-    done
+        ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+        ngx_obj=`echo $ngx_src \
+            | sed -e "s/^\(.*\.\)cpp$/$ngx_objs_dir\1$ngx_objext/g" \
+                  -e "s/^\(.*\.\)cc$/$ngx_objs_dir\1$ngx_objext/g" \
+                  -e "s/^\(.*\.\)c$/$ngx_objs_dir\1$ngx_objext/g" \
+                  -e "s/^\(.*\.\)S$/$ngx_objs_dir\1$ngx_objext/g"`
+
+        cat << END                                            >> $NGX_MAKEFILE
+
+$ngx_obj:	\$(CORE_DEPS) \$(IMAP_DEPS)$ngx_cont$ngx_src
+	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src
+
+END
+
+     done
 
 fi
 
 
-# precompiled headers
+# the precompiled headers
 
-if [ $PCH != NO ]; then
-    echo "#include <ngx_config.h>" > $OBJS/pch.c
+if test -n "$NGX_PCH"; then
+    echo "#include <ngx_config.h>" > $OBJS/ngx_pch.c
 
-    pch="$PCH:	src/core/ngx_config.h $OS_CONFIG $OBJS/ngx_auto_config.h"
-    pch=`echo $pch | sed -e "s/\//$DIRSEP/g"`
-    src="\$(CC) \$(CFLAGS) $BUILDPCH $COMPOPT \$(ALL_INCS)"
-    src="$src $OBJOUT$OBJS/pch.obj $OBJS/pch.c"
-    src=`echo $src | sed -e "s/\//$DIRSEP/g"`
+    ngx_pch="src/core/ngx_config.h $OS_CONFIG $OBJS/ngx_auto_config.h"
+    ngx_pch=`echo "$NGX_PCH:	$ngx_pch" | sed -e "s/\//$ngx_regex_dirsep/g"`
 
-    echo "$pch"                                                   >> $MAKEFILE
-    echo "	$src"                                             >> $MAKEFILE
-    echo                                                          >> $MAKEFILE
+    ngx_src="\$(CC) \$(CFLAGS) $NGX_BUILD_PCH $ngx_compile_opt \$(ALL_INCS)"
+    ngx_src="$ngx_src $ngx_objout$OBJS/ngx_pch.obj $OBJS/ngx_pch.c"
+    ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+$ngx_pch
+	$ngx_src
+
+END
+
 fi

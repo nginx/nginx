@@ -465,9 +465,9 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat)
 {
     int  sndlowat;
 
-#if (HAVE_LOWAT_EVENT)
+#if (NGX_HAVE_LOWAT_EVENT)
 
-    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
         c->write->available = lowat;
         return NGX_OK;
     }

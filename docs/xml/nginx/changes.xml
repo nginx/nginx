@@ -6,6 +6,92 @@
             title="nginx">
 
 
+<changes ver="0.1.2" date="21.10.2004">
+
+<change type="feature">
+<para lang="ru">
+параметры --user=USER, --group=GROUP и --with-ld-opt=OPTIONS в configure.
+</para>
+<para lang="en">
+the --user=USER, --group=GROUP, and --with-ld-opt=OPTIONS options in configure.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server_name поддерживает *.domain.tld.
+</para>
+<para lang="en">
+the server_name directive supports *.domain.tld.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+улучшена переносимость на неизвестные платформы.
+</para>
+<para lang="en">
+the portability improvements.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+нельзя переконфигурировать nginx, если конфигурационный файл указан
+в командной строке,
+ошибка появилась в 0.1.1.
+</para>
+<para lang="en">
+if configuration file was set in command line, the reconfiguration
+was impossible,
+bug appeared in 0.1.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль проксировании мог привести к зацикливанию, если не использовался
+sendfile.
+</para>
+<para lang="en">
+proxy module may get caught in an endless loop when sendfile is not used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании sendfile текст ответа не перекодировался
+согласно директивам модуля charset,
+ошибка появилась в 0.1.1.
+</para>
+<para lang="en">
+with sendfile the response was not recoded according to the charset
+module directives,
+bug appeared in 0.1.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+очень редкая ошибка при обработке kqueue.
+</para>
+<para lang="en">
+very seldom bug in the kqueue processing.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль сжатия сжимал уже сжатые ответы, полученные при проксировании.
+</para>
+<para lang="en">
+the gzip module compressed the proxied responses that was already compressed.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.1" date="11.10.2004">
 
 <change type="feature">
@@ -60,7 +146,7 @@ the "Location" header rewrite bug fixed while the proxing.
 ошибка в модуле ngx_http_chunked_module, приводившая к зацикливанию.
 </para>
 <para lang="en">
-the ngx_http_chunked_module module bug fixed that caused an endless loop.
+the ngx_http_chunked_module module may get caught in an endless loop.
 </para>
 </change>
 

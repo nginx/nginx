@@ -1091,27 +1091,47 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 
         name = r->virtual_names->elts;
         for (i = 0; i < r->virtual_names->nelts; i++) {
-            if (r->headers_in.host_name_len != name[i].name.len) {
-                continue;
-            }
 
-            if (ngx_strncasecmp(r->headers_in.host->value.data,
-                                name[i].name.data,
-                                r->headers_in.host_name_len) == 0)
-            {
-                r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
-                r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
-                r->server_name = &name[i].name;
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "server name: %s", name[i].name.data);
 
-                clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                r->connection->log->file = clcf->err_log->file;
-                if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION))
-                {
-                    r->connection->log->log_level = clcf->err_log->log_level;
+            if (name[i].wildcard) {
+                if (r->headers_in.host_name_len <= name[i].name.len) {
+                    continue;
                 }
 
-                break;
+                if (ngx_rstrncasecmp(r->headers_in.host->value.data,
+                                     name[i].name.data,
+                                     name[i].name.len) == 0)
+                {
+                    continue;
+                }
+
+            } else {
+                if (r->headers_in.host_name_len != name[i].name.len) {
+                    continue;
+                }
+
+                if (ngx_strncasecmp(r->headers_in.host->value.data,
+                                    name[i].name.data,
+                                    name[i].name.len) != 0)
+                {
+                    continue;
+                }
             }
+
+            r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
+            r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
+            r->server_name = &name[i].name;
+
+            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            r->connection->log->file = clcf->err_log->file;
+
+            if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
+                r->connection->log->log_level = clcf->err_log->log_level;
+            }
+
+            break;
         }
 
         if (i == r->virtual_names->nelts) {
@@ -1562,7 +1582,13 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
         if (b != c->buffer) {
 
-            /* move the large header buffers to the free list */
+            /*
+             * If the large header buffers were allocated while the previous
+             * request processing then we do not use c->buffer for
+             * the pipelined request (see ngx_http_init_request()).
+             * 
+             * Now we would move the large header buffers to the free list.
+             */
 
             cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -1614,6 +1640,14 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     hc->pipeline = 0;
 
+    /*
+     * To keep a memory footprint as small as possible for an idle
+     * keepalive connection we try to free the ngx_http_request_t and
+     * c->buffer's memory if they were allocated outside the c->pool.
+     * The large header buffers are always allocated outside the c->pool and
+     * are freed too.
+     */
+
     if (ngx_pfree(c->pool, r) == NGX_OK) {
         hc->request = NULL;
     }
@@ -1621,6 +1655,12 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     b = c->buffer;
 
     if (ngx_pfree(c->pool, b->start) == NGX_OK) {
+
+        /*
+         * the special note for ngx_http_keepalive_handler() that
+         * c->buffer's memory was freed
+         */
+
         b->pos = NULL;
 
     } else {
@@ -1655,7 +1695,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     rev->event_handler = ngx_http_keepalive_handler;
 
     if (wev->active) {
-        if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+        if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
             if (ngx_del_event(wev, NGX_WRITE_EVENT, NGX_DISABLE_EVENT)
                                                                   == NGX_ERROR)
             {
@@ -1702,7 +1742,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     }
 
 #if 0
-    /* if "keepalive_buffers off" then we need some other place */
+    /* if ngx_http_request_t was freed then we need some other place */
     r->http_state = NGX_HTTP_KEEPALIVE_STATE;
 #endif
 
@@ -1734,7 +1774,7 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
 
 #if (HAVE_KQUEUE)
 
-    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
         if (rev->pending_eof) {
             ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
                           "kevent() reported that client %s closed "
@@ -1751,6 +1791,13 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
     size = b->end - b->start;
 
     if (b->pos == NULL) {
+
+        /*
+         * The c->buffer's memory was freed by ngx_http_set_keepalive().
+         * However, the c->buffer->start and c->buffer->end were not changed
+         * to keep the buffer size.
+         */
+
         if (!(b->pos = ngx_palloc(c->pool, size))) {
             ngx_http_close_connection(c);
             return;
@@ -1824,7 +1871,7 @@ static void ngx_http_set_lingering_close(ngx_http_request_t *r)
     wev->event_handler = ngx_http_empty_handler;
 
     if (wev->active) {
-        if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+        if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
             if (ngx_del_event(wev, NGX_WRITE_EVENT, NGX_DISABLE_EVENT)
                                                                   == NGX_ERROR)
             {

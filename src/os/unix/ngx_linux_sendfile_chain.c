@@ -37,7 +37,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
     ngx_event_t     *wev;
     ngx_chain_t     *cl;
     struct iovec    *iov, headers[NGX_HEADERS];
-#if (HAVE_SENDFILE64)
+#if (NGX_HAVE_SENDFILE64)
     off_t            offset;
 #else
     int32_t          offset;
@@ -167,7 +167,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
         }
 
         if (file) {
-#if (HAVE_SENDFILE64)
+#if (NGX_HAVE_SENDFILE64)
             offset = file->file_pos;
 #else
             offset = (int32_t) file->file_pos;

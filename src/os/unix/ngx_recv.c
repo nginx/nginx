@@ -19,7 +19,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 
     rev = c->read;
 
-    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "recv: eof:%d, avail:%d, err:%d",
                        rev->pending_eof, rev->available, rev->kq_errno);
@@ -60,7 +60,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                        "recv: fd:%d %d of %d", c->fd, n, size);
 
         if (n >= 0) {
-            if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+            if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
                 rev->available -= n;
 
                 /*
@@ -139,7 +139,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
         } else if (n > 0) {
 
             if ((size_t) n < size
-                && !(ngx_event_flags & NGX_HAVE_GREEDY_EVENT))
+                && !(ngx_event_flags & NGX_USE_GREEDY_EVENT))
             {
                 rev->ready = 0;
             }

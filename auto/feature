@@ -2,19 +2,28 @@
 # Copyright (C) Igor Sysoev
 
 
-echo $ngx_n "checking for $ngx_feature ..." $ngx_c
-echo >> $NGX_ERR
-echo "checking for $ngx_feature" >> $NGX_ERR
+echo $ngx_n "checking for $ngx_feature ...$ngx_c"
+
+cat << END >> $NGX_AUTOCONF_ERR
+
+----------------------------------------
+checking for $ngx_feature
+
+END
 
 ngx_found=no
 
-feature=`echo $ngx_feature_name | tr '[a-z]' '[A-Z]'`
+if test -n "$ngx_feature_name"; then
+    ngx_have_feature=`echo NGX_$ngx_feature_name | tr '[a-z]' '[A-Z]'`
+    # STUB
+    ngx_have_feature0=`echo HAVE_$ngx_feature_name | tr '[a-z]' '[A-Z]'`
+fi
 
 cat << END > $NGX_AUTOTEST.c
 
 #include <sys/types.h>
-$NGX_UNISTD_H
-$ngx_feature_inc
+$NGX_INCLUDE_UNISTD_H
+$ngx_feature_incs
 
 int main() {
     $ngx_feature_test;
@@ -23,34 +32,56 @@ int main() {
 
 END
 
-test="$CC_WARN $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c \
-      $ngx_feature_libs"
-eval "$test >> $NGX_ERR 2>&1"
+
+ngx_test="$CC $CC_TEST_FLAGS $CC_WARN $CC_AUX_FLAGS \
+          -o $NGX_AUTOTEST $NGX_AUTOTEST.c $NGX_LD_OPT $ngx_feature_libs"
+eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
+
 
 if [ -x $NGX_AUTOTEST ]; then
 
     if [ $ngx_feature_run = yes ]; then
+
        if $NGX_AUTOTEST 2>&1 > /dev/null; then
            echo " found"
-           have=HAVE_$feature . auto/have
            ngx_found=yes
+
+           if test -n "$ngx_feature_name"; then
+               have=$ngx_have_feature . auto/have
+           fi
+
+           #STUB
+           if test -n "$ngx_feature_name"; then
+               have=$ngx_have_feature0 . auto/have
+           fi
+
        else
            echo " found but is not working"
        fi
 
     else
        echo " found"
-       have=HAVE_$feature . auto/have
        ngx_found=yes
+
+       if test -n "$ngx_feature_name"; then
+           have=$ngx_have_feature . auto/have
+       fi
+
+       #STUB
+       if test -n "$ngx_feature_name"; then
+           have=$ngx_have_feature0 . auto/have
+       fi
+
     fi
 
 else
     echo " not found"
-    echo "---------" >> $NGX_ERR
-    cat $NGX_AUTOTEST.c >> $NGX_ERR
-    echo "---------" >> $NGX_ERR
-    echo $test >> $NGX_ERR
-    echo "---------" >> $NGX_ERR
+
+    echo "----------"    >> $NGX_AUTOCONF_ERR
+    cat $NGX_AUTOTEST.c  >> $NGX_AUTOCONF_ERR
+    echo "----------"    >> $NGX_AUTOCONF_ERR
+    echo $ngx_test       >> $NGX_AUTOCONF_ERR
+    echo "----------"    >> $NGX_AUTOCONF_ERR
 fi
 
 rm $NGX_AUTOTEST*

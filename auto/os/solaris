@@ -2,6 +2,14 @@
 # Copyright (C) Igor Sysoev
 
 
+cat << END >> $NGX_AUTO_HEADERS_H
+
+#ifndef NGX_SOLARIS
+#define NGX_SOLARIS  1
+#endif
+
+END
+
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $SOLARIS_DEPS"
 CORE_SRCS="$UNIX_SRCS $SOLARIS_SRCS "
@@ -9,40 +17,17 @@ EVENT_MODULES="$EVENT_MODULES"
 
 CORE_LIBS="$CORE_LIBS -lsocket -lnsl -lrt"
 
-# the Solaris's make support
-MAKE_SL=YES
+# Solaris's make does not support a blank line between target and rules
+ngx_spacer=
 
-
-CC_TEST_FLAGS="-D_FILE_OFFSET_BITS=64"
-
-case $PLATFORM in
-
-    SunOS:5.[89]:* | SunOS:5.10:*)
-        PIPE="-pipe"
-    ;;
-
-    *)
-        # Solaris 7's /usr/ccs/bin/as does not support "-pipe"
-    ;;
-
-esac
+CC_AUX_FLAGS="-D_FILE_OFFSET_BITS=64 -lrt"
 
 
 case $PLATFORM in
 
     *:sun4u)
+        # "-mcpu=v9" enables the "casa" assembler instruction
         CFLAGS="$CFLAGS -mcpu=v9"
-
-        if [ ".$CPU" = ".sparc64" ]; then
-            CFLAGS="$CFLAGS -m64"
-            CPU_OPT="-m64"
-            CORE_LINK="$CORE_LINK -m64"
-
-            CC_TEST_FLAGS="$CC_TEST_FLAGS -mcpu=v9 -m64"
-        fi
-    ;;
-
-    *)
     ;;
 
 esac
@@ -57,23 +42,15 @@ if [ $ZLIB_ASM != NO ]; then
 fi
 
 
-ngx_inc="sys/devpoll.h"; . auto/inc
-
-if [ $ngx_found = yes ]; then
-    have=HAVE_DEVPOLL . auto/have
-    CORE_SRCS="$CORE_SRCS $DEVPOLL_SRCS"
-    EVENT_MODULES="$EVENT_MODULES $DEVPOLL_MODULE"
-    EVENT_FOUND=YES
-fi
-
-
-ngx_func="sendfilev()";
-ngx_func_inc="#include <sys/sendfile.h>"
-ngx_func_libs="-lsendfile"
-ngx_func_test="int fd = 1; sendfilevec_t vec[1];
-               size_t sent; ssize_t n;
-               n = sendfilev(fd, vec, 1, &sent)"
-. auto/func
+ngx_feature="sendfilev()"
+ngx_feature_name="sendfile"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/sendfile.h>"
+ngx_feature_libs="-lsendfile"
+ngx_feature_test="int fd = 1; sendfilevec_t vec[1];
+                  size_t sent; ssize_t n;
+                  n = sendfilev(fd, vec, 1, &sent)"
+. auto/feature
 
 
 if [ $ngx_found = yes ]; then

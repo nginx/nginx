@@ -8,11 +8,11 @@
 #define _NGX_LINUX_CONFIG_H_INCLUDED_
 
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE             /* pread(), pwrite(), gethostname() */
+#endif
 
 #define _FILE_OFFSET_BITS  64
-#define _LARGEFILE_SOURCE
-
 
 #include <sys/types.h>
 #include <sys/time.h>
@@ -51,11 +51,11 @@
 #include <ngx_auto_config.h>
 
 
-#if (HAVE_PRCTL)
+#if (NGX_HAVE_SYS_PRCTL_H)
 #include <sys/prctl.h>
 #endif
 
-#if (HAVE_SENDFILE64)
+#if (NGX_HAVE_SENDFILE64)
 #include <sys/sendfile.h>
 #else
 extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);

@@ -1,0 +1,82 @@
+
+# Copyright (C) Igor Sysoev
+
+
+# Open Watcom C 1.0, 1.2
+
+# optimizations
+
+# maximize speed
+CFLAGS="$CFLAGS -ot"
+# reorder instructions for best pipeline usage 
+CFLAGS="$CFLAGS -op"
+# inline intrinsic functions
+CFLAGS="$CFLAGS -oi"
+# inline expansion
+CFLAGS="$CFLAGS -oe"
+# disable stack checking calls
+CFLAGS="$CFLAGS -s"
+
+case $CPU in
+    pentium)
+        # optimize for Pentium and Athlon
+        # register-based arguments passing conventions
+        CPU_OPT="-5r"
+        # stack-based arguments passing conventions
+        #CPU_OPT="-5s"
+    ;; 
+
+    pentiumpro)
+        # optimize for Pentium Pro, Pentium II and Pentium III
+        # register-based arguments passing conventions
+        CPU_OPT="-6r"
+        # stack-based arguments passing conventions
+        #CPU_OPT="-6s"
+    ;;
+esac
+
+CFLAGS="$CFLAGS $CPU_OPT"
+
+
+# warnings
+
+#CFLAGS="$CFLAGS -w3"
+CFLAGS="$CFLAGS -wx"
+
+# stop on warning
+CFLAGS="$CFLAGS -we"
+
+# built target is NT
+CFLAGS="$CFLAGS -bt=nt"
+
+# multithreaded
+CFLAGS="$CFLAGS -bm"
+
+# debug
+CFLAGS="$CFLAGS -d2"
+
+# quiet
+CFLAGS="$CFLAGS -zq"
+
+# Open Watcom C 1.2
+#have=HAVE_C99_VARIADIC_MACROS . auto/have
+
+# precompiled headers 
+CORE_DEPS="$CORE_DEPS $OBJS/ngx_config.pch"
+NGX_PCH="$OBJS/ngx_config.pch"
+NGX_BUILD_PCH="-fhq=$OBJS/ngx_config.pch"
+NGX_USE_PCH="-fh=$OBJS/ngx_config.pch"
+
+LINK="\$(CC)"
+
+# link flags
+CORE_LINK="$CORE_LINK -l=nt"
+
+ngx_include_opt="-i="
+ngx_objout="-fo"
+ngx_binout="-fe="
+ngx_objext="obj"
+ngx_binext=".exe"
+
+ngx_regex_dirsep='\\'
+ngx_dirsep="\\"

@@ -12,7 +12,7 @@
 typedef struct {
     char       **tables;
     ngx_str_t    name;
-    unsigned     server;
+    ngx_uint_t   server;  /* unsigned     server:1; */
 } ngx_http_charset_t;
 
 
@@ -45,7 +45,7 @@ typedef struct {
 } ngx_http_charset_ctx_t;
 
 
-static void ngx_charset_recode(ngx_buf_t *b, char *table);
+static ngx_uint_t ngx_charset_recode(ngx_buf_t *b, char *table);
 
 static char *ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd,
                                    void *conf);
@@ -232,14 +232,31 @@ static ngx_int_t ngx_http_charset_body_filter(ngx_http_request_t *r,
 }
 
 
-static void ngx_charset_recode(ngx_buf_t *b, char *table)
+static ngx_uint_t ngx_charset_recode(ngx_buf_t *b, char *table)
 {
-    u_char  *p, c;
+    u_char      *p;
+    ngx_uint_t   change;
+
+    change = 0;
 
     for (p = b->pos; p < b->last; p++) {
-        c = *p;
-        *p = table[c];
+        if (*p != table[*p]) {
+            change = 1;
+            break;
+        }
     }
+
+    if (change) {
+
+        while (p < b->last) {
+            *p = table[*p];
+            p++;
+        }
+
+        b->in_file = 0;
+    }
+
+    return change;
 }
 
 
@@ -419,7 +436,9 @@ static ngx_int_t ngx_http_add_charset(ngx_array_t *charsets, ngx_str_t *name)
         return NGX_ERROR;
     }
 
+    c->tables = NULL;
     c->name = *name;
+    c->server = 0;
 
     return i;
 }

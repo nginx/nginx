@@ -8,24 +8,22 @@
 . auto/sources
 
 test -d $OBJS || mkdir $OBJS
+
+echo > $NGX_AUTO_HEADERS_H
 echo > $NGX_AUTO_CONFIG_H
 
 if [ $DEBUG = YES ]; then
     have=NGX_DEBUG . auto/have
 fi
 
-have=NGX_USE_HTTP_FILE_CACHE_UNIQ . auto/have
-have=NGX_SUPPRESS_WARN . auto/have
-
 
 if [ "$PLATFORM" != win32 ]; then
     . auto/headers
 fi
 
+. auto/cc/conf
 . auto/os/conf
 . auto/modules
-
-. auto/cc
 . auto/lib/conf
 
 if [ "$PLATFORM" != win32 ]; then
@@ -40,7 +38,8 @@ if [ "$PLATFORM" != win32 ]; then
     . auto/unix
 fi
 
-have=NGX_SMP . auto/have
+# STUB
+. auto/stubs
 
 have=NGX_PREFIX value="\"$PREFIX/\"" . auto/define
 have=NGX_SBIN_PATH value="\"$SBIN_PATH\"" . auto/define
@@ -50,5 +49,8 @@ if [ ".$ERROR_LOG_PATH" != "." ]; then
     have=NGX_ERROR_LOG_PATH value="\"$ERROR_LOG_PATH\"" . auto/define
 fi
 have=NGX_HTTP_LOG_PATH value="\"$HTTP_LOG_PATH\"" . auto/define
+
+have=NGX_USER value="\"$NGX_USER\"" . auto/define
+have=NGX_GROUP value="\"$NGX_GROUP\"" . auto/define
 
 . auto/summary

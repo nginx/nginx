@@ -173,7 +173,7 @@ static int ngx_epoll_init(ngx_cycle_t *cycle)
 #else
     ngx_event_flags = NGX_USE_LEVEL_EVENT
 #endif
-                      |NGX_HAVE_GREEDY_EVENT
+                      |NGX_USE_GREEDY_EVENT
                       |NGX_USE_EPOLL_EVENT;
 
     return NGX_OK;

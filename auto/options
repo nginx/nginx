@@ -1,21 +1,25 @@
 
 # Copyright (C) Igor Sysoev
 
+
 help=no
 
 PREFIX=
 SBIN_PATH=
 CONF_PATH=
-HTTP_LOG_PATH=
 ERROR_LOG_PATH=
 PID_PATH=
+NGX_USER=
+NGX_GROUP=
+HTTP_LOG_PATH=
 
-CC=gcc
+CC=${CC:-gcc}
 CPP=
-OBJS=objs
+NGX_OBJS=objs
 
 DEBUG=NO
-CC_OPT=
+NGX_CC_OPT=
+NGX_LD_OPT=
 CPU=NO
 
 TEST_BUILD_DEVPOLL=NO
@@ -77,10 +81,12 @@ do
         --conf-path=*)                   CONF_PATH="$value"         ;;
         --error-log-path=*)              ERROR_LOG_PATH="$value"    ;;
         --pid-path=*)                    PID_PATH="$value"          ;;
+        --user=*)                        NGX_USER="$value"          ;;
+        --group=*)                       NGX_GROUP="$value"         ;;
 
         --crossbuild=*)                  PLATFORM="$value"          ;;
 
-        --builddir=*)                    OBJS="$value"              ;;
+        --builddir=*)                    NGX_OBJS="$value"          ;;
 
         --with-rtsig_module)             EVENT_RTSIG=YES            ;;
         --with-select_module)            EVENT_SELECT=YES           ;;
@@ -109,7 +115,8 @@ do
 
         --with-cc=*)                     CC="$value"                ;;
         --with-cpp=*)                    CPP="$value"               ;;
-        --with-cc-opt=*)                 CC_OPT="$value"            ;;
+        --with-cc-opt=*)                 NGX_CC_OPT="$value"        ;;
+        --with-ld-opt=*)                 NGX_LD_OPT="$value"        ;;
         --with-cpu-opt=*)                CPU="$value"               ;;
         --with-debug)                    DEBUG=YES                  ;;
 
@@ -140,24 +147,35 @@ done
 
 
 if [ $help = yes ]; then
-    echo
-    echo "  --help                         this message"
-    echo
 
-    echo "  --without-select_module        disable select_module"
-    echo "  --without-poll_module          disable poll_module"
+cat << END
 
-    echo "  --without-http_rewrite_module  disable http_rewrite_module"
-    echo "  --without-http_gzip_module     disable http_gzip_module"
-    echo "  --without-http_proxy_module    disable http_proxy_module"
+  --help                           this message
 
-    echo "  --with-cc=NAME                 name of or path to C compiler"
-    echo
+  --user=USER                      set non-privilege user
+                                   for the worker processes
+  --group=GROUP                    set non-privilege group
+                                   for the worker processes
 
-    echo "  --with-pcre=DIR                path to PCRE library"
-    echo "  --with-md5=DIR                 path to md5 library"
-    echo "  --with-zlib=DIR                path to zlib library"
-    echo
+  --with-select_module             enable select module
+  --without-select_module          disable select module
+  --with-poll_module               enable poll module
+  --without-poll_module            disable poll module
+
+  --without-http_charset_module    disable ngx_http_charset_module
+  --without-http_rewrite_module    disable ngx_http_rewrite_module
+  --without-http_gzip_module       disable ngx_http_gzip_module
+  --without-http_proxy_module      disable ngx_http_proxy_module
+
+  --with-cc-opt=OPTIONS            additional options for compiler
+  --with-ld-opt=OPTIONS            additional options for linker
+
+  --with-pcre=DIR                  path to PCRE library
+  --with-md5=DIR                   path to md5 library
+  --with-zlib=DIR                  path to zlib library
+  --with-openssl=DIR               path to OpenSSL library
+
+END
 
     exit 1
 fi
@@ -181,8 +199,19 @@ if [ ".$PLATFORM" = ".win32" -a $EVENT_POLL = YES ]; then
 fi
 
 
-if [ ".$PREFIX" = "." ]; then
+if test -z "$PREFIX"; then
     PREFIX=/usr/local/nginx
+fi
+
+
+if test -z "$NGX_GROUP"; then
+    NGX_GROUP=NGX_USER
+fi
+
+
+if test -z "$NGX_USER"; then
+    NGX_USER=nobody
+    NGX_GROUP=nobody
 fi
 
 

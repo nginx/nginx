@@ -7,18 +7,18 @@ if [ $PCRE != NONE ]; then
     CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
     CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
 
-    case "$CC" in
+    case "$NGX_CC_NAME" in
 
-        cl | wcl386 | bcc32)
-            have=HAVE_PCRE . auto/have
+        msvc | owc | bcc)
+            have=NGX_PCRE . auto/have
             have=PCRE_STATIC . auto/have
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
             LINK_DEPS="$LINK_DEPS $PCRE/pcre.lib"
             CORE_LIBS="$CORE_LIBS $PCRE/pcre.lib"
         ;;
 
-        *icc)
-            have=HAVE_PCRE . auto/have
+        icc)
+            have=NGX_PCRE . auto/have
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
 
             LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre.a"
@@ -31,7 +31,7 @@ if [ $PCRE != NONE ]; then
         ;;
 
         *)
-            have=HAVE_PCRE . auto/have
+            have=NGX_PCRE . auto/have
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
             LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre.a"
             CORE_LIBS="$CORE_LIBS $PCRE/.libs/libpcre.a"
@@ -43,44 +43,25 @@ if [ $PCRE != NONE ]; then
 else
 
     if [ $PLATFORM != win32 ]; then
-            PCRE=NO
-            ngx_lib_cflags=
+        PCRE=NO
 
-            # Linux
-
-            ngx_lib_inc="#include <pcre.h>"
-            ngx_lib="PCRE library"
-            ngx_lib_test="pcre *re; re = pcre_compile(NULL, 0, NULL, 0, NULL)"
-            ngx_libs="-lpcre"
-            . auto/lib/test
-
+        # FreeBSD PCRE port requires --with-cc-opt="-I /usr/local/include"
+        #                            --with-ld-opt="-L /usr/local/lib"
+        
+        ngx_feature="PCRE library"
+        ngx_feature_name="PCRE"
+        ngx_feature_run=no
+        ngx_feature_incs="#include <pcre.h>"
+        ngx_feature_libs="-lpcre"
+        ngx_feature_test="pcre *re; re = pcre_compile(NULL, 0, NULL, 0, NULL)"
+        . auto/feature
 
         if [ $ngx_found = yes ]; then
-            have=HAVE_PCRE . auto/have
             CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
             CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
-            CORE_LIBS="$CORE_LIBS $ngx_libs"
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             PCRE=YES
             ngx_found=no
-
-        else
-            # FreeBSD PCRE port.
-
-            ngx_lib="PCRE library in /usr/local/"
-            ngx_lib_cflags="-I /usr/local/include"
-            ngx_libs="-L /usr/local/lib -lpcre"
-            . auto/lib/test
-        fi
-
-
-        if [ $ngx_found = yes ]; then
-            have=HAVE_PCRE . auto/have
-            CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
-            CORE_INCS="$CORE_INCS /usr/local/include"
-            CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
-            CORE_LIBS="$CORE_LIBS $ngx_libs"
-            PCRE=YES
         fi
     fi
-
 fi

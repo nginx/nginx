@@ -1,0 +1,48 @@
+
+# Copyright (C) Igor Sysoev
+
+
+# Borland C++ 5.5
+
+# optimizations
+
+# maximize speed
+CFLAGS="$CFLAGS -O2"
+
+case $CPU in
+    pentium)
+        # optimize for Pentium and Athlon
+        CPU_OPT="-5"
+    ;;
+
+    pentiumpro)
+        # optimize for Pentium Pro, Pentium II and Pentium III
+        CPU_OPT="-6"
+    ;;
+esac
+
+CFLAGS="$CFLAGS $CPU_OPT"
+
+# multithreaded
+CFLAGS="$CFLAGS -tWM"
+
+# stop on warning
+CFLAGS="$CFLAGS -w!"
+
+# disable logo
+CFLAGS="$CFLAGS -q"
+
+# precompiled headers
+CORE_DEPS="$CORE_DEPS $OBJS/ngx_config.csm"
+NGX_PCH="$OBJS/ngx_config.csm"
+NGX_BUILD_PCH="-H=$OBJS/ngx_config.csm"
+NGX_USE_PCH="-Hu -H=$OBJS/ngx_config.csm"
+
+LINK="\$(CC)"
+
+ngx_include_opt="-I"
+ngx_objout="-o"
+ngx_binout="-e"
+ngx_objext="obj"
+ngx_binext=".exe"
+ngx_dirsep='\\'

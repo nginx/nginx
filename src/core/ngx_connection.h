@@ -40,7 +40,7 @@ typedef struct {
     time_t            post_accept_timeout;     /* should be here because
                                                   of the deferred accept */
 
-    unsigned          new:1;
+    unsigned          open:1;
     unsigned          remain:1;
     unsigned          ignore:1;
 

@@ -1,0 +1,81 @@
+
+# Copyright (C) Igor Sysoev
+
+
+# MSVC 6.0 SP2
+
+# optimizations
+
+# maximize speed
+CFLAGS="$CFLAGS -O2"
+# enable global optimization
+CFLAGS="$CFLAGS -Og"
+# enable intrinsic functions
+CFLAGS="$CFLAGS -Oi"
+# inline expansion
+CFLAGS="$CFLAGS -Ob1"
+# enable frame pointer omission
+CFLAGS="$CFLAGS -Oy"
+# disable stack checking calls
+CFLAGS="$CFLAGS -Gs"
+
+case $CPU in
+    pentium)
+        # optimize for Pentium and Athlon
+        CPU_OPT="-G5"
+    ;;
+
+    pentiumpro)
+        # optimize for Pentium Pro, Pentium II and Pentium III
+        CPU_OPT="-G6"
+    ;;
+
+    pentium4)
+        # optimize for Pentium 4
+        #CPU_OPT="-G7"
+    ;;
+esac
+
+CFLAGS="$CFLAGS $CPU_OPT"
+
+
+# warnings
+
+#CFLAGS="$CFLAGS -W3"
+CFLAGS="$CFLAGS -W4"
+
+# stop on warning
+CFLAGS="$CFLAGS -WX"
+
+# link with libcmt.lib, multithreaded
+#LIBC="-MT"
+# link with msvcrt.dll
+LIBC="-MD"
+
+CFLAGS="$CFLAGS $LIBC"
+
+# disable logo
+CFLAGS="$CFLAGS -nologo"
+
+LINK="\$(CC)"
+
+# link flags
+CORE_LINK="$CORE_LINK -link -verbose:lib"
+
+# debug
+CFLAGS="$CFLAGS -Yd"
+CORE_LINK="$CORE_LINK -debug -debugtype:coff"
+
+# precompiled headers
+CORE_DEPS="$CORE_DEPS $OBJS/ngx_config.pch"
+NGX_PCH="$OBJS/ngx_config.pch"
+NGX_BUILD_PCH="-Ycngx_config.h -Fp$OBJS/ngx_config.pch"
+NGX_USE_PCH="-Yungx_config.h -Fp$OBJS/ngx_config.pch"
+
+ngx_objout="-Fo"
+ngx_binout="-Fe"
+ngx_objext="obj"
+ngx_binext=".exe"
+
+#ngx_regex_dirsep='\\'
+#ngx_dirsep="\\"

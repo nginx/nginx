@@ -158,6 +158,9 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.module_type = NGX_CORE_MODULE;
     conf.cmd_type = NGX_MAIN_CONF;
 
+#if 0
+    log->log_level = NGX_LOG_DEBUG_ALL;
+#endif
 
     if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
         ngx_destroy_pool(pool);
@@ -223,9 +226,6 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                                        NGX_FILE_RDWR,
                                        NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 
-#if 0
-            log->log_level = NGX_LOG_DEBUG_ALL;
-#endif
             ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
                            "log: %0X %d \"%s\"",
                            &file[i], file[i].fd, file[i].name.data);
@@ -310,14 +310,14 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                 }
 
                 if (nls[n].fd == -1) {
-                    nls[n].new = 1;
+                    nls[n].open = 1;
                 }
             }
 
         } else {
             ls = cycle->listening.elts;
             for (i = 0; i < cycle->listening.nelts; i++) {
-                ls[i].new = 1;
+                ls[i].open = 1;
             }
         }
 
@@ -366,7 +366,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         ls = cycle->listening.elts;
         for (i = 0; i < cycle->listening.nelts; i++) {
-            if (ls[i].fd == -1 || !ls[i].new) {
+            if (ls[i].fd == -1 || !ls[i].open) {
                 continue;
             }
 

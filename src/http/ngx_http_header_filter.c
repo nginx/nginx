@@ -317,10 +317,15 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.content_length == NULL) {
         if (r->headers_out.content_length_n >= 0) {
+            b->last = ngx_sprintf(b->last, "Content-Length: %O" CRLF,
+                                  r->headers_out.content_length_n);
+
+#if 0
             b->last += ngx_snprintf((char *) b->last,
                                 sizeof("Content-Length: ") + NGX_OFF_T_LEN + 2,
                                 "Content-Length: " OFF_T_FMT CRLF,
                                 r->headers_out.content_length_n);
+#endif
         }
     }
 
@@ -372,7 +377,7 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
     {
         b->last = ngx_cpymem(b->last, "Last-Modified: ",
                              sizeof("Last-Modified: ") - 1);
-        b->last += ngx_http_time(b->last, r->headers_out.last_modified_time);
+        b->last = ngx_http_time(b->last, r->headers_out.last_modified_time);
 
         *(b->last++) = CR; *(b->last++) = LF;
     }
@@ -389,10 +394,14 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
         if (clcf->keepalive_header
             && (r->headers_in.gecko || r->headers_in.konqueror))
         {
+            b->last = ngx_sprintf(b->last, "Keep-Alive: timeout=%T" CRLF,
+                                  clcf->keepalive_header);
+#if 0
             b->last += ngx_snprintf((char *) b->last,
                             sizeof("Keep-Alive: timeout=") + TIME_T_LEN + 2,
                             "Keep-Alive: timeout=" TIME_T_FMT CRLF,
                             clcf->keepalive_header);
+#endif
         }
 
     } else {

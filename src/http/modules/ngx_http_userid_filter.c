@@ -367,7 +367,7 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
 
     } else if (conf->expires) {
         p = ngx_cpymem(p, expires, sizeof("; expires=") - 1);
-        p += ngx_http_cookie_time(p, ngx_time() + conf->expires);
+        p = ngx_http_cookie_time(p, ngx_time() + conf->expires);
     }
 
     if (conf->domain.len > 1) {

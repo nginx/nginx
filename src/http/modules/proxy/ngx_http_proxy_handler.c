@@ -289,6 +289,8 @@ ngx_http_header_t ngx_http_proxy_headers_in[] = {
                          offsetof(ngx_http_proxy_headers_in_t, content_type) },
     { ngx_string("Content-Length"),
                        offsetof(ngx_http_proxy_headers_in_t, content_length) },
+    { ngx_string("Content-Encoding"),
+                     offsetof(ngx_http_proxy_headers_in_t, content_encoding) },
     { ngx_string("Last-Modified"),
                         offsetof(ngx_http_proxy_headers_in_t, last_modified) },
     { ngx_string("Location"),
@@ -400,7 +402,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 
 #if (HAVE_KQUEUE)
 
-    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
 
         if (!ev->pending_eof) {
             return;
@@ -1310,9 +1312,9 @@ static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
 
 static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data)
 {
-#if __FreeBSD__
-
     ssize_t *np = data;
+
+#if (NGX_FREEBSD)
 
     if (*np >= ngx_freebsd_net_inet_tcp_sendspace) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1323,15 +1325,12 @@ static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data)
         return NGX_CONF_ERROR;
     }
 
+#elif !(HAVE_SO_SNDLOWAT)
 
-#else
-
-#if 0
     ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                        "\"proxy_send_lowat\" is not supported, ignored");
 
     *np = 0;
-#endif
 
 #endif
 

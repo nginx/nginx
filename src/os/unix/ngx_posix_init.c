@@ -33,6 +33,12 @@ int ngx_os_init(ngx_log_t *log)
 }
 
 
+void ngx_os_status(ngx_log_t *log)
+{
+    ngx_posix_status(log);
+}
+
+
 #endif
 
 

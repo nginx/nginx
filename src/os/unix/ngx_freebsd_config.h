@@ -22,8 +22,8 @@
 #include <grp.h>
 #include <dirent.h>
 
-#include <sys/uio.h>
 #include <sys/filio.h>          /* FIONBIO */
+#include <sys/uio.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
@@ -41,11 +41,10 @@
 #include <libutil.h>            /* setproctitle() before 4.1 */
 #include <osreldate.h>
 #include <sys/sysctl.h>
+#include <sys/param.h>          /* ALIGN() */
 
 
 #if __FreeBSD_version < 400017
-
-#include <sys/param.h>          /* ALIGN() */
 
 /* FreeBSD 3.x has no CMSG_SPACE() at all and has the broken CMSG_DATA() */
 

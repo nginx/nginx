@@ -8,8 +8,6 @@
 #define _NGX_SOLARIS_CONFIG_H_INCLUDED_
 
 
-#define SOLARIS  1
-
 #define _REENTRANT
 
 #define _FILE_OFFSET_BITS  64   /* must be before <sys/types.h> */
@@ -28,8 +26,8 @@
 #include <grp.h>
 #include <dirent.h>
 
-#include <sys/uio.h>
 #include <sys/filio.h>          /* FIONBIO */
+#include <sys/uio.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 

@@ -2,18 +2,32 @@
 # Copyright (C) Igor Sysoev
 
 
+cat << END >> $NGX_AUTO_HEADERS_H
+
+#ifndef NGX_FREEBSD
+#define NGX_FREEBSD  1
+#endif
+
+END
+
+
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $FREEBSD_DEPS"
 CORE_SRCS="$UNIX_SRCS $FREEBSD_SRCS"
 
-PIPE="-pipe"
+ngx_spacer='
+'
 
 
-# __FreeBSD_version is the best way to determine whether
-# some capability exists and is safe to use
+# __FreeBSD_version and sysctl kern.osreldate are the best ways
+# to determine whether some capability exists and is safe to use.
+# __FreeBSD_version is used for the testing of the build enviroment.
+# sysctl kern.osreldate is used for the testing of the kernel capabilities.
 
 version=`grep "#define __FreeBSD_version" /usr/include/osreldate.h \
          | sed -e 's/^.* \(.*\)$/\1/'`
+
+osreldate=`/sbin/sysctl -n kern.osreldate`
 
 
 # setproctitle() in libutil
@@ -28,7 +42,7 @@ fi
 
 # sendfile
 
-if [ $version -gt 300007 ]; then
+if [ $osreldate -gt 300007 ]; then
     echo " + using sendfile()"
 
     have=HAVE_SENDFILE . auto/have
@@ -38,8 +52,8 @@ fi
 
 # kqueue
 
-if [ \( $version -lt 500000 -a $version -ge 410000 \) \
-     -o $version -ge 500011 ]
+if [ \( $osreldate -lt 500000 -a $osreldate -ge 410000 \) \
+     -o $osreldate -ge 500011 ]
 then
     echo " + using kqueue"
 
@@ -49,6 +63,8 @@ then
     CORE_SRCS="$CORE_SRCS $KQUEUE_SRCS"
     EVENT_FOUND=YES
 fi
+
+NGX_KQUEUE_CHECKED=YES
 
 
 # kqueue's NOTE_LAWAT

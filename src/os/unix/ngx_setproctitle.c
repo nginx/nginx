@@ -76,7 +76,7 @@ void ngx_setproctitle(char *title)
 {
     u_char     *p;
 
-#if (SOLARIS)
+#if (NGX_SOLARIS)
 
     ngx_int_t   i;
     size_t      size;
@@ -90,7 +90,7 @@ void ngx_setproctitle(char *title)
 
     p = ngx_cpystrn(p, (u_char *) title, ngx_os_argv_last - (char *) p);
 
-#if (SOLARIS)
+#if (NGX_SOLARIS)
 
     size = 0;
 

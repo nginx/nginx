@@ -104,7 +104,7 @@ int main(int argc, char *const *argv, char *const *envp)
     ngx_cycle_t      *cycle, init_cycle;
     ngx_core_conf_t  *ccf;
 
-#if defined __FreeBSD__
+#if (NGX_FREEBSD)
     ngx_debug_init();
 #endif
 
@@ -112,7 +112,7 @@ int main(int argc, char *const *argv, char *const *envp)
 
     ngx_time_init();
 
-#if (HAVE_PCRE)
+#if (NGX_PCRE)
     ngx_regex_init();
 #endif
 
@@ -136,11 +136,11 @@ int main(int argc, char *const *argv, char *const *envp)
         return 1;
     }
 
-    if (ngx_getopt(&init_cycle, argc, argv) == NGX_ERROR) {
+    if (ngx_save_argv(&init_cycle, argc, argv) == NGX_ERROR) {
         return 1;
     }
 
-    if (ngx_save_argv(&init_cycle, argc, argv) == NGX_ERROR) {
+    if (ngx_getopt(&init_cycle, argc, ngx_argv) == NGX_ERROR) {
         return 1;
     }
 
@@ -175,7 +175,7 @@ int main(int argc, char *const *argv, char *const *envp)
     if (ngx_test_config) {
         ngx_log_error(NGX_LOG_INFO, log, 0,
                       "the configuration file %s was tested successfully",
-                      init_cycle.conf_file.data);
+                      cycle->conf_file.data);
         return 0;
     }
 
@@ -387,7 +387,7 @@ static ngx_int_t ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 
     ngx_argc = argc;
 
-#if __FreeBSD__
+#if (NGX_FREEBSD)
 
     ngx_argv = (char **) argv;
 
@@ -462,28 +462,26 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #if !(WIN32)
 
-#if 0
     if (ccf->user == (uid_t) NGX_CONF_UNSET) {
 
-        pwd = getpwnam("nobody");
+        pwd = getpwnam(NGX_USER);
         if (pwd == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "getpwnam(\"nobody\") failed");
+                          "getpwnam(\"" NGX_USER "\") failed");
             return NGX_CONF_ERROR;
         }
 
         ccf->user = pwd->pw_uid;
 
-        grp = getgrnam("nobody");
+        grp = getgrnam(NGX_GROUP);
         if (grp == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "getgrnam(\"nobody\") failed");
+                          "getgrnam(\"" NGX_GROUP "\") failed");
             return NGX_CONF_ERROR;
         }
 
         ccf->group = grp->gr_gid;
     }
-#endif
 
     if (ccf->pid.len == 0) {
         ccf->pid.len = sizeof(NGX_PID_PATH) - 1;
@@ -522,12 +520,21 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_core_conf_t  *ccf = conf;
 
+    char             *group;
     struct passwd    *pwd;
     struct group     *grp;
     ngx_str_t        *value;
 
     if (ccf->user != (uid_t) NGX_CONF_UNSET) {
         return "is duplicate";
+    }
+
+    if (geteuid() != 0) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "the \"user\" directive makes sense only "
+                           "if the master process runs "
+                           "with super-user privileges, ignored");
+        return NGX_CONF_OK;
     }
 
     value = (ngx_str_t *) cf->args->elts;
@@ -541,14 +548,12 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ccf->user = pwd->pw_uid;
 
-    if (cf->args->nelts == 2) {
-        return NGX_CONF_OK;
-    }
+    group = (char *) ((cf->args->nelts == 2) ? value[1].data : value[2].data);
 
-    grp = getgrnam((const char *) value[2].data);
+    grp = getgrnam(group);
     if (grp == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
-                           "getgrnam(\"%s\") failed", value[2].data);
+                           "getgrnam(\"%s\") failed", group);
         return NGX_CONF_ERROR;
     }
 

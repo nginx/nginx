@@ -2,9 +2,14 @@
 # Copyright (C) Igor Sysoev
 
 
-echo $ngx_n "checking for $ngx_type size ..." $ngx_c
-echo >> $NGX_ERR
-echo "checking for $ngx_type size" >> $NGX_ERR
+echo $ngx_n "checking for $ngx_type size ...$ngx_c"
+
+cat << END >> $NGX_AUTOCONF_ERR
+
+----------------------------------------
+checking for $ngx_type size
+
+END
 
 ngx_size=
 
@@ -12,11 +17,11 @@ cat << END > $NGX_AUTOTEST.c
 
 #include <sys/types.h>
 #include <sys/time.h>
-$NGX_UNISTD_H
+$NGX_INCLUDE_UNISTD_H
 #include <signal.h>
 #include <sys/resource.h>
-$NGX_INTTYPES_H
-$NGX_AUTO_CONFIG
+$NGX_INCLUDE_INTTYPES_H
+$NGX_INCLUDE_AUTO_CONFIG_H
 
 int main() {
     printf("%d", sizeof($ngx_type));
@@ -25,14 +30,19 @@ int main() {
 
 END
 
-eval "$CC $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c >> $NGX_ERR 2>&1"
+
+ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c"
+eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
+
 
 if [ -x $NGX_AUTOTEST ]; then
     ngx_size=`$NGX_AUTOTEST`
     echo " $ngx_size bytes"
 fi
 
-rm $NGX_AUTOTEST*
+
+rm -f $NGX_AUTOTEST
+
 
 case $ngx_size in
     4)
@@ -58,5 +68,13 @@ case $ngx_size in
     *)
         echo
         echo "$0: error: can not detect $ngx_type size"
+
+        echo "----------"    >> $NGX_AUTOCONF_ERR
+        cat $NGX_AUTOTEST.c  >> $NGX_AUTOCONF_ERR
+        echo "----------"    >> $NGX_AUTOCONF_ERR
+        echo $ngx_test       >> $NGX_AUTOCONF_ERR
+        echo "----------"    >> $NGX_AUTOCONF_ERR
+
         exit 1
 esac
+

@@ -39,7 +39,7 @@ void ngx_event_accept(ngx_event_t *ev)
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         ev->available = 1;
 
-    } else if (!(ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)) {
+    } else if (!(ngx_event_flags & NGX_USE_KQUEUE_EVENT)) {
         ev->available = ecf->multi_accept;
     }
 
@@ -118,7 +118,7 @@ void ngx_event_accept(ngx_event_t *ev)
                           ls->listening->addr_text.data);
 
             if (err == NGX_ECONNABORTED) {
-                if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+                if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
                     ev->available--;
                 }
 
@@ -342,7 +342,7 @@ void ngx_event_accept(ngx_event_t *ev)
 
         ls->listening->handler(c);
 
-        if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+        if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
             ev->available--;
         }
 

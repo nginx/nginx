@@ -1,0 +1,109 @@
+
+# Copyright (C) Igor Sysoev
+
+
+# gcc 2.7.2.3, 2.8.1, 2.95.4,
+#     3.0.4, 3.1.1, 3.2.3, 3.3.2, 3.3.3, 3.3.4, 3.4
+
+
+# Solaris 7's /usr/ccs/bin/as does not support "-pipe"
+
+CC_TEST_FLAGS="-pipe"
+
+ngx_feature="gcc -pipe switch" 
+ngx_feature_name=
+ngx_feature_run=no
+ngx_feature_incs=
+ngx_feature_libs=
+ngx_feature_test=
+. auto/feature
+
+CC_TEST_FLAGS=
+
+if [ $ngx_found = yes ]; then
+    PIPE="-pipe"
+fi
+
+
+# optimizations
+
+#CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"
+
+case $CPU in
+    pentium)
+        # optimize for Pentium and Athlon
+        CPU_OPT="-march=pentium"
+    ;;
+
+    pentiumpro)
+        # optimize for Pentium Pro, Pentium II and Pentium III
+        CPU_OPT="-march=pentiumpro"
+    ;;
+
+    pentium4)
+        # optimize for Pentium 4, gcc 3.x
+        CPU_OPT="-march=pentium4"
+    ;;
+
+    sparc64)
+        # build 64-bit UltraSparc binary
+        CPU_OPT="-m64"
+        CORE_LINK="$CORE_LINK -m64"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS -m64"
+    ;;
+
+esac
+
+
+# STUB for batch builds
+if [ $CC = gcc27 ]; then CPU_OPT=; fi
+
+
+CFLAGS="$CFLAGS $PIPE $CPU_OPT"
+
+if [ ".$PCRE_OPT" = "." ]; then
+    PCRE_OPT="-O2 -fomit-frame-pointer $PIPE $CPU_OPT"
+else
+    PCRE_OPT="$PCRE_OPT $PIPE"
+fi
+
+if [ ".$MD5_OPT" = "." ]; then
+    MD5_OPT="-O2 -fomit-frame-pointer $PIPE $CPU_OPT"
+else
+    MD5_OPT="$MD5_OPT $PIPE"
+fi
+
+if [ ".$ZLIB_OPT" = "." ]; then
+    ZLIB_OPT="-O2 -fomit-frame-pointer $PIPE $CPU_OPT"
+else
+    ZLIB_OPT="$ZLIB_OPT $PIPE"
+fi
+
+
+# warnings
+
+CFLAGS="$CFLAGS -O -W"
+CFLAGS="$CFLAGS -Wall -Wpointer-arith"
+#CFLAGS="$CFLAGS -Wconversion" 
+#CFLAGS="$CFLAGS -Winline"
+
+# we have a lot of the unused function arguments
+CFLAGS="$CFLAGS -Wno-unused"
+
+# stop on warning
+CFLAGS="$CFLAGS -Werror"
+
+# debug
+CFLAGS="$CFLAGS -g"
+
+# DragonFly's gcc3 generates DWARF
+#CFLAGS="$CFLAGS -g -gstabs"
+
+if [ ".$CPP" = "." ]; then
+    CPP="$CC -E"
+fi
+
+LINK="\$(CC)"
+
+
+CC_STRONG="-Wall -Werror"

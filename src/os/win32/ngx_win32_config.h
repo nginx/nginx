@@ -30,7 +30,12 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+
 #ifdef _MSC_VER
+
+/* the end of the precompiled headers */
+#pragma hdrstop
+
 #pragma warning(default:4201)
 
 

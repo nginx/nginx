@@ -28,7 +28,7 @@ typedef pthread_t                    ngx_tid_t;
 #define ngx_thread_self()            pthread_self()
 #define ngx_log_tid                  (int) ngx_thread_self()
 
-#if defined(__FreeBSD__) && !defined(NGX_LINUXTHREADS)
+#if (NGX_FREEBSD) && !(NGX_LINUXTHREADS)
 #define TID_T_FMT                    PTR_FMT
 #else
 #define TID_T_FMT                    "%d"

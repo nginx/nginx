@@ -29,8 +29,8 @@ case $PLATFORM in
         cp auto/lib/pcre/patch.config.in $PCRE
         cp auto/lib/pcre/$makefile $PCRE
 
-        pcre=`echo $PCRE | sed -e "s/\//$DIRSEP/g"`
-        line=`echo $PCRE/pcre.h: | sed -e "s/\//$DIRSEP/g"`
+        pcre=`echo $PCRE | sed -e "s/\//$ngx_regex_dirsep/g"`
+        line=`echo $PCRE/pcre.h: | sed -e "s/\//$ngx_regex_dirsep/g"`
 
         echo "$line"                                              >> $MAKEFILE
         echo "	cd $pcre"                                         >> $MAKEFILE
@@ -39,7 +39,7 @@ case $PLATFORM in
         echo                                                      >> $MAKEFILE
 
         line="$PCRE/pcre.lib:	$PCRE/pcre.h"
-        line=`echo $line | sed -e "s/\//$DIRSEP/g"`
+        line=`echo $line | sed -e "s/\//$ngx_regex_dirsep/g"`
 
         echo "$line"                                              >> $MAKEFILE
         echo "	cd $pcre"                                         >> $MAKEFILE

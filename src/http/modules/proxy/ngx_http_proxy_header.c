@@ -113,6 +113,11 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
             continue;
         }
 
+        if (&h[i] == headers_in->content_encoding) {
+            r->headers_out.content_encoding = ho;
+            continue;
+        }
+
         if (&h[i] == headers_in->last_modified) {
             r->headers_out.last_modified = ho;
             /* TODO: update r->headers_out.last_modified_time */

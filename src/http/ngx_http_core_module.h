@@ -96,13 +96,15 @@ typedef struct {
     ngx_http_core_srv_conf_t  *core_srv_conf;  /* default server conf
                                                   for this address:port */
 
-    unsigned                   default_server:1;
+    ngx_uint_t                 default_server; /* unsigned  default_server:1; */
 } ngx_http_in_addr_t;
 
 
 typedef struct {
     ngx_str_t                  name;
     ngx_http_core_srv_conf_t  *core_srv_conf; /* virtual name server conf */
+
+    ngx_uint_t                 wildcard;  /*unsigned  wildcard:1; */
 } ngx_http_server_name_t;
 
 
@@ -135,7 +137,7 @@ typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 struct ngx_http_core_loc_conf_s {
     ngx_str_t     name;          /* location name */
 
-#if (HAVE_PCRE)
+#if (NGX_PCRE)
     ngx_regex_t  *regex;
 #endif
 

@@ -175,11 +175,14 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_timer) {
             ngx_timer = 0;
-            ngx_start_worker_processes(cycle, ccf->worker_processes,
-                                       NGX_PROCESS_JUST_RESPAWN);
-            live = 1;
-            ngx_signal_worker_processes(cycle,
+
+            if (!ngx_noaccepting) {
+                ngx_start_worker_processes(cycle, ccf->worker_processes,
+                                           NGX_PROCESS_JUST_RESPAWN);
+                live = 1;
+                ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+            }
         }
 
         if (ngx_reconfigure) {
@@ -578,16 +581,14 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    if (ccf->group != (gid_t) NGX_CONF_UNSET) {
+    if (geteuid() == 0) {
         if (setgid(ccf->group) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "setgid(%d) failed", ccf->group);
             /* fatal */
             exit(2);
         }
-    }
 
-    if (ccf->user != (uid_t) NGX_CONF_UNSET) {
         if (setuid(ccf->user) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "setuid(%d) failed", ccf->user);
@@ -596,7 +597,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
     }
 
-#if (HAVE_PR_SET_DUMPABLE)
+#if (NGX_HAVE_PR_SET_DUMPABLE)
 
     /* allow coredump after setuid() in Linux 2.4.x */
 

@@ -14,8 +14,8 @@
 
 void ngx_time_init();
 void ngx_time_update(time_t s);
-size_t ngx_http_time(u_char *buf, time_t t);
-size_t ngx_http_cookie_time(u_char *buf, time_t t);
+u_char *ngx_http_time(u_char *buf, time_t t);
+u_char *ngx_http_cookie_time(u_char *buf, time_t t);
 void ngx_gmtime(time_t t, ngx_tm_t *tp);
 
 #if (NGX_THREADS)

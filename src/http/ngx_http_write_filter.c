@@ -125,6 +125,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         if (!last) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           "the http output chain is empty");
+            return NGX_ERROR;
         }
         return NGX_OK;
     }

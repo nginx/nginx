@@ -42,8 +42,14 @@ typedef struct tm      ngx_tm_t;
 #endif
 
 
-#if (SOLARIS)
+#if (NGX_SOLARIS)
+
 #define ngx_timezone(isdst) (- (isdst ? altzone : timezone) / 60)
+
+#else
+
+#define ngx_timezone(isdst) (- (isdst ? timezone + 3600 : timezone) / 60)
+
 #endif
 
 
