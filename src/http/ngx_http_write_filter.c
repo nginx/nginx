@@ -62,7 +62,7 @@ ngx_module_t  ngx_http_write_filter_module = {
     ngx_http_write_filter_commands,        /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     ngx_http_write_filter_init,            /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -82,7 +82,8 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                             sizeof(ngx_http_write_filter_ctx_t), NGX_ERROR);
     }
 
-    size = flush = 0;
+    size = 0;
+    flush = 0;
     last = 0;
     ll = &ctx->out;
 

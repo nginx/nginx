@@ -86,7 +86,6 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
     tf->warn = "a client request body is buffered to a temporary file";
     /* tf->persistent = 0; */
 
-    rb->buf_size = p->lcf->request_buffer_size;
     rb->handler = ngx_http_proxy_init_upstream;
     rb->data = p;
     /* rb->bufs = NULL; */
@@ -1179,7 +1178,10 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->temp_file->file.log = r->connection->log;
     ep->temp_file->path = p->lcf->temp_path;
     ep->temp_file->pool = r->pool;
-    if (!p->cachable) {
+
+    if (p->cachable) {
+        ep->temp_file->persistent = 1;
+    } else {
         ep->temp_file->warn = "an upstream response is buffered "
                               "to a temporary file";
     }

@@ -14,11 +14,6 @@ typedef struct {
 static size_t ngx_accept_log_error(void *data, char *buf, size_t len);
 
 
-ngx_atomic_t  *ngx_accept_mutex_ptr;
-ngx_atomic_t  *ngx_accept_mutex;
-ngx_uint_t     ngx_accept_mutex_held;
-
-
 void ngx_event_accept(ngx_event_t *ev)
 {
     ngx_uint_t             instance, rinstance, winstance, accepted;

@@ -30,8 +30,7 @@
 #define ngx_delete_file_n        "unlink()"
 
 
-#define ngx_open_tempfile(name, persistent)                                 \
-                         open((const char *) name, O_CREAT|O_EXCL|O_RDWR, 0600)
+int ngx_open_tempfile(u_char *name, ngx_uint_t persistent);
 #define ngx_open_tempfile_n      "open()"
 
 

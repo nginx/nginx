@@ -374,9 +374,12 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 
 typedef struct {
-    int          connections;
-    int          use;
+    ngx_int_t    connections;
+    ngx_int_t    use;
+
     ngx_flag_t   multi_accept;
+    ngx_flag_t   accept_mutex;
+
     u_char      *name;
 } ngx_event_conf_t;
 
@@ -407,7 +410,7 @@ extern ngx_uint_t             ngx_accept_mutex_held;
            }
 
 
-extern int                    ngx_event_flags;
+extern ngx_uint_t             ngx_event_flags;
 extern ngx_module_t           ngx_events_module;
 extern ngx_module_t           ngx_event_core_module;
 

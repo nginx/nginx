@@ -124,6 +124,7 @@ typedef struct {
     size_t        client_max_body_size;    /* client_max_body_size */
     size_t        send_lowat;              /* send_lowat */
     size_t        discarded_buffer_size;   /* discarded_buffer_size */
+    size_t        client_body_buffer_size; /* client_body_buffer_size */
 
     ngx_msec_t    client_body_timeout;     /* client_body_timeout */
     ngx_msec_t    send_timeout;            /* send_timeout */

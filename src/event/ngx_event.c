@@ -28,7 +28,8 @@ extern ngx_event_module_t ngx_epoll_module_ctx;
 #include <ngx_aio_module.h>
 #endif
 
-static int ngx_event_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle);
 static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 static char *ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -39,11 +40,16 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle);
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
-int                    ngx_event_flags;
-ngx_event_actions_t    ngx_event_actions;
+static ngx_uint_t                 ngx_event_max_module;
+
+ngx_uint_t                        ngx_event_flags;
+ngx_event_actions_t               ngx_event_actions;
 
 
-static int             ngx_event_max_module;
+ngx_atomic_t                     *ngx_accept_mutex_ptr;
+ngx_atomic_t                     *ngx_accept_mutex;
+ngx_uint_t                        ngx_accept_mutex_held;
+
 
 ngx_thread_volatile ngx_event_t  *ngx_posted_events;
 #if (NGX_THREADS)
@@ -101,6 +107,13 @@ static ngx_command_t  ngx_event_core_commands[] = {
       offsetof(ngx_event_conf_t, multi_accept),
       NULL },
 
+    { ngx_string("accept_mutex"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      0,
+      offsetof(ngx_event_conf_t, accept_mutex),
+      NULL },
+
       ngx_null_command
 };
 
@@ -119,24 +132,63 @@ ngx_module_t  ngx_event_core_module = {
     &ngx_event_core_module_ctx,            /* module context */
     ngx_event_core_commands,               /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
-    NULL,                                  /* init module */
-    ngx_event_init                         /* init child */
+    ngx_event_module_init,                 /* init module */
+    ngx_event_process_init                 /* init process */
 };
 
 
-static int ngx_event_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
+{
+    ngx_core_conf_t   *ccf;
+    ngx_event_conf_t  *ecf;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ccf->master == 0) {
+        return NGX_OK;
+    }
+
+    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
+
+    if (ecf->accept_mutex == 0) {
+        return NGX_OK;
+    }
+
+    ngx_accept_mutex_ptr = mmap(NULL, sizeof(ngx_atomic_t),
+                                PROT_READ|PROT_WRITE,
+                                MAP_ANON|MAP_SHARED, -1, 0);
+
+    if (ngx_accept_mutex_ptr == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "mmap(MAP_ANON|MAP_SHARED) failed");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 {
     ngx_uint_t           m, i;
     ngx_socket_t         fd;
     ngx_event_t         *rev, *wev;
     ngx_listening_t     *s;
     ngx_connection_t    *c;
+    ngx_core_conf_t     *ccf;
     ngx_event_conf_t    *ecf;
     ngx_event_module_t  *module;
 #if (WIN32)
     ngx_iocp_conf_t     *iocpcf;
 #endif
 
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ccf->worker_processes > 1 && ngx_accept_mutex_ptr) {
+        ngx_accept_mutex = ngx_accept_mutex_ptr;
+        ngx_accept_mutex_held = 1;
+    }
 
 #if (NGX_THREADS)
     if (!(ngx_posted_events_mutex = ngx_mutex_init(cycle->log, 0))) {
@@ -470,6 +522,7 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
     ecf->connections = NGX_CONF_UNSET;
     ecf->use = NGX_CONF_UNSET;
     ecf->multi_accept = NGX_CONF_UNSET;
+    ecf->accept_mutex = NGX_CONF_UNSET;
     ecf->name = (void *) NGX_CONF_UNSET;
 
     return ecf;
@@ -542,6 +595,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     cycle->connection_n = ecf->connections;
 
     ngx_conf_init_value(ecf->multi_accept, 0);
+    ngx_conf_init_value(ecf->accept_mutex, 1);
 
     return NGX_CONF_OK;
 }

@@ -11,10 +11,10 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r)
 {
-    ssize_t       size;
-    ngx_hunk_t   *h;
-    ngx_chain_t  *cl;
-
+    ssize_t                    size;
+    ngx_hunk_t                *h;
+    ngx_chain_t               *cl;
+    ngx_http_core_loc_conf_t  *clcf;
 
     size = r->header_in->last - r->header_in->pos;
 
@@ -47,15 +47,18 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r)
     }
 
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
     r->request_body->rest = r->headers_in.content_length_n - size;
 
     if (r->request_body->rest
-                < r->request_body->buf_size + (r->request_body->buf_size >> 2))
+                             < clcf->client_body_buffer_size
+                                        + (clcf->client_body_buffer_size >> 2))
     {
         size = r->request_body->rest;
 
     } else {
-        size = r->request_body->buf_size;
+        size = clcf->client_body_buffer_size;
     }
 
     ngx_test_null(r->request_body->buf, ngx_create_temp_hunk(r->pool, size),

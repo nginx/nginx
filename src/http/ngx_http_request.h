@@ -155,7 +155,6 @@ typedef struct {
     ngx_chain_t       *bufs;
     ngx_hunk_t        *buf;
     size_t             rest;
-    size_t             buf_size;
     void             (*handler) (void *data); 
     void              *data;
 } ngx_http_request_body_t;

@@ -212,6 +212,9 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
         return;
     }
 
+    ngx_accept_mutex_held = 0;
+    ngx_accept_mutex = NULL;
+
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
         fd = ls[i].fd;

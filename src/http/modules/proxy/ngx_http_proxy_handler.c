@@ -60,13 +60,6 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       0,
       NULL },
 
-    { ngx_string("proxy_request_buffer_size"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_proxy_loc_conf_t, request_buffer_size),
-      NULL },
-
     { ngx_string("proxy_connect_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -781,7 +774,6 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     */
 
-    conf->request_buffer_size = NGX_CONF_UNSET_SIZE;
     conf->connect_timeout = NGX_CONF_UNSET_MSEC;
     conf->send_timeout = NGX_CONF_UNSET_MSEC;
 
@@ -822,8 +814,6 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     ngx_http_proxy_loc_conf_t *prev = parent;
     ngx_http_proxy_loc_conf_t *conf = child;
 
-    ngx_conf_merge_size_value(conf->request_buffer_size,
-                              prev->request_buffer_size, 8192);
     ngx_conf_merge_msec_value(conf->connect_timeout,
                               prev->connect_timeout, 60000);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 30000);

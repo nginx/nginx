@@ -67,16 +67,27 @@ ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
 
 ngx_inline static void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
-    if (ev->timer_set) {
-        ngx_del_timer(ev);
-    }
+    ngx_int_t  key;
 
-    ev->rbtree_key = (ngx_int_t)
+    key = (ngx_int_t)
               (ngx_elapsed_msec / NGX_TIMER_RESOLUTION * NGX_TIMER_RESOLUTION
                                               + timer) / NGX_TIMER_RESOLUTION;
 #if 0
                              (ngx_elapsed_msec + timer) / NGX_TIMER_RESOLUTION;
 #endif
+
+    if (ev->timer_set) {
+        if (key - ev->rbtree_key < 50) {
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                           "event timer: %d, old: %d, new: %d",
+                            ngx_event_ident(ev->data), ev->rbtree_key, key);
+            return;
+        }
+
+        ngx_del_timer(ev);
+    }
+
+    ev->rbtree_key = key;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "event timer add: %d: %d",

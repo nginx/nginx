@@ -375,7 +375,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-#if 0
+#if 1
         if (ngx_accept_mutex_held == 0 && timer == 0) {
             /* STUB */ timer = 500;
         }

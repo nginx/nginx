@@ -101,6 +101,20 @@ ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 }
 
 
+int ngx_open_tempfile(u_char *name, ngx_uint_t persistent)
+{
+    ngx_fd_t  fd;
+
+    fd = open((const char *) name, O_CREAT|O_EXCL|O_RDWR, 0600);
+
+    if (fd != -1 && !persistent) {
+        unlink((const char *) name);
+    }
+
+    return fd;
+}
+
+
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
                                 off_t offset, ngx_pool_t *pool)
 {
