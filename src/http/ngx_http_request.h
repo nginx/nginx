@@ -228,7 +228,7 @@ struct ngx_http_request_s {
     ngx_temp_file_t     *temp_file;
     ngx_chain_t         *request_hunks;
     ngx_hunk_t          *request_body_hunk;
-    size_t               request_body_len;
+    size_t               remaining_body_len;
     void               (*request_body_handler) (void *data); 
     void                *data;
 

@@ -19,6 +19,9 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
     size = r->header_in->last - r->header_in->pos;
 
     if (size) {
+
+        /* there is the pre-read part of the request body */
+
         ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
 
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
@@ -28,19 +31,23 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
         ngx_alloc_link_and_set_hunk(r->request_hunks, h, r->pool, NGX_ERROR);
 
         if (size >= r->headers_in.content_length_n) {
-            r->header_in->pos += r->headers_in.content_length_n;
 
+            /* the whole request body was pre-read */
+
+            r->header_in->pos += r->headers_in.content_length_n;
             return NGX_OK;
         }
 
         r->header_in->pos = r->header_in->last;
     }
 
-    r->request_body_len = r->headers_in.content_length_n - size;
 
-    if (r->request_body_len < request_buffer_size + (request_buffer_size >> 2))
+    r->remaining_body_len = r->headers_in.content_length_n - size;
+
+    if (r->remaining_body_len
+                            < request_buffer_size + (request_buffer_size >> 2))
     {
-        size = r->request_body_len;
+        size = r->remaining_body_len;
 
     } else {
         size = request_buffer_size;
@@ -116,8 +123,8 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 
         size = r->request_body_hunk->end - r->request_body_hunk->last;
 
-        if (size > r->request_body_len) {
-            size = r->request_body_len;
+        if (size > r->remaining_body_len) {
+            size = r->remaining_body_len;
         }
 
         n = ngx_recv(c, r->request_body_hunk->last, size);
@@ -147,9 +154,9 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         }
 
         r->request_body_hunk->last += n;
-        r->request_body_len -= n;
+        r->remaining_body_len -= n;
 
-        if (r->request_body_len == 0) {
+        if (r->remaining_body_len == 0) {
             break;
         }
 
@@ -160,9 +167,9 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http client request body left " SIZE_T_FMT,
-                   r->request_body_len);
+                   r->remaining_body_len);
 
-    if (r->request_body_len) {
+    if (r->remaining_body_len) {
         return NGX_AGAIN;
     }
 
