@@ -401,7 +401,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 
         if (!p->cachable && p->upstream->peer.connection) {
             ngx_log_error(NGX_LOG_INFO, ev->log, ev->kq_errno,
-                          "kevent() reported that client have closed "
+                          "kevent() reported that client closed "
                           "prematurely connection, "
                           "so upstream connection is closed too");
             ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
@@ -409,7 +409,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
         }
 
         ngx_log_error(NGX_LOG_INFO, ev->log, ev->kq_errno,
-                      "kevent() reported that client have closed "
+                      "kevent() reported that client closed "
                       "prematurely connection");
 
         if (p->upstream == NULL || p->upstream->peer.connection == NULL) {
@@ -464,14 +464,14 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 
     if (!p->cachable && p->upstream->peer.connection) {
         ngx_log_error(NGX_LOG_INFO, ev->log, err,
-                      "client have closed prematurely connection, "
+                      "client closed prematurely connection, "
                       "so upstream connection is closed too");
         ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
         return;
     }
 
     ngx_log_error(NGX_LOG_INFO, ev->log, err,
-                  "client have closed prematurely connection");
+                  "client closed prematurely connection");
 
     if (p->upstream == NULL || p->upstream->peer.connection == NULL) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);

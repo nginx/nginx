@@ -2,7 +2,7 @@
 #define _NGINX_H_INCLUDED_
 
 
-#define NGINX_VER          "nginx/0.0.11"
+#define NGINX_VER          "nginx/0.0.12"
 
 #define NGINX_VAR          "NGINX"
 #define NGX_NEWPID_EXT     ".newbin"

@@ -37,12 +37,22 @@ typedef struct {
 } ngx_http_rewrite_srv_conf_t;
 
 
+typedef struct {
+    ngx_str_t     redirect;
+} ngx_http_rewrite_loc_conf_t;
+
+
 static void *ngx_http_rewrite_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_rewrite_merge_srv_conf(ngx_conf_t *cf,
                                              void *parent, void *child);
+static void *ngx_http_rewrite_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
                                    void *conf);
+static char *ngx_http_redirect(ngx_conf_t *cf, void *post, void *data);
 static ngx_int_t ngx_http_rewrite_init(ngx_cycle_t *cycle);
+
+
+static ngx_conf_post_handler_pt  ngx_http_redirect_p = ngx_http_redirect;
 
 
 static ngx_command_t  ngx_http_rewrite_commands[] = {
@@ -53,6 +63,13 @@ static ngx_command_t  ngx_http_rewrite_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
       NULL },
+
+    { ngx_string("redirect"),
+      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      &ngx_http_redirect_p },
 
     { ngx_string("rewrite_log"),
       NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -74,7 +91,7 @@ ngx_http_module_t  ngx_http_rewrite_module_ctx = {
     ngx_http_rewrite_create_srv_conf,      /* create server configuration */
     ngx_http_rewrite_merge_srv_conf,       /* merge server configuration */
 
-    NULL,                                  /* create location configration */
+    ngx_http_rewrite_create_loc_conf,      /* create location configration */
     NULL,                                  /* merge location configration */
 };
 
@@ -203,6 +220,43 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
 }
 
 
+static ngx_int_t ngx_http_redirect_handler(ngx_http_request_t *r)
+{
+    u_char                       *p;
+    ngx_http_rewrite_loc_conf_t  *rlcf;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http redirect handler");
+
+    rlcf = ngx_http_get_module_loc_conf(r, ngx_http_rewrite_module);
+
+    r->headers_out.location = ngx_list_push(&r->headers_out.headers);
+    if (r->headers_out.location == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (rlcf->redirect.data[0] != '/') {
+        r->headers_out.location->key.len = sizeof("Location") - 1;
+        r->headers_out.location->key.data = (u_char *) "Location";
+    }
+
+    r->headers_out.location->value.len =  rlcf->redirect.len
+                                          + r->unparsed_uri.len;
+    r->headers_out.location->value.data = ngx_palloc(r->pool,
+                                           r->headers_out.location->value.len);
+
+    if (r->headers_out.location->value.data == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    p = ngx_cpymem(r->headers_out.location->value.data, rlcf->redirect.data,
+                   rlcf->redirect.len);
+    p = ngx_cpystrn(p, r->unparsed_uri.data + 1, r->unparsed_uri.len);
+
+    return NGX_HTTP_MOVED_TEMPORARILY;
+}
+
+
 static void *ngx_http_rewrite_create_srv_conf(ngx_conf_t *cf)
 {
     ngx_http_rewrite_srv_conf_t  *conf;
@@ -229,6 +283,18 @@ static char *ngx_http_rewrite_merge_srv_conf(ngx_conf_t *cf,
     ngx_conf_merge_value(conf->log, prev->log, 0);
 
     return NGX_CONF_OK;
+}
+
+
+static void *ngx_http_rewrite_create_loc_conf(ngx_conf_t *cf)
+{
+    ngx_http_rewrite_loc_conf_t  *conf;
+
+    if (!(conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_rewrite_loc_conf_t)))) {
+        return NGX_CONF_ERROR;
+    }
+
+    return conf;
 }
 
 
@@ -361,6 +427,17 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
             }
         }
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_http_redirect(ngx_conf_t *cf, void *post, void *data)
+{
+    ngx_http_core_loc_conf_t  *clcf;
+
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+    clcf->handler = ngx_http_redirect_handler;
 
     return NGX_CONF_OK;
 }

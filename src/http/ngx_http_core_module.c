@@ -234,13 +234,6 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
-    { ngx_string("keepalive_buffers"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, keepalive_buffers),
-      NULL },
-
     { ngx_string("lingering_time"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -1395,7 +1388,6 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->limit_rate = NGX_CONF_UNSET_SIZE;
     lcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     lcf->keepalive_header = NGX_CONF_UNSET;
-    lcf->keepalive_buffers = NGX_CONF_UNSET;
     lcf->lingering_time = NGX_CONF_UNSET_MSEC;
     lcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
     lcf->reset_timedout_connection = NGX_CONF_UNSET;
@@ -1484,7 +1476,6 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                               prev->keepalive_timeout, 75000);
     ngx_conf_merge_sec_value(conf->keepalive_header,
                               prev->keepalive_header, 0);
-    ngx_conf_merge_value(conf->keepalive_buffers, prev->keepalive_buffers, 1);
     ngx_conf_merge_msec_value(conf->lingering_time,
                               prev->lingering_time, 30000);
     ngx_conf_merge_msec_value(conf->lingering_timeout,
@@ -1545,6 +1536,7 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     port = ngx_atoi(&addr[p], args[1].len - p);
+
     if (port == NGX_ERROR && p == 0) {
 
         /* "listen host" */
@@ -1564,9 +1556,10 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ls->addr = INADDR_ANY;
         ls->port = (in_port_t) port;
         return NGX_CONF_OK;
-    }
 
-    ls->port = (in_port_t) port;
+    } else {
+        ls->port = (in_port_t) port;
+    }
 
     ls->addr = inet_addr((const char *) addr);
     if (ls->addr == INADDR_NONE) {

@@ -197,7 +197,13 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
     hc = c->data;
 
-    if (hc == NULL) {
+    if (hc) {
+
+#if (NGX_STAT_STUB)
+        (*ngx_stat_reading)++;
+#endif
+
+    } else {
         if (!(hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t)))) {
 
 #if (NGX_STAT_STUB)
@@ -219,10 +225,6 @@ static void ngx_http_init_request(ngx_event_t *rev)
         if (hc->nbusy) {
             r->header_in = hc->busy[0];
         }
-
-#if (NGX_STAT_STUB)
-        (*ngx_stat_reading)++;
-#endif
 
     } else {
         if (!(r = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t)))) {
@@ -683,7 +685,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         /* NGX_AGAIN: a request line parsing is still incomplete */
 
-        if (r->header_in->last == r->header_in->end) {
+        if (r->header_in->pos == r->header_in->end) {
 
             rv = ngx_http_alloc_large_header_buffer(r, 1);
 
@@ -728,7 +730,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
         if (rc == NGX_AGAIN) {
 
-            if (r->header_in->last == r->header_in->end) {
+            if (r->header_in->pos == r->header_in->end) {
 
                 rv = ngx_http_alloc_large_header_buffer(r, 0);
 
@@ -971,6 +973,10 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
     if (hc->nfree) {
         b = hc->free[--hc->nfree];
 
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http large header free: " PTR_FMT " " SIZE_T_FMT,
+                       b->pos, b->end - b->last);
+
     } else if (hc->nbusy < cscf->large_client_header_buffers.num) {
 
         if (hc->busy == NULL) {
@@ -986,6 +992,10 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
         if (b == NULL) {
             return NGX_ERROR;
         }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http large header alloc: " PTR_FMT " " SIZE_T_FMT,
+                       b->pos, b->end - b->last);
 
     } else {
         return NGX_DECLINED;
@@ -1005,12 +1015,15 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
         return NGX_OK;
     }
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http large header copy: %d", r->header_in->pos - old);
+
     new = b->start;
 
-    ngx_memcpy(new, old, r->header_in->last - old);
+    ngx_memcpy(new, old, r->header_in->pos - old);
 
     b->pos = new + (r->header_in->pos - old);
-    b->last = new + (r->header_in->last - old);
+    b->last = new + (r->header_in->pos - old);
 
     if (request_line) {
         r->request_start = new;
@@ -1552,14 +1565,9 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     hc = r->http_connection;
     b = r->header_in;
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    if (b->pos < b->last) {
 
-    if (b->pos < b->last || clcf->keepalive_buffers) {
-
-        /*
-         * the pipelined request or we like to keep the allocated
-         * ngx_http_request_t and the client header buffers while keepalive
-         */
+        /* the pipelined request */
 
         if (b != c->buffer) {
 
@@ -1570,6 +1578,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
             if (hc->free == NULL) {
                 hc->free = ngx_palloc(c->pool,
                   cscf->large_client_header_buffers.num * sizeof(ngx_buf_t *));
+
                 if (hc->free == NULL) {
                     ngx_http_close_connection(c);
                     return;
@@ -1591,6 +1600,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     ngx_http_close_request(r, 0);
     c->data = hc;
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     ngx_add_timer(rev, clcf->keepalive_timeout);
 
     if (ngx_handle_level_read_event(rev) == NGX_ERROR) {
@@ -1603,8 +1613,6 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     if (b->pos < b->last) {
 
-        /* the pipelined request */
-
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "pipelined request");
 
         hc->pipeline = 1;
@@ -1615,35 +1623,42 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     hc->pipeline = 0;
 
-    b->pos = b->last = b->start;
+    if (ngx_pfree(c->pool, r) == NGX_OK) {
+        hc->request = NULL;
+    }
 
-    if (!clcf->keepalive_buffers) {
+    b = c->buffer;
 
-        if (ngx_pfree(c->pool, r) == NGX_OK) {
-            hc->request = NULL;
+    if (ngx_pfree(c->pool, b->start) == NGX_OK) {
+        b->pos = NULL;
+
+    } else {
+        b->pos = b->start;
+        b->last = b->start;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "hc free: " PTR_FMT " %d",
+                   hc->free, hc->nfree);
+
+    if (hc->free) {
+        for (i = 0; i < hc->nfree; i++) {
+            ngx_pfree(c->pool, hc->free[i]);
+            hc->free[i] = NULL;
         }
 
-        if (ngx_pfree(c->pool, c->buffer->start) == NGX_OK) {
-            c->buffer = NULL;
+        hc->nfree = 0;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "hc busy: " PTR_FMT " %d",
+                   hc->busy, hc->nbusy);
+
+    if (hc->busy) {
+        for (i = 0; i < hc->nbusy; i++) {
+            ngx_pfree(c->pool, hc->busy[i]);
+            hc->busy[i] = NULL;
         }
 
-        if (hc->free) {
-            for (i = 0; i < hc->nfree; i++) {
-                ngx_pfree(c->pool, hc->free[i]);
-                hc->free[i] = NULL;
-            }
-
-            hc->nfree = 0;
-        }
-
-        if (hc->busy) {
-            for (i = 0; i < hc->nbusy; i++) {
-                ngx_pfree(c->pool, hc->busy[i]);
-                hc->busy[i] = NULL;
-            }
-
-            hc->nbusy = 0;
-        }
+        hc->nbusy = 0;
     }
 
     rev->event_handler = ngx_http_keepalive_handler;
@@ -1689,6 +1704,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
 static void ngx_http_keepalive_handler(ngx_event_t *rev)
 {
+    size_t                  size;
     ssize_t                 n;
     ngx_buf_t              *b;
     ngx_connection_t       *c;
@@ -1704,8 +1720,36 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
         return;
     }
 
+    ctx = (ngx_http_log_ctx_t *) rev->log->data;
+
+#if (HAVE_KQUEUE)
+
+    if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
+        if (rev->pending_eof) {
+            ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
+                          "kevent() reported that client %s closed "
+                          "keepalive connection", ctx->client);
+            ngx_http_close_connection(c);
+            return;
+        }
+    }
+
+#endif
+
     hc = c->data;
-    b = hc->nbusy ? hc->busy[0] : c->buffer;
+    b = c->buffer;
+    size = b->end - b->start;
+
+    if (b->pos == NULL) {
+        if (!(b->pos = ngx_palloc(c->pool, size))) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        b->start = b->pos;
+        b->last = b->pos;
+        b->end = b->pos + size;
+    }
 
     /*
      * MSIE closes a keepalive connection with RST flag
@@ -1715,7 +1759,7 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
     c->log_error = NGX_ERROR_IGNORE_ECONNRESET;
     ngx_set_socket_errno(0);
 
-    n = c->recv(c, b->last, b->end - b->last);
+    n = c->recv(c, b->last, size);
     c->log_error = NGX_ERROR_INFO;
 
     if (n == NGX_AGAIN) {
@@ -1727,7 +1771,6 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
         return;
     }
 
-    ctx = (ngx_http_log_ctx_t *) rev->log->data;
     rev->log->handler = NULL;
 
     if (n == 0) {

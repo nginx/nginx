@@ -164,7 +164,6 @@ struct ngx_http_core_loc_conf_s {
 
     time_t        keepalive_header;        /* keepalive_timeout */
 
-    ngx_flag_t    keepalive_buffers;       /* keepalive_buffers */
     ngx_flag_t    sendfile;                /* sendfile */
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */
     ngx_flag_t    reset_timedout_connection; /* reset_timedout_connection */

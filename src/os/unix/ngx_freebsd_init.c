@@ -66,9 +66,9 @@ void ngx_debug_init()
 #if (NGX_DEBUG && !NGX_NO_DEBUG_MALLOC)
 
 #if __FreeBSD_version >= 500014
-    _malloc_options = "JAV";
+    _malloc_options = "J";
 #else
-    malloc_options = "JAV";
+    malloc_options = "J";
 #endif
 
 #endif
