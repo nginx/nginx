@@ -71,8 +71,12 @@ ngx_int_t ngx_hextoi(u_char *line, size_t n);
 
 void ngx_md5_text(u_char *text, u_char *md5);
 
-ngx_int_t ngx_encode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst);
-ngx_int_t ngx_decode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst);
+
+#define ngx_base64_encoded_length(len)  (((len + 2) / 3) * 4)
+#define ngx_base64_decoded_length(len)  (((len + 3) / 4) * 3)
+
+void ngx_encode_base64(ngx_str_t *src, ngx_str_t *dst);
+ngx_int_t ngx_decode_base64(ngx_str_t *src, ngx_str_t *dst);
 
 
 #define  ngx_qsort                qsort

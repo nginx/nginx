@@ -123,20 +123,16 @@ void ngx_md5_text(u_char *text, u_char *md5)
 }
 
 
-ngx_int_t ngx_encode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
+void ngx_encode_base64(ngx_str_t *src, ngx_str_t *dst)
 {
     u_char         *d, *s;
     size_t          len;
     static u_char   basis64[] =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    if (!(d = ngx_palloc(pool, ((src->len + 2) / 3) * 4 + 1))) {
-        return NGX_ERROR;
-    }
-
-    dst->data = d;
-    s = src->data;
     len = src->len;
+    s = src->data;
+    d = dst->data;
 
     while (len > 2) {
         *d++ = basis64[(s[0] >> 2) & 0x3f];
@@ -164,13 +160,10 @@ ngx_int_t ngx_encode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
     }
 
     dst->len = d - dst->data;
-    *d++ = '\0';
-
-    return NGX_OK;
 }
 
 
-ngx_int_t ngx_decode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
+ngx_int_t ngx_decode_base64(ngx_str_t *src, ngx_str_t *dst)
 {
     size_t          len;
     u_char         *d, *s;
@@ -207,33 +200,27 @@ ngx_int_t ngx_decode_base64(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
         return NGX_ERROR;
     }
 
-    if (!(d = ngx_palloc(pool, ((len + 3) / 4) * 3 + 1))) {
-        return NGX_ABORT;
-    }
-
-    dst->data = d;
-
     s = src->data;
+    d = dst->data;
 
     while (len > 3) {
-        *d++ = basis64[s[0]] << 2 | basis64[s[1]] >> 4;
-        *d++ = basis64[s[1]] << 4 | basis64[s[2]] >> 2;
-        *d++ = basis64[s[2]] << 6 | basis64[s[3]];
+        *d++ = (u_char) (basis64[s[0]] << 2 | basis64[s[1]] >> 4);
+        *d++ = (u_char) (basis64[s[1]] << 4 | basis64[s[2]] >> 2);
+        *d++ = (u_char) (basis64[s[2]] << 6 | basis64[s[3]]);
 
         s += 4;
         len -= 4;
     }
 
     if (len > 1) {
-        *d++ = basis64[s[0]] << 2 | basis64[s[1]] >> 4;
+        *d++ = (u_char) (basis64[s[0]] << 2 | basis64[s[1]] >> 4);
     }
 
     if (len > 2) {
-        *d++ = basis64[s[1]] << 4 | basis64[s[2]] >> 2;
+        *d++ = (u_char) (basis64[s[1]] << 4 | basis64[s[2]] >> 2);
     }
 
     dst->len = d - dst->data;
-    *d++ = '\0';
 
     return NGX_OK;
 }

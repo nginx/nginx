@@ -13,6 +13,8 @@ static u_char *ngx_http_log_pipe(ngx_http_request_t *r, u_char *buf,
                                  uintptr_t data);
 static u_char *ngx_http_log_time(ngx_http_request_t *r, u_char *buf,
                                  uintptr_t data);
+static u_char *ngx_http_log_msec(ngx_http_request_t *r, u_char *buf,
+                                 uintptr_t data);
 static u_char *ngx_http_log_request(ngx_http_request_t *r, u_char *buf,
                                     uintptr_t data);
 static u_char *ngx_http_log_status(ngx_http_request_t *r, u_char *buf,
@@ -106,6 +108,7 @@ ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
     { ngx_string("pipe"), 1, ngx_http_log_pipe },
     { ngx_string("time"), sizeof("28/Sep/1970:12:00:00") - 1,
                           ngx_http_log_time },
+    { ngx_string("msec"), TIME_T_LEN + 4, ngx_http_log_msec },
     { ngx_string("request"), 0, ngx_http_log_request },
     { ngx_string("status"), 3, ngx_http_log_status },
     { ngx_string("length"), NGX_OFF_T_LEN, ngx_http_log_length },
@@ -222,6 +225,18 @@ static u_char *ngx_http_log_time(ngx_http_request_t *r, u_char *buf,
 {
     return ngx_cpymem(buf, ngx_cached_http_log_time.data,
                       ngx_cached_http_log_time.len);
+}
+
+
+static u_char *ngx_http_log_msec(ngx_http_request_t *r, u_char *buf,
+                                 uintptr_t data)
+{
+    struct timeval  tv;
+
+    ngx_gettimeofday(&tv);
+
+    return buf + ngx_snprintf((char *) buf, TIME_T_LEN + 5, "%ld.%03ld",
+                              tv.tv_sec, tv.tv_usec / 1000);
 }
 
 

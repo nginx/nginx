@@ -140,65 +140,6 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
-{
-    ngx_str_t  d, s;
-
-    s.data = "12";
-    s.len = sizeof("12") - 1;
-
-    if (ngx_encode_base64(init_cycle.pool, &s, &d) != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, log, 0, "ngx_encode_base64() failed");
-    } else {
-        ngx_log_error(NGX_LOG_NOTICE, log, 0, "BASE64: %d:\"%s\"", d.len, d.data);
-    }
-
-    s.data = "123";
-    s.len = sizeof("123") - 1;
-
-    if (ngx_encode_base64(init_cycle.pool, &s, &d) != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, log, 0, "ngx_encode_base64() failed");
-    } else {
-        ngx_log_error(NGX_LOG_NOTICE, log, 0, "BASE64: %d:\"%s\"", d.len, d.data);
-    }
-
-    s.data = "1234";
-    s.len = sizeof("1234") - 1;
-
-    if (ngx_encode_base64(init_cycle.pool, &s, &d) != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, log, 0, "ngx_encode_base64() failed");
-    } else {
-        ngx_log_error(NGX_LOG_NOTICE, log, 0, "BASE64: %d:\"%s\"", d.len, d.data);
-    }
-
-    s.data = "12345";
-    s.len = sizeof("12345") - 1;
-
-    if (ngx_encode_base64(init_cycle.pool, &s, &d) != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, log, 0, "ngx_encode_base64() failed");
-    } else {
-        ngx_log_error(NGX_LOG_NOTICE, log, 0, "BASE64: %d:\"%s\"", d.len, d.data);
-    }
-
-    s.data = "123456";
-    s.len = sizeof("123456") - 1;
-
-    if (ngx_encode_base64(init_cycle.pool, &s, &d) != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, log, 0, "ngx_encode_base64() failed");
-    } else {
-        ngx_log_error(NGX_LOG_NOTICE, log, 0, "BASE64: %d:\"%s\"", d.len, d.data);
-    }
-
-    s.data = "12345678901234567890";
-    s.len = sizeof("12345678901234567890") - 1;
-
-    if (ngx_encode_base64(init_cycle.pool, &s, &d) != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, log, 0, "ngx_encode_base64() failed");
-    } else {
-        ngx_log_error(NGX_LOG_NOTICE, log, 0, "BASE64: %d:\"%s\"", d.len, d.data);
-    }
-
-}
-
     if (ngx_add_inherited_sockets(&init_cycle) == NGX_ERROR) {
         return 1;
     }

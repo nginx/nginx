@@ -92,8 +92,8 @@ do
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
         --without-http_ssi_module)       HTTP_SSI=NO                ;;
-        --without-http_access_module)    HTTP_ACCESS=NO             ;;
         --without-http_userid_module)    HTTP_USERID=NO             ;;
+        --without-http_access_module)    HTTP_ACCESS=NO             ;;
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
