@@ -49,6 +49,8 @@ typedef struct {
 #if (HAVE_DEFERRED_ACCEPT)
     unsigned          deferred_accept:1;
 #endif
+
+    unsigned          addr_ntop:1;
 } ngx_listening_t;
 
 

@@ -65,19 +65,19 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
 
                 if (r->method_end - m == 3) {
 
-                    if (*m == 'G' && *(m + 1) == 'E' && *(m + 2) == 'T') {
+                    if (m[0] == 'G' && m[1] == 'E' && m[2] == 'T') {
                         r->method = NGX_HTTP_GET;
                     }
 
                 } else if (r->method_end - m == 4) {
 
-                    if (*m == 'P' && *(m + 1) == 'O'
-                        && *(m + 2) == 'T' && *(m + 3) == 'T')
+                    if (m[0] == 'P' && m[1] == 'O'
+                        && m[2] == 'T' && m[3] == 'T')
                     {
                         r->method = NGX_HTTP_POST;
 
-                    } else if (*m == 'H' && *(m + 1) == 'E'
-                               && *(m + 2) == 'A' && *(m + 3) == 'D')
+                    } else if (m[0] == 'H' && m[1] == 'E'
+                               && m[2] == 'A' && m[3] == 'D')
                     {
                         r->method = NGX_HTTP_HEAD;
                     }

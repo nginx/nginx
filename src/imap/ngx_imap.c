@@ -50,6 +50,7 @@ static char *ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     ls->backlog = -1;
+    ls->addr_ntop = 1;
     ls->handler = ngx_imap_init_connection;
     ls->pool_size = 16384;
     /* ls->post_accept_timeout = 0; */

@@ -42,6 +42,8 @@ ssize_t ngx_unix_send(ngx_connection_t *c, u_char *buf, size_t size)
 
         if (n == 0) {
             ngx_log_error(NGX_LOG_ALERT, c->log, err, "send() returned zero");
+            wev->ready = 0;
+            return n;
         }
 
         if (err == NGX_EAGAIN || err == NGX_EINTR) {

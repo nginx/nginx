@@ -1227,7 +1227,8 @@ static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
             u->port_text.len = &url->data[i] - u->port_text.data;
 
             if (u->port_text.len > 0) {
-                u->port = ngx_atoi(u->port_text.data, u->port_text.len);
+                u->port = (in_port_t) ngx_atoi(u->port_text.data,
+                                               u->port_text.len);
                 if (u->port > 0) {
 
                     if (u->port == 80) {
@@ -1263,7 +1264,7 @@ static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
     u->port_text.len = &url->data[i] - u->port_text.data;
 
     if (u->port_text.len > 0) {
-        u->port = ngx_atoi(u->port_text.data, u->port_text.len);
+        u->port = (in_port_t) ngx_atoi(u->port_text.data, u->port_text.len);
         if (u->port > 0) {
             u->port = htons(u->port);
             return NULL;

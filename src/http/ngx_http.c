@@ -54,10 +54,9 @@ ngx_module_t  ngx_http_module = {
 
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    char                        *rv;
     ngx_uint_t                   mi, m, s, l, p, a, n;
     ngx_uint_t                   port_found, addr_found, virtual_names;
-    char                        *rv;
-    struct sockaddr_in          *addr_in;
     ngx_conf_t                   pcf;
     ngx_array_t                  in_ports;
     ngx_listening_t             *ls;
@@ -514,6 +513,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->nonblocking = 0;
 #endif
 #endif
+            ls->addr_ntop = 1;
 
             ls->handler = ngx_http_init_connection;
 

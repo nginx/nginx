@@ -97,21 +97,6 @@ void ngx_http_init_connection(ngx_connection_t *c)
     ngx_event_t         *rev;
     ngx_http_log_ctx_t  *ctx;
 
-    c->addr_text.data = ngx_palloc(c->pool, c->listening->addr_text_max_len);
-    if (c->addr_text.data == NULL) {
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    c->addr_text.len = ngx_sock_ntop(c->listening->family, c->sockaddr,
-                                     c->addr_text.data,
-                                     c->listening->addr_text_max_len);
-
-    if (c->addr_text.len == 0) {
-        ngx_http_close_connection(c);
-        return;
-    }
-
     if (!(ctx = ngx_pcalloc(c->pool, sizeof(ngx_http_log_ctx_t)))) {
         ngx_http_close_connection(c);
         return;

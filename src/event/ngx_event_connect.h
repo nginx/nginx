@@ -13,20 +13,20 @@
 typedef struct {
     in_addr_t          addr;
     ngx_str_t          host;
-    int                port;
+    in_port_t          port;
     ngx_str_t          addr_port_text;
 
-    int                fails;
+    ngx_int_t          fails;
     time_t             accessed;
 } ngx_peer_t;
 
 
 typedef struct {
-    int                 current;
-    int                 number;
-    int                 max_fails;
-    int                 fail_timeout;
-    int                 last_cached;
+    ngx_int_t           current;
+    ngx_int_t           number;
+    ngx_int_t           max_fails;
+    ngx_int_t           fail_timeout;
+    ngx_int_t           last_cached;
 
  /* ngx_mutex_t        *mutex; */
     ngx_connection_t  **cached;
@@ -37,8 +37,8 @@ typedef struct {
 
 typedef struct {
     ngx_peers_t       *peers;
-    int                cur_peer;
-    int                tries;
+    ngx_int_t          cur_peer;
+    ngx_int_t          tries;
 
     ngx_connection_t  *connection;
 #if (NGX_THREADS)

@@ -97,6 +97,7 @@ typedef int               ssize_t;
 typedef long              time_t;
 typedef __int64           off_t;
 typedef uint32_t          in_addr_t;
+typedef u_short           in_port_t;
 typedef int               sig_atomic_t;
 typedef uint32_t          ngx_atomic_t;
 

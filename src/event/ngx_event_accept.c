@@ -11,6 +11,7 @@ typedef struct {
 } ngx_accept_log_ctx_t;
 
 
+static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log);
 static size_t ngx_accept_log_error(void *data, char *buf, size_t len);
 
 
@@ -138,11 +139,7 @@ void ngx_event_accept(ngx_event_t *ev)
                           "closing the connection",
                           ls->listening->addr_text.data, s, ecf->connections);
 
-            if (ngx_close_socket(s) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
-                              ngx_close_socket_n "failed");
-            }
-
+            ngx_close_accepted_socket(s, log);
             ngx_destroy_pool(pool);
             return;
         }
@@ -155,11 +152,7 @@ void ngx_event_accept(ngx_event_t *ev)
                     ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
                                   ngx_blocking_n " failed");
 
-                    if (ngx_close_socket(s) == -1) {
-                        ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
-                                      ngx_close_socket_n " failed");
-                    }
-
+                    ngx_close_accepted_socket(s, log);
                     ngx_destroy_pool(pool);
                     return;
                 }
@@ -171,11 +164,7 @@ void ngx_event_accept(ngx_event_t *ev)
                     ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
                                   ngx_nonblocking_n " failed");
 
-                    if (ngx_close_socket(s) == -1) {
-                        ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
-                                      ngx_close_socket_n " failed");
-                    }
-
+                    ngx_close_accepted_socket(s, log);
                     ngx_destroy_pool(pool);
                     return;
                 }
@@ -286,6 +275,25 @@ void ngx_event_accept(ngx_event_t *ev)
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                        "accept: fd:%d c:%d", s, c->number);
 
+        if (c->listening->addr_ntop) {
+            c->addr_text.data = ngx_palloc(c->pool,
+                                           c->listening->addr_text_max_len);
+            if (c->addr_text.data == NULL) {
+                ngx_close_accepted_socket(s, log);
+                ngx_destroy_pool(pool);
+                return;
+            }
+    
+            c->addr_text.len = ngx_sock_ntop(c->listening->family, c->sockaddr,
+                                             c->addr_text.data,
+                                             c->listening->addr_text_max_len);
+            if (c->addr_text.len == 0) {
+                ngx_close_accepted_socket(s, log);
+                ngx_destroy_pool(pool);
+                return;
+            }
+        }
+
 #if (NGX_DEBUG)
         {
 
@@ -307,11 +315,7 @@ void ngx_event_accept(ngx_event_t *ev)
 
         if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
             if (ngx_add_conn(c) == NGX_ERROR) {
-                if (ngx_close_socket(s) == -1) {
-                    ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
-                                  ngx_close_socket_n " failed");
-                }
-
+                ngx_close_accepted_socket(s, log);
                 ngx_destroy_pool(pool);
                 return;
             }
@@ -437,6 +441,15 @@ ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle)
     }
 
     return NGX_OK;
+}
+
+
+static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log)
+{
+    if (ngx_close_socket(s) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
+                      ngx_close_socket_n " failed");
+    }
 }
 
 

@@ -299,4 +299,5 @@ IMAP_DEPS="src/imap/ngx_imap.h"
 IMAP_MODULE=ngx_imap_module
 IMAP_SRCS="src/imap/ngx_imap.c \
 	   src/imap/ngx_imap_handler.c \
+	   src/imap/ngx_imap_parse.c \
 	   src/imap/ngx_imap_proxy.c"

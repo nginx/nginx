@@ -311,7 +311,7 @@ struct ngx_http_request_s {
     ngx_uint_t           headers_n;
 
     /* used to parse HTTP headers */
-    ngx_int_t            state;
+    ngx_uint_t           state;
     u_char              *uri_start;
     u_char              *uri_end;
     u_char              *uri_ext;
