@@ -3,7 +3,7 @@
 #include <ngx_core.h>
 
 
-ngx_array_t *ngx_create_array(ngx_pool_t *p, int n, size_t size)
+ngx_array_t *ngx_create_array(ngx_pool_t *p, ngx_uint_t n, size_t size)
 {
     ngx_array_t *a;
 

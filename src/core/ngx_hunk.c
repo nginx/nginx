@@ -31,8 +31,8 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, size_t size)
 
 ngx_chain_t *ngx_create_chain_of_hunks(ngx_pool_t *pool, ngx_bufs_t *bufs)
 {
-    int           i;
-    char         *p;
+    ngx_int_t     i;
+    u_char       *p;
     ngx_hunk_t   *h;
     ngx_chain_t  *chain, *cl, **ll;
 

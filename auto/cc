@@ -131,6 +131,7 @@ case $CC in
 
          # warnings
          CFLAGS="$CFLAGS -w1"
+         #CFLAGS="$CFLAGS -w2"
 
          # stop on warning
          CFLAGS="$CFLAGS -Werror"
@@ -189,8 +190,8 @@ case $CC in
          CFLAGS="$CFLAGS $CPU_OPT"
 
          # warnings
-         CFLAGS="$CFLAGS -W3"
-         #CFLAGS="$CFLAGS -W4"
+         #CFLAGS="$CFLAGS -W3"
+         CFLAGS="$CFLAGS -W4"
 
          # stop on warning
          CFLAGS="$CFLAGS -WX"

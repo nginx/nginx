@@ -15,13 +15,13 @@ ngx_epoch_msec_t  ngx_start_msec;
 
 ngx_tm_t          ngx_cached_gmtime;
 
-static char       cached_err_log_time[] = "1970/09/28 12:00:00";
+static u_char     cached_err_log_time[] = "1970/09/28 12:00:00";
 ngx_str_t         ngx_cached_err_log_time;
 
-static char       cached_http_time[] = "Mon, 28 Sep 1970 06:00:00 GMT";
+static u_char     cached_http_time[] = "Mon, 28 Sep 1970 06:00:00 GMT";
 ngx_str_t         ngx_cached_http_time;
 
-static char       cached_http_log_time[] = "28/Sep/1970:12:00:00";
+static u_char     cached_http_log_time[] = "28/Sep/1970:12:00:00";
 ngx_str_t         ngx_cached_http_log_time;
 
 
@@ -86,7 +86,7 @@ void ngx_time_update(time_t s)
 
     ngx_gmtime(ngx_cached_time, &ngx_cached_gmtime);
 
-    ngx_cached_http_time.len = ngx_snprintf(ngx_cached_http_time.data,
+    ngx_cached_http_time.len = ngx_snprintf((char *) ngx_cached_http_time.data,
                                        sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
                                        "%s, %02d %s %4d %02d:%02d:%02d GMT",
                                        week[ngx_cached_gmtime.ngx_tm_wday],
@@ -99,14 +99,16 @@ void ngx_time_update(time_t s)
 
     ngx_localtime(&tm);
 
-    ngx_cached_err_log_time.len = ngx_snprintf(ngx_cached_err_log_time.data,
+    ngx_cached_err_log_time.len = ngx_snprintf((char *)
+                                       ngx_cached_err_log_time.data,
                                        sizeof("1970/09/28 12:00:00"),
                                        "%4d/%02d/%02d %02d:%02d:%02d",
                                        tm.ngx_tm_year, tm.ngx_tm_mon,
                                        tm.ngx_tm_mday, tm.ngx_tm_hour,
                                        tm.ngx_tm_min, tm.ngx_tm_sec);
 
-    ngx_cached_http_log_time.len = ngx_snprintf(ngx_cached_http_log_time.data,
+    ngx_cached_http_log_time.len = ngx_snprintf((char *)
+                                       ngx_cached_http_log_time.data,
                                        sizeof("28/Sep/1970:12:00:00"),
                                        "%02d/%s/%d:%02d:%02d:%02d",
                                        tm.ngx_tm_mday,
@@ -123,13 +125,13 @@ void ngx_time_update(time_t s)
 }
 
 
-size_t ngx_http_time(char *buf, time_t t)
+size_t ngx_http_time(u_char *buf, time_t t)
 {
     ngx_tm_t  tm;
 
     ngx_gmtime(t, &tm);
 
-    return ngx_snprintf(buf, sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
+    return ngx_snprintf((char *) buf, sizeof("Mon, 28 Sep 1970 06:00:00 GMT"),
                                        "%s, %02d %s %4d %02d:%02d:%02d GMT",
                                        week[tm.ngx_tm_wday],
                                        tm.ngx_tm_mday,
@@ -143,7 +145,7 @@ size_t ngx_http_time(char *buf, time_t t)
 
 void ngx_gmtime(time_t t, ngx_tm_t *tp)
 {
-    int  sec, min, hour, mday, mon, year, wday, yday, days;
+    ngx_int_t  sec, min, hour, mday, mon, year, wday, yday, days;
 
     days = t / 86400;
 
@@ -200,11 +202,11 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
         }
     }
 
-    tp->ngx_tm_sec = sec;
-    tp->ngx_tm_min = min;
-    tp->ngx_tm_hour = hour;
-    tp->ngx_tm_mday = mday;
-    tp->ngx_tm_mon = mon;
-    tp->ngx_tm_year = year;
-    tp->ngx_tm_wday = wday;
+    tp->ngx_tm_sec = (ngx_tm_sec_t) sec;
+    tp->ngx_tm_min = (ngx_tm_min_t) min;
+    tp->ngx_tm_hour = (ngx_tm_hour_t) hour;
+    tp->ngx_tm_mday = (ngx_tm_mday_t) mday;
+    tp->ngx_tm_mon = (ngx_tm_mon_t) mon;
+    tp->ngx_tm_year = (ngx_tm_year_t) year;
+    tp->ngx_tm_wday = (ngx_tm_wday_t) wday;
 }

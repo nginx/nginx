@@ -40,40 +40,40 @@ typedef struct {
     ngx_str_t                        host_header;
     ngx_str_t                        port_text;
     ngx_str_t                       *location;
-    int                              port;
+
+    ngx_int_t                        port;
+
     unsigned                         default_port:1;
 } ngx_http_proxy_upstream_conf_t;
 
 
 typedef struct {
-    ssize_t                          request_buffer_size;
+    size_t                           request_buffer_size;
+    size_t                           header_buffer_size;
+    size_t                           busy_buffers_size;
+    size_t                           max_temp_file_size;
+    size_t                           temp_file_write_size;
+
     ngx_msec_t                       connect_timeout;
     ngx_msec_t                       send_timeout;
-    ssize_t                          header_buffer_size;
     ngx_msec_t                       read_timeout;
+    time_t                           default_expires;
+
+    ngx_int_t                        lm_factor;
+
+    ngx_uint_t                       next_upstream;
+    ngx_uint_t                       use_stale;
 
     ngx_bufs_t                       bufs;
-    ssize_t                          busy_buffers_size;
 
-    ssize_t                          max_temp_file_size;
-    ssize_t                          temp_file_write_size;
     ngx_flag_t                       cyclic_temp_file;
-
     ngx_flag_t                       cache;
-
     ngx_flag_t                       preserve_host;
     ngx_flag_t                       set_x_real_ip;
     ngx_flag_t                       add_x_forwarded_for;
-
     ngx_flag_t                       pass_server;
     ngx_flag_t                       pass_x_accel_expires;
-
     ngx_flag_t                       ignore_expires;
-    int                              lm_factor;
-    time_t                           default_expires;
-
-    u_int                            next_upstream;
-    u_int                            use_stale;
 
     ngx_path_t                      *cache_path;
     ngx_path_t                      *temp_path;
@@ -96,9 +96,9 @@ typedef struct {
     ngx_http_proxy_state_e           cache_state;
     time_t                           expired;
     time_t                           bl_time;
-    int                              bl_state;
+    ngx_uint_t                       bl_state;
 
-    int                              status;
+    ngx_uint_t                       status;
     ngx_http_proxy_reason_e          reason;
     time_t                           time;
     time_t                           expires;
@@ -130,7 +130,7 @@ typedef struct {
 
 typedef struct {
     ngx_http_cache_ctx_t             ctx;
-    int                              status;
+    ngx_uint_t                       status;
     ngx_str_t                        status_line;
 
     ngx_http_proxy_headers_in_t      headers_in;
@@ -139,9 +139,9 @@ typedef struct {
 
 typedef struct {
     ngx_peer_connection_t            peer;
-    int                              status;
+    ngx_uint_t                       status;
     ngx_str_t                        status_line;
-    int                              method;
+    ngx_uint_t                       method;
 
     ngx_output_chain_ctx_t          *output_chain_ctx;
     ngx_event_pipe_t                *event_pipe;
@@ -175,23 +175,23 @@ struct ngx_http_proxy_ctx_s {
 
 
     /* used to parse an upstream HTTP header */
-    int                           status;
-    char                         *status_start;
-    char                         *status_end;
-    int                           status_count;
-    int                           parse_state;
+    ngx_uint_t                    status;
+    u_char                       *status_start;
+    u_char                       *status_end;
+    ngx_uint_t                    status_count;
+    ngx_uint_t                    parse_state;
 
     ngx_http_proxy_state_t       *state;
     ngx_array_t                   states;    /* of ngx_http_proxy_state_t */
 
-    char                         *action;
+    u_char                       *action;
     ngx_http_log_ctx_t           *saved_ctx;
     ngx_log_handler_pt            saved_handler;
 };
 
 
 typedef struct {
-    u_int                  connection;
+    ngx_uint_t             connection;
     ngx_http_proxy_ctx_t  *proxy;
 } ngx_http_proxy_log_ctx_t;
 

@@ -12,7 +12,7 @@
 
 
 #define ngx_open_file(name, access, create)                                 \
-                                 open(name, access|create, 0644)
+                                 open((const char *) name, access|create, 0644)
 #define ngx_open_file_n          "open()"
 
 #define NGX_FILE_RDONLY          O_RDONLY
@@ -26,20 +26,21 @@
 #define ngx_close_file_n         "close()"
 
 
-#define ngx_delete_file          unlink
+#define ngx_delete_file(name)    unlink((const char *) name)
 #define ngx_delete_file_n        "unlink()"
 
 
 #define ngx_open_tempfile(name, persistent)                                 \
-                                 open(name, O_CREAT|O_EXCL|O_RDWR, 0600)
+                         open((const char *) name, O_CREAT|O_EXCL|O_RDWR, 0600)
 #define ngx_open_tempfile_n      "open()"
 
 
-ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
+ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset);
 #define ngx_read_file_n          "read()"
 
 
-ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
+ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size,
+                       off_t offset);
 
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
                                 off_t offset, ngx_pool_t *pool);
@@ -49,7 +50,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 #define ngx_rename_file_n        "rename"
 
 
-#define ngx_file_info(file, sb)  stat(file, sb)
+#define ngx_file_info(file, sb)  stat((const char *) file, sb)
 #define ngx_file_info_n          "stat()"
 
 #define ngx_fd_info(fd, sb)      fstat(fd, sb)
@@ -78,11 +79,11 @@ int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_read_dir_n           "readdir()"
 
 
-#define ngx_create_dir(name)     mkdir(name, 0700)
+#define ngx_create_dir(name)     mkdir((const char *) name, 0700)
 #define ngx_create_dir_n         "mkdir()"
 
 
-#define ngx_delete_dir           rmdir
+#define ngx_delete_dir(name)     rmdir((const char *) name)
 #define ngx_delete_dir_n         "rmdir()"
 
 
@@ -92,7 +93,7 @@ int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #else
 #define ngx_de_namelen(dir)      ngx_strlen((dir)->de->d_name)
 #endif
-#define ngx_de_info(name, dir)   stat(name, &(dir)->info)
+#define ngx_de_info(name, dir)   stat((const char *) name, &(dir)->info)
 #define ngx_de_info_n            "stat()"
 #define ngx_de_is_dir(dir)       (S_ISDIR((dir)->info.st_mode))
 #define ngx_de_is_file(dir)      (S_ISREG((dir)->info.st_mode))

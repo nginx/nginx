@@ -3,10 +3,10 @@
 #include <ngx_core.h>
 
 
-ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
+ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
     long        high_offset;
-    DWORD       n;
+    u_long      n;
     ngx_err_t   err;
     OVERLAPPED  ovlp, *povlp;
 
@@ -20,8 +20,9 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
         if (file->offset != offset) {
 
             /*
-             * the maximum file size on FAT16 is 2G, but on FAT32 it's 4G so we
-             * need to use high_offset because a single offset is signed value
+             * the maximum file size on FAT16 is 2G, but on FAT32
+             * the size is 4G so we need to use high_offset
+             * because a single offset is signed value
              */
 
             high_offset = (long) (offset >> 32);
@@ -47,8 +48,8 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
     } else {
         ovlp.Internal = 0;
         ovlp.InternalHigh = 0;
-        ovlp.Offset = (DWORD) offset;
-        ovlp.OffsetHigh = (DWORD) (offset >> 32);
+        ovlp.Offset = (u_long) offset;
+        ovlp.OffsetHigh = (u_long) (offset >> 32);
         ovlp.hEvent = NULL;
 
         povlp = &ovlp;
@@ -65,10 +66,10 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 }
 
 
-ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
+ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
     long        high_offset;
-    DWORD       n;
+    u_long      n;
     ngx_err_t   err;
     OVERLAPPED  ovlp, *povlp;
 
@@ -82,8 +83,9 @@ ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
         if (file->offset != offset) {
 
             /*
-             * the maximum file size on FAT16 is 2G, but on FAT32 it's 4G so we
-             * need to use high_offset because a single offset is signed value
+             * the maximum file size on FAT16 is 2G, but on FAT32
+             * the size is 4G so we need to use high_offset
+             * because a single offset is signed value
              */
 
             high_offset = (long) (offset >> 32);
@@ -109,8 +111,8 @@ ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
     } else {
         ovlp.Internal = 0;
         ovlp.InternalHigh = 0;
-        ovlp.Offset = (DWORD) offset;
-        ovlp.OffsetHigh = (DWORD) (offset >> 32);
+        ovlp.Offset = (u_long) offset;
+        ovlp.OffsetHigh = (u_long) (offset >> 32);
         ovlp.hEvent = NULL;
 
         povlp = &ovlp;

@@ -23,7 +23,7 @@
 
 
 #define ngx_open_file(name, access, create)                                 \
-            CreateFile(name, access,                                        \
+            CreateFile((const char *) name, access,                         \
                        FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,  \
                        NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL)
 /*
@@ -43,7 +43,7 @@ int ngx_file_append_mode(ngx_fd_t fd);
 
 
 #define ngx_open_tempfile(name, persistent)                                 \
-            CreateFile(name,                                                \
+            CreateFile((const char *) name,                                 \
                     GENERIC_READ|GENERIC_WRITE,                             \
                     FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,     \
                     NULL,                                                   \
@@ -139,10 +139,11 @@ int ngx_read_dir(ngx_dir_t *dir);
 
 
 
-ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
+ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset);
 #define ngx_read_file_n             "ReadFile()"
 
-ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
+ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size,
+                       off_t offset);
 
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
                                 off_t offset, ngx_pool_t *pool);

@@ -372,7 +372,7 @@ typedef struct {
     int          connections;
     int          use;
     ngx_flag_t   multi_accept;
-    char       *name;
+    u_char      *name;
 } ngx_event_conf_t;
 
 

@@ -27,13 +27,17 @@
 #ifdef _MSC_VER
 #pragma warning(default:4201)
 
+/* disable some "-W4" level warnings */
+
+#pragma warning(disable:4054)
+#pragma warning(disable:4055)
 /* unreferenced formal parameter */
 #pragma warning(disable:4100)
-
-/* STUB */
-#if 0
 #pragma warning(disable:4127)
-#endif
+#pragma warning(disable:4214)
+#pragma warning(disable:4702)
+#pragma warning(disable:4706)
+
 #endif
 
 

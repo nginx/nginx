@@ -12,7 +12,7 @@
 ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int             fd;
-    char           *prev;
+    u_char         *prev;
     off_t           fprev;
     size_t          sent, size;
     ssize_t         n;

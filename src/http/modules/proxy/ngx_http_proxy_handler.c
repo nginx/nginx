@@ -7,12 +7,12 @@
 
 static int ngx_http_proxy_handler(ngx_http_request_t *r);
 
-static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
-                                            uintptr_t data);
-static char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r, char *buf,
-                                            uintptr_t data);
-static char *ngx_http_proxy_log_reason(ngx_http_request_t *r, char *buf,
-                                       uintptr_t data);
+static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
+                                              u_char *buf, uintptr_t data);
+static u_char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r,
+                                              u_char *buf, uintptr_t data);
+static u_char *ngx_http_proxy_log_reason(ngx_http_request_t *r, u_char *buf,
+                                         uintptr_t data);
 
 static int ngx_http_proxy_pre_conf(ngx_conf_t *cf);
 static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf);
@@ -146,7 +146,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_conf_set_path_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, temp_path),
-      ngx_garbage_collector_temp_handler },
+      (void *) ngx_garbage_collector_temp_handler },
 
     { ngx_string("proxy_temp_file_write_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -591,7 +591,7 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
                       ngx_close_socket_n " failed");
     }
 
-    c->fd = -1;
+    c->fd = (ngx_socket_t) -1;
 }
 
 
@@ -614,12 +614,12 @@ size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len)
                         ctx->proxy->lcf->upstream->uri.data,
                         r->uri.data + ctx->proxy->lcf->upstream->location->len,
                         r->args.len ? "?" : "",
-                        r->args.len ? r->args.data : "");
+                        r->args.len ? r->args.data : (u_char *) "");
 }
 
 
-static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
-                                            uintptr_t data)
+static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
+                                              u_char *buf, uintptr_t data)
 {
     ngx_http_proxy_ctx_t  *p;
 
@@ -644,7 +644,8 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf(buf, NGX_TIME_T_LEN, TIME_T_FMT, p->state->expired);
+        buf += ngx_snprintf((char *) buf, NGX_TIME_T_LEN,
+                            TIME_T_FMT, p->state->expired);
     }
 
     *buf++ = '/';
@@ -653,7 +654,8 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf(buf, NGX_TIME_T_LEN, TIME_T_FMT, p->state->bl_time);
+        buf += ngx_snprintf((char *) buf, NGX_TIME_T_LEN,
+                            TIME_T_FMT, p->state->bl_time);
     }
 
     *buf++ = '/';
@@ -666,7 +668,7 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf(buf, 4, "%d", p->state->status);
+        buf += ngx_snprintf((char *) buf, 4, "%d", p->state->status);
     }
 
     *buf++ = '/';
@@ -685,7 +687,8 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf(buf, NGX_TIME_T_LEN, TIME_T_FMT, p->state->expires);
+        buf += ngx_snprintf((char *) buf, NGX_TIME_T_LEN,
+                            TIME_T_FMT, p->state->expires);
     }
 
     *buf++ = ' ';
@@ -695,8 +698,8 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
 }
 
 
-static char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r, char *buf,
-                                            uintptr_t data)
+static u_char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r,
+                                              u_char *buf, uintptr_t data)
 {
     ngx_http_proxy_ctx_t  *p;
 
@@ -712,8 +715,8 @@ static char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r, char *buf,
 }
 
 
-static char *ngx_http_proxy_log_reason(ngx_http_request_t *r, char *buf,
-                                       uintptr_t data)
+static u_char *ngx_http_proxy_log_reason(ngx_http_request_t *r, u_char *buf,
+                                         uintptr_t data)
 {
     ngx_http_proxy_ctx_t  *p;
 
@@ -777,17 +780,17 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     */
 
-    conf->request_buffer_size = NGX_CONF_UNSET;
-    conf->connect_timeout = NGX_CONF_UNSET;
-    conf->send_timeout = NGX_CONF_UNSET;
+    conf->request_buffer_size = NGX_CONF_UNSET_SIZE;
+    conf->connect_timeout = NGX_CONF_UNSET_MSEC;
+    conf->send_timeout = NGX_CONF_UNSET_MSEC;
 
     conf->preserve_host = NGX_CONF_UNSET;
     conf->set_x_real_ip = NGX_CONF_UNSET;
     conf->add_x_forwarded_for = NGX_CONF_UNSET;
 
-    conf->header_buffer_size = NGX_CONF_UNSET;
-    conf->read_timeout = NGX_CONF_UNSET;
-    conf->busy_buffers_size = NGX_CONF_UNSET;
+    conf->header_buffer_size = NGX_CONF_UNSET_SIZE;
+    conf->read_timeout = NGX_CONF_UNSET_MSEC;
+    conf->busy_buffers_size = NGX_CONF_UNSET_SIZE;
 
     /*
      * "proxy_max_temp_file_size" is hardcoded to 1G for reverse proxy,
@@ -795,7 +798,7 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      */
     conf->max_temp_file_size = 1024 * 1024 * 1024;
 
-    conf->temp_file_write_size = NGX_CONF_UNSET;
+    conf->temp_file_write_size = NGX_CONF_UNSET_SIZE;
 
     /* "proxy_cyclic_temp_file" is disabled */
     conf->cyclic_temp_file = 0;
@@ -906,8 +909,9 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     ngx_http_proxy_loc_conf_t *lcf = conf;
 
-    int                        i, len;
-    char                      *err, *host;
+    ngx_uint_t                 i, len;
+    char                      *err;
+    u_char                    *host;
     in_addr_t                  addr;
     ngx_str_t                 *value;
     struct hostent            *h;
@@ -946,10 +950,10 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 
     /* AF_INET only */
 
-    addr = inet_addr(host);
+    addr = inet_addr((char *) host);
 
     if (addr == INADDR_NONE) {
-        h = gethostbyname(host);
+        h = gethostbyname((char *) host);
 
         if (h == NULL || h->h_addr_list[0] == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "host %s not found", host);
@@ -980,7 +984,7 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
                           NGX_CONF_ERROR);
 
             len = ngx_inet_ntop(AF_INET,
-                                (char *) &lcf->peers->peers[i].addr,
+                                (u_char *) &lcf->peers->peers[i].addr,
                                 lcf->peers->peers[i].addr_port_text.data,
                                 len);
 

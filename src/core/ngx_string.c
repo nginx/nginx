@@ -3,7 +3,7 @@
 #include <ngx_core.h>
 
 
-char *ngx_cpystrn(char *dst, char *src, size_t n)
+u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n)
 {
     if (n == 0) {
         return dst;
@@ -23,7 +23,7 @@ char *ngx_cpystrn(char *dst, char *src, size_t n)
 }
 
 
-int ngx_rstrncmp(char *s1, char *s2, size_t n)
+ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
 {
     if (n == 0) {
         return 0;
@@ -33,7 +33,7 @@ int ngx_rstrncmp(char *s1, char *s2, size_t n)
 
     for ( ;; ) {
         if (s1[n] != s2[n]) {
-            return (u_char) s1[n] - (u_char) s2[n];
+            return s1[n] - s2[n];
         }
 
         if (n == 0) {
@@ -45,9 +45,9 @@ int ngx_rstrncmp(char *s1, char *s2, size_t n)
 }
 
 
-int ngx_atoi(char *line, size_t n)
+ngx_int_t ngx_atoi(u_char *line, size_t n)
 {
-    int  value;
+    ngx_int_t  value;
 
     if (n == 0) {
         return NGX_ERROR;
@@ -69,10 +69,10 @@ int ngx_atoi(char *line, size_t n)
 }
 
 
-void ngx_md5_text(char *text, u_char *md5)
+void ngx_md5_text(u_char *text, u_char *md5)
 {
-    int          i;
-    static char  hex[] = "0123456789abcdef";
+    int            i;
+    static u_char  hex[] = "0123456789abcdef";
 
     for (i = 0; i < 16; i++) {
         *text++ = hex[md5[i] >> 4];

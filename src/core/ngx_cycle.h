@@ -14,7 +14,7 @@ struct ngx_cycle_s {
     ngx_array_t        open_files;
     ngx_array_t        pathes;
 
-    int                connection_n;
+    ngx_uint_t         connection_n;
     ngx_connection_t  *connections;
     ngx_event_t       *read_events;
     ngx_event_t       *write_events;

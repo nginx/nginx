@@ -53,7 +53,7 @@ void garbage_collector()
 
 void stub_init(ngx_cycle_t *cycle)
 {
-    int           i;
+    ngx_uint_t    i;
     ngx_gc_t      ctx;
     ngx_path_t  **path;
 
@@ -71,13 +71,17 @@ void stub_init(ngx_cycle_t *cycle)
 static int ngx_collect_garbage(ngx_gc_t *ctx, ngx_str_t *dname, int level)
 {
     int         rc;
-    char       *last;
+    u_char     *last;
     size_t      len;
     ngx_err_t   err;
     ngx_str_t   fname, buf;
     ngx_dir_t   dir;
 
     buf.len = 0;
+#if (NGX_SUPPRESS_WARN)
+    buf.data = NULL;
+    fname.data = NULL;
+#endif
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, ctx->log, 0,
                    "gc dir \"%s\":%d", dname->data, dname->len);

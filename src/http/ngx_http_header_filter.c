@@ -92,8 +92,9 @@ static ngx_str_t http_codes[] = {
 
 static int ngx_http_header_filter(ngx_http_request_t *r)
 {
-    int                len, status, i;
-    char              *p;
+    u_char            *p;
+    size_t             len;
+    ngx_uint_t         status, i;
     ngx_hunk_t        *h;
     ngx_chain_t       *ln;
     ngx_table_elt_t   *header;
@@ -246,7 +247,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.content_length == NULL) {
         if (r->headers_out.content_length_n >= 0) {
-            h->last += ngx_snprintf(h->last,
+            h->last += ngx_snprintf((char *) h->last,
                                 sizeof("Content-Length: ") + NGX_OFF_T_LEN + 2,
                                 "Content-Length: " OFF_T_FMT CRLF,
                                 r->headers_out.content_length_n);

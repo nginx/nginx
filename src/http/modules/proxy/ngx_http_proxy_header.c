@@ -11,7 +11,7 @@ static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
 int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
                                ngx_http_proxy_headers_in_t *headers_in)
 {
-    int                  i;
+    ngx_uint_t           i;
     ngx_table_elt_t     *ho, *h;
     ngx_http_request_t  *r;
 
@@ -97,7 +97,7 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
 static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
                                                   ngx_table_elt_t *loc)
 {
-    char                            *last;
+    u_char                          *last;
     ngx_http_request_t              *r;
     ngx_http_proxy_upstream_conf_t  *uc;
 

@@ -6,8 +6,8 @@
 
 
 typedef struct {
-    int    flag;
-    char  *name;
+    int      flag;
+    u_char  *name;
 } ngx_accept_log_ctx_t;
 
 
@@ -16,7 +16,7 @@ static size_t ngx_accept_log_error(void *data, char *buf, size_t len);
 
 void ngx_event_accept(ngx_event_t *ev)
 {
-    int                    instance, accepted;
+    ngx_uint_t             instance, accepted;
     socklen_t              len;
     struct sockaddr       *sa;
     ngx_err_t              err;
@@ -216,8 +216,8 @@ void ngx_event_accept(ngx_event_t *ev)
         c->sockaddr = sa;
         c->socklen = len;
 
-        rev->instance = !instance;
-        wev->instance = !instance;
+        rev->instance = (u_char) !instance;
+        wev->instance = (u_char) !instance;
 
         rev->index = NGX_INVALID_INDEX;
         wev->index = NGX_INVALID_INDEX;

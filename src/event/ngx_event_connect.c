@@ -10,7 +10,8 @@
 
 int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
-    int                  rc, instance;
+    int                  rc;
+    ngx_uint_t           instance;
     u_int                event;
     time_t               now;
     ngx_err_t            err;
@@ -170,8 +171,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     c->write = wev;
     wev->write = 1;
 
-    rev->instance = !instance;
-    wev->instance = !instance;
+    rev->instance = (u_char) !instance;
+    wev->instance = (u_char) !instance;
 
     c->log = pc->log;
     rev->log = pc->log;
@@ -203,7 +204,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_memzero(&addr, sizeof(struct sockaddr_in));
 
     addr.sin_family = AF_INET;
-    addr.sin_port = peer->port;
+    addr.sin_port = (u_short) peer->port;
     addr.sin_addr.s_addr = peer->addr;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, 0,
@@ -224,7 +225,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
                               ngx_close_socket_n " failed");
             }
 
-            c->fd = -1;
+            c->fd = (ngx_socket_t) -1;
 
             return NGX_CONNECT_ERROR;
         }

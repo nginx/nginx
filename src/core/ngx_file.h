@@ -51,7 +51,7 @@ void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path);
 int ngx_create_path(ngx_file_t *file, ngx_path_t *path);
 
 void ngx_init_temp_number();
-int ngx_next_temp_number(int collision);
+ngx_uint_t ngx_next_temp_number(ngx_uint_t collision);
 
 char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 

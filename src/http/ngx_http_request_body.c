@@ -8,8 +8,8 @@
 static void ngx_http_read_client_request_body_handler(ngx_event_t *rev);
 
 
-int ngx_http_read_client_request_body(ngx_http_request_t *r,
-                                      int request_buffer_size)
+ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
+                                            size_t request_buffer_size)
 {
     ssize_t       size;
     ngx_hunk_t   *h;
@@ -73,7 +73,8 @@ int ngx_http_read_client_request_body(ngx_http_request_t *r,
 
 static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
 {
-    ssize_t                    n, size;
+    size_t                     size;
+    ssize_t                    n;
     ngx_hunk_t                *h;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;

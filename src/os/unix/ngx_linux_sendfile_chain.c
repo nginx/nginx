@@ -22,7 +22,7 @@
 ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int              rc;
-    char            *prev;
+    u_char          *prev;
     off_t            fprev;
     size_t           size, fsize, sent;
     ngx_int_t        eintr;
@@ -71,7 +71,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
-                iov->iov_base = cl->hunk->pos;
+                iov->iov_base = (void *) cl->hunk->pos;
                 iov->iov_len = cl->hunk->last - cl->hunk->pos;
             }
 

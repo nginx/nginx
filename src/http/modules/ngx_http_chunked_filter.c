@@ -56,7 +56,7 @@ static int ngx_http_chunked_header_filter(ngx_http_request_t *r)
 
 static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    char         *chunk;
+    u_char       *chunk;
     size_t        size, len;
     ngx_hunk_t   *h;
     ngx_chain_t  *out, *cl, *tl, **ll;
@@ -87,7 +87,7 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     ngx_test_null(chunk, ngx_palloc(r->pool, 11), NGX_ERROR);
-    len = ngx_snprintf(chunk, 11, SIZE_T_X_FMT CRLF, size);
+    len = ngx_snprintf((char *) chunk, 11, SIZE_T_X_FMT CRLF, size);
 
     ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
     h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;

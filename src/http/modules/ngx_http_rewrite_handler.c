@@ -82,10 +82,11 @@ ngx_module_t  ngx_http_rewrite_module = {
 static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
 {
     int                          *matches;
-    char                         *p;
+    u_char                       *p;
     size_t                        len;
     uintptr_t                     data;
-    ngx_int_t                     rc, i, n, m;
+    ngx_int_t                     rc;
+    ngx_uint_t                    i, m, n;
     ngx_str_t                     uri;
     ngx_http_rewrite_op_t        *op;
     ngx_http_rewrite_rule_t      *rule;
@@ -134,7 +135,7 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
 
         uri.len = rule[i].size;
 
-        for (n = 1; n < rc; n++) {
+        for (n = 1; n < (ngx_uint_t) rc; n++) {
            uri.len += matches[2 * n + 1] - matches[2 * n];
         }
 
@@ -150,7 +151,7 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
                 len = op[n].len;
                 data = op[n].data;
                 while (len--) {
-                    *p++ = data & 0xff;
+                    *p++ = (char) (data & 0xff);
                     data >>= 8;
                 }
 
@@ -208,13 +209,13 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     ngx_http_rewrite_srv_conf_t *scf = conf;
 
-    char                     *data, *p;
+    u_char                   *data, *p;
     size_t                    len;
     ngx_str_t                *value, err;
     ngx_uint_t                i;
     ngx_http_rewrite_op_t    *op;
     ngx_http_rewrite_rule_t  *rule;
-    char                      errstr[NGX_MAX_CONF_ERRSTR];
+    u_char                    errstr[NGX_MAX_CONF_ERRSTR];
 
     if (!(rule = ngx_push_array(&scf->rules))) {
         return NGX_CONF_ERROR;

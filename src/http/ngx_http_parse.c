@@ -5,7 +5,7 @@
 
 ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
 {
-    char   ch, *p;
+    u_char  ch, *p;
     enum {
         sw_start = 0,
         sw_G,
@@ -421,7 +421,7 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
 
 ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
 {
-    char   c, ch, *p;
+    u_char  c, ch, *p;
     enum {
         sw_start = 0,
         sw_name,
@@ -458,7 +458,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
                 state = sw_name;
                 r->header_name_start = p - 1;
 
-                c = ch | 0x20;
+                c = (char) (ch | 0x20);
                 if (c >= 'a' && c <= 'z') {
                     break;
                 }
@@ -478,7 +478,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
 
         /* header name */
         case sw_name:
-            c = ch | 0x20;
+            c = (u_char) (ch | 0x20);
             if (c >= 'a' && c <= 'z') {
                 break;
             }
@@ -623,7 +623,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
 
 ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 {
-    char  c, ch, decoded, *p, *u;
+    u_char  c, ch, decoded, *p, *u;
     enum {
         sw_usual = 0,
         sw_slash,
@@ -778,15 +778,15 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
         case sw_quoted:
             if (ch >= '0' && ch <= '9') {
-                decoded = ch - '0';
+                decoded = (char) (ch - '0');
                 state = sw_quoted_second;
                 ch = *p++;
                 break;
             }
 
-            c = ch | 0x20;
+            c = (char) (ch | 0x20);
             if (c >= 'a' && c <= 'f') {
-                decoded = c - 'a' + 10;
+                decoded = (char) (c - 'a' + 10);
                 state = sw_quoted_second;
                 ch = *p++;
                 break;
@@ -796,7 +796,7 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
         case sw_quoted_second:
             if (ch >= '0' && ch <= '9') {
-                ch = (decoded << 4) + ch - '0';
+                ch = (char) ((decoded << 4) + ch - '0');
                 if (ch == '%') {
                     state = sw_usual;
                     *u++ = ch;
@@ -807,9 +807,9 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 break;
             }
 
-            c = ch | 0x20;
+            c = (char) (ch | 0x20);
             if (c >= 'a' && c <= 'f') {
-                ch = (decoded << 4) + c - 'a' + 10;
+                ch = (char) ((decoded << 4) + c - 'a' + 10);
                 if (ch == '%') {
                     state = sw_usual;
                     *u++ = ch;

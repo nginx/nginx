@@ -27,15 +27,16 @@ ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
 
     ngx_pcre_pool = pool;
 
-    re = pcre_compile(pattern->data, (int) options, &errstr, &erroff, NULL);
+    re = pcre_compile((const char *) pattern->data, (int) options,
+                      &errstr, &erroff, NULL);
 
     if (re == NULL) {
        if ((size_t) erroff == pattern->len) {
-           ngx_snprintf(err->data, err->len - 1,
+           ngx_snprintf((char *) err->data, err->len - 1,
                         "pcre_compile() failed: %s in \"%s\"",
                         errstr, pattern->data);
         } else {
-           ngx_snprintf(err->data, err->len - 1,
+           ngx_snprintf((char *) err->data, err->len - 1,
                         "pcre_compile() failed: %s in \"%s\" at \"%s\"",
                         errstr, pattern->data, pattern->data + erroff);
         }
@@ -50,7 +51,8 @@ ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s,
 {
     int  rc;
 
-    rc = pcre_exec(re, NULL, s->data, s->len, 0, 0, matches, size);
+    rc = pcre_exec(re, NULL, (const char *) s->data, s->len, 0, 0,
+                   matches, size);
 
     if (rc == -1) {
         return NGX_DECLINED;

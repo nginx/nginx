@@ -15,8 +15,8 @@
 
 
 typedef struct {
-    int               enable;
-    ssize_t           value_len;
+    ngx_flag_t        enable;
+    size_t            value_len;
 } ngx_http_ssi_conf_t;
 
 
@@ -28,9 +28,9 @@ typedef struct {
 typedef struct {
     ngx_hunk_t        *buf;
 
-    char              *start;
-    char              *last;
-    char              *pos;
+    u_char            *start;
+    u_char            *last;
+    u_char            *pos;
 
     ngx_str_t          command;
     ngx_array_t        params;
@@ -41,7 +41,7 @@ typedef struct {
     ngx_chain_t      **last_out;
     ngx_chain_t       *busy;
 
-    int                state;
+    ngx_uint_t         state;
     size_t             saved;
 } ngx_http_ssi_ctx_t;
 
@@ -839,7 +839,7 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
                 break;
 
             default:
-                if ((ssize_t) ctx->param->value.len >= conf->value_len) {
+                if (ctx->param->value.len >= conf->value_len) {
                     ctx->last = last;
                     ctx->pos = p;
                     ctx->state = ssi_error_state;
@@ -853,7 +853,7 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
             break;
 
         case ssi_double_quoted_value_quote_state:
-            if ((ssize_t) ctx->param->value.len >= conf->value_len) {
+            if (ctx->param->value.len >= conf->value_len) {
                 ctx->last = last;
                 ctx->pos = p;
                 ctx->state = ssi_error_state;
@@ -877,7 +877,7 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
                 break;
 
             default:
-                if ((ssize_t) ctx->param->value.len >= conf->value_len) {
+                if (ctx->param->value.len >= conf->value_len) {
                     ctx->last = last;
                     ctx->pos = p;
                     ctx->state = ssi_error_state;
@@ -891,7 +891,7 @@ static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
             break;
 
         case ssi_quoted_value_quote_state:
-            if ((ssize_t) ctx->param->value.len >= conf->value_len) {
+            if (ctx->param->value.len >= conf->value_len) {
                 ctx->last = last;
                 ctx->pos = p;
                 ctx->state = ssi_error_state;
@@ -1006,7 +1006,7 @@ static void *ngx_http_ssi_create_conf(ngx_conf_t *cf)
     }
 
     conf->enable = NGX_CONF_UNSET;
-    conf->value_len = NGX_CONF_UNSET;
+    conf->value_len = NGX_CONF_UNSET_SIZE;
 
     return conf;
 }

@@ -5,14 +5,14 @@
 #include <nginx.h>
 
 
-static char error_tail[] =
+static u_char error_tail[] =
 "<hr><center>" NGINX_VER "</center>" CRLF
 "</body>" CRLF
 "</html>" CRLF
 ;
 
 
-static char msie_stub[] =
+static u_char msie_stub[] =
 "<!-- The padding to disable MSIE's friendly error page -->" CRLF
 "<!-- The padding to disable MSIE's friendly error page -->" CRLF
 "<!-- The padding to disable MSIE's friendly error page -->" CRLF
@@ -176,7 +176,8 @@ static ngx_str_t error_pages[] = {
 
 int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
-    int                        err, rc, i;
+    ngx_int_t                  rc;
+    ngx_uint_t                 err, i;
     ngx_hunk_t                *h;
     ngx_chain_t               *out, **ll, *cl;
     ngx_http_err_page_t       *err_page;

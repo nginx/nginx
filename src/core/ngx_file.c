@@ -3,8 +3,8 @@
 #include <ngx_core.h>
 
 
-static int ngx_temp_number;
-static int ngx_random;
+static ngx_uint_t ngx_temp_number;
+static ngx_uint_t ngx_random;
 
 
 int ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
@@ -50,8 +50,9 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
     num = ngx_next_temp_number(0);
 
     for ( ;; ) {
-        ngx_snprintf(file->name.data + path->name.len + 1 + path->len, 11,
-                     "%010u", num);
+        ngx_snprintf((char *)
+                            (file->name.data + path->name.len + 1 + path->len),
+                     11, "%010u", num);
 
         ngx_create_hashed_filename(file, path);
 
@@ -183,7 +184,7 @@ void ngx_init_temp_number()
 }
 
 
-int ngx_next_temp_number(int collision)
+ngx_uint_t ngx_next_temp_number(ngx_uint_t collision)
 {
     if (collision) {
         ngx_temp_number += ngx_random;
@@ -197,7 +198,8 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    int          i, n, level;
+    ngx_int_t    level;
+    ngx_uint_t   i, n;
     ngx_str_t   *value;
     ngx_path_t  *path, **pp;
 

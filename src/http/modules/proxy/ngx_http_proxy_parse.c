@@ -7,8 +7,8 @@
 
 int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p)
 {
-    char   ch;
-    char  *pos;
+    u_char   ch;
+    u_char  *pos;
     enum  {
         sw_start = 0,
         sw_H,

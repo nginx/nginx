@@ -3,11 +3,11 @@
 #include <ngx_core.h>
 
 
-int ngx_parse_size(ngx_str_t *line)
+ngx_int_t ngx_parse_size(ngx_str_t *line)
 {
-    int     scale, size;
-    char    last;
-    size_t  len;
+    u_char     last;
+    size_t     len;
+    ngx_int_t  scale, size;
 
     len = line->len;
     last = line->data[len - 1];
@@ -40,12 +40,12 @@ int ngx_parse_size(ngx_str_t *line)
 }
 
 
-int ngx_parse_time(ngx_str_t *line, int sec)
+ngx_int_t ngx_parse_time(ngx_str_t *line, ngx_int_t sec)
 {
-    int     value, total, scale;
-    u_int   max, i;
-    size_t  len;
-    char   *start, last;
+    size_t      len;
+    u_char     *start, last;
+    ngx_int_t   value, total, scale;
+    ngx_uint_t  max, i;
     enum {
         st_start = 0,
         st_year,

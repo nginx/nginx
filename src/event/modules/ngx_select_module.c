@@ -176,7 +176,7 @@ static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 #endif
 
     ev->active = 1;
-    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
+    ev->oneshot = (u_char) ((flags & NGX_ONESHOT_EVENT) ? 1 : 0);
 
     event_index[nevents] = ev;
     ev->index = nevents;

@@ -281,7 +281,7 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
 
 static int ngx_conf_read_token(ngx_conf_t *cf)
 {
-    char        *start, ch, *src, *dst;
+    u_char      *start, ch, *src, *dst;
     int          len;
     int          found, need_space, last_space, sharp_comment;
     int          quoted, s_quoted, d_quoted;
@@ -514,7 +514,7 @@ ngx_log_debug(cf->log, "FOUND %d:'%s'" _ word->len _ word->data);
 
 ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
 {
-    int               i;
+    ngx_uint_t        i;
     ngx_open_file_t  *file;
 
     if (name) {
@@ -666,20 +666,20 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    ssize_t          *sp;
+    size_t           *sp;
     ngx_str_t        *value;
     ngx_conf_post_t  *post;
 
 
-    sp = (ssize_t *) (p + cmd->offset);
-    if (*sp != NGX_CONF_UNSET) {
+    sp = (size_t *) (p + cmd->offset);
+    if (*sp != NGX_CONF_UNSET_SIZE) {
         return "is duplicate";
     }
 
     value = (ngx_str_t *) cf->args->elts;
 
     *sp = ngx_parse_size(&value[1]);
-    if (*sp == NGX_ERROR) {
+    if (*sp == (size_t) NGX_ERROR) {
         return "invalid value";
     }
 
@@ -702,7 +702,7 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     msp = (ngx_msec_t *) (p + cmd->offset);
-    if (*msp != (ngx_msec_t) NGX_CONF_UNSET) {
+    if (*msp != NGX_CONF_UNSET_MSEC) {
         return "is duplicate";
     }
 
@@ -793,12 +793,12 @@ char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    ngx_int_t           *np, i, m;
+    ngx_uint_t          *np, i, m;
     ngx_str_t           *value;
     ngx_conf_bitmask_t  *mask;
 
 
-    np = (ngx_int_t *) (p + cmd->offset);
+    np = (ngx_uint_t *) (p + cmd->offset);
     value = (ngx_str_t *) cf->args->elts;
     mask = cmd->post;
 

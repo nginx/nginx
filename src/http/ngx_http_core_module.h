@@ -11,9 +11,10 @@ typedef struct {
     in_addr_t  addr;
     int        port;
     int        family;
-    int        flags;             /* 'default' */
     ngx_str_t  file_name;
     int        line;
+
+    unsigned   default_server:1;
 } ngx_http_listen_t;
 
 
@@ -27,7 +28,7 @@ typedef enum {
 
 typedef struct {
     ngx_array_t          handlers;
-    int                  type;                /* NGX_OK, NGX_DECLINED */
+    ngx_int_t            type;                /* NGX_OK, NGX_DECLINED */
 } ngx_http_phase_t;
 
 
@@ -50,12 +51,14 @@ typedef struct {
 
     ngx_http_conf_ctx_t *ctx;  /* server ctx */
 
+    size_t       connection_pool_size;
+    size_t       request_pool_size;
+    size_t       client_header_buffer_size;
+
     ngx_msec_t   post_accept_timeout;
-    ssize_t      connection_pool_size;
-    ssize_t      request_pool_size;
     ngx_msec_t   client_header_timeout;
-    ssize_t      client_header_buffer_size;
-    int          large_client_header;
+
+    ngx_flag_t   large_client_header;
 } ngx_http_core_srv_conf_t;
 
 
@@ -73,11 +76,9 @@ typedef struct {
     ngx_array_t                names;     /* array of ngx_http_server_name_t */
     ngx_http_core_srv_conf_t  *core_srv_conf;  /* default server conf
                                                   for this address:port */
-    int                        flags;
-} ngx_http_in_addr_t;
 
-/* ngx_http_in_addr_t's flags */
-#define NGX_HTTP_DEFAULT_SERVER  1
+    unsigned                   default_server:1;
+} ngx_http_in_addr_t;
 
 
 typedef struct {
@@ -115,22 +116,24 @@ typedef struct {
 
     int         (*handler) (ngx_http_request_t *r);
 
-    ngx_str_t     doc_root;                /* root */
+    ngx_str_t     root;                    /* root, alias */
 
     ngx_array_t  *types;
     ngx_str_t     default_type;
 
+    size_t        send_lowat;              /* send_lowat */
+    size_t        discarded_buffer_size;   /* discarded_buffer_size */
+
     ngx_msec_t    client_body_timeout;     /* client_body_timeout */
-    int           sendfile;                /* sendfile */
-    int           tcp_nopush;              /* tcp_nopush */
     ngx_msec_t    send_timeout;            /* send_timeout */
-    ssize_t       send_lowat;              /* send_lowat */
-    ssize_t       discarded_buffer_size;   /* discarded_buffer_size */
     ngx_msec_t    keepalive_timeout;       /* keepalive_timeout */
     ngx_msec_t    lingering_time;          /* lingering_time */
     ngx_msec_t    lingering_timeout;       /* lingering_timeout */
 
-    int           msie_padding;            /* msie_padding */
+    ngx_flag_t    sendfile;                /* sendfile */
+    ngx_flag_t    tcp_nopush;              /* tcp_nopush */
+    ngx_flag_t    msie_padding;            /* msie_padding */
+
     ngx_array_t  *error_pages;             /* error_page */
 
     ngx_http_cache_hash_t  *open_files;
@@ -141,6 +144,7 @@ typedef struct {
 
     unsigned      exact_match:1;
     unsigned      auto_redirect:1;
+    unsigned      alias:1;
 
     ngx_log_t    *err_log;
 } ngx_http_core_loc_conf_t;

@@ -56,8 +56,8 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #define  NGX_ABORT      -6
 
 
-#define LF     10
-#define CR     13
+#define LF     (u_char) 10
+#define CR     (u_char) 13
 #define CRLF   "\x0d\x0a"
 
 

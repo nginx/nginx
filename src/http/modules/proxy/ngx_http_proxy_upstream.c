@@ -98,8 +98,8 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
 
 static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 {
-    int                              i;
     size_t                           len;
+    ngx_uint_t                       i;
     ngx_hunk_t                      *h;
     ngx_chain_t                     *chain;
     ngx_table_elt_t                 *header;

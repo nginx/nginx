@@ -2,34 +2,34 @@
 #define _NGX_HTTP_REQUEST_H_INCLUDED_
 
 
-#define NGX_HTTP_VERSION_9           9
-#define NGX_HTTP_VERSION_10       1000
-#define NGX_HTTP_VERSION_11       1001
+#define NGX_HTTP_VERSION_9                 9
+#define NGX_HTTP_VERSION_10                1000
+#define NGX_HTTP_VERSION_11                1001
 
-#define NGX_HTTP_GET   1
-#define NGX_HTTP_HEAD  2
-#define NGX_HTTP_POST  3
+#define NGX_HTTP_GET                       1
+#define NGX_HTTP_HEAD                      2
+#define NGX_HTTP_POST                      3
 
-#define NGX_HTTP_CONNECTION_CLOSE         1
-#define NGX_HTTP_CONNECTION_KEEP_ALIVE    2
-
-
-#define NGX_NONE                          1
+#define NGX_HTTP_CONNECTION_CLOSE          1
+#define NGX_HTTP_CONNECTION_KEEP_ALIVE     2
 
 
-#define NGX_HTTP_PARSE_HEADER_DONE        1
+#define NGX_NONE                           1
 
-#define NGX_HTTP_CLIENT_ERROR             10
-#define NGX_HTTP_PARSE_INVALID_METHOD     10
-#define NGX_HTTP_PARSE_INVALID_REQUEST    11
-#define NGX_HTTP_PARSE_TOO_LONG_URI       12
-#define NGX_HTTP_PARSE_INVALID_09_METHOD  13
 
-#define NGX_HTTP_PARSE_HEADER_ERROR       14
-#define NGX_HTTP_PARSE_INVALID_HEADER     14
-#define NGX_HTTP_PARSE_TOO_LONG_HEADER    15
-#define NGX_HTTP_PARSE_NO_HOST_HEADER     16
-#define NGX_HTTP_PARSE_INVALID_CL_HEADER  17
+#define NGX_HTTP_PARSE_HEADER_DONE         1
+
+#define NGX_HTTP_CLIENT_ERROR              10
+#define NGX_HTTP_PARSE_INVALID_METHOD      10
+#define NGX_HTTP_PARSE_INVALID_REQUEST     11
+#define NGX_HTTP_PARSE_TOO_LONG_URI        12
+#define NGX_HTTP_PARSE_INVALID_09_METHOD   13
+
+#define NGX_HTTP_PARSE_HEADER_ERROR        14
+#define NGX_HTTP_PARSE_INVALID_HEADER      14
+#define NGX_HTTP_PARSE_TOO_LONG_HEADER     15
+#define NGX_HTTP_PARSE_NO_HOST_HEADER      16
+#define NGX_HTTP_PARSE_INVALID_CL_HEADER   17
 
 
 #define NGX_HTTP_OK                        200
@@ -80,8 +80,8 @@ typedef enum {
 
 
 typedef struct {
-    ngx_str_t  name;
-    int        offset;
+    ngx_str_t         name;
+    ngx_uint_t        offset;
 } ngx_http_header_t;
 
 
@@ -124,14 +124,14 @@ typedef struct {
     ngx_file_t        temp_file;
     ngx_path_t       *temp_path;
     off_t             offset;
-    char             *header_in_pos;
+    u_char           *header_in_pos;
 } ngx_http_request_body_t;
 
 
 typedef struct {
-    off_t      start;
-    off_t      end;
-    ngx_str_t  content_range;
+    off_t             start;
+    off_t             end;
+    ngx_str_t         content_range;
 } ngx_http_range_t;
 
 
@@ -155,7 +155,7 @@ typedef struct {
     ngx_array_t       ranges;
 
     off_t             content_length_n;
-    char             *etag;
+    u_char           *etag;
     time_t            date_time;
     time_t            last_modified_time;
 } ngx_http_headers_out_t;
@@ -165,7 +165,7 @@ struct ngx_http_cleanup_s {
     union {
         struct {
             ngx_fd_t                 fd;
-            char                    *name;
+            u_char                  *name;
         } file;
 
         struct {
@@ -202,10 +202,10 @@ struct ngx_http_request_s {
 
     time_t               lingering_time;
 
-    int                  method;
-    int                  http_version;
-    int                  http_major;
-    int                  http_minor;
+    ngx_uint_t           method;
+    ngx_uint_t           http_version;
+    ngx_uint_t           http_major;
+    ngx_uint_t           http_minor;
 
     ngx_str_t            request_line;
     ngx_str_t            uri;
@@ -215,20 +215,20 @@ struct ngx_http_request_s {
 
     ngx_http_request_t  *main;
 
-    u_int                in_addr;
-    int                  port;
+    uint32_t             in_addr;
+    ngx_uint_t           port;
     ngx_str_t           *port_name;    /* ":80" */
     ngx_str_t           *server_name;
     ngx_array_t         *virtual_names;
 
-    int                  phase;
-    int                  phase_handler;
+    ngx_uint_t           phase;
+    ngx_int_t            phase_handler;
     ngx_http_handler_pt  content_handler;
 
     ngx_temp_file_t     *temp_file;
     ngx_chain_t         *request_hunks;
     ngx_hunk_t          *request_body_hunk;
-    int                  request_body_len;
+    size_t               request_body_len;
     void               (*request_body_handler) (void *data); 
     void                *data;
 
@@ -236,9 +236,9 @@ struct ngx_http_request_s {
 
     size_t               header_size;
 
-    char                *discarded_buffer;
+    u_char              *discarded_buffer;
     void               **err_ctx;
-    int                  err_status;
+    ngx_uint_t           err_status;
 
     unsigned             http_state:4;
 
@@ -268,21 +268,21 @@ struct ngx_http_request_s {
     unsigned             closed:1;
 #endif
 
-    /* TODO: use filter or bits ???? */
-    int                  filter;
+    /* TODO: use the filter flags or the separate bits ???? */
+    u_int                filter;
 
     /* used to parse HTTP headers */
-    int                  state;
-    char                *uri_start;
-    char                *uri_end;
-    char                *uri_ext;
-    char                *args_start;
-    char                *request_start;
-    char                *request_end;
-    char                *header_name_start;
-    char                *header_name_end;
-    char                *header_start;
-    char                *header_end;
+    ngx_int_t            state;
+    u_char              *uri_start;
+    u_char              *uri_end;
+    u_char              *uri_ext;
+    u_char              *args_start;
+    u_char              *request_start;
+    u_char              *request_end;
+    u_char              *header_name_start;
+    u_char              *header_name_end;
+    u_char              *header_start;
+    u_char              *header_end;
 };
 
 

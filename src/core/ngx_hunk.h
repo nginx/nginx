@@ -45,14 +45,14 @@ typedef void *                   ngx_hunk_tag_t;
 typedef struct ngx_hunk_s        ngx_hunk_t;
 
 struct ngx_hunk_s {
-    char            *pos;
-    char            *last;
+    u_char          *pos;
+    u_char          *last;
     off_t            file_pos;
     off_t            file_last;
 
     int              type;
-    char            *start;         /* start of hunk */
-    char            *end;           /* end of hunk */
+    u_char          *start;         /* start of hunk */
+    u_char          *end;           /* end of hunk */
     ngx_hunk_tag_t   tag;
     ngx_file_t      *file;
     ngx_hunk_t      *shadow;
@@ -69,7 +69,7 @@ struct ngx_chain_s {
 
 
 typedef struct {
-    int          num;
+    ngx_int_t    num;
     size_t       size;
 } ngx_bufs_t;
 
@@ -87,7 +87,7 @@ typedef struct {
     unsigned                     need_in_temp;
 
     ngx_pool_t                  *pool;
-    int                          hunks;
+    ngx_int_t                    hunks;
     ngx_bufs_t                   bufs;
     ngx_hunk_tag_t               tag;
 

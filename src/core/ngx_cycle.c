@@ -23,7 +23,7 @@ static ngx_connection_t  dumb;
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
-    ngx_int_t         i, n, failed;
+    ngx_uint_t        i, n, failed;
     ngx_log_t        *log;
     ngx_conf_t        conf;
     ngx_pool_t       *pool;
@@ -374,7 +374,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 {
     ngx_fd_t          fd;
-    ngx_int_t         i;
+    ngx_uint_t        i;
     ngx_open_file_t  *file;
 
     file = cycle->open_files.elts;
@@ -412,7 +412,7 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
         }
 #else
         if (user != (ngx_uid_t) -1) {
-            if (chown(file[i].name.data, user, -1) == -1) {
+            if (chown((const char *) file[i].name.data, user, -1) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                               "chown \"%s\" failed", file[i].name.data);
 
@@ -461,7 +461,7 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 
 static void ngx_clean_old_cycles(ngx_event_t *ev)
 {
-    int            i, n, found, live;
+    ngx_uint_t     i, n, found, live;
     ngx_log_t     *log;
     ngx_cycle_t  **cycle;
 
@@ -482,7 +482,7 @@ static void ngx_clean_old_cycles(ngx_event_t *ev)
         found = 0;
 
         for (n = 0; n < cycle[i]->connection_n; n++) {
-            if (cycle[i]->connections[n].fd != -1) {
+            if (cycle[i]->connections[n].fd != (ngx_socket_t) -1) {
                 found = 1;
 
                 ngx_log_debug1(NGX_LOG_DEBUG_CORE, log, 0, "live fd:%d", n);

@@ -126,7 +126,8 @@ ngx_module_t  ngx_event_core_module = {
 
 static int ngx_event_init(ngx_cycle_t *cycle)
 {
-    int                  m, i, fd;
+    ngx_uint_t           m, i;
+    ngx_socket_t         fd;
     ngx_event_t         *rev, *wev;
     ngx_listening_t     *s;
     ngx_connection_t    *c;
@@ -174,7 +175,7 @@ static int ngx_event_init(ngx_cycle_t *cycle)
 
     c = cycle->connections;
     for (i = 0; i < cycle->connection_n; i++) {
-        c[i].fd = -1;
+        c[i].fd = (ngx_socket_t) -1;
     }
 
     cycle->read_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
@@ -250,7 +251,7 @@ static int ngx_event_init(ngx_cycle_t *cycle)
                     return NGX_ERROR;
                 }
 
-                cycle->old_cycle->connections[fd].fd = -1;
+                cycle->old_cycle->connections[fd].fd = (ngx_socket_t) -1;
             }
         }
 

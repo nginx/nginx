@@ -333,7 +333,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
 static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
-    char  *name;
+    u_char  *name;
 
     if (ngx_inherited && getppid() > 1) {
         name = ctx->pid.name.data;
@@ -355,7 +355,7 @@ static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     sigset_t          set;
-    ngx_int_t         i;
+    ngx_uint_t        i;
     ngx_listening_t  *ls;
     ngx_core_conf_t  *ccf;
 #if (NGX_THREADS)

@@ -43,6 +43,8 @@
 
 
 #define NGX_CONF_UNSET       -1
+#define NGX_CONF_UNSET_SIZE  (size_t) -1
+#define NGX_CONF_UNSET_MSEC  (ngx_msec_t) -1
 
 
 #define NGX_CONF_OK          NULL
@@ -189,8 +191,8 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
     }
 
 #define ngx_conf_merge_msec_value(conf, prev, default)                       \
-    if (conf == (ngx_msec_t) NGX_CONF_UNSET) {                               \
-        conf = (prev == (ngx_msec_t) NGX_CONF_UNSET) ? default : prev;       \
+    if (conf == NGX_CONF_UNSET_MSEC) {                                       \
+        conf = (prev == NGX_CONF_UNSET_MSEC) ? default : prev;               \
     }
 
 #define ngx_conf_merge_sec_value(conf, prev, default)                        \
@@ -199,8 +201,8 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
     }
 
 #define ngx_conf_merge_size_value(conf, prev, default)                       \
-    if (conf == (ssize_t) NGX_CONF_UNSET) {                                  \
-        conf = (prev == (ssize_t) NGX_CONF_UNSET) ? default : prev;          \
+    if (conf == NGX_CONF_UNSET_SIZE) {                                       \
+        conf = (prev == NGX_CONF_UNSET_SIZE) ? default : prev;               \
     }
 
 #define ngx_conf_merge_str_value(conf, prev, default)                        \

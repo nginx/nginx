@@ -6,7 +6,7 @@
 
 
 typedef struct {
-    ssize_t  postpone_output;
+    size_t  postpone_output;
 } ngx_http_write_filter_conf_t;
 
 
@@ -171,7 +171,7 @@ static void *ngx_http_write_filter_create_conf(ngx_conf_t *cf)
                   ngx_palloc(cf->pool, sizeof(ngx_http_write_filter_conf_t)),
                   NULL);
 
-    conf->postpone_output = NGX_CONF_UNSET;
+    conf->postpone_output = NGX_CONF_UNSET_SIZE;
 
     return conf;
 }

@@ -325,8 +325,8 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
 {
-    ngx_int_t   i, n, d;
-    ngx_str_t  *value;
+    ngx_uint_t   i, n, d;
+    ngx_str_t   *value;
 
     value = cf->args->elts;
 

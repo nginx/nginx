@@ -14,8 +14,8 @@
  * it never sends a header with a part of the file in one packet until
  * FreeBSD 5.2-STABLE.  Besides over the fast ethernet connection sendfile()
  * can send the partially filled packets, i.e. the 8 file pages can be sent
- * as 11 full 1460-bytes packets, then one incomplete 324-bytes packet, and
- * then again 11 full 1460-bytes packets.
+ * as the 11 full 1460-bytes packets, then one incomplete 324-bytes packet,
+ * and then again the 11 full 1460-bytes packets.
  *
  * So we use the TCP_NOPUSH option (similar to Linux's TCP_CORK)
  * to postpone the sending - it not only sends a header and the first part
@@ -31,7 +31,7 @@
 ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int              rc;
-    char            *prev;
+    u_char          *prev;
     off_t            sent, fprev;
     size_t           hsize, fsize;
     ssize_t          size;
@@ -93,7 +93,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
-                iov->iov_base = cl->hunk->pos;
+                iov->iov_base = (void *) cl->hunk->pos;
                 iov->iov_len = cl->hunk->last - cl->hunk->pos;
             }
 
@@ -145,7 +145,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                 } else {
                     ngx_test_null(iov, ngx_push_array(&trailer),
                                   NGX_CHAIN_ERROR);
-                    iov->iov_base = cl->hunk->pos;
+                    iov->iov_base = (void *) cl->hunk->pos;
                     iov->iov_len = cl->hunk->last - cl->hunk->pos;
                 }
 

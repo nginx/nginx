@@ -9,7 +9,7 @@ ngx_os_io_t  ngx_io;
 
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
-    ngx_int_t            i;
+    ngx_uint_t           i;
     ngx_listening_t     *ls;
     struct sockaddr_in  *addr_in;
 
@@ -63,7 +63,7 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
 ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
 {
-    ngx_int_t         tries, failed, reuseaddr, i;
+    ngx_uint_t        tries, failed, reuseaddr, i;
     ngx_err_t         err;
     ngx_log_t        *log;
     ngx_socket_t      s;
@@ -78,7 +78,7 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
     /* TODO: tries configurable */
 
-    for (tries = /* STUB */ 1; tries; tries--) {
+    for (tries = /* STUB */ 5; tries; tries--) {
         failed = 0;
 
         /* for each listening socket */
@@ -204,7 +204,7 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
 void ngx_close_listening_sockets(ngx_cycle_t *cycle)
 {
-    ngx_int_t         i;
+    ngx_uint_t        i;
     ngx_socket_t      fd;
     ngx_listening_t  *ls;
 
@@ -233,7 +233,7 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
                           ls[i].addr_text.data);
         }
 
-        cycle->connections[fd].fd = -1;
+        cycle->connections[fd].fd = (ngx_socket_t) -1;
     }
 }
 

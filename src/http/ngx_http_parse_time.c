@@ -6,10 +6,10 @@
 
 static int mday[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
-time_t ngx_http_parse_time(char *value, size_t len)
+time_t ngx_http_parse_time(u_char *value, size_t len)
 {
-    char  *p, *end;
-    int    day, month, year, hour, min, sec;
+    u_char  *p, *end;
+    int      day, month, year, hour, min, sec;
     enum {
         no = 0,
         rfc822,   /* Tue 10 Nov 2002 23:50:13    */

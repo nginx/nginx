@@ -5,36 +5,6 @@
 #include <nginx.h>
 
 
-#if 0
-
-typedef struct {
-     ngx_flag_t  daemon;
-     ngx_flag_t  master;
-     ngx_flag_t  worker_reopen;
-     uid_t       user;
-     gid_t       group;
-     ngx_str_t   pid;
-     ngx_str_t   newpid;
-} ngx_core_conf_t;
-
-
-typedef struct {
-     ngx_file_t    pid;
-     char         *name;
-     int           argc;
-     char *const  *argv;
-} ngx_master_ctx_t;
-
-
-static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
-static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
-static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
-#if (NGX_THREADS)
-static int ngx_worker_thread_cycle(void *data);
-#endif
-
-#endif
-
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
 static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle);
 static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle);
@@ -112,7 +82,7 @@ int main(int argc, char *const *argv)
     ngx_master_ctx_t   ctx;
 #if !(WIN32)
     size_t             len;
-    char               pid[/* STUB */ 10];
+    u_char             pid[/* STUB */ 10];
 #endif
 
 #if __FreeBSD__
@@ -220,7 +190,7 @@ int main(int argc, char *const *argv)
                    NGINX_NEW_PID_EXT, sizeof(NGINX_NEW_PID_EXT));
     }
 
-    len = ngx_snprintf(pid, /* STUB */ 10, PID_T_FMT, ngx_getpid());
+    len = ngx_snprintf((char *) pid, /* STUB */ 10, PID_T_FMT, ngx_getpid());
     ngx_memzero(&ctx.pid, sizeof(ngx_file_t));
     ctx.pid.name = ngx_inherited ? ccf->newpid : ccf->pid;
     ctx.name = ccf->pid.data;
@@ -253,11 +223,11 @@ int main(int argc, char *const *argv)
 
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
-    char                *p, *v, *inherited;
+    u_char              *p, *v, *inherited;
     ngx_socket_t         s;
     ngx_listening_t     *ls;
 
-    inherited = getenv(NGINX_VAR);
+    inherited = (u_char *) getenv(NGINX_VAR);
 
     if (inherited == NULL) {
         return NGX_OK;
@@ -280,11 +250,11 @@ static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle)
                 break;
             }
 
-        v = p + 1;
+            v = p + 1;
 
-        if (!(ls = ngx_push_array(&cycle->listening))) {
+            if (!(ls = ngx_push_array(&cycle->listening))) {
                 return NGX_ERROR;
-        }
+            }
 
             ls->fd = s;
         }
@@ -299,7 +269,7 @@ static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 {
     char             *env[2], *var, *p;
-    ngx_int_t         i;
+    ngx_uint_t        i;
     ngx_pid_t         pid;
     ngx_exec_ctx_t    ctx;
     ngx_listening_t  *ls;
@@ -312,7 +282,7 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
                             + cycle->listening.nelts * (NGX_INT32_LEN + 1) + 2,
                     cycle->log);
 
-    p = ngx_cpymem(var, NGINX_VAR "=", sizeof(NGINX_VAR));
+    p = (char *) ngx_cpymem(var, NGINX_VAR "=", sizeof(NGINX_VAR));
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
@@ -347,7 +317,7 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
         switch (ctx->argv[i][1]) {
 
         case 'c':
-            cycle->conf_file.data = ctx->argv[++i];
+            cycle->conf_file.data = (u_char *) ctx->argv[++i];
             cycle->conf_file.len = ngx_strlen(cycle->conf_file.data);
             break;
 
@@ -425,7 +395,7 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = (ngx_str_t *) cf->args->elts;
 
-    pwd = getpwnam(value[1].data);
+    pwd = getpwnam((const char *) value[1].data);
     if (pwd == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
                            "getpwnam(%s) failed", value[1].data);
@@ -438,7 +408,7 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    grp = getgrnam(value[2].data);
+    grp = getgrnam((const char *) value[2].data);
     if (grp == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
                            "getgrnam(%s) failed", value[1].data);

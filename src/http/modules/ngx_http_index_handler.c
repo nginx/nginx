@@ -12,8 +12,8 @@ typedef struct {
 
 
 typedef struct {
-    ngx_int_t          index;
-    char              *last;
+    ngx_uint_t         index;
+    u_char            *last;
     ngx_str_t          path;
     ngx_str_t          redirect;
     ngx_http_cache_t  *cache;
@@ -97,7 +97,7 @@ ngx_module_t  ngx_http_index_module = {
 
 int ngx_http_index_handler(ngx_http_request_t *r)
 {
-    char                       *name;
+    u_char                     *name;
     size_t                      len;
     ngx_fd_t                    fd;
     ngx_int_t                   rc;
@@ -161,13 +161,13 @@ int ngx_http_index_handler(ngx_http_request_t *r)
 
 #endif
 
-        len = clcf->doc_root.len + r->uri.len + ilcf->max_index_len;
+        len = clcf->root.len + r->uri.len + ilcf->max_index_len;
         if (!(ctx->path.data = ngx_palloc(r->pool, len))) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        ctx->redirect.data = ngx_cpymem(ctx->path.data, clcf->doc_root.data,
-                                        clcf->doc_root.len);
+        ctx->redirect.data = ngx_cpymem(ctx->path.data, clcf->root.data,
+                                        clcf->root.len);
         ctx->last = ngx_cpystrn(ctx->redirect.data, r->uri.data,
                                 r->uri.len + 1);
         ctx->path.len = ctx->last - ctx->path.data;
@@ -237,7 +237,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
 
         } else {
             ctx->redirect.len = r->uri.len + index[ctx->index].len;
-            r->file.name.len = clcf->doc_root.len + r->uri.len
+            r->file.name.len = clcf->root.len + r->uri.len
                                                        + index[ctx->index].len;
         }
 
@@ -387,7 +387,7 @@ static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
     ngx_http_index_loc_conf_t  *prev = parent;
     ngx_http_index_loc_conf_t  *conf = child;
 
-    int         i;
+    ngx_uint_t  i;
     ngx_str_t  *index, *prev_index;
 
     if (conf->max_index_len == 0) {
@@ -434,7 +434,7 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     ngx_http_index_loc_conf_t *ilcf = conf;
 
-    int         i;
+    ngx_uint_t  i;
     ngx_str_t  *index, *value;
 
     value = cf->args->elts;

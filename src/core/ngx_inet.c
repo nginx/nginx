@@ -5,9 +5,10 @@
 
 /* AF_INET only */
 
-size_t ngx_sock_ntop(int family, struct sockaddr *addr, char *text, size_t len)
+size_t ngx_sock_ntop(int family, struct sockaddr *addr, u_char *text,
+                     size_t len)
 {
-    char                *p;
+    u_char              *p;
     struct sockaddr_in  *addr_in;
 
     if (family != AF_INET) {
@@ -15,27 +16,21 @@ size_t ngx_sock_ntop(int family, struct sockaddr *addr, char *text, size_t len)
     }
 
     addr_in = (struct sockaddr_in *) addr;
-    p = (char *) &addr_in->sin_addr;
+    p = (u_char *) &addr_in->sin_addr;
 
-    return ngx_snprintf(text, len > INET_ADDRSTRLEN ? INET_ADDRSTRLEN : len,
-                        "%u.%u.%u.%u",
-                        (unsigned char) p[0],
-                        (unsigned char) p[1],
-                        (unsigned char) p[2],
-                        (unsigned char) p[3]);
+    return ngx_snprintf((char *) text,
+                        len > INET_ADDRSTRLEN ? INET_ADDRSTRLEN : len,
+                        "%u.%u.%u.%u", p[0], p[1], p[2], p[3]);
 }
 
 
-size_t ngx_inet_ntop(int family, char *addr, char *text, size_t len)
+size_t ngx_inet_ntop(int family, u_char *addr, u_char *text, size_t len)
 {
     if (family != AF_INET) {
         return 0;
     }
 
-    return ngx_snprintf(text, len > INET_ADDRSTRLEN ? INET_ADDRSTRLEN : len,
-                        "%u.%u.%u.%u",
-                        (unsigned char) addr[0],
-                        (unsigned char) addr[1],
-                        (unsigned char) addr[2],
-                        (unsigned char) addr[3]);
+    return ngx_snprintf((char *) text,
+                        len > INET_ADDRSTRLEN ? INET_ADDRSTRLEN : len,
+                        "%u.%u.%u.%u", addr[0], addr[1], addr[2], addr[3]);
 }

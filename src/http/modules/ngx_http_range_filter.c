@@ -44,7 +44,7 @@ typedef struct {
 } ngx_http_range_filter_ctx_t;
 
 
-static int ngx_http_range_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_range_filter_init(ngx_cycle_t *cycle);
 
 
 static ngx_http_module_t  ngx_http_range_filter_module_ctx = {
@@ -75,10 +75,12 @@ static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
-static int ngx_http_range_header_filter(ngx_http_request_t *r)
+static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
 {
-    ngx_int_t                     rc, boundary, suffix, len, i;
-    char                         *p;
+    ngx_int_t                     rc;
+    ngx_uint_t                    boundary, suffix, i;
+    u_char                       *p;
+    size_t                        len;
     off_t                         start, end;
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *ctx;
@@ -235,9 +237,9 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                       NGX_ERROR);
 
         r->headers_out.content_range->value.len =
-                        ngx_snprintf(r->headers_out.content_range->value.data,
-                                     8 + 20 + 1, "bytes */" OFF_T_FMT,
-                                     r->headers_out.content_length_n);
+                ngx_snprintf((char *) r->headers_out.content_range->value.data,
+                             8 + 20 + 1, "bytes */" OFF_T_FMT,
+                             r->headers_out.content_length_n);
 
         r->headers_out.content_length_n = -1;
         if (r->headers_out.content_length) {
@@ -268,7 +270,8 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
             /* "Content-Range: bytes SSSS-EEEE/TTTT" header */
 
             r->headers_out.content_range->value.len =
-                   ngx_snprintf(r->headers_out.content_range->value.data,
+                   ngx_snprintf((char *)
+                                r->headers_out.content_range->value.data,
                                 6 + 20 + 1 + 20 + 1 + 20 + 1,
                                 "bytes " OFF_T_FMT "-" OFF_T_FMT "/" OFF_T_FMT,
                                 range->start, range->end - 1,
@@ -313,7 +316,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
 
             if (r->headers_out.charset.len) {
                 ctx->boundary_header.len =
-                         ngx_snprintf(ctx->boundary_header.data, len,
+                         ngx_snprintf((char *) ctx->boundary_header.data, len,
                                       CRLF "--%010u" CRLF
                                       "Content-Type: %s; charset=%s" CRLF
                                       "Content-Range: bytes ",
@@ -325,7 +328,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
 
             } else {
                 ctx->boundary_header.len =
-                         ngx_snprintf(ctx->boundary_header.data, len,
+                         ngx_snprintf((char *) ctx->boundary_header.data, len,
                                       CRLF "--%010u" CRLF
                                       "Content-Type: %s" CRLF
                                       "Content-Range: bytes ",
@@ -340,7 +343,8 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
             /* "Content-Type: multipart/byteranges; boundary=0123456789" */
 
             r->headers_out.content_type->value.len =
-                      ngx_snprintf(r->headers_out.content_type->value.data,
+                      ngx_snprintf((char *)
+                                   r->headers_out.content_type->value.data,
                                    31 + 10 + 1,
                                    "multipart/byteranges; boundary=%010u",
                                    boundary);
@@ -357,7 +361,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                 /* the size of the range: "SSSS-EEEE/TTTT" CRLF CRLF */
 
                 range[i].content_range.len =
-                  ngx_snprintf(range[i].content_range.data,
+                  ngx_snprintf((char *) range[i].content_range.data,
                                20 + 1 + 20 + 1 + 20 + 5,
                                OFF_T_FMT "-" OFF_T_FMT "/" OFF_T_FMT CRLF CRLF,
                                range[i].start, range[i].end - 1,
@@ -376,9 +380,10 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+static ngx_int_t ngx_http_range_body_filter(ngx_http_request_t *r,
+                                            ngx_chain_t *in)
 {
-    int                           i;
+    ngx_uint_t                    i;
     ngx_hunk_t                   *h;
     ngx_chain_t                  *out, *hcl, *rcl, *dcl, **ll;
     ngx_http_range_t             *range;
@@ -475,7 +480,7 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 }
 
 
-static int ngx_http_range_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_range_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_range_header_filter;

@@ -190,7 +190,7 @@ char *ngx_http_set_busy_lock_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     char  *p = conf;
 
-    int                    i, dup, invalid;
+    ngx_uint_t             i, dup, invalid;
     ngx_str_t             *value, line;
     ngx_http_busy_lock_t  *bl, **blp;
 

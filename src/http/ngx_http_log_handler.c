@@ -5,35 +5,35 @@
 #include <nginx.h>
 
 
-static char *ngx_http_log_addr(ngx_http_request_t *r, char *buf,
-                               uintptr_t data);
-static char *ngx_http_log_connection(ngx_http_request_t *r, char *buf,
-                                     uintptr_t data);
-static char *ngx_http_log_pipe(ngx_http_request_t *r, char *buf,
-                               uintptr_t data);
-static char *ngx_http_log_time(ngx_http_request_t *r, char *buf,
-                               uintptr_t data);
-static char *ngx_http_log_request(ngx_http_request_t *r, char *buf,
-                                  uintptr_t data);
-static char *ngx_http_log_status(ngx_http_request_t *r, char *buf,
+static u_char *ngx_http_log_addr(ngx_http_request_t *r, u_char *buf,
                                  uintptr_t data);
-static char *ngx_http_log_length(ngx_http_request_t *r, char *buf,
+static u_char *ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
+                                       uintptr_t data);
+static u_char *ngx_http_log_pipe(ngx_http_request_t *r, u_char *buf,
                                  uintptr_t data);
-static char *ngx_http_log_apache_length(ngx_http_request_t *r, char *buf,
-                                        uintptr_t data);
-static char *ngx_http_log_header_in(ngx_http_request_t *r, char *buf,
+static u_char *ngx_http_log_time(ngx_http_request_t *r, u_char *buf,
+                                 uintptr_t data);
+static u_char *ngx_http_log_request(ngx_http_request_t *r, u_char *buf,
                                     uintptr_t data);
-static char *ngx_http_log_connection_header_out(ngx_http_request_t *r,
-                                                char *buf, uintptr_t data);
-static char *ngx_http_log_transfer_encoding_header_out(ngx_http_request_t *r,
-                                                       char *buf,
-                                                       uintptr_t data);
-static char *ngx_http_log_unknown_header_in(ngx_http_request_t *r, char *buf,
-                                            uintptr_t data);
-static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
-                                     uintptr_t data);
-static char *ngx_http_log_unknown_header_out(ngx_http_request_t *r, char *buf,
-                                             uintptr_t data);
+static u_char *ngx_http_log_status(ngx_http_request_t *r, u_char *buf,
+                                   uintptr_t data);
+static u_char *ngx_http_log_length(ngx_http_request_t *r, u_char *buf,
+                                   uintptr_t data);
+static u_char *ngx_http_log_apache_length(ngx_http_request_t *r, u_char *buf,
+                                          uintptr_t data);
+static u_char *ngx_http_log_header_in(ngx_http_request_t *r, u_char *buf,
+                                      uintptr_t data);
+static u_char *ngx_http_log_connection_header_out(ngx_http_request_t *r,
+                                                  u_char *buf, uintptr_t data);
+static u_char *ngx_http_log_transfer_encoding_header_out(ngx_http_request_t *r,
+                                                         u_char *buf,
+                                                         uintptr_t data);
+static u_char *ngx_http_log_unknown_header_in(ngx_http_request_t *r,
+                                              u_char *buf, uintptr_t data);
+static u_char *ngx_http_log_header_out(ngx_http_request_t *r, u_char *buf,
+                                       uintptr_t data);
+static u_char *ngx_http_log_unknown_header_out(ngx_http_request_t *r, u_char *buf,
+                                               uintptr_t data);
 
 static int ngx_http_log_pre_conf(ngx_conf_t *cf);
 static void *ngx_http_log_create_main_conf(ngx_conf_t *cf);
@@ -118,9 +118,9 @@ ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
 
 int ngx_http_log_handler(ngx_http_request_t *r)
 {
-    int                       i, l;
-    u_int                     data;
-    char                     *line, *p;
+    ngx_uint_t                i, l;
+    uintptr_t                 data;
+    u_char                   *line, *p;
     size_t                    len;
     ngx_http_log_t           *log;
     ngx_http_log_op_t        *op;
@@ -162,7 +162,7 @@ int ngx_http_log_handler(ngx_http_request_t *r)
                 len = op[i].len;
                 data = op[i].data;
                 while (len--) {
-                    *p++ = data & 0xff;
+                    *p++ = (char) (data & 0xff);
                     data >>= 8;
                 }
 
@@ -187,22 +187,24 @@ int ngx_http_log_handler(ngx_http_request_t *r)
 }
 
 
-static char *ngx_http_log_addr(ngx_http_request_t *r, char *buf, uintptr_t data)
+static u_char *ngx_http_log_addr(ngx_http_request_t *r, u_char *buf,
+                                 uintptr_t data)
 {
     return ngx_cpymem(buf, r->connection->addr_text.data,
                       r->connection->addr_text.len);
 }
 
 
-static char *ngx_http_log_connection(ngx_http_request_t *r, char *buf,
+static u_char *ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
                                      uintptr_t data)
 {
-    return buf + ngx_snprintf(buf, NGX_INT32_LEN + 1, "%u",
+    return buf + ngx_snprintf((char *) buf, NGX_INT32_LEN + 1, "%u",
                               r->connection->number);
 }
 
 
-static char *ngx_http_log_pipe(ngx_http_request_t *r, char *buf, uintptr_t data)
+static u_char *ngx_http_log_pipe(ngx_http_request_t *r, u_char *buf,
+                                 uintptr_t data)
 {
     if (r->pipeline) {
         *buf = 'p';
@@ -214,53 +216,54 @@ static char *ngx_http_log_pipe(ngx_http_request_t *r, char *buf, uintptr_t data)
 }
 
 
-static char *ngx_http_log_time(ngx_http_request_t *r, char *buf, uintptr_t data)
+static u_char *ngx_http_log_time(ngx_http_request_t *r, u_char *buf,
+                                 uintptr_t data)
 {
     return ngx_cpymem(buf, ngx_cached_http_log_time.data,
                       ngx_cached_http_log_time.len);
 }
 
 
-static char *ngx_http_log_request(ngx_http_request_t *r, char *buf,
-                                  uintptr_t data)
+static u_char *ngx_http_log_request(ngx_http_request_t *r, u_char *buf,
+                                    uintptr_t data)
 {
     if (buf == NULL) {
         /* find the request line length */
-        return (char *) r->request_line.len;
+        return (u_char *) r->request_line.len;
     }
 
     return ngx_cpymem(buf, r->request_line.data, r->request_line.len);
 }
 
 
-static char *ngx_http_log_status(ngx_http_request_t *r, char *buf,
-                                 uintptr_t data)
+static u_char *ngx_http_log_status(ngx_http_request_t *r, u_char *buf,
+                                   uintptr_t data)
 {
-    return buf + ngx_snprintf(buf, 4, "%d",
+    return buf + ngx_snprintf((char *) buf, 4, "%d",
                         r->err_status ? r->err_status : r->headers_out.status);
 }
 
 
-static char *ngx_http_log_length(ngx_http_request_t *r, char *buf,
-                                 uintptr_t data)
+static u_char *ngx_http_log_length(ngx_http_request_t *r, u_char *buf,
+                                   uintptr_t data)
 {
-    return buf + ngx_snprintf(buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
+    return buf + ngx_snprintf((char *) buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
                               r->connection->sent);
 }
 
 
-static char *ngx_http_log_apache_length(ngx_http_request_t *r, char *buf,
-                                        uintptr_t data)
+static u_char *ngx_http_log_apache_length(ngx_http_request_t *r, u_char *buf,
+                                          uintptr_t data)
 {
-    return buf + ngx_snprintf(buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
+    return buf + ngx_snprintf((char *) buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
                               r->connection->sent - r->header_size);
 }
 
 
-static char *ngx_http_log_header_in(ngx_http_request_t *r, char *buf,
-                                    uintptr_t data)
+static u_char *ngx_http_log_header_in(ngx_http_request_t *r, u_char *buf,
+                                      uintptr_t data)
 {
-    int                 i;
+    ngx_uint_t          i;
     ngx_str_t          *s;
     ngx_table_elt_t    *h;
     ngx_http_log_op_t  *op;
@@ -281,7 +284,7 @@ static char *ngx_http_log_header_in(ngx_http_request_t *r, char *buf,
 
         if (buf == NULL) {
             /* find the header length */
-            return (char *) h->value.len;
+            return (u_char *) h->value.len;
         }
 
         return ngx_cpymem(buf, h->value.data, h->value.len);
@@ -315,10 +318,10 @@ static char *ngx_http_log_header_in(ngx_http_request_t *r, char *buf,
 }
 
 
-static char *ngx_http_log_unknown_header_in(ngx_http_request_t *r, char *buf,
-                                            uintptr_t data)
+static u_char *ngx_http_log_unknown_header_in(ngx_http_request_t *r,
+                                              u_char *buf, uintptr_t data)
 {
-    int               i;
+    ngx_uint_t        i;
     ngx_str_t        *s;
     ngx_table_elt_t  *h;
 
@@ -333,7 +336,7 @@ static char *ngx_http_log_unknown_header_in(ngx_http_request_t *r, char *buf,
         if (ngx_strncasecmp(h[i].key.data, s->data, s->len) == 0) {
             if (buf == NULL) {
                 /* find the header length */
-                return (char *) h[i].value.len;
+                return (u_char *) h[i].value.len;
             }
 
             return ngx_cpymem(buf, h[i].value.data, h[i].value.len);
@@ -350,10 +353,10 @@ static char *ngx_http_log_unknown_header_in(ngx_http_request_t *r, char *buf,
 }
 
 
-static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
-                                     uintptr_t data)
+static u_char *ngx_http_log_header_out(ngx_http_request_t *r, u_char *buf,
+                                       uintptr_t data)
 {
-    int                 i;
+    ngx_uint_t          i;
     ngx_str_t          *s;
     ngx_table_elt_t    *h;
     ngx_http_log_op_t  *op;
@@ -384,7 +387,7 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
 
             if (data == offsetof(ngx_http_headers_out_t, date)) {
                 if (buf == NULL) {
-                    return (char *) ngx_cached_http_time.len;
+                    return (u_char *) ngx_cached_http_time.len;
                 }
                 return ngx_cpymem(buf, ngx_cached_http_time.data,
                                   ngx_cached_http_time.len);
@@ -392,7 +395,7 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
 
             if (data == offsetof(ngx_http_headers_out_t, server)) {
                 if (buf == NULL) {
-                    return (char *) (sizeof(NGINX_VER) - 1);
+                    return (u_char *) (sizeof(NGINX_VER) - 1);
                 }
                 return ngx_cpymem(buf, NGINX_VER, sizeof(NGINX_VER) - 1);
             }
@@ -406,9 +409,10 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
                 }
 
                 if (buf == NULL) {
-                    return (char *) NGX_OFF_T_LEN;
+                    return (u_char *) NGX_OFF_T_LEN;
                 }
-                return buf + ngx_snprintf(buf, NGX_OFF_T_LEN + 2, OFF_T_FMT,
+                return buf + ngx_snprintf((char *) buf,
+                                          NGX_OFF_T_LEN + 2, OFF_T_FMT,
                                           r->headers_out.content_length_n);
             }
 
@@ -421,7 +425,8 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
                 }
 
                 if (buf == NULL) {
-                    return (char *) sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1;
+                    return (u_char *)
+                                   sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1;
                 }
                 return buf + ngx_http_time(buf,
                                            r->headers_out.last_modified_time);
@@ -436,7 +441,7 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
 
         if (buf == NULL) {
             /* find the header length */
-            return (char *) h->value.len;
+            return (u_char *) h->value.len;
         }
 
         return ngx_cpymem(buf, h->value.data, h->value.len);
@@ -485,12 +490,12 @@ static char *ngx_http_log_header_out(ngx_http_request_t *r, char *buf,
 }
 
 
-static char *ngx_http_log_connection_header_out(ngx_http_request_t *r,
-                                                char *buf, uintptr_t data)
+static u_char *ngx_http_log_connection_header_out(ngx_http_request_t *r,
+                                                  u_char *buf, uintptr_t data)
 {
     if (buf == NULL) {
-        return (char *) ((r->keepalive) ? sizeof("keep-alive") - 1:
-                                          sizeof("close") - 1);
+        return (u_char *) ((r->keepalive) ? sizeof("keep-alive") - 1:
+                                            sizeof("close") - 1);
     }
 
     if (r->keepalive) {
@@ -502,12 +507,12 @@ static char *ngx_http_log_connection_header_out(ngx_http_request_t *r,
 }
 
 
-static char *ngx_http_log_transfer_encoding_header_out(ngx_http_request_t *r,
-                                                       char *buf,
-                                                       uintptr_t data)
+static u_char *ngx_http_log_transfer_encoding_header_out(ngx_http_request_t *r,
+                                                         u_char *buf,
+                                                         uintptr_t data)
 {
     if (buf == NULL) {
-        return (char *) ((r->chunked) ? sizeof("chunked") - 1 : 1);
+        return (u_char *) ((r->chunked) ? sizeof("chunked") - 1 : 1);
     }
 
     if (r->chunked) {
@@ -520,10 +525,11 @@ static char *ngx_http_log_transfer_encoding_header_out(ngx_http_request_t *r,
 }
 
 
-static char *ngx_http_log_unknown_header_out(ngx_http_request_t *r, char *buf,
-                                             uintptr_t data)
+static u_char *ngx_http_log_unknown_header_out(ngx_http_request_t *r,
+                                               u_char *buf,
+                                               uintptr_t data)
 {
-    int               i;
+    ngx_uint_t        i;
     ngx_str_t        *s;
     ngx_table_elt_t  *h;
 
@@ -538,7 +544,7 @@ static char *ngx_http_log_unknown_header_out(ngx_http_request_t *r, char *buf,
         if (ngx_strncasecmp(h[i].key.data, s->data, s->len) == 0) {
             if (buf == NULL) {
                 /* find the header length */
-                return (char *) h[i].value.len;
+                return (u_char *) h[i].value.len;
             }
 
             return ngx_cpymem(buf, h[i].value.data, h[i].value.len);
@@ -665,7 +671,7 @@ static char *ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     ngx_http_log_loc_conf_t *llcf = conf;
 
-    int                        i;
+    ngx_uint_t                 i;
     ngx_str_t                 *value, name;
     ngx_http_log_t            *log;
     ngx_http_log_fmt_t        *fmt;
@@ -715,8 +721,8 @@ static char *ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     ngx_http_log_main_conf_t *lmcf = conf;
 
-    int                         s, f, invalid;
-    char                       *data, *p, *fname;
+    ngx_uint_t                  s, f, invalid;
+    u_char                     *data, *p, *fname;
     size_t                      i, len, fname_len;
     ngx_str_t                  *value, arg, *a;
     ngx_http_log_op_t          *op;
@@ -843,7 +849,7 @@ static char *ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd,
                         }
 
                         *a = arg;
-                        name->op(NULL, (char *) op, (uintptr_t) a);
+                        name->op(NULL, (u_char *) op, (uintptr_t) a);
 
                         break;
                     }

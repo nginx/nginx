@@ -3,7 +3,7 @@
 #include <ngx_core.h>
 
 
-ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
+ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
     ssize_t n;
 
@@ -48,7 +48,7 @@ ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 }
 
 
-ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
+ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
     ssize_t n;
 
@@ -104,7 +104,7 @@ ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset)
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
                                 off_t offset, ngx_pool_t *pool)
 {
-    char          *prev;
+    u_char        *prev;
     size_t         size;
     ssize_t        n;
     struct iovec  *iov;
@@ -133,7 +133,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 
         } else {
             ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
-            iov->iov_base = cl->hunk->pos;
+            iov->iov_base = (void *) cl->hunk->pos;
             iov->iov_len = cl->hunk->last - cl->hunk->pos;
         }
 
@@ -146,7 +146,8 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 
     if (io.nelts == 1) {
         iov = io.elts;
-        return ngx_write_file(file, iov[0].iov_base, iov[0].iov_len, offset);
+        return ngx_write_file(file, (u_char *) iov[0].iov_base, iov[0].iov_len,
+                              offset);
     }
 
     if (file->sys_offset != offset) {
@@ -180,7 +181,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 
 int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
-    dir->dir = opendir(name->data);
+    dir->dir = opendir((const char *) name->data);
 
     if (dir->dir == NULL) {
         return NGX_ERROR;

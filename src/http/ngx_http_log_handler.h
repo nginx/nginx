@@ -7,8 +7,8 @@
 #include <ngx_http.h>
 
 
-typedef char *(*ngx_http_log_op_pt) (ngx_http_request_t *r, char *buf,
-                                     uintptr_t data);
+typedef u_char *(*ngx_http_log_op_pt) (ngx_http_request_t *r, u_char *buf,
+                                       uintptr_t data);
 
 #define NGX_HTTP_LOG_COPY_SHORT  (ngx_http_log_op_pt) 0
 #define NGX_HTTP_LOG_COPY_LONG   (ngx_http_log_op_pt) -1

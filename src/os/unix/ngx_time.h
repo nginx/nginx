@@ -25,6 +25,15 @@ typedef struct tm      ngx_tm_t;
 #define ngx_tm_zone    tm_zone
 #endif
 
+#define ngx_tm_sec_t   int
+#define ngx_tm_min_t   int
+#define ngx_tm_hour_t  int
+#define ngx_tm_mday_t  int
+#define ngx_tm_mon_t   int
+#define ngx_tm_year_t  int
+#define ngx_tm_wday_t  int
+
+
 
 void ngx_localtime(ngx_tm_t *tm);
 

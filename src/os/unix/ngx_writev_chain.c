@@ -6,7 +6,7 @@
 
 ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
-    char            *prev;
+    u_char          *prev;
     ssize_t          n, size;
     off_t            sent;
     struct iovec    *iov;
@@ -51,7 +51,7 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&io), NGX_CHAIN_ERROR);
-                iov->iov_base = cl->hunk->pos;
+                iov->iov_base = (void *) cl->hunk->pos;
                 iov->iov_len = cl->hunk->last - cl->hunk->pos;
                 prev = cl->hunk->last;
             }

@@ -115,7 +115,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
 
 static void ngx_http_init_request(ngx_event_t *rev)
 {
-    ngx_int_t                  i;
+    ngx_uint_t                 i;
     socklen_t                  len;
     struct sockaddr_in         addr_in;
     ngx_connection_t          *c;
@@ -182,11 +182,12 @@ static void ngx_http_init_request(ngx_event_t *rev)
                 ngx_http_close_connection(c);
                 return;
             }
+
+            r->in_addr = addr_in.sin_addr.s_addr;
+
 #if (WIN32)
         }
 #endif
-
-        r->in_addr = addr_in.sin_addr.s_addr;
 
         /* the last in_port->addrs address is "*" */
 
@@ -279,7 +280,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
 static void ngx_http_process_request_line(ngx_event_t *rev)
 {
-    char                      *p;
+    u_char                    *p;
     ssize_t                    n;
     ngx_int_t                  rc, offset;
     ngx_connection_t          *c;
@@ -453,11 +454,12 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
                        "http uri: \"%s\"", r->uri.data);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http args: \"%s\"", r->args.data ? r->args.data : "");
+                       "http args: \"%s\"",
+                       r->args.data ? r->args.data : (u_char *) "");
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http exten: \"%s\"",
-                       r->exten.data ? r->exten.data : "");
+                       r->exten.data ? r->exten.data : (u_char *) "");
 
         if (r->http_version < NGX_HTTP_VERSION_10) {
             rev->event_handler = ngx_http_block_read;
@@ -681,7 +683,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
 #if (NGX_LOG_DEBUG)
             if (rc == NGX_HTTP_PARSE_INVALID_HEADER) {
-                char  *p;
+                u_char *p;
                 for (p = r->header_name_start;
                      p < r->header_in->last - 1;
                      p++)
@@ -794,7 +796,7 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 {
     size_t                     len;
-    ngx_int_t                  i;
+    ngx_uint_t                 i;
     ngx_http_server_name_t    *name;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -1133,8 +1135,8 @@ static int ngx_http_read_discarded_body(ngx_http_request_t *r)
 
     size = r->headers_in.content_length_n;
 
-    if (size > clcf->discarded_buffer_size) {
-        size = clcf->discarded_buffer_size;
+    if (size > (ssize_t) clcf->discarded_buffer_size) {
+        size = (ssize_t) clcf->discarded_buffer_size;
     }
 
     n = ngx_recv(r->connection, r->discarded_buffer, size);
@@ -1396,7 +1398,8 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
                  instead of r->header_in->last */
 
         if (r->header_in->end - r->header_in->last
-                                              >= clcf->discarded_buffer_size) {
+                                      >= (ssize_t) clcf->discarded_buffer_size)
+        {
             r->discarded_buffer = r->header_in->last;
 
         } else {
@@ -1458,7 +1461,7 @@ int ngx_http_send_last(ngx_http_request_t *r)
 
 void ngx_http_close_request(ngx_http_request_t *r, int error)
 {
-    ngx_int_t            i;
+    ngx_uint_t           i;
     ngx_log_t           *log;
     ngx_http_log_ctx_t  *ctx;
     ngx_http_cleanup_t  *cleanup;
@@ -1559,7 +1562,7 @@ void ngx_http_close_connection(ngx_connection_t *c)
                       ngx_close_socket_n " failed");
     }
 
-    c->fd = -1;
+    c->fd = (ngx_socket_t) -1;
     c->data = NULL;
 
     ngx_destroy_pool(c->pool);
