@@ -15,6 +15,9 @@ typedef int (*ngx_event_pipe_output_filter_pt)(void *data, ngx_chain_t *chain);
 
 
 struct ngx_event_pipe_s {
+    ngx_connection_t  *upstream;
+    ngx_connection_t  *downstream;
+
     ngx_chain_t       *free_raw_hunks;
     ngx_chain_t       *in;
     ngx_chain_t      **last_in;
@@ -59,9 +62,6 @@ struct ngx_event_pipe_s {
     off_t              max_temp_file_size;
     int                temp_file_write_size;
 
-    ngx_connection_t  *upstream;
-    ngx_connection_t  *downstream;
-
     ngx_msec_t         read_timeout;
     ngx_msec_t         send_timeout;
     ssize_t            send_lowat;
@@ -71,6 +71,7 @@ struct ngx_event_pipe_s {
 
     ngx_chain_t       *preread_hunks;
     int                preread_size;
+    ngx_hunk_t        *hunk_to_file;
 
     ngx_temp_file_t   *temp_file;
 

@@ -451,26 +451,22 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 static int ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 {
     int           size, hsize;
-    char         *save_pos;
     ngx_hunk_t   *h;
-    ngx_chain_t  *cl, *tl, *next, *out, **ll, **last_free;
+    ngx_chain_t  *cl, *tl, *next, *out, **ll, **last_free, fl;
 
-    ngx_log_debug(p->log, "write to file");
-
-    out = p->in;
-
-    if (out->hunk->type & NGX_HUNK_PREREAD) {
-        save_pos = out->hunk->pos;
-        out->hunk->pos = out->hunk->start;
+    if (p->hunk_to_file) {
+        fl.hunk = p->hunk_to_file;
+        fl.next = p->in;
+        out = &fl;
 
     } else {
-        save_pos = NULL;
+        out = p->in;
     }
 
     if (!p->cachable) {
 
         size = 0;
-        cl = p->in;
+        cl = out;
         ll = NULL;
 
 ngx_log_debug(p->log, "offset: %d" _ p->temp_file->offset);
@@ -519,10 +515,10 @@ ngx_log_debug(p->log, "size: %d" _ size);
         /* void */
     }
 
-    if (out->hunk->type & NGX_HUNK_PREREAD) {
-        p->temp_file->offset += save_pos - out->hunk->pos;
-        out->hunk->pos = save_pos;
-        out->hunk->type &= ~NGX_HUNK_PREREAD;
+    if (p->hunk_to_file) {
+        p->temp_file->offset = p->hunk_to_file->last - p->hunk_to_file->pos;
+        p->hunk_to_file = NULL;
+        out = out->next;
     }
 
     for (cl = out; cl; cl = next) {
@@ -565,8 +561,6 @@ int ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_hunk_t *hunk)
 {
     ngx_hunk_t   *h;
     ngx_chain_t  *cl;
-
-ngx_log_debug(p->log, "COPY");
 
     if (hunk->pos == hunk->last) {
         return NGX_OK;

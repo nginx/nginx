@@ -14,8 +14,8 @@ static ngx_connection_t  pending_connects[NGX_MAX_PENDING_CONN];
 static HANDLE            pending_connect_event;
 
 __declspec(thread) int                nevents = 0;
-__declspec(thread) WSAEVENT           events[WSA_MAXIMUM_WAIT_EVENTS];
-__declspec(thread) ngx_connection_t  *conn[WSA_MAXIMUM_WAIT_EVENTS];
+__declspec(thread) WSAEVENT           events[WSA_MAXIMUM_WAIT_EVENTS + 1];
+__declspec(thread) ngx_connection_t  *conn[WSA_MAXIMUM_WAIT_EVENTS + 1];
 
 
 
@@ -121,7 +121,7 @@ void ngx_iocp_wait_events(int main)
     conn[0] = NULL;
 
     for ( ;; ) {
-        offset = (nevents == WSA_MAXIMUM_WAIT_EVENTS) ? 1: 0;
+        offset = (nevents == WSA_MAXIMUM_WAIT_EVENTS + 1) ? 1: 0;
         timeout = (nevents == 1 && !first) ? 60000: INFINITE;
 
         n = WSAWaitForMultipleEvents(nevents - offset, events[offset],
@@ -133,7 +133,7 @@ void ngx_iocp_wait_events(int main)
         }
 
         if (n == WAIT_TIMEOUT) {
-            if (nevents == 1 && !main) {
+            if (nevents == 2 && !main) {
                 ExitThread(0);
             }
 
@@ -145,9 +145,9 @@ void ngx_iocp_wait_events(int main)
 
         n -= WSA_WAIT_EVENT_0;
 
-        if (n == 0) {
+        if (events[n] == NULL) {
 
-            /* the first event is pending_connect_event */
+            /* the pending_connect_event */
 
             if (nevents == WSA_MAXIMUM_WAIT_EVENTS) {
                 ngx_iocp_new_thread(0);
