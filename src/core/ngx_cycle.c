@@ -34,6 +34,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_pool_t         *pool;
     ngx_cycle_t        *cycle, **old;
     ngx_socket_t        fd;
+    ngx_list_part_t    *part;
     ngx_open_file_t    *file;
     ngx_listening_t    *ls, *nls;
     ngx_core_module_t  *module;
@@ -68,6 +69,30 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->pathes.pool = pool;
 
 
+    if (old_cycle->open_files.part.nelts) {
+        n = old_cycle->open_files.part.nelts;
+        for (part = old_cycle->open_files.part.next; part; part = part->next) {
+            n += part->nelts;
+        }
+
+    } else {
+        n = 20;
+    }
+
+    cycle->open_files.part.elts = ngx_palloc(pool, n * sizeof(ngx_open_file_t));
+    if (cycle->open_files.part.elts == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+    cycle->open_files.part.nelts = 0;
+    cycle->open_files.part.next = NULL;
+    cycle->open_files.last = &cycle->open_files.part;
+    cycle->open_files.size = sizeof(ngx_open_file_t);
+    cycle->open_files.nalloc = n;
+    cycle->open_files.pool = pool;
+
+
+#if 0
     n = old_cycle->open_files.nelts ? old_cycle->open_files.nelts : 20;
     cycle->open_files.elts = ngx_pcalloc(pool, n * sizeof(ngx_open_file_t));
     if (cycle->open_files.elts == NULL) {
@@ -78,6 +103,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->open_files.size = sizeof(ngx_open_file_t);
     cycle->open_files.nalloc = n;
     cycle->open_files.pool = pool;
+#endif
 
 
     if (!(cycle->new_log = ngx_log_create_errlog(cycle, NULL))) {
@@ -180,8 +206,26 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     if (!failed) {
+
+        part = &cycle->open_files.part;
+        file = part->elts;
+
+        for (i = 0; /* void */ ; i++) {
+
+            if (i >= part->nelts) {
+                if (part->next == NULL) {
+                    break;
+                }
+                part = part->next;
+                file = part->elts;
+                i = 0;
+            }
+
+#if 0
         file = cycle->open_files.elts;
         for (i = 0; i < cycle->open_files.nelts; i++) {
+#endif
+
             if (file[i].name.data == NULL) {
                 continue;
             }
@@ -189,6 +233,11 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
             file[i].fd = ngx_open_file(file[i].name.data,
                                        NGX_FILE_RDWR,
                                        NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+
+            log->log_level = NGX_LOG_DEBUG_ALL;
+            ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
+                           "log: %0X %d \"%s\"",
+                           &file[i], file[i].fd, file[i].name.data);
 
             if (file[i].fd == NGX_INVALID_FILE) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
@@ -287,6 +336,12 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 #if !(WIN32)
 
     if (!failed && !ngx_test_config) {
+
+        ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
+                       "dup2: %0X %d \"%s\"",
+                       cycle->log->file,
+                       cycle->log->file->fd, cycle->log->file->name.data);
+
         if (dup2(cycle->log->file->fd, STDERR_FILENO) == NGX_ERROR) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           "dup2(STDERR) failed");
@@ -300,8 +355,25 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         /* rollback the new cycle configuration */
 
+        part = &cycle->open_files.part;
+        file = part->elts;
+
+        for (i = 0; /* void */ ; i++) {
+
+            if (i >= part->nelts) {
+                if (part->next == NULL) {
+                    break;
+                }
+                part = part->next;
+                file = part->elts;
+                i = 0;
+            }
+
+#if 0
         file = cycle->open_files.elts;
         for (i = 0; i < cycle->open_files.nelts; i++) {
+#endif
+
             if (file[i].fd == NGX_INVALID_FILE) {
                 continue;
             }
@@ -320,7 +392,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         ls = cycle->listening.elts;
         for (i = 0; i < cycle->listening.nelts; i++) {
-            if (ls[i].new && ls[i].fd == -1) {
+            if (ls[i].fd == -1 || !ls[i].new) {
                 continue;
             }
 
@@ -370,8 +442,25 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     /* close the unneeded open files */
 
+    part = &old_cycle->open_files.part;
+    file = part->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            file = part->elts;
+            i = 0;
+        }
+
+#if 0
     file = old_cycle->open_files.elts;
     for (i = 0; i < old_cycle->open_files.nelts; i++) {
+#endif
+
         if (file[i].fd == NGX_INVALID_FILE) {
             continue;
         }
@@ -534,10 +623,27 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 {
     ngx_fd_t          fd;
     ngx_uint_t        i;
+    ngx_list_part_t  *part;
     ngx_open_file_t  *file;
 
+    part = &cycle->open_files.part;
+    file = part->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            i = 0;
+        }
+
+#if 0
     file = cycle->open_files.elts;
     for (i = 0; i < cycle->open_files.nelts; i++) {
+#endif
+
         if (file[i].name.data == NULL) {
             continue;
         }

@@ -14,8 +14,8 @@ struct ngx_cycle_s {
     ngx_log_t         *new_log;
 
     ngx_array_t        listening;
-    ngx_array_t        open_files;
     ngx_array_t        pathes;
+    ngx_list_t         open_files;
 
     ngx_uint_t         connection_n;
     ngx_connection_t  *connections;

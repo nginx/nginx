@@ -572,11 +572,28 @@ static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
 {
     ngx_uint_t        i;
+    ngx_list_part_t  *part;
     ngx_open_file_t  *file;
 
     if (name) {
+        part = &cycle->open_files.part;
+        file = part->elts;
+
+        for (i = 0; /* void */ ; i++) {
+
+            if (i >= part->nelts) {
+                if (part->next == NULL) {
+                    break;
+                }
+                part = part->next;
+                file = part->elts;
+                i = 0;
+            }
+
+#if 0
         file = cycle->open_files.elts;
         for (i = 0; i < cycle->open_files.nelts; i++) {
+#endif
             if (name->len != file[i].name.len) {
                 continue;
             }
@@ -587,7 +604,7 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         }
     }
 
-    if (!(file = ngx_push_array(&cycle->open_files))) {
+    if (!(file = ngx_push_list(&cycle->open_files))) {
         return NULL;
     }
 

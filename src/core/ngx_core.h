@@ -43,6 +43,7 @@ typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
 #include <ngx_palloc.h>
 #include <ngx_buf.h>
 #include <ngx_array.h>
+#include <ngx_list.h>
 #include <ngx_table.h>
 #include <ngx_file.h>
 #include <ngx_files.h>
