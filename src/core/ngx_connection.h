@@ -127,9 +127,9 @@ cached file
 
     size_t   size;
     time_t   mod;
-    char    *last_mod; 'Sun, 17 Mar 2002 19:39:50 GMT'
-    char    *etag;     '"a6d08-1302-3c94f106"'
-    char    *len;      '4866'
+    char    *last_mod; "Sun, 17 Mar 2002 19:39:50 GMT"
+    char    *etag;     ""a6d08-1302-3c94f106""
+    char    *len;      "4866"
 
 EV_VNODE        should notify by some signal if diretory tree is changed
                 or stat if aged >= N seconds (big enough)

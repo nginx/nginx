@@ -66,7 +66,7 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     va_list   args;
 #endif
 #if (WIN32)
-    int       written;
+    u_int     written;
 #endif
 
     if (log->file->fd == NGX_INVALID_FILE) {

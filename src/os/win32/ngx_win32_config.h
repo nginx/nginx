@@ -9,6 +9,7 @@
 #include <mswsock.h>
 #include <stddef.h>    /* offsetof */
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 
 #include <time.h>      /* gmtime, strftime */
