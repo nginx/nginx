@@ -7,6 +7,10 @@ int  ngx_max_sockets;
 int  ngx_inherited_nonblocking;
 
 
+void ngx_restart_signal_handler(int signo);
+void ngx_rotate_signal_handler(int signo);
+
+
 int ngx_posix_init(ngx_log_t *log)
 {
     struct sigaction sa;
@@ -15,10 +19,23 @@ int ngx_posix_init(ngx_log_t *log)
     ngx_memzero(&sa, sizeof(struct sigaction));
     sa.sa_handler = SIG_IGN;
     sigemptyset(&sa.sa_mask);
-
     if (sigaction(SIGPIPE, &sa, NULL) == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "sigaction(SIGPIPE, SIG_IGN) failed");
+        return NGX_ERROR;
+    }
+
+    sa.sa_handler = ngx_restart_signal_handler;
+    if (sigaction(SIGHUP, &sa, NULL) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "sigaction(SIGHUP) failed");
+        return NGX_ERROR;
+    }
+
+    sa.sa_handler = ngx_rotate_signal_handler;
+    if (sigaction(SIGUSR1, &sa, NULL) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "sigaction(SIGUSR1) failed");
         return NGX_ERROR;
     }
 
@@ -42,6 +59,18 @@ int ngx_posix_init(ngx_log_t *log)
 #endif
 
     return NGX_OK;
+}
+
+
+void ngx_restart_signal_handler(int signo)
+{
+    restart = 1;
+}
+
+
+void ngx_rotate_signal_handler(int signo)
+{
+    rotate = 1;
 }
 
 

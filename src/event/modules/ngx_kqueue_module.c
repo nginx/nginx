@@ -11,8 +11,11 @@
 
 
 typedef struct {
-    u_int  changes;
-    u_int  events;
+    int             kqueue;
+    struct kevent  *change_list;
+    u_int           changes;
+    struct kevent  *event_list;
+    u_int           events;
 } ngx_kqueue_conf_t;
 
 
@@ -81,6 +84,138 @@ ngx_module_t  ngx_kqueue_module = {
     NGX_EVENT_MODULE,                      /* module type */
     NULL                                   /* init module */
 };
+
+
+#if 0
+
+static int ngx_kqueue_init(ngx_cycle_t *cycle, ngx_log_t *log)
+{
+    struct timespec     ts;
+    ngx_kqueue_conf_t  *kcf;
+
+    kcf = ngx_event_get_conf(cycle->conf_ctx, ngx_kqueue_module);
+
+ngx_log_debug(log, "CH: %d" _ kcf->changes);
+ngx_log_debug(log, "EV: %d" _ kcf->events);
+
+    if (ngx_kqueue == -1) {
+        kcf->kqueue = kqueue();
+
+        if (kcf->kqueue == -1) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "kqueue() failed");
+            return NGX_ERROR;
+        }
+
+    } else {
+        kcf->kqueue = ngx_kqueue;
+    }
+
+    if (max_changes < kcf->changes) {
+        if (nchanges) {
+            ts.tv_sec = 0;
+            ts.tv_nsec = 0;
+
+            if (kevent(ngx_kqueue, change_list, nchanges, NULL, 0, &ts) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "kevent() failed");
+                return NGX_ERROR;
+            }
+
+            nchanges = 0;
+        }
+
+        ngx_test_null(kcf->change_list,
+                      ngx_alloc(kcf->changes * sizeof(struct kevent), log),
+                      NGX_ERROR);
+
+    } else {
+        kcf->change_list = change_list;
+    }
+
+    if (nevents < kcf->events) {
+        ngx_test_null(kcf->event_list,
+                      ngx_alloc(kcf->events * sizeof(struct kevent), log),
+                      NGX_ERROR);
+    } else {
+        kcf->event_list = event_list;
+    }
+
+    if (ngx_event_timer_init(cycle, log) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static void ngx_kqueue_commit(ngx_cycle_t *cycle, ngx_log_t *log)
+{
+    ngx_kqueue_conf_t  *kcf;
+
+    kcf = ngx_event_get_conf(cycle->conf_ctx, ngx_kqueue_module);
+
+    ngx_kqueue = kcf->kqueue;
+
+    if (change_list != kcf->change_list) {
+        ngx_free(change_list);
+        change_list = kcf->change_list;
+    }
+
+    max_changes = kcf->changes;
+
+    if (event_list != kcf->event_list) {
+        ngx_free(event_list);
+        event_list = kcf->event_list;
+    }
+
+    nevents = kcf->events;
+
+    ngx_event_timer_commit(cycle, log);
+
+    /* TODO: re-add active events with new udata
+             if ecf->connections was increased */
+
+    ngx_event_actions = ngx_kqueue_module_ctx.actions;
+    ngx_io = ngx_os_io;
+
+    ngx_event_flags = NGX_HAVE_LEVEL_EVENT
+                     |NGX_HAVE_ONESHOT_EVENT
+#if (HAVE_CLEAR_EVENT)
+                     |NGX_HAVE_CLEAR_EVENT
+#else
+                     |NGX_USE_LEVEL_EVENT
+#endif
+#if (HAVE_LOWAT_EVENT)
+                     |NGX_HAVE_LOWAT_EVENT
+#endif
+                     |NGX_HAVE_KQUEUE_EVENT;
+}
+
+
+static void ngx_kqueue_rollback(ngx_cycle_t *cycle, ngx_log_t *log)
+{
+    ngx_kqueue_conf_t  *kcf;
+
+    kcf = ngx_event_get_conf(cycle->conf_ctx, ngx_kqueue_module);
+
+    if (ngx_kqueue == -1) {
+        if (close(kcf->kqueue) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                          "kqueue close() failed");
+        }
+    }
+
+    if (change_list != kcf->change_list) {
+        ngx_free(kcf->change_list);
+    }
+
+    if (event_list != kcf->event_list) {
+        ngx_free(kcf->event_list);
+    }
+
+    ngx_event_timer_rollback(cycle, log);
+}
+
+#endif
 
 
 static int ngx_kqueue_init(ngx_log_t *log)

@@ -40,4 +40,8 @@ extern int          ngx_max_sockets;
 extern int          ngx_inherited_nonblocking;
 
 
+extern int          restart;
+extern int          rotate;
+
+
 #endif /* _NGX_OS_INIT_H_INCLUDED_ */

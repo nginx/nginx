@@ -22,7 +22,9 @@ int     ngx_max_module;
 int ngx_connection_counter;
 
 
-#if 1
+int restart;
+int rotate;
+
 
 int main(int argc, char *const *argv)
 {
@@ -53,6 +55,8 @@ int main(int argc, char *const *argv)
     /* life cycle */
 
     for ( ;; ) {
+        /* STUB */ cycle->log->file->fd = log->file->fd;
+        /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG;
 
         /* STUB */
         ngx_io = ngx_os_io;
@@ -66,9 +70,26 @@ int main(int argc, char *const *argv)
 
         /* threads */
 
+        restart = 0;
+        rotate = 0;
+
         for ( ;; ) {
 
-            ngx_worker(cycle);
+            for ( ;; ) {
+                ngx_log_debug(cycle->log, "worker cycle");
+
+                ngx_process_events(cycle->log);
+
+                if (rotate) {
+                    ngx_log_debug(cycle->log, "rotate");
+                }
+
+                if (restart) {
+                    ngx_log_debug(cycle->log, "restart");
+                    break;
+                }
+
+            }
 
             new_cycle = ngx_init_cycle(cycle, cycle->log);
             if (new_cycle == NULL) {
@@ -316,7 +337,7 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
 
 
 
-#else
+#if 0
 
 
 int main(int argc, char *const *argv)
