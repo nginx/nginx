@@ -549,9 +549,18 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_err_t          err;
     ngx_int_t          n;
     ngx_uint_t         i;
+    struct timeval     tv;
     ngx_listening_t   *ls;
     ngx_core_conf_t   *ccf;
     ngx_connection_t  *c;
+
+
+    ngx_gettimeofday(&tv);
+
+    ngx_start_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    ngx_old_elapsed_msec = 0;
+    ngx_elapsed_msec = 0;
+
 
     ngx_process = NGX_PROCESS_WORKER;
 

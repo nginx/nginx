@@ -919,19 +919,19 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
 
     ngx_conf_merge_msec_value(conf->connect_timeout,
                               prev->connect_timeout, 60000);
-    ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 30000);
+    ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 60000);
 
     ngx_conf_merge_value(conf->preserve_host, prev->preserve_host, 0);
     ngx_conf_merge_value(conf->set_x_real_ip, prev->set_x_real_ip, 0);
     ngx_conf_merge_value(conf->add_x_forwarded_for,
                          prev->add_x_forwarded_for, 0);
 
-    ngx_conf_merge_msec_value(conf->read_timeout, prev->read_timeout, 30000);
+    ngx_conf_merge_msec_value(conf->read_timeout, prev->read_timeout, 60000);
 
     ngx_conf_merge_size_value(conf->header_buffer_size,
-                              prev->header_buffer_size, 4096);
+                              prev->header_buffer_size, (size_t) ngx_pagesize);
 
-    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 8, 4096);
+    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 8, ngx_pagesize);
 
     if (conf->bufs.num < 2) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

@@ -223,7 +223,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                                        NGX_FILE_RDWR,
                                        NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 
-#if 1
+#if 0
             log->log_level = NGX_LOG_DEBUG_ALL;
 #endif
             ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,

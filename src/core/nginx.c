@@ -118,7 +118,7 @@ int main(int argc, char *const *argv)
 
     ngx_pid = ngx_getpid();
 
-    if (!(log = ngx_log_init_errlog())) {
+    if (!(log = ngx_log_init_stderr())) {
         return 1;
     }
 
@@ -142,6 +142,14 @@ int main(int argc, char *const *argv)
 
     if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
         return 1;
+    }
+
+    if (ngx_test_config) {
+        log->log_level = NGX_LOG_INFO;
+    } else {
+        if (ngx_log_init_error_log() == NGX_ERROR) {
+            return 1;
+        }
     }
 
     if (ngx_os_init(log) == NGX_ERROR) {

@@ -1330,11 +1330,11 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
     }
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
-                              prev->connection_pool_size, 2048);
+                              prev->connection_pool_size, 256);
     ngx_conf_merge_msec_value(conf->post_accept_timeout,
-                              prev->post_accept_timeout, 30000);
+                              prev->post_accept_timeout, 60000);
     ngx_conf_merge_size_value(conf->request_pool_size,
-                              prev->request_pool_size, 16384);
+                              prev->request_pool_size, 4096);
     ngx_conf_merge_msec_value(conf->client_header_timeout,
                               prev->client_header_timeout, 60000);
     ngx_conf_merge_size_value(conf->client_header_buffer_size,
@@ -1469,9 +1469,10 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                              prev->default_type, "text/plain");
 
     ngx_conf_merge_size_value(conf->client_max_body_size,
-                              prev->client_max_body_size, 10 * 1024 * 1024);
+                              prev->client_max_body_size, 1 * 1024 * 1024);
     ngx_conf_merge_size_value(conf->client_body_buffer_size,
-                              prev->client_body_buffer_size, 8192);
+                              prev->client_body_buffer_size,
+                              (size_t) 2 * ngx_pagesize);
     ngx_conf_merge_msec_value(conf->client_body_timeout,
                               prev->client_body_timeout, 60000);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);

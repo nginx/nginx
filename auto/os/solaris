@@ -32,6 +32,14 @@ case $PLATFORM in
 
     *:sun4u)
         CFLAGS="$CFLAGS -mcpu=v9"
+
+        if [ ".$CPU" = ".sparc64" ]; then
+            CFLAGS="$CFLAGS -m64"
+            CPU_OPT="-m64"
+            CORE_LINK="$CORE_LINK -m64"
+
+            CC_TEST_FLAGS="$CC_TEST_FLAGS -mcpu=v9 -m64"
+        fi
     ;;
 
     *)

@@ -7,6 +7,7 @@ install:
 	test -d $PREFIX || mkdir -p $PREFIX
 
 	test -d `dirname $SBIN_PATH` || mkdir -p `dirname $SBIN_PATH`
+	test ! -f $SBIN_PATH || mv $SBIN_PATH $SBIN_PATH.old
 	cp nginx $SBIN_PATH
 
 	test -d `dirname $CONF_PATH` || mkdir -p `dirname $CONF_PATH`
