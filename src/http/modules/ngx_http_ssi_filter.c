@@ -60,6 +60,19 @@ static int (*next_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 static char comment_string[] = "<!--";
 
 
+static int ngx_http_ssi_header_filter(ngx_http_request_t *r)
+{
+    ngx_http_ssi_ctx_t  *ctx;
+
+    /* if () */ {
+        ngx_http_create_ctx(r, ctx, ngx_http_ssi_filter_module,
+                            sizeof(ngx_http_ssi_ctx_t), NGX_ERROR);
+    }
+
+    return NGX_OK;
+}
+
+
 static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     ngx_chain_t          chain;
@@ -67,13 +80,37 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
-    if (ctx == NULL) {
-        ngx_http_create_ctx(r, ctx, ngx_http_ssi_filter_module,
-                            sizeof(ngx_http_ssi_ctx_t), NGX_ERROR);
+    if ((ctx == NULL) || (in == NULL && ctx->out == NULL)) {
+        return next_body_filter(r, NULL);
     }
 
-    if (in == NULL && ctx->out == NULL) {
-        return next_body_filter(r, NULL);
+    if (ctx->hunk &&
+        (((ctx->hunk->type & NGX_HUNK_FILE)
+           && (ctx->hunk->file_pos < ctx->hunk->file_last))
+        || ((ctx->hunk->type & NGX_HUNK_IN_MEMORY)
+             && (ctx->hunk->pos < ctx->hunk->last))))
+    {
+        rc = next_body_filter(r, NULL);
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (ctx->hunk->shadow) {
+            if (ctx->hunk->type & NGX_HUNK_FILE) {
+                ctx->hunk->shadow->file_pos = ctx->hunk->file_pos;
+            }
+
+            if (ctx->hunk->type & NGX_HUNK_IN_MEMORY) {
+                ctx->hunk->shadow->pos = ctx->hunk->pos;
+            }
+        }
+
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
+
     }
 
 #if 0
@@ -81,16 +118,10 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     add in to ctx->out chain
 
     while (ctx->out) {
-        rc = ngx_http_ssi_parse(r, ctx, ctx->out->hunk);
+        rc == ngx_http_ssi_exec(r, ctx);
 
-        if (rc == NGX_HTTP_SSI_DONE) {
-            chain.hunk = ctx->out->hunk;
-            chain.next = NULL;
-
-            rc = next_body_filter(r, &chain);
-            if (rc != NGX_OK) {
-                return rc;
-            }
+        if (rc != NGX_ERROR) {
+            return rc;
         }
 
         ctx->out = ctx->out->next;
@@ -102,7 +133,114 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 }
 
 
+#if 0
 
+
+    while (ctx->out) {
+        rc = ngx_http_ssi_parse(r, ctx, ctx->out->hunk);
+
+        if (rc == NGX_ERROR) {
+            return rc;
+        }
+
+        if (rc == NGX_OK) {
+            ngx_test_null(temp, ngx_calloc_hunk(r->pool), NGX_ERROR);
+            temp->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
+            temp->pos = comment_string;
+            temp->last = comment_string + looked;
+        }
+
+        if (rc == NGX_HTTP_SSI_DONE) {
+
+
+            - looked
+
+            chain.hunk = ctx->out->hunk;
+            chain.next = NULL;
+
+            rc = next_body_filter(r, &chain);
+
+            if (rc != NGX_OK) {
+                ctx->out = ctx->out->next;
+                return rc;
+            }
+
+        } else if (rc == NGX_HTTP_SSI_INVALID_COMMAND) {
+        } else if (rc == NGX_HTTP_SSI_INVALID_PARAM) {
+        } else if (rc == NGX_HTTP_SSI_INVALID_VALUE) {
+        } else if (rc == NGX_HTTP_SSI_LONG_VALUE) {
+        }
+
+        ctx->out = ctx->out->next;
+    }
+
+#endif
+
+
+
+
+
+#if 0
+
+static int ngx_http_ssi_copy_opcode(ngx_http_request_t *r,
+                                    ngx_http_ssi_ctx_t *ctx, void *data)
+{
+    ngx_http_ssi_copy_t *copy = data;
+
+    ngx_hunk_t   *h;
+    ngx_chain_t   chain;
+
+    h = ctx->out->hunk;
+
+    if (ctx->looked == 0 && ctx->pos == h->last) {
+        chain.hunk = h;
+        chain.next = NULL;
+
+        return next_body_filter(r, &chain);
+    }
+
+    if (ctx->hunk == NULL) {
+        ngx_test_null(ctx->hunk, ngx_calloc_hunk(r->pool), NGX_ERROR);
+        ctx->hunk->type = h->type & NGX_HUNK_STORAGE;
+    }
+
+
+    if (h->type & NGX_HUNK_FILE) {
+        if (copy->start <= h->file_pos) {
+            ctx->hunk->file_pos = h->file_pos;
+        } else if (copy->start < h->file_last) {
+            ctx->hunk->file_pos = copy->file_pos;
+        }
+
+        if (copy->end >= h->file_last) {
+            ctx->hunk->file_last = h->file_last;
+        } else if (copy->end > h->file_pos) {
+        }
+
+    }
+
+    if (h->type & NGX_HUNK_IN_MEMORY) {
+        if (copy->start <= ctx->offset + (h->pos - h->start)) {
+            ctx->hunk->pos = h->pos;
+        } else if (copy->start < ctx->offset + (h->last - h->start)) {
+            ctx->hunk->pos = h->start + (copy->start - ctx->offset);
+        }
+
+        if (copy->end >= ctx->offset + (h->last - h->start) {
+            ctx->hunk->last = h->last;
+        } else if (copy->end > ctx->offset + (h->pos - h->start)) {
+            ctx->hunk->last = h->start + (copy->end - ctx->offset);
+        }
+    }
+
+    /* TODO: NGX_HUNK_FLUSH */
+
+    if ((h->type & NGX_HUNK_LAST) && ctx->hunk->last == h->last)
+
+    /* LAST */
+}
+
+#endif
 
 
 
@@ -504,10 +642,8 @@ static int ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
 static int ngx_http_ssi_filter_init(ngx_cycle_t *cycle)
 {
-#if 0
     next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_ssi_header_filter;
-#endif
 
     next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_ssi_body_filter;
