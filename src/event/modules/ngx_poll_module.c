@@ -251,9 +251,7 @@ int ngx_poll_process_events(ngx_log_t *log)
             }
         }
 
-        if (ev->event_handler(ev) == NGX_ERROR) {
-            ev->close_handler(ev);
-        }
+        ev->event_handler(ev);
     }
 
     if (ready != 0) {

@@ -26,7 +26,7 @@ struct ngx_connection_s {
 
     off_t             sent;
 
-    int             (*handler)(ngx_connection_t *c);
+    void            (*handler)(ngx_connection_t *c);
     void             *ctx;
     ngx_server_t     *servers;
 

@@ -28,9 +28,11 @@ typedef struct {
 
 struct ngx_event_s {
     void            *data;
+    void           (*event_handler)(ngx_event_t *ev);
 
-    int            (*event_handler)(ngx_event_t *ev);
+#if 0
     int            (*close_handler)(ngx_event_t *ev);
+#endif
     void            *context;
     char            *action;
 
@@ -39,7 +41,9 @@ struct ngx_event_s {
     ngx_event_t     *prev;     /* queue in mutex(), aio_read(), aio_write()  */
     ngx_event_t     *next;     /*                                            */
 
+#if 0
     int            (*timer_handler)(ngx_event_t *ev);
+#endif
     ngx_event_t     *timer_prev;
     ngx_event_t     *timer_next;
 
@@ -165,7 +169,7 @@ typedef struct {
 #define NGX_HAVE_KQUEUE_EVENT   8
 
 /* The event filter supports low water mark - kqueue's NOTE_LOWAT.
-   Early kqueue implementations have no NOTE_LOWAT so we need a separate flag */
+   kqueue in FreeBSD 4.1-4.2 has no NOTE_LOWAT so we need a separate flag */
 #define NGX_HAVE_LOWAT_EVENT    0x00000010
 
 /* The event filter notifies only the changes (the edges)
@@ -292,6 +296,9 @@ extern int                   ngx_event_flags;
 #if !(HAVE_EPOLL)
 #define  ngx_edge_add_event(ev)  NGX_ERROR
 #endif
+
+
+void ngx_event_accept(ngx_event_t *ev);
 
 
 ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size);

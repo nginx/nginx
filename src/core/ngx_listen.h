@@ -22,7 +22,7 @@ typedef struct {
     int               protocol;
     int               flags;      /* Winsock2 flags */
 
-    int             (*handler)(ngx_connection_t *c); /* handler of accepted
+    void            (*handler)(ngx_connection_t *c); /* handler of accepted
                                                         connection */
     void             *ctx;        /* ngx_http_conf_ctx_t, for example */
     void             *servers;    /* array of ngx_http_in_addr_t, for example */

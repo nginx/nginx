@@ -343,9 +343,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         case EVFILT_AIO:
             ev->ready = 1;
 
-            if (ev->event_handler(ev) == NGX_ERROR) {
-                ev->close_handler(ev);
-            }
+            ev->event_handler(ev);
 
             break;
 

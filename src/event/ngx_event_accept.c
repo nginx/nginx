@@ -7,14 +7,9 @@
 #include <ngx_log.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
-#include <ngx_event_close.h>
-#include <ngx_event_accept.h>
 
 
-/* This function should always return NGX_OK even there are some failures
-   because if we return NGX_ERROR then listening socket would be closed */
-
-int ngx_event_accept(ngx_event_t *ev)
+void ngx_event_accept(ngx_event_t *ev)
 {
     int                instance;
     socklen_t          len;
@@ -37,9 +32,16 @@ int ngx_event_accept(ngx_event_t *ev)
 #endif
 
     do {
-        ngx_test_null(pool, ngx_create_pool(ls->pool_size, ev->log), NGX_OK);
+        pool = ngx_create_pool(ls->pool_size, ev->log);
+        if (pool == NULL) {
+            return;
+        }
 
-        ngx_test_null(sa, ngx_palloc(pool, ls->socklen), NGX_OK);
+        sa = ngx_palloc(pool, ls->socklen);
+        if (sa == NULL) {
+            return;
+        }
+
         len = ls->socklen;
 
         s = accept(ls->fd, sa, &len);
@@ -50,12 +52,12 @@ int ngx_event_accept(ngx_event_t *ev)
             if (err == NGX_EAGAIN) {
                 ngx_log_error(NGX_LOG_NOTICE, ev->log, err,
                               "EAGAIN while accept %s", ls->addr_text.data);
-                return NGX_OK;
+                return;
             }
 
             ngx_log_error(NGX_LOG_ALERT, ev->log, err,
                           "accept %s failed", ls->addr_text.data);
-            return NGX_OK;
+            return;
         }
 
 
@@ -66,7 +68,7 @@ int ngx_event_accept(ngx_event_t *ev)
             if (ngx_blocking(s) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                               ngx_blocking_n " %s failed", ls->addr_text.data);
-                return NGX_OK;
+                return;
             }
         }
 #endif
@@ -78,14 +80,14 @@ int ngx_event_accept(ngx_event_t *ev)
             if (ngx_nonblocking(s) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                            ngx_nonblocking_n " %s failed", ls->addr_text.data);
-                return NGX_OK;
+                return;
             }
         }
 #else
         if (ngx_nonblocking(s) == -1) {
             ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                           ngx_nonblocking_n " %s failed", ls->addr_text.data);
-            return NGX_OK;
+            return;
         }
 #endif
 
@@ -133,13 +135,13 @@ int ngx_event_accept(ngx_event_t *ev)
 
         /* STUB ? */ wev->timer = rev->timer = 10000;
 
-        wev->timer_handler = rev->timer_handler = ngx_event_close_connection;
-        wev->close_handler = rev->close_handler = ngx_event_close_connection;
-
         c->ctx = ls->ctx;
         c->servers = ls->servers;
 
-        ngx_test_null(c->log, ngx_palloc(c->pool, sizeof(ngx_log_t)), NGX_OK);
+        c->log = ngx_palloc(c->pool, sizeof(ngx_log_t));
+        if (c->log == NULL) {
+            return;
+        }
         ngx_memcpy(c->log, ev->log, sizeof(ngx_log_t));
         rev->log = wev->log = c->log;
 
@@ -159,7 +161,7 @@ int ngx_event_accept(ngx_event_t *ev)
 
         if (ngx_event_flags & NGX_HAVE_EDGE_EVENT) {
             if (ngx_edge_add_event(ev) == NGX_ERROR) {
-                return NGX_OK;
+                return;
             }
         }
 
@@ -183,5 +185,5 @@ int ngx_event_accept(ngx_event_t *ev)
 #endif
     } while (ev->available);
   
-    return NGX_OK;
+    return;
 }

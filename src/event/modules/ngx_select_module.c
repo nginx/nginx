@@ -306,8 +306,7 @@ int ngx_select_process_events(ngx_log_t *log)
                 ngx_select_del_event(ev, NGX_READ_EVENT, 0);
         }
 
-        if (ev->event_handler(ev) == NGX_ERROR)
-            ev->close_handler(ev);
+        ev->event_handler(ev);
     }
 
     if (ready != 0) {

@@ -517,7 +517,8 @@ int ngx_http_redirect(ngx_http_request_t *r, int redirect)
 
     /* log request */
 
-    return ngx_http_close_request(r, 0);
+    ngx_http_close_request(r, 0);
+    return NGX_OK;
 }
 
 
@@ -529,48 +530,8 @@ int ngx_http_error(ngx_http_request_t *r, int error)
     /* log request */
 
     ngx_http_special_response_handler(r, error);
-    return ngx_http_close_request(r, 0);
-}
-
-
-int ngx_http_close_request(ngx_http_request_t *r, int error)
-{
-    ngx_connection_t    *c;
-    ngx_http_log_ctx_t  *ctx;
-
-    c = r->connection;
-    if (error) {
-        r->headers_out.status = error;
-    }
-
-    ngx_http_log_handler(r);
-
-    if (r->file.fd != NGX_INVALID_FILE) {
-        if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
-                          ngx_close_file_n " \"%s\" failed", r->file.name.data);
-        }
-    }
-
-    /* ctx->url was allocated from r->pool */
-    ctx = (ngx_http_log_ctx_t *) c->log->data;
-    ctx->url = NULL;
-
-    ngx_destroy_pool(r->pool);
-
-    if (c->read->timer_set) {
-        ngx_del_timer(c->read);
-        c->read->timer_set = 0;
-    }
-
-    if (c->write->timer_set) {
-        ngx_del_timer(c->write);
-        c->write->timer_set = 0;
-    }
-
-    ngx_log_debug(c->log, "http request closed");
-
-    return 0;
+    ngx_http_close_request(r, 0);
+    return NGX_OK;
 }
 
 

@@ -9,7 +9,6 @@
 #include <ngx_listen.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
-#include <ngx_event_accept.h>
 
 #include <ngx_select_module.h>
 
