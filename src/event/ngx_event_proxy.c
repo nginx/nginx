@@ -18,10 +18,10 @@ int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
 {
     int           n, rc, size;
     ngx_hunk_t   *h, *nh;
-    ngx_chain_t  *chain, *temp, *entry, *next;
+    ngx_chain_t  *chain, *rest, *ce, *next;
 
 #if (NGX_SUPPRESS_WARN)
-    entry = NULL;
+    rest = NULL;
 #endif
 
 #if (NGX_EVENT_COPY_FILTER)
@@ -38,22 +38,30 @@ ngx_log_debug(p->log, "read upstream");
 
     for ( ;; ) {
 
-        /* use the pre-read hunks if they exist */
-
         if (p->preread_hunks) {
+
+            /* use the pre-read hunks if they exist */
+
             chain = p->preread_hunks;
             p->preread_hunks = NULL;
             n = p->preread_size;
 
+ngx_log_debug(p->log, "preread: %d" _ n);
+
         } else {
 
-#if (HAVE_KQUEUE) /* kqueue notifies about the end of file or a pending error */
+#if (HAVE_KQUEUE)
+
+            /*
+             * kqueue notifies about the end of file or a pending error.
+             * This test allows not to allocate a hunk on these conditions
+             * and not to call ngx_recv_chain().
+             */
 
             if (ngx_event_flags == NGX_HAVE_KQUEUE_EVENT) {
 
                 if (p->upstream->read->error) {
-                    ngx_log_error(NGX_LOG_ERR, p->log,
-                                  p->upstream->read->error,
+                    ngx_log_error(NGX_LOG_ERR, p->log, p->upstream->read->error,
                                   "readv() failed");
                     p->upstream_error = 1;
 
@@ -62,66 +70,66 @@ ngx_log_debug(p->log, "read upstream");
                 } else if (p->upstream->read->eof
                            && p->upstream->read->available == 0) {
                     p->upstream_eof = 1;
-                    p->block_upstream = 0;
 
                     break;
                 }
             }
 #endif
-            /* use the free hunks if they exist */
 
             if (p->free_hunks) {
+
+                /* use the free hunks if they exist */
+
                 chain = p->free_hunks;
                 p->free_hunks = NULL;
 
 ngx_log_debug(p->log, "free hunk: %08X:%d" _ chain->hunk _
               chain->hunk->end - chain->hunk->last);
 
-            /* allocate a new hunk if it's still allowed */
+            } else if (p->hunks < p->bufs.num) {
 
-            } else if (p->allocated < p->max_block_size) {
-                h = ngx_create_temp_hunk(p->pool, p->block_size, 20, 20);
-                if (h == NULL) {
-                    return NGX_ABORT;
-                }
+                /* allocate a new hunk if it's still allowed */
 
-                p->allocated += p->block_size;
+                ngx_test_null(h, ngx_create_temp_hunk(p->pool,
+                                                      p->bufs.size, 20, 20);
+                              NGX_ABORT);
+                p->hunks++;
 
-                temp = ngx_alloc_chain_entry(p->pool);
-                if (temp == NULL) {
-                    return NGX_ABORT;
-                }
-
-                temp->hunk = h;
-                temp->next = NULL;
-                chain = temp;
+                ngx_alloc_ce_and_set_hunk(te, h, p->pool, NGX_ABORT);
+                chain = te;
 
 ngx_log_debug(p->log, "new hunk: %08X" _ chain->hunk);
 
-            /* use the file hunks if they exist */
-
             } else if (p->file_hunks) {
+
+                /* use the file hunks if they exist */
+
                 chain = p->file_hunks;
                 p->file_hunks = NULL;
 
 ngx_log_debug(p->log, "file hunk: %08X" _ chain->hunk _
               chain->hunk->end - chain->hunk->last);
 
-            /* if the hunks are not needed to be saved in a cache and
-               a downstream is ready then write the hunks to a downstream */
-
             } else if (p->cachable == 0 && p->downstream->write->ready) {
+
+                /*
+                 * if the hunks are not needed to be saved in a cache and
+                 * a downstream is ready then write the hunks to a downstream
+                 */
 
 ngx_log_debug(p->log, "downstream ready");
 
                 break;
 
-            /* if it's allowed then save the incoming hunks to a temporary
-               file, move the saved read hunks to a file chain,
-               convert the incoming hunks into the file hunks
-               and add them to an outgoing chain */
-
             } else if (p->temp_offset < p->max_temp_file_size) {
+
+                /*
+                 * if it's allowed then save the incoming hunks to a temporary
+                 * file, move the saved read hunks to a file chain,
+                 * convert the incoming hunks into the file hunks
+                 * and add them to an outgoing chain
+                 */
+
                 rc = ngx_event_proxy_write_chain_to_temp_file(p);
 
 ngx_log_debug(p->log, "temp offset: %d" _ p->temp_offset);
@@ -136,10 +144,9 @@ ngx_log_debug(p->log, "temp offset: %d" _ p->temp_offset);
 ngx_log_debug(p->log, "new file hunk: %08X:%d" _ chain->hunk _
               chain->hunk->end - chain->hunk->last);
 
-            /* if there're no hunks to read in then disable a level event */
-
             } else {
-                p->block_upstream = 1;
+
+                /* if there're no hunks to read in then disable a level event */
 
 ngx_log_debug(p->log, "no hunks to read in");
     
@@ -148,48 +155,43 @@ ngx_log_debug(p->log, "no hunks to read in");
 
             n = ngx_recv_chain(p->upstream, chain);
 
-        }
-
 ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
-        if (n == NGX_ERROR) {
-            p->upstream_error = 1;
-            return NGX_ERROR;
-        }
+            if (n == NGX_ERROR) {
+                p->upstream_error = 1;
+                return NGX_ERROR;
+            }
 
-        if (n == NGX_AGAIN) {
-            if (p->upstream->read->blocked) {
-                if (ngx_add_event(p->upstream->read, NGX_READ_EVENT,
-                                               NGX_LEVEL_EVENT) == NGX_ERROR) {
+            if (n == NGX_AGAIN) {
+                if (ngx_handle_read_event(p->upstream->read) == NGX_ERROR) {
                     return NGX_ABORT;
                 }
-                p->block_upstream = 0;
-                p->upstream->read->blocked = 0;
+
+                break;
             }
 
-            break;
-        }
+            if (n == 0) {
+                if (chain->hunk->shadow == NULL) {
+                    p->free_hunks = chain;
+                }
+                p->upstream_eof = 1;
 
-        if (n == 0) {
-            if (chain->hunk->shadow == NULL) {
-                p->free_hunks = chain;
+                break;
             }
-            p->upstream_eof = 1;
-            p->block_upstream = 0;
 
-            break;
         }
 
-        /* move the full hunks to a read chain
-           and the partial filled hunk to a free chain
-           and remove the shadow links for these hunks */
+        /*
+         * move the full hunks to a read chain, the partial filled hunk
+         * to a free chain, and remove the shadow links for these hunks
+         */
 
-        for (entry = chain; entry && n > 0; entry = next) {
-            next = entry->next;
-            entry->next = NULL;
+        for (ce = chain; ce && n > 0; ce = next) {
+            next = ce->next;
+            ce->next = NULL;
 
-            if (entry->hunk->shadow) {
-                for (h = entry->hunk->shadow;
+            if (ce->hunk->shadow) {
+                for (h = ce->hunk->shadow;
                      (h->type & NGX_HUNK_LAST_SHADOW) == 0;
                      h = nh)
                 {
@@ -205,22 +207,22 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
                              |NGX_HUNK_IN_MEMORY
                              |NGX_HUNK_RECYCLED
                              |NGX_HUNK_LAST_SHADOW);
-                entry->hunk->shadow = NULL;
+                ce->hunk->shadow = NULL;
             }
 
-            size = entry->hunk->end - entry->hunk->last;
+            size = ce->hunk->end - ce->hunk->last;
 
             if (n >= size) {
-                entry->hunk->last = entry->hunk->end;
+                ce->hunk->last = ce->hunk->end;
 
                 if (p->read_hunks) {
-                    p->last_read_hunk->next = entry;
+                    p->last_read_hunk->next = ce;
 
                 } else {
-                    p->read_hunks = entry;
+                    p->read_hunks = ce;
                 }
 
-                p->last_read_hunk = entry;
+                p->last_read_hunk = ce;
 
                 n -= size;
 
@@ -232,37 +234,21 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
                 /* the inline copy input filter */
 
-                h = ngx_alloc_hunk(p->pool);
-                if (h == NULL) {
-                    return NGX_ABORT;
-                }
+                ngx_test_null(h, ngx_alloc_hunk(p->pool), NGX_ABORT);
 
-                ngx_memcpy(h, entry->hunk, sizeof(ngx_hunk_t));
-                h->shadow = entry->hunk;
+                ngx_memcpy(h, ce->hunk, sizeof(ngx_hunk_t));
+                h->shadow = ce->hunk;
                 h->type |= NGX_HUNK_LAST_SHADOW|NGX_HUNK_RECYCLED;
-                entry->hunk->shadow = h;
+                ce->hunk->shadow = h;
 
-                temp = ngx_alloc_chain_entry(p->pool);
-                if (temp == NULL) {
-                    return NGX_ABORT;
-                }
+                ngx_alloc_ce_and_set_hunk(te, h, p->pool, NGX_ABORT);
 
-                temp->hunk = h;
-                temp->next = NULL;
-
-                if (p->in_hunks) {
-                    p->last_in_hunk->next = temp;
-
-                } else {
-                    p->in_hunks = temp;
-                }
-
-                p->last_in_hunk = temp;
+                ngx_chain_add_ce(p->in_hunks, p->last_in_hunk, te);
 #endif
 
             } else {
-                entry->hunk->last += n;
-                p->free_hunks = entry;
+                ce->hunk->last += n;
+                p->free_hunks = ce;
 
                 n = 0;
             }
@@ -272,8 +258,10 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
             chain = NULL;
         }
 
-        /* the input filter i.e. that moves HTTP/1.1 chunks
-           from a read chain to an incoming chain */
+        /*
+         * the input filter i.e. that moves HTTP/1.1 chunks
+         * from a read chain to an incoming chain
+         */
 
         if (p->input_filter) {
             if (p->input_filter(p, chain) == NGX_ERROR) {
@@ -281,38 +269,38 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
             }
         }
 
-ngx_log_debug(p->log, "rest chain: %08X" _ entry);
+ngx_log_debug(p->log, "rest chain: %08X" _ ce);
 
-        /* if the rest hunks are file hunks then move them to a file chain
-           otherwise add them to a free chain */
+        /*
+         * if the rest hunks are file hunks then move them to a file chain
+         * otherwise add them to a free chain
+         */
 
-        if (entry) {
-            if (entry->hunk->shadow) {
-                p->file_hunks = entry;
+        if (rest) {
+            if (rest->hunk->shadow) {
+                p->file_hunks = rest;
 
             } else {
                 if (p->free_hunks) {
-                    p->free_hunks->next = entry;
+                    p->free_hunks->next = rest;
 
                 } else {
-                    p->free_hunks = entry;
+                    p->free_hunks = rest;
                 }
             }
 
-            p->block_upstream = 0;
             break;
         }
     }
 
-ngx_log_debug(p->log, "eof: %d block: %d" _
-              p->upstream_eof _ p->block_upstream);
+ngx_log_debug(p->log, "eof: %d" _ p->upstream_eof);
 
-    /* if there's the end of upstream response then move
-       the partially filled hunk from a free chain to an incoming chain */
+    /*
+     * if there's the end of upstream response then move
+     * the partially filled hunk from a free chain to an incoming chain
+     */
 
     if (p->upstream_eof) {
-        p->upstream->read->ready = 0;
-
         if (p->free_hunks
             && p->free_hunks->hunk->pos < p->free_hunks->hunk->last)
         {
@@ -323,34 +311,36 @@ ngx_log_debug(p->log, "eof: %d block: %d" _
                 return NGX_ABORT;
             }
 #else
+
             if (p->input_filter) {
                 if (p->input_filter(p, NULL) == NGX_ERROR) {
                     return NGX_ABORT;
                 }
 
             } else {
-                entry = p->free_hunks;
+                ce = p->free_hunks;
 
                 if (p->in_hunks) {
-                    p->last_in_hunk->next = entry;
+                    p->last_in_hunk->next = ce;
 
                 } else {
-                    p->in_hunks = entry;
+                    p->in_hunks = ce;
                 }
 
-                p->last_in_hunk = entry;
+                p->last_in_hunk = ce;
             }
 
-            p->free_hunks = entry->next;
-            entry->next = NULL;
-#endif
+            p->free_hunks = ce->next;
+            ce->next = NULL;
+
+#endif  /* NGX_EVENT_COPY_FILTER */
         }
 
 #if 0
         /* free the unneeded hunks */
 
-        for (entry = p->free_hunks; entry; entry = ce->next) {
-            ngx_free_hunk(p->pool, entry->hunk);
+        for (ce = p->free_hunks; ce; ce = ce->next) {
+            ngx_free_hunk(p->pool, ce->hunk);
         }
 #endif
 
@@ -387,17 +377,10 @@ ngx_log_debug(p->log, "eof: %d block: %d" _
 
 ngx_log_debug(p->log, "upstream level: %d" _ p->upstream_level);
 
-    if (p->upstream_level == 0
-        && p->block_upstream
-        && ngx_event_flags & NGX_USE_LEVEL_EVENT)
-    {
-        if (ngx_del_event(p->upstream->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
+    if (p->upstream_level == 0) {
+        if (ngx_handler_read_event(p->upstream->read) == NGX_ERROR) {
             return NGX_ABORT;
         }
-
-        p->upstream->read->blocked = 1;
-
-        return NGX_AGAIN;
     }
 
     if (p->upstream_eof) {
@@ -415,6 +398,8 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
     ngx_hunk_t   *h;
     ngx_chain_t  *entry;
 
+#if 0
+
     if (p->upstream_level == 0
         && p->downstream_level == 0
         && p->busy_hunk == NULL
@@ -430,6 +415,8 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
         p->downstream->write->blocked = 1;
         return NGX_AGAIN;
     }
+
+#endif
 
     p->downstream_level++;
 
@@ -695,45 +682,32 @@ static int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p,
                                              ngx_chain_t *chain)
 {
     ngx_hunk_t   *h;
-    ngx_chain_t  *entry, *temp;
+    ngx_chain_t  *ce, *temp;
 
     if (p->upstream_eof) {
-        entry = p->free_hunks;
 
-        if (p->in_hunks) {
-            p->last_in_hunk->next = entry;
+        /* THINK comment */
 
-        } else {
-            p->in_hunks = entry;
-        }
+        ce = p->free_hunks;
 
-        p->last_in_hunk = entry;
+        ngx_chain_add_ce(p->in_hunk, p->last_in_hunk, ce);
 
-        p->free_hunks = entry->next;
-        entry->next = NULL;
+        p->free_hunks = ce->next;
+        ce->next = NULL;
 
         return NGX_OK;
     }
 
-    for (entry = chain; entry; entry = entry->next) {
+    for (ce = chain; ce; ce = ce->next) {
         ngx_test_null(h, ngx_alloc_hunk(p->pool), NGX_ERROR);
-        ngx_memcpy(h, entry->hunk, sizeof(ngx_hunk_t));
-        h->shadow = entry->hunk;
+        ngx_memcpy(h, ce->hunk, sizeof(ngx_hunk_t));
+        h->shadow = ce->hunk;
         h->type |= NGX_HUNK_LAST_SHADOW|NGX_HUNK_RECYCLED;
-        entry->hunk->shadow = h;
+        ce->hunk->shadow = h;
 
-        ngx_test_null(temp, ngx_alloc_chain_entry(p->pool), NGX_ERROR);
-        temp->hunk = h;
-        temp->next = NULL;
+        ngx_alloc_ce_and_set_hunk(te, h, p->pool, NGX_ERROR);
 
-        if (p->in_hunks) {
-            p->last_in_hunk->next = temp;
-
-        } else {
-            p->in_hunks = temp;
-        }
-
-        p->last_in_hunk = temp;
+        ngx_chain_add_ce(p->in_hunk, p->last_in_hunk, te);
     }
 
     return NGX_OK;

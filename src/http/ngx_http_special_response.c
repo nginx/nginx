@@ -234,7 +234,9 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 
     if (/* STUB: "msie_padding on/off" */ 1
         && r->http_version >= NGX_HTTP_VERSION_10
-        && error >= NGX_HTTP_BAD_REQUEST)
+        && error >= NGX_HTTP_BAD_REQUEST
+        && error != NGX_HTTP_REQUEST_URI_TOO_LARGE
+       )
     {
 
         if (ngx_http_output_filter(r, h) == NGX_ERROR) {

@@ -49,9 +49,8 @@ struct ngx_event_proxy_s {
     int                upstream_level;
     int                downstream_level;
 
-    int                allocated;
-    int                block_size;
-    int                max_block_size;
+    int                hunks;
+    ngx_bufs_t         bufs;
 
     off_t              temp_offset;
     off_t              max_temp_file_size;
