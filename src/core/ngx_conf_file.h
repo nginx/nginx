@@ -56,6 +56,9 @@
 #define NGX_CONF_MODULE      0x464E4F43  /* "CONF" */
 
 
+#define NGX_MAX_CONF_ERRSTR  256
+
+
 struct ngx_command_s {
     ngx_str_t     name;
     int           type;

@@ -107,6 +107,8 @@ struct ngx_event_s {
 #endif
 
 #if (HAVE_KQUEUE)
+    unsigned         kq_vnode:1;
+
     /* the pending errno reported by kqueue */
     int              kq_errno;
 #endif
@@ -212,7 +214,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * Need to add socket or handle only once - i/o completion port.
- * It also requires HAVE_AIO_EVENT and NGX_HAVE_AIO_EVENT to be set.
+ * It also requires HAVE_AIO and NGX_USE_AIO_EVENT to be set.
  */
 #define NGX_USE_IOCP_EVENT     0x00000100
 
@@ -233,12 +235,16 @@ extern ngx_event_actions_t   ngx_event_actions;
 /* these flags have a meaning only for kqueue */
 #define NGX_LOWAT_EVENT    0
 #define NGX_DISABLE_EVENT  0
+#define NGX_VNODE_EVENT    0
 
 
 #if (HAVE_KQUEUE)
 
 #define NGX_READ_EVENT     EVFILT_READ
 #define NGX_WRITE_EVENT    EVFILT_WRITE
+
+#undef  NGX_VNODE_EVENT
+#define NGX_VNODE_EVENT    EVFILT_VNODE
 
 /*
  * NGX_CLOSE_EVENT and NGX_LOWAT_EVENT are the module flags and they would
@@ -289,7 +295,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #endif /* HAVE_KQUEUE */
 
 
-#if (HAVE_IOCP_EVENT)
+#if (HAVE_IOCP)
 #define NGX_IOCP_ACCEPT      0
 #define NGX_IOCP_IO          1
 #define NGX_IOCP_CONNECT     2
@@ -444,7 +450,8 @@ ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, u_int flags)
 
         if (!wev->active && !wev->ready) {
             if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_CLEAR_EVENT|flags)
-                                                                == NGX_ERROR) {
+                                                                  == NGX_ERROR)
+            {
                 return NGX_ERROR;
             }
         }
@@ -457,7 +464,8 @@ ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, u_int flags)
 
         if (!wev->active && !wev->ready) {
             if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT)
-                                                                == NGX_ERROR) {
+                                                                  == NGX_ERROR)
+            {
                 return NGX_ERROR;
             }
 
@@ -484,7 +492,8 @@ ngx_inline static int ngx_handle_level_write_event(ngx_event_t *wev)
     if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
         if (!wev->active && !wev->ready) {
             if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT)
-                                                                == NGX_ERROR) {
+                                                                  == NGX_ERROR)
+            {
                 return NGX_ERROR;
             }
 

@@ -2,14 +2,14 @@
 #define _NGX_LINUX_CONFIG_H_INCLUDED_
 
 
-#define _GNU_SOURCE             /* pread, pwrite, gethostname, bzero */
+#define _GNU_SOURCE             /* pread(), pwrite(), gethostname() */
 
 #define _FILE_OFFSET_BITS  64
 #define _LARGEFILE_SOURCE
 
 
 #include <unistd.h>
-#include <stddef.h>             /* offsetof */
+#include <stddef.h>             /* offsetof() */
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -27,16 +27,17 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <dirent.h>
 #include <netdb.h>
 
 
 
-#define OFF_FMT    "%lld"
+#if 0
 #define SIZE_FMT   "%d"
 #define SIZEX_FMT  "%x"
-#define TIME_FMT   "%ld"
 #define PID_FMT    "%d"
 #define RLIM_FMT   "%lu"
+#endif
 
 
 

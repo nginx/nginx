@@ -11,7 +11,7 @@
 
 
 typedef struct {
-    u_int32_t          addr;
+    in_addr_t          addr;
     ngx_str_t          host;
     int                port;
     ngx_str_t          addr_port_text;

@@ -1,29 +1,37 @@
 
-echo "Checking for $NGX_TYPE size"
+echo "checking for $NGX_TYPE size"
 
-BYTES=
+NGX_BYTES=
 
 echo "#include <sys/types.h>" > autotest.c
 echo "int main() {" >> autotest.c
 echo "printf(\"%d\", sizeof($NGX_TYPE));" >> autotest.c
 echo "return 0; }" >> autotest.c
 
-eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+eval "$CC $CC_TEST_FLAGS -o autotest autotest.c > /dev/null 2>&1"
 
 if [ -x ./autotest ]; then
-    BYTES=`./autotest`
-    echo " + $NGX_TYPE is $BYTES bytes"
+    NGX_BYTES=`./autotest`
+    echo " + $NGX_TYPE is $NGX_BYTES bytes"
 fi
 
 rm autotest*
 
-case $BYTES in
+case $NGX_BYTES in
     4)
-        NGX_MAX_SIZE=2147483647
+        if [ "$NGX_TYPE"="long" ]; then
+            NGX_MAX_SIZE=2147483647L
+        else
+            NGX_MAX_SIZE=2147483647
+        fi
     ;;
 
     8)
-        NGX_MAX_SIZE=9223372036854775807
+        if [ "$NGX_TYPE"="long long" ]; then
+            NGX_MAX_SIZE=9223372036854775807LL
+        else
+            NGX_MAX_SIZE=9223372036854775807L
+        fi
     ;;
 
     *)

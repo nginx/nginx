@@ -70,7 +70,10 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
 #endif
 #endif
 
+#if 0
         file->fd = ngx_open_tempfile(file->name.data, persistent);
+#endif
+        file->fd = ngx_open_tempfile(file->name.data, 1);
 
 ngx_log_debug(file->log, "temp fd: %d" _ file->fd);
 
@@ -225,14 +228,15 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return "invalid value";
         }
 
-        path->len += path->level[i] + level + 1;
+        path->level[i] = level;
+        path->len += level + 1;
     }
 
     while (i < 3) {
         path->level[i++] = 0;
     }
 
-    path->gc_handler = cmd->post;
+    path->gc_handler = (ngx_gc_handler_pt) cmd->post;
 
     return NGX_CONF_OK;
 }

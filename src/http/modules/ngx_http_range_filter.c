@@ -215,7 +215,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
 
         r->headers_out.content_range->value.len =
                         ngx_snprintf(r->headers_out.content_range->value.data,
-                                     8 + 20 + 1, "bytes */" OFF_FMT,
+                                     8 + 20 + 1, "bytes */" OFF_T_FMT,
                                      r->headers_out.content_length_n);
 
         r->headers_out.content_length_n = -1;
@@ -247,11 +247,11 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
             /* "Content-Range: bytes SSSS-EEEE/TTTT" header */
 
             r->headers_out.content_range->value.len =
-                         ngx_snprintf(r->headers_out.content_range->value.data,
-                                      6 + 20 + 1 + 20 + 1 + 20 + 1,
-                                      "bytes " OFF_FMT "-" OFF_FMT "/" OFF_FMT,
-                                      range->start, range->end - 1,
-                                      r->headers_out.content_length_n);
+                   ngx_snprintf(r->headers_out.content_range->value.data,
+                                6 + 20 + 1 + 20 + 1 + 20 + 1,
+                                "bytes " OFF_T_FMT "-" OFF_T_FMT "/" OFF_T_FMT,
+                                range->start, range->end - 1,
+                                r->headers_out.content_length_n);
 
             r->headers_out.content_length_n = range->end - range->start;
 
@@ -336,11 +336,11 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                 /* the size of the range: "SSSS-EEEE/TTTT" CRLF CRLF */
 
                 range[i].content_range.len =
-                        ngx_snprintf(range[i].content_range.data,
-                                     20 + 1 + 20 + 1 + 20 + 5,
-                                     OFF_FMT "-" OFF_FMT "/" OFF_FMT CRLF CRLF,
-                                     range[i].start, range[i].end - 1,
-                                     r->headers_out.content_length_n);
+                  ngx_snprintf(range[i].content_range.data,
+                               20 + 1 + 20 + 1 + 20 + 5,
+                               OFF_T_FMT "-" OFF_T_FMT "/" OFF_T_FMT CRLF CRLF,
+                               range[i].start, range[i].end - 1,
+                               r->headers_out.content_length_n);
 
                 len += ctx->boundary_header.len + range[i].content_range.len
                                     + (size_t) (range[i].end - range[i].start);

@@ -32,7 +32,7 @@ ssize_t ngx_event_wsarecv(ngx_connection_t *c, char *buf, size_t size)
     if (ev->ready) {
         ev->ready = 0;
 
-#if (HAVE_IOCP_EVENT) /* iocp */
+#if (HAVE_IOCP) /* iocp */
 
         if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
             if (ev->ovlp.error) {
@@ -85,7 +85,7 @@ ssize_t ngx_event_wsarecv(ngx_connection_t *c, char *buf, size_t size)
         }
     }
 
-#if (HAVE_IOCP_EVENT) /* iocp */
+#if (HAVE_IOCP) /* iocp */
 
     if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
         return NGX_AGAIN;

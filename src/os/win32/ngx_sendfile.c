@@ -42,7 +42,7 @@ int ngx_sendfile(ngx_connection_t *c,
     if (ev->ready) {
         ev->ready = 0;
 
-#if (HAVE_IOCP_EVENT) /* iocp */
+#if (HAVE_IOCP) /* iocp */
 
         if (ngx_event_flags & NGX_HAVE_IOCP_EVENT) {
             if (ev->ovlp.error) {

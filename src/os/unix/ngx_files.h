@@ -82,7 +82,7 @@ int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_read_dir_n           "readdir()"
 
 
-#define ngx_create_dir(name)     mkdir(name, (mode_t) 0700)
+#define ngx_create_dir(name)     mkdir(name, 0700)
 #define ngx_create_dir_n         "mkdir()"
 
 

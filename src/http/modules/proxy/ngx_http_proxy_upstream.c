@@ -1017,8 +1017,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->hunk_to_file->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
 
     if (ngx_event_flags & NGX_USE_AIO_EVENT) {
-
-        /* the posted aio operation can currupt shadow buf */
+        /* the posted aio operation can currupt a shadow buffer */
         ep->single_buf = 1;
     }
 
@@ -1126,26 +1125,38 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
         }
 
         if (ep->upstream_done || ep->upstream_eof || ep->upstream_error) {
+            ngx_log_debug(ev->log, "http proxy upstream exit");
             ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
-            ngx_http_proxy_close_connection(p);
+            ngx_http_proxy_finalize_request(p, 0);
+            return;
         }
     }
 
+    if (ep->downstream_error) {
+        ngx_log_debug(ev->log, "http proxy downstream error");
+        if (!p->cachable && p->upstream->peer.connection) {
+            ngx_http_proxy_finalize_request(p, 0);
+        }
+    }
+
+#if 0
     if (ep->downstream_done) {
         ngx_log_debug(ev->log, "http proxy downstream done");
-        ngx_http_proxy_finalize_request(p, r->main ? 0 : ngx_http_send_last(r));
+        ngx_http_proxy_finalize_request(p, 0);
         return;
     }
 
     if (ep->downstream_error) {
+        ngx_log_debug(ev->log, "http proxy downstream error");
         if (!p->cachable && p->upstream->peer.connection) {
             ngx_http_proxy_close_connection(p);
         }
  
         if (p->upstream->peer.connection == NULL) {
-            ngx_http_close_connection(r->connection);
+            ngx_http_close_request(r);
         }
     }
+#endif
 }
 
 

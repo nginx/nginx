@@ -1,0 +1,40 @@
+
+
+CORE_INCS="$UNIX_INCS"
+CORE_DEPS="$UNIX_DEPS $FREEBSD_DEPS"
+CORE_SRCS="$UNIX_SRCS $FREEBSD_SRCS $SELECT_SRCS $POLL_SRCS"
+EVENT_MODULES="$EVENT_MODULES $SELECT_MODULE $POLL_MODULE"
+
+MD5_LIB="-lmd"
+ZLIB_LIB="-lz"
+
+version=`grep "#define __FreeBSD_version" /usr/include/osreldate.h \
+         | sed -e 's/^.* \(.*\)$/\1/'`
+
+
+# sendfile
+
+if [ $version -gt 300007 ]; then
+    CFLAGS="$CFLAGS -D HAVE_SENDFILE=1"
+    CORE_SRCS="$CORE_SRCS $FREEBSD_SENDFILE_SRCS"
+fi
+
+
+# kqueue
+
+if [ \( $version -lt 500000 -a $version -ge 410000 \) \
+     -o $version -ge 500011 ]
+then
+    CFLAGS="$CFLAGS -D HAVE_KQUEUE=1"
+    CORE_SRCS="$CORE_SRCS $KQUEUE_SRCS"
+    EVENT_MODULES="$EVENT_MODULES $KQUEUE_MODULE"
+fi
+
+
+# kqueue's NOTE_LAWAT
+
+if [ \( $version -lt 500000 -a $version -ge 430000 \) \
+     -o $version -ge 500018 ]
+then
+    CFLAGS="$CFLAGS -D HAVE_LOWAT_EVENT=1"
+fi

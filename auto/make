@@ -1,0 +1,146 @@
+
+mkdir -p $OBJS/src/core $OBJS/src/event $OBJS/src/event/modules \
+         $OBJS/src/os/unix $OBJS/src/os/win32 \
+         $OBJS/src/http $OBJS/src/http/modules $OBJS/src/http/modules/proxy
+
+
+HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES \
+                     $HTTP_CHUNKED_FILTER_MODULE \
+                     $HTTP_RANGE_FILTER_MODULE \
+                     $HTTP_CHARSET_FILTER_MODULE"
+
+HTTP_MODULES="$HTTP_MODULES $HTTP_STATIC_MODULE $HTTP_INDEX_MODULE"
+
+if [ $HTTP_GZIP = YES ]; then
+    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_GZIP_FILTER_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_GZIP_SRCS"
+fi
+
+if [ $HTTP_PROXY = YES ]; then
+    HTTP_MODULES="$HTTP_MODULES $HTTP_PROXY_MODULE"
+    HTTP_INCS="$HTTP_INCS $HTTP_PROXY_INCS"
+    HTTP_DEPS="$HTTP_DEPS $HTTP_PROXY_DEPS"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_PROXY_SRCS"
+fi
+
+modules="$CORE_MODULES $EVENT_MODULES $HTTP_MODULES \
+         $HTTP_FILTER_MODULES $HTTP_NOT_MODIFIED_FILTER_MODULE"
+
+
+echo "#include <ngx_config.h>"                > $NGX_MODULES_C
+echo "#include <ngx_core.h>"                  >> $NGX_MODULES_C
+echo                                          >> $NGX_MODULES_C
+
+for mod in $modules
+do
+    echo "extern ngx_module_t  $mod;"         >> $NGX_MODULES_C
+done
+
+echo                                          >> $NGX_MODULES_C
+echo 'ngx_module_t *ngx_modules[] = {'        >> $NGX_MODULES_C
+
+for mod in $modules
+do
+    echo "    &$mod,"                         >> $NGX_MODULES_C
+done
+
+echo "    NULL"                               >> $NGX_MODULES_C
+echo "};"                                     >> $NGX_MODULES_C
+
+
+echo "CC = $CC"                               > $MAKEFILE
+echo "CFLAGS = $CFLAGS"                       >> $MAKEFILE
+echo                                          >> $MAKEFILE
+
+echo "CORE_DEPS = \\"                         >> $MAKEFILE
+for dep in $CORE_DEPS
+do
+    echo "	$dep \\"                      >> $MAKEFILE
+done
+echo                                          >> $MAKEFILE
+
+echo "CORE_INCS = $CORE_INCS -I $OBJS"        >> $MAKEFILE
+echo                                          >> $MAKEFILE
+
+echo "HTTP_DEPS = \\"                         >> $MAKEFILE
+for inc in $HTTP_DEPS
+do
+    echo "	$inc \\"                      >> $MAKEFILE
+done
+echo                                          >> $MAKEFILE
+
+echo "HTTP_INCS = $HTTP_INCS"                 >> $MAKEFILE
+echo                                          >> $MAKEFILE
+
+
+
+echo "nginx: \\"                              >> $MAKEFILE
+
+for src in $CORE_SRCS $HTTP_SRCS
+do
+    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
+    echo "	$OBJS/$obj \\"                >> $MAKEFILE
+done
+
+for src in $NGX_MODULES_C $LINK_DEPS
+do
+    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
+    echo "	$obj \\"                      >> $MAKEFILE
+done
+
+echo                                          >> $MAKEFILE
+echo "	\$(CC) ${BINOUT}nginx \\"             >> $MAKEFILE
+
+for src in $CORE_SRCS $HTTP_SRCS
+do
+    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
+    echo "	$OBJS/$obj \\"                >> $MAKEFILE
+done
+
+obj=`echo $NGX_MODULES_C | sed -e "s/\.c\$/.$OBJEXT/"`
+echo "	$obj \\"                              >> $MAKEFILE
+echo "	$CORE_LIBS \\"                        >> $MAKEFILE
+echo "	$CORE_LINK"                           >> $MAKEFILE
+echo                                          >> $MAKEFILE
+
+
+deps="\$(CORE_DEPS)"
+args="\$(CFLAGS) \$(CORE_INCS)"
+
+echo "$obj: \\"                               >> $MAKEFILE
+echo "	$NGX_MODULES_C $deps"                 >> $MAKEFILE
+echo "	\$(CC) -c $args \\"                   >> $MAKEFILE
+echo "		$OBJOUT$obj \\"               >> $MAKEFILE
+echo "		$NGX_MODULES_C"               >> $MAKEFILE
+echo                                          >> $MAKEFILE
+
+
+
+
+for src in $CORE_SRCS
+do
+    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
+
+    echo "$OBJS/$obj: \\"                     >> $MAKEFILE
+    echo "	$src $deps"                   >> $MAKEFILE
+    echo "	\$(CC) -c $args \\"           >> $MAKEFILE
+    echo "		$OBJOUT$OBJS/$obj \\" >> $MAKEFILE
+    echo "		$src"                 >> $MAKEFILE
+    echo                                      >> $MAKEFILE
+done
+
+
+deps="\$(CORE_DEPS) \$(HTTP_DEPS)"
+args="\$(CFLAGS) \$(CORE_INCS) \$(HTTP_INCS)"
+
+for src in $HTTP_SRCS
+do
+    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
+
+    echo "$OBJS/$obj: \\"                     >> $MAKEFILE
+    echo "	$src $deps"                   >> $MAKEFILE
+    echo "	\$(CC) -c $args \\"           >> $MAKEFILE
+    echo "		$OBJOUT$OBJS/$obj \\" >> $MAKEFILE
+    echo "		$src"                 >> $MAKEFILE
+    echo                                      >> $MAKEFILE
+done

@@ -58,11 +58,13 @@ static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
 
     if (ims != NGX_ERROR && ims == r->headers_out.last_modified_time) {
         r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
-        r->headers_out.content_length_n = -1;
-        r->headers_out.content_length = NULL;
         r->headers_out.content_type->key.len = 0;
         r->headers_out.content_type = NULL;
+        r->headers_out.content_length_n = -1;
+        r->headers_out.content_length = NULL;
+#if 0
         r->headers_out.accept_ranges->key.len = 0;
+#endif
     }
 
     return ngx_http_next_header_filter(r);

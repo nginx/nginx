@@ -1,0 +1,47 @@
+
+if [ ".$PLATFORM" = "." ]; then
+    echo "checking for OS"
+
+    SYSTEM=`uname -s 2>/dev/null`
+    RELEASE=`uname -r 2>/dev/null`
+    MACHINE=`uname -m 2>/dev/null`
+
+    echo " + $SYSTEM $RELEASE $MACHINE"
+
+    PLATFORM="$SYSTEM:$RELEASE:$MACHINE";
+else
+    echo "building for $PLATFORM"
+fi
+
+case $PLATFORM in
+
+    FreeBSD:*)
+        . auto/os/freebsd
+    ;;
+
+    Solaris:*)
+        CC_TEST_FLAGS="-D_FILE_OFFSET_BITS=64"
+        CORE_LIBS="$CORE_LIBS -lsocket -lnsl"
+    ;;
+
+    Linux:*)
+        CC_TEST_FLAGS="-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
+    ;;
+
+    win32)
+        CORE_INCS="$WIN32_INCS"
+        CORE_DEPS="$WIN32_DEPS"
+        CORE_SRCS="$WIN32_SRCS $SELECT_SRCS $IOCP_SRCS"
+        EVENT_MODULES="$EVENT_MODULES $SELECT_MODULE $IOCP_MODULE"
+
+        CFLAGS="$CFLAGS -D HAVE_AIO=1 -D HAVE_IOCP=1"
+        CORE_LIBS="$CORE_LIBS ws2_32.lib"
+    ;;
+
+esac
+
+
+if [ $TEST_BUILD_DEVPOLL = YES ]; then
+    EVENT_MODULES="$EVENT_MODULES $DEVPOLL_MODULE"
+    EVENT_SRCS="$EVENT_SRCS $DEVPOLL_SRCS"
+fi

@@ -86,6 +86,7 @@ static int ngx_http_proxy_process_cached_response(ngx_http_proxy_ctx_t *p,
     }
 
     if (rc == NGX_HTTP_CACHE_STALE || rc == NGX_HTTP_CACHE_AGED) {
+        p->state->expired = ngx_time() - p->cache->ctx.expires;
         p->header_in->pos = p->header_in->start + p->cache->ctx.header_size;
 
         if (ngx_http_proxy_process_cached_header(p) == NGX_ERROR) {
@@ -487,6 +488,8 @@ int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p)
         out[i].hunk->type |= NGX_HUNK_LAST;
     }
 
+    r->file.fd = p->cache->ctx.file.fd;
+
     return ngx_http_output_filter(r, out);
 }
 
@@ -600,7 +603,7 @@ int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p)
 
     ep = p->upstream->event_pipe;
 
-ngx_log_debug(p->request->connection->log, "LEN: " OFF_FMT ", " OFF_FMT _
+ngx_log_debug(p->request->connection->log, "LEN: " OFF_T_FMT ", " OFF_T_FMT _
               p->cache->ctx.length _ ep->read_length);
 
     if (p->cache->ctx.length == -1) {

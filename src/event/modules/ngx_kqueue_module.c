@@ -190,6 +190,7 @@ static void ngx_kqueue_done(ngx_cycle_t *cycle)
 
 static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
+    ngx_event_t       *e;
     ngx_connection_t  *c;
 
     ev->active = 1;
@@ -200,6 +201,28 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
         && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
                                                              == (uintptr_t) ev)
     {
+        if (change_list[ev->index].flags == EV_DISABLE) {
+
+#if (NGX_DEBUG_EVENT)
+            ngx_connection_t *c = (ngx_connection_t *) ev->data;
+            ngx_log_debug(ev->log, "kqueue event activated: %d: ft:%d" _
+                          c->fd _ event);
+#endif
+
+           /*
+            * if the EV_DISABLE is still not passed to a kernel
+            * we will not pass it
+            */
+
+            if (ev->index < (u_int) --nchanges) {
+                e = (ngx_event_t *) change_list[nchanges].udata;
+                change_list[ev->index] = change_list[nchanges];
+                e->index = ev->index;
+            }
+
+            return NGX_OK;
+        }
+
         c = ev->data;
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
                       "previous event on #%d were not passed in kernel", c->fd);
@@ -207,7 +230,7 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_ERROR;
     }
 
-    return ngx_kqueue_set_event(ev, event, EV_ADD|flags);
+    return ngx_kqueue_set_event(ev, event, EV_ADD|EV_ENABLE|flags);
 }
 
 
@@ -286,23 +309,26 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
     change_list[nchanges].flags = flags;
     change_list[nchanges].udata = (void *) ((uintptr_t) ev | ev->instance);
 
-#if (HAVE_LOWAT_EVENT)
-
-    if (flags & NGX_LOWAT_EVENT) {
-        change_list[nchanges].fflags = NOTE_LOWAT;
-        change_list[nchanges].data = ev->available;
+    if (filter == EVFILT_VNODE) {
+        change_list[nchanges].fflags = NOTE_DELETE|NOTE_WRITE|NOTE_EXTEND
+                                       |NOTE_ATTRIB|NOTE_RENAME|NOTE_REVOKE;
+        change_list[nchanges].data = 0;
 
     } else {
+#if (HAVE_LOWAT_EVENT)
+        if (flags & NGX_LOWAT_EVENT) {
+            change_list[nchanges].fflags = NOTE_LOWAT;
+            change_list[nchanges].data = ev->available;
+
+        } else {
+            change_list[nchanges].fflags = 0;
+            change_list[nchanges].data = 0;
+        }
+#else
         change_list[nchanges].fflags = 0;
         change_list[nchanges].data = 0;
-    }
-
-#else
-
-    change_list[nchanges].fflags = 0;
-    change_list[nchanges].data = 0;
-
 #endif
+    }
 
     ev->index = nchanges;
 
@@ -365,12 +391,16 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ (int) delta);
 #endif
 
+#if 0
         /*
          * The expired timers must be handled before a processing of the events
          * because the new timers can be added during a processing
          */
 
         ngx_event_expire_timers((ngx_msec_t) delta);
+#endif
+
+        ngx_event_set_timer_delta((ngx_msec_t) delta);
 
     } else {
         if (events == 0) {
@@ -452,6 +482,13 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
             break;
 
+        case EVFILT_VNODE:
+            ev->kq_vnode = 1;
+
+            ev->event_handler(ev);
+
+            break;
+
         case EVFILT_AIO:
             ev->complete = 1;
             ev->ready = 1;
@@ -463,8 +500,13 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
         default:
             ngx_log_error(NGX_LOG_ALERT, log, 0,
-                          "unexpected kevent filter %d" _ event_list[i].filter);
+                          "unexpected kevent() filter %d",
+                          event_list[i].filter);
         }
+    }
+
+    if (timer) {
+        ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
     return NGX_OK;

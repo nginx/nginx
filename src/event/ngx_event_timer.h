@@ -11,6 +11,7 @@ int  ngx_event_timer_init(ngx_cycle_t *cycle);
 void ngx_event_timer_done(ngx_cycle_t *cycle);
 void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer);
 int  ngx_event_find_timer(void);
+void ngx_event_set_timer_delta(ngx_msec_t timer);
 void ngx_event_expire_timers(ngx_msec_t timer);
 
 

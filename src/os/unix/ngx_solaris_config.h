@@ -10,7 +10,7 @@
 
 #include <unistd.h>
 #include <inttypes.h>
-#include <stddef.h>             /* offsetof */
+#include <stddef.h>             /* offsetof() */
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -28,14 +28,14 @@
 #include <netdb.h>
 
 
-typedef uint32_t  u_int32_t;
-
+#if 0
 #define OFF_FMT    "%lld"
 #define SIZE_FMT   "%d"
 #define SIZEX_FMT  "%x"
 #define TIME_FMT   "%ld"
 #define PID_FMT    "%ld"
 #define RLIM_FMT   "%lu"
+#endif
 
 
 #ifndef HAVE_SELECT

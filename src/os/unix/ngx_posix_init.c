@@ -56,7 +56,7 @@ int ngx_posix_init(ngx_log_t *log)
     }
 
     ngx_log_error(NGX_LOG_INFO, log, 0,
-                  "getrlimit(RLIMIT_NOFILE): " RLIM_FMT ":" RLIM_FMT,
+                  "getrlimit(RLIMIT_NOFILE): " RLIM_T_FMT ":" RLIM_T_FMT,
                   rlmt.rlim_cur, rlmt.rlim_max);
 
     ngx_max_sockets = rlmt.rlim_cur;

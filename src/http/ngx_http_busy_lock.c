@@ -205,7 +205,7 @@ char *ngx_http_set_busy_lock_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
     dup = 0;
     invalid = 0;
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
 
     for (i = 1; i < cf->args->nelts; i++) {
 

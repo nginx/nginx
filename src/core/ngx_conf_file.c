@@ -3,9 +3,6 @@
 #include <ngx_core.h>
 
 
-
-#define MAX_CONF_ERRSTR  256
-
 /* Ten fixed arguments */
 
 static int argument_number[] = {
@@ -471,7 +468,29 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
                      len++)
                 {
                     if (*src == '\\') {
-                        src++;
+                        switch (src[1]) {
+                        case '"':
+                        case '\'':
+                        case '\\':
+                            src++;
+                            break;
+
+                        case 't':
+                            *dst++ = '\t';
+                            src += 2;
+                            continue;
+
+                        case 'r':
+                            *dst++ = '\r';
+                            src += 2;
+                            continue;
+
+                        case 'n':
+                            *dst++ = '\n';
+                            src += 2;
+                            continue;
+                        }
+
                     }
                     *dst++ = *src++;
                 }
@@ -525,7 +544,7 @@ void ngx_conf_log_error(int level, ngx_conf_t *cf, ngx_err_t err,
                         char *fmt, ...)
 {
     int      len;
-    char     errstr[MAX_CONF_ERRSTR];
+    char     errstr[NGX_MAX_CONF_ERRSTR];
     va_list  args;
 
     va_start(args, fmt);

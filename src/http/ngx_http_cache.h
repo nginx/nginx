@@ -18,32 +18,52 @@ typedef struct {
 
 
 typedef struct {
-    u_int32_t    crc;
+    uint32_t     crc;
     ngx_str_t    key;
     ngx_fd_t     fd;
     off_t        size;
     void        *data;          /* mmap, memory */
     time_t       accessed;
     time_t       last_modified;
-    time_t       updated;      /* no needed with kqueue */
+    time_t       updated;       /* no needed with kqueue */
     int          refs;
     int          flags;
 } ngx_http_cache_entry_t;
 
+#define NGX_HTTP_CACHE_HASH   1021
+#define NGX_HTTP_CACHE_NELTS  4
 
 typedef struct {
-    ngx_file_t   file;
-    ngx_str_t    key;
-    u_char       md5[16];
-    ngx_path_t  *path;
-    ngx_hunk_t  *buf;
-    time_t       expires;
-    time_t       last_modified;
-    time_t       date;
-    off_t        length;
-    ssize_t      header_size;
-    size_t       file_start;
-    ngx_log_t   *log;
+    ngx_http_cache_entry_t  **cache;
+    size_t                    hash;
+    size_t                    nelts;
+    time_t                    life_time;
+    time_t                    check_time;
+    ngx_pool_t               *pool;
+} ngx_http_cache_hash_t;
+
+
+typedef struct {
+    ngx_http_cache_hash_t    *hash;
+} ngx_http_cache_conf_t;
+
+
+typedef struct {
+    ngx_http_cache_hash_t    *hash;
+    ngx_http_cache_entry_t   *cache;
+    ngx_file_t                file;
+    ngx_str_t                 key;
+    uint32_t                  crc;
+    u_char                    md5[16];
+    ngx_path_t               *path;
+    ngx_hunk_t               *buf;
+    time_t                    expires;
+    time_t                    last_modified;
+    time_t                    date;
+    off_t                     length;
+    ssize_t                   header_size;
+    size_t                    file_start;
+    ngx_log_t                *log;
 } ngx_http_cache_ctx_t;
 
 

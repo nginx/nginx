@@ -485,6 +485,10 @@ ngx_log_debug(r->connection->log, "CACHE FD: %d" _ p->cache->ctx.file.fd);
         r->file.fd = p->cache->ctx.file.fd;
     }
 
+    if (rc == 0 && r->main == NULL) {
+        rc = ngx_http_send_last(r);
+    }
+
     ngx_http_finalize_request(r, rc);
 }
 
@@ -586,15 +590,25 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
 
     *buf++ = '/';
 
-    *buf++ = '_';
+    if (p->state->expired == 0) {
+        *buf++ = '-';
+
+    } else {
+        buf += ngx_snprintf(buf, NGX_TIME_LEN, TIME_T_FMT, p->state->expired);
+    }
 
     *buf++ = '/';
 
-    *buf++ = '_';
+    if (p->state->bl_time == 0) {
+        *buf++ = '-';
+
+    } else {
+        buf += ngx_snprintf(buf, NGX_TIME_LEN, TIME_T_FMT, p->state->bl_time);
+    }
 
     *buf++ = '/';
 
-    *buf++ = '_';
+    *buf++ = '*';
 
     *buf++ = ' ';
 
@@ -617,15 +631,15 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
 
     *buf++ = '/';
 
-    if (p->state->reason >= NGX_HTTP_PROXY_CACHE_XAE) {
+    if (p->state->reason < NGX_HTTP_PROXY_CACHE_XAE) {
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf(buf, NGX_TIME_LEN, TIME_FMT, p->state->expires);
+        buf += ngx_snprintf(buf, NGX_TIME_LEN, TIME_T_FMT, p->state->expires);
     }
 
     *buf++ = ' ';
-    *buf++ = '_';
+    *buf++ = '*';
 
     return buf;
 }
@@ -833,9 +847,9 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 
     int                        i, len;
     char                      *err, *host;
+    in_addr_t                  addr;
     ngx_str_t                 *value;
     struct hostent            *h;
-    u_int32_t                  addr;
     ngx_http_conf_ctx_t       *ctx;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -869,6 +883,8 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
                   NGX_CONF_ERROR);
     ngx_cpystrn(host, lcf->upstream->host.data, lcf->upstream->host.len + 1);
 
+    /* AF_INET only */
+
     addr = inet_addr(host);
 
     if (addr == INADDR_NONE) {
@@ -894,7 +910,7 @@ static char *ngx_http_proxy_set_pass(ngx_conf_t *cf, ngx_command_t *cmd,
         for (i = 0; h->h_addr_list[i] != NULL; i++) {
             lcf->peers->peers[i].host.data = host;
             lcf->peers->peers[i].host.len = lcf->upstream->host.len;
-            lcf->peers->peers[i].addr = *(u_int32_t *)(h->h_addr_list[i]);
+            lcf->peers->peers[i].addr = *(in_addr_t *)(h->h_addr_list[i]);
             lcf->peers->peers[i].port = lcf->upstream->port;
 
             len = INET_ADDRSTRLEN + lcf->upstream->port_text.len + 1;

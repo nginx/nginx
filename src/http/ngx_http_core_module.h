@@ -8,7 +8,7 @@
 
 
 typedef struct {
-    u_int32_t  addr;
+    in_addr_t  addr;
     int        port;
     int        family;
     int        flags;             /* 'default' */
@@ -65,7 +65,7 @@ typedef struct {
 
 
 typedef struct {
-    u_int32_t                  addr;
+    in_addr_t                  addr;
     ngx_array_t                names;     /* array of ngx_http_server_name_t */
     ngx_http_core_srv_conf_t  *core_srv_conf;  /* default server conf
                                                   for this address:port */
@@ -127,6 +127,10 @@ typedef struct {
 
     int           msie_padding;            /* msie_padding */
     ngx_array_t  *error_pages;             /* error_page */
+
+    ngx_regex_t  *regex;
+
+    unsigned      exact_match:1;
 
     unsigned      auto_redirect:1;
 

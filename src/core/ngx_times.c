@@ -22,7 +22,7 @@ static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
 
-void ngx_init_time()
+void ngx_time_init()
 {
     struct timeval  tv;
 

@@ -1,47 +1,26 @@
 
-found=0
+echo 'checking for uintptr_t'
 
-echo 'Checking for uintptr_t'
+FOUND=NO
 
-    echo '#include <sys/types.h>' > autotest.c
-    echo 'int main() { uintptr_t i = 0; return i; }' >> autotest.c
+echo "#include <sys/types.h>" > autotest.c
+echo "int main() { uintptr_t i = 0; return 0; }" >> autotest.c
 
-    eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+eval "$CC -o autotest autotest.c > /dev/null 2>&1"
 
-    if [ -x autotest ]; then
-        echo ' + uintptr_t found'
-        found=1
-    else
-        echo ' + uintptr_t not found'
-    fi
-
-    rm autotest*
-
-
-if [ $found = 0 ]; then
-    echo 'int main() { printf("%d", 8 * sizeof(void *)); return 0; }'	\
-          > autotest.c
-    eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
-
-    if [ -x autotest ]; then
-        type="uint`./autotest`_t"
-        echo " + $type used"
-        type="typedef $type  uintptr_t;"
-        found=2
-    fi
-
-    rm autotest*
+if [ -x autotest ]; then
+    echo " + uintptr_t found"
+    FOUND=YES
+else
+    echo " + uintptr_t not found"
 fi
 
+rm autotest*
 
-if [ $found = 0 ]; then
-    echo "$0: error: uintptr_t not found"
-    exit 1
+
+if [ $FOUND = NO ]; then
+    FOUND="uint`expr 8 \* $NGX_PTR_BYTES`_t"
+    echo " + $FOUND used"
+    echo "typedef $FOUND  uintptr_t;"   >> $NGX_AUTO_CONFIG_H
+    echo                                >> $NGX_AUTO_CONFIG_H
 fi
-
-
-if [ $found = 2 ]; then
-    echo $type >> ngx_auto_config.h
-    echo >> ngx_auto_config.h
-fi
-

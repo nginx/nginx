@@ -1,0 +1,26 @@
+
+if [ "$PLATFORM" != "win32" ]; then
+
+    if [ $PCRE != NO ]; then
+        echo "$PCRE/.libs/libpcre.a:"                  >> $MAKEFILE
+        echo "	cd $PCRE \\"                           >> $MAKEFILE
+        echo "	&& ./configure --disable-shared \\"    >> $MAKEFILE
+        echo "	&& \$(MAKE)"                           >> $MAKEFILE
+        echo                                           >> $MAKEFILE
+    fi
+
+
+    if [ $MD5 != NO ]; then
+        echo "$MD5/libmd5.a:"                          >> $MAKEFILE
+        echo "	cd $MD5 && \$(MAKE) x86-elf"           >> $MAKEFILE
+        echo                                           >> $MAKEFILE
+    fi
+
+
+    if [ $ZLIB != NO ]; then
+        echo "$ZLIB/libz.a:"                           >> $MAKEFILE
+        echo "	cd $ZLIB && ./configure && \$(MAKE)"   >> $MAKEFILE
+        echo                                           >> $MAKEFILE
+    fi
+
+fi

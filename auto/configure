@@ -1,53 +1,17 @@
 
-CC=cc
-CC_STRONG="$CC -Wall -Werror"
-CPP="$CC -E"
+. auto/options
+. auto/init
+. auto/sources
 
-NGX_AUTO_CONFIG_H=ngx_auto_config.h
+. auto/os/conf
+
+. auto/cc
+. auto/lib/lib
+. auto/make
+. auto/lib/make
 
 echo > $NGX_AUTO_CONFIG_H
 
-
-CC_WARN=$CC_STRONG
-
-NGX_FMT_NAME=OFF_FMT
-NGX_TYPE="off_t"; . auto/types/sizeof
-NGX_FORMATS="%ld %lld %qd"; . auto/fmt/fmt
-
-NGX_FMT_NAME=TIME_FMT
-NGX_TYPE="time_t"; . auto/types/sizeof
-NGX_FORMATS="%d %ld %lld %qd"; . auto/fmt/fmt
-
-
-CC_WARN=$CC
-
-exit
-
-
-NGX_TYPE="long"; . auto/types/sizeof; NGX_MAX_LONG=$NGX_MAX_SIZE
-NGX_FORMATS="l"; . auto/fmt/fmt
-
-
-NGX_TYPE="long long"; . auto/types/sizeof; NGX_MAX_LONG_LONG=$NGX_MAX_SIZE
-NGX_FORMATS="ll q"; . auto/fmt/fmt
-
-
-CC_WARN=$CC_STRONG
-
-NGX_TYPE="off_t"; . auto/types/sizeof
-NGX_FORMATS="l ll q"; . auto/fmt/fmt
-
-
-CC_WARN=$CC
-
-#NGX_TYPE="__int64_t"; . auto/types/typedef; NGX_TIME_T_FMT=$NGX_FMT
-
-#NGX_TYPE="time_t"; . auto/types/typedef; NGX_TIME_T_FMT=$NGX_FMT
-
-
-#exit
-
-. auto/types/uint64_t
-. auto/types/uintptr_t
-
-. auto/types/socklen_t
+if [ "$PLATFORM" != win32 ]; then
+    . auto/unix
+fi

@@ -250,7 +250,7 @@ static char *ngx_http_log_status(ngx_http_request_t *r, char *buf,
 static char *ngx_http_log_length(ngx_http_request_t *r, char *buf,
                                  uintptr_t data)
 {
-    return buf + ngx_snprintf(buf, NGX_OFF_LEN + 1, OFF_FMT,
+    return buf + ngx_snprintf(buf, NGX_OFF_LEN + 1, OFF_T_FMT,
                               r->connection->sent);
 }
 

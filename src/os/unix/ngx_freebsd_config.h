@@ -3,7 +3,7 @@
 
 
 #include <unistd.h>
-#include <stddef.h>             /* offsetof */
+#include <stddef.h>             /* offsetof() */
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -25,35 +25,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <osreldate.h>
-
-
-
-/* TODO: autoconf */
-#if (i386)
-
-#if 0
-#define OFF_FMT    "%lld"
-#endif
-
-#define SIZE_FMT   "%d"
-#define SIZEX_FMT  "%x"
-
-#else  /* amd64, alpha, sparc64, ia64 */
-
-#if 0
-#define OFF_FMT    "%ld"
-#endif
-
-#define SIZE_FMT   "%ld"
-#define SIZEX_FMT  "%lx"
-
-#endif
-
-#if 0
-#define TIME_FMT   "%ld"
-#endif
-#define PID_FMT    "%d"
-#define RLIM_FMT   "%lld"
 
 
 #ifndef HAVE_SELECT
@@ -89,56 +60,9 @@
 #endif
 
 
-/* STUB */
-#define HAVE_PREAD         1
-#define HAVE_PWRITE        1
-#define HAVE_LOCALTIME_R   1
-
-
-       /* FreeBSD sendfile */
-
-#if __FreeBSD_version >= 300007
-
-#ifndef HAVE_FREEBSD_SENDFILE
-#define HAVE_FREEBSD_SENDFILE    1
-#endif
-
-#endif
-
-
-#if (HAVE_FREEBSD_SENDFILE)
-#define HAVE_SENDFILE  1
-#endif
-
-
-       /* FreeBSD kqueue */
-
-#if (__FreeBSD__ == 4 && __FreeBSD_version >= 410000) \
-    || __FreeBSD_version >= 500011
-
-#ifndef HAVE_KQUEUE
-#define HAVE_KQUEUE  1
-#endif
-
-#endif
-
 #if (HAVE_KQUEUE)
 #include <sys/event.h>
 #endif
-
-
-       /* kqueue's NOTE_LOWAT */
-
-#if (__FreeBSD__ == 4 && __FreeBSD_version >= 430000) \
-    || __FreeBSD_version >= 500018
-
-#ifndef HAVE_LOWAT_EVENT
-#define HAVE_LOWAT_EVENT  1
-#endif
-
-#endif
-
-
 
 
 #ifndef HAVE_INHERITED_NONBLOCK

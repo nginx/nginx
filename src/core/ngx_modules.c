@@ -28,6 +28,7 @@ extern ngx_module_t  ngx_aio_module;
 extern ngx_module_t  ngx_http_module;
 extern ngx_module_t  ngx_http_core_module;
 extern ngx_module_t  ngx_http_log_module;
+extern ngx_module_t  ngx_http_cache_module;
 
 extern ngx_module_t  ngx_http_write_filter_module;
 extern ngx_module_t  ngx_http_output_filter_module;
@@ -78,6 +79,8 @@ ngx_module_t *ngx_modules[] = {
 
     &ngx_http_core_module,
     &ngx_http_log_module,
+    &ngx_http_cache_module,
+
     &ngx_http_write_filter_module,
     &ngx_http_output_filter_module,
     &ngx_http_header_filter_module,

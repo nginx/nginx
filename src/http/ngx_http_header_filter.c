@@ -266,7 +266,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 #endif
             h->last += ngx_snprintf(h->last,        /* 2^64 */
                             sizeof("Content-Length: 18446744073709551616" CRLF),
-                            "Content-Length: " OFF_FMT CRLF,
+                            "Content-Length: " OFF_T_FMT CRLF,
                             r->headers_out.content_length_n);
 
 #if (NGX_HTTP_LOG_ALL_HEADERS_OUT)

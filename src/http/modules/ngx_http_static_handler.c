@@ -44,6 +44,8 @@ int ngx_http_static_translate_handler(ngx_http_request_t *r)
     int                        rc, level;
     char                      *location, *last;
     ngx_err_t                  err;
+    ngx_http_cache_ctx_t       ctx;
+    ngx_http_cache_conf_t     *ccf;
     ngx_http_core_loc_conf_t  *clcf;
 
     if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
@@ -73,7 +75,7 @@ int ngx_http_static_translate_handler(ngx_http_request_t *r)
         return NGX_HTTP_FORBIDDEN;
     }
 
-    /* "+ 2" is for trailing '/' in redirect and '\0' */
+    /* "+ 2" is for trailing '/' in possible redirect and '\0' */
     ngx_test_null(r->file.name.data,
                   ngx_palloc(r->pool, clcf->doc_root.len + r->uri.len + 2),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -84,6 +86,38 @@ int ngx_http_static_translate_handler(ngx_http_request_t *r)
     last = ngx_cpystrn(location, r->uri.data, r->uri.len + 1);
 
 ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
+
+
+    /* STUB */
+    ccf = NULL;
+    ctx.key.len = 0;
+
+#if 0
+    ccf = ngx_http_get_module_loc_conf(r, ngx_http_cache_module);
+
+    if (ccf->open_files) {
+        ctx->hash = ccf->open_files;
+        ctx->key = r->file.name;
+
+        cache = ngx_http_cache_get_data(r, ctx);
+
+        if (cache
+            && ((ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)
+                || ccf->hash->life_time >= ngx_time() - cache->updated))
+        {
+            cache->refs++;
+            r->file.fd = cache->fd;
+            r->file.name = cache->key;
+            r->content_handler = ngx_http_static_handler;
+
+            return NGX_OK;
+        }
+
+    } else {
+        cache = NULL;
+    }
+
+#endif
 
 #if (WIN9X)
 

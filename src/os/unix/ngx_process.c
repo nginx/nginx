@@ -41,9 +41,10 @@ int ngx_spawn_process(ngx_log_t *log)
         break;
 
     default:
+        break;
     }
 
-ngx_log_debug(log, "parent process, child: " PID_FMT _ pid);
+ngx_log_debug(log, "parent process, child: " PID_T_FMT _ pid);
 
     /* book keeping */
 
@@ -97,7 +98,7 @@ void ngx_sigchld_handler(int signo)
         one = 1;
 
         ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
-                      "process " PID_FMT " exited with code %d", pid, status);
+                      "process " PID_T_FMT " exited with code %d", pid, status);
 
         /* TODO: restart handler */
 

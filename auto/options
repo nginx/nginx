@@ -1,0 +1,68 @@
+
+HELP=NO
+
+CC=gcc
+OBJS=objs
+
+TEST_BUILD_DEVPOLL=NO
+
+HTTP_GZIP=YES
+HTTP_PROXY=YES
+
+PCRE=NO
+
+MD5=NO
+MD5_LIB=NO
+
+ZLIB=NO
+ZLIB_LIB=NO
+
+
+for option
+do
+    case "$option" in
+        -*=*) value=`echo "$option" | sed -e 's/[-_a-zA-Z0-9]*=//'` ;;
+           *) value="" ;;
+    esac
+
+    case "$option" in
+        --help)                          HELP=YES                   ;;
+
+        --crossbuild=*)                  PLATFORM="$value"          ;;
+
+        --builddir=*)                    OBJS="$value"              ;;
+
+        --without-http_gzip_module)      HTTP_GZIP=NO               ;;
+        --without-http_proxy_module)     HTTP_PROXY=NO              ;;
+
+        --with-cc=*)                     CC="$value"                ;;
+
+        --with-pcre=*)                   PCRE="$value"              ;;
+        --with-md5=*)                    MD5="$value"               ;;
+        --with-zlib=*)                   ZLIB="$value"              ;;
+
+        --test-build-devpoll)            TEST_BUILD_DEVPOLL=YES     ;;
+
+        *)
+            echo "$0: error: invalid option \"$option\""
+            exit 1
+        ;;
+    esac
+done
+
+
+if [ $HELP = YES ]; then
+    echo "  --help                        this message"
+
+    echo "  --without-http_gzip_module    disable http_gzip_module"
+    echo "  --without-http_proxy_module   disable http_proxy_module"
+
+    echo "  --with-cc=NAME                name of or path to C compiler"
+    echo
+
+    echo "  --with-pcre=DIR               path to PCRE library"
+    echo "  --with-md5=DIR                path to md5 library"
+    echo "  --with-zlib=DIR               path to zlib library"
+
+    exit 1
+fi

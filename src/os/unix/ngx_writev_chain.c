@@ -58,7 +58,7 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in)
     sent = n > 0 ? n : 0;
 
 #if (NGX_DEBUG_WRITE_CHAIN)
-    ngx_log_debug(c->log, "writev: " OFF_FMT  _ sent);
+    ngx_log_debug(c->log, "writev: " OFF_T_FMT  _ sent);
 #endif
 
     c->sent += sent;

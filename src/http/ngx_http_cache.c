@@ -13,11 +13,45 @@
 #endif
 
 
+static int ngx_crc(char *data, size_t len);
+
+static void *ngx_http_cache_create_conf(ngx_conf_t *cf);
+static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
+                                          void *parent, void *child);
+
+
+static ngx_http_module_t  ngx_http_cache_module_ctx = {
+    NULL,                                  /* pre conf */
+
+    NULL,                                  /* create main configuration */
+    NULL,                                  /* init main configuration */
+
+    NULL,                                  /* create server configuration */
+    NULL,                                  /* merge server configuration */
+
+    ngx_http_cache_create_conf,            /* create location configuration */
+    ngx_http_core_merge_loc_conf           /* merge location configuration */
+};
+
+
+ngx_module_t  ngx_http_cache_module = {
+    NGX_MODULE,
+    &ngx_http_cache_module_ctx,            /* module context */
+    NULL,                                  /* module directives */
+    NGX_HTTP_MODULE,                       /* module type */
+    NULL,                                  /* init module */
+    NULL                                   /* init child */
+};
+
+
+
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
 {
     MD5_CTX  md5;
 
-    ctx->header_size = sizeof(ngx_http_cache_header_t) + ctx->key.len + 1;
+    /* we use offsetof() because sizeof() pads struct size to int size */
+    ctx->header_size = offsetof(ngx_http_cache_header_t, key)
+                                                            + ctx->key.len + 1;
 
     ctx->file.name.len = ctx->path->name.len + 1 + ctx->path->len + 32;
     if (!(ctx->file.name.data = ngx_palloc(r->pool, ctx->file.name.len + 1))) {
@@ -46,7 +80,83 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
 }
 
 
-/* TODO: Win32 inode analogy */
+int ngx_http_cache_get_data(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
+{
+    ngx_uint_t  n, i;
+
+    ctx->crc = ngx_crc(ctx->key.data, ctx->key.len);
+
+    n = ctx->crc % ctx->hash->hash;
+    for (i = 0; i < ctx->hash->nelts; i++) {
+        if (ctx->hash->cache[n][i].crc == ctx->crc
+            && ctx->hash->cache[n][i].key.len == ctx->key.len
+            && ngx_rstrncmp(ctx->hash->cache[n][i].key.data, ctx->key.data,
+                                                            ctx->key.len) == 0)
+        {
+            ctx->cache = ctx->hash->cache[n][i].data;
+            ctx->hash->cache[n][i].refs++;
+            return NGX_OK;
+        }
+    }
+
+    return NGX_DECLINED;
+}
+
+
+ngx_http_cache_entry_t *ngx_http_cache_get_entry(ngx_http_request_t *r,
+                                                 ngx_http_cache_ctx_t *ctx)
+{
+    time_t                   old;
+    ngx_uint_t               n, i;
+    ngx_http_cache_entry_t  *ce;
+
+    old = ngx_time() + 1;
+    ce = NULL;
+
+    n = ctx->crc % ctx->hash->hash;
+    for (i = 0; i < ctx->hash->nelts; i++) {
+        if (ctx->hash->cache[n][i].key.data == NULL) {
+
+            /* a free entry is found */
+
+            ce = &ctx->hash->cache[n][i];
+            break;
+        }
+
+        if (ctx->hash->cache[n][i].refs == 0
+            && old > ctx->hash->cache[n][i].accessed)
+        {
+            /* looking for the oldest cache entry that is not used right now */
+
+            old = ctx->hash->cache[n][i].accessed;
+            ce = &ctx->hash->cache[n][i];
+        }
+    }
+
+    if (ce) {
+        if (ce->key.data) {
+            if (ctx->key.len > ce->key.len) {
+                ngx_free(ce->key.data);
+                ce->key.data = NULL;
+            }
+        }
+
+        if (ce->key.data) {
+            ce->key.data = ngx_alloc(ctx->key.len, r->connection->log);
+            if (ce->key.data == NULL) {
+                return NULL;
+            }
+        }
+
+        ngx_memcpy(ce->key.data, ctx->key.data, ctx->key.len);
+
+        ce->key.len = ctx->key.len;
+        ce->crc = ctx->crc;
+    }
+
+    return ce;
+}
+
 
 int ngx_http_cache_open_file(ngx_http_cache_ctx_t *ctx, ngx_file_uniq_t uniq)
 {
@@ -138,6 +248,48 @@ ngx_log_debug(ctx->log, "EXPIRED");
 }
 
 
+int ngx_http_cache_update_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
+                               ngx_str_t *temp_file)
+{
+    int        retry;
+    ngx_err_t  err;
+
+    retry = 0;
+
+    for ( ;; ) {
+        if (ngx_rename_file(temp_file->data, ctx->file.name.data) == NGX_OK) {
+            return NGX_OK;
+        }
+
+        err = ngx_errno;
+
+#if (WIN32)
+        if (err == NGX_EEXIST) {
+            if (ngx_win32_rename_file(temp_file, &ctx->file.name, r->pool)
+                                                                  == NGX_ERROR)
+            {
+                return NGX_ERROR;
+            }
+        }
+#endif
+
+        if (retry || (err != NGX_ENOENT && err != NGX_ENOTDIR)) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                          ngx_rename_file_n "(\"%s\", \"%s\") failed",
+                          temp_file->data, ctx->file.name.data);
+
+            return NGX_ERROR;
+        }
+
+        if (ngx_create_path(&ctx->file, ctx->path) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        retry = 1;
+    }
+}
+
+
 int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
                                              ngx_dir_t *dir)
 {
@@ -182,45 +334,69 @@ int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
 }
 
 
-int ngx_http_cache_update_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
-                               ngx_str_t *temp_file)
+/* 32-bit crc16 */
+
+static int ngx_crc(char *data, size_t len)
 {
-    int        retry;
-    ngx_err_t  err;
+    uint32_t  sum;
 
-    retry = 0;
+    for (sum = 0; len; len--) {
+        /*
+         * gcc 2.95.2 x86 and icc 7.1.006 compile that operator
+         *                                into the single rol opcode.
+         * msvc 6.0sp2 compiles it into four opcodes.
+         */
+        sum = sum >> 1 | sum << 31;
 
-    for ( ;; ) {
-        if (ngx_rename_file(temp_file->data, ctx->file.name.data) == NGX_OK) {
-            return NGX_OK;
-        }
+        sum += *data++;
+    }
 
-        err = ngx_errno;
+    return sum;
+}
 
-#if (WIN32)
-        if (err == NGX_EEXIST) {
-            if (ngx_win32_rename_file(temp_file, &ctx->file.name, r->pool)
-                                                                  == NGX_ERROR)
-            {
-                return NGX_ERROR;
+
+static void *ngx_http_cache_create_conf(ngx_conf_t *cf)
+{
+    ngx_http_cache_conf_t  *conf;
+
+    if (!(conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_cache_conf_t)))) {
+        return NGX_CONF_ERROR;
+    }
+
+    return conf;
+}
+
+
+static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
+                                          void *parent, void *child)
+{
+    ngx_http_cache_conf_t *prev = parent;
+    ngx_http_cache_conf_t *conf = child;
+
+    if (conf->hash == NULL) {
+        if (prev->hash) {
+            conf->hash = prev->hash;
+
+        } else {
+            conf->hash = ngx_pcalloc(cf->pool, sizeof(ngx_http_cache_hash_t));
+            if (conf->hash == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            conf->hash->hash = NGX_HTTP_CACHE_HASH;
+            conf->hash->nelts = NGX_HTTP_CACHE_NELTS;
+
+            conf->hash->cache = ngx_pcalloc(cf->pool,
+                                            NGX_HTTP_CACHE_HASH
+                                            * NGX_HTTP_CACHE_NELTS
+                                            * sizeof(ngx_http_cache_entry_t));
+            if (conf->hash->cache == NULL) {
+                return NGX_CONF_ERROR;
             }
         }
-#endif
-
-        if (retry || (err != NGX_ENOENT && err != NGX_ENOTDIR)) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          ngx_rename_file_n "(\"%s\", \"%s\") failed",
-                          temp_file->data, ctx->file.name.data);
-
-            return NGX_ERROR;
-        }
-
-        if (ngx_create_path(&ctx->file, ctx->path) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-
-        retry = 1;
     }
+
+    return NGX_CONF_OK;
 }
 
 
@@ -261,7 +437,7 @@ typedef struct {
 
 
 typedef struct {
-    u_int32_t          crc;
+    uint32_t           crc;
     ngx_str_t          uri;
     ngx_http_cache_t  *cache;
 } ngx_http_cache_hash_entry_t;
@@ -269,7 +445,7 @@ typedef struct {
 
 typedef struct {
     ngx_http_cache_t  *cache;
-    u_int32_t          crc;
+    uint32_t           crc;
     int                n;
 } ngx_http_cache_handle_t; 
 
@@ -305,7 +481,7 @@ int ngx_http_cache_get(ngx_http_cache_hash_t *cache_hash,
 
 int ngx_crc(char *data, size_t len)
 {
-    u_int32_t  sum;
+    uint32_t  sum;
 
     for (sum = 0; len; len--) {
         /*

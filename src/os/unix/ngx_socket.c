@@ -55,6 +55,28 @@ int ngx_tcp_push(ngx_socket_t s)
                       (const void *) &tcp_nopush, sizeof(int));
 }
 
+#elif __linux__
+
+int ngx_tcp_nopush(ngx_socket_t s)
+{
+    int  cork;
+
+    cork = 1;
+
+    return setsockopt(s, IPPROTO_TCP, TCP_CORK,
+                      (const void *) &cork, sizeof(int));
+}
+
+int ngx_tcp_push(ngx_socket_t s)
+{
+    int  cork;
+
+    cork = 0;
+
+    return setsockopt(s, IPPROTO_TCP, TCP_CORK,
+                      (const void *) &cork, sizeof(int));
+}
+
 #else
 
 int ngx_tcp_nopush(ngx_socket_t s)

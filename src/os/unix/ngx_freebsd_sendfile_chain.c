@@ -22,16 +22,17 @@
 
 ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
-    int              rc, eintr, eagain;
+    int              rc;
     char            *prev;
     off_t            sent, fprev;
     size_t           hsize, fsize, size;
+    ngx_int_t        eintr, eagain;
     struct iovec    *iov;
     struct sf_hdtr   hdtr;
     ngx_err_t        err;
+    ngx_hunk_t      *file;
     ngx_array_t      header, trailer;
     ngx_event_t     *wev;
-    ngx_hunk_t      *file;
     ngx_chain_t     *cl, *tail;
 
     wev = c->write;
@@ -53,7 +54,6 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 #endif
 
     do {
-        cl = in;
         file = NULL;
         fsize = 0;
         hsize = 0;
@@ -156,7 +156,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 ngx_log_debug(c->log, "NOPUSH");
 
                 if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
-                    ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
+                    ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
                                   ngx_tcp_nopush_n " failed");
                     return NGX_CHAIN_ERROR;
                 }

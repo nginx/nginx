@@ -8,15 +8,21 @@
    protected by the single mutex */
 
 
+#if 0
 static ngx_event_t  *ngx_timer_queue, ngx_temp_timer_queue;
+static int           ngx_expire_timers;
+#endif
+
+static ngx_event_t  *ngx_timer_queue;
+static ngx_msec_t   *ngx_timer_delta;
 static int           ngx_timer_cur_queue;
 static int           ngx_timer_queue_num;
-static int           ngx_expire_timers;
 
 
 int ngx_event_timer_init(ngx_cycle_t *cycle)
 {
-    int                i;
+    ngx_int_t          i;
+    ngx_msec_t        *new_delta;
     ngx_event_t       *new_queue;
     ngx_event_conf_t  *ecf;
 
@@ -38,6 +44,21 @@ int ngx_event_timer_init(ngx_cycle_t *cycle)
 
         ngx_timer_queue = new_queue;
 
+        ngx_test_null(new_delta,
+                      ngx_calloc(ecf->timer_queues * sizeof(ngx_msec_t),
+                                 cycle->log),
+                      NGX_ERROR);
+
+        for (i = 0; i < ngx_timer_queue_num; i++) {
+            new_delta[i] = ngx_timer_delta[i];
+        }
+
+        if (ngx_timer_delta) {
+            ngx_free(ngx_timer_delta);
+        }
+
+        ngx_timer_delta = new_delta;
+
         ngx_timer_queue_num = ecf->timer_queues;
         ngx_timer_cur_queue = 0;
 
@@ -52,8 +73,10 @@ int ngx_event_timer_init(ngx_cycle_t *cycle)
         exit(1);
     }
 
+#if 0
     ngx_temp_timer_queue.timer_prev = &ngx_temp_timer_queue;
     ngx_temp_timer_queue.timer_next = &ngx_temp_timer_queue;
+#endif
 
     return NGX_OK;;
 }
@@ -63,6 +86,10 @@ void ngx_event_timer_done(ngx_cycle_t *cycle)
 {
     ngx_free(ngx_timer_queue);
     ngx_timer_queue = NULL;
+
+    ngx_free(ngx_timer_delta);
+    ngx_timer_delta = NULL;
+
     ngx_timer_queue_num = 0;
 }
 
@@ -89,6 +116,15 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
         return;
     }
 
+    queue = &ngx_timer_queue[ngx_timer_cur_queue];
+    timer += ngx_timer_delta[ngx_timer_cur_queue++];
+
+    if (ngx_timer_cur_queue >= ngx_timer_queue_num) {
+        ngx_timer_cur_queue = 0;
+    }
+
+
+#if 0
     if (ngx_expire_timers) {
         queue = &ngx_temp_timer_queue;
 
@@ -99,6 +135,7 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
             ngx_timer_cur_queue = 0;
         }
     }
+#endif
 
     for (e = queue->timer_next;
          e != queue && timer > e->timer_delta;
@@ -123,7 +160,7 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 
 int ngx_event_find_timer(void)
 {
-    int         i;
+    ngx_int_t   i;
     ngx_msec_t  timer;
 
     timer = NGX_MAX_MSEC;
@@ -146,17 +183,34 @@ int ngx_event_find_timer(void)
 }
 
 
+void ngx_event_set_timer_delta(ngx_msec_t timer)
+{
+    ngx_int_t  i;
+
+    for (i = 0; i < ngx_timer_queue_num; i++) {
+        ngx_timer_delta[i] = timer;
+    }
+}
+
+
+/* void ngx_event_expire_timers() */
 void ngx_event_expire_timers(ngx_msec_t timer)
 {
-    int           i;
+    ngx_int_t     i;
+#if 0
     ngx_msec_t    delta;
+#endif
     ngx_event_t  *ev;
 
+#if 0
     ngx_expire_timers = 1;
+#endif
 
     for (i = 0; i < ngx_timer_queue_num; i++) {
 
+#if 0
         delta = timer;
+#endif
 
         for ( ;; ) {
             ev = ngx_timer_queue[i].timer_next;
@@ -165,12 +219,21 @@ void ngx_event_expire_timers(ngx_msec_t timer)
                 break;
             }
 
+            if (ev->timer_delta > ngx_timer_delta[i]) {
+                ev->timer_delta -= ngx_timer_delta[i];
+                break;
+            }
+
+            ngx_timer_delta[i] -= ev->timer_delta;
+
+#if 0
             if (ev->timer_delta > delta) {
                 ev->timer_delta -= delta;
                 break;
             }
 
             delta -= ev->timer_delta;
+#endif
 
             ngx_del_timer(ev);
 
@@ -186,8 +249,11 @@ void ngx_event_expire_timers(ngx_msec_t timer)
 
             ev->event_handler(ev);
         }
+
+        ngx_timer_delta[i] = 0;
     }
 
+#if 0
     ngx_expire_timers = 0;
 
     if (ngx_temp_timer_queue.timer_next == &ngx_temp_timer_queue) {
@@ -207,4 +273,5 @@ void ngx_event_expire_timers(ngx_msec_t timer)
         ngx_del_timer(ev);
         ngx_add_timer(ev, timer);
     }
+#endif
 }

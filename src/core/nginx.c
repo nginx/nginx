@@ -59,6 +59,7 @@ ngx_array_t            ngx_old_cycles;
 static ngx_pool_t     *ngx_temp_pool;
 static ngx_event_t     ngx_cleaner_event;
 
+
 /* STUB NAME */
 static ngx_connection_t  dumb;
 
@@ -91,7 +92,8 @@ int main(int argc, char *const *argv)
 
     /* TODO */ ngx_max_sockets = -1;
 
-    ngx_init_time();
+    ngx_time_init();
+    ngx_regex_init();
 
     log = ngx_log_init_errlog();
 

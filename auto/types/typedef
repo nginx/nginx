@@ -1,32 +1,42 @@
 
-echo "Checking for $NGX_TYPE definition"
+echo "checking for $NGX_TYPE"
 
-echo "#include <sys/types.h>" > autotest.c
-TYPE=`${CPP} autotest.c | \
-      awk "/^typedef.*$NGX_TYPE/ { for (i = 1; i< NF; i++) print $i}"`
-#rm autotest.c
+FOUND=NO
 
-echo $TYPE
+for TYPE in $NGX_TYPE $NGX_TYPES
+do
+    echo "#include <sys/types.h>" > autotest.c
+    echo "#include <sys/socket.h>" >> autotest.c
+    echo "$NGX_INTTYPES_H" >> autotest.c
+    echo "int main() { $TYPE i = 0; return 0; }" >> autotest.c
 
-case $TYPE in
-    "long long")
-        echo ' + defined as long long'
-        NGX_FMT=$NGX_LONG_LONG_FMT
-    ;;
+    eval "$CC -o autotest autotest.c > /dev/null 2>&1"
 
-    long)
-        echo ' + defined as long'
-        NGX_FMT=$NGX_LONG_FMT
-    ;;
+    if [ -x autotest ]; then
+        if [ $TYPE = $NGX_TYPE ]; then
+            echo " + $NGX_TYPE found"
+            FOUND=YES
+        else
+            echo " + $TYPE used"
+            FOUND=$TYPE
+        fi
+    fi
 
-    int)
-        echo ' + defined as int'
-        NGX_FMT=$NGX_INT_FMT
-    ;;
+    rm autotest*
 
-    *)
-        echo "$0: error: unknown $NGX_TYPE definition: \"$TYPE\""
-        exit 1
-    ;;
+    if [ $FOUND = NO ]; then
+        echo " + $TYPE not found"
+    else
+        break
+    fi
+done
 
-esac
+if [ $FOUND = NO ]; then
+    echo "$0: error: can not define $NGX_TYPE"
+    exit 1
+fi
+
+if [ $FOUND != YES ]; then
+    echo "typedef $FOUND  $NGX_TYPE;"   >> $NGX_AUTO_CONFIG_H
+    echo                                >> $NGX_AUTO_CONFIG_H
+fi

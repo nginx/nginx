@@ -29,11 +29,19 @@ int ngx_blocking(ngx_socket_t s);
 #endif
 
 int ngx_tcp_nopush(ngx_socket_t s);
-#define ngx_tcp_nopush_n   "setsockopt(TCP_NOPUSH)"
-
 int ngx_tcp_push(ngx_socket_t s);
+
+#ifdef __linux__
+
+#define ngx_tcp_nopush_n   "setsockopt(TCP_CORK)"
+#define ngx_tcp_push_n     "setsockopt(!TCP_CORK)"
+
+#else
+
+#define ngx_tcp_nopush_n   "setsockopt(TCP_NOPUSH)"
 #define ngx_tcp_push_n     "setsockopt(!TCP_NOPUSH)"
 
+#endif
 
 
 #define ngx_shutdown_socket    shutdown

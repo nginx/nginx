@@ -2,9 +2,6 @@
 #define _NGX_CONFIG_H_INCLUDED_
 
 
-#include <ngx_auto_config.h>
-
-
 #if defined __FreeBSD__
 #include <ngx_freebsd_config.h>
 
@@ -30,6 +27,13 @@
 #else /* posix */
 
 #endif
+
+
+/* STUB: autoconf */
+typedef int    ngx_int_t;
+typedef u_int  ngx_uint_t;
+
+#include <ngx_auto_config.h>
 
 
 #ifndef NGX_SERVER_ROOT
