@@ -101,6 +101,7 @@ ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *hash,
                                        ngx_str_t *value, ngx_log_t *log);
 void ngx_http_cache_free(ngx_http_cache_t *cache,
                          ngx_str_t *key, ngx_str_t *value, ngx_log_t *log);
+void ngx_http_cache_lock(ngx_http_cache_hash_t *hash, ngx_http_cache_t *cache);
 void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
                            ngx_http_cache_t *cache, ngx_log_t *log);
 

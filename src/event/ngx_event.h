@@ -25,9 +25,6 @@ struct ngx_event_s {
     /* TODO rename to handler, move flags to struct start */
     void           (*event_handler)(ngx_event_t *ev);
 
-    void            *context;
-    char            *action;
-
     u_int            index;
 
     /* queue in mutex(), aio_read(), aio_write()  */

@@ -47,14 +47,22 @@ ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *hash,
             && c[i].key.len == key->len
             && ngx_rstrncmp(c[i].key.data, key->data, key->len) == 0)
         {
+#if 0
+            if (c[i].expired) {
+                ngx_mutex_unlock(&hash->mutex);
+                return (void *) NGX_AGAIN;
+            }
+#endif
+
             c[i].refs++;
-            ngx_mutex_unlock(&hash->mutex);
 
             if ((!(c[i].notify && (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)))
                 && (ngx_cached_time - c[i].updated >= hash->update))
             {
                 c[i].expired = 1;
             }
+
+            ngx_mutex_unlock(&hash->mutex);
 
             if (cleanup) {
                 cleanup->data.cache.hash = hash;
@@ -217,6 +225,12 @@ void ngx_http_cache_free(ngx_http_cache_t *cache,
 }
 
 
+void ngx_http_cache_lock(ngx_http_cache_hash_t *hash, ngx_http_cache_t *cache)
+{
+    ngx_mutex_lock(&hash->mutex);
+}
+
+
 void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
                            ngx_http_cache_t *cache, ngx_log_t *log)
 {
@@ -234,9 +248,11 @@ void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
 
 #if 0
 
-ngx_add_file_event(ngx_fd_t, ngx_event_handler_pt *handler, void *data)
+ngx_http_cache_add_file_event(ngx_http_cache_hash_t *hash,
+                              ngx_http_cache_t *cache)
 {
-    ngx_event_t  *ev;
+    ngx_event_t                 *ev;
+    ngx_http_cache_event_ctx_t  *ctx;
 
     ev = &ngx_cycle->read_events[fd];
     ngx_memzero(ev, sizeof(ngx_event_t);
@@ -250,7 +266,7 @@ ngx_add_file_event(ngx_fd_t, ngx_event_handler_pt *handler, void *data)
 
 void ngx_http_cache_invalidate(ngx_event_t *ev)
 {
-    ngx_http_cache_ctx_t  *ctx;
+    ngx_http_cache_event_ctx_t  *ctx;
 
     ctx = ev->data;
 

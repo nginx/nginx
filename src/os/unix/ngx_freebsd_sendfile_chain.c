@@ -176,6 +176,8 @@ ngx_log_debug(c->log, "NOPUSH");
                 hsize = 0;
             }
 
+            sent = 0;
+
             rc = sendfile(file->file->fd, c->fd, file->file_pos,
                           fsize + hsize, &hdtr, &sent, 0);
 
