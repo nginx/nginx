@@ -407,6 +407,7 @@ typedef struct {
 } ngx_event_module_t;
 
 
+extern ngx_atomic_t          *ngx_connection_counter;
 
 extern ngx_atomic_t          *ngx_accept_mutex_ptr;
 extern ngx_atomic_t          *ngx_accept_mutex;

@@ -44,8 +44,8 @@ else
 
             ngx_lib_inc="#include <pcre.h>"
             ngx_lib="PCRE library"
-            ngx_lib_test="pcre *re; pcre_compile(re, 0, NULL, 0, NULL)"
-            ngx_libs=-lpcre
+            ngx_lib_test="pcre *re; re = pcre_compile(NULL, 0, NULL, 0, NULL)"
+            ngx_libs="-lpcre"
             . auto/lib/test
 
 
@@ -61,6 +61,7 @@ else
 
             ngx_lib="PCRE library in /usr/local/"
             ngx_lib_cflags="-I /usr/local/include"
+            ngx_libs="-L /usr/local/lib -lpcre"
             . auto/lib/test
         fi
 

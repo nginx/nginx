@@ -341,11 +341,12 @@ static int ngx_epoll_del_connection(ngx_connection_t *c)
 int ngx_epoll_process_events(ngx_cycle_t *cycle)
 {
     int                events;
+    size_t             n;
     ngx_int_t          instance, i;
     ngx_uint_t         lock, expire;
-    size_t             n;
-    ngx_msec_t         timer;
     ngx_err_t          err;
+    ngx_log_t         *log;
+    ngx_msec_t         timer;
     struct timeval     tv;
     ngx_connection_t  *c;
     ngx_epoch_msec_t   delta;
@@ -416,6 +417,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     }
 
     lock = 1;
+    log = cycle->log;
 
     for (i = 0; i < events; i++) {
         c = event_list[i].data.ptr;
@@ -431,7 +433,11 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
             c->write->returned_instance = instance;
         }
 
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+#if (NGX_DEBUG)
+        log = c->log ? c->log : cycle->log;
+#endif
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
                        "epoll: fd:%d ev:%04X d:" PTR_FMT,
                        c->fd, event_list[i].events, event_list[i].data);
 
@@ -442,19 +448,19 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
              * that was just closed in this iteration
              */
 
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
                            "epoll: stale event " PTR_FMT, c);
             continue;
         }
 
         if (event_list[i].events & (EPOLLERR|EPOLLHUP)) {
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                            "epoll_wait() error on fd:%d ev:%04X",
                            c->fd, event_list[i].events);
         }
 
         if (event_list[i].events & ~(EPOLLIN|EPOLLOUT|EPOLLERR|EPOLLHUP)) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "strange epoll_wait() events fd:%d ev:%04X",
                           c->fd, event_list[i].events);
         }

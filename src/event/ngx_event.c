@@ -48,6 +48,10 @@ ngx_uint_t                        ngx_event_flags;
 ngx_event_actions_t               ngx_event_actions;
 
 
+ngx_atomic_t                      connection_counter;
+ngx_atomic_t                     *ngx_connection_counter = &connection_counter;
+
+
 ngx_atomic_t                     *ngx_accept_mutex_ptr;
 ngx_atomic_t                     *ngx_accept_mutex;
 ngx_uint_t                        ngx_accept_mutex_held;
@@ -152,6 +156,9 @@ ngx_module_t  ngx_event_core_module = {
 static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 {
 #if !(WIN32)
+
+    size_t             size;
+    char              *shared;
     ngx_core_conf_t   *ccf;
     ngx_event_conf_t  *ecf;
 
@@ -163,19 +170,26 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
-    if (ecf->accept_mutex == 0) {
-        return NGX_OK;
-    }
 
-    ngx_accept_mutex_ptr = (ngx_atomic_t *) mmap(NULL, sizeof(ngx_atomic_t),
-                                                 PROT_READ|PROT_WRITE,
-                                                 MAP_ANON|MAP_SHARED, -1, 0);
+    /* TODO: 128 is cache line size */
 
-    if (ngx_accept_mutex_ptr == NULL) {
+    size = 128            /* ngx_accept_mutex */
+           + 128;         /* ngx_connection_counter */
+
+    shared = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_ANON|MAP_SHARED, -1, 0);
+
+    if (shared == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "mmap(MAP_ANON|MAP_SHARED) failed");
         return NGX_ERROR;
     }
+
+    if (ecf->accept_mutex) {
+        ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
+    }
+
+    ngx_connection_counter = (ngx_atomic_t *) (shared + 128);
+
 #endif
 
     return NGX_OK;

@@ -270,7 +270,7 @@ void ngx_event_accept(ngx_event_t *ev)
          *             or protection by critical section or light mutex
          */
 
-        c->number = ngx_atomic_inc(&ngx_connection_counter);
+        c->number = ngx_atomic_inc(ngx_connection_counter);
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                        "accept: fd:%d c:%d", s, c->number);

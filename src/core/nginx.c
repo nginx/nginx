@@ -65,7 +65,6 @@ ngx_module_t  ngx_core_module = {
 
 
 ngx_int_t     ngx_max_module;
-ngx_atomic_t  ngx_connection_counter;
 
 ngx_int_t     ngx_process;
 ngx_pid_t     ngx_pid;
