@@ -38,11 +38,11 @@ void *ngx_calloc(size_t size, ngx_log_t *log)
 
 #if (HAVE_POSIX_MEMALIGN)
 
-void *ngx_memalign(size_t aligment, size_t size, ngx_log_t *log)
+void *ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 {
     void  *p;
 
-    if (posix_memalign(&p, aligment, size) == -1) {
+    if (posix_memalign(&p, alignment, size) == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "posix_memalign() " SIZE_T_FMT " bytes aligned to "
                       SIZE_T_FMT " failed", size, alignment);
@@ -54,13 +54,13 @@ void *ngx_memalign(size_t aligment, size_t size, ngx_log_t *log)
     return p;
 }
 
-#esif (HAVE_MEMALIGN)
+#elif (HAVE_MEMALIGN)
 
-void *ngx_memalign(size_t aligment, size_t size, ngx_log_t *log)
+void *ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 {
     void  *p;
 
-    if (!(p = memalign(aligment, size))) {
+    if (!(p = memalign(alignment, size))) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "memalign() " SIZE_T_FMT " bytes aligned to "
                       SIZE_T_FMT " failed", size, alignment);

@@ -126,9 +126,15 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size)
         large->next = NULL;
     }
 
+#if 0
     if (!(p = ngx_memalign(ngx_pagesize, size, pool->log))) {
         return NULL;
     }
+#else
+    if (!(p = ngx_alloc(size, pool->log))) {
+        return NULL;
+    }
+#endif
 
     if (pool->large == NULL) {
         pool->large = large;
