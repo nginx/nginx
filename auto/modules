@@ -156,6 +156,12 @@ fi
 #HTTP_SRCS="$HTTP_SRCS $HTPP_CACHE_SRCS"
 #HTTP_SRCS="$HTTP_SRCS $HTPP_FILE_CACHE_SRCS"
 
+if [ $HTTP_STUB_STATUS = YES ]; then
+    have=NGX_STAT_STUB . auto/have
+    HTTP_MODULES="$HTTP_MODULES ngx_http_stub_status_module"
+    HTTP_SRCS="$HTTP_SRCS src/http/modules/ngx_http_stub_status_module.c"
+fi
+
 if [ -r $NGX_OBJS/auto ]; then
     . $NGX_OBJS/auto
 fi

@@ -313,7 +313,7 @@ ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 
             sin->sin_family = AF_INET;
             sin->sin_port = u->port;
-            sin->sin_addr.s_addr = *(in_addr_t *)(h->h_addr_list[i]);
+            sin->sin_addr.s_addr = *(in_addr_t *) (h->h_addr_list[i]);
 
             peers->peer[i].sockaddr = (struct sockaddr *) sin;
             peers->peer[i].socklen = sizeof(struct sockaddr_in);

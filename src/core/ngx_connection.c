@@ -397,7 +397,6 @@ void ngx_close_connection(ngx_connection_t *c)
 }
 
 
-
 ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
 {
     ngx_uint_t  level;

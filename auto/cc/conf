@@ -2,6 +2,8 @@
 # Copyright (C) Igor Sysoev
 
 
+LINK="\$(CC)"
+
 ngx_include_opt="-I "
 ngx_compile_opt="-c"
 ngx_objout="-o "
@@ -56,7 +58,7 @@ else
 #            # Compaq C V6.5-207
 #
 #            . auto/cc/ccc
-             ngx_include_opt="-I "
+             ngx_include_opt="-I"
         ;;
 
 #        acc)

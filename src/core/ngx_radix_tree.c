@@ -11,8 +11,10 @@
 static void *ngx_radix_alloc(ngx_radix_tree_t *tree);
 
 
-ngx_radix_tree_t *ngx_radix_tree_create(ngx_pool_t *pool)
+ngx_radix_tree_t *
+ngx_radix_tree_create(ngx_pool_t *pool, ngx_uint_t preallocate)
 {
+    uint32_t           key, mask, inc;
     ngx_radix_tree_t  *tree;
 
     if (!(tree = ngx_palloc(pool, sizeof(ngx_radix_tree_t)))) {
@@ -33,12 +35,43 @@ ngx_radix_tree_t *ngx_radix_tree_create(ngx_pool_t *pool)
     tree->root->parent = NULL;
     tree->root->value = NGX_RADIX_NO_VALUE;
 
+    /*
+     * We preallocate the first nodes: 0, 1, 00, 01, 10, 11, 000, 001, etc.,
+     * to increase the TLB hits even if for the first lookup iterations.
+     * On the 32-bit platforms the 7 preallocated bits takes continuous 4K,
+     * 8 - 8K, 9 - 16K, etc.
+     */
+
+    mask = 0;
+    inc = 0x80000000;
+
+    while (preallocate--) {
+
+        key = 0;
+        mask >>= 1;
+        mask |= 0x80000000;
+
+        do {
+            if (ngx_radix32tree_insert(tree, key, mask, NGX_RADIX_NO_VALUE)
+                                                                     != NGX_OK)
+            {
+                return NULL;
+            }
+
+            key += inc;
+
+        } while (key);
+
+        inc >>= 1;
+    }
+
     return tree;
 }
 
 
-ngx_int_t ngx_radix32tree_insert(ngx_radix_tree_t *tree,
-                                 uint32_t key, uint32_t mask, uintptr_t value)
+ngx_int_t
+ngx_radix32tree_insert(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask,
+    uintptr_t value)
 {
     uint32_t           bit;
     ngx_radix_node_t  *node, *next;
@@ -100,8 +133,8 @@ ngx_int_t ngx_radix32tree_insert(ngx_radix_tree_t *tree,
 }
 
 
-ngx_int_t ngx_radix32tree_delete(ngx_radix_tree_t *tree,
-                                 uint32_t key, uint32_t mask)
+ngx_int_t
+ngx_radix32tree_delete(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask)
 {
     uint32_t           bit;
     ngx_radix_node_t  *node;
@@ -158,7 +191,8 @@ ngx_int_t ngx_radix32tree_delete(ngx_radix_tree_t *tree,
 }
 
 
-uintptr_t ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key)
+uintptr_t
+ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key)
 {
     uint32_t           bit;
     uintptr_t          value;
@@ -187,7 +221,8 @@ uintptr_t ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key)
 }
 
 
-static void *ngx_radix_alloc(ngx_radix_tree_t *tree)
+static void *
+ngx_radix_alloc(ngx_radix_tree_t *tree)
 {
     char  *p;
 

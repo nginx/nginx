@@ -87,7 +87,7 @@ typedef struct {
     ngx_path_t                      *cache_path;
     ngx_path_t                      *temp_path;
 
-    ngx_array_t                      x_vars;
+    ngx_array_t                     *x_vars;
 
     ngx_http_busy_lock_t            *busy_lock;
 

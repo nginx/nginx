@@ -100,6 +100,11 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     r = p->request;
     uc = p->lcf->upstream;
 
+#if (NGX_SUPPRESS_WARN)
+    var = NULL;
+    index = NULL;
+#endif
+
     if (p->upstream->method) {
         len = http_methods[p->upstream->method - 1].len;
 
@@ -169,20 +174,22 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     }
 
 
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    if (p->lcf->x_vars) {
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
-    var = cmcf->variables.elts;
-    index = p->lcf->x_vars.elts;
+        var = cmcf->variables.elts;
+        index = p->lcf->x_vars->elts;
 
-    for (i = 0; i < p->lcf->x_vars.nelts; i++) {
+        for (i = 0; i < p->lcf->x_vars->nelts; i++) {
 
-        if (!(value = ngx_http_get_variable(r, index[i]))) {
-            continue;
-        }
+            if (!(value = ngx_http_get_variable(r, index[i]))) {
+                continue;
+            }
 
-        if (value->text.len) {
-            len += sizeof("X-") - 1 + var[index[i]].name.len + sizeof(": ") - 1
-                + value->text.len + sizeof(CRLF) - 1;
+            if (value->text.len) {
+                len += sizeof("X-") - 1 + var[index[i]].name.len
+                    + sizeof(": ") - 1 + value->text.len + sizeof(CRLF) - 1;
+            }
         }
     }
 
@@ -356,26 +363,28 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     }
 
 
-    for (i = 0; i < p->lcf->x_vars.nelts; i++) {
+    if (p->lcf->x_vars) {
+        for (i = 0; i < p->lcf->x_vars->nelts; i++) {
 
-        if (!(value = ngx_http_get_variable(r, index[i]))) {
-            continue;
+            if (!(value = ngx_http_get_variable(r, index[i]))) {
+                continue;
+            }
+
+            if (value->text.len == 0) {
+                continue;
+            }
+
+            *b->last++ = 'X'; *b->last++ = '-';
+
+            b->last = ngx_cpymem(b->last, var[index[i]].name.data,
+                                 var[index[i]].name.len);
+
+            *b->last++ = ':'; *b->last++ = ' ';
+
+            b->last = ngx_cpymem(b->last, value->text.data, value->text.len);
+
+            *b->last++ = CR; *b->last++ = LF;
         }
-
-        if (value->text.len == 0) {
-            continue;
-        }
-
-        *b->last++ = 'X'; *b->last++ = '-';
-
-        b->last = ngx_cpymem(b->last, var[index[i]].name.data,
-                             var[index[i]].name.len);
-
-        *b->last++ = ':'; *b->last++ = ' ';
-
-        b->last = ngx_cpymem(b->last, value->text.data, value->text.len);
-
-        *b->last++ = CR; *b->last++ = LF;
     }
 
 

@@ -27,8 +27,13 @@ fi
 
 # optimizations
 
-#CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"
-#CFLAGS="$CFLAGS -Os -fomit-frame-pointer"
+#NGX_GCC_OPT="-O2"
+#NGX_GCC_OPT="-Os"
+NGX_GCC_OPT="-O"
+
+CFLAGS="$CFLAGS $NGX_GCC_OPT"
+
+#CFLAGS="$CFLAGS -fomit-frame-pointer"
 
 case $CPU in
     pentium)
@@ -83,7 +88,9 @@ fi
 
 # warnings
 
-CFLAGS="$CFLAGS -O -W"
+# -W requires at least -O
+CFLAGS="$CFLAGS ${NGX_GCC_OPT:-O} -W"
+
 CFLAGS="$CFLAGS -Wall -Wpointer-arith"
 #CFLAGS="$CFLAGS -Wconversion" 
 #CFLAGS="$CFLAGS -Winline"
@@ -103,5 +110,3 @@ CFLAGS="$CFLAGS -g"
 if [ ".$CPP" = "." ]; then
     CPP="$CC -E"
 fi
-
-LINK="\$(CC)"

@@ -859,7 +859,10 @@ static char *ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd,
         }
     }
 
-    return NGX_CONF_OK;
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "unknown log format \"%V\"", &name);
+
+    return NGX_CONF_ERROR;
 }
 
 

@@ -48,21 +48,21 @@ struct ngx_peers_s {
 
 
 typedef struct {
-    ngx_peers_t       *peers;
-    ngx_uint_t         cur_peer;
-    ngx_uint_t         tries;
+    ngx_peers_t        *peers;
+    ngx_uint_t          cur_peer;
+    ngx_uint_t          tries;
 
-    ngx_connection_t  *connection;
+    ngx_connection_t   *connection;
 #if (NGX_THREADS)
-    ngx_atomic_t      *lock;
+    ngx_atomic_t       *lock;
 #endif
 
-    int                rcvbuf;
+    int                 rcvbuf;
 
-    ngx_log_t         *log;
+    ngx_log_t          *log;
 
-    unsigned           cached:1;
-    unsigned           log_error:2;  /* ngx_connection_log_error_e */
+    unsigned            cached:1;
+    unsigned            log_error:2;  /* ngx_connection_log_error_e */
 } ngx_peer_connection_t;
 
 

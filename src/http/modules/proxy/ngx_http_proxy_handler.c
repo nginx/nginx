@@ -1284,6 +1284,10 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_value(conf->lm_factor, prev->lm_factor, 0);
     ngx_conf_merge_sec_value(conf->default_expires, prev->default_expires, 0);
 
+    if (conf->x_vars == NULL) {
+        conf->x_vars = prev->x_vars;
+    }
+
     return NULL;
 }
 
@@ -1389,10 +1393,10 @@ static char *ngx_http_proxy_set_x_var(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_http_variable_t        *var;
     ngx_http_core_main_conf_t  *cmcf;
 
-    if (lcf->x_vars.elts == NULL) {
-        if (ngx_array_init(&lcf->x_vars, cf->pool, 4,
-                           sizeof(ngx_http_variable_t *)) == NGX_ERROR)
-        {
+    if (lcf->x_vars == NULL) {
+        lcf->x_vars = ngx_array_create(cf->pool, 4,
+                                       sizeof(ngx_http_variable_t *));
+        if (lcf->x_vars == NULL) {
             return NGX_CONF_ERROR;
         }
     }
@@ -1405,7 +1409,7 @@ static char *ngx_http_proxy_set_x_var(ngx_conf_t *cf, ngx_command_t *cmd,
     for (i = 0; i < cmcf->variables.nelts; i++) {
         if (ngx_strcasecmp(var[i].name.data, value[1].data) == 0) {
 
-            if (!(index = ngx_array_push(&lcf->x_vars))) {
+            if (!(index = ngx_array_push(lcf->x_vars))) {
                 return NGX_CONF_ERROR;
             }
 

@@ -69,8 +69,6 @@ NGX_BUILD_PCH="-fhq=$NGX_OBJS/ngx_config.pch"
 NGX_USE_PCH="-fh=$NGX_OBJS/ngx_config.pch"
 
 
-LINK="\$(CC)"
-
 # the link flags, built target is NT GUI mode application
 CORE_LINK="$CORE_LINK -l=nt_win"
 

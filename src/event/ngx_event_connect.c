@@ -10,7 +10,11 @@
 #include <ngx_event_connect.h>
 
 
-ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
+#define NGX_RESOLVER_BUFSIZE  8192
+
+
+ngx_int_t
+ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     int                  rc;
     ngx_uint_t           instance;
@@ -274,12 +278,18 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
         if (err != NGX_EINPROGRESS && err != NGX_EAGAIN) {
             ngx_connection_error(c, err, "connect() failed");
 
-            if (ngx_close_socket(s) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
-                              ngx_close_socket_n " failed");
-            }
+#if 0
+#undef sun
+            {
+            struct sockaddr_un  *sun;
 
-            c->fd = (ngx_socket_t) -1;
+            sun = (struct sockaddr_un *) peer->sockaddr;
+
+            ngx_log_error(NGX_LOG_ALERT, pc->log, 0,
+                          "\"%s\", f:%d, l:%uz",
+                          sun->sun_path, sun->sun_family, peer->socklen);
+            }
+#endif
 
             return NGX_CONNECT_ERROR;
         }
@@ -287,7 +297,9 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     if (ngx_add_conn) {
         if (rc == -1) {
+
             /* NGX_EINPROGRESS */
+
             return NGX_AGAIN;
         }
  
@@ -308,17 +320,11 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
         if (ngx_blocking(s) == -1) {
             ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                           ngx_blocking_n " failed");
-
-            if (ngx_close_socket(s) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
-                              ngx_close_socket_n " failed");
-            }
-
             return NGX_ERROR;
         }
 
         /*
-         * FreeBSD aio allows to post operation on non-connected socket.
+         * FreeBSD's aio allows to post an operation on non-connected socket.
          * NT does not support it.
          * 
          * TODO: check in Win32, etc. As workaround we can use NGX_ONESHOT_EVENT
@@ -330,10 +336,16 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
         return NGX_OK;
     }
 
-    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {     /* kqueue */
+    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
+
+        /* kqueue */
+
         event = NGX_CLEAR_EVENT;
 
-    } else {                                  /* select, poll, /dev/poll */
+    } else {
+
+        /* select, poll, /dev/poll */
+
         event = NGX_LEVEL_EVENT;
     }
 
@@ -360,7 +372,8 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
 }
 
 
-void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc)
+void
+ngx_event_connect_peer_failed(ngx_peer_connection_t *pc)
 {
     time_t  now;
 
@@ -380,6 +393,4 @@ void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc)
     }
 
     pc->tries--;
-
-    return;
 }

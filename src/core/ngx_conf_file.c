@@ -48,7 +48,7 @@ static int argument_number[] = {
     NGX_CONF_TAKE7
 };
 
-static int ngx_conf_read_token(ngx_conf_t *cf);
+static ngx_int_t ngx_conf_read_token(ngx_conf_t *cf);
 
 
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
@@ -337,7 +337,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 }
 
 
-static int ngx_conf_read_token(ngx_conf_t *cf)
+static ngx_int_t ngx_conf_read_token(ngx_conf_t *cf)
 {
     u_char      *start, ch, *src, *dst;
     int          len;
@@ -361,7 +361,17 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
 
         if (b->pos >= b->last) {
             if (cf->conf_file->file.offset
-                                 >= ngx_file_size(&cf->conf_file->file.info)) {
+                                 >= ngx_file_size(&cf->conf_file->file.info))
+            {
+                if (cf->args->nelts > 0) {
+                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                  "unexpected end of file in %s:%d, "
+                                  "expecting \";\" or \"}\"",
+                                  cf->conf_file->file.name.data,
+                                  cf->conf_file->line);
+                    return NGX_ERROR;
+                }
+
                 return NGX_CONF_FILE_DONE;
             }
 
@@ -418,7 +428,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
             }
 
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "unexpected '%c' in %s:%d",
+                          "unexpected \"%c\" in %s:%d",
                           ch, cf->conf_file->file.name.data,
                           cf->conf_file->line);
 
@@ -438,7 +448,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
             case '{':
                 if (cf->args->nelts == 0) {
                     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                  "unexpected '%c' in %s:%d",
+                                  "unexpected \"%c\" in %s:%d",
                                   ch, cf->conf_file->file.name.data,
                                   cf->conf_file->line);
                     return NGX_ERROR;
@@ -453,7 +463,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
             case '}':
                 if (cf->args->nelts > 0) {
                     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                  "unexpected '}' in %s:%d",
+                                  "unexpected \"}\" in %s:%d",
                                   cf->conf_file->file.name.data,
                                   cf->conf_file->line);
                     return NGX_ERROR;

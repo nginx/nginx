@@ -68,5 +68,3 @@ CFLAGS="$CFLAGS -Werror"
 
 # debug
 CFLAGS="$CFLAGS -g"
-
-LINK="\$(CC)"

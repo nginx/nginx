@@ -58,6 +58,9 @@ HTTP_REWRITE=YES
 HTTP_PROXY=YES
 HTTP_FASTCGI=YES
 
+# STUB
+HTTP_STUB_STATUS=NO
+
 IMAP=NO
 
 NGX_MODULES=
@@ -130,6 +133,9 @@ do
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
         --without-http_fastcgi_module)   HTTP_FASTCGI=NO            ;;
+
+        # STUB
+        --with-http_stub_status_module)  HTTP_STUB_STATUS=YES       ;;
 
         --with-imap)                     IMAP=YES                   ;;
 

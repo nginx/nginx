@@ -9,6 +9,101 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.18" date="09.02.2005">
+
+<change type="workaround">
+<para lang="ru">
+для совместимости с Solaris 10 в директивах devpoll_events и devpoll_changes
+значения по умолчанию уменьшены с 512 до 32.
+</para>
+<para lang="en">
+the default values of the devpoll_events and the devpoll_changes directives
+changed from 512 to 32 to be compatible with Solaris 10.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_set_x_var и fastcgi_set_var не наследовались.
+</para>
+<para lang="en">
+the proxy_set_x_var and fastcgi_set_var directives were not inherited.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве rewrite, возвращающей редирект, аргументы присоединялись
+к URI через символ "&amp;" вместо "?".
+</para>
+<para lang="en">
+in the redirect rewrite directive the arguments were concatenated with URI
+by the "&amp;" rather than the "?".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строки для модуля ngx_http_geo_module без символа ";" во включённом файле
+игнорировались.
+</para>
+<para lang="en">
+the lines without trailing ";" in the file being included
+by the ngx_http_geo_module were silently ignored.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_stub_status_module.
+</para>
+<para lang="en">
+the ngx_http_stub_status_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+неизвестный формат лог-файла в директиве access_log вызывал segmentation fault.
+</para>
+<para lang="en">
+the unknown log format in the access_log directive caused
+the segmentation fault.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+новый параметр document_root в директиве fastcgi_params.
+</para>
+<para lang="en">
+the new "document_root" parameter of the fastcgi_params directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива fastcgi_redirect_errors.
+</para>
+<para lang="en">
+the fastcgi_redirect_errors directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+новый модификатор break в директиве rewrite позволяет прекратить
+цикл rewrite/location и устанавливает текущую конфигурацию для запроса.
+</para>
+<para lang="en">
+the new "break" modifier of the "rewrite" directive allows to stop
+the rewrite/location cycle and sets the current configuration to the request.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.17" date="03.02.2005">
 
 <change type="feature">
@@ -126,7 +221,7 @@ keepalive_timeout запрещала использование keep-alive.
 </para>
 <para lang="en">
 the "Connection: keep-alive" header were issued, even if the
-keepalive_timeout derective forbade the keep-alive use.
+keepalive_timeout directive forbade the keep-alive use.
 </para>
 </change>
 
@@ -164,7 +259,7 @@ are not used for the unix domain sockets.
 директива rewrite поддерживает перезаписывание аргументов.
 </para>
 <para lang="en">
-the rewrite directive supports the agruments rewriting.
+the rewrite directive supports the arguments rewriting.
 </para>
 </change>
 
@@ -174,7 +269,7 @@ the rewrite directive supports the agruments rewriting.
 ошибка появилась в 0.1.14.
 </para>
 <para lang="en">
-the response code 400 was returend for the POST request with the
+the response code 400 was returned for the POST request with the
 "Content-Length: 0" header;
 bug appeared in 0.1.14.
 </para>

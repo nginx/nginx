@@ -54,6 +54,7 @@ typedef struct {
 
     ngx_bufs_t                  bufs;
 
+    ngx_flag_t                  redirect_errors;
     ngx_flag_t                  x_powered_by;
     ngx_flag_t                  cyclic_temp_file;
 
@@ -94,13 +95,6 @@ struct ngx_http_upstream_s {
     ngx_log_handler_pt          log_handler;
     ngx_http_log_ctx_t         *saved_log_ctx;
     ngx_log_handler_pt          saved_log_handler;
-
-    /* used to parse an upstream HTTP header */
-    ngx_uint_t                  status;
-    u_char                     *status_start;
-    u_char                     *status_end;
-    ngx_uint_t                  status_count;
-    ngx_uint_t                  parse_state;
 
     ngx_http_upstream_state_t  *state;
     ngx_array_t                 states;    /* of ngx_http_upstream_state_t */
