@@ -8,6 +8,14 @@ static void ngx_exec_proc(ngx_cycle_t *cycle, void *data);
 ngx_uint_t     ngx_last_process;
 ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
 
+sigset_t  ngx_sigmask;
+
+
+void ngx_wait_events()
+{
+    sigsuspend(&ngx_sigmask);
+}
+
 
 ngx_int_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,

@@ -13,8 +13,7 @@ extern ngx_module_t    ngx_core_module;
 
 extern ngx_uint_t      ngx_connection_counter;
 
-extern ngx_int_t       ngx_master;
-extern ngx_int_t       ngx_single;
+extern ngx_int_t       ngx_process;
 
 
 #endif /* _NGINX_H_INCLUDED_ */

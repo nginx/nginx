@@ -5,6 +5,7 @@
 #include <nginx.h>
 
 
+static void ngx_master_process_cycle(ngx_cycle_t *cycle);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle, char **envp);
 static void ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
@@ -66,8 +67,7 @@ uid_t      user;
 
 u_int ngx_connection_counter;
 
-ngx_int_t  ngx_master;
-ngx_int_t  ngx_single;
+ngx_int_t  ngx_process;
 
 
 ngx_int_t  ngx_respawn;
@@ -80,10 +80,8 @@ ngx_int_t  ngx_change_binary;
 
 int main(int argc, char *const *argv, char **envp)
 {
-    struct timeval     tv;
     ngx_fd_t           fd;
     ngx_int_t          i;
-    ngx_err_t          err;
     ngx_log_t         *log;
     ngx_cycle_t       *cycle, init_cycle;
     ngx_open_file_t   *file;
@@ -140,16 +138,23 @@ int main(int argc, char *const *argv, char **envp)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    if (ccf->single == 1) {
-        ngx_master = 0;
-        ngx_single = 1;
+    ngx_process = (ccf->single == 1) ? NGX_PROCESS_SINGLE : NGX_PROCESS_MASTER;
 
-    } else {
-        ngx_master = 1;
-        ngx_single = 0;
+#if (WIN32)
+
+#if 0
+
+    if (run_as_service) {
+        if (ngx_servie(cycle->log) == NGX_ERROR) {
+            return 1;
+        }
+
+        return 0;
     }
 
-#if !(WIN32)
+#endif
+
+#else
 
     /* STUB */
     if (ccf->user.len) {
@@ -205,12 +210,22 @@ int main(int argc, char *const *argv, char **envp)
 
 #endif
 
-    /* a life cycle */
+    ngx_master_process_cycle(cycle);
+
+    return 0;
+}
+
+
+static void ngx_master_process_cycle(ngx_cycle_t *cycle)
+{
+    struct timeval  tv;
+    ngx_int_t       i;
+    ngx_err_t       err;
 
     for ( ;; ) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "new cycle");
 
-        if (ngx_master) {
+        if (ngx_process == NGX_PROCESS_MASTER) {
             ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
                               "worker process", NGX_PROCESS_RESPAWN);
 
@@ -227,10 +242,6 @@ int main(int argc, char *const *argv, char **envp)
             }
         }
 
-#if 0
-        reconfigure = 0;
-        reopen = 0;
-#endif
 
         /* a cycle with the same configuration */
 
@@ -242,7 +253,7 @@ int main(int argc, char *const *argv, char **envp)
 
                 err = 0;
 
-                if (ngx_single) {
+                if (ngx_process == NGX_PROCESS_SINGLE) {
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                    "worker cycle");
 
@@ -264,16 +275,18 @@ int main(int argc, char *const *argv, char **envp)
 
                 if (ngx_quit || ngx_terminate) {
 #if !(WIN32)
+#if 0
                     if (ngx_delete_file(pidfile.name.data) == NGX_FILE_ERROR) {
                         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                                       ngx_delete_file_n " \"%s\" failed",
                                       pidfile.name.data);
                     }
 #endif
+#endif
 
                     ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
 
-                    if (ngx_master) {
+                    if (ngx_process == NGX_PROCESS_MASTER) {
                         ngx_signal_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
 
@@ -293,6 +306,7 @@ int main(int argc, char *const *argv, char **envp)
                     ngx_respawn_processes(cycle);
                 }
 
+#if 0
                 if (ngx_change_binary) {
                     ngx_change_binary = 0;
                     ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
@@ -300,6 +314,7 @@ int main(int argc, char *const *argv, char **envp)
                     ngx_exec_new_binary(cycle, argv);
                     /* TODO: quit workers */
                 }
+#endif
 
                 if (ngx_reconfigure) {
                     ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reconfiguring");
@@ -333,6 +348,8 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     ngx_int_t         i;
     ngx_listening_t  *ls;
+
+    ngx_process = NGX_PROCESS_WORKER;
 
     if (user) {
         if (setuid(user) == -1) {

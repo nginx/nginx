@@ -277,6 +277,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
 static void ngx_http_process_request_line(ngx_event_t *rev)
 {
+    char                      *p;
     ssize_t                    n;
     ngx_int_t                  rc, offset;
     ngx_connection_t          *c;
@@ -307,11 +308,13 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         /* the request line has been parsed successfully */
 
-        /* TODO: we need to handle such URIs */
+        /* TODO: we need to handle proxy URIs */
         if (r->unusual_uri) {
             r->request_line.len = r->request_end - r->request_start;
             r->request_line.data = r->request_start;
+#if 0
             r->request_line.data[r->request_line.len] = '\0';
+#endif
 
             ngx_http_client_error(r, NGX_HTTP_PARSE_INVALID_REQUEST,
                                   NGX_HTTP_BAD_REQUEST);
@@ -372,7 +375,6 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             if (rc != NGX_OK) {
                 r->request_line.len = r->request_end - r->request_start;
                 r->request_line.data = r->request_start;
-                r->request_line.data[r->request_line.len] = '\0';
 
                 ngx_http_client_error(r, rc, NGX_HTTP_BAD_REQUEST);
                 return;
@@ -481,6 +483,15 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
     } else if (rc != NGX_AGAIN) {
 
         /* there was error while a request line parsing */
+
+        for (p = r->request_start; p < r->header_in->last; p++) {
+            if (*p == CR || *p == LF) {
+                break;
+            }
+        }
+
+        r->request_line.len = p - r->request_start;
+        r->request_line.data = r->request_start;
 
         ngx_http_client_error(r, rc, NGX_HTTP_BAD_REQUEST);
 
@@ -1564,6 +1575,11 @@ static void ngx_http_client_error(ngx_http_request_t *r,
                     ctx->client, ctx->url);
 
     } else {
+        if (error == NGX_HTTP_REQUEST_URI_TOO_LARGE) {
+            r->request_line.len = r->header_in->end - r->request_start;
+            r->request_line.data = r->request_start;
+        }
+
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                     client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
                     ctx->client);

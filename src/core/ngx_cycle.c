@@ -309,7 +309,7 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
         return cycle;
     }
 
-    if (ngx_master) {
+    if (ngx_process == NGX_PROCESS_MASTER) {
         ngx_destroy_pool(old_cycle->pool);
         return cycle;
     }

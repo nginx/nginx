@@ -29,7 +29,9 @@ typedef struct {
 } ngx_exec_ctx_t;
 
 
-#define ngx_getpid  getpid
+#define NGX_PROCESS_SINGLE  0
+#define NGX_PROCESS_MASTER  1
+#define NGX_PROCESS_WORKER  2
 
 #define NGX_MAX_PROCESSES  1024
 
@@ -37,6 +39,8 @@ typedef struct {
 #define NGX_PROCESS_NORESPAWN  -2
 #define NGX_PROCESS_DETACHED   -3
 
+
+#define ngx_getpid  getpid
 
 ngx_int_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,
