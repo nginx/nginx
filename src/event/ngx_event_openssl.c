@@ -4,6 +4,9 @@
 #include <ngx_event.h>
 
 
+static ngx_int_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size);
+
+
 ngx_int_t ngx_ssl_init(ngx_log_t *log)
 {
     SSL_library_init();
@@ -22,10 +25,12 @@ ngx_int_t ngx_ssl_create_session(ngx_ssl_ctx_t *ssl_ctx, ngx_connection_t *c,
         return NGX_ERROR;
     }
 
+    if (!(ssl->buf = ngx_create_temp_buf(c->pool, NGX_SSL_BUFSIZE))) {
+        return NGX_ERROR;
+    }
+
     if (flags & NGX_SSL_BUFFER) {
-        if (!(ssl->buf = ngx_create_temp_buf(c->pool, NGX_SSL_BUFSIZE))) {
-            return NGX_ERROR;
-        }
+        ssl->buffer = 1;
     }
 
     ssl->ssl = SSL_new(ssl_ctx);
@@ -104,175 +109,154 @@ ngx_int_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
                                 off_t limit)
 {
-    int         n, sslerr;
-    ngx_err_t   err;
-    ssize_t     send, size;
-    ngx_buf_t  *buf;
-
-    send = 0;
+    int          n;
+    ngx_uint_t   flush;
+    ssize_t      send, size;
+    ngx_buf_t   *buf;
 
     buf = c->ssl->buf;
 
-#if 0
+    if (in && in->next == NULL && !c->ssl->buffer && buf->pos == buf->last) {
 
-    if (buf) {
+        /*
+         * the optimized path without a copy if there is the single incoming
+         * buf, we do not need to buffer output and our buffer is empty
+         */
 
-        for ( ;; ) {
+        n = ngx_ssl_write(c, in->buf->pos, in->buf->last - in->buf->pos);
 
-            for ( /* void */ ; in && buf->last < buf->end; in = in->next) {
-                if (ngx_buf_special(in->buf)) {
-                    continue;
-                }
+        if (n < 0) {
+            return (ngx_chain_t *) n;
+        }
 
-                size = in->buf->last - in->buf->pos;
+        in->buf->pos += n;
 
-                if (size > buf->end - buf->last) {
-                    size = buf->end - buf->last;
-                }
+        return in;
+    }
 
-                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "SSL buf copy: %d", size);
+    send = 0;
+    flush = (in == NULL) ? 1 : 0;
 
-                ngx_memcpy(buf->last, in->buf->pos, size);
+    for ( ;; ) {
 
-                buf->last += size;
-                in->buf->pos += size;
+        while (in && buf->last < buf->end) {
+            if (in->buf->last_buf) {
+                flush = 1;
             }
 
-            size = buf->last - buf->pos;
+            if (ngx_buf_special(in->buf)) {
+                continue;
+            }
+
+            size = in->buf->last - in->buf->pos;
+
+            if (size > buf->end - buf->last) {
+                size = buf->end - buf->last;
+            }
+
+            /*
+             * TODO: the taking in->buf->flush into account can be
+             *       implemented using the limit
+             */
 
             if (send + size > limit) {
                 size = limit - send;
+                flush = 1;
             }
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "SSL to write: %d", size);
+                           "SSL buf copy: %d", size);
 
-            n = SSL_write(c->ssl->ssl, buf->pos, size);
+            ngx_memcpy(buf->last, in->buf->pos, size);
 
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "SSL_write: %d", n);
+            buf->last += size;
 
-            if (n > 0) {
-                buf->pos += n;
-                send += n;
-                c->sent += n;
-
-                if (n < size) {
-                    break;
-                }
-
-                if (send < limit) {
-                    if (buf->pos == buf->last) {
-                        buf->pos = buf->start;
-                        buf->last = buf->start;
-                    }
-
-                    if (in == NULL) {
-                        break;
-                    }
-
-                    continue;
-                }
+            in->buf->pos += size;
+            if (in->buf->pos == in->buf->last) {
+                in = in->next;
             }
-
-            n = SSL_get_error(c->ssl->ssl, n);
-
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "SSL_get_error: %d", n);
-
-            if (n == SSL_ERROR_WANT_WRITE) {
-                break;
-            }
-
-#if 0
-            if (n == SSL_ERROR_WANT_READ) {
-                break;
-            }
-#endif
-
-            ngx_ssl_error(NGX_LOG_ALERT, c->log, "SSL_write() failed");
-
-            return NGX_CHAIN_ERROR;
         }
 
-        if (in) {
-            c->write->ready = 0;
-            return in;
+        size = buf->last - buf->pos;
+
+        if (flush || buf->last == buf->end || !c->ssl->buffer) {
+            n = ngx_ssl_write(c, buf->pos, size);
+
+        } else {
+            return NGX_CHAIN_AGAIN;            
+        }
+
+        if (n < 0) {
+            return (ngx_chain_t *) n;
+        }
+
+        buf->pos += n;
+        send += n;
+        c->sent += n;
+
+        if (n < size) {
+            break;
         }
 
         if (buf->pos == buf->last) {
-            return NULL;
+            buf->pos = buf->start;
+            buf->last = buf->start;
+        }
 
-        } else {
-            c->write->ready = 0;
-            return NGX_CHAIN_AGAIN;            
+        if (in == NULL || send == limit) {
+            break;
         }
     }
 
-#endif
+    if (in) {
+        return in;
+    }
 
-    for (/* void */; in; in = in->next) {
-        if (ngx_buf_special(in->buf)) {
-            continue;
-        }
+    if (buf->pos == buf->last) {
+        return NULL;
+    }
 
-        size = in->buf->last - in->buf->pos;
+    return NGX_CHAIN_AGAIN;            
+}
 
-        if (send + size > limit) {
-            size = limit - send;
-        }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "SSL to write: %d", size);
+static ngx_int_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
+{
+    int        n, sslerr;
+    ngx_err_t  err;
 
-        n = SSL_write(c->ssl->ssl, in->buf->pos, size);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL to write: %d", size);
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_write: %d", n);
+    n = SSL_write(c->ssl->ssl, data, size);
 
-        if (n > 0) {
-            in->buf->pos += n;
-            send += n;
-            c->sent += n;
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_write: %d", n);
 
-            if (n == size) {
-                if (send < limit) {
-                    continue;
-                }
+    if (n > 0) {
+        return n;
+    }
 
-                return in;
-            }
+    sslerr = SSL_get_error(c->ssl->ssl, n);
 
-            c->write->ready = 0;
-            return in;
-        }
+    err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
 
-        sslerr = SSL_get_error(c->ssl->ssl, n);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d", sslerr);
 
-        err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "SSL_get_error: %d", sslerr);
-
-        if (sslerr == SSL_ERROR_WANT_WRITE) {
-            c->write->ready = 0;
-            return in;
-        }
+    if (sslerr == SSL_ERROR_WANT_WRITE) {
+        c->write->ready = 0;
+        return NGX_AGAIN;
+    }
 
 #if 0
-        if (sslerr == SSL_ERROR_WANT_READ) {
-            return NGX_AGAIN;
-        }
+    if (sslerr == SSL_ERROR_WANT_READ) {
+        return NGX_AGAIN;
+    }
 #endif
 
-        c->ssl->no_rcv_shut = 1;
+    c->ssl->no_rcv_shut = 1;
 
-        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "SSL_write() failed");
+    ngx_ssl_error(NGX_LOG_ALERT, c->log, err, "SSL_write() failed");
 
-        return NGX_CHAIN_ERROR;
-    }
-
-    return in;
+    return NGX_ERROR;
 }
 
 

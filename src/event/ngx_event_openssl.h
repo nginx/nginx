@@ -14,6 +14,7 @@ typedef struct {
     ngx_buf_t             *buf;
     ngx_event_handler_pt   saved_handler;
 
+    unsigned               buffer:1;
     unsigned               no_rcv_shut:1;
     unsigned               no_send_shut:1;
 } ngx_ssl_t;
