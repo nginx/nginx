@@ -76,6 +76,8 @@ static ngx_str_t error_pages[] = {
     { 0, NULL},  /* 412 */
     { 0, NULL},  /* 413 */
     { sizeof(error_414_page) - 1, error_414_page },
+    { 0, NULL},  /* 415 */
+    { 0, NULL},  /* 416 */
 
     { sizeof(error_500_page) - 1, error_500_page }
 };
@@ -90,20 +92,31 @@ int ngx_http_special_response(ngx_http_request_t *r, int error)
 
     r->headers_out.status = error;
 
-    if (error < NGX_HTTP_BAD_REQUEST)
+    if (error < NGX_HTTP_BAD_REQUEST) {
         err = error - NGX_HTTP_MOVED_PERMANENTLY;
 
-    else if (error < NGX_HTTP_INTERNAL_SERVER_ERROR)
+    } else if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
         err = error - NGX_HTTP_BAD_REQUEST + 4;
 
-    else
-        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 4 + 15;
+    } else {
+        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 4 + 17;
+    }
 
-    if (error_pages[err].len == 0)
+    if (r->keepalive != 0) {
+        switch (error) {
+            case NGX_HTTP_BAD_REQUEST:
+            case NGX_HTTP_REQUEST_URI_TOO_LARGE:
+            case NGX_HTTP_INTERNAL_SERVER_ERROR:
+                r->keepalive = 0;
+        }
+    }
+
+    if (error_pages[err].len == 0) {
         r->headers_out.content_length = -1;
-    else
+    } else {
         r->headers_out.content_length = error_pages[err].len
                                         + len + sizeof(error_tail);
+    }
 
     if (ngx_http_send_header(r) == NGX_ERROR) {
         return NGX_ERROR;

@@ -166,7 +166,7 @@ static int ngx_http_init_request(ngx_event_t *ev)
     r->header_in = c->buffer;
 
     ngx_test_null(r->pool, ngx_create_pool(ngx_http_request_pool_size, ev->log),
-                  ngx_http_close_request(r));
+                  NGX_ERROR);
 
     ngx_test_null(r->ctx,
                   ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module),
@@ -935,8 +935,9 @@ static int ngx_http_keepalive_handler(ngx_event_t *ev)
 
     ngx_log_debug(ev->log, "http keepalive handler");
 
-    if (ev->timedout)
+    if (ev->timedout) {
         return NGX_DONE;
+    }
 
     /* MSIE closes keepalive connection with RST flag
        so we ignore ECONNRESET here */
@@ -946,8 +947,9 @@ static int ngx_http_keepalive_handler(ngx_event_t *ev)
     n = ngx_event_recv(c, c->buffer->last, c->buffer->end - c->buffer->last);
     ev->ignore_econnreset = 0;
 
-    if (n == NGX_AGAIN || n == NGX_ERROR)
+    if (n == NGX_AGAIN || n == NGX_ERROR) {
         return n;
+    }
 
     ctx = (ngx_http_log_ctx_t *) ev->log->data;
     ev->log->handler = NULL;
