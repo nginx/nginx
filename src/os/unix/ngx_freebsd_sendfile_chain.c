@@ -25,8 +25,8 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     int              rc, eintr, eagain;
     char            *prev;
-    ssize_t          hsize, fsize, size;
     off_t            sent, fprev;
+    ssize_t          hsize, fsize, size;
     struct iovec    *iov;
     struct sf_hdtr   hdtr;
     ngx_err_t        err;
@@ -67,15 +67,14 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
             if (prev == cl->hunk->pos) {
                 iov->iov_len += cl->hunk->last - cl->hunk->pos;
-                prev = cl->hunk->last;
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
                 iov->iov_base = cl->hunk->pos;
                 iov->iov_len = cl->hunk->last - cl->hunk->pos;
-                prev = cl->hunk->last;
             }
 
+            prev = cl->hunk->last;
             hsize += cl->hunk->last - cl->hunk->pos;
         }
 
@@ -118,14 +117,14 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
             if (prev == cl->hunk->pos) {
                 iov->iov_len += cl->hunk->last - cl->hunk->pos;
-                prev = cl->hunk->last;
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&trailer), NGX_CHAIN_ERROR);
                 iov->iov_base = cl->hunk->pos;
                 iov->iov_len = cl->hunk->last - cl->hunk->pos;
-                prev = cl->hunk->last;
             }
+
+            prev = cl->hunk->last;
         }
 
         /*
@@ -182,6 +181,7 @@ ngx_log_debug(c->log, "NOPUSH");
                                   "sendfile() sent only %qd bytes", sent);
 
                 } else {
+                    c->write->error = 1;
                     ngx_log_error(NGX_LOG_CRIT, c->log, err,
                                   "sendfile() failed");
                     return NGX_CHAIN_ERROR;
@@ -206,6 +206,7 @@ ngx_log_debug(c->log, "NOPUSH");
                     ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EINTR");
 
                 } else {
+                    c->write->error = 1;
                     ngx_log_error(NGX_LOG_CRIT, c->log, err, "writev() failed");
                     return NGX_CHAIN_ERROR;
                 }

@@ -422,8 +422,8 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
             ev->available = event_list[i].data;
 
             if (event_list[i].flags & EV_EOF) {
-                ev->eof = 1;
-                ev->error = event_list[i].fflags;
+                ev->kq_eof = 1;
+                ev->kq_errno = event_list[i].fflags;
             }
 
             if (ev->oneshot && ev->timer_set) {

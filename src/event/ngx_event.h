@@ -29,8 +29,9 @@ struct ngx_event_s {
 
     unsigned int     index;
 
-    ngx_event_t     *prev;     /* queue in mutex(), aio_read(), aio_write()  */
-    ngx_event_t     *next;     /*                                            */
+    /* queue in mutex(), aio_read(), aio_write()  */
+    ngx_event_t     *prev;
+    ngx_event_t     *next;
 
     ngx_event_t     *timer_prev;
     ngx_event_t     *timer_next;
@@ -40,22 +41,22 @@ struct ngx_event_s {
 
     ngx_log_t       *log;
 
-    int              available; /* kqueue only:                              */
-                                /*   accept: number of sockets that wait     */
-                                /*           to be accepted                  */
-                                /*   read:   bytes to read                   */
-                                /*   write:  available space in buffer       */
-                                /* otherwise:                                */
-                                /*   accept: 1 if accept many, 0 otherwise   */
+    /*
+     * kqueue only:
+     *   accept:     number of sockets that wait to be accepted
+     *   read:       bytes to read
+     *   write:      available space in buffer
+     *
+     * otherwise:
+     *   accept:     1 if accept many, 0 otherwise
+     */
+    int              available;
 
     unsigned         oneshot:1;
 
-#if 0
-    unsigned         listening:1;
-#endif
     unsigned         write:1;
 
-    /* used to detect stale events in kqueue, rt signals and epoll */
+    /* used to detect the stale events in kqueue, rt signals and epoll */
     unsigned         instance:1;
 
     /*
@@ -67,12 +68,12 @@ struct ngx_event_s {
     /* ready event; the complete aio operation */
     unsigned         ready:1;
 
+    unsigned         eof:1;
+    unsigned         error:1;
+
     unsigned         timedout:1;
     unsigned         timer_set:1;
 
-#if 1
-    unsigned         blocked:1;
-#endif
     unsigned         delayed:1;
 
     unsigned         read_discarded:1;
@@ -87,8 +88,8 @@ struct ngx_event_s {
 #endif
 
 #if (HAVE_KQUEUE)
-    unsigned         eof:1;
-    int              error;
+    unsigned         kq_eof:1;
+    int              kq_errno;
 #endif
 
 #if (HAVE_LOWAT_EVENT) /* kqueue's NOTE_LOWAT */
@@ -108,39 +109,25 @@ struct ngx_event_s {
 
 
 #if 0
-    void            *thr_ctx;   /* event thread context if $(CC) doesn't
-                                   understand __thread declaration
-                                   and pthread_getspecific() is too costly */
+
+    /* the threads support */
+
+    /*
+     * the event thread context, we store it here
+     * if $(CC) does not understand __thread declaration
+     * and pthread_getspecific() is too costly
+     */
+
+    void            *thr_ctx;
 
 #if (NGX_EVENT_T_PADDING)
-    int              padding[NGX_EVENT_T_PADDING];  /* event should not cross
-                                                       cache line in SMP */
+
+    /* event should not cross cache line in SMP */
+
+    int              padding[NGX_EVENT_T_PADDING];
 #endif
 #endif
 };
-
-
-#if 1
-typedef enum {
-    NGX_SELECT_EVENT_N = 0,
-#if (HAVE_POLL)
-    NGX_POLL_EVENT_N,
-#endif
-#if (HAVE_DEVPOLL)
-    NGX_DEVPOLL_EVENT_N,
-#endif
-#if (HAVE_KQUEUE)
-    NGX_KQUEUE_EVENT_N,
-#endif
-#if (HAVE_AIO)
-    NGX_AIO_EVENT_N,
-#endif
-#if (HAVE_IOCP)
-    NGX_IOCP_EVENT_N,
-#endif
-    NGX_DUMMY_EVENT_N    /* avoid comma at end of enumerator list */
-} ngx_event_type_e ;
-#endif
 
 
 typedef struct {
@@ -157,6 +144,9 @@ typedef struct {
     int   (*init)(ngx_cycle_t *cycle);
     void  (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
+
+
+extern ngx_event_actions_t   ngx_event_actions;
 
 
 /*
@@ -243,12 +233,8 @@ typedef struct {
 #define NGX_ONESHOT_EVENT  EV_ONESHOT
 #define NGX_CLEAR_EVENT    EV_CLEAR
 
-#ifndef HAVE_CLEAR_EVENT
-#define HAVE_CLEAR_EVENT   1
-#endif
 
-
-#elif (HAVE_POLL) || (HAVE_DEVPOLL)
+#elif (HAVE_POLL)
 
 #define NGX_READ_EVENT     POLLIN
 #define NGX_WRITE_EVENT    POLLOUT
@@ -256,7 +242,16 @@ typedef struct {
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  1
 
-#else
+
+#elif (HAVE_DEVPOLL)
+
+#define NGX_READ_EVENT     POLLIN
+#define NGX_WRITE_EVENT    POLLOUT
+
+#define NGX_LEVEL_EVENT    0
+
+
+#else /* select */
 
 #define NGX_READ_EVENT     0
 #define NGX_WRITE_EVENT    1
@@ -266,84 +261,35 @@ typedef struct {
 
 #endif /* HAVE_KQUEUE */
 
-#ifndef NGX_CLEAR_EVENT
-#define NGX_CLEAR_EVENT    0    /* dummy */
-#endif
-
-#if (USE_KQUEUE)
-
-#define ngx_init_events      ngx_kqueue_init
-#define ngx_process_events   ngx_kqueue_process_events
-#define ngx_add_event        ngx_kqueue_add_event
-#define ngx_del_event        ngx_kqueue_del_event
-#if 0
-#define ngx_add_timer        ngx_kqueue_add_timer
-#else
-#define ngx_add_timer        ngx_event_add_timer
-#endif
-#define ngx_event_recv       ngx_event_recv_core
-
-#else
-
-#define ngx_init_events     (ngx_event_init[ngx_event_type])
-#define ngx_process_events   ngx_event_actions.process
-#define ngx_add_event        ngx_event_actions.add
-#define ngx_del_event        ngx_event_actions.del
-#define ngx_add_conn         ngx_event_actions.add_conn
-#define ngx_del_conn         ngx_event_actions.del_conn
-
-#if 0
-#if (HAVE_IOCP_EVENT)
-#define ngx_event_recv       ngx_event_wsarecv
-#elif (HAVE_AIO_EVENT)
-#define ngx_event_recv       ngx_event_aio_read
-#else
-#define ngx_event_recv       ngx_io.recv
-#define ngx_write_chain      ngx_io.send_chain
-#endif
-#endif
-
-#endif
-
-
-
-
-
-/* ***************************** */
-
-#define ngx_recv             ngx_io.recv
-#define ngx_recv_chain       ngx_io.recv_chain
-#define ngx_write_chain      ngx_io.send_chain
-
-
-#define ngx_add_timer        ngx_event_add_timer
-#define ngx_del_timer        ngx_event_del_timer
-
 
 #if (HAVE_IOCP_EVENT)
 #define NGX_IOCP_ACCEPT      0
 #define NGX_IOCP_IO          1
 #endif
 
-/* ***************************** */
 
-
-
-
-
-
-#if !(USE_KQUEUE)
-extern ngx_event_actions_t   ngx_event_actions;
-extern ngx_event_type_e      ngx_event_type;
-extern int                   ngx_event_flags;
+#ifndef NGX_CLEAR_EVENT
+#define NGX_CLEAR_EVENT    0    /* dummy declaration */
 #endif
 
 
+#define ngx_process_events   ngx_event_actions.process
+#define ngx_add_event        ngx_event_actions.add
+#define ngx_del_event        ngx_event_actions.del
+#define ngx_add_conn         ngx_event_actions.add_conn
+#define ngx_del_conn         ngx_event_actions.del_conn
 
-/* ***************************** */
+#define ngx_add_timer        ngx_event_add_timer
+#define ngx_del_timer        ngx_event_del_timer
+
+
+#define ngx_recv             ngx_io.recv
+#define ngx_recv_chain       ngx_io.recv_chain
+#define ngx_write_chain      ngx_io.send_chain
+
+
 
 #define NGX_EVENT_MODULE      0x544E5645  /* "EVNT" */
-
 #define NGX_EVENT_CONF        0x00200000
 
 
@@ -364,8 +310,10 @@ typedef struct {
 } ngx_event_module_t;
 
 
-extern ngx_module_t        ngx_events_module;
-extern ngx_module_t        ngx_event_core_module;
+
+extern int                   ngx_event_flags;
+extern ngx_module_t          ngx_events_module;
+extern ngx_module_t          ngx_event_core_module;
 
 
 #define ngx_event_get_conf(conf_ctx, module)                                  \
@@ -380,24 +328,10 @@ void ngx_event_acceptex(ngx_event_t *ev);
 int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
 #endif
 
-/* ***************************** */
-
-
-
-
-
-ssize_t ngx_event_recv_core(ngx_connection_t *c, char *buf, size_t size);
-int ngx_event_close_connection(ngx_event_t *ev);
-
-
-int  ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log);
-void ngx_worker(ngx_cycle_t *cycle);
-
-
-/* ***************************** */
 
 
 #include <ngx_event_timer.h>
+
 #if (WIN32)
 #include <ngx_iocp_module.h>
 #endif
@@ -437,8 +371,9 @@ ngx_inline static int ngx_handle_read_event(ngx_event_t *rev)
         return NGX_OK;
     }
 
-    if (rev->active && rev->ready) {
-        if (ngx_del_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+    if (rev->active && (rev->ready || rev->eof)) {
+        if (ngx_del_event(rev, NGX_READ_EVENT, rev->eof ? NGX_CLOSE_EVENT : 0)
+                                                                == NGX_ERROR) {
             return NGX_ERROR;
         }
 
@@ -549,9 +484,6 @@ ngx_inline static int ngx_handle_level_write_event(ngx_event_t *wev)
 
     return NGX_OK;
 }
-
-
-/* ***************************** */
 
 
 #endif /* _NGX_EVENT_H_INCLUDED_ */

@@ -110,6 +110,13 @@ static ngx_command_t ngx_http_proxy_commands[] = {
      offsetof(ngx_http_proxy_loc_conf_t, temp_file_write_size),
      NULL},
 
+    {ngx_string("proxy_pass_server"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+     ngx_conf_set_flag_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_proxy_loc_conf_t, pass_server),
+     NULL},
+
     ngx_null_command
 };
 
@@ -237,18 +244,10 @@ ngx_log_debug(r->connection->log, "timer_set: %d" _
         ngx_del_timer(r->connection->read);
     }
 
-    ngx_is_null(cl, ngx_http_proxy_create_request(p)) {
+    if (!(cl = ngx_http_proxy_create_request(p))) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
-
-#if 0
-    cl = ngx_http_proxy_create_request(p);
-    if (cl == NULL) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return;
-    }
-#endif
 
     if (r->request_hunks) {
         cl->next = r->request_hunks;
@@ -266,6 +265,7 @@ ngx_log_debug(r->connection->log, "timer_set: %d" _
     out_ctx = ngx_pcalloc(r->pool, sizeof(ngx_output_chain_ctx_t));
     if (out_ctx == NULL) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
     }
 
     p->output_chain_ctx = out_ctx;
@@ -288,6 +288,7 @@ ngx_log_debug(r->connection->log, "timer_set: %d" _
     write_ctx = ngx_pcalloc(r->pool, sizeof(ngx_chain_write_ctx_t));
     if (write_ctx == NULL) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
     }
 
     out_ctx->output_ctx = write_ctx;
@@ -767,7 +768,7 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
             return;
         }
 
-        /* NGX_AGAIN: a header line parsing is still not complete */
+        /* rc == NGX_AGAIN: a header line parsing is still not complete */
 
         if (p->header_in->last == p->header_in->end) {
             ngx_log_error(NGX_LOG_ERR, rev->log, 0,
@@ -835,6 +836,8 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
     r = p->request;
 
+    r->headers_out.status = p->status;
+
     r->headers_out.content_length_n = -1;
     r->headers_out.content_length = NULL;
 
@@ -852,6 +855,16 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
                 || &ph[i] == p->headers_in.accept_ranges) {
                 continue;
             }
+
+            if (&ph[i] == p->headers_in.server && !p->lcf->pass_server) {
+                continue;
+            }
+        }
+
+        if (&ph[i] == p->headers_in.content_type) {
+            r->headers_out.content_type = &ph[i];
+            r->headers_out.content_type->key.len = 0;
+            continue;
         }
 
         ch = ngx_push_table(r->headers_out.headers);
@@ -862,13 +875,26 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
         *ch = ph[i];
 
-        if (&ph[i] == p->headers_in.content_type) {
-            r->headers_out.content_type = ch;
-            r->headers_out.content_type->key.len = 0;
+        /*
+         * ngx_http_header_filter() output the following headers
+         * from r->headers_out.headers if they are set:
+         *     r->headers_out.server,
+         *     r->headers_out.date,
+         *     r->headers_out.content_length
+         */
+
+        if (&ph[i] == p->headers_in.server) {
+            r->headers_out.server = ch;
+            continue;
+        }
+
+        if (&ph[i] == p->headers_in.date) {
+            r->headers_out.date = ch;
             continue;
         }
 
         if (&ph[i] == p->headers_in.content_length) {
+
             r->headers_out.content_length_n =
                              ngx_atoi(p->headers_in.content_length->value.data,
                                       p->headers_in.content_length->value.len);
@@ -877,22 +903,8 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
         }
     }
 
-    /* STUB */
-
-    if (p->headers_in.server) {
-        r->headers_out.server = p->headers_in.server;
-    }
-
-    if (!p->accel && p->headers_in.date) {
-        r->headers_out.date = p->headers_in.date;
-    }
-
-    /* */
-
 
     /* TODO: preallocate event_pipe hunks, look "Content-Length" */
-
-    r->headers_out.status = p->status;
 
     rc = ngx_http_send_header(r);
 
@@ -1413,6 +1425,8 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     conf->next_upstream = NGX_CONF_UNSET;
 
+    conf->pass_server = NGX_CONF_UNSET;
+
     return conf;
 }
 
@@ -1450,6 +1464,8 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
 
     ngx_conf_merge_path_value(conf->temp_path, prev->temp_path,
                               "temp", 1, 2, 0, cf->pool);
+
+    ngx_conf_merge_value(conf->pass_server, prev->pass_server, 0);
 
     return NULL;
 }

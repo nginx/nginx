@@ -98,20 +98,46 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
             if (ngx_event_flags == NGX_HAVE_KQUEUE_EVENT) {
 
-                if (p->upstream->read->error) {
-                    ngx_log_error(NGX_LOG_ERR, p->log, p->upstream->read->error,
+                if (p->upstream->read->available == 0) {
+                    if (p->upstream->read->kq_eof) {
+                        p->upstream->read->ready = 0;
+                        p->upstream->read->eof = 0;
+                        p->upstream_eof = 1;
+                        p->read = 1;
+
+                        if (p->upstream->read->kq_errno) {
+                            p->upstream->read->error = 1;
+                            p->upstream_error = 1;
+                            p->upstream_eof = 0;
+
+                            ngx_log_error(NGX_LOG_ERR, p->log,
+                                          p->upstream->read->kq_errno,
+                                          /* TODO: ngx_readv_chain_n */
+                                          "readv() failed");
+                        }
+
+                        break;
+                    }
+                }
+
+#if 0
+                if (p->upstream->read->kq_errno) {
+                    ngx_log_error(NGX_LOG_ERR, p->log,
+                                  p->upstream->read->kq_errno,
                                   "readv() failed");
                     p->upstream_error = 1;
 
                     break;
 
-                } else if (p->upstream->read->eof
+                } else if (p->upstream->read->kq_eof
                            && p->upstream->read->available == 0) {
                     p->upstream_eof = 1;
                     p->read = 1;
 
                     break;
                 }
+#endif
+
             }
 #endif
 

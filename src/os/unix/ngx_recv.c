@@ -18,15 +18,19 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
 
     if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
         ngx_log_debug(c->log, "recv: eof:%d, avail:%d, err:%d" _
-                      rev->eof _ rev->available _ rev->error);
+                      rev->kq_eof _ rev->available _ rev->kq_errno);
 
         if (rev->available == 0) {
-            if (rev->eof) {
+            if (rev->kq_eof) {
                 rev->ready = 0;
-                if (rev->error) {
-                    ngx_set_socket_errno(rev->error);
-                    return ngx_unix_recv_error(rev, rev->error);
+                rev->eof = 1;
+
+                if (rev->kq_errno) {
+                    rev->error = 1;
+                    ngx_set_socket_errno(rev->kq_errno);
+                    return ngx_unix_recv_error(rev, rev->kq_errno);
                 }
+
                 return 0;
 
             } else {
@@ -43,8 +47,14 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
         if (n >= 0) {
             if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
                 rev->available -= n;
+
+                /*
+                 * rev->available can be negative here because some additional
+                 * bytes can be received between kevent() and recv()
+                 */
+
                 if (rev->available <= 0) {
-                    if (!rev->eof) {
+                    if (!rev->kq_eof) {
                         rev->ready = 0;
                     }
 
@@ -60,10 +70,15 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
                 rev->ready = 0;
             }
 
+            if (n == 0) {
+                rev->eof = 1;
+            }
+
             return n;
         }
 
         rev->ready = 0;
+        rev->error = 1;
         n = ngx_unix_recv_error(rev, ngx_socket_errno);
 
     } while (n == NGX_EINTR);
@@ -89,10 +104,16 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
             if ((size_t) n < size) {
                 rev->ready = 0;
             }
+
+            if (n == 0) {
+                rev->eof = 1;
+            }
+
             return n;
         }
 
         rev->ready = 0;
+        rev->error = 1;
         n = ngx_unix_recv_error(rev, ngx_socket_errno);
 
     } while (n == NGX_EINTR);

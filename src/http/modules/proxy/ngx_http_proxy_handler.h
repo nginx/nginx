@@ -32,6 +32,8 @@ typedef struct {
     ssize_t                     temp_file_write_size;
     int                         cyclic_temp_file;
 
+    int                         pass_server;
+
     int                         next_upstream;
 
     ngx_path_t                 *temp_path;
