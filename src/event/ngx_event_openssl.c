@@ -112,7 +112,7 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
                             continue;
                         }
 
-                        if (*s == '\n' || *s == '\r') {
+                        if (*s == LF || *s == CR) {
                             continue;
                         }
 

@@ -68,23 +68,27 @@ typedef struct {
     size_t                        length;
     size_t                        padding;
 
+    ngx_uint_t                    header;
+
     ngx_http_fastcgi_upstream_t  *upstream;
 } ngx_http_fastcgi_ctx_t;
 
 
-#define NGX_HTTP_FASTCGI_REMOTE_ADDR          0x0002
-#define NGX_HTTP_FASTCGI_REMOTE_USER          0x0004
-#define NGX_HTTP_FASTCGI_SERVER_NAME          0x0008
-#define NGX_HTTP_FASTCGI_SERVER_ADDR          0x0010
-#define NGX_HTTP_FASTCGI_SERVER_PORT          0x0020
-#define NGX_HTTP_FASTCGI_SCRIPT_NAME          0x0040
-#define NGX_HTTP_FASTCGI_AUTH_TYPE            0x0080
-#define NGX_HTTP_FASTCGI_SERVER_PROTOCOL      0x0100
-#define NGX_HTTP_FASTCGI_SERVER_SOFTWARE      0x0200
-#define NGX_HTTP_FASTCGI_GATEWAY_INTERFACE    0x0400
-#define NGX_HTTP_FASTCGI_REQUEST_URI          0x0800
-#define NGX_HTTP_FASTCGI_REDIRECT_STATUS      0x1000
-#define NGX_HTTP_FASTCGI_DOCUMENT_ROOT        0x2000
+#define NGX_HTTP_FASTCGI_REMOTE_ADDR          0x00000002
+#define NGX_HTTP_FASTCGI_REMOTE_USER          0x00000004
+#define NGX_HTTP_FASTCGI_SERVER_NAME          0x00000008
+#define NGX_HTTP_FASTCGI_SERVER_ADDR          0x00000010
+#define NGX_HTTP_FASTCGI_SERVER_PORT          0x00000020
+#define NGX_HTTP_FASTCGI_SCRIPT_NAME          0x00000040
+#define NGX_HTTP_FASTCGI_AUTH_TYPE            0x00000080
+#define NGX_HTTP_FASTCGI_SERVER_PROTOCOL      0x00000100
+#define NGX_HTTP_FASTCGI_SERVER_SOFTWARE      0x00000200
+#define NGX_HTTP_FASTCGI_GATEWAY_INTERFACE    0x00000400
+#define NGX_HTTP_FASTCGI_REQUEST_URI          0x00000800
+#define NGX_HTTP_FASTCGI_REDIRECT_STATUS      0x00001000
+#define NGX_HTTP_FASTCGI_DOCUMENT_ROOT        0x00002000
+#define NGX_HTTP_FASTCGI_SCRIPT_FILENAME      0x00004000
+#define NGX_HTTP_FASTCGI_REMOTE_PORT          0x00008000
 
 
 #define NGX_HTTP_FASTCGI_RESPONDER      1
@@ -199,7 +203,10 @@ static ngx_conf_bitmask_t  ngx_http_fastcgi_params_masks[] = {
 
     { ngx_string("redirect_status"), NGX_HTTP_FASTCGI_REDIRECT_STATUS },
     { ngx_string("request_uri"), NGX_HTTP_FASTCGI_REQUEST_URI },
+
     { ngx_string("document_root"), NGX_HTTP_FASTCGI_DOCUMENT_ROOT },
+    { ngx_string("script_filename"), NGX_HTTP_FASTCGI_SCRIPT_FILENAME },
+    { ngx_string("remote_port"), NGX_HTTP_FASTCGI_REMOTE_PORT },
 
     { ngx_null_string, 0 }
 };
@@ -421,16 +428,18 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 {
-    u_char                             ch, *pos, addr_text[INET_ADDRSTRLEN];
-    size_t                             size, len, index, padding, addr_len;
+    u_char                             ch, *pos, addr_text[INET_ADDRSTRLEN],
+                                       port_text[sizeof("65535") - 1];
+    size_t                             size, len, index, padding,
+                                       addr_len, port_len;
     off_t                              file_pos;
     ngx_buf_t                         *b;
     socklen_t                          slen;
     ngx_chain_t                       *cl, *body;
-    ngx_uint_t                         i, n, next, *vindex;
+    ngx_uint_t                         i, n, next, *vindex, port;
     ngx_list_part_t                   *part;
     ngx_table_elt_t                   *header;
-    struct sockaddr_in                 sin;
+    struct sockaddr_in                 sin, *sinp;
     ngx_http_variable_t               *var;
     ngx_http_variable_value_t         *value;
     ngx_http_core_loc_conf_t          *clcf;
@@ -520,6 +529,12 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                  + sizeof("DOCUMENT_ROOT") - 1 + clcf->root.len;
     }
 
+    if (flcf->params & NGX_HTTP_FASTCGI_SCRIPT_FILENAME) {
+        len += 1 + ((flcf->root.len + r->uri.len + index > 127) ? 4 : 1)
+                 + sizeof("SCRIPT_FILENAME") - 1
+                 + flcf->root.len + r->uri.len + index;
+    }
+
     if (flcf->params & NGX_HTTP_FASTCGI_SCRIPT_NAME) {
         len += 1 + ((r->uri.len + index > 127) ? 4 : 1)
                  + sizeof("SCRIPT_NAME") - 1 + r->uri.len + index ;
@@ -527,6 +542,25 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
     if (flcf->params & NGX_HTTP_FASTCGI_REMOTE_ADDR) {
         len += 1 + 1 + sizeof("REMOTE_ADDR") - 1 + r->connection->addr_text.len;
+    }
+
+    port_len = 0;
+
+    if (flcf->params & NGX_HTTP_FASTCGI_REMOTE_PORT) {
+
+        /* AF_INET only */
+
+        if (r->connection->sockaddr->sa_family == AF_INET) {
+            sinp = (struct sockaddr_in *) r->connection->sockaddr;
+
+            port = ntohs(sinp->sin_port);
+
+            if (port > 0 && port < 65536) {
+                port_len = ngx_sprintf(port_text, "%ui", port) - port_text;
+            }
+
+            len += 1 + 1 + sizeof("REMOTE_PORT") - 1 + port_len;
+        }
     }
 
     if (flcf->params & NGX_HTTP_FASTCGI_SERVER_NAME) {
@@ -831,6 +865,31 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     }
 
 
+    if (flcf->params & NGX_HTTP_FASTCGI_SCRIPT_FILENAME) {
+        *b->last++ = sizeof("SCRIPT_FILENAME") - 1;
+
+        len = flcf->root.len + r->uri.len + index;
+        if (len > 127) {
+            *b->last++ = (u_char) (((len >> 24) & 0x7f) | 0x80);
+            *b->last++ = (u_char) ((len >> 16) & 0xff);
+            *b->last++ = (u_char) ((len >> 8) & 0xff);
+            *b->last++ = (u_char) (len & 0xff);
+
+        } else {
+            *b->last++ = (u_char) len;
+        }
+
+        b->last = ngx_cpymem(b->last, "SCRIPT_FILENAME",
+                             sizeof("SCRIPT_FILENAME") - 1);
+        b->last = ngx_cpymem(b->last, flcf->root.data, flcf->root.len);
+        b->last = ngx_cpymem(b->last, r->uri.data, r->uri.len);
+
+        if (index) {
+            b->last = ngx_cpymem(b->last, flcf->index.data, index);
+        }
+    }
+
+
     if (flcf->params & NGX_HTTP_FASTCGI_SCRIPT_NAME) {
         *b->last++ = sizeof("SCRIPT_NAME") - 1;
 
@@ -860,6 +919,14 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
         b->last = ngx_cpymem(b->last, "REMOTE_ADDR", sizeof("REMOTE_ADDR") - 1);
         b->last = ngx_cpymem(b->last, r->connection->addr_text.data,
                              r->connection->addr_text.len);
+    }
+
+
+    if (port_len) {
+        *b->last++ = sizeof("REMOTE_PORT") - 1;
+        *b->last++ = (u_char) port_len;
+        b->last = ngx_cpymem(b->last, "REMOTE_PORT", sizeof("REMOTE_PORT") - 1);
+        b->last = ngx_cpymem(b->last, port_text, port_len);
     }
 
 
@@ -1151,12 +1218,13 @@ ngx_http_fastcgi_reinit_request(ngx_http_request_t *r)
     }
 
     f->state = ngx_http_fastcgi_st_version;
+    f->header = 0;
 
     ngx_memzero(&f->upstream->headers_in,
                 sizeof(ngx_http_fastcgi_headers_in_t));
 
     if (f->upstream->headers_in.headers.part.elts) {
-        if (ngx_list_init(&f->upstream->headers_in.headers, r->pool, 5,
+        if (ngx_list_init(&f->upstream->headers_in.headers, r->pool, 8,
                                          sizeof(ngx_table_elt_t)) == NGX_ERROR)
         {
             return NGX_ERROR;
@@ -1170,7 +1238,7 @@ ngx_http_fastcgi_reinit_request(ngx_http_request_t *r)
 static ngx_int_t ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 {
     u_char                  *start, *last;
-    ngx_str_t               *status_line;
+    ngx_str_t               *status_line, line;
     ngx_int_t                rc, status;
     ngx_uint_t               i;
     ngx_table_elt_t         *h;
@@ -1191,7 +1259,7 @@ static ngx_int_t ngx_http_fastcgi_process_header(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        if (ngx_list_init(&f->upstream->headers_in.headers, r->pool, 5,
+        if (ngx_list_init(&f->upstream->headers_in.headers, r->pool, 8,
                                          sizeof(ngx_table_elt_t)) == NGX_ERROR)
         {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -1220,7 +1288,9 @@ static ngx_int_t ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
-            if (f->type != NGX_HTTP_FASTCGI_STDOUT) {
+            if (f->type != NGX_HTTP_FASTCGI_STDOUT
+                && f->type != NGX_HTTP_FASTCGI_STDERR)
+            {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent unexpected FastCGI record: %d",
                               f->type);
@@ -1228,7 +1298,7 @@ static ngx_int_t ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
-            if (f->length == 0) {
+            if (f->type == NGX_HTTP_FASTCGI_STDOUT && f->length == 0) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream closed prematurely FastCGI stdout");
 
@@ -1258,7 +1328,57 @@ static ngx_int_t ngx_http_fastcgi_process_header(ngx_http_request_t *r)
             return NGX_AGAIN;
         }
 
+
         /* f->state == ngx_http_fastcgi_st_data */
+
+        if (f->type == NGX_HTTP_FASTCGI_STDERR) {
+
+            if (f->header) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              "upstream split a header in FastCGI records");
+
+                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+            }
+
+            if (f->length) {
+                line.data = u->header_in.pos;
+
+                if (u->header_in.pos + f->length <= u->header_in.last) {
+                    line.len = f->length;
+                    u->header_in.pos += f->length;
+                    f->length = 0;
+                    f->state = ngx_http_fastcgi_st_padding;
+
+                } else { 
+                    line.len = u->header_in.last - u->header_in.pos;
+                    f->length -= u->header_in.last - u->header_in.pos;
+                    u->header_in.pos = u->header_in.last;
+                }
+
+                while (line.data[line.len - 1] == LF
+                       || line.data[line.len - 1] == CR
+                       || line.data[line.len - 1] == '.'
+                       || line.data[line.len - 1] == ' ')
+                {
+                    line.len--;
+                }
+
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "FastCGI sent in stderr: \"%V\"", &line);
+
+                if (u->header_in.pos == u->header_in.last) {
+                    return NGX_AGAIN;
+                }
+
+            } else {
+                f->state = ngx_http_fastcgi_st_version;
+            }
+
+            continue;
+        }
+
+
+        /* f->type == NGX_HTTP_FASTCGI_STDOUT */
 
         start = u->header_in.pos;
 
@@ -1275,6 +1395,8 @@ static ngx_int_t ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         } else {
             last = NULL;
         }
+
+        f->header = 1;
 
         for ( ;; ) {
 
@@ -1572,6 +1694,8 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
                 if (f->pos + f->length <= f->last) {
                     line.len = f->length;
                     f->pos += f->length;
+                    f->length = 0;
+                    f->state = ngx_http_fastcgi_st_padding;
 
                 } else { 
                     line.len = f->last - f->pos;
@@ -1579,20 +1703,24 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
                     f->pos = f->last;
                 }
 
-                /*
-                 * TODO: copy split stderr output into buffer,
-                 *       clean it up
-                 */
+                while (line.data[line.len - 1] == LF
+                       || line.data[line.len - 1] == CR
+                       || line.data[line.len - 1] == '.'
+                       || line.data[line.len - 1] == ' ')
+                {
+                    line.len--;
+                }
 
                 ngx_log_error(NGX_LOG_ERR, p->log, 0,
-                              "FastCGI stderr: %V", &line);
+                              "FastCGI sent in stderr: \"%V\"", &line);
 
                 if (f->pos == f->last) {
                     break;
                 }
-            }
 
-            f->state = ngx_http_fastcgi_st_version;
+            } else {
+                f->state = ngx_http_fastcgi_st_version;
+            }
 
             continue;
         }

@@ -9,6 +9,30 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.20" date="17.02.2005">
+
+<change type="feature">
+<para lang="ru">
+новые параметры script_filename и remote_port в директиве fastcgi_params.
+</para>
+<para lang="en">
+the new "script_filename" and "remote_port" parameters
+ofthe fastcgi_params directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+неправильно обрабатывался поток stderr от FastCGI-сервера.
+</para>
+<para lang="en">
+the FastCGI stderr stream was handled incorreсtly.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.19" date="16.02.2005">
 
 <change type="bugfix">
