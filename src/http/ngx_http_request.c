@@ -1153,7 +1153,7 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 
         if (!r->headers_in.msie && !r->headers_in.opera) {
 
-            if (ngx_strstr(user_agent, "Gecko")) {
+            if (ngx_strstr(user_agent, "Gecko/")) {
                 r->headers_in.gecko = 1;
 
             } else if (ngx_strstr(user_agent, "Konqueror")) {

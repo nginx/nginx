@@ -67,6 +67,7 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                               "zero size buf");
 
                 ctx->in = ctx->in->next;
+
                 continue;
             }
 
@@ -146,6 +147,7 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 if (out) {
                     break;
                 }
+
                 return rc;
             }
 
