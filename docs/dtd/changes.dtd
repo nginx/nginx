@@ -1,0 +1,21 @@
+
+<!ENTITY  nbsp         "&#xA0;" >
+
+
+<!ELEMENT change_log   (changes)* >
+<!ATTLIST change_log   title  CDATA #REQUIRED >
+
+<!ELEMENT changes      (change)* >
+<!ATTLIST changes      ver    CDATA #REQUIRED
+                       date   CDATA #REQUIRED
+>
+
+<!ELEMENT change       (para)* >
+<!ATTLIST change       type (bugfix | feature | change | workaround) #IMPLIED >
+
+<!ELEMENT para         (#PCDATA | at | br | nobr)* >
+<!ATTLIST para         lang (ru | en) #IMPLIED >
+
+<!ELEMENT at           EMPTY >
+<!ELEMENT br           EMPTY >
+<!ELEMENT nobr         (#PCDATA) >

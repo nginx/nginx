@@ -1,0 +1,22 @@
+
+<!ELEMENT configuration   (length, start, indent, changes+) >
+
+<!ELEMENT length          (#PCDATA) >
+<!ELEMENT start           (#PCDATA) >
+<!ELEMENT indent          (#PCDATA) >
+
+<!ELEMENT changes         (title, length,
+                           bugfix, feature, change, workaround,
+                           (month, month, month, month, month, month,
+                            month, month, month, month, month, month)?) >
+
+<!ATTLIST changes         lang ( ru | en) #REQUIRED>
+
+<!ELEMENT title           (#PCDATA) >
+
+<!ELEMENT bugfix          (#PCDATA) >
+<!ELEMENT feature         (#PCDATA) >
+<!ELEMENT change          (#PCDATA) >
+<!ELEMENT workaround      (#PCDATA) >
+
+<!ELEMENT month           (#PCDATA) >

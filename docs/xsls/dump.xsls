@@ -1,0 +1,29 @@
+X:stylesheet {
+
+X:output method="xml"
+X:param indent-increment="'   '";
+
+X:template noname(indent="'&#xA;'") = "*" {
+	!{$indent}
+
+	X:if "name()='xsl:template'" {
+		!{$indent}
+	}
+
+	X:copy {
+	   X:copy-of "@*"
+     	   !!( indent = "concat($indent, $indent-increment)" );
+	   X:if "./* " { !{$indent}  }
+	}
+}
+
+ 
+X:template = "comment()|processing-instruction()" {
+    X:copy;
+}
+
+<!--
+X:template ="text()[normalize-space(.)='']" {}
+-->
+
+}

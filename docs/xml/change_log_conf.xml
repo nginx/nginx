@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="KOI8-R" ?>
+<!DOCTYPE configuration SYSTEM "../dtd/change_log_conf.dtd" >
+
+<configuration>
+
+<length>78</length>
+
+<start>    *) </start>
+<indent>       </indent>
+
+<changes lang="ru">
+    <title>Изменения в </title>
+    <length>66</length>
+
+    <bugfix>Исправление</bugfix>
+    <feature>Добавление</feature>
+    <change>Изменение</change>
+    <workaround>Изменение</workaround>
+</changes>
+
+<changes lang="en">
+    <title>Changes with </title>
+    <length>65</length>
+
+    <bugfix>Bugfix</bugfix>
+    <feature>Feature</feature>
+    <change>Change</change>
+    <workaround>Workaround</workaround>
+
+    <month> Jan </month>
+    <month> Feb </month>
+    <month> Mar </month>
+    <month> Apr </month>
+    <month> May </month>
+    <month> Jun </month>
+    <month> Jul </month>
+    <month> Aug </month>
+    <month> Sep </month>
+    <month> Oct </month>
+    <month> Nov </month>
+    <month> Dec </month>
+
+</changes>
+
+</configuration>

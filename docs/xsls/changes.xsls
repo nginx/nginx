@@ -1,0 +1,118 @@
+X:stylesheet {
+
+X:output method="text" encoding="koi8-r";
+
+X:param lang="'en'";
+X:param configuration="'../xml/change_log_conf.xml'";
+
+X:var conf = "document($configuration)/configuration";
+X:var start = "$conf/start";
+X:var indent = "$conf/indent";
+X:var max = "$conf/length";
+X:var br = {&lt;br&gt;}
+
+
+X:template = "/" { !! "change_log"; }
+X:template = "change_log" { !! "changes"; }
+
+
+X:template = "changes" {
+    X:text {&#10;}
+
+    !{substring(concat($conf/changes[@lang=$lang]/title,
+                       //change_log/@title,
+                       ' ', @ver,
+                       '                                                    '),
+                1, $conf/changes[@lang=$lang]/length)}
+
+    X:if "$lang='ru'" { !{@date} }
+
+    X:if "$lang='en'" {
+        !{substring(@date, 1, 2)}
+        !{$conf/changes[@lang=$lang]/month[number(substring(current()/@date,
+                                                            4, 2))]}
+        !{substring(@date, 7, 4)}
+    }
+
+    X:text {&#10;}
+
+    !! "change";
+
+    X:text {&#10;}
+}
+
+
+X:template = "change" {
+    X:var prefix = "$conf/changes[@lang=$lang]/*[local-name(.)=current()/@type]"
+
+    X:var postfix = { X:if "$prefix" { X:text {: } } }
+
+    !! "para[@lang=$lang]" (prefix = "concat($start, $prefix, $postfix)");
+}
+
+
+X:template para(prefix) = "para" {
+    X:var text = { !!; }
+
+    X:text {&#10;}
+
+    !wrap(text = "normalize-space($text)",
+          prefix = { X:if "position() = 1" { !{$prefix} } else { !{$indent} } })
+}
+
+
+X:template wrap(text, prefix) {
+    X:if "$text" {
+        X:var offset = {
+            X:if "starts-with($text, concat($br, ' '))" {
+                !{string-length($br) + 2}
+            } else {
+                1
+            }
+        }
+
+        X:var length = {
+            !length(text = "substring($text, $offset)",
+                    prefix = "string-length($prefix)",
+                    length = "$max")
+        }
+
+        !{$prefix}
+
+        !{translate(substring($text, $offset, $length), '&#xA0;', ' ')}
+
+        X:text {&#10;}
+
+        !wrap(text = "substring($text, $length + $offset)", prefix = "$indent")
+    }
+}
+
+
+X:template length(text, prefix, length) {
+    X:var break = "substring-before(substring($text, 1, $length - $prefix),
+                                    $br)"
+
+    X:choose {
+        X:when "$break" { !{string-length($break)} }
+
+        X:when "$length = 0" { !{$max} }
+
+        X:when "string-length($text) + $prefix &lt;= $length
+                or substring($text, $length - $prefix, 1) = ' '"
+        {
+            !{$length - $prefix}
+        }
+
+        X:otherwise {
+            !length(text = "$text", prefix = "$prefix", length = "$length - 1")
+        }
+    }
+}
+
+
+X:template = "at" {@}
+X:template = "br" { !{$br} }
+X:template = "nobr" { !{translate(., ' ', '&#xA0;')} }
+
+
+}

@@ -55,7 +55,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
 
     name[0] = CTL_KERN;
     name[1] = KERN_RTSIGMAX;
-    len = sizeof(rtsig_max);
+    len = sizeof(ngx_linux_rtsig_max);
     if (sysctl(name, sizeof(name), &ngx_linux_rtsig_max, &len, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_INFO, log, ngx_errno,
                       "sysctl(KERN_RTSIGMAX) failed");

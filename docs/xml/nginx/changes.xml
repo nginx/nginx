@@ -1,0 +1,979 @@
+<?xml version="1.0" encoding="KOI8-R" ?>
+<!DOCTYPE change_log SYSTEM "../dtd/changes.dtd" >
+
+
+<change_log title="mod_accel">
+
+
+<changes ver="1.0.29" date="15.06.2003">
+
+<change type="bugfix">
+<para lang="ru">
+mod_accel не определял и не патчил EAPI, если собирался вместе
+с mod_ssl-2.8.13-1.3.27+.
+</para>
+<para lang="en">
+mod_accel did not detect and patch broken EAPI when built with
+mod_ssl-2.8.13-1.3.27+.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+при проксировании с помощью модуля mod_rewrite mod_accel
+поддерживает переписывание заголовков "Location" и "Refresh" с помощью
+этого же модуля и
+для этого <!-- эти два лишних слова написаны для тупого xsltproc -->
+указывает имя бэкенда в переменной
+среды "ACCEL_REWRITE".
+</para>
+<para lang="en">
+when request is proxied with the help of mod_rewrite module mod_accel
+set the backend name in the "ACCEL_RWRITE" enviroment variable and
+supports the rewriting of "Location" and "Refresh" headers with the help of
+mod_rewrite module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+mod_accel переписывает содержимое заголовка "Destination",
+если имя хоста в этом заголовке совпадает с содержимым
+заголовка "Host", или же если URI не абсолютный.
+</para>
+<para lang="en">
+mod_accel now rewrites "Destination" header if the host name in this header
+is as in "Host" header or if the destination URI is not absolute.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+mod_accel зацикливался в случае, если клиент запрашивал byte range,
+а бэкенд не передавал кэшируемый ответ полностью.
+</para>
+<para lang="en">
+mod_accel went into an endless loop if the client requested the byte range
+and the backend did not send the full cachable response.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.28" date="02.05.2003">
+
+<change type="bugfix">
+<para lang="ru">
+сделана проверка и патч для EAPI из mod_ssl-2.8.13-1.3.27+.
+</para>
+<para lang="en">
+broken EAPI from mod_ssl-2.8.13-1.3.27+ now is checked and patched.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива AccelSetXURI не работала.
+</para>
+<para lang="en">
+AccelSetXURI directive did not work.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.27" date="26.02.2003">
+
+<change type="bugfix">
+<para lang="ru">
+бэкенды, использующие named-based вирутальные хосты, не были доступны
+через _the_same_host_.
+</para>
+<para lang="en">
+backends that use named-based virtual hosts can not be accessed via
+_the_same_host_.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.26" date="20.12.2002">
+
+<change type="change">
+<para lang="ru">
+AccelReverse работает и для запросов, проксированных через AccelPass.
+</para>
+<para lang="en">
+AccelReverse works for AccelPass'ed requests too.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+action remove в accel-cachemgr не работал с URL, в которых символы
+кодировались в виде %XX.
+</para>
+<para lang="en">
+accel-cachemgr's remove action did not work with URLs with characters
+endcoded as %XX.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.25" date="20.11.2002">
+
+<change type="bugfix">
+<para lang="ru">
+флаги дополнительных модулей R, Q и F залипали в кэше до тех пор, пока
+файл не удалялся из кэша.
+</para>
+<para lang="en">
+additional modules R, Q and F flags were sticky until cache file was
+not removed from cache.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+не работал action remove в accel-cachemgr.
+</para>
+<para lang="en">
+accel-cachemgr's remove action did not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+давно неменяемые документы не кэшировались, если для кэширования
+использовался AccelLastModifiedFactor.
+</para>
+<para lang="en">
+long invariable documents were not cached if AccelLastModifiedFactor
+was used to choose cache time.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.24" date="21.10.2002">
+
+<change type="bugfix">
+<para lang="ru">
+если в URL, созданным модулем mod_rewrite, находились
+символы <nobr>в виде %XX,</nobr>
+то они передавались бэкенду в раскрытом виде.
+</para>
+<para lang="en">
+if mod_rewrite created URL contained characters encoded as %XX then
+they was passed to backend unescaped.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+ключ -DMOD_REWRITE_DISABLE_TO_PROXY_SUBREQ.
+</para>
+<para lang="en">
+-DMOD_REWRITE_DISABLE_TO_PROXY_SUBREQ switch was added.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная среды ACCEL_NOCACHE.
+</para>
+<para lang="en">
+ACCEL_NOCACHE enviroment variable was added.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.23" date="30.08.2002">
+
+<change type="change">
+<para lang="ru">
+в директиве FreezeStart.
+</para>
+<para lang="en">
+in FreezeStart directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива AccelCacheSetCookie.
+</para>
+<para lang="en">
+AccelCacheSetCookie directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+AccelCacheRoot не понимал параметры в кавычках.
+</para>
+<para lang="en">
+AccelCacheRoot did not understand quoted parameters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль mod_freeze не замораживал схемы, если они указаны в
+одинарных кавычках.
+</para>
+<para lang="en">
+mod_freeze did not freeze schemas if they was quoted in apostrophes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль mod_freeze не замораживал тэг style, параметр style и
+схему behavior:.
+</para>
+<para lang="en">
+mod_freeze did not freeze style tag, style parameter and behavior: schema.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+последовательность вида &lt;&lt;script не замораживалась модулем mod_freeze.
+</para>
+<para lang="en">
+&lt;&lt;script sequence was not frozen by mod_freeze.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+оптимизирован алгоритм поиска в модуле mod_freeze.
+</para>
+<para lang="en">
+mod_freeze's search algorithm was optimized.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.22" date="12.08.2002">
+
+<change type="bugfix">
+<para lang="ru">
+флаги дополнительных модулей R, Q и F не выставлялись,
+если запрос был некэшируемым.
+</para>
+<para lang="en">
+additional modules R, Q and F flags were not set
+if request was not cachable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива AccelPassXAccel.
+</para>
+<para lang="en">
+AccelPassXAccel directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль mod_freeze.
+</para>
+<para lang="en">
+mod_freeze module.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.21" date="04.07.2002">
+
+<change type="bugfix">
+<para lang="ru">
+директива "AccelPassServer off" в Apache-1.3.26 вообще не выдавала
+заголовок "Server".
+</para>
+<para lang="en">
+"AccelPassServer off" did not send any "Server" header in Apache-1.3.26.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+документация по mod_accel копируется в /manual/mod/mod_accel.html.
+</para>
+<para lang="en">
+mod_accel Russian documentation is copied in /manual/mod/mod_accel.html.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.20" date="24.06.2002">
+
+<change type="bugfix">
+<para lang="ru">
+параметр MP в директиве AccelPass работал некорректно, если также
+был задал параметр PH или использовалось специальное имя _the_same_host_.
+</para>
+<para lang="en">
+AccelPass MP parameter was worked incorrectly if used with PH parameter
+or with special _the_same_host_ host name.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.19" date="29.05.2002">
+
+<change type="bugfix">
+<para lang="ru">
+во время плавного (graceful) рестарта мог произойти segmentation fault
+в основном процессе, если все рабочие слоты были заняты.
+</para>
+<para lang="en">
+segmentation fault can occur in main process while graceful restart
+when all child slots were busy.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.18" date="12.04.2002">
+
+<change type="feature">
+<para lang="ru">
+директивы AccelRetry5XX и AccelSetXURI.
+</para>
+<para lang="en">
+AccelRetry5XX and AccelSetXURI directives were added.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+заметки accel_request_body и accel_rewrite_response.
+</para>
+<para lang="en">
+accel_request_body and accel_rewrite_response notes were added.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+mod_accel не собирался компилятором aCC на платформе HP-UX.
+Спасибо Marko Asplund, aspa<at/>kronodoc.fi.
+</para>
+<para lang="en">
+mod_accel is not built by aCC on HP-UX.<br/>
+Thanks to Marko Asplund, aspa<at/>kronodoc.fi.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+косметические правки.
+</para>
+<para lang="en">
+code clean up.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.17" date="29.03.2002">
+
+<change type="bugfix">
+<para lang="ru">
+если в URL перед аргументами находились символы <nobr>в виде %XX,</nobr>
+то они передавались бэкенду в раскрытом виде.
+</para>
+<para lang="en">
+if URL before arguments contained characters encoded as %XX then
+they was passed to backend unescaped.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.16" date="27.03.2002">
+
+<change type="feature">
+<para lang="ru">
+в директиве AccelPass можно использовать специальное
+имя хоста _the_same_host_.
+</para>
+<para lang="en">
+special hostname _the_same_host_ can be used in AccelPass directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+не работало ограничение количества соединений и ждущих процессов
+при использовании флага PH в директиве AccelPass.
+</para>
+<para lang="en">
+limition of connections and waiting processes does not work
+if PH flag in AccelPass directive was used.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива AccelPassServer.
+</para>
+<para lang="en">
+AccelPassServer directive was added.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.15" date="12.03.2002">
+
+<change type="bugfix">
+<para lang="ru">
+если модули mod_quoted или mod_randban были собраны статически
+или подгружались с помощью LoadModule, но не были добавлены
+директивой AddModule после директивы ClearModuleList, то
+директивы этих модулей не воспринимались.
+Если же директивы этих модулей не использовались в конфигурационных файлах,
+то при любых запросах, обрабатываемых модулем mod_accel,
+происходил segmentation fault.
+</para>
+<para lang="en">
+if mod_quoted or mod_randban modules were statically build 
+or were loaded with LoadModule directive and were not added
+with AddModule directive after ClearModuleList directive then
+their directives were unrecognized.
+If their directives were not used in configration files
+then any request handled by mod_accel caused segmentation fault.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.14" date="26.02.2002">
+
+<change type="bugfix">
+<para lang="ru">
+некорректно обрабатывались ответы бэкенда с большими заголовками.
+</para>
+<para lang="en">
+backend response with big header was incorrectly handled.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+игнорируются строки типа "HTTP/1.0 200 OK" в середине заголовка ответа
+бэкенда. Добавлена запись в ErrorLog некорректных заголовков в ответе
+бэкенда.
+</para>
+<para lang="en">
+lines like "HTTP/1.0 200 OK" are ignored in middle of backend response header.
+Incorrect backend header lines are logged in ErrorLog.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива AccelInvalidate, accel-cachemgr и заголовки типа
+<nobr>"Pragma: no-cache"</nobr> не обновляли кэш,
+если задана директива "AccelUnlinkNoCached off".
+</para>
+<para lang="en">
+AccelInvalidate directive, accel-cachemgr and headers like
+<nobr>"Pragma: no-cache"</nobr> did not refresh cache
+if AccelUnlinkNoCached directive was off.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+порядок наследования AccelPass изменён, сначала проверяются
+директивы из виртуального сервера, а затем из основного.
+</para>
+<para lang="en">
+merge order of AccelPass directive is changed. Virtual server direcitves
+are checked first.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.13" date="12.02.2002">
+
+<change type="bugfix">
+<para lang="ru">
+не корректировался порт в заголовках "Location" и "Refresh"
+если использовался флаг PH в директиве AccelPass и номера портов
+фронтенда и бэкенда отличались.
+</para>
+<para lang="en">
+port was not corrected in "Location" and "Refresh" headers
+if PH flag in AccelPass directive was used and frontend and backend
+port numbers were not the same.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.12" date="10.02.2002">
+
+<change type="feature">
+<para lang="ru">
+флаг PH в директиве AccelPass.
+</para>
+<para lang="en">
+PH flag was added in AccelPass directive.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.11" date="01.02.2002">
+
+<change type="change">
+<para lang="ru">
+упразднена директива AccelContentTail.
+</para>
+<para lang="en">
+AccelContentTail directive was removed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если перезаписываемая строка попадала на границу буфера, mod_randban
+мог некорректно поменять случайное число.
+</para>
+<para lang="en">
+mod_randban can incorrectly change random value if string to rewrite
+was on buffer edge.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Совместимость с Apache 1.3.23.
+</para>
+<para lang="en">
+Apache 1.3.23 compatibility.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+если в конфигурации AccelPass описан Location в виде /proxied/,
+то при запросе /proxied возвращается редирект на URL с добавленным
+слэшом - /proxied/.
+</para>
+<para lang="en">
+if Location is specified in AccelPass as /proxied/ then
+on request /proxied redirect is returned to URL with slash added - /proxied/.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+не возвращалась ошибка, если не удавалось создать временный файл
+для хранения тела запроса POST.
+</para>
+<para lang="en">
+error was not returned if POST request body temporary file creation was failed.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.10" date="28.12.2001">
+
+<change type="feature">
+<para lang="ru">
+директива AccelReverse.
+</para>
+<para lang="en">
+AccelReverse directive was added.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.9" date="24.12.2001">
+
+<change type="bugfix">
+<para lang="ru">
+на Solaris 7 и FreeBSD 2.x большие ответы передавались не до конца.
+</para>
+<para lang="en">   
+big repsonses was truncated on Solaris 7 and FreeBSD 2.x.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.8" date="19.12.2001">
+
+<change type="bugfix">
+<para lang="ru">
+скорректированы некоторые сообщения об ошибках.
+</para>
+<para lang="en">
+some error messages was corrected.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если клиент в запросе POST обрывал соединение,
+то бэкенду передавалось неполное тело запроса.
+Теперь mod_accel в такой ситуации не соединяется с бэкендом.
+</para>
+<para lang="en">
+if client aborted connection while POST
+then backend received incompleted request body.
+Now mod_accel doesn't connect to backend in this situation.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+mod_accel не собирался без библиотеки mm.
+</para>
+<para lang="en">
+mod_accel did not build without mm library.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.7" date="06.12.2001">
+
+<change type="feature">
+<para lang="ru">
+в сообщения об ошибках добавлен URL, который передаётся бэкенду.
+</para>
+<para lang="en">
+backend URL was added in error messages.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+третий параметр в директиве AccelBusyLock.
+</para>
+<para lang="en">
+third parameter was added in AccelBusyLock directory.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+порядок загрузки модулей mod_accel, mod_randban, mod_quoted
+и mod_ssl не важен.
+</para>
+<para lang="en">
+load order of mod_accel, mod_randban, mod_quoted and mod_ssl
+has no meaning now.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+добавлен параметр --with-patch в configure.<br/>
+Упразднены параметры --without-mod_charset и --without-mod_ssl.
+</para>
+<para lang="en">
+--with-patch directive was added in configure.<br/>
+--without-mod_charset and --without-mod_ssl directives is removed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+улучшение портабильности.
+</para>
+<para lang="en">
+portability enhancement.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.6" date="02.11.2001">
+
+<change type="feature">
+<para lang="ru">
+во флаге MP директивы AccelPass можно указывать тэг.
+</para>
+<para lang="en">
+MP flag of AccelPass directive can have tag.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+при использовании проксирования (флаг P) в директиве
+RewriteRule модуля mod_rewrite можно использовать флаг MP.
+</para>
+<para lang="en">
+MP flag can be used in mod_rewrite module RewriteRule
+directive when proxing is specified (P flag).
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при указании времени кэширования с помощью директив
+AccelDefaultExpire или AccelLastModifiedFactor ответ не сохранялся
+в кэш, если разница во времени между фронтендом и бэкендом была
+больше время кэширования.
+</para>
+<para lang="en">
+if time to cache is specified in AccelDefaultExpire or
+AccelLastModifiedFactor directive and time difference between
+frontend and backend is more then specified time then answer
+was not saved in cache.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.5" date="18.10.2001">
+
+<change type="feature">
+<para lang="ru">   
+директива AccelIgnoreAuth.
+</para>
+<para lang="en">
+AccelIgnoreAuth directive was added.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании проксирования (флаг P) в директиве
+RewriteRule модуля mod_rewrite модуль mod_proxy дублировал
+строку аргументов.
+</para>
+<para lang="en">  
+mod_proxy module duplicated argument string when proxing
+is specified in mod_rewrite module RewriteRule directive (P flag).
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.4" date="16.10.2001">
+
+<change type="bugfix">
+<para lang="ru">
+если бэкендов несколько и с одним из них соединение
+не было установлено, то информация об этой попытке в заметки
+%{accel*}x не добавлялась.
+</para>
+<para lang="en">
+if there are several backends and connection with one of them
+was not established then %{accel*}x notes did not contain state of it.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при получении от бэкенда большого заголовка происходил
+segmentation fault.
+</para>
+<para lang="en">
+backend big header caused segmentation fault.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в accel-cachemgr добавлены два состояния - invalid
+и no_accelerated.
+</para>
+<para lang="en">
+two status codes - invalid and no_accelerated was added
+in accel-cachemgr.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива RewriteRule модуля mod_rewrite с флагом [P]
+работала только при использовании в SSI.
+</para>
+<para lang="en">
+mod_rewrite module RewriteRule directive with flag [P]
+worked in SSI enviroment only.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.3" date="10.10.2001">
+
+<change>
+<para lang="ru">
+Изменения в директиве AccelCacheCookie:
+Добавлены параметр "all", запрещающие параметры и регулярные выражения.
+В одной директиве может быть указано несколько параметров.
+Директивы из вложенных блоков не объединяются.
+Имена cookie сортируются в алфавитном порядке.
+</para>
+<para lang="en">
+Changes in AccelCacheCookie directive:
+"all" parameter, supressing parameters and regular expressions was added.
+There can be several parameters in one directive.
+Directives is not merged.
+Cookie names is sorted in alphabetical order.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Изменения в директиве AccelNoPass:
+Регулярное выражение может быть нечуствительно к регистру.
+Между символом "~" и регулярным выражением не должно быть пробела.
+В одной директиве может быть указано несколько параметров.
+</para>
+<para lang="en">
+Changes in AccelNoPass directive:
+Regular expression can be case-insensitive.
+There should not be space between "~" symbol and regular expression.
+There can be several parameters in one directive.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.2" date="04.10.2001">
+
+<change type="feature">
+<para lang="ru">
+директива AccelCacheCookie.
+</para>
+<para lang="en">
+AccelCacheCookie directive was added.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+заметка accel_nocache.
+</para>
+<para lang="en">
+accel_nocache note was added.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+обработчик accel-cachemgr.
+</para>
+<para lang="en">
+accel-cachemgr handler was added.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при запросе нескольких невозрастающих byteranges мог
+выдаваться неверный ответ.
+</para>
+<para lang="en">
+answer may be wrong if request contains several non-growing
+byteranges.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+заметка %{accel_r}x не записывалась в лог.
+</para>
+<para lang="en">
+%{accel_r}x note was not logged.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если ответ некэшируемый, то при преждевременном обрыве
+соединения с клиентом соединение с бэкендом не закрывалось сразу.
+</para>
+<para lang="en">
+if response is not cachable and client prematurely closes
+connection then connection to backend was not closed at once.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.1" date="29.08.2001">
+
+<change type="bugfix">
+<para lang="ru">
+ошибка в accel_read_and_check_writable() вызывала нагрузку на процессор.
+</para>
+<para lang="en">
+bug in accel_read_and_check_writable() caused high CPU usage.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.0.0" date="28.08.2001">
+
+<change>
+<para lang="ru">
+Первая версия.<br/>
+Тестировалась на Apache 1.3.14, 1.3.17, 1.3.19, 1.3.20 на
+<nobr>FreeBSD 3.4, 4.2.</nobr>
+</para>
+<para lang="en">
+First release.<br/>
+Tested with Apache 1.3.14, 1.3.17, 1.3.19, 1.3.20 on FreeBSD 3.4, 4.2.
+</para>
+</change>
+
+</changes>
+
+</change_log>

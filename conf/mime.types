@@ -1,0 +1,24 @@
+
+types {
+    text/html                      html htm shtml;
+    text/xml                       xml rss;
+    text/css                       css;
+    text/plain                     txt;
+
+    image/gif                      gif;
+    image/png                      png;
+    image/jpeg                     jpeg jpg;
+    image/x-icon                   ico;
+
+    application/pdf                pdf;
+    application/x-shockwave-flash  swf;
+    application/x-javascript       js;
+
+    audio/mpeg                     mp3;
+    audio/x-realaudio              ra;
+
+    video/mpeg                     mpeg mpg;
+    video/quicktime                mov;
+    video/x-msvideo                avi;
+    video/x-ms-wmv                 wmv;
+}
