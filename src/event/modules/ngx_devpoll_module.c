@@ -165,10 +165,6 @@ ngx_log_debug(cycle->log, "EV: %d" _ dpcf->events);
 
     nevents = dpcf->events;
 
-    if (ngx_event_timer_init(cycle) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
     ngx_io = ngx_os_io;
 
     ngx_event_actions = ngx_devpoll_module_ctx.actions;
@@ -187,8 +183,6 @@ static void ngx_devpoll_done(ngx_cycle_t *cycle)
     }
 
     dp = -1;
-
-    ngx_event_timer_done(cycle);
 
     ngx_free(change_list);
     ngx_free(event_list);

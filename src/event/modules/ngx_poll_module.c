@@ -101,10 +101,6 @@ static int ngx_poll_init(ngx_cycle_t *cycle)
                       NGX_ERROR);
     }
 
-    if (ngx_event_timer_init(cycle) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
     ngx_io = ngx_os_io;
 
     ngx_event_actions = ngx_poll_module_ctx.actions;
@@ -117,8 +113,6 @@ static int ngx_poll_init(ngx_cycle_t *cycle)
 
 static void ngx_poll_done(ngx_cycle_t *cycle)
 {
-    ngx_event_timer_done(cycle);
-
     ngx_free(event_list);
     ngx_free(event_index);
     ngx_free(ready_index);

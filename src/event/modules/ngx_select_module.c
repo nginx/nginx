@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru
+ * Copyright (C) 2002-2004 Igor Sysoev, http://sysoev.ru/en/
  */
 
 
@@ -100,10 +100,6 @@ static int ngx_select_init(ngx_cycle_t *cycle)
                       NGX_ERROR);
     }
 
-    if (ngx_event_timer_init(cycle) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
     ngx_io = ngx_os_io;
 
     ngx_event_actions = ngx_select_module_ctx.actions;
@@ -122,8 +118,6 @@ static int ngx_select_init(ngx_cycle_t *cycle)
 
 static void ngx_select_done(ngx_cycle_t *cycle)
 {
-    ngx_event_timer_done(cycle);
-
     ngx_free(event_index);
     ngx_free(ready_index);
 
@@ -262,6 +256,7 @@ static int ngx_select_process_events(ngx_log_t *log)
     work_write_fd_set = master_write_fd_set;
 
     timer = ngx_event_find_timer();
+    ngx_old_elapsed_msec = ngx_elapsed_msec;
 
     if (timer) {
 #if (HAVE_SELECT_CHANGE_TIMEOUT)

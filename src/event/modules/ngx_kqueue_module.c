@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru/en/
+ * Copyright (C) 2002-2004 Igor Sysoev, http://sysoev.ru/en/
  */
 
 
@@ -142,10 +142,6 @@ static int ngx_kqueue_init(ngx_cycle_t *cycle)
 
     nevents = kcf->events;
 
-    if (ngx_event_timer_init(cycle) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
     ngx_io = ngx_os_io;
 
     ngx_event_actions = ngx_kqueue_module_ctx.actions;
@@ -173,8 +169,6 @@ static void ngx_kqueue_done(ngx_cycle_t *cycle)
     }
 
     ngx_kqueue = -1;
-
-    ngx_event_timer_done(cycle);
 
     ngx_free(change_list);
     ngx_free(event_list);

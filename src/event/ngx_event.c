@@ -120,10 +120,7 @@ static int ngx_event_init(ngx_cycle_t *cycle)
 #endif
 
 
-    if (cycle->old_cycle == NULL) {
-        ngx_event_timer_init(cycle);
-    }
-
+    ngx_event_timer_init();
 
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 

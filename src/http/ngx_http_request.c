@@ -921,18 +921,21 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    if (r->keepalive != 0 && clcf->keepalive_timeout > 0) {
+    if (!ngx_terminate
+         && !ngx_quit
+         && r->keepalive != 0
+         && clcf->keepalive_timeout > 0)
+    {
         ngx_http_set_keepalive(r);
+        return;
 
     } else if (r->lingering_close && clcf->lingering_timeout > 0) {
         ngx_http_set_lingering_close(r);
-
-    } else {
-        ngx_http_close_request(r, 0);
-        ngx_http_close_connection(r->connection);
+        return;
     }
 
-    return;
+    ngx_http_close_request(r, 0);
+    ngx_http_close_connection(r->connection);
 }
 
 

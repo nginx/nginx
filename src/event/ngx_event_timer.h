@@ -19,12 +19,7 @@
 #define NGX_TIMER_RESOLUTION  1
 
 
-#if 0
-int  ngx_event_timer_init(void);
-#endif
-/* STUB */ int  ngx_event_timer_init(ngx_cycle_t *cycle);
-/* STUB */ void ngx_event_timer_done(ngx_cycle_t *cycle);
-
+void ngx_event_timer_init(void);
 ngx_msec_t ngx_event_find_timer(void);
 void ngx_event_expire_timers(ngx_msec_t timer);
 
