@@ -139,6 +139,7 @@ ngx_module_t  ngx_event_core_module = {
 
 static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 {
+#if !(WIN32)
     ngx_core_conf_t   *ccf;
     ngx_event_conf_t  *ecf;
 
@@ -163,6 +164,7 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
                       "mmap(MAP_ANON|MAP_SHARED) failed");
         return NGX_ERROR;
     }
+#endif
 
     return NGX_OK;
 }

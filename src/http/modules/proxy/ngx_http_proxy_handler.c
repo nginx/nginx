@@ -814,6 +814,8 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     ngx_http_proxy_loc_conf_t *prev = parent;
     ngx_http_proxy_loc_conf_t *conf = child;
 
+    size_t   size;
+
     ngx_conf_merge_msec_value(conf->connect_timeout,
                               prev->connect_timeout, 60000);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 30000);
@@ -823,22 +825,65 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_value(conf->add_x_forwarded_for,
                          prev->add_x_forwarded_for, 0);
 
+    ngx_conf_merge_msec_value(conf->read_timeout, prev->read_timeout, 30000);
+
     ngx_conf_merge_size_value(conf->header_buffer_size,
                               prev->header_buffer_size, 4096);
-    ngx_conf_merge_msec_value(conf->read_timeout, prev->read_timeout, 30000);
     ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 8, 4096);
-    ngx_conf_merge_size_value(conf->busy_buffers_size,
-                              prev->busy_buffers_size, 8192);
 
-#if 0
-    if (conf->max_temp_file_size > conf->bufs.size) {
-        return "\"proxy_max_temp_file\" must be greater "
-               "than one of the \"proxy_buffers\"";
+    size = conf->header_buffer_size;
+    if (size < conf->bufs.size) {
+        size = conf->bufs.size;
     }
-#endif
+
+
+    ngx_conf_merge_size_value(conf->busy_buffers_size,
+                              prev->busy_buffers_size, NGX_CONF_UNSET_SIZE);
+
+    if (conf->busy_buffers_size == NGX_CONF_UNSET_SIZE) {
+        conf->busy_buffers_size = 2 * size;
+
+    } else if (conf->busy_buffers_size < size) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+             "\"proxy_busy_buffers_size\" must be equal or bigger than "
+             "maximum of the value of \"proxy_header_buffer_size\" and "
+             "one of the \"proxy_buffers\"");
+
+        return NGX_CONF_ERROR;
+    }
+
 
     ngx_conf_merge_size_value(conf->temp_file_write_size,
-                              prev->temp_file_write_size, 16384);
+                              prev->temp_file_write_size, NGX_CONF_UNSET_SIZE);
+
+    if (conf->temp_file_write_size == NGX_CONF_UNSET_SIZE) {
+        conf->temp_file_write_size = 2 * size;
+
+    } else if (conf->temp_file_write_size < size) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+             "\"proxy_temp_file_write_size\" must be equal or bigger than "
+             "maximum of the value of \"proxy_header_buffer_size\" and "
+             "one of the \"proxy_buffers\"");
+
+        return NGX_CONF_ERROR;
+    }
+
+
+    ngx_conf_merge_size_value(conf->max_temp_file_size,
+                              prev->max_temp_file_size, NGX_CONF_UNSET_SIZE);
+
+    if (conf->max_temp_file_size == NGX_CONF_UNSET_SIZE) {
+        conf->max_temp_file_size = 2 * size;
+
+    } else if (conf->max_temp_file_size < size) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+             "\"proxy_max_temp_file_size\" must be equal or bigger than "
+             "maximum of the value of \"proxy_header_buffer_size\" and "
+             "one of the \"proxy_buffers\"");
+
+        return NGX_CONF_ERROR;
+    }
+
 
     ngx_conf_merge_bitmask_value(conf->next_upstream, prev->next_upstream,
                                  (NGX_CONF_BITMASK_SET

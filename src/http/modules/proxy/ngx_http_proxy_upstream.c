@@ -1199,14 +1199,16 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
     ep->preread_size = p->header_in->last - p->header_in->pos;
 
-    ep->hunk_to_file = ngx_calloc_hunk(r->pool);
-    if (ep->preread_hunks == NULL) {
-        ngx_http_proxy_finalize_request(p, 0);
-        return;
+    if (p->cachable) {
+        ep->hunk_to_file = ngx_calloc_hunk(r->pool);
+        if (ep->hunk_to_file == NULL) {
+            ngx_http_proxy_finalize_request(p, 0);
+            return;
+        }
+        ep->hunk_to_file->pos = p->header_in->start;
+        ep->hunk_to_file->last = p->header_in->pos;
+        ep->hunk_to_file->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
     }
-    ep->hunk_to_file->pos = p->header_in->start;
-    ep->hunk_to_file->last = p->header_in->pos;
-    ep->hunk_to_file->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
 
     if (ngx_event_flags & NGX_USE_AIO_EVENT) {
         /* the posted aio operation can currupt a shadow buffer */

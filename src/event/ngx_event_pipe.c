@@ -100,13 +100,16 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
             /* use the pre-read hunks if they exist */
 
-            p->read = 1;
             chain = p->preread_hunks;
             p->preread_hunks = NULL;
             n = p->preread_size;
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
                            "pipe preread: %d", n);
+
+            if (n) {
+                p->read = 1;
+            }
 
         } else {
 
@@ -286,6 +289,35 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         p->free_raw_hunks = cl;
     }
 
+#if (NGX_DEBUG0)
+
+    if (p->in || p->busy || p->free_raw_hunks) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0, "pipe buf");
+    }
+
+    for (cl = p->in; cl; cl = cl->next) {
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                       "pipe buf in " PTR_FMT ", pos " PTR_FMT ", size: %d",
+                       cl->hunk->start, cl->hunk->pos,
+                       cl->hunk->last - cl->hunk->pos);
+    }
+
+    for (cl = p->busy; cl; cl = cl->next) {
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                       "pipe buf busy " PTR_FMT ", pos " PTR_FMT ", size: %d",
+                       cl->hunk->start, cl->hunk->pos,
+                       cl->hunk->last - cl->hunk->pos);
+    }
+
+    for (cl = p->free_raw_hunks; cl; cl = cl->next) {
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                       "pipe buf free " PTR_FMT ", last " PTR_FMT ", size: %d",
+                       cl->hunk->start, cl->hunk->last,
+                       cl->hunk->end - cl->hunk->last);
+    }
+
+#endif
+
     if ((p->upstream_eof || p->upstream_error) && p->free_raw_hunks) {
 
         /* STUB */ p->free_raw_hunks->hunk->num = p->num++;
@@ -315,7 +347,8 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
 int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 {
-    size_t        bsize, to_write;
+    size_t        bsize;
+    ngx_uint_t    flush;
     ngx_hunk_t   *h;
     ngx_chain_t  *out, **ll, *cl, *tl;
 
@@ -368,44 +401,29 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             break;
         }
 
-        /*
-         * bsize is the size of the busy hunks,
-         * to_write is the size of data in these hunks that
-         * would be written to a socket
-         */
+        /* bsize is the size of the busy hunks */
 
         bsize = 0;
-        to_write = 0;
 
-#if 0
-        if (!(p->upstream_eof || p->upstream_error || p->upstream_done)) {
-#endif
-            for (cl = p->busy; cl; cl = cl->next) {
-                bsize += cl->hunk->end - cl->hunk->start;
-                to_write += ngx_hunk_size(cl->hunk);
-            }
-#if 0
+        for (cl = p->busy; cl; cl = cl->next) {
+            bsize += cl->hunk->end - cl->hunk->start;
         }
-#endif
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                       "pipe write busy: " SIZE_T_FMT, bsize);
 
         out = NULL;
         ll = NULL;
+        flush = 0;
 
         for ( ;; ) {
             if (p->out) {
                 cl = p->out;
 
-#if 0
-                if (!(p->upstream_eof || p->upstream_error || p->upstream_done)
-                    && (bsize + ngx_hunk_size(cl->hunk) > p->busy_size))
-                {
-                    break;
-                }
-#else
                 if (bsize + ngx_hunk_size(cl->hunk) > p->busy_size) {
+                    flush = 1;
                     break;
                 }
-#endif
 
                 p->out = p->out->next;
                 ngx_event_pipe_free_shadow_raw_hunk(&p->free_raw_hunks,
@@ -414,17 +432,10 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             } else if (!p->cachable && p->in) {
                 cl = p->in;
 
-#if 0
-                if (!(p->upstream_eof || p->upstream_error || p->upstream_done)
-                    && (bsize + ngx_hunk_size(cl->hunk) > p->busy_size))
-                {
-                    break;
-                }
-#else
                 if (bsize + ngx_hunk_size(cl->hunk) > p->busy_size) {
+                    flush = 1;
                     break;
                 }
-#endif
 
                 p->in = p->in->next;
 
@@ -437,21 +448,12 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             ngx_chain_add_link(out, ll, cl);
         }
 
-        if (out == NULL) {
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                       "pipe write: out:" PTR_FMT ", f:%d", out, flush);
 
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                           "pipe busy hunk data to write: %d", to_write);
-
-            if (!(p->upstream_blocked && to_write)) {
-                break;
-            }
-
+        if (out == NULL && !flush) {
+            break;
         }
-
-        /*
-         * if the upstream is blocked and there are the busy hunks
-         * to write then write these hunks
-         */
 
         if (p->output_filter(p->output_ctx, out) == NGX_ERROR) {
             p->downstream_error = 1;
@@ -533,8 +535,9 @@ static int ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         do {
             hsize = cl->hunk->last - cl->hunk->pos;
 
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                           "pipe hunk size: %d", hsize);
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                           "pipe buf " PTR_FMT ", pos " PTR_FMT ", size: %d",
+                           cl->hunk->start, cl->hunk->pos, hsize);
 
             if ((size + hsize > p->temp_file_write_size)
                || (p->temp_file->offset + size + hsize > p->max_temp_file_size))

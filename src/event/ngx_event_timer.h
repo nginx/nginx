@@ -77,7 +77,14 @@ ngx_inline static void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 #endif
 
     if (ev->timer_set) {
-        if (key - ev->rbtree_key < 50) {
+
+        /*
+         * Use the previous timer value if a difference between them is less
+         * then 100 milliseconds.  It allows to minimize the rbtree operations
+         * for the fast connections.
+         */
+
+        if (key - ev->rbtree_key < 100 / NGX_TIMER_RESOLUTION) {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                            "event timer: %d, old: %d, new: %d",
                             ngx_event_ident(ev->data), ev->rbtree_key, key);
