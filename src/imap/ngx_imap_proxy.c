@@ -41,10 +41,17 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
 
     peers->number = 1;
     peers->max_fails = 1;
+#if 0
     peers->peers[0].addr = inet_addr("81.19.69.70");
     peers->peers[0].addr_port_text.len = sizeof("81.19.69.70:110") - 1;
     peers->peers[0].addr_port_text.data = "81.19.69.70:110";
     peers->peers[0].port = htons(110);
+#else
+    peers->peers[0].addr = inet_addr("81.19.64.101");
+    peers->peers[0].addr_port_text.len = sizeof("81.19.64.101:110") - 1;
+    peers->peers[0].addr_port_text.data = "81.19.64.101:110";
+    peers->peers[0].port = htons(110);
+#endif
 
     rc = ngx_event_connect_peer(&p->upstream);
 
@@ -90,6 +97,12 @@ static void ngx_imap_proxy_auth_handler(ngx_event_t *rev)
 
     c = rev->data;
     s = c->data;
+
+    if (rev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        ngx_imap_proxy_close_session(s);
+        return;
+    }
 
     if (s->proxy->buffer == NULL) {
         s->proxy->buffer = ngx_create_temp_buf(c->pool, /* STUB */ 4096);
@@ -238,22 +251,49 @@ static void ngx_imap_proxy_handler(ngx_event_t *ev)
     size_t               size;
     ssize_t              n;
     ngx_buf_t           *b;
-    ngx_uint_t           data, do_write;
+    ngx_uint_t           again, do_write;
     ngx_connection_t    *c, *src, *dst;
     ngx_imap_session_t  *s;
 
     c = ev->data;
     s = c->data;
 
+    if (ev->timedout) {
+        if (c == s->connection) {
+            ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
+                          "client timed out");
+        } else {
+            ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
+                          "upstream timed out");
+        }
+
+        ngx_imap_proxy_close_session(s);
+        return;
+    }
+
     if (c == s->connection) {
-        src = c;
-        dst = s->proxy->upstream.connection;
-        b = s->buffer;
+        if (ev->write) {
+            src = s->proxy->upstream.connection;
+            dst = c;
+            b = s->proxy->buffer;
+
+        } else {
+            src = c;
+            dst = s->proxy->upstream.connection;
+            b = s->buffer;
+        }
 
     } else {
-        src = c;
-        dst = s->connection;
-        b = s->proxy->buffer;
+        if (ev->write) {
+            src = s->connection;
+            dst = c;
+            b = s->buffer;
+
+        } else {
+            src = c;
+            dst = s->connection;
+            b = s->proxy->buffer;
+        }
     }
 
     do_write = ev->write ? 1 : 0;
@@ -263,13 +303,13 @@ static void ngx_imap_proxy_handler(ngx_event_t *ev)
                    do_write, src->fd, dst->fd);
 
     do {
-        data = 0;
+        again = 0;
 
         if (do_write == 1) {
 
             size = b->last - b->pos;
 
-            if (dst->write->ready && size) {
+            if (size && dst->write->ready) {
                 n = ngx_send(dst, b->pos, size);
 
                 if (n == NGX_ERROR) {
@@ -278,7 +318,7 @@ static void ngx_imap_proxy_handler(ngx_event_t *ev)
                 }
 
                 if (n > 0) {
-                    data = 1;
+                    again = 1;
                     b->pos += n;
 
                     if (b->pos == b->last) {
@@ -301,7 +341,7 @@ static void ngx_imap_proxy_handler(ngx_event_t *ev)
 
         size = b->end - b->last;
 
-        if (src->read->ready && size) {
+        if (size && src->read->ready) {
             n = ngx_recv(src, b->last, size);
 
             if (n == NGX_ERROR || n == 0) {
@@ -310,7 +350,7 @@ static void ngx_imap_proxy_handler(ngx_event_t *ev)
             }
 
             if (n > 0) {
-                data = 1;
+                again = 1;
                 do_write = 1;
                 b->last += n;
             }
@@ -323,7 +363,7 @@ static void ngx_imap_proxy_handler(ngx_event_t *ev)
             }
         }
 
-    } while (data);
+    } while (again);
 }
 
 

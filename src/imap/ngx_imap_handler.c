@@ -58,7 +58,11 @@ static void ngx_imap_init_session(ngx_event_t *rev)
 
     c = rev->data;
 
-    /* TODO: timeout */
+    if (rev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        ngx_imap_close_connection(c);
+        return;
+    }
 
     if (!(s = ngx_pcalloc(c->pool, sizeof(ngx_imap_session_t)))) {
         ngx_imap_close_connection(c);
@@ -102,7 +106,11 @@ static void ngx_pop3_auth_state(ngx_event_t *rev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0, "pop3 auth state");
 
-    /* TODO: timeout */
+    if (rev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        ngx_imap_close_connection(c);
+        return;
+    }
 
     rc = ngx_pop3_read_command(s);
 

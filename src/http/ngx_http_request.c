@@ -202,7 +202,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
     in_addr = in_port->addrs.elts;
 
     r->port = in_port->port;
-    r->port_name = &in_port->port_name;
+    r->port_text = &in_port->port_text;
 
     i = 0;
 

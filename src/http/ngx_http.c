@@ -418,10 +418,10 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 in_port->port = lscf[l].port;
 
-                ngx_test_null(in_port->port_name.data, ngx_palloc(cf->pool, 7),
+                ngx_test_null(in_port->port_text.data, ngx_palloc(cf->pool, 7),
                               NGX_CONF_ERROR);
-                in_port->port_name.len = ngx_snprintf((char *)
-                                                      in_port->port_name.data,
+                in_port->port_text.len = ngx_snprintf((char *)
+                                                      in_port->port_text.data,
                                                       7, ":%d",
                                                       in_port->port);
 
@@ -549,7 +549,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                   NGX_CONF_ERROR);
 
                     inport->port = in_port[p].port;
-                    inport->port_name = in_port[p].port_name;
+                    inport->port_text = in_port[p].port_text;
 
                     /* init list of the addresses ... */
 

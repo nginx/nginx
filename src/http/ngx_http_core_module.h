@@ -79,7 +79,7 @@ typedef struct {
 
 typedef struct {
     in_port_t     port;
-    ngx_str_t     port_name;
+    ngx_str_t     port_text;
     ngx_array_t   addrs;       /* array of ngx_http_in_addr_t */
 } ngx_http_in_port_t;
 

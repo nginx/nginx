@@ -206,7 +206,7 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
                + r->server_name->len + r->headers_out.location->value.len + 2;
 
         if (r->port != 80) {
-            len += r->port_name->len;
+            len += r->port_text->len;
         }
     }
 
@@ -325,8 +325,8 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
         b->last = ngx_cpymem(b->last, r->server_name->data,
                              r->server_name->len);
         if (r->port != 80) {
-            b->last = ngx_cpymem(b->last, r->port_name->data,
-                                 r->port_name->len);
+            b->last = ngx_cpymem(b->last, r->port_text->data,
+                                 r->port_text->len);
         }
 
         b->last = ngx_cpymem(b->last, r->headers_out.location->value.data,

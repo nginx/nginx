@@ -394,7 +394,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 
 #define NGX_EVENT_MODULE      0x544E5645  /* "EVNT" */
-#define NGX_EVENT_CONF        0x00200000
+#define NGX_EVENT_CONF        0x02000000
 
 
 typedef struct {

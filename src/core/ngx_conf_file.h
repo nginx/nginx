@@ -91,15 +91,15 @@ struct ngx_open_file_s {
 
 
 struct ngx_module_s {
-    ngx_uint_t      ctx_index;
-    ngx_uint_t      index;
-    void           *ctx;
-    ngx_command_t  *commands;
-    ngx_uint_t      type;
-    ngx_int_t     (*init_module)(ngx_cycle_t *cycle);
-    ngx_int_t     (*init_process)(ngx_cycle_t *cycle);
+    ngx_uint_t       ctx_index;
+    ngx_uint_t       index;
+    void            *ctx;
+    ngx_command_t   *commands;
+    ngx_uint_t       type;
+    ngx_int_t      (*init_module)(ngx_cycle_t *cycle);
+    ngx_int_t      (*init_process)(ngx_cycle_t *cycle);
 #if 0
-    ngx_int_t     (*init_thread)(ngx_cycle_t *cycle);
+    ngx_int_t      (*init_thread)(ngx_cycle_t *cycle);
 #endif
 };
 
