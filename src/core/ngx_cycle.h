@@ -21,7 +21,7 @@ struct ngx_cycle_s {
 
     ngx_cycle_t       *old_cycle;
 
-    unsigned           one_process:1;
+    ngx_str_t          conf_file;
 };
 
 

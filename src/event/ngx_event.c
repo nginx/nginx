@@ -369,7 +369,7 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_event_conf_t  *ecf = conf;
 
-    int                   m;
+    ngx_int_t             m;
     ngx_str_t            *value;
     ngx_event_conf_t     *old_ecf;
     ngx_event_module_t   *module;
@@ -465,13 +465,44 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(ecf->use, ngx_epoll_module.ctx_index);
     ngx_conf_init_ptr_value(ecf->name, ngx_epoll_module_ctx.name->data);
 
-#else /* HAVE_SELECT */
+#elif (HAVE_SELECT)
 
     ngx_conf_init_value(ecf->connections,
           FD_SETSIZE < DEFAULT_CONNECTIONS ? FD_SETSIZE : DEFAULT_CONNECTIONS);
 
     ngx_conf_init_value(ecf->use, ngx_select_module.ctx_index);
     ngx_conf_init_ptr_value(ecf->name, ngx_select_module_ctx.name->data);
+
+#else
+
+    ngx_int_t            i, m;
+    ngx_event_module_t  *module;
+
+    m = -1;
+    module = NULL;
+
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->type == NGX_EVENT_MODULE) {
+            module = ngx_modules[i]->ctx;
+
+            if (ngx_strcmp(module->name->data, event_core_name.data) == 0) {
+                continue;
+            }
+
+            m = ngx_modules[i]->ctx_index;
+            break;
+        }
+    }
+
+    if (m == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "no events module found");
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_conf_init_value(ecf->connections, DEFAULT_CONNECTIONS);
+
+    ngx_conf_init_value(ecf->use, m);
+    ngx_conf_init_ptr_value(ecf->name, module->name->data);
 
 #endif
 

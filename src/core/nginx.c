@@ -19,6 +19,7 @@ typedef struct {
 typedef struct {
      ngx_file_t    pid;
      char         *name;
+     int           argc;
      char *const  *argv;
 } ngx_master_ctx_t;
 
@@ -28,6 +29,7 @@ static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle, char **envp);
 static ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
+static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle);
 static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle);
 static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
@@ -55,6 +57,13 @@ static ngx_command_t  ngx_core_commands[] = {
       ngx_conf_set_core_flag_slot,
       0,
       offsetof(ngx_core_conf_t, master),
+      NULL },
+
+    { ngx_string("pid"),
+      NGX_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_core_str_slot,
+      0,
+      offsetof(ngx_core_conf_t, pid),
       NULL },
 
     { ngx_string("worker_reopen"),
@@ -125,11 +134,19 @@ int main(int argc, char *const *argv, char **envp)
     log = ngx_log_init_errlog();
     ngx_pid = ngx_getpid();
 
-    /* init_cycle->log is required for signal handlers */
+    /* init_cycle->log is required for signal handlers and ngx_getopt() */
 
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
+
+    ngx_memzero(&ctx, sizeof(ngx_master_ctx_t));
+    ctx.argc = argc;
+    ctx.argv = argv;
+
+    if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
+        return 1;
+    }
 
     if (ngx_os_init(log) == NGX_ERROR) {
         return 1;
@@ -212,8 +229,6 @@ int main(int argc, char *const *argv, char **envp)
     }
 
 #endif
-
-    ctx.argv = argv;
 
     ngx_master_process_cycle(cycle, &ctx);
 
@@ -742,6 +757,40 @@ static ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     ngx_free(var);
 
     return pid;
+}
+
+
+static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
+{
+    ngx_int_t  i;
+
+    for (i = 1; i < ctx->argc; i++) {
+        if (ctx->argv[i][0] != '-') {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "invalid option: \"%s\"", ctx->argv[i]);
+            return NGX_ERROR;
+        }
+
+        switch (ctx->argv[i][1]) {
+
+        case 'c':
+            cycle->conf_file.data = ctx->argv[++i];
+            cycle->conf_file.len = ngx_strlen(cycle->conf_file.data);
+            break;
+
+        default:
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "invalid option: \"%s\"", ctx->argv[i]);
+            return NGX_ERROR;
+        }
+    }
+
+    if (cycle->conf_file.len == NULL) {
+        cycle->conf_file.len = sizeof(NGINX_CONF) - 1;
+        cycle->conf_file.data = NGINX_CONF;
+    }
+
+    return NGX_OK;
 }
 
 

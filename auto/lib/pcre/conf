@@ -1,0 +1,38 @@
+
+if [ $PCRE != NONE ]; then
+    CORE_INCS="$CORE_INCS -I $PCRE"
+    CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
+    CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
+
+    if [ "$PLATFORM" = "win32" ]; then
+        #CFLAGS="$CFLAGS -D PCRE_STATIC -D HAVE_PCRE=1"
+        have=HAVE_PCRE . auto/have
+        have=PCRE_STATIC . auto/have
+
+        CORE_LIBS="$CORE_LIBS pcre.lib"
+        CORE_LINK="$CORE_LINK -libpath:$PCRE"
+    else
+        #CFLAGS="$CFLAGS -D HAVE_PCRE=1"
+        have=HAVE_PCRE . auto/have
+        CORE_DEPS="$CORE_DEPS $PCRE/.libs/libpcre.a"
+        CORE_LIBS="$CORE_LIBS -L $PCRE/.libs -lpcre"
+    fi
+
+else
+
+    ngx_lib_inc="#include <pcre.h>"
+
+    ngx_lib="PCRE"
+    ngx_lib_test="pcre *re; pcre_compile(re, 0, NULL, 0, NULL)"
+    ngx_libs=-lpcre
+    . auto/lib/test
+
+
+    if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS $ngx_libs"
+        PCRE=YES
+    else
+        PCRE=NO
+    fi
+
+fi

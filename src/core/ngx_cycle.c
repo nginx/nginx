@@ -46,6 +46,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->pool = pool;
 
     cycle->old_cycle = old_cycle;
+    cycle->conf_file = old_cycle->conf_file;
 
 
     n = old_cycle->pathes.nelts ? old_cycle->pathes.nelts : 10;
@@ -117,10 +118,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.module_type = NGX_CORE_MODULE;
     conf.cmd_type = NGX_MAIN_CONF;
 
-    conf_file.len = sizeof(NGINX_CONF) - 1;
-    conf_file.data = NGINX_CONF;
 
-    if (ngx_conf_parse(&conf, &conf_file) != NGX_CONF_OK) {
+    if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
         ngx_destroy_pool(pool);
         return NULL;
     }

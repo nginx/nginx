@@ -19,6 +19,7 @@ HTTP_GZIP=YES
 HTTP_SSI=YES
 HTTP_PROXY=YES
 
+USE_PCRE=NO
 PCRE=NO
 
 USE_MD5=NO
@@ -43,7 +44,9 @@ do
         --builddir=*)                    OBJS="$value"              ;;
 
         --with-select_module)            EVENT_SELECT=YES           ;;
+        --without-select_module)         EVENT_SELECT=NONE          ;;
         --with-poll_module)              EVENT_POLL=YES             ;;
+        --without-poll_module)           EVENT_POLL=NONE            ;;
         --with-aio_module)               EVENT_AIO=YES              ;;
 
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
@@ -53,6 +56,7 @@ do
 
         --with-cc=*)                     CC="$value"                ;;
 
+        --without-pcre)                  PCRE=NONE                  ;;
         --with-pcre=*)                   PCRE="$value"              ;;
         --with-md5=*)                    MD5="$value"               ;;
         --with-zlib=*)                   ZLIB="$value"              ;;
