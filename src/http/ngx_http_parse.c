@@ -5,8 +5,8 @@
 
 int ngx_read_http_request_line(ngx_http_request_t *r)
 {
-    char  ch;
-    char *p = r->header_in->pos.mem;
+    char   ch;
+    char  *p;
     enum {
         sw_start = 0,
         sw_space_after_method,
@@ -22,7 +22,10 @@ int ngx_read_http_request_line(ngx_http_request_t *r)
         sw_minor_digit,
         sw_almost_done,
         sw_done
-    } state = r->state;
+    } state;
+
+    state = r->state;
+    p = r->header_in->pos.mem;
 
     while (p < r->header_in->last.mem && state < sw_done) {
         ch = *p++;
@@ -214,7 +217,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
             }
             break;
 
-        /* TTP/ */
+        /* "TTP/" */
         case sw_http_version:
             if (p + 2 >= r->header_in->last.mem) {
                 r->state = sw_http_version;
@@ -309,10 +312,90 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
     }
 }
 
+#if 0
+int ngx_read_http_response_line(ngx_http_request_t *r)
+{
+    char   c, ch;
+    char  *p;
+    enum  {
+        sw_start = 0,
+        sw_done
+    } state;
+
+    state = r->state;
+    p = r->header_in->pos.mem;
+
+    while (p < r->header_in->last.mem && state < sw_done) {
+        ch = *p++;
+
+/*
+printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
+       state, p, r->header_in->last, ch, p);
+*/
+
+        switch (state) {
+
+        /* "HTTP/" */
+        case sw_start:
+            if (p + 3 >= r->header_in->last.mem)
+                return NGX_AGAIN;
+
+            if (ch != 'H' || *p != 'T' || *(p + 1) != 'T' || *(p + 2) != 'P'
+                          || *(p + 3) != '/')
+                return NGX_HTTP_PARSE_NO_HEADER;
+
+            p += 4;
+            state = sw_first_major_digit;
+            break;
+
+        /* first digit of major HTTP version */
+        case sw_first_major_digit:
+            if (ch < '1' || ch > '9')
+                return NGX_HTTP_PARSE_NO_HEADER;
+
+            state = sw_major_digit;
+            break;
+
+        /* major HTTP version or dot */
+        case sw_major_digit:
+            if (ch == '.') {
+                state = sw_first_minor_digit;
+                break;
+            }
+
+            if (ch < '0' || ch > '9')
+                return NGX_HTTP_PARSE_NO_HEADER;
+
+            break;
+
+        /* first digit of minor HTTP version */
+        case sw_first_minor_digit:
+            if (ch < '0' || ch > '9')
+                return NGX_HTTP_PARSE_NO_HEADER;
+
+            state = sw_minor_digit;
+            break;
+
+        /* minor HTTP version or end of request line */
+        case sw_minor_digit:
+            if (ch == ' ') {
+                state = sw_code;
+                break;
+            }
+
+            if (ch < '0' || ch > '9')
+                return NGX_HTTP_PARSE_NO_HEADER;
+
+            break;
+        }
+    }
+}
+#endif
+
 int ngx_read_http_header_line(ngx_http_request_t *r)
 {
-    char  c, ch;
-    char *p = r->header_in->pos.mem;
+    char   c, ch;
+    char  *p;
     enum  {
         sw_start = 0,
         sw_name,
@@ -323,7 +406,10 @@ int ngx_read_http_header_line(ngx_http_request_t *r)
         sw_header_almost_done,
         sw_done,
         sw_header_done
-    } state = r->state;
+    } state;
+
+    state = r->state;
+    p = r->header_in->pos.mem;
 
     while (p < r->header_in->last.mem && state < sw_done) {
         ch = *p++;

@@ -8,7 +8,15 @@
 
 
 typedef struct {
+    int dummy;
+} ngx_http_proxy_header_in_t;
+
+typedef struct {
     ngx_chain_t  *out;
+
+    ngx_hunk_t   *hunk;
+
+    ngx_http_proxy_header_in_t  *header_in;
 } ngx_http_proxy_ctx_t;
 
 

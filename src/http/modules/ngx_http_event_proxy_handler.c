@@ -16,6 +16,10 @@ static int ngx_http_proxy_connect(ngx_http_request_t *r,
                                   struct sockaddr_in *addr,
                                   char *addr_text);
 static int ngx_http_proxy_send_request(ngx_event_t *ev);
+static int ngx_http_proxy_read_response_header(ngx_event_t *ev);
+
+
+static char conn_close[] = "Connection: close" CRLF;
 
 
 int ngx_http_proxy_handler(ngx_http_request_t *r)
@@ -53,11 +57,11 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_request_t *r)
     ngx_chain_t      *chain;
     ngx_table_elt_t  *header;
 
-    /* STUB */
-    int size = 1024;
+    /* "+ 4" is for "\r\n" after request line and at the header end */
+    len = r->request_line.len + 4;
 
-    /* "+ 2" is for "\r\n" */
-    len = r->request_line.len + 2;
+    /* "Connection: close\r\n" */
+    len += sizeof(conn_close) - 1;
 
     header = (ngx_table_elt_t *) r->headers_in.headers->elts;
     for (i = 0; i < r->headers_in.headers->nelts; i++) {
@@ -68,9 +72,6 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_request_t *r)
         len += header[i].key.len + header[i].value.len + 4;
     }
 
-    /* add "\r\n" at the header end */
-    len += 2;
-
     /* STUB */ len++;
 
     ngx_test_null(hunk, ngx_create_temp_hunk(r->pool, len, 0, 0), NULL);
@@ -80,8 +81,14 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_request_t *r)
     hunk->last.mem += r->request_line.len;
     *(hunk->last.mem++) = CR; *(hunk->last.mem++) = LF;
 
+    ngx_memcpy(hunk->last.mem, conn_close, sizeof(conn_close) - 1);
+    hunk->last.mem += sizeof(conn_close) - 1;
+
     for (i = 0; i < r->headers_in.headers->nelts; i++) {
         if (&header[i] == r->headers_in.host)
+            continue;
+
+        if (&header[i] == r->headers_in.connection)
             continue;
 
         ngx_memcpy(hunk->last.mem, header[i].key.data, header[i].key.len);
@@ -107,6 +114,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_request_t *r)
     return chain;
 }
 
+
 static int ngx_http_proxy_connect(ngx_http_request_t *r,
                                   struct sockaddr_in *addr,
                                   char *addr_text)
@@ -114,6 +122,7 @@ static int ngx_http_proxy_connect(ngx_http_request_t *r,
     int                  rc;
     ngx_err_t            err;
     ngx_socket_t         s;
+    ngx_event_t         *rev, *wev;
     ngx_connection_t    *c, *pc;
     ngx_http_log_ctx_t  *ctx;
 
@@ -171,40 +180,48 @@ static int ngx_http_proxy_connect(ngx_http_request_t *r,
     }
 
     pc = &ngx_connections[s];
+    rev = &ngx_read_events[s];
+    wev = &ngx_write_events[s];
 
-    ngx_memzero(&ngx_read_events[s], sizeof(ngx_event_t));
-    ngx_memzero(&ngx_write_events[s], sizeof(ngx_event_t));
-    ngx_memzero(&ngx_connections[s], sizeof(ngx_connection_t));
+    ngx_memzero(rev, sizeof(ngx_event_t));
+    ngx_memzero(wev, sizeof(ngx_event_t));
+    ngx_memzero(pc, sizeof(ngx_connection_t));
 
-    ngx_read_events[s].data = ngx_write_events[s].data = &ngx_connections[s];
-    ngx_connections[s].read = &ngx_read_events[s];
-    ngx_connections[s].write = &ngx_write_events[s];
+    rev->data = wev->data = pc;
+    pc->read = rev;
+    pc->write = wev;
 
-    ngx_connections[s].data = r;
+    pc->data = r;
 
-    ngx_connections[s].fd = s;
-    ngx_connections[s].server = c->server;
-    ngx_connections[s].servers = c->servers;
+    pc->fd = s;
+    pc->server = c->server;
+    pc->servers = c->servers;
 
-    ngx_connections[s].log =
-        ngx_read_events[s].log = ngx_write_events[s].log = c->log;
+    pc->log = rev->log = wev->log = c->log;
 
     ngx_test_null(pc->pool,
                   ngx_create_pool(/* STUB */ 1024 /* */, pc->log),
                   NGX_ERROR);
 
-    if (rc == -1) {
-        ngx_write_events[s].event_handler = ngx_http_proxy_send_request;
+    wev->event_handler = ngx_http_proxy_send_request;
+    rev->event_handler = ngx_http_proxy_read_response_header;
 
-        return ngx_add_event(&ngx_write_events[s],
-                             NGX_WRITE_EVENT, NGX_ONESHOT_EVENT);
-    }
+#if (HAVE_CLEAR_EVENT)
+    if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK)
+#else
+    if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK)
+#endif
+        return NGX_ERROR;
 
-    ngx_write_events[s].write = 1;
-    ngx_write_events[s].ready = 1;
+    if (rc == -1)
+        return ngx_add_event(wev, NGX_WRITE_EVENT, NGX_ONESHOT_EVENT);
 
-    return ngx_http_proxy_send_request(&ngx_write_events[s]);
+    wev->write = 1;
+    wev->ready = 1;
+
+    return ngx_http_proxy_send_request(wev);
 }
+
 
 static int ngx_http_proxy_send_request(ngx_event_t *ev)
 {
@@ -223,43 +240,13 @@ static int ngx_http_proxy_send_request(ngx_event_t *ev)
 
     p->out = chain;
 
-    /* STUB */ return NGX_ERROR;
-    return NGX_OK;
+    return NGX_AGAIN;
 }
 
-#if 0
-
-static int ngx_http_proxy_send_request(ngx_event_t *ev)
-{
-    ngx_connection_t      *c;
-    ngx_http_request_t    *r;
-    ngx_http_proxy_ctx_t  *p;
-
-    c = (ngx_connection_t *) ev->data;
-    r = (ngx_http_request_t *) c->data;
-    p = (ngx_http_proxy_ctx_t *) ngx_get_module_ctx(r, ngx_http_proxy_module);
-
-    n = ngx_send(p->fd, p->header_out->pos.mem,
-                 p->header_out->end.mem - p->header_out->pos.mem);
-
-    if (n == NGX_ERROR) {
-        ngx_log_error(NGX_LOG_ERR, r->log, ngx_socket_errno,
-                      ngx_send_n " %s falied", p->addr_text);
-        return NGX_ERROR;
-    }
-
-    p->header_out->pos.mem += n;
-
-    if (p->header_out->end.mem - p->header_out->pos.mem > 0)
-        return NGX_AGAIN;
-
-    /* TODO: body */
-
-    return NGX_OK;
-}
 
 static int ngx_http_proxy_read_response_header(ngx_event_t *ev)
 {
+    int  n;
     ngx_connection_t      *c;
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
@@ -271,11 +258,30 @@ static int ngx_http_proxy_read_response_header(ngx_event_t *ev)
     r = (ngx_http_request_t *) c->data;
     p = (ngx_http_proxy_ctx_t *) ngx_get_module_ctx(r, ngx_http_proxy_module);
 
-    n = ngx_event_recv(c, p->header_in->last.mem,
-                       p->header_in->end - p->header_in->last.mem);
+    if (p->header_in == NULL) {
+        ngx_test_null(p->header_in,
+                      ngx_palloc(r->pool, sizeof(ngx_http_proxy_header_in_t)),
+                      NGX_ERROR);
 
+        ngx_test_null(p->hunk,
+                      ngx_create_temp_hunk(r->pool,
+                                           /* STUB */ 1024 /* */, 0, 0),
+                      NGX_ERROR);
+    }
+
+    n = ngx_event_recv(c, p->hunk->last.mem, p->hunk->end - p->hunk->last.mem);
+
+    ngx_log_debug(r->connection->log, "READ:%d" _ n);
+
+    p->hunk->last.mem += n;
+
+    *p->hunk->last.mem = '\0';
+    ngx_log_debug(r->connection->log, "PROXY:\n'%s'" _ p->hunk->pos.mem);
+
+    /* STUB */ return NGX_ERROR;
 }
 
+#if 0
 static int ngx_http_proxy_read_response_body(ngx_event_t *ev)
 {
     ngx_connection_t      *c;
