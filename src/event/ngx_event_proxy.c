@@ -246,7 +246,9 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
         } else if (!p->cachable && p->in) {
             out = p->in;
 
-            if (p->busy_len + ngx_hunk_size(out->hunk) > p->max_busy_len) {
+            if (!(p->upstream_eof || p->upstream_error || p->upstream_done)
+                && (p->busy_len + ngx_hunk_size(out->hunk) > p->max_busy_len))
+            {
                 break;
             }
 

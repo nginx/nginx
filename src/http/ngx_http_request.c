@@ -721,7 +721,10 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
     n = r->header_in->last - r->header_in->pos;
 
     if (n > 0) {
+#if 0
+        /* TODO: THINK - AIO ??? */
         rev->ready = 0;
+#endif
         return n;
     }
 
