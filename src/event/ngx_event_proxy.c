@@ -2,11 +2,28 @@
 #include <ngx_event_proxy.h>
 
 
+#define NGX_EVENT_COPY_FILTER  0
+
+#if (NGX_EVENT_COPY_FILTER)
+static int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p,
+                                                           ngx_chain_t *chain);
+#endif
+
+
+
 int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p)
 {
     int           n, rc, size;
     ngx_hunk_t   *h, *nh;
     ngx_chain_t  *chain, *temp, *entry, *next;
+
+#if (NGX_EVENT_COPY_FILTER)
+
+    if (p->input_filter == NULL) {
+        p->input_filter = ngx_event_proxy_copy_input_filter;
+    }
+
+#endif
 
     p->level++;
 
@@ -45,7 +62,8 @@ ngx_log_debug(p->log, "new hunk: %08X" _ chain->hunk);
             chain = p->shadow_hunks;
             p->shadow_hunks = NULL;
 
-ngx_log_debug(p->log, "shadow hunk: %08X" _ chain->hunk);
+ngx_log_debug(p->log, "shadow hunk: %08X" _ chain->hunk _
+              chain->hunk->end - chain->hunk->last);
 
         /* if it's allowed then save the incoming hunks to a temporary file,
            move the saved hunks to a shadow chain,
@@ -63,7 +81,8 @@ ngx_log_debug(p->log, "temp offset: %d" _ p->temp_offset);
             chain = p->shadow_hunks;
             p->shadow_hunks = NULL;
 
-ngx_log_debug(p->log, "new shadow hunk: %08X" _ chain->hunk);
+ngx_log_debug(p->log, "new shadow hunk: %08X:%d" _ chain->hunk _
+              chain->hunk->end - chain->hunk->last);
 
         /* if there're no hunks to read in then disable a level event */
 
@@ -97,7 +116,9 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
         }
 
         if (n == 0) {
-            p->free_hunks = chain;
+            if (chain->hunk->shadow == NULL) {
+                p->free_hunks = chain;
+            }
             p->upstream_eof = 1;
             p->block_upstream = 0;
             break;
@@ -147,34 +168,53 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
                 n -= size;
 
-                /* the copy input filter */
+#if !(NGX_EVENT_COPY_FILTER)
 
-                if (p->input_filter == NULL) {
-                    ngx_test_null(h, ngx_alloc_hunk(p->pool), NGX_ERROR);
-                    ngx_memcpy(h, entry->hunk, sizeof(ngx_hunk_t));
-                    h->shadow = entry->hunk;
-                    h->type |= NGX_HUNK_LAST_SHADOW;
-
-                    ngx_test_null(temp, ngx_alloc_chain_entry(p->pool),
-                                  NGX_ERROR);
-                    temp->hunk = h;
-                    temp->next = NULL;
-
-                    if (p->in_hunks) {
-                        p->last_in_hunk->next = temp;
-
-                    } else {
-                        p->in_hunks = temp;
-                    }
-
-                    p->last_in_hunk = temp;
+                if (p->input_filter) {
+                    continue;
                 }
+
+                /* the inline copy input filter */
+
+                ngx_test_null(h, ngx_alloc_hunk(p->pool), NGX_ERROR);
+                ngx_memcpy(h, entry->hunk, sizeof(ngx_hunk_t));
+                h->shadow = entry->hunk;
+                h->type |= NGX_HUNK_LAST_SHADOW;
+                entry->hunk->shadow = h;
+
+                ngx_test_null(temp, ngx_alloc_chain_entry(p->pool),
+                              NGX_ERROR);
+                temp->hunk = h;
+                temp->next = NULL;
+
+                if (p->in_hunks) {
+                    p->last_in_hunk->next = temp;
+
+                } else {
+                    p->in_hunks = temp;
+                }
+
+                p->last_in_hunk = temp;
+#endif
 
             } else {
                 entry->hunk->last += n;
                 p->free_hunks = entry;
 
                 n = 0;
+            }
+        }
+
+        if (chain == p->free_hunks) {
+            chain = NULL;
+        }
+
+        /* the input filter i.e. that moves HTTP/1.1 chunks
+           from a read chain to an incoming chain */
+
+        if (p->input_filter) {
+            if (p->input_filter(p, chain) == NGX_ERROR) {
+                return NGX_ERROR;
             }
         }
 
@@ -199,15 +239,6 @@ ngx_log_debug(p->log, "rest chain: %08X" _ entry);
             p->block_upstream = 0;
             break;
         }
-
-        /* the input filter i.e. that moves HTTP/1.1 chunks
-           from a read chain to an incoming chain */
-
-        if (p->input_filter) {
-            if (p->input_filter(p) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-        }
     }
 
 ngx_log_debug(p->log, "eof: %d block: %d" _
@@ -222,8 +253,15 @@ ngx_log_debug(p->log, "eof: %d block: %d" _
         if (p->free_hunks
             && p->free_hunks->hunk->pos < p->free_hunks->hunk->last)
         {
+
+#if (NGX_EVENT_COPY_FILTER)
+
+            if (p->input_filter(p, NULL) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+#else
             if (p->input_filter) {
-                if (p->input_filter(p) == NGX_ERROR) {
+                if (p->input_filter(p, NULL) == NGX_ERROR) {
                     return NGX_ERROR;
                 }
 
@@ -242,6 +280,7 @@ ngx_log_debug(p->log, "eof: %d block: %d" _
 
             p->free_hunks = entry->next;
             entry->next = NULL;
+#endif
         }
 
 #if 0
@@ -314,6 +353,7 @@ ngx_log_debug(p->log, "write to client");
                 entry = p->out_hunks;
                 p->out_hunks = entry->next;
                 h = entry->hunk;
+                entry->next = NULL;
 
                 if (p->shadow_hunks) {
                     if (p->shadow_hunks->hunk == h->shadow) {
@@ -321,16 +361,24 @@ ngx_log_debug(p->log, "write to client");
                     }
                 }
 
-                entry->next = NULL;
 
             } else if (p->cachable == 0 && p->in_hunks) {
                 entry = p->in_hunks;
                 p->in_hunks = entry->next;
                 h = entry->hunk;
                 entry->next = NULL;
+
+                if (p->read_hunks) {
+                if (p->read_hunks->hunk == h->shadow) {
+                    p->read_hunks = p->read_hunks->next;
+
+                } else {
+                    ngx_log_error(NGX_LOG_CRIT, p->log, 0, "ERROR !!!");
+                }
+                }
             }
 
-ngx_log_debug(p->log, "event proxy write hunk: %08X:%08X" _ h _ h->pos);
+ngx_log_debug(p->log, "event proxy write hunk: %08X" _ h);
 
             if (h == NULL) {
                 if (p->upstream->read->ready) {
@@ -341,7 +389,9 @@ ngx_log_debug(p->log, "event proxy write hunk: %08X:%08X" _ h _ h->pos);
             }
         }
 
+#if 0
 ngx_log_debug(p->log, "event proxy write: %d" _ h->last - h->pos);
+#endif
 
         rc = p->output_filter(p->output_data, h);
 
@@ -485,10 +535,10 @@ ngx_log_debug(p->log, "write to file");
         p->temp_offset += h->last - h->pos;
         h->file_last = p->temp_offset;
 
-ngx_log_debug(p->log, "event proxy file hunk: %08X:%08X" _ h _ h->pos);
+ngx_log_debug(p->log, "event proxy file hunk: %08X:%08X" _ h _ h->shadow);
 
-        if (entry->hunk->type & NGX_HUNK_LAST_SHADOW) {
-            entry->hunk->shadow->last = entry->hunk->shadow->pos;
+        if (h->type & NGX_HUNK_LAST_SHADOW) {
+            h->shadow->last = h->shadow->pos;
         }
 
         if (p->out_hunks) {
@@ -508,3 +558,57 @@ ngx_log_debug(p->log, "event proxy file hunk: %08X:%08X" _ h _ h->pos);
 
     return NGX_OK;
 }
+
+#if (NGX_EVENT_COPY_FILTER)
+
+/* the copy input filter */
+
+static int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p,
+                                                            ngx_chain_t *chain)
+{
+    ngx_hunk_t   *h;
+    ngx_chain_t  *entry, *temp;
+
+    if (p->upstream_eof) {
+        entry = p->free_hunks;
+
+        if (p->in_hunks) {
+            p->last_in_hunk->next = entry;
+
+        } else {
+            p->in_hunks = entry;
+        }
+
+        p->last_in_hunk = entry;
+
+        p->free_hunks = entry->next;
+        entry->next = NULL;
+
+        return NGX_OK;
+    }
+
+    for (entry = chain; entry; entry = entry->next) {
+        ngx_test_null(h, ngx_alloc_hunk(p->pool), NGX_ERROR);
+        ngx_memcpy(h, entry->hunk, sizeof(ngx_hunk_t));
+        h->shadow = entry->hunk;
+        h->type |= NGX_HUNK_LAST_SHADOW;
+        entry->hunk->shadow = h;
+
+        ngx_test_null(temp, ngx_alloc_chain_entry(p->pool), NGX_ERROR);
+        temp->hunk = h;
+        temp->next = NULL;
+
+        if (p->in_hunks) {
+            p->last_in_hunk->next = temp;
+
+        } else {
+            p->in_hunks = temp;
+        }
+
+        p->last_in_hunk = temp;
+    }
+
+    return NGX_OK;
+}
+
+#endif

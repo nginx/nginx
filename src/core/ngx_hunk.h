@@ -79,7 +79,7 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
 
 #define ngx_add_hunk_to_chain(chain, h, pool, error)                         \
             do {                                                             \
-                ngx_test_null(chain, ngx_create_chain_entry(pool), error);   \
+                ngx_test_null(chain, ngx_alloc_chain_entry(pool), error);    \
                 chain->hunk = h;                                             \
                 chain->next = NULL;                                          \
             } while (0);

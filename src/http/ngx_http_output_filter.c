@@ -65,7 +65,7 @@ static int (*next_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
 #define need_to_copy(r, hunk)                                             \
             (((r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)                \
-               && (hunk->type & NGX_HUNK_FILE))                           \
+               && (hunk->type & NGX_HUNK_IN_MEMORY) == 0)                 \
              || ((r->filter & NGX_HTTP_FILTER_NEED_TEMP)                  \
                   && (hunk->type & (NGX_HUNK_MEMORY|NGX_HUNK_MMAP))))
 
@@ -257,12 +257,12 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
     }
 
     if (src->type & NGX_HUNK_IN_MEMORY) {
-        ngx_memcpy(src->pos, dst->pos, size);
+        ngx_memcpy(dst->pos, src->pos, size);
         src->pos += size;
         dst->last += size;
 
         if (src->type & NGX_HUNK_FILE) {
-            src->file_pos += n;
+            src->file_pos += size;
         }
 
         if ((src->type & NGX_HUNK_LAST) && src->pos == src->last) {

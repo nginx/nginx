@@ -871,7 +871,7 @@ static int ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
         ep->number = 10;
         ep->random = 5;
 
-        ep->max_temp_size = 6000;
+        ep->max_temp_size = p->lcf->max_temp_file_size;
         ep->temp_file_warn = "an upstream response is buffered "
                              "to a temporary file";
 
@@ -1763,9 +1763,18 @@ static void *ngx_http_proxy_create_loc_conf(ngx_pool_t *pool)
     conf->send_timeout = 10000;
     conf->read_timeout = 10000;
     conf->header_size = 1024;
+
+#if 0
     conf->block_size = 4096;
     conf->max_block_size = 4096 * 3;
-    conf->file_block_size = 4096;
+    conf->max_temp_file_size = 4096 * 5;
+    conf->file_block_size = 4096 * 2;
+#else
+    conf->block_size = 2048;
+    conf->max_block_size = 4096 * 6;
+    conf->max_temp_file_size = 4096 * 5;
+    conf->file_block_size = 4096 * 5;
+#endif
 
     ngx_test_null(conf->temp_path, ngx_pcalloc(pool, sizeof(ngx_path_t)), NULL);
 

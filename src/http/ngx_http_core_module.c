@@ -157,7 +157,7 @@ int ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->unexpected_eof = 0;
 
-    r->keepalive = 1;
+    r->keepalive = 0;
     r->lingering_close = 1;
 
 #if 0

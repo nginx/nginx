@@ -12,7 +12,8 @@
 
 typedef struct ngx_event_proxy_s  ngx_event_proxy_t;
 
-typedef int (*ngx_event_proxy_input_filter_pt)(ngx_event_proxy_t *p);
+typedef int (*ngx_event_proxy_input_filter_pt)(ngx_event_proxy_t *p,
+                                                          ngx_chain_t *chain);
 typedef int (*ngx_event_proxy_output_filter_pt)(void *data, ngx_hunk_t *hunk);
 
 

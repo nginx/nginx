@@ -71,6 +71,7 @@ typedef struct {
 
     int   block_size;
     int   max_block_size;
+    int   max_temp_file_size;
     int   file_block_size;
 
     ngx_path_t  *temp_path;
