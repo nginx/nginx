@@ -25,6 +25,7 @@ static ngx_inline uint32_t ngx_atomic_inc(ngx_atomic_t *value)
 
         NGX_SMP_LOCK
     "   xaddl  %0, %2;   "
+    "   incl   %0;       "
 
     : "=q" (old) : "0" (1), "m" (*value));
 
@@ -40,6 +41,7 @@ static ngx_inline uint32_t ngx_atomic_dec(ngx_atomic_t *value)
 
         NGX_SMP_LOCK
     "   xaddl  %0, %1;   "
+    "   decl   %0;       "
 
     : "=q" (old) : "0" (-1), "m" (*value));
 
@@ -64,6 +66,15 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 
     return res;
 }
+
+
+#elif (WIN32)
+
+#define ngx_atomic_inc(x)                    InterlockedIncrement
+#define ngx_atomic_dec(x)                    InterlockedDecrement
+#define ngx_atomic_cmp_set(lock, old, set)                                   \
+                                  InterlockedCompareExchange(lock, set, old)
+
 
 #else
 

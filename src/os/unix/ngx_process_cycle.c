@@ -65,11 +65,25 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     signo = 0;
     live = 0;
 
+    ngx_accept_mutex = mmap(NULL, sizeof(ngx_atomic_t), PROT_READ|PROT_WRITE,
+                            MAP_ANON|MAP_SHARED, -1, 0);
+
+    if (ngx_accept_mutex == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "mmap(MAP_ANON|MAP_SHARED) failed");
+        /* fatal */
+        exit(2);
+    }
+
     for ( ;; ) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "new cycle");
 
         ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
                                                ngx_core_module);
+
+        if (ccf->worker_processes == NGX_CONF_UNSET) {
+            ccf->worker_processes = 1;
+        }
 
         if (ngx_process == NGX_PROCESS_MASTER) {
             for (i = 0; i < (ngx_uint_t) ccf->worker_processes; i++) {
@@ -150,7 +164,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                    "worker cycle");
 
-                    ngx_process_events(cycle->log);
+                    ngx_process_events(cycle);
                     live = 0;
                 }
 
@@ -361,6 +375,10 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_process = NGX_PROCESS_WORKER;
     ngx_last_process = 0;
 
+    if (ngx_accept_mutex) {
+        ngx_accept_token = 1;
+    }
+
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ccf->group != (gid_t) NGX_CONF_UNSET) {
@@ -442,7 +460,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     for ( ;; ) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
-        ngx_process_events(cycle->log);
+        ngx_process_events(cycle);
 
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
@@ -473,7 +491,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
-        ngx_process_events(cycle->log);
+        ngx_process_events(cycle);
 
         if (ngx_reopen) {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");

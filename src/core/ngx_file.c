@@ -56,7 +56,7 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
 
         ngx_create_hashed_filename(file, path);
 
-#if 0
+#if 1
         file->fd = ngx_open_tempfile(file->name.data, persistent);
 #else
         file->fd = ngx_open_tempfile(file->name.data, 1);

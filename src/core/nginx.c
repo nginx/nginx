@@ -174,10 +174,6 @@ int main(int argc, char *const *argv)
         }
     }
 
-    if (ccf->worker_processes == NGX_CONF_UNSET) {
-        ccf->worker_processes = 1;
-    }
-
     if (ccf->pid.len == 0) {
         ccf->pid.len = sizeof(NGINX_PID) - 1;
         ccf->pid.data = NGINX_PID;

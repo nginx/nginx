@@ -21,7 +21,7 @@ static void ngx_kqueue_done(ngx_cycle_t *cycle);
 static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags);
-static int ngx_kqueue_process_events(ngx_log_t *log);
+static int ngx_kqueue_process_events(ngx_cycle_t *cycle);
 #if (NGX_THREADS)
 static void ngx_kqueue_thread_handler(ngx_event_t *ev);
 #endif
@@ -343,10 +343,10 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 }
 
 
-static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
+static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 {
     int                events;
-    ngx_int_t          instance, i;
+    ngx_int_t          i, instance;
     ngx_err_t          err;
     ngx_msec_t         timer;
     ngx_event_t       *ev;
@@ -370,6 +370,18 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
 
     ngx_old_elapsed_msec = ngx_elapsed_msec;
 
+    if (ngx_accept_mutex) {
+        if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+#if 1
+        if (ngx_accept_token == 0 && timer == 0) {
+            /* STUB */ timer = 500;
+        }
+#endif
+    }
+
     if (timer) {
         ts.tv_sec = timer / 1000;
         ts.tv_nsec = (timer % 1000) * 1000000;
@@ -379,7 +391,8 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
         tp = NULL;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "kevent timer: %d", timer);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "kevent timer: %d", timer);
 
     events = kevent(ngx_kqueue, change_list, nchanges, event_list, nevents, tp);
 
@@ -394,40 +407,54 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "kevent events: %d", events);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "kevent events: %d", events);
 
     delta = ngx_elapsed_msec;
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
     if (err) {
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
-                      log, err, "kevent() failed");
+                      cycle->log, err, "kevent() failed");
+
+        if (ngx_accept_token) {
+            *ngx_accept_mutex = 0;
+        }
+
         return NGX_ERROR;
     }
 
     if (timer) {
         delta = ngx_elapsed_msec - delta;
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "kevent timer: %d, delta: %d", timer, (int) delta);
 
     } else {
         if (events == 0) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "kevent() returned no events without timeout");
+
+            if (ngx_accept_token) {
+                *ngx_accept_mutex = 0;
+            }
+
             return NGX_ERROR;
         }
     }
 
-#if (NGX_THREADS0)
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+
+        if (ngx_accept_token) {
+            *ngx_accept_mutex = 0;
+        }
+
         return NGX_ERROR;
     }
-#endif
 
     for (i = 0; i < events; i++) {
 
-        ngx_log_debug6(NGX_LOG_DEBUG_EVENT, log, 0,
+        ngx_log_debug6(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
 
                        (event_list[i].ident > 0x8000000
                         && event_list[i].ident != (unsigned) -1) ?
@@ -440,7 +467,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
                         event_list[i].data, event_list[i].udata);
 
         if (event_list[i].flags & EV_ERROR) {
-            ngx_log_error(NGX_LOG_ALERT, log, event_list[i].data,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, event_list[i].data,
                           "kevent() error on %d", event_list[i].ident);
             continue;
         }
@@ -454,15 +481,16 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
 
             instance = (uintptr_t) ev & 1;
             ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
+            ev->returned_instance = instance;
 
-            if (ev->active == 0 || ev->instance != instance) {
+            if (!ev->active || ev->instance != instance) {
 
                 /*
                  * the stale event from a file descriptor
                  * that was just closed in this iteration
                  */
 
-                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                "kevent: stale event " PTR_FMT, ev);
                 continue;
             }
@@ -494,30 +522,29 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
             break;
 
         default:
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "unexpected kevent() filter %d",
                           event_list[i].filter);
             continue;
         }
 
-#if (NGX_THREADS0)
 
-        if (ngx_threaded) {
+#if 0
+        if (ngx_threaded || ngx_accept_token) {
+#endif
+        if (ngx_accept_token) {
 
-            if (ev->light) {
-
-                /*
-                 * The light events are the accept event,
-                 * or the event that waits in the mutex queue - we need to
-                 * remove it from the mutex queue before the inserting into
-                 * the posted events queue.
-                 */
-
+            if (ev->accept) {
                 ngx_mutex_unlock(ngx_posted_events_mutex);
 
                 ev->event_handler(ev);
 
                 if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+
+                    if (ngx_accept_token) {
+                        *ngx_accept_mutex = 0;
+                    }
+
                     return NGX_ERROR;
                 }
 
@@ -529,35 +556,54 @@ static ngx_int_t ngx_kqueue_process_events(ngx_log_t *log)
             continue;
         }
 
-#endif
-
         ev->event_handler(ev);
     }
 
-#if (NGX_THREADS0)
     ngx_mutex_unlock(ngx_posted_events_mutex);
-#endif
+
+    if (ngx_accept_token) {
+        *ngx_accept_mutex = 0;
+    }
 
     if (timer && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
-#if (NGX_THREADS0)
-    if (!ngx_threaded) {
+#if (NGX_THREADS)
+    if (ngx_threaded) {
+        return NGX_OK;
     }
 #endif
-
-    /* TODO: non-thread mode only */
 
     for ( ;; ) {
 
         ev = (ngx_event_t *) ngx_posted_events;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                      "kevent: posted event " PTR_FMT, ev);
 
         if (ev == NULL) {
             break;
         }
 
         ngx_posted_events = ev->next;
+
+        if ((!ev->posted && !ev->active)
+            || ev->instance != ev->returned_instance)
+        {
+            /*
+             * the stale event from a file descriptor
+             * that was just closed in this iteration
+             */
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                          "kevent: stale event " PTR_FMT, ev);
+            continue;
+        }
+
+        if (ev->posted) {
+            ev->posted = 0;
+        }
 
         ev->event_handler(ev);
     }
@@ -575,8 +621,9 @@ static void ngx_kqueue_thread_handler(ngx_event_t *ev)
     instance = (uintptr_t) ev & 1;
     ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
 
-    if (ev->active == 0 || ev->instance != instance) {
-
+    if ((!ev->posted && !ev->active)
+        || ev->instance != ev->returned_instance)
+    {
         /*
          * the stale event from a file descriptor
          * that was just closed in this iteration
@@ -585,6 +632,10 @@ static void ngx_kqueue_thread_handler(ngx_event_t *ev)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                        "kevent: stale event " PTR_FMT, ev);
         return;
+    }
+
+    if (ev->posted) {
+        ev->posted = 0;
     }
 
     ev->event_handler(ev);

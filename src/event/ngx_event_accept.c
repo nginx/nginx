@@ -14,9 +14,13 @@ typedef struct {
 static size_t ngx_accept_log_error(void *data, char *buf, size_t len);
 
 
+ngx_atomic_t  *ngx_accept_mutex;
+ngx_uint_t     ngx_accept_token;
+
+
 void ngx_event_accept(ngx_event_t *ev)
 {
-    ngx_uint_t             instance, accepted;
+    ngx_uint_t             instance, rinstance, winstance, accepted;
     socklen_t              len;
     struct sockaddr       *sa;
     ngx_err_t              err;
@@ -205,6 +209,8 @@ void ngx_event_accept(ngx_event_t *ev)
 #endif
 
         instance = rev->instance;
+        rinstance = rev->returned_instance;
+        winstance = wev->returned_instance;
 
         ngx_memzero(rev, sizeof(ngx_event_t));
         ngx_memzero(wev, sizeof(ngx_event_t));
@@ -217,7 +223,10 @@ void ngx_event_accept(ngx_event_t *ev)
         c->socklen = len;
 
         rev->instance = (u_char) !instance;
+        rev->returned_instance = (u_char) rinstance;
+
         wev->instance = (u_char) !instance;
+        wev->returned_instance = (u_char) winstance;
 
         rev->index = NGX_INVALID_INDEX;
         wev->index = NGX_INVALID_INDEX;
@@ -292,6 +301,102 @@ void ngx_event_accept(ngx_event_t *ev)
         accepted++;
 
     } while (ev->available);
+}
+
+
+ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
+{
+    if (*ngx_accept_mutex == 0 && ngx_atomic_cmp_set(ngx_accept_mutex, 0, 1)) {
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "accept mutex locked");
+
+        if (!ngx_accept_token) {
+            if (ngx_enable_accept_events(cycle) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            ngx_accept_token = 1;
+        }
+
+        return NGX_OK;
+    }
+
+    if (ngx_accept_token) {
+        if (ngx_disable_accept_events(cycle) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        ngx_accept_token = 0;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle)
+{
+    ngx_uint_t        i;
+    ngx_listening_t  *s;
+
+    s = cycle->listening.elts;
+    for (i = 0; i < cycle->listening.nelts; i++) {
+
+        /*
+         * we do not need to handle the Winsock sockets here (divde a socket
+         * number by 4) because this function would never called
+         * in the Winsock environment
+         */
+
+        if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
+            if (ngx_add_conn(&cycle->connections[s[i].fd]) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+        } else {
+            if (ngx_add_event(&cycle->read_events[s[i].fd], NGX_READ_EVENT, 0)
+                                                                  == NGX_ERROR)
+            {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle)
+{
+    ngx_uint_t        i;
+    ngx_listening_t  *s;
+
+    s = cycle->listening.elts;
+    for (i = 0; i < cycle->listening.nelts; i++) {
+
+        /*
+         * we do not need to handle the Winsock sockets here (divde a socket
+         * number by 4) because this function would never called
+         * in the Winsock environment
+         */
+
+        if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
+            if (ngx_del_conn(&cycle->connections[s[i].fd], NGX_DISABLE_EVENT)
+                                                                  == NGX_ERROR)
+            {
+                return NGX_ERROR;
+            }
+
+        } else {
+            if (ngx_del_event(&cycle->read_events[s[i].fd], NGX_READ_EVENT,
+                                               NGX_DISABLE_EVENT) == NGX_ERROR)
+            {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    return NGX_OK;
 }
 
 

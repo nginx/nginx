@@ -233,6 +233,8 @@ static int ngx_event_init(ngx_cycle_t *cycle)
 
         rev->available = 0;
 
+        rev->accept = 1;
+
 #if (HAVE_DEFERRED_ACCEPT)
         rev->deferred_accept = s[i].deferred_accept;
 #endif
@@ -273,7 +275,9 @@ static int ngx_event_init(ngx_cycle_t *cycle)
 
         } else {
             rev->event_handler = &ngx_event_accept;
-            ngx_add_event(rev, NGX_READ_EVENT, 0);
+            if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
         }
 
 #else
@@ -281,9 +285,13 @@ static int ngx_event_init(ngx_cycle_t *cycle)
         rev->event_handler = &ngx_event_accept;
 
         if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
-            ngx_add_conn(c);
+            if (ngx_add_conn(c) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
         } else {
-            ngx_add_event(rev, NGX_READ_EVENT, 0);
+            if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
         }
 
 #endif

@@ -90,6 +90,20 @@ void ngx_http_init_connection(ngx_connection_t *c)
 
     if (rev->ready) {
         /* deferred accept, aio, iocp */
+
+        if (*ngx_accept_mutex) {
+            if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+                ngx_http_close_connection(c);
+                return;
+            }
+
+            rev->next = ngx_posted_events;
+            ngx_posted_events = rev; 
+
+            ngx_mutex_unlock(ngx_posted_events_mutex);
+            return;
+        }
+
         ngx_http_init_request(rev);
         return;
     }

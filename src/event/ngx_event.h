@@ -66,6 +66,7 @@ struct ngx_event_s {
 
     /* used to detect the stale events in kqueue, rt signals and epoll */
     unsigned char    instance:1;
+    unsigned char    returned_instance:1;
 
     /*
      * the event was passed or would be passed to a kernel;
@@ -75,11 +76,13 @@ struct ngx_event_s {
 
     unsigned char    disabled:1;
 
+    unsigned char    posted:1;
+
     /* the ready event; in aio mode 0 means that no operation can be posted */
     unsigned char    ready:1;
 
     /* aio operation is complete */
-    unsigned char    complete:1;
+    unsigned short   complete:1;
 
     unsigned short   eof:1;
     unsigned short   error:1;
@@ -92,6 +95,8 @@ struct ngx_event_s {
     unsigned short   read_discarded:1;
 
     unsigned short   unexpected_eof:1;
+
+    unsigned short   accept:1;
 
     unsigned short   deferred_accept:1;
 
@@ -178,7 +183,7 @@ typedef struct {
     int   (*add_conn)(ngx_connection_t *c);
     int   (*del_conn)(ngx_connection_t *c, u_int flags);
 
-    int   (*process)(ngx_log_t *log);
+    int   (*process)(ngx_cycle_t *cycle);
     int   (*init)(ngx_cycle_t *cycle);
     void  (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
@@ -391,6 +396,9 @@ extern ngx_thread_volatile ngx_event_t  *ngx_posted_events;
 #if (NGX_THREADS)
 extern ngx_mutex_t           *ngx_posted_events_mutex;
 #endif
+extern ngx_atomic_t          *ngx_accept_mutex;
+extern ngx_uint_t             ngx_accept_token;
+
 
 extern int                    ngx_event_flags;
 extern ngx_module_t           ngx_events_module;
@@ -403,6 +411,10 @@ extern ngx_module_t           ngx_event_core_module;
 
 
 void ngx_event_accept(ngx_event_t *ev);
+ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle);
+ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle);
+ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
+
 
 #if (WIN32)
 void ngx_event_acceptex(ngx_event_t *ev);
