@@ -45,9 +45,9 @@ echo
 if [ $HTTP_REWRITE = YES ]; then
     if [ $PCRE = NONE -o $PCRE = NO ]; then
         echo "$0: error: HTTP rewrite module requires PCRE library."
-        echo $ngx_n "You can disable the module by using" $ngx_c
+        echo $ngx_n "You can disable the module by using " $ngx_c
         echo "--without-http_rewrite_module option"
-        echo "or you have to enable PCRE support"
+        echo "or you have to enable PCRE support."
         echo
 
         exit 1
@@ -58,9 +58,9 @@ fi
 if [ $HTTP_GZIP = YES ]; then
     if [ $ZLIB = NONE -o $ZLIB = NO ]; then
         echo "$0: error: HTTP gzip module requires zlib library."
-        echo $ngx_n "You can disable the module by using" $ngx_c
+        echo $ngx_n "You can disable the module by using " $ngx_c
         echo "--without-http_gzip_module option"
-        echo "or you have to enable zlib support"
+        echo "or you have to enable zlib support."
         echo
 
         exit 1

@@ -253,9 +253,10 @@ ngx_log_t *ngx_log_init_errlog()
 #endif
 
     ngx_log.file = &ngx_stderr;
-    ngx_log.log_level = NGX_LOG_ERR;
 
 #ifdef NGX_ERROR_LOG_PATH
+
+    ngx_log.log_level = NGX_LOG_ERR;
 
     fd = ngx_open_file(NGX_ERROR_LOG_PATH, NGX_FILE_RDWR,
                        NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
@@ -284,6 +285,10 @@ ngx_log_t *ngx_log_init_errlog()
     }
 
 #endif
+
+#else
+
+    ngx_log.log_level = NGX_LOG_INFO;
 
 #endif
 
@@ -375,12 +380,19 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    cf->cycle->new_log->file->name = value[1];
+    if (value[1].len == 6 && ngx_strcmp(value[1].data, "stderr") == 0) {
+        cf->cycle->new_log->file->fd = ngx_stderr.fd;
+        cf->cycle->new_log->file->name.len = 0;
+        cf->cycle->new_log->file->name.data = NULL;
 
-    if (ngx_conf_full_name(cf->cycle, &cf->cycle->new_log->file->name)
+    } else {
+        cf->cycle->new_log->file->name = value[1];
+
+        if (ngx_conf_full_name(cf->cycle, &cf->cycle->new_log->file->name)
                                                                   == NGX_ERROR)
-    {
-        return NGX_CONF_ERROR;
+        {
+            return NGX_CONF_ERROR;
+        }
     }
 
     return ngx_set_error_log_levels(cf, cf->cycle->new_log);

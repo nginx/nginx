@@ -82,11 +82,14 @@ ngx_int_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
         return NGX_AGAIN;
     }
 
-#if 0
     if (sslerr == SSL_ERROR_WANT_WRITE) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, err,
+                      "SSL wants to write%s", handshake);
+        return NGX_ERROR;
+#if 0
         return NGX_AGAIN;
-    }
 #endif
+    }
 
     if (!SSL_is_init_finished(c->ssl->ssl)) {
         handshake = "in SSL handshake";
@@ -261,8 +264,11 @@ static ngx_int_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
         return NGX_AGAIN;
     }
 
-#if 0
     if (sslerr == SSL_ERROR_WANT_READ) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, err,
+                      "SSL wants to read%s", handshake);
+        return NGX_ERROR;
+#if 0
         return NGX_AGAIN;
     }
 #endif

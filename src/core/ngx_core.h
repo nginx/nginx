@@ -58,7 +58,6 @@ typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
 #include <ngx_regex.h>
 #endif
 #include <ngx_rbtree.h>
-#include <ngx_radix_tree.h>
 #include <ngx_times.h>
 #include <ngx_inet.h>
 #include <ngx_cycle.h>
