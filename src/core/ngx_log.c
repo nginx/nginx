@@ -3,7 +3,7 @@
 #include <ngx_core.h>
 
 
-ngx_inline static int ngx_log_is_full(ngx_log_t *log, char *errstr, size_t len);
+static void ngx_log_write(ngx_log_t *log, char *errstr, size_t len);
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
@@ -55,12 +55,9 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 #endif
 {
     char      errstr[MAX_ERROR_STR];
-    size_t    len;
+    size_t    len, max;
 #if (HAVE_VARIADIC_MACROS)
     va_list   args;
-#endif
-#if (WIN32)
-    u_long    written;
 #endif
 
     if (log->file->fd == NGX_INVALID_FILE) {
@@ -70,37 +67,42 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     ngx_memcpy(errstr, ngx_cached_err_log_time.data,
                ngx_cached_err_log_time.len);
 
+#if (WIN32)
+    max = MAX_ERROR_STR - 2;
+#else
+    max = MAX_ERROR_STR - 1;
+#endif
+
     len = ngx_cached_err_log_time.len;
 
-    len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                        " [%s] ", err_levels[level]);
+    len += ngx_snprintf(errstr + len, max - len, " [%s] ", err_levels[level]);
 
     /* pid#tid */
-    len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
+    len += ngx_snprintf(errstr + len, max - len,
                         PID_T_FMT "#%d: ", ngx_getpid(), /* STUB */ 0);
 
     if (log->data) {
-        len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
+        len += ngx_snprintf(errstr + len, max - len,
                             "*%u ", * (u_int *) log->data);
     }
 
 #if (HAVE_VARIADIC_MACROS)
 
     va_start(args, fmt);
-    len += ngx_vsnprintf(errstr + len, sizeof(errstr) - len - 1, fmt, args);
+    len += ngx_vsnprintf(errstr + len, max - len, fmt, args);
     va_end(args);
 
 #else
 
-    len += ngx_vsnprintf(errstr + len, sizeof(errstr) - len - 1, fmt, args);
+    len += ngx_vsnprintf(errstr + len, max - len, fmt, args);
 
 #endif
 
     if (err) {
 
-        if (len > sizeof(errstr) - 50) {
+        if (len > max - 50) {
             /* leave a space for an error code */
-            len = sizeof(errstr) - 50;
+            len = max - 50;
             errstr[len++] = '.';
             errstr[len++] = '.';
             errstr[len++] = '.';
@@ -108,48 +110,56 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 
 #if (WIN32)
         if ((unsigned) err >= 0x80000000) {
-            len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                                " (%X: ", err);
+            len += ngx_snprintf(errstr + len, max - len, " (%X: ", err);
         } else {
-            len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                                " (%d: ", err);
+            len += ngx_snprintf(errstr + len, max - len, " (%d: ", err);
         }
 #else
-        len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
-                            " (%d: ", err);
+        len += ngx_snprintf(errstr + len, max - len, " (%d: ", err);
 #endif
 
-        if (ngx_log_is_full(log, errstr, len)) {
+        if (len >= max) {
+            ngx_log_write(log, errstr, max);
             return;
         }
 
-        len += ngx_strerror_r(err, errstr + len, sizeof(errstr) - len - 1);
+        len += ngx_strerror_r(err, errstr + len, max - len);
 
-        if (ngx_log_is_full(log, errstr, len)) {
+        if (len >= max) {
+            ngx_log_write(log, errstr, max);
             return;
         }
 
         errstr[len++] = ')';
 
-        if (ngx_log_is_full(log, errstr, len)) {
+        if (len >= max) {
+            ngx_log_write(log, errstr, max);
             return;
         }
 
     } else {
-        if (ngx_log_is_full(log, errstr, len)) {
+        if (len >= max) {
+            ngx_log_write(log, errstr, max);
             return;
         }
     }
 
     if (level != NGX_LOG_DEBUG && log->handler) {
-        len += log->handler(log->data, errstr + len, sizeof(errstr) - len - 1);
+        len += log->handler(log->data, errstr + len, max - len);
 
-        if (ngx_log_is_full(log, errstr, len)) {
-            return;
+        if (len >= max) {
+            len = max;
         }
     }
 
+    ngx_log_write(log, errstr, len);
+}
+
+
+static void ngx_log_write(ngx_log_t *log, char *errstr, size_t len)
+{
 #if (WIN32)
+    u_long  written;
 
     errstr[len++] = CR;
     errstr[len++] = LF;
@@ -161,38 +171,6 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     write(log->file->fd, errstr, len);
 
 #endif
-}
-
-
-ngx_inline static int ngx_log_is_full(ngx_log_t *log, char *errstr, size_t len)
-{
-#if (WIN32)
-    u_long  written;
-
-    if (len > MAX_ERROR_STR - 2) {
-        len = MAX_ERROR_STR - 2;
-
-        errstr[len++] = CR;
-        errstr[len++] = LF;
-        WriteFile(log->file->fd, errstr, len, &written, NULL);
-
-        return 1;
-    }
-
-#else
-
-    if (len > MAX_ERROR_STR - 1) {
-        len = MAX_ERROR_STR - 1;
-
-        errstr[len++] = LF;
-        write(log->file->fd, errstr, len);
-
-        return 1;
-    }
-
-#endif
-
-    return 0;
 }
 
 
@@ -320,7 +298,7 @@ ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
     ngx_test_null(log, ngx_pcalloc(cycle->pool, sizeof(ngx_log_t)), NULL);
     ngx_test_null(log->file, ngx_conf_open_file(cycle, name), NULL);
 
-#if 1
+#if 0
     /* STUB */ log->log_level = NGX_LOG_DEBUG | NGX_LOG_DEBUG_CORE | NGX_LOG_DEBUG_ALLOC | NGX_LOG_DEBUG_EVENT | NGX_LOG_DEBUG_HTTP;
 #endif
 
@@ -369,9 +347,8 @@ char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
             }
         }
 
-        d = NGX_LOG_DEBUG_FIRST;
-        for (n = 0; n < /* STUB */ 4; n++) {
-            if (ngx_strcmp(value[i].data, debug_levels[n]) == 0) {
+        for (n = 0, d = NGX_LOG_DEBUG_FIRST; d <= NGX_LOG_DEBUG_LAST; d <<= 1) {
+            if (ngx_strcmp(value[i].data, debug_levels[n++]) == 0) {
                 if (log->log_level & ~NGX_LOG_DEBUG_ALL) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                        "invalid log level \"%s\"",
@@ -381,8 +358,6 @@ char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
 
                 log->log_level |= d;
             }
-
-            d <<= 1;
         }
 
 

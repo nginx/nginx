@@ -501,10 +501,6 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             ls->handler = ngx_http_init_connection;
 
-#if 0
-            ls->log = cf->cycle->log;
-#endif
-
             cscf = in_addr[a].core_srv_conf;
             ls->pool_size = cscf->connection_pool_size;
             ls->post_accept_timeout = cscf->post_accept_timeout;

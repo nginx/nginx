@@ -43,6 +43,10 @@
 typedef int    ngx_int_t;
 typedef u_int  ngx_uint_t;
 
+
+typedef int    ngx_flag_t;
+
+
 /* STUB: autoconf */
 #define PTR_FMT  "%08X"
 

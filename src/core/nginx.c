@@ -6,12 +6,13 @@
 
 
 typedef struct {
-     int        daemon;
-     int        master;
-     uid_t      user;
-     gid_t      group;
-     ngx_str_t  pid;
-     ngx_str_t  newpid;
+     ngx_flag_t  daemon;
+     ngx_flag_t  master;
+     ngx_flag_t  worker_reopen;
+     uid_t       user;
+     gid_t       group;
+     ngx_str_t   pid;
+     ngx_str_t   newpid;
 } ngx_core_conf_t;
 
 
@@ -54,6 +55,13 @@ static ngx_command_t  ngx_core_commands[] = {
       ngx_conf_set_core_flag_slot,
       0,
       offsetof(ngx_core_conf_t, master),
+      NULL },
+
+    { ngx_string("worker_reopen"),
+      NGX_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_core_flag_slot,
+      0,
+      offsetof(ngx_core_conf_t, worker_reopen),
       NULL },
 
       ngx_null_command
@@ -221,12 +229,13 @@ int main(int argc, char *const *argv, char **envp)
 
 static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
-    int              signo;
-    char            *name;
-    sigset_t         set, wset;
-    struct timeval   tv;
-    ngx_uint_t       i, live, sent;
-    ngx_msec_t       delay;
+    int               signo;
+    char             *name;
+    sigset_t          set, wset;
+    struct timeval    tv;
+    ngx_uint_t        i, live, sent;
+    ngx_msec_t        delay;
+    ngx_core_conf_t  *ccf;
 
     delay = 125;
 
@@ -272,6 +281,9 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                 }
             }
         }
+
+        ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
+                                               ngx_core_module);
 
         /* a cycle with the same configuration because a new one is invalid */
 
@@ -340,10 +352,13 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                                    "worker cycle");
 
                     ngx_process_events(cycle->log);
+                    live = 0;
                 }
 
                 if (ngx_reap) {
+                    ngx_reap = 0;
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+
                                    "reap childs");
 
                     live = 0;
@@ -438,8 +453,17 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     }
 
                     if (ngx_reopen) {
-                        /* STUB */
-                        signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
+                        if (ngx_process == NGX_PROCESS_MASTER) {
+                            if (ccf->worker_reopen > 0) {
+                                signo = ngx_signal_value(NGX_REOPEN_SIGNAL);
+                                ngx_reopen = 0;
+                            } else {
+                                signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
+                            }
+
+                        } else { /* NGX_PROCESS_SINGLE */
+                            ngx_reopen = 0;
+                        }
 
                         ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
                                       "reopening logs");
@@ -469,8 +493,6 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                         continue;
                     }
 
-                    sent = 1;
-
                     ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                                    "kill (" PID_T_FMT ", %d)" ,
                                    ngx_processes[i].pid,
@@ -489,20 +511,12 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     if (ngx_processes[i].signal
                                         != ngx_signal_value(NGX_REOPEN_SIGNAL))
                     {
+                        sent = 1;
                         ngx_processes[i].exiting = 1;
                     }
                 }
 
-                if (ngx_reap) {
-                    ngx_reap = 0;
-                }
-
-                /* STUB */
-                if (ngx_reopen) {
-                    break;
-                }
-
-                if (ngx_reconfigure) {
+                if (ngx_reopen || ngx_reconfigure) {
                     break;
                 }
             }
@@ -512,6 +526,7 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
             } else if (ngx_noaccept) {
                 ngx_noaccept = 0;
+                ngx_reconfigure = 0;
 
             } else {
                 cycle = ngx_init_cycle(cycle);
@@ -521,9 +536,9 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                 }
 
                 ngx_cycle = cycle;
+                ngx_reconfigure = 0;
             }
 
-            ngx_reconfigure = 0;
             break;
         }
     }
@@ -752,6 +767,7 @@ static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle)
      */
     ccf->daemon = NGX_CONF_UNSET;
     ccf->master = NGX_CONF_UNSET;
+    ccf->worker_reopen = NGX_CONF_UNSET;
     ccf->user = (uid_t) NGX_CONF_UNSET;
     ccf->group = (gid_t) NGX_CONF_UNSET;
 

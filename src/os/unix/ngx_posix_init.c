@@ -118,6 +118,7 @@ void ngx_signal_handler(int signo)
     switch (ngx_process) {
 
     case NGX_PROCESS_MASTER:
+    case NGX_PROCESS_SINGLE:
         switch (signo) {
 
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
@@ -192,15 +193,12 @@ void ngx_signal_handler(int signo)
             action = ", exiting";
             break;
 
-#if 0
         case ngx_signal_value(NGX_REOPEN_SIGNAL):
             ngx_reopen = 1;
             action = ", reopen logs";
             break;
-#endif
 
         case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
-        case ngx_signal_value(NGX_REOPEN_SIGNAL):
         case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
             action = ", ignoring";

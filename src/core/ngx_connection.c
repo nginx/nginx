@@ -4,7 +4,7 @@
 #include <ngx_event.h>
 
 
-ngx_os_io_t            ngx_io;
+ngx_os_io_t  ngx_io;
 
 
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
