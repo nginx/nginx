@@ -3,6 +3,7 @@
 #include <ngx_core.h>
 
 
+ngx_inline static int ngx_log_is_full(ngx_log_t *log, char *errstr, size_t len);
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
@@ -97,6 +98,14 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 
     if (err) {
 
+        if (len > sizeof(errstr) - 50) {
+            /* leave a space for an error code */
+            len = sizeof(errstr) - 50;
+            errstr[len++] = '.';
+            errstr[len++] = '.';
+            errstr[len++] = '.';
+        }
+
 #if (WIN32)
         if ((unsigned) err >= 0x80000000) {
             len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
@@ -110,20 +119,34 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
                             " (%d: ", err);
 #endif
 
+        if (ngx_log_is_full(log, errstr, len)) {
+            return;
+        }
+
         len += ngx_strerror_r(err, errstr + len, sizeof(errstr) - len - 1);
-        if (len < sizeof(errstr) - 2) {
-            errstr[len++] = ')';
-        } else {
-            len = sizeof(errstr) - 2;
+
+        if (ngx_log_is_full(log, errstr, len)) {
+            return;
+        }
+
+        errstr[len++] = ')';
+
+        if (ngx_log_is_full(log, errstr, len)) {
+            return;
+        }
+
+    } else {
+        if (ngx_log_is_full(log, errstr, len)) {
+            return;
         }
     }
 
     if (level != NGX_LOG_DEBUG && log->handler) {
         len += log->handler(log->data, errstr + len, sizeof(errstr) - len - 1);
-    }
 
-    if (len > sizeof(errstr) - 2) {
-        len = sizeof(errstr) - 2;
+        if (ngx_log_is_full(log, errstr, len)) {
+            return;
+        }
     }
 
 #if (WIN32)
@@ -138,6 +161,38 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
     write(log->file->fd, errstr, len);
 
 #endif
+}
+
+
+ngx_inline static int ngx_log_is_full(ngx_log_t *log, char *errstr, size_t len)
+{
+#if (WIN32)
+    u_long  written;
+
+    if (len > MAX_ERROR_STR - 2) {
+        len = MAX_ERROR_STR - 2;
+
+        errstr[len++] = CR;
+        errstr[len++] = LF;
+        WriteFile(log->file->fd, errstr, len, &written, NULL);
+
+        return 1;
+    }
+
+#else
+
+    if (len > MAX_ERROR_STR - 1) {
+        len = MAX_ERROR_STR - 1;
+
+        errstr[len++] = LF;
+        write(log->file->fd, errstr, len);
+
+        return 1;
+    }
+
+#endif
+
+    return 0;
 }
 
 
