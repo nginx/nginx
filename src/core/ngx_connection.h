@@ -60,6 +60,13 @@ typedef enum {
 } ngx_connection_log_error_e;
 
 
+typedef enum {
+     NGX_TCP_NOPUSH_DISABLED = -1,
+     NGX_TCP_NOPUSH_UNSET = 0,
+     NGX_TCP_NOPUSH_SET
+} ngx_connection_tcp_nopush_e;
+
+
 struct ngx_connection_s {
     void             *data;
     ngx_event_t      *read;

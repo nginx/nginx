@@ -38,7 +38,7 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
         }
     }
 
-    /* add the incoming hunk to the chain ctx->in */
+    /* add the incoming buf to the chain ctx->in */
 
     if (in) {
         if (ngx_chain_add_copy(ctx->pool, &ctx->in, in) == NGX_ERROR) {

@@ -701,7 +701,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
 
     /* rc == NGX_OK */
 
-    if (c->tcp_nopush) {
+    if (c->tcp_nopush == NGX_TCP_NOPUSH_SET) {
         if (ngx_tcp_push(c->fd) == NGX_ERROR) {
             ngx_log_error(NGX_LOG_CRIT, c->log,
                           ngx_socket_errno,
@@ -710,7 +710,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
             return; 
         }
 
-        c->tcp_nopush = 0;
+        c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
         return;
     }
 
@@ -1138,7 +1138,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
         return;
     }
 
-    /* TODO: preallocate event_pipe hunks, look "Content-Length" */
+    /* TODO: preallocate event_pipe bufs, look "Content-Length" */
 
     rc = ngx_http_send_header(r);
 

@@ -92,7 +92,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
     if (rev->ready) {
         /* deferred accept, aio, iocp */
 
-        if (*ngx_accept_mutex) {
+        if (ngx_accept_mutex) {
             if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
                 ngx_http_close_connection(c);
                 return;
@@ -562,10 +562,10 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         /*
          * If it's a pipelined request and a request line is not complete
-         * then we have to copy it to the start of the r->header_in hunk.
+         * then we have to copy it to the start of the r->header_in buf.
          * We have to copy it here only if the large client headers
          * are enabled otherwise a request line had been already copied
-         * to the start of the r->header_in hunk in ngx_http_set_keepalive().
+         * to the start of the r->header_in buf in ngx_http_set_keepalive().
          */
 
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
@@ -757,8 +757,10 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
         if (r->header_in->last == r->header_in->end) {
 
-            /* if the large client headers are enabled then
-                we need to compact r->header_in hunk */
+            /*
+             * if the large client headers are enabled then
+             * we need to compact r->header_in buf
+             */
 
             if (cscf->large_client_header) {
                 offset = r->header_name_start - r->header_in->start;
@@ -1315,13 +1317,13 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     ctx->action = "keepalive";
 
-    if (c->tcp_nopush == 1) {
+    if (c->tcp_nopush == NGX_TCP_NOPUSH_SET) {
         if (ngx_tcp_push(c->fd) == NGX_ERROR) {
             ngx_connection_error(c, ngx_socket_errno, ngx_tcp_push_n " failed");
             ngx_http_close_connection(c);
             return;
         }
-        c->tcp_nopush = 0;
+        c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
     }
 
     if (rev->ready) {

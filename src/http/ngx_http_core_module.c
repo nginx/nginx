@@ -567,7 +567,7 @@ int ngx_http_find_location_config(ngx_http_request_t *r)
 
     if (!clcf->tcp_nopush) {
         /* disable TCP_NOPUSH/TCP_CORK use */
-        r->connection->tcp_nopush = -1;
+        r->connection->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
     }
 
 

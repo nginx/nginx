@@ -143,7 +143,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
         prev = buf;
         size = 0;
 
-        /* coalesce the neighbouring hunks */
+        /* coalesce the neighbouring bufs */
 
         while (cl && prev == cl->buf->pos) {
             size += cl->buf->last - cl->buf->pos;

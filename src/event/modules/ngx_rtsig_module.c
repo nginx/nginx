@@ -16,10 +16,6 @@
 #define si_fd     __spare__[0]
 
 int sigtimedwait(const sigset_t *set, siginfo_t *info,
-                 const struct timespec *timeout);
-
-
-int sigtimedwait(const sigset_t *set, siginfo_t *info,
                  const struct timespec *timeout)
 {
     return -1;
@@ -105,6 +101,7 @@ static int ngx_rtsig_init(ngx_cycle_t *cycle)
 
     sigemptyset(&set);
     sigaddset(&set, rtscf->signo);
+    sigaddset(&set, rtscf->signo + 1);
     sigaddset(&set, SIGIO);
 
     if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
@@ -133,12 +130,15 @@ static void ngx_rtsig_done(ngx_cycle_t *cycle)
 
 static int ngx_rtsig_add_connection(ngx_connection_t *c)
 {
+    int                signo;
     ngx_rtsig_conf_t  *rtscf;
 
     rtscf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_rtsig_module);
 
+    signo = rtscf->signo + c->read->instance;
+
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "rtsig add connection: fd:%d signo:%d", c->fd, rtscf->signo);
+                   "rtsig add connection: fd:%d signo:%d", c->fd, signo);
 
     if (fcntl(c->fd, F_SETFL, O_RDWR|O_NONBLOCK|O_ASYNC) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -146,13 +146,13 @@ static int ngx_rtsig_add_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    if (fcntl(c->fd, F_SETSIG, rtscf->signo) == -1) {
+    if (fcntl(c->fd, F_SETSIG, signo) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
                       "fcntl(F_SETSIG) failed");
         return NGX_ERROR;
     }
 
-    if (fcntl(c->fd, F_SETOWN, ngx_getpid()) == -1) {
+    if (fcntl(c->fd, F_SETOWN, ngx_pid) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
                       "fcntl(F_SETOWN) failed");
         return NGX_ERROR;
@@ -175,6 +175,9 @@ static int ngx_rtsig_add_connection(ngx_connection_t *c)
 
 static int ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags)
 {
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "rtsig del connection: fd:%d", c->fd);
+
     if (!(flags & NGX_CLOSE_EVENT)) {
         if (fcntl(c->fd, F_SETFL, O_RDWR|O_NONBLOCK) == -1) {
             ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -273,9 +276,9 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
     if (err) {
+        ngx_accept_mutex_unlock();
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
                       cycle->log, err, "sigtimedwait() failed");
-        ngx_accept_mutex_unlock();
         return NGX_ERROR;
     }
 
@@ -287,17 +290,40 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
     }
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "signo:%d fd:%d band:%X", signo, si.si_fd, si.si_band);
+                   "rtsig signo:%d fd:%d band:%X", signo, si.si_fd, si.si_band);
 
     rtscf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_rtsig_module);
 
-    if (signo == rtscf->signo) {
+    if (signo == rtscf->signo || signo == rtscf->signo + 1) {
 
         /* TODO: old_cycles */
 
         c = &ngx_cycle->connections[si.si_fd];
 
-        /* TODO: stale signals */
+        instance = signo - rtscf->signo;
+
+        if (si.si_band & POLLIN) {
+            c->read->returned_instance = instance;
+        }
+
+        if (si.si_band & POLLOUT) {
+            c->write->returned_instance = instance;
+        }
+    
+        if (c->read->instance != instance) {
+
+            /*
+             * the stale event from a file descriptor
+             * that was just closed in this iteration
+             */
+
+            ngx_accept_mutex_unlock();
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                           "rtsig: stale event " PTR_FMT, c);
+
+            return NGX_OK;
+        }
 
         if (si.si_band & (POLLIN|POLLHUP|POLLERR)) {
             if (c->read->active) {
@@ -307,7 +333,7 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
                     c->read->event_handler(c->read);
 
                 } else if (c->read->accept) {
-                    if (ngx_accept_disabled > 0) {
+                    if (ngx_accept_disabled <= 0) {
                         c->read->event_handler(c->read);
                     }
 
@@ -371,9 +397,11 @@ int ngx_rtsig_process_events(ngx_cycle_t *cycle)
 
 
     } else {
+        ngx_accept_mutex_unlock();
+
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                       "sigtimedwait() returned unexpected signal: %d", signo);
-        ngx_accept_mutex_unlock();
+
         return NGX_ERROR;
     }
 

@@ -372,9 +372,16 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
         rev->event_handler = &ngx_event_accept;
 
         if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
-            if (ngx_add_conn(c) == NGX_ERROR) {
-                return NGX_ERROR;
+
+            if (ngx_accept_mutex) {
+                ngx_accept_mutex_held = 0;
+
+            } else {
+                if (ngx_add_conn(c) == NGX_ERROR) {
+                    return NGX_ERROR;
+                }
             }
+
         } else {
             if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
                 return NGX_ERROR;

@@ -225,7 +225,7 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 /* if there're no bufs to read in then disable a level event */
 
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                               "no pipe hunks to read in");
+                               "no pipe bufs to read in");
     
                 break;
             }

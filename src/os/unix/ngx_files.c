@@ -125,7 +125,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
     ngx_err_t      err;
     ngx_array_t    io;
 
-    /* use pwrite() if there's the only hunk in a chain */
+    /* use pwrite() if there's the only buf in a chain */
 
     if (cl->next == NULL) {
         return ngx_write_file(file, cl->buf->pos,

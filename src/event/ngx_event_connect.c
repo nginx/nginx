@@ -264,6 +264,16 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     }
 
+    if (ngx_add_conn) {
+        if (rc == -1) {
+            /* NGX_EINPROGRESS */
+            return NGX_AGAIN;
+        }
+ 
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pc->log, 0, "connected");
+        return NGX_OK;
+    }
+
     if (ngx_event_flags & NGX_USE_AIO_EVENT) {
 
         /* aio, iocp */
@@ -293,8 +303,6 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
         return NGX_OK;
     }
-
-    /* TODO: epoll */
 
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {     /* kqueue */
         event = NGX_CLEAR_EVENT;

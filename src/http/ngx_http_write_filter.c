@@ -129,8 +129,8 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                         ngx_http_write_filter_module);
 
     /*
-     * avoid the output if there is no last hunk, no flush point,
-     * there are the incoming hunks and the size of all hunks
+     * avoid the output if there is no last buf, no flush point,
+     * there are the incoming bufs and the size of all bufs
      * is smaller than "postpone_output" directive
      */
 

@@ -142,29 +142,6 @@ typedef struct {
         (ngx_buf_in_memory(b) ? (size_t) (b->last - b->pos):                 \
                                 (size_t) (b->file_last - b->file_pos))
 
-#if 0
-
-#define ngx_hunk_in_memory_only(h)                                           \
-         ((h->type & (NGX_HUNK_IN_MEMORY|NGX_HUNK_FILE)) == NGX_HUNK_IN_MEMORY)
-/*
-    ((h->type & (NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP|NGX_HUNK_FILE)) \
-                  == (h->type & (NGX_HUNK_TEMP|NGX_HUNK_MEMORY|NGX_HUNK_MMAP)))
-
-*/
-
-
-
-#define ngx_hunk_special(b)                                                  \
-        (b->type == (b->type & (NGX_HUNK_FLUSH|NGX_HUNK_LAST)))
-
-
-#define ngx_hunk_size(b)                                                     \
-        ((b->type & NGX_HUNK_IN_MEMORY) ? (size_t) (b->last - b->pos):       \
-                                          (size_t) (b->file_last - b->file_pos))
-
-#endif
-
-
 ngx_buf_t *ngx_create_temp_buf(ngx_pool_t *pool, size_t size);
 ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
 

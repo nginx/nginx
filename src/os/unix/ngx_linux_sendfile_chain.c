@@ -58,32 +58,32 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         /* create the iovec and coalesce the neighbouring bufs */
 
         for (cl = in; cl && header.nelts < IOV_MAX; cl = cl->next) {
-            if (ngx_hunk_special(cl->hunk)) {
+            if (ngx_buf_special(cl->buf)) {
                 continue;
             }
 
-            if (!ngx_hunk_in_memory_only(cl->hunk)) {
+            if (!ngx_buf_in_memory_only(cl->buf)) {
                 break;
             }
 
-            if (prev == cl->hunk->pos) {
-                iov->iov_len += cl->hunk->last - cl->hunk->pos;
+            if (prev == cl->buf->pos) {
+                iov->iov_len += cl->buf->last - cl->buf->pos;
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
-                iov->iov_base = (void *) cl->hunk->pos;
-                iov->iov_len = cl->hunk->last - cl->hunk->pos;
+                iov->iov_base = (void *) cl->buf->pos;
+                iov->iov_len = cl->buf->last - cl->buf->pos;
             }
 
-            prev = cl->hunk->last;
+            prev = cl->buf->last;
         }
 
         /* set TCP_CORK if there is a header before a file */
 
-        if (!c->tcp_nopush == 0
+        if (c->tcp_nopush == NGX_TCP_NOPUSH_UNSET
             && header.nelts != 0
             && cl
-            && cl->hunk->type & NGX_HUNK_FILE)
+            && cl->buf->in_file)
         {
             if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
                 err = ngx_errno;
@@ -100,32 +100,33 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                 }
 
             } else {
-                c->tcp_nopush = 1;
+                c->tcp_nopush = NGX_TCP_NOPUSH_SET;
+
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                "tcp_nopush");
             }
         }
 
-        if (header.nelts == 0 && cl && cl->hunk->type & NGX_HUNK_FILE) {
+        if (header.nelts == 0 && cl && cl->buf->in_file) {
 
-            /* get the file hunk */
+            /* get the file buf */
 
-            file = cl->hunk;
+            file = cl->buf;
             fsize = (size_t) (file->file_last - file->file_pos);
             fprev = file->file_last;
             cl = cl->next; 
 
-            /* coalesce the neighbouring file hunks */
+            /* coalesce the neighbouring file bufs */
 
-            while (cl && (cl->hunk->type & NGX_HUNK_FILE)) {
-                if (file->file->fd != cl->hunk->file->fd
-                    || fprev != cl->hunk->file_pos)
+            while (cl && (cl->buf->in_file)) {
+                if (file->file->fd != cl->buf->file->fd
+                    || fprev != cl->buf->file_pos)
                 {
                     break;
                 }
 
-                fsize += (size_t) (cl->hunk->file_last - cl->hunk->file_pos);
-                fprev = cl->hunk->file_last;
+                fsize += (size_t) (cl->buf->file_last - cl->buf->file_pos);
+                fprev = cl->buf->file_last;
                 cl = cl->next;
             }
         }
@@ -199,7 +200,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         for (cl = in; cl; cl = cl->next) {
 
-            if (ngx_hunk_special(cl->hunk)) {
+            if (ngx_buf_special(cl->buf)) {
                 continue;
             }
 
@@ -207,28 +208,28 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                 break;
             }
 
-            size = ngx_hunk_size(cl->hunk);
+            size = ngx_buf_size(cl->buf);
 
             if (sent >= size) {
                 sent -= size;
 
-                if (cl->hunk->type & NGX_HUNK_IN_MEMORY) {
-                    cl->hunk->pos = cl->hunk->last;
+                if (ngx_buf_in_memory(cl->buf)) {
+                    cl->buf->pos = cl->buf->last;
                 }
 
-                if (cl->hunk->type & NGX_HUNK_FILE) {
-                    cl->hunk->file_pos = cl->hunk->file_last;
+                if (cl->buf->in_file) {
+                    cl->buf->file_pos = cl->buf->file_last;
                 }
 
                 continue;
             }
 
-            if (cl->hunk->type & NGX_HUNK_IN_MEMORY) {
-                cl->hunk->pos += sent;
+            if (ngx_buf_in_memory(cl->buf)) {
+                cl->buf->pos += sent;
             }
 
-            if (cl->hunk->type & NGX_HUNK_FILE) {
-                cl->hunk->file_pos += sent;
+            if (cl->buf->in_file) {
+                cl->buf->file_pos += sent;
             }
 
             break;
