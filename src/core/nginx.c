@@ -52,11 +52,12 @@ int main(int argc, char *const *argv)
     ngx_pool = ngx_create_pool(16 * 1024, &ngx_log);
     /* */
 
-#if !(WIN32)
+#if (WIN32)
+    ngx_init_sockets(&ngx_log);
+#else
     ngx_set_signals(&ngx_log);
 #endif
 
-    ngx_init_sockets(&ngx_log);
 
     ngx_init_array(ngx_listening_sockets, ngx_pool, 10, sizeof(ngx_listen_t),
                    1);

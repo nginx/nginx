@@ -8,8 +8,6 @@
 
 typedef int  ngx_socket_t;
 
-#define ngx_init_sockets
-
 #define ngx_socket(af, type, proto, flags)   socket(af, type, proto)
 #define ngx_socket_n        "socket()"
 

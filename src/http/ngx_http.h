@@ -245,6 +245,9 @@ int ngx_http_init_connection(ngx_connection_t *c);
 int ngx_http_discard_body(ngx_http_request_t *r);
 
 
+int ngx_http_special_response(ngx_http_request_t *r, int error);
+
+
 extern int  ngx_max_module;
 extern ngx_array_t  ngx_http_servers;
 
