@@ -252,7 +252,7 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             if (n >= size) {
                 cl->hunk->last = cl->hunk->end;
 
-    /* STUB */ cl->hunk->num = p->num++;
+/* STUB */ cl->hunk->num = p->num++;
 
                 if (p->input_filter(p, cl->hunk) == NGX_ERROR) {
                     return NGX_ABORT;
@@ -271,15 +271,17 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
     }
 
     if ((p->upstream_eof || p->upstream_error) && p->free_raw_hunks) {
-    /* STUB */ p->free_raw_hunks->hunk->num = p->num++;
+/* STUB */ p->free_raw_hunks->hunk->num = p->num++;
         if (p->input_filter(p, p->free_raw_hunks->hunk) == NGX_ERROR) {
             return NGX_ABORT;
         }
 
         p->free_raw_hunks = p->free_raw_hunks->next;
 
-        for (cl = p->free_raw_hunks; cl; cl = cl->next) {
-            ngx_pfree(p->pool, cl->hunk->start); 
+        if (p->free_bufs) {
+            for (cl = p->free_raw_hunks; cl; cl = cl->next) {
+                ngx_pfree(p->pool, cl->hunk->start); 
+            }
         }
     }
 
@@ -394,6 +396,7 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
         for (cl = p->free; cl; cl = cl->next) {
 
+            /* TODO: free hunk if p->free_bufs && upstream done */
             /* add the free shadow raw hunk to p->free_raw_hunks */
 
             if (cl->hunk->type & NGX_HUNK_LAST_SHADOW) {

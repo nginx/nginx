@@ -38,7 +38,10 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     pc->cached = 0;
     pc->connection = NULL;
 
-    if (pc->peers->number > 1) {
+    if (pc->peers->number == 1) {
+        peer = &pc->peers->peers[0];
+
+    } else {
 
         /* there are several peers */
 
@@ -53,7 +56,10 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
             }
         }
 
-        if (pc->peers->max_fails > 0) {
+        if (pc->peers->max_fails == 0) {
+            peer = &pc->peers->peers[pc->cur_peer];
+
+        } else {
 
             /* the peers support a fault tolerance */
 
@@ -83,13 +89,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     }
 
-    peer = &pc->peers->peers[pc->cur_peer];
-
     /* ngx_unlock_mutex(pc->peers->mutex); */
 
-#if 0
-    pc->addr_port_text = peer->addr_port_text;
-#endif
 
     s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP, 0);
 
@@ -263,6 +264,17 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
 
 void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc)
 {
+    time_t  now;
+
+    now = ngx_time();
+
+    /* ngx_lock_mutex(pc->peers->mutex); */
+
+    pc->peers->peers[pc->cur_peer].fails++;
+    pc->peers->peers[pc->cur_peer].accessed = now;
+
+    /* ngx_unlock_mutex(pc->peers->mutex); */
+
     pc->cur_peer++;
 
     if (pc->cur_peer >= pc->peers->number) {

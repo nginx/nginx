@@ -229,6 +229,7 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
         r->request_body_handler = ngx_http_proxy_init_request;
         r->data = p;
 
+        /* TODO: we ignore return value of ngx_http_read_client_request_body */
         ngx_http_read_client_request_body(r, p->lcf->request_buffer_size);
 
         return NGX_DONE;
@@ -447,6 +448,87 @@ static void ngx_http_proxy_send_request_handler(ngx_event_t *wev)
 
     return;
 }
+
+
+#if 0
+
+static int ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
+{
+    int                rc;
+    ngx_chain_t       *cl;
+    ngx_connection_t  *c;
+
+    for ( ;; ) {
+        p->action = "connecting to upstream";
+
+        rc = ngx_event_connect_peer(&p->upstream);
+
+        if (rc == NGX_ERROR) {
+            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_DONE;
+        }
+
+        if (rc == NGX_CONNECT_ERROR) {
+            ngx_event_connect_peer_failed(&p->upstream);
+
+#if 0
+            /* TODO: make separate func and call it from next_upstream */
+
+            if (!(state = ngx_push_array(p->states))) {
+                ngx_http_proxy_finalize_request(p,
+                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return NGX_DONE;
+            }
+
+            state->status = NGX_HTTP_BAD_GATEWAY;
+            state->peer =
+                 p->upstream.peers->peers[p->upstream.cur_peer].addr_port_text;
+
+#endif
+
+            if (p->upstream.tries == 0) {
+                ngx_http_proxy_finalize_request(p, NGX_HTTP_BAD_GATEWAY);
+                return NGX_DONE;
+            }
+
+            continue;
+        }
+
+        p->upstream.connection->data = p;
+        p->upstream.connection->write->event_handler =
+                                           ngx_http_proxy_send_request_handler;
+        p->upstream.connection->read->event_handler =
+                                   ngx_http_proxy_process_upstream_status_line;
+
+        c = p->upstream.connection;
+        c->pool = p->request->pool;
+        c->read->log = c->write->log = c->log = p->request->connection->log;
+
+        if (p->upstream.tries > 1 && p->request_sent) {
+
+            /* reinit the request chain */
+
+            for (cl = p->request->request_hunks; cl; cl = cl->next) {
+                cl->hunk->pos = cl->hunk->start;
+            }
+        }
+
+        p->request_sent = 0;
+        p->timedout = 0;
+
+        if (rc == NGX_OK) {
+            return ngx_http_proxy_send_request(p);
+        }
+
+        /* rc == NGX_AGAIN */
+
+        ngx_add_timer(c->write, p->lcf->connect_timeout);
+
+        return NGX_AGAIN;
+    }
+}
+
+#endif
 
 
 static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
@@ -985,6 +1067,9 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
         /* the posted aio operation can currupt shadow buf */
         ep->single_buf = 1;
     }
+
+    /* TODO: ep->free_bufs = 0 if use ngx_create_chain_of_hunks() */
+    ep->free_bufs = 1;
 
     /*
      * event_pipe would do p->header_in->last += ep->preread_size
