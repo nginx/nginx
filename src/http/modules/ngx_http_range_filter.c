@@ -114,17 +114,6 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
         || r->headers_out.status != NGX_HTTP_OK
         || r->headers_out.content_length_n == -1
         || !(r->filter & NGX_HTTP_FILTER_ALLOW_RANGES))
-
-#if 0
-        /* STUB: we currently support ranges for file hunks only */
-        || !r->sendfile
-        || r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY
-#endif
-
-#if 0
-        || (r->headers_out.content_encoding
-            && r->headers_out.content_encoding->value.len))
-#endif
     {
         return ngx_http_next_header_filter(r);
     }
@@ -506,8 +495,7 @@ static ngx_int_t ngx_http_range_body_filter(ngx_http_request_t *r,
         return ngx_http_next_body_filter(r, out);
     }
 
-    /* TODO: several incoming hunks of proxied responses
-             and memory hunks on platforms that have no sendfile() */
+    /* TODO: alert */
 
     return ngx_http_next_body_filter(r, in);
 }

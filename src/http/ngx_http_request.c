@@ -39,7 +39,8 @@ static char *client_header_errors[] = {
     "client %s sent too long header line, URL: %s",
     "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s",
     "client %s sent invalid \"Content-Length\" header, URL: %s",
-    "client %s sent POST method without \"Content-Length\" header, URL: %s"
+    "client %s sent POST method without \"Content-Length\" header, URL: %s",
+    "client %s sent invalid \"Host\" header \"%s\", URL: %s"
 };
 
 
@@ -847,6 +848,7 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
     size_t                     len;
     ngx_uint_t                 i;
     ngx_http_server_name_t    *name;
+    ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf;
 
     if (r->headers_in.host) {
@@ -878,6 +880,14 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
                 r->connection->log->log_level = clcf->err_log->log_level;
 
                 break;
+            }
+        }
+
+        if (i == r->virtual_names->nelts) {
+            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+            if (cscf->restrict_host_names != NGX_HTTP_RESTRICT_HOST_OFF) {
+                return NGX_HTTP_PARSE_INVALID_HOST;
             }
         }
 
@@ -1653,7 +1663,8 @@ void ngx_http_close_connection(ngx_connection_t *c)
 static void ngx_http_client_error(ngx_http_request_t *r,
                                   int client_error, int error)
 {
-    ngx_http_log_ctx_t  *ctx;
+    ngx_http_log_ctx_t        *ctx;
+    ngx_http_core_srv_conf_t  *cscf;
 
     ctx = r->connection->log->data;
 
@@ -1668,9 +1679,26 @@ static void ngx_http_client_error(ngx_http_request_t *r,
     r->connection->log->handler = NULL;
 
     if (ctx->url) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+        if (client_error == NGX_HTTP_PARSE_INVALID_HOST) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                    client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
+                    ctx->client, r->headers_in.host->value.data, ctx->url);
+
+            error = NGX_HTTP_INVALID_HOST;
+
+            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+            if (cscf->restrict_host_names == NGX_HTTP_RESTRICT_HOST_CLOSE) {
+                ngx_http_close_request(r, error);
+                ngx_http_close_connection(r->connection);
+                return;
+            }
+
+        } else {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                     client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
                     ctx->client, ctx->url);
+        }
 
     } else {
         if (error == NGX_HTTP_REQUEST_URI_TOO_LARGE) {

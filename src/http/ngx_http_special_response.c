@@ -166,6 +166,9 @@ static ngx_str_t error_pages[] = {
     ngx_null_string,             /* 415 */
     ngx_string(error_416_page),
 
+    ngx_string(error_404_page),  /* 498 */
+    ngx_null_string,             /* 499 */
+
     ngx_string(error_500_page),
     ngx_string(error_501_page),
     ngx_string(error_502_page),
@@ -229,13 +232,20 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         /* 3XX */
         err = error - NGX_HTTP_MOVED_PERMANENTLY;
 
-    } else if (error < NGX_HTTP_INTERNAL_SERVER_ERROR) {
+    } else if (error < NGX_HTTP_NGX_CODES) {
         /* 4XX */
         err = error - NGX_HTTP_BAD_REQUEST + 3;
 
     } else {
-        /* 5XX */
-        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 3 + 17;
+        /* 49X, 5XX */
+        err = error - NGX_HTTP_NGX_CODES + 3 + 17;
+
+        switch (error) {
+            case NGX_HTTP_INVALID_HOST:
+                r->headers_out.status = NGX_HTTP_NOT_FOUND;
+                error = NGX_HTTP_NOT_FOUND;
+                break;
+        }
     }
 
     if (error_pages[err].len) {

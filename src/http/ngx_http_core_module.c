@@ -37,6 +37,14 @@ static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data);
 static ngx_conf_post_t  ngx_http_lowat_post = { ngx_http_lowat_check } ;
 
 
+static ngx_conf_enum_t  ngx_http_restrict_host_names[] = {
+    { ngx_string("off"), NGX_HTTP_RESTRICT_HOST_OFF },
+    { ngx_string("on"), NGX_HTTP_RESTRICT_HOST_ON },
+    { ngx_string("close"), NGX_HTTP_RESTRICT_HOST_CLOSE },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_command_t  ngx_http_core_commands[] = {
 
     { ngx_string("server"),
@@ -87,6 +95,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_core_srv_conf_t, large_client_header),
       NULL },
+
+    { ngx_string("restrict_host_names"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_core_srv_conf_t, restrict_host_names),
+      &ngx_http_restrict_host_names },
 
     { ngx_string("location"),
       NGX_HTTP_SRV_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE12,
@@ -1127,6 +1142,7 @@ static void *ngx_http_core_create_srv_conf(ngx_conf_t *cf)
     cscf->client_header_timeout = NGX_CONF_UNSET_MSEC;
     cscf->client_header_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->large_client_header = NGX_CONF_UNSET;
+    cscf->restrict_host_names = NGX_CONF_UNSET_UINT;
 
     return cscf;
 }
@@ -1182,6 +1198,8 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
                               prev->client_header_buffer_size, 1024);
     ngx_conf_merge_value(conf->large_client_header,
                          prev->large_client_header, 1);
+    ngx_conf_merge_unsigned_value(conf->restrict_host_names,
+                                  prev->restrict_host_names, 0);
 
     return NGX_CONF_OK;
 }

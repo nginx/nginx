@@ -31,6 +31,7 @@
 #define NGX_HTTP_PARSE_NO_HOST_HEADER      16
 #define NGX_HTTP_PARSE_INVALID_CL_HEADER   17
 #define NGX_HTTP_PARSE_POST_WO_CL_HEADER   18
+#define NGX_HTTP_PARSE_INVALID_HOST        19
 
 
 #define NGX_HTTP_OK                        200
@@ -50,6 +51,17 @@
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE     414
 #define NGX_HTTP_RANGE_NOT_SATISFIABLE     416
 
+
+/* Our own HTTP codes */
+
+#define NGX_HTTP_NGX_CODES                 NGX_HTTP_INVALID_HOST
+
+/*
+ * We use the special code for the requests with invalid host name
+ * to distinguish it from 4XX in an error page redirection 
+ */
+#define NGX_HTTP_INVALID_HOST              498
+
 /*
  * HTTP does not define the code for the case when a client closed
  * the connection while we are processing its request so we introduce
@@ -58,11 +70,19 @@
  */
 #define NGX_HTTP_CLIENT_CLOSED_REQUEST     499
 
+
 #define NGX_HTTP_INTERNAL_SERVER_ERROR     500
 #define NGX_HTTP_NOT_IMPLEMENTED           501
 #define NGX_HTTP_BAD_GATEWAY               502
 #define NGX_HTTP_SERVICE_UNAVAILABLE       503
 #define NGX_HTTP_GATEWAY_TIME_OUT          504
+
+
+typedef enum {
+    NGX_HTTP_RESTRICT_HOST_OFF = 0,
+    NGX_HTTP_RESTRICT_HOST_ON,
+    NGX_HTTP_RESTRICT_HOST_CLOSE
+} ngx_http_restrict_host_e;
 
 
 typedef enum {

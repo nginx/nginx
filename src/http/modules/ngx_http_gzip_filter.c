@@ -18,7 +18,7 @@ typedef struct {
     int                  level;
     size_t               wbits;
     size_t               memlevel;
-    size_t               min_length;
+    ssize_t              min_length;
 } ngx_http_gzip_conf_t;
 
 
@@ -913,7 +913,7 @@ static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
     ngx_conf_merge_size_value(conf->wbits, prev->wbits, MAX_WBITS);
     ngx_conf_merge_size_value(conf->memlevel, prev->memlevel,
                               MAX_MEM_LEVEL - 1);
-    ngx_conf_merge_size_value(conf->min_length, prev->min_length, 0);
+    ngx_conf_merge_value(conf->min_length, prev->min_length, 0);
     ngx_conf_merge_value(conf->no_buffer, prev->no_buffer, 0);
 
     return NGX_CONF_OK;
