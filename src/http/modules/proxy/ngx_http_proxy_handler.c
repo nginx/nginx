@@ -38,6 +38,12 @@ static ngx_conf_bitmask_t  use_stale_masks[] = {
     { ngx_null_string, 0 }
 };
 
+
+static ngx_conf_num_bounds_t  ngx_http_proxy_lm_factor_bounds = {
+    ngx_conf_check_num_bounds, 0, 100
+};
+
+
 static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_pass"),
@@ -124,12 +130,42 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, cache),
       NULL },
 
+
     { ngx_string("proxy_pass_server"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, pass_server),
       NULL },
+
+    { ngx_string("proxy_pass_x_accel_expires"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, pass_x_accel_expires),
+      NULL },
+
+    { ngx_string("proxy_ignore_expires"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, ignore_expires),
+      NULL },
+
+    { ngx_string("proxy_lm_factor"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, lm_factor),
+      &ngx_http_proxy_lm_factor_bounds },
+
+    { ngx_string("proxy_default_expires"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_sec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, default_expires),
+      NULL },
+
 
     { ngx_string("proxy_next_upstream"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
@@ -199,8 +235,6 @@ ngx_http_header_t ngx_http_proxy_headers_in[] = {
 static int ngx_http_proxy_handler(ngx_http_request_t *r)
 {
     int                    rc;
-    char                  *last;
-    ngx_http_cache_ctx_t  *cctx;
     ngx_http_proxy_ctx_t  *p;
 
     ngx_http_create_ctx(r, p, ngx_http_proxy_module,
@@ -213,7 +247,34 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
     /* TODO: we currently support reverse proxy only */
     p->accel = 1;
 
-    if (!p->lcf->cache || r->bypass_cache) {
+    ngx_init_array(p->states, r->pool, p->lcf->peers->number,
+                   sizeof(ngx_http_proxy_state_t),
+                   NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+    if (!(p->state = ngx_push_array(&p->states))) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+
+    if (!p->lcf->cache) {
+        p->state->cache = NGX_HTTP_PROXY_CACHE_PASS;
+
+    } else if (r->bypass_cache) {
+        p->state->cache = NGX_HTTP_PROXY_CACHE_BYPASS;
+
+    } else if (r->headers_in.authorization) {
+        p->state->cache = NGX_HTTP_PROXY_CACHE_AUTH;
+
+    } else if (r->no_cache) {
+        p->state->cache = NGX_HTTP_PROXY_CACHE_PGNC;
+        p->cachable = 1;
+
+    } else {
+        p->cachable = 1;
+    }
+
+
+    if (p->state->cache) {
         return ngx_http_proxy_request_upstream(p);
     }
 
@@ -227,27 +288,9 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    if (rc == NGX_DECLINED || rc == NGX_STALE) {
-        return ngx_http_proxy_request_upstream(p);
-    }
+    /* rc == NGX_DECLINED || NGX_HTTP_CACHE_STALE || NGX_HTTP_CACHE_AGED */
 
-    return NGX_DONE;
-}
-
-
-int ngx_http_proxy_log_state(ngx_http_proxy_ctx_t *p, int status)
-{
-    ngx_http_proxy_state_t  *state;
-
-    if (!(state = ngx_push_array(&p->states))) {
-        return NGX_ERROR;
-    }
-
-    state->status = status;
-    state->peer =
-     &p->upstream->peer.peers->peers[p->upstream->peer.cur_peer].addr_port_text;
-
-    return NGX_OK;
+    return ngx_http_proxy_request_upstream(p);
 }
 
 
@@ -386,6 +429,10 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->cache = NGX_CONF_UNSET;
 
     conf->pass_server = NGX_CONF_UNSET;
+    conf->pass_x_accel_expires = NGX_CONF_UNSET;
+    conf->ignore_expires = NGX_CONF_UNSET;
+    conf->lm_factor = NGX_CONF_UNSET;
+    conf->default_expires = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -436,6 +483,11 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_value(conf->cache, prev->cache, 0);
 
     ngx_conf_merge_value(conf->pass_server, prev->pass_server, 0);
+    ngx_conf_merge_value(conf->pass_x_accel_expires,
+                         prev->pass_x_accel_expires, 0);
+    ngx_conf_merge_value(conf->ignore_expires, prev->ignore_expires, 0);
+    ngx_conf_merge_value(conf->lm_factor, prev->lm_factor, 0);
+    ngx_conf_merge_sec_value(conf->default_expires, prev->default_expires, 0);
 
     return NULL;
 }

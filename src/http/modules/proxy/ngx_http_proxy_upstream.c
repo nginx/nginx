@@ -17,7 +17,6 @@ static void ngx_http_proxy_send_request_handler(ngx_event_t *wev);
 static void ngx_http_proxy_dummy_handler(ngx_event_t *wev);
 static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev);
 static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev);
-static void ngx_http_proxy_process_upstream_header(ngx_http_proxy_ctx_t *p);
 static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *);
 static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p);
 static void ngx_http_proxy_process_body(ngx_event_t *ev);
@@ -59,13 +58,7 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
     u->peer.peers = p->lcf->peers;
     u->peer.tries = p->lcf->peers->number;
 
-    ngx_init_array(p->states, r->pool, u->peer.tries,
-                   sizeof(ngx_http_proxy_state_t),
-                   NGX_HTTP_INTERNAL_SERVER_ERROR);
-
     u->method = r->method;
-
-    /* STUB */ p->cachable = p->lcf->cache;
 
     if (r->headers_in.content_length_n > 0) {
         if (!(r->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t)))) {
@@ -313,7 +306,6 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
 static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
 {
     int                      rc;
-    ngx_chain_t             *cl;
     ngx_connection_t        *c;
     ngx_http_request_t      *r;
     ngx_output_chain_ctx_t  *octx;
@@ -326,6 +318,9 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
+
+    p->state->peer =
+     &p->upstream->peer.peers->peers[p->upstream->peer.cur_peer].addr_port_text;
 
     if (rc == NGX_CONNECT_ERROR) {
         ngx_http_proxy_next_upstream(p, NGX_HTTP_PROXY_FT_ERROR);
@@ -366,6 +361,11 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     }
 
     p->request_sent = 0;
+
+    if (!(p->state = ngx_push_array(&p->states))) {
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
 
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, p->lcf->connect_timeout);
@@ -731,7 +731,12 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
 
             ngx_log_debug(c->log, "HTTP header done");
 
-            ngx_http_proxy_process_upstream_header(p);
+            /* TODO: hook to process the upstream header */
+
+            if (p->cachable) {
+                p->cachable = ngx_http_proxy_is_cachable(p);
+            }
+
             ngx_http_proxy_send_response(p);
             return;
 
@@ -756,17 +761,6 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
             return;
         }
     }
-}
-
-
-static void ngx_http_proxy_process_upstream_header(ngx_http_proxy_ctx_t *p)
-{
-    time_t  expires;
-
-    expires = ngx_http_parse_time(p->upstream->headers_in.expires->value.data,
-                                  p->upstream->headers_in.expires->value.len);
-
-    p->cache->ctx.header.expires = expires;
 }
 
 
@@ -814,8 +808,7 @@ static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
 
 static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 {
-    int                           rc, i;
-    ngx_table_elt_t              *ho, *h;
+    int                           rc;
     ngx_event_pipe_t             *ep;
     ngx_http_request_t           *r;
     ngx_http_cache_file_t        *header;
@@ -995,13 +988,13 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
     }
 
     if (p->upstream->peer.connection) {
-        if (ep->upstream_done) {
+        if (ep->upstream_done && p->cachable) {
             if (ngx_http_proxy_update_cache(p) == NGX_ERROR) {
                 ngx_http_proxy_finalize_request(p, 0);
                 return;
             }
 
-        } else if (ep->upstream_eof) {
+        } else if (ep->upstream_eof && p->cachable) {
 
             /* TODO: check length & update cache */
 
@@ -1086,10 +1079,7 @@ ngx_log_debug(p->request->connection->log, "next upstream: %d" _ ft_type);
     }
 
     if (status) {
-        if (ngx_http_proxy_log_state(p, status) == NGX_ERROR) {
-            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
-        }
+        p->state->status = status;
 
         if (p->upstream->peer.tries == 0 || !(p->lcf->next_upstream & ft_type))
         {

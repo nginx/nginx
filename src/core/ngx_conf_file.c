@@ -805,9 +805,24 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data)
     ngx_conf_num_bounds_t *bounds = post;
     int *np = data;
 
-    if (*np >= bounds->low && (u_int) *np <= (u_int) bounds->high) {
+    if (bounds->high == -1) {
+        if (*np >= bounds->low) {
+            return NGX_CONF_OK;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "value must be more than %d", bounds->low);
+
+        return NGX_CONF_ERROR;
+    }
+
+    if (*np >= bounds->low && *np <= bounds->high) {
         return NGX_CONF_OK;
     }
 
-    return "invalid value";
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "value must be between %d and %d",
+                       bounds->low, bounds->high);
+
+    return NGX_CONF_ERROR;
 }

@@ -433,7 +433,7 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
 static int ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 {
-    int           rc, size, hsize;
+    int           size, hsize;
     char         *save_pos;
     ngx_hunk_t   *h;
     ngx_chain_t  *cl, *tl, *next, *out, **ll, **last_free;

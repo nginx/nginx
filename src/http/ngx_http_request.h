@@ -79,6 +79,8 @@ typedef struct {
     ngx_table_elt_t  *accept_encoding;
     ngx_table_elt_t  *range;
 
+    ngx_table_elt_t  *authorization;
+
     ngx_table_elt_t  *keep_alive;
 
     size_t            host_name_len;
@@ -198,6 +200,7 @@ struct ngx_http_request_s {
 
     unsigned             proxy:1;
     unsigned             bypass_cache:1;
+    unsigned             no_cache:1;
 
 #if 0
     unsigned             cachable:1;

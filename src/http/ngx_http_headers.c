@@ -20,6 +20,9 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("If-Range"), offsetof(ngx_http_headers_in_t, if_range) },
 #endif
 
+    { ngx_string("Authorization"),
+                             offsetof(ngx_http_headers_in_t, authorization) },
+
     { ngx_string("Keep-Alive"), offsetof(ngx_http_headers_in_t, keep_alive) },
 
     { ngx_null_string, 0 }

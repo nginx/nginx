@@ -10,6 +10,29 @@
 #include <ngx_http.h>
 
 
+typedef enum {
+    NGX_HTTP_PROXY_CACHE_PASS = 1,
+    NGX_HTTP_PROXY_CACHE_BYPASS,
+    NGX_HTTP_PROXY_CACHE_AUTH,
+    NGX_HTTP_PROXY_CACHE_PGNC,
+    NGX_HTTP_PROXY_CACHE_MISS,
+    NGX_HTTP_PROXY_CACHE_EXPR,
+    NGX_HTTP_PROXY_CACHE_AGED,
+    NGX_HTTP_PROXY_CACHE_HIT
+} ngx_http_proxy_state_e;
+
+
+typedef enum {
+    NGX_HTTP_PROXY_CACHE_BPS = 1,
+    NGX_HTTP_PROXY_CACHE_XAE,
+    NGX_HTTP_PROXY_CACHE_CTL,
+    NGX_HTTP_PROXY_CACHE_EXP,
+    NGX_HTTP_PROXY_CACHE_MVD,
+    NGX_HTTP_PROXY_CACHE_LMF,
+    NGX_HTTP_PROXY_CACHE_PDE
+} ngx_http_proxy_reason_e;
+
+
 typedef struct {
     ngx_str_t                        url;
     ngx_str_t                        host;
@@ -36,7 +59,13 @@ typedef struct {
     int                              cyclic_temp_file;
 
     int                              cache;
+
     int                              pass_server;
+    int                              pass_x_accel_expires;
+
+    int                              ignore_expires;
+    int                              lm_factor;
+    int                              default_expires;
 
     int                              next_upstream;
     int                              use_stale;
@@ -50,6 +79,8 @@ typedef struct {
 
 
 typedef struct {
+    ngx_http_proxy_state_e           cache;
+    ngx_http_proxy_reason_e          reason;
     int                              status;
     ngx_str_t                       *peer;
 } ngx_http_proxy_state_t;
@@ -122,8 +153,9 @@ struct ngx_http_proxy_ctx_s {
     char                         *status_start;
     char                         *status_end;
     int                           status_count;
-    int                           state;
+    int                           parse_state;
 
+    ngx_http_proxy_state_t       *state;
     ngx_array_t                   states;    /* of ngx_http_proxy_state_t */
 
     char                         *action;
@@ -133,6 +165,7 @@ struct ngx_http_proxy_ctx_s {
 
 
 #define NGX_HTTP_PROXY_PARSE_NO_HEADER       20
+
 
 #define NGX_HTTP_PROXY_FT_ERROR              2
 #define NGX_HTTP_PROXY_FT_TIMEOUT            4
@@ -147,9 +180,9 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p);
 
 int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p);
+int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p);
 int ngx_http_proxy_update_cache(ngx_http_proxy_ctx_t *p);
 
-int ngx_http_proxy_log_state(ngx_http_proxy_ctx_t *p, int status);
 size_t ngx_http_proxy_log_error(void *data, char *buf, size_t len);
 void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc);
 void ngx_http_proxy_close_connection(ngx_connection_t *c);

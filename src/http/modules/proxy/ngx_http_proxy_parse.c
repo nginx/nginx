@@ -26,7 +26,7 @@ int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p)
         sw_done
     } state;
 
-    state = p->state;
+    state = p->parse_state;
     pos = p->header_in->pos;
 
     while (pos < p->header_in->last && state < sw_done) {
@@ -195,10 +195,10 @@ int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p)
             p->status_end = pos - 1;
         }
 
-        p->state = sw_start;
+        p->parse_state = sw_start;
         return NGX_OK;
     }
 
-    p->state = state;
+    p->parse_state = state;
     return NGX_AGAIN;
 }

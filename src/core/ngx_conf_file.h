@@ -195,9 +195,14 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
         conf = (prev == (ngx_msec_t) NGX_CONF_UNSET) ? default : prev;       \
     }
 
+#define ngx_conf_merge_sec_value(conf, prev, default)                        \
+    if (conf == NGX_CONF_UNSET) {                                            \
+        conf = (prev == NGX_CONF_UNSET) ? default : prev;                    \
+    }
+
 #define ngx_conf_merge_size_value(conf, prev, default)                       \
-    if (conf == (ssize_t) NGX_CONF_UNSET) {                                   \
-        conf = (prev == (ssize_t) NGX_CONF_UNSET) ? default : prev;           \
+    if (conf == (ssize_t) NGX_CONF_UNSET) {                                  \
+        conf = (prev == (ssize_t) NGX_CONF_UNSET) ? default : prev;          \
     }
 
 #define ngx_conf_merge_str_value(conf, prev, default)                        \
@@ -244,6 +249,7 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);

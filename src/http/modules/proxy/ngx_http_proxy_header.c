@@ -26,6 +26,12 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
                 || &h[i] == headers_in->accept_ranges) {
                 continue;
             }
+
+            if (&h[i] == headers_in->x_accel_expires
+                && !p->lcf->pass_x_accel_expires)
+            {
+                continue;
+            } 
     
             if (&h[i] == headers_in->server && !p->lcf->pass_server) {
                 continue;

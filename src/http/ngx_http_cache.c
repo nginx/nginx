@@ -80,8 +80,10 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
     ctx->buf->last += n;
 
     if (ctx->header.expires < ngx_time()) {
-        return NGX_STALE;
+        return NGX_HTTP_CACHE_STALE;
     }
+
+    /* TODO: NGX_HTTP_CACHE_AGED */
 
     return NGX_OK;
 }

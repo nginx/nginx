@@ -56,11 +56,29 @@ int ngx_http_proxy_get_cached_response(ngx_http_proxy_ctx_t *p)
 
     rc = ngx_http_cache_get_file(r, &c->ctx);
 
-    if (rc == NGX_STALE) {
+    switch (rc) {
+    case NGX_HTTP_CACHE_STALE:
         p->stale = 1;
+        p->state->cache = NGX_HTTP_PROXY_CACHE_EXPR;
+        break;
+
+    case NGX_HTTP_CACHE_AGED:
+        p->stale = 1;
+        p->state->cache = NGX_HTTP_PROXY_CACHE_AGED;
+        break;
+
+    case NGX_OK:
+        p->state->cache = NGX_HTTP_PROXY_CACHE_HIT;
+        break;
+
+    default:
+        p->state->cache = NGX_HTTP_PROXY_CACHE_MISS;
     }
 
-    if (rc == NGX_OK || rc == NGX_STALE) {
+    if (rc == NGX_OK
+        || rc == NGX_HTTP_CACHE_STALE
+        || rc == NGX_HTTP_CACHE_AGED)
+    {
         p->header_in->pos += c->ctx.header_size;
         if (ngx_http_proxy_process_cached_header(p) == NGX_ERROR) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -243,6 +261,99 @@ int ngx_http_proxy_send_cached_response(ngx_http_proxy_ctx_t *p)
     out.next = NULL;
 
     return ngx_http_output_filter(r, &out);
+}
+
+
+int ngx_http_proxy_is_cachable(ngx_http_proxy_ctx_t *p)
+{
+    time_t                        date, last_modified, expires;
+    ngx_http_proxy_headers_in_t  *h;
+
+    switch (p->upstream->status) {
+    case NGX_HTTP_OK:
+    case NGX_HTTP_MOVED_PERMANENTLY:
+    case NGX_HTTP_MOVED_TEMPORARILY:
+        break;
+
+#if 0
+    case NGX_HTTP_NOT_MODIFIED:
+        return 1;
+#endif
+
+    default:
+        return 0;
+    }
+
+    h = &p->upstream->headers_in;
+
+    date = NGX_ERROR;
+    if (h->date) {
+        date = ngx_http_parse_time(h->date->value.data, h->date->value.len);
+    }
+    if (date == NGX_ERROR) {
+        date = ngx_time();
+    }
+    p->cache->ctx.header.date = date;
+
+    last_modified = NGX_ERROR;
+    if (h->last_modified) {
+        last_modified = ngx_http_parse_time(h->last_modified->value.data,
+                                            h->last_modified->value.len);
+        p->cache->ctx.header.last_modified = last_modified;
+    }
+
+    if (h->x_accel_expires) {
+        expires = ngx_atoi(h->x_accel_expires->value.data,
+                           h->x_accel_expires->value.len);
+        if (expires != NGX_ERROR) {
+            p->state->reason = NGX_HTTP_PROXY_CACHE_XAE;
+            p->cache->ctx.header.expires = date + expires;
+            return (expires > 0);
+        }
+    }
+
+    if (!p->lcf->ignore_expires) {
+
+        /* TODO: Cache-Control: no-cache, max-age= */
+
+        if (h->expires) {
+            expires = ngx_http_parse_time(h->expires->value.data,
+                                          h->expires->value.len);
+            if (expires != NGX_ERROR) {
+                p->state->reason = NGX_HTTP_PROXY_CACHE_EXP;
+                p->cache->ctx.header.expires = expires;
+                return (date < expires);
+            }
+        }
+    }
+
+    if (p->upstream->status == NGX_HTTP_MOVED_PERMANENTLY) {
+        p->state->reason = NGX_HTTP_PROXY_CACHE_MVD;
+        p->cache->ctx.header.expires = /* STUB: 1 hour */ 60 * 60;
+        return 1;
+    }
+
+    if (p->upstream->status == NGX_HTTP_MOVED_TEMPORARILY) {
+        return 1;
+    }
+
+    if (last_modified != NGX_ERROR && p->lcf->lm_factor > 0) {
+
+        /* FIXME: time_t == int_64_t */ 
+
+        p->state->reason = NGX_HTTP_PROXY_CACHE_LMF;
+        p->cache->ctx.header.expires = ngx_time()
+              + (((int64_t) (date - last_modified)) * p->lcf->lm_factor) / 100;
+        return 1;
+    }
+
+    if (p->lcf->default_expires > 0) {
+        p->state->reason = NGX_HTTP_PROXY_CACHE_PDE;
+        p->cache->ctx.header.expires = p->lcf->default_expires;
+        return 1;
+    }
+
+    return 0;
 }
 
 

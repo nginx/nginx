@@ -9,6 +9,7 @@
 typedef struct {
     time_t       expires;
     time_t       last_modified;
+    time_t       date;
     off_t        length;
 } ngx_http_cache_header_t;
 
@@ -44,7 +45,8 @@ typedef struct {
 } ngx_http_cache_ctx_t;
 
 
-#define NGX_STALE  1
+#define NGX_HTTP_CACHE_STALE  1
+#define NGX_HTTP_CACHE_AGED   2
 
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx);
