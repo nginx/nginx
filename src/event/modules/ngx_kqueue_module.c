@@ -175,6 +175,22 @@ int ngx_kqueue_process_events(ngx_log_t *log)
     struct timeval   tv;
     struct timespec  ts, *tp;
 
+    timer = ngx_event_find_timer();
+
+    if (timer) {
+        ts.tv_sec = timer / 1000;
+        ts.tv_nsec = (timer % 1000) * 1000000;
+        tp = &ts;
+        gettimeofday(&tv, NULL);
+        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+
+    } else {
+        timer = 0;
+        delta = 0;
+        tp = NULL;
+    }
+
+#if 0
     if (timer_queue.timer_next != &timer_queue) {
         timer = timer_queue.timer_next->timer_delta;
         ts.tv_sec = timer / 1000;
@@ -188,6 +204,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         delta = 0;
         tp = NULL;
     }
+#endif
 
 #if (NGX_DEBUG_EVENT)
     ngx_log_debug(log, "kevent timer: %d" _ timer);
@@ -267,6 +284,11 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         }
     }
 
+    if (timer) {
+        ngx_event_expire_timers(delta);
+    }
+
+#if 0
     if (timer && timer_queue.timer_next != &timer_queue) {
         if (delta >= timer_queue.timer_next->timer_delta) {
             for ( ;; ) {
@@ -289,6 +311,7 @@ int ngx_kqueue_process_events(ngx_log_t *log)
            timer_queue.timer_next->timer_delta -= delta;
         }
     }
+#endif
 
     return NGX_OK;
 }

@@ -51,6 +51,9 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     }
 
     n = timer % ngx_timer_hash_size;
+#if (NGX_DEBUG_EVENT)
+    ngx_log_debug(ev->log, "timer slot: %d" _ n);
+#endif
 
     for (e = ngx_timer_queue[n].timer_next;
          e != &ngx_timer_queue[n] && timer > e->timer_delta;
@@ -66,4 +69,39 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 
     e->timer_prev->timer_next = ev;
     e->timer_prev = ev;
+}
+
+
+void ngx_event_expire_timers(ngx_msec_t timer)
+{
+    int           i;
+    ngx_msec_t    delta;
+    ngx_event_t  *ev;
+
+    for (i = 0; i < ngx_timer_hash_size; i++) {
+
+        delta = timer;
+
+        for ( ;; ) {
+            ev = ngx_timer_queue[i].timer_next;
+
+            if (ev == &ngx_timer_queue[i]) {
+                break;
+            }
+
+            if (ev->timer_delta > delta) {
+                ev->timer_delta -= delta;
+                break;
+            }
+
+            delta -= ev->timer_delta;
+
+            ngx_del_timer(ev);
+            ev->timedout = 1;
+
+            if (ev->event_handler(ev) == NGX_ERROR) {
+                ev->close_handler(ev);
+            }
+        }
+    }
 }

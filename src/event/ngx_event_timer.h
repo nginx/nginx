@@ -16,7 +16,7 @@ extern ngx_event_t  *ngx_timer_queue;
 extern int           ngx_timer_hash_size;
 
 
-ngx_inline static int ngx_event_get_timer()
+ngx_inline static int ngx_event_find_timer()
 {
     int         i;
     ngx_msec_t  timer;
@@ -24,10 +24,12 @@ ngx_inline static int ngx_event_get_timer()
     timer = NGX_MAX_MSEC;
 
     for (i = 0; i < ngx_timer_hash_size; i++) {
-        if (ngx_timer_queue[i].timer_next != &ngx_timer_queue[i]) {
-            if (timer > ngx_timer_queue[i].timer_next->timer_delta) {
-                timer = ngx_timer_queue[i].timer_next->timer_delta;
-            }
+        if (ngx_timer_queue[i].timer_next == &ngx_timer_queue[i]) {
+            continue;
+        }
+
+        if (timer > ngx_timer_queue[i].timer_next->timer_delta) {
+            timer = ngx_timer_queue[i].timer_next->timer_delta;
         }
     }
 
