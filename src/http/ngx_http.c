@@ -14,8 +14,8 @@ ngx_uint_t  ngx_http_total_requests;
 uint64_t    ngx_http_total_sent;
 
 
-int  (*ngx_http_top_header_filter) (ngx_http_request_t *r);
-int  (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
+ngx_int_t  (*ngx_http_top_header_filter) (ngx_http_request_t *r);
+ngx_int_t  (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
 
 static ngx_command_t  ngx_http_commands[] = {

@@ -339,7 +339,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
             if (r->headers_out.charset.len) {
                 ctx->boundary_header.len =
                          ngx_snprintf((char *) ctx->boundary_header.data, len,
-                                      CRLF "--%010u" CRLF
+                                      CRLF "--%010" NGX_UINT_T_FMT CRLF
                                       "Content-Type: %s; charset=%s" CRLF
                                       "Content-Range: bytes ",
                                       boundary,
@@ -351,7 +351,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
             } else {
                 ctx->boundary_header.len =
                          ngx_snprintf((char *) ctx->boundary_header.data, len,
-                                      CRLF "--%010u" CRLF
+                                      CRLF "--%010" NGX_UINT_T_FMT CRLF
                                       "Content-Type: %s" CRLF
                                       "Content-Range: bytes ",
                                       boundary,
@@ -368,7 +368,8 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
                       ngx_snprintf((char *)
                                    r->headers_out.content_type->value.data,
                                    31 + 10 + 1,
-                                   "multipart/byteranges; boundary=%010u",
+                                   "multipart/byteranges; boundary=%010"
+                                   NGX_UINT_T_FMT,
                                    boundary);
 
             /* the size of the last boundary CRLF "--0123456789--" CRLF */

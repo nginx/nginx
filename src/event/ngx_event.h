@@ -177,18 +177,18 @@ struct ngx_event_s {
 
 
 typedef struct {
-    int   (*add)(ngx_event_t *ev, int event, u_int flags);
-    int   (*del)(ngx_event_t *ev, int event, u_int flags);
+    ngx_int_t  (*add)(ngx_event_t *ev, int event, u_int flags);
+    ngx_int_t  (*del)(ngx_event_t *ev, int event, u_int flags);
 
-    int   (*enable)(ngx_event_t *ev, int event, u_int flags);
-    int   (*disable)(ngx_event_t *ev, int event, u_int flags);
+    ngx_int_t  (*enable)(ngx_event_t *ev, int event, u_int flags);
+    ngx_int_t  (*disable)(ngx_event_t *ev, int event, u_int flags);
 
-    int   (*add_conn)(ngx_connection_t *c);
-    int   (*del_conn)(ngx_connection_t *c, u_int flags);
+    ngx_int_t  (*add_conn)(ngx_connection_t *c);
+    ngx_int_t  (*del_conn)(ngx_connection_t *c, u_int flags);
 
-    int   (*process)(ngx_cycle_t *cycle);
-    int   (*init)(ngx_cycle_t *cycle);
-    void  (*done)(ngx_cycle_t *cycle);
+    ngx_int_t  (*process)(ngx_cycle_t *cycle);
+    ngx_int_t  (*init)(ngx_cycle_t *cycle);
+    void       (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
 
 
@@ -249,21 +249,16 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_USE_RTSIG_EVENT      0x00000100
 
 /*
- * The alternative event method after the rt signals queue overflow.
- */
-#define NGX_OVERFLOW_EVENT       0x00000200
-
-/*
  * No need to add or delete the event filters - overlapped, aio_read,
  * aioread, io_submit.
  */
-#define NGX_USE_AIO_EVENT        0x00000400
+#define NGX_USE_AIO_EVENT        0x00000200
 
 /*
  * Need to add socket or handle only once - i/o completion port.
  * It also requires HAVE_AIO and NGX_USE_AIO_EVENT to be set.
  */
-#define NGX_USE_IOCP_EVENT       0x00000800
+#define NGX_USE_IOCP_EVENT       0x00000400
 
 
 
@@ -390,7 +385,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 typedef struct {
     ngx_uint_t    connections;
-    ngx_int_t     use;
+    ngx_uint_t    use;
 
     ngx_flag_t    multi_accept;
     ngx_flag_t    accept_mutex;

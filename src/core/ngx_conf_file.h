@@ -90,15 +90,15 @@ struct ngx_open_file_s {
 
 
 struct ngx_module_s {
-    int             ctx_index;
-    int             index;
+    ngx_uint_t      ctx_index;
+    ngx_uint_t      index;
     void           *ctx;
     ngx_command_t  *commands;
-    int             type;
-    int           (*init_module)(ngx_cycle_t *cycle);
-    int           (*init_process)(ngx_cycle_t *cycle);
+    ngx_uint_t      type;
+    ngx_int_t     (*init_module)(ngx_cycle_t *cycle);
+    ngx_int_t     (*init_process)(ngx_cycle_t *cycle);
 #if 0
-    int           (*init_thread)(ngx_cycle_t *cycle);
+    ngx_int_t     (*init_thread)(ngx_cycle_t *cycle);
 #endif
 };
 
@@ -113,7 +113,7 @@ typedef struct {
 typedef struct {
     ngx_file_t   file;
     ngx_buf_t   *buffer;
-    int          line;
+    ngx_uint_t   line;
 } ngx_conf_file_t;
 
 
@@ -131,8 +131,8 @@ struct ngx_conf_s {
     ngx_log_t            *log;
 
     void                 *ctx;
-    int                   module_type;
-    int                   cmd_type;
+    ngx_uint_t            module_type;
+    ngx_uint_t            cmd_type;
 
     ngx_conf_handler_pt   handler;
     char                 *handler_conf;

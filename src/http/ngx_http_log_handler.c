@@ -35,7 +35,7 @@ static u_char *ngx_http_log_header_out(ngx_http_request_t *r, u_char *buf,
 static u_char *ngx_http_log_unknown_header_out(ngx_http_request_t *r, u_char *buf,
                                                uintptr_t data);
 
-static int ngx_http_log_pre_conf(ngx_conf_t *cf);
+static ngx_int_t ngx_http_log_pre_conf(ngx_conf_t *cf);
 static void *ngx_http_log_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_log_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent,
@@ -44,8 +44,8 @@ static char *ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);
 static char *ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd,
                                      void *conf);
-static int ngx_http_log_parse_format(ngx_conf_t *cf, ngx_array_t *ops,
-                                     ngx_str_t *line);
+static ngx_int_t ngx_http_log_parse_format(ngx_conf_t *cf, ngx_array_t *ops,
+                                           ngx_str_t *line);
 
 
 static ngx_command_t  ngx_http_log_commands[] = {
@@ -116,7 +116,7 @@ ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
 };
 
 
-int ngx_http_log_handler(ngx_http_request_t *r)
+ngx_int_t ngx_http_log_handler(ngx_http_request_t *r)
 {
     ngx_uint_t                i, l;
     uintptr_t                 data;
@@ -198,7 +198,8 @@ static u_char *ngx_http_log_addr(ngx_http_request_t *r, u_char *buf,
 static u_char *ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
                                      uintptr_t data)
 {
-    return buf + ngx_snprintf((char *) buf, NGX_INT32_LEN + 1, "%u",
+    return buf + ngx_snprintf((char *) buf, NGX_INT_T_LEN + 1,
+                              "%" NGX_UINT_T_FMT,
                               r->connection->number);
 }
 
@@ -239,7 +240,7 @@ static u_char *ngx_http_log_request(ngx_http_request_t *r, u_char *buf,
 static u_char *ngx_http_log_status(ngx_http_request_t *r, u_char *buf,
                                    uintptr_t data)
 {
-    return buf + ngx_snprintf((char *) buf, 4, "%d",
+    return buf + ngx_snprintf((char *) buf, 4, "%" NGX_UINT_T_FMT,
                         r->err_status ? r->err_status : r->headers_out.status);
 }
 
@@ -561,7 +562,7 @@ static u_char *ngx_http_log_unknown_header_out(ngx_http_request_t *r,
 }
 
 
-static int ngx_http_log_pre_conf(ngx_conf_t *cf)
+static ngx_int_t ngx_http_log_pre_conf(ngx_conf_t *cf)
 {
     ngx_http_log_op_name_t  *op;
 

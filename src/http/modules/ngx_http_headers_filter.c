@@ -14,7 +14,7 @@ typedef struct {
 #define NGX_HTTP_EXPIRES_EPOCH   -2147483645
 
 
-static int ngx_http_headers_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_headers_filter_init(ngx_cycle_t *cycle);
 static void *ngx_http_headers_create_conf(ngx_conf_t *cf);
 static char *ngx_http_headers_merge_conf(ngx_conf_t *cf,
                                          void *parent, void *child);
@@ -61,7 +61,7 @@ ngx_module_t  ngx_http_headers_filter_module = {
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 
 
-static int ngx_http_headers_filter(ngx_http_request_t *r)
+static ngx_int_t ngx_http_headers_filter(ngx_http_request_t *r)
 {
     size_t                    len;
     ngx_table_elt_t          *expires, *cc;
@@ -145,7 +145,7 @@ static int ngx_http_headers_filter(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_headers_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_headers_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_headers_filter;

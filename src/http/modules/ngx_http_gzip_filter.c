@@ -64,8 +64,8 @@ typedef struct {
 } ngx_http_gzip_ctx_t;
 
 
-static int ngx_http_gzip_proxied(ngx_http_request_t *r,
-                                 ngx_http_gzip_conf_t *conf);
+static ngx_int_t ngx_http_gzip_proxied(ngx_http_request_t *r,
+                                       ngx_http_gzip_conf_t *conf);
 static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items,
                                         u_int size);
 static void ngx_http_gzip_filter_free(void *opaque, void *address);
@@ -74,8 +74,8 @@ ngx_inline static int ngx_http_gzip_error(ngx_http_gzip_ctx_t *ctx);
 static u_char *ngx_http_gzip_log_ratio(ngx_http_request_t *r, u_char *buf,
                                        uintptr_t data);
 
-static int ngx_http_gzip_pre_conf(ngx_conf_t *cf);
-static int ngx_http_gzip_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_gzip_pre_conf(ngx_conf_t *cf);
+static ngx_int_t ngx_http_gzip_filter_init(ngx_cycle_t *cycle);
 static void *ngx_http_gzip_create_conf(ngx_conf_t *cf);
 static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
                                       void *parent, void *child);
@@ -238,7 +238,7 @@ static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
-static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
+static ngx_int_t ngx_http_gzip_header_filter(ngx_http_request_t *r)
 {
     ngx_http_gzip_ctx_t   *ctx;
     ngx_http_gzip_conf_t  *conf;
@@ -288,10 +288,7 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
      * hangs up or crashes
      */
 
-    if (r->headers_in.user_agent
-        && r->unparsed_uri.len > 200
-        && ngx_strstr(r->headers_in.user_agent->value.data, "MSIE 4"))
-    {
+    if (r->headers_in.msie4 && r->unparsed_uri.len > 200) {
         return ngx_http_next_header_filter(r);
     }
 
@@ -323,8 +320,8 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_gzip_proxied(ngx_http_request_t *r,
-                                 ngx_http_gzip_conf_t *conf)
+static ngx_int_t ngx_http_gzip_proxied(ngx_http_request_t *r,
+                                       ngx_http_gzip_conf_t *conf)
 {
     time_t  date, expires;
 
@@ -403,7 +400,8 @@ static int ngx_http_gzip_proxied(ngx_http_request_t *r,
 }
 
 
-static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+static ngx_int_t ngx_http_gzip_body_filter(ngx_http_request_t *r,
+                                           ngx_chain_t *in)
 {
     int                    rc, wbits, memlevel, last;
     struct gztrailer      *trailer;
@@ -819,7 +817,8 @@ static u_char *ngx_http_gzip_log_ratio(ngx_http_request_t *r, u_char *buf,
     }
 
     return buf + ngx_snprintf((char *) buf, NGX_INT32_LEN + 4,
-                              "%d.%02d", zint, zfrac);
+                              "%" NGX_UINT_T_FMT ".%02" NGX_UINT_T_FMT,
+                              zint, zfrac);
 }
 
 
@@ -838,7 +837,7 @@ ngx_inline static int ngx_http_gzip_error(ngx_http_gzip_ctx_t *ctx)
 }
 
 
-static int ngx_http_gzip_pre_conf(ngx_conf_t *cf)
+static ngx_int_t ngx_http_gzip_pre_conf(ngx_conf_t *cf)
 {
     ngx_http_log_op_name_t  *op;
 
@@ -859,7 +858,7 @@ static int ngx_http_gzip_pre_conf(ngx_conf_t *cf)
 }
 
 
-static int ngx_http_gzip_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_gzip_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_gzip_header_filter;
@@ -894,9 +893,9 @@ static void *ngx_http_gzip_create_conf(ngx_conf_t *cf)
     conf->http_version = NGX_CONF_UNSET_UINT;
 
     conf->level = NGX_CONF_UNSET;
-    conf->wbits = NGX_CONF_UNSET_UINT;
-    conf->memlevel = NGX_CONF_UNSET_UINT;
-    conf->min_length = NGX_CONF_UNSET_UINT;
+    conf->wbits = (size_t) NGX_CONF_UNSET;
+    conf->memlevel = (size_t) NGX_CONF_UNSET;
+    conf->min_length = NGX_CONF_UNSET;
 
     return conf;
 }

@@ -4,7 +4,7 @@
 #include <ngx_http.h>
 
 
-static int ngx_http_chunked_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_chunked_filter_init(ngx_cycle_t *cycle);
 
 
 static ngx_http_module_t  ngx_http_chunked_filter_module_ctx = {
@@ -35,7 +35,7 @@ static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
-static int ngx_http_chunked_header_filter(ngx_http_request_t *r)
+static ngx_int_t ngx_http_chunked_header_filter(ngx_http_request_t *r)
 {
     if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED) {
         return ngx_http_next_header_filter(r);
@@ -54,7 +54,8 @@ static int ngx_http_chunked_header_filter(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
+                                              ngx_chain_t *in)
 {
     u_char       *chunk;
     size_t        size, len;
@@ -138,7 +139,7 @@ static int ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 }
 
 
-static int ngx_http_chunked_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_chunked_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_chunked_header_filter;

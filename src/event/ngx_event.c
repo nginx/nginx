@@ -504,7 +504,7 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_event_conf_t     *old_ecf;
     ngx_event_module_t   *module;
 
-    if (ecf->use != NGX_CONF_UNSET) {
+    if (ecf->use != NGX_CONF_UNSET_UINT) {
         return "is duplicate" ;
     }
 
@@ -633,19 +633,19 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 #if (HAVE_KQUEUE)
 
     ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-    ngx_conf_init_value(ecf->use, ngx_kqueue_module.ctx_index);
+    ngx_conf_init_unsigned_value(ecf->use, ngx_kqueue_module.ctx_index);
     ngx_conf_init_ptr_value(ecf->name, ngx_kqueue_module_ctx.name->data);
 
 #elif (HAVE_DEVPOLL)
 
     ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-    ngx_conf_init_value(ecf->use, ngx_devpoll_module.ctx_index);
+    ngx_conf_init_unsigned_value(ecf->use, ngx_devpoll_module.ctx_index);
     ngx_conf_init_ptr_value(ecf->name, ngx_devpoll_module_ctx.name->data);
 
 #elif (HAVE_EPOLL)
 
     ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-    ngx_conf_init_value(ecf->use, ngx_epoll_module.ctx_index);
+    ngx_conf_init_unsigned_value(ecf->use, ngx_epoll_module.ctx_index);
     ngx_conf_init_ptr_value(ecf->name, ngx_epoll_module_ctx.name->data);
 
 #elif (HAVE_RTSIG)
@@ -653,7 +653,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_core_conf_t  *ccf;
 
     ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
-    ngx_conf_init_value(ecf->use, ngx_rtsig_module.ctx_index);
+    ngx_conf_init_unsigned_value(ecf->use, ngx_rtsig_module.ctx_index);
     ngx_conf_init_ptr_value(ecf->name, ngx_rtsig_module_ctx.name->data);
 
 #elif (HAVE_SELECT)
@@ -665,7 +665,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
           FD_SETSIZE < DEFAULT_CONNECTIONS ? FD_SETSIZE : DEFAULT_CONNECTIONS);
 #endif
 
-    ngx_conf_init_value(ecf->use, ngx_select_module.ctx_index);
+    ngx_conf_init_unsigned_value(ecf->use, ngx_select_module.ctx_index);
     ngx_conf_init_ptr_value(ecf->name, ngx_select_module_ctx.name->data);
 
 #else
@@ -694,9 +694,9 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    ngx_conf_init_value(ecf->connections, DEFAULT_CONNECTIONS);
+    ngx_conf_unsigned_init_value(ecf->connections, DEFAULT_CONNECTIONS);
 
-    ngx_conf_init_value(ecf->use, m);
+    ngx_conf_unsigned_init_value(ecf->use, m);
     ngx_conf_init_ptr_value(ecf->name, module->name->data);
 
 #endif

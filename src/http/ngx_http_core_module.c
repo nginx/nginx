@@ -18,7 +18,7 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                                           void *parent, void *child);
 
-static int ngx_http_core_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_core_init(ngx_cycle_t *cycle);
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
 static int ngx_cmp_locations(const void *first, const void *second);
 static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -448,7 +448,7 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
 }
 
 
-int ngx_http_find_location_config(ngx_http_request_t *r)
+ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r)
 {
     int                           rc;
     ngx_uint_t                    i;
@@ -665,7 +665,7 @@ ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r)
 }
 
 
-int ngx_http_send_header(ngx_http_request_t *r)
+ngx_int_t ngx_http_send_header(ngx_http_request_t *r)
 {
     if (r->main) {
         return NGX_OK;
@@ -743,8 +743,8 @@ ngx_int_t ngx_http_set_exten(ngx_http_request_t *r)
 }
 
 
-int ngx_http_internal_redirect(ngx_http_request_t *r,
-                               ngx_str_t *uri, ngx_str_t *args)
+ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
+                                     ngx_str_t *uri, ngx_str_t *args)
 {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "internal redirect: \"%s\"", uri->data);
@@ -808,7 +808,7 @@ int ngx_http_delay_handler(ngx_http_request_t *r)
 #endif
 
 
-static int ngx_http_core_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_core_init(ngx_cycle_t *cycle)
 {
 #if 0
     ngx_http_handler_pt        *h;

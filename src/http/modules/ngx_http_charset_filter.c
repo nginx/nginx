@@ -128,7 +128,7 @@ static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
-static int ngx_http_charset_header_filter(ngx_http_request_t *r)
+static ngx_int_t ngx_http_charset_header_filter(ngx_http_request_t *r)
 {
     ngx_http_charset_t            *charsets;
     ngx_http_charset_ctx_t        *ctx;
@@ -190,7 +190,8 @@ static int ngx_http_charset_header_filter(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+static ngx_int_t ngx_http_charset_body_filter(ngx_http_request_t *r,
+                                              ngx_chain_t *in)
 {
     char                          *table;
     ngx_chain_t                   *cl;

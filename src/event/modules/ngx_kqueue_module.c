@@ -16,12 +16,12 @@ typedef struct {
 } ngx_kqueue_conf_t;
 
 
-static int ngx_kqueue_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_kqueue_init(ngx_cycle_t *cycle);
 static void ngx_kqueue_done(ngx_cycle_t *cycle);
-static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags);
-static int ngx_kqueue_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags);
+static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle);
 static ngx_inline void ngx_kqueue_dump_event(ngx_log_t *log,
                                              struct kevent *kev);
 
@@ -87,7 +87,7 @@ ngx_module_t  ngx_kqueue_module = {
 
 
 
-static int ngx_kqueue_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_kqueue_init(ngx_cycle_t *cycle)
 {
     struct timespec     ts;
     ngx_kqueue_conf_t  *kcf;
@@ -184,7 +184,7 @@ static void ngx_kqueue_done(ngx_cycle_t *cycle)
 }
 
 
-static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t       *e;
     ngx_connection_t  *c;
@@ -229,7 +229,7 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t  *e;
 
@@ -276,7 +276,7 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
+static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 {
     struct timespec    ts;
     ngx_connection_t  *c;

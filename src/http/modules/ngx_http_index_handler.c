@@ -29,7 +29,7 @@ static ngx_int_t ngx_http_index_test_dir(ngx_http_request_t *r,
 static ngx_int_t ngx_http_index_error(ngx_http_request_t *r,
                                       ngx_http_index_ctx_t *ctx, ngx_err_t err);
 
-static int ngx_http_index_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_index_init(ngx_cycle_t *cycle);
 static void *ngx_http_index_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
                                        void *parent, void *child);
@@ -95,7 +95,7 @@ ngx_module_t  ngx_http_index_module = {
  * that path contains the usual file in place of the directory.
  */
 
-int ngx_http_index_handler(ngx_http_request_t *r)
+ngx_int_t ngx_http_index_handler(ngx_http_request_t *r)
 {
     u_char                     *name;
     ngx_fd_t                    fd;
@@ -361,7 +361,7 @@ static ngx_int_t ngx_http_index_error(ngx_http_request_t *r,
 }
 
 
-static int ngx_http_index_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_index_init(ngx_cycle_t *cycle)
 {
     ngx_http_handler_pt        *h;
     ngx_http_conf_ctx_t        *ctx;

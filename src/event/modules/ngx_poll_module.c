@@ -9,11 +9,11 @@
 #include <ngx_event.h>
 
 
-static int ngx_poll_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_poll_init(ngx_cycle_t *cycle);
 static void ngx_poll_done(ngx_cycle_t *cycle);
-static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags);
-int ngx_poll_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle);
 
 
 static struct pollfd  *event_list;
@@ -58,7 +58,7 @@ ngx_module_t  ngx_poll_module = {
 
 
 
-static int ngx_poll_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_poll_init(ngx_cycle_t *cycle)
 {
     struct pollfd   *list;
 
@@ -118,7 +118,7 @@ static void ngx_poll_done(ngx_cycle_t *cycle)
 }
 
 
-static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t       *e;
     ngx_connection_t  *c;
@@ -171,7 +171,7 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_uint_t          i;
     ngx_cycle_t       **cycle;
@@ -259,7 +259,7 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-int ngx_poll_process_events(ngx_cycle_t *cycle)
+static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle)
 {
     int                 ready;
     ngx_int_t           i, nready;
@@ -272,33 +272,27 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
     ngx_connection_t   *c;
     struct timeval      tv;
 
-    if (ngx_event_flags & NGX_OVERFLOW_EVENT) {
-        timer = 0;
+    for ( ;; ) {
+        timer = ngx_event_find_timer();
+
+        if (timer != 0) {
+            break;
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "poll expired timer");
+
+        ngx_event_expire_timers((ngx_msec_t)
+                                (ngx_elapsed_msec - ngx_old_elapsed_msec));
+    }
+
+    /* NGX_TIMER_INFINITE == INFTIM */
+
+    if (timer == NGX_TIMER_INFINITE) {
         expire = 0;
 
     } else {
-        for ( ;; ) {
-            timer = ngx_event_find_timer();
-
-            if (timer != 0) {
-                break;
-            }
-
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "poll expired timer");
-
-            ngx_event_expire_timers((ngx_msec_t)
-                                    (ngx_elapsed_msec - ngx_old_elapsed_msec));
-        }
-
-        /* NGX_TIMER_INFINITE == INFTIM */
-
-        if (timer == NGX_TIMER_INFINITE) {
-            expire = 0;
-
-        } else {
-            expire = 1;
-        }
+        expire = 1;
     }
 
     ngx_old_elapsed_msec = ngx_elapsed_msec; 
@@ -370,14 +364,6 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
             ngx_accept_mutex_unlock();
             return NGX_ERROR;
         }
-    }
-
-    if ((ngx_event_flags & NGX_OVERFLOW_EVENT) && timer == 0 && ready == 0) {
-
-        /* the overflowed rt signals queue has been drained */
-
-        ngx_accept_mutex_unlock();
-        return NGX_OK;
     }
 
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {

@@ -170,10 +170,11 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
             last = &cl->next
 
 
-int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in);
-int ngx_chain_writer(void *data, ngx_chain_t *in);
+ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in);
+ngx_int_t ngx_chain_writer(void *data, ngx_chain_t *in);
 
-int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in);
+ngx_int_t ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
+                             ngx_chain_t *in);
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
                              ngx_chain_t **out, ngx_buf_tag_t tag);
 

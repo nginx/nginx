@@ -14,22 +14,16 @@ typedef struct {
 
 
 typedef struct {
-    int    (*output_header_filter) (ngx_http_request_t *r);
-    int    (*output_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
-} ngx_http_conf_filter_t;
+    ngx_int_t   (*pre_conf)(ngx_conf_t *cf);
 
+    void       *(*create_main_conf)(ngx_conf_t *cf);
+    char       *(*init_main_conf)(ngx_conf_t *cf, void *conf);
 
-typedef struct {
-    int    (*pre_conf)(ngx_conf_t *cf);
+    void       *(*create_srv_conf)(ngx_conf_t *cf);
+    char       *(*merge_srv_conf)(ngx_conf_t *cf, void *prev, void *conf);
 
-    void  *(*create_main_conf)(ngx_conf_t *cf);
-    char  *(*init_main_conf)(ngx_conf_t *cf, void *conf);
-
-    void  *(*create_srv_conf)(ngx_conf_t *cf);
-    char  *(*merge_srv_conf)(ngx_conf_t *cf, void *prev, void *conf);
-
-    void  *(*create_loc_conf)(ngx_conf_t *cf);
-    char  *(*merge_loc_conf)(ngx_conf_t *cf, void *prev, void *conf);
+    void       *(*create_loc_conf)(ngx_conf_t *cf);
+    char       *(*merge_loc_conf)(ngx_conf_t *cf, void *prev, void *conf);
 } ngx_http_module_t;
 
 
@@ -52,8 +46,6 @@ typedef struct {
 #define ngx_http_conf_module_main_conf(cf, module)                            \
             ((ngx_http_conf_ctx_t *) cf->ctx)->main_conf[module.ctx_index]
 
-
-extern int (*ngx_http_top_header_filter) (ngx_http_request_t *r);
 
 
 #endif /* _NGX_HTTP_CONFIG_H_INCLUDED_ */

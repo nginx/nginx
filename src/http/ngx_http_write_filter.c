@@ -18,7 +18,7 @@ typedef struct {
 static void *ngx_http_write_filter_create_conf(ngx_conf_t *cf);
 static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
                                               void *parent, void *child);
-static int ngx_http_write_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_write_filter_init(ngx_cycle_t *cycle);
 
 
 static ngx_command_t  ngx_http_write_filter_commands[] = {
@@ -66,7 +66,7 @@ ngx_module_t  ngx_http_write_filter_module = {
 };
 
 
-int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
+ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                            last;
     off_t                          size, flush;
@@ -196,7 +196,7 @@ static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
 }
 
 
-static int ngx_http_write_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_write_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_top_body_filter = ngx_http_write_filter;
 

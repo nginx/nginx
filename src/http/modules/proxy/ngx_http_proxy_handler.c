@@ -5,7 +5,7 @@
 #include <ngx_http_proxy_handler.h>
 
 
-static int ngx_http_proxy_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r);
 
 static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
                                               u_char *buf, uintptr_t data);
@@ -14,7 +14,7 @@ static u_char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r,
 static u_char *ngx_http_proxy_log_reason(ngx_http_request_t *r, u_char *buf,
                                          uintptr_t data);
 
-static int ngx_http_proxy_pre_conf(ngx_conf_t *cf);
+static ngx_int_t ngx_http_proxy_pre_conf(ngx_conf_t *cf);
 static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
                                            void *parent, void *child);
@@ -307,7 +307,7 @@ static ngx_str_t cache_reasons[] = {
 };
 
 
-static int ngx_http_proxy_handler(ngx_http_request_t *r)
+static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r)
 {
     ngx_http_proxy_ctx_t  *p;
 
@@ -732,7 +732,8 @@ static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
         *buf++ = '-';
 
     } else {
-        buf += ngx_snprintf((char *) buf, 4, "%d", p->state->status);
+        buf += ngx_snprintf((char *) buf, 4, "%" NGX_UINT_T_FMT,
+                            p->state->status);
     }
 
     *buf++ = '/';
@@ -796,7 +797,7 @@ static u_char *ngx_http_proxy_log_reason(ngx_http_request_t *r, u_char *buf,
 }
 
 
-static int ngx_http_proxy_pre_conf(ngx_conf_t *cf)
+static ngx_int_t ngx_http_proxy_pre_conf(ngx_conf_t *cf)
 {
     ngx_http_log_op_name_t  *op;
 

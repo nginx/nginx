@@ -10,11 +10,11 @@
 
 
 
-static int ngx_select_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_select_init(ngx_cycle_t *cycle);
 static void ngx_select_done(ngx_cycle_t *cycle);
-static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_select_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_select_add_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_select_del_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle);
 
 static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf);
 
@@ -72,7 +72,7 @@ ngx_module_t  ngx_select_module = {
 };
 
 
-static int ngx_select_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_select_init(ngx_cycle_t *cycle)
 {
     ngx_event_t  **index;
 
@@ -135,7 +135,7 @@ static void ngx_select_done(ngx_cycle_t *cycle)
 }
 
 
-static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_connection_t  *c;
 
@@ -196,7 +196,7 @@ static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
+static ngx_int_t ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_connection_t  *c;
 
@@ -249,7 +249,7 @@ static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-static int ngx_select_process_events(ngx_cycle_t *cycle)
+static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
 {
     int                       ready, nready;
     ngx_uint_t                i, found, lock, expire;

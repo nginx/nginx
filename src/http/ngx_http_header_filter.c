@@ -5,8 +5,8 @@
 #include <nginx.h>
 
 
-static int ngx_http_header_filter_init(ngx_cycle_t *cycle);
-static int ngx_http_header_filter(ngx_http_request_t *r);
+static ngx_int_t ngx_http_header_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r);
 
 
 static ngx_http_module_t  ngx_http_header_filter_module_ctx = {
@@ -90,7 +90,7 @@ static ngx_str_t http_codes[] = {
 
 
 
-static int ngx_http_header_filter(ngx_http_request_t *r)
+static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
 {
     u_char            *p;
     size_t             len;
@@ -359,7 +359,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_header_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_header_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_top_header_filter = ngx_http_header_filter;
 

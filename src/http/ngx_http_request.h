@@ -135,6 +135,9 @@ typedef struct {
     ssize_t           content_length_n;
     size_t            connection_type;
     ssize_t           keep_alive_n;
+
+    unsigned          msie;
+    unsigned          msie4;
 } ngx_http_headers_in_t;
 
 
@@ -201,7 +204,7 @@ struct ngx_http_cleanup_s {
 };
 
 
-typedef int (*ngx_http_handler_pt)(ngx_http_request_t *r);
+typedef ngx_int_t (*ngx_http_handler_pt)(ngx_http_request_t *r);
 
 struct ngx_http_request_s {
     ngx_connection_t         *connection;

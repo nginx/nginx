@@ -117,7 +117,7 @@ typedef struct {
     ngx_str_t     name;          /* location name */
     void        **loc_conf ;     /* pointer to the modules' loc_conf */
 
-    int         (*handler) (ngx_http_request_t *r);
+    ngx_http_handler_pt  handler;
 
     ngx_str_t     root;                    /* root, alias */
 
@@ -163,27 +163,23 @@ extern int ngx_http_max_module;
 
 
 
-int ngx_http_find_location_config(ngx_http_request_t *r);
-int ngx_http_core_translate_handler(ngx_http_request_t *r);
+ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r);
+ngx_int_t ngx_http_core_translate_handler(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
 ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 
-int ngx_http_internal_redirect(ngx_http_request_t *r,
-                               ngx_str_t *uri, ngx_str_t *args);
+ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
+                                     ngx_str_t *uri, ngx_str_t *args);
 
 
-typedef int (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);
-typedef int (*ngx_http_output_body_filter_pt)
+typedef ngx_int_t (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);
+typedef ngx_int_t (*ngx_http_output_body_filter_pt)
                                    (ngx_http_request_t *r, ngx_chain_t *chain);
 
 
-int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);
-int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
-
-
-extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
-extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
+ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);
+ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 
 
 #endif /* _NGX_HTTP_CORE_H_INCLUDED_ */

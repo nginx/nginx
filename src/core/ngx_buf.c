@@ -84,7 +84,8 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
 }
 
 
-int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in)
+ngx_int_t ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
+                             ngx_chain_t *in)
 {
     ngx_chain_t  *cl, **ll;
 

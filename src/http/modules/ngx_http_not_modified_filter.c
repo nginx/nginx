@@ -5,7 +5,7 @@
 
 
 
-static int ngx_http_not_modified_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_not_modified_filter_init(ngx_cycle_t *cycle);
 
 
 static ngx_http_module_t  ngx_http_not_modified_filter_module_ctx = {
@@ -35,7 +35,7 @@ ngx_module_t  ngx_http_not_modified_filter_module = {
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 
 
-static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
+static ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
 {
     time_t  ims;
 
@@ -71,7 +71,7 @@ static int ngx_http_not_modified_header_filter(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_not_modified_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_not_modified_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_not_modified_header_filter;

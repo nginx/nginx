@@ -97,7 +97,7 @@ struct ngx_connection_s {
 
     ngx_buf_t        *buffer;
 
-    ngx_int_t         number;
+    ngx_uint_t        number;
 
     unsigned          log_error:2;  /* ngx_connection_log_error_e */
 

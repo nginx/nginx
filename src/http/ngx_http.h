@@ -59,26 +59,26 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log);
 
 void ngx_http_init_connection(ngx_connection_t *c);
 
-int ngx_http_parse_request_line(ngx_http_request_t *r);
-int ngx_http_parse_complex_uri(ngx_http_request_t *r);
-int ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b);
+ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r);
+ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r);
+ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b);
 
-int ngx_http_find_server_conf(ngx_http_request_t *r);
+ngx_int_t ngx_http_find_server_conf(ngx_http_request_t *r);
 void ngx_http_handler(ngx_http_request_t *r);
 void ngx_http_finalize_request(ngx_http_request_t *r, int error);
 void ngx_http_writer(ngx_event_t *wev);
 
 void ngx_http_empty_handler(ngx_event_t *wev);
 
-int ngx_http_send_last(ngx_http_request_t *r);
+ngx_int_t ngx_http_send_last(ngx_http_request_t *r);
 void ngx_http_close_request(ngx_http_request_t *r, int error);
 void ngx_http_close_connection(ngx_connection_t *c);
 
 
 ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r);
 
-int ngx_http_send_header(ngx_http_request_t *r);
-int ngx_http_special_response_handler(ngx_http_request_t *r, int error);
+ngx_int_t ngx_http_send_header(ngx_http_request_t *r);
+ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error);
 
 
 time_t ngx_http_parse_time(u_char *value, size_t len);
@@ -88,8 +88,7 @@ ngx_table_elt_t *ngx_http_add_header(void *header,
 
 
 
-int ngx_http_discard_body(ngx_http_request_t *r);
-
+ngx_int_t ngx_http_discard_body(ngx_http_request_t *r);
 
 
 extern ngx_module_t  ngx_http_module;
@@ -99,9 +98,12 @@ extern ngx_uint_t  ngx_http_total_requests;
 extern uint64_t    ngx_http_total_sent;
 
 
+extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
+extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
+
 
 /* STUB */
-int ngx_http_log_handler(ngx_http_request_t *r);
+ngx_int_t ngx_http_log_handler(ngx_http_request_t *r);
 /**/
 
 

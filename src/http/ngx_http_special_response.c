@@ -177,10 +177,10 @@ static ngx_str_t error_pages[] = {
 };
 
 
-int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
+ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
     ngx_int_t                  rc;
-    ngx_uint_t                 err, i;
+    ngx_uint_t                 err, i, msie_padding;
     ngx_buf_t                 *b;
     ngx_chain_t               *out, **ll, *cl;
     ngx_http_err_page_t       *err_page;
@@ -248,16 +248,20 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         }
     }
 
+    msie_padding = 0;
+
     if (error_pages[err].len) {
         r->headers_out.content_length_n = error_pages[err].len
                                           + sizeof(error_tail) - 1;
 
         if (clcf->msie_padding
+            && r->headers_in.msie
             && r->http_version >= NGX_HTTP_VERSION_10
             && error >= NGX_HTTP_BAD_REQUEST
             && error != NGX_HTTP_REQUEST_URI_TOO_LARGE)
         {
             r->headers_out.content_length_n += sizeof(msie_stub) - 1;
+            msie_padding = 1;
         }
 
         if (!(r->headers_out.content_type =
@@ -314,11 +318,7 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     ngx_alloc_link_and_set_buf(cl, b, r->pool, NGX_ERROR);
     ngx_chain_add_link(out, ll, cl);
 
-    if (clcf->msie_padding
-        && r->http_version >= NGX_HTTP_VERSION_10
-        && error >= NGX_HTTP_BAD_REQUEST
-        && error != NGX_HTTP_REQUEST_URI_TOO_LARGE)
-    {
+    if (msie_padding) {
         if (!(b = ngx_calloc_buf(r->pool))) {
             return NGX_ERROR;
         }

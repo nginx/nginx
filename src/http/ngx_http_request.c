@@ -9,13 +9,13 @@ static void ngx_http_init_request(ngx_event_t *ev);
 static void ngx_http_process_request_line(ngx_event_t *rev);
 static void ngx_http_process_request_headers(ngx_event_t *rev);
 static ssize_t ngx_http_read_request_header(ngx_http_request_t *r);
-static int ngx_http_process_request_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
 
 static void ngx_http_set_write_handler(ngx_http_request_t *r);
 
 static void ngx_http_block_read(ngx_event_t *ev);
 static void ngx_http_read_discarded_body_event(ngx_event_t *rev);
-static int ngx_http_read_discarded_body(ngx_http_request_t *r);
+static ngx_int_t ngx_http_read_discarded_body(ngx_http_request_t *r);
 
 static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
@@ -847,6 +847,7 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 {
+    u_char                    *ua;
     size_t                     len;
     ngx_uint_t                 i;
     ngx_http_server_name_t    *name;
@@ -931,6 +932,25 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
                 r->headers_in.keep_alive_n =
                                  ngx_atoi(r->headers_in.keep_alive->value.data,
                                           r->headers_in.keep_alive->value.len);
+            }
+        }
+    }
+
+    if (r->headers_in.user_agent) {
+
+        /*
+         * check some widespread browsers while the headers are still
+         * in CPU cache
+         */
+
+        ua = ngx_strstr(r->headers_in.user_agent->value.data, "MSIE");
+        if (ua
+            && ua + 8 < r->headers_in.user_agent->value.data
+                                         + r->headers_in.user_agent->value.len)
+        {
+            r->headers_in.msie = 1;
+            if (ua[4] == ' ' && ua[5] == '4' && ua[6] == '.') {
+                r->headers_in.msie4 = 1;
             }
         }
     }
@@ -1116,7 +1136,7 @@ static void ngx_http_block_read(ngx_event_t *rev)
 }
 
 
-int ngx_http_discard_body(ngx_http_request_t *r)
+ngx_int_t ngx_http_discard_body(ngx_http_request_t *r)
 {
     ssize_t       size;
     ngx_event_t  *rev;
@@ -1182,7 +1202,7 @@ static void ngx_http_read_discarded_body_event(ngx_event_t *rev)
 }
 
 
-static int ngx_http_read_discarded_body(ngx_http_request_t *r)
+static ngx_int_t ngx_http_read_discarded_body(ngx_http_request_t *r)
 {
     ssize_t                    size, n;
     ngx_http_core_loc_conf_t  *clcf;
@@ -1523,7 +1543,7 @@ void ngx_http_empty_handler(ngx_event_t *wev)
 }
 
 
-int ngx_http_send_last(ngx_http_request_t *r)
+ngx_int_t ngx_http_send_last(ngx_http_request_t *r)
 {
     ngx_buf_t    *b;
     ngx_chain_t   out;
