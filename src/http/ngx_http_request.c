@@ -231,7 +231,9 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     c->log->file = clcf->err_log->file;
-    c->log->log_level = clcf->err_log->log_level;
+    if (!(c->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
+        c->log->log_level = clcf->err_log->log_level;
+    }
 
     if (c->buffer == NULL) {
         c->buffer = ngx_create_temp_hunk(c->pool,

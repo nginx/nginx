@@ -35,6 +35,8 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd,
                                    void *conf);
 static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd,
+                                        void *conf);
 
 static void *ngx_event_create_conf(ngx_cycle_t *cycle);
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -115,6 +117,13 @@ static ngx_command_t  ngx_event_core_commands[] = {
       ngx_conf_set_msec_slot,
       0,
       offsetof(ngx_event_conf_t, accept_mutex_delay),
+      NULL },
+
+    { ngx_string("debug_connection"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_event_debug_connection,
+      0,
+      0,
       NULL },
 
       ngx_null_command
@@ -517,6 +526,52 @@ static char *ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+static char *ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd,
+                                        void *conf)
+{
+#if (NGX_DEBUG)
+    ngx_event_conf_t  *ecf = conf;
+
+    in_addr_t       *addr;
+    ngx_str_t       *value;
+    struct hostent  *h;
+
+    value = cf->args->elts;
+
+    /* AF_INET only */
+
+    if (!(addr = ngx_push_array(&ecf->debug_connection))) {
+        return NGX_CONF_ERROR;
+    }
+
+    *addr = inet_addr((char *) value[1].data);
+
+    if (*addr != INADDR_NONE) {
+        return NGX_OK;
+    }
+
+    h = gethostbyname((char *) value[1].data);
+
+    if (h == NULL || h->h_addr_list[0] == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "host %s not found", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+
+    *addr = *(in_addr_t *)(h->h_addr_list[0]);
+
+#else
+
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "\"debug_connection\" is ignored, you need to rebuild "
+                       "nginx using --with-debug option to enable it");
+
+#endif
+
+    return NGX_OK;
+}
+
+
 static void *ngx_event_create_conf(ngx_cycle_t *cycle)
 {
     ngx_event_conf_t  *ecf;
@@ -530,6 +585,11 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
     ecf->accept_mutex = NGX_CONF_UNSET;
     ecf->accept_mutex_delay = NGX_CONF_UNSET_MSEC;
     ecf->name = (void *) NGX_CONF_UNSET;
+
+#if (NGX_DEBUG)
+    ngx_init_array(ecf->debug_connection, cycle->pool, 5, sizeof(in_addr_t),
+                   NGX_CONF_ERROR);
+#endif
 
     return ecf;
 }

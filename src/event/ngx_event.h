@@ -381,15 +381,19 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 
 typedef struct {
-    ngx_int_t    connections;
-    ngx_int_t    use;
+    ngx_int_t     connections;
+    ngx_int_t     use;
 
-    ngx_flag_t   multi_accept;
-    ngx_flag_t   accept_mutex;
+    ngx_flag_t    multi_accept;
+    ngx_flag_t    accept_mutex;
 
-    ngx_msec_t   accept_mutex_delay;
+    ngx_msec_t    accept_mutex_delay;
 
-    u_char      *name;
+    u_char       *name;
+
+#if (NGX_DEBUG)
+    ngx_array_t   debug_connection;
+#endif
 } ngx_event_conf_t;
 
 

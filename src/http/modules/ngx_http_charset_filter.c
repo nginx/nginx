@@ -62,6 +62,12 @@ static int ngx_http_charset_header_filter(ngx_http_request_t *r)
 {
     ngx_http_charset_loc_conf_t  *lcf;
 
+    lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
+
+    if (lcf->default_charset.len == 0) {
+        return ngx_http_next_header_filter(r);
+    }
+
     if (r->headers_out.content_type == NULL
         || ngx_strncasecmp(r->headers_out.content_type->value.data,
                                                               "text/", 5) != 0
@@ -71,8 +77,6 @@ static int ngx_http_charset_header_filter(ngx_http_request_t *r)
     {
         return ngx_http_next_header_filter(r);
     }
-
-    lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
 
     if (r->headers_out.status == NGX_HTTP_MOVED_PERMANENTLY
         && r->headers_out.status == NGX_HTTP_MOVED_TEMPORARILY)
@@ -135,7 +139,7 @@ static char *ngx_http_charset_merge_loc_conf(ngx_conf_t *cf,
     ngx_http_charset_loc_conf_t *conf = child;
 
     ngx_conf_merge_str_value(conf->default_charset,
-                             prev->default_charset, "koi8-r");
+                             prev->default_charset, "");
 
     return NGX_CONF_OK;
 }

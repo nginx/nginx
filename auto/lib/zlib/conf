@@ -34,19 +34,21 @@ if [ $ZLIB != NONE ]; then
 
 else
 
-    ngx_lib_inc="#include <zlib.h>"
+    if [ $PLATFORM != win32 ]; then
+        ngx_lib_inc="#include <zlib.h>"
 
-    ngx_lib="zlib"
-    ngx_lib_test="z_stream z; deflate(&z, Z_NO_FLUSH)"
-    ngx_libs=-lz
-    . auto/lib/test
+        ngx_lib="zlib library"
+        ngx_lib_test="z_stream z; deflate(&z, Z_NO_FLUSH)"
+        ngx_libs=-lz
+        . auto/lib/test
 
 
-    if [ $ngx_found = yes ]; then
-        CORE_LIBS="$CORE_LIBS $ngx_libs"
-        ZLIB=YES
-    else
-        ZLIB=NO
+        if [ $ngx_found = yes ]; then
+            CORE_LIBS="$CORE_LIBS $ngx_libs"
+            ZLIB=YES
+        else
+            ZLIB=NO
+        fi
     fi
 
 fi

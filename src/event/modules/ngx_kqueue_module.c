@@ -22,6 +22,8 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags);
 static int ngx_kqueue_process_events(ngx_cycle_t *cycle);
+static ngx_inline void ngx_kqueue_dump_event(ngx_log_t *log,
+                                             struct kevent *kev);
 
 static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle);
 static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -443,17 +445,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
     for (i = 0; i < events; i++) {
 
-        ngx_log_debug6(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-
-                       (event_list[i].ident > 0x8000000
-                        && event_list[i].ident != (unsigned) -1) ?
-                        "kevent: " PTR_FMT ": ft:%d fl:%04X ff:%08X d:%d ud:"
-                                                                     PTR_FMT:
-                        "kevent: %d: ft:%d fl:%04X ff:%08X d:%d ud:" PTR_FMT,
-
-                        event_list[i].ident, event_list[i].filter,
-                        event_list[i].flags, event_list[i].fflags,
-                        event_list[i].data, event_list[i].udata);
+        ngx_kqueue_dump_event(cycle->log, &event_list[i]);
 
         if (event_list[i].flags & EV_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, event_list[i].data,
@@ -471,6 +463,10 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
             instance = (uintptr_t) ev & 1;
             ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
             ev->returned_instance = instance;
+
+            if (ev->log && (ev->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
+                ngx_kqueue_dump_event(ev->log, &event_list[i]);
+            }
 
             if (!ev->active || ev->instance != instance) {
 
@@ -557,6 +553,19 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
     }
 
     return NGX_OK;
+}
+
+
+static ngx_inline void ngx_kqueue_dump_event(ngx_log_t *log, struct kevent *kev)
+{
+    ngx_log_debug6(NGX_LOG_DEBUG_EVENT, log, 0,
+                   (kev->ident > 0x8000000 && kev->ident != (unsigned) -1) ?
+                    "kevent: " PTR_FMT ": ft:%d fl:%04X ff:%08X d:%d ud:"
+                                                                       PTR_FMT:
+                    "kevent: %d: ft:%d fl:%04X ff:%08X d:%d ud:" PTR_FMT,
+                    kev->ident, kev->filter,
+                    kev->flags, kev->fflags,
+                    kev->data, kev->udata);
 }
 
 

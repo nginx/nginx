@@ -6,24 +6,25 @@
 #include <ngx_core.h>
 
 
-#define NGX_LOG_STDERR          0
-#define NGX_LOG_EMERG           1
-#define NGX_LOG_ALERT           2
-#define NGX_LOG_CRIT            3
-#define NGX_LOG_ERR             4
-#define NGX_LOG_WARN            5
-#define NGX_LOG_NOTICE          6
-#define NGX_LOG_INFO            7
-#define NGX_LOG_DEBUG           8
+#define NGX_LOG_STDERR            0
+#define NGX_LOG_EMERG             1
+#define NGX_LOG_ALERT             2
+#define NGX_LOG_CRIT              3
+#define NGX_LOG_ERR               4
+#define NGX_LOG_WARN              5
+#define NGX_LOG_NOTICE            6
+#define NGX_LOG_INFO              7
+#define NGX_LOG_DEBUG             8
 
-#define NGX_LOG_DEBUG_CORE      0x10
-#define NGX_LOG_DEBUG_ALLOC     0x20
-#define NGX_LOG_DEBUG_EVENT     0x40
-#define NGX_LOG_DEBUG_HTTP      0x80
+#define NGX_LOG_DEBUG_CORE        0x10
+#define NGX_LOG_DEBUG_ALLOC       0x20
+#define NGX_LOG_DEBUG_EVENT       0x40
+#define NGX_LOG_DEBUG_HTTP        0x80
 
-#define NGX_LOG_DEBUG_FIRST     NGX_LOG_DEBUG_CORE
-#define NGX_LOG_DEBUG_LAST      NGX_LOG_DEBUG_HTTP
-#define NGX_LOG_DEBUG_ALL       0xfffffff0
+#define NGX_LOG_DEBUG_FIRST       NGX_LOG_DEBUG_CORE
+#define NGX_LOG_DEBUG_LAST        NGX_LOG_DEBUG_HTTP
+#define NGX_LOG_DEBUG_CONNECTION  0x80000000
+#define NGX_LOG_DEBUG_ALL         0x7ffffff0
 
 
 /*

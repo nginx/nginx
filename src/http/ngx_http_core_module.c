@@ -482,7 +482,9 @@ int ngx_http_find_location_config(ngx_http_request_t *r)
             r->loc_conf = clcfp[i]->loc_conf;
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             r->connection->log->file = clcf->err_log->file;
-            r->connection->log->log_level = clcf->err_log->log_level;
+            if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
+                r->connection->log->log_level = clcf->err_log->log_level;
+            }
 
             if (clcfp[i]->exact_match && r->uri.len == clcfp[i]->name.len) {
 #if (HAVE_PCRE)
@@ -529,7 +531,9 @@ int ngx_http_find_location_config(ngx_http_request_t *r)
             r->loc_conf = clcfp[i]->loc_conf;
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             r->connection->log->file = clcf->err_log->file;
-            r->connection->log->log_level = clcf->err_log->log_level;
+            if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
+                r->connection->log->log_level = clcf->err_log->log_level;
+            }
 
             break;
         }

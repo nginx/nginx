@@ -275,6 +275,25 @@ void ngx_event_accept(ngx_event_t *ev)
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                        "accept: fd:%d c:%d", s, c->number);
 
+#if (NGX_DEBUG)
+        {
+
+        uint32_t            *addr;
+        in_addr_t            i;
+        struct sockaddr_in  *addr_in;
+
+        addr_in = (struct sockaddr_in *) sa;
+        addr = ecf->debug_connection.elts;
+        for (i = 0; i < ecf->debug_connection.nelts; i++) {
+            if (addr[i] == addr_in->sin_addr.s_addr) {
+                log->log_level = NGX_LOG_DEBUG_CONNECTION|NGX_LOG_DEBUG_ALL;
+                break;
+            }
+        }
+
+        }
+#endif
+
         if (ngx_add_conn) {
             if (ngx_add_conn(c) == NGX_ERROR) {
                 if (ngx_close_socket(s) == -1) {
