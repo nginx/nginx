@@ -3,7 +3,7 @@
 
 /* AF_INET only */
 
-int ngx_event_connect_peer(ngx_peer_connecttion_t *pc)
+int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     time_t               now;
     ngx_peer_r          *peer;
@@ -29,6 +29,7 @@ int ngx_event_connect_peer(ngx_peer_connecttion_t *pc)
     }
 
     pc->cached = 0;
+    pc->connection = NULL;
 
     if (pc->peers->number > 1) {
 

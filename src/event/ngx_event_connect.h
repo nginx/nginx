@@ -40,6 +40,8 @@ typedef struct {
 
     int                rcvbuf;
 
+    ngx_log_t         *log;
+
     unsigned           cached:1;
 } ngx_peer_connection_t;
 
