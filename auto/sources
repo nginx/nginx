@@ -173,13 +173,16 @@ HTTP_MODULES="ngx_http_module \
 HTTP_FILE_CACHE_MODULE=ngx_http_cache_module
 
 HTTP_FILTER_MODULES="ngx_http_write_filter_module \
-            ngx_http_output_filter_module \
             ngx_http_header_filter_module"
 
 HTTP_CHUNKED_FILTER_MODULE=ngx_http_chunked_filter_module
-HTTP_RANGE_FILTER_MODULE=ngx_http_range_filter_module
 HTTP_CHARSET_FILTER_MODULE=ngx_http_charset_filter_module
 HTTP_HEADERS_FILTER_MODULE=ngx_http_headers_filter_module
+HTTP_COPY_FILTER_MODULE=ngx_http_copy_filter_module
+
+HTTP_RANGE_HEADER_FILTER_MODULE=ngx_http_range_header_filter_module
+HTTP_RANGE_BODY_FILTER_MODULE=ngx_http_range_body_filter_module
+
 HTTP_NOT_MODIFIED_FILTER_MODULE=ngx_http_not_modified_filter_module
 
 HTTP_STATIC_MODULE=ngx_http_static_module
@@ -204,7 +207,7 @@ HTTP_SRCS="src/http/ngx_http.c \
             src/http/ngx_http_headers.c \
             src/http/ngx_http_header_filter.c \
             src/http/ngx_http_write_filter.c \
-            src/http/ngx_http_output_filter.c \
+            src/http/ngx_http_copy_filter.c \
             src/http/ngx_http_log_handler.c \
             src/http/ngx_http_request_body.c \
             src/http/ngx_http_parse_time.c \

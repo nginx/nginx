@@ -44,10 +44,11 @@ typedef struct {
 } ngx_http_range_filter_ctx_t;
 
 
-static ngx_int_t ngx_http_range_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_range_header_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_range_body_filter_init(ngx_cycle_t *cycle);
 
 
-static ngx_http_module_t  ngx_http_range_filter_module_ctx = {
+static ngx_http_module_t  ngx_http_range_header_filter_module_ctx = {
     NULL,                                  /* pre conf */
 
     NULL,                                  /* create main configuration */
@@ -61,12 +62,36 @@ static ngx_http_module_t  ngx_http_range_filter_module_ctx = {
 };
 
 
-ngx_module_t  ngx_http_range_filter_module = {
+ngx_module_t  ngx_http_range_header_filter_module = {
     NGX_MODULE,
-    &ngx_http_range_filter_module_ctx,     /* module context */
+    &ngx_http_range_header_filter_module_ctx, /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
-    ngx_http_range_filter_init,            /* init module */
+    ngx_http_range_header_filter_init,     /* init module */
+    NULL                                   /* init child */
+};
+
+
+static ngx_http_module_t  ngx_http_range_body_filter_module_ctx = {
+    NULL,                                  /* pre conf */
+
+    NULL,                                  /* create main configuration */
+    NULL,                                  /* init main configuration */
+
+    NULL,                                  /* create server configuration */
+    NULL,                                  /* merge server configuration */
+
+    NULL,                                  /* create location configuration */
+    NULL,                                  /* merge location configuration */
+};
+
+
+ngx_module_t  ngx_http_range_body_filter_module = {
+    NGX_MODULE,
+    &ngx_http_range_body_filter_module_ctx, /* module context */
+    NULL,                                  /* module directives */
+    NGX_HTTP_MODULE,                       /* module type */
+    ngx_http_range_body_filter_init,       /* init module */
     NULL                                   /* init child */
 };
 
@@ -88,13 +113,18 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
     if (r->http_version < NGX_HTTP_VERSION_10
         || r->headers_out.status != NGX_HTTP_OK
         || r->headers_out.content_length_n == -1
+        || !(r->filter & NGX_HTTP_FILTER_ALLOW_RANGES))
 
+#if 0
         /* STUB: we currently support ranges for file hunks only */
         || !r->sendfile
         || r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY
+#endif
 
+#if 0
         || (r->headers_out.content_encoding
             && r->headers_out.content_encoding->value.len))
+#endif
     {
         return ngx_http_next_header_filter(r);
     }
@@ -294,7 +324,7 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
             }
 #endif
 
-            ngx_http_create_ctx(r, ctx, ngx_http_range_filter_module,
+            ngx_http_create_ctx(r, ctx, ngx_http_range_body_filter_module,
                                 sizeof(ngx_http_range_filter_ctx_t), NGX_ERROR);
 
             len = 4 + 10 + 2 + 14 + r->headers_out.content_type->value.len
@@ -414,7 +444,7 @@ static ngx_int_t ngx_http_range_body_filter(ngx_http_request_t *r,
             return ngx_http_next_body_filter(r, in);
         }
 
-        ctx = ngx_http_get_module_ctx(r, ngx_http_range_filter_module);
+        ctx = ngx_http_get_module_ctx(r, ngx_http_range_body_filter_module);
         ll = &out;
 
         for (i = 0; i < r->headers_out.ranges.nelts; i++) {
@@ -483,11 +513,17 @@ static ngx_int_t ngx_http_range_body_filter(ngx_http_request_t *r,
 }
 
 
-static ngx_int_t ngx_http_range_filter_init(ngx_cycle_t *cycle)
+static ngx_int_t ngx_http_range_header_filter_init(ngx_cycle_t *cycle)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_range_header_filter;
 
+    return NGX_OK;
+}
+
+
+static ngx_int_t ngx_http_range_body_filter_init(ngx_cycle_t *cycle)
+{
     ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_range_body_filter;
 

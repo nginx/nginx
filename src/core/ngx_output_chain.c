@@ -81,7 +81,11 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                     ctx->hunk = ctx->free->hunk;
                     ctx->free = ctx->free->next;
 
-                } else if (ctx->hunks < ctx->bufs.num) {
+                } else if (out || ctx->hunks == ctx->bufs.num) {
+
+                    break;
+
+                } else {
 
                     size = ctx->bufs.size;
 
@@ -118,9 +122,6 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                     ctx->hunk->tag = ctx->tag;
                     ctx->hunk->type |= NGX_HUNK_RECYCLED;
                     ctx->hunks++;
-
-                } else {
-                    break;
                 }
             }
 
@@ -148,10 +149,6 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
             *last_out = cl;
             last_out = &cl->next;
             ctx->hunk = NULL;
-
-            if (ctx->free == NULL) {
-                break;
-            }
         }
 
         if (out == NULL && last != NGX_NONE) {

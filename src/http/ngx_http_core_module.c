@@ -658,6 +658,27 @@ int ngx_http_send_header(ngx_http_request_t *r)
 }
 
 
+ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
+{
+    ngx_int_t  rc;
+
+    if (r->connection->write->error) {
+        return NGX_ERROR;
+    }
+
+    rc = ngx_http_top_body_filter(r, in);
+
+    if (rc == NGX_ERROR) {
+
+        /* NGX_ERROR could be returned by any filter */
+
+        r->connection->write->error = 1;
+    }
+
+    return rc;
+}
+
+
 int ngx_http_redirect(ngx_http_request_t *r, int redirect)
 {
     /* STUB */

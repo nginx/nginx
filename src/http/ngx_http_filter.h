@@ -5,6 +5,7 @@
 #define NGX_HTTP_FILTER_NEED_IN_MEMORY      1
 #define NGX_HTTP_FILTER_SSI_NEED_IN_MEMORY  2
 #define NGX_HTTP_FILTER_NEED_TEMP           4
+#define NGX_HTTP_FILTER_ALLOW_RANGES        8
 
 
 typedef int (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);
