@@ -1543,6 +1543,8 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
+    ls->port = port;
+
     ls->addr = inet_addr((const char *) addr);
     if (ls->addr == INADDR_NONE) {
         h = gethostbyname((const char *) addr);
