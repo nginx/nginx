@@ -8,7 +8,16 @@
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
-int  ngx_http_max_module;
+int         ngx_http_max_module;
+
+ngx_uint_t  ngx_http_reading_state;
+ngx_uint_t  ngx_http_processing_state;
+ngx_uint_t  ngx_http_writing_state;
+ngx_uint_t  ngx_http_lingering_close_state;
+ngx_uint_t  ngx_http_keepalive_state;
+
+ngx_uint_t  ngx_http_total_requests;
+uint64_t    ngx_http_total_sent;
 
 
 int  (*ngx_http_top_header_filter) (ngx_http_request_t *r);

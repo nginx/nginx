@@ -15,6 +15,7 @@ typedef struct ngx_event_s       ngx_event_t;
 typedef struct ngx_connection_s  ngx_connection_t;
 
 
+#include <ngx_atomic.h>
 #include <ngx_time.h>
 #include <ngx_socket.h>
 #include <ngx_errno.h>
@@ -30,7 +31,9 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #include <ngx_file.h>
 #include <ngx_files.h>
 #include <ngx_crc.h>
+#if (HAVE_PCRE)
 #include <ngx_regex.h>
+#endif
 #include <ngx_rbtree.h>
 #include <ngx_times.h>
 #include <ngx_inet.h>

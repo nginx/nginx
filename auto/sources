@@ -5,6 +5,7 @@ CORE_INCS="-I src/core"
 
 CORE_DEPS="src/core/nginx.h \
             src/core/ngx_config.h \
+            src/core/ngx_atomic.h \
             src/core/ngx_log.h \
             src/core/ngx_alloc.h \
             src/core/ngx_array.h \
@@ -15,7 +16,6 @@ CORE_DEPS="src/core/nginx.h \
             src/core/ngx_inet.h \
             src/core/ngx_file.h \
             src/core/ngx_crc.h \
-            src/core/ngx_regex.h \
             src/core/ngx_rbtree.h \
             src/core/ngx_times.h \
             src/core/ngx_connection.h \
@@ -32,11 +32,14 @@ CORE_SRCS="src/core/nginx.c \
             src/core/ngx_parse.c \
             src/core/ngx_inet.c \
             src/core/ngx_file.c \
-            src/core/ngx_regex.c \
             src/core/ngx_rbtree.c \
             src/core/ngx_times.c \
             src/core/ngx_conf_file.c \
             src/core/ngx_garbage_collector.c"
+
+
+REGEX_DEPS="src/core/ngx_regex.h"
+REGEX_SRCS="src/core/ngx_regex.c"
 
 
 EVENT_MODULES="ngx_events_module ngx_event_core_module"

@@ -2,12 +2,15 @@
 if [ $PCRE != NO ]; then
 
     CORE_INCS="$CORE_INCS -I $PCRE"
+    CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
+    CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
 
     if [ "$PLATFORM" = "win32" ]; then
-        CFLAGS="$CFLAGS -D PCRE_STATIC"
+        CFLAGS="$CFLAGS -D PCRE_STATIC -D HAVE_PCRE=1"
         CORE_LIBS="$CORE_LIBS pcre.lib"
         CORE_LINK="$CORE_LINK -libpath:$PCRE"
     else 
+        CFLAGS="$CFLAGS -D HAVE_PCRE=1"
         CORE_DEPS="$CORE_DEPS $PCRE/.libs/libpcre.a"
         CORE_LIBS="$CORE_LIBS -L $PCRE/.libs -lpcre"
     fi

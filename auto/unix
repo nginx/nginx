@@ -83,6 +83,12 @@ n = pwrite(1, buf, 1, 0)"
 . auto/func
 
 
+ngx_func="strsignal()"
+ngx_func_inc="#include <string.h>"
+ngx_func_test="char *s = strsignal(1)"
+. auto/func
+
+
 ngx_func="strerror_r()"
 ngx_func_inc="#include <string.h>"
 ngx_func_test="char buf[20]; strerror_r(1, buf, 20)"

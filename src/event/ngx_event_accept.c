@@ -207,6 +207,7 @@ void ngx_event_accept(ngx_event_t *ev)
          *           - atomic increment (x86: lock xadd)
          *             or protection by critical section or mutex
          */
+
         c->number = ngx_connection_counter++;
 
         ngx_log_debug(ev->log, "accept: %d, %d" _ s _ c->number);

@@ -22,8 +22,11 @@ int ngx_event_timer_init(ngx_cycle_t *cycle)
 
     ngx_event_timer_rbtree = &ngx_event_timer_sentinel;
     ngx_event_timer_sentinel.left = &ngx_event_timer_sentinel;
+
+#if 0
     ngx_event_timer_sentinel.right = &ngx_event_timer_sentinel;
     ngx_event_timer_sentinel.parent = &ngx_event_timer_sentinel;
+#endif
 
     return NGX_OK;
 }

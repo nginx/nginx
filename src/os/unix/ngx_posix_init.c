@@ -91,7 +91,6 @@ int ngx_posix_init(ngx_log_t *log)
 
 void ngx_signal_handler(int signo)
 {
-    char          *name;
     ngx_signal_t  *sig;
 
     for (sig = signals; sig->signo != 0; sig++) {
@@ -100,11 +99,18 @@ void ngx_signal_handler(int signo)
         }
     }
 
-    /* STUB */
-    name = strsignal(signo);
+#if (HAVE_STRSIGNAL)
+
     ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
                   "signal #%d (%s: %s) received, %s",
-                  signo, sig->signame, name, sig->action);
+                  signo, sig->signame, strsignal(signo), sig->action);
+#else
+
+    ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
+                  "signal #%d (%s) received, %s",
+                  signo, sig->signame, sig->action);
+
+#endif
 
     switch (signo) {
 

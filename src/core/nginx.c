@@ -72,7 +72,7 @@ int main(int argc, char *const *argv)
     int               i;
     ngx_fd_t          fd;
     ngx_log_t        *log;
-    ngx_cycle_t      *cycle;
+    ngx_cycle_t      *cycle, init_cycle;
     ngx_open_file_t  *file;
 #if !(WIN32)
     size_t            len;
@@ -88,9 +88,18 @@ int main(int argc, char *const *argv)
     /* TODO */ ngx_max_sockets = -1;
 
     ngx_time_init();
+#if (HAVE_PCRE)
     ngx_regex_init();
+#endif
 
     log = ngx_log_init_errlog();
+
+
+    /* init_cycle->log is required for signal handlers */
+
+    ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
+    init_cycle.log = log;
+    ngx_cycle = &init_cycle;
 
     if (ngx_os_init(log) == NGX_ERROR) {
         return 1;
@@ -207,7 +216,7 @@ int main(int argc, char *const *argv)
                 }
 
                 if (rotate) {
-                    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "rotating logs");
+                    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");
 
                     file = cycle->open_files.elts;
                     for (i = 0; i < cycle->open_files.nelts; i++) {
