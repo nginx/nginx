@@ -189,6 +189,8 @@ static int ngx_iocp_process_events(ngx_log_t *log)
         err = 0;
     }
 
+    /* TODO: timer */
+
     if (timer != INFINITE) {
         delta = ngx_msec() - delta;
         ngx_event_expire_timers(delta);

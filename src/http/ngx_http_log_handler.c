@@ -210,6 +210,10 @@ static char *ngx_http_log_pipe(ngx_http_request_t *r, char *buf, uintptr_t data)
 
 static char *ngx_http_log_time(ngx_http_request_t *r, char *buf, uintptr_t data)
 {
+    return ngx_cpymem(buf, ngx_cached_http_log_time.data,
+                      ngx_cached_http_log_time.len);
+
+#if 0
     ngx_tm_t  tm;
 
     ngx_localtime(&tm);
@@ -219,6 +223,7 @@ static char *ngx_http_log_time(ngx_http_request_t *r, char *buf, uintptr_t data)
                               tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
                               tm.ngx_tm_year,
                               tm.ngx_tm_hour, tm.ngx_tm_min, tm.ngx_tm_sec);
+#endif
 }
 
 
@@ -237,7 +242,8 @@ static char *ngx_http_log_request(ngx_http_request_t *r, char *buf,
 static char *ngx_http_log_status(ngx_http_request_t *r, char *buf,
                                  uintptr_t data)
 {
-    return buf + ngx_snprintf(buf, 4, "%d", r->headers_out.status);
+    return buf + ngx_snprintf(buf, 4, "%d",
+                        r->err_status ? r->err_status : r->headers_out.status);
 }
 
 

@@ -16,9 +16,9 @@ typedef char *(*ngx_http_log_op_pt) (ngx_http_request_t *r, char *buf,
 #define NGX_HTTP_LOG_ARG         (u_int) -1
 
 /* STUB */
-#define NGX_INT32_LEN      sizeof("4294967296") - 1
-#define NGX_TIME_LEN       sizeof("4294967296") - 1
-#define NGX_OFF_LEN        sizeof("18446744073709551616") - 1
+#define NGX_INT32_LEN      sizeof("-2147483648") - 1
+#define NGX_TIME_LEN       sizeof("-2147483648") - 1
+#define NGX_OFF_LEN        sizeof("-9223372036854775808") - 1
 
 
 typedef struct {

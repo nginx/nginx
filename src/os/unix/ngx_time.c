@@ -1,11 +1,12 @@
 
 #include <ngx_config.h>
-#include <ngx_time.h>
+#include <ngx_core.h>
+
 
 void ngx_localtime(ngx_tm_t *tm)
 {
-    time_t clock = time(NULL);
-    localtime_r(&clock, tm);
+    localtime_r(&ngx_cached_time, tm);
+
     tm->ngx_tm_mon++;
     tm->ngx_tm_year += 1900;
 }

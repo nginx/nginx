@@ -192,6 +192,8 @@ struct ngx_http_request_s {
     void                *data;
 
     char                *discarded_buffer;
+    void               **err_ctx;
+    int                  err_status;
 
     /* URI is not started with '/' - "GET http://" */
     unsigned             unusual_uri:1;

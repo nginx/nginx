@@ -23,8 +23,10 @@ void ngx_localtime(ngx_tm_t *tm);
 
 ngx_msec_t ngx_msec(void);
 
-/* STUB */
-#define ngx_time()     time(NULL)
+time_t ngx_time();
+
+extern time_t  ngx_cached_time;
+
 
 
 #endif /* _NGX_TIME_H_INCLUDED_ */

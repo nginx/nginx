@@ -38,8 +38,8 @@ typedef struct {
 int ngx_http_busy_lock(ngx_http_busy_lock_t *bl, ngx_http_busy_lock_ctx_t *bc);
 int ngx_http_busy_lock_cachable(ngx_http_busy_lock_t *bl,
                                 ngx_http_busy_lock_ctx_t *bc, int lock);
-void ngx_http_busy_unlock_cachable(ngx_http_busy_lock_t *bl,
-                                   ngx_http_busy_lock_ctx_t *bc);
+void ngx_http_busy_unlock(ngx_http_busy_lock_t *bl,
+                          ngx_http_busy_lock_ctx_t *bc);
 
 char *ngx_http_set_busy_lock_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);

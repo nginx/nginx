@@ -259,6 +259,8 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
     ngx_log_debug(log, "poll ready %d" _ ready);
 
+    /* TODO: time */
+
     if ((int) timer != INFTIM) {
         delta = ngx_msec() - delta;
 

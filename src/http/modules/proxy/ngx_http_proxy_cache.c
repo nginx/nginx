@@ -288,6 +288,8 @@ void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
         return;
     }
 
+    ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
+
     if (rc == NGX_DONE) {
         ft_type = NGX_HTTP_PROXY_FT_BUSY_LOCK;
 

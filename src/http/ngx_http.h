@@ -21,6 +21,8 @@ typedef struct {
 
 
 #define ngx_http_get_module_ctx(r, module)       r->ctx[module.ctx_index]
+#define ngx_http_get_module_err_ctx(r, module)                                \
+         (r->err_ctx ? r->err_ctx[module.ctx_index] : r->ctx[module.ctx_index])
 
 #define ngx_http_create_ctx(r, cx, module, size, error)                       \
             do {                                                              \

@@ -337,6 +337,8 @@ void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p)
         return;
     }
 
+    ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
+
     if (rc == NGX_DONE) {
         ft_type = NGX_HTTP_PROXY_FT_BUSY_LOCK;
 
@@ -1053,27 +1055,24 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
     if (p->upstream->peer.connection) {
         if (ep->upstream_done && p->cachable) {
             if (ngx_http_proxy_update_cache(p) == NGX_ERROR) {
-                ngx_http_busy_unlock_cachable(p->lcf->busy_lock, &p->busy_lock);
+                ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
                 ngx_http_proxy_finalize_request(p, 0);
                 return;
             }
-
-            ngx_http_busy_unlock_cachable(p->lcf->busy_lock, &p->busy_lock);
 
         } else if (ep->upstream_eof && p->cachable) {
 
             /* TODO: check length & update cache */
 
             if (ngx_http_proxy_update_cache(p) == NGX_ERROR) {
-                ngx_http_busy_unlock_cachable(p->lcf->busy_lock, &p->busy_lock);
+                ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
                 ngx_http_proxy_finalize_request(p, 0);
                 return;
             }
-
-            ngx_http_busy_unlock_cachable(p->lcf->busy_lock, &p->busy_lock);
         }
 
         if (ep->upstream_done || ep->upstream_eof || ep->upstream_error) {
+            ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
             ngx_http_proxy_close_connection(p);
         }
     }
@@ -1103,6 +1102,8 @@ static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p, int ft_type)
     int  status;
 
 ngx_log_debug(p->request->connection->log, "next upstream: %d" _ ft_type);
+
+    ngx_http_busy_unlock(p->lcf->busy_lock, &p->busy_lock);
 
     if (ft_type != NGX_HTTP_PROXY_FT_HTTP_404) {
         ngx_event_connect_peer_failed(&p->upstream->peer);

@@ -503,7 +503,7 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
 {
     ngx_http_proxy_ctx_t  *p;
 
-    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+    p = ngx_http_get_module_err_ctx(r, ngx_http_proxy_module);
 
     if (p == NULL) {
         *buf = '-';
@@ -520,11 +520,15 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
 
     *buf++ = '/';
 
-    *buf++ = 'X';
+    *buf++ = '_';
 
     *buf++ = '/';
 
-    *buf++ = 'X';
+    *buf++ = '_';
+
+    *buf++ = '/';
+
+    *buf++ = '_';
 
     *buf++ = ' ';
 
@@ -554,6 +558,9 @@ static char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r, char *buf,
         buf += ngx_snprintf(buf, NGX_TIME_LEN, TIME_FMT, p->state->expires);
     }
 
+    *buf++ = ' ';
+    *buf++ = '_';
+
     return buf;
 }
 
@@ -563,7 +570,7 @@ static char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r, char *buf,
 {
     ngx_http_proxy_ctx_t  *p;
 
-    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+    p = ngx_http_get_module_err_ctx(r, ngx_http_proxy_module);
 
     if (p == NULL || p->state->cache_state == 0) {
         *buf = '-';
@@ -580,7 +587,7 @@ static char *ngx_http_proxy_log_reason(ngx_http_request_t *r, char *buf,
 {
     ngx_http_proxy_ctx_t  *p;
 
-    p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+    p = ngx_http_get_module_err_ctx(r, ngx_http_proxy_module);
 
     if (p == NULL || p->state->reason == 0) {
         *buf = '-';

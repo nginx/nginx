@@ -366,8 +366,14 @@ int ngx_devpoll_process_events(ngx_log_t *log)
 
     nchanges = 0;
 
+    gettimeofday(&tv, NULL);
+
+    if (ngx_cached_time != tv.tv_sec) {
+        ngx_cached_time = tv.tv_sec;
+        ngx_time_update();
+    }
+
     if ((int) timer != INFTIM) {
-        gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
 
 #if (NGX_DEBUG_EVENT)

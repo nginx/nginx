@@ -314,6 +314,8 @@ static int ngx_select_process_events(ngx_log_t *log)
     ngx_log_debug(log, "select ready %d" _ ready);
 #endif
 
+    /* TODO: time */
+
     if (timer) {
 #if (HAVE_SELECT_CHANGE_TIMEOUT)
         delta = timer - (tv.tv_sec * 1000 + tv.tv_usec / 1000);

@@ -116,6 +116,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 #endif
 
     } else {
+
         if (r->headers_out.status < NGX_HTTP_MOVED_PERMANENTLY) {
             /* 2XX */
             status = r->headers_out.status - NGX_HTTP_OK;
@@ -240,7 +241,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 #if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
         p = h->last;
 #endif
-        h->last += ngx_http_get_time(h->last, ngx_time());
+        h->last = ngx_cpymem(h->last, ngx_cached_http_time.data,
+                             ngx_cached_http_time.len);
 
 #if (NGX_HTTP_LOG_ALL_HEADERS_OUT)
         r->headers_out.date = ngx_palloc(r->pool, sizeof(ngx_table_elt_t));

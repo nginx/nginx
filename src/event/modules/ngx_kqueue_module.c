@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru
+ * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru/en/
  */
 
 
@@ -347,16 +347,24 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
     nchanges = 0;
 
+    gettimeofday(&tv, NULL);
+
+    if (ngx_cached_time != tv.tv_sec) {
+        ngx_cached_time = tv.tv_sec;
+        ngx_time_update();
+    }
+
     if (timer) {
-        gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
 
 #if (NGX_DEBUG_EVENT)
         ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ delta);
 #endif
 
-        /* The expired timers must be handled before a processing of the events
-           because the new timers can be added during a processing */
+        /*
+         * The expired timers must be handled before a processing of the events
+         * because the new timers can be added during a processing
+         */
 
         ngx_event_expire_timers(delta);
 
@@ -413,8 +421,10 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
             instance = (uintptr_t) ev & 1;
             ev = (void *) ((uintptr_t) ev & ~1);
 
-            /* It's a stale event from a file descriptor
-               that was just closed in this iteration */
+            /*
+             * it's a stale event from a file descriptor
+             * that was just closed in this iteration
+             */
 
             if (ev->active == 0 || ev->instance != instance) {
                 ngx_log_debug(log, "stale kevent");
