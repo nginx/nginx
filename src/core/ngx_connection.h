@@ -90,6 +90,10 @@ struct ngx_connection_s {
     socklen_t         socklen;
     ngx_str_t         addr_text;
 
+#if (NGX_OPENSSL)
+    SSL              *ssl;
+#endif
+
 #if (HAVE_IOCP)
     struct sockaddr  *local_sockaddr;
     socklen_t         local_socklen;

@@ -55,6 +55,10 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #include <ngx_process_cycle.h>
 #include <ngx_conf_file.h>
 #include <ngx_os.h>
+#if (NGX_OPENSSL)
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#endif
 #include <ngx_connection.h>
 
 

@@ -280,6 +280,7 @@ struct ngx_http_request_s {
     unsigned             complex_uri:1;
     unsigned             header_timeout_set:1;
 
+    unsigned             ssl:1;
     unsigned             proxy:1;
     unsigned             bypass_cache:1;
     unsigned             no_cache:1;

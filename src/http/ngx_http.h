@@ -21,7 +21,7 @@ typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 #include <ngx_http_log_handler.h>
 #include <ngx_http_core_module.h>
 
-#if (NGX_HTTP_SSL)
+#if (NGX_OPENSSL)
 #include <ngx_http_ssl_filter.h>
 #endif
 

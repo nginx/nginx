@@ -229,6 +229,11 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->srv_conf = cscf->ctx->srv_conf;
     r->loc_conf = cscf->ctx->loc_conf;
 
+#if 1
+    r->ssl = 1;
+    r->filter_need_in_memory = 1;
+#endif
+
     server_name = cscf->server_names.elts;
     r->server_name = &server_name->name;
 
@@ -815,12 +820,17 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
         return NGX_AGAIN;
     }
 
-#if 0
-    n = ngx_http_ssl_read(r, r->header_in->last,
-                          r->header_in->end - r->header_in->last);
-#else
-    n = ngx_recv(r->connection, r->header_in->last,
-                 r->header_in->end - r->header_in->last);
+/* STUB */
+#if (NGX_OPENSSL)
+    if (r->ssl) {
+        n = ngx_http_ssl_read(r, r->header_in->last,
+                              r->header_in->end - r->header_in->last);
+    } else {
+#endif
+        n = ngx_recv(r->connection, r->header_in->last,
+                     r->header_in->end - r->header_in->last);
+#if (NGX_OPENSSL)
+    }
 #endif
 
     if (n == NGX_AGAIN) {
