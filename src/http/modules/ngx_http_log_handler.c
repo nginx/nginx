@@ -32,8 +32,6 @@ int ngx_http_log_handler(ngx_http_request_t *r)
     len += r->connection->addr_text.len;
     len += r->request_line.len;
 
-    ngx_log_debug(r->connection->log, "log handler: %d" _ len);
-
     ngx_test_null(line, ngx_palloc(r->pool, len), NGX_ERROR);
     p = line;
 
@@ -46,12 +44,7 @@ int ngx_http_log_handler(ngx_http_request_t *r)
 
     *p++ = ' ';
 
-    *p = '\0';
-    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
-
     ngx_localtime(&tm);
-
-    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
 
     *p++ = '[';
     p += ngx_snprintf(p, 21, "%02d/%s/%d:%02d:%02d:%02d",
@@ -62,9 +55,6 @@ int ngx_http_log_handler(ngx_http_request_t *r)
     *p++ = ']';
 
     *p++ = ' ';
-
-    *p = '\0';
-    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
 
     *p++ = '"';
     ngx_memcpy(p, r->request_line.data, r->request_line.len);
@@ -79,19 +69,13 @@ int ngx_http_log_handler(ngx_http_request_t *r)
 
     p += ngx_snprintf(p, 21, QD_FMT, r->connection->sent);
 
-    *p = '\0';
-    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
-
 #if (WIN32)
     *p++ = CR; *p++ = LF;
 #else
     *p++ = LF;
 #endif
 
-    *p = '\0';
-    ngx_log_debug(r->connection->log, "log handler: %s" _ line);
-
-    write(1, line, len);
+    write(1, line, p - line);
 
     return NGX_OK;
 }

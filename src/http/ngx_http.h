@@ -9,7 +9,7 @@
 #include <ngx_hunk.h>
 #include <ngx_files.h>
 #include <ngx_connection.h>
-#include <ngx_config_command.h>
+#include <ngx_config_file.h>
 
 
 #define NGX_HTTP_VERSION_10       1000

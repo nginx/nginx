@@ -135,7 +135,7 @@ NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
 #define ngx_init_events      ngx_kqueue_init
 #define ngx_process_events   ngx_kqueue_process_events
 #define ngx_add_event        ngx_kqueue_add_event
-#define ngx_del_event        ngx_kqueue_add_event
+#define ngx_del_event        ngx_kqueue_del_event
 #define ngx_add_timer        ngx_kqueue_add_timer
 #define ngx_event_recv       ngx_event_recv_core
 

@@ -126,7 +126,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
                            ls[i].flags);
             if (s == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              ngx_socket_n " %s falied", ls[i].addr_text);
+                              ngx_socket_n " %s falied", ls[i].addr_text.data);
                 exit(1);
             }
 
@@ -134,7 +134,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
                            (const void *) &reuseaddr, sizeof(int)) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                               "setsockopt(SO_REUSEADDR) %s failed",
-                              ls[i].addr_text);
+                              ls[i].addr_text.data);
                 exit(1);
             }
 
@@ -144,7 +144,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_nonblocking_n " %s failed",
-                                  ls[i].addr_text);
+                                  ls[i].addr_text.data);
                     exit(1);
                 }
             }
@@ -152,7 +152,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
             if (bind(s, ls[i].sockaddr, ls[i].socklen) == -1) {
                 err = ngx_socket_errno;
                 ngx_log_error(NGX_LOG_EMERG, log, err,
-                              "bind() to %s failed", ls[i].addr_text);
+                              "bind() to %s failed", ls[i].addr_text.data);
 
                 if (err != NGX_EADDRINUSE)
                     exit(1);
@@ -160,7 +160,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
                 if (ngx_close_socket(s) == -1)
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_close_socket_n " %s failed",
-                                  ls[i].addr_text);
+                                  ls[i].addr_text.data);
 
                 failed = 1;
                 continue;
@@ -168,7 +168,7 @@ static void ngx_open_listening_sockets(ngx_log_t *log)
 
             if (listen(s, ls[i].backlog) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              "listen() to %s failed", ls[i].addr_text);
+                              "listen() to %s failed", ls[i].addr_text.data);
                 exit(1);
             }
 
