@@ -30,9 +30,10 @@ extern char **environ;
 
 static char *ngx_os_argv_last;
 
-ngx_int_t  ngx_init_setproctitle(ngx_log_t *log)
+ngx_int_t
+ngx_init_setproctitle(ngx_log_t *log)
 {
-    char        *p;
+    u_char      *p;
     size_t       size;
     ngx_uint_t   i;
 
@@ -60,8 +61,8 @@ ngx_int_t  ngx_init_setproctitle(ngx_log_t *log)
             size = ngx_strlen(environ[i]) + 1;
             ngx_os_argv_last = environ[i] + size;
 
-            ngx_cpystrn(p, environ[i], size);
-            environ[i] = p;
+            ngx_cpystrn(p, (u_char *) environ[i], size);
+            environ[i] = (char *) p;
             p += size;
         }
     }
@@ -72,7 +73,8 @@ ngx_int_t  ngx_init_setproctitle(ngx_log_t *log)
 }
 
 
-void ngx_setproctitle(char *title)
+void
+ngx_setproctitle(char *title)
 {
     u_char     *p;
 
@@ -131,13 +133,16 @@ void ngx_setproctitle(char *title)
 
 #elif !defined(ngx_setproctitle)
 
-ngx_int_t  ngx_init_setproctitle(ngx_log_t *log)
+ngx_int_t
+ngx_init_setproctitle(ngx_log_t *log)
 {
     return NGX_OK;
 }
 
-void ngx_setproctitle(char *title)
+void
+ngx_setproctitle(char *title)
 {
+    return;
 }
 
 #endif

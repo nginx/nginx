@@ -8,6 +8,10 @@
 #include <ngx_core.h>
 
 
+/*
+ * TODO: the P4 optimized assembler version with the "pause" operation
+ */
+
 void ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin)
 {
 

@@ -7,14 +7,14 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <nginx.h>
 
 
 static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log);
 static u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
-void ngx_event_accept(ngx_event_t *ev)
+void
+ngx_event_accept(ngx_event_t *ev)
 {
     ngx_uint_t         instance, accepted;
     socklen_t          len;
@@ -53,7 +53,7 @@ void ngx_event_accept(ngx_event_t *ev)
             /*
              * Create the pool before accept() to avoid the copying of
              * the sockaddr.  Although accept() can fail it is uncommon
-             * case and besides the pool can be got from the free pool list
+             * case and besides the pool can be got from the free pool list.
              */
 
             if (!(pool = ngx_create_pool(ls->listening->pool_size, ev->log))) {
@@ -117,7 +117,7 @@ void ngx_event_accept(ngx_event_t *ev)
         }
 
 #if (NGX_STAT_STUB)
-        (*ngx_stat_accepted)++;
+        ngx_atomic_inc(ngx_stat_accepted);
 #endif
 
         ngx_accept_disabled = (ngx_uint_t) s + NGX_ACCEPT_THRESHOLD
@@ -139,7 +139,7 @@ void ngx_event_accept(ngx_event_t *ev)
         }
 
 #if (NGX_STAT_STUB)
-        (*ngx_stat_active)++;
+        ngx_atomic_inc(ngx_stat_active);
 #endif
 
         /* set a blocking mode for aio and non-blocking mode for others */
@@ -234,7 +234,7 @@ void ngx_event_accept(ngx_event_t *ev)
         wev->ready = 1;
 
         if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_RTSIG_EVENT)) {
-            /* epoll, rtsig, aio, iocp */
+            /* rtsig, aio, iocp */
             rev->ready = 1;
         }
 
@@ -336,7 +336,8 @@ void ngx_event_accept(ngx_event_t *ev)
 }
 
 
-ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
+ngx_int_t
+ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 {
     if (*ngx_accept_mutex == 0
         && ngx_atomic_cmp_set(ngx_accept_mutex, 0, ngx_pid))
@@ -368,7 +369,8 @@ ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 }
 
 
-ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle)
+ngx_int_t
+ngx_enable_accept_events(ngx_cycle_t *cycle)
 {
     ngx_uint_t        i;
     ngx_listening_t  *s;
@@ -400,7 +402,8 @@ ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle)
 }
 
 
-ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle)
+ngx_int_t
+ngx_disable_accept_events(ngx_cycle_t *cycle)
 {
     ngx_uint_t        i;
     ngx_listening_t  *s;
@@ -442,7 +445,8 @@ ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle)
 }
 
 
-static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log)
+static void
+ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log)
 {
     if (ngx_close_socket(s) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
@@ -451,7 +455,8 @@ static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log)
 }
 
 
-static u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len)
+static u_char *
+ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
     return ngx_snprintf(buf, len, " while accept() on %V", log->data);
 }

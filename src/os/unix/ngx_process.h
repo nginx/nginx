@@ -49,8 +49,7 @@ typedef struct {
 #define ngx_log_pid  ngx_pid
 
 ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
-                            ngx_spawn_proc_pt proc, void *data,
-                            char *name, ngx_int_t respawn);
+    ngx_spawn_proc_pt proc, void *data, char *name, ngx_int_t respawn);
 ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 void ngx_process_get_status(void);
 void ngx_debug_point(void);
@@ -60,6 +59,12 @@ void ngx_debug_point(void);
 #define ngx_sched_yield()  sched_yield()
 #else
 #define ngx_sched_yield()  usleep(1)
+#endif
+
+
+#if !defined(ngx_setproctitle)
+ngx_int_t ngx_init_setproctitle(ngx_log_t *log);
+void ngx_setproctitle(char *title);
 #endif
 
 

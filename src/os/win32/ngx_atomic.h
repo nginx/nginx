@@ -14,8 +14,13 @@
 
 #define NGX_HAVE_ATOMIC_OPS   1
 
+typedef uint32_t  ngx_atomic_int_t;
+typedef volatile ngx_atomic_int_t  ngx_atomic_t;
+#define NGX_ATOMIC_T_LEN  sizeof("-2147483648") - 1
+
 
 #define ngx_atomic_inc(p)       InterlockedIncrement((long *) p)
+#define ngx_atomic_dec(p)       InterlockedDecrement((long *) p)
 
 
 #if defined( __WATCOMC__ ) || defined( __BORLANDC__ ) || ( _MSC_VER >= 1300 )

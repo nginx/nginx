@@ -25,7 +25,7 @@ esac
 done=NO
 
 
-case $NGX_PLATFORM in
+case "$NGX_PLATFORM" in
 
     win32)
         cp auto/lib/md5/$ngx_makefile $MD5

@@ -102,15 +102,15 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     rd = *ngx_stat_reading;
     wr = *ngx_stat_writing;
 
-    b->last = ngx_sprintf(b->last, "Active connections: %d \n", ac);
+    b->last = ngx_sprintf(b->last, "Active connections: %D \n", ac);
 
     b->last = ngx_cpymem(b->last, "server accepts handled requests\n",
                          sizeof("server accepts handled requests\n") - 1);
 
-    b->last = ngx_sprintf(b->last, " %d %d %d \n", ap, hn, rq);
+    b->last = ngx_sprintf(b->last, " %D %D %D \n", ap, hn, rq);
 
-    b->last = ngx_sprintf(b->last, "Reading: %d Writing: %d Waiting: %d \n",
-                           rd, wr, ac - (rd + wr));
+    b->last = ngx_sprintf(b->last, "Reading: %D Writing: %D Waiting: %d \n",
+                          rd, wr, ac - (rd + wr));
 
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.content_length_n = b->last - b->pos;

@@ -9,6 +9,43 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.21" date="22.02.2005">
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_stub_status_module показывал неверную статистику
+при использовании метода rtsig или при использовании нескольких
+рабочих процессов на SMP машине.
+</para>
+<para lang="en">
+the ngx_http_stub_status_module showed incorrect statictics
+if "rtsig" method was used or if several worker process ran on SMP.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался компилятором icc под Линуксом или
+если библиотека zlib-1.2.x собиралась из исходных текстов.
+</para>
+<para lang="en">
+nginx could not be built by the icc compiler on Linux or
+if the zlib-1.2.x library was building from sources.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался под NetBSD 2.0.
+</para>
+<para lang="en">
+nginx could not be built on NetBSD 2.0.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.20" date="17.02.2005">
 
 <change type="feature">

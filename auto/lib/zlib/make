@@ -26,7 +26,7 @@ esac
 done=NO
 
 
-case $NGX_PLATFORM in
+case "$NGX_PLATFORM" in
 
     win32)
         cp auto/lib/zlib/$ngx_makefile $ZLIB

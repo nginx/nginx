@@ -16,8 +16,9 @@
 #define NGX_TIMER_INFINITE  -1
 #define NGX_TIMER_ERROR     -2
 
+
 /*
- * 32 bit timer key value resolution
+ * the 32-bit timer key value resolution
  *
  * 1 msec - 24 days
  * 10 msec - 8 months
@@ -26,6 +27,8 @@
  */
 
 #define NGX_TIMER_RESOLUTION  1
+
+#define NGX_TIMER_LAZY_DELAY  300
 
 
 ngx_int_t ngx_event_timer_init(ngx_log_t *log);
@@ -42,7 +45,8 @@ extern ngx_thread_volatile ngx_rbtree_t  *ngx_event_timer_rbtree;
 extern ngx_rbtree_t                       ngx_event_timer_sentinel;
 
 
-static ngx_inline void ngx_event_del_timer(ngx_event_t *ev)
+static ngx_inline void
+ngx_event_del_timer(ngx_event_t *ev)
 {
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "event timer del: %d: %d",
@@ -68,7 +72,8 @@ static ngx_inline void ngx_event_del_timer(ngx_event_t *ev)
 }
 
 
-static ngx_inline void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
+static ngx_inline void
+ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_int_t  key;
 
@@ -83,11 +88,13 @@ static ngx_inline void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 
         /*
          * Use the previous timer value if a difference between them is less
-         * then 100 milliseconds.  It allows to minimize the rbtree operations
-         * for the fast connections.
+         * then NGX_TIMER_LAZY_DELAY milliseconds.  It allows to minimize
+         * the rbtree operations for the fast connections.
          */
 
-        if (abs(key - ev->rbtree_key) < 100 / NGX_TIMER_RESOLUTION) {
+        if (abs(key - ev->rbtree_key)
+                                 < NGX_TIMER_LAZY_DELAY / NGX_TIMER_RESOLUTION)
+        {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                            "event timer: %d, old: %i, new: %i",
                             ngx_event_ident(ev->data), ev->rbtree_key, key);

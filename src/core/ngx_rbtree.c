@@ -21,15 +21,14 @@
 
 
 static ngx_inline void ngx_rbtree_left_rotate(ngx_rbtree_t **root,
-                                              ngx_rbtree_t *sentinel,
-                                              ngx_rbtree_t *node);
+    ngx_rbtree_t *sentinel, ngx_rbtree_t *node);
 static ngx_inline void ngx_rbtree_right_rotate(ngx_rbtree_t **root,
-                                               ngx_rbtree_t *sentinel,
-                                               ngx_rbtree_t *node);
+    ngx_rbtree_t *sentinel, ngx_rbtree_t *node);
 
 
-void ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-                       ngx_rbtree_t *node)
+void
+ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
+    ngx_rbtree_t *node)
 {
     ngx_rbtree_t  *temp;
 
@@ -125,8 +124,9 @@ void ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
 }
 
 
-void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-                       ngx_rbtree_t *node)
+void
+ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
+    ngx_rbtree_t *node)
 {
     ngx_int_t      is_red;
     ngx_rbtree_t  *subst, *temp, *w;
@@ -289,9 +289,9 @@ void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
 }
 
 
-static ngx_inline void ngx_rbtree_left_rotate(ngx_rbtree_t **root,
-                                              ngx_rbtree_t *sentinel,
-                                              ngx_rbtree_t *node)
+static ngx_inline void
+ngx_rbtree_left_rotate(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
+    ngx_rbtree_t *node)
 {
     ngx_rbtree_t  *temp;
 
@@ -319,9 +319,9 @@ static ngx_inline void ngx_rbtree_left_rotate(ngx_rbtree_t **root,
 }
 
 
-static ngx_inline void ngx_rbtree_right_rotate(ngx_rbtree_t **root,
-                                               ngx_rbtree_t *sentinel,
-                                               ngx_rbtree_t *node)
+static ngx_inline void
+ngx_rbtree_right_rotate(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
+    ngx_rbtree_t *node)
 {
     ngx_rbtree_t  *temp;
 

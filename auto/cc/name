@@ -29,7 +29,7 @@ if [ $CC = bcc32 ]; then
     echo " using Borland C++ compiler"
 
 else
-if `$CC -v 2>&1 | grep '^gcc version' 2>&1 >/dev/null`; then
+if `$CC -v 2>&1 | grep 'gcc version' 2>&1 >/dev/null`; then
     NGX_CC_NAME=gcc
     echo " using GNU C compiler"
 

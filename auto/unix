@@ -5,23 +5,21 @@
 have=NGX_HAVE_UNIX_DOMAIN . auto/have
 
 
+# STUB
 CC_WARN=
 ngx_fmt_collect=yes
+
 
 # C types
 
 ngx_type="int"; . auto/types/sizeof
-#ngx_formats="%d"; . auto/fmt/fmt
 
 ngx_type="long"; . auto/types/sizeof
-#ngx_formats="%ld"; . auto/fmt/fmt
 
 ngx_type="long long"; . auto/types/sizeof
-#ngx_formats="%lld %qd"; . auto/fmt/fmt
 
 ngx_type="void *"; . auto/types/sizeof; ngx_ptr_size=$ngx_size
-#ngx_fmt_name=PTR_FMT;
-#eval ngx_formats=\${ngx_${ngx_ptr_size}_fmt}; . auto/fmt/ptrfmt
+ngx_param=NGX_PTR_SIZE; ngx_value=$ngx_size; . auto/types/value
 
 
 # POSIX types

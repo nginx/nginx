@@ -701,18 +701,18 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
                 name[0] = CTL_KERN;
                 name[1] = KERN_RTSIGMAX;
                 len = sizeof(rtsig_max);
-                if (sysctl(name, sizeof(name), &rtsig_max, &len, NULL, 0) == -1)
-                {
+
+                if (sysctl(name, 2, &rtsig_max, &len, NULL, 0) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, cycle->log, errno,
                                   "sysctl(KERN_RTSIGMAX) failed");
                     return NGX_ERROR;
                 }
 
-                name[0] = CTL_KERN;
+                /* name[0] = CTL_KERN; */
                 name[1] = KERN_RTSIGNR;
                 len = sizeof(rtsig_nr);
-                if (sysctl(name, sizeof(name), &rtsig_nr, &len, NULL, 0) == -1)
-                {
+
+                if (sysctl(name, 2, &rtsig_nr, &len, NULL, 0) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, cycle->log, errno,
                                   "sysctl(KERN_RTSIGNR) failed");
                     return NGX_ERROR;

@@ -8,12 +8,8 @@
 #define _NGX_SOLARIS_H_INCLUDED_
 
 
-ngx_int_t  ngx_init_setproctitle(ngx_log_t *log);
-void ngx_setproctitle(char *title);
-
-
 ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
-                                         off_t limit);
+    off_t limit);
 
 
 #endif /* _NGX_SOLARIS_H_INCLUDED_ */

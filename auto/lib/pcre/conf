@@ -42,7 +42,7 @@ if [ $PCRE != NONE ]; then
 
 else
 
-    if [ $NGX_PLATFORM != win32 ]; then
+    if [ "$NGX_PLATFORM" != win32 ]; then
         PCRE=NO
 
         # FreeBSD PCRE port requires --with-cc-opt="-I /usr/local/include"

@@ -18,7 +18,8 @@ ngx_thread_volatile ngx_rbtree_t  *ngx_event_timer_rbtree;
 ngx_rbtree_t                       ngx_event_timer_sentinel;
 
 
-ngx_int_t ngx_event_timer_init(ngx_log_t *log)
+ngx_int_t
+ngx_event_timer_init(ngx_log_t *log)
 {
     if (ngx_event_timer_rbtree) {
 #if (NGX_THREADS)
@@ -39,7 +40,8 @@ ngx_int_t ngx_event_timer_init(ngx_log_t *log)
 }
 
 
-ngx_msec_t ngx_event_find_timer(void)
+ngx_msec_t
+ngx_event_find_timer(void)
 {
     ngx_msec_t     timer;
     ngx_rbtree_t  *node;
@@ -68,7 +70,8 @@ ngx_msec_t ngx_event_find_timer(void)
 }
 
 
-void ngx_event_expire_timers(ngx_msec_t timer)
+void
+ngx_event_expire_timers(ngx_msec_t timer)
 {
     ngx_event_t   *ev;
     ngx_rbtree_t  *node;

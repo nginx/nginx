@@ -24,13 +24,13 @@ struct ngx_rbtree_s {
 
 
 void ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-                       ngx_rbtree_t *node);
+    ngx_rbtree_t *node);
 void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-                       ngx_rbtree_t *node);
+    ngx_rbtree_t *node);
 
 
-static ngx_inline ngx_rbtree_t *ngx_rbtree_min(ngx_rbtree_t *node,
-                                               ngx_rbtree_t *sentinel)
+static ngx_inline ngx_rbtree_t *
+ngx_rbtree_min(ngx_rbtree_t *node, ngx_rbtree_t *sentinel)
 {
    while (node->left != sentinel) {
        node = node->left;

@@ -47,7 +47,7 @@ struct ngx_log_s {
     ngx_uint_t           log_level;
     ngx_open_file_t     *file;
 
-    ngx_uint_t           connection;
+    ngx_atomic_int_t     connection;
 
     ngx_log_handler_pt   handler;
     void                *data;

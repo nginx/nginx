@@ -40,8 +40,8 @@ ngx_radix_tree_create(ngx_pool_t *pool, ngx_int_t preallocate)
     }
 
     /*
-     * We preallocate the first nodes: 0, 1, 00, 01, 10, 11, 000, 001, etc.,
-     * to increase the TLB hits even if for the first lookup iterations.
+     * The preallocation the first nodes: 0, 1, 00, 01, 10, 11, 000, 001, etc.
+     * increases the TLB hits even if for the first lookup iterations.
      * On the 32-bit platforms the 7 preallocated bits takes continuous 4K,
      * 8 - 8K, 9 - 16K, etc.  On the 64-bit platforms the 6 preallocated bits
      * takes continuous 4K, 7 - 8K, 8 - 16K, etc.  There is no sense to

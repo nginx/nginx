@@ -2,7 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-# Intel C++ compiler 7.1, 8.0
+# Intel C++ compiler 7.1, 8.0, 8.1
 
 # optimizations
 
@@ -57,7 +57,7 @@ fi
 CFLAGS="$CFLAGS -w1"
 #CFLAGS="$CFLAGS -w2"
 
-# disable the ICC 8.0 errors:
+# disable the ICC 8.1 errors:
 #    error #181: argument is incompatible with corresponding format
 #                string conversion
 #    error #269: invalid format string conversion

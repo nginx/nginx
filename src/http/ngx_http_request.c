@@ -138,6 +138,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
 
         if (ngx_accept_mutex) {
             if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+
                 ngx_http_close_connection(c);
                 return;
             }
@@ -145,11 +146,15 @@ void ngx_http_init_connection(ngx_connection_t *c)
             ngx_post_event(rev); 
 
             ngx_mutex_unlock(ngx_posted_events_mutex);
+
+#if (NGX_STAT_STUB)
+        ngx_atomic_inc(ngx_stat_reading);
+#endif
             return;
         }
 
 #if (NGX_STAT_STUB)
-        (*ngx_stat_reading)++;
+        ngx_atomic_inc(ngx_stat_reading);
 #endif
 
         ngx_http_init_request(rev);
@@ -176,7 +181,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
 #endif
 
 #if (NGX_STAT_STUB)
-    (*ngx_stat_reading)++;
+    ngx_atomic_inc(ngx_stat_reading);
 #endif
 
 }
@@ -205,7 +210,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
 
 #if (NGX_STAT_STUB)
-        (*ngx_stat_reading)--;
+        ngx_atomic_dec(ngx_stat_reading);
 #endif
 
         ngx_http_close_connection(c);
@@ -217,14 +222,14 @@ static void ngx_http_init_request(ngx_event_t *rev)
     if (hc) {
 
 #if (NGX_STAT_STUB)
-        (*ngx_stat_reading)++;
+        ngx_atomic_inc(ngx_stat_reading);
 #endif
 
     } else {
         if (!(hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t)))) {
 
 #if (NGX_STAT_STUB)
-            (*ngx_stat_reading)--;
+            ngx_atomic_dec(ngx_stat_reading);
 #endif
 
             ngx_http_close_connection(c);
@@ -247,7 +252,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         if (!(r = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t)))) {
 
 #if (NGX_STAT_STUB)
-            (*ngx_stat_reading)--;
+            ngx_atomic_dec(ngx_stat_reading);
 #endif
 
             ngx_http_close_connection(c);
@@ -258,7 +263,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
     }
 
 #if (NGX_STAT_STUB)
-    (*ngx_stat_reading)--;
+    ngx_atomic_dec(ngx_stat_reading);
 #endif
 
     c->data = r;
@@ -427,9 +432,9 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->http_state = NGX_HTTP_READING_REQUEST_STATE;
 
 #if (NGX_STAT_STUB)
-    (*ngx_stat_reading)++;
+    ngx_atomic_inc(ngx_stat_reading);
     r->stat_reading = 1;
-    (*ngx_stat_requests)++;
+    ngx_atomic_inc(ngx_stat_requests);
 #endif
 
     rev->event_handler(rev);
@@ -829,9 +834,9 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             }
 
 #if (NGX_STAT_STUB)
-            (*ngx_stat_reading)--;
+            ngx_atomic_dec(ngx_stat_reading);
             r->stat_reading = 0;
-            (*ngx_stat_writing)++;
+            ngx_atomic_inc(ngx_stat_writing);
             r->stat_writing = 1;
 #endif
 
@@ -2076,11 +2081,11 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
 
 #if (NGX_STAT_STUB)
     if (r->stat_reading) {
-        (*ngx_stat_reading)--;
+        ngx_atomic_dec(ngx_stat_reading);
     }
 
     if (r->stat_writing) {
-        (*ngx_stat_writing)--;
+        ngx_atomic_dec(ngx_stat_writing);
     }
 #endif
 
@@ -2203,7 +2208,7 @@ void ngx_http_close_connection(ngx_connection_t *c)
 #endif
 
 #if (NGX_STAT_STUB)
-    (*ngx_stat_active)--;
+    ngx_atomic_dec(ngx_stat_active);
 #endif
 
     pool = c->pool;

@@ -44,7 +44,7 @@ if [ $MD5 != NONE ]; then
 
 else
 
-    if [ $NGX_PLATFORM != win32 ]; then
+    if [ "$NGX_PLATFORM" != win32 ]; then
         MD5=NO
 
         # Solaris 8/9

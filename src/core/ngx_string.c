@@ -8,7 +8,8 @@
 #include <ngx_core.h>
 
 
-u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n)
+u_char *
+ngx_cpystrn(u_char *dst, u_char *src, size_t n)
 {
     if (n == 0) {
         return dst;
@@ -28,7 +29,8 @@ u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n)
 }
 
 
-u_char *ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
+u_char *
+ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
 {
     u_char  *dst;
 
@@ -52,6 +54,7 @@ u_char *ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *    %[0][width|m][u][x|X]i    ngx_int_t/ngx_uint_t
  *    %[0][width][u][x|X]D      int32_t/uint32_t
  *    %[0][width][u][x|X]L      int64_t/uint64_t
+ *    %[0][width|m][u][x|X]A    ngx_atomic_int_t
  *    %P                        ngx_pid_t
  *    %r                        rlim_t
  *    %p                        pointer
@@ -63,7 +66,6 @@ u_char *ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *
  *  TODO:
  *    %M                        ngx_msec_t
- *    %A                        ngx_atomic_t
  *
  *  reserved:
  *    %t                        ptrdiff_t
@@ -72,7 +74,8 @@ u_char *ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  */
 
 
-u_char *ngx_sprintf(u_char *buf, const char *fmt, ...)
+u_char *
+ngx_sprintf(u_char *buf, const char *fmt, ...)
 {
     u_char   *p;
     va_list   args;
@@ -85,7 +88,8 @@ u_char *ngx_sprintf(u_char *buf, const char *fmt, ...)
 }
 
 
-u_char *ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
+u_char *
+ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
 {
     u_char   *p;
     va_list   args;
@@ -98,12 +102,13 @@ u_char *ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
 }
 
 
-u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
+u_char *
+ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
 {
     u_char         *p, zero, *last, temp[NGX_INT64_LEN + 1];
                                     /*
                                      * really we need temp[NGX_INT64_LEN] only,
-                                     * but icc shows the warning
+                                     * but icc issues the warning
                                      */
     int             d;
     size_t          len;
@@ -111,7 +116,7 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
     int64_t         i64;
     uint64_t        ui64;
     ngx_str_t      *s;
-    ngx_uint_t      width, sign, hexadecimal;
+    ngx_uint_t      width, sign, hexadecimal, max_width;
     static u_char   hex[] = "0123456789abcdef";
     static u_char   HEX[] = "0123456789ABCDEF";
 
@@ -137,6 +142,7 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
             width = 0;
             sign = 1;
             hexadecimal = 0;
+            max_width = 0;
 
             p = temp + NGX_INT64_LEN;
 
@@ -154,7 +160,7 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                     continue;
 
                 case 'm':
-                    width = NGX_INT_T_LEN;
+                    max_width = 1;
                     fmt++;
                     continue;
 
@@ -228,6 +234,11 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                 } else {
                     ui64 = (uint64_t) va_arg(args, ngx_uint_t);
                 }
+
+                if (max_width) {
+                    width = NGX_INT_T_LEN;
+                }
+
                 break;
 
             case 'd':
@@ -260,6 +271,19 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                 } else {
                     ui64 = va_arg(args, uint64_t);
                 }
+                break;
+
+            case 'A':
+                if (sign) {
+                    i64 = (int64_t) va_arg(args, ngx_atomic_int_t);
+                } else {
+                    ui64 = (uint64_t) va_arg(args, ngx_atomic_int_t);
+                }
+
+                if (max_width) {
+                    width = NGX_ATOMIC_T_LEN;
+                }
+
                 break;
 
 #if !(NGX_WIN32)
@@ -334,13 +358,15 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                  * To divide 64-bit number and to find the remainder
                  * on the x86 platform gcc and icc call the libc functions
                  * [u]divdi3() and [u]moddi3(), they call another function
-                 * in return.  On FreeBSD it is the qdivrem() function,
+                 * in its turn.  On FreeBSD it is the qdivrem() function,
                  * its source code is about 170 lines of the code.
                  * The glibc counterpart is about 150 lines of the code.
                  *
-                 * For 32-bit numbers gcc and icc use the inlined
-                 * multiplication and shifts.  For example, unsigned
-                 * "i32 / 10" is compiled to "(i32 * 0xCCCCCCCD) >> 35".
+                 * For 32-bit numbers and some divisors gcc and icc use
+                 * the inlined multiplication and shifts.  For example,
+                 * unsigned "i32 / 10" is compiled to
+                 *
+                 *     (i32 * 0xCCCCCCCD) >> 35
                  */
 
                 ui32 = (uint32_t) ui64;
@@ -379,7 +405,8 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
 }
 
 
-ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
+ngx_int_t
+ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
 {
     if (n == 0) {
         return 0;
@@ -401,7 +428,8 @@ ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
 }
 
 
-ngx_int_t ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)
+ngx_int_t
+ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)
 {
     u_char  c1, c2;
 
@@ -435,7 +463,8 @@ ngx_int_t ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)
 }
 
 
-ngx_int_t ngx_atoi(u_char *line, size_t n)
+ngx_int_t
+ngx_atoi(u_char *line, size_t n)
 {
     ngx_int_t  value;
 
@@ -460,7 +489,8 @@ ngx_int_t ngx_atoi(u_char *line, size_t n)
 }
 
 
-ngx_int_t ngx_hextoi(u_char *line, size_t n)
+ngx_int_t
+ngx_hextoi(u_char *line, size_t n)
 {
     u_char     ch;
     ngx_int_t  value;
@@ -499,7 +529,8 @@ ngx_int_t ngx_hextoi(u_char *line, size_t n)
 }
 
 
-void ngx_md5_text(u_char *text, u_char *md5)
+void
+ngx_md5_text(u_char *text, u_char *md5)
 {
     int            i;
     static u_char  hex[] = "0123456789abcdef";
@@ -513,7 +544,8 @@ void ngx_md5_text(u_char *text, u_char *md5)
 }
 
 
-void ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src)
+void
+ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src)
 {
     u_char         *d, *s;
     size_t          len;
@@ -553,7 +585,8 @@ void ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src)
 }
 
 
-ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
+ngx_int_t
+ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
 {
     size_t          len;
     u_char         *d, *s;
@@ -616,19 +649,20 @@ ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
 }
 
 
-uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
+uintptr_t
+ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 {
     ngx_uint_t        i, n;
     uint32_t         *escape;
     static u_char     hex[] = "0123456789abcdef";
 
-                      /* " ", "%", "?", %00-%1F, %7F-%FF */
+                      /* " ", "#", "%", "?", %00-%1F, %7F-%FF */
 
     static uint32_t   uri[] =
         { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
 
                       /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
-          0x80000021, /* 1000 0000 0000 0000  0000 0000 0010 0001 */
+          0x80000029, /* 1000 0000 0000 0000  0000 0000 0010 1001 */
 
                       /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
           0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
@@ -641,13 +675,13 @@ uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
           0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
           0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */ };
 
-                      /* " ", "%", "+", "?", %00-%1F, %7F-%FF */
+                      /* " ", "#", "%", "+", "?", %00-%1F, %7F-%FF */
 
     static uint32_t   args[] =
         { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
 
                       /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
-          0x80000821, /* 1000 0000 0000 0000  0000 1000 0010 0001 */
+          0x80000829, /* 1000 0000 0000 0000  0000 1000 0010 1001 */
 
                       /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
           0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
@@ -666,7 +700,7 @@ uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
 
                       /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
-          0x80000021, /* 0000 0000 0000 0000  0000 0000 1010 0101 */
+          0x800000ad, /* 0000 0000 0000 0000  0000 0000 1010 1101 */
 
                       /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
           0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */

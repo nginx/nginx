@@ -87,14 +87,8 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     p = ngx_sprintf(p, "%P#" NGX_TID_T_FMT ": ", ngx_log_pid, ngx_log_tid);
 
     if (log->connection) {
-        p = ngx_sprintf(p, "*%ui ", log->connection);
+        p = ngx_sprintf(p, "*%uA ", log->connection);
     }
-
-#if 0
-    if (log->data && *(int *) log->data != -1) {
-        p = ngx_sprintf(p, "*%ud ", *(u_int *) log->data);
-    }
-#endif
 
 #if (NGX_HAVE_VARIADIC_MACROS)
 

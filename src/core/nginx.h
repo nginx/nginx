@@ -8,7 +8,7 @@
 #define _NGINX_H_INCLUDED_
 
 
-#define NGINX_VER          "nginx/0.1.20"
+#define NGINX_VER          "nginx/0.1.21"
 
 #define NGINX_VAR          "NGINX"
 #define NGX_NEWPID_EXT     ".newbin"

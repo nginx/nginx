@@ -24,7 +24,7 @@ if [ $OPENSSL != NONE ]; then
 
 else
 
-    if [ $NGX_PLATFORM != win32 ]; then
+    if [ "$NGX_PLATFORM" != win32 ]; then
         OPENSSL=NO
 
         ngx_feature="OpenSSL library"

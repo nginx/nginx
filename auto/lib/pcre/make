@@ -22,7 +22,7 @@ case "$NGX_CC_NAME" in
 esac
 
 
-case $NGX_PLATFORM in
+case "$NGX_PLATFORM" in
 
     win32)
         cp auto/lib/pcre/patch.pcre.in $PCRE

@@ -21,6 +21,7 @@ if [ $ZLIB != NONE ]; then
             CORE_LIBS="$CORE_LIBS $ZLIB/deflate.o"
             CORE_LIBS="$CORE_LIBS $ZLIB/trees.o"
             CORE_LIBS="$CORE_LIBS $ZLIB/zutil.o"
+            CORE_LIBS="$CORE_LIBS $ZLIB/compress.o"
 
             if [ $ZLIB_ASM != NO ]; then
                 CORE_LIBS="$CORE_LIBS $ZLIB/match.o"
@@ -37,7 +38,7 @@ if [ $ZLIB != NONE ]; then
 
 else
 
-    if [ $NGX_PLATFORM != win32 ]; then
+    if [ "$NGX_PLATFORM" != win32 ]; then
         ZLIB=NO
 
         # FreeBSD, Solaris, Linux

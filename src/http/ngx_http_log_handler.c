@@ -135,7 +135,8 @@ static ngx_str_t ngx_http_combined_fmt =
 
 ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
     { ngx_string("addr"), INET_ADDRSTRLEN - 1, NULL, NULL, ngx_http_log_addr },
-    { ngx_string("conn"), NGX_INT32_LEN, NULL, NULL, ngx_http_log_connection },
+    { ngx_string("conn"), NGX_ATOMIC_T_LEN, NULL, NULL,
+                          ngx_http_log_connection },
     { ngx_string("pipe"), 1, NULL, NULL, ngx_http_log_pipe },
     { ngx_string("time"), sizeof("28/Sep/1970:12:00:00 +0600") - 1,
                           NULL, NULL, ngx_http_log_time },
@@ -143,13 +144,13 @@ ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
     { ngx_string("status"), 3, NULL, NULL, ngx_http_log_status },
     { ngx_string("length"), NGX_OFF_T_LEN, NULL, NULL, ngx_http_log_length },
     { ngx_string("apache_length"), NGX_OFF_T_LEN,
-                                   NULL, NULL, ngx_http_log_apache_length },
+                          NULL, NULL, ngx_http_log_apache_length },
     { ngx_string("request_length"), NGX_SIZE_T_LEN,
-                                    NULL, NULL, ngx_http_log_request_length },
+                          NULL, NULL, ngx_http_log_request_length },
 
     { ngx_string("request"), 0, NULL,
-                                ngx_http_log_request_getlen,
-                                ngx_http_log_request },
+                          ngx_http_log_request_getlen,
+                          ngx_http_log_request },
 
     { ngx_string("i"), 0, ngx_http_log_header_in_compile,
                           ngx_http_log_header_in_getlen,

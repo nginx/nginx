@@ -12,11 +12,12 @@ if test -z "$NGX_PLATFORM"; then
     echo " + $NGX_SYSTEM $NGX_RELEASE $NGX_MACHINE"
 
     NGX_PLATFORM="$NGX_SYSTEM:$NGX_RELEASE:$NGX_MACHINE";
+
 else
     echo "building for $NGX_PLATFORM"
 fi
 
-case $NGX_PLATFORM in
+case "$NGX_PLATFORM" in
 
     FreeBSD:* | DragonFly:*)
         . auto/os/freebsd
@@ -43,7 +44,7 @@ case $NGX_PLATFORM in
 esac
 
 
-case $NGX_MACHINE in
+case "$NGX_MACHINE" in
 
      i386|i686|i86pc|amd64)
          have=NGX_HAVE_NONALIGNED . auto/have
@@ -52,7 +53,7 @@ case $NGX_MACHINE in
 esac
 
 
-if [ $NGX_PLATFORM != win32 ]; then
+if [ "$NGX_PLATFORM" != win32 ]; then
 
      NGX_USER=${NGX_USER:-nobody}
 
@@ -74,6 +75,24 @@ if [ $NGX_PLATFORM != win32 ]; then
 
     else
         NGX_GROUP=$NGX_USER
+    fi
+
+
+    ngx_feature="poll()"
+    ngx_feature_name=
+    ngx_feature_run=no
+    ngx_feature_incs="#include <poll.h>"
+    ngx_feature_libs=
+    ngx_feature_test="int  n, dp; struct pollfd  pl;
+                      dp = 0;
+                      pl.fd = 0;
+                      pl.events = 0;
+                      pl.revents = 0;
+                      n = poll(&pl, 1, 0)"
+    . auto/feature
+
+    if [ $ngx_found = no ]; then
+        EVENT_POLL=NONE
     fi
 
 
@@ -124,14 +143,22 @@ if [ $NGX_PLATFORM != win32 ]; then
         fi
     fi
 
-    if [ NGX_SYSTEM != "NetBSD" ]; then
+    if [ "$NGX_SYSTEM" = "NetBSD" ]; then
 
         # NetBSD 2.0 incompatibly defines kevent.udata as "intptr_t"
+
+        cat << END >> $NGX_AUTO_CONFIG_H
+
+#define NGX_KQUEUE_UDATA_T
+
+END
+
+    else
         cat << END >> $NGX_AUTO_CONFIG_H
 
 #define NGX_KQUEUE_UDATA_T  (void *)
 
 END
 
-     fi
+    fi
 fi

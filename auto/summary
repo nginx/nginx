@@ -118,22 +118,22 @@ fi
 
 
 cat << END
-  nginx path prefix: $NGX_PREFIX
-  nginx binary file: $NGX_SBIN_PATH
-  nginx configuration file: $NGX_CONF_PATH
-  nginx pid file: $NGX_PID_PATH
+  nginx path prefix: "$NGX_PREFIX"
+  nginx binary file: "$NGX_SBIN_PATH"
+  nginx configuration file: "$NGX_CONF_PATH"
+  nginx pid file: "$NGX_PID_PATH"
 END
 
 if test -n "$NGX_ERROR_LOG_PATH"; then
-    echo "  nginx error log file: $NGX_ERROR_LOG_PATH"
+    echo "  nginx error log file: \"$NGX_ERROR_LOG_PATH\""
 else
     echo "  nginx logs errors to stderr"
 fi
 
 cat << END
-  nginx http access log file: $NGX_HTTP_LOG_PATH
-  nginx http client request body temporary files: $NGX_HTTP_CLIENT_TEMP_PATH
-  nginx http proxy temporary files: $NGX_HTTP_PROXY_TEMP_PATH
-  nginx http fastcgi temporary files: $NGX_HTTP_FASTCGI_TEMP_PATH
+  nginx http access log file: "$NGX_HTTP_LOG_PATH"
+  nginx http client request body temporary files: "$NGX_HTTP_CLIENT_TEMP_PATH"
+  nginx http proxy temporary files: "$NGX_HTTP_PROXY_TEMP_PATH"
+  nginx http fastcgi temporary files: "$NGX_HTTP_FASTCGI_TEMP_PATH"
 
 END

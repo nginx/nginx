@@ -8,11 +8,12 @@
 #include <ngx_core.h>
 
 
-static ngx_uint_t ngx_temp_number;
-static ngx_uint_t ngx_random;
+static ngx_atomic_int_t  ngx_temp_number;
+static ngx_atomic_int_t  ngx_random;
 
 
-ssize_t ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
+ssize_t
+ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
 {
     ngx_int_t  rc;
 
@@ -33,13 +34,14 @@ ssize_t ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
 }
 
 
-ngx_int_t ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
-                               ngx_pool_t *pool, int persistent)
+ngx_int_t
+ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
+    int persistent)
 {
-    ngx_err_t   err;
-    uint32_t    num;
+    ngx_err_t          err;
+    ngx_atomic_int_t   n;
 
-    file->name.len = path->name.len + 1 + path->len + 10;
+    file->name.len = path->name.len + 1 + path->len + NGX_ATOMIC_T_LEN;
 
     if (!(file->name.data = ngx_palloc(pool, file->name.len + 1))) {
         return NGX_ERROR;
@@ -53,11 +55,11 @@ ngx_int_t ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
 
     ngx_memcpy(file->name.data, path->name.data, path->name.len);
 
-    num = (uint32_t) ngx_next_temp_number(0);
+    n = ngx_next_temp_number(0);
 
     for ( ;; ) {
         ngx_sprintf(file->name.data + path->name.len + 1 + path->len,
-                    "%010ui%Z", num);
+                    "%0muA%Z", n);
 
         ngx_create_hashed_filename(file, path);
 
@@ -77,7 +79,7 @@ ngx_int_t ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
         err = ngx_errno;
 
         if (err == NGX_EEXIST) {
-            num = ngx_next_temp_number(1);
+            n = ngx_next_temp_number(1);
             continue;
         }
 
@@ -101,7 +103,8 @@ ngx_int_t ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
 }
 
 
-void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
+void
+ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
 {
     ngx_uint_t  i, name, pos, level;
 
@@ -128,7 +131,8 @@ void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
 }
 
 
-ngx_int_t ngx_create_path(ngx_file_t *file, ngx_path_t *path)
+ngx_int_t
+ngx_create_path(ngx_file_t *file, ngx_path_t *path)
 {
     int        i, pos;
     ngx_err_t  err;
@@ -164,19 +168,16 @@ ngx_int_t ngx_create_path(ngx_file_t *file, ngx_path_t *path)
 }
 
 
-void ngx_init_temp_number()
+void
+ngx_init_temp_number()
 {
-    ngx_random = 0;
-
-    ngx_temp_number = ngx_random;
-
-    while (ngx_random < 10000) {
-        ngx_random = 123456;
-    }
+    ngx_temp_number = 0;
+    ngx_random = 123456;
 }
 
 
-ngx_uint_t ngx_next_temp_number(ngx_uint_t collision)
+ngx_atomic_int_t
+ngx_next_temp_number(ngx_uint_t collision)
 {
     if (collision) {
         ngx_temp_number += ngx_random;
@@ -186,7 +187,8 @@ ngx_uint_t ngx_next_temp_number(ngx_uint_t collision)
 }
 
 
-char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *
+ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
@@ -237,7 +239,8 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-ngx_int_t ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
+ngx_int_t
+ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
 {
     ngx_uint_t   i, n;
     ngx_path_t  *path, **p;
@@ -299,7 +302,8 @@ ngx_int_t ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
 }
 
 
-ngx_int_t ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
+ngx_int_t
+ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
 {
     ngx_err_t         err;
     ngx_uint_t        i;
