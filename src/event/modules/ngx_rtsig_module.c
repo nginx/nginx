@@ -626,20 +626,20 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
                               cycle->log, 0,
                               "poll() failed while the overflow recover");
 
-                if (err != NGX_EINTR) {
-                    break;
+                if (err == NGX_EINTR) {
+                    continue;
                 }
             }
+
+            break;
         }
 
         if (ready <= 0) {
             continue;
         }
 
-        if (n) {
-            if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
+        if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+            return NGX_ERROR;
         }
 
         for (i = 0; i < n; i++) {
@@ -686,9 +686,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
             }
         }
 
-        if (n) {
-            ngx_mutex_unlock(ngx_posted_events_mutex);
-        }
+        ngx_mutex_unlock(ngx_posted_events_mutex);
 
         if (tested >= rtscf->overflow_test) {
 
@@ -723,7 +721,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
                 }
 
                 /*
-                 * drain rt signal queue if the /proc/sys/kernel/rtsig-nr
+                 * drain the rt signal queue if the /proc/sys/kernel/rtsig-nr
                  * is bigger than
                  *    /proc/sys/kernel/rtsig-max / rtsig_overflow_threshold
                  */
@@ -741,7 +739,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
                 /*
                  * Linux has not KERN_RTSIGMAX since 2.6.6-mm2
-                 * so drain rt signal queue unconditionally
+                 * so drain the rt signal queue unconditionally
                  */
 
                 while (ngx_rtsig_process_events(cycle) == NGX_OK) { /* void */ }

@@ -40,7 +40,7 @@ ngx_module_t  ngx_http_write_filter_module = {
 ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                           last;
-    off_t                         size, flush, sent;
+    off_t                         size, flush, sent, bsize;
     ngx_chain_t                  *cl, *ln, **ll, *chain;
     ngx_connection_t             *c;
     ngx_http_core_loc_conf_t     *clcf;
@@ -82,7 +82,13 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         *ll = cl;
         ll = &cl->next;
 
-        size += ngx_buf_size(cl->buf);
+        bsize = ngx_buf_size(cl->buf);
+
+        if (bsize == 0 && cl->buf->in_file) {
+            cl->buf->in_file = 0;
+        }
+
+        size += bsize;
 
         if (cl->buf->flush || cl->buf->recycled) {
             flush = size;

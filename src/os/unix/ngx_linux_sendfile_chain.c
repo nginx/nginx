@@ -127,7 +127,6 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
 
         if (header.nelts == 0 && cl && cl->buf->in_file && send < limit) {
             file = cl->buf;
-            fsize = 0;
 
             /* coalesce the neighbouring file bufs */
 

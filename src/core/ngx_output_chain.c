@@ -73,6 +73,13 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 continue;
             }
 
+            bsize = ngx_buf_size(ctx->in->buf);
+
+            if (bsize == 0) {
+                ctx->in = ctx->in->next;
+                continue;
+            }
+
             if (ctx->buf == NULL) {
 
                 /* get the free buf */
@@ -90,8 +97,6 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                     size = ctx->bufs.size;
 
                     if (ctx->in->buf->last_buf) {
-
-                        bsize = ngx_buf_size(ctx->in->buf);
 
                         if (bsize < ctx->bufs.size) {
 
