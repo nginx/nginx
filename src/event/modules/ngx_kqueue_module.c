@@ -707,11 +707,11 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
 static ngx_int_t ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try)
 {
-    int              n;
-    ngx_int_t        rc;
-    ngx_err_t        err;
-    struct timespec  ts;
-    struct kevent   *changes;
+    int               n;
+    ngx_int_t         rc;
+    ngx_err_t         err;
+    struct timespec   ts;
+    struct kevent    *changes;
 
     if (ngx_mutex_lock(kevent_mutex) == NGX_ERROR) {
         return NGX_ERROR;

@@ -8,32 +8,32 @@ if [ $USE_PCRE = DISABLED ]; then
 
 else
     case $PCRE in
-        YES)   echo "  using system PCRE library" ;;
-        NONE)  echo "  PCRE library is not used" ;;
-        NO)    echo "  PCRE library is not found" ;;
-        *)     echo "  using PCRE library: $PCRE" ;;
+        YES)   echo "  + using system PCRE library" ;;
+        NONE)  echo "  + PCRE library is not used" ;;
+        NO)    echo "  + PCRE library is not found" ;;
+        *)     echo "  + using PCRE library: $PCRE" ;;
     esac
 fi
 
 case $MD5 in
-    YES)   echo "  md5: using system $MD5_LIB library" ;;
-    NONE)  echo "  md5 library is not used" ;;
-    NO)    echo "  md5 library is not found" ;;
-    *)     echo "  using md5 library: $MD5" ;;
+    YES)   echo "  + md5: using system $MD5_LIB library" ;;
+    NONE)  echo "  + md5 library is not used" ;;
+    NO)    echo "  + md5 library is not found" ;;
+    *)     echo "  + using md5 library: $MD5" ;;
 esac
 
 case $OPENSSL in
-    YES)   echo "  using system OpenSSL library" ;;
-    NONE)  echo "  OpenSSL library is not used" ;;
-    NO)    echo "  OpenSSL library is not found" ;;
-    *)     echo "  using OpenSSL library: $OPENSSL" ;;
+    YES)   echo "  + using system OpenSSL library" ;;
+    NONE)  echo "  + OpenSSL library is not used" ;;
+    NO)    echo "  + OpenSSL library is not found" ;;
+    *)     echo "  + using OpenSSL library: $OPENSSL" ;;
 esac
 
 case $ZLIB in
-    YES)   echo "  using system zlib library" ;;
-    NONE)  echo "  zlib library is not used" ;;
-    NO)    echo "  zlib library is not found" ;;
-    *)     echo "  using zlib library: $ZLIB" ;;
+    YES)   echo "  + using system zlib library" ;;
+    NONE)  echo "  + zlib library is not used" ;;
+    NO)    echo "  + zlib library is not found" ;;
+    *)     echo "  + using zlib library: $ZLIB" ;;
 esac
 
 echo

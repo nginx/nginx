@@ -1479,10 +1479,14 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t          *args;
     ngx_http_listen_t  *ls;
 
-    /* TODO: check duplicate 'listen' directives,
-             add resolved name to server names ??? */
+    /*
+     * TODO: check duplicate 'listen' directives,
+     *       add resolved name to server names ???
+     */
 
-    ngx_test_null(ls, ngx_push_array(&scf->listen), NGX_CONF_ERROR);
+    if (!(ls = ngx_array_push(&scf->listen))) {
+        return NGX_CONF_ERROR;
+    }
 
     /* AF_INET only */
 

@@ -4,7 +4,7 @@ CORE_DEPS="$UNIX_DEPS $SOLARIS_DEPS"
 CORE_SRCS="$UNIX_SRCS $SOLARIS_SRCS "
 EVENT_MODULES="$EVENT_MODULES"
 
-CORE_LIBS="$CORE_LIBS -lsocket -lnsl"
+CORE_LIBS="$CORE_LIBS -lsocket -lnsl -lrt"
 
 # the Solaris's make support
 MAKE_SL=YES

@@ -95,12 +95,14 @@ void ngx_event_accept(ngx_event_t *ev)
             err = ngx_socket_errno;
 
             if (err == NGX_EAGAIN) {
+#if 0
                 if (!(ngx_event_flags & NGX_USE_RTSIG_EVENT))
                 {
                     ngx_log_error(NGX_LOG_NOTICE, log, err,
                                   "EAGAIN after %d accepted connection(s)",
                                   accepted);
                 }
+#endif
 
                 ngx_destroy_pool(pool);
                 return;
