@@ -85,8 +85,8 @@ ngx_int_t   ngx_process;
 ngx_pid_t   ngx_new_binary;
 
 ngx_int_t   ngx_inherited;
-ngx_int_t   ngx_signal;
 ngx_int_t   ngx_reap;
+ngx_int_t   ngx_timer;
 ngx_int_t   ngx_terminate;
 ngx_int_t   ngx_quit;
 ngx_int_t   ngx_noaccept;
@@ -229,16 +229,18 @@ int main(int argc, char *const *argv, char **envp)
 
 static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
-    int               signo;
-    char             *name;
-    sigset_t          set, wset;
-    struct timeval    tv;
-    ngx_uint_t        i, live;
-    ngx_msec_t        delay;
-    ngx_core_conf_t  *ccf;
+    int                signo;
+    sigset_t           set;
+    struct timeval     tv;
+    struct itimerval   itv;
+    ngx_uint_t         i, live;
+    ngx_msec_t         delay;
+    ngx_core_conf_t   *ccf;
 
     sigemptyset(&set);
     sigaddset(&set, SIGCHLD);
+    sigaddset(&set, SIGALRM);
+    sigaddset(&set, SIGINT);
     sigaddset(&set, ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
     sigaddset(&set, ngx_signal_value(NGX_REOPEN_SIGNAL));
     sigaddset(&set, ngx_signal_value(NGX_NOACCEPT_SIGNAL));
@@ -246,16 +248,15 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     sigaddset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
     sigaddset(&set, ngx_signal_value(NGX_CHANGEBIN_SIGNAL));
 
-    sigemptyset(&wset);
-
     if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "sigprocmask() failed");
     }
 
+    sigemptyset(&set);
+
     ngx_setproctitle("master process");
 
-    ngx_signal = 0;
     ngx_new_binary = 0;
     delay = 0;
     signo = 0;
@@ -267,6 +268,23 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
         if (ngx_process == NGX_PROCESS_MASTER) {
             ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
                               "worker process", NGX_PROCESS_RESPAWN);
+
+            /*
+             * we have to limit the maximum life time of the worker processes
+             * by 1 month because our millisecond event timer is limited
+             * by 49 days on 32-bit platforms
+             */
+
+            itv.it_interval.tv_sec = 0;
+            itv.it_interval.tv_usec = 0;
+            itv.it_value.tv_sec = 30 * 24 * 60 * 60;
+            itv.it_value.tv_usec = 0;
+
+            if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                              "setitimer() failed");
+            }
+
             live = 1;
 
         } else {
@@ -295,55 +313,32 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
                 if (ngx_process == NGX_PROCESS_MASTER) {
                     if (delay) {
-                        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                                       "temination cycle");
+                        delay *= 2;
 
-                        if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
+                        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                                       "temination cycle: %d", delay);
+
+                        itv.it_interval.tv_sec = 0;
+                        itv.it_interval.tv_usec = 0;
+                        itv.it_value.tv_sec = delay / 1000;
+                        itv.it_value.tv_usec = (delay % 1000 ) * 1000;
+
+                        if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
                             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                                          "sigprocmask() failed");
-                            continue;
+                                          "setitimer() failed");
                         }
-
-                        /*
-                         * there is very big chance that the pending signals
-                         * would be delivered right on the sigprocmask() return
-                         */
-
-                        if (!ngx_signal) {
-
-                            delay *= 2;
-
-                            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                                           "msleep %d", delay);
-
-                            ngx_msleep(delay);
-
-                            ngx_gettimeofday(&tv);
-                            ngx_time_update(tv.tv_sec);
-
-                            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                                           "wake up");
-                        }
-
-                        if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
-                            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                                          "sigprocmask() failed");
-                        }
-
-                        ngx_signal = 0;
-
-                    } else {
-                        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                                       "sigsuspend");
-
-                        sigsuspend(&wset);
-
-                        ngx_gettimeofday(&tv);
-                        ngx_time_update(tv.tv_sec);
-
-                        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                                       "wake up");
                     }
+
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                                   "sigsuspend");
+
+                    sigsuspend(&set);
+
+                    ngx_gettimeofday(&tv);
+                    ngx_time_update(tv.tv_sec);
+
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                                   "wake up");
 
                 } else { /* NGX_PROCESS_SINGLE */
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -430,6 +425,9 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                 } else if (ngx_quit) {
                     signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
 
+                } else if (ngx_timer) {
+                    signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
+
                 } else {
 
                     if (ngx_noaccept) {
@@ -512,13 +510,16 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     }
                 }
 
-                if (ngx_reopen || ngx_reconfigure) {
+                if (ngx_reopen || ngx_reconfigure || ngx_timer) {
                     break;
                 }
             }
 
             if (ngx_reopen) {
                 ngx_reopen = 0;
+
+            } else if (ngx_timer) {
+                ngx_timer = 0;
 
             } else if (ngx_noaccept) {
                 ngx_noaccept = 0;

@@ -193,7 +193,7 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
     if (ctx == NULL || (in == NULL && ctx->in == NULL)) {
-        return ngx_http_next_body_filter(r, NULL);
+        return ngx_http_next_body_filter(r, in);
     }
 
     /* add the incoming hunk to the chain ctx->in */

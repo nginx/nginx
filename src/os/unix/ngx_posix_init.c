@@ -42,6 +42,8 @@ ngx_signal_t  signals[] = {
       "SIG" ngx_value(NGX_CHANGEBIN_SIGNAL),
       ngx_signal_handler },
 
+    { SIGALRM, "SIGALRM", ngx_signal_handler },
+
     { SIGINT, "SIGINT", ngx_signal_handler },
 
     { SIGCHLD, "SIGCHLD", ngx_signal_handler },
@@ -99,7 +101,6 @@ void ngx_signal_handler(int signo)
     ngx_err_t        err;
     ngx_signal_t    *sig;
 
-    ngx_signal = 1;
     ignore = 0;
 
     err = ngx_errno;
@@ -170,6 +171,14 @@ void ngx_signal_handler(int signo)
 
             ngx_change_binary = 1;
             action = ", changing binary";
+            break;
+
+        case SIGALRM:
+            if (!ngx_terminate) {
+                ngx_timer = 1;
+                action = ", shutting down old worker process";
+            }
+
             break;
 
         case SIGCHLD:

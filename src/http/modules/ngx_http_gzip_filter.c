@@ -240,11 +240,9 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_gzip_ctx_t   *ctx;
     ngx_http_gzip_conf_t  *conf;
 
-    if (!(ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module))) {
-        return ngx_http_next_body_filter(r, in);
-    }
+    ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module);
 
-    if (ctx->done) {
+    if (ctx == NULL || ctx->done) {
         return ngx_http_next_body_filter(r, in);
     }
 
