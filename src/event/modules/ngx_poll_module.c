@@ -262,11 +262,7 @@ static int ngx_poll_process_events(ngx_log_t *log)
     ngx_log_debug(log, "poll ready %d" _ ready);
 
     ngx_gettimeofday(&tv);
-
-    if (ngx_cached_time != tv.tv_sec) {
-        ngx_cached_time = tv.tv_sec;
-        ngx_time_update();
-    }
+    ngx_time_update(tv.tv_sec);
 
     if ((int) timer != INFTIM) {
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;

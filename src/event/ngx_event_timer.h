@@ -33,9 +33,6 @@ extern ngx_rbtree_t  *ngx_event_timer_rbtree;
 extern ngx_rbtree_t   ngx_event_timer_sentinel;
 
 
-#define ngx_event_ident(p)  ((ngx_connection_t *) (p))->fd
-
-
 ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)
 {
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,

@@ -148,6 +148,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, sendfile),
       NULL },
 
+    { ngx_string("tcp_nopush"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, tcp_nopush),
+      NULL },
+
     { ngx_string("send_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -503,6 +510,11 @@ int ngx_http_find_location_config(ngx_http_request_t *r)
 
     } else {
         r->sendfile = 1;
+    }
+
+    if (!clcf->tcp_nopush) {
+        /* disable TCP_NOPUSH/TCP_CORK use */
+        r->connection->tcp_nopush = -1;
     }
 
     if (auto_redirect) {
@@ -1128,6 +1140,7 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
 
     lcf->client_body_timeout = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
+    lcf->tcp_nopush = NGX_CONF_UNSET;
     lcf->send_timeout = NGX_CONF_UNSET;
     lcf->send_lowat = NGX_CONF_UNSET;
     lcf->discarded_buffer_size = NGX_CONF_UNSET;
@@ -1206,6 +1219,7 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_msec_value(conf->client_body_timeout,
                               prev->client_body_timeout, 10000);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
+    ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 10000);
     ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
     ngx_conf_merge_size_value(conf->discarded_buffer_size,

@@ -49,9 +49,13 @@ extern int          ngx_max_sockets;
 extern int          ngx_inherited_nonblocking;
 
 
-extern int          done;
-extern int          restart;
-extern int          rotate;
+extern ngx_int_t    ngx_master;
+
+extern ngx_int_t    ngx_quit;
+extern ngx_int_t    ngx_terminate;
+extern ngx_int_t    ngx_reconfigure;
+extern ngx_int_t    ngx_reopen;
+extern ngx_int_t    ngx_change_binary;
 
 
 #ifdef __FreeBSD__

@@ -39,18 +39,24 @@ void ngx_time_init()
     ngx_cached_http_log_time.data = cached_http_log_time;
 
     ngx_gettimeofday(&tv);
-    ngx_cached_time = tv.tv_sec;
+    ngx_cached_time = 0;
     ngx_start_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000;
     ngx_old_elapsed_msec = 0;
     ngx_elapsed_msec = 0;
 
-    ngx_time_update();
+    ngx_time_update(tv.tv_sec);
 }
 
 
-void ngx_time_update()
+void ngx_time_update(time_t s)
 {
     ngx_tm_t  tm;
+
+    if (ngx_cached_time == s) {
+        return;
+    }
+
+    ngx_cached_time = s;
 
     ngx_gmtime(ngx_cached_time, &ngx_cached_gmtime);
 

@@ -92,9 +92,6 @@ static int ngx_kqueue_init(ngx_cycle_t *cycle)
 
     kcf = ngx_event_get_conf(cycle->conf_ctx, ngx_kqueue_module);
 
-ngx_log_debug(cycle->log, "CH: %d" _ kcf->changes);
-ngx_log_debug(cycle->log, "EV: %d" _ kcf->events);
-
     if (ngx_kqueue == -1) {
         ngx_kqueue = kqueue();
 
@@ -196,6 +193,7 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
     ngx_connection_t  *c;
 
     ev->active = 1;
+    ev->disabled = 0;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 
     if (nchanges > 0
@@ -205,16 +203,14 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
     {
         if (change_list[ev->index].flags == EV_DISABLE) {
 
-#if (NGX_DEBUG_EVENT)
-            ngx_connection_t *c = (ngx_connection_t *) ev->data;
-            ngx_log_debug(ev->log, "kqueue event activated: %d: ft:%d" _
-                          c->fd _ event);
-#endif
+            /*
+             * if the EV_DISABLE is still not passed to a kernel
+             * we will not pass it
+             */
 
-           /*
-            * if the EV_DISABLE is still not passed to a kernel
-            * we will not pass it
-            */
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                           "kevent activated: %d: ft:%d",
+                           ngx_event_ident(ev->data), event);
 
             if (ev->index < (u_int) --nchanges) {
                 e = (ngx_event_t *) change_list[nchanges].udata;
@@ -241,17 +237,16 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
     ngx_event_t  *e;
 
     ev->active = 0;
+    ev->disabled = 0;
 
     if (nchanges > 0
         && ev->index < (u_int) nchanges
         && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
                                                              == (uintptr_t) ev)
     {
-#if (NGX_DEBUG_EVENT)
-        ngx_connection_t *c = (ngx_connection_t *) ev->data;
-        ngx_log_debug(ev->log, "kqueue event deleted: %d: ft:%d" _
-                      c->fd _ event);
-#endif
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                       "kevent deleted: %d: ft:%d",
+                       ngx_event_ident(ev->data), event);
 
         /* if the event is still not passed to a kernel we will not pass it */
 
@@ -272,6 +267,10 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
     if (flags & NGX_CLOSE_EVENT) {
         return NGX_OK;
+    }
+
+    if (flags & NGX_DISABLE_EVENT) {
+        ev->disabled = 1;
     }
 
     return ngx_kqueue_set_event(ev, event,
@@ -346,7 +345,7 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 
 static int ngx_kqueue_process_events(ngx_log_t *log)
 {
-    int                events, instance, i;
+    ngx_int_t          events, instance, i;
     ngx_err_t          err;
     ngx_msec_t         timer;
     ngx_event_t       *ev;
@@ -391,10 +390,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 #endif
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
-    if (ngx_cached_time != tv.tv_sec) {
-        ngx_cached_time = tv.tv_sec;
-        ngx_time_update();
-    }
+    ngx_time_update(tv.tv_sec);
 
     if (timer) {
         delta = ngx_elapsed_msec - delta;
@@ -407,12 +403,12 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         }
     }
 
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ (int) delta);
-#endif
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "kevent timer: %d, delta: %d", timer, (int) delta);
 
     if (err) {
-        ngx_log_error(NGX_LOG_ALERT, log, err, "kevent() failed");
+        ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
+                      log, err, "kevent() failed");
         return NGX_ERROR;
     }
 

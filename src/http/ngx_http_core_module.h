@@ -122,6 +122,7 @@ typedef struct {
 
     ngx_msec_t    client_body_timeout;     /* client_body_timeout */
     int           sendfile;                /* sendfile */
+    int           tcp_nopush;              /* tcp_nopush */
     ngx_msec_t    send_timeout;            /* send_timeout */
     ssize_t       send_lowat;              /* send_lowat */
     ssize_t       discarded_buffer_size;   /* discarded_buffer_size */

@@ -3,73 +3,241 @@
 #include <ngx_core.h>
 
 
-void testone(ngx_log_t *log)
+static void ngx_exec_proc(ngx_cycle_t *cycle, void *data);
+
+ngx_uint_t     ngx_last_process;
+ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
+
+
+ngx_int_t ngx_spawn_process(ngx_cycle_t *cycle,
+                            ngx_spawn_proc_pt proc, void *data,
+                            char *name, ngx_int_t respawn)
 {
-    ngx_log_debug(log, "child process");
-    ngx_msleep(5000);
-    exit(0);
-}
+    sigset_t   set, oset;
+    ngx_pid_t  pid;
 
-
-int ngx_spawn_process(ngx_log_t *log)
-{
-    pid_t     pid;
-    sigset_t  set, oset; 
-
-    sigemptyset(&set);
-    sigaddset(&set, SIGCHLD);
-    if (sigprocmask(SIG_BLOCK, &set, &oset) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "sigprocmask() failed");
+    if (respawn < 0) {
+        sigemptyset(&set);
+        sigaddset(&set, SIGCHLD);
+        if (sigprocmask(SIG_BLOCK, &set, &oset) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "sigprocmask() failed while spawning %s", name);
+            return NGX_ERROR;
+        }
     }
 
     pid = fork();
 
+    if (pid == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "fork() failed while spawning \"%s\"", name);
+    }
+
     if (pid == -1 || pid == 0) {
         if (sigprocmask(SIG_SETMASK, &oset, &set) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                          "sigprocmask() failed");
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "sigprocmask() failed while spawning %s", name);
+            return NGX_ERROR;
         }
     }
 
     switch (pid) {
     case -1:
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "fork() failed");
         return NGX_ERROR;
 
     case 0:
-        testone(log);
+        proc(cycle, data);
         break;
 
     default:
         break;
     }
 
-ngx_log_debug(log, "parent process, child: " PID_T_FMT _ pid);
+    ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                   "spawn %s: " PID_T_FMT, name, pid);
 
-    /* book keeping */
+    if (respawn >= 0) {
+        ngx_processes[respawn].pid = pid;
+        ngx_processes[respawn].exited = 0;
+        return NGX_OK;
+    }
+
+    ngx_processes[ngx_last_process].pid = pid;
+    ngx_processes[ngx_last_process].proc = proc;
+    ngx_processes[ngx_last_process].data = data;
+    ngx_processes[ngx_last_process].name = name;
+    ngx_processes[ngx_last_process].respawn =
+                                      (respawn == NGX_PROCESS_RESPAWN) ? 1 : 0;
+    ngx_processes[ngx_last_process].detached =
+                                     (respawn == NGX_PROCESS_DETACHED) ? 1 : 0;
+    ngx_processes[ngx_last_process].exited = 0;
+    ngx_processes[ngx_last_process].exiting = 0;
+    ngx_last_process++;
 
     if (sigprocmask(SIG_SETMASK, &oset, &set) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "sigprocmask() failed");
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed while spawning %s", name);
+        return NGX_ERROR;
     }
 
     return NGX_OK;
 }
 
 
-void ngx_sigchld_handler(int signo)
+ngx_int_t ngx_exec(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx)
 {
-    int             status, one;
-    pid_t           pid;
-    ngx_err_t       err;
-    struct timeval  tv;
-
-    ngx_gettimeofday(&tv);
-
-    if (ngx_cached_time != tv.tv_sec) {
-        ngx_cached_time = tv.tv_sec;
-        ngx_time_update();
+    if (ngx_spawn_process(cycle, ngx_exec_proc, ctx, ctx->name,
+                                            NGX_PROCESS_DETACHED) == NGX_ERROR)
+    {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "can not spawn %s", ctx->name);
+        return NGX_ERROR;
     }
 
+    return NGX_OK;
+}
+
+
+static void ngx_exec_proc(ngx_cycle_t *cycle, void *data)
+{
+    ngx_exec_ctx_t  *ctx = data;
+
+    if (execve(ctx->path, ctx->argv, ctx->envp) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "execve() failed while executing %s \"%s\"",
+                      ctx->name, ctx->path);
+    }
+
+    exit(1);
+}
+
+
+void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signal)
+{
+    sigset_t    set, oset;
+    ngx_uint_t  i;
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGCHLD);
+    if (sigprocmask(SIG_BLOCK, &set, &oset) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed while signaling processes");
+        return;
+    }
+
+    for (i = 0; i < ngx_last_process; i++) {
+
+        if (ngx_processes[i].detached) {
+            continue;
+        }
+
+        if (ngx_processes[i].exited) {
+            if (i != --ngx_last_process) {
+                ngx_processes[i--] = ngx_processes[ngx_last_process];
+            }
+            continue;
+        }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                       "kill (" PID_T_FMT ", %d)" ,
+                       ngx_processes[i].pid, signal);
+
+        if (kill(ngx_processes[i].pid, signal) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "kill(%d, %d) failed", ngx_processes[i].pid, signal);
+            continue;
+        }
+
+        if (signal != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
+            ngx_processes[i].exiting = 1;
+        }
+    }
+
+    if (sigprocmask(SIG_SETMASK, &oset, &set) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed while signaling processes");
+    }
+}
+
+
+void ngx_respawn_processes(ngx_cycle_t *cycle)
+{
+    sigset_t    set, oset;
+    ngx_uint_t  i;
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGCHLD);
+    if (sigprocmask(SIG_BLOCK, &set, &oset) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed while respawning processes");
+        return;
+    }
+
+    /*
+     * to avoid a race condition we can check and set value of ngx_respawn
+     * only in signal handler or while SIGCHLD is blocked
+     */
+
+    if (ngx_respawn) {
+
+        for (i = 0; i < ngx_last_process; i++) {
+            if (!ngx_processes[i].exited) {
+                continue;
+            }
+
+            if (!ngx_processes[i].respawn) {
+                if (i != --ngx_last_process) {
+                    ngx_processes[i--] = ngx_processes[ngx_last_process];
+                }
+                continue;
+            }
+
+            if (ngx_spawn_process(cycle,
+                                  ngx_processes[i].proc, ngx_processes[i].data,
+                                  ngx_processes[i].name, i) == NGX_ERROR)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                              "can not respawn %s", ngx_processes[i].name);
+            }
+        }
+
+        ngx_respawn = 0;
+    }
+
+    if (sigprocmask(SIG_SETMASK, &oset, &set) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed while respawning processes");
+    }
+}
+
+
+#if 0
+void ngx_sigchld_handler(int signo)
+{
+    int              status;
+    char            *process;
+    ngx_pid_t        pid;
+    ngx_err_t        err;
+    ngx_uint_t       i, one;
+    struct timeval   tv;
+
+    ngx_gettimeofday(&tv);
+    ngx_time_update(tv.tv_sec);
+
+    ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
+                  "signal #%d (SIGCHLD) received", signo);
+}
+#endif
+
+
+void ngx_process_get_status()
+{
+    int              status;
+    char            *process;
+    ngx_pid_t        pid;
+    ngx_err_t        err;
+    ngx_uint_t       i, one;
+    struct timeval   tv;
     one = 0;
 
     for ( ;; ) {
@@ -96,18 +264,39 @@ void ngx_sigchld_handler(int signo)
         }
 
         one = 1;
+        process = "";
 
-        ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
-                      "process " PID_T_FMT " exited with code %d", pid, status);
+        for (i = 0; i < ngx_last_process; i++) {
+            if (ngx_processes[i].pid == pid) {
+                ngx_processes[i].status = status;
 
-        /* TODO: restart handler */
+                if (!ngx_processes[i].exiting) {
+                    ngx_processes[i].exited = 1;
 
-#if 0
-        ngx_msleep(2000);
-#endif
+                    if (ngx_processes[i].respawn) {
+                        ngx_respawn = 1;
+                    }
+                }
 
-#if 0
-        ngx_spawn_process(ngx_cycle->log);
-#endif
+                process = ngx_processes[i].name;
+                break;
+            }
+        }
+
+        if (i == ngx_last_process) {
+            process = "unknown process";
+        }
+
+        if (WTERMSIG(status)) {
+            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                          "%s " PID_T_FMT " exited on signal %d%s",
+                          process, pid, WTERMSIG(status),
+                          WCOREDUMP(status) ? " (core dumped)" : "");
+
+        } else {
+            ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
+                          "%s " PID_T_FMT " exited with code %d",
+                          process, pid, WEXITSTATUS(status));
+        }
     }
 }

@@ -222,7 +222,8 @@ static int ngx_event_init(ngx_cycle_t *cycle)
                  */
 
                 if (ngx_del_event(&cycle->old_cycle->read_events[fd],
-                                             NGX_READ_EVENT, 0) == NGX_ERROR) {
+                                 NGX_READ_EVENT, NGX_CLOSE_EVENT) == NGX_ERROR)
+                {
                     return NGX_ERROR;
                 }
 

@@ -7,7 +7,7 @@
 
 
 void ngx_time_init();
-void ngx_time_update();
+void ngx_time_update(time_t s);
 size_t ngx_http_time(char *buf, time_t t);
 void ngx_gmtime(time_t t, ngx_tm_t *tp);
 

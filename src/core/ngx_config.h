@@ -59,14 +59,16 @@ typedef u_int  ngx_uint_t;
 
 #if !(WIN32)
 
-#define ngx_signal_helper(n)  SIG##n
-#define ngx_signal_value(n)   ngx_signal_helper(n)
+#define ngx_signal_helper(n)     SIG##n
+#define ngx_signal_value(n)      ngx_signal_helper(n)
 
 /* TODO: #ifndef */
-#define NGX_RESTART_SIGNAL    HUP
-#define NGX_ROTATE_SIGNAL     USR1
-#define NGX_SHUTDOWN_SIGNAL   TERM
-#define NGX_INTERRUPT_SIGNAL  INT
+#define NGX_RECONFIGURE_SIGNAL   HUP
+#define NGX_REOPEN_SIGNAL        USR1
+#define NGX_SHUTDOWN_SIGNAL      QUIT
+#define NGX_TERMINATE_SIGNAL     TERM
+#define NGX_INTERRUPT_SIGNAL     INT
+#define NGX_CHANGEBIN_SIGNAL     USR2
 
 #endif
 
@@ -74,6 +76,13 @@ typedef u_int  ngx_uint_t;
 
 /* TODO: platform specific: array[NGX_INVALID_ARRAY_INDEX] must cause SIGSEGV */
 #define NGX_INVALID_ARRAY_INDEX 0x80000000
+
+
+/* TODO: auto */
+#define NGX_INT32_LEN      sizeof("-2147483648") - 1
+#define NGX_TIME_T_LEN     sizeof("-2147483648") - 1
+#define NGX_OFF_T_LEN      sizeof("-9223372036854775808") - 1
+
 
 
 /* TODO: auto_conf */

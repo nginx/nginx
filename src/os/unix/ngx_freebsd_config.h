@@ -24,6 +24,7 @@
 #include <dirent.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <pwd.h>
 #include <osreldate.h>
 
 

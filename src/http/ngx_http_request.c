@@ -82,6 +82,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
 
     rev = c->read;
     rev->event_handler = ngx_http_init_request;
+    rev->log_error = NGX_ERROR_INFO;
 
     if (rev->ready) {
         /* deferred accept, aio, iocp, epoll */
@@ -896,6 +897,17 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
         ngx_del_timer(r->connection->write);
     }
 
+    if (r->connection->read->kq_eof) {
+#if (NGX_KQUEUE)
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log,
+                       r->connection->read->kq_errno,
+                       "kevent reported about closed connection by client");
+#endif
+        ngx_http_close_request(r, 0);
+        ngx_http_close_connection(r->connection);
+        return;
+    }
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->keepalive != 0 && clcf->keepalive_timeout > 0) {
@@ -1203,7 +1215,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     ctx->action = "keepalive";
 
-    if (c->tcp_nopush) {
+    if (c->tcp_nopush == 1) {
         if (ngx_tcp_push(c->fd) == NGX_ERROR) {
             ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
                           ngx_tcp_push_n " failed");
@@ -1239,10 +1251,10 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
      * so we ignore ECONNRESET here.
      */
 
-    rev->ignore_econnreset = 1;
+    rev->log_error = NGX_ERROR_IGNORE_ECONNRESET;
     ngx_set_socket_errno(0);
     n = ngx_recv(c, c->buffer->last, c->buffer->end - c->buffer->last);
-    rev->ignore_econnreset = 0;
+    rev->log_error = NGX_ERROR_INFO;
 
     if (n == NGX_AGAIN) {
         return;
@@ -1506,11 +1518,11 @@ void ngx_http_close_connection(ngx_connection_t *c)
         ngx_del_conn(c);
 
     } else {
-        if (c->read->active) {
+        if (c->read->active || c->read->disabled) {
             ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
         }
 
-        if (c->write->active) {
+        if (c->write->active || c->write->disabled) {
             ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
         }
     }

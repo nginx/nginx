@@ -8,9 +8,6 @@ int  ngx_inherited_nonblocking;
 
 
 void ngx_signal_handler(int signo);
-void ngx_exit_signal_handler(int signo);
-void ngx_restart_signal_handler(int signo);
-void ngx_rotate_signal_handler(int signo);
 
 
 typedef struct {
@@ -22,27 +19,37 @@ typedef struct {
 
 
 ngx_signal_t  signals[] = {
-    { ngx_signal_value(NGX_RESTART_SIGNAL),
-      "SIG" ngx_value(NGX_RESTART_SIGNAL),
-      "restarting",
+    { ngx_signal_value(NGX_RECONFIGURE_SIGNAL),
+      "SIG" ngx_value(NGX_RECONFIGURE_SIGNAL),
+      ", reconfiguring",
       ngx_signal_handler },
 
-    { ngx_signal_value(NGX_ROTATE_SIGNAL),
-      "SIG" ngx_value(NGX_ROTATE_SIGNAL),
-      "reopen logs",
+    { ngx_signal_value(NGX_REOPEN_SIGNAL),
+      "SIG" ngx_value(NGX_REOPEN_SIGNAL),
+      ", reopen logs",
       ngx_signal_handler },
 
     { ngx_signal_value(NGX_INTERRUPT_SIGNAL),
       "SIG" ngx_value(NGX_INTERRUPT_SIGNAL),
-      "exiting",
+      ", exiting",
+      ngx_signal_handler },
+
+    { ngx_signal_value(NGX_TERMINATE_SIGNAL),
+      "SIG" ngx_value(NGX_TERMINATE_SIGNAL),
+      ", exiting",
       ngx_signal_handler },
 
     { ngx_signal_value(NGX_SHUTDOWN_SIGNAL),
       "SIG" ngx_value(NGX_SHUTDOWN_SIGNAL),
-      "shutdowning",
+      ", shutdowning",
       ngx_signal_handler },
 
-    { SIGCHLD, "SIGCHLD", NULL, ngx_sigchld_handler },
+    { ngx_signal_value(NGX_CHANGEBIN_SIGNAL),
+      "SIG" ngx_value(NGX_CHANGEBIN_SIGNAL),
+      ", changing binary",
+      ngx_signal_handler },
+
+    { SIGCHLD, "SIGCHLD", "", ngx_signal_handler },
 
     { SIGPIPE, "SIGPIPE, SIG_IGN", NULL, SIG_IGN },
 
@@ -91,7 +98,8 @@ int ngx_posix_init(ngx_log_t *log)
 
 void ngx_signal_handler(int signo)
 {
-    ngx_signal_t  *sig;
+    struct timeval   tv;
+    ngx_signal_t    *sig;
 
     for (sig = signals; sig->signo != 0; sig++) {
         if (sig->signo == signo) {
@@ -99,61 +107,40 @@ void ngx_signal_handler(int signo)
         }
     }
 
-#if (HAVE_STRSIGNAL)
+    ngx_gettimeofday(&tv);
+    ngx_time_update(tv.tv_sec);
 
     ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
-                  "signal #%d (%s: %s) received, %s",
-                  signo, sig->signame, strsignal(signo), sig->action);
-#else
-
-    ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
-                  "signal #%d (%s) received, %s",
+                  "signal %d (%s) received%s",
                   signo, sig->signame, sig->action);
-
-#endif
 
     switch (signo) {
 
-    /* STUB */
-    case SIGQUIT:
-    case SIGABRT:
+    case SIGCHLD:
+        ngx_process_get_status();
+        break;
 
     case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
+        ngx_quit = 1;
+        break;
+
+    case ngx_signal_value(NGX_TERMINATE_SIGNAL):
     case ngx_signal_value(NGX_INTERRUPT_SIGNAL):
-        done = 1;
+        ngx_terminate = 1;
         break;
 
-    case ngx_signal_value(NGX_RESTART_SIGNAL):
-        restart = 1;
+    case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
+        ngx_reconfigure = 1;
         break;
 
-    case ngx_signal_value(NGX_ROTATE_SIGNAL):
-        rotate = 1;
+    case ngx_signal_value(NGX_REOPEN_SIGNAL):
+        ngx_reopen = 1;
+        break;
+
+    case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
+        ngx_change_binary = 1;
         break;
     }
-}
-
-
-void ngx_exit_signal_handler(int signo)
-{
-    char *s;
-
-    s = strsignal(signo);
-    ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
-                  "%s signal received, exiting", s);
-    done = 1;
-}
-
-
-void ngx_restart_signal_handler(int signo)
-{
-    restart = 1;
-}
-
-
-void ngx_rotate_signal_handler(int signo)
-{
-    rotate = 1;
 }
 
 

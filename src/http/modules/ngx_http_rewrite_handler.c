@@ -113,7 +113,7 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
         if (rc == NGX_DECLINED) {
             if (scf->log) {
                 ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                              "\"%s\" is not matched", rule[i].re_name.data);
+                              "\"%s\" does not match", rule[i].re_name.data);
             }
 
             continue;
@@ -129,7 +129,7 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
 
         if (scf->log) {
             ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                          "\"%s\" matched", rule[i].re_name.data);
+                          "\"%s\" matches", rule[i].re_name.data);
         }
 
         uri.len = rule[i].size;
@@ -301,8 +301,10 @@ static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
             }
         }
 
-        rule->msize++;
-        rule->msize *= 3;
+        if (rule->msize) {
+            rule->msize++;
+            rule->msize *= 3;
+        }
 
         if (cf->args->nelts > 3) {
             if (ngx_strcmp(value[3].data, "last") == 0) {

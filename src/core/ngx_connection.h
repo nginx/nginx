@@ -36,6 +36,7 @@ typedef struct {
 
     unsigned          new:1;
     unsigned          remain:1;
+    unsigned          ignore:1;
 
     unsigned          bound:1;       /* already bound */
     unsigned          inherited:1;   /* inherited from previous process */
@@ -85,11 +86,16 @@ struct ngx_connection_s {
 
     unsigned          pipeline:1;
     unsigned          unexpected_eof:1;
-    unsigned          tcp_nopush:1;
+    signed            tcp_nopush:2;
 #if (HAVE_IOCP)
     unsigned          accept_context_updated:1;
 #endif
 };
+
+
+ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle, char **envp);
+ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle);
+void ngx_close_listening_sockets(ngx_cycle_t *cycle);
 
 
 extern ngx_os_io_t  ngx_io;

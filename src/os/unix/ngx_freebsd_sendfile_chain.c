@@ -151,7 +151,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         if (file) {
 
-            if (ngx_freebsd_use_tcp_nopush && !c->tcp_nopush) {
+            if (ngx_freebsd_use_tcp_nopush && c->tcp_nopush == 0) {
                 c->tcp_nopush = 1;
 
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "tcp_nopush");
@@ -191,7 +191,7 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                 } else if (err == NGX_EAGAIN) {
                     eagain = 1;
 
-                } else if (err == NGX_EPIPE) {
+                } else if (err == NGX_EPIPE || err == NGX_ENOTCONN) {
                     level = NGX_LOG_INFO;
                 }
 
@@ -202,8 +202,13 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
                 } else {
                     wev->error = 1;
+#if 0
                     ngx_log_error(level, c->log, err,
                                   "sendfile() failed");
+#else
+                    ngx_log_error(level, c->log, err,
+                                  "sendfile(#%d) failed", c->fd);
+#endif
                     return NGX_CHAIN_ERROR;
                 }
             }

@@ -46,8 +46,8 @@ extern int          ngx_inherited_nonblocking;
 extern int          ngx_win32_version;
 
 
-extern int          restart;
-extern int          rotate;
+extern int          reconfigure;
+extern int          reopen;
 
 
 

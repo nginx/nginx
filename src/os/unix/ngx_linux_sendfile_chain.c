@@ -6,7 +6,7 @@
 
 /*
  * On Linux up to 2.4.21 sendfile() (syscall #187) works with 32-bit
- * offsets only and the including <sys/sendfile.h> breaks building if
+ * offsets only and the including <sys/sendfile.h> breaks the compiling if
  * off_t is 64 bit wide.  So we use own sendfile() definition where offset
  * parameter is int32_t and use sendfile() with the file parts below 2G.
  *
@@ -75,14 +75,14 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         /* set TCP_CORK if there is a header before a file */
 
-        if (!c->tcp_nopush
+        if (!c->tcp_nopush == 0
             && header.nelts != 0
             && cl
             && cl->hunk->type & NGX_HUNK_FILE)
         {
             c->tcp_nopush = 1;
 
-ngx_log_debug(c->log, "CORK");
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "tcp_nopush");
 
             if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
                 ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,

@@ -19,6 +19,7 @@ CORE_DEPS="src/core/nginx.h \
             src/core/ngx_rbtree.h \
             src/core/ngx_times.h \
             src/core/ngx_connection.h \
+            src/core/ngx_cycle.h \
             src/core/ngx_conf_file.h \
             src/core/ngx_garbage_collector.h"
 
@@ -34,6 +35,8 @@ CORE_SRCS="src/core/nginx.c \
             src/core/ngx_file.c \
             src/core/ngx_rbtree.c \
             src/core/ngx_times.c \
+            src/core/ngx_connection.c \
+            src/core/ngx_cycle.c \
             src/core/ngx_conf_file.c \
             src/core/ngx_garbage_collector.c"
 

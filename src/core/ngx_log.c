@@ -52,7 +52,7 @@ static const char *err_levels[] = {
 };
 
 static const char *debug_levels[] = {
-    "debug", "debug_alloc", "debug_event", "debug_http"
+    "debug", "debug_core", "debug_alloc", "debug_event", "debug_http"
 };
 
 

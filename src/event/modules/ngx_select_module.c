@@ -370,11 +370,7 @@ static int ngx_select_process_events(ngx_log_t *log)
 #else /* HAVE_SELECT_CHANGE_TIMEOUT */
 
     ngx_gettimeofday(&tv);
-
-    if (ngx_cached_time != tv.tv_sec) {
-        ngx_cached_time = tv.tv_sec;
-        ngx_time_update();
-    }
+    ngx_time_update(tv.tv_sec);
 
     if (timer) {
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;

@@ -2,334 +2,26 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+/* STUB */
 #include <nginx.h>
 
 
-static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
-static void ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
-static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle);
+static void ngx_clean_old_cycles(ngx_event_t *ev);
 
 
-typedef struct {
-     ngx_str_t  user;
-     int        daemon;
-     int        single;
-     ngx_str_t  pid;
-} ngx_core_conf_t;
+volatile ngx_cycle_t  *ngx_cycle;
+ngx_array_t            ngx_old_cycles;
+
+static ngx_pool_t     *ngx_temp_pool;
+static ngx_event_t     ngx_cleaner_event;
 
 
-static ngx_str_t  core_name = ngx_string("core");
-
-static ngx_command_t  ngx_core_commands[] = {
-
-    { ngx_string("user"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_core_str_slot,
-      0,
-      offsetof(ngx_core_conf_t, user),
-      NULL },
-
-    { ngx_string("daemon"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_core_flag_slot,
-      0,
-      offsetof(ngx_core_conf_t, daemon),
-      NULL },
-
-    { ngx_string("single_process"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_core_flag_slot,
-      0,
-      offsetof(ngx_core_conf_t, single),
-      NULL },
-
-      ngx_null_command
-};
-
-
-ngx_module_t  ngx_core_module = {
-    NGX_MODULE,
-    &core_name,                            /* module context */
-    ngx_core_commands,                     /* module directives */
-    NGX_CORE_MODULE,                       /* module type */
-    ngx_core_module_init,                  /* init module */
-    NULL                                   /* init child */
-};
-
-
-ngx_int_t              ngx_max_module;
-
-
+/* STUB NAME */
+static ngx_connection_t  dumb;
 /* STUB */
-uid_t      user;
 
-u_int ngx_connection_counter;
 
-ngx_int_t  ngx_master;
-ngx_int_t  ngx_single;
-
-
-ngx_int_t  ngx_respawn;
-ngx_int_t  ngx_terminate;
-ngx_int_t  ngx_quit;
-ngx_int_t  ngx_reconfigure;
-ngx_int_t  ngx_reopen;
-ngx_int_t  ngx_change_binary;
-
-
-int main(int argc, char *const *argv, char **envp)
-{
-    struct timeval     tv;
-    ngx_fd_t           fd;
-    ngx_int_t          i;
-    ngx_err_t          err;
-    ngx_log_t         *log;
-    ngx_cycle_t       *cycle, init_cycle;
-    ngx_open_file_t   *file;
-    ngx_core_conf_t   *ccf;
-#if !(WIN32)
-    size_t             len;
-    char               pid[/* STUB */ 10];
-    ngx_file_t         pidfile;
-    struct passwd     *pwd;
-#endif
-
-#if __FreeBSD__
-    ngx_debug_init();
-#endif
-
-    /* TODO */ ngx_max_sockets = -1;
-
-    ngx_time_init();
-#if (HAVE_PCRE)
-    ngx_regex_init();
-#endif
-
-    log = ngx_log_init_errlog();
-
-    /* init_cycle->log is required for signal handlers */
-
-    ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
-    init_cycle.log = log;
-    ngx_cycle = &init_cycle;
-
-    if (ngx_os_init(log) == NGX_ERROR) {
-        return 1;
-    }
-
-    ngx_max_module = 0;
-    for (i = 0; ngx_modules[i]; i++) {
-        ngx_modules[i]->index = ngx_max_module++;
-    }
-
-    if (!(init_cycle.pool = ngx_create_pool(1024, log))) {
-        return 1;
-    }
-
-    if (ngx_set_inherited_sockets(&init_cycle, envp) == NGX_ERROR) {
-        return 1;
-    }
-
-    cycle = ngx_init_cycle(&init_cycle);
-    if (cycle == NULL) {
-        return 1;
-    }
-
-    ngx_cycle = cycle;
-
-    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
-
-    if (ccf->single == 1) {
-        ngx_master = 0;
-        ngx_single = 1;
-
-    } else {
-        ngx_master = 1;
-        ngx_single = 0;
-    }
-
-#if !(WIN32)
-
-    /* STUB */
-    if (ccf->user.len) {
-        pwd = getpwnam(ccf->user.data);
-        if (pwd == NULL) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "getpwnam(%s) failed", ccf->user);
-            return 1;
-        }
-
-        user = pwd->pw_uid;
-    }
-    /* */
-
-    if (ccf->daemon != 0) {
-        if (ngx_daemon(cycle->log) == NGX_ERROR) {
-            return 1;
-        }
-    }
-
-    if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      "dup2(STDERR) failed");
-        return 1;
-    }
-
-    if (ccf->pid.len == 0) {
-        ccf->pid.len = sizeof(NGINX_PID) - 1;
-        ccf->pid.data = NGINX_PID;
-    }
-
-    len = ngx_snprintf(pid, /* STUB */ 10, PID_T_FMT, ngx_getpid());
-    ngx_memzero(&pidfile, sizeof(ngx_file_t));
-    pidfile.name = ccf->pid;
-
-    pidfile.fd = ngx_open_file(pidfile.name.data, NGX_FILE_RDWR,
-                               NGX_FILE_CREATE_OR_OPEN);
-
-    if (pidfile.fd == NGX_INVALID_FILE) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      ngx_open_file_n " \"%s\" failed", pidfile.name.data);
-        return 1;
-    }
-
-    if (ngx_write_file(&pidfile, pid, len, 0) == NGX_ERROR) {
-        return 1;
-    }
-
-    if (ngx_close_file(pidfile.fd) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      ngx_close_file_n " \"%s\" failed", pidfile.name.data);
-    }
-
-#endif
-
-    /* a life cycle */
-
-    for ( ;; ) {
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "new cycle");
-
-        if (ngx_master) {
-            ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
-                              "worker process", NGX_PROCESS_RESPAWN);
-
-        } else {
-            ngx_init_temp_number();
-
-            for (i = 0; ngx_modules[i]; i++) {
-                if (ngx_modules[i]->init_process) {
-                    if (ngx_modules[i]->init_process(cycle) == NGX_ERROR) {
-                        /* fatal */
-                        exit(1);
-                    }
-                }
-            }
-        }
-
-#if 0
-        reconfigure = 0;
-        reopen = 0;
-#endif
-
-        /* a cycle with the same configuration */
-
-        for ( ;; ) {
-
-            /* an event loop */
-
-            for ( ;; ) {
-
-                err = 0;
-
-                if (ngx_single) {
-                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                                   "worker cycle");
-
-                    ngx_process_events(cycle->log);
-
-                } else {
-                    ngx_set_errno(0);
-                    ngx_msleep(1000);
-                    err = ngx_errno;
-
-                    ngx_gettimeofday(&tv);
-                    ngx_time_update(tv.tv_sec);
-
-                    if (err) {
-                        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, err,
-                                       "sleep() exited");
-                    }
-                }
-
-                if (ngx_quit || ngx_terminate) {
-#if !(WIN32)
-                    if (ngx_delete_file(pidfile.name.data) == NGX_FILE_ERROR) {
-                        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                                      ngx_delete_file_n " \"%s\" failed",
-                                      pidfile.name.data);
-                    }
-#endif
-
-                    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
-
-                    if (ngx_master) {
-                        ngx_signal_processes(cycle,
-                                        ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
-
-                        /* TODO: wait workers */
-
-                        ngx_msleep(1000);
-
-                        ngx_gettimeofday(&tv);
-                        ngx_time_update(tv.tv_sec);
-                    }
-
-                    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exit");
-                    exit(0);
-                }
-
-                if (err == NGX_EINTR) {
-                    ngx_respawn_processes(cycle);
-                }
-
-                if (ngx_change_binary) {
-                    ngx_change_binary = 0;
-                    ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
-                                  "changing binary");
-                    ngx_exec_new_binary(cycle, argv);
-                    /* TODO: quit workers */
-                }
-
-                if (ngx_reconfigure) {
-                    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reconfiguring");
-                    break;
-                }
-
-                if (ngx_reopen) {
-                    ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
-                                  "reopening logs");
-                    ngx_reopen_files(cycle);
-                    ngx_reopen = 0;
-                }
-
-            }
-
-            cycle = ngx_init_cycle(cycle);
-            if (cycle == NULL) {
-                cycle = (ngx_cycle_t *) ngx_cycle;
-                continue;
-            }
-
-            ngx_cycle = cycle;
-            ngx_reconfigure = 0;
-            break;
-        }
-    }
-}
-
-#if 0
-
-static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
+ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     ngx_int_t         i, n, failed;
     ngx_str_t         conf_file;
@@ -338,7 +30,6 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_pool_t       *pool;
     ngx_cycle_t      *cycle, **old;
     ngx_socket_t      fd;
-    ngx_core_conf_t  *ccf;
     ngx_open_file_t  *file;
     ngx_listening_t  *ls, *nls;
 
@@ -405,17 +96,10 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    if (!(ccf = ngx_pcalloc(pool, sizeof(ngx_core_conf_t)))) {
+    if (ngx_core_module.init_module(cycle) == NGX_ERROR) {
         ngx_destroy_pool(pool);
         return NULL;
     }
-    /* set by pcalloc()
-     *
-     * ccf->pid = NULL;
-     */
-    ccf->daemon = -1;
-    ccf->single = -1;
-    ((void **)(cycle->conf_ctx))[ngx_core_module.index] = ccf;
 
 
     ngx_memzero(&conf, sizeof(ngx_conf_t));
@@ -630,7 +314,7 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
         return cycle;
     }
 
-    if (master) {
+    if (ngx_master) {
         ngx_destroy_pool(old_cycle->pool);
         return cycle;
     }
@@ -676,10 +360,9 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
     return cycle;
 }
 
-#endif
-
 
 #if 0
+
 
 static ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle, char **envp)
 {
@@ -769,140 +452,292 @@ static ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle, char **envp)
     return NGX_OK;
 }
 
+
+static ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
+{
+    int              tries, failed, reuseaddr, i;
+    ngx_err_t        err;
+    ngx_log_t       *log;
+    ngx_socket_t     s;
+    ngx_listening_t *ls;
+
+    reuseaddr = 1;
+#if (NGX_SUPPRESS_WARN)
+    failed = 0;
+#endif
+
+    log = cycle->log;
+
+    /* TODO: tries configurable */
+
+    for (tries = 10; tries; tries--) {
+        failed = 0;
+
+        /* for each listening socket */
+
+        ls = cycle->listening.elts;
+        for (i = 0; i < cycle->listening.nelts; i++) {
+
+            if (ls[i].ignore) {
+                continue;
+            }
+
+            if (ls[i].fd != -1) {
+                continue;
+            }
+
+            if (ls[i].inherited) {
+
+                /* TODO: close on exit */
+                /* TODO: nonblocking */
+                /* TODO: deferred accept */
+
+                continue;
+            }
+
+            s = ngx_socket(ls[i].family, ls[i].type, ls[i].protocol,
+                           ls[i].flags);
+
+            if (s == -1) {
+                ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                              ngx_socket_n " %s failed", ls[i].addr_text.data);
+                return NGX_ERROR;
+            }
+
+#if (WIN32)
+            /*
+             * Winsock assignes a socket number divisible by 4
+             * so to find a connection we divide a socket number by 4.
+             */
+
+            if (s % 4) {
+                ngx_log_error(NGX_LOG_EMERG, ls->log, 0,
+                              ngx_socket_n " created socket %d", s);
+                return NGX_ERROR;
+            }
+#endif
+
+            if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
+                           (const void *) &reuseaddr, sizeof(int)) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                              "setsockopt(SO_REUSEADDR) %s failed",
+                              ls[i].addr_text.data);
+                return NGX_ERROR;
+            }
+
+            /* TODO: close on exit */
+
+            if (!(ngx_event_flags & NGX_USE_AIO_EVENT)) {
+                if (ngx_nonblocking(s) == -1) {
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                  ngx_nonblocking_n " %s failed",
+                                  ls[i].addr_text.data);
+                    return NGX_ERROR;
+                }
+            }
+
+#if 0
+            if (ls[i].nonblocking) {
+                if (ngx_nonblocking(s) == -1) {
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                  ngx_nonblocking_n " %s failed",
+                                  ls[i].addr_text.data);
+                    return NGX_ERROR;
+                }
+            }
+#endif
+
+            if (bind(s, ls[i].sockaddr, ls[i].socklen) == -1) {
+                err = ngx_socket_errno;
+                ngx_log_error(NGX_LOG_EMERG, log, err,
+                              "bind() to %s failed", ls[i].addr_text.data);
+
+                if (err != NGX_EADDRINUSE)
+                    return NGX_ERROR;
+
+                if (ngx_close_socket(s) == -1)
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                  ngx_close_socket_n " %s failed",
+                                  ls[i].addr_text.data);
+
+                failed = 1;
+                continue;
+            }
+
+            if (listen(s, ls[i].backlog) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                              "listen() to %s failed", ls[i].addr_text.data);
+                return NGX_ERROR;
+            }
+
+            /* TODO: deferred accept */
+
+            ls[i].fd = s;
+        }
+
+        if (!failed)
+            break;
+
+        /* TODO: delay configurable */
+
+        ngx_log_error(NGX_LOG_NOTICE, log, 0,
+                      "try again to bind() after 500ms");
+        ngx_msleep(500);
+    }
+
+    if (failed) {
+        ngx_log_error(NGX_LOG_EMERG, log, 0, "still can not bind()");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
 #endif
 
 
-static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
+void ngx_reopen_files(ngx_cycle_t *cycle)
+{
+    ngx_fd_t          fd;
+    ngx_int_t         i;
+    ngx_open_file_t  *file;
+
+    file = cycle->open_files.elts;
+    for (i = 0; i < cycle->open_files.nelts; i++) {
+        if (file[i].name.data == NULL) {
+            continue;
+        }
+
+        fd = ngx_open_file(file[i].name.data, NGX_FILE_RDWR,
+                           NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "reopen file \"%s\", old:%d new:%d",
+                       file[i].name.data, file[i].fd, fd);
+
+        if (fd == NGX_INVALID_FILE) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          ngx_open_file_n " \"%s\" failed", file[i].name.data);
+            continue;
+        }
+
+#if (WIN32)
+        if (ngx_file_append_mode(fd) == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          ngx_file_append_mode_n " \"%s\" failed",
+                          file[i].name.data);
+
+            if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              ngx_close_file_n " \"%s\" failed",
+                              file[i].name.data);
+            }
+
+            continue;
+        }
+#endif
+
+        if (ngx_close_file(file[i].fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed",
+                          file[i].name.data);
+        }
+
+        file[i].fd = fd;
+    }
+}
+
+
+#if 0
+
+static void ngx_close_listening_sockets(ngx_cycle_t *cycle)
 {
     ngx_int_t         i;
+    ngx_socket_t      fd;
     ngx_listening_t  *ls;
 
-    if (user) {
-        if (setuid(user) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "setuid() failed");
-            /* fatal */
-            exit(1);
-        }
+    if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
+        return;
     }
 
-    ngx_init_temp_number();
-
-    /*
-     * disable deleting previous events for the listening sockets because
-     * in the worker processes there are no events at all at this point
-     */ 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
-        ls[i].remain = 0;
-    }
+        fd = ls[i].fd;
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->init_process) {
-            if (ngx_modules[i]->init_process(cycle) == NGX_ERROR) {
-                /* fatal */
-                exit(1);
+#if (WIN32)
+        /*
+         * Winsock assignes a socket number divisible by 4
+         * so to find a connection we divide a socket number by 4.
+         */
+
+        fd /= 4;
+#endif
+
+        ngx_del_event(&cycle->read_events[fd], NGX_READ_EVENT, NGX_CLOSE_EVENT);
+
+        if (ngx_close_socket(ls[i].fd) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
+                          ngx_close_socket_n " %s failed",
+                          ls[i].addr_text.data);
+        }
+
+        cycle->connections[fd].fd = -1;
+    }
+}
+
+#endif
+
+
+static void ngx_clean_old_cycles(ngx_event_t *ev)
+{
+    int            i, n, found, live;
+    ngx_log_t     *log;
+    ngx_cycle_t  **cycle;
+
+    log = ngx_cycle->log;
+    ngx_temp_pool->log = log;
+
+    ngx_log_debug(log, "clean old cycles");
+
+    live = 0;
+
+    cycle = ngx_old_cycles.elts;
+    for (i = 0; i < ngx_old_cycles.nelts; i++) {
+
+        if (cycle[i] == NULL) {
+            continue;
+        }
+
+        found = 0;
+
+        for (n = 0; n < cycle[i]->connection_n; n++) {
+            if (cycle[i]->connections[n].fd != -1) {
+                found = 1;
+                ngx_log_debug(log, "live fd: %d" _ n);
+                break;
             }
         }
-    }
 
-    /* TODO: threads: start ngx_worker_thread_cycle() */
-
-    for ( ;; ) {
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
-
-        ngx_process_events(cycle->log);
-
-        if (ngx_terminate) {
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
-            exit(0);
+        if (found) {
+            live = 1;
+            continue;
         }
 
-        if (ngx_quit) {
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
-                          "gracefully shutdowning");
-            break;
-        }
-
-        if (ngx_reopen) {
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");
-            ngx_reopen_files(cycle);
-            ngx_reopen = 0;
-        }
+        ngx_log_debug(log, "clean old cycle: %d" _ i);
+        ngx_destroy_pool(cycle[i]->pool);
+        cycle[i] = NULL;
     }
 
-    ngx_close_listening_sockets(cycle);
+    ngx_log_debug(log, "old cycles status: %d" _ live);
 
-    for ( ;; ) {
-        if (ngx_event_timer_rbtree == &ngx_event_timer_sentinel) {
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
-            exit(0);
-        }
+    if (live) {
+        ngx_log_debug(log, "TIMER");
+        ngx_add_timer(ev, 30000);
 
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
-
-        ngx_process_events(cycle->log);
+    } else {
+        ngx_destroy_pool(ngx_temp_pool);
+        ngx_temp_pool = NULL;
+        ngx_old_cycles.nelts = 0;
     }
-}
-
-
-static void ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
-{
-    char             *env[2], *var, *p;
-    ngx_int_t         i;
-    ngx_exec_ctx_t    ctx;
-    ngx_listening_t  *ls;
-
-    ctx.path = argv[0];
-    ctx.name = "new binary process";
-    ctx.argv = argv;
-
-    var = ngx_alloc(NGINX_VAR_LEN
-                            + cycle->listening.nelts * (NGX_INT32_LEN + 1) + 1,
-                    cycle->log);
-
-    p = ngx_cpymem(var, NGINX_VAR, NGINX_VAR_LEN);
-
-    ls = cycle->listening.elts;
-    for (i = 0; i < cycle->listening.nelts; i++) {
-        p += ngx_snprintf(p, NGX_INT32_LEN + 2, "%u;", ls[i].fd);
-    }
-
-    env[0] = var;
-    env[1] = NULL;
-    ctx.envp = (char *const *) &env;
-
-    ngx_exec(cycle, &ctx);
-
-    ngx_free(var);
-}
-
-
-static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle)
-{
-    ngx_core_conf_t  *ccf;
-
-    /*
-     * ngx_core_module has a special init procedure: it is called by
-     * ngx_init_cycle() before the configuration file parsing to create
-     * ngx_core_module configuration and to set its default parameters
-     */
-
-    if (((void **)(cycle->conf_ctx))[ngx_core_module.index] != NULL) {
-        return NGX_OK;
-    }
-
-    if (!(ccf = ngx_pcalloc(cycle->pool, sizeof(ngx_core_conf_t)))) {
-        return NGX_ERROR;
-    }
-    /* set by pcalloc()
-     *
-     * ccf->pid = NULL;
-     */
-    ccf->daemon = -1;
-    ccf->single = -1;
-
-    ((void **)(cycle->conf_ctx))[ngx_core_module.index] = ccf;
-
-    return NGX_OK;
 }

@@ -16,7 +16,7 @@ ngx_rbtree_t   ngx_event_timer_sentinel;
 
 int ngx_event_timer_init(ngx_cycle_t *cycle)
 {
-    if (cycle->old_cycle) {
+    if (ngx_event_timer_rbtree) {
         return NGX_OK;
     }
 
