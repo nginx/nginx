@@ -102,9 +102,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         r->header_only = 1;
     }
 
-    /* 9 is for "HTTP/1.x ", 2 is for trailing "\r\n"
-       and 2 is for end of header */
-    len = 9 + 2 + 2;
+    /* 2 is for trailing "\r\n" and 2 is for "\r\n" in the end of header */
+    len = sizeof("HTTP/1.x ") - 1 + 2 + 2;
 
     /* status line */
     if (r->headers_out.status_line.len) {
@@ -150,29 +149,29 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         len += r->headers_out.date->key.len
                + r->headers_out.date->value.len + 2;
     } else {
-        /* "Date: ... \r\n" */
-        len += 37;
+        len += sizeof("Date: Mon, 28 Sep 1970 00:00:00 GMT" CRLF) - 1;
     }
 
     if (r->headers_out.content_range && r->headers_out.content_range->value.len)
     {
-        len += 15 + r->headers_out.content_range->value.len + 2;
+        len += sizeof("Content-Range: ") - 1
+               + r->headers_out.content_range->value.len + 2;
     }
 
     if (r->headers_out.content_length == NULL) {
         if (r->headers_out.content_length_n >= 0) {
-            /* "Content-Length: ... \r\n", 2^64 is 20 characters */
-            len += 48;
+                                            /* 2^64 */
+            len += sizeof("Content-Length: 18446744073709551616" CRLF) - 1;
         }
     }
 
     if (r->headers_out.content_type && r->headers_out.content_type->value.len) {
         r->headers_out.content_type->key.len = 0;
-        len += 14 + r->headers_out.content_type->value.len + 2;
+        len += sizeof("Content-Type: ") - 1
+               + r->headers_out.content_type->value.len + 2;
 
         if (r->headers_out.charset.len) {
-            /* "; charset= ... " */
-            len += 10 + r->headers_out.charset.len;
+            len += sizeof("; charset=") - 1 + r->headers_out.charset.len;
         }
     }
 
@@ -187,9 +186,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         && r->headers_out.location->value.data[0] == '/')
     {
         r->headers_out.location->key.len = 0;
-        /* "Location: http:// ... \r\n" */
-        len += 17 + r->server_name->len
-               + r->headers_out.location->value.len + 2;
+        len += sizeof("Location: http://") - 1,
+               + r->server_name->len + r->headers_out.location->value.len + 2;
 
         if (r->port != 80) {
             len += r->port_name->len;
@@ -201,24 +199,20 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
                + r->headers_out.last_modified->value.len + 2;
 
     } else if (r->headers_out.last_modified_time != -1) {
-        /* "Last-Modified: ... \r\n" */
-        len += 46;
+        len += sizeof("Last-Modified: Mon, 28 Sep 1970 00:00:00 GMT" CRLF) - 1;
     }
 
     if (r->chunked) {
-        /* "Transfer-Encoding: chunked\r\n" */
-        len += 28;
+        len += sizeof("Transfer-Encoding: chunked" CRLF) - 1;
     }
 
     if (r->keepalive) {
-        /* "Connection: keep-alive\r\n" */
-        len += 24;
+        len += sizeof("Connection: keep-alive" CRLF) - 1;
     } else {
-        /* "Connection: close\r\n" */
-        len += 19;
+        len += sizeof("Connection: closed" CRLF) - 1;
     }
 
-    header = (ngx_table_elt_t *) r->headers_out.headers->elts;
+    header = r->headers_out.headers->elts;
     for (i = 0; i < r->headers_out.headers->nelts; i++) {
         if (header[i].key.len == 0) {
             continue;
@@ -230,7 +224,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     ngx_test_null(h, ngx_create_temp_hunk(r->pool, len, 0, 64), NGX_ERROR);
 
     /* "HTTP/1.x " */
-    h->last = ngx_cpymem(h->last, "HTTP/1.1 ", 9);
+    h->last = ngx_cpymem(h->last, "HTTP/1.1 ", sizeof("HTTP/1.x ") - 1);
 
     /* status line */
     if (r->headers_out.status_line.len) {
@@ -248,7 +242,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     }
 
     if (!(r->headers_out.date && r->headers_out.date->key.len)) {
-        h->last = ngx_cpymem(h->last, "Date: ", 6);
+        h->last = ngx_cpymem(h->last, "Date: ", sizeof("Date: ") - 1);
         h->last += ngx_http_get_time(h->last, time(NULL));
         *(h->last++) = CR; *(h->last++) = LF;
     }
@@ -256,7 +250,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.content_range && r->headers_out.content_range->value.len)
     {
-        h->last = ngx_cpymem(h->last, "Content-Range: ", 15);
+        h->last = ngx_cpymem(h->last, "Content-Range: ",
+                             sizeof("Content-Range: ") - 1);
         h->last = ngx_cpymem(h->last, r->headers_out.content_range->value.data,
                              r->headers_out.content_range->value.len);
         *(h->last++) = CR; *(h->last++) = LF;
@@ -265,19 +260,22 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     if (r->headers_out.content_length == NULL) {
         /* 2^64 is 20 characters  */
         if (r->headers_out.content_length_n >= 0) {
-            h->last += ngx_snprintf(h->last, 49,
-                                    "Content-Length: " OFF_FMT CRLF,
-                                    r->headers_out.content_length_n);
+            h->last += ngx_snprintf(h->last,
+                            sizeof("Content-Length: 18446744073709551616" CRLF),
+                            "Content-Length: " OFF_FMT CRLF,
+                            r->headers_out.content_length_n);
         }
     }
 
     if (r->headers_out.content_type && r->headers_out.content_type->value.len) {
-        h->last = ngx_cpymem(h->last, "Content-Type: ", 14);
+        h->last = ngx_cpymem(h->last, "Content-Type: ",
+                             sizeof("Content-Type: ") - 1);
         h->last = ngx_cpymem(h->last, r->headers_out.content_type->value.data,
                              r->headers_out.content_type->value.len);
 
         if (r->headers_out.charset.len) {
-            h->last = ngx_cpymem(h->last, "; charset=", 10);
+            h->last = ngx_cpymem(h->last, "; charset=",
+                                 sizeof("; charset=") - 1);
             h->last = ngx_cpymem(h->last, r->headers_out.charset.data,
                                  r->headers_out.charset.len);
         }
@@ -288,7 +286,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     if (r->headers_out.content_encoding
         && r->headers_out.content_encoding->value.len)
     {
-        h->last = ngx_cpymem(h->last, "Content-Encoding: ", 18);
+        h->last = ngx_cpymem(h->last, "Content-Encoding: ",
+                             sizeof("Content-Encoding: ") - 1);
         h->last = ngx_cpymem(h->last,
                              r->headers_out.content_encoding->value.data,
                              r->headers_out.content_encoding->value.len);
@@ -300,7 +299,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         && r->headers_out.location->value.len
         && r->headers_out.location->value.data[0] == '/')
     {
-        h->last = ngx_cpymem(h->last, "Location: http://", 17);
+        h->last = ngx_cpymem(h->last, "Location: http://",
+                             sizeof("Location: http://") - 1);
         h->last = ngx_cpymem(h->last, r->server_name->data,
                              r->server_name->len);
         if (r->port != 80) {
@@ -317,21 +317,25 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     if (!(r->headers_out.last_modified && r->headers_out.last_modified->key.len)
         && r->headers_out.last_modified_time != -1)
     {
-        h->last = ngx_cpymem(h->last, "Last-Modified: ", 15);
+        h->last = ngx_cpymem(h->last, "Last-Modified: ",
+                             sizeof("Last-Modified: ") - 1);
         h->last += ngx_http_get_time(h->last,
-                                         r->headers_out.last_modified_time);
+                                            r->headers_out.last_modified_time);
         *(h->last++) = CR; *(h->last++) = LF;
     }
 
     if (r->chunked) {
-        h->last = ngx_cpymem(h->last, "Transfer-Encoding: chunked" CRLF, 28);
+        h->last = ngx_cpymem(h->last, "Transfer-Encoding: chunked" CRLF,
+                             sizeof("Transfer-Encoding: chunked" CRLF) - 1);
     }
 
     if (r->keepalive) {
-        h->last = ngx_cpymem(h->last, "Connection: keep-alive" CRLF, 24);
+        h->last = ngx_cpymem(h->last, "Connection: keep-alive" CRLF,
+                             sizeof("Connection: keep-alive" CRLF) - 1);
 
     } else {
-        h->last = ngx_cpymem(h->last, "Connection: close" CRLF, 19);
+        h->last = ngx_cpymem(h->last, "Connection: close" CRLF,
+                             sizeof("Connection: close" CRLF) - 1);
     }
 
     for (i = 0; i < r->headers_out.headers->nelts; i++) {

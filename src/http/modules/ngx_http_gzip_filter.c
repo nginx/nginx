@@ -190,18 +190,23 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
                         sizeof(ngx_http_gzip_ctx_t), NGX_ERROR);
     ctx->request = r;
 
-    ngx_test_null(r->headers_out.content_encoding,
-                  ngx_push_table(r->headers_out.headers),
-                  NGX_ERROR);
+    if (!(r->headers_out.content_encoding =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+    {
+        return NGX_ERROR;
+    }
 
     r->headers_out.content_encoding->key.len = 0;
     r->headers_out.content_encoding->key.data = NULL;
-    r->headers_out.content_encoding->value.len = 4;
+    r->headers_out.content_encoding->value.len = sizeof("gzip") - 1;
     r->headers_out.content_encoding->value.data = "gzip";
 
     ctx->length = r->headers_out.content_length_n;
     r->headers_out.content_length_n = -1;
-    r->headers_out.content_length = NULL;
+    if (r->headers_out.content_length) {
+        r->headers_out.content_length->key.len = 0;
+        r->headers_out.content_length = NULL;
+    }
     r->filter |= NGX_HTTP_FILTER_NEED_IN_MEMORY;
 
     return ngx_http_next_header_filter(r);

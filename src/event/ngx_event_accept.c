@@ -172,9 +172,11 @@ ngx_log_debug(ev->log, "ADDR %s" _ ls->listening->addr_text.data);
         c->fd = s;
         c->unexpected_eof = 1;
         wev->write = 1;
+        wev->ready = 1;
 
-        if ((ngx_event_flags & NGX_USE_AIO_EVENT) == 0) {
-            wev->ready = 1;
+        if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT)) {
+            /* aio, iocp, epoll */
+            rev->ready = 1;
         }
 
         c->ctx = ls->ctx;

@@ -19,6 +19,8 @@ static int ngx_event_pipe_drain_chains(ngx_event_pipe_t *p);
 
 int ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
 {
+    ngx_event_t  *rev, *wev;
+
     for ( ;; ) {
         if (do_write) {
             if (ngx_event_pipe_write_to_downstream(p) == NGX_ABORT) {
@@ -40,13 +42,24 @@ int ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
         do_write = 1;
     }
 
-    if (ngx_handle_read_event(p->upstream->read) == NGX_ERROR) {
+    rev = p->upstream->read;
+
+    if (ngx_handle_read_event(rev, (rev->eof || rev->error)) == NGX_ERROR) {
         return NGX_ABORT;
     }
 
-    if (ngx_handle_write_event(p->downstream->write,
-                                           /* TODO: lowat */ 0) == NGX_ERROR) {
+    if (rev->active) {
+        ngx_add_timer(rev, p->read_timeout);
+    }
+
+    wev = p->downstream->write;
+
+    if (ngx_handle_write_event(wev, p->send_lowat) == NGX_ERROR) {
         return NGX_ABORT;
+    }
+
+    if (wev->active) {
+        ngx_add_timer(wev, p->send_timeout);
     }
 
     return NGX_OK;
@@ -112,7 +125,6 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                             ngx_log_error(NGX_LOG_ERR, p->log,
                                           p->upstream->read->kq_errno,
-                                          /* TODO: ngx_readv_chain_n */
                                           "readv() failed");
                         }
 
@@ -212,8 +224,6 @@ int ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
     
                 break;
             }
-
-            ngx_log_debug(p->log, "HUNK_FREE: %d" _ chain->hunk->num);
 
             n = ngx_recv_chain(p->upstream, chain);
 
@@ -343,8 +353,6 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                 ngx_event_pipe_free_shadow_raw_hunk(&p->free_raw_hunks,
                                                     cl->hunk);
 
-ngx_log_debug(p->log, "HUNK OUT: %d %x" _ cl->hunk->num _ cl->hunk->type);
-
             } else if (!p->cachable && p->in) {
                 cl = p->in;
 
@@ -355,8 +363,6 @@ ngx_log_debug(p->log, "HUNK OUT: %d %x" _ cl->hunk->num _ cl->hunk->type);
                 }
 
                 p->in = p->in->next;
-
-ngx_log_debug(p->log, "HUNK IN: %d" _ cl->hunk->num);
 
             } else {
                 break;

@@ -475,6 +475,11 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
 
                     /* rc == NGX_OK */
 
+                    if (c->read->ready) {
+                        /* post aio operation */
+                        ngx_http_proxy_process_upstream_status_line(c->read);
+                    }
+
                     if (ngx_handle_level_write_event(c->write) == NGX_ERROR) {
                         ngx_http_proxy_finalize_request(p,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -742,8 +747,8 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
                 }
             }
 
-            ngx_log_debug(c->log, "HTTP proxy header: '%s: %s'" _
-                          h->key.data _ h->value.data);
+            ngx_log_debug(c->log, "HTTP proxy header: %08X '%s: %s'" _
+                          h _ h->key.data _ h->value.data);
 
             continue;
 
@@ -791,10 +796,6 @@ static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
     n = p->header_in->last - p->header_in->pos;
 
     if (n > 0) {
-#if 0
-        /* TODO THINK */
-        rev->ready = 0;
-#endif
         return n;
     }
 
@@ -804,7 +805,7 @@ static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
     if (n == NGX_AGAIN) {
         ngx_add_timer(rev, p->lcf->read_timeout);
 
-        if (ngx_handle_read_event(rev) == NGX_ERROR) {
+        if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return NGX_ERROR;
         }
@@ -829,10 +830,11 @@ static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
 
 static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 {
-    int                  rc, i;
-    ngx_table_elt_t     *ch, *ph;
-    ngx_event_pipe_t    *ep;
-    ngx_http_request_t  *r;
+    int                        rc, i;
+    ngx_table_elt_t           *ch, *h;
+    ngx_event_pipe_t          *ep;
+    ngx_http_request_t        *r;
+    ngx_http_core_loc_conf_t  *clcf;
 
     r = p->request;
 
@@ -843,26 +845,26 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
     /* copy an upstream header to r->headers_out */
 
-    ph = (ngx_table_elt_t *) p->headers_in.headers->elts;
+    h = p->headers_in.headers->elts;
     for (i = 0; i < p->headers_in.headers->nelts; i++) {
 
-        if (&ph[i] == p->headers_in.connection) {
+        if (&h[i] == p->headers_in.connection) {
             continue;
         }
 
         if (p->accel) {
-            if (&ph[i] == p->headers_in.date
-                || &ph[i] == p->headers_in.accept_ranges) {
+            if (&h[i] == p->headers_in.date
+                || &h[i] == p->headers_in.accept_ranges) {
                 continue;
             }
 
-            if (&ph[i] == p->headers_in.server && !p->lcf->pass_server) {
+            if (&h[i] == p->headers_in.server && !p->lcf->pass_server) {
                 continue;
             }
         }
 
-        if (&ph[i] == p->headers_in.content_type) {
-            r->headers_out.content_type = &ph[i];
+        if (&h[i] == p->headers_in.content_type) {
+            r->headers_out.content_type = &h[i];
             r->headers_out.content_type->key.len = 0;
             continue;
         }
@@ -873,7 +875,7 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
             return;
         }
 
-        *ch = ph[i];
+        *ch = h[i];
 
         /*
          * ngx_http_header_filter() output the following headers
@@ -883,17 +885,17 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
          *     r->headers_out.content_length
          */
 
-        if (&ph[i] == p->headers_in.server) {
+        if (&h[i] == p->headers_in.server) {
             r->headers_out.server = ch;
             continue;
         }
 
-        if (&ph[i] == p->headers_in.date) {
+        if (&h[i] == p->headers_in.date) {
             r->headers_out.date = ch;
             continue;
         }
 
-        if (&ph[i] == p->headers_in.content_length) {
+        if (&h[i] == p->headers_in.content_length) {
 
             r->headers_out.content_length_n =
                              ngx_atoi(p->headers_in.content_length->value.data,
@@ -976,6 +978,12 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
         ep->cyclic_temp_file = 0;
         r->sendfile = 1;
     }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    ep->read_timeout = p->lcf->read_timeout;
+    ep->send_timeout = clcf->send_timeout;
+    ep->send_lowat = clcf->send_lowat;
 
     p->event_pipe = ep;
 

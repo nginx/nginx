@@ -47,6 +47,7 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
     }
 
     last = NGX_NONE;
+    out = NULL;
     last_out = &out;
 
     for ( ;; ) {
@@ -167,7 +168,7 @@ ngx_inline static int ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx,
         return 0;
     }
 
-    if (!ctx->sendfile) {
+    if (!ctx->sendfile && (!(hunk->type & NGX_HUNK_IN_MEMORY))) {
         return 1;
     }
 

@@ -7,68 +7,74 @@
 
 ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
-    int              rc;
-    char            *buf, *prev;
-    off_t            sent;
-    size_t           size;
-    ngx_err_t        err;
-    ngx_chain_t     *ce;
+    int           n;
+    char         *buf, *prev;
+    off_t         sent;
+    size_t        size;
+    ngx_err_t     err;
+    ngx_chain_t  *cl;
 
     sent = 0;
-    ce = in;
+    cl = in;
 
-    while (ce) {
+    while (cl) {
+
+        if (cl->hunk->last - cl->hunk->pos == 0) {
+            cl = cl->next;
+            continue;
+        }
 
         /* we can post the single aio operation only */
 
         if (c->write->active) {
-            return ce;
+            return cl;
         }
 
-        buf = prev = ce->hunk->pos;
+        buf = cl->hunk->pos;
+        prev = buf;
         size = 0;
 
-        /* coalesce the neighbouring chain entries */
+        /* coalesce the neighbouring hunks */
 
-        while (ce && prev == ce->hunk->pos) {
-            size += ce->hunk->last - ce->hunk->pos;
-            prev = ce->hunk->last;
-            ce = ce->next;
+        while (cl && prev == cl->hunk->pos) {
+            size += cl->hunk->last - cl->hunk->pos;
+            prev = cl->hunk->last;
+            cl = cl->next;
         }
 
-        rc = ngx_aio_write(c, buf, size);
+        n = ngx_aio_write(c, buf, size);
 
 #if (NGX_DEBUG_WRITE_CHAIN)
-        ngx_log_debug(c->log, "aio_write rc: %d" _ rc);
+        ngx_log_debug(c->log, "aio_write: %d" _ n);
 #endif
 
-        if (rc == NGX_ERROR) {
+        if (n == NGX_ERROR) {
             return NGX_CHAIN_ERROR;
         }
 
-        if (rc > 0) {
-            sent += rc;
-            c->sent += rc;
+        if (n > 0) {
+            sent += n;
+            c->sent += n;
         }
 
 #if (NGX_DEBUG_WRITE_CHAIN)
         ngx_log_debug(c->log, "aio_write sent: " OFF_FMT _ c->sent);
 #endif
 
-        for (ce = in; ce; ce = ce->next) {
+        for (cl = in; cl; cl = cl->next) {
 
-            if (sent >= ce->hunk->last - ce->hunk->pos) {
-                sent -= ce->hunk->last - ce->hunk->pos;
-                ce->hunk->pos = ce->hunk->last;
+            if (sent >= cl->hunk->last - cl->hunk->pos) {
+                sent -= cl->hunk->last - cl->hunk->pos;
+                cl->hunk->pos = cl->hunk->last;
 
                 continue;
             }
 
-            ce->hunk->pos += sent;
+            cl->hunk->pos += sent;
 
             break;
         }
     }
 
-    return ce;
+    return cl;
 }

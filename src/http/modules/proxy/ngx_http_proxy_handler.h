@@ -44,6 +44,8 @@ typedef struct {
 
 
 typedef struct {
+    ngx_table_t      *headers;   /* it must be first field */
+
     ngx_table_elt_t  *date;
     ngx_table_elt_t  *server;
     ngx_table_elt_t  *connection;
@@ -53,8 +55,6 @@ typedef struct {
     ngx_table_elt_t  *accept_ranges;
 
     off_t             content_length_n;
-
-    ngx_table_t      *headers;
 } ngx_http_proxy_headers_in_t;
 
 

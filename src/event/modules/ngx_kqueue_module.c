@@ -437,7 +437,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
             break;
 
         case EVFILT_AIO:
-            ev->ready = 1;
+            ev->aio_complete = 1;
             ev->active = 0;
 
             ev->event_handler(ev);

@@ -60,13 +60,19 @@ struct ngx_event_s {
     unsigned         instance:1;
 
     /*
-     * event was passed or would be passed to a kernel;
-     * the posted aio operation.
+     * the event was passed or would be passed to a kernel;
+     * aio mode: 1 - the posted aio operation,
+     *           0 - the complete aio operation or no aio operation.
      */
     unsigned         active:1;
 
-    /* ready event; the complete aio operation */
+    /*
+     * the ready event;
+     * in aio mode "ready" is always set - it makes things simple
+     * to learn whether the aio operation complete use aio_complete flag
+     */
     unsigned         ready:1;
+    unsigned         aio_complete:1;
 
     unsigned         eof:1;
     unsigned         error:1;
@@ -338,15 +344,8 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
 
 
 
-ngx_inline static int ngx_handle_read_event(ngx_event_t *rev)
+ngx_inline static int ngx_handle_read_event(ngx_event_t *rev, int close)
 {
-    if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT)) {
-
-        /* aio, iocp, epoll */
-
-        return NGX_OK;
-    }
-
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
         /* kqueue */
@@ -359,26 +358,31 @@ ngx_inline static int ngx_handle_read_event(ngx_event_t *rev)
         }
 
         return NGX_OK;
-    }
 
-    /* select, poll, /dev/poll */
+    } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
 
-    if (!rev->active && !rev->ready) {
-        if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
+        /* select, poll, /dev/poll */
 
-        return NGX_OK;
-    }
-
-    if (rev->active && (rev->ready || rev->eof)) {
-        if (ngx_del_event(rev, NGX_READ_EVENT, rev->eof ? NGX_CLOSE_EVENT : 0)
+        if (!rev->active && !rev->ready) {
+            if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT)
                                                                 == NGX_ERROR) {
-            return NGX_ERROR;
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
         }
 
-        return NGX_OK;
+        if (rev->active && (rev->ready || close)) {
+            if (ngx_del_event(rev, NGX_READ_EVENT, close ? NGX_CLOSE_EVENT : 0)
+                                                                == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
     }
+
+    /* aio, iocp, epoll, rt signals */
 
     return NGX_OK;
 }
@@ -411,13 +415,6 @@ ngx_inline static int ngx_handle_level_read_event(ngx_event_t *rev)
 
 ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, int lowat)
 {
-    if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_EDGE_EVENT)) {
-
-        /* aio, iocp, epoll */
-
-        return NGX_OK;
-    }
-
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
         /* kqueue */
@@ -437,25 +434,30 @@ ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, int lowat)
         }
 
         return NGX_OK;
-    }
 
-    /* select, poll, /dev/poll */
+    } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
 
-    if (!wev->active && !wev->ready) {
-        if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) == NGX_ERROR) {
-            return NGX_ERROR;
+        /* select, poll, /dev/poll */
+
+        if (!wev->active && !wev->ready) {
+            if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT)
+                                                                == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
         }
 
-        return NGX_OK;
-    }
+        if (wev->active && wev->ready) {
+            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
 
-    if (wev->active && wev->ready) {
-        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
-            return NGX_ERROR;
+            return NGX_OK;
         }
-
-        return NGX_OK;
     }
+
+    /* aio, iocp, epoll, rt signals */
 
     return NGX_OK;
 }

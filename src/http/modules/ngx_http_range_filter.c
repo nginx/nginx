@@ -96,9 +96,12 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
         || r->headers_in.range->value.len < 7
         || ngx_strncasecmp(r->headers_in.range->value.data, "bytes=", 6) != 0)
     {
-        ngx_test_null(r->headers_out.accept_ranges,
-                      ngx_push_table(r->headers_out.headers),
-                      NGX_ERROR);
+
+        if (!(r->headers_out.accept_ranges =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+        {
+            return NGX_ERROR;
+        }
 
         r->headers_out.accept_ranges->key.len = sizeof("Accept-Ranges") - 1;
         r->headers_out.accept_ranges->key.data = "Accept-Ranges";

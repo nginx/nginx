@@ -60,6 +60,9 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error);
 
 time_t ngx_http_parse_time(char *value, size_t len);
 size_t ngx_http_get_time(char *buf, time_t t);
+ngx_table_elt_t *ngx_http_add_header(void *header,
+                                     ngx_http_header_t *http_headers);
+
 
 
 int ngx_http_discard_body(ngx_http_request_t *r);

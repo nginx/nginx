@@ -68,6 +68,8 @@ typedef struct {
 
 
 typedef struct {
+    ngx_table_t      *headers;   /* it must be first field */
+
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
     ngx_table_elt_t  *if_modified_since;
@@ -83,8 +85,6 @@ typedef struct {
     ssize_t           content_length_n;
     size_t            connection_type;
     ssize_t           keep_alive_n;
-
-    ngx_table_t      *headers;
 } ngx_http_headers_in_t;
 
 
@@ -108,6 +108,8 @@ typedef struct {
 
 
 typedef struct {
+    ngx_table_t      *headers;   /* it must be first field */
+
     int               status;
     ngx_str_t         status_line;
 
@@ -123,8 +125,6 @@ typedef struct {
 
     ngx_str_t         charset;
     ngx_array_t       ranges;
-
-    ngx_table_t      *headers;
 
     off_t             content_length_n;
     char             *etag;
@@ -229,6 +229,11 @@ struct ngx_http_request_s {
     char                *header_start;
     char                *header_end;
 };
+
+
+extern ngx_http_header_t ngx_http_headers_in[];
+extern ngx_http_header_t ngx_http_headers_out[];
+
 
 
 #endif /* _NGX_HTTP_REQUEST_H_INCLUDED_ */

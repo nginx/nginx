@@ -59,6 +59,10 @@ struct ngx_event_pipe_s {
     ngx_connection_t  *upstream;
     ngx_connection_t  *downstream;
 
+    ngx_msec_t         read_timeout;
+    ngx_msec_t         send_timeout;
+    ssize_t            send_lowat;
+
     ngx_pool_t        *pool;
     ngx_log_t         *log;
 

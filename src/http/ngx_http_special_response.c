@@ -218,9 +218,11 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
                                           + sizeof(error_tail) - 1
                                           + sizeof(msie_stub) - 1;
 
-        ngx_test_null(r->headers_out.content_type,
-                      ngx_push_table(r->headers_out.headers),
-                      NGX_HTTP_INTERNAL_SERVER_ERROR);
+        if (!(r->headers_out.content_type =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+        {
+            return NGX_ERROR;
+        }
 
         r->headers_out.content_type->key.len = 12;
         r->headers_out.content_type->key.data = "Content-Type";
@@ -245,7 +247,9 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     out = NULL;
     ll = NULL;
 
-    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
+    if (!(h = ngx_calloc_hunk(r->pool))) {
+        return NGX_ERROR;
+    }
     h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
     h->pos = error_pages[err].data;
     h->last = error_pages[err].data + error_pages[err].len;
@@ -254,7 +258,9 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     ngx_chain_add_link(out, ll, cl);
 
 
-    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
+    if (!(h = ngx_calloc_hunk(r->pool))) {
+        return NGX_ERROR;
+    }
     h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
     h->pos = error_tail;
     h->last = error_tail + sizeof(error_tail) - 1;
@@ -270,7 +276,9 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         && error != NGX_HTTP_REQUEST_URI_TOO_LARGE
        )
     {
-        ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
+        if (!(h = ngx_calloc_hunk(r->pool))) {
+            return NGX_ERROR;
+        }
         h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
         h->pos = msie_stub;
         h->last = msie_stub + sizeof(msie_stub) - 1;

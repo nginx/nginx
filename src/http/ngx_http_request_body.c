@@ -112,7 +112,7 @@ static void ngx_http_read_client_request_body_handler(ngx_event_t *rev)
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         ngx_add_timer(rev, clcf->client_body_timeout);
 
-        if (ngx_handle_read_event(rev) == NGX_ERROR) {
+        if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
             ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
 

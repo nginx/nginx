@@ -19,7 +19,7 @@ static int ngx_aio_process_events(ngx_log_t *log);
 
 ngx_os_io_t ngx_os_aio = {
     ngx_aio_read,
-    NULL,
+    ngx_aio_read_chain,
     ngx_aio_write,
     ngx_aio_write_chain,
     NGX_HAVE_ZEROCOPY

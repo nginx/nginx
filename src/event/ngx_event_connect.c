@@ -202,7 +202,19 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
         }
     }
 
-    /* TODO: epoll, aio, iocp */
+    if (ngx_event_flags & NGX_USE_AIO_EVENT) {
+        /* aio, iocp */
+        rev->ready = 1;
+ 
+#if 1
+        /* TODO: NGX_EINPROGRESS */
+
+        wev->ready = 1;
+        return NGX_OK;
+#endif
+    }
+
+    /* TODO: epoll */
 
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {     /* kqueue */
         event = NGX_CLEAR_EVENT;

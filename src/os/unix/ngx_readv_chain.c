@@ -7,13 +7,14 @@
 ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
     char          *prev;
-    ssize_t        n;
+    ssize_t        n, size;
     struct iovec  *iov;
     ngx_err_t      err;
     ngx_array_t    io;
 
     prev = NULL;
     iov = NULL;
+    size = 0;
 
     ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_ERROR);
 
@@ -29,6 +30,7 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
             iov->iov_len = chain->hunk->end - chain->hunk->last;
         }
 
+        size += chain->hunk->end - chain->hunk->last;
         prev = chain->hunk->end;
         chain = chain->next;
     }
@@ -42,7 +44,6 @@ ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
 
     } else if (n == -1) {
         c->read->ready = 0;
-        c->read->error = 1;
 
         err = ngx_errno;
         if (err == NGX_EAGAIN) {
@@ -50,8 +51,12 @@ ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
             return NGX_AGAIN;
         }
 
+        c->read->error = 1;
         ngx_log_error(NGX_LOG_ERR, c->log, err, "readv() failed");
         return NGX_ERROR;
+
+    } else if (n < size) {
+        c->read->ready = 0;
     }
 
     return n;

@@ -4,7 +4,9 @@
 #include <ngx_event.h>
 #include <ngx_http.h>
 #include <nginx.h>
-
+#if __FreeBSD__
+#include <ngx_freebsd_init.h>
+#endif
 
 
 static void ngx_http_phase_event_handler(ngx_event_t *rev);
@@ -30,6 +32,10 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
                                  void *conf);
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data);
+
+static ngx_conf_post_t  ngx_http_lowat_post = { ngx_http_lowat_check } ;
 
 
 static ngx_command_t  ngx_http_core_commands[] = {
@@ -150,6 +156,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_core_loc_conf_t, send_timeout),
      NULL},
+
+    {ngx_string("send_lowat"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_size_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_core_loc_conf_t, send_lowat),
+     &ngx_http_lowat_post},
 
     {ngx_string("keepalive_timeout"),
      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -506,6 +519,49 @@ int ngx_http_delay_handler(ngx_http_request_t *r)
 #endif
 
 
+ngx_table_elt_t *ngx_http_add_header(void *header,
+                                     ngx_http_header_t *http_headers)
+{
+    int               i, j;
+    char             *prev;
+    ngx_table_t      *headers;
+    ngx_table_elt_t  *h, *new;
+
+    headers = *(ngx_table_t **) header;
+
+    prev = headers->elts;
+
+    if (!(new = ngx_push_table(headers))) {
+        return NULL;
+    }
+
+    if (prev == headers->elts) {
+        return new;
+    }
+
+    h = headers->elts;
+    for (i = 0; i < headers->nelts; i++) {
+        if (h[i].key.len == 0) {
+            continue;
+        }
+
+        for (j = 0; http_headers[j].name.len != 0; j++) {
+            if (http_headers[j].name.len != h[i].key.len) {
+                continue;
+            }
+
+            if (ngx_strcasecmp(http_headers[j].name.data, h[i].key.data) == 0) {
+                *((ngx_table_elt_t **)
+                      ((char *) &header + http_headers[j].offset)) = &h[i];
+                break;
+            }
+        }
+    }
+
+    return new;
+}
+
+
 static int ngx_http_core_init(ngx_cycle_t *cycle)
 {
 #if 0
@@ -852,6 +908,7 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->client_body_timeout = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->send_timeout = NGX_CONF_UNSET;
+    lcf->send_lowat = NGX_CONF_UNSET;
     lcf->discarded_buffer_size = NGX_CONF_UNSET;
     lcf->keepalive_timeout = NGX_CONF_UNSET;
     lcf->lingering_time = NGX_CONF_UNSET;
@@ -925,6 +982,7 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                               prev->client_body_timeout, 10000);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 10000);
+    ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
     ngx_conf_merge_size_value(conf->discarded_buffer_size,
                               prev->discarded_buffer_size, 1500);
     ngx_conf_merge_msec_value(conf->keepalive_timeout,
@@ -1060,6 +1118,32 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_test_null(lcf->err_log,
                   ngx_log_create_errlog(cf->cycle, &value[1]),
                   NGX_CONF_ERROR);
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data)
+{
+    int *np = data;
+
+#if (HAVE_LOWAT_EVENT)
+
+    if (*np >= ngx_freebsd_net_inet_tcp_sendspace) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"send_lowat\" must be less than %d "
+                           "(sysctl net.inet.tcp.sendspace)",
+                           ngx_freebsd_net_inet_tcp_sendspace);
+
+        return NGX_CONF_ERROR;
+    }
+
+#else
+
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "\"send_lowat\" is not supported, ignored");
+
+#endif
 
     return NGX_CONF_OK;
 }
