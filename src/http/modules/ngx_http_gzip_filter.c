@@ -561,7 +561,7 @@ static void ngx_http_gzip_filter_free(void *opaque, void *address)
 static char *ngx_http_gzip_log_ratio(ngx_http_request_t *r, char *buf,
                                      uintptr_t data)
 {
-    int                   zint, zfrac;
+    u_int                 zint, zfrac;
     ngx_http_gzip_ctx_t  *ctx;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module);

@@ -100,16 +100,7 @@ ngx_atomic_t  ngx_connection_counter;
 ngx_int_t     ngx_process;
 ngx_pid_t     ngx_pid;
 ngx_pid_t     ngx_new_binary;
-
 ngx_int_t     ngx_inherited;
-ngx_int_t     ngx_reap;
-ngx_int_t     ngx_timer;
-ngx_int_t     ngx_terminate;
-ngx_int_t     ngx_quit;
-ngx_int_t     ngx_noaccept;
-ngx_int_t     ngx_reconfigure;
-ngx_int_t     ngx_reopen;
-ngx_int_t     ngx_change_binary;
 
 
 int main(int argc, char *const *argv)
