@@ -9,7 +9,7 @@
 
 int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
-    int                  rc, instance;
+    int                  rc, instance, event;
     time_t               now;
     ngx_err_t            err;
     ngx_peer_t          *peer;
@@ -175,9 +175,11 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     } 
 
+    ngx_memzero(&addr, sizeof(struct sockaddr_in));
+
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = peer->addr;
-    addr.sin_port = htons(peer->port);
+    addr.sin_port = peer->port;
 
     rc = connect(s, (struct sockaddr *) &addr, sizeof(struct sockaddr_in));
 
@@ -195,11 +197,37 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     }
 
+    /* TODO: epoll, aio, iocp */
+
+    if (ngx_event_flags & NGX_HAVE_CLEAR_EVENT) {     /* kqueue */
+        event = NGX_CLEAR_EVENT;
+
+    } else {                                  /* select, poll, /dev/poll */
+        event = NGX_LEVEL_EVENT;
+    }
+
+    if (rc == -1) {
+
+        /* NGX_EINPROGRESS */
+
+        if (ngx_add_event(wev, NGX_WRITE_EVENT, event) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        return NGX_AGAIN;
+    }
+
+    if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     return NGX_OK;
 }
 
 
 void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc)
 {
+    pc->tries--;
+
     return;
 }

@@ -292,7 +292,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         return;
     }
 
-    rc = ngx_parse_http_request_line(r);
+    rc = ngx_http_parse_request_line(r);
 
     if (rc == NGX_OK) {
 
@@ -538,7 +538,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             }
         }
 
-        rc = ngx_parse_http_header_line(r, r->header_in);
+        rc = ngx_http_parse_header_line(r, r->header_in);
 
         if (rc == NGX_OK) {
 

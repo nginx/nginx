@@ -9,28 +9,59 @@
 
 
 typedef struct {
+    ngx_msec_t    connect_timeout;
     ngx_msec_t    send_timeout;
+    ssize_t       header_size;
+    ngx_msec_t    read_timeout;
+
     ngx_peers_t  *peers;
 } ngx_http_proxy_loc_conf_t;
+
+
+typedef struct {
+    ngx_table_elt_t  *date;
+    ngx_table_elt_t  *server;
+    ngx_table_elt_t  *connection;
+    ngx_table_elt_t  *content_type;
+    ngx_table_elt_t  *content_length;
+    ngx_table_elt_t  *last_modified;
+
+    ngx_table_t      *headers;
+} ngx_http_proxy_headers_in_t;
 
 
 typedef struct ngx_http_proxy_ctx_s  ngx_http_proxy_ctx_t;
 
 struct ngx_http_proxy_ctx_s {
-    ngx_peer_connection_t       upstream;
-    ngx_peer_t                 *peer;
+    ngx_peer_connection_t         upstream;
+    ngx_peer_t                   *peer;
 
-    ngx_connection_t           *connection;
+    ngx_http_request_t           *request;
+    ngx_http_proxy_loc_conf_t    *lcf;
+    ngx_http_proxy_headers_in_t   headers_in;
 
-    ngx_http_request_t         *request;
-
-    ngx_http_proxy_loc_conf_t  *lcf;
+    ngx_hunk_t                 *header_in;
+    int                         status;
+    ngx_str_t                   status_line;
 
     ngx_chain_t                *work_request_hunks;
     ngx_chain_t                *request_hunks;
 
+    int                         method;
+    ngx_str_t                   uri;
+    int                         location_len;
+    ngx_str_t                   host_header;
+
+    char                       *status_start;
+    char                       *status_end;
+    int                         status_count;
+    int                         state;
+
     char                       *action;
 };
+
+
+#define NGX_HTTP_PROXY_PARSE_NO_HEADER  10
 
 
 #endif /* _NGX_HTTP_PROXY_HANDLER_H_INCLUDED_ */
