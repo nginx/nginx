@@ -254,7 +254,7 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     /*
-     * when the file descriptor is closed the kqueue automatically deletes
+     * when the file descriptor is closed a kqueue automatically deletes
      * its filters so we do not need to delete explicity the event
      * before the closing the file descriptor.
      */

@@ -111,8 +111,8 @@ ngx_event_module_t  ngx_epoll_module_ctx = {
         ngx_epoll_del_event,             /* delete an event */
         ngx_epoll_add_event,             /* enable an event */
         ngx_epoll_del_event,             /* disable an event */
-        NULL,                            /* add an connection */
-        NULL,                            /* delete an connection */
+        ngx_epoll_add_connection,        /* add an connection */
+        ngx_epoll_del_connection,        /* delete an connection */
         ngx_epoll_process_events,        /* process the events */
         ngx_epoll_init,                  /* init the events */
         ngx_epoll_done,                  /* done the events */
@@ -167,11 +167,7 @@ static int ngx_epoll_init(ngx_cycle_t *cycle)
 
     ngx_event_actions = ngx_epoll_module_ctx.actions;
 
-#if (HAVE_CLEAR_EVENT)
-    ngx_event_flags = NGX_USE_CLEAR_EVENT;
-#else
-    ngx_event_flags = NGX_USE_LEVEL_EVENT;
-#endif
+    ngx_event_flags = NGX_USE_EDGE_EVENT;
 
     return NGX_OK;
 }
@@ -195,53 +191,33 @@ static void ngx_epoll_done(ngx_cycle_t *cycle)
 
 static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
-    int                  op, prev;
-    ngx_event_t         *e;
-    ngx_connection_t    *c;
     struct epoll_event   ee;
+    ngx_connection_t    *c;
 
     c = ev->data;
 
+#if (NGX_READ_EVENT != EPOLLIN) || (NGX_WRITE_EVENT != EPOLLOUT)
     if (event == NGX_READ_EVENT) {
-        e = c->write;
-        prev = EPOLLOUT;
-#if (NGX_READ_EVENT != EPOLLIN)
         event = EPOLLIN;
-#endif
 
     } else {
-        e = c->read;
-        prev = EPOLLIN;
-#if (NGX_WRITE_EVENT != EPOLLOUT)
         event = EPOLLOUT;
+    }
 #endif
-    }
 
-    if (e->active) {
-        op = EPOLL_CTL_MOD;
-        event |= prev;
+    ee.events = event|EPOLLET;
+    ee.data.ptr = (void *) ((uintptr_t) c | c->read->instance);
 
-    } else {
-        op = EPOLL_CTL_ADD;
-    }
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "epoll add event: fd:%d ev:%08X", c->fd, ee.events);
 
-    ee.events = event | flags;
-    ee.data.ptr = (void *) ((uintptr_t) c | ev->instance);
-
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "epoll add event: fd:%d op:%d ev:%08X",
-                   c->fd, op, ee.events);
-
-    if (epoll_ctl(ep, op, c->fd, &ee) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
-                      "epoll_ctl(%d, %d) failed", op, c->fd);
+    if (epoll_ctl(ep, EPOLL_CTL_ADD, c->fd, &ee) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
+                      "epoll_ctl(EPOLL_CTL_MOD, %d) failed", c->fd);
         return NGX_ERROR;
     }
 
     ev->active = 1;
-#if 0
-    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
-#endif
 
     return NGX_OK;
 }
@@ -249,51 +225,20 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
-    int                  op, prev;
-    ngx_event_t         *e;
-    ngx_connection_t    *c;
     struct epoll_event   ee;
-
-    /*
-     * when the file descriptor is closed the epoll automatically deletes
-     * it from its queue so we do not need to delete explicity the event
-     * before the closing the file descriptor.
-     */
-
-    if (flags & NGX_CLOSE_EVENT) {
-        ev->active = 0;
-        return NGX_OK;
-    }
+    ngx_connection_t    *c;
 
     c = ev->data;
 
-    if (event == NGX_READ_EVENT) {
-        e = c->write;
-        prev = EPOLLOUT;
+    ee.events = 0;
+    ee.data.ptr = NULL;
 
-    } else {
-        e = c->read;
-        prev = EPOLLIN;
-    }
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "epoll del event: fd:%d", c->fd);
 
-    if (e->active) {
-        op = EPOLL_CTL_MOD;
-        ee.events = prev | flags;
-        ee.data.ptr = (void *) ((uintptr_t) c | ev->instance);
-
-    } else {
-        op = EPOLL_CTL_DEL;
-        ee.events = 0;
-        ee.data.ptr = NULL;
-    }
-
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "epoll del event: fd:%d op:%d ev:%08X",
-                   c->fd, op, ee.events);
-
-    if (epoll_ctl(ep, op, c->fd, &ee) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
-                      "epoll_ctl(%d, %d) failed", op, c->fd);
+    if (epoll_ctl(ep, EPOLL_CTL_DEL, c->fd, &ee) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
+                      "epoll_ctl(EPOLL_CTL_MOD, %d) failed", c->fd);
         return NGX_ERROR;
     }
 
@@ -303,7 +248,6 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-#if 0
 static int ngx_epoll_add_connection(ngx_connection_t *c)
 {
     struct epoll_event  ee;
@@ -334,7 +278,6 @@ static int ngx_epoll_del_connection(ngx_connection_t *c)
 
     return NGX_OK;
 }
-#endif
 
 
 int ngx_epoll_process_events(ngx_log_t *log)
