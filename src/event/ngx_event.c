@@ -34,27 +34,29 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf);
 static char *ngx_accept_mutex_check(ngx_conf_t *cf, void *post, void *data);
 
 
-static ngx_uint_t    ngx_event_max_module;
+static ngx_uint_t     ngx_event_max_module;
 
-ngx_uint_t           ngx_event_flags;
-ngx_event_actions_t  ngx_event_actions;
+ngx_uint_t            ngx_event_flags;
+ngx_event_actions_t   ngx_event_actions;
 
 
-ngx_atomic_t         connection_counter;
+ngx_atomic_t          connection_counter;
 ngx_atomic_t         *ngx_connection_counter = &connection_counter;
 
 
 ngx_atomic_t         *ngx_accept_mutex_ptr;
 ngx_atomic_t         *ngx_accept_mutex;
-ngx_uint_t           ngx_accept_mutex_held;
-ngx_msec_t           ngx_accept_mutex_delay;
-ngx_int_t            ngx_accept_disabled;
+ngx_uint_t            ngx_accept_mutex_held;
+ngx_msec_t            ngx_accept_mutex_delay;
+ngx_int_t             ngx_accept_disabled;
 
 
 #if (NGX_STAT_STUB)
 
 ngx_atomic_t   ngx_stat_accepted0;
 ngx_atomic_t  *ngx_stat_accepted = &ngx_stat_accepted0;
+ngx_atomic_t   ngx_stat_handled0;
+ngx_atomic_t  *ngx_stat_handled = &ngx_stat_handled0;
 ngx_atomic_t   ngx_stat_requests0;
 ngx_atomic_t  *ngx_stat_requests = &ngx_stat_requests0;
 ngx_atomic_t   ngx_stat_active0;
@@ -62,7 +64,7 @@ ngx_atomic_t  *ngx_stat_active = &ngx_stat_active0;
 ngx_atomic_t   ngx_stat_reading0;
 ngx_atomic_t  *ngx_stat_reading = &ngx_stat_reading0;
 ngx_atomic_t   ngx_stat_writing0;
-ngx_atomic_t  *ngx_stat_writing = &ngx_stat_reading0;
+ngx_atomic_t  *ngx_stat_writing = &ngx_stat_writing0;
 
 #endif
 
@@ -209,6 +211,7 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 #if (NGX_STAT_STUB)
 
     size += 128           /* ngx_stat_accepted */
+           + 128          /* ngx_stat_handled */
            + 128          /* ngx_stat_requests */
            + 128          /* ngx_stat_active */
            + 128          /* ngx_stat_reading */
@@ -226,10 +229,11 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 #if (NGX_STAT_STUB)
 
     ngx_stat_accepted = (ngx_atomic_t *) (shared + 2 * 128);
-    ngx_stat_requests = (ngx_atomic_t *) (shared + 3 * 128);
-    ngx_stat_active = (ngx_atomic_t *) (shared + 4 * 128);
-    ngx_stat_reading = (ngx_atomic_t *) (shared + 5 * 128);
-    ngx_stat_writing = (ngx_atomic_t *) (shared + 6 * 128);
+    ngx_stat_handled = (ngx_atomic_t *) (shared + 3 * 128);
+    ngx_stat_requests = (ngx_atomic_t *) (shared + 4 * 128);
+    ngx_stat_active = (ngx_atomic_t *) (shared + 5 * 128);
+    ngx_stat_reading = (ngx_atomic_t *) (shared + 6 * 128);
+    ngx_stat_writing = (ngx_atomic_t *) (shared + 7 * 128);
 
 #endif
 

@@ -148,7 +148,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
             ngx_mutex_unlock(ngx_posted_events_mutex);
 
 #if (NGX_STAT_STUB)
-        ngx_atomic_inc(ngx_stat_reading);
+            ngx_atomic_inc(ngx_stat_reading);
 #endif
             return;
         }

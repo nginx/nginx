@@ -62,7 +62,7 @@ ngx_int_t ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot);
 ngx_int_t ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user);
 
 void ngx_init_temp_number();
-ngx_atomic_int_t ngx_next_temp_number(ngx_uint_t collision);
+ngx_atomic_uint_t ngx_next_temp_number(ngx_uint_t collision);
 
 char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 

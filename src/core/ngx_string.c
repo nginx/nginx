@@ -54,7 +54,7 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *    %[0][width|m][u][x|X]i    ngx_int_t/ngx_uint_t
  *    %[0][width][u][x|X]D      int32_t/uint32_t
  *    %[0][width][u][x|X]L      int64_t/uint64_t
- *    %[0][width|m][u][x|X]A    ngx_atomic_int_t
+ *    %[0][width|m][u][x|X]A    ngx_atomic_int_t/ngx_atomic_uint_t
  *    %P                        ngx_pid_t
  *    %r                        rlim_t
  *    %p                        pointer
@@ -277,7 +277,7 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                 if (sign) {
                     i64 = (int64_t) va_arg(args, ngx_atomic_int_t);
                 } else {
-                    ui64 = (uint64_t) va_arg(args, ngx_atomic_int_t);
+                    ui64 = (uint64_t) va_arg(args, ngx_atomic_uint_t);
                 }
 
                 if (max_width) {

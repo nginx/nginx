@@ -5,40 +5,40 @@
 cat << END                                                    >> $NGX_MAKEFILE
 
 install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}
-	test -d "$NGX_PREFIX" || mkdir -p "$NGX_PREFIX"
+	test -d '$NGX_PREFIX' || mkdir -p '$NGX_PREFIX'
 
-	test -d "`dirname \"$NGX_SBIN_PATH\"`" \
-		|| mkdir -p "`dirname \"$NGX_SBIN_PATH\"`"
-	test ! -f "$NGX_SBIN_PATH" || mv "$NGX_SBIN_PATH" "$NGX_SBIN_PATH.old"
-	cp $NGX_OBJS/nginx "$NGX_SBIN_PATH"
+	test -d '`dirname "$NGX_SBIN_PATH"`' \
+		|| mkdir -p '`dirname "$NGX_SBIN_PATH"`'
+	test ! -f '$NGX_SBIN_PATH' || mv '$NGX_SBIN_PATH' '$NGX_SBIN_PATH.old'
+	cp $NGX_OBJS/nginx '$NGX_SBIN_PATH'
 
-	test -d "`dirname \"$NGX_CONF_PATH\"`" \
-		|| mkdir -p "`dirname \"$NGX_CONF_PATH\"`"
+	test -d '`dirname "$NGX_CONF_PATH"`' \
+		|| mkdir -p '`dirname "$NGX_CONF_PATH"`'
 
-	cp conf/koi-win "`dirname \"$NGX_CONF_PATH\"`"
+	cp conf/koi-win '`dirname "$NGX_CONF_PATH"`'
 
-	test -f "`dirname \"$NGX_CONF_PATH\"`/mime.types" || \
-		cp conf/mime.types "`dirname \"$NGX_CONF_PATH\"`/mime.types"
-	cp conf/mime.types "`dirname \"$NGX_CONF_PATH\"`/mime.types.default"
+	test -f '`dirname "$NGX_CONF_PATH"`/mime.types' || \
+		cp conf/mime.types '`dirname "$NGX_CONF_PATH"`/mime.types'
+	cp conf/mime.types '`dirname "$NGX_CONF_PATH"`/mime.types.default'
 
-	test -f "$NGX_CONF_PATH" || cp conf/nginx.conf "$NGX_CONF_PATH"
-	cp conf/nginx.conf "`dirname \"$NGX_CONF_PATH\"`/nginx.conf.default"
+	test -f '$NGX_CONF_PATH' || cp conf/nginx.conf '$NGX_CONF_PATH'
+	cp conf/nginx.conf '`dirname "$NGX_CONF_PATH"`/nginx.conf.default'
 
-	test -d "`dirname \"$NGX_PID_PATH\"`" \
-		|| mkdir -p "`dirname \"$NGX_PID_PATH\"`"
+	test -d '`dirname "$NGX_PID_PATH"`' \
+		|| mkdir -p '`dirname "$NGX_PID_PATH"`'
 
-	test -d "`dirname \"$NGX_HTTP_LOG_PATH\"`" || \
-		mkdir -p "`dirname \"$NGX_HTTP_LOG_PATH\"`"
+	test -d '`dirname "$NGX_HTTP_LOG_PATH"`' || \
+		mkdir -p '`dirname "$NGX_HTTP_LOG_PATH"`'
 
-	test -d "$NGX_PREFIX/html" || cp -r html "$NGX_PREFIX"
+	test -d '$NGX_PREFIX/html' || cp -r html '$NGX_PREFIX'
 END
 
 
 if test -n "$NGX_ERROR_LOG_PATH"; then
     cat << END                                                >> $NGX_MAKEFILE
 
-	test -d "`dirname \"$NGX_ERROR_LOG_PATH\"`" || \
-		mkdir -p "`dirname \"$NGX_ERROR_LOG_PATH\"`"
+	test -d '`dirname "$NGX_ERROR_LOG_PATH"`' || \
+		mkdir -p '`dirname "$NGX_ERROR_LOG_PATH"`'
 END
 
 fi

@@ -8,8 +8,8 @@
 #include <ngx_core.h>
 
 
-static ngx_atomic_int_t  ngx_temp_number;
-static ngx_atomic_int_t  ngx_random;
+static ngx_atomic_uint_t  ngx_temp_number;
+static ngx_atomic_uint_t  ngx_random;
 
 
 ssize_t
@@ -38,8 +38,8 @@ ngx_int_t
 ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
     int persistent)
 {
-    ngx_err_t          err;
-    ngx_atomic_int_t   n;
+    ngx_err_t           err;
+    ngx_atomic_uint_t   n;
 
     file->name.len = path->name.len + 1 + path->len + NGX_ATOMIC_T_LEN;
 
@@ -176,7 +176,7 @@ ngx_init_temp_number()
 }
 
 
-ngx_atomic_int_t
+ngx_atomic_uint_t
 ngx_next_temp_number(ngx_uint_t collision)
 {
     if (collision) {

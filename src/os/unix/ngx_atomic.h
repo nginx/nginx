@@ -16,8 +16,9 @@
 
 #define NGX_HAVE_ATOMIC_OPS  1
 
-typedef uint32_t  ngx_atomic_int_t;
-typedef volatile ngx_atomic_int_t  ngx_atomic_t;
+typedef int32_t  ngx_atomic_int_t;
+typedef uint32_t  ngx_atomic_uint_t;
+typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 #define NGX_ATOMIC_T_LEN  sizeof("-2147483648") - 1
 
 
@@ -31,12 +32,18 @@ typedef volatile ngx_atomic_int_t  ngx_atomic_t;
  * the "=q" is any of the %eax, %ebx, %ecx, or %edx registers.
  * the '"0" (1)' parameter preloads 1 into %0.
  * the "cc" means that flags were changed.
+ *
+ * "xadd  r, [m]":
+ *
+ *     temp = [m];
+ *     [m] += r;
+ *     r = temp;
  */
 
-static ngx_inline ngx_atomic_int_t
+static ngx_inline ngx_atomic_uint_t
 ngx_atomic_inc(ngx_atomic_t *value)
 {
-    ngx_atomic_int_t  old;
+    ngx_atomic_uint_t  old;
 
     __asm__ volatile (
 
@@ -50,10 +57,10 @@ ngx_atomic_inc(ngx_atomic_t *value)
 }
 
 
-static ngx_inline ngx_atomic_int_t
+static ngx_inline ngx_atomic_uint_t
 ngx_atomic_dec(ngx_atomic_t *value)
 {
-    ngx_atomic_int_t  old;
+    ngx_atomic_uint_t  old;
 
     __asm__ volatile (
 
@@ -74,20 +81,20 @@ ngx_atomic_dec(ngx_atomic_t *value)
  *
  * "cmpxchg  r, [m]":
  *
- *   if (eax == [m]) {
- *       zf = 1;
- *       [m] = r;
- *   } else {
- *       zf = 0;
- *       eax = [m];
- *   }
+ *     if (eax == [m]) {
+ *         zf = 1;
+ *         [m] = r;
+ *     } else {
+ *         zf = 0;
+ *         eax = [m];
+ *     }
  */
 
-static ngx_inline ngx_atomic_int_t
-ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_int_t old,
-    ngx_atomic_int_t set)
+static ngx_inline ngx_atomic_uint_t
+ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
+    ngx_atomic_uint_t set)
 {
-    ngx_atomic_int_t  res;
+    ngx_atomic_uint_t  res;
 
     __asm__ volatile (
 
@@ -107,7 +114,8 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_int_t old,
 #define NGX_HAVE_ATOMIC_OPS  1
 
 typedef int64_t  ngx_atomic_int_t;
-typedef volatile ngx_atomic_int_t  ngx_atomic_t;
+typedef uint64_t  ngx_atomic_uint_t;
+typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 #define NGX_ATOMIC_T_LEN  sizeof("-9223372036854775808") - 1
 
 
@@ -118,10 +126,10 @@ typedef volatile ngx_atomic_int_t  ngx_atomic_t;
 #endif
 
 
-static ngx_inline ngx_atomic_int_t
+static ngx_inline ngx_atomic_uint_t
 ngx_atomic_inc(ngx_atomic_t *value)
 {
-    ngx_atomic_int_t  old;
+    ngx_atomic_uint_t  old;
 
     __asm__ volatile (
 
@@ -137,10 +145,10 @@ ngx_atomic_inc(ngx_atomic_t *value)
 
 /* the '"0" (-1LL)' parameter preloads -1 into the 64-bit %0 register */
 
-static ngx_inline ngx_atomic_int_t
+static ngx_inline ngx_atomic_uint_t
 ngx_atomic_dec(ngx_atomic_t *value)
 {
-    ngx_atomic_int_t  old;
+    ngx_atomic_uint_t  old;
 
     __asm__ volatile (
 
@@ -156,11 +164,11 @@ ngx_atomic_dec(ngx_atomic_t *value)
 
 /* the "=a" and "a" are the %rax register. */
 
-static ngx_inline ngx_atomic_int_t
-ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_int_t old,
-    ngx_atomic_int_t set)
+static ngx_inline ngx_atomic_uint_t
+ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
+    ngx_atomic_uint_t set)
 {
-    ngx_atomic_int_t  res;
+    ngx_atomic_uint_t  res;
 
     __asm__ volatile (
 
@@ -180,16 +188,18 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_int_t old,
 #define NGX_HAVE_ATOMIC_OPS  1
 
 #if (NGX_PTR_SIZE == 8)
-typedef uint64_t  ngx_atomic_int_t;
+typedef int64_t  ngx_atomic_int_t;
+typedef uint64_t  ngx_atomic_uint_t;
 #define NGX_ATOMIC_T_LEN  sizeof("-9223372036854775808") - 1
 #define NGX_CASXA         "casxa"
 #else
-typedef uint32_t  ngx_atomic_int_t;
+typedef int32_t  ngx_atomic_int_t;
+typedef uint32_t  ngx_atomic_uint_t;
 #define NGX_ATOMIC_T_LEN  sizeof("-2147483648") - 1
 #define NGX_CASXA         "casa"
 #endif
 
-typedef volatile ngx_atomic_int_t  ngx_atomic_t;
+typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 
 
 /*
@@ -207,10 +217,10 @@ typedef volatile ngx_atomic_int_t  ngx_atomic_t;
  * so "r0 == r2" means that the operation was successfull.
  */
 
-static ngx_inline ngx_atomic_int_t
+static ngx_inline ngx_atomic_uint_t
 ngx_atomic_inc(ngx_atomic_t *value)
 {
-    ngx_atomic_int_t  old, new, res;
+    ngx_atomic_uint_t  old, new, res;
 
     old = *value;
 
@@ -234,10 +244,10 @@ ngx_atomic_inc(ngx_atomic_t *value)
 }
 
 
-static ngx_inline ngx_atomic_int_t
+static ngx_inline ngx_atomic_uint_t
 ngx_atomic_dec(ngx_atomic_t *value)
 {
-    ngx_atomic_int_t  old, new, res;
+    ngx_atomic_uint_t  old, new, res;
 
     old = *value;
 
@@ -261,8 +271,9 @@ ngx_atomic_dec(ngx_atomic_t *value)
 }
 
 
-static ngx_inline ngx_atomic_int_t
-ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_int_t old, ngx_atomic_int_t set)
+static ngx_inline ngx_atomic_uint_t
+ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
+    ngx_atomic_uint_t set)
 {
     __asm__ volatile (
 
@@ -279,14 +290,16 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_int_t old, ngx_atomic_int_t se
 #define NGX_HAVE_ATOMIC_OPS  1
 
 #if (NGX_PTR_SIZE == 8)
-typedef uint64_t  ngx_atomic_int_t;
+typedef int64_t  ngx_atomic_int_t;
+typedef uint64_t  ngx_atomic_uint_t;
 #define NGX_ATOMIC_T_LEN  sizeof("-9223372036854775808") - 1
 #else
+typedef int32_t  ngx_atomic_int_t;
+typedef uint32_t  ngx_atomic_uint_t;
 #define NGX_ATOMIC_T_LEN  sizeof("-2147483648") - 1
-typedef uint32_t  ngx_atomic_int_t;
 #endif
 
-typedef volatile ngx_atomic_int_t  ngx_atomic_t;
+typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 
 
 /*
@@ -301,10 +314,10 @@ typedef volatile ngx_atomic_int_t  ngx_atomic_t;
  * the nearest forward label "1".
  */
 
-static ngx_inline ngx_atomic_int_t
+static ngx_inline ngx_atomic_uint_t
 ngx_atomic_inc(ngx_atomic_t *value)
 {
-    ngx_atomic_int_t  res;
+    ngx_atomic_uint_t  res;
 
     __asm__ volatile (
 
@@ -321,10 +334,10 @@ ngx_atomic_inc(ngx_atomic_t *value)
 }
 
 
-static ngx_inline ngx_atomic_int_t
+static ngx_inline ngx_atomic_uint_t
 ngx_atomic_dec(ngx_atomic_t *value)
 {
-    ngx_atomic_int_t  res;
+    ngx_atomic_uint_t  res;
 
     __asm__ volatile (
 
@@ -341,11 +354,11 @@ ngx_atomic_dec(ngx_atomic_t *value)
 }
 
 
-static ngx_inline ngx_atomic_int_t
-ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_int_t old,
-    ngx_atomic_int_t set)
+static ngx_inline ngx_atomic_uint_t
+ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
+    ngx_atomic_uint_t set)
 {
-    ngx_atomic_int_t  res, temp;
+    ngx_atomic_uint_t  res, temp;
 
     __asm__ volatile (
 
@@ -372,15 +385,16 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_int_t old,
 
 #define NGX_HAVE_ATOMIC_OPS  0
 
-typedef uint32_t  ngx_atomic_int_t;
-typedef volatile ngx_atomic_int_t  ngx_atomic_t;
+typedef int32_t  ngx_atomic_int_t;
+typedef uint32_t  ngx_atomic_uint_t;
+typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 
 #define ngx_atomic_inc(x)  ++(*(x))
 #define ngx_atomic_dec(x)  --(*(x))
 
-static ngx_inline ngx_atomic_int_t
-ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_int_t old,
-     ngx_atomic_int_t set)
+static ngx_inline ngx_atomic_uint_t
+ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
+     ngx_atomic_uint_t set)
 {
      *lock = set;
      return 1;

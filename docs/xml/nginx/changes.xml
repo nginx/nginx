@@ -9,6 +9,34 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.22" date="22.02.2005">
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_stub_status_module показывал неверную статистику
+для обработанных соединений, если использовалось проксирование
+или FastCGI-сервер.
+</para>
+<para lang="en">
+the ngx_http_stub_status_module showed incorrect handled connections
+statictics if the proxing or FastCGI server were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на Linux и Solaris установочные пути были неверно заключены в кавычки;
+ошибка появилась в 0.1.21.
+</para>
+<para lang="en">
+the installation pathes were incorrectly quoted on Linux and Solaris;
+bug appeared in 0.1.21.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.21" date="22.02.2005">
 
 <change type="bugfix">

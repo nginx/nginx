@@ -47,11 +47,11 @@ ngx_module_t  ngx_http_stub_status_module = {
 
 static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
 {
-    size_t        size;
-    ngx_int_t     rc;
-    uint32_t      ap, hn, ac, rq, rd, wr;
-    ngx_buf_t    *b;
-    ngx_chain_t   out;
+    size_t             size;
+    ngx_int_t          rc;
+    ngx_buf_t         *b;
+    ngx_chain_t        out;
+    ngx_atomic_int_t   ap, hn, ac, rq, rd, wr;
     
     if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
         return NGX_HTTP_NOT_ALLOWED;
@@ -83,10 +83,10 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
         }
     }
 
-    size = sizeof("Active connections:  \n") + NGX_INT32_LEN
+    size = sizeof("Active connections:  \n") + NGX_ATOMIC_T_LEN
            + sizeof("server accepts handled requests\n") - 1
-           + 6 + 3 * NGX_INT32_LEN
-           + sizeof("Reading:  Writing:  Waiting:  \n") + 3 * NGX_INT32_LEN;
+           + 6 + 3 * NGX_ATOMIC_T_LEN
+           + sizeof("Reading:  Writing:  Waiting:  \n") + 3 * NGX_ATOMIC_T_LEN;
 
     if (!(b = ngx_create_temp_buf(r->pool, size))) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -96,20 +96,20 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     out.next = NULL;
 
     ap = *ngx_stat_accepted;
-    hn = *ngx_connection_counter;
+    hn = *ngx_stat_handled;
     ac = *ngx_stat_active;
     rq = *ngx_stat_requests;
     rd = *ngx_stat_reading;
     wr = *ngx_stat_writing;
 
-    b->last = ngx_sprintf(b->last, "Active connections: %D \n", ac);
+    b->last = ngx_sprintf(b->last, "Active connections: %A \n", ac);
 
     b->last = ngx_cpymem(b->last, "server accepts handled requests\n",
                          sizeof("server accepts handled requests\n") - 1);
 
-    b->last = ngx_sprintf(b->last, " %D %D %D \n", ap, hn, rq);
+    b->last = ngx_sprintf(b->last, " %A %A %A \n", ap, hn, rq);
 
-    b->last = ngx_sprintf(b->last, "Reading: %D Writing: %D Waiting: %d \n",
+    b->last = ngx_sprintf(b->last, "Reading: %A Writing: %A Waiting: %A \n",
                           rd, wr, ac - (rd + wr));
 
     r->headers_out.status = NGX_HTTP_OK;

@@ -118,6 +118,7 @@ ngx_event_accept(ngx_event_t *ev)
 
 #if (NGX_STAT_STUB)
         ngx_atomic_inc(ngx_stat_accepted);
+        ngx_atomic_inc(ngx_stat_active);
 #endif
 
         ngx_accept_disabled = (ngx_uint_t) s + NGX_ACCEPT_THRESHOLD
@@ -137,10 +138,6 @@ ngx_event_accept(ngx_event_t *ev)
             ngx_destroy_pool(pool);
             return;
         }
-
-#if (NGX_STAT_STUB)
-        ngx_atomic_inc(ngx_stat_active);
-#endif
 
         /* set a blocking mode for aio and non-blocking mode for others */
 
@@ -262,6 +259,10 @@ ngx_event_accept(ngx_event_t *ev)
          */
 
         c->number = ngx_atomic_inc(ngx_connection_counter);
+
+#if (NGX_STAT_STUB)
+        ngx_atomic_inc(ngx_stat_handled);
+#endif
 
 #if (NGX_THREADS)
         rev->lock = &c->lock;
@@ -452,6 +453,10 @@ ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log)
         ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
                       ngx_close_socket_n " failed");
     }
+
+#if (NGX_STAT_STUB)
+    ngx_atomic_dec(ngx_stat_active);
+#endif
 }
 
 

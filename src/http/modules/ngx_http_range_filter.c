@@ -113,7 +113,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
     off_t                         start, end;
     ngx_int_t                     rc;
     ngx_uint_t                    suffix, i;
-    ngx_atomic_int_t              boundary;
+    ngx_atomic_uint_t             boundary;
     ngx_table_elt_t              *content_range;
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *ctx;
