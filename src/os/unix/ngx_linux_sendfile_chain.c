@@ -20,7 +20,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     char            *prev;
     off_t            fprev;
     size_t           size, fsize, sent;
-    ngx_int_t        use_cork, eintr;
+    ngx_int_t        eintr;
     struct iovec    *iov;
     ngx_err_t        err;
     ngx_hunk_t      *file;

@@ -76,6 +76,14 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
+/* 
+ * SuSE 8.2 supports epoll's EPOLLET but misses it in <sys/epoll.h>
+ */
+#ifndef EPOLLET  
+#define EPOLLET  0x80000000
+#endif
+
+
 #define ngx_setproctitle(title)
 
 

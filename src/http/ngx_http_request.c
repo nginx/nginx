@@ -1037,8 +1037,6 @@ static void ngx_http_block_read(ngx_event_t *rev)
             ngx_http_close_connection(c);
         }
     }
-
-    return;
 }
 
 

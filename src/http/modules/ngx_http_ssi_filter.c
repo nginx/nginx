@@ -158,6 +158,15 @@ static int ngx_http_ssi_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
+    /* TODO: "text/html" -> custom types */
+
+    if (r->headers_out.content_type
+        && ngx_strncasecmp(r->headers_out.content_type->value.data,
+                                                          "text/html", 5) != 0)
+    {
+        return ngx_http_next_header_filter(r);
+    }
+
     ngx_http_create_ctx(r, ctx, ngx_http_ssi_filter_module,
                         sizeof(ngx_http_ssi_ctx_t), NGX_ERROR);
 

@@ -261,7 +261,7 @@ static int ngx_poll_process_events(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    if ((int) timer != INFTIM) {
+    if (timer != (ngx_msec_t) INFTIM) {
         delta = ngx_elapsed_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
@@ -277,6 +277,27 @@ static int ngx_poll_process_events(ngx_log_t *log)
     nready = 0;
 
     for (i = 0; i < nevents && ready; i++) {
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "poll: fd:%d ev:%04X rev:%04X",
+                       event_list[i].fd,
+                       event_list[i].events, event_list[i].revents);
+
+        if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "poll() error fd:%d ev:%04X rev:%04X",
+                          event_list[i].fd,
+                          event_list[i].events, event_list[i].revents);
+        }
+
+        if (event_list[i].revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL))
+        {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "strange poll() events fd:%d ev:%04X rev:%04X",
+                          event_list[i].fd,
+                          event_list[i].events, event_list[i].revents);
+        }
+
         c = &ngx_cycle->connections[event_list[i].fd];
 
         if (c->fd == -1) {
@@ -293,35 +314,18 @@ static int ngx_poll_process_events(ngx_log_t *log)
         }
 
         if (c->fd == -1) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0, "unkonwn cycle");
-            exit(1);
-        }
-
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
-                       "poll: fd:%d ev:%04X rev:%04X",
-                       event_list[i].fd,
-                       event_list[i].events, event_list[i].revents);
-
-        found = 0;
-
-        if (event_list[i].revents & POLLNVAL) {
-            ngx_log_error(NGX_LOG_ALERT, log, EBADF,
-                          "poll() error on %d", event_list[i].fd);
+            ngx_log_error(NGX_LOG_ALERT, log, 0, "unknown cycle");
             continue;
         }
 
-        if (event_list[i].revents & POLLIN
-            || (event_list[i].revents & (POLLERR|POLLHUP)
-                && c->read->active))
-        {
+        found = 0;
+
+        if (event_list[i].revents & (POLLIN|POLLERR|POLLHUP)) {
             found = 1;
             ready_index[nready++] = c->read;
         }
 
-        if (event_list[i].revents & POLLOUT
-            || (event_list[i].revents & (POLLERR|POLLHUP)
-                && c->write->active))
-        {
+        if (event_list[i].revents & (POLLOUT|POLLERR|POLLHUP)) {
             found = 1;
             ready_index[nready++] = c->write;
         }
@@ -329,13 +333,6 @@ static int ngx_poll_process_events(ngx_log_t *log)
         if (found) {
             ready--;
             continue;
-        }
-
-        if (event_list[i].revents & (POLLERR|POLLHUP)) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
-                          "strange poll() error on fd:%d ev:%04X rev:%04X",
-                          event_list[i].fd,
-                          event_list[i].events, event_list[i].revents);
         }
     }
 

@@ -363,7 +363,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    if ((int) timer != INFTIM) {
+    if (timer != (ngx_msec_t) INFTIM) {
         delta = ngx_elapsed_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
@@ -402,33 +402,34 @@ int ngx_devpoll_process_events(ngx_log_t *log)
                        event_list[i].fd,
                        event_list[i].events, event_list[i].revents);
 
-        if (event_list[i].revents & POLLIN) {
-            if (!c->read->active) {
-                continue;
-            }
+        if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "ioctl(DP_POLL) error fd:%d ev:%04X rev:%04X",
+                          event_list[i].fd,
+                          event_list[i].events, event_list[i].revents);
+        }
 
+        if (event_list[i].revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL))
+        {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "strange ioctl(DP_POLL) events "
+                          "fd:%d ev:%04X rev:%04X",
+                          event_list[i].fd,
+                          event_list[i].events, event_list[i].revents);
+        }
+
+        if ((event_list[i].events & (POLLIN|POLLERR|POLLHUP))
+            && c->read->active)
+        {
             c->read->ready = 1;
             c->read->event_handler(c->read);
         }
 
-        if (event_list[i].revents & POLLOUT) {
-            if (!c->write->active) {
-                continue;
-            }
-
+        if ((event_list[i].events & (POLLOUT|POLLERR|POLLHUP))
+            && c->write->active)
+        {
             c->write->ready = 1;
             c->write->event_handler(c->write);
-        }
-
-        if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
-            err = 0;
-            if (event_list[i].revents & POLLNVAL) {
-                err = EBADF;
-            }
-
-            ngx_log_error(NGX_LOG_ERR, log, err,
-                          "ioctl(DP_POLL) error on %d:%d",
-                          event_list[i].fd, event_list[i].revents);
         }
     }
 

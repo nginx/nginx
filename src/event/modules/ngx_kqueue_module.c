@@ -431,7 +431,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
             if (ev->active == 0 || ev->instance != instance) {
 
                 /*
-                 * it's a stale event from a file descriptor
+                 * the stale event from a file descriptor
                  * that was just closed in this iteration
                  */
 

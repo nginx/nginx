@@ -214,8 +214,6 @@ void ngx_event_accept(ngx_event_t *ev)
 
         c->number = ngx_connection_counter++;
 
-        ngx_log_debug(ev->log, "LOG: %x" _ ev->log->log_level);
-
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                        "accept: %d, %d", s, c->number);
 

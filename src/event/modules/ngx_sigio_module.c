@@ -13,11 +13,14 @@
 
 #define F_SETSIG  10
 
+#define POLL_IN   POLLIN
+#define POLL_OUT  POLLOUT
+
 #endif
 
 
 typedef struct {
-    int  signal;
+    int  signo;
 } ngx_sigio_conf_t;
 
 
@@ -44,7 +47,7 @@ static ngx_command_t  ngx_sigio_commands[] = {
      NGX_EVENT_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_num_slot,
      0,
-     offsetof(ngx_sigio_conf_t, signal),
+     offsetof(ngx_sigio_conf_t, signo),
      NULL},
 
     ngx_null_command
@@ -87,7 +90,7 @@ static int ngx_sigio_init(ngx_cycle_t *cycle)
     sgcf = ngx_event_get_conf(cycle->conf_ctx, ngx_sigio_module);
 
     sigemptyset(&set);
-    sigaddset(&set, sgcf->signal);
+    sigaddset(&set, sgcf->signo);
     sigaddset(&set, SIGIO);
 
     if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
@@ -144,7 +147,7 @@ static int ngx_sigio_add_connection(ngx_connection_t *c)
     sgcf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_sigio_module);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "sigio add connection: fd:%d signo:%d", c->fd, sgcf->signal);
+                   "sigio add connection: fd:%d signo:%d", c->fd, sgcf->signo);
 
     if (fcntl(c->fd, F_SETFL, O_RDWR|O_NONBLOCK|O_ASYNC) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -152,7 +155,7 @@ static int ngx_sigio_add_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    if (fcntl(c->fd, F_SETSIG, sgcf->signal) == -1) {
+    if (fcntl(c->fd, F_SETSIG, sgcf->signo) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
                       "fcntl(F_SETSIG) failed");
         return NGX_ERROR;
@@ -199,6 +202,7 @@ int ngx_sigio_process_events(ngx_log_t *log)
     siginfo_t           si;
     struct timeval      tv;
     struct timespec     ts;
+    struct sigaction    sa;
     ngx_connection_t   *c;
     ngx_epoch_msec_t    delta;
     ngx_sigio_conf_t   *sgcf;
@@ -246,12 +250,21 @@ int ngx_sigio_process_events(ngx_log_t *log)
 
     sgcf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_sigio_module);
 
-    if (signo == sgcf->signal) {
+    if (signo == sgcf->signo) {
 
         /* STUB: old_cycles */
-        c = &ngx_connections[si.si_fd];
+        c = &ngx_cycle->connections[si.si_fd];
 
-        if (si.si_band & EPOLLIN) {
+        if (si.si_band & POLL_IN) {
+            if (!c->read->active) {
+                continue;
+            }
+
+            c->read->ready = 1;
+            c->read->event_handler(c->read);
+        }
+
+        if (si.si_band & POLL_OUT) {
             if (!c->read->active) {
                 continue;
             }
@@ -264,6 +277,15 @@ int ngx_sigio_process_events(ngx_log_t *log)
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                       "signal queue overflowed: "
                       "SIGIO, fd:%d, band:%d", si.si_fd, si.si_band);
+
+        ngx_memzero(&sa, sizeof(struct sigaction));
+        sa.sa_sigaction = SIG_DFL;
+        sigemptyset(&sa.sa_mask);
+        if (sigaction(sgcf->signo, &sa, NULL) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                          "sigaction queue overflowed: "
+                          "SIGIO, fd:%d, band:%d", si.si_fd, si.si_band);
+        }
 
     } else {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
@@ -350,7 +372,8 @@ static char *ngx_sigio_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_sigio_conf_t  *sgcf = conf;
 
-    ngx_conf_init_unsigned_value(sgcf->signal, SIGRTMIN);
+    /* LinuxThreads uses the first 3 RT signals */
+    ngx_conf_init_unsigned_value(sgcf->signo, SIGRTMIN + 10);
 
     return NGX_CONF_OK;
 }
