@@ -209,9 +209,7 @@ if [ ".$NGX_PLATFORM" = ".win32" ]; then
 fi
 
 
-if test -z "$NGX_PREFIX"; then
-    NGX_PREFIX=/usr/local/nginx
-fi
+NGX_PREFIX=${NGX_PREFIX:-/usr/local/nginx}
 
 
 case ".$NGX_SBIN_PATH" in

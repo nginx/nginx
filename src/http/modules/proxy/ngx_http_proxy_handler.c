@@ -11,6 +11,7 @@
 
 
 static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_proxy_cache_get(ngx_http_proxy_ctx_t *p);
 
 static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
                                               u_char *buf, uintptr_t data);
@@ -147,14 +148,14 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, busy_buffers_size),
       NULL },
 
-#if (NGX_HTTP_FILE_CACHE)
+#if 0
 
     { ngx_string("proxy_cache_path"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1234,
       ngx_conf_set_path_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, cache_path),
-      ngx_garbage_collector_http_cache_handler },
+      (void *) ngx_http_cache_cleaner_handler },
 
 #endif
 
@@ -351,17 +352,19 @@ static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r)
     /* TODO: we currently support reverse proxy only */
     p->accel = 1;
 
-    ngx_init_array(p->states, r->pool, p->lcf->peers->number,
-                   sizeof(ngx_http_proxy_state_t),
-                   NGX_HTTP_INTERNAL_SERVER_ERROR);
+    if (ngx_array_init(&p->states, r->pool, p->lcf->peers->number,
+                                  sizeof(ngx_http_proxy_state_t)) == NGX_ERROR)
+    {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
-    if (!(p->state = ngx_push_array(&p->states))) {
+    if (!(p->state = ngx_array_push(&p->states))) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     ngx_memzero(p->state, sizeof(ngx_http_proxy_state_t));
 
-#if (NGX_HTTP_FILE_CACHE)
+#if 0
 
     if (!p->lcf->cache
         || (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD))
@@ -387,7 +390,7 @@ static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r)
         return ngx_http_proxy_request_upstream(p);
     }
 
-    return ngx_http_proxy_get_cached_response(p);
+    return ngx_http_proxy_cache_get(p);
 
 #else
 
@@ -397,6 +400,52 @@ static ngx_int_t ngx_http_proxy_handler(ngx_http_request_t *r)
 
 #endif
 }
+
+
+#if 0
+
+static ngx_int_t ngx_http_proxy_cache_get(ngx_http_proxy_ctx_t *p)
+{
+    u_char                          *last;
+    ngx_http_request_t              *r;
+    ngx_http_cache_ctx_t             ctx;
+    ngx_http_proxy_upstream_conf_t  *u;
+
+    r = p->request;
+    u = p->lcf->upstream;
+
+    ctx.key.len = u->url.len + r->uri.len - u->location->len + r->args.len;
+    if (!(ctx.key.data = ngx_palloc(r->pool, ctx.key.len))) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    last = ngx_cpymem(ctx.key.data, u->url.data, u->url.len);
+
+    last = ngx_cpymem(last, r->uri.data + u->location->len,
+                      r->uri.len - u->location->len);
+
+    if (r->args.len > 0) {
+        *(last++) = '?';
+        last = ngx_cpymem(last, r->args.data, r->args.len);
+    }
+
+    p->header_in = ngx_create_temp_buf(r->pool, p->lcf->header_buffer_size);
+    if (p->header_in == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    p->header_in->tag = (ngx_buf_tag_t) &ngx_http_proxy_module;
+
+    ctx.buf = p->header_in;
+    ctx.path = p->lcf->cache_path;
+    ctx.file = 1;
+    ctx.primary = 1;
+
+    ngx_http_cache_get(r, &ctx);
+
+    return ngx_http_proxy_request_upstream(p);
+}
+
+#endif
 
 
 void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)

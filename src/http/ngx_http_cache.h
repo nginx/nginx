@@ -88,24 +88,42 @@ typedef struct {
     time_t                    last_modified;
     time_t                    date;
     off_t                     length;
-    ssize_t                   header_size;
+    size_t                    key_len;
     size_t                    file_start;
+    ngx_file_uniq_t           uniq;
     ngx_log_t                *log;
 
     /* STUB */
+    ssize_t                   header_size;
     ngx_str_t                 key0;
 } ngx_http_cache_t;
 
 
 typedef struct {
-    ngx_path_t                path;
+    ngx_path_t               *path;
     ngx_str_t                 key;
+    ngx_buf_t                *buf;
+
+    unsigned                  file:1;
+    unsigned                  memory:1;
+    unsigned                  primary:1;
 } ngx_http_cache_ctx_t;
 
 
 #define NGX_HTTP_CACHE_STALE     1
 #define NGX_HTTP_CACHE_AGED      2
 #define NGX_HTTP_CACHE_THE_SAME  3
+
+
+ngx_int_t ngx_http_cache_get(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx);
+
+ngx_int_t ngx_http_file_cache_get(ngx_http_request_t *r,
+                                  ngx_http_cache_ctx_t *ctx);
+
+ngx_int_t ngx_http_file_cache_open(ngx_http_cache_t *c);
+
+ngx_int_t ngx_http_cache_cleaner_handler(ngx_gc_t *gc, ngx_str_t *name,
+                                         ngx_dir_t *dir);
 
 
 #if 0
@@ -125,16 +143,11 @@ void ngx_http_cache_lock(ngx_http_cache_hash_t *hash, ngx_http_cache_t *cache);
 void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
                            ngx_http_cache_t *cache, ngx_log_t *log);
 
-int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx);
-int ngx_http_cache_open_file(ngx_http_cache_ctx_t *ctx, ngx_file_uniq_t uniq);
 int ngx_http_cache_update_file(ngx_http_request_t *r,ngx_http_cache_ctx_t *ctx,
                                ngx_str_t *temp_file);
 
 int ngx_http_send_cached(ngx_http_request_t *r);
 
-
-int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
-                                             ngx_dir_t *dir);
 
 char *ngx_http_set_cache_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 

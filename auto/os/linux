@@ -26,6 +26,8 @@ CC_AUX_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 version=`grep "#define LINUX_VERSION_CODE" /usr/include/linux/version.h \
          | sed -e 's/^.* \(.*\)$/\1/'`
 
+version=${version:-0}
+
 
 # enable the rt signals on Linux 2.2.19 and onward
 

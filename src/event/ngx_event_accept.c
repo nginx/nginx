@@ -96,6 +96,7 @@ void ngx_event_accept(ngx_event_t *ev)
         len = ls->listening->socklen;
 
         s = accept(ls->fd, sa, &len);
+
         if (s == -1) {
             err = ngx_socket_errno;
 

@@ -9,6 +9,7 @@
 #include <ngx_http.h>
 
 
+#if 0
 
 static ngx_http_module_t  ngx_http_cache_module_ctx = {
     NULL,                                  /* pre conf */
@@ -30,8 +31,100 @@ ngx_module_t  ngx_http_cache_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
+
+#endif
+
+
+static ngx_int_t ngx_http_cache_create(ngx_http_request_t *r)
+{
+    ngx_str_t  *key;
+
+    if (!(r->cache = ngx_pcalloc(r->pool, sizeof(ngx_http_cache_t)))) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&r->cache->key, r->pool, 5, sizeof(ngx_str_t))
+                                                                  == NGX_ERROR)
+    {
+        return NGX_ERROR;
+    }
+
+    /* preallocate the primary key */
+
+    if (!(key = ngx_array_push(&r->cache->key))) {
+        return NGX_ERROR;
+    }
+
+    key->len = 0;
+    key->data = NULL;
+
+    /*
+     * we use offsetof() because sizeof() pads the struct size to the int size
+     */
+
+    r->cache->header_size = offsetof(ngx_http_cache_header_t, key);
+
+    r->cache->log = r->connection->log;
+    r->cache->file.log = r->connection->log;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t ngx_http_cache_get(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
+{
+    ngx_str_t         *key;
+    ngx_http_cache_t  *c;
+
+    if (r->cache == NULL) {
+        if (ngx_http_cache_create(r) == NGX_ERROR) {
+            return NGX_ABORT;
+        }
+    }
+
+    c = r->cache;
+    key = c->key.elts;
+
+    if (ctx->primary) {
+        key[0] = ctx->key;
+        c->header_size += ctx->key.len;
+        c->key_len += ctx->key.len;
+        c->buf = ctx->buf;
+
+    } else {
+        if (key[0].len == 0) {
+            key[0] = r->uri;
+            c->header_size += r->uri.len;
+            c->key_len += ctx->key.len;
+        }
+
+        if (!(key = ngx_array_push(&r->cache->key))) {
+            return NGX_ABORT;
+        }
+
+        c->header_size += ctx->key.len;
+        c->key_len += ctx->key.len;
+    }
+
+#if 0
+
+    if (ctx->memory) {
+        ngx_http_memory_cache_get(r, ctx);
+    }
+
+#endif
+
+    if (ctx->file) {
+        return ngx_http_file_cache_get(r, ctx);
+    }
+
+    return NGX_DECLINED;
+}
+
+
+#if 0
 
 
 ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *hash,
@@ -478,3 +571,6 @@ char *ngx_http_set_cache_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+
+
+#endif

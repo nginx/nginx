@@ -8,6 +8,7 @@ if [ $MD5 != NONE ]; then
         # OpenSSL md5
         OPENSSL_MD5=YES
         have=NGX_HAVE_OPENSSL_MD5 . auto/have
+        have=NGX_OPENSSL_MD5 . auto/have
     else
         # rsaref md5
         OPENSSL_MD5=NO

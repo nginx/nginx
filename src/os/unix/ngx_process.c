@@ -142,8 +142,7 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
         break;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                   "spawn %s: %P", name, pid);
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start %s %P", name, pid);
 
     ngx_processes[s].pid = pid;
     ngx_processes[s].exited = 0;
@@ -216,6 +215,7 @@ void ngx_process_get_status()
     ngx_int_t        i;
     ngx_uint_t       one;
     struct timeval   tv;
+
     one = 0;
 
     for ( ;; ) {
@@ -287,7 +287,7 @@ void ngx_process_get_status()
                           WCOREDUMP(status) ? " (core dumped)" : "");
 
         } else {
-            ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
+            ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
                           "%s %P exited with code %d",
                           process, pid, WEXITSTATUS(status));
         }

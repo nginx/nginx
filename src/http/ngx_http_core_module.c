@@ -60,6 +60,20 @@ static ngx_conf_enum_t  ngx_http_restrict_host_names[] = {
 
 static ngx_command_t  ngx_http_core_commands[] = {
 
+    { ngx_string("server_names_hash"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      offsetof(ngx_http_core_main_conf_t, server_names_hash),
+      NULL },
+
+    { ngx_string("server_names_hash_threshold"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      offsetof(ngx_http_core_main_conf_t, server_names_hash_threshold),
+      NULL },
+
     { ngx_string("server"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
       ngx_server_block,
@@ -1244,17 +1258,24 @@ static void *ngx_http_core_create_main_conf(ngx_conf_t *cf)
                    5, sizeof(ngx_http_core_srv_conf_t *),
                    NGX_CONF_ERROR);
 
+    cmcf->server_names_hash = NGX_CONF_UNSET_UINT;
+    cmcf->server_names_hash_threshold = NGX_CONF_UNSET_UINT;
+
     return cmcf;
 }
 
 
 static char *ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf)
 {
-#if 0
     ngx_http_core_main_conf_t *cmcf = conf;
 
-    /* TODO: remove it if no directives */
-#endif
+    if (cmcf->server_names_hash == NGX_CONF_UNSET_UINT) {
+        cmcf->server_names_hash = 1009;
+    }
+
+    if (cmcf->server_names_hash_threshold == NGX_CONF_UNSET_UINT) {
+        cmcf->server_names_hash_threshold = 50;
+    }
 
     return NGX_CONF_OK;
 }

@@ -253,7 +253,7 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
          */
 
         if (clcf->keepalive_header) {
-            len += sizeof("Keep-Alive: timeout=") - 1 + TIME_T_LEN + 2;
+            len += sizeof("Keep-Alive: timeout=") - 1 + NGX_TIME_T_LEN + 2;
         }
 
     } else {

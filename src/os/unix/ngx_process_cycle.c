@@ -35,6 +35,7 @@ sig_atomic_t  ngx_timer;
 sig_atomic_t  ngx_sigio;
 sig_atomic_t  ngx_terminate;
 sig_atomic_t  ngx_quit;
+sig_atomic_t  ngx_debug_quit;
 ngx_uint_t    ngx_exiting;
 sig_atomic_t  ngx_reconfigure;
 sig_atomic_t  ngx_reopen;
@@ -194,8 +195,6 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
             ngx_reconfigure = 0;
 
             if (ngx_new_binary) {
-                ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "start new workers");
-
                 ngx_start_worker_processes(cycle, ccf->worker_processes,
                                            NGX_PROCESS_RESPAWN);
                 ngx_start_garbage_collector(cycle, NGX_PROCESS_RESPAWN);
@@ -204,7 +203,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
                 continue;
             }
 
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reconfiguring");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reconfiguring");
 
             cycle = ngx_init_cycle(cycle);
             if (cycle == NULL) {
@@ -233,7 +232,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_reopen) {
             ngx_reopen = 0;
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopening logs");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
             ngx_reopen_files(cycle, ccf->user);
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_REOPEN_SIGNAL));
@@ -241,7 +240,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_change_binary) {
             ngx_change_binary = 0;
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "changing binary");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "changing binary");
             ngx_new_binary = ngx_exec_new_binary(cycle, ngx_argv);
         }
 
@@ -281,7 +280,7 @@ void ngx_single_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_reconfigure) {
             ngx_reconfigure = 0;
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reconfiguring");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reconfiguring");
 
             cycle = ngx_init_cycle(cycle);
             if (cycle == NULL) {
@@ -294,7 +293,7 @@ void ngx_single_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_reopen) {
             ngx_reopen = 0;
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopening logs");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
             ngx_reopen_files(cycle, (ngx_uid_t) -1);
         }
     }
@@ -308,7 +307,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
     ngx_channel_t     ch;
     struct itimerval  itv;
 
-    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "start worker processes");
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start worker processes");
 
     ch.command = NGX_CMD_OPEN_CHANNEL;
 
@@ -367,7 +366,7 @@ static void ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type)
 
     return;
 
-    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "start garbage collector");
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start garbage collector");
 
     ch.command = NGX_CMD_OPEN_CHANNEL;
 
@@ -624,7 +623,7 @@ static void ngx_master_exit(ngx_cycle_t *cycle)
 {
     ngx_delete_pidfile(cycle);
 
-    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exit");
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exit");
 
     ngx_destroy_pool(cycle->pool);
 
@@ -690,7 +689,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         if (ngx_exiting
             && ngx_event_timer_rbtree == &ngx_event_timer_sentinel)
         {
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
 
 
 #if (NGX_THREADS)
@@ -698,6 +697,10 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
             ngx_wakeup_worker_threads(cycle);
 #endif
+
+            if (ngx_debug_quit) {
+                ngx_debug_point();
+            }
 
             /*
              * we do not destroy cycle->pool here because a signal handler
@@ -711,7 +714,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         ngx_process_events(cycle);
 
         if (ngx_terminate) {
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
 
 #if (NGX_THREADS)
             ngx_wakeup_worker_threads(cycle);
@@ -726,7 +729,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         if (ngx_quit) {
             ngx_quit = 0;
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                           "gracefully shutting down");
             ngx_setproctitle("worker process is shutting down");
 
@@ -738,7 +741,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         if (ngx_reopen) {
             ngx_reopen = 0;
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
             ngx_reopen_files(cycle, -1);
         }
     }
@@ -1096,13 +1099,13 @@ static void ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data)
     for ( ;; ) {
 
         if (ngx_terminate || ngx_quit) {
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
             exit(0);
         }
 
         if (ngx_reopen) {
             ngx_reopen = 0;
-            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reopen logs");
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
             ngx_reopen_files(cycle, -1);
         }
 

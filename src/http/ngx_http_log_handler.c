@@ -115,12 +115,12 @@ ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
     { ngx_string("pipe"), 1, ngx_http_log_pipe },
     { ngx_string("time"), sizeof("28/Sep/1970:12:00:00") - 1,
                           ngx_http_log_time },
-    { ngx_string("msec"), TIME_T_LEN + 4, ngx_http_log_msec },
+    { ngx_string("msec"), NGX_TIME_T_LEN + 4, ngx_http_log_msec },
     { ngx_string("request"), 0, ngx_http_log_request },
     { ngx_string("status"), 3, ngx_http_log_status },
     { ngx_string("length"), NGX_OFF_T_LEN, ngx_http_log_length },
     { ngx_string("apache_length"), NGX_OFF_T_LEN, ngx_http_log_apache_length },
-    { ngx_string("request_length"), NGX_OFF_T_LEN,
+    { ngx_string("request_length"), NGX_SIZE_T_LEN,
                                     ngx_http_log_request_length },
     { ngx_string("i"), NGX_HTTP_LOG_ARG, ngx_http_log_header_in },
     { ngx_string("o"), NGX_HTTP_LOG_ARG, ngx_http_log_header_out },
@@ -290,7 +290,7 @@ static u_char *ngx_http_log_apache_length(ngx_http_request_t *r, u_char *buf,
 static u_char *ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
                                            uintptr_t data)
 {
-    return ngx_sprintf(buf, "%O", r->request_length);
+    return ngx_sprintf(buf, "%z", r->request_length);
 }
 
 

@@ -254,7 +254,7 @@ struct ngx_http_request_s {
     void                    **srv_conf;
     void                    **loc_conf;
 
-    ngx_http_cache_entry_t   *cache;
+    ngx_http_cache_t         *cache;
 
     ngx_file_t                file;
 
@@ -287,7 +287,7 @@ struct ngx_http_request_s {
     ngx_uint_t           port;
     ngx_str_t           *port_text;    /* ":80" */
     ngx_str_t            server_name;
-    ngx_array_t         *virtual_names;
+    ngx_http_in_addr_t  *virtual_names;
 
     ngx_uint_t           phase;
     ngx_int_t            phase_handler;

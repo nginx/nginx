@@ -20,6 +20,7 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r);
 static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
                                                     ngx_uint_t request_line);
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_find_virtual_server(ngx_http_request_t *r);
 
 static void ngx_http_set_write_handler(ngx_http_request_t *r);
 
@@ -246,7 +247,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
     }
 
 #if (NGX_STAT_STUB)
-    r->stat_reading = 1;
+    (*ngx_stat_reading)--;
 #endif
 
     c->data = r;
@@ -310,7 +311,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         r->in_addr = in_addr[0].addr;
     }
 
-    r->virtual_names = &in_addr[i].names;
+    r->virtual_names = &in_addr[i];
 
     /* the default server configuration for the address:port */
     cscf = in_addr[i].core_srv_conf;
@@ -334,6 +335,8 @@ static void ngx_http_init_request(ngx_event_t *rev)
                 return;
             }
 
+            rev->event_handler = ngx_http_ssl_handshake;
+
             /*
              * The majority of browsers do not send the "close notify" alert.
              * Among them are MSIE, Mozilla, Netscape 4, Konqueror, and Links.
@@ -343,7 +346,6 @@ static void ngx_http_init_request(ngx_event_t *rev)
              */
 
             c->ssl->no_rcv_shut = 1;
-            rev->event_handler = ngx_http_ssl_handshake;
         }
 
         r->filter_need_in_memory = 1;
@@ -416,6 +418,8 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->http_state = NGX_HTTP_READING_REQUEST_STATE;
 
 #if (NGX_STAT_STUB)
+    (*ngx_stat_reading)++;
+    r->stat_reading = 1;
     (*ngx_stat_requests)++;
 #endif
 
@@ -1054,81 +1058,23 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 {
-    u_char                    *ua, *user_agent;
-    size_t                     len;
-    ngx_uint_t                 i;
-    ngx_http_server_name_t    *name;
-    ngx_http_core_srv_conf_t  *cscf;
-    ngx_http_core_loc_conf_t  *clcf;
+    u_char  *ua, *user_agent, ch;
+    size_t   len;
 
     if (r->headers_in.host) {
         for (len = 0; len < r->headers_in.host->value.len; len++) {
-            if (r->headers_in.host->value.data[len] == ':') {
+            ch = r->headers_in.host->value.data[len];
+
+            if (ch == ':') {
                 break;
             }
+
+            r->headers_in.host->value.data[len] = ngx_tolower(ch);
         }
         r->headers_in.host_name_len = len;
 
-        /* find the name based server configuration */
-
-        name = r->virtual_names->elts;
-        for (i = 0; i < r->virtual_names->nelts; i++) {
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "server name: %V", &name[i].name);
-
-            if (name[i].wildcard) {
-                if (r->headers_in.host_name_len <= name[i].name.len) {
-                    continue;
-                }
-
-                if (ngx_rstrncasecmp(r->headers_in.host->value.data,
-                                     name[i].name.data,
-                                     name[i].name.len) == 0)
-                {
-                    continue;
-                }
-
-            } else {
-                if (r->headers_in.host_name_len != name[i].name.len) {
-                    continue;
-                }
-
-                if (ngx_strncasecmp(r->headers_in.host->value.data,
-                                    name[i].name.data,
-                                    name[i].name.len) != 0)
-                {
-                    continue;
-                }
-            }
-
-            r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
-            r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
-
-            if (name[i].wildcard) {
-                r->server_name.len = r->headers_in.host_name_len;
-                r->server_name.data = r->headers_in.host->value.data;
-
-            } else {
-                r->server_name = name[i].name;
-            }
-
-            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            r->connection->log->file = clcf->err_log->file;
-
-            if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
-                r->connection->log->log_level = clcf->err_log->log_level;
-            }
-
-            break;
-        }
-
-        if (i == r->virtual_names->nelts) {
-            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-            if (cscf->restrict_host_names != NGX_HTTP_RESTRICT_HOST_OFF) {
-                return NGX_HTTP_PARSE_INVALID_HOST;
-            }
+        if (ngx_http_find_virtual_server(r) != NGX_OK) {
+            return NGX_HTTP_PARSE_INVALID_HOST;
         }
 
     } else {
@@ -1225,11 +1171,117 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 }
 
 
+static ngx_int_t ngx_http_find_virtual_server(ngx_http_request_t *r)
+{
+    ngx_int_t                   rc;
+    ngx_uint_t                  i, n, key, found;
+    ngx_http_server_name_t     *name;
+    ngx_http_core_main_conf_t  *cmcf;
+    ngx_http_core_srv_conf_t   *cscf;
+    ngx_http_core_loc_conf_t   *clcf;
+
+    if (r->virtual_names->hash) {
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+        ngx_http_server_names_hash_key(key,
+                                       r->headers_in.host->value.data,
+                                       r->headers_in.host_name_len,
+                                       cmcf->server_names_hash);
+
+        name = r->virtual_names->hash[key].elts;
+        n = r->virtual_names->hash[key].nelts;
+
+    } else {
+        name = r->virtual_names->names.elts;
+        n = r->virtual_names->names.nelts;
+    }
+
+    found = 0;
+
+    for (i = 0; i < n; i++) {
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "server name: %V", &name[i].name);
+
+        if (r->headers_in.host_name_len != name[i].name.len) {
+            continue;
+        }
+
+        rc = ngx_strncmp(r->headers_in.host->value.data,
+                         name[i].name.data, name[i].name.len);
+
+        if (rc == 0) {
+            r->server_name = name[i].name;
+
+            found = 1;
+            break;
+        }
+
+        if (rc < 0) {
+            /* the server names are lexicographically sorted */ 
+            break;
+        }
+    }
+
+    if (!found && r->virtual_names->wildcards.nelts) {
+
+        name = r->virtual_names->wildcards.elts;
+        for (i = 0; i < r->virtual_names->wildcards.nelts; i++) {
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "server name: %V", &name[i].name);
+
+            if (r->headers_in.host_name_len <= name[i].name.len) {
+                continue;
+            }
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "server name: %s",
+                           r->headers_in.host->value.data
+                           + (r->headers_in.host_name_len - name[i].name.len));
+
+            if (ngx_strncmp(r->headers_in.host->value.data
+                            + (r->headers_in.host_name_len - name[i].name.len),
+                            name[i].name.data, name[i].name.len) == 0)
+            {
+                r->server_name.len = r->headers_in.host_name_len;
+                r->server_name.data = r->headers_in.host->value.data;
+
+                found = 1;
+                break;
+            }
+        }
+    }
+
+    if (found) {
+        r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
+        r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
+
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        r->connection->log->file = clcf->err_log->file;
+
+        if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
+            r->connection->log->log_level = clcf->err_log->log_level;
+        }
+
+        return NGX_OK;
+    }
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    if (cscf->restrict_host_names != NGX_HTTP_RESTRICT_HOST_OFF) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
 void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
 {
     ngx_http_core_loc_conf_t  *clcf;
 
-    /* r can be already destroyed when rc == NGX_DONE */
+    /* r may be already destroyed when rc == NGX_DONE */
 
     if (rc == NGX_DONE || r->main) {
         return;
@@ -1587,6 +1639,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
                   cscf->large_client_header_buffers.num * sizeof(ngx_buf_t *));
 
                 if (hc->free == NULL) {
+                    ngx_http_close_request(r, 0);
                     ngx_http_close_connection(c);
                     return;
                 }
@@ -1604,10 +1657,11 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
         }
     }
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
     ngx_http_close_request(r, 0);
     c->data = hc;
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     ngx_add_timer(rev, clcf->keepalive_timeout);
 
     if (ngx_handle_level_read_event(rev) == NGX_ERROR) {
@@ -1877,12 +1931,14 @@ static void ngx_http_set_lingering_close(ngx_http_request_t *r)
             if (ngx_del_event(wev, NGX_WRITE_EVENT, NGX_DISABLE_EVENT)
                                                                   == NGX_ERROR)
             {
+                ngx_http_close_request(r, 0);
                 ngx_http_close_connection(c);
                 return;
             }
 
         } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
             if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+                ngx_http_close_request(r, 0);
                 ngx_http_close_connection(c);
                 return;
             }
@@ -1945,6 +2001,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
     } while (rev->ready);
 
     if (ngx_handle_level_read_event(rev) == NGX_ERROR) {
+        ngx_http_close_request(r, 0);
         ngx_http_close_connection(c);
         return;
     }
@@ -1958,8 +2015,6 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
     }
 
     ngx_add_timer(rev, timer);
-
-    return;
 }
 
 
@@ -2093,8 +2148,6 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
     r->request_line.len = 0;
 
     ngx_destroy_pool(r->pool);
-
-    return;
 }
 
 

@@ -36,7 +36,7 @@ void ngx_destroy_pool(ngx_pool_t *pool)
         ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0, "free: %p", l->alloc);
 
         if (l->alloc) {
-            free(l->alloc);
+            ngx_free(l->alloc);
         }
     }
 
@@ -59,7 +59,7 @@ void ngx_destroy_pool(ngx_pool_t *pool)
 #endif
 
     for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
-        free(p);
+        ngx_free(p);
 
         if (n == NULL) {
             break;
@@ -163,7 +163,7 @@ ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p)
         if (p == l->alloc) {
             ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
                            "free: %p", l->alloc);
-            free(l->alloc);
+            ngx_free(l->alloc);
             l->alloc = NULL;
 
             return NGX_OK;

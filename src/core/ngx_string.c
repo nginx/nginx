@@ -86,7 +86,7 @@ u_char *ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
 
 u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
 {
-    u_char         *p, zero, *last, temp[NGX_MAX_INT_LEN];
+    u_char         *p, zero, *last, temp[NGX_INT64_LEN];
     int             d;
     size_t          len;
     uint32_t        ui32;
@@ -120,7 +120,7 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
             sign = 1;
             hexadecimal = 0;
 
-            p = temp + NGX_MAX_INT_LEN;
+            p = temp + NGX_INT64_LEN;
 
             while (*fmt >= '0' && *fmt <= '9') {
                 width = width * 10 + *fmt++ - '0';
@@ -337,13 +337,13 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                 } while (ui64 /= 10);
             }
 
-            len = (temp + NGX_MAX_INT_LEN) - p;
+            len = (temp + NGX_INT64_LEN) - p;
 
             while (len++ < width && buf < last) {
                 *buf++ = zero;
             }
 
-            len = (temp + NGX_MAX_INT_LEN) - p;
+            len = (temp + NGX_INT64_LEN) - p;
             if (buf + len > last) {
                 len = last - buf;
             }

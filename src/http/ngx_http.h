@@ -14,6 +14,7 @@
 
 typedef struct ngx_http_request_s  ngx_http_request_t;
 typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
+typedef struct ngx_http_in_addr_s  ngx_http_in_addr_t;
 
 #if (NGX_HTTP_CACHE)
 #include <ngx_http_cache.h>

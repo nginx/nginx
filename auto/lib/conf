@@ -6,12 +6,21 @@ if [ $USE_PCRE = YES ]; then
     . auto/lib/pcre/conf
 fi
 
-if [ $USE_MD5 = YES ]; then
-    . auto/lib/md5/conf
-fi
-
 if [ $USE_OPENSSL = YES ]; then
     . auto/lib/openssl/conf
+fi
+
+if [ $USE_MD5 = YES ]; then
+
+    if [ $OPENSSL != NONE -a $OPENSSL != NO ]; then
+        have=NGX_HAVE_OPENSSL_MD5_H . auto/have
+        have=NGX_OPENSSL_MD5 . auto/have
+        MD5=YES
+
+    else
+        . auto/lib/md5/conf
+    fi
+
 fi
 
 if [ $USE_ZLIB = YES ]; then

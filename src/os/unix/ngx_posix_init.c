@@ -192,7 +192,7 @@ void ngx_signal_handler(int signo)
 
         case ngx_signal_value(NGX_REOPEN_SIGNAL):
             ngx_reopen = 1;
-            action = ", reopen logs";
+            action = ", reopening logs";
             break;
 
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
@@ -236,6 +236,8 @@ void ngx_signal_handler(int signo)
     case NGX_PROCESS_WORKER:
         switch (signo) {
 
+        case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
+            ngx_debug_quit = 1;
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
             ngx_quit = 1;
             action = ", shutting down";
@@ -249,11 +251,10 @@ void ngx_signal_handler(int signo)
 
         case ngx_signal_value(NGX_REOPEN_SIGNAL):
             ngx_reopen = 1;
-            action = ", reopen logs";
+            action = ", reopening logs";
             break;
 
         case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
-        case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
         case SIGIO:
             action = ", ignoring";
@@ -263,7 +264,7 @@ void ngx_signal_handler(int signo)
         break;
     }
 
-    ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
+    ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
                   "signal %d (%s) received%s", signo, sig->signame, action);
 
     if (ignore) {

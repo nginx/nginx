@@ -232,15 +232,21 @@ ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->err_ctx == NULL && clcf->error_pages) {
+
         err_page = clcf->error_pages->elts;
+
         for (i = 0; i < clcf->error_pages->nelts; i++) {
+
             if (err_page[i].status == error) {
+
                 if (err_page[i].overwrite) {
                     r->err_status = err_page[i].overwrite;
                 } else {
                     r->err_status = error;
                 }
+
                 r->err_ctx = r->ctx;
+
                 return ngx_http_internal_redirect(r, &err_page[i].uri, NULL);
             }
         }

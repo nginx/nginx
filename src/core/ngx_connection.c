@@ -253,7 +253,7 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
     }
 
     if (failed) {
-        ngx_log_error(NGX_LOG_EMERG, log, 0, "still can not bind()");
+        ngx_log_error(NGX_LOG_EMERG, log, 0, "still could not bind()");
         return NGX_ERROR;
     }
 

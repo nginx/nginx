@@ -22,6 +22,9 @@ typedef struct {
 #define ngx_null_string  { 0, NULL }
 
 
+#define ngx_tolower(c)     (u_char) ((c >= 'A' && c <= 'Z') ? (c | 0x20) : c)
+
+
 #if (NGX_WIN32)
 
 #define ngx_strncasecmp(s1, s2, n)                                           \

@@ -6,6 +6,38 @@
             title="nginx">
 
 
+<changes ver="0.1.13" date="21.12.2004">
+
+<change type="feature">
+<para lang="ru">
+директивы server_names_hash и server_names_hash_threshold.
+</para>
+<para lang="en">
+the server_names_hash and server_names_hash_threshold directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+имена *.domain.tld в директиве server_name не работали.
+</para>
+<para lang="en">
+the *.domain.tld names in the server_name directive did not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр лога %request_length записывал неверную длину.
+</para>
+<para lang="en">
+the %request_length log parameter logged the incorrect length.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.12" date="06.12.2004">
 
 <change type="feature">

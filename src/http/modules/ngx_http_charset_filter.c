@@ -147,12 +147,6 @@ static ngx_int_t ngx_http_charset_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-#if 0
-    if (lcf->default_charset.len == 0) {
-        return ngx_http_next_header_filter(r);
-    }
-#endif
-
     if (r->headers_out.content_type == NULL) {
         return ngx_http_next_header_filter(r);
     }
@@ -559,12 +553,36 @@ static char *ngx_http_charset_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
     ngx_conf_merge_value(conf->autodetect, prev->autodetect, 0);
 
+
+    if (conf->default_charset == NGX_CONF_UNSET) {
+        conf->default_charset = prev->default_charset;
+    }
+
     if (conf->source_charset == NGX_CONF_UNSET) {
         conf->source_charset = prev->source_charset;
     }
 
-    ngx_conf_merge_value(conf->default_charset, prev->default_charset,
-                         conf->source_charset);
+    if (conf->default_charset == NGX_CONF_UNSET
+        && conf->source_charset != NGX_CONF_UNSET)
+    {
+        conf->default_charset = conf->source_charset;
+    }
+
+    if (conf->source_charset == NGX_CONF_UNSET
+        && conf->default_charset != NGX_CONF_UNSET)
+    {
+        conf->source_charset = conf->default_charset;
+    }
+
+    if (conf->enable
+        && (conf->default_charset == NGX_CONF_UNSET
+            || conf->source_charset == NGX_CONF_UNSET))
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the \"source_charset\" or \"default_charset\" "
+                           "must be specified when \"charset\" is on");
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }

@@ -45,9 +45,7 @@ esac
 
 if [ $NGX_PLATFORM != win32 ]; then
 
-    if test -z "$NGX_USER"; then
-        NGX_USER=nobody
-    fi
+     NGX_USER=${NGX_USER:-nobody}
 
     if [ -z "$NGX_GROUP" -a $NGX_USER = nobody ] ; then
        if grep nobody /etc/group 2>&1 >/dev/null; then

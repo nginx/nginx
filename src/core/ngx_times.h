@@ -22,7 +22,7 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp);
 ngx_int_t ngx_time_mutex_init(ngx_log_t *log);
 #endif
 
-#if (NGX_THREADS && (TIME_T_SIZE > SIG_ATOMIC_T_SIZE))
+#if (NGX_THREADS && (NGX_TIME_T_SIZE > NGX_SIG_ATOMIC_T_SIZE))
 
 #define ngx_time()        *ngx_cached_time
 extern volatile time_t    *ngx_cached_time;
