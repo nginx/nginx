@@ -33,6 +33,8 @@ typedef int (*ngx_http_output_body_filter_p)
                 r->ctx[module.ctx_index] = cx;                                \
             } while (0)
 
+#define ngx_http_delete_ctx(r, module)                                        \
+            r->ctx[module.ctx_index] = NULL;
 
 
 /* STUB */

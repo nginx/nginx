@@ -96,7 +96,6 @@ static ngx_str_t http_codes[] = {
 static int ngx_http_header_filter(ngx_http_request_t *r)
 {
     int                len, status, i;
-    time_t             ims;
     ngx_hunk_t        *h;
     ngx_chain_t       *ch;
     ngx_table_elt_t   *header;
@@ -129,26 +128,6 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     /* 9 is for "HTTP/1.x ", 2 is for trailing "\r\n"
        and 2 is for end of header */
     len = 9 + 2 + 2;
-
-    if (r->headers_in.if_modified_since && r->headers_out.status == NGX_HTTP_OK)
-    {
-        /* TODO: check LM header */
-        if (r->headers_out.last_modified_time) {
-            ims = ngx_http_parse_time(
-                                  r->headers_in.if_modified_since->value.data,
-                                  r->headers_in.if_modified_since->value.len);
-
-            ngx_log_debug(r->connection->log, "%d %d" _
-                          ims _ r->headers_out.last_modified_time);
-
-            /* I think that the date equality is correcter */
-            if (ims != NGX_ERROR && ims == r->headers_out.last_modified_time) {
-                r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
-                r->headers_out.content_length = -1;
-                r->headers_out.content_type->key.len = 0;
-            }
-        }
-    }
 
     /* status line */
     if (r->headers_out.status_line.len) {
@@ -207,12 +186,18 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.content_type && r->headers_out.content_type->value.len) {
         r->headers_out.content_type->key.len = 0;
-        len += 16 + r->headers_out.content_type->value.len;
+        len += 14 + r->headers_out.content_type->value.len + 2;
 
         if (r->headers_out.charset.len) {
             /* "; charset= ... " */
             len += 10 + r->headers_out.charset.len;
         }
+    }
+
+    if (r->headers_out.content_encoding
+        && r->headers_out.content_encoding->value.len)
+    {
+        len += 18 + r->headers_out.content_encoding->value.len + 2;
     }
 
     if (r->headers_out.location
@@ -312,6 +297,17 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
             h->last = ngx_cpymem(h->last, r->headers_out.charset.data,
                                  r->headers_out.charset.len);
         }
+
+        *(h->last++) = CR; *(h->last++) = LF;
+    }
+
+    if (r->headers_out.content_encoding
+        && r->headers_out.content_encoding->value.len)
+    {
+        h->last = ngx_cpymem(h->last, "Content-Encoding: ", 18);
+        h->last = ngx_cpymem(h->last,
+                             r->headers_out.content_encoding->value.data,
+                             r->headers_out.content_encoding->value.len);
 
         *(h->last++) = CR; *(h->last++) = LF;
     }

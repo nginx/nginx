@@ -35,6 +35,10 @@ static int (*next_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);
 
 static int ngx_http_chunked_header_filter(ngx_http_request_t *r)
 {
+    if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED) {
+        return next_header_filter(r);
+    }
+
     if (r->headers_out.content_length == -1) {
         if (r->http_version < NGX_HTTP_VERSION_11) {
             r->keepalive = 0;

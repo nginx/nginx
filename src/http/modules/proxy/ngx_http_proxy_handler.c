@@ -79,11 +79,11 @@ int ngx_http_proxy_handler(ngx_http_request_t *r)
 
         if (rc == NGX_OK) {
             ngx_http_proxy_send_request(p->upstream.connection->write);
-            /* ??? */ return NGX_OK;
+            return NGX_OK;
         }
 
         if (rc == NGX_AGAIN) {
-            /* ??? */ return NGX_OK;
+            /* TODO */ return NGX_OK;
         }
 
         /* rc == NGX_CONNECT_FAILED */
@@ -116,9 +116,22 @@ static void ngx_http_proxy_send_request(ngx_event_t *wev)
                 rc = ngx_event_connect_peer(&p->upstream);
 
                 if (rc == NGX_OK) {
-#if 0
-                    copy chain and hunks p->request_hunks from p->initial_request_hunks;
-#endif
+
+                    /* copy chain and hunks p->request_hunks
+                       from p->initial_request_hunks */
+
+                    p->request_hunks = NULL;
+                    if (ngx_chain_add_copy(r->pool, p->request_hunks,
+                                        p->initial_request_hunks) == NGX_ERROR)
+                    {
+                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    }
+
+                    for (ce = p->request_hunks; ce; ce = ce->next) {
+                        ce->hunk->pos = ce->hunk->start;
+                    }
+
+
                     c = p->connection;
                     wev = c->write;
 

@@ -117,6 +117,7 @@ typedef struct {
     ngx_table_elt_t  *server;
     ngx_table_elt_t  *date;
     ngx_table_elt_t  *content_type;
+    ngx_table_elt_t  *content_encoding;
     ngx_table_elt_t  *location;
     ngx_table_elt_t  *last_modified;
     ngx_table_elt_t  *content_range;

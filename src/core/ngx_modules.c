@@ -34,6 +34,7 @@ extern ngx_module_t  ngx_http_header_filter_module;
 
 extern ngx_module_t  ngx_http_chunked_filter_module;
 extern ngx_module_t  ngx_http_gzip_filter_module;
+extern ngx_module_t  ngx_http_not_modified_filter_module;
 extern ngx_module_t  ngx_http_range_filter_module;
 extern ngx_module_t  ngx_http_charset_filter_module;
 
@@ -83,6 +84,7 @@ ngx_module_t *ngx_modules[] = {
 
     &ngx_http_chunked_filter_module,
     &ngx_http_gzip_filter_module,
+    &ngx_http_not_modified_filter_module,
     &ngx_http_range_filter_module,
     /* &ngx_http_ssi_filter_module, */
     &ngx_http_charset_filter_module,

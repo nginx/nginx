@@ -151,8 +151,10 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
         }
 
         /* NGX_OK */
+#if 1
         /* set our hunk free */
         ctx->hunk->pos = ctx->hunk->last = ctx->hunk->start;
+#endif
     }
 
 #if (NGX_SUPPRESS_WARN)
@@ -225,8 +227,10 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
             }
 
             /* NGX_OK */
+#if 1
             /* set our hunk free */
             ctx->hunk->pos = ctx->hunk->last = ctx->hunk->start;
+#endif
 
             /* repeat until we will have copied the whole first hunk from
                the chain ctx->incoming */

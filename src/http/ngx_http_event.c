@@ -49,6 +49,8 @@ static ngx_http_header_t headers_in[] = {
                          offsetof(ngx_http_headers_in_t, if_modified_since) },
     { ngx_string("Content-Length"),
                             offsetof(ngx_http_headers_in_t, content_length) },
+    { ngx_string("Accept-Encoding"),
+                           offsetof(ngx_http_headers_in_t, accept_encoding) },
 
     { ngx_string("Range"), offsetof(ngx_http_headers_in_t, range) },
 #if 0

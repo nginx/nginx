@@ -23,6 +23,7 @@ typedef struct {
 #define ngx_strncmp               strncmp
 #define ngx_strcmp                strcmp
 
+#define ngx_strstr                strstr
 #define ngx_strlen                strlen
 
 #define ngx_snprintf              _snprintf
@@ -35,6 +36,7 @@ typedef struct {
 #define ngx_strncmp               strncmp
 #define ngx_strcmp                strcmp
 
+#define ngx_strstr                strstr
 #define ngx_strlen                strlen
 
 #define ngx_snprintf              snprintf

@@ -152,6 +152,10 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
             break;
         }
 #endif
+        if (((*busy)->hunk->type & NGX_HUNK_TEMP) == 0) {
+            *busy = (*busy)->next;
+            continue;
+        }
 
         (*busy)->hunk->pos = (*busy)->hunk->last = (*busy)->hunk->start;
 
