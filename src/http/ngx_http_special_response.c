@@ -240,8 +240,15 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 
     if (error_pages[err].len) {
         r->headers_out.content_length_n = error_pages[err].len
-                                          + sizeof(error_tail) - 1
-                                          + sizeof(msie_stub) - 1;
+                                          + sizeof(error_tail) - 1;
+
+        if (clcf->msie_padding
+            && r->http_version >= NGX_HTTP_VERSION_10
+            && error >= NGX_HTTP_BAD_REQUEST
+            && error != NGX_HTTP_REQUEST_URI_TOO_LARGE)
+        {
+            r->headers_out.content_length_n += sizeof(msie_stub) - 1;
+        }
 
         if (!(r->headers_out.content_type =
                    ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
@@ -300,8 +307,7 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     if (clcf->msie_padding
         && r->http_version >= NGX_HTTP_VERSION_10
         && error >= NGX_HTTP_BAD_REQUEST
-        && error != NGX_HTTP_REQUEST_URI_TOO_LARGE
-       )
+        && error != NGX_HTTP_REQUEST_URI_TOO_LARGE)
     {
         if (!(h = ngx_calloc_hunk(r->pool))) {
             return NGX_ERROR;

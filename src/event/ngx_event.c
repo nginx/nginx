@@ -220,7 +220,8 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
-    if (ccf->worker_processes > 1 && ecf->accept_mutex) {
+    if (ngx_accept_mutex_ptr && ccf->worker_processes > 1 && ecf->accept_mutex)
+    {
         ngx_accept_mutex = ngx_accept_mutex_ptr;
         ngx_accept_mutex_held = 1;
         ngx_accept_mutex_delay = ecf->accept_mutex_delay;

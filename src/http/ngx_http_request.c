@@ -871,6 +871,7 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
             {
                 r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
                 r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
+                r->server_name = &name[i].name;
 
                 clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
                 r->connection->log->file = clcf->err_log->file;
