@@ -101,7 +101,9 @@ ngx_log_debug(cf->log, "token %d" _ rc);
 
 ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
-                    if (!(cmd->type & argument_number[cf->args->nelts - 1])) {
+                    if (!(cmd->type & NGX_CONF_ANY)
+                        && !(cmd->type & argument_number[cf->args->nelts - 1]))
+                    {
                         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                                       "invalid number arguments in "
                                       "directive \"%s\" in %s:%d",

@@ -13,6 +13,7 @@
 #include <ngx_http_index_handler.h>
 
 
+static int ngx_http_index_test_dir(ngx_http_request_t *r);
 static int ngx_http_index_init(ngx_pool_t *pool);
 static void *ngx_http_index_create_conf(ngx_pool_t *pool);
 static char *ngx_http_index_merge_conf(ngx_pool_t *p,
@@ -24,9 +25,9 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_command_t ngx_http_index_commands[] = {
 
     {ngx_string("index"),
-     NGX_CONF_ANY,
+     NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_ANY,
      ngx_http_index_set_index,
-     NGX_HTTP_LOC_CONF,
+     NGX_HTTP_LOC_CONF_OFFSET,
      0},
 
     {ngx_string(""), 0, NULL, 0, 0}
@@ -60,9 +61,18 @@ ngx_module_t  ngx_http_index_module = {
 };
 
 
+/*
+   If the first index file is local (i.e. 'index.html', not '/index.html') then
+   try to open it before the test of the directory existence because
+   the valid requests should be many more then invalid ones.  If open()
+   is failed then stat() should be more quickly because some data
+   is already cached in the kernel.  Besides Win32 has ERROR_PATH_NOT_FOUND
+   and Unix has ENOTDIR error (although it less helpfull).
+*/
+
 int ngx_http_index_handler(ngx_http_request_t *r)
 {
-    int          i, len;
+    int          i, rc, test_dir;
     char        *name, *file;
     ngx_str_t    loc, *index;
     ngx_err_t    err;
@@ -72,10 +82,10 @@ int ngx_http_index_handler(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t  *core_cf;
 
     cf = (ngx_http_index_conf_t *)
-                   ngx_http_get_module_loc_conf(r, ngx_http_index_module_ctx);
+                        ngx_http_get_module_loc_conf(r, ngx_http_index_module);
 
     core_cf = (ngx_http_core_loc_conf_t *)
-                    ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
+                         ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     ngx_test_null(r->path.data,
                   ngx_palloc(r->pool,
@@ -88,14 +98,22 @@ int ngx_http_index_handler(ngx_http_request_t *r)
     file = ngx_cpystrn(loc.data, r->uri.data, r->uri.len + 1);
     r->path.len = file - r->path.data;
 
+    if (cf->test_dir) {
+        rc = ngx_http_index_test_dir(r);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        test_dir = 0;
+
+    } else {
+        test_dir = 1;
+    }
+
     index = (ngx_str_t *) cf->indices->elts;
     for (i = 0; i < cf->indices->nelts; i++) {
 
         if (index[i].data[0] != '/') {
-            if (!r->path_not_found) {
-                continue;
-            }
-
             ngx_memcpy(file, index[i].data, index[i].len + 1);
             name = r->path.data;
 
@@ -106,20 +124,38 @@ int ngx_http_index_handler(ngx_http_request_t *r)
         fd = ngx_open_file(name, NGX_FILE_RDONLY);
         if (fd == NGX_INVALID_FILE) {
             err = ngx_errno;
+
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
+                          ngx_open_file_n " %s failed", name);
+
+#if (WIN32)
+            if (err == ERROR_PATH_NOT_FOUND) {
+#else
+            if (err == NGX_ENOTDIR) {
+#endif
+                r->path_not_found = 1;
+            }
+
+            if (test_dir) {
+                if (r->path_not_found) {
+                    return NGX_HTTP_NOT_FOUND;
+                }
+
+                rc = ngx_http_index_test_dir(r);
+                if (rc != NGX_OK) {
+                    return rc;
+                }
+
+                test_dir = 0;
+
+                if (r->path_not_found) {
+                    continue;
+                }
+            }
+
             if (err == NGX_ENOENT) {
                 continue;
             }
-#if (WIN32)
-            if (err == ERROR_PATH_NOT_FOUND) {
-                r->path_not_found = 1;
-                continue;
-            }
-#else
-            if (err == NGX_ENOTDIR) {
-                r->path_not_found = 1;
-                continue;
-            }
-#endif
 
             ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
                           ngx_open_file_n " %s failed", name);
@@ -148,6 +184,41 @@ int ngx_http_index_handler(ngx_http_request_t *r)
 }
 
 
+static int ngx_http_index_test_dir(ngx_http_request_t *r)
+{
+    ngx_err_t  err;
+
+    r->path.data[r->path.len - 1] = '\0';
+
+ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
+
+    if (ngx_file_type(r->path.data, &r->file.info) == -1) {
+        err = ngx_errno;
+        if (err == NGX_ENOENT) {
+            return NGX_HTTP_NOT_FOUND;
+        }
+
+        if (err == NGX_EACCESS) {
+            return NGX_HTTP_FORBIDDEN;
+        }
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
+                      "ngx_http_index_is_dir: "
+                      "stat() %s failed", r->path.data);
+
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (ngx_is_dir(r->file.info)) {
+        r->path.data[r->path.len - 1] = '/';
+        return NGX_OK;
+
+    } else {
+        return NGX_HTTP_NOT_FOUND;
+    }
+}
+
+
 static int ngx_http_index_init(ngx_pool_t *pool)
 {
     ngx_http_handler_pt  *h;
@@ -168,23 +239,28 @@ static void *ngx_http_index_create_conf(ngx_pool_t *pool)
                   NGX_CONF_ERROR);
 
     ngx_test_null(conf->indices,
-                  ngx_create_array(pool, sizeof(ngx_str_t), 3),
+                  ngx_create_array(pool, 3, sizeof(ngx_str_t)),
                   NGX_CONF_ERROR);
 
     return conf;
 }
 
 
+/* STUB */
 static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
 {
     ngx_http_index_conf_t *prev = (ngx_http_index_conf_t *) parent;
     ngx_http_index_conf_t *conf = (ngx_http_index_conf_t *) child;
     ngx_str_t  *index;
 
-    ngx_test_null(index, ngx_push_array(conf->indices), NGX_CONF_ERROR);
-    index->len = sizeof(NGX_HTTP_INDEX) - 1;
-    index->data = NGX_HTTP_INDEX;
-    conf->max_index_len = sizeof(NGX_HTTP_INDEX);
+    if (conf->max_index_len == 0) {
+        ngx_test_null(index, ngx_push_array(conf->indices), NGX_CONF_ERROR);
+        index->len = sizeof(NGX_HTTP_INDEX) - 1;
+        index->data = NGX_HTTP_INDEX;
+        conf->max_index_len = sizeof(NGX_HTTP_INDEX);
+    }
+
+    /* TODO: set conf->test_dir if first index is started with '/' */
 
     return NULL;
 }
@@ -221,7 +297,7 @@ static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
 
     value = (ngx_str_t *) cf->args->elts;
     for (i = 1; i < cf->args->nelts; i++) {
-        ngx_test_null(index, ngx_push_array(icf->indices), NULL);
+        ngx_test_null(index, ngx_push_array(icf->indices), NGX_CONF_ERROR);
         index->len = value[i].len;
         index->data = value[i].data;
 
