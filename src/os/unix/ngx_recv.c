@@ -40,8 +40,6 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
     }
 
     do {
-        rev->ready = 1;
-
         n = recv(c->fd, buf, size, 0);
 
         ngx_log_debug(c->log, "recv: %d:%d" _ n _ size);
@@ -79,10 +77,13 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
             return n;
         }
 
-        rev->ready = 0;
         n = ngx_unix_recv_error(rev, ngx_socket_errno);
 
     } while (n == NGX_EINTR);
+
+    /* NGX_ERROR || NGX_AGAIN */
+
+    rev->ready = 0;
 
     if (n == NGX_ERROR){
         rev->error = 1;
@@ -101,8 +102,6 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
     rev = c->read;
 
     do {
-        rev->ready = 1;
-
         n = recv(c->fd, buf, size, 0);
 
         ngx_log_debug(c->log, "recv: %d:%d" _ n _ size);
@@ -119,10 +118,13 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size)
             return n;
         }
 
-        rev->ready = 0;
         n = ngx_unix_recv_error(rev, ngx_socket_errno);
 
     } while (n == NGX_EINTR);
+
+    /* NGX_ERROR || NGX_AGAIN */
+
+    rev->ready = 0;
 
     if (n == NGX_ERROR){
         rev->error = 1;

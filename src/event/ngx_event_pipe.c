@@ -54,6 +54,8 @@ int ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
         }
     }
 
+ngx_log_debug(p->log, "DOWN: %d" _ p->downstream->fd);
+
     if (p->downstream->fd != -1) {
         wev = p->downstream->write;
 
@@ -673,12 +675,15 @@ static int ngx_event_pipe_drain_chains(ngx_event_pipe_t *p)
     for ( ;; ) {
         if (p->busy) {
             cl = p->busy;
+            p->busy = NULL;
 
         } else if (p->out) {
             cl = p->out;
+            p->out = NULL;
 
         } else if (p->in) {
             cl = p->in;
+            p->in = NULL;
 
         } else {
             return NGX_OK;
