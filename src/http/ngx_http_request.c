@@ -493,6 +493,10 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         r->request_line.len = p - r->request_start;
         r->request_line.data = r->request_start;
 
+        if (rc == NGX_HTTP_PARSE_INVALID_METHOD) {
+            r->http_version = NGX_HTTP_VERSION_10;
+        }
+
         ngx_http_client_error(r, rc,
                               (rc == NGX_HTTP_PARSE_INVALID_METHOD) ?
                                      NGX_HTTP_NOT_IMPLEMENTED:

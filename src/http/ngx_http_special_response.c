@@ -110,6 +110,14 @@ static char error_500_page[] =
 ;
 
 
+static char error_501_page[] =
+"<html>" CRLF
+"<head><title>501 Method Not Implemented</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>500 Method Not Implemented</h1></center>" CRLF
+;
+
+
 static char error_502_page[] =
 "<html>" CRLF
 "<head><title>502 Bad Gateway</title></head>" CRLF
@@ -159,7 +167,7 @@ static ngx_str_t error_pages[] = {
     ngx_string(error_416_page),
 
     ngx_string(error_500_page),
-    ngx_null_string,             /* 501 */
+    ngx_string(error_501_page),
     ngx_string(error_502_page),
     ngx_string(error_503_page),
     ngx_string(error_504_page)
