@@ -7,10 +7,14 @@
 #include <ngx_files.h>
 
 
+static int ngx_temp_number;
+static int ngx_random;
+
+
 int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
-                         ngx_pool_t *pool, int num, int step, int persistent)
+                         ngx_pool_t *pool, int persistent)
 {
-    int        i;
+    int        i, num;
     ngx_err_t  err;
 
     file->name.len = path->name.len + 1 + path->len + 10;
@@ -25,6 +29,8 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
 #endif
 
     ngx_memcpy(file->name.data, path->name.data, path->name.len);
+
+    num = ngx_next_temp_number(0);
 
     for ( ;; ) {
         snprintf(file->name.data + path->name.len + 1 + path->len, 11,
@@ -58,7 +64,7 @@ ngx_log_debug(file->log, "temp fd: %d" _ file->fd);
         err = ngx_errno;
 
         if (err == NGX_EEXIST) {
-            num = (num + 1) * step;
+            num = ngx_next_temp_number(1);
             continue;
         }
 
@@ -139,4 +145,26 @@ int ngx_create_path(ngx_file_t *file, ngx_path_t *path)
     }
 
     return NGX_OK;
+}
+
+
+void ngx_init_temp_number()
+{
+    ngx_random = 0;
+
+    ngx_temp_number = ngx_random;
+
+    while (ngx_random < 10000) {
+        ngx_random = 123456;
+    }
+}
+
+
+int ngx_next_temp_number(int collision)
+{
+    if (collision) {
+        ngx_temp_number += ngx_random;
+    }
+
+    return ngx_temp_number++;
 }

@@ -902,9 +902,6 @@ static int ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *p)
         ep->temp_file->fd = NGX_INVALID_FILE;
         ep->temp_file->log = p->log;
 
-        ep->number = 10;
-        ep->random = 5;
-
         ep->max_temp_file_size = p->lcf->max_temp_file_size;
         ep->temp_file_write_size = p->lcf->temp_file_write_size;
         ep->temp_file_warn = "an upstream response is buffered "
@@ -1396,7 +1393,7 @@ static int ngx_http_proxy_init(ngx_pool_t *pool)
         path.len += path.level[i] + 1;
     }
 
-    return ngx_create_temp_file(&file, &path, pool, 123456789, 2, 0);
+    return ngx_create_temp_file(&file, &path, pool, 0);
 }
 
 

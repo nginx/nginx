@@ -16,6 +16,7 @@ static inline ngx_tid_t ngx_gettid()
     char *sp;
 
     __asm__ ("mov %%esp,%0" : "=r" (sp));
+
     return (sp > ngx_stacks_end) ? 0:
            (sp - ngx_stacks_start) / ngx_stack_size + 1;
 }

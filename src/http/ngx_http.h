@@ -86,6 +86,18 @@ typedef struct {
 
 
 typedef struct {
+    ngx_chain_t       chain[4];
+    ngx_hunk_t       *header_out;
+    ngx_hunk_t       *hunk;
+    ngx_hunk_t       *file_hunk;
+    ngx_file_t        temp_file;
+    ngx_path_t       *temp_path;
+    off_t             offset;
+    char             *header_in_pos;
+} ngx_http_request_body_t;
+
+
+typedef struct {
     int               status;
     ngx_str_t         status_line;
 
@@ -116,11 +128,12 @@ struct ngx_http_request_s {
 
     ngx_file_t           file;
 
-    ngx_pool_t          *pool;
-    ngx_hunk_t          *header_in;
+    ngx_pool_t               *pool;
+    ngx_hunk_t               *header_in;
+    ngx_http_request_body_t  *request_body;
 
-    ngx_http_headers_in_t   headers_in;
-    ngx_http_headers_out_t  headers_out;
+    ngx_http_headers_in_t     headers_in;
+    ngx_http_headers_out_t    headers_out;
 
     int  (*handler)(ngx_http_request_t *r);
 
@@ -222,6 +235,12 @@ int ngx_http_init_connection(ngx_connection_t *c);
 int ngx_read_http_request_line(ngx_http_request_t *r);
 int ngx_read_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h);
 int ngx_http_handler(ngx_http_request_t *r);
+
+
+int ngx_http_init_client_request_body(ngx_http_request_t *r, int size);
+int ngx_http_read_client_request_body(ngx_http_request_t *r);
+int ngx_http_init_client_request_body_chain(ngx_http_request_t *r);
+void ngx_http_reinit_client_request_body_hunks(ngx_http_request_t *r);
 
 
 int ngx_http_send_header(ngx_http_request_t *r);

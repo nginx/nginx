@@ -26,9 +26,10 @@ static ngx_command_t  ngx_http_output_filter_commands[] = {
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
      ngx_conf_set_size_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
-     offsetof(ngx_http_output_filter_conf_t, hunk_size)},
+     offsetof(ngx_http_output_filter_conf_t, hunk_size),
+     NULL},
 
-    {ngx_null_string, 0, NULL, 0, 0}
+    {ngx_null_string, 0, NULL, 0, 0, NULL}
 };
 
 

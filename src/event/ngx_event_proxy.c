@@ -600,7 +600,7 @@ ngx_log_debug(p->log, "write to file");
 
     if (p->temp_file->fd == NGX_INVALID_FILE) {
         rc = ngx_create_temp_file(p->temp_file, p->temp_path, p->pool,
-                                  p->number, p->random, p->cachable);
+                                  p->cachable);
 
         if (rc == NGX_ERROR) {
             p->fatal_error = 1;

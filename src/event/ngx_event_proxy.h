@@ -75,8 +75,6 @@ struct ngx_event_proxy_s {
 
     ngx_file_t        *temp_file;
     ngx_path_t        *temp_path;
-    int                number;
-    int                random;
     char              *temp_file_warn;
 };
 

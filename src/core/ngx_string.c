@@ -27,14 +27,18 @@ int ngx_atoi(char *line, size_t n)
     int  value;
 
     for (value = 0; n--; line++) {
-       if (*line < '0' || *line > '9') {
-           return NGX_ERROR;
-       }
+        if (*line < '0' || *line > '9') {
+            return NGX_ERROR;
+        }
 
-       value = value * 10 + (*line - '0');
+        value = value * 10 + (*line - '0');
     }
 
-    return value;
+    if (value < 0) {
+        return NGX_ERROR;
+    } else {
+        return value;
+    }
 }
 
 

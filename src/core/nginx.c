@@ -89,6 +89,8 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
+    ngx_init_temp_number();
+
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->init_module) {
             if (ngx_modules[i]->init_module(ngx_pool) == NGX_ERROR) {
@@ -96,14 +98,6 @@ int main(int argc, char *const *argv)
             }
         }
     }
-
-
-#if 0
-    /* STUB */
-    /* TODO: init chain of global modules (like ngx_http.c),
-       they would init its modules and ngx_listening_sockets */
-    ngx_http_init(ngx_pool, &ngx_log);
-#endif
 
     ngx_open_listening_sockets(&ngx_log);
 

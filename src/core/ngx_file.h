@@ -30,10 +30,12 @@ typedef struct {
 
 
 int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
-                         ngx_pool_t *pool, int num, int step, int persistent);
+                         ngx_pool_t *pool, int persistent);
 void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path);
 int ngx_create_path(ngx_file_t *file, ngx_path_t *path);
 
+void ngx_init_temp_number();
+int ngx_next_temp_number(int collision);
 
 
 #endif /* _NGX_FILE_H_INCLUDED_ */

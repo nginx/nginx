@@ -45,6 +45,7 @@ struct ngx_command_s {
     char    *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, char *conf);
     int        conf;
     int        offset;
+    void      *bounds;
 };
 
 

@@ -1,56 +1,55 @@
 
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
 
 
-
-int ngx_http_start_read_client_body(ngx_http_proxy_ctx_t *p)
+int ngx_http_init_client_request_body(ngx_http_request_t *r, int size)
 {
-    int                  first_part, size;
-    ngx_hunk_t          *h;
-    ngx_http_request_t  *r;
+    int                       header_in_part, len;
+    ngx_hunk_t               *h;
+    ngx_http_request_body_t  *rb;
 
-    r = p->request;
+    ngx_test_null(rb, ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t)),
+                  NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    first_part = r->header_in->last - r->header_in->pos;
+    header_in_part = r->header_in->end - r->header_in->pos;
 
-    if (first_part > r->headers_in.content_length_n) {
-        first_part = r->headers_in.content_length_n;
-        size = 0;
+    if (header_in_part) {
+        rb->header_in_pos = r->header_in->pos;
+    }
+
+    if (header_in_part > r->headers_in.content_length_n) {
+        header_in_part = r->headers_in.content_length_n;
 
     } else {
-        size = r->headers_in.content_length_n - first_part;
-        if (size > p->lcf->client_request_buffer_size) {
-            size = p->lcf->client_request_buffer_size;
+        len = r->headers_in.content_length_n - header_in_part;
+        if (len > size) {
+            len = size;
 
-        } else if (size > NGX_PAGE_SIZE) {
-            size = ((size + NGX_PAGE_SIZE) / NGX_PAGE_SIZE) * NGX_PAGE_SIZE;
+        } else if (len > NGX_PAGE_SIZE) {
+            len = ((len + NGX_PAGE_SIZE - 1) / NGX_PAGE_SIZE) * NGX_PAGE_SIZE;
         }
 
-        if (size) {
-            ngx_test_null(p->client_request_hunk, ngx_palloc(r->pool, size),
-                          NGX_ERROR);
+        if (len) {
+            ngx_test_null(rb->hunk, ngx_create_temp_hunk(r->pool, len, 0, 0),
+                          NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    if (first_part) {
-        ngx_test_null(h, ngx_alloc_hunk(r->pool), NGX_ERROR);
-
-        h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
-        h->pos = h->start = h->pre_start = r->header_in->pos;
-        h->last = h->end = h->post_end = r->header_in->pos + first_part;
-        h->file_pos = h->file_last = 0;
-        h->file = NULL;
-        h->shadow = NULL;
-        h->tag = 0;
-
-        p->client_first_part_hunk = h;
-    }
+    r->request_body = rb;
 
     return NGX_OK;
 }
 
 
-int ngx_http_read_client_body(ngx_event_t *rev)
+int ngx_http_read_client_request_body(ngx_http_request_t *r)
 {
+    int                       size, n, rc;
+    ngx_chain_t              *entry;
+    ngx_http_request_body_t  *rb;
+
+    rb = r->request_body;
 
     do {
         if (r->header_in->last < r->header_in->end) {
@@ -70,7 +69,7 @@ int ngx_http_read_client_body(ngx_event_t *rev)
             rb->chain[0].next = NULL;
         }
 
-        n = ngx_recv_chain(c, &rb->chain);
+        n = ngx_recv_chain(r->connection, rb->chain);
 
         if (n == NGX_ERROR) {
             return NGX_ERROR;
@@ -80,7 +79,7 @@ int ngx_http_read_client_body(ngx_event_t *rev)
             return NGX_AGAIN;
         }
 
-        for (entry = &rb->chain; entry; entry = entry->next) {
+        for (entry = rb->chain; entry; entry = entry->next) {
             size = entry->hunk->end - entry->hunk->last;
 
             if (n >= size) {
@@ -96,9 +95,9 @@ int ngx_http_read_client_body(ngx_event_t *rev)
         }
 
         if (rb->hunk && rb->hunk->last == rb->hunk->end) {
-            if (rb->temp_file->fd == NGX_INVALID_FILE) {
-                rc = ngx_create_temp_file(rb->temp_file, rb->temp_path, r->pool,
-                                          rb->number, rb->random, 0);
+            if (rb->temp_file.fd == NGX_INVALID_FILE) {
+                rc = ngx_create_temp_file(&rb->temp_file, rb->temp_path,
+                                          r->pool, 0);
 
                 if (rc == NGX_ERROR) {
                     return NGX_ERROR;
@@ -109,7 +108,7 @@ int ngx_http_read_client_body(ngx_event_t *rev)
                 }
             }
 
-            n = ngx_write_file(rb->temp_file, rb->hunk,
+            n = ngx_write_file(&rb->temp_file, rb->hunk->pos,
                                rb->hunk->last - rb->hunk->pos, rb->offset);
 
             if (rc == NGX_ERROR) {
@@ -120,13 +119,13 @@ int ngx_http_read_client_body(ngx_event_t *rev)
             rb->hunk->last = rb->hunk->pos;
         }
 
-    } while (rev->ready);
+    } while (r->connection->read->ready);
 
     return NGX_OK;
 }
 
 
-int ngx_init_client_request_body_chain(ngx_http_reuqest_t *r)
+int ngx_http_init_client_request_body_chain(ngx_http_request_t *r)
 {
     int                       i;
     ngx_hunk_t               *h;
@@ -143,7 +142,8 @@ int ngx_init_client_request_body_chain(ngx_http_reuqest_t *r)
         rb->chain[i].hunk = r->header_in;
     }
 
-    if (rb->temp_file->fd != NGX_INVALID_FILE) {
+    if (rb->temp_file.fd != NGX_INVALID_FILE) {
+
         if (rb->file_hunk == NULL) {
             ngx_test_null(h, ngx_alloc_hunk(r->pool), NGX_ERROR);
 
@@ -152,7 +152,7 @@ int ngx_init_client_request_body_chain(ngx_http_reuqest_t *r)
             h->last = h->end = h->post_end = 0;
             h->file_pos = 0;
             h->file_last = rb->offset;
-            h->file = rb->temp_file;
+            h->file = &rb->temp_file;
             h->shadow = NULL;
             h->tag = 0;
 
@@ -176,7 +176,7 @@ int ngx_init_client_request_body_chain(ngx_http_reuqest_t *r)
 }
 
 
-int ngx_reinit_client_request_body_hunks(ngx_http_reuqest_t *r)
+void ngx_http_reinit_client_request_body_hunks(ngx_http_request_t *r)
 {
     ngx_http_request_body_t  *rb;
 
@@ -187,7 +187,7 @@ int ngx_reinit_client_request_body_hunks(ngx_http_reuqest_t *r)
     }
 
     if (rb->file_hunk) {
-        rb->file_hunk->file_pos = rb->file_hunk->file_start;
+        rb->file_hunk->file_pos = 0;
     }
 
     if (rb->hunk) {

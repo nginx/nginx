@@ -4,7 +4,7 @@
 */
 
 /*
-   "[time as ctime()] [alert] 412:3 (32)Broken pipe: anything"
+   "[time as ctime()] [alert] 412#3 (32)Broken pipe: anything"
 
    "[time as ctime()] [alert] (32)Broken pipe: anything"
    "[time as ctime()] [alert] anything"
@@ -58,14 +58,19 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 #endif
 
     if (err) {
+
 #if (WIN32)
-        if ((unsigned) err >= 0x80000000)
+        if ((unsigned) err >= 0x80000000) {
             len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
                                 " (%X: ", err);
-        else
-#endif
+        } else {
             len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
                                 " (%d: ", err);
+        }
+#else
+        len += ngx_snprintf(errstr + len, sizeof(errstr) - len - 1,
+                            " (%d: ", err);
+#endif
 
         len += ngx_strerror_r(err, errstr + len, sizeof(errstr) - len - 1);
         if (len < sizeof(errstr) - 2) {

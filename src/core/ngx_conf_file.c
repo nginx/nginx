@@ -432,15 +432,33 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
-    int         size;
+    int         size, len, scale;
+    char        last;
     ngx_str_t  *value;
 
     value = (ngx_str_t *) cf->args->elts;
 
-    size = atoi(value[1].data);
-    if (size < 0) {
+    len = value[1].len;
+    last = value[1].data[len - 1];
+
+    if (last == 'K' || last == 'k') {
+        len--;
+        scale = 1024;
+
+    } else if (last == 'M' || last == 'm') {
+        len--;
+        scale = 1024 * 1024;
+
+    } else {
+        scale = 1;
+    }
+
+    size = ngx_atoi(value[1].data, len);
+    if (size == NGX_ERROR) {
         return "value must be greater or equal to zero";
     }
+
+    size *= scale;
 
     *(int *) (conf + cmd->offset) = size;
 
@@ -450,17 +468,65 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
-    int         size;
+    int         size, len, scale;
+    char        last;
     ngx_str_t  *value;
 
     value = (ngx_str_t *) cf->args->elts;
 
-    size = atoi(value[1].data);
+    len = value[1].len;
+    last = value[1].data[len - 1];
+
+    if (last == 'm') {
+        len--;
+        scale = 1000 * 60;
+
+    } else if (last == 'h') {
+        len--;
+        scale = 1000 * 60 * 60;
+
+    } else if (last == 'd') {
+        len--;
+        scale = 1000 * 60 * 60 * 24;
+
+    } else if (last == 'w') {
+        len--;
+        scale = 1000 * 60 * 60 * 24 * 7;
+
+#if 0   /* overflow */
+
+    } else if (last == 'M') {
+        len--;
+        scale = 1000 * 60 * 60 * 24 * 30;
+
+    } else if (last == 'y') {
+        len--;
+        scale = 1000 * 60 * 60 * 24 * 365;
+
+#endif
+
+    } else if (last == 's') {
+        len--;
+        if (value[1].data[len - 1] == 'm') {
+            len--;
+            scale = 1;
+
+        } else {
+            scale = 1000;
+        }
+
+    } else {
+        scale = 1000;
+    }
+
+    size = ngx_atoi(value[1].data, len);
     if (size < 0) {
         return "value must be greater or equal to zero";
     }
 
-    *(int *) (conf + cmd->offset) = size * 1000;
+    size *= scale;
+
+    *(int *) (conf + cmd->offset) = size;
 
     return NGX_CONF_OK;
 }

@@ -242,6 +242,7 @@ int ngx_select_process_events(ngx_log_t *log)
 #endif
 
     if (timer) {
+        /* TODO: Linux returns time in tv */
         delta = ngx_msec() - delta;
         ngx_event_expire_timers(delta);
 

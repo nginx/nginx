@@ -6,20 +6,20 @@
 #include <ngx_connection.h>
 
 
-ssize_t ngx_recv_chain(ngx_connection_t *c, ngx_chain_t *ce)
+ssize_t ngx_recv_chain(ngx_connection_t *c, ngx_chain_t *entry)
 {
-    ssize_t         n;
+    ssize_t        n;
     struct iovec  *iov;
     ngx_err_t      err;
     ngx_array_t    io;
 
     ngx_init_array(io, c->pool, 10, sizeof(struct iovec), NGX_ERROR);
 
-    while (ce) {
+    while (entry) {
         ngx_test_null(iov, ngx_push_array(&io), NGX_ERROR);
-        iov->iov_base = ce->hunk->pos;
-        iov->iov_len = ce->hunk->end - ce->hunk->last;
-        ce = ce->next;
+        iov->iov_base = entry->hunk->pos;
+        iov->iov_len = entry->hunk->end - entry->hunk->last;
+        entry = entry->next;
     }
 
 ngx_log_debug(c->log, "recv: %d:%d" _ io.nelts _ iov->iov_len);
