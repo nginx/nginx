@@ -233,10 +233,10 @@ ngx_int_t ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd,
 void ngx_close_channel(ngx_fd_t *fd, ngx_log_t *log)
 {
     if (close(fd[0]) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() failed");
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() channel failed");
     }
 
     if (close(fd[1]) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() failed");
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close() channel failed");
     }
 }

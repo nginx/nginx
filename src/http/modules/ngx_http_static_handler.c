@@ -530,6 +530,7 @@ static ngx_int_t ngx_http_static_handler(ngx_http_request_t *r)
     b->file_last = ngx_file_size(&fi);
 
     b->file->fd = fd;
+    b->file->name = name;
     b->file->log = log;
 
     out.buf = b;

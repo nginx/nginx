@@ -6,6 +6,24 @@
             title="nginx">
 
 
+<changes ver="0.1.7" date="12.11.2004">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании sendfile, если передаваемый файл менялся, то мог
+произойти segmentation fault на FreeBSD;
+ошибка появилась в 0.1.2.
+</para>
+<para lang="en">
+on FreeBSD the segmentation fault may occure if the size of the transferred
+file was changed;
+bug appeared in 0.1.2.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.6" date="11.11.2004">
 
 <change type="bugfix">
