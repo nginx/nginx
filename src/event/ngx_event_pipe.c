@@ -566,6 +566,8 @@ int ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_hunk_t *hunk)
     ngx_hunk_t   *h;
     ngx_chain_t  *cl;
 
+ngx_log_debug(p->log, "COPY");
+
     if (hunk->pos == hunk->last) {
         return NGX_OK;
     }

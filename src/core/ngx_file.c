@@ -86,7 +86,7 @@ ngx_log_debug(file->log, "temp fd: %d" _ file->fd);
         }
 
         if (err != NGX_ENOENT
-#if (WIN32_NEED_TEST)
+#if (WIN32)
             && err != NGX_ENOTDIR
 #endif
         ) {
@@ -149,11 +149,12 @@ int ngx_create_path(ngx_file_t *file, ngx_path_t *path)
 
         ngx_log_debug(file->log, "temp: %s" _ file->name.data);
 
-        if (ngx_mkdir(file->name.data) == NGX_FILE_ERROR) {
+        if (ngx_create_dir(file->name.data) == NGX_FILE_ERROR) {
             err = ngx_errno;
             if (err != NGX_EEXIST) {
                 ngx_log_error(NGX_LOG_CRIT, file->log, err,
-                              ngx_mkdir_n " \"%s\" failed", file->name.data);
+                              ngx_create_dir_n " \"%s\" failed",
+                              file->name.data);
                 return NGX_ERROR;
             }
         }

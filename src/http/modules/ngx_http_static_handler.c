@@ -95,10 +95,10 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
          * so we need to check its type before the opening
          */
 
-        if (ngx_file_type(r->file.name.data, &r->file.info) == NGX_FILE_ERROR) {
+        if (ngx_file_info(r->file.name.data, &r->file.info) == NGX_FILE_ERROR) {
             err = ngx_errno;
             ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                          ngx_file_type_n " \"%s\" failed", r->file.name.data);
+                          ngx_file_info_n " \"%s\" failed", r->file.name.data);
 
             if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
                 return NGX_HTTP_NOT_FOUND;
@@ -111,7 +111,7 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
             }
         }
 
-        if (ngx_is_dir(r->file.info)) {
+        if (ngx_is_dir(&r->file.info)) {
 ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
             if (!(r->headers_out.location =
@@ -163,9 +163,9 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);
 
     if (!r->file.info_valid) {
-        if (ngx_stat_fd(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
+        if (ngx_fd_info(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          ngx_stat_fd_n " \"%s\" failed", r->file.name.data);
+                          ngx_fd_info_n " \"%s\" failed", r->file.name.data);
 
             if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
@@ -181,7 +181,7 @@ ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);
         r->file.info_valid = 1;
     }
 
-    if (ngx_is_dir((&r->file.info))) {
+    if (ngx_is_dir(&r->file.info)) {
 ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
@@ -210,7 +210,7 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
 #if !(WIN32) /* the not regular files are probably Unix specific */
 
-    if (!ngx_is_file((&r->file.info))) {
+    if (!ngx_is_file(&r->file.info)) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       "%s is not a regular file", r->file.name.data);
 
@@ -272,9 +272,9 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
     }
 
     if (!r->file.info_valid) {
-        if (ngx_stat_fd(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
+        if (ngx_fd_info(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          ngx_stat_fd_n " %s failed", r->file.name.data);
+                          ngx_fd_info_n " %s failed", r->file.name.data);
 
             if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR)
                 ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
@@ -287,8 +287,8 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
     }
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = ngx_file_size((&r->file.info));
-    r->headers_out.last_modified_time = ngx_file_mtime((&r->file.info));
+    r->headers_out.content_length_n = ngx_file_size(&r->file.info);
+    r->headers_out.last_modified_time = ngx_file_mtime(&r->file.info);
 
     if (!(r->headers_out.content_type =
                    ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
@@ -344,7 +344,7 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
     h->type = r->main ? NGX_HUNK_FILE : NGX_HUNK_FILE|NGX_HUNK_LAST;
 
     h->file_pos = 0;
-    h->file_last = ngx_file_size((&r->file.info));
+    h->file_last = ngx_file_size(&r->file.info);
 
     h->file->fd = r->file.fd;
     h->file->log = r->connection->log;

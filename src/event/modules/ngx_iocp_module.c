@@ -110,7 +110,7 @@ static int ngx_iocp_init(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    ngx_io = ngx_os_io;
+    ngx_io = ngx_iocp_io;
 
     ngx_event_actions = ngx_iocp_module_ctx.actions;
 
@@ -233,16 +233,19 @@ static int ngx_iocp_process_events(ngx_log_t *log)
 ngx_log_debug(log, "iocp ev: %08x" _ ev);
 
         switch (key) {
-        case NGX_IOCP_IO:
-            ev->complete = 1;
-            ev->ready = 1;
-            break;
-
         case NGX_IOCP_ACCEPT:
             if (bytes) {
                 ev->ready = 1;
             }
             break;
+
+        case NGX_IOCP_IO:
+            ev->complete = 1;
+            ev->ready = 1;
+            break;
+
+        case NGX_IOCP_CONNECT:
+            ev->ready = 1;
         }
 
         ev->available = bytes;

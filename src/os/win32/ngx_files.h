@@ -21,6 +21,8 @@
 #define NGX_FILE_ERROR              0
 
 
+#define STDERR_FILENO               (HANDLE) 2
+
 
 #define ngx_open_file(name, access, create)                                 \
             CreateFile(name, access,                                        \
@@ -58,33 +60,85 @@ int ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_close_file              CloseHandle
 #define ngx_close_file_n            "CloseHandle()"
 
-int ngx_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool);
+
+#define ngx_delete_file             DeleteFile
+#define ngx_delete_file_n           "DeleteFile()"
+
+
+#define ngx_rename_file             MoveFile
 #define ngx_rename_file_n           "MoveFile()"
+int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool);
 
-#define ngx_mkdir(name)             CreateDirectory(name, NULL)
-#define ngx_mkdir_n                 "CreateDirectory()"
 
-int ngx_file_type(char *filename, ngx_file_info_t *fi);
-#define ngx_file_type_n             "GetFileAttributesEx()"
+int ngx_file_info(char *filename, ngx_file_info_t *fi);
+#define ngx_file_info_n             "GetFileAttributesEx()"
 
-#define ngx_stat_fd(fd, fi)         GetFileInformationByHandle(fd, fi)
-#define ngx_stat_fd_n               "GetFileInformationByHandle"
 
-#define ngx_is_dir(fi)      (fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-#define ngx_is_file(fi)     !(fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+#define ngx_fd_info(fd, fi)         GetFileInformationByHandle(fd, fi)
+#define ngx_fd_info_n               "GetFileInformationByHandle"
 
-#define ngx_file_size(fi)                                                   \
-            (((off_t) fi.nFileSizeHigh << 32) | fi.nFileSizeLow)
 
-#define ngx_file_uniq(fi)   (*(ngx_file_uniq_t *) &fi.nFileIndexHigh)
+#define ngx_is_dir(fi)      ((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+#define ngx_is_file(fi)     !((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+
+
+#define ngx_file_size(fi)                                                    \
+            (((off_t) (fi)->nFileSizeHigh << 32) | (fi)->nFileSizeLow)
+
+#define ngx_file_uniq(fi)   (*(ngx_file_uniq_t *) &(fi)->nFileIndexHigh)
 
 
 /* 116444736000000000 is commented in src/os/win32/ngx_time.c */
 
-#define ngx_file_mtime(fi)                                                  \
-   (time_t) (((((unsigned __int64) fi.ftLastWriteTime.dwHighDateTime << 32) \
-                                 | fi.ftLastWriteTime.dwLowDateTime)        \
+#define ngx_file_mtime(fi)                                                   \
+ (time_t) (((((unsigned __int64) (fi)->ftLastWriteTime.dwHighDateTime << 32) \
+                               | (fi)->ftLastWriteTime.dwLowDateTime)        \
                                           - 116444736000000000) / 10000000)
+
+
+#define NGX_DIR_MASK                "/*"
+#define NGX_DIR_MASK_LEN            2
+
+
+int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
+#define ngx_open_dir_n              "FindFirstFile()"
+
+
+int ngx_read_dir(ngx_dir_t *dir);
+#define ngx_read_dir_n              "FindNextFile()"
+
+
+#define ngx_close_dir(d)            FindClose((d)->dir)
+#define ngx_close_dir_n             "FindClose()"
+
+
+#define ngx_create_dir(name)        CreateDirectory(name, NULL)
+#define ngx_create_dir_n            "CreateDirectory()"
+
+
+#define ngx_delete_dir              RemoveDirectory
+#define ngx_delete_dir_n            "RemoveDirectory()"
+
+
+#define ngx_de_name(dir)            (dir)->fd.cFileName
+#define ngx_de_namelen(dir)         ngx_strlen((dir)->fd.cFileName)
+#define ngx_de_info(name, dir)      NGX_OK
+#define ngx_de_info_n               "dummy()"
+#define ngx_de_is_dir(dir)                                                    \
+                       ((dir)->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+#define ngx_de_is_file(dir)                                                   \
+                       !((dir)->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+#define ngx_de_size(dir)                                                      \
+            (((off_t) (dir)->fd.nFileSizeHigh << 32) | (dir)->fd.nFileSizeLow)
+
+/* 116444736000000000 is commented in src/os/win32/ngx_time.c */
+
+#define ngx_de_mtime(dir)                                                     \
+             (time_t) (((((unsigned __int64)                                  \
+                           (dir)->fd.ftLastWriteTime.dwHighDateTime << 32)    \
+                            | (dir)->fd.ftLastWriteTime.dwLowDateTime)        \
+                                          - 116444736000000000) / 10000000)
+
 
 
 ssize_t ngx_read_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
@@ -94,10 +148,6 @@ ssize_t ngx_write_file(ngx_file_t *file, char *buf, size_t size, off_t offset);
 
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
                                 off_t offset, ngx_pool_t *pool);
-
-
-
-#define STDERR_FILENO               (HANDLE) 2
 
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

@@ -277,6 +277,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #if (HAVE_IOCP_EVENT)
 #define NGX_IOCP_ACCEPT      0
 #define NGX_IOCP_IO          1
+#define NGX_IOCP_CONNECT     2
 #endif
 
 

@@ -202,7 +202,7 @@ static int ngx_http_index_test_dir(ngx_http_request_t *r,
 
 ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
 
-    if (ngx_file_type(r->path.data, &r->file.info) == -1) {
+    if (ngx_file_info(r->path.data, &r->file.info) == -1) {
 
         err = ngx_errno;
 
@@ -212,14 +212,14 @@ ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
         }
 
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
-                      ngx_file_type_n " %s failed", r->path.data);
+                      ngx_file_info_n " %s failed", r->path.data);
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     r->path.data[r->path.len - 1] = '/';
 
-    if (ngx_is_dir((&r->file.info))) {
+    if (ngx_is_dir(&r->file.info)) {
         return NGX_OK;
     }
 

@@ -480,7 +480,13 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->addr = offsetof(struct sockaddr_in, sin_addr);
             ls->addr_text_max_len = INET_ADDRSTRLEN;
             ls->backlog = -1;
+#if 0
+#if 0
             ls->nonblocking = 1;
+#else
+            ls->nonblocking = 0;
+#endif
+#endif
 
             ls->handler = ngx_http_init_connection;
 

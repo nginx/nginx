@@ -2,12 +2,6 @@
 #define _NGX_CORE_H_INCLUDED_
 
 
-#include <ngx_types.h>
-#include <ngx_time.h>
-#include <ngx_socket.h>
-#include <ngx_errno.h>
-#include <ngx_process.h>
-
 typedef struct ngx_module_s      ngx_module_t;
 typedef struct ngx_conf_s        ngx_conf_t;
 typedef struct ngx_cycle_s       ngx_cycle_t;
@@ -18,6 +12,11 @@ typedef struct ngx_file_s        ngx_file_t;
 typedef struct ngx_event_s       ngx_event_t;
 typedef struct ngx_connection_s  ngx_connection_t;
 
+
+#include <ngx_time.h>
+#include <ngx_socket.h>
+#include <ngx_errno.h>
+#include <ngx_process.h>
 #include <ngx_string.h>
 #include <ngx_parse.h>
 #include <ngx_log.h>
@@ -25,6 +24,7 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #include <ngx_hunk.h>
 #include <ngx_array.h>
 #include <ngx_table.h>
+#include <ngx_types.h>
 #include <ngx_file.h>
 #include <ngx_files.h>
 #include <ngx_times.h>

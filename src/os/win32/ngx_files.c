@@ -163,14 +163,16 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 }
 
 
-int ngx_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
+int ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 {
     int         rc, collision;
     u_int       num;
     char       *name;
-    ngx_err_t   err;
 
-    name = ngx_palloc(pool, to->len + 1 + 10 + 1 + sizeof("DELETE"));
+    if (!(name = ngx_palloc(pool, to->len + 1 + 10 + 1 + sizeof("DELETE")))) {
+        return NGX_ERROR;
+    }
+
     ngx_memcpy(name, to->data, to->len);
 
     collision = 0;
@@ -184,11 +186,6 @@ int ngx_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
                      ".%010u.DELETE", num);
 
         if (MoveFile(to->data, name) == 0) {
-            err = ngx_errno;
-            if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
-                return NGX_ERROR;
-            }
-
             collision = 1;
             ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno,
                           "MoveFile() failed");
@@ -196,18 +193,21 @@ int ngx_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 
     } while (collision);
 
-    if (ngx_win32_version >= NGX_WIN_NT) {
-        if (DeleteFile(name) == 0) {
-            ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno,
-                          "DeleteFile() failed");
-        }
-    }
-
     if (MoveFile(from->data, to->data) == 0) {
         rc = NGX_ERROR;
 
     } else {
         rc = NGX_OK;
+    }
+
+    if (ngx_win32_version >= NGX_WIN_NT) {
+        if (DeleteFile(name) == 0) {
+            ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno,
+                          "DeleteFile() failed");
+        }
+
+    } else {
+        /* TODO: Win9X: update the open files table */
     }
 
     if (rc == NGX_ERROR) {
@@ -220,7 +220,9 @@ int ngx_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 }
 
 
-int ngx_file_type(char *file, ngx_file_info_t *sb)
+#if 0
+
+int ngx_file_info(char *file, ngx_file_info_t *sb)
 {
     WIN32_FILE_ATTRIBUTE_DATA  fa;
 
@@ -240,13 +242,13 @@ int ngx_file_type(char *file, ngx_file_info_t *sb)
     return NGX_OK;
 }
 
+#endif
 
-#if 0
 
-/* Win95 */
-
-int ngx_file_type(char *file, ngx_file_info_t *sb)
+int ngx_file_info(char *file, ngx_file_info_t *sb)
 {
+    /* Win95 */
+
     sb->dwFileAttributes = GetFileAttributes(file);
 
     if (sb->dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
@@ -256,7 +258,37 @@ int ngx_file_type(char *file, ngx_file_info_t *sb)
     return NGX_OK;
 }
 
-#endif
+
+int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
+{
+    ngx_cpystrn(name->data + name->len, NGX_DIR_MASK, NGX_DIR_MASK_LEN + 1);
+
+    dir->dir = FindFirstFile(name->data, &dir->fd);
+    
+    if (dir->dir == INVALID_HANDLE_VALUE) {
+        return NGX_ERROR; 
+    }
+    
+    dir->info_valid = 1;
+    dir->ready = 1;
+
+    return NGX_OK;
+}
+
+
+int ngx_read_dir(ngx_dir_t *dir)
+{
+    if (dir->ready) {
+        dir->ready = 0;
+        return NGX_OK;
+    }
+
+    if (FindNextFile(dir->dir, &dir->fd) == 0) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK; 
+}
 
 
 int ngx_file_append_mode(ngx_fd_t fd)

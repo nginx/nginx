@@ -11,11 +11,11 @@ typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
 typedef uint64_t                    ngx_file_uniq_t;
 
 typedef struct {
-    HANDLE           dir;
-    WIN32_FIND_DATA  de;
+    HANDLE            dir;
+    WIN32_FIND_DATA   fd;
+    unsigned          info_valid;
+    unsigned          ready;
 } ngx_dir_t;
-
-typedef WIN32_FIND_DATA             ngx_dirent_t;
 
 
 #endif /* _NGX_TYPES_H_INCLUDED_ */

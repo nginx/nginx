@@ -460,7 +460,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
         default:
             ngx_log_error(NGX_LOG_ALERT, log, 0,
-                          "unknown kevent filter %d" _ event_list[i].filter);
+                          "unexpected kevent filter %d" _ event_list[i].filter);
         }
     }
 

@@ -180,8 +180,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_memzero(&addr, sizeof(struct sockaddr_in));
 
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = peer->addr;
     addr.sin_port = peer->port;
+    addr.sin_addr.s_addr = peer->addr;
 
 ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
 
@@ -189,7 +189,10 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
 
     if (rc == -1) {
         err = ngx_socket_errno;
-        if (err != NGX_EINPROGRESS) {
+
+        /* Winsock returns WSAEWOULDBLOCK */
+
+        if (err != NGX_EINPROGRESS && err != NGX_EAGAIN) {
             ngx_log_error(NGX_LOG_ERR, pc->log, err, "connect() failed");
 
             if (ngx_close_socket(s) == -1) {
@@ -221,7 +224,8 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
 
         /*
          * aio allows to post operation on non-connected socket
-         * at least in FreeBSD
+         * at least in FreeBSD.
+         * NT does not support it.
          * 
          * TODO: check in Win32, etc. As workaround we can use NGX_ONESHOT_EVENT
          */

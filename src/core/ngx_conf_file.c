@@ -55,9 +55,9 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                       ngx_palloc(cf->pool, sizeof(ngx_conf_file_t)),
                       NGX_CONF_ERROR);
 
-        if (ngx_stat_fd(fd, &cf->conf_file->file.info) == -1) {
+        if (ngx_fd_info(fd, &cf->conf_file->file.info) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
-                          ngx_stat_fd_n " %s failed", filename->data);
+                          ngx_fd_info_n " %s failed", filename->data);
         }
 
         ngx_test_null(cf->conf_file->hunk,
@@ -310,7 +310,7 @@ ngx_log_debug(cf->log, "TOKEN START");
 
         if (h->pos >= h->last) {
             if (cf->conf_file->file.offset
-                               >= ngx_file_size((&cf->conf_file->file.info))) {
+                               >= ngx_file_size(&cf->conf_file->file.info)) {
                 return NGX_CONF_FILE_DONE;
             }
 

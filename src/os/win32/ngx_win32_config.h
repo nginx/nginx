@@ -6,7 +6,18 @@
 
 #define NGX_WIN_NT  200000
 
+#define STRICT
+#define WIN32_LEAN_AND_MEAN
 
+/*
+ * we need to include windows.h explicity before winsock2.h because
+ * warning 4201 is enabled in windows.h
+ */
+#include <windows.h>
+
+#ifdef _MSC_VER
+#pragma warning(disable:4201)
+#endif
 
 #include <winsock2.h>
 #include <mswsock.h>
@@ -14,6 +25,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+
+#ifdef _MSC_VER
+#pragma warning(default:4201)
+
+/* unreferenced formal parameter */
+#pragma warning(disable:4100)
+
+/* STUB */
+#pragma warning(disable:4127)
+#endif
 
 
 #define ngx_inline   __inline
@@ -30,7 +51,7 @@ typedef u_int             uintptr_t;
 
 typedef int               ssize_t;
 typedef long              time_t;
-typedef unsigned __int64  off_t;
+typedef __int64           off_t;
 
 
 #define OFF_FMT    "%I64d"

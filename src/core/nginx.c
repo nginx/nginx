@@ -97,7 +97,9 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
+#if 0
     stub_init(log);
+#endif
 
     ngx_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {
@@ -229,8 +231,6 @@ ngx_log_debug(log, "REOPEN: %d:%d:%s" _ fd _ file[i].fd _ file[i].name.data);
             break;
         }
     }
-
-    return 0;
 }
 
 
@@ -513,7 +513,7 @@ ngx_log_debug(log, "OPEN: %d:%s" _ file[i].fd _ file[i].name.data);
         ngx_cleaner_event.event_handler = ngx_clean_old_cycles;
         ngx_cleaner_event.log = cycle->log;
         ngx_cleaner_event.data = &dumb;
-        dumb.fd = -1;
+        dumb.fd = (ngx_socket_t) -1;
     }
 
     ngx_temp_pool->log = cycle->log;
@@ -541,11 +541,14 @@ static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log)
     ngx_listening_t *ls;
 
     reuseaddr = 1;
+#if (NGX_SUPPRESS_WARN)
+    failed = 0;
+#endif
 
     /* TODO: times configurable */
 
     for (times = 10; times; times--) {
-         failed = 0;
+        failed = 0;
 
         /* for each listening socket */
 
@@ -597,6 +600,16 @@ static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log)
 
             /* TODO: close on exit */
 
+            if (!(ngx_event_flags & NGX_USE_AIO_EVENT)) {
+                if (ngx_nonblocking(s) == -1) {
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                  ngx_nonblocking_n " %s failed",
+                                  ls[i].addr_text.data);
+                    return NGX_ERROR;
+                }
+            }
+
+#if 0
             if (ls[i].nonblocking) {
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
@@ -605,6 +618,7 @@ static int ngx_open_listening_sockets(ngx_cycle_t *cycle, ngx_log_t *log)
                     return NGX_ERROR;
                 }
             }
+#endif
 
             if (bind(s, ls[i].sockaddr, ls[i].socklen) == -1) {
                 err = ngx_socket_errno;

@@ -270,11 +270,11 @@ void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p)
     if (p->cache->ctx.file.fd != NGX_INVALID_FILE
         && !p->cache->ctx.file.info_valid)
     {
-        if (ngx_stat_fd(p->cache->ctx.file.fd, &p->cache->ctx.file.info)
+        if (ngx_fd_info(p->cache->ctx.file.fd, &p->cache->ctx.file.info)
                                                              == NGX_FILE_ERROR)
         {
             ngx_log_error(NGX_LOG_CRIT, p->request->connection->log, ngx_errno,
-                          ngx_stat_fd_n " \"%s\" failed",
+                          ngx_fd_info_n " \"%s\" failed",
                           p->cache->ctx.file.name.data);
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
@@ -322,7 +322,7 @@ static void ngx_http_proxy_cache_look_complete_request(ngx_http_proxy_ctx_t *p)
     *ctx = p->cache->ctx;
 
     rc = ngx_http_cache_open_file(p->request, ctx,
-                                  ngx_file_uniq((&p->cache->ctx.file.info)));
+                                  ngx_file_uniq(&p->cache->ctx.file.info));
 
     if (rc == NGX_HTTP_CACHE_THE_SAME) {
         p->try_busy_lock = 1;

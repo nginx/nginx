@@ -9,7 +9,7 @@
 #include <ngx_core.h>
 
 
-ngx_str_t wsa_errors[] = {
+static ngx_str_t  wsa_errors[] = {
     ngx_string("Invalid argument"),                          /* 10022 */
     ngx_null_string,                                         /* 10023 */
     ngx_null_string,                                         /* 10024 */
@@ -23,7 +23,29 @@ ngx_str_t wsa_errors[] = {
     ngx_null_string,                                         /* 10032 */
     ngx_null_string,                                         /* 10033 */
     ngx_null_string,                                         /* 10034 */
-    ngx_string("Resource temporarily unavailable")           /* 10035 */
+    ngx_string("Resource temporarily unavailable"),          /* 10035 */
+    ngx_null_string,                                         /* 10036 */
+    ngx_null_string,                                         /* 10037 */
+    ngx_null_string,                                         /* 10038 */
+    ngx_null_string,                                         /* 10039 */
+    ngx_null_string,                                         /* 10040 */
+    ngx_null_string,                                         /* 10041 */
+    ngx_null_string,                                         /* 10042 */
+    ngx_null_string,                                         /* 10043 */
+    ngx_null_string,                                         /* 10044 */
+    ngx_null_string,                                         /* 10045 */
+    ngx_null_string,                                         /* 10046 */
+    ngx_null_string,                                         /* 10047 */
+    ngx_null_string,                                         /* 10048 */
+    ngx_null_string,                                         /* 10049 */
+    ngx_null_string,                                         /* 10050 */
+    ngx_null_string,                                         /* 10051 */
+    ngx_null_string,                                         /* 10052 */
+    ngx_null_string,                                         /* 10053 */
+    ngx_null_string,                                         /* 10054 */
+    ngx_null_string,                                         /* 10055 */
+    ngx_null_string,                                         /* 10056 */
+    ngx_string("Socket is not connected")                    /* 10057 */
 };
 
 
@@ -45,7 +67,7 @@ int ngx_strerror_r(ngx_err_t err, char *errstr, size_t size)
         if (format_error == ERROR_MR_MID_NOT_FOUND) {
             n = err - WSABASEERR - 22;
 
-            if (n >= 0 && n < 14) {
+            if (n >= 0 && n <= 35) {
                 len = wsa_errors[n].len;
 
                 if (len) {

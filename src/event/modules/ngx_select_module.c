@@ -265,9 +265,6 @@ static int ngx_select_process_events(ngx_log_t *log)
     timer = ngx_event_find_timer();
 
     if (timer) {
-        tv.tv_sec = timer / 1000;
-        tv.tv_usec = (timer % 1000) * 1000;
-        tp = &tv;
 #if (HAVE_SELECT_CHANGE_TIMEOUT)
         delta = 0;
 #else
@@ -275,10 +272,13 @@ static int ngx_select_process_events(ngx_log_t *log)
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 #endif
 
+        tv.tv_sec = timer / 1000;
+        tv.tv_usec = (timer % 1000) * 1000;
+        tp = &tv;
+
     } else {
-        timer = 0;
-        tp = NULL;
         delta = 0;
+        tp = NULL;
     }
 
 #if !(WIN32)

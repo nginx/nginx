@@ -5,8 +5,7 @@
 
 #include <md5.h>
 
-/* STUB */
-#if (WIN32)
+#if (HAVE_OPENSSL_MD5)
 #define  MD5Init    MD5_Init
 #define  MD5Update  MD5_Update
 #define  MD5Final   MD5_Final
@@ -71,14 +70,14 @@ int ngx_http_cache_open_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
     }
 
     if (uniq) {
-        if (ngx_stat_fd(ctx->file.fd, &ctx->file.info) == NGX_FILE_ERROR) {
+        if (ngx_fd_info(ctx->file.fd, &ctx->file.info) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          ngx_stat_fd_n " \"%s\" failed", ctx->file.name.data);
+                          ngx_fd_info_n " \"%s\" failed", ctx->file.name.data);
 
             return NGX_ERROR;
         }
 
-        if (ngx_file_uniq((&ctx->file.info)) == uniq) {
+        if (ngx_file_uniq(&ctx->file.info) == uniq) {
             if (ngx_close_file(ctx->file.fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
                               ngx_close_file_n " \"%s\" failed",
@@ -140,11 +139,21 @@ int ngx_http_cache_update_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
     retry = 0;
 
     for ( ;; ) {
-        if (ngx_rename_file(temp_file, (&ctx->file.name), r->pool) == NGX_OK) {
+        if (ngx_rename_file(temp_file->data, ctx->file.name.data) == NGX_OK) {
             return NGX_OK;
         }
 
         err = ngx_errno;
+
+#if (WIN32)
+        if (err == NGX_EEXIST) {
+            if (ngx_win32_rename_file(temp_file, &ctx->file.name, r->pool)
+                                                                  == NGX_ERROR)
+            {
+                return NGX_ERROR;
+            }
+        }
+#endif
 
         if (retry || (err != NGX_ENOENT && err != NGX_ENOTDIR)) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,

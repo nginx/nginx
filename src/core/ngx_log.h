@@ -139,8 +139,6 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 
 #else /* NO VARIADIC MACROS */
 
-#include <stdarg.h>
-
 #if (NGX_DEBUG)
 #define ngx_log_debug(log, text) \
     if (log->log_level == NGX_LOG_DEBUG) \

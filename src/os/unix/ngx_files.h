@@ -49,37 +49,59 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
                                 off_t offset, ngx_pool_t *pool);
 
 
-#define ngx_rename_file(from, to, pool)  rename(from->data, to->data)
+#define ngx_rename_file          rename
 #define ngx_rename_file_n        "rename"
 
 
-#define ngx_open_dir             opendir
+#define ngx_file_info(file, sb)  stat(file, sb)
+#define ngx_file_info_n          "stat()"
+
+#define ngx_fd_info(fd, sb)      fstat(fd, sb)
+#define ngx_fd_info_n            "fstat()"
+
+#define ngx_is_dir(sb)           (S_ISDIR((sb)->st_mode))
+#define ngx_is_file(sb)          (S_ISREG((sb)->st_mode))
+#define ngx_file_size(sb)        (sb)->st_size
+#define ngx_file_mtime(sb)       (sb)->st_mtime
+#define ngx_file_uniq(sb)        (sb)->st_ino
+
+
+#define NGX_DIR_MASK_LEN         0
+
+
+int ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_open_dir_n           "opendir()"
 
 
-#define ngx_read_dir             readdir
+#define ngx_close_dir(d)         closedir((d)->dir)
+#define ngx_close_dir_n          "closedir()"
+
+
+#define ngx_read_dir(d)                                                      \
+                           (((d)->de = readdir((d)->dir)) ? NGX_OK : NGX_ERROR)
 #define ngx_read_dir_n           "readdir()"
 
 
-#define ngx_mkdir(name)          mkdir(name, 0700)
-#define ngx_mkdir_n              "mkdir()"
+#define ngx_create_dir(name)     mkdir(name, 0700)
+#define ngx_create_dir_n         "mkdir()"
 
 
 #define ngx_delete_dir           rmdir
 #define ngx_delete_dir_n         "rmdir()"
 
 
-#define ngx_file_type(file, sb)  stat(file, sb)
-#define ngx_file_type_n          "stat()"
-
-#define ngx_stat_fd(fd, sb)      fstat(fd, sb)
-#define ngx_stat_fd_n            "fstat()"
-
-#define ngx_is_dir(sb)           (S_ISDIR(sb->st_mode))
-#define ngx_is_file(sb)          (S_ISREG(sb->st_mode))
-#define ngx_file_size(sb)        sb->st_size
-#define ngx_file_mtime(sb)       sb->st_mtime
-#define ngx_file_uniq(sb)        sb->st_ino
+#define ngx_de_name(dir)         (dir)->de->d_name
+#ifdef __FreeBSD__
+#define ngx_de_namelen(dir)      (dir)->de->d_namlen
+#else
+#define ngx_de_namelen(dir)      ngx_strlen((dir)->de->d_name)
+#endif
+#define ngx_de_info(name, dir)   stat(name, &(dir)->info)
+#define ngx_de_info_n            "stat()"
+#define ngx_de_is_dir(dir)       (S_ISDIR((dir)->info.st_mode))
+#define ngx_de_is_file(dir)      (S_ISREG((dir)->info.st_mode))
+#define ngx_de_size(dir)         (dir)->info.st_size
+#define ngx_de_mtime(dir)        (dir)->info.st_mtime
 
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

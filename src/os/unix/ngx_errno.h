@@ -19,10 +19,13 @@ typedef int               ngx_err_t;
 #define NGX_ECONNRESET    ECONNRESET
 #define NGX_ETIMEDOUT     ETIMEDOUT
 #define NGX_ECANCELED     ECANCELED
+#define NGX_ENOMOREFILES  0
+
 
 
 #define ngx_errno                  errno
 #define ngx_socket_errno           errno
+#define ngx_set_errno(err)         errno = err
 #define ngx_set_socket_errno(err)  errno = err
 
 #if 0

@@ -10,7 +10,7 @@ int  ngx_inherited_nonblocking = 1;
 
 ngx_os_io_t ngx_os_io = {
     ngx_wsarecv,
-    NULL,
+    ngx_wsarecv_chain,
     NULL,
     ngx_wsasend_chain,
     0

@@ -9,6 +9,7 @@
 typedef DWORD                      ngx_err_t;
 
 #define ngx_errno                  GetLastError()
+#define ngx_set_errno(err)         SetLastError(err)
 #define ngx_socket_errno           WSAGetLastError()
 #define ngx_set_socket_errno(err)  WSASetLastError(err)
 
@@ -21,6 +22,10 @@ typedef DWORD                      ngx_err_t;
 #define NGX_EADDRINUSE             WSAEADDRINUSE
 #define NGX_ECONNRESET             ECONNRESET
 #define NGX_ETIMEDOUT              WSAETIMEDOUT
+#define NGX_ENOMOREFILES           ERROR_NO_MORE_FILES
+
+#define NGX_EALREADY               WSAEALREADY
+#define NGX_EINVAL                 WSAEINVAL
 
 int ngx_strerror_r(ngx_err_t err, char *errstr, size_t size);
 
