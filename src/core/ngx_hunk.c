@@ -115,7 +115,7 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
     *out = NULL;
 
     while (*busy) {
-        if (ngx_hunk_size((*busy)->hunk) > 0) {
+        if (ngx_hunk_size((*busy)->hunk) != 0) {
             break;
         }
 

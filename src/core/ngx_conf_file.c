@@ -741,7 +741,7 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     bufs->size = ngx_parse_size(&value[2]);
-    if (bufs->size == NGX_ERROR || bufs->size == 0) {
+    if (bufs->size == (size_t) NGX_ERROR || bufs->size == 0) {
         return "invalid value";
     }
 

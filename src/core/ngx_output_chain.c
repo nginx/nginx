@@ -16,7 +16,8 @@ static int ngx_output_chain_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src,
 int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 {
     int           rc, last;
-    ssize_t       size, hsize;
+    size_t        hsize;
+    ssize_t       size;
     ngx_chain_t  *cl, *out, **last_out;
 
     /*

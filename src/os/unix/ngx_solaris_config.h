@@ -9,6 +9,7 @@
 #define _FILE_OFFSET_BITS  64   /* must be before sys/types.h */
 
 #include <unistd.h>
+#include <inttypes.h>
 #include <stddef.h>             /* offsetof */
 #include <stdlib.h>
 #include <stdarg.h>

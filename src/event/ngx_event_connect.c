@@ -203,16 +203,32 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
     }
 
     if (ngx_event_flags & NGX_USE_AIO_EVENT) {
-        /* aio, iocp */
- 
-#if 1
-        /* TODO: NGX_EINPROGRESS */
 
+        /* aio, iocp */
+
+        if (ngx_blocking(s) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
+                          ngx_blocking_n " failed");
+
+            if (ngx_close_socket(s) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
+                              ngx_close_socket_n " failed");
+            }
+
+            return NGX_ERROR;
+        }
+
+        /*
+         * aio allows to post operation on non-connected socket
+         * at least in FreeBSD
+         * 
+         * TODO: check in Win32, etc.
+         */
+ 
         rev->ready = 1;
         wev->ready = 1;
 
         return NGX_OK;
-#endif
     }
 
     /* TODO: epoll */

@@ -67,7 +67,7 @@ struct ngx_chain_s {
 
 typedef struct {
     int          num;
-    ssize_t      size;
+    size_t       size;
 } ngx_bufs_t;
 
 
@@ -117,8 +117,8 @@ typedef struct {
 
 
 #define ngx_hunk_size(h)                                                     \
-        ((h->type & NGX_HUNK_IN_MEMORY) ? h->last - h->pos:                  \
-                                         (size_t) (h->file_last - h->file_pos))
+        ((h->type & NGX_HUNK_IN_MEMORY) ? (size_t) (h->last - h->pos):       \
+                                          (size_t) (h->file_last - h->file_pos))
 
 
 ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size);
