@@ -14,6 +14,7 @@
 
 ngx_event_t  *ngx_timer_queue;
 int           ngx_timer_hash_size;
+static int    ngx_timer_cur_queue;
 
 
 int ngx_event_init_timer(ngx_log_t *log)
@@ -21,6 +22,7 @@ int ngx_event_init_timer(ngx_log_t *log)
     int  i;
 
     ngx_timer_hash_size = NGX_TIMER_HASH_SIZE;
+    ngx_timer_cur_queue = 0;
 
     ngx_test_null(ngx_timer_queue,
                   ngx_alloc(ngx_timer_hash_size * sizeof(ngx_event_t), log),
@@ -37,7 +39,6 @@ int ngx_event_init_timer(ngx_log_t *log)
 
 void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
-    int           n;
     ngx_event_t  *e;
 
 #if (NGX_DEBUG_EVENT)
@@ -50,16 +51,20 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
         return;
     }
 
-    n = timer % ngx_timer_hash_size;
 #if (NGX_DEBUG_EVENT)
-    ngx_log_debug(ev->log, "timer slot: %d" _ n);
+    ngx_log_debug(ev->log, "timer slot: %d" _ ngx_timer_cur_queue);
 #endif
 
-    for (e = ngx_timer_queue[n].timer_next;
-         e != &ngx_timer_queue[n] && timer > e->timer_delta;
+    for (e = ngx_timer_queue[ngx_timer_cur_queue].timer_next;
+         e != &ngx_timer_queue[ngx_timer_cur_queue] && timer > e->timer_delta;
          e = e->timer_next)
     {
         timer -= e->timer_delta;
+    }
+
+    ngx_timer_cur_queue++;
+    if (ngx_timer_cur_queue >= ngx_timer_hash_size) {
+        ngx_timer_cur_queue = 0;
     }
 
     ev->timer_delta = timer;

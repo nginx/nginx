@@ -241,16 +241,27 @@ static int ngx_http_process_request_header(ngx_event_t *ev)
 
     } while (rc == NGX_AGAIN && r->header_in->pos.mem < r->header_in->last.mem);
 
-    if (r->header_timeout) {
-        r->header_timeout = 0;
-        ngx_del_timer(ev);
-        ngx_add_timer(ev, ngx_http_client_header_timeout);
-    }
+    if (rc == NGX_OK) {
+        /* HTTP header done */
 
-    if (rc == NGX_OK)
+        if (r->header_timeout) {
+            r->header_timeout = 0;
+            ngx_del_timer(ev);
+            ngx_add_timer(ev, ngx_http_client_header_timeout);
+        }
+
         return ngx_http_event_request_handler(r);
-    else
+
+    } else {
+
+        if (r->header_timeout) {
+            r->header_timeout = 0;
+            ngx_del_timer(ev);
+            ngx_add_timer(ev, ngx_http_client_header_timeout);
+        }
+
         return rc;
+    }
 }
 
 
