@@ -313,9 +313,11 @@ static int ngx_http_process_request_line(ngx_http_request_t *r)
             ngx_cpystrn(r->exten.data, r->uri_ext, r->exten.len + 1);
         }
 
+#if 0
         ngx_log_debug(r->connection->log, "HTTP: %d, %d, %s %s" _
                       r->method _ r->http_version _
                       r->uri.data _ r->exten.data);
+#endif
 
         if (r->http_version == 9)
             return NGX_OK;

@@ -67,12 +67,14 @@
 #define HAVE_INHERITED_NONBLOCK  1
 #endif
 
+#include <sys/stropts.h>        /* INFTIM */
+
 #endif /* Solaris */
 
 
 
 #include <unistd.h>
-#include <stddef.h>    /* offsetof */
+#include <stddef.h>             /* offsetof */
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -90,6 +92,11 @@
 #ifndef HAVE_POLL
 #define HAVE_POLL  1
 #include <poll.h>
+/*
+#ifndef INFTIM
+#define INFTIM    -1
+#endif
+*/
 #endif
 
 #define ngx_inline   inline

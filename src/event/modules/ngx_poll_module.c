@@ -2,6 +2,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_types.h>
+#include <ngx_errno.h>
 #include <ngx_log.h>
 #include <ngx_time.h>
 #include <ngx_connection.h>
@@ -108,6 +109,7 @@ int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
         if (ev->index < --nevents) {
+            event_list[ev->index] = event_list[nevents];
             event_index[ev->index] = event_index[nevents];
             event_index[ev->index]->index = ev->index;
         }
@@ -125,6 +127,7 @@ int ngx_poll_process_events(ngx_log_t *log)
 {
     int                i, ready, found;
     u_int              timer, delta;
+    ngx_err_t          err;
     ngx_event_t       *ev;
     ngx_connection_t  *c;
 
@@ -202,7 +205,7 @@ int ngx_poll_process_events(ngx_log_t *log)
 
             if (c->read->oneshot) {
                 ngx_del_timer(c->read);
-                ngx_select_del_event(c->read, NGX_READ_EVENT, 0);
+                ngx_poll_del_event(c->read, NGX_READ_EVENT, 0);
             }
 
             if (c->read->event_handler(c->read) == NGX_ERROR) {
@@ -216,7 +219,7 @@ int ngx_poll_process_events(ngx_log_t *log)
 
             if (c->write->oneshot) {
                 ngx_del_timer(c->write);
-                ngx_select_del_event(c->write, NGX_WRITE_EVENT, 0);
+                ngx_poll_del_event(c->write, NGX_WRITE_EVENT, 0);
             }
 
             if (c->write->event_handler(c->write) == NGX_ERROR) {
@@ -226,7 +229,13 @@ int ngx_poll_process_events(ngx_log_t *log)
 
         if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
             found = 1;
-            ngx_log_error(NGX_LOG_ERR, log, ngx_errno,
+
+            err = 0;
+            if (event_list[i].revents & POLLNVAL) {
+                err = EBADF;
+            }
+
+            ngx_log_error(NGX_LOG_ERR, log, err,
                           "poll() error on %d:%d",
                           event_list[i].fd, event_list[i].revents);
         }

@@ -35,8 +35,18 @@ ngx_event_type_e     ngx_event_type = NGX_POLL_EVENT;
 ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
 #endif
 
-#else
+#elif (HAVE_POLL)
+
+#if 0
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
+#else
+ngx_event_type_e     ngx_event_type = NGX_POLL_EVENT;
+#endif
+
+#else
+
+ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
+
 #endif
 
 ngx_event_actions_t  ngx_event_actions;
