@@ -194,10 +194,6 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     ctx->prev = 0;
                 }
 
-                if (ctx->pos == ctx->buf->last) {
-                    ctx->prev = ctx->buf->last - ctx->last;
-                }
-
                 if (!(hunk = ngx_calloc_hunk(r->pool))) {
                     return NGX_ERROR;
                 }
@@ -211,6 +207,10 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 *ctx->last_out = cl;
                 ctx->last_out = &cl->next;
+
+                if (ctx->pos == ctx->buf->last) {
+                    ctx->prev = ctx->buf->last - ctx->last;
+                }
 
                 continue;
 
@@ -236,6 +236,8 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ctx->last_out = &cl->next;
             }
         }
+
+        ctx->buf = NULL;
     }
 
     if (ctx->out) {
@@ -256,6 +258,7 @@ static int ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     
         ctx->out = NULL;
+        ctx->last_out = &ctx->out;
 
         while (ctx->busy) {
             if (ngx_hunk_size(ctx->busy->hunk) != 0) {
