@@ -1,5 +1,5 @@
 
-CFLAGS = -nologo -c -MT -O2 -Ob1 -Oi -Gs $(CPU_OPT)
+CFLAGS = -nologo -c -O2 -Ob1 -Oi -Gs $(LIBC) $(CPU_OPT)
 
 zlib.lib:
 	cl $(CFLAGS) adler32.c crc32.c deflate.c trees.c zutil.c

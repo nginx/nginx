@@ -21,17 +21,22 @@ case $CC in
          CFLAGS="$CFLAGS $PIPE"
          CFLAGS="$CFLAGS $CPU_OPT"
 
-         if [ $PCRE_OPT = NO ]; then
-             PCRE_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $PIPE $CPU_OPT\""
+         if [ ".$PCRE_OPT" = "." ]; then
+             PCRE_OPT="-O2 -fomit-frame-pointer $PIPE $CPU_OPT"
+         else
+             PCRE_OPT="$PCRE_OPT $PIPE"
          fi
 
-         if [ $MD5_OPT = NO ]; then
-             MD5_OPT="CFLAGS=\"-O2 -fomit-frame-pointer $PIPE $CPU_OPT\""
+         if [ ".$MD5_OPT" = "." ]; then
+             MD5_OPT="-O2 -fomit-frame-pointer $PIPE $CPU_OPT"
+         else
+             MD5_OPT="$MD5_OPT $PIPE"
          fi
 
-         if [ $ZLIB_OPT = NO ]; then
-             ZLIB_OPT="CFLAGS=\"-O2 -fomit-frame-pointer"
-             ZLIB_OPT="$ZLIB_OPT $PIPE $CPU_OPT $ZLIB_ASMV\""
+         if [ ".$ZLIB_OPT" = "." ]; then
+             ZLIB_OPT="-O2 -fomit-frame-pointer $PIPE $CPU_OPT"
+         else
+             ZLIB_OPT="$ZLIB_OPT $PIPE"
          fi
 
          # warnings
@@ -53,6 +58,10 @@ case $CC in
          CFLAGS="$CFLAGS -g"
 
          have=HAVE_GCC_VARIADIC_MACROS . auto/have
+
+         if [ ".$CPP" = "." ]; then
+             CPP="$CC -E"
+         fi
 
          LINK="\$(CC)"
 
@@ -88,16 +97,16 @@ case $CC in
 
          CFLAGS="$CFLAGS $CPU_OPT"
 
-         if [ $PCRE_OPT = NO ]; then
-             PCRE_OPT="CFLAGS=\"-O $CPU_OPT\""
+         if [ ".$PCRE_OPT" = "." ]; then
+             PCRE_OPT="-O $CPU_OPT"
          fi
 
-         if [ $MD5_OPT = NO ]; then
-             MD5_OPT="CFLAGS=\"-O $CPU_OPT\""
+         if [ ".$MD5_OPT" = "." ]; then
+             MD5_OPT="-O $CPU_OPT"
          fi
 
-         if [ $ZLIB_OPT = NO ]; then
-             ZLIB_OPT="CFLAGS=\"-O $CPU_OPT $ZLIB_ASMV\""
+         if [ ".$ZLIB_OPT" = "." ]; then
+             ZLIB_OPT="-O $CPU_OPT"
          fi
 
          # warnings
@@ -157,8 +166,12 @@ case $CC in
          # stop on warning
          CFLAGS="$CFLAGS -WX"
 
-         # multithreaded
-         CFLAGS="$CFLAGS -MT"
+         # link with libcmt.lib, multithreaded
+         #LIBC="-MT"
+         # link with msvcrt.dll
+         LIBC="-MD"
+
+         CFLAGS="$CFLAGS $LIBC"
 
          # disable logo
          CFLAGS="$CFLAGS -nologo"
@@ -166,16 +179,7 @@ case $CC in
          LINK="\$(CC)"
 
          # link flags
-         CORE_LINK="$CORE_LINK -link"
-
-         # msvcrt.dll
-         CORE_LINK="$CORE_LINK -nodefaultlib:libcmt"
-         CORE_LIBS="$CORE_LIBS msvcrt.lib"
-
-         # static libc
-         #CORE_LINK="$CORE_LINK -nodefaultlib:msvcrt"
-
-         CORE_LINK="$CORE_LINK -verbose:lib"
+         CORE_LINK="$CORE_LINK -link -verbose:lib"
 
          # debug
          CFLAGS="$CFLAGS -Yd"

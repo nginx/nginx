@@ -1,5 +1,5 @@
 
-CFLAGS = -nologo -c -MT -O2 -Ob1 -Oi -Gs $(CPU_OPT) -D L_ENDIAN
+CFLAGS = -nologo -c -MT -O2 -Ob1 -Oi -Gs $(LIBC) $(CPU_OPT) -D L_ENDIAN
 
 !if "$(MD5_ASM)" == "YES"
 

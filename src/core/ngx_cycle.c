@@ -226,20 +226,14 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
-#if (WIN32)
-#if 0
-    /* TODO: TEST */
-fprintf(stderr, "BEFORE\n");
-    CloseHandle(GetStdHandle(STD_ERROR_HANDLE));
-    SetStdHandle(STD_ERROR_HANDLE, cycle->log->file->fd);
-fprintf(stderr, "AFTER\n");
-#endif
-#else
+#if !(WIN32)
+
     if (dup2(cycle->log->file->fd, STDERR_FILENO) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "dup2(STDERR) failed");
         failed = 1;
     }
+
 #endif
 
     if (failed) {
@@ -454,15 +448,13 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
         file[i].fd = fd;
     }
 
-#if (WIN32)
-    /* TODO: TEST */
-    CloseHandle(GetStdHandle(STD_ERROR_HANDLE));
-    SetStdHandle(STD_ERROR_HANDLE, cycle->log->file->fd);
-#else
+#if !(WIN32)
+
     if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "dup2(STDERR) failed");
     }
+
 #endif
 }
 

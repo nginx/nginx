@@ -1,12 +1,12 @@
 
+if [ $PCRE != NO ]; then
+    . auto/lib/pcre/make
+fi
+
 if [ $MD5 != NO ]; then
     . auto/lib/md5/make
 fi
 
 if [ $ZLIB != NO ]; then
     . auto/lib/zlib/make
-fi
-
-if [ $PCRE != NO ]; then
-    . auto/lib/pcre/make
 fi

@@ -25,14 +25,19 @@ case $PLATFORM in
 esac
 
 
+done=NO
+
+
 case $PLATFORM in
 
     win32)
 
         cp auto/lib/zlib/$makefile $ZLIB
         echo "	cd $ZLIB"                                         >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile CPU_OPT=$CPU_OPT"           >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile CPU_OPT=$CPU_OPT LIBC=$LIBC">> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
+
+        done=YES
     ;;
 
 
@@ -40,21 +45,22 @@ case $PLATFORM in
         if [ $ZLIB_ASM = pentiumpro ]; then
             echo "	cd $ZLIB \\"                              >> $MAKEFILE
             echo "	&& cp contrib/asm686/match.S . \\"        >> $MAKEFILE
-            echo "	&& CC=$CC $ZLIB_OPT ./configure \\"       >> $MAKEFILE
-            echo "	&& \$(MAKE) OBJA=match.o"                 >> $MAKEFILE
-        else
-            echo "	cd $ZLIB \\"                              >> $MAKEFILE
-            echo "	&& CC=$CC $ZLIB_OPT ./configure \\"       >> $MAKEFILE
-            echo "	&& \$(MAKE)"                              >> $MAKEFILE
+            echo "	&& CC=$CC CFLAGS=\"$ZLIB_OPT -DASMV\" \\" >> $MAKEFILE
+            echo "		./configure \\"                   >> $MAKEFILE
+            echo "	&& \$(MAKE) OBJA=match.o libz.a"          >> $MAKEFILE
+
+            done=YES
         fi
     ;;
 
-    *)
-        echo "	cd $ZLIB \\"                                      >> $MAKEFILE
-        echo "	&& CC=$CC $ZLIB_OPT ./configure \\"               >> $MAKEFILE
-        echo "	&& \$(MAKE)"                                      >> $MAKEFILE
-    ;;
-
 esac
+
+
+if [ $done = NO ]; then
+    echo "	cd $ZLIB \\"                                      >> $MAKEFILE
+    echo "	&& CC=$CC CFLAGS=\"$ZLIB_OPT\" ./configure \\"    >> $MAKEFILE
+    echo "	&& \$(MAKE) libz.a"                               >> $MAKEFILE
+fi
+
 
 echo                                                              >> $MAKEFILE

@@ -2,6 +2,7 @@
 help=no
 
 CC=gcc
+CPP=
 OBJS=objs
 
 DEBUG=NO
@@ -27,16 +28,16 @@ HTTP_PROXY=YES
 
 USE_PCRE=NO
 PCRE=NONE
-PCRE_OPT=NO
+PCRE_OPT=
 
 USE_MD5=NO
 MD5=NONE
-MD5_OPT=NO
+MD5_OPT=
 MD5_ASM=NO
 
 USE_ZLIB=NO
 ZLIB=NONE
-ZLIB_OPT=NO
+ZLIB_OPT=
 ZLIB_ASM=NO
 
 
@@ -70,6 +71,7 @@ do
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
 
         --with-cc=*)                     CC="$value"                ;;
+        --with-cpp=*)                    CPP="$value"               ;;
         --with-cpu-opt=*)                CPU="$value"               ;;
         --with-debug)                    DEBUG=YES                  ;;
 
@@ -118,9 +120,4 @@ if [ $help = yes ]; then
     echo
 
     exit 1
-fi
-
-
-if [ $ZLIB_ASM != NO ]; then
-    ZLIB_ASMV=-DASMV
 fi

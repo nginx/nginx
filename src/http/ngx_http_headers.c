@@ -19,8 +19,10 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("If-Range"), offsetof(ngx_http_headers_in_t, if_range) },
 #endif
 
+#if (NGX_HTTP_GZIP)
     { ngx_string("Accept-Encoding"),
                            offsetof(ngx_http_headers_in_t, accept_encoding) },
+#endif
 
     { ngx_string("Authorization"),
                              offsetof(ngx_http_headers_in_t, authorization) },

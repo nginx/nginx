@@ -15,36 +15,27 @@ esac
 case $PLATFORM in
 
     win32)
-        echo "$PCRE/pcre.lib:"                                    >> $MAKEFILE
-    ;;
-
-    *)
-        echo "$PCRE/.libs/libpcre.a:"                             >> $MAKEFILE
-    ;;
-
-esac
-
-
-case $PLATFORM in
-
-    win32)
         cp auto/lib/pcre/patch.pcre.in $PCRE
         cp auto/lib/pcre/patch.config.in $PCRE
         cp auto/lib/pcre/$makefile $PCRE
+
+        echo "$PCRE/pcre.lib:"                                    >> $MAKEFILE
         echo "	cd $PCRE"                                         >> $MAKEFILE
-        echo "	\$(MAKE) -f $makefile CPU_OPT=$CPU_OPT"           >> $MAKEFILE
+        echo "	\$(MAKE) -f $makefile CPU_OPT=$CPU_OPT LIBC=$LIBC">> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
     ;;
 
     *)
-        # the patch allows to run the parallel make jobs
-        cp auto/lib/pcre/patch.Makefile.in $PCRE
+        PCRE_OPT="CFLAGS=\"$PCRE_OPT\""
 
+        echo "$PCRE/pcre.h:"                                      >> $MAKEFILE
         echo "	cd $PCRE \\"                                      >> $MAKEFILE
-        echo "	&& patch < patch.Makefile.in \\"                  >> $MAKEFILE
         echo "	&& CC=$CC $PCRE_OPT \\"                           >> $MAKEFILE
-        echo "	./configure --disable-shared \\"                  >> $MAKEFILE
-        echo "	&& \$(MAKE)"                                      >> $MAKEFILE
+        echo "	./configure --disable-shared"                     >> $MAKEFILE
+        echo                                                      >> $MAKEFILE
+        echo "$PCRE/.libs/libpcre.a:	$PCRE/pcre.h"             >> $MAKEFILE
+        echo "	cd $PCRE \\"                                      >> $MAKEFILE
+        echo "	&& \$(MAKE) libpcre.la"                           >> $MAKEFILE
     ;;
 
 esac

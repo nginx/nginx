@@ -25,6 +25,9 @@ case $PLATFORM in
 esac
 
 
+done=NO
+
+
 case $PLATFORM in
 
     win32)
@@ -32,39 +35,51 @@ case $PLATFORM in
         cp auto/lib/md5/$makefile $MD5
         echo "	cd $MD5"                                          >> $MAKEFILE
         echo $ngx_n "	\$(MAKE) -f $makefile" $ngx_c             >> $MAKEFILE
-        echo " CPU_OPT=$CPU_OPT MD5_ASM=$MD5_ASM"                 >> $MAKEFILE
+        echo " CPU_OPT=$CPU_OPT LIBC=$LIBC MD5_ASM=$MD5_ASM"      >> $MAKEFILE
         echo "	cd ..\\..\\.."                                    >> $MAKEFILE
+
+        done=YES
     ;;
 
     SunOS:*:i86pc)
         if [ $MD5_ASM = YES ]; then
-            echo "	cd $MD5 \\"                               >> $MAKEFILE
-            echo "	&& \$(MAKE) $MD5_OPT MAKE=\$(MAKE) \\"    >> $MAKEFILE
-            echo "		x86-solaris"                      >> $MAKEFILE
-        else
+
+            MD5_OPT="CFLAGS=\"$MD5_OPT -DSOL -DMD5_ASM -DL_ENDIAN\""
+
             echo "	cd $MD5 \\"                               >> $MAKEFILE
             echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE
-            echo "		MD5_ASM_OBJ= CC=$CC all"          >> $MAKEFILE
+            echo "		MD5_ASM_OBJ=asm/mx86-elf.o \\"    >> $MAKEFILE
+            echo "		CC=$CC CPP=\"$CPP\" libmd5.a"     >> $MAKEFILE
+
+            done=YES
         fi
     ;;
+
+    # FreeBSD: i386
+    # Linux: i686
 
     *:i386 | *:i686)
         if [ $MD5_ASM = YES ]; then
-            echo "	cd $MD5 \\"                               >> $MAKEFILE
-            echo "	&& \$(MAKE) $MD5_OPT MAKE=\$(MAKE) \\"    >> $MAKEFILE
-            echo "		x86-elf"                          >> $MAKEFILE
-        else
+
+            MD5_OPT="CFLAGS=\"$MD5_OPT -DELF -DMD5_ASM -DL_ENDIAN\""
+
             echo "	cd $MD5 \\"                               >> $MAKEFILE
             echo "	&& \$(MAKE) $MD5_OPT \\"                  >> $MAKEFILE
-            echo "		MD5_ASM_OBJ= CC=$CC all"          >> $MAKEFILE
+            echo "		MD5_ASM_OBJ=asm/mx86-elf.o \\"    >> $MAKEFILE
+            echo "		CC=$CC CPP=\"$CPP\" libmd5.a"     >> $MAKEFILE
+
+            done=YES
         fi
     ;;
 
-    *)
-        echo "	cd $MD5 \\"                                       >> $MAKEFILE
-        echo "	&& \$(MAKE) $MD5_OPT MD5_ASM_OBJ= CC=$CC all"     >> $MAKEFILE
-    ;;
-
 esac
+
+
+if [ $done = NO ]; then
+    echo "	cd $MD5 \\"                                       >> $MAKEFILE
+    echo "	&& \$(MAKE) CFLAGS=\"$MD5_OPT\" \\"               >> $MAKEFILE
+    echo "		MD5_ASM_OBJ= CC=$CC libmd5.a"             >> $MAKEFILE
+fi
+
 
 echo                                                              >> $MAKEFILE

@@ -4,8 +4,8 @@ PCREFLAGS =	-DPCRE_STATIC -DPOSIX_MALLOC_THRESHOLD=10
 
 
 pcre.lib:
-	patch -o pcre.h pcre.in patch.pcre
-	patch -o config.h config.in patch.config
+	patch -o pcre.h pcre.in patch.pcre.in
+	patch -o config.h config.in patch.config.in
 
 	wcl386 -zq -bt=nt -l=nt -fe=dftables dftables.c
 	dftables > chartables.c

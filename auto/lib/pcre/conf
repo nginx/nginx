@@ -10,7 +10,6 @@ if [ $PCRE != NONE ]; then
             have=HAVE_PCRE . auto/have
             have=PCRE_STATIC . auto/have
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.lib"
-            #CORE_DEPS="$PCRE/pcre.lib $CORE_DEPS"
             CORE_LIBS="$CORE_LIBS pcre.lib"
             CORE_LINK="$CORE_LINK -libpath:$PCRE"
         ;;
@@ -24,7 +23,8 @@ if [ $PCRE != NONE ]; then
 
         *)
             have=HAVE_PCRE . auto/have
-            CORE_DEPS="$CORE_DEPS $PCRE/.libs/libpcre.a"
+            CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
+            LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre.a"
             CORE_LIBS="$CORE_LIBS -L $PCRE/.libs -lpcre"
         ;;
 
