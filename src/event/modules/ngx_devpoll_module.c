@@ -29,7 +29,7 @@ static int              nevents;
 
 static ngx_event_t    **change_index;
 
-static ngx_event_t      timer_queue;
+static ngx_event_t     *timer_queue;
 /* */
 
 
@@ -55,13 +55,15 @@ int ngx_devpoll_init(int max_connections, ngx_log_t *log)
                   ngx_alloc(sizeof(ngx_event_t *) * DEVPOLL_NCHANGES, log),
                   NGX_ERROR);
 
-    timer_queue.timer_prev = &timer_queue;
-    timer_queue.timer_next = &timer_queue;
+    timer_queue = ngx_event_init_timer(log);
+    if (timer_queue == NULL) {
+        return NGX_ERROR;
+    }
 
 #if !(USE_DEVPOLL)
     ngx_event_actions.add = ngx_devpoll_add_event;
     ngx_event_actions.del = ngx_devpoll_del_event;
-    ngx_event_actions.timer = ngx_devpoll_add_timer;
+    ngx_event_actions.timer = ngx_event_add_timer;
     ngx_event_actions.process = ngx_devpoll_process_events;
 #endif
 
@@ -115,6 +117,8 @@ int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
     if (flags & NGX_CLOSE_EVENT) {
         return NGX_OK;
     }
+
+    /* we need to restore second event if it exists */
 
     if (event == NGX_READ_EVENT) {
         e = c->write;
@@ -186,15 +190,16 @@ int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 int ngx_devpoll_process_events(ngx_log_t *log)
 {
     int                events, n, i;
-    u_int              timer, delta;
+    ngx_msec_t         timer, delta;
     ngx_err_t          err;
     ngx_event_t       *ev;
     ngx_connection_t  *c;
     struct dvpoll      dvp;
     struct timeval     tv;
 
-    if (timer_queue.timer_next != &timer_queue) {
-        timer = timer_queue.timer_next->timer_delta;
+    timer = ngx_event_find_timer();
+
+    if (timer) {
         gettimeofday(&tv, NULL);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
@@ -300,59 +305,9 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         }
     }
 
-    if (timer != INFTIM && timer_queue.timer_next != &timer_queue) {
-        if (delta >= timer_queue.timer_next->timer_delta) {
-            for ( ;; ) {
-                ev = timer_queue.timer_next;
-
-                if (ev == &timer_queue || delta < ev->timer_delta) {
-                    break;
-                }
-
-                delta -= ev->timer_delta;
-
-                ngx_del_timer(ev);
-                ev->timedout = 1;
-                if (ev->event_handler(ev) == NGX_ERROR) {
-                    ev->close_handler(ev);
-                }
-            }
-
-        } else {
-           timer_queue.timer_next->timer_delta -= delta;
-        }
+    if (timer != INFTIM) {
+        ngx_event_expire_timers(delta);
     }
 
     return NGX_OK;
-}
-
-
-void ngx_devpoll_add_timer(ngx_event_t *ev, ngx_msec_t timer)
-{
-    ngx_event_t *e;
-
-#if (NGX_DEBUG_EVENT)
-    ngx_connection_t *c = (ngx_connection_t *) ev->data;
-    ngx_log_debug(ev->log, "set timer: %d:%d" _ c->fd _ timer);
-#endif
-
-    if (ev->timer_next || ev->timer_prev) {
-        ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "timer already set");
-        return;
-    }
-
-    for (e = timer_queue.timer_next;
-         e != &timer_queue && timer > e->timer_delta;
-         e = e->timer_next)
-    {
-        timer -= e->timer_delta;
-    }
-
-    ev->timer_delta = timer;
-
-    ev->timer_next = e;
-    ev->timer_prev = e->timer_prev;
-
-    e->timer_prev->timer_next = ev;
-    e->timer_prev = ev;
 }

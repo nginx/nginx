@@ -28,7 +28,7 @@ static struct kevent   *change_list, *event_list;
 static unsigned int     nchanges;
 static int              nevents;
 
-static ngx_event_t      timer_queue;
+static ngx_event_t     *timer_queue;
 /* */
 
 
@@ -51,20 +51,19 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
     ngx_test_null(change_list, ngx_alloc(change_size, log), NGX_ERROR);
     ngx_test_null(event_list, ngx_alloc(event_size, log), NGX_ERROR);
 
-    if (ngx_event_init_timer(log) == NGX_ERROR) {
+    timer_queue = ngx_event_init_timer(log);
+    if (timer_queue == NULL) {
         return NGX_ERROR;
     }
-
-#if 0
-    timer_queue.timer_prev = &timer_queue;
-    timer_queue.timer_next = &timer_queue;
-#endif
 
 #if !(USE_KQUEUE)
     ngx_event_actions.add = ngx_kqueue_add_event;
     ngx_event_actions.del = ngx_kqueue_del_event;
-    ngx_event_actions.timer = ngx_kqueue_add_timer;
+    ngx_event_actions.timer = ngx_event_add_timer;
     ngx_event_actions.process = ngx_kqueue_process_events;
+
+    ngx_event_flags = NGX_HAVE_LEVEL_EVENT
+                      |NGX_HAVE_ONESHOT_EVENT|NGX_HAVE_CLEAR_EVENT;
 #endif
 
     return NGX_OK;
@@ -170,7 +169,7 @@ int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 int ngx_kqueue_process_events(ngx_log_t *log)
 {
     int              events, i;
-    u_int            timer, delta;
+    ngx_msec_t       timer, delta;
     ngx_event_t      *ev;
     struct timeval   tv;
     struct timespec  ts, *tp;
@@ -189,22 +188,6 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         delta = 0;
         tp = NULL;
     }
-
-#if 0
-    if (timer_queue.timer_next != &timer_queue) {
-        timer = timer_queue.timer_next->timer_delta;
-        ts.tv_sec = timer / 1000;
-        ts.tv_nsec = (timer % 1000) * 1000000;
-        tp = &ts;
-        gettimeofday(&tv, NULL);
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
-    } else {
-        timer = 0;
-        delta = 0;
-        tp = NULL;
-    }
-#endif
 
 #if (NGX_DEBUG_EVENT)
     ngx_log_debug(log, "kevent timer: %d" _ timer);
@@ -288,61 +271,5 @@ int ngx_kqueue_process_events(ngx_log_t *log)
         ngx_event_expire_timers(delta);
     }
 
-#if 0
-    if (timer && timer_queue.timer_next != &timer_queue) {
-        if (delta >= timer_queue.timer_next->timer_delta) {
-            for ( ;; ) {
-                ev = timer_queue.timer_next;
-
-                if (ev == &timer_queue || delta < ev->timer_delta) {
-                    break;
-                }
-
-                delta -= ev->timer_delta;
-
-                ngx_del_timer(ev);
-                ev->timedout = 1;
-                if (ev->event_handler(ev) == NGX_ERROR) {
-                    ev->close_handler(ev);
-                }
-            }
-
-        } else {
-           timer_queue.timer_next->timer_delta -= delta;
-        }
-    }
-#endif
-
     return NGX_OK;
-}
-
-
-void ngx_kqueue_add_timer(ngx_event_t *ev, ngx_msec_t timer)
-{
-    ngx_event_t  *e;
-
-#if (NGX_DEBUG_EVENT)
-    ngx_connection_t *c = (ngx_connection_t *) ev->data;
-    ngx_log_debug(ev->log, "set timer: %d:%d" _ c->fd _ timer);
-#endif
-
-    if (ev->timer_next || ev->timer_prev) {
-        ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "timer already set");
-        return;
-    }
-
-    for (e = timer_queue.timer_next;
-         e != &timer_queue && timer > e->timer_delta;
-         e = e->timer_next)
-    {
-        timer -= e->timer_delta;
-    }
-
-    ev->timer_delta = timer;
-
-    ev->timer_next = e;
-    ev->timer_prev = e->timer_prev;
-
-    e->timer_prev->timer_next = ev;
-    e->timer_prev = ev;
 }

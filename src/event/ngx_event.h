@@ -56,6 +56,7 @@ struct ngx_event_s {
     unsigned         ready:1;
     unsigned         timedout:1;
     unsigned         blocked:1;
+    unsigned         timer_set:1;
 
     unsigned         process:1;
     unsigned         read_discarded:1;
@@ -68,6 +69,17 @@ struct ngx_event_s {
 #if (HAVE_KQUEUE)
     unsigned         eof:1;
     int              error;
+#endif
+
+#if 0
+    void            *thr_ctx;   /* event thread context if $(CC) doesn't
+                                   understand __thread declaration
+                                   and pthread_getspecific() is too costly */
+
+#if (NGX_EVENT_T_PADDING)
+    int              padding[NGX_EVENT_T_PADDING];  /* event should not cross
+                                                       cache line in SMP */
+#endif
 #endif
 };
 
@@ -96,20 +108,24 @@ typedef struct {
 } ngx_event_actions_t;
 
 
-/*
-NGX_LEVEL_EVENT (default)  select, poll, /dev/poll, kqueue
-                                requires to read whole data
-NGX_ONESHOT_EVENT          select, poll, /dev/poll(*), kqueue, epoll(*)
-                           (*) - additional syscall
-NGX_CLEAR_EVENT            kqueue, epoll
-NGX_AIO_EVENT              overlapped, aio_read, aioread
-                                no need to add or delete events
+/* Event filter requires to read/write the whole data -
+   select, poll, /dev/poll, kqueue. */
+#define NGX_HAVE_LEVEL_EVENT    1
+/* Event filter deleted after notification - select, poll, kqueue.
+   /dev/poll, epoll implemetned with additional syscall */
+#define NGX_HAVE_ONESHOT_EVENT  2
+/* Event filter notify only changes - kqueue, epoll */
+#define NGX_HAVE_CLEAR_EVENT    4
+/* No nedd to add or delete event filters - overlapped, aio_read, aioread */
+#define NGX_HAVE_AIO_EVENT      8
 
-NGX_CLOSE_EVENT            kqueue: kqueue deletes events for file that closed
-                           /dev/poll: need to flush events before closing
-*/
+/* Event filter is deleted before closing file. Has no meaning for select, poll.
+   kqueue:     kqueue deletes event filters for file that closed
+               so we need only to delete filters in user-level batch array
+   /dev/poll:  we need to flush POLLREMOVE event before closing file
+   epoll:      ??? */
+#define NGX_CLOSE_EVENT         1
 
-#define NGX_CLOSE_EVENT    1
 
 #if (HAVE_KQUEUE)
 
@@ -209,6 +225,7 @@ extern ngx_connection_t     *ngx_connections;
 #if !(USE_KQUEUE)
 extern ngx_event_actions_t   ngx_event_actions;
 extern ngx_event_type_e      ngx_event_type;
+extern int                   ngx_event_flags;
 #endif
 
 

@@ -148,7 +148,7 @@ struct ngx_http_request_s {
     unsigned  lingering_close:1;
 
     unsigned  header_read:1;
-    unsigned  header_timeout:1;
+    unsigned  header_timeout_set:1;
 
     unsigned  logging:1;
 

@@ -32,7 +32,7 @@ ngx_event_t         *ngx_read_events, *ngx_write_events;
 
 #if 0
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
-#elif 0
+#elif 1
 ngx_event_type_e     ngx_event_type = NGX_POLL_EVENT;
 #else
 ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
@@ -53,6 +53,8 @@ ngx_event_type_e     ngx_event_type = NGX_DEVPOLL_EVENT;
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
 
 #endif
+
+int ngx_event_flags;
 
 ngx_event_actions_t  ngx_event_actions;
 

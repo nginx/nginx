@@ -9,36 +9,13 @@
 #include <ngx_event.h>
 
 
-int ngx_event_init_timer(ngx_log_t *log);
+ngx_event_t *ngx_event_init_timer(ngx_log_t *log);
 void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer);
+int ngx_event_find_timer(void);
+void ngx_event_expire_timers(ngx_msec_t timer);
+
 
 extern ngx_event_t  *ngx_timer_queue;
-extern int           ngx_timer_hash_size;
-
-
-ngx_inline static int ngx_event_find_timer()
-{
-    int         i;
-    ngx_msec_t  timer;
-
-    timer = NGX_MAX_MSEC;
-
-    for (i = 0; i < ngx_timer_hash_size; i++) {
-        if (ngx_timer_queue[i].timer_next == &ngx_timer_queue[i]) {
-            continue;
-        }
-
-        if (timer > ngx_timer_queue[i].timer_next->timer_delta) {
-            timer = ngx_timer_queue[i].timer_next->timer_delta;
-        }
-    }
-
-    if (timer == NGX_MAX_MSEC) {
-        return 0;
-    } else {
-        return timer;
-    }
-}
 
 
 ngx_inline static void ngx_event_del_timer(ngx_event_t *ev)

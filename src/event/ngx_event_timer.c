@@ -10,30 +10,32 @@
 #include <ngx_event_timer.h>
 
 /* STUB */
-#define NGX_TIMER_HASH_SIZE  5
+#define NGX_TIMER_QUEUE_NUM  5
 
-ngx_event_t  *ngx_timer_queue;
-int           ngx_timer_hash_size;
-static int    ngx_timer_cur_queue;
+/* should be per-thread */
+static ngx_event_t  *ngx_timer_queue;
+static int           ngx_timer_cur_queue;
+/* */
+static int           ngx_timer_queue_num;
 
 
-int ngx_event_init_timer(ngx_log_t *log)
+ngx_event_t *ngx_event_init_timer(ngx_log_t *log)
 {
     int  i;
 
-    ngx_timer_hash_size = NGX_TIMER_HASH_SIZE;
+    ngx_timer_queue_num = NGX_TIMER_QUEUE_NUM;
     ngx_timer_cur_queue = 0;
 
     ngx_test_null(ngx_timer_queue,
-                  ngx_alloc(ngx_timer_hash_size * sizeof(ngx_event_t), log),
-                  NGX_ERROR);
+                  ngx_alloc(ngx_timer_queue_num * sizeof(ngx_event_t), log),
+                  NULL);
 
-    for (i = 0; i < ngx_timer_hash_size; i++) {
+    for (i = 0; i < ngx_timer_queue_num; i++) {
         ngx_timer_queue[i].timer_prev = &ngx_timer_queue[i];
         ngx_timer_queue[i].timer_next = &ngx_timer_queue[i];
     }
 
-    return NGX_OK;
+    return ngx_timer_queue;
 }
 
 
@@ -63,7 +65,7 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     }
 
     ngx_timer_cur_queue++;
-    if (ngx_timer_cur_queue >= ngx_timer_hash_size) {
+    if (ngx_timer_cur_queue >= ngx_timer_queue_num) {
         ngx_timer_cur_queue = 0;
     }
 
@@ -77,13 +79,38 @@ void ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 }
 
 
+int ngx_event_find_timer(void)
+{
+    int         i;
+    ngx_msec_t  timer;
+
+    timer = NGX_MAX_MSEC;
+
+    for (i = 0; i < ngx_timer_queue_num; i++) {
+        if (ngx_timer_queue[i].timer_next == &ngx_timer_queue[i]) {
+            continue;
+        }
+
+        if (timer > ngx_timer_queue[i].timer_next->timer_delta) {
+            timer = ngx_timer_queue[i].timer_next->timer_delta;
+        }
+    }
+
+    if (timer == NGX_MAX_MSEC) {
+        return 0;
+    } else {
+        return timer;
+    }
+}
+
+
 void ngx_event_expire_timers(ngx_msec_t timer)
 {
     int           i;
     ngx_msec_t    delta;
     ngx_event_t  *ev;
 
-    for (i = 0; i < ngx_timer_hash_size; i++) {
+    for (i = 0; i < ngx_timer_queue_num; i++) {
 
         delta = timer;
 
