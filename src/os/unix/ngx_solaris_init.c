@@ -11,7 +11,7 @@ char ngx_solaris_version[50];
 ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
     ngx_readv_chain,
-    NULL,
+    ngx_unix_send,
 #if (HAVE_SENDFILE)
     ngx_solaris_sendfilev_chain,
     NGX_IO_SENDFILE

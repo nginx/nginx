@@ -7,6 +7,55 @@
 ngx_os_io_t  ngx_io;
 
 
+ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
+                                                 in_addr_t addr,
+                                                 in_port_t port)
+{
+    size_t               len;
+    ngx_listening_t     *ls;
+    struct sockaddr_in  *addr_in;
+
+    if (!(ls = ngx_array_push(&cf->cycle->listening))) {
+        return NULL;
+    }
+
+    ngx_memzero(ls, sizeof(ngx_listening_t));
+
+    if (!(addr_in = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in)))) {
+        return NULL;
+    }
+
+#if (HAVE_SIN_LEN)
+    addr_in->sin_len = sizeof(struct sockaddr_in);
+#endif
+    addr_in->sin_family = AF_INET;
+    addr_in->sin_addr.s_addr = addr;
+    addr_in->sin_port = htons(port);
+
+    if (!(ls->addr_text.data = ngx_palloc(cf->pool, INET_ADDRSTRLEN + 6))) {
+        return NULL;
+    }
+
+    len = ngx_inet_ntop(AF_INET, &addr, ls->addr_text.data, INET_ADDRSTRLEN);
+    ls->addr_text.len = ngx_snprintf((char *) ls->addr_text.data + len,
+                                     6, ":%d", port);
+
+    ls->fd = (ngx_socket_t) -1;
+    ls->family = AF_INET;
+    ls->type = SOCK_STREAM;
+    ls->protocol = IPPROTO_IP;
+#if (WIN32)
+    ls->flags = WSA_FLAG_OVERLAPPED;
+#endif
+    ls->sockaddr = (struct sockaddr *) addr_in;
+    ls->socklen = sizeof(struct sockaddr_in);
+    ls->addr = offsetof(struct sockaddr_in, sin_addr);
+    ls->addr_text_max_len = INET_ADDRSTRLEN;
+
+    return ls;
+}
+
+
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
     ngx_uint_t           i;
@@ -249,6 +298,110 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
         cycle->connections[fd].fd = (ngx_socket_t) -1;
     }
 }
+
+
+void ngx_close_connection(ngx_connection_t *c)
+{
+    ngx_socket_t  fd;
+
+    if (c->pool == NULL) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "connection already closed");
+        return;
+    }
+    
+#if (NGX_OPENSSL)
+
+    if (c->ssl) {
+        if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
+            c->read->event_handler = ngx_ssl_close_handler;
+            c->write->event_handler = ngx_ssl_close_handler;
+            return;
+        }
+    }
+    
+#endif
+
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
+    
+    if (c->write->timer_set) {
+        ngx_del_timer(c->write);
+    }
+    
+    if (ngx_del_conn) {
+        ngx_del_conn(c, NGX_CLOSE_EVENT);
+
+    } else {
+        if (c->read->active || c->read->disabled) {
+            ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+        }
+
+        if (c->write->active || c->write->disabled) {
+            ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
+        }
+    }
+
+#if (NGX_THREADS)
+
+    /*
+     * we have to clean the connection information before the closing
+     * because another thread may reopen the same file descriptor
+     * before we clean the connection
+     */
+
+    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_OK) {
+
+        if (c->read->prev) {
+            ngx_delete_posted_event(c->read);
+        }
+
+        if (c->write->prev) {
+            ngx_delete_posted_event(c->write);
+        }
+
+        c->read->closed = 1;
+        c->write->closed = 1;
+
+        if (c->single_connection) {
+            ngx_unlock(&c->lock);
+            c->read->locked = 0;
+            c->write->locked = 0;
+        }
+
+        ngx_mutex_unlock(ngx_posted_events_mutex);
+    }
+
+#else
+
+    if (c->read->prev) {
+        ngx_delete_posted_event(c->read);
+    }
+
+    if (c->write->prev) {
+        ngx_delete_posted_event(c->write);
+    }
+
+    c->read->closed = 1;
+    c->write->closed = 1;
+
+#endif
+
+    fd = c->fd;
+    c->fd = (ngx_socket_t) -1;
+    c->data = NULL;
+
+    ngx_destroy_pool(c->pool);
+
+    if (ngx_close_socket(fd) == -1) {
+
+        /* we use ngx_cycle->log because c->log was in c->pool */
+
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
+                      ngx_close_socket_n " failed");
+    }
+}
+
 
 
 ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)

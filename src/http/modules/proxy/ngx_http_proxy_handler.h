@@ -41,7 +41,7 @@ typedef struct {
     ngx_str_t                        port_text;
     ngx_str_t                       *location;
 
-    ngx_int_t                        port;
+    in_port_t                        port;
 
     unsigned                         default_port:1;
 } ngx_http_proxy_upstream_conf_t;

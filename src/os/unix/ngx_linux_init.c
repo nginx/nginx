@@ -12,7 +12,7 @@ int ngx_linux_rtsig_max;
 ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
     ngx_readv_chain,
-    NULL,
+    ngx_unix_send,
 #if (HAVE_SENDFILE)
     ngx_linux_sendfile_chain,
     NGX_IO_SENDFILE

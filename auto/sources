@@ -4,46 +4,46 @@ CORE_MODULES="ngx_core_module ngx_errlog_module ngx_conf_module"
 CORE_INCS="src/core"
 
 CORE_DEPS="src/core/nginx.h \
-            src/core/ngx_config.h \
-            src/core/ngx_core.h \
-            src/core/ngx_log.h \
-            src/core/ngx_palloc.h \
-            src/core/ngx_array.h \
-            src/core/ngx_list.h \
-            src/core/ngx_table.h \
-            src/core/ngx_buf.h \
-            src/core/ngx_string.h \
-            src/core/ngx_parse.h \
-            src/core/ngx_inet.h \
-            src/core/ngx_file.h \
-            src/core/ngx_crc.h \
-            src/core/ngx_rbtree.h \
-            src/core/ngx_radix_tree.h \
-            src/core/ngx_times.h \
-            src/core/ngx_connection.h \
-            src/core/ngx_cycle.h \
-            src/core/ngx_conf_file.h \
-            src/core/ngx_garbage_collector.h"
+           src/core/ngx_config.h \
+           src/core/ngx_core.h \
+           src/core/ngx_log.h \
+           src/core/ngx_palloc.h \
+           src/core/ngx_array.h \
+           src/core/ngx_list.h \
+           src/core/ngx_table.h \
+           src/core/ngx_buf.h \
+           src/core/ngx_string.h \
+           src/core/ngx_parse.h \
+           src/core/ngx_inet.h \
+           src/core/ngx_file.h \
+           src/core/ngx_crc.h \
+           src/core/ngx_rbtree.h \
+           src/core/ngx_radix_tree.h \
+           src/core/ngx_times.h \
+           src/core/ngx_connection.h \
+           src/core/ngx_cycle.h \
+           src/core/ngx_conf_file.h \
+           src/core/ngx_garbage_collector.h"
 
 CORE_SRCS="src/core/nginx.c \
-            src/core/ngx_log.c \
-            src/core/ngx_palloc.c \
-            src/core/ngx_array.c \
-            src/core/ngx_list.c \
-            src/core/ngx_buf.c \
-            src/core/ngx_output_chain.c \
-            src/core/ngx_string.c \
-            src/core/ngx_parse.c \
-            src/core/ngx_inet.c \
-            src/core/ngx_file.c \
-            src/core/ngx_rbtree.c \
-            src/core/ngx_radix_tree.c \
-            src/core/ngx_times.c \
-            src/core/ngx_connection.c \
-            src/core/ngx_cycle.c \
-            src/core/ngx_spinlock.c \
-            src/core/ngx_conf_file.c \
-            src/core/ngx_garbage_collector.c"
+           src/core/ngx_log.c \
+           src/core/ngx_palloc.c \
+           src/core/ngx_array.c \
+           src/core/ngx_list.c \
+           src/core/ngx_buf.c \
+           src/core/ngx_output_chain.c \
+           src/core/ngx_string.c \
+           src/core/ngx_parse.c \
+           src/core/ngx_inet.c \
+           src/core/ngx_file.c \
+           src/core/ngx_rbtree.c \
+           src/core/ngx_radix_tree.c \
+           src/core/ngx_times.c \
+           src/core/ngx_connection.c \
+           src/core/ngx_cycle.c \
+           src/core/ngx_spinlock.c \
+           src/core/ngx_conf_file.c \
+           src/core/ngx_garbage_collector.c"
 
 
 REGEX_DEPS=src/core/ngx_regex.h
@@ -128,6 +128,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_socket.c \
             src/os/unix/ngx_recv.c \
             src/os/unix/ngx_readv_chain.c \
+            src/os/unix/ngx_send.c \
             src/os/unix/ngx_writev_chain.c \
             src/os/unix/ngx_channel.c \
             src/os/unix/ngx_shared.c \
@@ -191,8 +192,8 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
 
 
 HTTP_MODULES="ngx_http_module \
-            ngx_http_core_module \
-            ngx_http_log_module"
+              ngx_http_core_module \
+              ngx_http_log_module"
 
 HTTP_FILE_CACHE_MODULE=ngx_http_cache_module
 
@@ -214,30 +215,30 @@ HTTP_INDEX_MODULE=ngx_http_index_module
 HTTP_INCS="src/http src/http/modules"
 
 HTTP_DEPS="src/http/ngx_http.h \
-            src/http/ngx_http_request.h \
-            src/http/ngx_http_config.h \
-            src/http/ngx_http_core_module.h \
-            src/http/ngx_http_cache.h \
-            src/http/ngx_http_busy_lock.h \
-            src/http/ngx_http_log_handler.h"
+           src/http/ngx_http_request.h \
+           src/http/ngx_http_config.h \
+           src/http/ngx_http_core_module.h \
+           src/http/ngx_http_cache.h \
+           src/http/ngx_http_busy_lock.h \
+           src/http/ngx_http_log_handler.h"
 
 HTTP_SRCS="src/http/ngx_http.c \
-            src/http/ngx_http_core_module.c \
-            src/http/ngx_http_special_response.c \
-            src/http/ngx_http_request.c \
-            src/http/ngx_http_parse.c \
-            src/http/ngx_http_header_filter.c \
-            src/http/ngx_http_write_filter.c \
-            src/http/ngx_http_copy_filter.c \
-            src/http/ngx_http_log_handler.c \
-            src/http/ngx_http_request_body.c \
-            src/http/ngx_http_parse_time.c \
-            src/http/modules/ngx_http_static_handler.c \
-            src/http/modules/ngx_http_index_handler.c \
-            src/http/modules/ngx_http_chunked_filter.c \
-            src/http/modules/ngx_http_range_filter.c \
-            src/http/modules/ngx_http_headers_filter.c \
-            src/http/modules/ngx_http_not_modified_filter.c"
+           src/http/ngx_http_core_module.c \
+           src/http/ngx_http_special_response.c \
+           src/http/ngx_http_request.c \
+           src/http/ngx_http_parse.c \
+           src/http/ngx_http_header_filter.c \
+           src/http/ngx_http_write_filter.c \
+           src/http/ngx_http_copy_filter.c \
+           src/http/ngx_http_log_handler.c \
+           src/http/ngx_http_request_body.c \
+           src/http/ngx_http_parse_time.c \
+           src/http/modules/ngx_http_static_handler.c \
+           src/http/modules/ngx_http_index_handler.c \
+           src/http/modules/ngx_http_chunked_filter.c \
+           src/http/modules/ngx_http_range_filter.c \
+           src/http/modules/ngx_http_headers_filter.c \
+           src/http/modules/ngx_http_not_modified_filter.c"
 
 # STUB
 HTTP_SRCS="$HTTP_SRCS src/http/ngx_http_busy_lock.c"
@@ -283,9 +284,18 @@ HTTP_PROXY_MODULE=ngx_http_proxy_module
 HTTP_PROXY_INCS="src/http/modules/proxy"
 HTTP_PROXY_DEPS=src/http/modules/proxy/ngx_http_proxy_handler.h
 HTTP_PROXY_SRCS="src/http/modules/proxy/ngx_http_proxy_handler.c \
-            src/http/modules/proxy/ngx_http_proxy_upstream.c \
-            src/http/modules/proxy/ngx_http_proxy_parse.c \
-            src/http/modules/proxy/ngx_http_proxy_header.c"
+                 src/http/modules/proxy/ngx_http_proxy_upstream.c \
+                 src/http/modules/proxy/ngx_http_proxy_parse.c \
+                 src/http/modules/proxy/ngx_http_proxy_header.c"
 
 # STUB
-#            src/http/modules/proxy/ngx_http_proxy_cache.c \
+#                 src/http/modules/proxy/ngx_http_proxy_cache.c \
+
+
+IMAP_INCS="src/imap"
+
+IMAP_DEPS="src/imap/ngx_imap.h"
+
+IMAP_MODULE=ngx_imap_module
+IMAP_SRCS="src/imap/ngx_imap.c \
+	   src/imap/ngx_imap_handler.c"

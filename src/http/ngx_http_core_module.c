@@ -1473,7 +1473,8 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_srv_conf_t *scf = conf;
 
     u_char             *addr;
-    u_int               p;
+    ngx_int_t           port;
+    ngx_uint_t          p;
     struct hostent     *h;
     ngx_str_t          *args;
     ngx_http_listen_t  *ls;
@@ -1505,14 +1506,14 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         p = 0;
     }
 
-    ls->port = ngx_atoi(&addr[p], args[1].len - p);
-    if (ls->port == NGX_ERROR && p == 0) {
+    port = ngx_atoi(&addr[p], args[1].len - p);
+    if (port == NGX_ERROR && p == 0) {
 
         /* "listen host" */
         ls->port = 80;
 
-    } else if ((ls->port == NGX_ERROR && p != 0) /* "listen host:NONNUMBER" */
-               || (ls->port < 1 || ls->port > 65536)) { /* "listen 99999" */
+    } else if ((port == NGX_ERROR && p != 0) /* "listen host:NONNUMBER" */
+               || (port < 1 || port > 65536)) { /* "listen 99999" */
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid port \"%s\" in \"%s\" directive, "
@@ -1523,6 +1524,7 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     } else if (p == 0) {
         ls->addr = INADDR_ANY;
+        ls->port = (in_port_t) port;
         return NGX_CONF_OK;
     }
 

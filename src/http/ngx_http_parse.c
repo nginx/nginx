@@ -3,6 +3,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+
 ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
 {
     u_char  ch, *p, *m;

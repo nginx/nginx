@@ -136,6 +136,12 @@ if [ $HTTP = YES ]; then
              $HTTP_NOT_MODIFIED_FILTER_MODULE"
 fi
 
+IMAP_MODULES=$IMAP_MODULE
+
+if [ $IMAP = YES ]; then
+    modules="$modules $IMAP_MODULES"
+fi
+
 
 echo "#include <ngx_config.h>"                > $NGX_MODULES_C
 echo "#include <ngx_core.h>"                  >> $NGX_MODULES_C

@@ -33,7 +33,7 @@ typedef struct {
     ngx_recv_chain_pt  recv_chain;
     ngx_send_pt        send;
     ngx_send_chain_pt  send_chain;
-    int             flags;
+    ngx_uint_t         flags;
 } ngx_os_io_t;
 
 
@@ -46,6 +46,7 @@ int ngx_posix_post_conf_init(ngx_log_t *log);
 
 ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size);
 ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *entry);
+ssize_t ngx_unix_send(ngx_connection_t *c, u_char *buf, size_t size);
 ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in,
                               off_t limit);
 

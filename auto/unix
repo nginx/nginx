@@ -32,6 +32,8 @@ ngx_type="socklen_t"; ngx_types="uint32_t"; . auto/types/typedef
 
 ngx_type="in_addr_t"; ngx_types="uint32_t"; . auto/types/typedef
 
+ngx_type="in_port_t"; ngx_types="u_short"; . auto/types/typedef
+
 ngx_type="rlim_t"; ngx_types="int"; . auto/types/typedef
 
 . auto/types/uintptr_t

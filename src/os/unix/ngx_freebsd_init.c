@@ -20,7 +20,7 @@ int ngx_freebsd_kern_ipc_zero_copy_send;
 ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
     ngx_readv_chain,
-    NULL,
+    ngx_unix_send,
 #if (HAVE_SENDFILE)
     ngx_freebsd_sendfile_chain,
     NGX_IO_SENDFILE

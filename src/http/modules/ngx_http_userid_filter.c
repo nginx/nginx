@@ -281,7 +281,6 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
     size_t               len;
     socklen_t            slen;
     struct sockaddr_in   addr_in;
-    uint32_t             service;
     ngx_str_t            src, dst;
     ngx_table_elt_t     *set_cookie;
 
@@ -542,7 +541,7 @@ char *ngx_conf_check_domain(ngx_conf_t *cf, void *post, void *data)
 
     if (domain->len == 4 && ngx_strcmp(domain->data, "none") == 0) {
         domain->len = 1;
-        domain->data = ".";
+        domain->data = (u_char *) ".";
     }
 
     return NGX_CONF_OK;

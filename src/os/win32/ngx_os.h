@@ -32,7 +32,7 @@ typedef struct {
     ngx_recv_chain_pt  recv_chain;
     ngx_send_pt        send;
     ngx_send_chain_pt  send_chain;
-    int             flags;
+    ngx_uint_t         flags;
 } ngx_os_io_t;
 
 

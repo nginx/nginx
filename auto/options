@@ -40,6 +40,8 @@ HTTP_STATUS=YES
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
 
+IMAP=NO
+
 USE_PCRE=NO
 PCRE=NONE
 PCRE_OPT=
@@ -100,6 +102,8 @@ do
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
+
+        --with-imap)                     IMAP=YES                   ;;
 
         --with-cc=*)                     CC="$value"                ;;
         --with-cpp=*)                    CPP="$value"               ;;

@@ -9,7 +9,7 @@
 
 typedef struct {
     in_addr_t  addr;
-    int        port;
+    in_port_t  port;
     int        family;
     ngx_str_t  file_name;
     int        line;
@@ -78,7 +78,7 @@ typedef struct {
 /* list of structures to find core_srv_conf quickly at run time */
 
 typedef struct {
-    int           port;
+    in_port_t     port;
     ngx_str_t     port_name;
     ngx_array_t   addrs;       /* array of ngx_http_in_addr_t */
 } ngx_http_in_port_t;

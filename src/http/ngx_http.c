@@ -500,48 +500,12 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         in_addr = in_port[p].addrs.elts;
         while (a < in_port[p].addrs.nelts) {
 
-            if (!(ls = ngx_push_array(&cf->cycle->listening))) {
+            ls = ngx_listening_inet_stream_socket(cf, in_addr[a].addr,
+                                                  in_port[p].port);
+            if (ls == NULL) {
                 return NGX_CONF_ERROR;
             }
 
-            ngx_memzero(ls, sizeof(ngx_listening_t));
-
-            addr_in = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
-            if (addr_in == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-#if (HAVE_SIN_LEN)
-            addr_in->sin_len = sizeof(struct sockaddr_in);
-#endif
-            addr_in->sin_family = AF_INET;
-            addr_in->sin_addr.s_addr = in_addr[a].addr;
-            addr_in->sin_port = htons((u_short) in_port[p].port);
-
-            ls->addr_text.data = ngx_palloc(cf->pool, INET_ADDRSTRLEN + 6);
-            if (ls->addr_text.data == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            ls->addr_text.len = ngx_inet_ntop(AF_INET, &in_addr[a].addr,
-                                              ls->addr_text.data,
-                                              INET_ADDRSTRLEN),
-
-            ls->addr_text.len += ngx_snprintf((char *) ls->addr_text.data
-                                                           + ls->addr_text.len,
-                                               6, ":%d", in_port[p].port);
-
-            ls->fd = (ngx_socket_t) -1;
-            ls->family = AF_INET;
-            ls->type = SOCK_STREAM;
-            ls->protocol = IPPROTO_IP;
-#if (WIN32)
-            ls->flags = WSA_FLAG_OVERLAPPED;
-#endif
-            ls->sockaddr = (struct sockaddr *) addr_in;
-            ls->socklen = sizeof(struct sockaddr_in);
-            ls->addr = offsetof(struct sockaddr_in, sin_addr);
-            ls->addr_text_max_len = INET_ADDRSTRLEN;
             ls->backlog = -1;
 #if 0
 #if 0

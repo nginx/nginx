@@ -252,7 +252,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_memzero(&addr, sizeof(struct sockaddr_in));
 
     addr.sin_family = AF_INET;
-    addr.sin_port = (u_short) peer->port;
+    addr.sin_port = peer->port;
     addr.sin_addr.s_addr = peer->addr;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0,
