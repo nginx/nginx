@@ -15,16 +15,16 @@ static char imap_greeting[] = "* OK " NGINX_VER " ready" CRLF;
 
 void ngx_imap_init_connection(ngx_connection_t *c)
 {
-    ngx_int_t  rc;
+    ngx_int_t  n;
 
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0,
                    "imap init connection");
 
     c->log_error = NGX_ERROR_INFO;
 
-    rc = ngx_send(c, pop3_greeting, sizeof(pop3_greeting) - 1);
+    n = ngx_send(c, pop3_greeting, sizeof(pop3_greeting) - 1);
 
-    if (rc == NGX_ERROR) {
+    if (n == NGX_ERROR) {
         ngx_imap_close_connection(c);
         return;
     }
