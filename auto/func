@@ -1,28 +1,42 @@
 
-echo "checking for $NGX_FUNC"
+echo -n "checking for $ngx_func ..."
+echo >> $NGX_ERR
+echo "checking for $ngx_func" >> $NGX_ERR
 
-NGX_FOUND=NO
+ngx_found=no
 
-func=`echo $NGX_FUNC | sed -e 's/()$//' | tr '[a-z]' '[A-Z]'`
+func=`echo $ngx_func | sed -e 's/()$//' | tr '[a-z]' '[A-Z]'`
 
-echo "$NGX_UNISTD_H" > autotest.c
-echo "$NGX_FUNC_INC" >> autotest.c
-echo "int main() { $NGX_FUNC_TEST; return 0; }" >> autotest.c
+cat << END > $NGX_AUTOTEST.c
 
-eval "$CC $CC_TEST_FLAGS -o autotest autotest.c $NGX_FUNC_LIBS > $NGX_ERR 2>&1"
+$NGX_UNISTD_H
+$ngx_func_inc
 
-if [ -x autotest ]; then
-    echo " + $NGX_FUNC found"
+int main() {
+    $ngx_func_test;
+    return 0;
+}
 
-    echo "#ifndef HAVE_$func"      >> $NGX_AUTO_CONFIG_H
-    echo "#define HAVE_$func  1"   >> $NGX_AUTO_CONFIG_H
-    echo "#endif"                  >> $NGX_AUTO_CONFIG_H
-    echo                           >> $NGX_AUTO_CONFIG_H
+END
 
-    NGX_FOUND=YES
+eval "$CC $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c $ngx_func_libs \
+     >> $NGX_ERR 2>&1"
+
+if [ -x $NGX_AUTOTEST ]; then
+    echo " found"
+
+    cat << END >> $NGX_AUTO_CONFIG_H
+
+#ifndef HAVE_$func
+#define HAVE_$func  1
+#endif
+
+END
+
+    ngx_found=yes
 
 else
-    echo " + $NGX_FUNC not found"
+    echo " not found"
 fi
 
-rm autotest*
+rm $NGX_AUTOTEST*

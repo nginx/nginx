@@ -39,7 +39,7 @@ typedef int    ngx_int_t;
 typedef u_int  ngx_uint_t;
 
 /* STUB: autoconf */
-#define PTR_FMT  "%X"
+#define PTR_FMT  "%08X"
 
 #include <ngx_auto_config.h>
 
@@ -60,6 +60,8 @@ typedef u_int  ngx_uint_t;
 /* TODO: #ifndef */
 #define NGX_RESTART_SIGNAL    HUP
 #define NGX_ROTATE_SIGNAL     USR1
+#define NGX_SHUTDOWN_SIGNAL   TERM
+#define NGX_INTERRUPT_SIGNAL  INT
 
 #endif
 

@@ -4,4 +4,5 @@ MAKEFILE=$OBJS/Makefile
 NGX_AUTO_CONFIG_H=$OBJS/ngx_auto_config.h
 NGX_MODULES_C=$OBJS/ngx_modules.c
 
-NGX_ERR=autoconf.err
+NGX_AUTOTEST=$OBJS/autotest
+NGX_ERR=$OBJS/autoconf.err

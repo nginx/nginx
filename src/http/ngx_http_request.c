@@ -42,10 +42,12 @@ static char *client_header_errors[] = {
 };
 
 
+#if 0
 static void ngx_http_dummy(ngx_event_t *wev)
 {
     return;
 }
+#endif
 
 
 void ngx_http_init_connection(ngx_connection_t *c)
@@ -110,7 +112,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
 
 static void ngx_http_init_request(ngx_event_t *rev)
 {
-    int                        i;
+    ngx_int_t                  i;
     socklen_t                  len;
     struct sockaddr_in         addr_in;
     ngx_connection_t          *c;
@@ -146,8 +148,6 @@ static void ngx_http_init_request(ngx_event_t *rev)
 
     in_port = c->servers;
     in_addr = in_port->addrs.elts;
-
-ngx_log_debug(rev->log, "IN: %08x" _ in_port);
 
     r->port = in_port->port;
     r->port_name = &in_port->port_name;
@@ -274,8 +274,8 @@ ngx_log_debug(rev->log, "IN: %08x" _ in_port);
 
 static void ngx_http_process_request_line(ngx_event_t *rev)
 {
-    int                        rc, offset;
     ssize_t                    n;
+    ngx_int_t                  rc, offset;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
     ngx_http_log_ctx_t        *ctx;
@@ -439,15 +439,18 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             ngx_cpystrn(r->args.data, r->args_start, r->args.len + 1);
         }
 
-#if 1 /* DEBUG */
-        if (r->exten.data == NULL) { r->exten.data = ""; }
-        if (r->args.data == NULL) { r->args.data = ""; }
-        ngx_log_debug(c->log, "HTTP: %d, %d, '%s', '%s', '%s'" _
-                      r->method _ r->http_version _
-                      r->uri.data _ r->exten.data _ r->args.data);
-        if (r->exten.data[0] == '\0') { r->exten.data = NULL; }
-        if (r->args.data[0] == '\0') { r->args.data = NULL; }
-#endif
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http request line: \"%s\"", r->request_line.data);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http uri: \"%s\"", r->uri.data);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http args: \"%s\"", r->args.data ? r->args.data : "");
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http exten: \"%s\"",
+                       r->exten.data ? r->exten.data : "");
 
         if (r->http_version < NGX_HTTP_VERSION_10) {
             rev->event_handler = ngx_http_block_read;
@@ -532,8 +535,8 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
 static void ngx_http_process_request_headers(ngx_event_t *rev)
 {
-    int                        rc, i, offset;
     ssize_t                    n;
+    ngx_int_t                  rc, i, offset;
     ngx_table_elt_t           *h;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
@@ -616,8 +619,9 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
                 }
             }
 
-            ngx_log_debug(r->connection->log, "HTTP header: '%s: %s'" _
-                          h->key.data _ h->value.data);
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http header: \"%s: %s\"'",
+                           h->key.data, h->value.data);
 
             if (cscf->large_client_header
                 && r->header_in->pos == r->header_in->last)
@@ -631,7 +635,8 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
             /* a whole header has been parsed successfully */
 
-            ngx_log_debug(r->connection->log, "HTTP header done");
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http header done");
 
             rc = ngx_http_process_request_header(r);
 
@@ -746,10 +751,10 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
 }
 
 
-static int ngx_http_process_request_header(ngx_http_request_t *r)
+static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 {
-    int                        i;
     size_t                     len;
+    ngx_int_t                  i;
     ngx_http_server_name_t    *name;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -828,13 +833,16 @@ static int ngx_http_process_request_header(ngx_http_request_t *r)
 
 void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
 {
+    ngx_http_core_loc_conf_t  *clcf;
+
     /* r can be already destroyed when rc == NGX_DONE */
 
     if (rc == NGX_DONE || r->main) {
         return;
     }
 
-    ngx_log_debug(r->connection->log, "finalize http request");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http finalize request");
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
 
@@ -868,10 +876,12 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
         ngx_del_timer(r->connection->write);
     }
 
-    if (r->keepalive != 0) {
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (r->keepalive != 0 && clcf->keepalive_timeout > 0) {
         ngx_http_set_keepalive(r);
 
-    } else if (r->lingering_close) {
+    } else if (r->lingering_close && clcf->lingering_timeout > 0) {
         ngx_http_set_lingering_close(r);
 
     } else {
@@ -916,7 +926,7 @@ void ngx_http_writer(ngx_event_t *wev)
     ngx_http_request_t        *r;
     ngx_http_core_loc_conf_t  *clcf;
 
-    ngx_log_debug(wev->log, "http writer handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0, "http writer handler");
 
     c = wev->data;
     r = c->data;
@@ -934,7 +944,8 @@ void ngx_http_writer(ngx_event_t *wev)
 
     rc = ngx_http_output_filter(r, NULL);
 
-    ngx_log_debug(c->log, "writer output filter: %d" _ rc);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                  "http writer output filter: %d", rc);
 
     if (rc == NGX_AGAIN) {
         if (!wev->ready) {
@@ -951,7 +962,7 @@ void ngx_http_writer(ngx_event_t *wev)
         return;
     }
 
-    ngx_log_debug(c->log, "http writer done");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http writer done");
 
     ngx_http_finalize_request(r, rc);
 }
@@ -962,7 +973,7 @@ static void ngx_http_block_read(ngx_event_t *rev)
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
 
-    ngx_log_debug(rev->log, "http read blocked");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http read blocked");
 
     /* aio does not call this handler */
 
@@ -986,7 +997,7 @@ int ngx_http_discard_body(ngx_http_request_t *r)
 
     rev = r->connection->read;
 
-    ngx_log_debug(rev->log, "set discard body");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http set discard body");
 
     if (rev->timer_set) {
         ngx_del_timer(rev);

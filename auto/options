@@ -1,5 +1,5 @@
 
-HELP=NO
+help=no
 
 CC=gcc
 OBJS=objs
@@ -11,9 +11,11 @@ HTTP_PROXY=YES
 
 PCRE=NO
 
+USE_MD5=YES
 MD5=NO
 MD5_LIB=NO
 
+USE_ZLIB=YES
 ZLIB=NO
 ZLIB_LIB=NO
 
@@ -26,7 +28,7 @@ do
     esac
 
     case "$option" in
-        --help)                          HELP=YES                   ;;
+        --help)                          help=yes                   ;;
 
         --crossbuild=*)                  PLATFORM="$value"          ;;
 
@@ -51,7 +53,8 @@ do
 done
 
 
-if [ $HELP = YES ]; then
+if [ $help = yes ]; then
+    echo
     echo "  --help                        this message"
 
     echo "  --without-http_gzip_module    disable http_gzip_module"
@@ -63,6 +66,7 @@ if [ $HELP = YES ]; then
     echo "  --with-pcre=DIR               path to PCRE library"
     echo "  --with-md5=DIR                path to md5 library"
     echo "  --with-zlib=DIR               path to zlib library"
+    echo
 
     exit 1
 fi

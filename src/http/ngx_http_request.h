@@ -217,6 +217,8 @@ struct ngx_http_request_s {
 
     ngx_array_t          cleanup;
 
+    size_t               header_size;
+
     char                *discarded_buffer;
     void               **err_ctx;
     int                  err_status;

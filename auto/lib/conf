@@ -1,0 +1,24 @@
+
+if [ $PCRE != NO ]; then
+
+    CORE_INCS="$CORE_INCS -I $PCRE"
+
+    if [ "$PLATFORM" = "win32" ]; then
+        CFLAGS="$CFLAGS -D PCRE_STATIC"
+        CORE_LIBS="$CORE_LIBS pcre.lib"
+        CORE_LINK="$CORE_LINK -libpath:$PCRE"
+    else 
+        CORE_DEPS="$CORE_DEPS $PCRE/.libs/libpcre.a"
+        CORE_LIBS="$CORE_LIBS -L $PCRE/.libs -lpcre"
+    fi
+fi
+
+
+if [ $USE_MD5 = YES ]; then
+    . auto/lib/md5/conf
+fi
+
+
+if [ $USE_ZLIB = YES ]; then
+    . auto/lib/zlib/conf
+fi

@@ -49,6 +49,7 @@ extern int          ngx_max_sockets;
 extern int          ngx_inherited_nonblocking;
 
 
+extern int          done;
 extern int          restart;
 extern int          rotate;
 

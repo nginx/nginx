@@ -1,45 +1,56 @@
 
-echo "checking for $NGX_TYPE"
+echo -n "checking for $ngx_type ..."
+echo >> $NGX_ERR
+echo "checking for $ngx_type" >> $NGX_ERR
 
-FOUND=NO
+found=no
 
-for TYPE in $NGX_TYPE $NGX_TYPES
+for type in $ngx_type $ngx_types
 do
-    echo "#include <sys/types.h>" > autotest.c
-    echo "#include <sys/socket.h>" >> autotest.c
-    echo "#include <sys/time.h>" >> autotest.c
-    echo "#include <sys/resource.h>" >> autotest.c
-    echo "#include <netinet/in.h>" >> autotest.c
-    echo "$NGX_INTTYPES_H" >> autotest.c
-    echo "int main() { $TYPE i = 0; return 0; }" >> autotest.c
 
-    eval "$CC -o autotest autotest.c > $NGX_ERR 2>&1"
+    cat << END > $NGX_AUTOTEST.c
 
-    if [ -x autotest ]; then
-        if [ $TYPE = $NGX_TYPE ]; then
-            echo " + $NGX_TYPE found"
-            FOUND=YES
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <netinet/in.h>
+$NGX_INTTYPES_H
+
+int main() {
+    $type i = 0;
+    return 0;
+}
+
+END
+
+    eval "$CC -o $NGX_AUTOTEST $NGX_AUTOTEST.c >> $NGX_ERR 2>&1"
+
+    if [ -x $NGX_AUTOTEST ]; then
+        if [ $type = $ngx_type ]; then
+            echo " found"
+            found=yes
         else
-            echo " + $TYPE used"
-            FOUND=$TYPE
+            echo ", $type used"
+            found=$type
         fi
     fi
 
-    rm autotest*
+    rm $NGX_AUTOTEST*
 
-    if [ $FOUND = NO ]; then
-        echo " + $TYPE not found"
+    if [ $found = no ]; then
+        echo -n " $type not found"
     else
         break
     fi
 done
 
-if [ $FOUND = NO ]; then
-    echo "$0: error: can not define $NGX_TYPE"
+if [ $found = no ]; then
+    echo
+    echo "$0: error: can not define $ngx_type"
     exit 1
 fi
 
-if [ $FOUND != YES ]; then
-    echo "typedef $FOUND  $NGX_TYPE;"   >> $NGX_AUTO_CONFIG_H
-    echo                                >> $NGX_AUTO_CONFIG_H
+if [ $found != yes ]; then
+    echo "typedef $found  $ngx_type;"   >> $NGX_AUTO_CONFIG_H
 fi

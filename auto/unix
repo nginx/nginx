@@ -1,41 +1,41 @@
 
 CC_WARN=$CC
-NGX_FMT_COLLECT=YES
+ngx_fmt_collect=yes
 
 # C types
 
-NGX_TYPE="int"; . auto/types/sizeof;
-NGX_FORMATS="%d"; . auto/fmt/fmt
+ngx_type="int"; . auto/types/sizeof;
+ngx_formats="%d"; . auto/fmt/fmt
 
-NGX_TYPE="long"; . auto/types/sizeof;
-NGX_FORMATS="%ld"; . auto/fmt/fmt
+ngx_type="long"; . auto/types/sizeof;
+ngx_formats="%ld"; . auto/fmt/fmt
 
-NGX_TYPE="long long"; . auto/types/sizeof;
-NGX_FORMATS="%lld %qd"; . auto/fmt/fmt
+ngx_type="long long"; . auto/types/sizeof;
+ngx_formats="%lld %qd"; . auto/fmt/fmt
 
-NGX_TYPE="void *"; . auto/types/sizeof; NGX_PTR_BYTES=$NGX_BYTES
+ngx_type="void *"; . auto/types/sizeof; ngx_ptr_bytes=$ngx_bytes
 
 
 # headers
 
-NGX_INC="unistd.h"; . auto/inc
-NGX_INC="inttypes.h"; . auto/inc
+ngx_inc="unistd.h"; . auto/inc
+ngx_inc="inttypes.h"; . auto/inc
 
 #POSIX types
 
-NGX_AUTO_CONFIG="#include \"$NGX_AUTO_CONFIG_H\""
+NGX_AUTO_CONFIG="#include \"../$NGX_AUTO_CONFIG_H\""
 
-NGX_TYPE="uint64_t"
-NGX_TYPES="u_int64_t"; . auto/types/typedef
+ngx_type="uint64_t"
+ngx_types="u_int64_t"; . auto/types/typedef
 
-NGX_TYPE="socklen_t"
-NGX_TYPES="uint32_t"; . auto/types/typedef
+ngx_type="socklen_t"
+ngx_types="uint32_t"; . auto/types/typedef
 
-NGX_TYPE="in_addr_t"
-NGX_TYPES="uint32_t"; . auto/types/typedef
+ngx_type="in_addr_t"
+ngx_types="uint32_t"; . auto/types/typedef
 
-NGX_TYPE="rlim_t"
-NGX_TYPES="int"; . auto/types/typedef
+ngx_type="rlim_t"
+ngx_types="int"; . auto/types/typedef
 
 . auto/types/uintptr_t
 
@@ -43,47 +43,53 @@ NGX_TYPES="int"; . auto/types/typedef
 # printf() formats
 
 CC_WARN=$CC_STRONG
-NGX_FMT_COLLECT=NO
+ngx_fmt_collect=no
 
-NGX_FMT_NAME=OFF_T_FMT
-NGX_TYPE="off_t"; . auto/types/sizeof
-eval NGX_FORMATS=\${NGX_${NGX_BYTES}_FMT}; . auto/fmt/fmt
+ngx_fmt_name=OFF_T_FMT; ngx_type="off_t"; . auto/types/sizeof
+eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
 
-NGX_FMT_NAME=TIME_T_FMT
-NGX_TYPE="time_t"; . auto/types/sizeof
-eval NGX_FORMATS=\${NGX_${NGX_BYTES}_FMT}; . auto/fmt/fmt
+ngx_fmt_name=TIME_T_FMT; ngx_type="time_t"; . auto/types/sizeof
+eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
 
-NGX_FMT_NAME=SIZE_T_FMT
-NGX_TYPE="size_t"; . auto/types/sizeof
-eval NGX_FORMATS=\${NGX_${NGX_BYTES}_FMT}; . auto/fmt/fmt
+ngx_fmt_name=SIZE_T_FMT; ngx_type="size_t"; . auto/types/sizeof
+eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
 
-NGX_FMT_NAME=SIZE_T_X_FMT; . auto/fmt/xfmt
+ngx_fmt_name=SIZE_T_X_FMT; . auto/fmt/xfmt
 
-NGX_FMT_NAME=PID_T_FMT
-NGX_TYPE="pid_t"; . auto/types/sizeof
-eval NGX_FORMATS=\${NGX_${NGX_BYTES}_FMT}; . auto/fmt/fmt
+ngx_fmt_name=PID_T_FMT; ngx_type="pid_t"; . auto/types/sizeof
+eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
 
-NGX_FMT_NAME=RLIM_T_FMT
-NGX_TYPE="rlim_t"; . auto/types/sizeof
-eval NGX_FORMATS=\${NGX_${NGX_BYTES}_FMT}; . auto/fmt/fmt
+ngx_fmt_name=RLIM_T_FMT; ngx_type="rlim_t"; . auto/types/sizeof
+eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/fmt
 
 
 # syscalls and libc calls
 
-NGX_FUNC_INC=
-NGX_FUNC_TEST="int fd = 0; char buf[1]; size_t size = 1;
-               ssize_t n; off_t offset = 0;
-               n = pread(fd, buf, size, offset)"
-NGX_FUNC="pread()"; . auto/func
+ngx_func="pread()"
+ngx_func_inc=
+ngx_func_test="
+char    buf[1];
+ssize_t n;
+n = pread(0, buf, 1, 0)"
+. auto/func
 
 
-NGX_FUNC_INC=
-NGX_FUNC_TEST="int fd = 1; char buf[1]; size_t size = 1;
-               ssize_t n; off_t offset = 0;
-               n = pwrite(fd, buf, size, offset)"
-NGX_FUNC="pwrite()"; . auto/func
+ngx_func="pwrite()"
+ngx_func_inc=
+ngx_func_test="
+char    buf[1];
+ssize_t n;
+n = pwrite(1, buf, 1, 0)"
+. auto/func
 
 
-NGX_FUNC_INC="#include <time.h>"
-NGX_FUNC_TEST="struct tm t; time_t c=0; localtime_r(&c, &t)"
-NGX_FUNC="localtime_r()"; . auto/func
+ngx_func="strerror_r()"
+ngx_func_inc="#include <string.h>"
+ngx_func_test="char buf[20]; strerror_r(1, buf, 20)"
+. auto/func
+
+
+ngx_func="localtime_r()"
+ngx_func_inc="#include <time.h>"
+ngx_func_test="struct tm t; time_t c=0; localtime_r(&c, &t)"
+. auto/func

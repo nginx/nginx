@@ -1,0 +1,17 @@
+
+echo
+echo "Configuration summary"
+
+case $MD5 in
+    YES) echo " + using system md5 library" ;;
+    NO)  echo " + md5 library is not found" ;;
+    *)   echo " + using md5 library: $MD5" ;;
+esac
+
+case $ZLIB in
+    YES) echo " + using system zlib library" ;;
+    NO)  echo " + zlib library is not found" ;;
+    *)   echo " + using zlib library: $ZLIB" ;;
+esac
+
+echo

@@ -1,0 +1,67 @@
+
+if [ $MD5 != NO ]; then
+
+    if grep MD5_Init $MD5/md5.h >/dev/null; then
+        # OpenSSL md5
+        OPENSSL_MD5=YES
+        CFLAGS="$CFLAGS -D HAVE_OPENSSL_MD5"
+    else
+        # rsaref md5
+        OPENSSL_MD5=NO
+    fi
+
+    CORE_INCS="$CORE_INCS -I $MD5"
+
+    if [ "$PLATFORM" = "win32" ]; then
+        CORE_LIBS="$CORE_LIBS md5.lib"
+        CORE_LINK="$CORE_LINK -libpath:$MD5"
+    else 
+        LINK_DEPS="$LINK_DEPS $MD5/libmd5.a"
+        CORE_LIBS="$CORE_LIBS -L $MD5 -lmd5"
+    fi
+
+else
+
+ngx_lib_inc="#include <sys/types.h>
+#include <md5.h>"
+
+        # Solaris 8/9
+        ngx_lib="rsaref md5"
+        ngx_lib_test="MD5_CTX md5; MD5Init(&md5)"
+        ngx_libs=-lmd5
+        . auto/lib/test
+
+
+    if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS $ngx_libs"
+        MD5=YES
+        ngx_found=no
+
+    else
+        # FreeBSD
+        ngx_lib="rsaref md"
+        ngx_lib_test="MD5_CTX md5; MD5Init(&md5)"
+        ngx_libs=-lmd
+        . auto/lib/test
+    fi
+
+
+    if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS $ngx_libs"
+        MD5=YES
+        ngx_found=no
+
+    else
+        ngx_lib="OpenSSL md5"
+        ngx_lib_test="MD5_CTX md5; MD5_Init(&md5)"
+        ngx_libs=-lmd5
+        . auto/lib/test
+    fi
+
+
+    if [ $ngx_found = yes ]; then
+        CFLAGS="$CFLAGS -D HAVE_OPENSSL_MD5"
+        CORE_LIBS="$CORE_LIBS $ngx_libs"
+        MD5=YES
+    fi
+fi

@@ -407,14 +407,17 @@ int ngx_http_find_location_config(ngx_http_request_t *r)
     clcfp = cscf->locations.elts;
     for (i = 0; i < cscf->locations.nelts; i++) {
 
-#if 1
-ngx_log_debug(r->connection->log, "trans: %s: %d" _
-              clcfp[i]->name.data _ clcfp[i]->exact_match);
-#endif
+#if (HAVE_PCRE)
 
         if (clcfp[i]->regex) {
             break;
         }
+#endif
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "find location: %s\"%s\"",
+                       clcfp[i]->exact_match ? "= " : "",
+                       clcfp[i]->name.data);
 
         if (clcfp[i]->auto_redirect
             && r->uri.len == clcfp[i]->name.len - 1
@@ -449,19 +452,22 @@ ngx_log_debug(r->connection->log, "trans: %s: %d" _
         }
     }
 
+#if (HAVE_PCRE)
+
     if (!exact && !auto_redirect) {
         /* regex matches */
 
         for (/* void */; i < cscf->locations.nelts; i++) {
 
-#if 1
-ngx_log_debug(r->connection->log, "trans: %s: %d" _
-              clcfp[i]->name.data _ clcfp[i]->exact_match);
-#endif
-
             if (!clcfp[i]->regex) {
                 continue;
             }
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "find location: %s\"%s\"",
+                           clcfp[i]->exact_match ? "= " :
+                                 clcfp[i]->regex ? "~ " : "",
+                           clcfp[i]->name.data);
 
             rc = ngx_regex_exec(clcfp[i]->regex, &r->uri);
 
@@ -488,6 +494,8 @@ ngx_log_debug(r->connection->log, "trans: %s: %d" _
         }
     }
 
+#endif /* HAVE_PCRE */
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (!(ngx_io.flags & NGX_IO_SENDFILE) || !clcf->sendfile) {
@@ -504,10 +512,6 @@ ngx_log_debug(r->connection->log, "trans: %s: %d" _
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-#if 0
-        r->headers_out.location->key.len = 8;
-        r->headers_out.location->key.data = "Location";
-#endif
         r->headers_out.location->value = *auto_redirect;
 
         return NGX_HTTP_MOVED_PERMANENTLY;
@@ -614,7 +618,8 @@ int ngx_http_internal_redirect(ngx_http_request_t *r,
 {
     int  i;
 
-    ngx_log_debug(r->connection->log, "internal redirect: '%s'" _ uri->data);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "internal redirect: \"%s\"", uri->data);
 
     r->uri.len = uri->len;
     r->uri.data = uri->data;
@@ -798,6 +803,8 @@ static int ngx_cmp_locations(const void *one, const void *two)
 
     ngx_int_t  rc;
 
+#if (HAVE_PCRE)
+
     if (first->regex && !second->regex) {
         /* shift regex matches to the end */
         return 1;
@@ -807,6 +814,8 @@ static int ngx_cmp_locations(const void *one, const void *two)
         /* do not sort regex matches */
         return 0;
     }
+
+#endif
 
     rc = ngx_strcmp(first->name.data, second->name.data);
 
@@ -876,6 +885,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
                        && value[1].data[0] == '~'
                        && value[1].data[1] == '*'))
         {
+#if (HAVE_PCRE)
             err.len = NGX_MAX_CONF_ERRSTR;
             err.data = errstr;
 
@@ -890,6 +900,13 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
             clcf->name.len = value[2].len;
             clcf->name.data = value[2].data;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the using of the regex \"%s\" "
+                               "requires PCRE library",
+                               value[2].data);
+            return NGX_CONF_ERROR;
+#endif
 
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

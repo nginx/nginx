@@ -19,6 +19,8 @@ static char *ngx_http_log_status(ngx_http_request_t *r, char *buf,
                                  uintptr_t data);
 static char *ngx_http_log_length(ngx_http_request_t *r, char *buf,
                                  uintptr_t data);
+static char *ngx_http_log_apache_length(ngx_http_request_t *r, char *buf,
+                                        uintptr_t data);
 static char *ngx_http_log_header_in(ngx_http_request_t *r, char *buf,
                                     uintptr_t data);
 static char *ngx_http_log_connection_header_out(ngx_http_request_t *r,
@@ -97,7 +99,7 @@ static char *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
 static ngx_str_t ngx_http_combined_fmt =
-    ngx_string("%addr - - [%time] \"%request\" %status %length "
+    ngx_string("%addr - - [%time] \"%request\" %status %apache_length "
                "\"%{Referer}i\" %{User-Agent}i\"");
 
 
@@ -110,6 +112,7 @@ ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
     { ngx_string("request"), 0, ngx_http_log_request },
     { ngx_string("status"), 3, ngx_http_log_status },
     { ngx_string("length"), NGX_OFF_T_LEN, ngx_http_log_length },
+    { ngx_string("apache_length"), NGX_OFF_T_LEN, ngx_http_log_apache_length },
     { ngx_string("i"), NGX_HTTP_LOG_ARG, ngx_http_log_header_in },
     { ngx_string("o"), NGX_HTTP_LOG_ARG, ngx_http_log_header_out },
     { ngx_null_string, 0, NULL }
@@ -129,7 +132,8 @@ int ngx_http_log_handler(ngx_http_request_t *r)
     u_int                     written;
 #endif
 
-    ngx_log_debug(r->connection->log, "log handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http log handler");
 
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_log_module);
 
@@ -245,6 +249,14 @@ static char *ngx_http_log_length(ngx_http_request_t *r, char *buf,
 {
     return buf + ngx_snprintf(buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
                               r->connection->sent);
+}
+
+
+static char *ngx_http_log_apache_length(ngx_http_request_t *r, char *buf,
+                                        uintptr_t data)
+{
+    return buf + ngx_snprintf(buf, NGX_OFF_T_LEN + 1, OFF_T_FMT,
+                              r->connection->sent - r->header_size);
 }
 
 

@@ -1,28 +1,40 @@
 
-echo "checking for $NGX_INC"
+echo -n "checking for $ngx_inc ..."
+echo >> $NGX_ERR
+echo "checking for $ngx_inc" >> $NGX_ERR
 
-NGX_FOUND=NO
+ngx_found=no
 
-inc=`echo $NGX_INC | sed -e 's/\./_/' | sed -e 's/\//_/' | tr '[a-z]' '[A-Z]'`
+inc=`echo $ngx_inc | sed -e 's/\./_/' | sed -e 's/\//_/' | tr '[a-z]' '[A-Z]'`
 
-echo "#include <$NGX_INC>" > autotest.c
-echo "int main() { return 0; }" >> autotest.c
+cat << END > $NGX_AUTOTEST.c
 
-eval "${CC} -o autotest autotest.c > /dev/null 2>&1"
+#include <$ngx_inc>
 
-if [ -x autotest ]; then
-    echo " + $NGX_INC found"
+int main() {
+    return 0;
+}
 
-    echo "#ifndef HAVE_$inc"      >> $NGX_AUTO_CONFIG_H
-    echo "#define HAVE_$inc  1"   >> $NGX_AUTO_CONFIG_H
-    echo "#endif"                 >> $NGX_AUTO_CONFIG_H
-    echo                          >> $NGX_AUTO_CONFIG_H
+END
 
-    eval "NGX_$inc='#include <$NGX_INC>'"
-    NGX_FOUND=YES
+eval "${CC} -o $NGX_AUTOTEST $NGX_AUTOTEST.c >> $NGX_ERR 2>&1"
+
+if [ -x $NGX_AUTOTEST ]; then
+    echo " found"
+
+    cat << END >> $NGX_AUTO_CONFIG_H
+
+#ifndef HAVE_$inc
+#define HAVE_$inc  1
+#endif
+
+END
+
+    eval "NGX_$inc='#include <$ngx_inc>'"
+    ngx_found=yes
 
 else
-    echo " + $NGX_INC not found"
+    echo " not found"
 fi
 
-rm autotest*
+rm $NGX_AUTOTEST*

@@ -16,7 +16,8 @@ static void ngx_clean_old_cycles(ngx_event_t *ev);
 
 
 typedef struct {
-     int   daemon;
+     int        daemon;
+     ngx_str_t  pid;
 } ngx_core_conf_t;
 
 
@@ -61,6 +62,7 @@ static ngx_connection_t  dumb;
 u_int ngx_connection_counter;
 
 
+int done;
 int restart;
 int rotate;
 
@@ -73,6 +75,9 @@ int main(int argc, char *const *argv)
     ngx_cycle_t      *cycle;
     ngx_open_file_t  *file;
 #if !(WIN32)
+    size_t            len;
+    char              pid[/* STUB */ 10];
+    ngx_file_t        pidfile;
     ngx_core_conf_t  *ccf;
 #endif
 
@@ -119,6 +124,33 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
+    if (ccf->pid.len == 0) {
+        ccf->pid.len = sizeof(NGINX_PID) - 1;
+        ccf->pid.data = NGINX_PID;
+    }
+
+    len = ngx_snprintf(pid, /* STUB */ 10, PID_T_FMT, ngx_getpid());
+    ngx_memzero(&pidfile, sizeof(ngx_file_t));
+    pidfile.name = ccf->pid;
+
+    pidfile.fd = ngx_open_file(pidfile.name.data, NGX_FILE_RDWR,
+                               NGX_FILE_CREATE_OR_OPEN);
+
+    if (pidfile.fd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      ngx_open_file_n " \"%s\" failed", pidfile.name.data);
+        return 1;
+    }
+
+    if (ngx_write_file(&pidfile, pid, len, 0) == NGX_ERROR) {
+        return 1;
+    }
+
+    if (ngx_close_file(pidfile.fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", pidfile.name.data);
+    }
+
 #endif
 
     /* life cycle */
@@ -162,8 +194,20 @@ int main(int argc, char *const *argv)
 
                 ngx_process_events(cycle->log);
 
+                if (done) {
+                    if (ngx_delete_file(pidfile.name.data) == NGX_FILE_ERROR) {
+                        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                                      ngx_delete_file_n " \"%s\" failed",
+                                      pidfile.name.data);
+                    }
+
+                    ngx_log_error(NGX_LOG_INFO,
+                                  cycle->log, 0, "exiting");
+                    exit(0);
+                }
+
                 if (rotate) {
-                    ngx_log_debug(cycle->log, "rotate");
+                    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "rotating logs");
 
                     file = cycle->open_files.elts;
                     for (i = 0; i < cycle->open_files.nelts; i++) {
@@ -313,6 +357,10 @@ static ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle, ngx_log_t *log)
         ngx_destroy_pool(pool);
         return NULL;
     }
+    /* set by pcalloc()
+     *
+     * ccf->pid = NULL;
+     */
     ccf->daemon = -1;
     ((void **)(cycle->conf_ctx))[ngx_core_module.index] = ccf;
 

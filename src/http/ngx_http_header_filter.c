@@ -340,6 +340,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     /* the end of HTTP header */
     *(h->last++) = CR; *(h->last++) = LF;
 
+    r->header_size = h->last - h->pos;
+
     if (r->header_only) {
         h->type |= NGX_HUNK_LAST;
     }

@@ -19,6 +19,8 @@ void ngx_gettimeofday(struct timeval *tp)
      * 134744 days,
      * 11644473600 seconds or
      * 11644473600,000,000,0 100-nanosecond intervals.
+     *
+     * See also MSKB Q167296.
      */
 
     intervals = ((uint64_t) ft.dwHighDateTime << 32) | ft.dwLowDateTime;

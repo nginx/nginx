@@ -134,7 +134,9 @@ typedef struct {
 
     ngx_http_cache_hash_t  *open_files;
 
+#if (HAVE_PCRE)
     ngx_regex_t  *regex;
+#endif
 
     unsigned      exact_match:1;
     unsigned      auto_redirect:1;

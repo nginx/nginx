@@ -52,6 +52,8 @@ int ngx_os_init(ngx_log_t *log)
     }
 
     /*
+     *  Windows 3.1 Win32s   0xxxxx
+     *
      *  Windows 95           140000
      *  Windows 98           141000
      *  Windows ME           149000
@@ -61,6 +63,8 @@ int ngx_os_init(ngx_log_t *log)
      *  Windows 2000         250000
      *  Windows XP           250100
      *  Windows 2003         250200
+     *
+     *  Windows CE x.x       3xxxxx
      */
 
     ngx_win32_version = osvi.dwPlatformId * 100000
@@ -84,7 +88,7 @@ int ngx_os_init(ngx_log_t *log)
 #endif
 
     } else {
-        if (osvi.dwPlatformId == 1) {
+        if (osvi.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
 
             /* Win9x build */
 
@@ -96,6 +100,14 @@ int ngx_os_init(ngx_log_t *log)
                           osvi.szCSDVersion);
 
         } else {
+
+            /*
+             * VER_PLATFORM_WIN32_NT
+             *
+             * we do not currently support VER_PLATFORM_WIN32_CE
+             * and we do not support VER_PLATFORM_WIN32s at all
+             */
+
             ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %u build:%u, \"%s\"",
                           ngx_win32_version, osvi.dwBuildNumber,
                           osvi.szCSDVersion);

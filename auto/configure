@@ -6,7 +6,7 @@
 . auto/os/conf
 
 . auto/cc
-. auto/lib/lib
+. auto/lib/conf
 . auto/make
 . auto/lib/make
 
@@ -15,3 +15,5 @@ echo > $NGX_AUTO_CONFIG_H
 if [ "$PLATFORM" != win32 ]; then
     . auto/unix
 fi
+
+. auto/summary

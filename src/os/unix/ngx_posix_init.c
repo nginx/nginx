@@ -7,47 +7,65 @@ int  ngx_max_sockets;
 int  ngx_inherited_nonblocking;
 
 
+void ngx_signal_handler(int signo);
+void ngx_exit_signal_handler(int signo);
 void ngx_restart_signal_handler(int signo);
 void ngx_rotate_signal_handler(int signo);
 
 
+typedef struct {
+     int     signo;
+     char   *signame;
+     char   *action;
+     void  (*handler)(int signo);
+} ngx_signal_t;
+
+
+ngx_signal_t  signals[] = {
+    { ngx_signal_value(NGX_RESTART_SIGNAL),
+      "SIG" ngx_value(NGX_RESTART_SIGNAL),
+      "restarting",
+      ngx_signal_handler },
+
+    { ngx_signal_value(NGX_ROTATE_SIGNAL),
+      "SIG" ngx_value(NGX_ROTATE_SIGNAL),
+      "reopen logs",
+      ngx_signal_handler },
+
+    { ngx_signal_value(NGX_INTERRUPT_SIGNAL),
+      "SIG" ngx_value(NGX_INTERRUPT_SIGNAL),
+      "exiting",
+      ngx_signal_handler },
+
+    { ngx_signal_value(NGX_SHUTDOWN_SIGNAL),
+      "SIG" ngx_value(NGX_SHUTDOWN_SIGNAL),
+      "shutdowning",
+      ngx_signal_handler },
+
+    { SIGCHLD, "SIGCHLD", NULL, ngx_sigchld_handler },
+
+    { SIGPIPE, "SIGPIPE, SIG_IGN", NULL, SIG_IGN },
+
+    { 0, NULL, NULL, NULL }
+};
+
+
 int ngx_posix_init(ngx_log_t *log)
 {
-    struct rlimit     rlmt;
-    struct sigaction  sa;
+    ngx_signal_t      *sig;
+    struct rlimit      rlmt;
+    struct sigaction   sa;
 
-    ngx_memzero(&sa, sizeof(struct sigaction));
-    sa.sa_handler = SIG_IGN;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGPIPE, &sa, NULL) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "sigaction(SIGPIPE, SIG_IGN) failed");
-        return NGX_ERROR;
+    for (sig = signals; sig->signo != 0; sig++) {
+        ngx_memzero(&sa, sizeof(struct sigaction));
+        sa.sa_handler = sig->handler;
+        sigemptyset(&sa.sa_mask);
+        if (sigaction(sig->signo, &sa, NULL) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          "sigaction(%s) failed", sig->signame);
+            return NGX_ERROR;
+        }
     }
-
-    ngx_memzero(&sa, sizeof(struct sigaction));
-    sa.sa_handler = ngx_sigchld_handler;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "sigaction(SIGCHLD) failed");
-        return NGX_ERROR;
-    }
-
-    sa.sa_handler = ngx_restart_signal_handler;
-    if (sigaction(ngx_signal_value(NGX_RESTART_SIGNAL), &sa, NULL) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "sigaction(SIG" ngx_value(NGX_RESTART_SIGNAL) ") failed");
-        return NGX_ERROR;
-    }
-
-    sa.sa_handler = ngx_rotate_signal_handler;
-    if (sigaction(ngx_signal_value(NGX_ROTATE_SIGNAL), &sa, NULL) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "sigaction(SIG" ngx_value(NGX_ROTATE_SIGNAL) ") failed");
-        return NGX_ERROR;
-    }
-
 
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
@@ -68,6 +86,56 @@ int ngx_posix_init(ngx_log_t *log)
 #endif
 
     return NGX_OK;
+}
+
+
+void ngx_signal_handler(int signo)
+{
+    char          *name;
+    ngx_signal_t  *sig;
+
+    for (sig = signals; sig->signo != 0; sig++) {
+        if (sig->signo == signo) {
+            break;
+        }
+    }
+
+    /* STUB */
+    name = strsignal(signo);
+    ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
+                  "signal #%d (%s: %s) received, %s",
+                  signo, sig->signame, name, sig->action);
+
+    switch (signo) {
+
+    /* STUB */
+    case SIGQUIT:
+    case SIGABRT:
+
+    case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
+    case ngx_signal_value(NGX_INTERRUPT_SIGNAL):
+        done = 1;
+        break;
+
+    case ngx_signal_value(NGX_RESTART_SIGNAL):
+        restart = 1;
+        break;
+
+    case ngx_signal_value(NGX_ROTATE_SIGNAL):
+        rotate = 1;
+        break;
+    }
+}
+
+
+void ngx_exit_signal_handler(int signo)
+{
+    char *s;
+
+    s = strsignal(signo);
+    ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
+                  "%s signal received, exiting", s);
+    done = 1;
 }
 
 

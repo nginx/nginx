@@ -1,44 +1,52 @@
 
-echo "checking for $NGX_TYPE size"
+echo -n "checking for $ngx_type size ..."
+echo >> $NGX_ERR
+echo "checking for $ngx_type size" >> $NGX_ERR
 
-NGX_BYTES=
+ngx_bytes=
 
-echo "#include <sys/types.h>" > autotest.c
-echo "#include <sys/time.h>" >> autotest.c
-echo "#include <sys/resource.h>" >> autotest.c
-echo "$NGX_INTTYPES_H" >> autotest.c
-echo "$NGX_AUTO_CONFIG" >> autotest.c
-echo "int main() {" >> autotest.c
-echo "printf(\"%d\", sizeof($NGX_TYPE));" >> autotest.c
-echo "return 0; }" >> autotest.c
+cat << END > $NGX_AUTOTEST.c
 
-eval "$CC $CC_TEST_FLAGS -o autotest autotest.c > /dev/null 2>&1"
+#include <sys/time.h>
+#include <sys/resource.h>
+$NGX_INTTYPES_H
+$NGX_AUTO_CONFIG
 
-if [ -x ./autotest ]; then
-    NGX_BYTES=`./autotest`
-    echo " + $NGX_TYPE is $NGX_BYTES bytes"
+int main() {
+    printf("%d", sizeof($ngx_type));
+    return 0;
+}
+
+END
+
+eval "$CC $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c >> $NGX_ERR 2>&1"
+
+if [ -x $NGX_AUTOTEST ]; then
+    ngx_bytes=`$NGX_AUTOTEST`
+    echo " $ngx_bytes bytes"
 fi
 
-rm autotest*
+rm $NGX_AUTOTEST*
 
-case $NGX_BYTES in
+case $ngx_bytes in
     4)
-        if [ "$NGX_TYPE"="long" ]; then
-            NGX_MAX_SIZE=2147483647L
+        if [ "$ngx_type"="long" ]; then
+            ngx_max_size=2147483647L
         else
-            NGX_MAX_SIZE=2147483647
+            ngx_max_size=2147483647
         fi
     ;;
 
     8)
-        if [ "$NGX_TYPE"="long long" ]; then
-            NGX_MAX_SIZE=9223372036854775807LL
+        if [ "$ngx_type"="long long" ]; then
+            ngx_max_size=9223372036854775807LL
         else
-            NGX_MAX_SIZE=9223372036854775807L
+            ngx_max_size=9223372036854775807L
         fi
     ;;
 
     *)
-        echo "$0: error: can not detect $NGX_TYPE size"
+        echo
+        echo "$0: error: can not detect $ngx_type size"
         exit 1
 esac

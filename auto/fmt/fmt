@@ -1,59 +1,77 @@
 
-echo "checking for $NGX_TYPE printf() format"
+echo -n "checking for $ngx_type printf() format ..."
+echo >> $NGX_ERR
+echo "checking for $ngx_type printf() format" >> $NGX_ERR
 
-NGX_FMT=NO
+ngx_fmt=no
+comma=
 
-for FMT in $NGX_FORMATS
+for fmt in $ngx_formats
 do
-    echo "#include <stdio.h>" > autotest.c
-    echo "#include <sys/types.h>" >> autotest.c
-    echo "#include <sys/time.h>" >> autotest.c
-    echo "#include <sys/resource.h>" >> autotest.c
-    echo "$NGX_INTTYPES_H" >> autotest.c
-    echo "$NGX_AUTO_CONFIG" >> autotest.c
-    echo "int main() {" >> autotest.c
-    echo "printf(\"${FMT}\", ($NGX_TYPE) $NGX_MAX_SIZE);" >> autotest.c
-    echo "return 0; }" >> autotest.c
 
-    eval "$CC_WARN $CC_TEST_FLAGS -o autotest autotest.c > $NGX_ERR 2>&1"
+    cat << END > $NGX_AUTOTEST.c
 
-    MAX_SIZE=`echo $NGX_MAX_SIZE | sed -e "s/L*\$//"`
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+$NGX_INTTYPES_H
+$NGX_AUTO_CONFIG
 
-    if [ -x ./autotest ]; then
-        if [ "`./autotest`" = $MAX_SIZE ]; then
-            if [ $NGX_FMT_COLLECT = YES ]; then
-                echo " + \"${FMT}\" is appropriate"
+int main() {
+    printf("$fmt", ($ngx_type) $ngx_max_size);
+    return 0;
+}
+
+END
+
+    eval "$CC_WARN $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c \
+          >> $NGX_ERR 2>&1"
+
+    max_size=`echo $ngx_max_size | sed -e "s/L*\$//"`
+
+    if [ -x $NGX_AUTOTEST ]; then
+        if [ "`$NGX_AUTOTEST`" = $max_size ]; then
+            if [ $ngx_fmt_collect = yes ]; then
+                echo -n "$comma \"${fmt}\" is appropriate"
             else
-                echo " + \"${FMT}\" used"
+                echo -n "$comma \"${fmt}\" used"
             fi
-            NGX_FMT=$FMT
+            ngx_fmt=$fmt
         fi
     fi
 
-    rm autotest*
+    rm $NGX_AUTOTEST*
 
-    if [ $NGX_FMT != NO ]; then
-        if [ $NGX_FMT_COLLECT = YES ]; then
-            eval "NGX_${NGX_BYTES}_FMT=\"\${NGX_${NGX_BYTES}_FMT} \$NGX_FMT\""
+    if [ $ngx_fmt != no ]; then
+        if [ $ngx_fmt_collect = yes ]; then
+            eval "ngx_${ngx_bytes}_fmt=\"\${ngx_${ngx_bytes}_fmt} \$ngx_fmt\""
+            comma=","
             continue
         else
             break
         fi
     fi
 
-    echo " + \"${FMT}\" is not appropriate"
+    echo -n "$comma \"${fmt}\" is not appropriate"
+    comma=","
 done
 
+echo
 
-if [ $NGX_FMT = NO ]; then
-    echo "$0: error: printf() $NGX_TYPE format not found"
+if [ $ngx_fmt = no ]; then
+    echo "$0: error: printf() $ngx_type format not found"
     exit 1
 fi
 
 
-if [ $NGX_FMT_COLLECT = NO ]; then
-    echo "#ifndef $NGX_FMT_NAME"                 >> $NGX_AUTO_CONFIG_H
-    echo "#define $NGX_FMT_NAME  \"$NGX_FMT\""   >> $NGX_AUTO_CONFIG_H
-    echo "#endif"                                >> $NGX_AUTO_CONFIG_H
-    echo                                         >> $NGX_AUTO_CONFIG_H
+if [ $ngx_fmt_collect = no ]; then
+    cat << END >> $NGX_AUTO_CONFIG_H
+
+#ifndef $ngx_fmt_name
+#define $ngx_fmt_name  "$ngx_fmt"
+#endif
+
+END
+
 fi

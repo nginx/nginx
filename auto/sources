@@ -88,6 +88,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
 
 UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_time.c \
+            src/os/unix/ngx_errno.c \
             src/os/unix/ngx_sendv.c \
             src/os/unix/ngx_files.c \
             src/os/unix/ngx_socket.c \

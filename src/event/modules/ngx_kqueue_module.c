@@ -419,23 +419,17 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
     for (i = 0; i < events; i++) {
 
-#if (NGX_DEBUG_EVENT)
-        if (event_list[i].ident > 0x8000000
-            && event_list[i].ident != (unsigned) -1)
-        {
-            ngx_log_debug(log,
-                          "kevent: %08x: ft:%d fl:%08x ff:%08x d:%d ud:%08x" _
-                          event_list[i].ident _ event_list[i].filter _
-                          event_list[i].flags _ event_list[i].fflags _
-                          event_list[i].data _ event_list[i].udata);
-        } else {
-            ngx_log_debug(log,
-                          "kevent: %d: ft:%d fl:%08x ff:%08x d:%d ud:%08x" _
-                          event_list[i].ident _ event_list[i].filter _
-                          event_list[i].flags _ event_list[i].fflags _
-                          event_list[i].data _ event_list[i].udata);
-        }
-#endif
+        ngx_log_debug6(NGX_LOG_DEBUG_EVENT, log, 0,
+
+                       (event_list[i].ident > 0x8000000
+                        && event_list[i].ident != (unsigned) -1) ?
+                        "kevent: " PTR_FMT ": ft:%d fl:%04X ff:%08X d:%d ud:"
+                                                                     PTR_FMT:
+                        "kevent: %d: ft:%d fl:%04X ff:%08X d:%d ud:" PTR_FMT,
+
+                        event_list[i].ident, event_list[i].filter,
+                        event_list[i].flags, event_list[i].fflags,
+                        event_list[i].data, event_list[i].udata);
 
         if (event_list[i].flags & EV_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, event_list[i].data,
@@ -453,13 +447,15 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
             instance = (uintptr_t) ev & 1;
             ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
 
-            /*
-             * it's a stale event from a file descriptor
-             * that was just closed in this iteration
-             */
-
             if (ev->active == 0 || ev->instance != instance) {
-                ngx_log_debug(log, "stale kevent");
+
+                /*
+                 * it's a stale event from a file descriptor
+                 * that was just closed in this iteration
+                 */
+
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                               "kevent: stale event " PTR_FMT, ev);
                 continue;
             }
 
@@ -508,6 +504,29 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     }
 
     return NGX_OK;
+}
+
+
+static void ngx_kqueue_thread_handler(ngx_event_t *ev, ngx_log_t *log)
+{
+    ngx_int_t  instance;
+
+    instance = (uintptr_t) ev & 1;
+    ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
+
+    if (ev->active && ev->instance == instance) {
+        ev->event_handler(ev);
+        return;
+    }
+
+    /*
+     * it's a stale event from a file descriptor
+     * that was just closed in this iteration
+     */
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "kevent: stale event " PTR_FMT, ev);
+
 }
 
 

@@ -29,12 +29,17 @@ typedef int               ngx_err_t;
 #define ngx_set_errno(err)         errno = err
 #define ngx_set_socket_errno(err)  errno = err
 
-#if 0
-#define ngx_strerror(err)          strerror(err)
-#endif
+
+#if (HAVE_STRERROR_R)
+
+ngx_int_t ngx_strerror_r(int err, char *errstr, size_t size);
+
+#else
 
 #define ngx_strerror_r(err, errstr, size)  \
              ngx_cpystrn(errstr, strerror(err), size) - (errstr)
+
+#endif
 
 
 #endif /* _NGX_ERRNO_H_INCLUDED_ */

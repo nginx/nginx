@@ -1,0 +1,28 @@
+
+if [ $ZLIB != NO ]; then
+    CORE_INCS="$CORE_INCS -I $ZLIB"
+
+    if [ "$PLATFORM" = "win32" ]; then
+        CORE_LIBS="$CORE_LIBS zlib.lib"
+        CORE_LINK="$CORE_LINK -libpath:$ZLIB"
+    else
+        LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
+        CORE_LIBS="$CORE_LIBS -L $ZLIB -lz"
+    fi
+
+else
+
+    ngx_lib_inc="#include <zlib.h>"
+
+    ngx_lib="zlib"
+    ngx_lib_test="z_stream z; deflate(&z, Z_NO_FLUSH)"
+    ngx_libs=-lz
+    . auto/lib/test
+
+
+    if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS $ngx_libs"
+        ZLIB=YES
+    fi
+
+fi

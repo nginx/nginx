@@ -3,7 +3,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-int ngx_http_parse_request_line(ngx_http_request_t *r)
+ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
 {
     char   ch, *p;
     enum {
@@ -419,7 +419,7 @@ int ngx_http_parse_request_line(ngx_http_request_t *r)
 }
 
 
-int ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
+ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
 {
     char   c, ch, *p;
     enum {
@@ -621,7 +621,7 @@ int ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
 }
 
 
-int ngx_http_parse_complex_uri(ngx_http_request_t *r)
+ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
 {
     char  c, ch, decoded, *p, *u;
     enum {

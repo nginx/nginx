@@ -1,0 +1,23 @@
+
+echo "checking for $ngx_lib library"
+echo >> $NGX_ERR
+echo "checking for $ngx_lib library" >> $NGX_ERR
+
+ngx_found=no
+
+echo "$ngx_lib_inc" > $NGX_AUTOTEST.c
+echo "int main() { $ngx_lib_test; return 0; }" >> $NGX_AUTOTEST.c
+
+eval "$CC $cc_test_flags -o $NGX_AUTOTEST $NGX_AUTOTEST.c $ngx_libs \
+     >> $NGX_ERR 2>&1"
+
+if [ -x $NGX_AUTOTEST ]; then
+    echo " + $ngx_lib found"
+
+    ngx_found=yes
+
+else
+    echo " + $ngx_lib not found"
+fi
+
+rm $NGX_AUTOTEST*
