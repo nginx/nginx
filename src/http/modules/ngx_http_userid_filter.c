@@ -46,11 +46,12 @@ static u_char *ngx_http_userid_log_uid_got(ngx_http_request_t *r, u_char *buf,
 static u_char *ngx_http_userid_log_uid_set(ngx_http_request_t *r, u_char *buf,
                                            uintptr_t data);
 
+static ngx_int_t ngx_http_userid_init(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_userid_pre_conf(ngx_conf_t *cf);
 static void *ngx_http_userid_create_conf(ngx_conf_t *cf);
 static char *ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent,
                                         void *child);
-static ngx_int_t ngx_http_userid_init(ngx_cycle_t *cycle);
+char *ngx_http_userid_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 static uint32_t  sequencer_v1 = 1;
@@ -111,9 +112,9 @@ static ngx_command_t  ngx_http_userid_commands[] = {
 
     { ngx_string("userid_expires"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_sec_slot,
+      ngx_http_userid_expires,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_userid_conf_t, expires),
+      0,
       NULL},
 
     ngx_null_command
@@ -277,20 +278,34 @@ static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
 {
     u_char           *cookie, *p;
     size_t            len;
+    uint32_t          service;
     ngx_str_t         src, dst;
     ngx_table_elt_t  *set_cookie;
 
     /* TODO: mutex for sequencers */
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "service: %d", r->in_addr);
+
     if (conf->enable == NGX_HTTP_USERID_V1) {
-        ctx->uid_set[0] = conf->service;
+        if (conf->service == NGX_CONF_UNSET) {
+            ctx->uid_set[0] = 0;
+        } else {
+            ctx->uid_set[0] = htonl(conf->service);
+        }
+
         ctx->uid_set[1] = ngx_time();
         ctx->uid_set[2] = ngx_pid;
         ctx->uid_set[3] = sequencer_v1;
         sequencer_v1 += 0x100;
 
     } else {
-        ctx->uid_set[0] = htonl(conf->service);
+        if (conf->service == NGX_CONF_UNSET) {
+            ctx->uid_set[0] = htonl(r->in_addr);
+        } else {
+            ctx->uid_set[0] = htonl(conf->service);
+        }
+
         ctx->uid_set[1] = htonl(ngx_time());
         ctx->uid_set[2] = htonl(ngx_pid);
         ctx->uid_set[3] = htonl(sequencer_v2);
@@ -432,6 +447,15 @@ static u_char *ngx_http_userid_log_uid_set(ngx_http_request_t *r, u_char *buf,
 }
 
 
+static ngx_int_t ngx_http_userid_init(ngx_cycle_t *cycle)
+{
+    ngx_http_next_header_filter = ngx_http_top_header_filter;
+    ngx_http_top_header_filter = ngx_http_userid_filter;
+
+    return NGX_OK;
+}
+
+
 static ngx_int_t ngx_http_userid_pre_conf(ngx_conf_t *cf)
 {
     ngx_http_log_op_name_t  *op;
@@ -473,6 +497,7 @@ static void *ngx_http_userid_create_conf(ngx_conf_t *cf)
     */
 
     conf->enable = NGX_CONF_UNSET;
+    conf->service = NGX_CONF_UNSET;
     conf->expires = NGX_CONF_UNSET;
 
     return conf;
@@ -491,16 +516,43 @@ static char *ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent,
     ngx_conf_merge_str_value(conf->domain, prev->domain, ".");
     ngx_conf_merge_str_value(conf->path, prev->path, "/");
 
+    ngx_conf_merge_value(conf->service, prev->service, NGX_CONF_UNSET);
     ngx_conf_merge_sec_value(conf->expires, prev->expires, 0);
 
     return NGX_CONF_OK;
-}   
+}
 
 
-static ngx_int_t ngx_http_userid_init(ngx_cycle_t *cycle)
+char *ngx_http_userid_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_next_header_filter = ngx_http_top_header_filter;
-    ngx_http_top_header_filter = ngx_http_userid_filter;
+    ngx_http_userid_conf_t *ucf = conf;
 
-    return NGX_OK;
+    ngx_str_t   *value;
+
+    if (ucf->expires != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "max") == 0) {
+        ucf->expires = NGX_HTTP_USERID_MAX_EXPIRES;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        ucf->expires = 0;
+        return NGX_CONF_OK;
+    }
+
+    ucf->expires = ngx_parse_time(&value[1], 1);
+    if (ucf->expires == NGX_ERROR) {
+        return "invalid value";
+    }
+
+    if (ucf->expires == NGX_PARSE_LARGE_TIME) {
+        return "value must be less than 68 years";
+    }
+
+    return NGX_CONF_OK;
 }
