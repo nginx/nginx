@@ -43,12 +43,26 @@ echo
 
 
 if [ $HTTP_REWRITE = YES ]; then
+    if [ $USE_PCRE = DISABLED ]; then
+
+cat << END
+$0: error: the HTTP rewrite module requires the PCRE library.
+You can either disable the module by using --without-http_rewrite_module
+option or you have to enable the PCRE support.
+
+END
+        exit 1
+    fi
+
     if [ $PCRE = NONE -o $PCRE = NO ]; then
-        echo "$0: error: HTTP rewrite module requires PCRE library."
-        echo $ngx_n "You can disable the module by using " $ngx_c
-        echo "--without-http_rewrite_module option"
-        echo "or you have to enable PCRE support."
-        echo
+
+cat << END
+$0: error: the HTTP rewrite module requires the PCRE library.
+You can either disable the module by using --without-http_rewrite_module
+option, or install the PCRE library into the system, or build the PCRE library
+statically from the source with nginx by using --with-pcre=<path> option.
+
+END
 
         exit 1
     fi
@@ -57,11 +71,14 @@ fi
 
 if [ $HTTP_GZIP = YES ]; then
     if [ $ZLIB = NONE -o $ZLIB = NO ]; then
-        echo "$0: error: HTTP gzip module requires zlib library."
-        echo $ngx_n "You can disable the module by using " $ngx_c
-        echo "--without-http_gzip_module option"
-        echo "or you have to enable zlib support."
-        echo
+
+cat << END
+$0: error: the HTTP gzip module requires the zlib library.
+You can either disable the module by using --without-http_gzip_module
+option, or install the zlib library into the system, or build the zlib library
+statically from the source with nginx by using --with-zlib=<path> option.
+
+END
 
         exit 1
     fi
