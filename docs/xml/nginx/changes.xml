@@ -6,6 +6,20 @@
             title="nginx">
 
 
+<changes ver="0.1.4" date="26.10.2004">
+
+<change type="bugfix">
+<para lang="ru">
+ошибка в модуле ngx_http_autoindex_module.
+</para>
+<para lang="en">
+in the ngx_http_autoindex_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.3" date="25.10.2004">
 
 <change type="feature">
@@ -37,6 +51,7 @@ proxy module may get caught in an endless loop when sendfile is not used.
 </change>
 
 </changes>
+
 
 <changes ver="0.1.2" date="21.10.2004">
 

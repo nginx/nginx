@@ -230,6 +230,17 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         len = ngx_de_namelen(&dir);
 
+        if (len == 1 && ngx_de_name(&dir)[0] == '.') {
+            continue;
+        }
+
+        if (len == 2
+            && ngx_de_name(&dir)[0] == '.'
+            && ngx_de_name(&dir)[0] == '.')
+        {
+            continue;
+        }
+
         if (!dir.valid_info) {
 
             if (dname.len + 1 + len > fname.len) {
@@ -251,17 +262,6 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
                               ngx_de_info_n " \"%s\" failed", fname.data);
                 return ngx_http_autoindex_error(r, &dir, dname.data);
             }
-        }
-
-        if (len == 1 && ngx_de_name(&dir)[0] == '.') {
-            continue;
-        }
-
-        if (len == 2
-            && ngx_de_name(&dir)[0] == '.'
-            && ngx_de_name(&dir)[0] == '.')
-        {
-            continue;
         }
 
         if (!(entry = ngx_array_push(&entries))) {
@@ -375,24 +375,24 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
         } else {
             length = entry[i].size;
 
-            if (length > 999999999) {
-                size = (ngx_int_t) length / 1024 * 1024 * 1024;
-                if ((length % 1024 * 1024 * 1024)
+            if (length > 1024 * 1024 * 1024) {
+                size = (ngx_int_t) (length / (1024 * 1024 * 1024));
+                if ((length % (1024 * 1024 * 1024))
                                                 > (1024 * 1024 * 1024 / 2 - 1))
                 {
                     size++;
                 }
                 scale = 'G';
 
-            } else if (length > 999999) {
-                size = (ngx_int_t) length / 1024 * 1024;
-                if ((length % 1024 * 1024) > (1024 * 1024 / 2 - 1)) {
+            } else if (length > 1024 * 1024) {
+                size = (ngx_int_t) (length / (1024 * 1024));
+                if ((length % (1024 * 1024)) > (1024 * 1024 / 2 - 1)) {
                     size++;
                 }
                 scale = 'M';
 
             } else if (length > 9999) {
-                size = (ngx_int_t) length / 1024;
+                size = (ngx_int_t) (length / 1024);
                 if (length % 1024 > 511) {
                     size++;
                 }
@@ -413,6 +413,8 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
         *b->last++ = CR;
         *b->last++ = LF;
     }
+
+    /* TODO: free temporary pool */
 
     b->last = ngx_cpymem(b->last, "</pre><hr>", sizeof("</pre><hr>") - 1);
 
