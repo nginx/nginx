@@ -176,17 +176,17 @@ int main(int argc, char *const *argv)
     if (ccf->pid.len == 0) {
         ccf->pid.len = sizeof(NGINX_PID) - 1;
         ccf->pid.data = NGINX_PID;
-        ccf->newpid.len = sizeof(NGINX_NEW_PID) - 1;
-        ccf->newpid.data = NGINX_NEW_PID;
+        ccf->newpid.len = sizeof(NGINX_NEWPID) - 1;
+        ccf->newpid.data = NGINX_NEWPID;
 
     } else {
-        ccf->newpid.len = ccf->pid.len + sizeof(NGINX_NEW_PID_EXT);
+        ccf->newpid.len = ccf->pid.len + sizeof(NGINX_NEWPID_EXT);
         if (!(ccf->newpid.data = ngx_alloc(ccf->newpid.len, cycle->log))) {
             return 1;
         }
 
         ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
-                   NGINX_NEW_PID_EXT, sizeof(NGINX_NEW_PID_EXT));
+                   NGINX_NEWPID_EXT, sizeof(NGINX_NEWPID_EXT));
     }
 
     len = ngx_snprintf((char *) pid, /* STUB */ 10, PID_T_FMT, ngx_getpid());

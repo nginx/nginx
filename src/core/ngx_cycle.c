@@ -30,6 +30,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_cycle_t      *cycle, **old;
     ngx_socket_t      fd;
     ngx_open_file_t  *file;
+    ngx_core_conf_t  *ccf;
     ngx_listening_t  *ls, *nls;
 
     log = old_cycle->log;
@@ -125,6 +126,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     failed = 0;
+
+
 
     file = cycle->open_files.elts;
     for (i = 0; i < cycle->open_files.nelts; i++) {
@@ -368,6 +371,91 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     return cycle;
+}
+
+
+static ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
+{
+    size_t             len;
+    u_char             pid[NGX_INT64_LEN + 1];
+    ngx_str_t          name;
+    ngx_core_conf_t   *ccf;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ctx->pid.len) {
+        if (ccf->pid.len == 0) {
+            return NGX_OK;
+        }
+
+        if (ctx->pid.len == ccf->pid.len
+            && ngx_strcmp(ctx->pid.data, ccf->pid.data) == 0)
+        {
+            return NGX_OK;
+        }
+    }
+    
+    if (ccf->pid.len == 0) {
+        ccf->pid.len = sizeof(NGINX_PID) - 1;
+        ccf->pid.data = NGINX_PID;
+        ccf->newpid.len = sizeof(NGINX_NEWPID) - 1;
+        ccf->newpid.data = NGINX_NEWPID;
+
+    } else {
+        ccf->newpid.len = ccf->pid.len + sizeof(NGINX_NEWPID_EXT);
+        if (!(ccf->newpid.data = ngx_alloc(ccf->newpid.len, cycle->log))) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
+                   NGINX_NEWPID_EXT, sizeof(NGINX_NEWPID_EXT));
+    }
+
+    len = ngx_snprintf((char *) pid, NGX_INT64_LEN + 1, PID_T_FMT, ngx_pid);
+    ngx_memzero(&ctx->pid, sizeof(ngx_file_t));
+    ctx->pid.name = ngx_inherited ? ccf->newpid : ccf->pid;
+    ctx->name = ccf->pid.data;
+
+    ctx->pid.fd = ngx_open_file(ctx->pid.name.data, NGX_FILE_RDWR,
+                                NGX_FILE_CREATE_OR_OPEN);
+
+    if (ctx->pid.fd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      ngx_open_file_n " \"%s\" failed", ctx->pid.name.data);
+        return NGX_ERROR;
+    }
+
+    if (ngx_write_file(&ctx->pid, pid, len, 0) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_close_file(ctx->pid.fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", ctx->pid.name.data);
+    }
+
+    return NGX_OK;
+}
+
+
+static void ngx_delete_pidfile(ngx_cycle_t *cycle)
+{   
+    u_char           *name;
+    ngx_core_conf_t  *ccf;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ngx_inherited && getppid() > 1) {
+        name = ccf->newpid.data;
+
+    } else { 
+        name = ccf->pid.data;
+    }
+
+    if (ngx_delete_file(name) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      ngx_delete_file_n " \"%s\" failed", name);
+    }
 }
 
 

@@ -46,8 +46,7 @@ void ngx_event_acceptex(ngx_event_t *rev)
 
     ngx_event_post_acceptex(c->listening, 1);
 
-    /* TODO: MT */
-    c->number = ngx_connection_counter++;
+    c->number = ngx_atomic_inc(ngx_connection_counter);
 
     c->listening->handler(c);
 
