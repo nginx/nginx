@@ -79,7 +79,7 @@ void ngx_time_init()
     ngx_cached_http_time.len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1;
     ngx_cached_http_log_time.len = sizeof("28/Sep/1970:12:00:00 +0600") - 1;
 
-#if (TIME_T_SIZE > SIG_ATOMIC_T_SIZE)
+#if (NGX_THREADS && (TIME_T_SIZE > SIG_ATOMIC_T_SIZE))
     ngx_cached_time = &cached_time[0];
 #endif
 
@@ -132,7 +132,7 @@ void ngx_time_update(time_t s)
         slot++;
     }
 
-#if (TIME_T_SIZE > SIG_ATOMIC_T_SIZE)
+#if (NGX_THREADS && (TIME_T_SIZE > SIG_ATOMIC_T_SIZE))
     ngx_cached_time = &cached_time[slot];
 #endif
 

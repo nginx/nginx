@@ -218,9 +218,15 @@ struct ngx_http_cleanup_s {
 
 
 typedef struct {
-    ngx_http_request_t  *request;
-    ngx_array_t          large_buffers;
-    ngx_uint_t           pipeline;      /* unsigned  pipeline:1; */
+    ngx_http_request_t   *request;
+
+    ngx_buf_t           **busy;
+    ngx_uint_t            nbusy;
+
+    ngx_buf_t           **free;
+    ngx_uint_t            nfree;
+
+    ngx_uint_t            pipeline;      /* unsigned  pipeline:1; */
 } ngx_http_connection_t;
 
 

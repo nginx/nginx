@@ -18,8 +18,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
     int             fd;
     u_char         *prev;
     off_t           fprev, sprev, send, aligned;
-    size_t          size, sent;
-    ssize_t         n;
+    ssize_t         size, sent, n;
     ngx_int_t       eintr, complete;
     ngx_err_t       err;
     sendfilevec_t  *sfv, sfvs[NGX_SENDFILEVECS];

@@ -25,6 +25,18 @@ case $PLATFORM in
 esac
 
 
+case $PLATFORM in
+
+    *:sun4u)
+        CFLAGS="$CFLAGS -mcpu=v9"
+    ;;
+
+    *)
+    ;;
+
+esac
+
+
 if [ $ZLIB_ASM != NO ]; then
     echo "$0: error: the --with-zlib-asm=CPU option is not supported"
     echo "on that platform"

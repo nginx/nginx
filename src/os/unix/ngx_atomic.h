@@ -86,7 +86,7 @@ static ngx_inline uint32_t ngx_atomic_inc(ngx_atomic_t *value)
 
         __asm__ volatile (
 
-        "casa [%1]ASI_P, %2, %0"
+        "casa [%1] 0x80, %2, %0"
 
         : "+r" (res) : "r" (value), "r" (old));
 
@@ -112,7 +112,7 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 
     __asm__ volatile (
 
-    "casa [%1]ASI_P, %2, %0"
+    "casa [%1] 0x80, %2, %0"
 
     : "+r" (res) : "r" (lock), "r" (old));
 
@@ -124,8 +124,8 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 typedef volatile uint32_t  ngx_atomic_t;
 
 /* STUB */
-#define ngx_atomic_inc(x)   (*(x))++;
-#define ngx_atomic_dec(x)   (*(x))--;
+#define ngx_atomic_inc(x)   ++(*(x));
+#define ngx_atomic_dec(x)   --(*(x));
 #define ngx_atomic_cmp_set(lock, old, set)   1
 /**/
 
