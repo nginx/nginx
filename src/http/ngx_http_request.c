@@ -684,7 +684,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
                      p < r->header_in->last - 1;
                      p++)
                 {
-                    if (*p == CR || *p == LF) {
+                    if (*p == LF) {
                         break;
                     }
                 }
