@@ -371,8 +371,7 @@ static int ngx_http_proxy_process_upstream(ngx_http_proxy_ctx_t *p,
             return NGX_DONE;
         }
 
-        if (p->tries        /* STUB !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
-
+        if (p->tries > 1
             && (rc == NGX_HTTP_BAD_GATEWAY
                 || rc == NGX_HTTP_GATEWAY_TIME_OUT
                 || (rc == NGX_OK
@@ -1083,7 +1082,12 @@ static int ngx_http_proxy_read_upstream_body(ngx_http_proxy_ctx_t *p)
     int  rc;
 
     rc = ngx_event_proxy_read_upstream(p->event_proxy);
-    if (rc == NGX_OK) {
+
+    if (p->event_proxy->fatal_error) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (p->event_proxy->upstream_eof && p->event_proxy->upstream_error) {
         rc = ngx_event_close_connection(p->connection->read);
     }
 
