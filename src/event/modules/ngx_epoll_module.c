@@ -172,6 +172,7 @@ static int ngx_epoll_init(ngx_cycle_t *cycle)
 #else
     ngx_event_flags = NGX_USE_LEVEL_EVENT
 #endif
+                      |NGX_HAVE_GREEDY_EVENT
                       |NGX_HAVE_INSTANCE_EVENT;
 
     return NGX_OK;
@@ -472,7 +473,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
             continue;
         }
 
-#if (NGX_DEBUG)
+#if (NGX_DEBUG0)
         log = c->log ? c->log : cycle->log;
 #endif
 

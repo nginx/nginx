@@ -230,32 +230,38 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_HAVE_INSTANCE_EVENT  0x00000020
 
 /*
+ * The event filter requires to do i/o operation until EAGAIN -
+ * epoll, rt signals.
+ */
+#define NGX_HAVE_GREEDY_EVENT    0x00000040
+
+/*
  * The event filter notifies only the changes (the edges)
  * but not an initial level - early epoll patches.
  */
-#define NGX_USE_EDGE_EVENT       0x00000040
+#define NGX_USE_EDGE_EVENT       0x00000080
 
 /*
  * No need to add or delete the event filters - rt signals.
  */
-#define NGX_USE_SIGIO_EVENT      0x00000080
+#define NGX_USE_SIGIO_EVENT      0x00000100
 
 /*
  * The alternative event method after the rt signals queue overflow.
  */
-#define NGX_OVERFLOW_EVENT       0x00000100
+#define NGX_OVERFLOW_EVENT       0x00000200
 
 /*
  * No need to add or delete the event filters - overlapped, aio_read,
  * aioread, io_submit.
  */
-#define NGX_USE_AIO_EVENT        0x00000200
+#define NGX_USE_AIO_EVENT        0x00000400
 
 /*
  * Need to add socket or handle only once - i/o completion port.
  * It also requires HAVE_AIO and NGX_USE_AIO_EVENT to be set.
  */
-#define NGX_USE_IOCP_EVENT       0x00000400
+#define NGX_USE_IOCP_EVENT       0x00000800
 
 
 

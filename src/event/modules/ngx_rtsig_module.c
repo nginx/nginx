@@ -117,7 +117,9 @@ static int ngx_rtsig_init(ngx_cycle_t *cycle)
 
     ngx_event_actions = ngx_rtsig_module_ctx.actions;
 
-    ngx_event_flags = NGX_USE_SIGIO_EVENT|NGX_HAVE_INSTANCE_EVENT;
+    ngx_event_flags = NGX_USE_SIGIO_EVENT
+                      |NGX_HAVE_GREEDY_EVENT
+                      |NGX_HAVE_INSTANCE_EVENT;
 
     return NGX_OK;
 }

@@ -192,8 +192,8 @@ static void ngx_http_init_request(ngx_event_t *rev)
 #endif
             len = sizeof(struct sockaddr_in);
             if (getsockname(c->fd, (struct sockaddr *) &addr_in, &len) == -1) {
-                ngx_log_error(NGX_LOG_CRIT, rev->log, ngx_socket_errno,
-                              "getsockname() failed");
+                ngx_connection_error(c, ngx_socket_errno,
+                                     "getsockname() failed");
                 ngx_http_close_connection(c);
                 return;
             }
@@ -1306,10 +1306,9 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     if (c->tcp_nopush == 1) {
         if (ngx_tcp_push(c->fd) == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
-                          ngx_tcp_push_n " failed");
-                ngx_http_close_connection(c);
-                return;
+            ngx_connection_error(c, ngx_socket_errno, ngx_tcp_push_n " failed");
+            ngx_http_close_connection(c);
+            return;
         }
         c->tcp_nopush = 0;
     }
@@ -1415,8 +1414,8 @@ static void ngx_http_set_lingering_close(ngx_http_request_t *r)
     }
 
     if (ngx_shutdown_socket(c->fd, NGX_WRITE_SHUTDOWN) == -1) {
-        ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
-                      ngx_shutdown_socket_n " failed");
+        ngx_connection_error(c, ngx_socket_errno,
+                             ngx_shutdown_socket_n " failed");
         ngx_http_close_request(r, 0);
         ngx_http_close_connection(c);
         return;

@@ -173,13 +173,16 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     do {
         n = readv(c->fd, (struct iovec *) io.elts, io.nelts);
 
-        if (n >= 0) {
-            if (n < size) {
-                rev->ready = 0;
-            }
+        if (n == 0) {
+            rev->ready = 0;
+            rev->eof = 1;
 
-            if (n == 0) {
-                rev->eof = 1;
+            return n;
+
+        } else if (n > 0) {
+
+            if (n < size && !(ngx_event_flags & NGX_HAVE_GREEDY_EVENT)) {
+                rev->ready = 0;
             }
 
             return n;
