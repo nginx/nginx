@@ -5,21 +5,24 @@
 #include <ngx_aio.h>
 
 
-ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
+ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in,
+                                 off_t limit)
 {
     int           n;
     u_char       *buf, *prev;
-    off_t         sent;
-    size_t        size;
+    off_t         send, sent;
+    size_t        len;
+    ssize_t       size;
     ngx_err_t     err;
     ngx_chain_t  *cl;
 
+    send = 0;
     sent = 0;
     cl = in;
 
     while (cl) {
 
-        if (cl->buf->last - cl->buf->pos == 0) {
+        if (cl->buf->pos == cl->buf->last) {
             cl = cl->next;
             continue;
         }
@@ -32,17 +35,28 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         buf = cl->buf->pos;
         prev = buf;
-        size = 0;
+        len = 0;
 
         /* coalesce the neighbouring bufs */
 
-        while (cl && prev == cl->buf->pos) {
-            size += cl->buf->last - cl->buf->pos;
-            prev = cl->buf->last;
+        while (cl && prev == cl->buf->pos && send < limit) {
+            if (ngx_buf_special(cl->buf)) {
+                continue;
+            }
+
+            size = cl->buf->last - cl->buf->pos;
+
+            if (send + size > limit) {
+                size = limit - send;
+            }
+
+            len += size;
+            prev = cl->buf->pos + size;
+            send += size;
             cl = cl->next;
         }
 
-        n = ngx_aio_write(c, buf, size);
+        n = ngx_aio_write(c, buf, len);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "aio_write: %d", n);
 

@@ -786,7 +786,7 @@ ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
         cmsg.cm.cmsg_len = sizeof(cmsg);
         cmsg.cm.cmsg_level = SOL_SOCKET; 
         cmsg.cm.cmsg_type = SCM_RIGHTS;
-        *(int *) CMSG_DATA(&cmsg) = ch->fd;
+        *(int *) CMSG_DATA(&cmsg.cm) = ch->fd;
     }
 
 #else
@@ -896,7 +896,7 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
             return NGX_ERROR;
         }
 
-        ch->fd = *(int *) CMSG_DATA(&cmsg);
+        ch->fd = *(int *) CMSG_DATA(&cmsg.cm);
     }
 
     if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {

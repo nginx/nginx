@@ -91,6 +91,8 @@ struct ngx_event_s {
     unsigned short   timedout:1;
     unsigned short   timer_set:1;
 
+    unsigned short   delayed:1;
+
     unsigned short   read_discarded:1;
 
     unsigned short   unexpected_eof:1;

@@ -284,7 +284,6 @@ struct ngx_http_request_s {
     /* can we use sendfile ? */
     unsigned             sendfile:1;
 
-    unsigned             delayed:1;
     unsigned             chunked:1;
     unsigned             header_only:1;
     unsigned             keepalive:1;

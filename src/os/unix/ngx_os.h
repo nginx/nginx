@@ -27,7 +27,8 @@ typedef struct {
     ssize_t       (*recv)(ngx_connection_t *c, u_char *buf, size_t size);
     ssize_t       (*recv_chain)(ngx_connection_t *c, ngx_chain_t *in);
     ssize_t       (*send)(ngx_connection_t *c, u_char *buf, size_t size);
-    ngx_chain_t  *(*send_chain)(ngx_connection_t *c, ngx_chain_t *in);
+    ngx_chain_t  *(*send_chain)(ngx_connection_t *c, ngx_chain_t *in,
+                                off_t limit);
     int             flags;
 } ngx_os_io_t;
 
@@ -41,7 +42,8 @@ int ngx_posix_post_conf_init(ngx_log_t *log);
 
 ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size);
 ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *entry);
-ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in);
+ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in,
+                              off_t limit);
 
 
 extern ngx_os_io_t  ngx_os_io;

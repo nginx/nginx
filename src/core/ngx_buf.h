@@ -127,6 +127,7 @@ typedef struct {
     ngx_chain_t                **last;
     ngx_connection_t            *connection;
     ngx_pool_t                  *pool;
+    off_t                        limit;
 } ngx_chain_writer_ctx_t;
 
 

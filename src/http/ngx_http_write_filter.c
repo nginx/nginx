@@ -6,7 +6,8 @@
 
 
 typedef struct {
-    size_t  postpone_output;
+    size_t  postpone_output;         /* postpone_output */
+    size_t  limit_rate;              /* limit_rate */
 } ngx_http_write_filter_conf_t;
 
 
@@ -23,19 +24,18 @@ static ngx_int_t ngx_http_write_filter_init(ngx_cycle_t *cycle);
 
 static ngx_command_t  ngx_http_write_filter_commands[] = {
 
-    /* STUB */
-    { ngx_string("buffer_output"),
+    { ngx_string("postpone_output"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_write_filter_conf_t, postpone_output),
       NULL },
 
-    { ngx_string("postpone_output"),
+    { ngx_string("limit_rate"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_write_filter_conf_t, postpone_output),
+      offsetof(ngx_http_write_filter_conf_t, limit_rate),
       NULL },
 
       ngx_null_command
@@ -138,7 +138,7 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_OK;
     }
 
-    if (r->delayed) {
+    if (r->connection->write->delayed) {
         return NGX_AGAIN;
     }
 
@@ -152,16 +152,18 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     sent = r->connection->sent;
 
-    chain = ngx_write_chain(r->connection, ctx->out);
+    chain = ngx_write_chain(r->connection, ctx->out,
+                            conf->limit_rate ? conf->limit_rate:
+                                               OFF_T_MAX_VALUE);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http write filter %X", chain);
 
-#if 1
-    sent = r->connection->sent - sent;
-    r->delayed = 1;
-    ngx_add_timer(r->connection->write, sent * 1000 / (4 * 1024));
-#endif
+    if (conf->limit_rate) {
+        sent = r->connection->sent - sent;
+        r->connection->write->delayed = 1;
+        ngx_add_timer(r->connection->write, sent * 1000 / conf->limit_rate);
+    }
 
     if (chain == NGX_CHAIN_ERROR) {
         return NGX_ERROR;
@@ -186,6 +188,7 @@ static void *ngx_http_write_filter_create_conf(ngx_conf_t *cf)
                   NULL);
 
     conf->postpone_output = NGX_CONF_UNSET_SIZE;
+    conf->limit_rate = NGX_CONF_UNSET_SIZE;
 
     return conf;
 }
@@ -199,6 +202,8 @@ static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
 
     ngx_conf_merge_size_value(conf->postpone_output, prev->postpone_output,
                               1460);
+
+    ngx_conf_merge_size_value(conf->limit_rate, prev->limit_rate, 0);
 
     return NULL;
 }

@@ -605,6 +605,7 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     writer->out = NULL;
     writer->last = &writer->out;
     writer->connection = c;
+    writer->limit = OFF_T_MAX_VALUE;
 
     if (p->upstream->peer.tries > 1 && p->request_sent) {
         ngx_http_proxy_reinit_upstream(p);

@@ -19,19 +19,21 @@
  */
 
 
-ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
+ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
+                                      off_t limit)
 {
     int              rc;
     u_char          *prev;
-    off_t            fprev;
-    size_t           size, fsize, sent;
-    ngx_int_t        eintr;
+    off_t            fprev, send, sprev, aligned;
+    size_t           fsize;
+    ssize_t          size, sent;
+    ngx_uint_t       eintr, complete;
     struct iovec    *iov;
     ngx_err_t        err;
     ngx_buf_t       *file;
     ngx_array_t      header;
     ngx_event_t     *wev;
-    ngx_chain_t     *cl, *tail;
+    ngx_chain_t     *cl;
 #if (HAVE_SENDFILE64)
     off_t            offset;
 #else
@@ -44,10 +46,14 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         return in;
     }
 
-    do {
+    send = 0;
+
+    for ( ;; ) {
         file = NULL;
         fsize = 0;
         eintr = 0;
+        complete = 0;
+        sprev = send;
 
         ngx_init_array(header, c->pool, 10, sizeof(struct iovec),
                        NGX_CHAIN_ERROR);
@@ -57,7 +63,10 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         /* create the iovec and coalesce the neighbouring bufs */
 
-        for (cl = in; cl && header.nelts < IOV_MAX; cl = cl->next) {
+        for (cl = in;
+             cl && header.nelts < IOV_MAX && send < limit;
+             cl = cl->next)
+        {
             if (ngx_buf_special(cl->buf)) {
                 continue;
             }
@@ -66,16 +75,23 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
                 break;
             }
 
+            size = cl->buf->last - cl->buf->pos;
+
+            if (send + size > limit) {
+                size = limit - send;
+            }
+
             if (prev == cl->buf->pos) {
-                iov->iov_len += cl->buf->last - cl->buf->pos;
+                iov->iov_len += size;
 
             } else {
                 ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
                 iov->iov_base = (void *) cl->buf->pos;
-                iov->iov_len = cl->buf->last - cl->buf->pos;
+                iov->iov_len = size;
             }
 
-            prev = cl->buf->last;
+            prev = cl->buf->pos + size;
+            send += size;
         }
 
         /* set TCP_CORK if there is a header before a file */
@@ -107,38 +123,41 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             }
         }
 
-        if (header.nelts == 0 && cl && cl->buf->in_file) {
+        /* get the file buf */
 
-            /* get the file buf */
-
+        if (header.nelts == 0 && cl && cl->buf->in_file && send < limit) {
             file = cl->buf;
-            fsize = (size_t) (file->file_last - file->file_pos);
-            fprev = file->file_last;
-            cl = cl->next; 
+            fsize = 0;
 
             /* coalesce the neighbouring file bufs */
 
-            while (cl && (cl->buf->in_file)) {
-                if (file->file->fd != cl->buf->file->fd
-                    || fprev != cl->buf->file_pos)
-                {
-                    break;
+            do {
+                size = (size_t) (cl->buf->file_last - cl->buf->file_pos);
+
+                if (send + size > limit) {
+                    size = limit - send;
+
+                    aligned = (cl->buf->file_pos + size + ngx_pagesize - 1)
+                                                      & ~(ngx_pagesize - 1);
+
+                    if (aligned <= cl->buf->file_last) {
+                        size = aligned - cl->buf->file_pos;
+                    }
                 }
 
-                fsize += (size_t) (cl->buf->file_last - cl->buf->file_pos);
-                fprev = cl->buf->file_last;
+                fsize += size;
+                send += size;
+                fprev = cl->buf->file_pos + size;
                 cl = cl->next;
-            }
+
+            } while (cl
+                     && cl->buf->in_file
+                     && send < limit
+                     && file->file->fd == cl->buf->file->fd
+                     && fprev == cl->buf->file_pos);
         }
 
-        /* 
-         * the tail is the rest of the chain that exceedes
-         * a single sendfile() capability
-         */
-
-        tail = cl;
-
-        if (fsize) {
+        if (file) {
 #if (HAVE_SENDFILE64)
             offset = file->file_pos;
 #else
@@ -196,6 +215,10 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "writev: %d", sent);
         }
 
+        if (send - sprev == sent) {
+            complete = 1;
+        }
+
         c->sent += sent;
 
         for (cl = in; cl; cl = cl->next) {
@@ -235,15 +258,19 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             break;
         }
 
+        if (eintr) {
+            continue; 
+        }
+
+        if (!complete) { 
+            wev->ready = 0;
+            return cl;
+        }
+
+        if (send >= limit || cl == NULL) {
+            return cl;
+        }
+
         in = cl;
-
-        /* "tail == in" means that a single sendfile() is complete */
-
-    } while ((tail && tail == in) || eintr);
-
-    if (in) {
-        wev->ready = 0;
     }
-
-    return in;
 }

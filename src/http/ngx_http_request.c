@@ -1050,13 +1050,13 @@ static void ngx_http_set_write_handler(ngx_http_request_t *r)
     wev = r->connection->write;
     wev->event_handler = ngx_http_writer;
 
-    if (wev->ready && r->delayed) {
+    if (wev->ready && wev->delayed) {
         return;
     }
 
     clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                         ngx_http_core_module);
-    if (!r->delayed) {
+    if (!wev->delayed) {
         ngx_add_timer(wev, clcf->send_timeout);
     }
 
@@ -1083,13 +1083,13 @@ void ngx_http_writer(ngx_event_t *wev)
     r = c->data;
 
     if (wev->timedout) {
-        if (!r->delayed) {
+        if (!wev->delayed) {
             ngx_http_client_error(r, 0, NGX_HTTP_REQUEST_TIME_OUT);
             return;
         }
 
         wev->timedout = 0;
-        r->delayed = 0;
+        wev->delayed = 0;
 
         if (!wev->ready) {
             clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
@@ -1107,9 +1107,19 @@ void ngx_http_writer(ngx_event_t *wev)
         }
 
     } else {
-        if (r->delayed) {
+        if (wev->delayed) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0,
                            "http writer delayed");
+
+            clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
+                                                ngx_http_core_module);
+            wev->available = clcf->send_lowat;
+
+            if (ngx_handle_write_event(wev, NGX_LOWAT_EVENT) == NGX_ERROR) {
+                ngx_http_close_request(r, 0);
+                ngx_http_close_connection(r->connection);
+            }
+
             return;
         }
     }
@@ -1122,7 +1132,7 @@ void ngx_http_writer(ngx_event_t *wev)
     if (rc == NGX_AGAIN) {
         clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                             ngx_http_core_module);
-        if (!wev->ready && !r->delayed) {
+        if (!wev->ready && !wev->delayed) {
             ngx_add_timer(wev, clcf->send_timeout);
         }
 
