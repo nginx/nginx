@@ -130,4 +130,8 @@
 #endif
 
 
+/* STUB */
+#define HAVE_LITTLE_ENDIAN  1
+
+
 #endif /* _NGX_FREEBSD_CONFIG_H_INCLUDED_ */

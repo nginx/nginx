@@ -99,6 +99,30 @@ ngx_hunk_t *ngx_create_hunk_after(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 }
 
 
+int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **ch, ngx_chain_t *in)
+{
+    ngx_chain_t  *ce, **le;
+
+    le = ch;
+
+    for (ce = *ch; ce; ce = ce->next) {
+        le = &ce->next;
+    }
+
+    while (in) {
+        ngx_test_null(ce, ngx_alloc_chain_entry(pool), NGX_ERROR);
+
+        ce->hunk = in->hunk;
+        ce->next = NULL;
+        *le = ce;
+        le = &ce->next;
+        in = in->next;
+    }
+
+    return NGX_OK;
+}
+
+
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
                              ngx_chain_t **out)
 {

@@ -86,5 +86,10 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
                 chain->next = NULL;                                          \
             } while (0);
 
+int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **ch, ngx_chain_t *in);
+void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
+                             ngx_chain_t **out);
+
+
 
 #endif /* _NGX_HUNK_H_INCLUDED_ */
