@@ -339,7 +339,8 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 
 static int ngx_kqueue_process_events(ngx_log_t *log)
 {
-    ngx_int_t          events, instance, i;
+    int                events;
+    ngx_int_t          instance, i;
     ngx_err_t          err;
     ngx_msec_t         timer;
     ngx_event_t       *ev;
@@ -355,13 +356,7 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         ts.tv_nsec = (timer % 1000) * 1000000;
         tp = &ts;
 
-#if 0
-        ngx_gettimeofday(&tv);
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-#endif
-
     } else {
-        delta = 0;
         tp = NULL;
     }
 
@@ -378,16 +373,16 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
     nchanges = 0;
 
     ngx_gettimeofday(&tv);
-
-#if 1
-    delta = ngx_elapsed_msec;
-#endif
-    ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
-
     ngx_time_update(tv.tv_sec);
+
+    delta = ngx_elapsed_msec;
+    ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
     if (timer) {
         delta = ngx_elapsed_msec - delta;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "kevent timer: %d, delta: %d", timer, (int) delta);
 
     } else {
         if (events == 0) {
@@ -396,9 +391,6 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
             return NGX_ERROR;
         }
     }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
-                   "kevent timer: %d, delta: %d", timer, (int) delta);
 
     if (err) {
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
@@ -494,33 +486,6 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
     return NGX_OK;
 }
-
-
-#if 0
-
-static void ngx_kqueue_thread_handler(ngx_event_t *ev, ngx_log_t *log)
-{
-    ngx_int_t  instance;
-
-    instance = (uintptr_t) ev & 1;
-    ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
-
-    if (ev->active && ev->instance == instance) {
-        ev->event_handler(ev);
-        return;
-    }
-
-    /*
-     * it's a stale event from a file descriptor
-     * that was just closed in this iteration
-     */
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
-                   "kevent: stale event " PTR_FMT, ev);
-
-}
-
-#endif
 
 
 static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle)

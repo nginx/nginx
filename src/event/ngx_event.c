@@ -134,7 +134,8 @@ static int ngx_event_init(ngx_cycle_t *cycle)
         if (ngx_modules[m]->ctx_index == ecf->use) {
             module = ngx_modules[m]->ctx;
             if (module->actions.init(cycle) == NGX_ERROR) {
-                return NGX_ERROR;
+                /* fatal */
+                exit(2);
             }
             break;
         }

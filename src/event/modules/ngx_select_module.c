@@ -131,9 +131,8 @@ static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 
     c = ev->data;
 
-#if (NGX_DEBUG_EVENT)
-    ngx_log_debug(ev->log, "select fd:%d event:%d" _ c->fd _ event);
-#endif
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "select add event fd:%d ev:%d", c->fd, event);
 
     if (ev->index != NGX_INVALID_INDEX) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
@@ -197,9 +196,8 @@ static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
         return NGX_OK;
     }
 
-#if (NGX_DEBUG_EVENT)
-    ngx_log_debug(c->log, "del event: %d, %d" _ c->fd _ event);
-#endif
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "select del event fd:%d ev:%d", c->fd, event);
 
 #if (WIN32)
 
@@ -259,19 +257,11 @@ static int ngx_select_process_events(ngx_log_t *log)
     ngx_old_elapsed_msec = ngx_elapsed_msec;
 
     if (timer) {
-#if (HAVE_SELECT_CHANGE_TIMEOUT)
-        delta = 0;
-#else
-        ngx_gettimeofday(&tv);
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-#endif
-
         tv.tv_sec = timer / 1000;
         tv.tv_usec = (timer % 1000) * 1000;
         tp = &tv;
 
     } else {
-        delta = 0;
         tp = NULL;
     }
 
@@ -284,21 +274,21 @@ static int ngx_select_process_events(ngx_log_t *log)
             }
         }
 
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "change max_fd: %d" _ max_fd);
-#endif
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "change max_fd: %d", max_fd);
     }
 #endif
 
-#if (NGX_DEBUG_EVENT)
+#if (NGX_DEBUG)
     for (i = 0; i < nevents; i++) {
         ev = event_index[i];
         c = (ngx_connection_t *) ev->data;
-        ngx_log_debug(log, "select: %d:%d" _ c->fd _ ev->write);
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "select event: fd:%d wr:%d", c->fd,ev->write);
     }
-
-    ngx_log_debug(log, "select timer: %d" _ timer);
 #endif
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "select timer: %d", timer);
 
 #if (WIN32)
     ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp);
@@ -311,10 +301,6 @@ static int ngx_select_process_events(ngx_log_t *log)
     } else {
         err = 0;
     }
-
-#if (NGX_DEBUG_EVENT)
-    ngx_log_debug(log, "select ready %d" _ ready);
-#endif
 
 #if (HAVE_SELECT_CHANGE_TIMEOUT)
 
@@ -330,51 +316,36 @@ static int ngx_select_process_events(ngx_log_t *log)
         if (deltas > 1000) {
             ngx_gettimeofday(&tv);
             deltas = tv.tv_usec / 1000;
-
-            if (ngx_cached_time != tv.tv_sec) {
-                ngx_cached_time = tv.tv_sec;
-                ngx_time_update();
-            }
+            ngx_time_update(tv.tv_sec);
         }
 
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ (int) delta);
-#endif
-
-        ngx_event_expire_timers((ngx_msec_t) delta);
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "select timer: %d, delta: %d", timer, (int) delta);
 
     } else {
         ngx_gettimeofday(&tv);
-
-        if (ngx_cached_time != tv.tv_sec) {
-            ngx_cached_time = tv.tv_sec;
-            ngx_time_update();
-        }
+        ngx_time_update(tv.tv_sec);
 
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "select() returned no events without timeout");
             return NGX_ERROR;
         }
-
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ (int) delta);
-#endif
     }
 
-#else /* HAVE_SELECT_CHANGE_TIMEOUT */
+#else /* !(HAVE_SELECT_CHANGE_TIMEOUT) */
 
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
+    delta = ngx_elapsed_msec;
+    ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
+
     if (timer) {
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
+        delta = ngx_elapsed_msec - delta;
 
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ (int) delta);
-#endif
-
-        ngx_event_expire_timers((ngx_msec_t) delta);
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "select timer: %d, delta: %d", timer, (int) delta);
 
     } else {
         if (ready == 0) {
@@ -382,16 +353,15 @@ static int ngx_select_process_events(ngx_log_t *log)
                           "select() returned no events without timeout");
             return NGX_ERROR;
         }
-
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "select timer: %d, delta: %d" _ timer _ (int) delta);
-#endif
     }
 
 #endif /* HAVE_SELECT_CHANGE_TIMEOUT */
 
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "select ready %d", ready);
+
     if (err) {
-        ngx_log_error(NGX_LOG_ALERT, log, err, "select() failed");
+        ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
+                      log, err, "select() failed");
         return NGX_ERROR;
     }
 
@@ -405,17 +375,15 @@ static int ngx_select_process_events(ngx_log_t *log)
         if (ev->write) {
             if (FD_ISSET(c->fd, &work_write_fd_set)) {
                 found = 1;
-#if (NGX_DEBUG_EVENT)
-                ngx_log_debug(log, "select write %d" _ c->fd);
-#endif
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                               "select write %d", c->fd);
             }
 
         } else {
             if (FD_ISSET(c->fd, &work_read_fd_set)) {
                 found = 1;
-#if (NGX_DEBUG_EVENT)
-                ngx_log_debug(log, "select read %d" _ c->fd);
-#endif
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                               "select read %d", c->fd);
             }
         }
 
@@ -451,6 +419,10 @@ static int ngx_select_process_events(ngx_log_t *log)
 
     if (ready != 0) {
         ngx_log_error(NGX_LOG_ALERT, log, 0, "select ready != events");
+    }
+
+    if (timer && delta) {
+        ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
     return NGX_OK;

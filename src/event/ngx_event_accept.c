@@ -192,6 +192,10 @@ void ngx_event_accept(ngx_event_t *ev)
             rev->ready = 1;
         }
 
+        if (ev->deferred_accept) {
+            rev->ready = 1;
+        }
+
         c->ctx = ls->ctx;
         c->servers = ls->servers;
 
@@ -214,10 +218,6 @@ void ngx_event_accept(ngx_event_t *ev)
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                        "accept: %d, %d", s, c->number);
-
-        if (ev->deferred_accept) {
-            rev->ready = 1;
-        }
 
         if (ngx_add_conn) {
             if (ngx_add_conn(c) == NGX_ERROR) {

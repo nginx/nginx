@@ -5,6 +5,7 @@ CC=gcc
 OBJS=objs
 
 TEST_BUILD_DEVPOLL=NO
+TEST_BUILD_EPOLL=NO
 
 SELECT=YES
 POLL=YES
@@ -54,6 +55,7 @@ do
         --with-zlib=*)                   ZLIB="$value"              ;;
 
         --test-build-devpoll)            TEST_BUILD_DEVPOLL=YES     ;;
+        --test-build-epoll)              TEST_BUILD_EPOLL=YES       ;;
 
         *)
             echo "$0: error: invalid option \"$option\""

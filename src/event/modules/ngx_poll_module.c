@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru
+ * Copyright (C) 2002-2004 Igor Sysoev, http://sysoev.ru/en/
  */
 
 
@@ -146,9 +146,8 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 #endif
     }
 
-#if (NGX_DEBUG_EVENT)
-    ngx_log_debug(ev->log, "add event: %d:%d" _ c->fd _ event);
-#endif
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "poll add event: fd:%d ev:%d", c->fd, event);
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
         event_list[nevents].fd = c->fd;
@@ -192,9 +191,8 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 #endif
     }
 
-#if (NGX_DEBUG_EVENT)
-    ngx_log_debug(c->log, "del event: %d, %d" _ c->fd _ event);
-#endif
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "poll del event: fd:%d ev:%d", c->fd, event);
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
         if (ev->index < (u_int) --nevents) {
@@ -221,28 +219,24 @@ static int ngx_poll_process_events(ngx_log_t *log)
     ngx_err_t           err;
     ngx_cycle_t       **cycle;
     ngx_event_t        *ev;
-    ngx_epoch_msec_t   delta;
+    ngx_epoch_msec_t    delta;
     ngx_connection_t   *c;
-    struct timeval     tv;
+    struct timeval      tv;
 
     timer = ngx_event_find_timer();
+    ngx_old_elapsed_msec = ngx_elapsed_msec; 
 
-    if (timer) {
-        ngx_gettimeofday(&tv);
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
-    } else {
+    if (timer == 0) {
         timer = (ngx_msec_t) INFTIM;
-        delta = 0;
     }
 
-#if (NGX_DEBUG_EVENT)
+#if (NGX_DEBUG)
     for (i = 0; i < nevents; i++) {
-        ngx_log_debug(log, "poll: %d, %d" _
-                      event_list[i].fd _ event_list[i].events);
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0, "poll: fd:%d ev:%04X",
+                       event_list[i].fd, event_list[i].events);
     }
 
-    ngx_log_debug(log, "poll timer: %d" _ timer);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "poll timer: %d", timer);
 #endif
 
     ready = poll(event_list, (u_int) nevents, (int) timer);
@@ -253,33 +247,30 @@ static int ngx_poll_process_events(ngx_log_t *log)
         err = 0;
     }
 
-    ngx_log_debug(log, "poll ready %d" _ ready);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "poll ready %d", ready);
 
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
+    delta = ngx_elapsed_msec;
+    ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
+
     if ((int) timer != INFTIM) {
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
+        delta = ngx_elapsed_msec - delta;
 
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "poll timer: %d, delta: %d" _ timer _ (int) delta);
-#endif
-        ngx_event_expire_timers((ngx_msec_t) delta);
-
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "poll timer: %d, delta: %d", timer, (int) delta);
     } else {
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "poll() returned no events without timeout");
             return NGX_ERROR;
         }
-
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "poll timer: %d, delta: %d" _ timer _ (int) delta);
-#endif
     }
 
     if (err) {
-        ngx_log_error(NGX_LOG_ALERT, log, err, "poll() failed");
+        ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
+                      log, err, "poll() failed");
         return NGX_ERROR;
     }
 
@@ -306,11 +297,10 @@ static int ngx_poll_process_events(ngx_log_t *log)
             exit(1);
         }
 
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "poll: fd:%d, ev:%d, rev:%d" _
-                      event_list[i].fd _
-                      event_list[i].events _ event_list[i].revents);
-#endif
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "poll: fd:%d ev:%04X rev:%04X",
+                       event_list[i].fd,
+                       event_list[i].events, event_list[i].revents);
 
         found = 0;
 
@@ -343,7 +333,7 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
         if (event_list[i].revents & (POLLERR|POLLHUP)) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
-                          "strange poll() error on %d:%d:%d",
+                          "strange poll() error on fd:%d ev:%04X rev:%04X",
                           event_list[i].fd,
                           event_list[i].events, event_list[i].revents);
         }
@@ -375,6 +365,10 @@ static int ngx_poll_process_events(ngx_log_t *log)
 
     if (ready != 0) {
         ngx_log_error(NGX_LOG_ALERT, log, 0, "poll ready != events");
+    }
+
+    if (timer != (ngx_msec_t) INFTIM && delta) {
+        ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
     return NGX_OK;

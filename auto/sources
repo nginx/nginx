@@ -74,6 +74,9 @@ KQUEUE_SRCS=src/event/modules/ngx_kqueue_module.c
 DEVPOLL_MODULE="ngx_devpoll_module"
 DEVPOLL_SRCS=src/event/modules/ngx_devpoll_module.c
 
+EPOLL_MODULE="ngx_epoll_module"
+EPOLL_SRCS=src/event/modules/ngx_epoll_module.c
+
 IOCP_MODULE="ngx_iocp_module"
 IOCP_SRCS=src/event/modules/ngx_iocp_module.c
 

@@ -37,9 +37,10 @@ void ngx_time_init()
     ngx_cached_err_log_time.data = cached_err_log_time;
     ngx_cached_http_time.data = cached_http_time;
     ngx_cached_http_log_time.data = cached_http_log_time;
+    ngx_cached_time = 0;
 
     ngx_gettimeofday(&tv);
-    ngx_cached_time = 0;
+
     ngx_start_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000;
     ngx_old_elapsed_msec = 0;
     ngx_elapsed_msec = 0;
