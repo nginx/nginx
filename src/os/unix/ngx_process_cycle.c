@@ -15,6 +15,7 @@ ngx_int_t     ngx_process;
 ngx_pid_t     ngx_pid;
 ngx_pid_t     ngx_new_binary;
 ngx_int_t     ngx_inherited;
+ngx_int_t     ngx_threaded;
 
 sig_atomic_t  ngx_reap;
 sig_atomic_t  ngx_timer;

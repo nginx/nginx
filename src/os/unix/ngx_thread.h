@@ -102,9 +102,6 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try);
 ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m);
 
 
-extern ngx_int_t ngx_threaded;
-
-
 #else /* !NGX_THREADS */
 
 #define ngx_thread_volatile

@@ -26,6 +26,7 @@ extern ngx_int_t       ngx_process;
 extern ngx_pid_t       ngx_pid;
 extern ngx_pid_t       ngx_new_binary;
 extern ngx_int_t       ngx_inherited;
+extern ngx_int_t       ngx_threaded;
 
 extern sig_atomic_t    ngx_reap;
 extern sig_atomic_t    ngx_timer;

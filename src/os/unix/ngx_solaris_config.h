@@ -22,10 +22,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <sys/filio.h>          /* FIONBIO */
-#include <sys/stropts.h>        /* INFTIM */
+#include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/sendfile.h>
+#include <sys/filio.h>          /* FIONBIO */
+#include <sys/stropts.h>        /* INFTIM */
 #include <sys/systeminfo.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

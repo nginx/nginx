@@ -155,9 +155,9 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
         return NGX_OK;
     }
 
-    ngx_accept_mutex_ptr = mmap(NULL, sizeof(ngx_atomic_t),
-                                PROT_READ|PROT_WRITE,
-                                MAP_ANON|MAP_SHARED, -1, 0);
+    ngx_accept_mutex_ptr = (ngx_atomic_t *) mmap(NULL, sizeof(ngx_atomic_t),
+                                                 PROT_READ|PROT_WRITE,
+                                                 MAP_ANON|MAP_SHARED, -1, 0);
 
     if (ngx_accept_mutex_ptr == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,

@@ -346,7 +346,8 @@ static int ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 {
     int                events;
-    ngx_int_t          i, instance;
+    ngx_int_t          i;
+    ngx_uint_t         instance;
     ngx_err_t          err;
     ngx_msec_t         timer;
     ngx_event_t       *ev;
@@ -517,10 +518,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         }
 
 
-#if 0
-        if (ngx_threaded || ngx_accept_token) {
-#endif
-        if (ngx_accept_mutex_held) {
+        if (ngx_threaded || ngx_accept_mutex_held) {
 
             if (ev->accept) {
                 ngx_mutex_unlock(ngx_posted_events_mutex);
@@ -533,7 +531,7 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
                 }
 
             } else {
-                ev->next = ngx_posted_events;
+                ev->next = (ngx_event_t *) ngx_posted_events;
                 ngx_posted_events = ev;
             }
 
@@ -551,11 +549,9 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         ngx_event_expire_timers((ngx_msec_t) delta);
     }
 
-#if (NGX_THREADS)
     if (ngx_threaded) {
         return NGX_OK;
     }
-#endif
 
     for ( ;; ) {
 
@@ -598,11 +594,6 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
 static void ngx_kqueue_thread_handler(ngx_event_t *ev)
 {
-    ngx_int_t  instance;
-
-    instance = (uintptr_t) ev & 1;
-    ev = (ngx_event_t *) ((uintptr_t) ev & (uintptr_t) ~1);
-
     if ((!ev->posted && !ev->active)
         || ev->instance != ev->returned_instance)
     {

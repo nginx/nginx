@@ -13,7 +13,7 @@ static int ngx_poll_init(ngx_cycle_t *cycle);
 static void ngx_poll_done(ngx_cycle_t *cycle);
 static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags);
-int ngx_poll_process_events(ngx_log_t *log);
+int ngx_poll_process_events(ngx_cycle_t *cycle);
 
 
 static struct pollfd  *event_list;
@@ -49,7 +49,7 @@ ngx_module_t  ngx_poll_module = {
     NULL,                                  /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
     NULL,                                  /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -161,7 +161,7 @@ static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
-    ngx_int_t           i;
+    ngx_uint_t          i;
     ngx_cycle_t       **cycle;
     ngx_event_t        *e;
     ngx_connection_t   *c;
@@ -245,13 +245,14 @@ static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-int ngx_poll_process_events(ngx_log_t *log)
+int ngx_poll_process_events(ngx_cycle_t *cycle)
 {
     int                 ready;
-    ngx_int_t           i, j, nready, found;
+    ngx_int_t           i, nready;
+    ngx_uint_t          n, found;
     ngx_msec_t          timer;
     ngx_err_t           err;
-    ngx_cycle_t       **cycle;
+    ngx_cycle_t       **old_cycle;
     ngx_event_t        *ev;
     ngx_epoch_msec_t    delta;
     ngx_connection_t   *c;
@@ -272,11 +273,12 @@ int ngx_poll_process_events(ngx_log_t *log)
 
 #if (NGX_DEBUG0)
     for (i = 0; i < nevents; i++) {
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0, "poll: %d: fd:%d ev:%04X",
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "poll: %d: fd:%d ev:%04X",
                        i, event_list[i].fd, event_list[i].events);
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "poll timer: %d", timer);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "poll timer: %d", timer);
 #endif
 
     ready = poll(event_list, (u_int) nevents, (int) timer);
@@ -293,23 +295,23 @@ int ngx_poll_process_events(ngx_log_t *log)
     delta = ngx_elapsed_msec;
     ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "poll ready %d of %d", ready, nevents);
 
     if (err) {
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
-                      log, err, "poll() failed");
+                      cycle->log, err, "poll() failed");
         return NGX_ERROR;
     }
 
     if (timer != (ngx_msec_t) INFTIM) {
         delta = ngx_elapsed_msec - delta;
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "poll timer: %d, delta: %d", timer, (int) delta);
     } else {
         if (ready == 0) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "poll() returned no events without timeout");
             return NGX_ERROR;
         }
@@ -325,13 +327,13 @@ int ngx_poll_process_events(ngx_log_t *log)
     for (i = 0; i < nevents && ready; i++) {
 
 #if 0
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "poll: %d: fd:%d ev:%04X rev:%04X",
                        i, event_list[i].fd,
                        event_list[i].events, event_list[i].revents);
 #else
         if (event_list[i].revents) {
-            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                            "poll: %d: fd:%d ev:%04X rev:%04X",
                            i, event_list[i].fd,
                            event_list[i].events, event_list[i].revents);
@@ -339,7 +341,7 @@ int ngx_poll_process_events(ngx_log_t *log)
 #endif
 
         if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "poll() error fd:%d ev:%04X rev:%04X",
                           event_list[i].fd,
                           event_list[i].events, event_list[i].revents);
@@ -347,7 +349,7 @@ int ngx_poll_process_events(ngx_log_t *log)
 
         if (event_list[i].revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL))
         {
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "strange poll() events fd:%d ev:%04X rev:%04X",
                           event_list[i].fd,
                           event_list[i].events, event_list[i].revents);
@@ -363,12 +365,12 @@ int ngx_poll_process_events(ngx_log_t *log)
         c = &ngx_cycle->connections[event_list[i].fd];
 
         if (c->fd == -1) {
-            cycle = ngx_old_cycles.elts;
-            for (j = 0; j < ngx_old_cycles.nelts; j++) {
-                if (cycle[j] == NULL) {
+            old_cycle = ngx_old_cycles.elts;
+            for (n = 0; n < ngx_old_cycles.nelts; n++) {
+                if (old_cycle[n] == NULL) {
                     continue;
                 }
-                c = &cycle[j]->connections[event_list[i].fd];
+                c = &old_cycle[n]->connections[event_list[i].fd];
                 if (c->fd != -1) {
                     break;
                 }
@@ -376,7 +378,7 @@ int ngx_poll_process_events(ngx_log_t *log)
         }
 
         if (c->fd == -1) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0, "unexpected event");
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "unexpected event");
 
             /*
              * it is certainly our fault and it should be investigated,
@@ -435,7 +437,7 @@ int ngx_poll_process_events(ngx_log_t *log)
     }
 
     if (ready != 0) {
-        ngx_log_error(NGX_LOG_ALERT, log, 0, "poll ready != events");
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "poll ready != events");
     }
 
     if (timer != (ngx_msec_t) INFTIM && delta) {

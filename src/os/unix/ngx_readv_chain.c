@@ -135,7 +135,7 @@ ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
 ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
-    char          *prev;
+    u_char        *prev;
     ssize_t        n, size;
     struct iovec  *iov;
     ngx_err_t      err;

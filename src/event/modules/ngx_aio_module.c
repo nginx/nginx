@@ -14,7 +14,7 @@ static void ngx_aio_done(ngx_cycle_t *cycle);
 static int ngx_aio_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_aio_del_connection(ngx_connection_t *c, u_int flags);
-static int ngx_aio_process_events(ngx_log_t *log);
+static int ngx_aio_process_events(ngx_cycle_t *cycle);
 
 
 ngx_os_io_t ngx_os_aio = {
@@ -53,7 +53,7 @@ ngx_module_t  ngx_aio_module = {
     NULL,                                  /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
     NULL,                                  /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -137,9 +137,9 @@ static int ngx_aio_del_connection(ngx_connection_t *c, u_int flags)
 }
 
 
-static int ngx_aio_process_events(ngx_log_t *log)
+static int ngx_aio_process_events(ngx_cycle_t *cycle)
 {
-    return ngx_kqueue_module_ctx.actions.process(log);
+    return ngx_kqueue_module_ctx.actions.process(cycle);
 }
 
 #endif /* HAVE_KQUEUE */

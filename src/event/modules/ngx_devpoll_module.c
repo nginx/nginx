@@ -36,7 +36,7 @@ static void ngx_devpoll_done(ngx_cycle_t *cycle);
 static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags);
-static int ngx_devpoll_process_events(ngx_log_t *log);
+static int ngx_devpoll_process_events(ngx_cycle_t *cycle);
 
 static void *ngx_devpoll_create_conf(ngx_cycle_t *cycle);
 static char *ngx_devpoll_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -308,13 +308,15 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
-int ngx_devpoll_process_events(ngx_log_t *log)
+int ngx_devpoll_process_events(ngx_cycle_t *cycle)
 {
-    int                 events, i, j;
+    int                 events;
+    ngx_int_t           i;
+    ngx_uint_t          j;
     size_t              n;
     ngx_msec_t          timer;
     ngx_err_t           err;
-    ngx_cycle_t       **cycle;
+    ngx_cycle_t       **old_cycle;
     ngx_connection_t   *c;
     ngx_epoch_msec_t    delta;
     struct dvpoll       dvp;
@@ -327,12 +329,13 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         timer = (ngx_msec_t) INFTIM;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "devpoll timer: %d", timer);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "devpoll timer: %d", timer);
 
     if (nchanges) {
         n = nchanges * sizeof(struct pollfd);
         if (write(dp, change_list, n) != (ssize_t) n) {
-            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "write(/dev/poll) failed");
             return NGX_ERROR;
         }
@@ -359,18 +362,18 @@ int ngx_devpoll_process_events(ngx_log_t *log)
 
     if (err) {
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
-                      log, err, "ioctl(DP_POLL) failed");
+                      cycle->log, err, "ioctl(DP_POLL) failed");
         return NGX_ERROR;
     }
 
     if (timer != (ngx_msec_t) INFTIM) {
         delta = ngx_elapsed_msec - delta;
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "devpoll timer: %d, delta: %d", timer, (int) delta);
     } else {
         if (events == 0) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "ioctl(DP_POLL) returned no events without timeout");
             return NGX_ERROR;
         }
@@ -380,12 +383,12 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         c = &ngx_cycle->connections[event_list[i].fd];
 
         if (c->fd == -1) {
-            cycle = ngx_old_cycles.elts;
+            old_cycle = ngx_old_cycles.elts;
             for (j = 0; j < ngx_old_cycles.nelts; j++) {
-                if (cycle[i] == NULL) {
+                if (old_cycle[j] == NULL) {
                     continue;
                 }
-                c = &cycle[j]->connections[event_list[i].fd];
+                c = &old_cycle[j]->connections[event_list[i].fd];
                 if (c->fd != -1) {
                     break;
                 }
@@ -393,17 +396,17 @@ int ngx_devpoll_process_events(ngx_log_t *log)
         }
 
         if (c->fd == -1) {
-            ngx_log_error(NGX_LOG_EMERG, log, 0, "unknown cycle");
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "unknown cycle");
             exit(1);
         }
 
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "devpoll: fd:%d, ev:%04X, rev:%04X",
                        event_list[i].fd,
                        event_list[i].events, event_list[i].revents);
 
         if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "ioctl(DP_POLL) error fd:%d ev:%04X rev:%04X",
                           event_list[i].fd,
                           event_list[i].events, event_list[i].revents);
@@ -411,7 +414,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
 
         if (event_list[i].revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL))
         {
-            ngx_log_error(NGX_LOG_ALERT, log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "strange ioctl(DP_POLL) events "
                           "fd:%d ev:%04X rev:%04X",
                           event_list[i].fd,

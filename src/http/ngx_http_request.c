@@ -97,7 +97,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
                 return;
             }
 
-            rev->next = ngx_posted_events;
+            rev->next = (ngx_event_t *) ngx_posted_events;
             ngx_posted_events = rev; 
 
             ngx_mutex_unlock(ngx_posted_events_mutex);

@@ -26,7 +26,6 @@
  */
 
 
-ngx_int_t   ngx_threaded;
 char       *ngx_freebsd_kern_usrstack;
 size_t      ngx_thread_stack_size;
 

@@ -381,6 +381,9 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
     p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
 #if (HAVE_KQUEUE)
+
+    /* TODO: KEVENT_EVENT */
+
     if (ev->kq_eof) {
         ev->eof = 1;
 
@@ -405,6 +408,44 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
             ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
         }
     }
+
+#else
+
+    n = recv(c->fd, buf, 1, MSG_PEEK);
+
+    if (n > 0) {
+        /* TODO: delete level */
+        return;
+    }
+
+    if (n == -1) {
+        err = ngx_socket_errno;
+        if (err == NGX_EAGAIN) {
+            return;
+        }
+
+        ev->error = 1;
+
+    } else if (n == 0) {
+        err = 0;
+        ev->eof = 1;
+    }
+
+    if (!p->cachable && p->upstream->peer.connection) {
+        ngx_log_error(NGX_LOG_INFO, ev->log, err,
+                      "client have closed prematurely connection, "
+                      "so upstream connection is closed too");
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        return;
+    }
+
+    ngx_log_error(NGX_LOG_INFO, ev->log, ev->err,
+                  "client have closed prematurely connection");
+
+    if (p->upstream == NULL || p->upstream->peer.connection == NULL) {
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+    }
+
 #endif
 }
 

@@ -43,7 +43,7 @@ ngx_int_t ngx_strerror_r(int err, char *errstr, size_t size)
     str = strerror_r(err, errstr, size);
 
     if (str != errstr) {
-        return ngx_cpystrn(errstr, str, size) - errstr;
+        return ngx_cpystrn(errstr, str, size) - (u_char *) errstr;
     }
 
     for (len = 0; len < size; len++) {
