@@ -261,7 +261,7 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
     /* TODO: "text/html" -> custom types */
     if (r->headers_out.content_type
         && ngx_strncasecmp(r->headers_out.content_type->value.data,
-                                                          "text/html", 5) != 0)
+                                                          "text/html", 9) != 0)
     {
         return ngx_http_next_header_filter(r);
     }
@@ -365,22 +365,19 @@ static int ngx_http_gzip_proxied(ngx_http_request_t *r,
     if (r->headers_out.cache_control) {
 
         if ((conf->proxied & NGX_HTTP_GZIP_PROXIED_NO_CACHE)
-            && ngx_strstr(r->headers_out.cache_control->value.data, "no-cache")
-                                                                       == NULL)
+            && ngx_strstr(r->headers_out.cache_control->value.data, "no-cache"))
         {
             return NGX_OK;
         }
 
         if ((conf->proxied & NGX_HTTP_GZIP_PROXIED_NO_STORE)
-            && ngx_strstr(r->headers_out.cache_control->value.data, "no-store")
-                                                                       == NULL)
+            && ngx_strstr(r->headers_out.cache_control->value.data, "no-store"))
         {
             return NGX_OK;
         }
 
         if ((conf->proxied & NGX_HTTP_GZIP_PROXIED_PRIVATE)
-            && ngx_strstr(r->headers_out.cache_control->value.data, "private")
-                                                                       == NULL)
+            && ngx_strstr(r->headers_out.cache_control->value.data, "private"))
         {
             return NGX_OK;
         }
