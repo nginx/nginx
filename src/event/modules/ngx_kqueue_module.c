@@ -235,6 +235,7 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
     ev->active = 0;
     ev->disabled = 0;
+    ev->posted = 0;
 
     if (nchanges > 0
         && ev->index < (u_int) nchanges
@@ -263,7 +264,6 @@ static int ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
      */
 
     if (flags & NGX_CLOSE_EVENT) {
-        ev->posted = 0;
         return NGX_OK;
     }
 

@@ -22,6 +22,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 #if (NGX_HTTP_GZIP)
     { ngx_string("Accept-Encoding"),
                            offsetof(ngx_http_headers_in_t, accept_encoding) },
+    { ngx_string("Via"), offsetof(ngx_http_headers_in_t, via) },
 #endif
 
     { ngx_string("Authorization"),

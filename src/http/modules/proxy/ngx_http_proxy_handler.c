@@ -425,7 +425,9 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 
     n = recv(c->fd, buf, 1, MSG_PEEK);
 
-    if (ev->write && n >= 0) {
+    err = ngx_socket_errno;
+
+    if (ev->write && (n >= 0 || err == NGX_EAGAIN)) {
         return;
     }
 
@@ -443,7 +445,6 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
     ev->eof = 1;
 
     if (n == -1) {
-        err = ngx_socket_errno;
         if (err == NGX_EAGAIN) {
             return;
         }
@@ -634,11 +635,11 @@ void ngx_http_proxy_close_connection(ngx_http_proxy_ctx_t *p)
         ngx_del_conn(c, NGX_CLOSE_EVENT);
 
     } else {
-        if (c->read->active) {
+        if (c->read->active || c->read->posted) {
             ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
         }
 
-        if (c->write->active) {
+        if (c->write->active || c->read->posted) {
             ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
         }
     }

@@ -97,8 +97,7 @@ void ngx_http_init_connection(ngx_connection_t *c)
                 return;
             }
 
-            rev->next = (ngx_event_t *) ngx_posted_events;
-            ngx_posted_events = rev; 
+            ngx_post_event(rev); 
 
             ngx_mutex_unlock(ngx_posted_events_mutex);
             return;
@@ -1613,11 +1612,11 @@ void ngx_http_close_connection(ngx_connection_t *c)
         ngx_del_conn(c, NGX_CLOSE_EVENT);
 
     } else {
-        if (c->read->active || c->read->disabled) {
+        if (c->read->active || c->read->posted || c->read->disabled) {
             ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
         }
 
-        if (c->write->active || c->write->disabled) {
+        if (c->write->active || c->write->posted || c->write->disabled) {
             ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
         }
     }

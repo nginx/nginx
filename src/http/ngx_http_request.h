@@ -100,6 +100,7 @@ typedef struct {
 
 #if (NGX_HTTP_GZIP)
     ngx_table_elt_t  *accept_encoding;
+    ngx_table_elt_t  *via;
 #endif
 
     ngx_table_elt_t  *authorization;

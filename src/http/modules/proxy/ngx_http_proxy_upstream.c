@@ -327,19 +327,20 @@ static void ngx_http_proxy_init_upstream(void *data)
 
     r->connection->read->event_handler = ngx_http_proxy_check_broken_connection;
 
-    if ((ngx_event_flags & (NGX_USE_CLEAR_EVENT|NGX_HAVE_KQUEUE_EVENT))
-        && !r->connection->write->active)
-    {
+    if (ngx_event_flags & (NGX_USE_CLEAR_EVENT|NGX_HAVE_KQUEUE_EVENT)) {
+
         /* kqueue allows to detect when client closes prematurely connection */
 
         r->connection->write->event_handler =
                                         ngx_http_proxy_check_broken_connection;
 
-        if (ngx_add_event(r->connection->write, NGX_WRITE_EVENT,
+        if (!r->connection->write->active) {
+            if (ngx_add_event(r->connection->write, NGX_WRITE_EVENT,
                                                 NGX_CLEAR_EVENT) == NGX_ERROR)
-        {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
+            {
+                ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
         }
     }
 
@@ -560,6 +561,9 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
 
     rc = ngx_event_connect_peer(&p->upstream->peer);
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, p->request->connection->log, 0,
+                   "http proxy connect: %d", rc);
+
     if (rc == NGX_ERROR) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -573,14 +577,13 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         return;
     }
 
-    p->upstream->peer.connection->data = p;
-    p->upstream->peer.connection->write->event_handler =
-                                           ngx_http_proxy_send_request_handler;
-    p->upstream->peer.connection->read->event_handler =
-                                   ngx_http_proxy_process_upstream_status_line;
-
     r = p->request;
     c = p->upstream->peer.connection;
+
+    c->data = p;
+    c->write->event_handler = ngx_http_proxy_send_request_handler;
+    c->read->event_handler = ngx_http_proxy_process_upstream_status_line;
+
     c->pool = r->pool;
     c->read->log = c->write->log = c->log = r->connection->log;
 
@@ -613,6 +616,11 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
 
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, p->lcf->connect_timeout);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http proxy connect handler: " PTR_FMT,
+                       c->write->event_handler);
+
         return;
     }
 
@@ -637,6 +645,9 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
     ngx_connection_t  *c;
 
     c = p->upstream->peer.connection;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http proxy send request");
 
 #if (HAVE_KQUEUE)
 
@@ -715,8 +726,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
     }
 #endif
 
-    p->upstream->peer.connection->write->event_handler =
-                                                  ngx_http_proxy_dummy_handler;
+    c->write->event_handler = ngx_http_proxy_dummy_handler;
 
     if (ngx_handle_level_write_event(c->write) == NGX_ERROR) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -732,6 +742,9 @@ static void ngx_http_proxy_send_request_handler(ngx_event_t *wev)
 
     c = wev->data;
     p = c->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0,
+                   "http proxy send request handler");
 
     if (wev->timedout) {
         p->action = "sending request to upstream";

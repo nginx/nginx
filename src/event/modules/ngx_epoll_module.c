@@ -300,6 +300,7 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     ev->active = 0;
+    ev->posted = 0;
 
     return NGX_OK;
 }
