@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 if [ $EVENT_SELECT = NO -a $EVENT_FOUND = NO ]; then
     EVENT_SELECT=YES
 fi

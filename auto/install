@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 cat << END                                                        >> $MAKEFILE
 install:
 	test -d $PREFIX || mkdir -p $PREFIX
@@ -18,13 +21,22 @@ install:
 	cp conf/nginx.conf `dirname $CONF_PATH`/nginx.conf.default
 
 	test -d `dirname $PID_PATH` || mkdir -p `dirname $PID_PATH`
-	test -d `dirname $ERROR_LOG_PATH` || mkdir -p `dirname $ERROR_LOG_PATH`
+
 	test -d `dirname $HTTP_LOG_PATH` || mkdir -p `dirname $HTTP_LOG_PATH`
 
 	test -d $PREFIX/html || cp -r html $PREFIX
 
 	#test -d $PREFIX/temp || mkdir -p $PREFIX/temp
 END
+
+
+if [ ".$ERROR_LOG_PATH" != "." ]; then
+    cat << END                                                    >> $MAKEFILE
+
+	test -d `dirname $ERROR_LOG_PATH` || mkdir -p `dirname $ERROR_LOG_PATH`
+END
+
+fi
 
 
 if test ! -f Makefile; then

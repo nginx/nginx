@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 mkdir -p $OBJS/src/core $OBJS/src/event $OBJS/src/event/modules \
          $OBJS/src/os/unix $OBJS/src/os/win32 \
          $OBJS/src/http $OBJS/src/http/modules $OBJS/src/http/modules/proxy \

@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2002-2004 Igor Sysoev
+ * Copyright (C) Igor Sysoev
  */
 
 
@@ -112,7 +112,9 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     if (err) {
 
         if (len > max - 50) {
+
             /* leave a space for an error code */
+
             len = max - 50;
             errstr[len++] = '.';
             errstr[len++] = '.';
@@ -222,40 +224,6 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...)
 #endif
 
 
-#if 0
-
-void ngx_log_stderr(ngx_event_t *ev)
-{
-    char       errstr[MAX_ERROR_STR];
-    ssize_t    n;
-    ngx_err_t  err;
-
-    for ( ;; ) {
-        n = read((ngx_fd_t) ev->data, errstr, sizeof(errstr - 1));
-
-        if (n == -1) {
-            err = ngx_errno;
-            if (err == NGX_EAGAIN) {
-                return;
-            }
-
-            ngx_log_error(NGX_LOG_ALERT, &ngx_log, err, "read() failed");
-            return;
-        }
-
-        if (n == 0) {
-            ngx_log_error(NGX_LOG_ALERT, &ngx_log, 0, "stderr clolsed");
-            return;
-        }
-
-        errstr[n] = '\0';
-        ngx_log_error(NGX_LOG_STDERR, &ngx_log, 0, "%s", errstr);
-    }
-}
-
-#endif
-
-
 
 ngx_log_t *ngx_log_init_errlog()
 {
@@ -287,7 +255,8 @@ ngx_log_t *ngx_log_init_errlog()
     ngx_log.file = &ngx_stderr;
     ngx_log.log_level = NGX_LOG_ERR;
 
-#if 0
+#ifdef NGX_ERROR_LOG_PATH
+
     fd = ngx_open_file(NGX_ERROR_LOG_PATH, NGX_FILE_RDWR,
                        NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 
@@ -315,6 +284,7 @@ ngx_log_t *ngx_log_init_errlog()
     }
 
 #endif
+
 #endif
 
     return &ngx_log;
@@ -405,19 +375,12 @@ static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (value[1].len == 6 && ngx_strcmp(value[1].data, "stderr") == 0) {
-        cf->cycle->new_log->file->fd = ngx_stderr.fd;
-        cf->cycle->new_log->file->name.len = 0;
-        cf->cycle->new_log->file->name.data = NULL;
+    cf->cycle->new_log->file->name = value[1];
 
-    } else {
-        cf->cycle->new_log->file->name = value[1];
-
-        if (ngx_conf_full_name(cf->cycle, &cf->cycle->new_log->file->name)
+    if (ngx_conf_full_name(cf->cycle, &cf->cycle->new_log->file->name)
                                                                   == NGX_ERROR)
-        {
-            return NGX_CONF_ERROR;
-        }
+    {
+        return NGX_CONF_ERROR;
     }
 
     return ngx_set_error_log_levels(cf, cf->cycle->new_log);

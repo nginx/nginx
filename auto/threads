@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 case $USE_THREADS in
     rfork)
         have=NGX_THREADS . auto/have

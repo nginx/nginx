@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 echo $ngx_n "checking for $ngx_lib ..." $ngx_c
 echo >> $NGX_ERR
 echo "checking for $ngx_lib library" >> $NGX_ERR

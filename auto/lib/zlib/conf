@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 if [ $ZLIB != NONE ]; then
     CORE_INCS="$CORE_INCS $ZLIB"
 

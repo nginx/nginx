@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 case $PLATFORM in
     *)
         echo "$OPENSSL/libssl.a:"                                 >> $MAKEFILE

@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 if [ $PCRE != NONE -a $PCRE != NO -a $PCRE != YES ]; then
     . auto/lib/pcre/make
 fi

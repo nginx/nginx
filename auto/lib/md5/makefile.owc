@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 CFLAGS = -zq -bt=nt -bm -ot -op -oi -oe -s $(CPU_OPT)
 
 md5.lib:

@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 CFLAGS = -zq -bt=nt -ot -op -oi -oe -s -bm $(CPU_OPT)
 
 zlib.lib:

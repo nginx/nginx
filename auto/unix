@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 CC_WARN=$CC
 ngx_fmt_collect=yes
 

@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 if [ $MD5 != NONE ]; then
 
     if grep MD5_Init $MD5/md5.h >/dev/null; then

@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 if [ $OPENSSL != NONE ]; then
     CORE_INCS="$CORE_INCS $OPENSSL/include"
     CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"

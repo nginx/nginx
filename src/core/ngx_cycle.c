@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2002-2004 Igor Sysoev
+ * Copyright (C) Igor Sysoev
  */
 
 
@@ -29,7 +29,11 @@ ngx_tls_key_t          ngx_core_tls_key;
 static ngx_connection_t  dumb;
 /* STUB */
 
+#ifdef NGX_ERROR_LOG_PATH
 static ngx_str_t  error_log = ngx_string(NGX_ERROR_LOG_PATH);
+#else
+static ngx_str_t  error_log = ngx_null_string;
+#endif
 
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)

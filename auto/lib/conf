@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 if [ $USE_PCRE = YES ]; then
     . auto/lib/pcre/conf
 fi

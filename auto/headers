@@ -1,3 +1,6 @@
 
+# Copyright (C) Igor Sysoev
+
+
 ngx_inc="unistd.h"; . auto/inc
 ngx_inc="inttypes.h"; . auto/inc

@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 CFLAGS="$CFLAGS $CC_OPT"
 
 case $CC in
@@ -25,6 +28,12 @@ case $CC in
                  # optimize for Pentium 4, gcc 3.x
                  CPU_OPT="-march=pentium4"
              ;;
+
+             sparc64)
+                 # build 64-bit binary, sparcv9 only
+                 CPU_OPT="-m64"
+             ;;
+
          esac
 
          # STUB for batch builds

@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $FREEBSD_DEPS"
 CORE_SRCS="$UNIX_SRCS $FREEBSD_SRCS"
@@ -62,18 +65,18 @@ if [ $USE_THREADS = "rfork" ]; then
 
     echo " + using rfork()"
 
-    # kqueue's EVFILT_SIGNAL is safe
-
-    if [ $version -gt 460101 ]; then
-        echo " + kqueue's EVFILT_SIGNAL is safe"
-        have=HAVE_SAFE_EVFILT_SIGNAL . auto/have
-    else
-        echo "$0: error: the kqueue's EVFILT_SIGNAL is unsafe on this"
-        echo "FreeBSD version, so --with-threads=rfork could not be used"
-        echo
-
-        exit 1
-    fi
+#    # kqueue's EVFILT_SIGNAL is safe
+#
+#    if [ $version -gt 460101 ]; then
+#        echo " + kqueue's EVFILT_SIGNAL is safe"
+#        have=HAVE_SAFE_EVFILT_SIGNAL . auto/have
+#    else
+#        echo "$0: error: the kqueue's EVFILT_SIGNAL is unsafe on this"
+#        echo "FreeBSD version, so --with-threads=rfork could not be used"
+#        echo
+#
+#        exit 1
+#    fi
 fi
 
 

@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 cat << END | sed -e 's/d"$/x"/' >> $NGX_AUTO_CONFIG_H
 
 #ifndef $ngx_fmt_name

@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $LINUX_DEPS"
 CORE_SRCS="$UNIX_SRCS $LINUX_SRCS"
@@ -15,7 +18,7 @@ version=`grep "#define LINUX_VERSION_CODE" /usr/include/linux/version.h \
          | sed -e 's/^.* \(.*\)$/\1/'`
 
 
-# enable rt signals on Linux 2.2.19 and onward
+# enable the rt signals on Linux 2.2.19 and onward
 
 if [ $version -ge 131609 -o $EVENT_RTSIG = YES ]; then
     echo " + using rt signals"

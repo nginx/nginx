@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 if [ ".$PLATFORM" = "." ]; then
     echo "checking for OS"
 

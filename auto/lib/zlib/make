@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 case "$CC" in
 
     cl)

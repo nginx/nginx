@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 MAKEFILE=$OBJS/Makefile
 
 NGX_AUTO_CONFIG_H=$OBJS/ngx_auto_config.h

@@ -1,4 +1,6 @@
 
+# Copyright (C) Igor Sysoev
+
 help=no
 
 PREFIX=
@@ -232,6 +234,10 @@ case ".$ERROR_LOG_PATH" in
 
     .)
         ERROR_LOG_PATH=$PREFIX/logs/error.log
+    ;;
+
+    .stderr)
+        ERROR_LOG_PATH=
     ;;
 
     *)

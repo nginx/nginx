@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 CFLAGS =	-q -O2 -tWM $(CPU_OPT)
 PCREFLAGS =	-DPCRE_STATIC -DPOSIX_MALLOC_THRESHOLD=10
 

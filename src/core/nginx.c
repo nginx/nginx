@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2002-2004 Igor Sysoev
+ * Copyright (C) Igor Sysoev
  */
 
 
@@ -95,8 +95,6 @@ ngx_module_t  ngx_core_module = {
 
 ngx_uint_t  ngx_max_module;
 
-ngx_uint_t  ngx_use_stderr;
-
 
 int main(int argc, char *const *argv)
 {
@@ -120,7 +118,9 @@ int main(int argc, char *const *argv)
 
     ngx_pid = ngx_getpid();
 
-    log = ngx_log_init_errlog();
+    if (!(log = ngx_log_init_errlog())) {
+        return 1;
+    }
 
 #if (NGX_OPENSSL)
     ngx_ssl_init(log);
@@ -142,10 +142,6 @@ int main(int argc, char *const *argv)
 
     if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
         return 1;
-    }
-
-    if (ngx_use_stderr) {
-        log = ngx_log_init_errlog();
     }
 
     if (ngx_os_init(log) == NGX_ERROR) {
@@ -324,10 +320,6 @@ static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle)
 
         case 't':
             ngx_test_config = 1;
-            break;
-
-        case 's':
-            ngx_use_stderr = 1;
             break;
 
         case 'c':

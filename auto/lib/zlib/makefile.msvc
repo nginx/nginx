@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 CFLAGS = -nologo -O2 -Ob1 -Oi -Gs $(LIBC) $(CPU_OPT)
 
 zlib.lib:

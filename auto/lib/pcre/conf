@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 if [ $PCRE != NONE ]; then
     CORE_INCS="$CORE_INCS $PCRE"
     CORE_DEPS="$CORE_DEPS $REGEX_DEPS"

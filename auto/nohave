@@ -1,4 +1,7 @@
 
+# Copyright (C) Igor Sysoev
+
+
 cat << END >> $NGX_AUTO_CONFIG_H
 
 #ifndef $have
