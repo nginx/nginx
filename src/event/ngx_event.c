@@ -24,6 +24,11 @@ extern ngx_module_t ngx_epoll_module;
 extern ngx_event_module_t ngx_epoll_module_ctx;
 #endif
 
+#if (HAVE_RTSIG)
+extern ngx_module_t ngx_rtsig_module;
+extern ngx_event_module_t ngx_rtsig_module_ctx;
+#endif
+
 #if (HAVE_AIO)
 #include <ngx_aio_module.h>
 #endif
@@ -642,6 +647,12 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
     ngx_conf_init_value(ecf->use, ngx_epoll_module.ctx_index);
     ngx_conf_init_ptr_value(ecf->name, ngx_epoll_module_ctx.name->data);
+
+#elif (HAVE_RTSIG)
+
+    ngx_conf_init_unsigned_value(ecf->connections, DEFAULT_CONNECTIONS);
+    ngx_conf_init_value(ecf->use, ngx_rtsig_module.ctx_index);
+    ngx_conf_init_ptr_value(ecf->name, ngx_rtsig_module_ctx.name->data);
 
 #elif (HAVE_SELECT)
 

@@ -40,11 +40,13 @@ ngx_int_t ngx_event_busy_lock(ngx_event_busy_lock_t *bl,
         ngx_add_timer(ctx->event, ctx->timer);
         ctx->event->event_handler = ngx_event_busy_lock_handler;
 
-        if (bl->events == NULL) {
-            bl->events = ctx;
-        } else {
+        if (bl->events) {
             bl->last->next = ctx;
+
+        } else {
+            bl->events = ctx;
         }
+
         bl->last = ctx;
 
         rc = NGX_AGAIN;
@@ -149,8 +151,7 @@ ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
                 return NGX_ERROR;
             }
 
-            ev->next = (ngx_event_t *) ngx_posted_events;
-            ngx_posted_events = ev;
+            ngx_post_event(ev);
 
             ngx_mutex_unlock(ngx_posted_events_mutex);
         }
@@ -175,8 +176,7 @@ ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
             return NGX_ERROR;
         }
 
-        ev->next = (ngx_event_t *) ngx_posted_events;
-        ngx_posted_events = ev;
+        ngx_post_event(ev);
 
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }
@@ -287,8 +287,7 @@ static void ngx_event_busy_lock_handler(ngx_event_t *ev)
         return;
     }
 
-    ev->next = (ngx_event_t *) ngx_posted_events;
-    ngx_posted_events = ev;
+    ngx_post_event(ev);
 
     ngx_mutex_unlock(ngx_posted_events_mutex);
 

@@ -3,10 +3,6 @@
 #include <ngx_core.h>
 
 
-/* STUB: page size */
-#define NGX_RADIX_TREE_POOL_SIZE  4096
-
-
 static void *ngx_radix_alloc(ngx_radix_tree_t *tree, size_t size);
 
 
@@ -187,11 +183,11 @@ static void *ngx_radix_alloc(ngx_radix_tree_t *tree, size_t size)
     }
 
     if (tree->size < size) {
-        if (!(tree->start = ngx_palloc(tree->pool, NGX_RADIX_TREE_POOL_SIZE))) {
+        if (!(tree->start = ngx_palloc(tree->pool, ngx_pagesize))) {
             return NULL;
         }
 
-        tree->size = NGX_RADIX_TREE_POOL_SIZE;
+        tree->size = ngx_pagesize;
     }
 
     p = tree->start;

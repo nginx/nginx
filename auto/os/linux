@@ -9,6 +9,22 @@ PIPE="-pipe"
 
 CC_TEST_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
 
+# Linux kernel version
+
+version=`grep "#define LINUX_VERSION_CODE" /usr/include/linux/version.h \
+         | sed -e 's/^.* \(.*\)$/\1/'`
+
+
+# enable rt signals on Linux 2.4.x
+
+if [ $version -ge 132096 -o $EVENT_RTSIG = YES ]; then
+    echo " + using rt signals"
+    have=HAVE_RTSIG . auto/have
+    EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"
+    CORE_SRCS="$CORE_SRCS $RTSIG_SRCS"
+    EVENT_FOUND=YES
+fi
+
 
 # epoll, EPOLLET version
 
@@ -27,15 +43,6 @@ if [ $ngx_found = yes ]; then
     CORE_SRCS="$CORE_SRCS $EPOLL_SRCS"
     EVENT_MODULES="$EVENT_MODULES $EPOLL_MODULE"
     EVENT_FOUND=YES
-fi
-
-
-# rtsig
-
-if [ $EVENT_RTSIG = YES ]; then
-    have=HAVE_RTSIG . auto/have
-    EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"
-    CORE_SRCS="$CORE_SRCS $RTSIG_SRCS"
 fi
 
 
