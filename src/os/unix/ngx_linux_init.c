@@ -28,9 +28,9 @@ ngx_os_io_t ngx_os_io = {
 };
 
 
-int ngx_os_init(ngx_log_t *log)
+ngx_int_t ngx_os_init(ngx_log_t *log)
 {
-    int  name[2], len, rtsig_max;
+    int  name[2], len;
 
     name[0] = CTL_KERN;
     name[1] = KERN_OSTYPE;
@@ -52,20 +52,29 @@ int ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
-                  ngx_linux_kern_ostype, ngx_linux_kern_osrelease);
-
 
     name[0] = CTL_KERN;
     name[1] = KERN_RTSIGMAX;
     len = sizeof(rtsig_max);
-    if (sysctl(name, sizeof(name), &rtsig_max, &len, NULL, 0) == -1) {
+    if (sysctl(name, sizeof(name), &ngx_linux_rtsig_max, &len, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_INFO, log, ngx_errno,
                       "sysctl(KERN_RTSIGMAX) failed");
-    } else {
-        ngx_linux_rtsig_max = 1;
+        ngx_linux_rtsig_max = 0;
+
     }
 
 
     return ngx_posix_init(log);
+}
+
+
+void ngx_os_status(ngx_log_t *log)
+{
+    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
+                  ngx_linux_kern_ostype, ngx_linux_kern_osrelease);
+
+    ngx_log_error(NGX_LOG_INFO, log, 0, "sysctl(KERN_RTSIGMAX): %d",
+                  ngx_linux_rtsig_max);
+
+    ngx_posix_status(log);
 }

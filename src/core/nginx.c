@@ -89,7 +89,7 @@ ngx_module_t  ngx_core_module = {
     ngx_core_commands,                     /* module directives */
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init module */
-    NULL                                   /* init child */
+    NULL                                   /* init process */
 };
 
 
@@ -146,10 +146,6 @@ int main(int argc, char *const *argv)
 
     if (ngx_test_config) {
         log->log_level = NGX_LOG_INFO;
-    } else {
-        if (ngx_log_init_error_log() == NGX_ERROR) {
-            return 1;
-        }
     }
 
     if (ngx_os_init(log) == NGX_ERROR) {
@@ -182,6 +178,8 @@ int main(int argc, char *const *argv)
                       init_cycle.conf_file.data);
         return 0;
     }
+
+    ngx_os_status(cycle->log);
 
     ngx_cycle = cycle;
 

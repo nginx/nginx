@@ -8,10 +8,11 @@
 #include <ngx_core.h>
 
 
-int  ngx_win32_version;
-int  ngx_ncpu;
-int  ngx_max_sockets;
-int  ngx_inherited_nonblocking = 1;
+ngx_uint_t  ngx_win32_version;
+ngx_uint_t  ngx_ncpu;
+ngx_int_t   ngx_max_sockets;
+ngx_uint_t  ngx_inherited_nonblocking = 1;
+ngx_fd_t    ngx_stderr_fileno;
 
 
 ngx_os_io_t ngx_os_io = {
@@ -40,7 +41,7 @@ static GUID as_guid = WSAID_GETACCEPTEXSOCKADDRS;
 static GUID tf_guid = WSAID_TRANSMITFILE;
 
 
-int ngx_os_init(ngx_log_t *log)
+ngx_int_t ngx_os_init(ngx_log_t *log)
 {
     u_int               osviex;
     DWORD               bytes;
@@ -188,4 +189,9 @@ int ngx_os_init(ngx_log_t *log)
     }
 
     return NGX_OK;
+}
+
+
+void ngx_os_status(ngx_log_t *log)
+{
 }

@@ -47,7 +47,6 @@ static char *client_header_errors[] = {
 
     "client %s sent invalid header, URL: %s",
     "client %s sent too long header line, URL: %s",
-    "client %s sent too many headers, URL: %s",
     "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s",
     "client %s sent invalid \"Content-Length\" header, URL: %s",
     "client %s sent POST method without \"Content-Length\" header, URL: %s",
@@ -757,12 +756,6 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
             if (n == NGX_AGAIN || n == NGX_ERROR) {
                 return;
             }
-        }
-
-        if (r->headers_n > 100) {
-            ngx_http_client_error(r, NGX_HTTP_PARSE_TOO_MANY_HEADERS,
-                                  NGX_HTTP_BAD_REQUEST);
-            return;
         }
 
         rc = ngx_http_parse_header_line(r, r->header_in);

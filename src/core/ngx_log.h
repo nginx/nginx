@@ -196,7 +196,9 @@ void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 #define ngx_log_copy_log(new, old)    ngx_memcpy(new, old, sizeof(ngx_log_t))
 
 ngx_log_t *ngx_log_init_stderr();
+#if 0
 ngx_int_t ngx_log_init_error_log();
+#endif
 ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args);
 char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log);
 

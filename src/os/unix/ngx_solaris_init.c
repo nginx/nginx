@@ -27,7 +27,7 @@ ngx_os_io_t ngx_os_io = {
 };
 
 
-int ngx_os_init(ngx_log_t *log)
+ngx_int_t ngx_os_init(ngx_log_t *log)
 {
     if (sysinfo(SI_SYSNAME, ngx_solaris_sysname, sizeof(ngx_solaris_sysname))
                                                                          == -1)
@@ -53,12 +53,18 @@ int ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
+    return ngx_posix_init(log);
+}
+
+
+void ngx_os_status(ngx_log_t *log)
+{
+
     ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
                   ngx_solaris_sysname, ngx_solaris_release);
 
     ngx_log_error(NGX_LOG_INFO, log, 0, "version: %s",
                   ngx_solaris_version);
 
-
-    return ngx_posix_init(log);
+    ngx_posix_status(log);
 }

@@ -22,8 +22,8 @@ int ngx_freebsd_machdep_hlt_logical_cpus;
 int ngx_freebsd_kern_ipc_zero_copy_send;
 
 
-int ngx_freebsd_sendfile_nbytes_bug;
-int ngx_freebsd_use_tcp_nopush;
+ngx_uint_t ngx_freebsd_sendfile_nbytes_bug;
+ngx_uint_t ngx_freebsd_use_tcp_nopush;
 
 
 ngx_os_io_t ngx_os_io = {
@@ -41,32 +41,31 @@ ngx_os_io_t ngx_os_io = {
 
 
 typedef struct {
-    char    *name;
-    int     *value;
-    size_t   size;
+    char        *name;
+    int         *value;
+    size_t       size;
+    ngx_uint_t   exists;
 } sysctl_t;
 
 
 sysctl_t sysctls[] = {
-    {"hw.ncpu",
-     &ngx_freebsd_hw_ncpu,
-     sizeof(int)},
+    { "hw.ncpu",
+      &ngx_freebsd_hw_ncpu,
+      sizeof(int), 0 },
 
-    {"machdep.hlt_logical_cpus",
-     &ngx_freebsd_machdep_hlt_logical_cpus,
-     sizeof(int)},
+    { "machdep.hlt_logical_cpus",
+      &ngx_freebsd_machdep_hlt_logical_cpus,
+      sizeof(int), 0 },
 
-    {"net.inet.tcp.sendspace",
-     &ngx_freebsd_net_inet_tcp_sendspace,
-     sizeof(int)},
+    { "net.inet.tcp.sendspace",
+      &ngx_freebsd_net_inet_tcp_sendspace,
+      sizeof(int), 0 },
 
-     /* FreeBSD 5.0 */
+    { "kern.ipc.zero_copy.send",
+      &ngx_freebsd_kern_ipc_zero_copy_send,
+      sizeof(int), 0 },
 
-    {"kern.ipc.zero_copy.send",
-     &ngx_freebsd_kern_ipc_zero_copy_send,
-     sizeof(int)},
-
-    {NULL, NULL, 0}
+    { NULL, NULL, 0, 0 }
 };
 
 
@@ -84,11 +83,12 @@ void ngx_debug_init()
 }
 
 
-int ngx_os_init(ngx_log_t *log)
+ngx_int_t ngx_os_init(ngx_log_t *log)
 {
-    int        i, version;
-    size_t     size;
-    ngx_err_t  err;
+    int         version;
+    size_t      size;
+    ngx_err_t   err;
+    ngx_uint_t  i;
 
     size = sizeof(ngx_freebsd_kern_ostype);
     if (sysctlbyname("kern.ostype",
@@ -106,9 +106,6 @@ int ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
-                  ngx_freebsd_kern_ostype, ngx_freebsd_kern_osrelease);
-
 
     size = sizeof(int);
     if (sysctlbyname("kern.osreldate",
@@ -120,17 +117,6 @@ int ngx_os_init(ngx_log_t *log)
 
     version = ngx_freebsd_kern_osreldate;
 
-#ifdef __DragonFly_version
-    ngx_log_error(NGX_LOG_INFO, log, 0,
-                  "kern.osreldate: %d, built on %d",
-                  version, __DragonFly_version);
-#else
-    ngx_log_error(NGX_LOG_INFO, log, 0,
-                  "kern.osreldate: %d, built on %d",
-                  version, __FreeBSD_version);
-#endif
-
-
 
 #if (HAVE_SENDFILE)
 
@@ -139,9 +125,9 @@ int ngx_os_init(ngx_log_t *log)
      * There are two sendfile() syscalls: a new #393 has no bug while
      * an old #336 has the bug in some versions and has not in others.
      * Besides libc_r wrapper also emulates the bug in some versions.
-     * There's no way to say exactly if a given FreeBSD version has the bug.
-     * We use the algorithm that is correct at least for RELEASEs
-     * and for syscalls only (not libc_r wrapper).
+     * There is no way to say exactly if syscall #336 in FreeBSD circa 4.6
+     * has the bug.  We use the algorithm that is correct at least for
+     * RELEASEs and for syscalls only (not libc_r wrapper).
      *
      * 4.6.1-RELEASE and below have the bug
      * 4.6.2-RELEASE and above have the new syscall
@@ -176,23 +162,29 @@ int ngx_os_init(ngx_log_t *log)
     for (i = 0; sysctls[i].name; i++) {
         *sysctls[i].value = 0;
         size = sysctls[i].size;
+
         if (sysctlbyname(sysctls[i].name, sysctls[i].value, &size, NULL, 0)
-                                                                       == -1) {
-            err = ngx_errno;
-            if (err != NGX_ENOENT) {
-                if (sysctls[i].value == &ngx_freebsd_machdep_hlt_logical_cpus) {
-                    continue;
-                }
-
-                ngx_log_error(NGX_LOG_ALERT, log, err,
-                              "sysctlbyname(%s) failed", sysctls[i].name);
-                return NGX_ERROR;
-            }
-
-        } else {
-            ngx_log_error(NGX_LOG_INFO, log, 0, "%s: %d",
-                          sysctls[i].name, *sysctls[i].value);
+                                                                          == 0)
+        {
+            sysctls[i].exists = 1;
+            continue;
         }
+
+        err = ngx_errno;
+
+        if (err == NGX_ENOENT) {
+            continue;
+        }
+
+#if 0
+        if (sysctls[i].value == &ngx_freebsd_machdep_hlt_logical_cpus) {
+            continue;
+        }
+#endif
+
+        ngx_log_error(NGX_LOG_ALERT, log, err,
+                      "sysctlbyname(%s) failed", sysctls[i].name);
+        return NGX_ERROR;
     }
 
     if (ngx_freebsd_machdep_hlt_logical_cpus) {
@@ -202,4 +194,32 @@ int ngx_os_init(ngx_log_t *log)
     }
 
     return ngx_posix_init(log);
+}
+
+
+void ngx_os_status(ngx_log_t *log)
+{
+    ngx_uint_t  i;
+
+    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
+                  ngx_freebsd_kern_ostype, ngx_freebsd_kern_osrelease);
+
+#ifdef __DragonFly_version
+    ngx_log_error(NGX_LOG_INFO, log, 0,
+                  "kern.osreldate: %d, built on %d",
+                  ngx_freebsd_kern_osreldate, __DragonFly_version);
+#else
+    ngx_log_error(NGX_LOG_INFO, log, 0,
+                  "kern.osreldate: %d, built on %d",
+                  ngx_freebsd_kern_osreldate, __FreeBSD_version);
+#endif
+
+    for (i = 0; sysctls[i].name; i++) {
+        if (sysctls[i].exists) {
+            ngx_log_error(NGX_LOG_INFO, log, 0, "%s: %d",
+                          sysctls[i].name, *sysctls[i].value);
+        }
+    }
+
+    ngx_posix_status(log);
 }

@@ -8,9 +8,12 @@
 #include <ngx_core.h>
 
 
-int  ngx_ncpu;
-int  ngx_max_sockets;
-int  ngx_inherited_nonblocking;
+ngx_int_t  ngx_ncpu;
+ngx_int_t  ngx_max_sockets;
+ngx_int_t  ngx_inherited_nonblocking;
+
+
+struct rlimit  rlmt;
 
 
 #if (NGX_POSIX_IO)
@@ -82,10 +85,9 @@ ngx_signal_t  signals[] = {
 };
 
 
-int ngx_posix_init(ngx_log_t *log)
+ngx_int_t ngx_posix_init(ngx_log_t *log)
 {
     ngx_signal_t      *sig;
-    struct rlimit      rlmt;
     struct sigaction   sa;
 
     ngx_pagesize = getpagesize();
@@ -111,10 +113,6 @@ int ngx_posix_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    ngx_log_error(NGX_LOG_INFO, log, 0,
-                  "getrlimit(RLIMIT_NOFILE): " RLIM_T_FMT ":" RLIM_T_FMT,
-                  rlmt.rlim_cur, rlmt.rlim_max);
-
     ngx_max_sockets = rlmt.rlim_cur;
 
 #if (HAVE_INHERITED_NONBLOCK)
@@ -124,6 +122,14 @@ int ngx_posix_init(ngx_log_t *log)
 #endif
 
     return NGX_OK;
+}
+
+
+void ngx_posix_status(ngx_log_t *log)
+{
+    ngx_log_error(NGX_LOG_INFO, log, 0,
+                  "getrlimit(RLIMIT_NOFILE): " RLIM_T_FMT ":" RLIM_T_FMT,
+                  rlmt.rlim_cur, rlmt.rlim_max);
 }
 
 

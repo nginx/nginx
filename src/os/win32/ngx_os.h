@@ -42,7 +42,8 @@ typedef struct {
 } ngx_os_io_t;
 
 
-int ngx_os_init(ngx_log_t *log);
+ngx_int_t ngx_os_init(ngx_log_t *log);
+void ngx_os_status(ngx_log_t *log);
 
 ssize_t ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size);
 ssize_t ngx_overlapped_wsarecv(ngx_connection_t *c, u_char *buf, size_t size);
@@ -54,10 +55,11 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
 
 
 extern ngx_os_io_t  ngx_os_io;
-extern int          ngx_ncpu;
-extern int          ngx_max_sockets;
-extern int          ngx_inherited_nonblocking;
-extern int          ngx_win32_version;
+extern ngx_uint_t   ngx_ncpu;
+extern ngx_int_t    ngx_max_sockets;
+extern ngx_uint_t   ngx_inherited_nonblocking;
+extern ngx_uint_t   ngx_win32_version;
+extern ngx_fd_t     ngx_stderr_fileno;
 
 
 

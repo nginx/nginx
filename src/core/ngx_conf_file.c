@@ -560,7 +560,7 @@ static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    ngx_log_error(NGX_LOG_INFO, cf->log, 0, "include %s", file.data);
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
     return ngx_conf_parse(cf, &file);
 }
@@ -596,6 +596,11 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
     ngx_uint_t        i;
     ngx_list_part_t  *part;
     ngx_open_file_t  *file;
+
+#if (NGX_SUPPRESS_WARN)
+    full.len = 0;
+    full.data = NULL;
+#endif
 
     if (name) {
         full = *name;
@@ -637,7 +642,7 @@ ngx_open_file_t *ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         file->name = full;
 
     } else {
-        file->fd = STDERR_FILENO;
+        file->fd = ngx_stderr_fileno;
         file->name.len = 0;
         file->name.data = NULL;
     }

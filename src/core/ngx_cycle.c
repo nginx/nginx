@@ -328,24 +328,6 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
-#if !(WIN32)
-
-    if (!failed && !ngx_test_config && cycle->log->file->fd != STDERR_FILENO) {
-
-        ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
-                       "dup2: %0X %d \"%s\"",
-                       cycle->log->file,
-                       cycle->log->file->fd, cycle->log->file->name.data);
-
-        if (dup2(cycle->log->file->fd, STDERR_FILENO) == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                          "dup2(STDERR) failed");
-            failed = 1;
-        }
-    }
-
-#endif
-
     if (failed) {
 
         /* rollback the new cycle configuration */
@@ -364,7 +346,9 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                 i = 0;
             }
 
-            if (file[i].fd == NGX_INVALID_FILE) {
+            if (file[i].fd == NGX_INVALID_FILE
+                || file[i].fd == ngx_stderr_fileno)
+            {
                 continue;
             }
 
@@ -400,8 +384,26 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     /* commit the new cycle configuration */
 
-    pool->log = cycle->log;
+#if !(WIN32)
 
+    if (!ngx_test_config && cycle->log->file->fd != STDERR_FILENO) {
+
+        ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
+                       "dup2: %0X %d \"%s\"",
+                       cycle->log->file,
+                       cycle->log->file->fd, cycle->log->file->name.data);
+
+        if (dup2(cycle->log->file->fd, STDERR_FILENO) == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          "dup2(STDERR) failed");
+            /* fatal */
+            exit(1);
+        }
+    }
+
+#endif
+
+    pool->log = cycle->log;
 
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->init_module) {
@@ -446,7 +448,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
             i = 0;
         }
 
-        if (file[i].fd == NGX_INVALID_FILE) {
+        if (file[i].fd == NGX_INVALID_FILE || file[i].fd == ngx_stderr_fileno) {
             continue;
         }
 

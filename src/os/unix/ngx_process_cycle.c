@@ -189,7 +189,9 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                 ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "start new workers");
 
                 ngx_start_worker_processes(cycle, ccf->worker_processes,
-                                           NGX_PROCESS_JUST_RESPAWN);
+                                           NGX_PROCESS_RESPAWN);
+                ngx_noaccepting = 0;
+
                 continue;
             }
 
@@ -313,15 +315,19 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
 
         for (i = 0; i < ngx_last_process; i++) {
 
-            if (i == ngx_process_slot || ngx_processes[i].pid == -1) {
+            if (i == ngx_process_slot
+                || ngx_processes[i].pid == -1
+                || ngx_processes[i].channel[0] == -1)
+            {
                 continue;
             }
 
-            ngx_log_debug5(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+            ngx_log_debug6(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                            "pass channel s:%d pid:" PID_T_FMT
-                           " fd:%d to s:%d pid:" PID_T_FMT,
+                           " fd:%d to s:%d pid:" PID_T_FMT " fd:%d",
                            ch.slot, ch.pid, ch.fd,
-                           i, ngx_processes[i].pid);
+                           i, ngx_processes[i].pid,
+                           ngx_processes[i].channel[0]);
 
             /* TODO: NGX_AGAIN */
 
@@ -377,6 +383,16 @@ static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 
 
     for (i = 0; i < ngx_last_process; i++) {
+
+        ngx_log_debug7(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "child: %d " PID_T_FMT " e:%d t:%d d:%d r:%d j:%d",
+                       i,
+                       ngx_processes[i].pid,
+                       ngx_processes[i].exiting,
+                       ngx_processes[i].exited,
+                       ngx_processes[i].detached,
+                       ngx_processes[i].respawn,
+                       ngx_processes[i].just_respawn);
 
         if (ngx_processes[i].detached || ngx_processes[i].pid == -1) {
             continue;
@@ -629,6 +645,10 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
 
         if (n == ngx_process_slot) {
+            continue;
+        }
+
+        if (ngx_processes[n].channel[1] == -1) {
             continue;
         }
 

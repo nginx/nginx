@@ -44,10 +44,12 @@ typedef struct {
 
 
 void ngx_debug_init();
-int ngx_os_init(ngx_log_t *log);
-int ngx_daemon(ngx_log_t *log);
-int ngx_posix_init(ngx_log_t *log);
-int ngx_posix_post_conf_init(ngx_log_t *log);
+ngx_int_t ngx_os_init(ngx_log_t *log);
+void ngx_os_status(ngx_log_t *log);
+ngx_int_t ngx_daemon(ngx_log_t *log);
+ngx_int_t ngx_posix_init(ngx_log_t *log);
+void ngx_posix_status(ngx_log_t *log);
+ngx_int_t ngx_posix_post_conf_init(ngx_log_t *log);
 
 
 ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size);
@@ -58,10 +60,11 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in,
 
 
 extern ngx_os_io_t  ngx_os_io;
-extern int          ngx_ncpu;
-extern int          ngx_max_sockets;
-extern int          ngx_inherited_nonblocking;
+extern ngx_int_t    ngx_ncpu;
+extern ngx_int_t    ngx_max_sockets;
+extern ngx_int_t    ngx_inherited_nonblocking;
 
+#define ngx_stderr_fileno  STDERR_FILENO
 
 #ifdef __FreeBSD__
 #include <ngx_freebsd.h>

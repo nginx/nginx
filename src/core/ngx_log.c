@@ -228,13 +228,16 @@ ngx_log_t *ngx_log_init_stderr()
 {
 #if (WIN32)
 
-    ngx_stderr.fd = GetStdHandle(STD_ERROR_HANDLE);
+    ngx_stderr_fileno = GetStdHandle(STD_ERROR_HANDLE);
+    ngx_stderr.fd = ngx_stderr_fileno;
 
-    if (ngx_stderr.fd == NGX_INVALID_FILE) {
+    if (ngx_stderr_fileno == NGX_INVALID_FILE) {
+
         /* TODO: where can we log error ? */
+
         return NULL;
 
-    } else if (ngx_stderr.fd == NULL) {
+    } else if (ngx_stderr_fileno == NULL) {
 
         /* there are no associated standard handles */
 
@@ -255,6 +258,8 @@ ngx_log_t *ngx_log_init_stderr()
     return &ngx_log;
 }
 
+
+#if 0
 
 ngx_int_t ngx_log_init_error_log()
 {
@@ -298,6 +303,8 @@ ngx_int_t ngx_log_init_error_log()
 
     return NGX_OK;
 }
+
+#endif
 
 
 ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
