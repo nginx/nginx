@@ -32,11 +32,13 @@ typedef struct {
 
 typedef struct {
     ngx_array_t   rules;
-    unsigned      log:1;
+    ngx_flag_t    log;
 } ngx_http_rewrite_srv_conf_t;
 
 
-static void *ngx_http_rewrite_create_loc_conf(ngx_conf_t *cf);
+static void *ngx_http_rewrite_create_srv_conf(ngx_conf_t *cf);
+static char *ngx_http_rewrite_merge_srv_conf(ngx_conf_t *cf,
+                                             void *parent, void *child);
 static char *ngx_http_rewrite_rule(ngx_conf_t *cf, ngx_command_t *cmd,
                                    void *conf);
 static ngx_int_t ngx_http_rewrite_init(ngx_cycle_t *cycle);
@@ -51,6 +53,13 @@ static ngx_command_t  ngx_http_rewrite_commands[] = {
       0,
       NULL },
 
+    { ngx_string("rewrite_log"),
+      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_rewrite_srv_conf_t, log),
+      NULL },
+
       ngx_null_command
 };
 
@@ -61,8 +70,8 @@ ngx_http_module_t  ngx_http_rewrite_module_ctx = {
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 
-    ngx_http_rewrite_create_loc_conf,      /* create server configuration */
-    NULL,                                  /* merge server configuration */
+    ngx_http_rewrite_create_srv_conf,      /* create server configuration */
+    ngx_http_rewrite_merge_srv_conf,       /* merge server configuration */
 
     NULL,                                  /* create location configration */
     NULL,                                  /* merge location configration */
@@ -187,7 +196,7 @@ static ngx_int_t ngx_http_rewrite_handler(ngx_http_request_t *r)
 }
 
 
-static void *ngx_http_rewrite_create_loc_conf(ngx_conf_t *cf)
+static void *ngx_http_rewrite_create_srv_conf(ngx_conf_t *cf)
 {
     ngx_http_rewrite_srv_conf_t  *conf;
 
@@ -198,9 +207,21 @@ static void *ngx_http_rewrite_create_loc_conf(ngx_conf_t *cf)
     ngx_init_array(conf->rules, cf->pool, 5, sizeof(ngx_http_rewrite_rule_t),
                    NGX_CONF_ERROR);
 
-    conf->log = 1;
+    conf->log = NGX_CONF_UNSET;
 
     return conf;
+}
+
+
+static char *ngx_http_rewrite_merge_srv_conf(ngx_conf_t *cf,
+                                             void *parent, void *child)
+{
+    ngx_http_rewrite_srv_conf_t *prev = parent;
+    ngx_http_rewrite_srv_conf_t *conf = child;
+
+    ngx_conf_merge_value(conf->log, prev->log, 0);
+
+    return NGX_CONF_OK;
 }
 
 

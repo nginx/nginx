@@ -666,10 +666,6 @@ static int ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 ctx->done = 1;
 
-#if 0
-                ngx_http_delete_ctx(r, ngx_http_gzip_filter_module);
-#endif
-
                 break;
             }
 

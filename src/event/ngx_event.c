@@ -170,7 +170,7 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    if (ccf->master == 0) {
+    if (ccf->master == 0 || ngx_accept_mutex_ptr) {
         return NGX_OK;
     }
 
@@ -195,6 +195,10 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
     }
 
     ngx_connection_counter = (ngx_atomic_t *) (shared + 128);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "counter: " PTR_FMT ", %d",
+                   ngx_connection_counter, *ngx_connection_counter);
 
 #endif
 
