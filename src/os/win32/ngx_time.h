@@ -5,6 +5,7 @@
 #include <windows.h>
 
 typedef SYSTEMTIME     ngx_tm_t;
+typedef FILETIME       ngx_mtime_t;
 
 #define ngx_tm_sec     wSecond
 #define ngx_tm_min     wMinute
@@ -14,6 +15,7 @@ typedef SYSTEMTIME     ngx_tm_t;
 #define ngx_tm_year    wYear
 #define ngx_tm_wday    wDayOfWeek
 
+#define ngx_msleep     Sleep
 #define ngx_localtime  GetLocalTime
 #define ngx_msec       GetTickCount
 

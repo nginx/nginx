@@ -11,6 +11,7 @@ typedef DWORD             ngx_err_t;
 
 #define NGX_ENOENT        ERROR_FILE_NOT_FOUND
 #define NGX_EAGAIN        WSAEWOULDBLOCK
+#define NGX_EADDRINUSE    WSAEADDRINUSE
 
 int ngx_strerror_r(ngx_err_t err, char *errstr, size_t size);
 

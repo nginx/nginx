@@ -99,6 +99,7 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *cn, ngx_chain_t *in,
             } else {
                 rc = ngx_sendv(cn->fd, (ngx_iovec_t *) header->elts,
                                header->nelts, (size_t *) &sent);
+                ngx_log_debug(cn->log, "sendv: %d" _ sent);
             }
 #if (HAVE_MAX_SENDFILE_IOVEC)
         }
@@ -110,14 +111,26 @@ ngx_chain_t *ngx_event_write(ngx_connection_t *cn, ngx_chain_t *in,
 
         flush -= sent;
 
-        for (ch = in; ch && !(ch->hunk->type & NGX_HUNK_LAST); ch = ch->next) {
+        for (ch = in; ch; ch = ch->next) {
             if (sent >= ch->hunk->last.file - ch->hunk->pos.file) {
                 sent -= ch->hunk->last.file - ch->hunk->pos.file;
                 ch->hunk->last.file = ch->hunk->pos.file;
-                    continue;
+
+                ngx_log_debug(cn->log, "event write: %qx 0" _
+                              ch->hunk->pos.file);
+
+                if (ch->hunk->type & NGX_HUNK_LAST)
+                   break;
+
+                continue;
             }
 
             ch->hunk->pos.file += sent;
+
+            ngx_log_debug(cn->log, "event write: %qx %qd" _
+                          ch->hunk->pos.file _
+                          ch->hunk->last.file - ch->hunk->pos.file);
+
             break;
         }
 

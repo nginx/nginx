@@ -17,7 +17,7 @@ int *__error()
 }
 
 
-int ngx_create_os_thread(ngx_os_tid_t *tid, void *stack,
+int ngx_create_thread(ngx_os_tid_t *tid, void *stack,
                      int (*func)(void *arg), void *arg, ngx_log_t log)
 {
     int id, err;
@@ -35,7 +35,7 @@ int ngx_create_os_thread(ngx_os_tid_t *tid, void *stack,
 }
 
 
-int ngx_create_os_thread_env(int n, size_t size, ngx_log_t log)
+int ngx_create_thread_env(int n, size_t size, ngx_log_t log)
 {
     char *addr;
 

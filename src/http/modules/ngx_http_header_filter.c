@@ -1,4 +1,11 @@
 
+#include <nginx.h>
+
+#include <ngx_config.h>
+#include <ngx_string.h>
+#include <ngx_hunk.h>
+#include <ngx_http.h>
+
 
 typedef struct {
     int    len;
@@ -18,44 +25,60 @@ int ngx_http_header_filter(ngx_http_request_t *r)
     ngx_hunk_t   *h;
     ngx_chain_t  *ch;
 
-    ngx_test_null(h, ngx_get_hunk(r->pool, 1024, 0, 64), NGX_HTTP_FILTER_ERROR);
+    ngx_test_null(h, ngx_get_hunk(r->pool, 1024, 0, 64),
+                  /* STUB */
+                  -1);
+/*
+                  NGX_HTTP_FILTER_ERROR);
+*/
 
-    status = r->headers_out->status - GX_HTTP_OK;
+    status = r->headers_out->status - NGX_HTTP_OK;
 
-    ngx_memcpy(h->pos.mem, "HTTP/1.0 ", 9);
-    h->pos.mem += 9;
-    ngx_memcpy(h->pos.mem, http_codes[status].line, http_codes[status].len);
-    h->pos.mem += http_codes[status].len;
-    *(h->pos.mem++) = CR; *(h->pos.mem++) = LF;
+    ngx_memcpy(h->last.mem, "HTTP/1.0 ", 9);
+    h->last.mem += 9;
+    ngx_memcpy(h->last.mem, http_codes[status].line, http_codes[status].len);
+    h->last.mem += http_codes[status].len;
+    *(h->last.mem++) = CR; *(h->last.mem++) = LF;
 
-    memcpy(h->pos.mem, "Date: ", 6);
-    h->pos.mem += 6;
-    h->pos.mem += ngx_http_get_time(h->pos.mem, time());
-    *(h->pos.mem++) = CR; *(h->pos.mem++) = LF;
+/*
+    memcpy(h->last.mem, "Date: ", 6);
+    h->last.mem += 6;
+    h->last.mem += ngx_http_get_time(h->last.mem, time(NULL));
+    *(h->last.mem++) = CR; *(h->last.mem++) = LF;
+*/
 
     /* 2^64 is 20 characters  */
     if (r->headers_out->content_length)
-        h->pos.mem += ngx_snprintf(h->pos.mem, 49, "Content-Length: %d" CRLF,
-                                   r->headers_out->content_length);
+        h->last.mem += ngx_snprintf(h->last.mem, 49, "Content-Length: %d" CRLF,
+                                    r->headers_out->content_length);
 
     /* check */
 
-    memcpy(h->pos.mem, "Server: ", 8);
-    h->pos.mem += 8;
+    memcpy(h->last.mem, "Server: ", 8);
+    h->last.mem += 8;
     if (r->headers_out->server) {
-        h->pos.mem = ngx_cpystrn(h->pos.mem, r->headers_out->server,
-                                 h->last.mem - h->pos.mem);
-        check space
+        h->last.mem = ngx_cpystrn(h->last.mem, r->headers_out->server,
+                                  h->end - h->last.mem);
+
+        /* check space */
+
     } else {
-        ngx_memcpy(h->pos.mem, NGINX_VER, sizeof(NGINX_VER));
-        h->pos.mem += sizeof(NGINX_VER);
+        ngx_memcpy(h->last.mem, NGINX_VER, sizeof(NGINX_VER));
+        h->last.mem += sizeof(NGINX_VER);
     }
-    *(h->pos.mem++) = CR; *(h->pos.mem++) = LF;
+    *(h->last.mem++) = CR; *(h->last.mem++) = LF;
+
+    /* end of HTTP header */
+    *(h->last.mem++) = CR; *(h->last.mem++) = LF;
 
     ngx_test_null(ch, ngx_palloc(r->pool, sizeof(ngx_chain_t)),
+                  /* STUB */
+                  -1);
+/*
                   NGX_HTTP_FILTER_ERROR);
+*/
 
-    ch->hunk = in->hunk;
+    ch->hunk = h;
     ch->next = NULL;
 
     return ngx_http_write_filter(r, ch);

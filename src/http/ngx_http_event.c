@@ -1,5 +1,6 @@
 
 #include <ngx_config.h>
+#include <ngx_file.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
 #include <ngx_hunk.h>
@@ -25,6 +26,9 @@ static int ngx_process_http_request_header(ngx_http_request_t *r);
 static int ngx_process_http_request(ngx_http_request_t *r);
 
 static int ngx_http_close_request(ngx_event_t *ev);
+
+/* STUB */
+static int ngx_http_writer(ngx_event_t *ev);
 
 /*
     returns
@@ -62,6 +66,7 @@ int ngx_http_init_connection(ngx_connection_t *c)
 int ngx_http_init_request(ngx_event_t *ev)
 {
     ngx_connection_t   *c = (ngx_connection_t *) ev->data;
+    ngx_http_server_t  *srv = (ngx_http_server_t *) c->server;
     ngx_http_request_t *r;
 
     ngx_log_debug(ev->log, "ngx_http_init_request: entered");
@@ -71,14 +76,14 @@ int ngx_http_init_request(ngx_event_t *ev)
 
     c->data = r;
     r->connection = c;
+    r->server = srv;
 
     ngx_test_null(r->pool, ngx_create_pool(16384, ev->log), -1);
     ngx_test_null(r->buff, ngx_palloc(r->pool, sizeof(ngx_buff_t)), -1);
-    ngx_test_null(r->buff->buff,
-                  ngx_pcalloc(r->pool, sizeof(c->server->buff_size)), -1);
+    ngx_test_null(r->buff->buff, ngx_palloc(r->pool, srv->buff_size), -1);
 
     r->buff->pos = r->buff->last = r->buff->buff;
-    r->buff->end = r->buff->buff + c->server->buff_size;
+    r->buff->end = r->buff->buff + srv->buff_size;
 
     r->state_handler = ngx_process_http_request_line;
 
@@ -180,10 +185,14 @@ static int ngx_process_http_request_header(ngx_http_request_t *r)
 
 static int ngx_process_http_request(ngx_http_request_t *r)
 {
-    int   err;
+    int   err, rc;
     char *name, *loc, *file;
 
     ngx_log_debug(r->connection->log, "HTTP request");
+
+    ngx_test_null(r->headers_out,
+                  ngx_pcalloc(r->pool, sizeof(ngx_http_headers_out_t)),
+                  ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR));
 
     if (*(r->uri_end - 1) == '/') {
         r->handler = NGX_HTTP_DIRECTORY_HANDLER;
@@ -204,14 +213,11 @@ static int ngx_process_http_request(ngx_http_request_t *r)
 
     ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->filename);
 
-}
-#if 0
-
-    if (ngx_stat(r->filename, &r->stat) == -1) {
+    if (ngx_file_type(r->filename, &r->file_info) == -1) {
         err = ngx_errno;
-        ngx_log_error(GX_LOG_ERR, r->connection->log, err,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
                      "ngx_process_http_request: "
-                      ngx_stat_n " %s failed", r->filename);
+                      ngx_file_type_n " %s failed", r->filename);
 
         if (err == NGX_ENOENT)
             return ngx_http_error(r, NGX_HTTP_NOT_FOUND);
@@ -219,16 +225,36 @@ static int ngx_process_http_request(ngx_http_request_t *r)
             return ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
 
-    if (ngx_is_dir(r->stat)) {
+    if (ngx_is_dir(r->file_info)) {
+        ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->filename);
         *file++ = '/';
         *file = '\0';
         r->headers_out->location = r->location;
         return ngx_http_redirect(r, NGX_HTTP_MOVED_PERMANENTLY);
     }
 
-    r->stat_valid = 1;
+    /* STUB */
+    rc =  ngx_http_static_handler(r);
+    if (rc == 0) {
+        r->connection->write->event_handler = ngx_http_writer;
+        ngx_add_event(r->connection->write, NGX_WRITE_EVENT, NGX_CLEAR_EVENT);
+    }
+    return rc;
+
     r->handler = NGX_HTTP_STATIC_HANDLER;
     return NGX_OK;
+}
+
+
+static int ngx_http_writer(ngx_event_t *ev)
+{
+    int rc;
+    ngx_connection_t   *c = (ngx_connection_t *) ev->data;
+    ngx_http_request_t *r = (ngx_http_request_t *) c->data;
+
+    rc = ngx_http_write_filter(r, NULL);
+    ngx_log_debug(r->connection->log, "write_filter: %d" _ rc);
+    return rc;
 }
 
 static int ngx_http_handler(ngx_http_request_t *r, int handler)
@@ -236,12 +262,13 @@ static int ngx_http_handler(ngx_http_request_t *r, int handler)
     if (handler == NGX_HTTP_STATIC_HANDLER) 
         return ngx_http_static_handler(r);
 
+#if 0
     elsif (handler == NGX_HTTP_DIRECTORY_HANDLER) 
         return ngx_http_index_handler(r);
+#endif
 
     return ngx_http_error(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
 }
-#endif
 
 static int ngx_http_redirect(ngx_http_request_t *r, int redirect)
 {

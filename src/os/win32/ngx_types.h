@@ -6,7 +6,6 @@
 
 
 typedef HANDLE            ngx_file_t;
-typedef SOCKET            ngx_socket_t;
 typedef long              time_t;
 typedef unsigned __int64  off_t;
 

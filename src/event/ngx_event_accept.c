@@ -38,6 +38,12 @@ int ngx_event_accept(ngx_event_t *ev)
  
         ngx_log_debug(ev->log, "ngx_event_accept: accepted socket: %d" _ s);
 
+#if !(HAVE_INHERITED_NONBLOCK)
+        if (ngx_nonblocking(s) == -1)
+            ngx_log_error(NGX_LOG_ERR, log, ngx_socket_errno,
+                          ngx_nonblocking_n "failed");
+#endif
+
         ngx_memzero(&ngx_read_events[s], sizeof(ngx_event_t));
         ngx_memzero(&ngx_write_events[s], sizeof(ngx_event_t));
         ngx_memzero(&ngx_connections[s], sizeof(ngx_connection_t));
@@ -69,7 +75,7 @@ int ngx_event_accept(ngx_event_t *ev)
             ngx_read_events[s].ready = 1;
 #endif
 
-        cn->server->handler(&ngx_connections[s]);
+        cn->handler(&ngx_connections[s]);
 
 #if (HAVE_KQUEUE)
 #if !(USE_KQUEUE)

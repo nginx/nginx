@@ -4,6 +4,7 @@
 
 #include <ngx_config.h>
 #include <ngx_types.h>
+#include <ngx_file.h>
 #include <ngx_connection.h>
 
 
@@ -22,6 +23,7 @@
 #define NGX_OK                          0
 
 #define NGX_HTTP_OK                     200
+#define NGX_HTTP_MOVED_PERMANENTLY      302
 #define NGX_HTTP_NOT_FOUND              404
 #define NGX_HTTP_INTERNAL_SERVER_ERROR  503
 
@@ -38,8 +40,9 @@ typedef struct {
 #define ngx_get_module_ctx(r, module)  (module)->ctx
 
 typedef struct {
-    char  *doc_root;
-    int    doc_root_len;
+    char   *doc_root;
+    size_t  doc_root_len;
+    size_t  buff_size;
 } ngx_http_server_t;
 
 typedef struct {
@@ -52,22 +55,29 @@ typedef struct {
 typedef struct {
     int     status;
     int     connection;
-    size_t  content_length;
+    off_t   content_length;
+    char   *location;
     char   *content_type;
     char   *charset;
     char   *etag;
+    char   *server;
     time_t  date;
     time_t  last_modified;
-} ngx_http_header_out_t;
+} ngx_http_headers_out_t;
 
 typedef struct ngx_http_request_s ngx_http_request_t;
 
 struct ngx_http_request_s {
     char  *filename;
     char  *location;
+    ngx_file_t  fd;
+
+    ngx_http_headers_out_t *headers_out;
 
     int    filename_len;
     int  (*handler)(ngx_http_request_t *r);
+
+    ngx_file_info_t file_info;
 
     int    method;
 
@@ -83,7 +93,7 @@ struct ngx_http_request_s {
     ngx_buff_t  *buff;
     ngx_pool_t  *pool;
 
-    /* internal */
+    unsigned  header_only:1;
     unsigned  unusual_uri:1;
     unsigned  complex_uri:1;
 

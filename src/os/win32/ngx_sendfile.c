@@ -1,6 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_types.h>
+#include <ngx_socket.h>
 #include <ngx_errno.h>
 #include <ngx_log.h>
 #include <ngx_sendv.h>
@@ -52,16 +53,22 @@ int ngx_sendfile(ngx_socket_t s,
         ptfb = NULL;
     }
 
+#if 0
     tfrc = TransmitFile(s, fd, nbytes, 0, &olp, ptfb, 0);
+#else
+    tfrc = TransmitFile(s, fd, nbytes, 0, NULL, ptfb, 0);
+#endif
 
     if (tfrc == 0)
         tf_err = ngx_socket_errno;
 
     /* set sent */
+#if 0
     rc = WSAGetOverlappedResult(s, &olp, (unsigned long *) sent, 0, NULL);
+#endif
 
-    ngx_log_debug(log, "ngx_sendfile: %d, @%qd %d:%qd" _
-                  tfrc _ offset _ nbytes _ *sent);
+    ngx_log_debug(log, "ngx_sendfile: %d, @%I64d %I64d:%d" _
+                  tfrc _ offset _ *sent _ nbytes);
 
     if (rc == 0) {
         err = ngx_socket_errno;
@@ -77,7 +84,8 @@ int ngx_sendfile(ngx_socket_t s,
         }
 
         ngx_log_error(NGX_LOG_INFO, log, tf_err,
-                     "ngx_sendfile: TransmitFile sent only %qd bytes", *sent);
+                      "ngx_sendfile: TransmitFile sent only %I64d bytes",
+                      *sent);
     }
 
     if (rc == 0)

@@ -4,6 +4,7 @@
 
 #include <ngx_config.h>
 #include <ngx_types.h>
+#include <ngx_file.h>
 #include <ngx_alloc.h>
 
 

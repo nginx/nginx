@@ -1,5 +1,6 @@
 
 #include <ngx_types.h>
+#include <ngx_socket.h>
 #include <ngx_sendv.h>
 
 ssize_t ngx_sendv(ngx_socket_t s, ngx_iovec_t *iovec, int n, size_t *sent)

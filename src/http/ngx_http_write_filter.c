@@ -34,7 +34,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ctx = (ngx_http_write_filter_ctx_t *)
                               ngx_get_module_ctx(r->main ? r->main : r,
-                                                &ngx_http_write_filter_module);
+                                                 &ngx_http_write_filter_module);
     size = flush = 0;
     last = 0;
     prev = &ctx->out;
@@ -43,6 +43,10 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (ch = ctx->out; ch; ch = ch->next) {
         prev = &ch->next;
         size += ch->hunk->last.file - ch->hunk->pos.file;
+
+        ngx_log_debug(r->connection->log, "old chunk: %x %qx %qd" _
+                      ch->hunk->type _ ch->hunk->pos.file _
+                      ch->hunk->last.file - ch->hunk->pos.file);
 
         if (ch->hunk->type & NGX_HUNK_FLUSH)
             flush = size;
@@ -62,6 +66,10 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         prev = &ch->next;
         size += ch->hunk->last.file - ch->hunk->pos.file;
 
+        ngx_log_debug(r->connection->log, "new chunk: %x %qx %qd" _
+                      ch->hunk->type _ ch->hunk->pos.file _
+                      ch->hunk->last.file - ch->hunk->pos.file);
+
         if (ch->hunk->type & NGX_HUNK_FLUSH)
             flush = size;
 
@@ -69,7 +77,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
             last = 1;
     }
 
-    if (flush == 0 && size < ctx->buffer_output)
+    if (!last && flush == 0 && size < ctx->buffer_output)
         return NGX_HTTP_FILTER_DONE;
 
     chain = ngx_event_write(r->connection, ctx->out, flush);

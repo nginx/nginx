@@ -4,7 +4,10 @@
 
 #include <ngx_config.h>
 #include <ngx_types.h>
+#include <ngx_socket.h>
 #include <ngx_log.h>
+#include <ngx_alloc.h>
+#include <ngx_array.h>
 
 typedef struct ngx_event_s       ngx_event_t;
 
@@ -76,13 +79,12 @@ typedef struct {
 */
 } ngx_event_actions_t;
 
-/*
 
+/*
 NGX_LEVEL_EVENT (default)  select, poll, kqueue
                                 requires to read whole data
 NGX_ONESHOT_EVENT          kqueue
 NGX_CLEAR_EVENT            kqueue
-
 */
 
 #if (HAVE_KQUEUE)
@@ -135,7 +137,8 @@ extern ngx_event_type_e      ngx_event_type;
 #endif
 
 
-void ngx_worker(ngx_listen_t *sock, int n, ngx_pool_t *pool, ngx_log_t *log);
+void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log);
+void ngx_worker(ngx_log_t *log);
 
 
 #endif /* _NGX_EVENT_H_INCLUDED_ */

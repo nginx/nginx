@@ -1,6 +1,7 @@
 #ifndef _NGX_CONNECTION_H_INCLUDED_
 #define _NGX_CONNECTION_H_INCLUDED_
 
+#include <ngx_socket.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
 #include <ngx_server.h>
@@ -21,14 +22,14 @@ struct ngx_connection_s {
 #endif
 
     ngx_log_t        *log;
+    int             (*handler)(ngx_connection_t *c);
     ngx_server_t     *server;
     ngx_server_t     *servers;
     ngx_pool_t       *pool;
 };
 
 
-/*
-
+#if 0
 cached file
     int      fd;       -2 unused, -1 closed (but read or mmaped), >=0 open
     char    *name;
@@ -49,6 +50,6 @@ cached file
 
 EV_VNODE        should notify by some signal if diretory tree is changed
                 or stat if aged >= N seconds (big enough)
-*/
+#endif
 
 #endif /* _NGX_CONNECTION_H_INCLUDED_ */

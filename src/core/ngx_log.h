@@ -16,6 +16,21 @@ typedef enum {
 } ngx_log_e;
 
 /*
+    "[%time] [%level] %pid#%tid: %message:(%errno)%errstr, while %action"
+        " %peer and processing %context"
+
+    message = "recv() failed";
+    errno = 32;
+    action = "reading request headers from client";
+    peer = "192.168.1.1";
+    context = "URL /"
+
+    "[2002/08/20 12:00:00] [error] 412#3: recv() failed:(32)Broken pipe,"
+    " while reading request headers from client 192.168.1.1"
+    " and processing URL /"
+
+
+    OLD:
     "... while ", action = "reading client request headers"
     "... while reading client request headers"
     "... while ", action = "reading client request headers"

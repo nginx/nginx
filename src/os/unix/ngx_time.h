@@ -14,6 +14,8 @@ typedef struct tm      ngx_tm_t;
 #define ngx_tm_year    tm_year
 #define ngx_tm_wday    tm_wday
 
+#define ngx_msleep(ms) usleep(ms * 1000)
+
 void ngx_localtime(ngx_tm_t *tm);
 
 u_int ngx_msec(void);

@@ -4,15 +4,17 @@
 
 #include <windows.h>
 
-/* INVALID_FILE_ATTRIBUTES specified but never defined */
+/* INVALID_FILE_ATTRIBUTES specified but never defined at least in VC6SP2 */
 #ifndef INVALID_FILE_ATTRIBUTES
 #define INVALID_FILE_ATTRIBUTES  0xFFFFFFFF
 #endif
 
-typedef DWORD  ngx_stat_t;
+typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
 
 
-#define ngx_is_dir(sb)           (*sb & FILE_ATTRIBUTE_DIRECTORY) 
+#define ngx_file_type_n          "GetFileAttributes"
+
+#define ngx_is_dir(fi)          (fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) 
 
 #define ngx_stat_n               "GetFileAttributes"
 
@@ -20,7 +22,9 @@ typedef DWORD  ngx_stat_t;
 #define ngx_fstat_n              "GetFileAttributes"
 
 
+/*
 int ngx_stat(char *file, ngx_stat_t *sb);
+*/
 
 
 #endif /* _NGX_STAT_H_INCLUDED_ */

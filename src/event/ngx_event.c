@@ -3,6 +3,7 @@
 #include <ngx_types.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
+#include <ngx_listen.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
 #include <ngx_event_accept.h>
@@ -18,7 +19,7 @@ ngx_event_t         *ngx_read_events, *ngx_write_events;
 
 #if !(USE_KQUEUE)
 
-#if 1
+#if 0
 ngx_event_type_e     ngx_event_type = NGX_SELECT_EVENT;
 #else
 ngx_event_type_e     ngx_event_type = NGX_KQUEUE_EVENT;
@@ -40,9 +41,10 @@ static void (*ngx_event_init[]) (int max_connections, ngx_log_t *log) = {
 #endif /* USE_KQUEUE */
 
 
-void ngx_worker(ngx_listen_t *sock, int n, ngx_pool_t *pool, ngx_log_t *log)
+void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
 {
     int  i, fd;
+    ngx_listen_t *s;
 
     /* per group */
     int max_connections = 512;
@@ -55,18 +57,21 @@ void ngx_worker(ngx_listen_t *sock, int n, ngx_pool_t *pool, ngx_log_t *log)
                                                      * max_connections, log);
 
     /* for each listening socket */
-    for (i = 0; i < n; i++) {
-        fd = sock[i].fd;
+    s = (ngx_listen_t *) ls->elts;
+    for (i = 0; i < ls->nelts; i++) {
+
+        fd = s[i].fd;
 
         ngx_memzero(&ngx_read_events[fd], sizeof(ngx_event_t));
         ngx_memzero(&ngx_write_events[fd], sizeof(ngx_event_t));
         ngx_memzero(&ngx_connections[fd], sizeof(ngx_connection_t));
 
         ngx_connections[fd].fd = fd;
-        ngx_connections[fd].server = sock[i].server;
+        ngx_connections[fd].server = s[i].server;
         ngx_connections[fd].read = (void *) &ngx_read_events[fd].data;
+        ngx_connections[fd].handler = s[i].handler;
         ngx_read_events[fd].data = &ngx_connections[fd];
-        ngx_read_events[fd].log = ngx_connections[fd].log = sock[i].log;
+        ngx_read_events[fd].log = ngx_connections[fd].log = s[i].log;
         ngx_read_events[fd].data = &ngx_connections[fd];
         ngx_read_events[fd].event_handler = &ngx_event_accept;
         ngx_read_events[fd].listening = 1;
@@ -74,11 +79,14 @@ void ngx_worker(ngx_listen_t *sock, int n, ngx_pool_t *pool, ngx_log_t *log)
         ngx_read_events[fd].available = 0;
 
 #if (HAVE_DEFERRED_ACCEPT)
-        ngx_read_events[fd].accept_filter = sock->accept_filter;
+        ngx_read_events[fd].accept_filter = s[i].accept_filter;
 #endif
         ngx_add_event(&ngx_read_events[fd], NGX_READ_EVENT, 0);
     }
+}
 
+void ngx_worker(ngx_log_t *log)
+{
     while (1) {
         ngx_log_debug(log, "ngx_worker cycle");
 

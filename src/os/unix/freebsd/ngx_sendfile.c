@@ -1,6 +1,8 @@
 
 #include <ngx_config.h>
 #include <ngx_types.h>
+#include <ngx_file.h>
+#include <ngx_socket.h>
 #include <ngx_errno.h>
 #include <ngx_log.h>
 #include <ngx_sendv.h>
@@ -56,8 +58,8 @@ int ngx_sendfile(ngx_socket_t s,
         }
     }
 
-    ngx_log_debug(log, "ngx_sendfile: %d, @%qd %d:%qd" _
-                  rc _ offset _ nbytes _ *sent);
+    ngx_log_debug(log, "ngx_sendfile: %d, @%qd %qd:%d" _
+                  rc _ offset _ *sent _ nbytes);
 
     return 0;
 }

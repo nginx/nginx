@@ -3,6 +3,7 @@
 
 
 #include <ngx_types.h>
+#include <ngx_socket.h>
 
 typedef struct iovec  ngx_iovec_t;
 #define ngx_iov_base  iov_base

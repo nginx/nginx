@@ -28,6 +28,10 @@
 
 #define ngx_close_socket closesocket
 
+#ifndef HAVE_INHERITED_NONBLOCK
+#define HAVE_INHERITED_NONBLOCK  1
+#endif
+
 #ifndef HAVE_WIN32_TRANSMITPACKETS
 #define HAVE_WIN32_TRANSMITPACKETS  1
 #define HAVE_WIN32_TRANSMITFILE     0
@@ -88,6 +92,10 @@
 
 #include <osreldate.h>
 
+#ifndef HAVE_INHERITED_NONBLOCK
+#define HAVE_INHERITED_NONBLOCK  1
+#endif
+
 #if __FreeBSD_version >= 300007
 
 #ifndef HAVE_FREEBSD_SENDFILE
@@ -127,6 +135,15 @@
 
 
 #endif /* __FreeBSD__ */
+
+
+#ifdef __SOME_OS_TEMPLATE__
+
+#ifndef HAVE_INHERITED_NONBLOCK
+#define HAVE_INHERITED_NONBLOCK  1
+#endif
+
+#endif
 
 
 #endif /* _NGX_CONFIG_H_INCLUDED_ */
