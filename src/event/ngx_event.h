@@ -3,6 +3,9 @@
 
 
 #include <ngx_config.h>
+#include <ngx_core.h>
+
+#if 0
 #include <ngx_types.h>
 #include <ngx_time.h>
 #include <ngx_socket.h>
@@ -10,6 +13,7 @@
 #include <ngx_alloc.h>
 #include <ngx_array.h>
 #include <ngx_conf_file.h>
+#endif
 
 
 
@@ -19,7 +23,9 @@
 #define NGX_INVALID_INDEX  0x80000000
 
 
+#if 0
 typedef struct ngx_event_s       ngx_event_t;
+#endif
 
 #if (HAVE_IOCP)
 typedef struct {
@@ -125,6 +131,7 @@ struct ngx_event_s {
 };
 
 
+#if 1
 typedef enum {
     NGX_SELECT_EVENT_N = 0,
 #if (HAVE_POLL)
@@ -144,7 +151,7 @@ typedef enum {
 #endif
     NGX_DUMMY_EVENT_N    /* avoid comma at end of enumerator list */
 } ngx_event_type_e ;
-
+#endif
 
 
 typedef struct {
@@ -165,18 +172,18 @@ typedef struct {
 
 /* The event filter requires to read/write the whole data -
    select, poll, /dev/poll, kqueue. */
-#define NGX_HAVE_LEVEL_EVENT    1
+#define NGX_HAVE_LEVEL_EVENT    0x00000001
 
 /* The event filter is deleted after a notification without an additional
    syscall - select, poll, kqueue.  */
-#define NGX_HAVE_ONESHOT_EVENT  2
+#define NGX_HAVE_ONESHOT_EVENT  0x00000002
 
 /* The event filter notifies only the changes and an initial level - kqueue */
-#define NGX_HAVE_CLEAR_EVENT    4
+#define NGX_HAVE_CLEAR_EVENT    0x00000004
 
 /* The event filter has kqueue features - the eof flag, errno,
    available data, etc */
-#define NGX_HAVE_KQUEUE_EVENT   8
+#define NGX_HAVE_KQUEUE_EVENT   0x00000008
 
 /* The event filter supports low water mark - kqueue's NOTE_LOWAT.
    kqueue in FreeBSD 4.1-4.2 has no NOTE_LOWAT so we need a separate flag */
@@ -207,6 +214,7 @@ typedef struct {
    kqueue:     kqueue deletes event filters for file that closed
                so we need only to delete filters in user-level batch array
    /dev/poll:  we need to flush POLLREMOVE event before closing file */
+
 #define NGX_CLOSE_EVENT         1
 
 
@@ -214,9 +222,6 @@ typedef struct {
 
 #define NGX_READ_EVENT     EVFILT_READ
 #define NGX_WRITE_EVENT    EVFILT_WRITE
-
-#define NGX_ENABLE_EVENT   EV_ENABLE
-#define NGX_DISABLE_EVENT  EV_DISABLE
 
 /* NGX_CLOSE_EVENT is the module flag and it would not go into a kernel
    so we need to choose the value that would not interfere with any existent
@@ -251,6 +256,10 @@ typedef struct {
 #define NGX_ONESHOT_EVENT  1
 
 #endif /* HAVE_KQUEUE */
+
+#ifndef NGX_CLEAR_EVENT
+#define NGX_CLEAR_EVENT    0    /* dummy */
+#endif
 
 #if (USE_KQUEUE)
 
@@ -317,8 +326,8 @@ extern int                   ngx_event_flags;
 
 typedef struct {
     int   connections;
-    int   type;
     int   timer_queues;
+    int   type;
 } ngx_event_conf_t;
 
 

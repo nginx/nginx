@@ -435,6 +435,10 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     int         flag;
     ngx_str_t  *value;
 
+    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
     value = (ngx_str_t *) cf->args->elts;
 
     if (ngx_strcasecmp(value[1].data, "on") == 0) {
@@ -458,6 +462,11 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     ngx_str_t  *field, *value;
 
     field = (ngx_str_t *) (conf + cmd->offset);
+
+    if (field->len > 0) {
+        return "is duplicate";
+    }
+
     value = (ngx_str_t *) cf->args->elts;
 
     field->len = value[1].len;
@@ -471,6 +480,10 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
     int         num, len;
     ngx_str_t  *value;
+
+    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
 
     value = (ngx_str_t *) cf->args->elts;
 
@@ -492,6 +505,10 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     int         size, len, scale;
     char        last;
     ngx_str_t  *value;
+
+    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
 
     value = (ngx_str_t *) cf->args->elts;
 
@@ -534,6 +551,10 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     u_int       max, i;
     char        last, *start;
     ngx_str_t  *value;
+
+    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
 
     value = (ngx_str_t *) cf->args->elts;
     start = value[1].data;
@@ -625,6 +646,10 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     u_int       max, i;
     char        last, *start;
     ngx_str_t  *value;
+
+    if (*(int *) (conf + cmd->offset) != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
 
     value = (ngx_str_t *) cf->args->elts;
     start = value[1].data;

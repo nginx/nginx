@@ -104,7 +104,7 @@
 #endif
 
 
-#if (HAVE_DEVPOLL)
+#if (HAVE_DEVPOLL) && !(TEST_DEVPOLL)
 #include <sys/ioctl.h>
 #include <sys/devpoll.h>        /* Solaris, HP/UX */
 #endif

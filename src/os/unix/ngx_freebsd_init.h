@@ -4,8 +4,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_log.h>
-#include <ngx_os_init.h>
 #include <sys/sysctl.h>
 
 

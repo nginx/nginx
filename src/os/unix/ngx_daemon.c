@@ -11,7 +11,7 @@ int ngx_daemon(ngx_log_t *log)
 
     switch (fork()) {
     case -1:
-        ngx_log_error(NGX_LOG_ALERT, log, errno, "fork() failed");
+        ngx_log_error(NGX_LOG_EMERG, log, errno, "fork() failed");
         return NGX_ERROR;
 
     case 0:
@@ -22,7 +22,7 @@ int ngx_daemon(ngx_log_t *log)
     }
 
     if (setsid() == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, errno, "setsid() failed");
+        ngx_log_error(NGX_LOG_EMERG, log, errno, "setsid() failed");
         return NGX_ERROR;
     }
 
@@ -32,7 +32,7 @@ int ngx_daemon(ngx_log_t *log)
 
     switch (fork()) {
     case -1:
-        ngx_log_error(NGX_LOG_ALERT, log, errno, "fork() failed");
+        ngx_log_error(NGX_LOG_EMERG, log, errno, "fork() failed");
         return NGX_ERROR;
 
     case 0:
@@ -49,28 +49,28 @@ int ngx_daemon(ngx_log_t *log)
 #if 0
     fd = open("/dev/null", O_RDWR);
     if (fd == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, errno, "open(\"/dev/null\") failed");
+        ngx_log_error(NGX_LOG_EMERG, log, errno, "open(\"/dev/null\") failed");
         return NGX_ERROR;
     }
 
     if (dup2(fd, STDIN_FILENO) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, errno, "dup2(STDIN) failed");
+        ngx_log_error(NGX_LOG_EMERG, log, errno, "dup2(STDIN) failed");
         return NGX_ERROR;
     }
 
     if (dup2(fd, STDOUT_FILENO) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, errno, "dup2(STDOUT) failed");
+        ngx_log_error(NGX_LOG_EMERG, log, errno, "dup2(STDOUT) failed");
         return NGX_ERROR;
     }
 
     if (dup2(fd, STDERR_FILENO) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, errno, "dup2(STDERR) failed");
+        ngx_log_error(NGX_LOG_EMERG, log, errno, "dup2(STDERR) failed");
         return NGX_ERROR;
     }
 
     if (fd > STDERR_FILENO) {
         if (close(fd) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, log, errno, "close() failed");
+            ngx_log_error(NGX_LOG_EMERG, log, errno, "close() failed");
             return NGX_ERROR;
         }
     }

@@ -1,29 +1,23 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_types.h>
-#include <ngx_string.h>
-#include <ngx_log.h>
-#include <ngx_alloc.h>
-#include <ngx_array.h>
 #include <ngx_listen.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
-#include <ngx_conf_file.h>
+
+
+#define DEF_CONNECTIONS  1024
+
 
 extern ngx_event_module_t ngx_select_module_ctx;
-
-#if (HAVE_POLL)
-#include <ngx_poll_module.h>
-#endif
-
-#if (HAVE_DEVPOLL)
-#include <ngx_devpoll_module.h>
-#endif
 
 #if (HAVE_KQUEUE)
 extern ngx_event_module_t ngx_kqueue_module_ctx;
 #include <ngx_kqueue_module.h>
+#endif
+
+#if (HAVE_DEVPOLL)
+extern ngx_event_module_t ngx_devpoll_module_ctx;
 #endif
 
 #if (HAVE_AIO)
@@ -259,7 +253,6 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
     char                  *rv;
     void               ***ctx;
     ngx_conf_t            pcf;
-    ngx_event_conf_t     *ecf;
     ngx_event_module_t   *module;
 
     /* count the number of the event modules and set up their indices */
@@ -364,6 +357,7 @@ static void *ngx_event_create_conf(ngx_pool_t *pool)
                   NGX_CONF_ERROR);
 
     ecf->connections = NGX_CONF_UNSET;
+    ecf->timer_queues = NGX_CONF_UNSET;
     ecf->type = NGX_CONF_UNSET;
 
     return ecf;
@@ -376,13 +370,27 @@ static char *ngx_event_init_conf(ngx_pool_t *pool, void *conf)
 
 #if (HAVE_KQUEUE)
 
-    ngx_conf_init_value(ecf->connections, 1024);
+#if 0
+    if (ecf->connections != NGX_CONF_UNSET) {
+        ecf->connections = (ngx_max_connections < DEF_CONNECTIONS) ?
+                                        ngx_max_connections : DEF_CONNECTIONS;
+
+    } else if (ecf->connections > ngx_max_connections) {
+    }
+#endif
+
+    ngx_conf_init_value(ecf->connections, DEF_CONNECTIONS);
     ngx_conf_init_value(ecf->type, ngx_kqueue_module_ctx.index);
+
+#elif (HAVE_DEVPOLL)
+
+    ngx_conf_init_value(ecf->connections, DEF_CONNECTIONS);
+    ngx_conf_init_value(ecf->type, ngx_devpoll_module_ctx.index);
 
 #else /* HAVE_SELECT */
 
     ngx_conf_init_value(ecf->connections,
-                        FD_SETSIZE < 1024 ? FD_SETSIZE : 1024);
+                  FD_SETSIZE < DEF_CONNECTIONS ? FD_SETSIZE : DEF_CONNECTIONS);
 
     ngx_conf_init_value(ecf->type, ngx_select_module_ctx.index);
 

@@ -1,63 +1,114 @@
 
+/*
+ * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_types.h>
-#include <ngx_errno.h>
-#include <ngx_log.h>
-#include <ngx_time.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
-#include <ngx_event_timer.h>
-#include <ngx_poll_module.h>
 
 
-/* should be per-thread */
+static int ngx_poll_init(ngx_log_t *log);
+static void ngx_poll_done(ngx_log_t *log);
+static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags);
+static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags);
+static int ngx_poll_process_events(ngx_log_t *log);
+
+
 static struct pollfd  *event_list;
 static u_int           nevents;
 
 static ngx_event_t   **event_index;
 static ngx_event_t   **ready_index;
-static ngx_event_t    *timer_queue;
-/* */
 
-int ngx_poll_init(int max_connections, ngx_log_t *log)
+
+static ngx_str_t    poll_name = ngx_string("poll");
+
+ngx_event_module_t  ngx_poll_module_ctx = {
+    NGX_EVENT_MODULE,
+    &poll_name,
+    NULL,                                  /* create configuration */
+    NULL,                                  /* init configuration */
+
+    {
+        ngx_poll_add_event,                /* add an event */
+        ngx_poll_del_event,                /* delete an event */
+        ngx_poll_add_event,                /* enable an event */
+        ngx_poll_del_event,                /* disable an event */
+        NULL,                              /* add an connection */
+        NULL,                              /* delete an connection */
+        ngx_poll_process_events,           /* process the events */
+        ngx_poll_init,                     /* init the events */
+        ngx_poll_done                      /* done the events */
+    }
+
+};
+
+ngx_module_t  ngx_poll_module = {
+    &ngx_poll_module_ctx,                  /* module context */
+    0,                                     /* module index */
+    NULL,                                  /* module directives */
+    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NULL                                   /* init module */
+};
+
+
+
+static int ngx_poll_init(ngx_log_t *log)
 {
+    ngx_event_conf_t  *ecf;
+
+    ecf = ngx_event_get_conf(ngx_event_module_ctx);
+
     ngx_test_null(event_list,
-                  ngx_alloc(sizeof(struct pollfd) * max_connections, log),
+                  ngx_alloc(sizeof(struct pollfd) * ecf->connections, log),
                   NGX_ERROR);
 
     ngx_test_null(event_index,
-                  ngx_alloc(sizeof(ngx_event_t *) * max_connections, log),
+                  ngx_alloc(sizeof(ngx_event_t *) * ecf->connections, log),
                   NGX_ERROR);
 
     ngx_test_null(ready_index,
-                  ngx_alloc(sizeof(ngx_event_t *) * 2 * max_connections, log),
+                  ngx_alloc(sizeof(ngx_event_t *) * 2 * ecf->connections, log),
                   NGX_ERROR);
 
     nevents = 0;
 
-    timer_queue = ngx_event_init_timer(log);
-    if (timer_queue == NULL) {
+    if (ngx_event_timer_init(log) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
-    ngx_event_actions.add = ngx_poll_add_event;
-    ngx_event_actions.del = ngx_poll_del_event;
-    ngx_event_actions.timer = ngx_event_add_timer;
-    ngx_event_actions.process = ngx_poll_process_events;
+    ngx_event_actions = ngx_poll_module_ctx.actions;
+
+    ngx_event_flags = NGX_HAVE_LEVEL_EVENT
+                      |NGX_HAVE_ONESHOT_EVENT
+                      |NGX_USE_LEVEL_EVENT;
 
     return NGX_OK;
 }
 
-int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
+
+static void ngx_poll_done(ngx_log_t *log)
+{
+    ngx_event_timer_done(log);
+
+    ngx_free(event_list);
+    ngx_free(event_index);
+    ngx_free(ready_index);
+}
+
+
+static int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t       *e;
     ngx_connection_t  *c;
 
-    c = (ngx_connection_t *) ev->data;
+    c = ev->data;
 
     ev->active = 1;
-    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
+    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 
     if (event == NGX_READ_EVENT) {
         e = c->write;
@@ -93,7 +144,8 @@ int ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
     return NGX_OK;
 }
 
-int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
+
+static int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t       *e;
     ngx_connection_t  *c;
@@ -138,7 +190,8 @@ int ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
     return NGX_OK;
 }
 
-int ngx_poll_process_events(ngx_log_t *log)
+
+static int ngx_poll_process_events(ngx_log_t *log)
 {
     int                ready, found;
     u_int              i, nready;
@@ -202,33 +255,38 @@ int ngx_poll_process_events(ngx_log_t *log)
 
         found = 0;
 
-        if (event_list[i].revents & POLLIN) {
+        if (event_list[i].revents & POLLNVAL) {
+            ngx_log_error(NGX_LOG_ALERT, log, EBADF,
+                          "poll() error on %d", event_list[i].fd);
+            continue;
+        }
+
+        if (event_list[i].revents & POLLIN
+            || (event_list[i].revents & (POLLERR|POLLHUP)
+                && c->read->active))
+        {
             found = 1;
             ready_index[nready++] = c->read;
         }
 
-        if (event_list[i].revents & POLLOUT) {
+        if (event_list[i].revents & POLLOUT
+            || (event_list[i].revents & (POLLERR|POLLHUP)
+                && c->write->active))
+        {
             found = 1;
             ready_index[nready++] = c->write;
         }
 
-        if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
-            found = 1;
-
-            /* need ot add to ready_index[nready++] = c->read or c->write; */
-
-            err = 0;
-            if (event_list[i].revents & POLLNVAL) {
-                err = EBADF;
-            }
-
-            ngx_log_error(NGX_LOG_ERR, log, err,
-                          "poll() error on %d:%d",
-                          event_list[i].fd, event_list[i].revents);
-        }
-
         if (found) {
             ready--;
+            continue;
+        }
+
+        if (event_list[i].revents & (POLLERR|POLLHUP)) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "strange poll() error on %d:%d:%d",
+                          event_list[i].fd,
+                          event_list[i].events, event_list[i].revents);
         }
     }
 

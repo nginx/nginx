@@ -267,7 +267,6 @@ void ngx_http_handler(ngx_http_request_t *r)
 {
     int                        rc, i;
     ngx_http_handler_pt       *h;
-    ngx_http_module_t         *module;
     ngx_http_core_loc_conf_t  *lcf, **lcfp;
     ngx_http_core_srv_conf_t  *scf;
 
@@ -349,7 +348,7 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcfp[i]->name.data);
 
 int ngx_http_core_translate_handler(ngx_http_request_t *r)
 {
-    int                         i, rc, len, port_len, f_offset, l_offset;
+    int                         len, port_len, f_offset, l_offset;
     char                       *buf, *location, *last;
     ngx_err_t                   err;
     ngx_table_elt_t            *h;
@@ -623,7 +622,7 @@ static int ngx_http_core_init(ngx_pool_t *pool)
 
 static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
 {
-    int                          i, j;
+    int                          m;
     char                        *rv;
     ngx_http_module_t           *module;
     ngx_conf_t                   pcf;
@@ -650,12 +649,12 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, char *dummy)
                   ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
                   NGX_CONF_ERROR);
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_HTTP_MODULE_TYPE) {
+    for (m = 0; ngx_modules[m]; m++) {
+        if (ngx_modules[m]->type != NGX_HTTP_MODULE_TYPE) {
             continue;
         }
 
-        module = (ngx_http_module_t *) ngx_modules[i]->ctx;
+        module = (ngx_http_module_t *) ngx_modules[m]->ctx;
 
         if (module->create_srv_conf) {
             ngx_test_null(ctx->srv_conf[module->index],
@@ -995,8 +994,8 @@ static char *ngx_set_listen(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 {
     ngx_http_core_srv_conf_t *scf = (ngx_http_core_srv_conf_t *) conf;
 
-    uint                p;
     char               *addr;
+    u_int               p;
     ngx_str_t          *args;
     ngx_http_listen_t  *ls;
 

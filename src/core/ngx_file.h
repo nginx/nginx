@@ -2,7 +2,6 @@
 #define _NGX_FILE_H_INCLUDED_
 
 
-#include <ngx_file.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
 #include <ngx_string.h>

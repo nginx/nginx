@@ -3,6 +3,9 @@
 #include <ngx_core.h>
 
 
+int  ngx_max_sockets;
+
+
 int ngx_unix_init(ngx_log_t *log)
 {
     struct sigaction sa;
@@ -29,11 +32,32 @@ int ngx_unix_init(ngx_log_t *log)
                   "getrlimit(RLIMIT_NOFILE): %qd:%qd",
                   rlmt.rlim_cur, rlmt.rlim_max);
 
+    ngx_max_sockets = rlmt.rlim_cur;
 
-#if 0
-    RLIM_INFINITY
-    max_connections =< rlmt.rlim_cur;
-#endif
+    return NGX_OK;
+}
+
+
+int ngx_unix_post_conf_init(ngx_log_t *log)
+{
+    ngx_fd_t  pp[2];
+
+    if (pipe(pp) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "pipe() failed");
+        return NGX_ERROR;
+    }
+
+    if (dup2(pp[1], STDERR_FILENO) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, errno, "dup2(STDERR) failed");
+        return NGX_ERROR;
+    }
+
+    if (pp[1] > STDERR_FILENO) {
+        if (close(pp[1]) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, log, errno, "close() failed");
+            return NGX_ERROR;
+        }
+    }
 
     return NGX_OK;
 }

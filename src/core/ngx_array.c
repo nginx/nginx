@@ -29,7 +29,7 @@ void ngx_destroy_array(ngx_array_t *a)
 
     p = a->pool;
 
-    if (a->elts + a->size * a->nalloc == p->last) {
+    if ((char *) a->elts + a->size * a->nalloc == p->last) {
         p->last -= a->size * a->nalloc;
     }
 
@@ -49,7 +49,7 @@ void *ngx_push_array(ngx_array_t *a)
         p = a->pool;
 
         /* array allocation is the last in the pool */
-        if (a->elts + a->size * a->nelts == p->last
+        if ((char *) a->elts + a->size * a->nelts == p->last
             && (unsigned) (p->end - p->last) >= a->size)
         {
             p->last += a->size;
@@ -65,7 +65,7 @@ void *ngx_push_array(ngx_array_t *a)
         }
     }
 
-    elt = a->elts + a->size * a->nelts;
+    elt = (char *) a->elts + a->size * a->nelts;
     a->nelts++;
 
     return elt;

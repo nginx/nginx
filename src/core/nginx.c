@@ -6,13 +6,6 @@
 #include <ngx_core.h>
 #include <ngx_connection.h>
 #include <ngx_os_init.h>
-#include <ngx_string.h>
-#include <ngx_errno.h>
-#include <ngx_time.h>
-#include <ngx_log.h>
-#include <ngx_alloc.h>
-#include <ngx_array.h>
-#include <ngx_socket.h>
 #include <ngx_server.h>
 #include <ngx_listen.h>
 #include <ngx_conf_file.h>
@@ -55,8 +48,12 @@ int main(int argc, char *const *argv)
     ngx_str_t   conf_file;
     ngx_conf_t  conf;
 
-    /* STUB */
-    ngx_log.log_level = NGX_LOG_DEBUG;
+    ngx_max_sockets = -1;
+
+    ngx_log.fd = STDERR_FILENO;
+    ngx_log.log_level = NGX_LOG_INFO;
+
+    /* STUB */ ngx_log.log_level = NGX_LOG_DEBUG;
 
     if (ngx_os_init(&ngx_log) == NGX_ERROR) {
         return 1;

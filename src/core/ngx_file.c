@@ -14,7 +14,7 @@ static int ngx_random;
 int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
                          ngx_pool_t *pool, int persistent)
 {
-    int        i, num;
+    int        num;
     ngx_err_t  err;
 
     file->name.len = path->name.len + 1 + path->len + 10;
@@ -33,8 +33,8 @@ int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
     num = ngx_next_temp_number(0);
 
     for ( ;; ) {
-        snprintf(file->name.data + path->name.len + 1 + path->len, 11,
-                 "%010u", num);
+        ngx_snprintf(file->name.data + path->name.len + 1 + path->len, 11,
+                     "%010u", num);
 
         ngx_create_hashed_filename(file, path);
 

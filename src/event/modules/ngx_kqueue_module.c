@@ -147,7 +147,7 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
     ngx_connection_t  *c;
 
     ev->active = 1;
-    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
+    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 
     if (nchanges > 0
         && ev->index < nchanges

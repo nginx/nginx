@@ -126,9 +126,7 @@ ngx_log_debug(log, "iocp ev: %08x" _ ev);
 
 ngx_log_debug(log, "iocp ev: %08x" _ ev->event_handler);
 
-        if (ev->event_handler(ev) == NGX_ERROR) {
-            ev->close_handler(ev);
-        }
+        ev->event_handler(ev);
     }
 
     return NGX_OK;

@@ -8,8 +8,14 @@ extern ngx_module_t  ngx_events_module;
 extern ngx_module_t  ngx_event_module;
 
 extern ngx_module_t  ngx_select_module;
+#if (HAVE_POLL)
+extern ngx_module_t  ngx_poll_module;
+#endif
 #if (HAVE_KQUEUE)
 extern ngx_module_t  ngx_kqueue_module;
+#endif
+#if (HAVE_DEVPOLL)
+extern ngx_module_t  ngx_devpoll_module;
 #endif
 
 
@@ -32,8 +38,14 @@ ngx_module_t *ngx_modules[] = {
     &ngx_event_module,
 
     &ngx_select_module,
+#if (HAVE_POLL)
+    &ngx_poll_module,
+#endif
 #if (HAVE_KQUEUE)
     &ngx_kqueue_module,
+#endif
+#if (HAVE_DEVPOLL)
+    &ngx_devpoll_module,
 #endif
 
     /* http */

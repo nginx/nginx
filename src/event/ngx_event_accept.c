@@ -32,6 +32,11 @@ void ngx_event_accept(ngx_event_t *ev)
 #endif
 
     do {
+
+        /* Create the pool before accept() to avoid copy the sockaddr.
+           Although accept() can fail it's uncommon case
+           and the pool can be got from the free pool list */
+
         pool = ngx_create_pool(ls->pool_size, ev->log);
         if (pool == NULL) {
             return;

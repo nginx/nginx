@@ -6,7 +6,8 @@
 #include <ngx_errno.h>
 
 typedef enum {
-    NGX_LOG_EMERG = 0,
+    NGX_LOG_STDERR = 0,
+    NGX_LOG_EMERG,
     NGX_LOG_ALERT,
     NGX_LOG_CRIT,
     NGX_LOG_ERR,
@@ -15,6 +16,7 @@ typedef enum {
     NGX_LOG_INFO,
     NGX_LOG_DEBUG
 } ngx_log_e;
+
 
 /*
     "[%time] [%level] %pid#%tid: %message:(%errno)%errstr, while %action"
@@ -59,6 +61,7 @@ typedef enum {
     "... while reading client command for 'john_doe'"
 */
 
+
 typedef struct {
     int       log_level;
     ngx_fd_t  fd;
@@ -100,6 +103,7 @@ typedef struct {
 void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
 
+
 #elif (HAVE_C99_VARIADIC_MACROS)
 
 #define HAVE_VARIADIC_MACROS  1
@@ -124,6 +128,7 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 
 void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
+
 
 #else /* NO VARIADIC MACROS */
 

@@ -1,15 +1,22 @@
 #ifndef _NGX_CONNECTION_H_INCLUDED_
 #define _NGX_CONNECTION_H_INCLUDED_
 
+#include <ngx_core.h>
+
+#if 0
 #include <ngx_socket.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
 #include <ngx_hunk.h>
 #include <ngx_array.h>
 #include <ngx_string.h>
+#endif
+
 #include <ngx_server.h>
 
+#if 0
 typedef struct ngx_connection_s  ngx_connection_t;
+#endif
 
 #ifdef NGX_EVENT
 #include <ngx_event.h>
@@ -81,12 +88,14 @@ EV_VNODE        should notify by some signal if diretory tree is changed
 #endif
 
 
+#if 0
 typedef struct {
     ssize_t       (*recv)(ngx_connection_t *c, char *buf, size_t size);
     void           *dummy_recv_chain;
     void           *dummy_send;
     ngx_chain_t  *(*send_chain)(ngx_connection_t *c, ngx_chain_t *in);
 } ngx_os_io_t;
+#endif
 
 
 extern ngx_os_io_t  ngx_io;

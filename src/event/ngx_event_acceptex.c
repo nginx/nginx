@@ -104,13 +104,9 @@ int ngx_event_post_acceptex(ngx_listen_t *ls, int n)
 
         c->unexpected_eof = 1;
         wev->write = 1;
-        rev->first = wev->first = 1;
 
         c->handler = ls->handler;
         rev->event_handler = ngx_event_acceptex;
-
-        wev->timer_handler = rev->timer_handler = ngx_event_close_connection;
-        wev->close_handler = rev->close_handler = ngx_event_close_connection;
 
         c->ctx = ls->ctx;
         c->servers = ls->servers;

@@ -695,8 +695,7 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
 
 void ngx_http_finalize_request(ngx_http_request_t *r, int error)
 {
-    int           rc, event;
-    ngx_msec_t    timeout;
+    int           rc;
     ngx_event_t  *rev, *wev;
 
     rc = error;
@@ -794,7 +793,6 @@ void ngx_http_set_write_handler(ngx_http_request_t *r)
 static void ngx_http_writer(ngx_event_t *wev)
 {
     int                        rc;
-    ngx_msec_t                 timeout;
     ngx_event_t               *rev;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;

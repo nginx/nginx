@@ -36,6 +36,9 @@
                         FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE, \
                     NULL);
 
+#define ngx_open_tempfile_n         "CreateFile()"
+
+
 
 #define ngx_open_file_n             "CreateFile()"
 

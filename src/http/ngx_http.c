@@ -500,7 +500,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, char *conf)
 
                     /* prepare for the next cycle */
 
-                    in_port[p].addrs.elts += in_port[p].addrs.size;
+                    (char *) in_port[p].addrs.elts += in_port[p].addrs.size;
                     in_port[p].addrs.nelts--;
 
                     in_addr = (ngx_http_in_addr_t *) in_port[p].addrs.elts;

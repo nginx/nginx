@@ -73,7 +73,7 @@ typedef struct {
 
 #define ngx_http_types_hash_key(key, ext)                                   \
         {                                                                   \
-            uint n;                                                         \
+            u_int n;                                                        \
             for (key = 0, n = 0; n < ext.len; n++) {                        \
                 key += ext.data[n];                                         \
             }                                                               \

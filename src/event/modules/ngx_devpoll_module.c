@@ -1,47 +1,122 @@
+
 /*
- * Copyright (C) 2002 Igor Sysoev, http://sysoev.ru
+ * Copyright (C) 2002-2003 Igor Sysoev, http://sysoev.ru
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_types.h>
-#include <ngx_log.h>
 #include <ngx_connection.h>
 #include <ngx_event.h>
-#include <ngx_event_timer.h>
-#include <ngx_devpoll_module.h>
 
-#if (USE_DEVPOLL) && !(HAVE_DEVPOLL)
-#error "/dev/poll is not supported on this platform"
+
+#if (TEST_DEVPOLL)
+
+/* Solaris declarations */
+
+#define POLLREMOVE   0x0800
+#define DP_POLL      0xD001
+
+struct dvpoll {
+    struct pollfd  *dp_fds;
+    int             dp_nfds;
+    int             dp_timeout;
+};
+
 #endif
 
+
+typedef struct {
+    int   changes;
+    int   events;
+} ngx_devpoll_conf_t;
+
+
+static int ngx_devpoll_init(ngx_log_t *log);
+static void ngx_devpoll_done(ngx_log_t *log);
+static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags);
+static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags);
 static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags);
+static int ngx_devpoll_process_events(ngx_log_t *log);
+
+static void *ngx_devpoll_create_conf(ngx_pool_t *pool);
+static char *ngx_devpoll_init_conf(ngx_pool_t *pool, void *conf);
 
 /* STUB */
 #define DEVPOLL_NCHANGES  512
 #define DEVPOLL_NEVENTS   512
 
-/* should be per-thread */
 static int              dp;
 static struct pollfd   *change_list, *event_list;
-static unsigned int     nchanges;
+static u_int            nchanges, max_changes;
 static int              nevents;
 
 static ngx_event_t    **change_index;
 
-static ngx_event_t     *timer_queue;
-/* */
+
+static ngx_str_t      devpoll_name = ngx_string("/dev/poll");
+
+static ngx_command_t  ngx_devpoll_commands[] = {
+
+    {ngx_string("devpoll_changes"),
+     NGX_EVENT_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_num_slot,
+     0,
+     offsetof(ngx_devpoll_conf_t, changes),
+     NULL},
+
+    {ngx_string("devpoll_events"),
+     NGX_EVENT_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_num_slot,
+     0,
+     offsetof(ngx_devpoll_conf_t, events),
+     NULL},
+
+    {ngx_string(""), 0, NULL, 0, 0, NULL}
+};
 
 
-int ngx_devpoll_init(int max_connections, ngx_log_t *log)
+ngx_event_module_t  ngx_devpoll_module_ctx = {
+    NGX_EVENT_MODULE,
+    &devpoll_name,
+    ngx_devpoll_create_conf,               /* create configuration */
+    ngx_devpoll_init_conf,                 /* init configuration */
+
+    {
+        ngx_devpoll_add_event,             /* add an event */
+        ngx_devpoll_del_event,             /* delete an event */
+        ngx_devpoll_add_event,             /* enable an event */
+        ngx_devpoll_del_event,             /* disable an event */
+        NULL,                              /* add an connection */
+        NULL,                              /* delete an connection */
+        ngx_devpoll_process_events,        /* process the events */
+        ngx_devpoll_init,                  /* init the events */
+        ngx_devpoll_done,                  /* done the events */
+    }
+
+};
+
+ngx_module_t  ngx_devpoll_module = {
+    &ngx_devpoll_module_ctx,               /* module context */
+    0,                                     /* module index */
+    ngx_devpoll_commands,                  /* module directives */
+    NGX_EVENT_MODULE_TYPE,                 /* module type */
+    NULL                                   /* init module */
+};
+
+
+static int ngx_devpoll_init(ngx_log_t *log)
 {
-    int  change_size, event_size;
+    ngx_devpoll_conf_t  *dpcf;
 
-    nevents = DEVPOLL_NEVENTS;
+    dpcf = ngx_event_get_conf(ngx_devpoll_module_ctx);
+
+ngx_log_debug(log, "CH: %d" _ dpcf->changes);
+ngx_log_debug(log, "EV: %d" _ dpcf->events);
+
+    max_changes = dpcf->changes;
+    nevents = dpcf->events;
     nchanges = 0;
-    change_size = sizeof(struct pollfd) * DEVPOLL_NCHANGES;
-    event_size = sizeof(struct pollfd) * DEVPOLL_NEVENTS;
 
     dp = open("/dev/poll", O_RDWR);
 
@@ -50,29 +125,45 @@ int ngx_devpoll_init(int max_connections, ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    ngx_test_null(change_list, ngx_alloc(change_size, log), NGX_ERROR);
-    ngx_test_null(event_list, ngx_alloc(event_size, log), NGX_ERROR);
-    ngx_test_null(change_index,
-                  ngx_alloc(sizeof(ngx_event_t *) * DEVPOLL_NCHANGES, log),
+    ngx_test_null(change_list,
+                  ngx_alloc(sizeof(struct pollfd) * dpcf->changes, log),
                   NGX_ERROR);
 
-    timer_queue = ngx_event_init_timer(log);
-    if (timer_queue == NULL) {
+    ngx_test_null(event_list,
+                  ngx_alloc(sizeof(struct pollfd) * dpcf->events, log),
+                  NGX_ERROR);
+
+    ngx_test_null(change_index,
+                  ngx_alloc(sizeof(ngx_event_t *) * dpcf->changes, log),
+                  NGX_ERROR);
+
+    if (ngx_event_timer_init(log) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
-#if !(USE_DEVPOLL)
-    ngx_event_actions.add = ngx_devpoll_add_event;
-    ngx_event_actions.del = ngx_devpoll_del_event;
-    ngx_event_actions.timer = ngx_event_add_timer;
-    ngx_event_actions.process = ngx_devpoll_process_events;
-#endif
+    ngx_event_actions = ngx_devpoll_module_ctx.actions;
+    ngx_event_flags = NGX_HAVE_LEVEL_EVENT|NGX_USE_LEVEL_EVENT;
 
     return NGX_OK;
 }
 
 
-int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
+static void ngx_devpoll_done(ngx_log_t *log)
+{
+    if (close(dp) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "close(/dev/poll) failed");
+    }
+
+    ngx_event_timer_done(log);
+
+    ngx_free(change_list);
+    ngx_free(event_list);
+    ngx_free(change_index);
+
+}
+
+
+static int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
 #if (NGX_DEBUG_EVENT)
     ngx_connection_t *c = (ngx_connection_t *) ev->data;
@@ -94,13 +185,11 @@ int ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags)
 #endif
 
     ev->active = 1;
-    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1: 0;
-
     return ngx_devpoll_set_event(ev, event, 0);
 }
 
 
-int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
+static int ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_event_t  *e;
 
@@ -143,14 +232,14 @@ static int ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
     int  n;
     ngx_connection_t  *c;
 
-    c = (ngx_connection_t *) ev->data;
+    c = ev->data;
 
 #if (NGX_DEBUG_EVENT)
     ngx_log_debug(ev->log, "devpoll fd:%d event:%d flush:%d" _
                            c->fd _ event _ flags);
 #endif
 
-    if (nchanges >= DEVPOLL_NCHANGES) {
+    if (nchanges >= max_changes) {
         ngx_log_error(NGX_LOG_WARN, ev->log, 0,
                       "/dev/pool change list is filled up");
 
@@ -266,15 +355,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
             }
 
             c->read->ready = 1;
-
-            if (c->read->oneshot) {
-                ngx_del_timer(c->read);
-                ngx_devpoll_del_event(c->read, NGX_READ_EVENT, 0);
-            }
-
-            if (c->read->event_handler(c->read) == NGX_ERROR) {
-                c->read->close_handler(c->read);
-            }   
+            c->read->event_handler(c->read);
         }
 
         if (event_list[i].revents & POLLOUT) {
@@ -283,15 +364,7 @@ int ngx_devpoll_process_events(ngx_log_t *log)
             }
 
             c->write->ready = 1;
-
-            if (c->write->oneshot) {
-                ngx_del_timer(c->write);
-                ngx_devpoll_del_event(c->write, NGX_WRITE_EVENT, 0);
-            }
-
-            if (c->write->event_handler(c->write) == NGX_ERROR) {
-                c->write->close_handler(c->write);
-            }   
+            c->write->event_handler(c->write);
         }
 
         if (event_list[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
@@ -307,4 +380,29 @@ int ngx_devpoll_process_events(ngx_log_t *log)
     }
 
     return NGX_OK;
+}
+
+
+static void *ngx_devpoll_create_conf(ngx_pool_t *pool)
+{
+    ngx_devpoll_conf_t  *dpcf;
+
+    ngx_test_null(dpcf, ngx_palloc(pool, sizeof(ngx_devpoll_conf_t)),
+                  NGX_CONF_ERROR);
+
+    dpcf->changes = NGX_CONF_UNSET;
+    dpcf->events = NGX_CONF_UNSET;
+
+    return dpcf;
+}
+
+
+static char *ngx_devpoll_init_conf(ngx_pool_t *pool, void *conf)
+{
+    ngx_devpoll_conf_t *dpcf = conf;
+
+    ngx_conf_init_value(dpcf->changes, 512);
+    ngx_conf_init_value(dpcf->events, 512);
+
+    return NGX_CONF_OK;
 }
