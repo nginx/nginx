@@ -571,6 +571,13 @@ char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 }
 
 
+char *ngx_conf_set_core_num_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+                                 void *conf)
+{
+    return ngx_conf_set_num_slot(cf, cmd, *(void **)conf);
+}
+
+
 char *ngx_conf_set_core_str_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                  void *conf)
 {

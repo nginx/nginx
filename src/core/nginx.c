@@ -36,18 +36,18 @@ static ngx_command_t  ngx_core_commands[] = {
       offsetof(ngx_core_conf_t, master),
       NULL },
 
+    { ngx_string("worker_processes"),
+      NGX_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_core_num_slot,
+      0,
+      offsetof(ngx_core_conf_t, worker_processes),
+      NULL },
+
     { ngx_string("pid"),
       NGX_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_core_str_slot,
       0,
       offsetof(ngx_core_conf_t, pid),
-      NULL },
-
-    { ngx_string("worker_reopen"),
-      NGX_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_core_flag_slot,
-      0,
-      offsetof(ngx_core_conf_t, worker_reopen),
       NULL },
 
       ngx_null_command
@@ -172,6 +172,10 @@ int main(int argc, char *const *argv)
         if (ngx_daemon(cycle->log) == NGX_ERROR) {
             return 1;
         }
+    }
+
+    if (ccf->worker_processes == NGX_CONF_UNSET) {
+        ccf->worker_processes = 1;
     }
 
     if (ccf->pid.len == 0) {
@@ -361,7 +365,7 @@ static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle)
      */
     ccf->daemon = NGX_CONF_UNSET;
     ccf->master = NGX_CONF_UNSET;
-    ccf->worker_reopen = NGX_CONF_UNSET;
+    ccf->worker_processes = NGX_CONF_UNSET;
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET;
     ccf->group = (ngx_gid_t) NGX_CONF_UNSET;
 

@@ -11,7 +11,7 @@
 typedef volatile uint32_t  ngx_atomic_t;
 
 #if (NGX_SMP)
-#define NGX_SMP_LOCK  "lock"
+#define NGX_SMP_LOCK  "lock;"
 #else
 #define NGX_SMP_LOCK
 #endif
@@ -21,14 +21,12 @@ static ngx_inline uint32_t ngx_atomic_inc(ngx_atomic_t *value)
 {
     uint32_t  old;
 
-    old = 1;
-
     __asm__ volatile (
 
         NGX_SMP_LOCK
-    "   xaddl  %0, %1;   "
+    "   xaddl  %0, %2;   "
 
-    : "+q" (old) : "m" (*value));
+    : "=q" (old) : "0" (1), "m" (*value));
 
     return old;
 }
@@ -38,14 +36,12 @@ static ngx_inline uint32_t ngx_atomic_dec(ngx_atomic_t *value)
 {
     uint32_t  old;
 
-    old = (uint32_t) -1;
-
     __asm__ volatile (
 
         NGX_SMP_LOCK
     "   xaddl  %0, %1;   "
 
-    : "+q" (old) : "m" (*value));
+    : "=q" (old) : "0" (-1), "m" (*value));
 
     return old;
 }

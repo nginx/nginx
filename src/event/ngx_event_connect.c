@@ -193,7 +193,7 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
      *             or protection by critical section or mutex
      */
 
-    c->number = ngx_connection_counter++;
+    c->number = ngx_atomic_inc(&ngx_connection_counter);
 
     if (ngx_add_conn) {
         if (ngx_add_conn(c) == NGX_ERROR) {

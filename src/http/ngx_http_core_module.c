@@ -1405,7 +1405,10 @@ static char *ngx_set_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     alias = (cmd->name.len == sizeof("alias") - 1) ? 1 : 0;
 
     if (lcf->root.data) {
-        if (lcf->alias == alias) {
+
+        /* the (ngx_uint_t) cast is required by gcc 2.7.2.3 */
+
+        if ((ngx_uint_t) lcf->alias == alias) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"%s\" directive is duplicate",
                                cmd->name.data);

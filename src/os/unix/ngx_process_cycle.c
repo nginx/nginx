@@ -68,9 +68,14 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     for ( ;; ) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "new cycle");
 
+        ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
+                                               ngx_core_module);
+
         if (ngx_process == NGX_PROCESS_MASTER) {
-            ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
-                              "worker process", NGX_PROCESS_RESPAWN);
+            for (i = 0; i < (ngx_uint_t) ccf->worker_processes; i++) {
+                ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
+                                  "worker process", NGX_PROCESS_RESPAWN);
+            }
 
             /*
              * we have to limit the maximum life time of the worker processes
@@ -103,8 +108,6 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
             }
         }
 
-        ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
-                                               ngx_core_module);
 
         /* a cycle with the same configuration because a new one is invalid */
 
@@ -253,16 +256,8 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
                     if (ngx_reopen) {
                         if (ngx_process == NGX_PROCESS_MASTER) {
-                            if (ccf->worker_reopen != 0) {
-                                signo = ngx_signal_value(NGX_REOPEN_SIGNAL);
-                                ngx_reopen = 0;
-
-                            } else if (ngx_noaccept) {
-                                ngx_reopen = 0;
-
-                            } else {
-                                signo = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
-                            }
+                            signo = ngx_signal_value(NGX_REOPEN_SIGNAL);
+                            ngx_reopen = 0;
 
                         } else { /* NGX_PROCESS_SINGLE */
                             ngx_reopen = 0;
@@ -270,8 +265,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
                         ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
                                       "reopening logs");
-                        ngx_reopen_files(cycle,
-                             ccf->worker_reopen != 0 ? ccf->user : (uid_t) -1);
+                        ngx_reopen_files(cycle, ccf->user);
                     }
                 }
 

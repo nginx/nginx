@@ -256,6 +256,8 @@ char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 char *ngx_conf_set_core_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                   void *conf);
+char *ngx_conf_set_core_num_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+                                 void *conf);
 char *ngx_conf_set_core_str_slot(ngx_conf_t *cf, ngx_command_t *cmd,
                                  void *conf);
 
