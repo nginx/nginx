@@ -873,9 +873,9 @@ static ngx_int_t ngx_http_core_init_process(ngx_cycle_t *cycle)
 
     ngx_http_handler_pt         *h;
 
-    ngx_test_null(h, ngx_push_array(
-                             &cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers),
-                  NGX_ERROR);
+    if (!(h = ngx_array_push(&cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers)))
+        return NGX_ERROR;
+    }
     *h = ngx_http_delay_handler;
 #endif
 
@@ -904,24 +904,26 @@ static char *ngx_server_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     ngx_http_core_main_conf_t   *cmcf;
     ngx_http_core_srv_conf_t    *cscf, **cscfp;
 
-    ngx_test_null(ctx,
-                  ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
-                  NGX_CONF_ERROR);
+    if (!(ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)))) {
+        return NGX_CONF_ERROR;
+    }
 
     http_ctx = cf->ctx;
     ctx->main_conf = http_ctx->main_conf;
 
     /* the server{}'s srv_conf */
 
-    ngx_test_null(ctx->srv_conf,
-                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
-                  NGX_CONF_ERROR);
+    ctx->srv_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
+    if (ctx->srv_conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     /* the server{}'s loc_conf */
 
-    ngx_test_null(ctx->loc_conf,
-                  ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module),
-                  NGX_CONF_ERROR);
+    ctx->loc_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
+    if (ctx->loc_conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
@@ -1325,11 +1327,11 @@ static char *ngx_http_core_merge_srv_conf(ngx_conf_t *cf,
     }
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
-                              prev->connection_pool_size, 2048);
+                              prev->connection_pool_size, 256);
     ngx_conf_merge_msec_value(conf->post_accept_timeout,
-                              prev->post_accept_timeout, 30000);
+                              prev->post_accept_timeout, 60000);
     ngx_conf_merge_size_value(conf->request_pool_size,
-                              prev->request_pool_size, 16384);
+                              prev->request_pool_size, (size_t) ngx_pagesize);
     ngx_conf_merge_msec_value(conf->client_header_timeout,
                               prev->client_header_timeout, 60000);
     ngx_conf_merge_size_value(conf->client_header_buffer_size,
@@ -1462,7 +1464,8 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_size_value(conf->client_max_body_size,
                               prev->client_max_body_size, 10 * 1024 * 1024);
     ngx_conf_merge_size_value(conf->client_body_buffer_size,
-                              prev->client_body_buffer_size, 8192);
+                              prev->client_body_buffer_size,
+                              (size_t) 4 * ngx_pagesize);
     ngx_conf_merge_msec_value(conf->client_body_timeout,
                               prev->client_body_timeout, 60000);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);

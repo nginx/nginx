@@ -484,7 +484,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 {
     u_char              *p;
     ssize_t              n;
-    ngx_int_t            rc, rv, offset;
+    ngx_int_t            rc, rv;
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
     ngx_http_log_ctx_t  *ctx;
@@ -708,7 +708,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 static void ngx_http_process_request_headers(ngx_event_t *rev)
 {
     ssize_t              n;
-    ngx_int_t            rc, rv, i, offset;
+    ngx_int_t            rc, rv, i;
     ngx_table_elt_t     *h, **cookie;
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
@@ -939,7 +939,6 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
                                                     ngx_uint_t request_line)
 {
     u_char                    *old, *new;
-    ngx_int_t                  offset;
     ngx_buf_t                 *b;
     ngx_http_connection_t     *hc;
     ngx_http_core_srv_conf_t  *cscf;
@@ -1545,7 +1544,6 @@ static ngx_int_t ngx_http_read_discarded_body(ngx_http_request_t *r)
 static void ngx_http_set_keepalive(ngx_http_request_t *r)
 {
     ngx_int_t                  i;
-    size_t                     len;
     ngx_buf_t                 *b, *f;
     ngx_event_t               *rev, *wev;
     ngx_connection_t          *c;
@@ -1571,7 +1569,13 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
         if (b != c->buffer) {
 
-            /* move the large header buffers to the free list */
+            /*
+             * If the large header buffers were allocated while the previous
+             * request processing then we do not use c->buffer for
+             * the pipelined request (see ngx_http_init_request()).
+             * 
+             * Now we would move the large header buffers to the free list.
+             */
 
             cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -1623,6 +1627,15 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     hc->pipeline = 0;
 
+
+    /*
+     * To keep a memory footprint as small as possible for an idle
+     * keepalive connection we try to free the ngx_http_request_t and
+     * c->buffer's memory if they were allocated outside the c->pool.
+     * The large header buffers are always allocated outside the c->pool and
+     * are freed too.
+     */
+
     if (ngx_pfree(c->pool, r) == NGX_OK) {
         hc->request = NULL;
     }
@@ -1630,6 +1643,12 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     b = c->buffer;
 
     if (ngx_pfree(c->pool, b->start) == NGX_OK) {
+
+        /*
+         * the special note for ngx_http_keepalive_handler() that
+         * c->buffer's memory was freed
+         */
+
         b->pos = NULL;
 
     } else {
@@ -1692,7 +1711,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     }
 
 #if 0
-    /* if "keepalive_buffers off" then we need some other place */
+    /* if ngx_http_request_t was freed then we need some other place */
     r->http_state = NGX_HTTP_KEEPALIVE_STATE;
 #endif
 
@@ -1741,6 +1760,13 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
     size = b->end - b->start;
 
     if (b->pos == NULL) {
+
+        /*
+         * The c->buffer's memory was freed by ngx_http_set_keepalive().
+         * However, the c->buffer->start and c->buffer->end were not changed
+         * to keep the buffer size.
+         */
+
         if (!(b->pos = ngx_palloc(c->pool, size))) {
             ngx_http_close_connection(c);
             return;
