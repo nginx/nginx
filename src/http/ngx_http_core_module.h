@@ -28,7 +28,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_str_t                name;
+    ngx_str_t                  name;
     ngx_http_core_srv_conf_t  *core_srv_conf;
 } ngx_http_server_name_t;
 

@@ -10,4 +10,10 @@
 #define  NGX_DECLINED   -4
 
 
+#define NGX_MAXHOSTNAMELEN 32
+/*
+#define NGX_MAXHOSTNAMELEN MAXHOSTNAMELEN
+*/
+
+
 #endif /* _NGX_CORE_H_INCLUDED_ */

@@ -99,7 +99,6 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
                 r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
                 r->headers_out.content_length = -1;
                 r->headers_out.content_type->key.len = 0;
-                r->header_only = 1;
             }
         }
     }
@@ -114,6 +113,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
 
         } else if (r->headers_out.status < NGX_HTTP_BAD_REQUEST) {
             status = r->headers_out.status - NGX_HTTP_MOVED_PERMANENTLY + 1;
+            r->header_only = 1;
 
         } else if (r->headers_out.status < NGX_HTTP_INTERNAL_SERVER_ERROR) {
             status = r->headers_out.status - NGX_HTTP_BAD_REQUEST + 1 + 4;

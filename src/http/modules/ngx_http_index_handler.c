@@ -62,10 +62,9 @@ ngx_module_t  ngx_http_index_module = {
 
 
 /*
-   If the first index file is local (i.e. 'index.html', not '/index.html') then
-   try to open it before the test of the directory existence because
-   the valid requests should be many more then invalid ones.  If open()
-   is failed then stat() should be more quickly because some data
+   Try to open first index file before the test of the directory existence
+   because the valid requests should be many more then invalid ones.
+   If open() is failed then stat() should be more quickly because some data
    is already cached in the kernel.  Besides Win32 has ERROR_PATH_NOT_FOUND
    and Unix has ENOTDIR error (although it less helpfull).
 */
@@ -98,17 +97,7 @@ int ngx_http_index_handler(ngx_http_request_t *r)
     file = ngx_cpystrn(loc.data, r->uri.data, r->uri.len + 1);
     r->path.len = file - r->path.data;
 
-    if (cf->test_dir) {
-        rc = ngx_http_index_test_dir(r);
-        if (rc != NGX_OK) {
-            return rc;
-        }
-
-        test_dir = 0;
-
-    } else {
-        test_dir = 1;
-    }
+    test_dir = 1;
 
     index = (ngx_str_t *) cf->indices->elts;
     for (i = 0; i < cf->indices->nelts; i++) {
@@ -125,8 +114,8 @@ int ngx_http_index_handler(ngx_http_request_t *r)
         if (fd == NGX_INVALID_FILE) {
             err = ngx_errno;
 
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                          ngx_open_file_n " %s failed", name);
+ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
+              "DEBUG: " ngx_open_file_n " %s failed", name);
 
 #if (WIN32)
             if (err == ERROR_PATH_NOT_FOUND) {
@@ -134,10 +123,15 @@ int ngx_http_index_handler(ngx_http_request_t *r)
             if (err == NGX_ENOTDIR) {
 #endif
                 r->path_not_found = 1;
+
+            } else if (err == NGX_EACCES) {
+                r->path_err = err;
+                return NGX_HTTP_FORBIDDEN;
             }
 
             if (test_dir) {
                 if (r->path_not_found) {
+                    r->path_err = err;
                     return NGX_HTTP_NOT_FOUND;
                 }
 
@@ -147,10 +141,6 @@ int ngx_http_index_handler(ngx_http_request_t *r)
                 }
 
                 test_dir = 0;
-
-                if (r->path_not_found) {
-                    continue;
-                }
             }
 
             if (err == NGX_ENOENT) {
@@ -186,31 +176,36 @@ int ngx_http_index_handler(ngx_http_request_t *r)
 
 static int ngx_http_index_test_dir(ngx_http_request_t *r)
 {
-    ngx_err_t  err;
-
     r->path.data[r->path.len - 1] = '\0';
+    r->path.data[r->path.len] = '\0';
 
 ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
 
+#if 0
+        if (r->path_err == NGX_EACCES) {
+            return NGX_HTTP_FORBIDDEN;
+        }
+#endif
+
     if (ngx_file_type(r->path.data, &r->file.info) == -1) {
-        err = ngx_errno;
-        if (err == NGX_ENOENT) {
+
+        r->path_err = ngx_errno;
+
+        if (r->path_err == NGX_ENOENT) {
+            r->path.data[r->path.len - 1] = '/';
             return NGX_HTTP_NOT_FOUND;
         }
 
-        if (err == NGX_EACCESS) {
-            return NGX_HTTP_FORBIDDEN;
-        }
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                      "ngx_http_index_is_dir: "
-                      "stat() %s failed", r->path.data);
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, r->path_err,
+                      "ngx_http_index_test_dir: "
+                      ngx_file_type_n " %s failed", r->path.data);
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    r->path.data[r->path.len - 1] = '/';
+
     if (ngx_is_dir(r->file.info)) {
-        r->path.data[r->path.len - 1] = '/';
         return NGX_OK;
 
     } else {
@@ -260,7 +255,7 @@ static char *ngx_http_index_merge_conf(ngx_pool_t *p, void *parent, void *child)
         conf->max_index_len = sizeof(NGX_HTTP_INDEX);
     }
 
-    /* TODO: set conf->test_dir if first index is started with '/' */
+    /* FAIL: if first index is started with '/' */
 
     return NULL;
 }

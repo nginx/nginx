@@ -297,7 +297,7 @@ static int ngx_http_output_filter_copy_hunk(ngx_hunk_t *dst, ngx_hunk_t *src)
         dst->last.mem += size;
     }
 
-    if (src->type & NGX_HUNK_LAST) {
+    if (src->type & NGX_HUNK_LAST && src->pos.mem == src->last.mem) {
         dst->type |= NGX_HUNK_LAST;
     }
 

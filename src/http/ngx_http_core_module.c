@@ -94,7 +94,7 @@ int ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->unexpected_eof = 0;
     r->lingering_close = 1;
-    r->keepalive = 0;
+    r->keepalive = 1;
 
     ctx = (ngx_http_conf_ctx_t *) r->connection->ctx;
     r->srv_conf = ctx->srv_conf;
@@ -143,10 +143,11 @@ ngx_log_debug(r->connection->log, "servers: %0x" _ r->connection->servers);
 
 int ngx_http_core_translate_handler(ngx_http_request_t *r)
 {
-    int                         i, rc;
-    char                       *location, *last;
+    int                         i, rc, len, f_offset, l_offset;
+    char                       *buf, *location, *last;
     ngx_err_t                   err;
     ngx_table_elt_t            *h;
+    ngx_http_server_name_t     *s_name;
     ngx_http_core_srv_conf_t   *scf;
     ngx_http_core_loc_conf_t  **lcf, *loc_conf;
 
@@ -180,18 +181,36 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
     loc_conf = (ngx_http_core_loc_conf_t *)
                      ngx_http_get_module_loc_conf(r, ngx_http_core_module_ctx);
 
-    r->file.name.len = loc_conf->doc_root.len + r->uri.len;
+    s_name = (ngx_http_server_name_t *) scf->server_names.elts;
 
-    ngx_test_null(r->file.name.data,
-                  ngx_palloc(r->pool, r->file.name.len + 1),
+    /* "+ 7" is "http://" */
+    if (loc_conf->doc_root.len > s_name[0].name.len + 7) {
+        len = loc_conf->doc_root.len;
+        f_offset = 0;
+        l_offset = len - (s_name[0].name.len + 7);
+
+    } else {
+        len = s_name[0].name.len + 7;
+        f_offset = len - loc_conf->doc_root.len;
+        l_offset = 0;
+    }
+
+    /* "+ 2" is for trailing '/' in redirect and '\0' */
+    len += r->uri.len + 2;
+
+    ngx_test_null(buf, ngx_palloc(r->pool, len),
                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
-    location = ngx_cpystrn(r->file.name.data, loc_conf->doc_root.data,
-                           loc_conf->doc_root.len + 1);
-    last = ngx_cpystrn(location, r->uri.data, r->uri.len + 1);
+    r->file.name.data = buf + f_offset;
+    location = buf + l_offset;
 
-    ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _
-                  r->file.name.data);
+    last = ngx_cpystrn(ngx_cpystrn(r->file.name.data, loc_conf->doc_root.data,
+                                   loc_conf->doc_root.len + 1),
+                       r->uri.data, r->uri.len + 1);
+
+    r->file.name.len = last - r->file.name.data;
+
+ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
 
 #if (WIN9X)
 
@@ -212,7 +231,7 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
         } else if (err == ERROR_PATH_NOT_FOUND) {
             return NGX_HTTP_NOT_FOUND;
 
-        } else if (err == NGX_EACCESS) {
+        } else if (err == NGX_EACCES) {
             return NGX_HTTP_FORBIDDEN;
 
         } else {
@@ -241,7 +260,7 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
         } else if (err == NGX_ENOTDIR) {
             return NGX_HTTP_NOT_FOUND;
 #endif
-        } else if (err == NGX_EACCESS) {
+        } else if (err == NGX_EACCES) {
             return NGX_HTTP_FORBIDDEN;
 
         } else {
@@ -251,12 +270,12 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
 
     if (!r->file.info_valid) {
         if (ngx_stat_fd(r->file.fd, &r->file.info) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                           "ngx_http_core_handler: "
                           ngx_stat_fd_n " %s failed", r->file.name.data);
 
             if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
                               "ngx_http_core_handler: "
                               ngx_close_file_n " %s failed", r->file.name.data);
             }
@@ -269,11 +288,11 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
 #endif
 
     if (ngx_is_dir(r->file.info)) {
-        ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
+ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
 #if !(WIN9X)
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
                           "ngx_http_core_handler: "
                           ngx_close_file_n " %s failed", r->file.name.data);
         }
@@ -283,6 +302,9 @@ ngx_log_debug(r->connection->log, "trans: %s" _ lcf[i]->name.data);
 
         ngx_test_null(h, ngx_push_table(r->headers_out.headers),
                       NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+        ngx_memcpy(location, "http://", 7);
+        ngx_memcpy(location + 7, s_name[0].name.data, s_name[0].name.len);
 
         *last++ = '/';
         *last = '\0';
@@ -312,9 +334,24 @@ static int ngx_http_core_index_handler(ngx_http_request_t *r)
         rc = h[i](r);
 
         if (rc != NGX_DECLINED) {
+
+            if (rc == NGX_HTTP_NOT_FOUND) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, r->path_err,
+                              "%s is not found", r->path.data);
+            }
+
+            if (rc == NGX_HTTP_FORBIDDEN) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, r->path_err,
+                          "%s is forbidden", r->path.data);
+            }
+
             return rc;
         }
     }
+
+    r->path.data[r->path.len] = '\0';
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "directory index of %s is forbidden", r->path.data);
 
     return NGX_HTTP_FORBIDDEN;
 }
@@ -359,7 +396,7 @@ int ngx_http_close_request(ngx_http_request_t *r)
 
     if (r->file.fd != NGX_INVALID_FILE) {
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
                           ngx_close_file_n " failed");
         }
     }
@@ -688,6 +725,8 @@ static void *ngx_http_core_create_srv_conf(ngx_pool_t *pool)
     ngx_init_array(scf->locations, pool, 5, sizeof(void *), NGX_CONF_ERROR);
     ngx_init_array(scf->listen, pool, 5, sizeof(ngx_http_listen_t),
                    NGX_CONF_ERROR);
+    ngx_init_array(scf->server_names, pool, 5, sizeof(ngx_http_server_name_t),
+                   NGX_CONF_ERROR);
 
     ngx_test_null(cf, ngx_push_array(&ngx_http_servers), NGX_CONF_ERROR);
     *cf = scf;
@@ -701,12 +740,29 @@ static char *ngx_http_core_init_srv_conf(ngx_pool_t *pool, void *conf)
     ngx_http_core_srv_conf_t *scf = (ngx_http_core_srv_conf_t *) conf;
 
     ngx_http_listen_t        *l;
+    ngx_http_server_name_t   *n;
 
     if (scf->listen.nelts == 0) {
         ngx_test_null(l, ngx_push_array(&scf->listen), NGX_CONF_ERROR);
         l->addr = INADDR_ANY;
         l->port = 8000;
         l->family = AF_INET;
+    }
+
+    if (scf->server_names.nelts == 0) {
+        ngx_test_null(n, ngx_push_array(&scf->server_names), NGX_CONF_ERROR);
+        ngx_test_null(n->name.data, ngx_palloc(pool, NGX_MAXHOSTNAMELEN),
+                      NGX_CONF_ERROR);
+        if (gethostname(n->name.data, NGX_MAXHOSTNAMELEN) == -1) {
+/* STUB: no log here */
+#if 0
+            ngx_log_error(NGX_LOG_EMERG, scf->log, ngx_errno,
+                          "gethostname() failed");
+#endif
+            return NGX_CONF_ERROR;
+        }
+        n->name.len = ngx_strlen(n->name.data);
+        n->core_srv_conf = conf;
     }
 
     return NGX_CONF_OK;

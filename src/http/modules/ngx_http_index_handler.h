@@ -13,7 +13,6 @@
 typedef struct {
     ngx_array_t  *indices;
     size_t        max_index_len;
-    int           test_dir;
 } ngx_http_index_conf_t;
 
 

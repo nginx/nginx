@@ -24,8 +24,10 @@
 #define NGX_HUNK_FLUSH      0x0100
 /* last hunk */
 #define NGX_HUNK_LAST       0x0200
+#if 0
 /* can be used with NGX_HUNK_LAST only */
-#define NGX_HUNK_SHUTDOWN   0x0400
+#define NGX_HUNK_SHUTDOWN   0x0400 /
+#endif
 
 #define NGX_HUNK_RECYCLED   0x0800
 

@@ -206,10 +206,13 @@ int ngx_devpoll_process_events(ngx_log_t *log)
     ngx_log_debug(log, "devpoll timer: %d" _ timer);
 #endif
 
-    n = nchanges * sizeof(struct pollfd);
-    if (write(dp, change_list, n) != n) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "write(/dev/poll) failed");
-        return NGX_ERROR;
+    if (nchanges) {
+        n = nchanges * sizeof(struct pollfd);
+        if (write(dp, change_list, n) != n) {
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                          "write(/dev/poll) failed");
+            return NGX_ERROR;
+        }
     }
 
     dvp.dp_fds = event_list;

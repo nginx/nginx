@@ -143,6 +143,7 @@ static int ngx_http_init_request(ngx_event_t *ev)
     ngx_http_request_t   *r;
 
     c = (ngx_connection_t *) ev->data;
+    c->sent = 0;
 
     ngx_test_null(r, ngx_pcalloc(c->pool, sizeof(ngx_http_request_t)),
                   NGX_ERROR);
@@ -496,8 +497,6 @@ static int ngx_http_writer(ngx_event_t *ev)
 
     c = (ngx_connection_t *) ev->data;
     r = (ngx_http_request_t *) c->data;
-
-    c->sent = 0;
 
     rc = ngx_http_output_filter(r, NULL);
 

@@ -33,6 +33,13 @@ static char error_404_page[] =
 "<center><h1>404 Not Found</h1></center>" CRLF
 ;
 
+static char error_500_page[] =
+"<html>" CRLF
+"<head><title>500 Internal Server Error</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>500 Internal Server Error</h1></center>" CRLF
+;
+
 
 static ngx_str_t error_pages[] = {
     { 0, NULL},  /* 301 */
@@ -46,7 +53,7 @@ static ngx_str_t error_pages[] = {
     { sizeof(error_403_page) - 1, error_403_page },
     { sizeof(error_404_page) - 1, error_404_page },
 
-    { 0, NULL}   /* 500 */
+    { sizeof(error_500_page) - 1, error_500_page }
 };
 
 int ngx_http_special_response(ngx_http_request_t *r, int error)
@@ -65,7 +72,7 @@ int ngx_http_special_response(ngx_http_request_t *r, int error)
         err = error - NGX_HTTP_BAD_REQUEST + 4;
 
     else
-        err = NGX_HTTP_INTERNAL_SERVER_ERROR + 4 + 5;
+        err = error - NGX_HTTP_INTERNAL_SERVER_ERROR + 4 + 5;
 
     if (error_pages[err].len == 0)
         r->headers_out.content_length = -1;

@@ -140,6 +140,7 @@ struct ngx_http_request_s {
     char     *discarded_buffer;
 
     ngx_str_t   path;
+    int         path_err;
 
     unsigned  keepalive:1;
     unsigned  lingering_close:1;

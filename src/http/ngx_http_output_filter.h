@@ -7,8 +7,9 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_FILTER_NEED_IN_MEMORY  1
-#define NGX_HTTP_FILTER_NEED_TEMP       2
+#define NGX_HTTP_FILTER_NEED_IN_MEMORY      1
+#define NGX_HTTP_FILTER_SSI_NEED_IN_MEMORY  2
+#define NGX_HTTP_FILTER_NEED_TEMP           4
 
 
 typedef struct {
