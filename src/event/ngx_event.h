@@ -6,6 +6,9 @@
 #include <ngx_core.h>
 
 
+typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
+
+
 #define NGX_INVALID_INDEX  0xd0d0d0d0
 
 
@@ -30,8 +33,9 @@ typedef struct {
 
 struct ngx_event_s {
     void            *data;
+
     /* TODO rename to handler */
-    void           (*event_handler)(ngx_event_t *ev);
+    ngx_event_handler_pt  event_handler;
 
     u_int            index;
 
@@ -381,7 +385,10 @@ typedef struct {
 
 
 
-extern volatile ngx_event_t  *ngx_posted_events;
+extern ngx_thread_volatile ngx_event_t  *ngx_posted_events;
+#if (NGX_THREADS)
+extern ngx_mutex_t           *ngx_posted_events_mutex;
+#endif
 
 extern int                    ngx_event_flags;
 extern ngx_module_t           ngx_events_module;
@@ -406,6 +413,7 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
 
 
 #include <ngx_event_timer.h>
+#include <ngx_event_busy_lock.h>
 
 #if (WIN32)
 #include <ngx_iocp_module.h>

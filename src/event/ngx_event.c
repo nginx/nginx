@@ -45,7 +45,10 @@ ngx_event_actions_t    ngx_event_actions;
 
 static int             ngx_event_max_module;
 
-volatile ngx_event_t  *ngx_posted_events;
+ngx_thread_volatile ngx_event_t  *ngx_posted_events;
+#if (NGX_THREADS)
+ngx_mutex_t                      *ngx_posted_events_mutex;
+#endif
 
 
 static ngx_str_t  events_name = ngx_string("events");
@@ -133,6 +136,12 @@ static int ngx_event_init(ngx_cycle_t *cycle)
     ngx_iocp_conf_t     *iocpcf;
 #endif
 
+
+#if (NGX_THREADS)
+    if (!(ngx_posted_events_mutex = ngx_mutex_init(cycle->log, 0))) {
+        return NGX_ERROR;
+    }
+#endif
 
     if (ngx_event_timer_init(cycle->log) == NGX_ERROR) {
         return NGX_ERROR;
