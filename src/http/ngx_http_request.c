@@ -95,6 +95,8 @@ void ngx_http_init_connection(ngx_connection_t *c)
     }
 
 #if 0
+    /* TODO: learn SO_SNDBUF (to use in zerocopy) via kqueue's EV_CLEAR event */
+
     c->write->ready = 0;
     c->write->event_handler = ngx_http_dummy;
 

@@ -22,6 +22,7 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev);
 
 static int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p);
 static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p, int ft_type);
+static int ngx_http_proxy_log_state(ngx_http_proxy_ctx_t *p, int status);
 static void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc);
 static void ngx_http_proxy_close_connection(ngx_connection_t *c);
 
@@ -189,9 +190,9 @@ static ngx_http_header_t headers_in[] = {
 };
 
 
-static char http_version[] = " HTTP/1.0" CRLF;
-static char host_header[] = "Host: ";
-static char connection_close_header[] = "Connection: close" CRLF;
+static char  http_version[] = " HTTP/1.0" CRLF;
+static char  host_header[] = "Host: ";
+static char  connection_close_header[] = "Connection: close" CRLF;
 
 
 
@@ -206,6 +207,10 @@ static int ngx_http_proxy_handler(ngx_http_request_t *r)
     p->lcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
     p->upstream.peers = p->lcf->peers;
     p->upstream.tries = p->lcf->peers->number;
+
+    ngx_init_array(p->states, r->pool, p->upstream.tries,
+                   sizeof(ngx_http_proxy_state_t),
+                   NGX_HTTP_INTERNAL_SERVER_ERROR);
 
     p->request = r;
     p->method = r->method;
@@ -471,20 +476,12 @@ static int ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         if (rc == NGX_CONNECT_ERROR) {
             ngx_event_connect_peer_failed(&p->upstream);
 
-#if 0
-            /* TODO: make separate func and call it from next_upstream */
-
-            if (!(state = ngx_push_array(p->states))) {
+            if (ngx_http_proxy_log_state(p, NGX_HTTP_BAD_GATEWAY) == NGX_ERROR)
+            {
                 ngx_http_proxy_finalize_request(p,
                                                 NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return NGX_DONE;
             }
-
-            state->status = NGX_HTTP_BAD_GATEWAY;
-            state->peer =
-                 p->upstream.peers->peers[p->upstream.cur_peer].addr_port_text;
-
-#endif
 
             if (p->upstream.tries == 0) {
                 ngx_http_proxy_finalize_request(p, NGX_HTTP_BAD_GATEWAY);
@@ -517,7 +514,7 @@ static int ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         p->timedout = 0;
 
         if (rc == NGX_OK) {
-            return ngx_http_proxy_send_request(p);
+            return ngx_http_proxy_send_request0(p);
         }
 
         /* rc == NGX_AGAIN */
@@ -527,6 +524,78 @@ static int ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         return NGX_AGAIN;
     }
 }
+
+
+static int ngx_http_proxy_send_request0(ngx_http_proxy_ctx_t *p)
+{
+    ngx_connection_t        *c;
+    ngx_chain_writer_ctx_t  *wctx;
+
+    c = p->upstream.connection;
+
+    p->action = "sending request to upstream";
+    wctx = p->output_chain_ctx->output_ctx;
+    wctx->connection = c;
+    rc = ngx_output_chain(p->output_chain_ctx,
+                          !p->request_sent ? p->request->request_hunks:
+                                             NULL);
+    if (rc == NGX_ERROR) {
+        return ngx_http_proxy_next_upstream(p, NGX_HTTP_PROXY_FT_ERROR);
+    }
+
+    p->request_sent = 1;
+
+    if (c->write->timer_set) {
+        ngx_del_timer(c->write);
+    }
+
+    if (rc == NGX_AGAIN) {
+        ngx_add_timer(c->write, p->lcf->send_timeout);
+
+        if (ngx_handle_write_event(c->write, /* STUB: lowat */ 0) == NGX_ERROR)
+        {
+            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        return NGX_AGAIN;
+    }
+
+    /* rc == NGX_OK */
+
+    if (c->read->ready) {
+        /* post aio operation */
+        ngx_http_proxy_process_upstream_status_line(c->read);
+    }
+
+            if (ngx_handle_level_write_event(c->write) == NGX_ERROR) {
+                ngx_http_proxy_finalize_request(p,
+                                       NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
+
+            if (c->tcp_nopush) {
+                if (ngx_tcp_push(c->fd) == NGX_ERROR) {
+                    ngx_log_error(NGX_LOG_CRIT, c->log,
+                                  ngx_socket_errno,
+                                  ngx_tcp_push_n " failed");
+                    ngx_http_proxy_finalize_request(p,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+                    return; 
+                }
+
+                c->tcp_nopush = 0;
+            }
+        }
+
+        return;
+    }
+
+    ngx_http_proxy_next_upstream(p, NGX_HTTP_PROXY_FT_ERROR);
+
+    return NGX_OK;
+}
+
 
 #endif
 
@@ -1391,6 +1460,8 @@ static int ngx_http_proxy_parse_status_line(ngx_http_proxy_ctx_t *p)
 
 static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p, int ft_type)
 {
+    int  status;
+
     ngx_event_connect_peer_failed(&p->upstream);
 
     if (p->timedout) {
@@ -1403,10 +1474,20 @@ static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p, int ft_type)
         p->upstream.connection = NULL;
     }
 
+    if (ft_type == NGX_HTTP_PROXY_FT_TIMEOUT) {
+        status = NGX_HTTP_GATEWAY_TIME_OUT;
+
+    } else {
+        status = NGX_HTTP_BAD_GATEWAY;
+    }
+
+    if (ngx_http_proxy_log_state(p, status) == NGX_ERROR) {
+        ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
     if (p->upstream.tries == 0 || !(p->lcf->next_upstream & ft_type)) {
-        ngx_http_proxy_finalize_request(p,
-                                        p->timedout ? NGX_HTTP_GATEWAY_TIME_OUT:
-                                                      NGX_HTTP_BAD_GATEWAY);
+        ngx_http_proxy_finalize_request(p, status);
         return;
     }
 
@@ -1419,6 +1500,23 @@ ngx_log_debug(p->request->connection->log, "FATAL ERROR IN NEXT UPSTREAM");
 
     return;
 }
+
+
+static int ngx_http_proxy_log_state(ngx_http_proxy_ctx_t *p, int status)
+{
+    ngx_http_proxy_state_t  *state;
+
+    if (!(state = ngx_push_array(&p->states))) {
+        return NGX_ERROR;
+    }
+
+    state->status = status;
+    state->peer =
+                &p->upstream.peers->peers[p->upstream.cur_peer].addr_port_text;
+
+    return NGX_OK;
+}
+
 
 static void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
 {
@@ -1445,7 +1543,6 @@ static void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
 
     return;
 }
-
 
 
 static void ngx_http_proxy_close_connection(ngx_connection_t *c)

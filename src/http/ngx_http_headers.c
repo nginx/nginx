@@ -48,7 +48,7 @@ ngx_http_header_t  ngx_http_headers_out[] = {
 ngx_table_elt_t *ngx_http_add_header(void *header,
                                      ngx_http_header_t *http_headers)
 {
-    int               i, j, nelts;
+    int               i, j;
     char             *prev;
     ngx_table_t      *headers;
     ngx_table_elt_t  *h, *new;
@@ -56,7 +56,6 @@ ngx_table_elt_t *ngx_http_add_header(void *header,
     headers = *(ngx_table_t **) header;
 
     prev = headers->elts;
-    nelts = headers->nelts;
 
     if (!(new = ngx_push_table(headers))) {
         return NULL;
@@ -74,10 +73,10 @@ ngx_table_elt_t *ngx_http_add_header(void *header,
      */
 
     ngx_log_error(NGX_LOG_ALERT, headers->pool->log, 0,
-                  "header table is small, %d elements", nelts);
+                  "header table is small, %d elements", headers->nelts - 1);
 
     h = headers->elts;
-    for (i = 0; i < nelts; i++) {
+    for (i = 0; i < headers->nelts - 1; i++) {
         if (h[i].key.len == 0) {
             continue;
         }

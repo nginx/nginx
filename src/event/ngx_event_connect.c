@@ -223,7 +223,7 @@ ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
          * aio allows to post operation on non-connected socket
          * at least in FreeBSD
          * 
-         * TODO: check in Win32, etc.
+         * TODO: check in Win32, etc. As workaround we can use NGX_ONESHOT_EVENT
          */
  
         rev->ready = 1;

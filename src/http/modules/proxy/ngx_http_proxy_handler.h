@@ -44,6 +44,12 @@ typedef struct {
 
 
 typedef struct {
+    int         status;
+    ngx_str_t  *peer;
+} ngx_http_proxy_state_t;
+
+
+typedef struct {
     ngx_table_t      *headers;   /* it must be first field */
 
     ngx_table_elt_t  *date;
@@ -90,6 +96,8 @@ struct ngx_http_proxy_ctx_s {
     char                       *status_end;
     int                         status_count;
     int                         state;
+
+    ngx_array_t                 states;    /* of ngx_http_proxy_state_t */
 
     char                       *action;
     ngx_http_log_ctx_t         *saved_ctx;
