@@ -9,6 +9,65 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.27" date="28.03.2005">
+
+<change type="feature">
+<para lang="ru">
+параметр blocked в директиве invalid_referers.
+</para>
+<para lang="en">
+the "blocked" parameter of the "invalid_referers" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+ошибки обработки заголовка запроса теперь записываются на уровне
+info, в лог также записывается имя сервера и строки заголовка
+запроса "Host" и "Referer".
+</para>
+<para lang="en">
+the errors while handling the request header now logged at "info" level.
+The server name and the "Host" and "Referer" header lines also logged.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+при записи ошибок в лог записывается также строка заголовка запроса "Host".
+</para>
+<para lang="en">
+the "Host" header line is also logged in error log.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_pass_unparsed_uri.
+Специальная обработка символов "://" в URI, введённая в версии 0.1.11,
+теперь упразднена.
+</para>
+<para lang="en">
+the proxy_pass_unparsed_uri directive.
+The special handling of the "://" symbols in URI, appeared in 0.1.11 version,
+now is canceled.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на FreeBSD и Linux, если был указан параметр конфигурации
+--without-ngx_http_auth_basic_module.
+</para>
+<para lang="en">
+nginx could not be built on FreeBSD and Linux, if the
+--without-ngx_http_auth_basic_module configuration parameter was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.26" date="22.03.2005">
 
 <change type="change">
@@ -23,11 +82,11 @@ the invalid client header lines are now ignored and logged at the info level.
 
 <change type="change">
 <para lang="ru">
-при записи ошибок в лог записывается так же имя хоста, при обращении
-к которому, произошла ошибка.
+при записи ошибок в лог записывается также имя сервера, при обращении
+к которому произошла ошибка.
 </para>
 <para lang="en">
-the host name is also logged in error log.
+the server name is also logged in error log.
 </para>
 </change>
 

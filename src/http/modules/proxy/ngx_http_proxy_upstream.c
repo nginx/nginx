@@ -86,7 +86,7 @@ int ngx_http_proxy_request_upstream(ngx_http_proxy_ctx_t *p)
 
 static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 {
-    size_t                           len, loc_len;
+    size_t                           len;
     ngx_uint_t                       i, escape, *index;
     ngx_buf_t                       *b;
     ngx_chain_t                     *chain;
@@ -95,7 +95,6 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     ngx_http_request_t              *r;
     ngx_http_variable_t             *var;
     ngx_http_variable_value_t       *value;
-    ngx_http_core_loc_conf_t        *clcf;
     ngx_http_core_main_conf_t       *cmcf;
     ngx_http_proxy_upstream_conf_t  *uc;
 
@@ -107,32 +106,30 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     index = NULL;
 #endif
 
+    escape = 0;
+
     if (p->upstream->method) {
-        len = http_methods[p->upstream->method - 1].len;
+        len = http_methods[p->upstream->method - 1].len + uc->uri.len;
 
     } else {
-        len = r->method_name.len;
+        len = r->method_name.len + uc->uri.len;
     }
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    if (p->lcf->pass_unparsed_uri && r->valid_unparsed_uri) {
+        len += r->unparsed_uri.len - 1;
 
-#if (NGX_PCRE)
-    loc_len = (clcf->regex) ? 1 : clcf->name.len;
-#else
-    loc_len = clcf->name.len;
-#endif
-
-    if (r->quoted_uri) {
-        escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
-                                    r->uri.len - loc_len, NGX_ESCAPE_URI);
     } else {
-        escape = 0;
+        if (r->quoted_uri) {
+            escape = 2 * ngx_escape_uri(NULL, r->uri.data + uc->location->len,
+                                        r->uri.len - uc->location->len,
+                                        NGX_ESCAPE_URI);
+        }
+
+        len += r->uri.len - uc->location->len + escape
+            + sizeof("?") - 1 + r->args.len;
     }
 
-    len += uc->uri.len
-        + r->uri.len - loc_len + escape
-        + sizeof("?") - 1 + r->args.len
-        + sizeof(http_version) - 1
+    len += sizeof(http_version) - 1
         + sizeof(connection_close_header) - 1
         + sizeof(CRLF) - 1;
 
@@ -269,19 +266,24 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     b->last = ngx_cpymem(b->last, uc->uri.data, uc->uri.len);
 
-    if (escape) {
-        ngx_escape_uri(b->last, r->uri.data + loc_len,
-                       r->uri.len - loc_len, NGX_ESCAPE_URI);
-        b->last += r->uri.len - loc_len + escape;
-
+    if (p->lcf->pass_unparsed_uri && r->valid_unparsed_uri) {
+        b->last = ngx_cpymem(b->last, r->unparsed_uri.data + 1,
+                             r->unparsed_uri.len - 1);
     } else {
-        b->last = ngx_cpymem(b->last, r->uri.data + loc_len,
-                             r->uri.len - loc_len);
-    }
+        if (escape) {
+            ngx_escape_uri(b->last, r->uri.data + uc->location->len,
+                           r->uri.len - uc->location->len, NGX_ESCAPE_URI);
+            b->last += r->uri.len - uc->location->len + escape;
 
-    if (r->args.len > 0) {
-        *b->last++ = '?';
-        b->last = ngx_cpymem(b->last, r->args.data, r->args.len);
+        } else {
+            b->last = ngx_cpymem(b->last, r->uri.data + uc->location->len,
+                                 r->uri.len - uc->location->len);
+        }
+
+        if (r->args.len > 0) {
+            *b->last++ = '?';
+            b->last = ngx_cpymem(b->last, r->args.data, r->args.len);
+        }
     }
 
     b->last = ngx_cpymem(b->last, http_version, sizeof(http_version) - 1);

@@ -544,9 +544,9 @@ ngx_http_log_header_out_getlen(ngx_http_request_t *r, uintptr_t data)
     /*
      * No header pointer was found.
      * However, some headers: "Date", "Server", "Content-Length",
-     * and "Last-Modified" have a special handling in the header filter
-     * but we do not set up their pointers in the filter because
-     * they are too seldom needed to be logged.
+     * and "Last-Modified" have a special handling in the header filter,
+     * but we do not set up their pointers in the filter,
+     * because they are too seldom needed to be logged.
      */
 
     if (data == offsetof(ngx_http_headers_out_t, date)) {
@@ -592,9 +592,9 @@ ngx_http_log_header_out(ngx_http_request_t *r, u_char *buf,
     /*
      * No header pointer was found.
      * However, some headers: "Date", "Server", "Content-Length",
-     * and "Last-Modified" have a special handling in the header filter
-     * but we do not set up their pointers in the filter because
-     * they are too seldom needed to be logged.
+     * and "Last-Modified" have a special handling in the header filter,
+     * but we do not set up their pointers in the filter,
+     * because they are too seldom needed to be logged.
      */
 
     if (op->data == offsetof(ngx_http_headers_out_t, date)) {

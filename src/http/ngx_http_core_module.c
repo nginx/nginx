@@ -415,8 +415,10 @@ ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->write->event_handler = ngx_http_core_phase_event_handler;
 
+    r->valid_unparsed_uri = 1;
     r->uri_changed = 1;
     r->uri_changes = 11;
+
     r->phase = NGX_HTTP_REWRITE_PHASE;
     r->phase_handler = 0;
 

@@ -632,7 +632,14 @@ ngx_master_exit(ngx_cycle_t *cycle)
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exit");
 
+    /*
+     * we do not destroy cycle->pool here because a signal handler
+     * that uses cycle->log can be called at this point
+     */
+
+#if 0
     ngx_destroy_pool(cycle->pool);
+#endif
 
     exit(0);
 }
@@ -718,6 +725,10 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
              * we do not destroy cycle->pool here because a signal handler
              * that uses cycle->log can be called at this point
              */
+
+#if 0
+            ngx_destroy_pool(cycle->pool);
+#endif
             exit(0);
         }
 
@@ -736,6 +747,11 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
              * we do not destroy cycle->pool here because a signal handler
              * that uses cycle->log can be called at this point
              */
+
+#if 0
+            ngx_destroy_pool(cycle->pool);
+#endif
+
             exit(0);
         }
 

@@ -36,6 +36,7 @@ typedef struct {
     ngx_flag_t                    log;
 
     ngx_flag_t                    no_referer;
+    ngx_flag_t                    blocked_referer;
 } ngx_http_rewrite_loc_conf_t;
 
 
@@ -378,6 +379,7 @@ ngx_http_rewrite_regex_start_code(ngx_http_rewrite_engine_t *e)
     if (code->uri) {
         if (!code->break_cycle) {
             r->uri_changed = 1;
+            r->valid_unparsed_uri = 1;
         }
 
         if (rc && (r->quoted_uri || r->plus_in_uri)) {
@@ -715,6 +717,7 @@ ngx_http_rewrite_invalid_referer_code(ngx_http_rewrite_engine_t *e)
             e->sp++;
 
             return;
+
         } else {
             e->sp->value = 1;
             e->sp->text.len = 1;
@@ -731,12 +734,22 @@ ngx_http_rewrite_invalid_referer_code(ngx_http_rewrite_engine_t *e)
     if (len < sizeof("http://i.ru") - 1
         || (ngx_strncasecmp(ref, "http://", 7) != 0))
     {
-        e->sp->value = 1;
-        e->sp->text.len = 1;
-        e->sp->text.data = (u_char *) "1";
-        e->sp++;
+        if (cf->blocked_referer) {
+            e->sp->value = 0;
+            e->sp->text.len = 0;
+            e->sp->text.data = (u_char *) "0";
+            e->sp++;
 
-        return;
+            return;
+
+        } else {
+            e->sp->value = 1;
+            e->sp->text.len = 1;
+            e->sp->text.data = (u_char *) "1";
+            e->sp++;
+
+            return;
+        }
     }
 
     len -= 7;
@@ -853,6 +866,7 @@ ngx_http_rewrite_create_loc_conf(ngx_conf_t *cf)
     conf->stack_size = NGX_CONF_UNSET_UINT;
     conf->log = NGX_CONF_UNSET;
     conf->no_referer = NGX_CONF_UNSET;
+    conf->blocked_referer = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -873,10 +887,15 @@ ngx_http_rewrite_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->referers == NULL) {
         conf->referers = prev->referers;
         ngx_conf_merge_value(conf->no_referer, prev->no_referer, 0);
+        ngx_conf_merge_value(conf->blocked_referer, prev->blocked_referer, 0);
     }
 
     if (conf->no_referer == NGX_CONF_UNSET) {
         conf->no_referer = 0;
+    }
+
+    if (conf->blocked_referer == NGX_CONF_UNSET) {
+        conf->blocked_referer = 0;
     }
 
     if (conf->codes == NULL) {
@@ -1537,6 +1556,11 @@ ngx_http_rewrite_valid_referers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strcmp(value[i].data, "none") == 0) {
             lcf->no_referer = 1;
+            continue;
+        }
+
+        if (ngx_strcmp(value[i].data, "blocked") == 0) {
+            lcf->blocked_referer = 1;
             continue;
         }
 

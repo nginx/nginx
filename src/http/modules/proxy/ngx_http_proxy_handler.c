@@ -107,6 +107,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, preserve_host),
       NULL },
 
+    { ngx_string("proxy_pass_unparsed_uri"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, pass_unparsed_uri),
+      NULL },
+
     { ngx_string("proxy_set_x_url"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -802,7 +809,6 @@ u_char *ngx_http_proxy_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
     u_char                          *p;
     ngx_int_t                        escape;
-    ngx_str_t                        uri;
     ngx_http_request_t              *r;
     ngx_peer_connection_t           *peer;
     ngx_http_proxy_log_ctx_t        *ctx;
@@ -814,7 +820,7 @@ u_char *ngx_http_proxy_log_error(ngx_log_t *log, u_char *buf, size_t len)
     peer = &ctx->proxy->upstream->peer;
 
     p = ngx_snprintf(buf, len,
-                     " while %s, client: %V, host: %V, URL: \"%V\","
+                     " while %s, client: %V, server: %V, URL: \"%V\","
                      " upstream: http://%V%s%V",
                      ctx->proxy->action,
                      &r->connection->addr_text,
@@ -825,6 +831,13 @@ u_char *ngx_http_proxy_log_error(ngx_log_t *log, u_char *buf, size_t len)
                      &ctx->proxy->lcf->upstream->uri);
     len -= p - buf;
     buf = p;
+
+    if (ctx->proxy->lcf->pass_unparsed_uri && r->valid_unparsed_uri) {
+        p = ngx_cpymem(buf, r->unparsed_uri.data + 1, r->unparsed_uri.len - 1);
+        len -= p - buf;
+
+        return ngx_http_log_error_info(r, p, len);
+    }
 
     if (r->quoted_uri) {
         escape = 2 * ngx_escape_uri(NULL, r->uri.data + uc->location->len,
@@ -841,14 +854,15 @@ u_char *ngx_http_proxy_log_error(ngx_log_t *log, u_char *buf, size_t len)
                            r->uri.len - uc->location->len, NGX_ESCAPE_URI);
 
             buf += r->uri.len - uc->location->len + escape;
-
-            if (r->args.len == 0) {
-                return buf;
-            }
-
             len -= r->uri.len - uc->location->len + escape;
 
-            return ngx_snprintf(buf, len, "?%V", &r->args);
+            if (r->args.len) {
+                p = ngx_snprintf(buf, len, "?%V", &r->args);
+                len -= p - buf;
+                buf = p;
+            }
+
+            return ngx_http_log_error_info(r, buf, len);
         }
 
         p = ngx_palloc(r->pool, r->uri.len - uc->location->len + escape);
@@ -859,17 +873,23 @@ u_char *ngx_http_proxy_log_error(ngx_log_t *log, u_char *buf, size_t len)
         ngx_escape_uri(p, r->uri.data + uc->location->len,
                        r->uri.len - uc->location->len, NGX_ESCAPE_URI);
 
-        uri.len = r->uri.len - uc->location->len + escape;
-        uri.data = p;
+        p = ngx_cpymem(buf, p, r->uri.len - uc->location->len + escape);
 
     } else {
-        uri.len = r->uri.len - uc->location->len;
-        uri.data = r->uri.data + uc->location->len;
-
+        p = ngx_cpymem(buf, r->uri.data + uc->location->len,
+                       r->uri.len - uc->location->len);
     }
 
-    return ngx_snprintf(buf, len, "%V%s%V",
-                        &uri, r->args.len ? "?" : "", &r->args);
+    len -= p - buf;
+    buf = p;
+
+    if (r->args.len) {
+        p = ngx_snprintf(buf, len, "?%V", &r->args);
+        len -= p - buf;
+        buf = p;
+    }
+
+    return ngx_http_log_error_info(r, buf, len);
 }
 
 
@@ -1109,6 +1129,7 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->send_timeout = NGX_CONF_UNSET_MSEC;
     conf->send_lowat = NGX_CONF_UNSET_SIZE;
 
+    conf->pass_unparsed_uri = NGX_CONF_UNSET;
     conf->preserve_host = NGX_CONF_UNSET;
     conf->set_x_url = NGX_CONF_UNSET;
     conf->set_x_real_ip = NGX_CONF_UNSET;
@@ -1148,6 +1169,15 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
                               prev->connect_timeout, 60000);
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 60000);
     ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
+
+    ngx_conf_merge_value(conf->pass_unparsed_uri, prev->pass_unparsed_uri, 0);
+
+    if (conf->pass_unparsed_uri && conf->upstream->location->len > 1) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "\"proxy_pass_unparsed_uri\" can be set for "
+                      "location \"/\" or given by regular expression.");
+        return NGX_CONF_ERROR;
+    }
 
     ngx_conf_merge_value(conf->preserve_host, prev->preserve_host, 0);
     ngx_conf_merge_value(conf->set_x_url, prev->set_x_url, 0);

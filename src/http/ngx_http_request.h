@@ -32,18 +32,10 @@
 #define NGX_HTTP_CLIENT_ERROR              10
 #define NGX_HTTP_PARSE_INVALID_METHOD      10
 #define NGX_HTTP_PARSE_INVALID_REQUEST     11
-#define NGX_HTTP_PARSE_TOO_LONG_URI        12
-#define NGX_HTTP_PARSE_INVALID_09_METHOD   13
+#define NGX_HTTP_PARSE_INVALID_09_METHOD   12
 
-#define NGX_HTTP_PARSE_HEADER_ERROR        14
-#define NGX_HTTP_PARSE_INVALID_HEADER      14
-#define NGX_HTTP_PARSE_TOO_LONG_HEADER     15
-#define NGX_HTTP_PARSE_NO_HOST_HEADER      16
-#define NGX_HTTP_PARSE_INVALID_CL_HEADER   17
-#define NGX_HTTP_PARSE_POST_WO_CL_HEADER   18
-
-#define NGX_HTTP_PARSE_INVALID_HOST        19
-#define NGX_HTTP_PARSE_HTTP_TO_HTTPS       20
+#define NGX_HTTP_PARSE_HEADER_ERROR        13
+#define NGX_HTTP_PARSE_INVALID_HEADER      13
 
 
 #define NGX_HTTP_OK                        200
@@ -338,6 +330,7 @@ struct ngx_http_request_s {
     /* URI with "\0" or "%00" */
     unsigned                          zero_in_uri:1;
 
+    unsigned                          valid_unparsed_uri:1;
     unsigned                          uri_changed:1;
     unsigned                          uri_changes:4;
 

@@ -80,6 +80,7 @@ typedef struct {
     ngx_flag_t                       set_x_url;
     ngx_flag_t                       set_x_real_ip;
     ngx_flag_t                       add_x_forwarded_for;
+    ngx_flag_t                       pass_unparsed_uri;
     ngx_flag_t                       pass_server;
     ngx_flag_t                       pass_x_accel_expires;
     ngx_flag_t                       ignore_expires;

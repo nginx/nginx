@@ -1136,7 +1136,6 @@ ngx_http_upstream_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
     u_char                 *p;
     ngx_int_t               escape;
-    ngx_str_t               uri;
     ngx_http_log_ctx_t     *ctx;
     ngx_http_request_t     *r;
     ngx_http_upstream_t    *u;
@@ -1148,7 +1147,7 @@ ngx_http_upstream_log_error(ngx_log_t *log, u_char *buf, size_t len)
     peer = &u->peer;
 
     p = ngx_snprintf(buf, len,
-                     " while %s, client: %V, host: %V, URL: \"%V\","
+                     " while %s, client: %V, server: %V, URL: \"%V\","
                      " upstream: %V%V%s%V",
                      log->action,
                      &r->connection->addr_text,
@@ -1176,14 +1175,15 @@ ngx_http_upstream_log_error(ngx_log_t *log, u_char *buf, size_t len)
                            r->uri.len - u->location->len, NGX_ESCAPE_URI);
 
             buf += r->uri.len - u->location->len + escape;
-
-            if (r->args.len == 0) {
-                return buf;
-            }
-
             len -= r->uri.len - u->location->len + escape;
 
-            return ngx_snprintf(buf, len, "?%V", &r->args);
+            if (r->args.len) {
+                p = ngx_snprintf(buf, len, "?%V", &r->args);
+                len -= p - buf;
+                buf = p;
+            }
+
+            return ngx_http_log_error_info(r, buf, len);
         }
 
         p = ngx_palloc(r->pool, r->uri.len - u->location->len + escape);
@@ -1194,17 +1194,23 @@ ngx_http_upstream_log_error(ngx_log_t *log, u_char *buf, size_t len)
         ngx_escape_uri(p, r->uri.data + u->location->len,
                        r->uri.len - u->location->len, NGX_ESCAPE_URI);
 
-        uri.len = r->uri.len - u->location->len + escape;
-        uri.data = p;
+        p = ngx_cpymem(buf, p, r->uri.len - u->location->len + escape);
 
     } else {
-        uri.len = r->uri.len - u->location->len;
-        uri.data = r->uri.data + u->location->len;
-
+        p = ngx_cpymem(buf, r->uri.data + u->location->len,
+                       r->uri.len - u->location->len);
     }
 
-    return ngx_snprintf(buf, len, "%V%s%V", 
-                        &uri, r->args.len ? "?" : "", &r->args);
+    len -= p - buf;
+    buf = p;
+
+    if (r->args.len) {
+        p = ngx_snprintf(buf, len, "?%V", &r->args);
+        len -= p - buf;
+        buf = p;
+    }
+
+    return ngx_http_log_error_info(r, buf, len);
 }
 
 

@@ -282,7 +282,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
             if (s == NGX_ERROR) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                               "invalid socket number \"%s\" in "
-                              NGINX_VAR " enviroment variable, "
+                              NGINX_VAR " environment variable, "
                               "ignoring the rest of the variable", v);
                 break;
             }
