@@ -3,9 +3,11 @@
 #include <ngx_core.h>
 
 
-time_t       ngx_cached_time;
+time_t            ngx_cached_time;
+ngx_epoch_msec_t  ngx_elapsed_msec;
+ngx_epoch_msec_t  ngx_start_msec;
 
-ngx_tm_t     ngx_cached_gmtime;
+ngx_tm_t          ngx_cached_gmtime;
 
 static char  cached_err_log_time[] = "1970/09/28 12:00:00";
 ngx_str_t    ngx_cached_err_log_time;
@@ -37,6 +39,9 @@ void ngx_time_init()
 
     ngx_gettimeofday(&tv);
     ngx_cached_time = tv.tv_sec;
+    ngx_start_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    ngx_elapsed_msec = 0;
+
     ngx_time_update();
 }
 

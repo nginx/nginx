@@ -200,20 +200,9 @@ ngx_log_debug(cycle->log, "TYPE: %d" _ ecf->use);
         /* required by iocp in "c->write->active = 1" */
         c->write = wev;
 
-#if 0
-        ngx_test_null(rev->log, ngx_palloc(cycle->pool, sizeof(ngx_log_t)),
-                      NGX_ERROR);
-
-        ngx_memcpy(rev->log, c->log, sizeof(ngx_log_t));
-#endif
-
         rev->log = c->log;
         rev->data = c;
         rev->index = NGX_INVALID_INDEX;
-
-#if 0
-        rev->listening = 1;
-#endif
 
         rev->available = 0;
 

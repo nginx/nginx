@@ -4,6 +4,81 @@
 #include <ngx_event.h>
 
 
+ngx_rbtree_t  *ngx_event_timer_rbtree;
+
+
+int ngx_event_timer_init(ngx_cycle_t *cycle)
+{
+    ngx_event_timer_rbtree = &sentinel;
+    sentinel.left = &sentinel;
+    sentinel.right = &sentinel;
+    sentinel.parent = &sentinel;
+
+    return NGX_OK;
+}
+
+
+void ngx_event_timer_done(ngx_cycle_t *cycle)
+{
+}
+
+
+int ngx_event_find_timer(void)
+{
+    ngx_rbtree_t  *node;
+
+    node = ngx_rbtree_min(ngx_event_timer_rbtree);
+
+    if (node == &sentinel) {
+        return 0;
+
+    } else {
+        return node->key * NGX_TIMER_RESOLUTION - ngx_elapsed_msec;
+    }
+}
+
+
+void ngx_event_expire_timers(ngx_msec_t timer)
+{
+    ngx_event_t   *ev;
+    ngx_rbtree_t  *node;
+
+    for ( ;; ) {
+        node = ngx_rbtree_min(ngx_event_timer_rbtree);
+
+        if (node == &sentinel) {
+            break;
+        }
+
+        if ((ngx_msec_t) node->key <=
+                             (ngx_elapsed_msec + timer) / NGX_TIMER_RESOLUTION)
+        {
+            ev = (ngx_event_t *)
+                               ((char *) node - offsetof(ngx_event_t, rbtree));
+
+            ngx_del_timer(ev);
+
+            if (ev->delayed) {
+                ev->delayed = 0;
+                if (ev->ready == 0) {
+                    continue;
+                }
+
+            } else {
+                ev->timedout = 1;
+            }
+
+            ev->event_handler(ev);
+            continue;
+        }
+
+        break;
+    }
+}
+
+
+#if 0
+
 /* TODO: in multithreaded enviroment all timer operations must be
    protected by the single mutex */
 
@@ -275,3 +350,6 @@ void ngx_event_expire_timers(ngx_msec_t timer)
     }
 #endif
 }
+
+
+#endif

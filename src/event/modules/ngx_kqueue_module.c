@@ -360,8 +360,10 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         ts.tv_nsec = (timer % 1000) * 1000000;
         tp = &ts;
 
+#if 0
         ngx_gettimeofday(&tv);
         delta = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+#endif
 
     } else {
         delta = 0;
@@ -384,28 +386,31 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
 
     ngx_gettimeofday(&tv);
 
+#if 1
+    delta = ngx_elapsed_msec;
+#endif
+    ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
+
     if (ngx_cached_time != tv.tv_sec) {
         ngx_cached_time = tv.tv_sec;
         ngx_time_update();
     }
 
     if (timer) {
-        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
-
-#if (NGX_DEBUG_EVENT)
-        ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ (int) delta);
-#endif
+        delta = ngx_elapsed_msec - delta;
 
 #if 0
+        delta = tv.tv_sec * 1000 + tv.tv_usec / 1000 - delta;
+
         /*
          * The expired timers must be handled before a processing of the events
          * because the new timers can be added during a processing
          */
 
         ngx_event_expire_timers((ngx_msec_t) delta);
-#endif
 
         ngx_event_set_timer_delta((ngx_msec_t) delta);
+#endif
 
     } else {
         if (events == 0) {
@@ -413,11 +418,11 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
                           "kevent() returned no events without timeout");
             return NGX_ERROR;
         }
+    }
 
 #if (NGX_DEBUG_EVENT)
         ngx_log_debug(log, "kevent timer: %d, delta: %d" _ timer _ (int) delta);
 #endif
-    }
 
     if (err) {
         ngx_log_error(NGX_LOG_ALERT, log, err, "kevent() failed");
@@ -510,9 +515,15 @@ static int ngx_kqueue_process_events(ngx_log_t *log)
         }
     }
 
+    if (timer && delta) {
+        ngx_event_expire_timers((ngx_msec_t) delta);
+    }
+
+#if 0
     if (timer) {
         ngx_event_expire_timers((ngx_msec_t) delta);
     }
+#endif
 
     return NGX_OK;
 }

@@ -175,6 +175,9 @@ void ngx_event_accept(ngx_event_t *ev)
         rev->index = NGX_INVALID_INDEX;
         wev->index = NGX_INVALID_INDEX;
 
+        rev->rbtree.data = rev;
+        wev->rbtree.data = wev;
+
         rev->data = c;
         wev->data = c;
 

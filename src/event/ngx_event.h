@@ -31,11 +31,14 @@ struct ngx_event_s {
     ngx_event_t     *prev;
     ngx_event_t     *next;
 
+    ngx_rbtree_t     rbtree;
+
+#if 0
     ngx_event_t     *timer_prev;
     ngx_event_t     *timer_next;
 
     ngx_msec_t       timer_delta;
-    ngx_msec_t       timer;
+#endif
 
     ngx_log_t       *log;
 
