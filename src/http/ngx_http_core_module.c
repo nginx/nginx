@@ -537,6 +537,25 @@ int ngx_http_find_location_config(ngx_http_request_t *r)
         r->connection->tcp_nopush = -1;
     }
 
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http cl: " SIZE_T_FMT " max: " SIZE_T_FMT,
+                   r->headers_in.content_length_n,
+                   clcf->client_max_body_size);
+
+    if (r->headers_in.content_length_n != -1
+        && clcf->client_max_body_size
+        && clcf->client_max_body_size < (size_t) r->headers_in.content_length_n)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "client intented to send too large body: "
+                      SIZE_T_FMT " bytes",
+                      r->headers_in.content_length_n);
+
+        return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
+    }
+
+
     if (auto_redirect) {
         if (!(r->headers_out.location =
                    ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))

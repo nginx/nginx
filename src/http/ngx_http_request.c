@@ -38,8 +38,7 @@ static char *client_header_errors[] = {
     "client %s sent invalid header, URL: %s",
     "client %s sent too long header line, URL: %s",
     "client %s sent HTTP/1.1 request without \"Host\" header, URL: %s",
-    "client %s sent invalid \"Content-Length\" header, URL: %s",
-    "client %s wanted to send too large body: " SIZE_T_FMT " bytes, URL: %s"
+    "client %s sent invalid \"Content-Length\" header, URL: %s"
 };
 
 
@@ -248,12 +247,21 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->cleanup.size = sizeof(ngx_http_cleanup_t);
     r->cleanup.pool = r->pool;
 
-    /* TODO: ngx_init_table */
-    if (!(r->headers_out.headers = ngx_create_table(r->pool, 20))) {
+
+    /* init the r->headers_out.headers table */
+
+    r->headers_out.headers.elts = ngx_pcalloc(r->pool,
+                                              20 * sizeof(ngx_table_elt_t));
+    if (r->headers_out.headers.elts == NULL) {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         ngx_http_close_connection(c);
         return;
     }
+    /* r->headers_out.headers.nelts = 0; */
+    r->headers_out.headers.nalloc = 20;
+    r->headers_out.headers.size = sizeof(ngx_table_elt_t);
+    r->headers_out.headers.pool = r->pool;
+
 
     r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
     if (r->ctx == NULL) {
@@ -469,11 +477,26 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             return;
         }
 
+
+        /* init the r->headers_in.headers table */
+
+        r->headers_in.headers.elts = ngx_pcalloc(r->pool,
+                                                 20 * sizeof(ngx_table_elt_t));
+        if (r->headers_in.headers.elts == NULL) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        /* r->headers_in.headers.elts = NULL; */
+        /* r->headers_in.headers.nelts = 0; */
+        r->headers_in.headers.size = sizeof(ngx_table_elt_t);
+        r->headers_in.headers.nalloc = 20;
+        r->headers_in.headers.pool = r->pool;
+
         ctx = c->log->data;
         ctx->action = "reading client request headers";
         ctx->url = r->unparsed_uri.data;
-        /* TODO: ngx_init_table */
-        r->headers_in.headers = ngx_create_table(r->pool, 20);
 
         if (cscf->large_client_header
             && r->header_in->pos == r->header_in->last)
@@ -848,21 +871,6 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
         if (r->headers_in.content_length_n == NGX_ERROR) {
             return NGX_HTTP_PARSE_INVALID_CL_HEADER;
         }
-
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http cl: " SIZE_T_FMT " max: " SIZE_T_FMT,
-                       r->headers_in.content_length_n,
-                       clcf->client_max_body_size);
-
-        if (clcf->client_max_body_size
-            && clcf->client_max_body_size
-                                     < (size_t) r->headers_in.content_length_n)
-        {
-            return NGX_HTTP_PARSE_ENTITY_TOO_LARGE;
-        }
-
     }
 
     if (r->headers_in.connection) {
@@ -911,6 +919,12 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
 
         if (r->connection->write->timer_set) {
             ngx_del_timer(r->connection->write);
+        }
+
+        if (rc == NGX_HTTP_CLIENT_CLOSED_REQUEST || r->closed) {
+            ngx_http_close_request(r, 0);
+            ngx_http_close_connection(r->connection);
+            return;
         }
 
         ngx_http_finalize_request(r, ngx_http_special_response_handler(r, rc));
@@ -1098,8 +1112,6 @@ int ngx_http_discard_body(ngx_http_request_t *r)
     }
 
     return ngx_http_read_discarded_body(r);
-
-    return NGX_OK;
 }
 
 
@@ -1158,7 +1170,15 @@ static int ngx_http_read_discarded_body(ngx_http_request_t *r)
 
     n = ngx_recv(r->connection, r->discarded_buffer, size);
     if (n == NGX_ERROR) {
-        return NGX_HTTP_BAD_REQUEST;
+
+        r->closed = 1;
+
+        /*
+         * when a client request body is discarded then we already set
+         * some HTTP response code for client and we can ignore the error
+         */
+
+        return NGX_OK;
     }
 
     if (n == NGX_AGAIN) {
@@ -1606,19 +1626,9 @@ static void ngx_http_client_error(ngx_http_request_t *r,
     r->connection->log->handler = NULL;
 
     if (ctx->url) {
-        if (client_error == NGX_HTTP_PARSE_ENTITY_TOO_LARGE) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                    client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
-                    ctx->client, r->headers_in.content_length_n, ctx->url);
-
-            error = NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
-            r->lingering_close = 1;
-
-        } else {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                     client_header_errors[client_error - NGX_HTTP_CLIENT_ERROR],
                     ctx->client, ctx->url);
-        }
 
     } else {
         if (error == NGX_HTTP_REQUEST_URI_TOO_LARGE) {

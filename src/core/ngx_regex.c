@@ -42,6 +42,10 @@ ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
         }
     }
 
+    /* ensure that there is no current pool */
+
+    ngx_pcre_pool = NULL;
+
     return re;
 }
 
@@ -64,7 +68,11 @@ ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s,
 
 static void *ngx_regex_malloc(size_t size)
 {
-    return ngx_palloc(ngx_pcre_pool, size);
+    if (ngx_pcre_pool) {
+        return ngx_palloc(ngx_pcre_pool, size);
+    }
+
+    return NULL;
 }
 
 

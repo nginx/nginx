@@ -17,8 +17,8 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
 
     r = p->request;
 
-    h = headers_in->headers->elts;
-    for (i = 0; i < headers_in->headers->nelts; i++) {
+    h = headers_in->headers.elts;
+    for (i = 0; i < headers_in->headers.nelts; i++) {
 
         if (&h[i] == headers_in->connection) {
             continue;
@@ -98,37 +98,43 @@ static int ngx_http_proxy_rewrite_location_header(ngx_http_proxy_ctx_t *p,
                                                   ngx_table_elt_t *loc)
 {
     u_char                          *last;
+    ngx_table_elt_t                 *location;
     ngx_http_request_t              *r;
     ngx_http_proxy_upstream_conf_t  *uc;
 
     r = p->request;
     uc = p->lcf->upstream;
 
-    r->headers_out.location = ngx_http_add_header(&r->headers_out,
-                                                  ngx_http_headers_out);
-    if (r->headers_out.location == NULL) {
+    location = ngx_http_add_header(&r->headers_out, ngx_http_headers_out);
+    if (location == NULL) {
         return NGX_ERROR;
     }
+
+    /*
+     * we do not set r->headers_out.location to avoid the handling
+     * the local redirects without a host name by ngx_http_header_filter()
+     */
+
+#if 0
+    r->headers_out.location = location;
+#endif
 
     if (uc->url.len > loc->value.len
         || ngx_rstrncmp(loc->value.data, uc->url.data, uc->url.len) != 0)
     {
-        *r->headers_out.location = *loc;
+        *location = *loc;
         return NGX_OK;
     }
 
     /* TODO: proxy_reverse */
 
-    r->headers_out.location->value.len = uc->location->len
-                                         + (loc->value.len - uc->url.len) + 1;
-    r->headers_out.location->value.data =
-                       ngx_palloc(r->pool, r->headers_out.location->value.len);
-
-    if (r->headers_out.location->value.data == NULL) {
+    location->value.len = uc->location->len
+                                          + (loc->value.len - uc->url.len) + 1;
+    if (!(location->value.data = ngx_palloc(r->pool, location->value.len))) {
         return NGX_ERROR;
     }
 
-    last = ngx_cpymem(r->headers_out.location->value.data,
+    last = ngx_cpymem(location->value.data,
                       uc->location->data, uc->location->len);
 
     ngx_cpystrn(last, loc->value.data + uc->url.len,

@@ -108,7 +108,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_table_t                     *headers;   /* it must be first field */
+    ngx_table_t                      headers;   /* it must be first field */
 
     ngx_table_elt_t                 *date;
     ngx_table_elt_t                 *server;

@@ -50,7 +50,7 @@
 #include <ngx_auto_config.h>
 
 
-#define ngx_inlie         __inline
+#define ngx_inline        __inline
 
 
 #ifdef _MSC_VER

@@ -377,12 +377,16 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         bsize = 0;
         to_write = 0;
 
+#if 0
         if (!(p->upstream_eof || p->upstream_error || p->upstream_done)) {
+#endif
             for (cl = p->busy; cl; cl = cl->next) {
                 bsize += cl->hunk->end - cl->hunk->start;
                 to_write += ngx_hunk_size(cl->hunk);
             }
+#if 0
         }
+#endif
 
         out = NULL;
         ll = NULL;
@@ -391,11 +395,17 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             if (p->out) {
                 cl = p->out;
 
+#if 0
                 if (!(p->upstream_eof || p->upstream_error || p->upstream_done)
                     && (bsize + ngx_hunk_size(cl->hunk) > p->busy_size))
                 {
                     break;
                 }
+#else
+                if (bsize + ngx_hunk_size(cl->hunk) > p->busy_size) {
+                    break;
+                }
+#endif
 
                 p->out = p->out->next;
                 ngx_event_pipe_free_shadow_raw_hunk(&p->free_raw_hunks,
@@ -404,11 +414,17 @@ int ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             } else if (!p->cachable && p->in) {
                 cl = p->in;
 
+#if 0
                 if (!(p->upstream_eof || p->upstream_error || p->upstream_done)
                     && (bsize + ngx_hunk_size(cl->hunk) > p->busy_size))
                 {
                     break;
                 }
+#else
+                if (bsize + ngx_hunk_size(cl->hunk) > p->busy_size) {
+                    break;
+                }
+#endif
 
                 p->in = p->in->next;
 

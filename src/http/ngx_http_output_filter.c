@@ -77,7 +77,7 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         ctx->output_filter = (ngx_output_chain_filter_pt)
                                                       ngx_http_top_body_filter;
-        ctx->output_ctx = r;
+        ctx->filter_ctx = r;
 
     }
 

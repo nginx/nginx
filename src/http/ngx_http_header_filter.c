@@ -205,8 +205,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         len += sizeof("Connection: closed" CRLF) - 1;
     }
 
-    header = r->headers_out.headers->elts;
-    for (i = 0; i < r->headers_out.headers->nelts; i++) {
+    header = r->headers_out.headers.elts;
+    for (i = 0; i < r->headers_out.headers.nelts; i++) {
         if (header[i].key.len == 0) {
             continue;
         }
@@ -321,7 +321,7 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
                              sizeof("Connection: close" CRLF) - 1);
     }
 
-    for (i = 0; i < r->headers_out.headers->nelts; i++) {
+    for (i = 0; i < r->headers_out.headers.nelts; i++) {
         if (header[i].key.len == 0) {
             continue;
         }

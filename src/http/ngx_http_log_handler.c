@@ -327,8 +327,8 @@ static u_char *ngx_http_log_unknown_header_in(ngx_http_request_t *r,
 
     s = (ngx_str_t *) data;
 
-    h = r->headers_in.headers->elts;
-    for (i = 0; i < r->headers_in.headers->nelts; i++) {
+    h = r->headers_in.headers.elts;
+    for (i = 0; i < r->headers_in.headers.nelts; i++) {
         if (h[i].key.len != s->len) {
             continue;
         }
@@ -535,8 +535,8 @@ static u_char *ngx_http_log_unknown_header_out(ngx_http_request_t *r,
 
     s = (ngx_str_t *) data;
 
-    h = r->headers_out.headers->elts;
-    for (i = 0; i < r->headers_out.headers->nelts; i++) {
+    h = r->headers_out.headers.elts;
+    for (i = 0; i < r->headers_out.headers.nelts; i++) {
         if (h[i].key.len != s->len) {
             continue;
         }

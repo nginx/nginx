@@ -28,13 +28,13 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
     if (ctx->in == NULL) {
 
         if (in == NULL) {
-            return ctx->output_filter(ctx->output_ctx, in);
+            return ctx->output_filter(ctx->filter_ctx, in);
         }
 
         if (in->next == NULL
             && (!ngx_output_chain_need_to_copy(ctx, in->hunk)))
         {
-            return ctx->output_filter(ctx->output_ctx, in);
+            return ctx->output_filter(ctx->filter_ctx, in);
         }
     }
 
@@ -153,7 +153,7 @@ int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
             return last;
         }
 
-        last = ctx->output_filter(ctx->output_ctx, out);
+        last = ctx->output_filter(ctx->filter_ctx, out);
 
         ngx_chain_update_chains(&ctx->free, &ctx->busy, &out, ctx->tag);
         last_out = &out;

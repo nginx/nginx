@@ -12,7 +12,6 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
                                             size_t request_buffer_size)
 {
-    ngx_int_t     rc;
     ssize_t       size;
     ngx_hunk_t   *h;
     ngx_chain_t  *cl;
@@ -143,11 +142,16 @@ static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         }
 
         if (n == 0 || n == NGX_ERROR) {
+            r->closed = 1;
             return NGX_HTTP_BAD_REQUEST;
         }
 
         r->request_body_hunk->last += n;
         r->request_body_len -= n;
+
+        if (r->request_body_len == 0) {
+            break;
+        }
 
         if (r->request_body_hunk->last < r->request_body_hunk->end) {
             break;

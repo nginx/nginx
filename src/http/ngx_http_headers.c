@@ -60,12 +60,12 @@ ngx_http_header_t  ngx_http_headers_out[] = {
 ngx_table_elt_t *ngx_http_add_header(void *header,
                                      ngx_http_header_t *http_headers)
 {
-    char             *prev;
+    void             *prev;
     ngx_uint_t        i, j;
     ngx_table_t      *headers;
     ngx_table_elt_t  *h, *new;
 
-    headers = *(ngx_table_t **) header;
+    headers = header;
 
     prev = headers->elts;
 

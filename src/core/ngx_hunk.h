@@ -92,7 +92,7 @@ typedef struct {
     ngx_hunk_tag_t               tag;
 
     ngx_output_chain_filter_pt   output_filter;
-    void                        *output_ctx;
+    void                        *filter_ctx;
 } ngx_output_chain_ctx_t;
 
 

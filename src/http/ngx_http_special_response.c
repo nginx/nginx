@@ -185,8 +185,8 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 
     rc = ngx_http_discard_body(r);
 
-    if (rc != NGX_OK) {
-        return rc;
+    if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
+        error = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     r->headers_out.status = error;

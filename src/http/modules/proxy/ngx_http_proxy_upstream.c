@@ -148,8 +148,8 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     }
 
 
-    header = (ngx_table_elt_t *) r->headers_in.headers->elts;
-    for (i = 0; i < r->headers_in.headers->nelts; i++) {
+    header = r->headers_in.headers.elts;
+    for (i = 0; i < r->headers_in.headers.nelts; i++) {
 
         if (&header[i] == r->headers_in.host) {
             continue;
@@ -198,7 +198,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     h->last = ngx_cpymem(h->last, host_header, sizeof(host_header) - 1);
 
-    if (p->lcf->preserve_host) {
+    if (p->lcf->preserve_host && r->headers_in.host) {
         h->last = ngx_cpymem(h->last, r->headers_in.host->value.data,
                              r->headers_in.host_name_len);
 
@@ -250,7 +250,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     }
 
 
-    for (i = 0; i < r->headers_in.headers->nelts; i++) {
+    for (i = 0; i < r->headers_in.headers.nelts; i++) {
 
         if (&header[i] == r->headers_in.host) {
             continue;
@@ -377,7 +377,7 @@ static void ngx_http_proxy_init_upstream(void *data)
         return;
     }
 
-    output->output_ctx = writer;
+    output->filter_ctx = writer;
     writer->pool = r->pool;
 
     if (p->lcf->busy_lock && !p->busy_locked) {
@@ -392,7 +392,6 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
 {
     ngx_chain_t             *cl;
     ngx_output_chain_ctx_t  *output;
-    ngx_chain_writer_ctx_t  *writer;
 
     output = p->upstream->output_chain_ctx;
 
@@ -400,6 +399,7 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
 
     for (cl = p->request->request_hunks; cl; cl = cl->next) {
         cl->hunk->pos = cl->hunk->start;
+        cl->hunk->file_pos = 0;
     }
 
     /* reinit the ngx_output_chain() context */
@@ -521,7 +521,7 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     /* init or reinit the ngx_output_chain() and ngx_chain_writer() contexts */
 
     output = p->upstream->output_chain_ctx;
-    writer = output->output_ctx;
+    writer = output->filter_ctx;
     writer->out = NULL;
     writer->last = &writer->out;
     writer->connection = c;
@@ -541,7 +541,6 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         output->hunks = 1;
 
         r->request_body_hunk->pos = r->request_body_hunk->start;
-        r->request_body_hunk->last = r->request_body_hunk->start;
     }
 
     p->request_sent = 0;
@@ -824,13 +823,25 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
                    "http proxy status %d \"%s\"",
                    p->upstream->status, p->upstream->status_line.data);
 
-    if (p->upstream->headers_in.headers) {
-        p->upstream->headers_in.headers->nelts = 0;
+
+    /* init or reinit the p->upstream->headers_in.headers table */
+
+    if (p->upstream->headers_in.headers.elts) {
+        p->upstream->headers_in.headers.nelts = 0;
+
     } else {
-        /* TODO: ngx_init_table */
-        p->upstream->headers_in.headers = ngx_create_table(p->request->pool,
-                                                           20);
+        p->upstream->headers_in.headers.elts = ngx_pcalloc(p->request->pool,
+                                                 20 * sizeof(ngx_table_elt_t));
+        if (p->upstream->headers_in.headers.elts == NULL) {
+            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+        /* p->upstream->headers_in.headers.nelts = 0; */
+        p->upstream->headers_in.headers.nalloc = 20;
+        p->upstream->headers_in.headers.size = sizeof(ngx_table_elt_t);
+        p->upstream->headers_in.headers.pool = p->request->pool;
     }
+
 
     c->read->event_handler = ngx_http_proxy_process_upstream_headers;
     ngx_http_proxy_process_upstream_headers(rev);

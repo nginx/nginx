@@ -30,7 +30,6 @@
 #define NGX_HTTP_PARSE_TOO_LONG_HEADER     15
 #define NGX_HTTP_PARSE_NO_HOST_HEADER      16
 #define NGX_HTTP_PARSE_INVALID_CL_HEADER   17
-#define NGX_HTTP_PARSE_ENTITY_TOO_LARGE    18
 
 
 #define NGX_HTTP_OK                        200
@@ -87,7 +86,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_table_t      *headers;   /* it must be first field */
+    ngx_table_t       headers;   /* it must be first field */
 
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
@@ -137,7 +136,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_table_t      *headers;   /* it must be first field */
+    ngx_table_t       headers;   /* it must be first field */
 
     int               status;
     ngx_str_t         status_line;
@@ -265,9 +264,7 @@ struct ngx_http_request_s {
     unsigned             header_only:1;
     unsigned             keepalive:1;
     unsigned             lingering_close:1;
-#if 0
     unsigned             closed:1;
-#endif
 
     /* TODO: use the filter flags or the separate bits ???? */
     u_int                filter;

@@ -32,7 +32,7 @@ typedef struct {
 
     void                *preallocated;
     char                *free_mem;
-    int                  allocated;
+    ngx_uint_t           allocated;
 
     unsigned             flush:4;
     unsigned             redo:1;
@@ -515,8 +515,8 @@ static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
 {
     ngx_http_gzip_ctx_t *ctx = opaque;
 
-    int    alloc;
-    void  *p;
+    void        *p;
+    ngx_uint_t   alloc;
 
     alloc = items * size;
     if (alloc % 512 != 0) {
@@ -533,7 +533,7 @@ static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
         ctx->allocated -= alloc;
 
         ngx_log_debug4(NGX_LOG_DEBUG_HTTP, ctx->request->connection->log, 0,
-                       "gzip alloc: n:%d s:%d a:%d p:%08X",
+                       "gzip alloc: n:%d s:%d a:%d p:" PTR_FMT,
                        items, size, alloc, p);
 
         return p;
