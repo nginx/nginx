@@ -1133,6 +1133,16 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
 
     ctx->action = "keepalive";
 
+    if (c->tcp_nopush) {
+        if (ngx_tcp_push(c->fd) == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
+                          ngx_tcp_push_n " failed");
+                ngx_http_close_connection(c);
+                return;
+        }
+        c->tcp_nopush = 0;
+    }
+
     if ((ngx_event_flags & NGX_HAVE_AIO_EVENT) || blocked) {
         ngx_http_keepalive_handler(rev);
     }

@@ -4,6 +4,12 @@
 #include <ngx_http.h>
 #include <nginx.h>
 
+/* STUB probably, needed for ngx_freebsd_tcp_nopush_flush */
+#ifdef __FreeBSD__
+#include <ngx_freebsd_init.h>
+#endif
+
+
 
 static int ngx_http_header_filter_init(ngx_pool_t *pool);
 static int ngx_http_header_filter(ngx_http_request_t *r);
@@ -93,6 +99,23 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     ngx_hunk_t        *h;
     ngx_chain_t       *ch;
     ngx_table_elt_t   *header;
+
+#ifdef __FreeBSD__
+
+    if (r->keepalive) {
+        if (ngx_freebsd_tcp_nopush_flush) {
+            r->connection->tcp_nopush_enabled = 1;
+        }
+
+    } else {
+        r->connection->tcp_nopush_enabled = 1;
+    }
+
+#else
+
+    r->connection->tcp_nopush_enabled = 1;
+
+#endif
 
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
@@ -219,12 +242,12 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         len += 28;
     }
 
-    if (r->keepalive == 0) {
-        /* "Connection: close\r\n" */
-        len += 19;
-    } else {
+    if (r->keepalive) {
         /* "Connection: keep-alive\r\n" */
         len += 24;
+    } else {
+        /* "Connection: close\r\n" */
+        len += 19;
     }
 
     header = (ngx_table_elt_t *) r->headers_out.headers->elts;
@@ -323,11 +346,11 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         h->last = ngx_cpymem(h->last, "Transfer-Encoding: chunked" CRLF, 28);
     }
 
-    if (r->keepalive == 0) {
-        h->last = ngx_cpymem(h->last, "Connection: close" CRLF, 19);
+    if (r->keepalive) {
+        h->last = ngx_cpymem(h->last, "Connection: keep-alive" CRLF, 24);
 
     } else {
-        h->last = ngx_cpymem(h->last, "Connection: keep-alive" CRLF, 24);
+        h->last = ngx_cpymem(h->last, "Connection: close" CRLF, 19);
     }
 
     for (i = 0; i < r->headers_out.headers->nelts; i++) {

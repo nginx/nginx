@@ -2,10 +2,14 @@
 #define _NGX_LINUX_CONFIG_H_INCLUDED_
 
 
-#define _XOPEN_SOURCE 500
+#define _FILE_OFFSET_BITS  64
+#define _LARGEFILE_SOURCE
 
 
+#define _XOPEN_SOURCE 500       /* pread, pwrite */
 #include <unistd.h>
+#undef  _XOPEN_SOURCE 500
+
 #include <stddef.h>             /* offsetof */
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,7 +17,7 @@
 #include <signal.h>
 #include <time.h>
 
-#define __USE_BSD
+#define __USE_BSD               /* bzero */
 #include <string.h>
 #undef  __USE_BSD
 
@@ -23,14 +27,16 @@
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
+#include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
 
-typedef unsigned int   u_int;
-typedef unsigned char  u_char;
+typedef unsigned int    u_int;
+typedef unsigned short  u_short;
+typedef unsigned char   u_char;
 
 
 #ifndef HAVE_SELECT
@@ -53,6 +59,11 @@ typedef unsigned char  u_char;
 
 #ifndef HAVE_INHERITED_NONBLOCK
 #define HAVE_INHERITED_NONBLOCK  1
+#endif
+
+
+#ifndef HAVE_FIONBIO
+#define HAVE_FIONBIO   1         
 #endif
 
 

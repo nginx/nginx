@@ -57,4 +57,9 @@ typedef uint32_t  u_int32_t;
 #endif
 
 
+#ifndef HAVE_FIONBIO
+#define HAVE_FIONBIO   1         
+#endif
+
+
 #endif /* _NGX_SOLARIS_CONFIG_H_INCLUDED_ */

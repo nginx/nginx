@@ -105,17 +105,15 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 
         if (file) {
 
-            if (!c->tcp_nopush && ngx_freebsd_tcp_nopush_flush) {
+            if (!c->tcp_nopush && c->tcp_nopush_enabled) {
                 c->tcp_nopush = 1;
                 tcp_nopush = 1;
-                if (setsockopt(c->fd, IPPROTO_TCP, TCP_NOPUSH,
-                               (const void *) &tcp_nopush,
-                               sizeof(int)) == -1)
-                {
-                    ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
-                                  "setsockopt(TCP_NOPUSH) failed");
+                if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
+                    ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
+                                  ngx_tcp_nopush_n " failed");
                     return NGX_CHAIN_ERROR;
                 }
+ngx_log_debug(c->log, "NOPUSH");
             }
 
             hdtr.headers = (struct iovec *) header.elts;
@@ -221,22 +219,6 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         in = ce;
 
     } while ((tail && tail == ce) || eintr);
-
-    /* STUB: should be in app code, no need to clear TCP_NOPUSH
-             if the conneciton close()d or shutdown()ed */
-
-    if (c->tcp_nopush) {
-        c->tcp_nopush = 0;
-        tcp_nopush = 0;
-        if (setsockopt(c->fd, IPPROTO_TCP, TCP_NOPUSH,
-                       (const void *) &tcp_nopush,
-                       sizeof(int)) == -1)
-        {
-            ngx_log_error(NGX_LOG_CRIT, c->log, ngx_errno,
-                          "setsockopt(!TCP_NOPUSH) failed");
-            return NGX_CHAIN_ERROR;
-        }
-    }
 
     return ce;
 }

@@ -13,7 +13,7 @@ typedef int  ngx_socket_t;
 #define ngx_socket_n        "socket()"
 
 
-#if 1
+#if (HAVE_FIONBIO)
 
 int ngx_nonblocking(ngx_socket_t s);
 int ngx_blocking(ngx_socket_t s);
@@ -27,6 +27,13 @@ int ngx_blocking(ngx_socket_t s);
 #define ngx_nonblocking_n   "fcntl(O_NONBLOCK)"
 
 #endif
+
+int ngx_tcp_nopush(ngx_socket_t s);
+#define ngx_tcp_nopush_n   "setsockopt(TCP_NOPUSH)"
+
+int ngx_tcp_push(ngx_socket_t s);
+#define ngx_tcp_push_n     "setsockopt(!TCP_NOPUSH)"
+
 
 
 #define ngx_shutdown_socket    shutdown

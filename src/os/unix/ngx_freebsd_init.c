@@ -56,7 +56,7 @@ int ngx_os_init(ngx_log_t *log)
     size_t     size;
     ngx_err_t  err;
 
-    size = 20;
+    size = sizeof(ngx_freebsd_kern_ostype);
     if (sysctlbyname("kern.ostype",
                      ngx_freebsd_kern_ostype, &size, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
@@ -64,7 +64,7 @@ int ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    size = 20;
+    size = sizeof(ngx_freebsd_kern_osrelease);
     if (sysctlbyname("kern.osrelease",
                      ngx_freebsd_kern_osrelease, &size, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
@@ -76,7 +76,7 @@ int ngx_os_init(ngx_log_t *log)
                   ngx_freebsd_kern_ostype, ngx_freebsd_kern_osrelease);
 
 
-    size = 4;
+    size = sizeof(int);
     if (sysctlbyname("kern.osreldate",
                      &ngx_freebsd_kern_osreldate, &size, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,

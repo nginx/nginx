@@ -4,7 +4,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <sys/sysctl.h>
 
 
 /* STUB */
@@ -22,6 +21,7 @@ extern int ngx_freebsd_net_inet_tcp_sendspace;
 extern int ngx_freebsd_sendfile_nbytes_bug;
 extern int ngx_freebsd_tcp_nopush_flush;
 extern int ngx_freebsd_kern_ipc_zero_copy_send;
+extern int ngx_freebsd_tcp_nopush_flush;
 
 
 #endif /* _NGX_FREEBSD_INIT_H_INCLUDED_ */

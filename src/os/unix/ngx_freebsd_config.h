@@ -13,6 +13,7 @@
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
+#include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>        /* TCP_NOPUSH */
@@ -102,6 +103,11 @@
 
 #ifndef HAVE_INHERITED_NONBLOCK
 #define HAVE_INHERITED_NONBLOCK  1
+#endif
+
+
+#ifndef HAVE_FIONBIO
+#define HAVE_FIONBIO   1
 #endif
 
 
