@@ -18,6 +18,7 @@
 /* */
 
 
+static void ngx_set_signals(ngx_log_t *log);
 static void ngx_open_listening_sockets(ngx_log_t *log);
 
 
@@ -41,6 +42,8 @@ int main(int argc, char *const *argv)
 
     ngx_pool = ngx_create_pool(16 * 1024, &ngx_log);
     /* */
+
+    ngx_set_signals(&ngx_log);
 
     ngx_init_sockets(&ngx_log);
 
@@ -68,6 +71,20 @@ int main(int argc, char *const *argv)
     ngx_worker(&ngx_log);
 
     return 0;
+}
+
+static void ngx_set_signals(ngx_log_t *log)
+{
+    struct sigaction sa;
+
+    ngx_memzero(&sa, sizeof(struct sigaction));
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGPIPE, &sa, NULL) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "sigaction(SIGPIPE, SIG_IGN) failed");
+        exit(1);
+    }
 }
 
 static void ngx_open_listening_sockets(ngx_log_t *log)

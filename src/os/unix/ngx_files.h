@@ -12,6 +12,9 @@ typedef struct stat              ngx_file_info_t;
 #define ngx_open_file            open
 #define ngx_open_file_n          "open()"
 
+#define ngx_close_file           close
+#define ngx_close_file_n         "close()"
+
 #define ngx_read_file_n          "read()"
 
 #define NGX_FILE_RDONLY          O_RDONLY

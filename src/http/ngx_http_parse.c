@@ -312,7 +312,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
     }
 }
 
-int ngx_read_http_header_line(ngx_http_request_t *r)
+int ngx_read_http_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
 {
     char   c, ch;
     char  *p;
@@ -329,14 +329,14 @@ int ngx_read_http_header_line(ngx_http_request_t *r)
     } state;
 
     state = r->state;
-    p = r->header_in->pos.mem;
+    p = h->pos.mem;
 
-    while (p < r->header_in->last.mem && state < sw_done) {
+    while (p < h->last.mem && state < sw_done) {
         ch = *p++;
 
 /*
 printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
-       state, p, r->header_in->last.mem, ch, p);
+       state, p, h->last.mem, ch, p);
 */
 
         switch (state) {
@@ -470,7 +470,7 @@ printf("\nstate: %d, pos: %x, end: %x, char: '%c' buf: %s",
         }
     }
 
-    r->header_in->pos.mem = p;
+    h->pos.mem = p;
 
     if (state == sw_done) {
         r->state = sw_start;

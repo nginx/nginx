@@ -54,7 +54,7 @@ int ngx_event_accept(ngx_event_t *ev)
         ngx_connections[s].family = cn->family;
         ngx_connections[s].socklen = cn->socklen;
         ngx_connections[s].addr = cn->addr;
-        ngx_connections[s].addr_textlen = cn->addr_textlen;
+        ngx_connections[s].addr_text.len = cn->addr_text.len;
         ngx_connections[s].post_accept_timeout = cn->post_accept_timeout;
 
         ngx_read_events[s].data = ngx_write_events[s].data

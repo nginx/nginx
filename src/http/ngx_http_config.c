@@ -100,13 +100,16 @@ ngx_http_write_filter_set_stub(ngx_pool_t *pool, ngx_http_module_t **modules)
 ngx_http_index_set_stub(ngx_pool_t *pool, ngx_http_module_t **modules)
 {
     int i;
+    ngx_str_t index;
     ngx_command_t *cmd;
 
     for (i = 0; modules[i]; i++) {
         if (modules[i] == &ngx_http_index_module) {
             for (cmd = modules[i]->commands; cmd->name; cmd++) {
                 if (strcmp(cmd->name, "index") == 0) {
-                    cmd->set(pool, ngx_loc_conf[i], "index.html");
+                    index.len = sizeof("index.html") - 1;
+                    index.data = "index.html";
+                    cmd->set(pool, ngx_loc_conf[i], &index);
                 }
             }
         }

@@ -15,10 +15,14 @@ static void *ngx_http_write_filter_create_conf(ngx_pool_t *pool);
 
 ngx_http_module_t  ngx_http_write_filter_module = {
     NGX_HTTP_MODULE,
+
     NULL,                                  /* create server config */
     ngx_http_write_filter_create_conf,     /* create location config */
     ngx_http_write_filter_commands,        /* module directives */
+
     NULL,                                  /* init module */
+    NULL,                                  /* translate handler */
+
     NULL                                   /* init output body filter */
 };
 

@@ -14,11 +14,6 @@ typedef struct {
     size_t        max_index_len;
 } ngx_http_index_conf_t;
 
-typedef struct {
-    char   *name;
-    size_t  len;
-} ngx_http_index_file_t;
-
 
 extern ngx_http_module_t  ngx_http_index_module;
 

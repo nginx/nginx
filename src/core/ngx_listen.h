@@ -14,8 +14,7 @@ typedef struct {
     struct sockaddr  *sockaddr;
     socklen_t         socklen;
     size_t            addr;
-    char             *addr_text;
-    size_t            addr_textlen;
+    ngx_str_t         addr_text;
 
     int           family;
     int           type;

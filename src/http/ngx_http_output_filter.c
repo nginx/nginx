@@ -20,10 +20,14 @@ static ngx_command_t ngx_http_output_filter_commands[];
 
 ngx_http_module_t  ngx_http_output_filter_module = {
     NGX_HTTP_MODULE,
+
     NULL,                                  /* create server config */
     ngx_http_output_filter_create_conf,    /* create location config */
     ngx_http_output_filter_commands,       /* module directives */
+
     NULL,                                  /* init module */
+    NULL,                                  /* translate handler */
+
     ngx_http_output_filter_init            /* init output body filter */
 };
 

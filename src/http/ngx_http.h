@@ -12,6 +12,8 @@
 #include <ngx_config_command.h>
 
 
+#define NGX_HTTP_VERSION_10       1000
+
 #define NGX_HTTP_GET   1
 #define NGX_HTTP_HEAD  2
 #define NGX_HTTP_POST  3
@@ -73,23 +75,29 @@ typedef struct {
 } ngx_http_headers_in_t;
 
 typedef struct {
-    int     status;
-    int     connection;
-    off_t   content_length;
-    char   *location;
-    char   *content_type;
-    char   *charset;
-    char   *etag;
-    char   *server;
-    time_t  date;
-    time_t  last_modified;
+    int               status;
+    ngx_str_t         status_line;
+
+    ngx_table_elt_t  *server;
+    ngx_table_elt_t  *date;
+    ngx_table_elt_t  *content_type;
+    ngx_table_elt_t  *location;
+    ngx_table_elt_t  *last_modified;
+
+    ngx_table_t      *headers;
+
+    off_t             content_length;
+    char             *charset;
+    char             *etag;
+    time_t            date_time;
+    time_t            last_modified_time;
 } ngx_http_headers_out_t;
 
 typedef struct ngx_http_request_s ngx_http_request_t;
 
 struct ngx_http_request_s {
-    char  *filename;
-    char  *location;
+    ngx_str_t  filename;
+
     ngx_fd_t  fd;
 
     void  **ctx;
@@ -116,8 +124,8 @@ struct ngx_http_request_s {
     int    http_minor;
 
     ngx_str_t  request_line;
-    char  *uri;
-    char  *exten;
+    ngx_str_t  uri;
+    ngx_str_t  exten;
     ngx_http_request_t *main;
 
     ngx_connection_t  *connection;
@@ -132,7 +140,6 @@ struct ngx_http_request_s {
     unsigned  lingering_close:1;
 
     unsigned  header_read:1;
-    unsigned  process_header:1;
     unsigned  header_timeout:1;
 
     unsigned  logging:1;
@@ -165,10 +172,15 @@ typedef struct {
 
 typedef struct {
     int               index;
+
     void           *(*create_srv_conf)(ngx_pool_t *p);
     void           *(*create_loc_conf)(ngx_pool_t *p);
     ngx_command_t    *commands;
+
     int             (*init_module)(ngx_pool_t *p);
+
+    int             (*translate_handler)(ngx_http_request_t *r);
+
     int             (*init_output_body_filter)(int (**next_filter)
                                      (ngx_http_request_t *r, ngx_chain_t *ch));
 } ngx_http_module_t;

@@ -65,8 +65,9 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_request_t *r)
     ngx_chain_t      *chain;
     ngx_table_elt_t  *header;
 
-    /* "+ 4" is for "\r\n" after request line and at the header end */
-    len = r->request_line.len + 4;
+    /* 2 is for "\r\n" after request line
+       and 2 is for "\r\n" at the header end */
+    len = r->request_line.len + 2 + 2;
 
     /* "Connection: close\r\n" */
     len += sizeof(conn_close) - 1;
@@ -79,8 +80,8 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_request_t *r)
         if (&header[i] == r->headers_in.connection)
             continue;
 
-        /* "+ 4" is for ": " and "\r\n" */
-        len += header[i].key.len + header[i].value.len + 4;
+        /* 2 is for ": " and 2 is for "\r\n" */
+        len += header[i].key.len + 2 + header[i].value.len + 2;
     }
 
     /* STUB */ len++;
@@ -320,6 +321,7 @@ static int ngx_http_proxy_read_response_header(ngx_event_t *ev)
         ngx_http_proxy_process_status_line(r, p)
         ngx_http_proxy_process_reponse_header(r, p) */
 
+#if 0
     do {
         rc = (p->state_handler)(r, p);
 
@@ -329,6 +331,7 @@ static int ngx_http_proxy_read_response_header(ngx_event_t *ev)
         /* rc == NGX_OK || rc == NGX_AGAIN */
 
     } while (p->header_in->pos.mem < p->header_in->last.mem);
+#endif
 
     ev->event_handler = ngx_http_proxy_read_response_body;
     if (p->header_in->end - p->header_in->last.mem == 0)
@@ -342,11 +345,11 @@ static int ngx_http_proxy_process_status_line(ngx_http_request_t *r,
 {
     int  rc;
 
-    ngx_log_debug(r->connection->log, "STATUS: %d" _ p->status);
-
     rc = ngx_read_http_proxy_status_line(p);
 
-    ngx_log_debug(r->connection->log, "STATUS: %d" _ p->status);
+    if (rc == NGX_HTTP_PROXY_PARSE_NO_HEADER) {
+        p->status = 200;
+    }
 
     if (rc == NGX_OK) {
         /* STUB */
@@ -363,6 +366,11 @@ static int ngx_http_proxy_process_status_line(ngx_http_request_t *r,
     }
 
     /* STUB */ return NGX_ERROR;
+}
+
+static int ngx_http_proxy_process_response_header(ngx_http_request_t *r,
+                                                  ngx_http_proxy_ctx_t *p)
+{
 }
 
 static int ngx_http_proxy_read_response_body(ngx_event_t *ev)
@@ -560,8 +568,10 @@ fprintf(stderr, "state: %d, pos: %x, end: %x, char: '%c', status: %d\n",
 
             ctx->status = ctx->status * 10 + ch - '0';
 
-            if (++ctx->status_count == 3)
+            if (++ctx->status_count == 3) {
                 state = sw_space_after_status;
+                ctx->status_line = p - 3;
+            }
 
             break;
 
@@ -569,7 +579,6 @@ fprintf(stderr, "state: %d, pos: %x, end: %x, char: '%c', status: %d\n",
          case sw_space_after_status:
             switch (ch) {
             case ' ':
-                ctx->status_text = p - 1;
                 state = sw_status_text;
                 break;
             case CR:

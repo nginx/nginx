@@ -74,7 +74,6 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
         ngx_connections[fd].sockaddr = ngx_palloc(pool, s[i].socklen);
         ngx_connections[fd].addr = s[i].addr;
         ngx_connections[fd].addr_text = s[i].addr_text;
-        ngx_connections[fd].addr_textlen = s[i].addr_textlen;
         ngx_connections[fd].post_accept_timeout = s[i].post_accept_timeout;
 
         ngx_connections[fd].server = s[i].server;

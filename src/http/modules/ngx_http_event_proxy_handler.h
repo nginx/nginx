@@ -30,7 +30,7 @@ struct ngx_http_proxy_ctx_s {
     int          state;
     int          status;
     int          status_count;
-    char        *status_text;
+    char        *status_line;
     char        *request_end;
     int        (*state_handler)(ngx_http_request_t *r, ngx_http_proxy_ctx_t *p);
 };

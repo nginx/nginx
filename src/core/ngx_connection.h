@@ -5,6 +5,7 @@
 #include <ngx_log.h>
 #include <ngx_hunk.h>
 #include <ngx_alloc.h>
+#include <ngx_string.h>
 #include <ngx_server.h>
 
 typedef struct ngx_connection_s  ngx_connection_t;
@@ -38,8 +39,7 @@ struct ngx_connection_s {
     struct sockaddr  *sockaddr;
     socklen_t         socklen;
     size_t            addr;
-    char             *addr_text;
-    size_t            addr_textlen;
+    ngx_str_t         addr_text;
 
     ngx_hunk_t       *buffer;
     unsigned int      post_accept_timeout;

@@ -66,8 +66,8 @@ int ngx_http_init(ngx_pool_t *pool, ngx_log_t *log)
     ls->sockaddr = (struct sockaddr *) &addr;
     ls->socklen = sizeof(struct sockaddr_in);
     ls->addr = offsetof(struct sockaddr_in, sin_addr);
-    ls->addr_text = addr_text;
-    ls->addr_textlen = INET_ADDRSTRLEN;
+    ls->addr_text.len = INET_ADDRSTRLEN;
+    ls->addr_text.data = addr_text;
     ls->backlog = -1;
     ls->post_accept_timeout = 10000;
     ls->nonblocking = 1;

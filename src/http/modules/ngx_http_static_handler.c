@@ -40,11 +40,13 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     ctx = r->connection->log->data;
     ctx->action = "sending response";
 
-    r->fd = ngx_open_file(r->filename, NGX_FILE_RDONLY);
+    if (r->fd != -1)
+        r->fd = ngx_open_file(r->filename.data, NGX_FILE_RDONLY);
+
     if (r->fd == -1) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
                       "ngx_http_static_handler: "
-                      ngx_open_file_n " %s failed", r->filename);
+                      ngx_open_file_n " %s failed", r->filename.data);
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -52,7 +54,7 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     if (ngx_stat_fd(r->fd, &r->fileinfo) == -1) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
                       "ngx_http_static_handler: "
-                      ngx_stat_fd_n " %s failed", r->filename);
+                      ngx_stat_fd_n " %s failed", r->filename.data);
 
         /* close fd */
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -64,25 +66,35 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     r->headers_out.last_modified = ngx_file_mtime(r->fileinfo);
 */
 
+    ngx_test_null(r->headers_out.content_type,
+                  ngx_push_table(r->headers_out.headers),
+                  NGX_HTTP_INTERNAL_SERVER_ERROR);
+    r->headers_out.content_type->key.len = 12;
+    r->headers_out.content_type->key.data = "Content-Type";
+
     /* STUB */
-    if (r->exten) {
-        if (strcasecmp(r->exten, "html") == 0)
-            r->headers_out.content_type = "text/html; charset=koi8-r";
-        else if (strcasecmp(r->exten, "gif") == 0)
-            r->headers_out.content_type = "image/gif";
-        else if (strcasecmp(r->exten, "jpg") == 0)
-            r->headers_out.content_type = "image/jpeg";
-        else if (strcasecmp(r->exten, "pdf") == 0)
-            r->headers_out.content_type = "application/pdf";
+    if (r->exten.len) {
+        if (strcasecmp(r->exten.data, "html") == 0) {
+            r->headers_out.content_type->value.len = 25;
+            r->headers_out.content_type->value.data =
+                                                   "text/html; charset=koi8-r";
+        } else if (strcasecmp(r->exten.data, "gif") == 0) {
+            r->headers_out.content_type->value.len = 9;
+            r->headers_out.content_type->value.data = "image/gif";
+        } else if (strcasecmp(r->exten.data, "jpg") == 0) {
+            r->headers_out.content_type->value.len = 10;
+            r->headers_out.content_type->value.data = "image/jpeg";
+        }
 
     } else {
-        r->headers_out.content_type = "text/html; charset=koi8-r";
+        r->headers_out.content_type->value.len = 25;
+        r->headers_out.content_type->value.data = "text/html; charset=koi8-r";
     }
 
     /* STUB */
     rc = ngx_http_header_filter(r);
 /*
-    rc = ngx_send_http_header(r->headers_out);
+    rc = ngx_send_http_header(r);
 */
     if (r->header_only)
         return rc;
