@@ -13,6 +13,8 @@ ngx_array_t            ngx_old_cycles;
 static ngx_pool_t     *ngx_temp_pool;
 static ngx_event_t     ngx_cleaner_event;
 
+ngx_uint_t             ngx_test_config;
+
 
 /* STUB NAME */
 static ngx_connection_t  dumb;
@@ -263,7 +265,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
             }
         }
 
-        if (!failed) {
+        if (!ngx_test_config && !failed) {
             if (ngx_open_listening_sockets(cycle) == NGX_ERROR) {
                 failed = 1;
             }

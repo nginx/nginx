@@ -1260,7 +1260,7 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
         if (prev->err_log) {
             conf->err_log = prev->err_log;
         } else {
-            conf->err_log = cf->cycle->log;
+            conf->err_log = cf->cycle->new_log;
         }
     }
 

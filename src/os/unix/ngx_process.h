@@ -15,6 +15,7 @@ typedef struct {
     char               *name;
 
     unsigned            respawn:1;
+    unsigned            just_respawn:1;
     unsigned            detached:1;
     unsigned            exiting:1;
     unsigned            exited:1;
@@ -29,11 +30,12 @@ typedef struct {
 } ngx_exec_ctx_t;
 
 
-#define NGX_MAX_PROCESSES  1024
+#define NGX_MAX_PROCESSES         1024
 
-#define NGX_PROCESS_NORESPAWN  -1
-#define NGX_PROCESS_RESPAWN    -2
-#define NGX_PROCESS_DETACHED   -3
+#define NGX_PROCESS_NORESPAWN     -1
+#define NGX_PROCESS_RESPAWN       -2
+#define NGX_PROCESS_JUST_RESPAWN  -3
+#define NGX_PROCESS_DETACHED      -4
 
 
 #define ngx_getpid   getpid
@@ -43,7 +45,6 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,
                             char *name, ngx_int_t respawn);
 ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
-void ngx_respawn_processes(ngx_cycle_t *cycle);
 void ngx_process_get_status(void);
 
 extern ngx_pid_t      ngx_pid;

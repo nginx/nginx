@@ -376,7 +376,8 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "kevent expired timer");
 
-        ngx_event_expire_timers(ngx_elapsed_msec - ngx_old_elapsed_msec);
+        ngx_event_expire_timers((ngx_msec_t)
+                                    (ngx_elapsed_msec - ngx_old_elapsed_msec));
 
         /* TODO: if ngx_threaded then wake up the worker thread */
     }

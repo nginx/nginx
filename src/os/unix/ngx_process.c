@@ -49,12 +49,30 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     ngx_processes[ngx_last_process].proc = proc;
     ngx_processes[ngx_last_process].data = data;
     ngx_processes[ngx_last_process].name = name;
-    ngx_processes[ngx_last_process].respawn =
-                                      (respawn == NGX_PROCESS_RESPAWN) ? 1 : 0;
-    ngx_processes[ngx_last_process].detached =
-                                     (respawn == NGX_PROCESS_DETACHED) ? 1 : 0;
     ngx_processes[ngx_last_process].exited = 0;
     ngx_processes[ngx_last_process].exiting = 0;
+
+    switch (respawn) {
+
+    case NGX_PROCESS_RESPAWN:
+        ngx_processes[ngx_last_process].respawn = 1;
+        ngx_processes[ngx_last_process].just_respawn = 0;
+        ngx_processes[ngx_last_process].detached = 0;
+        break;
+
+    case NGX_PROCESS_JUST_RESPAWN:
+        ngx_processes[ngx_last_process].respawn = 1;
+        ngx_processes[ngx_last_process].just_respawn = 1;
+        ngx_processes[ngx_last_process].detached = 0;
+        break;
+
+    case NGX_PROCESS_DETACHED:
+        ngx_processes[ngx_last_process].respawn = 0;
+        ngx_processes[ngx_last_process].just_respawn = 0;
+        ngx_processes[ngx_last_process].detached = 1;
+        break;
+    }
+
     ngx_last_process++;
 
     return pid;
@@ -79,34 +97,6 @@ static void ngx_execute_proc(ngx_cycle_t *cycle, void *data)
     }
 
     exit(1);
-}
-
-
-void ngx_respawn_processes(ngx_cycle_t *cycle)
-{
-    ngx_uint_t  i;
-
-    for (i = 0; i < ngx_last_process; i++) {
-
-        if (ngx_processes[i].exiting || !ngx_processes[i].exited) {
-            continue;
-        }
-
-        if (!ngx_processes[i].respawn) {
-            if (i != --ngx_last_process) {
-                ngx_processes[i--] = ngx_processes[ngx_last_process];
-            }
-            continue;
-        }
-
-        if (ngx_spawn_process(cycle,
-                              ngx_processes[i].proc, ngx_processes[i].data,
-                              ngx_processes[i].name, i) == NGX_ERROR)
-        {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "can not respawn %s", ngx_processes[i].name);
-        }
-    }
 }
 
 

@@ -77,8 +77,6 @@ ngx_pid_t   ngx_pid;
 ngx_pid_t   ngx_new_binary;
 ngx_int_t   ngx_inherited;
 
-ngx_uint_t  ngx_test_config;
-
 
 int main(int argc, char *const *argv)
 {
@@ -146,6 +144,7 @@ int main(int argc, char *const *argv)
     }
 
     if (ngx_test_config) {
+        ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "config syntax is ok");
         return 0;
     }
 
@@ -181,7 +180,12 @@ int main(int argc, char *const *argv)
 
 #endif
 
-    ngx_master_process_cycle(cycle, &ctx);
+    if (ngx_process == NGX_PROCESS_MASTER) {
+        ngx_master_process_cycle(cycle, &ctx);
+
+    } else {
+        ngx_single_process_cycle(cycle, &ctx);
+    }
 
     return 0;
 }

@@ -52,6 +52,7 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
 extern volatile ngx_cycle_t  *ngx_cycle;
 extern ngx_array_t            ngx_old_cycles;
 extern ngx_module_t           ngx_core_module;
+extern ngx_uint_t             ngx_test_config;
 
 
 #endif /* _NGX_CYCLE_H_INCLUDED_ */

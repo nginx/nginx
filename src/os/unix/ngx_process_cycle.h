@@ -18,6 +18,7 @@ typedef struct {
 
 
 void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
+void ngx_single_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
 
 
 extern ngx_int_t       ngx_process;
