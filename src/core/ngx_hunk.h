@@ -73,6 +73,29 @@ typedef struct {
 } ngx_bufs_t;
 
 
+typedef int  (*ngx_output_chain_filter_pt)(void *ctx, ngx_chain_t *out);
+
+typedef struct {
+    ngx_hunk_t                  *hunk;
+    ngx_chain_t                 *in;
+    ngx_chain_t                 *free;
+    ngx_chain_t                 *busy;
+
+    unsigned                     sendfile;
+    unsigned                     need_in_memory;
+    unsigned                     need_in_temp;
+    unsigned                     copy_chain;
+
+    ngx_pool_t                  *pool;
+    int                          hunks;
+    ngx_bufs_t                   bufs;
+    ngx_hunk_tag_t               tag;
+
+    ngx_output_chain_filter_pt   output_filter;
+    void                        *output_ctx;
+} ngx_output_chain_ctx_t;
+
+
 #define NGX_CHAIN_ERROR     (ngx_chain_t *) NGX_ERROR
 
 
@@ -120,6 +143,7 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
             last = &cl->next
 
 
+int ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in);
 int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in);
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
                              ngx_chain_t **out, ngx_hunk_tag_t tag);

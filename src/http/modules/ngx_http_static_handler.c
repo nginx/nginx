@@ -88,7 +88,7 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
     /*
      * There is no way to open a file or a directory in Win9X with
      * one syscall: Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag.
-     * so we need to check its type before the opening
+     * So we need to check its type before the opening
      */
 
     r->file.info.dwFileAttributes = GetFileAttributes(r->file.name.data);
@@ -151,6 +151,21 @@ ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);
 
         r->file.info_valid = 1;
     }
+
+#if !(WIN32) /* the not regular files are probably Unix specific */
+
+    if (!ngx_is_file(r->file.info)) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                      "%s is not a regular file", r->file.name.data);
+
+        if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR)
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                          ngx_close_file_n " %s failed", r->file.name.data);
+
+        return NGX_HTTP_NOT_FOUND;
+    }
+
+#endif
 #endif
 
     if (ngx_is_dir(r->file.info)) {
@@ -163,6 +178,7 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
         }
 
         r->file.fd = NGX_INVALID_FILE;
+        r->file.info_valid = 0;
 #endif
 
         ngx_test_null(h, ngx_push_table(r->headers_out.headers),
@@ -203,7 +219,7 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
     }
 
     ctx = r->connection->log->data;
-    ctx->action = "sending response";
+    ctx->action = "sending response to client";
 
     if (r->file.fd == NGX_INVALID_FILE) {
         r->file.fd = ngx_open_file(r->file.name.data,
@@ -241,21 +257,6 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
 
         r->file.info_valid = 1;
     }
-
-#if !(WIN32) /* the not regular files are probably Unix specific */
-
-    if (!ngx_is_file(r->file.info)) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                      "%s is not regular file", r->file.name.data);
-
-        if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR)
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                          ngx_close_file_n " %s failed", r->file.name.data);
-
-        return NGX_HTTP_NOT_FOUND;
-    }
-
-#endif
 
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.content_length_n = ngx_file_size(r->file.info);

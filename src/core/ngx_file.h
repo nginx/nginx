@@ -26,6 +26,17 @@ typedef struct {
 } ngx_path_t;
 
 
+typedef struct {
+    ngx_file_t   file;
+    ngx_path_t   path;
+    ngx_pool_t  *pool;
+    char        *warn;
+
+    unsigned     persistent:1;
+} ngx_temp_file_t;
+
+
+int ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain);
 int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
                          ngx_pool_t *pool, int persistent);
 void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path);
@@ -46,7 +57,7 @@ char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
             conf->level[0] = l1;                                             \
             conf->level[1] = l2;                                             \
             conf->level[2] = l3;                                             \
-            conf->len = l1 + l2 + l3 + l1 ? 1:0 + l2 ? 1:0 + l3 ? 1:0;       \
+            conf->len = l1 + l2 + l3 + (l1 ? 1:0) + (l2 ? 1:0) + (l3 ? 1:0); \
         } else {                                                             \
             conf = prev;                                                     \
         }                                                                    \

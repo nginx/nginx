@@ -26,6 +26,48 @@ ngx_hunk_t *ngx_create_temp_hunk(ngx_pool_t *pool, int size,
     return h;
 }
 
+
+ngx_chain_t *ngx_create_chain_of_hunks(ngx_pool_t *pool, ngx_bufs_t *bufs)
+{
+    int           i;
+    char         *p;
+    ngx_hunk_t   *h;
+    ngx_chain_t  *chain, *cl, **ll;
+
+    ngx_test_null(p, ngx_palloc(pool, bufs->num * bufs->size), NULL);
+
+    ll = &chain;
+
+    for (i = 0; i < bufs->num; i++) {
+        ngx_test_null(h, ngx_alloc_hunk(pool), NULL);
+
+        h->pos = p;
+        h->last = p;
+        h->file_pos = 0;
+        h->file_last = 0;
+
+        h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
+
+        h->start = p;
+        p += bufs->size;
+        h->end = p;
+
+        h->file = NULL;
+        h->shadow = NULL;
+        h->tag = 0;
+
+        ngx_test_null(cl, ngx_alloc_chain_link(pool), NULL);
+        cl->hunk = h;
+        *ll = cl;
+        ll = &cl->next;
+    }
+
+    *ll = NULL;
+
+    return chain;
+}
+
+
 ngx_hunk_t *ngx_create_hunk_before(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 {
     ngx_hunk_t *h;
@@ -60,6 +102,7 @@ ngx_hunk_t *ngx_create_hunk_before(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 
     return h;
 }
+
 
 ngx_hunk_t *ngx_create_hunk_after(ngx_pool_t *pool, ngx_hunk_t *hunk, int size)
 {

@@ -4,6 +4,41 @@
 #include <ngx_http.h>
 
 
+/*
+ * the single part format:
+ *
+ * "HTTP/1.0 206 Partial Content" CRLF
+ * ... header ...
+ * "Content-Type: image/jpeg" CRLF
+ * "Content-Length: SIZE" CRLF
+ * "Content-Range: bytes START-END/SIZE" CRLF
+ * CRLF
+ * ... data ...
+ *
+ *
+ * the mutlipart format:
+ *
+ * "HTTP/1.0 206 Partial Content" CRLF
+ * ... header ...
+ * "Content-Type: multipart/byteranges; boundary=0123456789" CRLF
+ * CRLF
+ * CRLF
+ * "--0123456789" CRLF
+ * "Content-Type: image/jpeg" CRLF
+ * "Content-Range: bytes START0-END0/SIZE" CRLF
+ * CRLF
+ * ... data ...
+ * CRLF
+ * "--0123456789" CRLF
+ * "Content-Type: image/jpeg" CRLF
+ * "Content-Range: bytes START1-END1/SIZE" CRLF
+ * CRLF
+ * ... data ...
+ * CRLF
+ * "--0123456789--" CRLF
+ */
+
+
 typedef struct {
     ngx_str_t  boundary_header;
 } ngx_http_range_filter_ctx_t;
@@ -46,11 +81,12 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *ctx;
 
-    if (r->main
-        || r->http_version < NGX_HTTP_VERSION_10
+    if (r->http_version < NGX_HTTP_VERSION_10
         || r->headers_out.status != NGX_HTTP_OK
         || r->headers_out.content_length_n == -1
+
         /* STUB: we currently support ranges for file hunks only */
+        || !r->sendfile
         || r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)
     {
         return ngx_http_next_header_filter(r);
@@ -75,11 +111,8 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
     ngx_init_array(r->headers_out.ranges, r->pool, 5, sizeof(ngx_http_range_t),
                    NGX_ERROR);
 
-#if (NGX_SUPPRESS_WARN)
-    range = NULL;
-#endif
-
     rc = 0;
+    range = NULL;
     p = r->headers_in.range->value.data + 6;
 
     for ( ;; ) {
@@ -156,6 +189,9 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
     }
 
     if (rc) {
+
+        /* rc == NGX_HTTP_RANGE_NOT_SATISFIABLE */
+
         r->headers_out.status = rc;
         r->headers_out.ranges.nelts = 0;
 
@@ -188,6 +224,8 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
             ngx_test_null(r->headers_out.content_range->value.data,
                           ngx_palloc(r->pool, 6 + 20 + 1 + 20 + 1 + 20 + 1),
                           NGX_ERROR);
+
+            /* "Content-Range: bytes SSSS-EEEE/TTTT" header */
 
             r->headers_out.content_range->value.len =
                          ngx_snprintf(r->headers_out.content_range->value.data,
@@ -222,6 +260,14 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
 
             boundary = ngx_next_temp_number(0);
 
+            /*
+             * The boundary header of the range:
+             * CRLF
+             * "--0123456789" CRLF
+             * "Content-Type: image/jpeg" CRLF
+             * "Content-Range: bytes "
+             */
+
             if (r->headers_out.charset.len) {
                 ctx->boundary_header.len =
                          ngx_snprintf(ctx->boundary_header.data, len,
@@ -248,30 +294,34 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                           ngx_palloc(r->pool, 31 + 10 + 1),
                           NGX_ERROR);
 
+            /* "Content-Type: multipart/byteranges; boundary=0123456789" */
+
             r->headers_out.content_type->value.len =
                       ngx_snprintf(r->headers_out.content_type->value.data,
                                    31 + 10 + 1,
                                    "multipart/byteranges; boundary=%010u",
                                    boundary);
 
-            /* the last "CRLF--BOUNDARY--CRLF" */
+            /* the size of the last boundary CRLF "--0123456789--" CRLF */
             len = 4 + 10 + 4;
 
             range = r->headers_out.ranges.elts;
             for (i = 0; i < r->headers_out.ranges.nelts; i++) {
-                 ngx_test_null(range[i].content_range.data,
-                               ngx_palloc(r->pool, 20 + 1 + 20 + 1 + 20 + 5),
-                               NGX_ERROR);
+                ngx_test_null(range[i].content_range.data,
+                              ngx_palloc(r->pool, 20 + 1 + 20 + 1 + 20 + 5),
+                              NGX_ERROR);
 
-                 range[i].content_range.len =
+                /* the size of the range: "SSSS-EEEE/TTTT" CRLF CRLF */
+
+                range[i].content_range.len =
                         ngx_snprintf(range[i].content_range.data,
                                      20 + 1 + 20 + 1 + 20 + 5,
                                      OFF_FMT "-" OFF_FMT "/" OFF_FMT CRLF CRLF,
                                      range[i].start, range[i].end - 1,
                                      r->headers_out.content_length_n);
 
-                 len += ctx->boundary_header.len + range[i].content_range.len
-                        + (size_t) (range[i].end - range[i].start);
+                len += ctx->boundary_header.len + range[i].content_range.len
+                                    + (size_t) (range[i].end - range[i].start);
             }
 
             r->headers_out.content_length_n = len;
@@ -304,8 +354,9 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         && in->hunk->type & NGX_HUNK_FILE
         && in->hunk->type & NGX_HUNK_LAST)
     {
+        range = r->headers_out.ranges.elts;
+
         if (r->headers_out.ranges.nelts == 1) {
-            range = r->headers_out.ranges.elts;
             in->hunk->file_pos = range->start;
             in->hunk->file_last = range->end;
 
@@ -315,8 +366,15 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx = ngx_http_get_module_ctx(r, ngx_http_range_filter_module);
         ll = &out;
 
-        range = r->headers_out.ranges.elts;
         for (i = 0; i < r->headers_out.ranges.nelts; i++) {
+
+            /*
+             * The boundary header of the range:
+             * CRLF
+             * "--0123456789" CRLF
+             * "Content-Type: image/jpeg" CRLF
+             * "Content-Range: bytes "
+             */
 
             ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
             h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_MEMORY;
@@ -326,6 +384,8 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ngx_test_null(hcl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
             hcl->hunk = h;
 
+            /* "SSSS-EEEE/TTTT" CRLF CRLF */
+
             ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
             h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP;
             h->pos = range[i].content_range.data;
@@ -333,6 +393,8 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             ngx_test_null(rcl, ngx_alloc_chain_link(r->pool), NGX_ERROR);
             rcl->hunk = h;
+
+            /* the range data */
 
             ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
             h->type = NGX_HUNK_FILE;
@@ -347,6 +409,8 @@ static int ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             rcl->next = dcl;
             ll = &dcl->next;
         }
+
+        /* the last boundary CRLF "--0123456789--" CRLF  */
 
         ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
         h->type = NGX_HUNK_IN_MEMORY|NGX_HUNK_TEMP|NGX_HUNK_LAST;

@@ -51,12 +51,8 @@ void ngx_http_close_request(ngx_http_request_t *r, int error);
 void ngx_http_close_connection(ngx_connection_t *c);
 
 
-
-int ngx_http_init_client_request_body(ngx_http_request_t *r, int size);
-int ngx_http_read_client_request_body(ngx_http_request_t *r);
-int ngx_http_init_client_request_body_chain(ngx_http_request_t *r);
-void ngx_http_reinit_client_request_body_hunks(ngx_http_request_t *r);
-
+int ngx_http_read_client_request_body(ngx_http_request_t *r,
+                                      int request_buffer_size);
 
 int ngx_http_send_header(ngx_http_request_t *r);
 int ngx_http_special_response_handler(ngx_http_request_t *r, int error);

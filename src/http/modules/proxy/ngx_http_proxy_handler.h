@@ -19,6 +19,7 @@ typedef struct {
 
 
 typedef struct {
+    ssize_t                     request_buffer_size;
     ngx_msec_t                  connect_timeout;
     ngx_msec_t                  send_timeout;
     ssize_t                     header_buffer_size;
@@ -30,6 +31,8 @@ typedef struct {
     ssize_t                     max_temp_file_size;
     ssize_t                     temp_file_write_size;
     int                         cyclic_temp_file;
+
+    int                         next_upstream;
 
     ngx_path_t                 *temp_path;
 
@@ -67,8 +70,7 @@ struct ngx_http_proxy_ctx_s {
     int                         status;
     ngx_str_t                   status_line;
 
-    ngx_chain_t                *work_request_hunks;
-    ngx_chain_t                *request_hunks;
+    ngx_output_chain_ctx_t     *output_chain_ctx;
 
     int                         method;
 
@@ -89,10 +91,16 @@ struct ngx_http_proxy_ctx_s {
 
     char                       *action;
     ngx_http_log_ctx_t         *saved_ctx;
+    ngx_log_handler_pt          saved_handler;
 };
 
 
 #define NGX_HTTP_PROXY_PARSE_NO_HEADER  20
+
+#define NGX_HTTP_PROXY_FT_ERROR         1
+#define NGX_HTTP_PROXY_FT_TIMEOUT       2
+#define NGX_HTTP_PROXY_FT_HTTP_HEADER   4
+#define NGX_HTTP_PROXY_FT_HTTP_500      8
 
 
 #endif /* _NGX_HTTP_PROXY_HANDLER_H_INCLUDED_ */

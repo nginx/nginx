@@ -232,7 +232,7 @@ void ngx_http_handler(ngx_http_request_t *r)
         break;
     }
 
-#if 1
+#if 0
     /* TEST STUB */ r->http_version = NGX_HTTP_VERSION_10;
     /* TEST STUB */ r->keepalive = 0;
 #endif
@@ -292,11 +292,6 @@ static void ngx_http_run_phases(ngx_http_request_t *r)
             rc = h[r->phase_handler](r);
 
             if (rc == NGX_DONE) {
-                return;
-            }
-
-            /* TODO THINK: is it dupliate NGX_DONE ??? */
-            if (r->closed) {
                 return;
             }
 
@@ -403,6 +398,10 @@ ngx_log_debug(r->connection->log, "rc: %d" _ rc);
 
 int ngx_http_send_header(ngx_http_request_t *r)
 {
+    if (r->main) {
+        return NGX_OK;
+    }
+
     return (*ngx_http_top_header_filter)(r);
 }
 

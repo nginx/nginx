@@ -168,7 +168,6 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
     if (!conf->enable
         || r->headers_out.status != NGX_HTTP_OK
         || r->header_only
-        || r->main
         /* TODO: conf->http_version */
         || (r->headers_out.content_encoding
             && r->headers_out.content_encoding->value.len)

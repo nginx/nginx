@@ -7,6 +7,27 @@ static int ngx_temp_number;
 static int ngx_random;
 
 
+int ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
+{
+    int  rc;
+
+    if (tf->file.fd == NGX_INVALID_FILE) {
+        rc = ngx_create_temp_file(&tf->file, &tf->path, tf->pool,
+                                  tf->persistent);
+    
+        if (rc == NGX_ERROR || rc == NGX_AGAIN) {
+            return rc;
+        }
+
+        if (!tf->persistent && tf->warn) {
+            ngx_log_error(NGX_LOG_WARN, tf->file.log, 0, tf->warn);
+        }
+    }
+
+    return ngx_write_chain_to_file(&tf->file, chain, tf->file.offset, tf->pool);
+}
+
+
 int ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
                          ngx_pool_t *pool, int persistent)
 {

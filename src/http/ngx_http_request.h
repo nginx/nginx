@@ -18,10 +18,14 @@
 
 
 #define NGX_HTTP_PARSE_HEADER_DONE        1
+
+#define NGX_HTTP_CLIENT_ERROR             10
 #define NGX_HTTP_PARSE_INVALID_METHOD     10
 #define NGX_HTTP_PARSE_INVALID_REQUEST    11
 #define NGX_HTTP_PARSE_TOO_LONG_URI       12
 #define NGX_HTTP_PARSE_INVALID_09_METHOD  13
+
+#define NGX_HTTP_PARSE_HEADER_ERROR       14
 #define NGX_HTTP_PARSE_INVALID_HEADER     14
 #define NGX_HTTP_PARSE_TOO_LONG_HEADER    15
 #define NGX_HTTP_PARSE_NO_HOST_HEADER     16
@@ -176,6 +180,13 @@ struct ngx_http_request_s {
     int                  phase_handler;
     ngx_http_handler_pt  content_handler;
 
+    ngx_temp_file_t     *temp_file;
+    ngx_chain_t         *request_hunks;
+    ngx_hunk_t          *request_body_hunk;
+    int                  request_body_len;
+    void               (*request_body_handler) (void *data); 
+    void                *data;
+
     char                *discarded_buffer;
 
     /* URI is not started with '/' - "GET http://" */
@@ -197,7 +208,9 @@ struct ngx_http_request_s {
     unsigned             header_only:1;
     unsigned             keepalive:1;
     unsigned             lingering_close:1;
+#if 0
     unsigned             closed:1;
+#endif
 
     /* TODO: use filter or bits ???? */
     int                  filter;
