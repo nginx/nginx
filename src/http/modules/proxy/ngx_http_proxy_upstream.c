@@ -617,18 +617,25 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     }
 
     if (r->request_body->buf) {
-        if (!(output->free = ngx_alloc_chain_link(r->pool))) {
-            ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
+        if (r->request_body->temp_file->file.fd != NGX_INVALID_FILE) {
+
+            if (!(output->free = ngx_alloc_chain_link(r->pool))) {
+                ngx_http_proxy_finalize_request(p,
+                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
+
+            output->free->buf = r->request_body->buf;
+            output->free->next = NULL;
+            output->allocated = 1;
+
+            r->request_body->buf->pos = r->request_body->buf->start;
+            r->request_body->buf->last = r->request_body->buf->start;
+            r->request_body->buf->tag = (ngx_buf_tag_t) &ngx_http_proxy_module;
+
+        } else {
+            r->request_body->buf->pos = r->request_body->buf->start;
         }
-
-        output->free->buf = r->request_body->buf;
-        output->free->next = NULL;
-        output->allocated = 1;
-
-        r->request_body->buf->pos = r->request_body->buf->start;
-        r->request_body->buf->last = r->request_body->buf->start;
-        r->request_body->buf->tag = (ngx_buf_tag_t) &ngx_http_proxy_module;
     }
 
     p->request_sent = 0;
@@ -647,6 +654,7 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
         ngx_http_proxy_process_upstream_status_line(c->read);
         return;
     }
+
 #endif
 
     ngx_http_proxy_send_request(p);

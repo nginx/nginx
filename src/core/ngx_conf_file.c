@@ -663,7 +663,8 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    ngx_str_t  *field, *value;
+    ngx_str_t        *field, *value;
+    ngx_conf_post_t  *post;
 
     field = (ngx_str_t *) (p + cmd->offset);
 
@@ -674,6 +675,11 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     *field = value[1];
+
+    if (cmd->post) {
+        post = cmd->post;
+        return post->post_handler(cf, post, field);
+    }
 
     return NGX_CONF_OK;
 }
