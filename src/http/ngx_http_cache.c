@@ -40,7 +40,9 @@ ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *hash,
 
     c = hash->elts + *crc % hash->hash * hash->nelts;
 
-    ngx_mutex_lock(&hash->mutex);
+    if (ngx_mutex_lock(&hash->mutex) == NGX_ERROR) {
+        return (void *) NGX_ERROR;
+    }
 
     for (i = 0; i < hash->nelts; i++) {
         if (c[i].crc == *crc
@@ -95,7 +97,9 @@ ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *hash,
 
     c = hash->elts + crc % hash->hash * hash->nelts;
 
-    ngx_mutex_lock(&hash->mutex);
+    if (ngx_mutex_lock(&hash->mutex) == NGX_ERROR) {
+        return (void *) NGX_ERROR;
+    }
 
     if (cache == NULL) {
 
@@ -227,14 +231,18 @@ void ngx_http_cache_free(ngx_http_cache_t *cache,
 
 void ngx_http_cache_lock(ngx_http_cache_hash_t *hash, ngx_http_cache_t *cache)
 {
-    ngx_mutex_lock(&hash->mutex);
+    if (ngx_mutex_lock(&hash->mutex) == NGX_ERROR) {
+        return;
+    }
 }
 
 
 void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
                            ngx_http_cache_t *cache, ngx_log_t *log)
 {
-    ngx_mutex_lock(&hash->mutex);
+    if (ngx_mutex_lock(&hash->mutex) == NGX_ERROR) {
+        return;
+    }
 
     cache->refs--;
 

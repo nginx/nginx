@@ -15,6 +15,7 @@ struct ngx_event_busy_lock_ctx_s {
     ngx_msec_t                  timer;
 
     unsigned                    locked:1;
+    unsigned                    waiting:1;
     unsigned                    cache_updated:1;
 
     char                       *md5;

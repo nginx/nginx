@@ -103,7 +103,7 @@ extern ngx_int_t ngx_threaded;
 #define ngx_log_tid  0
 #define TID_T_FMT    "%d"
 
-#define ngx_mutex_lock(m)
+#define ngx_mutex_lock(m)     NGX_OK
 #define ngx_mutex_unlock(m)
 
 #endif

@@ -3,12 +3,6 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
-/*
- * TODO: eliminate mutex and use atomic_xchg():
- *       ev->next = ev; ngx_atomic_xchg(ngx_posted_events, ev->next);
- *       in ngx_event_busy_unlock() and ngx_event_busy_lock_handler()
- */
-
 
 static int ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
                                              ngx_event_busy_lock_ctx_t *ctx);
@@ -28,11 +22,9 @@ ngx_int_t ngx_event_busy_lock(ngx_event_busy_lock_t *bl,
 {
     ngx_int_t  rc;
 
-#if (NGX_THREADS)
     if (ngx_mutex_lock(bl->mutex) == NGX_ERROR) {
         return NGX_ERROR;
     }
-#endif
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->event->log, 0,
                    "event busy lock: b:%d mb:%d",
@@ -60,9 +52,7 @@ ngx_int_t ngx_event_busy_lock(ngx_event_busy_lock_t *bl,
         rc = NGX_BUSY;
     }
 
-#if (NGX_THREADS)
     ngx_mutex_unlock(bl->mutex);
-#endif
 
     return rc;
 }
@@ -73,11 +63,9 @@ ngx_int_t ngx_event_busy_lock_cachable(ngx_event_busy_lock_t *bl,
 {
     ngx_int_t  rc;
 
-#if (NGX_THREADS)
     if (ngx_mutex_lock(bl->mutex) == NGX_ERROR) {
         return NGX_ERROR;
     }
-#endif
 
     rc = ngx_event_busy_lock_look_cachable(bl, ctx);
 
@@ -110,9 +98,7 @@ ngx_int_t ngx_event_busy_lock_cachable(ngx_event_busy_lock_t *bl,
         }
     }
 
-#if (NGX_THREADS)
     ngx_mutex_unlock(bl->mutex);
-#endif
 
     return rc;
 }
@@ -124,11 +110,9 @@ ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
     ngx_event_t                *ev;
     ngx_event_busy_lock_ctx_t  *wakeup;
 
-#if (NGX_THREADS)
     if (ngx_mutex_lock(bl->mutex) == NGX_ERROR) {
         return NGX_ERROR;
     }
-#endif
 
     if (bl->events) {
         wakeup = bl->events;
@@ -140,57 +124,42 @@ ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
     }
 
     /*
-     * MP:
-     * nocachable (bl->md5 == NULL): ngx_shared_mutex_unlock(mutex, !wakeup)
-     * cachable (bl->md5): ???
+     * MP: all ctx's and their queue must be in shared memory,
+     *     each ctx has pid to wake up
      */
 
     if (wakeup == NULL) {
-#if (NGX_THREADS)
         ngx_mutex_unlock(bl->mutex);
-#endif
         return NGX_OK;
     }
 
     if (ctx->md5) {
         for (wakeup = bl->events; wakeup; wakeup = wakeup->next) {
-            if (wakeup->md5 == NULL) {
+            if (wakeup->md5 == NULL || wakeup->slot != ctx->slot) {
                 continue;
             }
 
-            if (ngx_memcmp(ctx->md5, wakeup->md5, 16) != 0) {
-                continue;
-            }
-            
             wakeup->handler = ngx_event_busy_lock_posted_handler;
             wakeup->cache_updated = 1;
 
             ev = wakeup->event;
 
-#if (NGX_THREADS)
             if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
                 return NGX_ERROR;
             }
-#endif
 
             ev->next = (ngx_event_t *) ngx_posted_events;
             ngx_posted_events = ev;
 
-#if (NGX_THREADS)
             ngx_mutex_unlock(ngx_posted_events_mutex);
-#endif
         }
 
-#if (NGX_THREADS)
         ngx_mutex_unlock(bl->mutex);
-#endif
 
     } else {
         bl->waiting--;
 
-#if (NGX_THREADS)
         ngx_mutex_unlock(bl->mutex);
-#endif
 
         wakeup->handler = ngx_event_busy_lock_posted_handler;
         wakeup->locked = 1;
@@ -201,18 +170,14 @@ ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
             ngx_del_timer(ev);
         }
 
-#if (NGX_THREADS)
         if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
             return NGX_ERROR;
         }
-#endif
 
         ev->next = (ngx_event_t *) ngx_posted_events;
         ngx_posted_events = ev;
 
-#if (NGX_THREADS)
         ngx_mutex_unlock(ngx_posted_events_mutex);
-#endif
     }
 
     return NGX_OK;
@@ -224,11 +189,9 @@ ngx_int_t ngx_event_busy_lock_cancel(ngx_event_busy_lock_t *bl,
 {
     ngx_event_busy_lock_ctx_t  *c, *p;
 
-#if (NGX_THREADS)
     if (ngx_mutex_lock(bl->mutex) == NGX_ERROR) {
         return NGX_ERROR;
     }
-#endif
 
     bl->waiting--;
 
@@ -246,9 +209,7 @@ ngx_int_t ngx_event_busy_lock_cancel(ngx_event_busy_lock_t *bl,
         }
     }
 
-#if (NGX_THREADS)
     ngx_mutex_unlock(bl->mutex);
-#endif
 
     return NGX_OK;
 }
@@ -276,6 +237,8 @@ static int ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
 
         if (mask & 1) {
             if (ngx_memcmp(&bl->md5[i * 16], ctx->md5, 16) == 0) {
+                ctx->waiting = 1;
+                ctx->slot = i;
                 return NGX_AGAIN;
             }
             cachable++;
@@ -319,20 +282,16 @@ static int ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
 
 static void ngx_event_busy_lock_handler(ngx_event_t *ev)
 {
-    ev->event_handler = ngx_event_busy_lock_posted_handler;
-
-#if (NGX_THREADS)
     if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
         return;
     }
-#endif
 
     ev->next = (ngx_event_t *) ngx_posted_events;
     ngx_posted_events = ev;
 
-#if (NGX_THREADS)
     ngx_mutex_unlock(ngx_posted_events_mutex);
-#endif
+
+    ev->event_handler = ngx_event_busy_lock_posted_handler;
 }
 
 
