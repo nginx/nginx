@@ -206,6 +206,10 @@ HTTP_GZIP_UNIX_LIBS=-lz
 HTTP_GZIP_WIN_LIBS=zlib.lib
 
 
+HTTP_SSI_FILTER_MODULE=ngx_http_ssi_filter_module
+HTTP_SSI_SRCS=src/http/modules/ngx_http_ssi_filter.c
+
+
 HTTP_PROXY_MODULE=ngx_http_proxy_module
 HTTP_PROXY_INCS="-I src/http/modules/proxy"
 HTTP_PROXY_DEPS=src/http/modules/proxy/ngx_http_proxy_handler.h

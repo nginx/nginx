@@ -98,15 +98,15 @@ int ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in)
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
                              ngx_chain_t **out, ngx_hunk_tag_t tag)
 {
-    ngx_chain_t  *te;
+    ngx_chain_t  *tl;
 
     if (*busy == NULL) {
         *busy = *out;
 
     } else {
-        for (te = *busy; /* void */ ; te = te->next) {
-            if (te->next == NULL) {
-                te->next = *out;
+        for (tl = *busy; /* void */ ; tl = tl->next) {
+            if (tl->next == NULL) {
+                tl->next = *out;
                 break;
             }
         }
@@ -132,9 +132,9 @@ void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
 
         (*busy)->hunk->pos = (*busy)->hunk->last = (*busy)->hunk->start;
 
-        te = *busy;
+        tl = *busy;
         *busy = (*busy)->next;
-        te->next = *free;
-        *free = te;
+        tl->next = *free;
+        *free = tl;
     }
 }

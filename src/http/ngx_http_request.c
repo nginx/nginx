@@ -1115,7 +1115,8 @@ static int ngx_http_read_discarded_body(ngx_http_request_t *r)
     ssize_t                    size, n;
     ngx_http_core_loc_conf_t  *clcf;
 
-    ngx_log_debug(r->connection->log, "http read discarded body");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http read discarded body");
 
     if (r->headers_in.content_length_n == 0) {
         return NGX_OK;
@@ -1164,7 +1165,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
     c = r->connection;
     rev = c->read;
 
-    ngx_log_debug(c->log, "set http keepalive handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "set http keepalive handler");
 
     ctx = (ngx_http_log_ctx_t *) c->log->data;
     ctx->action = "closing request";
@@ -1201,7 +1202,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
             h->last = h->start + len;
         }
 
-        ngx_log_debug(c->log, "pipelined request");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "pipelined request");
 
         c->pipeline = 1;
         ctx->action = "reading client pipelined request line";
@@ -1259,7 +1260,7 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
 
     c = (ngx_connection_t *) rev->data;
 
-    ngx_log_debug(c->log, "http keepalive handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http keepalive handler");
 
     if (rev->timedout) {
         ngx_http_close_connection(c);
@@ -1370,7 +1371,8 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
     c = rev->data;
     r = c->data;
 
-    ngx_log_debug(c->log, "http lingering close handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http lingering close handler");
 
     if (rev->timedout) {
         ngx_http_close_request(r, 0);
@@ -1411,7 +1413,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
     do {
         n = ngx_recv(c, r->discarded_buffer, clcf->discarded_buffer_size);
 
-        ngx_log_debug(c->log, "lingering read: %d" _ n);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "lingering read: %d", n);
 
         if (n == NGX_ERROR || n == 0) {
             ngx_http_close_request(r, 0);
@@ -1434,7 +1436,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *rev)
 
 void ngx_http_empty_handler(ngx_event_t *wev)
 {
-    ngx_log_debug(wev->log, "http EMPTY handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0, "http empty handler");
 
     return;
 }
@@ -1519,7 +1521,8 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
 
 void ngx_http_close_connection(ngx_connection_t *c)
 {
-    ngx_log_debug(c->log, "close connection: %d" _ c->fd);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "close connection: %d", c->fd);
 
     if (c->pool == NULL) {
         ngx_log_error(NGX_LOG_ALERT, c->log, 0, "connection already closed");

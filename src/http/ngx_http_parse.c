@@ -463,7 +463,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
                     break;
                 }
 
-                if (ch == '-' || ch == '_' || ch == '~') {
+                if (ch == '-' || ch == '_' || ch == '~' || ch == '.') {
                     break;
                 }
 
@@ -489,7 +489,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h)
                 break;
             }
 
-            if (ch == '-' || ch == '_' || ch == '~') {
+            if (ch == '-' || ch == '_' || ch == '~' || ch == '.') {
                 break;
             }
 
