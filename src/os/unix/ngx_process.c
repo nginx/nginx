@@ -20,7 +20,23 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     ngx_pid_t  pid;
     ngx_int_t  s;
 
-    s = respawn >= 0 ? respawn : ngx_last_process;
+    if (respawn >= 0) {
+        s = respawn;
+
+    } else {
+        for (s = 0; s < ngx_last_process; s++) {
+            if (ngx_processes[s].pid == -1) {
+                break;
+            }
+        }
+
+        if (s == NGX_MAX_PROCESSES) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                          "no more than %d processes can be spawned",
+                          NGX_MAX_PROCESSES);
+            return NGX_ERROR;
+        }
+    }
 
 
     if (respawn != NGX_PROCESS_DETACHED) {
@@ -146,7 +162,9 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
         break;
     }
 
-    ngx_last_process++;
+    if (s == ngx_last_process) {
+        ngx_last_process++;
+    }
 
     return pid;
 }
@@ -220,7 +238,7 @@ void ngx_process_get_status()
 
 
         one = 1;
-        process = "";
+        process = "unknown process";
 
         for (i = 0; i < ngx_last_process; i++) {
             if (ngx_processes[i].pid == pid) {
@@ -229,10 +247,6 @@ void ngx_process_get_status()
                 process = ngx_processes[i].name;
                 break;
             }
-        }
-
-        if (i == ngx_last_process) {
-            process = "unknown process";
         }
 
         if (WTERMSIG(status)) {

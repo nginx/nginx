@@ -148,12 +148,19 @@ static ngx_int_t ngx_http_charset_header_filter(ngx_http_request_t *r)
     }
 #endif
 
-    if (r->headers_out.content_type == NULL
-        || ngx_strncasecmp(r->headers_out.content_type->value.data,
+    if (r->headers_out.content_type == NULL) {
+        return ngx_http_next_header_filter(r);
+    }
+
+    if (ngx_strncasecmp(r->headers_out.content_type->value.data,
                                                               "text/", 5) != 0
-        || ngx_strstr(r->headers_out.content_type->value.data, "charset")
-                                                                       != NULL
-       )
+        && ngx_strncasecmp(r->headers_out.content_type->value.data,
+                                          "application/x-javascript", 24) != 0)
+    {
+        return ngx_http_next_header_filter(r);
+    }
+
+    if (ngx_strstr(r->headers_out.content_type->value.data, "charset") != NULL)
     {
         return ngx_http_next_header_filter(r);
     }

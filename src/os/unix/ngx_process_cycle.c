@@ -306,11 +306,17 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
         ch.slot = ngx_process_slot;
         ch.fd = ngx_processes[ngx_process_slot].channel[0];
 
-        for (i = 0; i < ngx_last_process - 1; i++) {
+        for (i = 0; i < ngx_last_process; i++) {
 
-        ngx_log_debug4(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "pass channel s: %d pid:" PID_T_FMT " fd:%d to:"
-                       PID_T_FMT, ch.slot, ch.pid, ch.fd, ngx_processes[i].pid);
+            if (i == ngx_process_slot || ngx_processes[i].pid == -1) {
+                continue;
+            }
+
+            ngx_log_debug5(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                           "pass channel s:%d pid:" PID_T_FMT
+                           " fd:%d to s:%d pid:" PID_T_FMT,
+                           ch.slot, ch.pid, ch.fd,
+                           i, ngx_processes[i].pid);
 
             /* TODO: NGX_AGAIN */
 
@@ -367,7 +373,7 @@ static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 
     for (i = 0; i < ngx_last_process; i++) {
 
-        if (ngx_processes[i].detached) {
+        if (ngx_processes[i].detached || ngx_processes[i].pid == -1) {
             continue;
         }
 
@@ -432,14 +438,19 @@ static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
     live = 0;
     for (i = 0; i < ngx_last_process; i++) {
 
-        ngx_log_debug6(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "child: " PID_T_FMT " e:%d t:%d d:%d r:%d j:%d",
+        ngx_log_debug7(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "child: %d " PID_T_FMT " e:%d t:%d d:%d r:%d j:%d",
+                       i,
                        ngx_processes[i].pid,
                        ngx_processes[i].exiting,
                        ngx_processes[i].exited,
                        ngx_processes[i].detached,
                        ngx_processes[i].respawn,
                        ngx_processes[i].just_respawn);
+
+        if (ngx_processes[i].pid == -1) {
+            continue;
+        }
 
         if (ngx_processes[i].exited) {
 
@@ -454,13 +465,14 @@ static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
 
                 for (n = 0; n < ngx_last_process; n++) {
                     if (ngx_processes[n].exited
+                        || ngx_processes[n].pid == -1
                         || ngx_processes[n].channel[0] == -1)
                     {
                         continue;
                     }
 
                     ngx_log_debug3(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "pass close channel s: %d pid:" PID_T_FMT
+                       "pass close channel s:%d pid:" PID_T_FMT
                        " to:" PID_T_FMT, ch.slot, ch.pid, ngx_processes[n].pid);
 
                     /* TODO: NGX_AGAIN */
@@ -498,8 +510,11 @@ static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
                 }
             }
 
-            if (i != --ngx_last_process) {
-                ngx_processes[i--] = ngx_processes[ngx_last_process];
+            if (i == ngx_last_process - 1) {
+                ngx_last_process--;
+
+            } else {
+                ngx_processes[i].pid = -1;
             }
 
         } else if (ngx_processes[i].exiting || !ngx_processes[i].detached) {
@@ -593,14 +608,9 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
     }
 
-    for (n = 0; n <= ngx_last_process; n++) {
+    for (n = 0; n < ngx_last_process; n++) {
 
-        if (n == ngx_process_slot) {
-            if (close(ngx_processes[n].channel[0]) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                              "close() failed");
-            }
-
+        if (ngx_processes[n].pid == -1) {
             continue;
         }
 
@@ -608,6 +618,11 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "close() failed");
         }
+    }
+
+    if (close(ngx_processes[ngx_process_slot].channel[0]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "close() failed");
     }
 
 #if 0

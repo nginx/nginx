@@ -125,7 +125,8 @@ static ngx_int_t ngx_http_headers_filter(ngx_http_request_t *r)
                     cc->value.data = (u_char *) "no-cache";
 
                 } else {
-                    cc->value.data = ngx_palloc(r->pool, TIME_T_LEN + 1);
+                    cc->value.data = ngx_palloc(r->pool,
+                                          sizeof("max-age=") + TIME_T_LEN + 1);
                     if (cc->value.data == NULL) {
                         return NGX_ERROR;
                     }

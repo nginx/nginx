@@ -378,8 +378,8 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
             ngx_time_update(tv.tv_sec);
             deltas = tv.tv_usec / 1000;
 
-            ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000
-                                                              - ngx_start_msec;
+            ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
+                                          + tv.tv_usec / 1000 - ngx_start_msec;
         } else {
             ngx_elapsed_msec += delta;
         }
@@ -392,8 +392,9 @@ static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle)
         ngx_gettimeofday(&tv);
         ngx_time_update(tv.tv_sec);
 
-        ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000
-                                                              - ngx_start_msec;
+        ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
+                                          + tv.tv_usec / 1000 - ngx_start_msec;
+
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "select() returned no events without timeout");

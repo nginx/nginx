@@ -459,7 +459,8 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     ngx_time_update(tv.tv_sec);
 
     delta = ngx_elapsed_msec;
-    ngx_elapsed_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000 - ngx_start_msec;
+    ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
+                                          + tv.tv_usec / 1000 - ngx_start_msec;
 
     if (timer != NGX_TIMER_INFINITE) {
         delta = ngx_elapsed_msec - delta;
