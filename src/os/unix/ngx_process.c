@@ -8,14 +8,6 @@ static void ngx_exec_proc(ngx_cycle_t *cycle, void *data);
 ngx_uint_t     ngx_last_process;
 ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
 
-sigset_t  ngx_sigmask;
-
-
-void ngx_wait_events()
-{
-    sigsuspend(&ngx_sigmask);
-}
-
 
 ngx_int_t ngx_spawn_process(ngx_cycle_t *cycle,
                             ngx_spawn_proc_pt proc, void *data,
@@ -122,16 +114,7 @@ static void ngx_exec_proc(ngx_cycle_t *cycle, void *data)
 
 void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signal)
 {
-    sigset_t    set, oset;
     ngx_uint_t  i;
-
-    sigemptyset(&set);
-    sigaddset(&set, SIGCHLD);
-    if (sigprocmask(SIG_BLOCK, &set, &oset) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "sigprocmask() failed while signaling processes");
-        return;
-    }
 
     for (i = 0; i < ngx_last_process; i++) {
 
@@ -160,61 +143,32 @@ void ngx_signal_processes(ngx_cycle_t *cycle, ngx_int_t signal)
             ngx_processes[i].exiting = 1;
         }
     }
-
-    if (sigprocmask(SIG_SETMASK, &oset, &set) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "sigprocmask() failed while signaling processes");
-    }
 }
 
 
 void ngx_respawn_processes(ngx_cycle_t *cycle)
 {
-    sigset_t    set, oset;
     ngx_uint_t  i;
 
-    sigemptyset(&set);
-    sigaddset(&set, SIGCHLD);
-    if (sigprocmask(SIG_BLOCK, &set, &oset) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "sigprocmask() failed while respawning processes");
-        return;
-    }
-
-    /*
-     * to avoid a race condition we can check and set value of ngx_respawn
-     * only in signal handler or while SIGCHLD is blocked
-     */
-
-    if (ngx_respawn) {
-
-        for (i = 0; i < ngx_last_process; i++) {
-            if (!ngx_processes[i].exited) {
-                continue;
-            }
-
-            if (!ngx_processes[i].respawn) {
-                if (i != --ngx_last_process) {
-                    ngx_processes[i--] = ngx_processes[ngx_last_process];
-                }
-                continue;
-            }
-
-            if (ngx_spawn_process(cycle,
-                                  ngx_processes[i].proc, ngx_processes[i].data,
-                                  ngx_processes[i].name, i) == NGX_ERROR)
-            {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                              "can not respawn %s", ngx_processes[i].name);
-            }
+    for (i = 0; i < ngx_last_process; i++) {
+        if (!ngx_processes[i].exited) {
+            continue;
         }
 
-        ngx_respawn = 0;
-    }
+        if (!ngx_processes[i].respawn) {
+            if (i != --ngx_last_process) {
+                ngx_processes[i--] = ngx_processes[ngx_last_process];
+            }
+            continue;
+        }
 
-    if (sigprocmask(SIG_SETMASK, &oset, &set) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "sigprocmask() failed while respawning processes");
+        if (ngx_spawn_process(cycle,
+                              ngx_processes[i].proc, ngx_processes[i].data,
+                              ngx_processes[i].name, i) == NGX_ERROR)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                          "can not respawn %s", ngx_processes[i].name);
+        }
     }
 }
 
@@ -261,10 +215,6 @@ void ngx_process_get_status()
 
                 if (!ngx_processes[i].exiting) {
                     ngx_processes[i].exited = 1;
-
-                    if (ngx_processes[i].respawn) {
-                        ngx_respawn = 1;
-                    }
                 }
 
                 process = ngx_processes[i].name;

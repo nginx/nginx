@@ -5,19 +5,25 @@
 #include <nginx.h>
 
 
-static void ngx_master_process_cycle(ngx_cycle_t *cycle);
+typedef struct {
+     ngx_str_t  user;
+     int        daemon;
+     int        master;
+     ngx_str_t  pid;
+} ngx_core_conf_t;
+
+
+typedef struct {
+     ngx_file_t    pid;
+     char *const  *argv;
+} ngx_master_ctx_t;
+
+
+static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle, char **envp);
 static void ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
 static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle);
-
-
-typedef struct {
-     ngx_str_t  user;
-     int        daemon;
-     int        single;
-     ngx_str_t  pid;
-} ngx_core_conf_t;
 
 
 static ngx_str_t  core_name = ngx_string("core");
@@ -38,11 +44,11 @@ static ngx_command_t  ngx_core_commands[] = {
       offsetof(ngx_core_conf_t, daemon),
       NULL },
 
-    { ngx_string("single_process"),
+    { ngx_string("master_process"),
       NGX_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_core_flag_slot,
       0,
-      offsetof(ngx_core_conf_t, single),
+      offsetof(ngx_core_conf_t, master),
       NULL },
 
       ngx_null_command
@@ -70,7 +76,7 @@ u_int ngx_connection_counter;
 ngx_int_t  ngx_process;
 
 
-ngx_int_t  ngx_respawn;
+ngx_int_t  ngx_reap;
 ngx_int_t  ngx_terminate;
 ngx_int_t  ngx_quit;
 ngx_int_t  ngx_reconfigure;
@@ -86,10 +92,10 @@ int main(int argc, char *const *argv, char **envp)
     ngx_cycle_t       *cycle, init_cycle;
     ngx_open_file_t   *file;
     ngx_core_conf_t   *ccf;
+    ngx_master_ctx_t   ctx;
 #if !(WIN32)
     size_t             len;
     char               pid[/* STUB */ 10];
-    ngx_file_t         pidfile;
     struct passwd     *pwd;
 #endif
 
@@ -100,6 +106,7 @@ int main(int argc, char *const *argv, char **envp)
     /* TODO */ ngx_max_sockets = -1;
 
     ngx_time_init();
+
 #if (HAVE_PCRE)
     ngx_regex_init();
 #endif
@@ -138,7 +145,7 @@ int main(int argc, char *const *argv, char **envp)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    ngx_process = (ccf->single == 1) ? NGX_PROCESS_SINGLE : NGX_PROCESS_MASTER;
+    ngx_process = (ccf->master != 0) ? NGX_PROCESS_MASTER : NGX_PROCESS_SINGLE;
 
 #if (WIN32)
 
@@ -187,40 +194,61 @@ int main(int argc, char *const *argv, char **envp)
     }
 
     len = ngx_snprintf(pid, /* STUB */ 10, PID_T_FMT, ngx_getpid());
-    ngx_memzero(&pidfile, sizeof(ngx_file_t));
-    pidfile.name = ccf->pid;
+    ngx_memzero(&ctx.pid, sizeof(ngx_file_t));
+    ctx.pid.name = ccf->pid;
 
-    pidfile.fd = ngx_open_file(pidfile.name.data, NGX_FILE_RDWR,
+    ctx.pid.fd = ngx_open_file(ctx.pid.name.data, NGX_FILE_RDWR,
                                NGX_FILE_CREATE_OR_OPEN);
 
-    if (pidfile.fd == NGX_INVALID_FILE) {
+    if (ctx.pid.fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      ngx_open_file_n " \"%s\" failed", pidfile.name.data);
+                      ngx_open_file_n " \"%s\" failed", ctx.pid.name.data);
         return 1;
     }
 
-    if (ngx_write_file(&pidfile, pid, len, 0) == NGX_ERROR) {
+    if (ngx_write_file(&ctx.pid, pid, len, 0) == NGX_ERROR) {
         return 1;
     }
 
-    if (ngx_close_file(pidfile.fd) == NGX_FILE_ERROR) {
+    if (ngx_close_file(ctx.pid.fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      ngx_close_file_n " \"%s\" failed", pidfile.name.data);
+                      ngx_close_file_n " \"%s\" failed", ctx.pid.name.data);
     }
 
 #endif
 
-    ngx_master_process_cycle(cycle);
+    ctx.argv = argv;
+
+    ngx_master_process_cycle(cycle, &ctx);
 
     return 0;
 }
 
 
-static void ngx_master_process_cycle(ngx_cycle_t *cycle)
+static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
+    ngx_msec_t      delay;
     struct timeval  tv;
     ngx_int_t       i;
-    ngx_err_t       err;
+    sigset_t        set, wset;
+
+    delay = 1000;
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGCHLD);
+    sigaddset(&set, ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
+    sigaddset(&set, ngx_signal_value(NGX_REOPEN_SIGNAL));
+    sigaddset(&set, ngx_signal_value(NGX_INTERRUPT_SIGNAL));
+    sigaddset(&set, ngx_signal_value(NGX_TERMINATE_SIGNAL));
+    sigaddset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+    sigaddset(&set, ngx_signal_value(NGX_CHANGEBIN_SIGNAL));
+
+    sigemptyset(&wset);
+
+    if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed");
+    }
 
     for ( ;; ) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "new cycle");
@@ -242,7 +270,6 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle)
             }
         }
 
-
         /* a cycle with the same configuration */
 
         for ( ;; ) {
@@ -251,37 +278,47 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle)
 
             for ( ;; ) {
 
-                err = 0;
+                if (ngx_process == NGX_PROCESS_MASTER) {
+                    sigsuspend(&wset);
 
-                if (ngx_process == NGX_PROCESS_SINGLE) {
+                    ngx_gettimeofday(&tv);
+                    ngx_time_update(tv.tv_sec);
+
+                } else if (ngx_process == NGX_PROCESS_SINGLE) {
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                    "worker cycle");
 
                     ngx_process_events(cycle->log);
 
-                } else {
-                    ngx_set_errno(0);
-                    ngx_msleep(1000);
-                    err = ngx_errno;
+                } else if (ngx_process == NGX_PROCESS_MASTER_QUIT) {
+                    if (delay < 10000) {
+                        delay *= 2;
+                    }
+
+                    if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
+                        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                                      "sigprocmask() failed");
+                        continue;
+                    }
+
+                    ngx_msleep(delay);
 
                     ngx_gettimeofday(&tv);
                     ngx_time_update(tv.tv_sec);
 
-                    if (err) {
-                        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, err,
-                                       "sleep() exited");
+                    if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
+                        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                                      "sigprocmask() failed");
                     }
                 }
 
                 if (ngx_quit || ngx_terminate) {
 #if !(WIN32)
-#if 0
-                    if (ngx_delete_file(pidfile.name.data) == NGX_FILE_ERROR) {
+                    if (ngx_delete_file(ctx->pid.name.data) == NGX_FILE_ERROR) {
                         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                                       ngx_delete_file_n " \"%s\" failed",
-                                      pidfile.name.data);
+                                      ctx->pid.name.data);
                     }
-#endif
 #endif
 
                     ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
@@ -302,19 +339,19 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle)
                     exit(0);
                 }
 
-                if (err == NGX_EINTR) {
+                if (ngx_reap) {
+                    ngx_reap = 0;
                     ngx_respawn_processes(cycle);
                 }
 
-#if 0
                 if (ngx_change_binary) {
                     ngx_change_binary = 0;
                     ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
                                   "changing binary");
-                    ngx_exec_new_binary(cycle, argv);
+                    ngx_exec_new_binary(cycle, ctx->argv);
+
                     /* TODO: quit workers */
                 }
-#endif
 
                 if (ngx_reconfigure) {
                     ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "reconfiguring");
@@ -346,6 +383,7 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle)
 
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
+    sigset_t          set;
     ngx_int_t         i;
     ngx_listening_t  *ls;
 
@@ -358,6 +396,13 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             /* fatal */
             exit(1);
         }
+    }
+
+    sigemptyset(&set);
+
+    if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed");
     }
 
     ngx_init_temp_number();
@@ -518,7 +563,7 @@ static ngx_int_t ngx_core_module_init(ngx_cycle_t *cycle)
      * ccf->pid = NULL;
      */
     ccf->daemon = -1;
-    ccf->single = -1;
+    ccf->master = -1;
 
     ((void **)(cycle->conf_ctx))[ngx_core_module.index] = ccf;
 

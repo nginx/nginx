@@ -120,6 +120,7 @@ void ngx_signal_handler(int signo)
     switch (signo) {
 
     case SIGCHLD:
+        ngx_reap = 1;
         ngx_process_get_status();
         break;
 

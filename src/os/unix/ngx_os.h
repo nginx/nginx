@@ -49,8 +49,9 @@ extern int          ngx_max_sockets;
 extern int          ngx_inherited_nonblocking;
 
 
-extern ngx_int_t    ngx_master;
+extern ngx_int_t    ngx_process;
 
+extern ngx_int_t    ngx_reap;
 extern ngx_int_t    ngx_quit;
 extern ngx_int_t    ngx_terminate;
 extern ngx_int_t    ngx_reconfigure;
