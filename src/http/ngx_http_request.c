@@ -322,6 +322,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             return;
         }
 
+
         /* copy URI */
 
         if (r->args_start) {
@@ -339,7 +340,6 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         ngx_cpystrn(r->uri.data, r->uri_start, r->uri.len + 1);
 
-#if 1 /* THINK: needed to log url on errors in proxy only ? */
 
         /* copy unparsed URI */
 
@@ -354,7 +354,6 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         ngx_cpystrn(r->unparsed_uri.data, r->uri_start,
                     r->unparsed_uri.len + 1);
 
-#endif
 
         r->request_line.len = r->request_end - r->request_start;
 

@@ -11,9 +11,9 @@
 typedef struct {
     ngx_str_t   host;
     ngx_str_t   uri;
-    ngx_str_t  *location;
     ngx_str_t   host_header;
     ngx_str_t   port_text;
+    ngx_str_t  *location;
     int         port;
 } ngx_http_proxy_upstream_t;
 
@@ -71,14 +71,14 @@ struct ngx_http_proxy_ctx_s {
     ngx_chain_t                *request_hunks;
 
     int                         method;
-    ngx_str_t                   uri;
-    int                         location_len;
 
     ngx_event_pipe_t           *event_pipe;
 
     unsigned                    accel:1;
     unsigned                    cachable:1;
     unsigned                    fatal_error:1;
+    unsigned                    request_sent:1;
+    unsigned                    timedout:1;
     unsigned                    header_sent:1;
 
     /* used to parse an upstream HTTP header */
@@ -88,6 +88,7 @@ struct ngx_http_proxy_ctx_s {
     int                         state;
 
     char                       *action;
+    ngx_http_log_ctx_t         *saved_ctx;
 };
 
 

@@ -232,7 +232,7 @@ void ngx_http_handler(ngx_http_request_t *r)
         break;
     }
 
-#if 0
+#if 1
     /* TEST STUB */ r->http_version = NGX_HTTP_VERSION_10;
     /* TEST STUB */ r->keepalive = 0;
 #endif

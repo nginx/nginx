@@ -372,9 +372,9 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
               ctx->zstream.avail_in _ ctx->zstream.avail_out _ rc);
 
             ctx->in_hunk->pos = (char *) ctx->zstream.next_in;
+            ctx->out_hunk->last = (char *) ctx->zstream.next_out;
 
             if (ctx->zstream.avail_out == 0) {
-                ctx->out_hunk->last += conf->bufs.size;
                 ngx_alloc_link_and_set_hunk(cl, ctx->out_hunk, r->pool,
                                             ngx_http_gzip_error(ctx));
                 *ctx->last_out = cl;
@@ -382,7 +382,6 @@ ngx_log_debug(r->connection->log, "DEFLATE(): %08x %08x %d %d %d" _
                 ctx->redo = 1;
 
             } else {
-                ctx->out_hunk->last = (char *) ctx->zstream.next_out;
                 ctx->redo = 0;
 
                 if (ctx->flush == Z_SYNC_FLUSH) {
@@ -503,7 +502,7 @@ static void *ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
         ctx->free_mem += alloc;
         ctx->allocated -= alloc;
 
-#if 0
+#if 1
         ngx_log_debug(ctx->request->connection->log, "ALLOC: %d:%d:%d:%08X" _
                       items _ size _ alloc _ p);
 #endif
