@@ -76,6 +76,10 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
                 return NGX_OK;
             }
 
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                          "posted event lock:%d " PTR_FMT,
+                          *(ev->lock), ev->lock);
+
             if (ngx_trylock(ev->lock) == 0) {
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -107,21 +111,29 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
                 continue;
             }
 
-            ngx_mutex_unlock(ngx_posted_events_mutex);
+            ev->locked = 1;
 
             if (ev->posted) {
+                ev->ready = ev->posted_ready;
+                ev->timedout = ev->posted_timedout;
+                ev->available = ev->posted_available;
+                ev->kq_eof = ev->posted_eof;
+#if (HAVE_KQUEUE)
+                ev->kq_errno = ev->posted_errno;
+#endif
                 ev->posted = 0;
-                if (!ev->timedout) {
-                    ev->ready = 1;
-                }
             }
+
+            ngx_mutex_unlock(ngx_posted_events_mutex);
 
             ev->event_handler(ev);
 
-            ngx_unlock(ev->lock);
-
             if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
                 return NGX_ERROR;
+            }
+
+            if (ev->locked) {
+                ngx_unlock(ev->lock);
             }
 
             break;

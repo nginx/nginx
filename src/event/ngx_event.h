@@ -155,7 +155,26 @@ struct ngx_event_s {
 
 
 #if (NGX_THREADS)
+
     ngx_atomic_t    *lock;
+
+    unsigned         locked:1;
+
+    unsigned         posted_ready:1;
+    unsigned         posted_timedout:1;
+    unsigned         posted_eof:1;
+
+#if (HAVE_KQUEUE)
+    /* the pending errno reported by kqueue */
+    int              posted_errno;
+#endif
+
+#if (HAVE_KQUEUE) || (HAVE_IOCP)
+    int              posted_available;
+#else
+    unsigned         posted_available:1;
+#endif
+
 #endif
 
 

@@ -1739,16 +1739,31 @@ void ngx_http_close_connection(ngx_connection_t *c)
         }
     }
 
-    fd = c->fd;
+    /*
+     * we have to clean the connection information before the closing
+     * because another thread may reopen the same file descriptor
+     * before we clean the connection
+     */
 
+    fd = c->fd;
     c->fd = (ngx_socket_t) -1;
     c->data = NULL;
     ngx_destroy_pool(c->pool);
 
-    /*
-     * we has to clean the connection before the closing because another thread
-     * may reopen the same file descriptor before we clean the connection
-     */
+#if (NGX_THREADS)
+
+    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_OK) {
+        ngx_unlock(&c->lock);
+        c->read->locked = 0;
+        c->write->locked = 0;
+
+        ngx_mutex_unlock(ngx_posted_events_mutex);
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                   "connection lock: %d " PTR_FMT, c->lock, &c->lock);
+
+#endif
 
     if (ngx_close_socket(fd) == -1) {
 

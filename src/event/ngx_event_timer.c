@@ -110,25 +110,26 @@ void ngx_event_expire_timers(ngx_msec_t timer)
 #endif
 
             ev->timer_set = 0;
-            ev->timedout = 1;
-#if (NGX_THREADS)
-            ngx_unlock(ev->lock);
-#endif
 
             if (ngx_threaded) {
                 if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
                     return;
                 }
 
+                ev->posted_timedout = 1;
                 ngx_post_event(ev);
 
                 ngx_mutex_unlock(ngx_posted_events_mutex);
                 continue;
             }
 
+            ev->timedout = 1;
+
             ev->event_handler(ev);
+
             continue;
         }
+
         break;
     }
 

@@ -30,6 +30,7 @@
 #include <sys/wait.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
+#include <sched.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
