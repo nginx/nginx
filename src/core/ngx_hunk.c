@@ -1,4 +1,5 @@
 
+#include <ngx_config.h>
 #include <ngx_hunk.h>
 
 

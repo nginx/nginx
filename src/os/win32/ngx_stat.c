@@ -1,5 +1,5 @@
 
-#include <windows.h>
+#include <ngx_config.h>
 
 #include <ngx_stat.h>
 

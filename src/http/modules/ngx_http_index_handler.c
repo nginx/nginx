@@ -33,7 +33,9 @@ ngx_http_module_t  ngx_http_index_module_ctx = {
     NGX_HTTP_MODULE,
 
     NULL,                                  /* create server config */
+    NULL,                                  /* init server config */
     ngx_http_index_create_conf,            /* create location config */
+    ngx_http_index_merge_conf,             /* merge location config */
 
     NULL,                                  /* translate handler */
 

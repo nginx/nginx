@@ -30,7 +30,9 @@ static ngx_http_module_t  ngx_http_output_filter_module_ctx = {
     NGX_HTTP_MODULE,
 
     NULL,                                  /* create server config */
+    NULL,                                  /* init server config */
     ngx_http_output_filter_create_conf,    /* create location config */
+    NULL,                                  /* merge location config */
 
     NULL,                                  /* translate handler */
 

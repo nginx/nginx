@@ -1,4 +1,6 @@
 
+#include <ngx_config.h>
+
 #include <ngx_config_file.h>
 
 

@@ -21,7 +21,7 @@ int (*ngx_http_top_header_filter) (ngx_http_request_t *r);
 
 int ngx_http_max_module;
 
-
+#if 0
 static ngx_command_t ngx_http_core_commands[] = {
 
     {ngx_string("send_timeout"),
@@ -32,13 +32,15 @@ static ngx_command_t ngx_http_core_commands[] = {
 
     {ngx_string(""), 0, NULL, 0, 0}
 };
-
+#endif
 
 ngx_http_module_t  ngx_http_core_module_ctx = {
     NGX_HTTP_MODULE,
 
     ngx_http_core_create_srv_conf,         /* create server config */
+    NULL,                                  /* init server config */
     ngx_http_core_create_loc_conf,         /* create location config */
+    NULL,                                  /* merge location config */
 
     ngx_http_core_translate_handler,       /* translate handler */
 
@@ -48,14 +50,14 @@ ngx_http_module_t  ngx_http_core_module_ctx = {
     NULL,                                  /* next output body filter */
 };
 
-
+#if 0
 ngx_module_t  ngx_http_core_module = {
     &ngx_http_core_module_ctx,             /* module context */
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE_TYPE,                  /* module type */
     NULL                                   /* init module */
 };
-
+#endif
 
 int ngx_http_handler(ngx_http_request_t *r)
 {
@@ -265,14 +267,10 @@ int ngx_http_close_request(ngx_http_request_t *r)
                r->connection->log, "file already closed");
 
     if (r->file.fd != NGX_INVALID_FILE) {
-/* STUB WIN32 */
-#if (WIN32)
-        if (ngx_close_file(r->file.fd) == 0)
-#else
-        if (ngx_close_file(r->file.fd) == -1)
-#endif
+        if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
                           ngx_close_file_n " failed");
+        }
     }
 
 /*
@@ -307,59 +305,6 @@ int ngx_http_internal_redirect(ngx_http_request_t *r, ngx_str_t uri)
 }
 
 
-#if 0
-
-
-    {"http", ngx_http_enter_container, 0,
-     NGX_GLOBAL_CONF, NGX_CONF_CONTAINER},
-
-    {"server", ngx_http_enter_server_container, 0,
-     NGX_HTTP_CONF, NGX_CONF_CONTAINER],
-
-    {"location", ngx_http_enter_location_container, 0,
-     NGX_HTTP_SRV_CONF, NGX_CONF_CONTAINER|NGX_CONF_TAKE1}
-
-
-int ngx_http_enter_container()
-{
-     create_srv_conf(null_srv_conf)
-     create_loc_conf(null_loc_conf)
-}
-
-int ngx_http_exit_container()
-{
-     nothing ?
-}
-
-
-int ngx_http_enter_server_container()
-{
-     create_srv_conf()
-     create_loc_conf(NULL)
-}
-
-int ngx_http_exit_server_container()
-{
-     merge_srv_conf(srv_conf, null_srv_conf)
-     merge_loc_conf(loc_conf, null_loc_conf)
-
-     iterate check_loc_conf_is_set and merge_loc_conf()
-}
-
-int ngx_http_enter_location_container()
-{
-     create_loc_conf(loc)
-
-     push to array
-}
-
-int ngx_http_exit_location_container()
-{
-}
-
-#endif
-
-
 static void *ngx_http_core_create_srv_conf(ngx_pool_t *pool)
 {
     ngx_http_core_srv_conf_t *conf;
@@ -386,16 +331,3 @@ static void *ngx_http_core_create_loc_conf(ngx_pool_t *pool)
 
     return conf;
 }
-
-#if 0
-static void *ngx_http_core_create_conf(ngx_pool_t *pool)
-{
-
-    ngx_test_null(conf, ngx_palloc(pool, sizeof(ngx_http_core_conf_t)), NULL);
-
-    ngx_test_null(conf->srv, ngx_http_core_create_srv_conf_t(pool), NULL);
-    ngx_test_null(conf->loc, ngx_http_core_create_loc_conf_t(pool), NULL);
-    conf->parent = 
-    conf->next = NULL;
-}
-#endif

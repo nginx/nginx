@@ -18,7 +18,9 @@ ngx_http_module_t  ngx_http_header_filter_module_ctx = {
     NGX_HTTP_MODULE,
 
     NULL,                                  /* create server config */
+    NULL,                                  /* init server config */
     NULL,                                  /* create location config */
+    NULL,                                  /* merge location config */
 
     NULL,                                  /* translate handler */
 

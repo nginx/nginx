@@ -7,8 +7,9 @@
 
 
 typedef struct {
-    void  **srv_conf;
-    void  **loc_conf;
+    void        **srv_conf;
+    void        **loc_conf;
+    ngx_array_t  *locations;
 } ngx_http_conf_ctx_t;
 
 

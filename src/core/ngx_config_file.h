@@ -26,6 +26,8 @@
 #define NGX_CONF_FILE_DONE   2
 
 
+#define NGX_CONF_ERROR       (char *) -1
+
 typedef struct ngx_conf_s  ngx_conf_t;
 
 

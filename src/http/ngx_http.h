@@ -191,7 +191,9 @@ typedef struct {
     int      index;
 
     void  *(*create_srv_conf)(ngx_pool_t *p);
+    void  *(*init_srv_conf)(ngx_pool_t *p, void *conf);
     void  *(*create_loc_conf)(ngx_pool_t *p);
+    void  *(*merge_loc_conf)(ngx_pool_t *p, void *prev, void *conf);
 
     int    (*translate_handler)(ngx_http_request_t *r);
 
