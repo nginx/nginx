@@ -1108,7 +1108,9 @@ static int ngx_http_proxy_init(ngx_cycle_t *cycle)
     ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
 
-    ngx_test_null(h, ngx_push_array(&cmcf->translate_handlers), NGX_ERROR);
+    ngx_test_null(h, ngx_push_array(
+                             &cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers),
+                  NGX_ERROR);
 
     *h = ngx_http_proxy_translate_handler;
 

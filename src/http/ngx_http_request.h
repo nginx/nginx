@@ -126,6 +126,8 @@ typedef struct {
 
 typedef struct ngx_http_request_s ngx_http_request_t;
 
+typedef int (*ngx_http_handler_pt)(ngx_http_request_t *r);
+
 struct ngx_http_request_s {
     ngx_connection_t    *connection;
 
@@ -142,8 +144,6 @@ struct ngx_http_request_s {
 
     ngx_http_headers_in_t     headers_in;
     ngx_http_headers_out_t    headers_out;
-
-    int  (*handler)(ngx_http_request_t *r);
 
     time_t               lingering_time;
 
@@ -166,6 +166,9 @@ struct ngx_http_request_s {
     ngx_str_t           *server_name;
     ngx_array_t         *virtual_names;
 
+    int                  phase;
+    int                  phase_handler;
+    ngx_http_handler_pt  content_handler;
 
     char                *discarded_buffer;
 
@@ -188,6 +191,7 @@ struct ngx_http_request_s {
     unsigned             header_only:1;
     unsigned             keepalive:1;
     unsigned             lingering_close:1;
+    unsigned             closed:1;
 
     /* TODO: use filter or bits ???? */
     int                  filter;

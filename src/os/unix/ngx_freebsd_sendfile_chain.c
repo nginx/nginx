@@ -14,16 +14,16 @@
  * and the first part of the file in one packet but also sends 4K pages
  * in the full packets.
  *
- * Until FreeBSD 4.5 the turning TCP_NOPUSH off does not not flush
- * the pending data that less than MSS and the data sent with 5 second delay.
- * So we use TCP_NOPUSH on FreeBSD prior to 4.5 only if the connection
- * is not needed to be keepalive.
+ * Until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush
+ * the pending data that less than MSS so the data is sent with 5 second delay.
+ * We do not use TCP_NOPUSH on FreeBSD prior to 4.5 although it can be used
+ * for non-keepalive HTTP connections.
  */
 
 
 ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
-    int              rc, eintr, tcp_nopush;
+    int              rc, eintr;
     char            *prev;
     ssize_t          hsize, size;
     off_t            sent;
@@ -33,8 +33,6 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
     ngx_array_t      header, trailer;
     ngx_hunk_t      *file;
     ngx_chain_t     *ce, *tail;
-
-    tcp_nopush = 0;
 
     do {
         ce = in;
@@ -47,42 +45,33 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
         ngx_init_array(trailer, c->pool, 10, sizeof(struct iovec),
                        NGX_CHAIN_ERROR);
 
-        /* create the header iovec */
+        /* create the iovec and coalesce the neighbouring chain entries */
 
-#if 0
-        if (ngx_hunk_in_memory_only(ce->hunk) || ngx_hunk_special(ce->hunk)) {
-#endif
-            prev = NULL;
-            iov = NULL;
+        prev = NULL;
+        iov = NULL;
 
-            /* create the iovec and coalesce the neighbouring chain entries */
-
-            for ( /* void */; ce; ce = ce->next) {
-                if (ngx_hunk_special(ce->hunk)) {
-                    continue;
-                }
-
-                if (!ngx_hunk_in_memory_only(ce->hunk)) {
-                    break;
-                }
-
-                if (prev == ce->hunk->pos) {
-                    iov->iov_len += ce->hunk->last - ce->hunk->pos;
-                    prev = ce->hunk->last;
-
-                } else {
-                    ngx_test_null(iov, ngx_push_array(&header),
-                                  NGX_CHAIN_ERROR);
-                    iov->iov_base = ce->hunk->pos;
-                    iov->iov_len = ce->hunk->last - ce->hunk->pos;
-                    prev = ce->hunk->last;
-                }
-
-                hsize += ce->hunk->last - ce->hunk->pos;
+        for (ce = in; ce; ce = ce->next) {
+            if (ngx_hunk_special(ce->hunk)) {
+                continue;
             }
-#if 0
+
+            if (!ngx_hunk_in_memory_only(ce->hunk)) {
+                break;
+            }
+
+            if (prev == ce->hunk->pos) {
+                iov->iov_len += ce->hunk->last - ce->hunk->pos;
+                prev = ce->hunk->last;
+
+            } else {
+                ngx_test_null(iov, ngx_push_array(&header), NGX_CHAIN_ERROR);
+                iov->iov_base = ce->hunk->pos;
+                iov->iov_len = ce->hunk->last - ce->hunk->pos;
+                prev = ce->hunk->last;
+            }
+
+            hsize += ce->hunk->last - ce->hunk->pos;
         }
-#endif
 
         /* TODO: coalesce the neighbouring file hunks */
 
@@ -91,57 +80,46 @@ ngx_chain_t *ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in)
             ce = ce->next;
         }
 
-        /* create the trailer iovec */
+        /* create the iovec and coalesce the neighbouring chain entries */
 
-#if 0
-        if (ce
-            && (ngx_hunk_in_memory_only(ce->hunk)
-                || ngx_hunk_special(ce->hunk)))
-        {
-#endif
-            prev = NULL;
-            iov = NULL;
+        prev = NULL;
+        iov = NULL;
 
-            /* create the iovec and coalesce the neighbouring chain entries */
-
-            for ( /* void */; ce; ce = ce->next) {
-                if (ngx_hunk_special(ce->hunk)) {
-                    continue;
-                }
-
-                if (!ngx_hunk_in_memory_only(ce->hunk)) {
-                    break;
-                }
-
-                if (prev == ce->hunk->pos) {
-                    iov->iov_len += ce->hunk->last - ce->hunk->pos;
-                    prev = ce->hunk->last;
-
-                } else {
-                    ngx_test_null(iov, ngx_push_array(&trailer),
-                                  NGX_CHAIN_ERROR);
-                    iov->iov_base = ce->hunk->pos;
-                    iov->iov_len = ce->hunk->last - ce->hunk->pos;
-                    prev = ce->hunk->last;
-                }
+        for ( /* void */; ce; ce = ce->next) {
+            if (ngx_hunk_special(ce->hunk)) {
+                continue;
             }
-#if 0
+
+            if (!ngx_hunk_in_memory_only(ce->hunk)) {
+                break;
+            }
+
+            if (prev == ce->hunk->pos) {
+                iov->iov_len += ce->hunk->last - ce->hunk->pos;
+                prev = ce->hunk->last;
+
+            } else {
+                ngx_test_null(iov, ngx_push_array(&trailer), NGX_CHAIN_ERROR);
+                iov->iov_base = ce->hunk->pos;
+                iov->iov_len = ce->hunk->last - ce->hunk->pos;
+                prev = ce->hunk->last;
+            }
         }
-#endif
 
         tail = ce;
 
         if (file) {
 
-            if (!c->tcp_nopush && c->tcp_nopush_enabled) {
+            if (ngx_freebsd_use_tcp_nopush && !c->tcp_nopush) {
                 c->tcp_nopush = 1;
-                tcp_nopush = 1;
+
+ngx_log_debug(c->log, "NOPUSH");
+
                 if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
                     ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
                                   ngx_tcp_nopush_n " failed");
                     return NGX_CHAIN_ERROR;
                 }
-ngx_log_debug(c->log, "NOPUSH");
             }
 
             hdtr.headers = (struct iovec *) header.elts;
@@ -182,36 +160,28 @@ ngx_log_debug(c->log, "NOPUSH");
 #endif
 
         } else {
-            if (hsize) {
-                rc = writev(c->fd, (struct iovec *) header.elts, header.nelts);
+            rc = writev(c->fd, (struct iovec *) header.elts, header.nelts);
 
-                if (rc == -1) {
-                    err = ngx_errno;
-                    if (err == NGX_EAGAIN) {
-                        ngx_log_error(NGX_LOG_INFO, c->log, err,
-                                      "writev() EAGAIN");
+            if (rc == -1) {
+                err = ngx_errno;
+                if (err == NGX_EAGAIN) {
+                    ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EAGAIN");
 
-                    } else if (err == NGX_EINTR) {
-                        eintr = 1;
-                        ngx_log_error(NGX_LOG_INFO, c->log, err,
-                                      "writev() EINTR");
+                } else if (err == NGX_EINTR) {
+                    eintr = 1;
+                    ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EINTR");
 
-                    } else {
-                        ngx_log_error(NGX_LOG_CRIT, c->log, err,
-                                      "writev() failed");
-                        return NGX_CHAIN_ERROR;
-                    }
+                } else {
+                    ngx_log_error(NGX_LOG_CRIT, c->log, err, "writev() failed");
+                    return NGX_CHAIN_ERROR;
                 }
+            }
 
-                sent = rc > 0 ? rc : 0;
+            sent = rc > 0 ? rc : 0;
 
 #if (NGX_DEBUG_WRITE_CHAIN)
-                ngx_log_debug(c->log, "writev: %qd" _ sent);
+            ngx_log_debug(c->log, "writev: %qd" _ sent);
 #endif
-
-            } else {
-                sent = 0;
-            }
         }
 
         c->sent += sent;

@@ -40,7 +40,6 @@ struct ngx_event_proxy_s {
     void              *output_data;
 
     unsigned           cachable:1;
-    unsigned           fatal_error:1;
     unsigned           block_upstream:1;
     unsigned           upstream_eof:1;
     unsigned           upstream_error:1;

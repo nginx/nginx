@@ -127,33 +127,12 @@ int ngx_http_static_handler(ngx_http_request_t *r)
 
 
     rc = ngx_http_send_header(r);
-    if (rc == NGX_ERROR || rc > NGX_OK) {
-        ngx_http_finalize_request(r, rc);
-        return NGX_OK;
+
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return rc;
     }
 
-    if (r->header_only) {
-        ngx_http_finalize_request(r, rc);
-
-#if 0
-        if (rc == NGX_AGAIN) {
-            ngx_http_set_write_handler(r);
-
-        } else {
-            ngx_http_finalize_request(r, 0);
-        }
-#endif
-
-        return NGX_OK;
-    }
-
-
-#if 0
     h->type = r->main ? NGX_HUNK_FILE : NGX_HUNK_FILE|NGX_HUNK_LAST;
-#else
-    h->type = NGX_HUNK_FILE;
-#endif
-
 
     h->file_pos = 0;
     h->file_last = ngx_file_size(r->file.info);
@@ -161,20 +140,5 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     h->file->fd = r->file.fd;
     h->file->log = r->connection->log;
 
-    rc = ngx_http_output_filter(r, h);
-
-    ngx_http_finalize_request(r, rc);
-
-#if 0
-    if (r->main == NULL) {
-        if (rc == NGX_AGAIN) {
-            ngx_http_set_write_handler(r);
-
-        } else {
-            ngx_http_finalize_request(r, 0);
-        }
-    }
-#endif
-
-    return NGX_OK;
+    return ngx_http_output_filter(r, h);
 }

@@ -9,7 +9,7 @@ int ngx_freebsd_kern_osreldate;
 int ngx_freebsd_hw_ncpu;
 int ngx_freebsd_net_inet_tcp_sendspace;
 int ngx_freebsd_sendfile_nbytes_bug;
-int ngx_freebsd_tcp_nopush_flush;
+int ngx_freebsd_use_tcp_nopush;
 
 /* FreeBSD 5.0 */
 int ngx_freebsd_kern_ipc_zero_copy_send;
@@ -125,7 +125,7 @@ int ngx_os_init(ngx_log_t *log)
 
 
     if ((version < 500000 && version >= 440003) || version >= 500017) {
-        ngx_freebsd_tcp_nopush_flush = 1;
+        ngx_freebsd_use_tcp_nopush = 1;
     }
 
 

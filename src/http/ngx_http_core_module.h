@@ -18,9 +18,20 @@ typedef struct {
 
 
 typedef struct {
-    ngx_array_t  servers;              /* array of ngx_http_core_srv_conf_t */
-    ngx_array_t  translate_handlers;
-    ngx_array_t  index_handlers;
+    ngx_array_t          handlers;
+    int                  type;                /* NGX_OK, NGX_DECLINED */
+    ngx_http_handler_pt  post_handler;
+} ngx_http_phase_t;
+
+#define NGX_HTTP_REWRITE_PHASE    0
+#define NGX_HTTP_TRANSLATE_PHASE  1
+#define NGX_HTTP_LAST_PHASE       2
+
+typedef struct {
+    ngx_array_t       servers;         /* array of ngx_http_core_srv_conf_t */
+
+    ngx_http_phase_t  phases[NGX_HTTP_LAST_PHASE];
+    ngx_array_t       index_handlers;
 } ngx_http_core_main_conf_t;
 
 
@@ -138,6 +149,7 @@ extern int ngx_http_max_module;
 
 
 
+int ngx_http_find_location_config(ngx_http_request_t *r);
 int ngx_http_core_translate_handler(ngx_http_request_t *r);
 
 int ngx_http_internal_redirect(ngx_http_request_t *r,

@@ -17,8 +17,6 @@ typedef struct {
 } ngx_http_log_ctx_t;
 
 
-typedef int (*ngx_http_handler_pt)(ngx_http_request_t *r);
-
 typedef int (*ngx_http_output_header_filter_p)(ngx_http_request_t *r);
 
 typedef int (*ngx_http_output_body_filter_p)
@@ -51,7 +49,7 @@ int ngx_http_parse_header_line(ngx_http_request_t *r, ngx_hunk_t *h);
 int ngx_http_find_server_conf(ngx_http_request_t *r);
 void ngx_http_handler(ngx_http_request_t *r);
 void ngx_http_finalize_request(ngx_http_request_t *r, int error);
-void ngx_http_set_write_handler(ngx_http_request_t *r);
+void ngx_http_writer(ngx_event_t *wev);
 
 
 int ngx_http_send_last(ngx_http_request_t *r);

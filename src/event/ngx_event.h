@@ -379,6 +379,106 @@ void ngx_worker(ngx_cycle_t *cycle);
 #include <ngx_iocp_module.h>
 #endif
 
+
+
+ngx_inline static int ngx_handle_read_event(ngx_event_t *rev)
+{
+    if (ngx_event_flags & (NGX_HAVE_AIO_EVENT|NGX_HAVE_EDGE_EVENT)) {
+
+        /* aio, iocp, epoll */
+
+        return NGX_OK;
+    }
+
+    if (ngx_event_flags & NGX_HAVE_CLEAR_EVENT) {
+
+        /* kqueue */
+
+        if (!rev->active && !rev->ready) {
+            if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT)
+                                                                == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+        }
+
+        return NGX_OK;
+    }
+
+    /* select, poll, /dev/poll */
+
+    if (!rev->active && !rev->ready) {
+        if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        return NGX_OK;
+    }
+
+    if (rev->active && rev->ready) {
+        if (ngx_del_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        return NGX_OK;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_inline static int ngx_handle_write_event(ngx_event_t *wev, int lowat)
+{
+    if (ngx_event_flags & (NGX_HAVE_AIO_EVENT|NGX_HAVE_EDGE_EVENT)) {
+
+        /* aio, iocp, epoll */
+
+        return NGX_OK;
+    }
+
+    if (ngx_event_flags & NGX_HAVE_CLEAR_EVENT) {
+
+        /* kqueue */
+
+#if (HAVE_LOWAT_EVENT) /* kqueue's NOTE_LOWAT */
+
+        if (ngx_event_flags & NGX_HAVE_LOWAT_EVENT) {
+            wev->lowat = lowat;
+        }
+
+#endif
+        if (!wev->active && !wev->ready) {
+            if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_CLEAR_EVENT)
+                                                                == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+        }
+
+        return NGX_OK;
+    }
+
+    /* select, poll, /dev/poll */
+
+    if (!wev->active && !wev->ready) {
+        if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        return NGX_OK;
+    }
+
+    if (wev->active && wev->ready) {
+        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        return NGX_OK;
+    }
+
+    return NGX_OK;
+}
+
+
+
 /* ***************************** */
 
 

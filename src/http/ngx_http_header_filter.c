@@ -4,12 +4,6 @@
 #include <ngx_http.h>
 #include <nginx.h>
 
-/* STUB probably, needed for ngx_freebsd_tcp_nopush_flush */
-#ifdef __FreeBSD__
-#include <ngx_freebsd_init.h>
-#endif
-
-
 
 static int ngx_http_header_filter_init(ngx_cycle_t *cycle);
 static int ngx_http_header_filter(ngx_http_request_t *r);
@@ -99,23 +93,6 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
     ngx_hunk_t        *h;
     ngx_chain_t       *ch;
     ngx_table_elt_t   *header;
-
-#ifdef __FreeBSD__
-
-    if (r->keepalive) {
-        if (ngx_freebsd_tcp_nopush_flush) {
-            r->connection->tcp_nopush_enabled = 1;
-        }
-
-    } else {
-        r->connection->tcp_nopush_enabled = 1;
-    }
-
-#else
-
-    r->connection->tcp_nopush_enabled = 1;
-
-#endif
 
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;

@@ -82,16 +82,14 @@ ngx_log_debug(p->log, "free hunk: %08X:%d" _ chain->hunk _
             } else if (p->allocated < p->max_block_size) {
                 h = ngx_create_temp_hunk(p->pool, p->block_size, 20, 20);
                 if (h == NULL) {
-                    p->fatal_error = 1;
-                    return NGX_ERROR;
+                    return NGX_ABORT;
                 }
 
                 p->allocated += p->block_size;
 
                 temp = ngx_alloc_chain_entry(p->pool);
                 if (temp == NULL) {
-                    p->fatal_error = 1;
-                    return NGX_ERROR;
+                    return NGX_ABORT;
                 }
 
                 temp->hunk = h;
@@ -163,8 +161,7 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
             if (p->upstream->read->blocked) {
                 if (ngx_add_event(p->upstream->read, NGX_READ_EVENT,
                                                NGX_LEVEL_EVENT) == NGX_ERROR) {
-                    p->fatal_error = 1;
-                    return NGX_ERROR;
+                    return NGX_ABORT;
                 }
                 p->block_upstream = 0;
                 p->upstream->read->blocked = 0;
@@ -237,8 +234,7 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
                 h = ngx_alloc_hunk(p->pool);
                 if (h == NULL) {
-                    p->fatal_error = 1;
-                    return NGX_ERROR;
+                    return NGX_ABORT;
                 }
 
                 ngx_memcpy(h, entry->hunk, sizeof(ngx_hunk_t));
@@ -248,8 +244,7 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
                 temp = ngx_alloc_chain_entry(p->pool);
                 if (temp == NULL) {
-                    p->fatal_error = 1;
-                    return NGX_ERROR;
+                    return NGX_ABORT;
                 }
 
                 temp->hunk = h;
@@ -282,8 +277,7 @@ ngx_log_debug(p->log, "recv_chain: %d" _ n);
 
         if (p->input_filter) {
             if (p->input_filter(p, chain) == NGX_ERROR) {
-                p->fatal_error = 1;
-                return NGX_ERROR;
+                return NGX_ABORT;
             }
         }
 
@@ -326,14 +320,12 @@ ngx_log_debug(p->log, "eof: %d block: %d" _
 #if (NGX_EVENT_COPY_FILTER)
 
             if (p->input_filter(p, NULL) == NGX_ERROR) {
-                p->fatal_error = 1;
-                return NGX_ERROR;
+                return NGX_ABORT;
             }
 #else
             if (p->input_filter) {
                 if (p->input_filter(p, NULL) == NGX_ERROR) {
-                    p->fatal_error = 1;
-                    return NGX_ERROR;
+                    return NGX_ABORT;
                 }
 
             } else {
@@ -380,18 +372,14 @@ ngx_log_debug(p->log, "eof: %d block: %d" _
         }
 
         if (p->out_hunks && p->downstream->write->ready) {
-            if (ngx_event_proxy_write_to_downstream(p) == NGX_ERROR
-                && p->fatal_error)
-            {
-                return NGX_ERROR;
+            if (ngx_event_proxy_write_to_downstream(p) == NGX_ABORT) {
+                return NGX_ABORT;
             }
         }
 
     } else if ((p->out_hunks || p->in_hunks) && p->downstream->write->ready) {
-        if (ngx_event_proxy_write_to_downstream(p) == NGX_ERROR
-            && p->fatal_error)
-        {
-            return NGX_ERROR;
+        if (ngx_event_proxy_write_to_downstream(p) == NGX_ABORT) {
+            return NGX_ABORT;
         }
     }
 
@@ -404,8 +392,7 @@ ngx_log_debug(p->log, "upstream level: %d" _ p->upstream_level);
         && ngx_event_flags & NGX_USE_LEVEL_EVENT)
     {
         if (ngx_del_event(p->upstream->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
-            p->fatal_error = 1;
-            return NGX_ERROR;
+            return NGX_ABORT;
         }
 
         p->upstream->read->blocked = 1;
@@ -437,8 +424,7 @@ int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p)
     {
         if (ngx_del_event(p->downstream->write, NGX_WRITE_EVENT, 0)
                                                                 == NGX_ERROR) {
-            p->fatal_error = 1;
-            return NGX_ERROR;
+            return NGX_ABORT;
         }
 
         p->downstream->write->blocked = 1;
@@ -516,8 +502,7 @@ ngx_log_debug(p->log, "event proxy: %d" _ rc);
             if (p->downstream->write->blocked) {
                 if (ngx_add_event(p->downstream->write, NGX_WRITE_EVENT,
                                                NGX_LEVEL_EVENT) == NGX_ERROR) {
-                    p->fatal_error = 1;
-                    return NGX_ERROR;
+                    return NGX_ABORT;
                 }
                 p->downstream->write->blocked = 0;
             }
@@ -584,8 +569,8 @@ ngx_log_debug(p->log, "event proxy: %d" _ rc);
     }
 
     if (p->upstream->read->ready) {
-        if (ngx_event_proxy_read_upstream(p) == NGX_ERROR && p->fatal_error) {
-            return NGX_ERROR;
+        if (ngx_event_proxy_read_upstream(p) == NGX_ERROR) {
+            return NGX_ABORT;
         }
     }
 
@@ -610,8 +595,7 @@ ngx_log_debug(p->log, "write to file");
                                   p->cachable);
 
         if (rc == NGX_ERROR) {
-            p->fatal_error = 1;
-            return NGX_ERROR;
+            return NGX_ABORT;
         }
 
         if (rc == NGX_AGAIN) {
@@ -660,8 +644,7 @@ ngx_log_debug(p->log, "write to file");
 
     if (ngx_write_chain_to_file(p->temp_file, p->in_hunks, p->temp_offset,
                                 p->pool) == NGX_ERROR) {
-        p->fatal_error = 1;
-        return NGX_ERROR;
+        return NGX_ABORT;
     }
 
     for (entry = p->in_hunks; entry; entry = next) {

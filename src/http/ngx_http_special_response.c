@@ -200,20 +200,8 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 
     rc = ngx_http_send_header(r);
 
-    if (rc == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
-    if (r->header_only) {
-        ngx_http_finalize_request(r, rc);
-#if 0
-        if (rc == NGX_AGAIN) {
-            ngx_http_set_write_handler(r);
-            return NGX_AGAIN;
-        }
-#endif
-
-        return NGX_OK;
+    if (rc == NGX_ERROR || r->header_only) {
+        return rc;
     }
 
     if (error_pages[err].len == 0) {
@@ -236,7 +224,7 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     h->pos = error_tail;
     h->last = error_tail + sizeof(error_tail) - 1;
 
-    if (1) {
+    if (/* STUB: "msie_padding on/off" */ 1) {
         if (ngx_http_output_filter(r, h) == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -250,19 +238,5 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 
     h->type |= NGX_HUNK_LAST;
 
-    rc = ngx_http_output_filter(r, h);
-
-    ngx_http_finalize_request(r, rc);
-
-#if 0
-    if (r->main == NULL) {
-        if (rc == NGX_AGAIN) {
-            ngx_http_set_write_handler(r);
-            return NGX_AGAIN;
-        }
-    }
-#endif
-
-    return NGX_OK;
-
+    return ngx_http_output_filter(r, h);
 }

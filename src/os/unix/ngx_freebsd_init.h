@@ -19,9 +19,8 @@ extern int ngx_freebsd_kern_osreldate;
 extern int ngx_freebsd_hw_ncpu;
 extern int ngx_freebsd_net_inet_tcp_sendspace;
 extern int ngx_freebsd_sendfile_nbytes_bug;
-extern int ngx_freebsd_tcp_nopush_flush;
 extern int ngx_freebsd_kern_ipc_zero_copy_send;
-extern int ngx_freebsd_tcp_nopush_flush;
+extern int ngx_freebsd_use_tcp_nopush;
 
 
 #endif /* _NGX_FREEBSD_INIT_H_INCLUDED_ */

@@ -203,7 +203,9 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
             ctx->last_out = &ce->next;
             ctx->hunk = NULL;
 
-            break;
+            if (ctx->free == NULL) {
+                break;
+            }
         }
 
         if (ctx->out == NULL && last != NGX_NONE) {

@@ -203,8 +203,21 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /* init list of the handlers */
 
-    ngx_init_array(cmcf->translate_handlers, cf->cycle->pool,
-                   10, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);
+    ngx_init_array(cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
+                   cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
+                   NGX_CONF_ERROR);
+
+    cmcf->phases[NGX_HTTP_REWRITE_PHASE].type = NGX_OK;
+    cmcf->phases[NGX_HTTP_REWRITE_PHASE].post_handler =
+                                                 ngx_http_find_location_config;
+
+
+    ngx_init_array(cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers,
+                   cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
+                   NGX_CONF_ERROR);
+
+    cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].type = NGX_OK;
+
 
     ngx_init_array(cmcf->index_handlers, cf->cycle->pool,
                    3, sizeof(ngx_http_handler_pt), NGX_CONF_ERROR);

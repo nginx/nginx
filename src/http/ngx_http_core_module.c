@@ -1,6 +1,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_event.h>
 #include <ngx_http.h>
 #include <nginx.h>
 
@@ -8,6 +9,8 @@
 /* STUB */
 int ngx_http_static_handler(ngx_http_request_t *r);
 
+static void ngx_http_phase_event_handler(ngx_event_t *rev);
+static void ngx_http_run_phases(ngx_http_request_t *r);
 
 static int ngx_http_core_index_handler(ngx_http_request_t *r);
 
@@ -201,12 +204,7 @@ ngx_module_t  ngx_http_core_module = {
 
 void ngx_http_handler(ngx_http_request_t *r)
 {
-    int                         rc, i;
-    ngx_http_log_ctx_t         *lcx;
-    ngx_http_handler_pt        *h;
-    ngx_http_core_loc_conf_t   *clcf, **clcfp;
-    ngx_http_core_srv_conf_t   *cscf;
-    ngx_http_core_main_conf_t  *cmcf;
+    ngx_http_log_ctx_t  *lcx;
 
     r->connection->unexpected_eof = 0;
 
@@ -221,11 +219,100 @@ void ngx_http_handler(ngx_http_request_t *r)
 
     /* TEST STUB */ r->lingering_close = 1;
 
+    r->connection->write->event_handler = ngx_http_phase_event_handler;
 
-    /* TODO: run rewrite url phase */
+    r->phase = 0;
+    r->phase_handler = 0;
+
+    ngx_http_run_phases(r);
+
+    return;
+}
 
 
-    /* find location config */
+static void ngx_http_phase_event_handler(ngx_event_t *ev)
+{
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
+
+    c = ev->data;
+    r = c->data;
+
+    ngx_http_run_phases(r);
+
+    return;
+}
+
+
+static void ngx_http_run_phases(ngx_http_request_t *r)
+{
+    int                         rc;
+    ngx_http_handler_pt        *h;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    rc = NGX_DECLINED;
+
+    for (/* void */; r->phase < NGX_HTTP_LAST_PHASE; r->phase++) {
+
+        h = cmcf->phases[r->phase].handlers.elts;
+        for (r->phase_handler = cmcf->phases[r->phase].handlers.nelts - 1;
+             r->phase_handler >= 0;
+             r->phase_handler--)
+        {
+            rc = h[r->phase_handler](r);
+
+            if (rc == NGX_DECLINED) {
+                continue;
+            }
+
+            if (rc == NGX_AGAIN) {
+                return;
+            }
+
+            if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+                ngx_http_finalize_request(r, rc);
+                return;
+            }
+
+            if (rc == NGX_OK && cmcf->phases[r->phase].type == NGX_OK) {
+                break;
+            }
+        }
+
+        if (cmcf->phases[r->phase].post_handler) {
+            rc = cmcf->phases[r->phase].post_handler(r);
+
+            if (rc == NGX_AGAIN) {
+                return;
+            }
+
+            if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+                ngx_http_finalize_request(r, rc);
+                return;
+            }
+        }
+    }
+
+    if (r->content_handler) {
+        r->connection->write->event_handler = ngx_http_writer;
+        rc = r->content_handler(r);
+        ngx_http_finalize_request(r, rc);
+        return;
+    }
+
+    /* TODO: no handlers found ? */
+    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    return;
+}
+
+
+int ngx_http_find_location_config(ngx_http_request_t *r)
+{
+    int                        i, rc;
+    ngx_http_core_loc_conf_t  *clcf, **clcfp;
+    ngx_http_core_srv_conf_t  *cscf;
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -261,36 +348,7 @@ ngx_log_debug(r->connection->log, "rc: %d" _ rc);
         r->filter = NGX_HTTP_FILTER_NEED_IN_MEMORY;
     }
 
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-
-    /* run translation phase */
-
-    h = cmcf->translate_handlers.elts;
-    for (i = cmcf->translate_handlers.nelts - 1; i >= 0; i--) {
-
-        rc = h[i](r);
-
-        if (rc == NGX_DECLINED) {
-            continue;
-        }
-
-        if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-            ngx_http_finalize_request(r, rc);
-            return;
-        }
-
-        if (rc == NGX_OK) {
-            rc = r->handler(r);
-            if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-                ngx_http_finalize_request(r, rc);
-            }
-            return;
-        }
-    }
-
-    /* TODO: no handlers found ? */
-    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-    return;
+    return NGX_OK;
 }
 
 
@@ -305,14 +363,14 @@ int ngx_http_core_translate_handler(ngx_http_request_t *r)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (clcf->handler) {
-        r->handler = clcf->handler;
+        r->content_handler = clcf->handler;
         return NGX_OK;
     }
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
     if (r->uri.data[r->uri.len - 1] == '/') {
-        r->handler = ngx_http_core_index_handler;
+        r->content_handler = ngx_http_core_index_handler;
         return NGX_OK;
     }
 
@@ -424,7 +482,7 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
 
-    r->handler = ngx_http_static_handler;
+    r->content_handler = ngx_http_static_handler;
 
     return NGX_OK;
 }
@@ -548,7 +606,9 @@ static int ngx_http_core_init(ngx_cycle_t *cycle)
     ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
 
-    ngx_test_null(h, ngx_push_array(&cmcf->translate_handlers), NGX_ERROR);
+    ngx_test_null(h, ngx_push_array(
+                             &cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers),
+                  NGX_ERROR);
 
     *h = ngx_http_core_translate_handler;
 
@@ -756,7 +816,7 @@ static void *ngx_http_core_create_main_conf(ngx_conf_t *cf)
     ngx_http_core_main_conf_t *cmcf;
 
     ngx_test_null(cmcf,
-                  ngx_palloc(cf->pool, sizeof(ngx_http_core_main_conf_t)),
+                  ngx_pcalloc(cf->pool, sizeof(ngx_http_core_main_conf_t)),
                   NGX_CONF_ERROR);
 
     ngx_init_array(cmcf->servers, cf->pool,
