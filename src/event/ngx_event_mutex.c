@@ -22,7 +22,7 @@ ngx_int_t ngx_event_mutex_timedlock(ngx_event_mutex_t *m, ngx_msec_t timer,
         m->last = ev;
         ev->next = NULL;
 
-#if (NGX_THREADS)
+#if (NGX_THREADS0)
         ev->light = 1;
 #endif
 
