@@ -22,6 +22,7 @@ typedef struct {
 
 
 static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
+static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle, char **envp);
 static ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
@@ -266,6 +267,7 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     ngx_new_binary = 0;
     signo = 0;
     sent = 0;
+    live = 0;
 
     for ( ;; ) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "new cycle");
@@ -273,6 +275,7 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
         if (ngx_process == NGX_PROCESS_MASTER) {
             ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
                               "worker process", NGX_PROCESS_RESPAWN);
+            live = 1;
 
         } else {
             ngx_init_temp_number();
@@ -414,29 +417,12 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                     }
 
                     if (!live) {
-                        if (ngx_terminate || ngx_quit) {
-
-                            if (ngx_inherited && getppid() > 1) {
-                                name = ctx->pid.name.data;
-
-                            } else {
-                                name = ctx->name;
-                            }
-
-                            if (ngx_delete_file(name) == NGX_FILE_ERROR) {
-                                ngx_log_error(NGX_LOG_ALERT, cycle->log,
-                                              ngx_errno,
-                                              ngx_delete_file_n
-                                              " \"%s\" failed", name);
-                            }
-
-                            ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exit");
-                            exit(0);
-
-                        } else {
-                            sent = 0;
-                        }
+                        sent = 0;
                     }
+                }
+
+                if (!live && (ngx_terminate || ngx_quit)) {
+                    ngx_master_exit(cycle, ctx);
                 }
 
                 if (ngx_terminate) {
@@ -530,7 +516,6 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
                 /* STUB */
                 if (ngx_reopen) {
-                    ngx_reopen = 0;
                     break;
                 }
 
@@ -539,7 +524,10 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                 }
             }
 
-            if (ngx_noaccept) {
+            if (ngx_reopen) {
+                ngx_reopen = 0;
+
+            } else if (ngx_noaccept) {
                 ngx_noaccept = 0;
 
             } else {
@@ -556,6 +544,27 @@ static void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
             break;
         }
     }
+}
+
+
+static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
+{
+    char  *name;
+
+    if (ngx_inherited && getppid() > 1) {
+        name = ctx->pid.name.data;
+
+    } else {
+        name = ctx->name;
+    }
+
+    if (ngx_delete_file(name) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      ngx_delete_file_n " \"%s\" failed", name);
+    }
+
+    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exit");
+    exit(0);
 }
 
 

@@ -77,7 +77,7 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 static int ngx_http_range_header_filter(ngx_http_request_t *r)
 {
-    int                           rc, boundary, len, i;
+    ngx_int_t                     rc, boundary, suffix, len, i;
     char                         *p;
     off_t                         start, end;
     ngx_http_range_t             *range;
@@ -121,44 +121,52 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
     p = r->headers_in.range->value.data + 6;
 
     for ( ;; ) {
-        start = end = 0;
+        start = 0;
+        end = 0;
+        suffix = 0;
 
         while (*p == ' ') { p++; }
 
-        if (*p < '0' || *p > '9') {
-            rc = NGX_HTTP_RANGE_NOT_SATISFIABLE;
-            break;
-        }
+        if (*p != '-') {
+            if (*p < '0' || *p > '9') {
+                rc = NGX_HTTP_RANGE_NOT_SATISFIABLE;
+                break;
+            }
 
-        while (*p >= '0' && *p <= '9') {
-            start = start * 10 + *p++ - '0';
-        }
+            while (*p >= '0' && *p <= '9') {
+                start = start * 10 + *p++ - '0';
+            }
 
-        while (*p == ' ') { p++; }
+            while (*p == ' ') { p++; }
 
-        if (*p++ != '-') {
-            rc = NGX_HTTP_RANGE_NOT_SATISFIABLE;
-            break;
-        }
+            if (*p++ != '-') {
+                rc = NGX_HTTP_RANGE_NOT_SATISFIABLE;
+                break;
+            }
 
-        if (start >= r->headers_out.content_length_n) {
-            rc = NGX_HTTP_RANGE_NOT_SATISFIABLE;
-            break;
-        }
+            if (start >= r->headers_out.content_length_n) {
+                rc = NGX_HTTP_RANGE_NOT_SATISFIABLE;
+                break;
+            }
 
-        while (*p == ' ') { p++; }
+            while (*p == ' ') { p++; }
 
-        if (*p == ',' || *p == '\0') {
-            ngx_test_null(range, ngx_push_array(&r->headers_out.ranges),
-                          NGX_ERROR);
-            range->start = start;
-            range->end = r->headers_out.content_length_n;
+            if (*p == ',' || *p == '\0') {
+                ngx_test_null(range, ngx_push_array(&r->headers_out.ranges),
+                              NGX_ERROR);
+                range->start = start;
+                range->end = r->headers_out.content_length_n;
 
-            if (*p++ == ',') {
+                if (*p++ != ',') {
+                    break;
+                }
+
                 continue;
             }
 
-            break;
+        } else {
+            suffix = 1;
+            p++;
         }
 
         if (*p < '0' || *p > '9') {
@@ -177,20 +185,33 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
             break;
         }
 
-        if (end >= r->headers_out.content_length_n || start >= end) {
+        if (suffix) {
+           start = r->headers_out.content_length_n - end;
+           end = r->headers_out.content_length_n - 1;
+        }
+
+        if (start > end) {
             rc = NGX_HTTP_RANGE_NOT_SATISFIABLE;
             break;
         }
 
         ngx_test_null(range, ngx_push_array(&r->headers_out.ranges), NGX_ERROR);
         range->start = start;
-        range->end = end + 1;
 
-        if (*p++ == ',') {
-            continue;
+        if (end >= r->headers_out.content_length_n) {
+            /*
+             * Download Accelerator sends the last byte position
+             * that equals to the file length
+             */
+            range->end = r->headers_out.content_length_n;
+
+        } else {
+            range->end = end + 1;
         }
 
-        break;
+        if (*p++ != ',') {
+            break;
+        }
     }
 
     if (rc) {
