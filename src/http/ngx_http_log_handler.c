@@ -166,7 +166,10 @@ ngx_int_t ngx_http_log_handler(ngx_http_request_t *r)
         len++;
 #endif
 
-        ngx_test_null(line, ngx_palloc(r->pool, len), NGX_ERROR);
+        if (!(line = ngx_palloc(r->pool, len))) {
+            return NGX_ERROR;
+        }
+
         p = line;
 
         for (i = 0; i < log[l].ops->nelts; i++) {

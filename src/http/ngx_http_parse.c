@@ -665,6 +665,8 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
     u_char  c, ch, decoded, *p, *u;
     enum {
         sw_usual = 0,
+        sw_colon,
+        sw_colon_slash,
         sw_slash,
         sw_dot,
         sw_dot_dot,
@@ -730,9 +732,70 @@ ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
             case '?':
                 r->args_start = p;
                 break;
+            case ':':
+                state = sw_colon;
+                *u++ = ch;
+                break;
             case '.':
                 r->uri_ext = u + 1;
+                *u++ = ch;
+                break;
             default:
+                *u++ = ch;
+                break;
+            }
+            ch = *p++;
+            break;
+
+        case sw_colon:
+            switch(ch) {
+#if (NGX_WIN32)
+            case '\\':
+                state = sw_colon_slash;
+                *u++ = '/';
+                break;
+#endif
+            case '/':
+                state = sw_colon_slash;
+                *u++ = ch;
+                break;
+            case ':':
+                *u++ = ch;
+                break;
+            case '%':
+                quoted_state = state;
+                state = sw_quoted;
+                break;
+            default:
+                state = sw_usual;
+                *u++ = ch;
+                break;
+            }
+            ch = *p++;
+            break;
+
+        case sw_colon_slash:
+            switch(ch) {
+#if (NGX_WIN32)
+            case '\\':
+                state = sw_slash;
+                *u++ = '/';
+                break;
+#endif
+            case '/':
+                state = sw_slash;
+                *u++ = ch;
+                break;
+            case '.':
+                state = sw_dot;
+                *u++ = ch;
+                break;
+            case '%':
+                quoted_state = state;
+                state = sw_quoted;
+                break;
+            default:
+                state = sw_usual;
                 *u++ = ch;
                 break;
             }

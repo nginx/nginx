@@ -18,11 +18,13 @@
 typedef struct {
     SSL                   *ssl;
     ngx_buf_t             *buf;
-    ngx_event_handler_pt   saved_handler;
+    ngx_event_handler_pt   saved_read_handler;
+    ngx_event_handler_pt   saved_write_handler;
 
     unsigned               buffer:1;
     unsigned               no_rcv_shut:1;
     unsigned               no_send_shut:1;
+    unsigned               shutdown_set:1;
 } ngx_ssl_t;
 
 
@@ -47,11 +49,6 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
 ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c);
 void ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
                    char *fmt, ...);
-
-#define ngx_ssl_set_nosendshut(ssl)                                          \
-            if (ssl) {                                                       \
-                ssl->no_send_shut = 1;                                       \
-            }
 
 
 #endif /* _NGX_EVENT_OPENSSL_H_INCLUDED_ */

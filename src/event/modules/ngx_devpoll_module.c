@@ -435,6 +435,16 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
         c = &ngx_cycle->connections[event_list[i].fd];
 
         if (c->fd == -1) {
+            if (ngx_cycle->read_events[event_list[i].fd].closed) {
+                continue;
+            }
+
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "unexpected event");
+            continue;
+        }
+
+#if 0
+        if (c->fd == -1) {
             old_cycle = ngx_old_cycles.elts;
             for (j = 0; j < ngx_old_cycles.nelts; j++) {
                 if (old_cycle[j] == NULL) {
@@ -451,6 +461,7 @@ int ngx_devpoll_process_events(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "unknown cycle");
             exit(1);
         }
+#endif
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "devpoll: fd:%d, ev:%04Xd, rev:%04Xd",

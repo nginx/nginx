@@ -174,18 +174,31 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 {
 #if !(NGX_WIN32)
 
-    size_t             size;
-    char              *shared;
-    ngx_core_conf_t   *ccf;
-    ngx_event_conf_t  *ecf;
+    size_t               size;
+    void              ***cf;
+    char                *shared;
+    ngx_core_conf_t     *ccf;
+    ngx_event_conf_t    *ecf;
+
+    cf = ngx_get_conf(cycle->conf_ctx, ngx_events_module);
+
+    if (cf == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "no \"events\" section in configuration");
+        return NGX_ERROR;
+    }
+
+    ecf = (*cf)[ngx_event_core_module.ctx_index];
+
+    ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
+                  "using the \"%s\" event method", ecf->name);
+
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ccf->master == 0 || ngx_accept_mutex_ptr) {
         return NGX_OK;
     }
-
-    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
 
     /* TODO: 128 is cache line size */

@@ -104,7 +104,7 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #else
 #define ngx_de_namelen(dir)      ngx_strlen((dir)->de->d_name)
 #endif
-#define ngx_de_info(name, dir)   stat((const char *) name, &(dir)->info)
+#define ngx_de_info(name, dir)   lstat((const char *) name, &(dir)->info)
 #define ngx_de_info_n            "stat()"
 #define ngx_de_is_dir(dir)       (S_ISDIR((dir)->info.st_mode))
 #define ngx_de_is_file(dir)      (S_ISREG((dir)->info.st_mode))

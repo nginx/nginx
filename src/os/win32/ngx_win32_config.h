@@ -141,5 +141,10 @@ typedef uint32_t          ngx_atomic_t;
 #define NGX_HAVE_SENDFILE  1
 #endif
 
+#ifndef NGX_HAVE_SO_SNDLOWAT
+/* setsockopt(SO_SNDLOWAT) returns error WSAENOPROTOOPT */
+#define NGX_HAVE_SO_SNDLOWAT         0
+#endif
+
 
 #endif /* _NGX_WIN32_CONFIG_H_INCLUDED_ */

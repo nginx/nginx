@@ -448,8 +448,7 @@ static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
     ngx_http_index_loc_conf_t  *prev = parent;
     ngx_http_index_loc_conf_t  *conf = child;
 
-    ngx_uint_t  i;
-    ngx_str_t  *index, *prev_index;
+    ngx_str_t  *index;
 
     if (conf->max_index_len == 0) {
         if (prev->max_index_len != 0) {
@@ -465,6 +464,8 @@ static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
         return NGX_CONF_OK;
     }
 
+#if 0
+
     if (prev->max_index_len != 0) {
 
         prev_index = prev->indices.elts;
@@ -475,6 +476,8 @@ static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
             index->data = prev_index[i].data;
         }
     }
+
+#endif
 
     if (conf->max_index_len < prev->max_index_len) {
         conf->max_index_len = prev->max_index_len;

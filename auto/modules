@@ -45,6 +45,11 @@ if [ $NGX_TEST_BUILD_RTSIG = YES ]; then
     CORE_SRCS="$CORE_SRCS $RTSIG_SRCS"
 fi
 
+if [ $NGX_TEST_BUILD_SOLARIS_SENDFILEV = YES ]; then
+    have=NGX_TEST_BUILD_SOLARIS_SENDFILEV . auto/have
+    CORE_SRCS="$CORE_SRCS $SOLARIS_SENDFILEV_SRCS"
+fi
+
 
 # the filter order is important
 #     ngx_http_write_filter

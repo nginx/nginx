@@ -9,6 +9,28 @@
 #include <ngx_event.h>
 
 
+#if (NGX_TEST_BUILD_SOLARIS_SENDFILEV)
+
+/* Solaris declarations */
+
+typedef struct sendfilevec {
+    int     sfv_fd;
+    u_int   sfv_flag;
+    off_t   sfv_off;
+    size_t  sfv_len;
+} sendfilevec_t;
+
+#define SFV_FD_SELF  -2
+
+static ssize_t sendfilev(int fd, const struct sendfilevec *vec,
+                         int sfvcnt, size_t *xferred)
+{
+    return -1;
+}
+
+#endif
+
+
 #define NGX_SENDFILEVECS   16
 
 
@@ -17,8 +39,9 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
 {
     int             fd;
     u_char         *prev;
-    off_t           fprev, sprev, send, aligned;
-    ssize_t         size, sent, n;
+    off_t           size, send, prev_send, aligned, fprev;
+    size_t          sent;
+    ssize_t         n;
     ngx_int_t       eintr, complete;
     ngx_err_t       err;
     sendfilevec_t  *sfv, sfvs[NGX_SENDFILEVECS];
@@ -36,6 +59,14 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
         return ngx_writev_chain(c, in, limit);
     }
 
+
+    /* the maximum limit size is the maximum size_t value - the page size */
+
+    if (limit == 0 || limit > MAX_SIZE_T_VALUE - ngx_pagesize) {
+        limit = MAX_SIZE_T_VALUE - ngx_pagesize;
+    }
+
+
     send = 0;
     complete = 0;
 
@@ -51,7 +82,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
         sfv = NULL;
         eintr = 0;
         sent = 0;
-        sprev = send;
+        prev_send = send;
 
         vec.nelts = 0;
 
@@ -73,7 +104,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                 }
 
                 if (prev == cl->buf->pos) {
-                    sfv->sfv_len += size;
+                    sfv->sfv_len += (size_t) size;
 
                 } else {
                     if (!(sfv = ngx_array_push(&vec))) {
@@ -83,16 +114,16 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                     sfv->sfv_fd = SFV_FD_SELF;
                     sfv->sfv_flag = 0;
                     sfv->sfv_off = (off_t) (uintptr_t) cl->buf->pos;
-                    sfv->sfv_len = size;
+                    sfv->sfv_len = (size_t) size;
                 }
 
-                prev = cl->buf->pos + size;
+                prev = cl->buf->pos + (size_t) size;
                 send += size;
 
             } else {
                 prev = NULL;
 
-                size = (size_t) (cl->buf->file_last - cl->buf->file_pos);
+                size = cl->buf->file_last - cl->buf->file_pos;
 
                 if (send + size > limit) {
                     size = limit - send;
@@ -106,7 +137,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                 }
 
                 if (fd == cl->buf->file->fd && fprev == cl->buf->file_pos) {
-                    sfv->sfv_len += size;
+                    sfv->sfv_len += (size_t) size;
 
                 } else {
                     if (!(sfv = ngx_array_push(&vec))) {
@@ -117,7 +148,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                     sfv->sfv_fd = fd;
                     sfv->sfv_flag = 0;
                     sfv->sfv_off = cl->buf->file_pos;
-                    sfv->sfv_len = size;
+                    sfv->sfv_len = (size_t) size;
                 }
 
                 fprev = cl->buf->file_pos + size;
@@ -136,7 +167,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
                 }
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, err,
-                              "sendfilev() sent only %z bytes", sent);
+                              "sendfilev() sent only %uz bytes", sent);
 
             } else {
                 wev->error = 1;
@@ -148,7 +179,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "sendfilev: %z %z", n, sent);
 
-        if (send - sprev == sent) {
+        if (send - prev_send == (off_t) sent) {
             complete = 1;
         }
 
@@ -166,8 +197,8 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
 
             size = ngx_buf_size(cl->buf);
 
-            if (sent >= size) {
-                sent -= size;
+            if ((off_t) sent >= size) {
+                sent = (size_t) ((off_t) sent - size);
 
                 if (ngx_buf_in_memory(cl->buf)) {
                     cl->buf->pos = cl->buf->last;

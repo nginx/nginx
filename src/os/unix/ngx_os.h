@@ -50,7 +50,8 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in,
 extern ngx_os_io_t  ngx_os_io;
 extern ngx_int_t    ngx_ncpu;
 extern ngx_int_t    ngx_max_sockets;
-extern ngx_int_t    ngx_inherited_nonblocking;
+extern ngx_uint_t   ngx_inherited_nonblocking;
+extern ngx_uint_t   ngx_tcp_nodelay_and_tcp_nopush;
 
 #define ngx_stderr_fileno  STDERR_FILENO
 

@@ -97,6 +97,11 @@ typedef struct {
 } ngx_http_cache_t;
 
 
+typedef struct {
+    ngx_path_t                path;
+    ngx_str_t                 key;
+} ngx_http_cache_ctx_t;
+
 
 #define NGX_HTTP_CACHE_STALE     1
 #define NGX_HTTP_CACHE_AGED      2

@@ -17,51 +17,54 @@
 
 
 struct ngx_cycle_s {
-    void           ****conf_ctx;
-    ngx_pool_t        *pool;
+    void                  ****conf_ctx;
+    ngx_pool_t               *pool;
 
-    ngx_log_t         *log;
-    ngx_log_t         *new_log;
+    ngx_log_t                *log;
+    ngx_log_t                *new_log;
 
-    ngx_array_t        listening;
-    ngx_array_t        pathes;
-    ngx_list_t         open_files;
+    ngx_array_t               listening;
+    ngx_array_t               pathes;
+    ngx_list_t                open_files;
 
-    ngx_uint_t         connection_n;
-    ngx_connection_t  *connections;
-    ngx_event_t       *read_events;
-    ngx_event_t       *write_events;
+    ngx_uint_t                connection_n;
+    ngx_connection_t         *connections;
+    ngx_event_t              *read_events;
+    ngx_event_t              *write_events;
 
-    ngx_cycle_t       *old_cycle;
+    ngx_cycle_t              *old_cycle;
 
-    ngx_str_t          conf_file;
-    ngx_str_t          root;
+    ngx_str_t                 conf_file;
+    ngx_str_t                 root;
 };
 
 
 typedef struct {
-     ngx_flag_t  daemon;
-     ngx_flag_t  master;
+     ngx_flag_t               daemon;
+     ngx_flag_t               master;
 
-     ngx_int_t   worker_processes;
-     ngx_int_t   debug_points;
+     ngx_int_t                worker_processes;
+     ngx_int_t                debug_points;
 
-     ngx_uid_t   user;
-     ngx_gid_t   group;
+     int                      priority;
 
-     ngx_str_t   pid;
-     ngx_str_t   newpid;
+     char                    *username;
+     ngx_uid_t                user;
+     ngx_gid_t                group;
+
+     ngx_str_t                pid;
+     ngx_str_t                newpid;
 
 #if (NGX_THREADS)
-     ngx_int_t   worker_threads;
-     size_t      thread_stack_size;
+     ngx_int_t                worker_threads;
+     size_t                   thread_stack_size;
 #endif
 
 } ngx_core_conf_t;
 
 
 typedef struct {
-     ngx_pool_t  *pool;   /* pcre's malloc() pool */
+     ngx_pool_t              *pool;   /* pcre's malloc() pool */
 } ngx_core_tls_t;
 
 

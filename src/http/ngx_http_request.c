@@ -1190,8 +1190,9 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 
 #if 0
             /* MSIE ignores the SSL "close notify" alert */
-
-            ngx_ssl_set_nosendshut(r->connection->ssl);
+            if (c->ssl) {
+                r->connection->ssl->no_send_shut = 1;
+            }
 #endif
         }
 
@@ -1269,7 +1270,7 @@ void ngx_http_finalize_request(ngx_http_request_t *r, int rc)
     }
 
     if (r->connection->read->pending_eof) {
-#if (NGX_KQUEUE)
+#if (NGX_HAVE_KQUEUE)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log,
                        r->connection->read->kq_errno,
                        "kevent() reported about an closed connection");
@@ -1702,24 +1703,26 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
         }
 
         c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
+        tcp_nodelay = ngx_tcp_nodelay_and_tcp_nopush ? 1 : 0;
 
     } else {
-        if (clcf->tcp_nodelay && !c->tcp_nodelay) {
-            tcp_nodelay = 1;
+        tcp_nodelay = 1;
+    }
 
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "tcp_nodelay");
+    if (tcp_nodelay && clcf->tcp_nodelay && !c->tcp_nodelay) {
 
-            if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
-                               (const void *) &tcp_nodelay, sizeof(int)) == -1)
-            {
-                ngx_connection_error(c, ngx_socket_errno,
-                                     "setsockopt(TCP_NODELAY) failed");
-                ngx_http_close_connection(c);
-                return;
-            }
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "tcp_nodelay");
 
-            c->tcp_nodelay = 1;
+        if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
+                           (const void *) &tcp_nodelay, sizeof(int)) == -1)
+        {
+            ngx_connection_error(c, ngx_socket_errno,
+                                 "setsockopt(TCP_NODELAY) failed");
+            ngx_http_close_connection(c);
+            return;
         }
+
+        c->tcp_nodelay = 1;
     }
 
 #if 0
@@ -1761,6 +1764,11 @@ static void ngx_http_keepalive_handler(ngx_event_t *rev)
             ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
                           "kevent() reported that client %V closed "
                           "keepalive connection", ctx->client);
+#if (NGX_HTTP_SSL)
+            if (c->ssl) {
+                c->ssl->no_send_shut = 1;
+            }
+#endif
             ngx_http_close_connection(c);
             return;
         }

@@ -30,7 +30,7 @@ u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n)
 
 /*
  * supported formats:
- *    %[0][width]O              off_t
+ *    %[0][width][x][X]O        off_t
  *    %[0][width]T              time_t
  *    %[0][width][u][x|X]z      ssize_t/size_t
  *    %[0][width][u][x|X]d      int/u_int

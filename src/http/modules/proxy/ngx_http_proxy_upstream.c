@@ -528,6 +528,7 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
 {
     ngx_chain_t             *cl;
     ngx_output_chain_ctx_t  *output;
+    ngx_http_proxy_state_e   state;
 
     /* reinit the request chain */
 
@@ -560,10 +561,16 @@ static void ngx_http_proxy_reinit_upstream(ngx_http_proxy_ctx_t *p)
 
     /* add one more state */
 
+    state = p->state->cache_state;
+
     if (!(p->state = ngx_push_array(&p->states))) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
+
+    ngx_memzero(p->state, sizeof(ngx_http_proxy_state_t));
+
+    p->state->cache_state = state; 
 
     p->status = 0;
     p->status_count = 0;
@@ -719,9 +726,9 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     writer->out = NULL;
     writer->last = &writer->out;
     writer->connection = c;
-    writer->limit = OFF_T_MAX_VALUE;
+    writer->limit = 0;
 
-    if (p->upstream->peer.tries > 1 && p->request_sent) {
+    if (p->request_sent) {
         ngx_http_proxy_reinit_upstream(p);
     }
 
@@ -803,12 +810,12 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
                           p->request_sent ? NULL:
                                             p->request->request_body->bufs);
 
+    p->request_sent = 1;
+
     if (rc == NGX_ERROR) {
         ngx_http_proxy_next_upstream(p, NGX_HTTP_PROXY_FT_ERROR);
         return;
     }
-
-    p->request_sent = 1;
 
     if (c->write->timer_set) {
         ngx_del_timer(c->write);

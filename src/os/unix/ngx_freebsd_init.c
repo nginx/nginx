@@ -204,6 +204,9 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     }
 
 
+    ngx_tcp_nodelay_and_tcp_nopush = 1;
+
+
     return ngx_posix_init(log);
 }
 

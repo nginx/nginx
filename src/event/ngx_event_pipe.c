@@ -379,7 +379,7 @@ ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
 ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 {
-    size_t        bsize;
+    off_t         bsize;
     ngx_uint_t    flush;
     ngx_buf_t    *b;
     ngx_chain_t  *out, **ll, *cl, *tl;
@@ -442,7 +442,7 @@ ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe write busy: %uz", bsize);
+                       "pipe write busy: %O", bsize);
 
         out = NULL;
         ll = NULL;

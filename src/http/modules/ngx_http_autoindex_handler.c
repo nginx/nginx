@@ -105,11 +105,10 @@ static u_char tail[] =
 
 static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
 {
-    u_char                         *last, scale;
+    u_char                         *last;
     size_t                          len;
-    off_t                           length;
     ngx_tm_t                        tm;
-    ngx_int_t                       rc, size;
+    ngx_int_t                       rc;
     ngx_uint_t                      i, level;
     ngx_err_t                       err;
     ngx_buf_t                      *b;
@@ -307,7 +306,7 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
                + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
                + sizeof("</a>") - 1
                + sizeof(" 28-Sep-1970 12:00 ") - 1
-               + sizeof("1023G") - 1
+               + 19
                + 2;
     }
 
@@ -383,44 +382,11 @@ static ngx_int_t ngx_http_autoindex_handler(ngx_http_request_t *r)
                               tm.ngx_tm_min);
 
         if (entry[i].dir) {
-            b->last = ngx_cpymem(b->last, "   -", sizeof("   -") - 1);
+            b->last = ngx_cpymem(b->last,  "                  -",
+                                 sizeof("                  -") - 1);
 
         } else {
-            length = entry[i].size;
-
-            if (length > 1024 * 1024 * 1024 - 1) {
-                size = (ngx_int_t) (length / (1024 * 1024 * 1024));
-                if ((length % (1024 * 1024 * 1024))
-                                                > (1024 * 1024 * 1024 / 2 - 1))
-                {
-                    size++;
-                }
-                scale = 'G';
-
-            } else if (length > 1024 * 1024 - 1) {
-                size = (ngx_int_t) (length / (1024 * 1024));
-                if ((length % (1024 * 1024)) > (1024 * 1024 / 2 - 1)) {
-                    size++;
-                }
-                scale = 'M';
-
-            } else if (length > 9999) {
-                size = (ngx_int_t) (length / 1024);
-                if (length % 1024 > 511) {
-                    size++;
-                }
-                scale = 'K';
-
-            } else {
-                size = (ngx_int_t) length;
-                scale = ' ';
-            }
-
-            b->last = ngx_sprintf(b->last, "%4i", size);
-
-            if (scale != ' ') {
-                *b->last++ = scale;
-            }
+            b->last = ngx_sprintf(b->last, "%19O", entry[i].size);
         }
 
         *b->last++ = CR;

@@ -50,7 +50,6 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_open_file_t    *file;
     ngx_listening_t    *ls, *nls;
     ngx_core_conf_t    *ccf;
-    ngx_event_conf_t   *ecf;
     ngx_core_module_t  *module;
 
     log = old_cycle->log;
@@ -432,12 +431,6 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
             }
         }
     }
-
-
-    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
-
-    ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
-                  "using the \"%s\" event method", ecf->name);
 
 
     /* close and delete stuff that lefts from an old cycle */

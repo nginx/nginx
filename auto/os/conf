@@ -47,7 +47,26 @@ if [ $NGX_PLATFORM != win32 ]; then
 
     if test -z "$NGX_USER"; then
         NGX_USER=nobody
-        NGX_GROUP=nobody
+    fi
+
+    if [ -z "$NGX_GROUP" -a $NGX_USER = nobody ] ; then
+       if grep nobody /etc/group 2>&1 >/dev/null; then
+           echo "checking for nobody group ... found"
+           NGX_GROUP=nobody
+       else
+           echo "checking for nobody group ... not found"
+
+           if grep nogroup /etc/group 2>&1 >/dev/null; then
+               echo "checking for nogroup group ... found"
+               NGX_GROUP=nogroup
+           else 
+               echo "checking for nogroup group ... not found"
+               NGX_GROUP=nobody
+           fi
+       fi
+
+    else
+        NGX_GROUP=$NGX_USER
     fi
 
 

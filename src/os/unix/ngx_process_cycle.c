@@ -17,7 +17,7 @@ static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo);
 static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle);
 static void ngx_master_exit(ngx_cycle_t *cycle);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
-static void ngx_worker_process_init(ngx_cycle_t *cycle);
+static void ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority);
 static void ngx_channel_handler(ngx_event_t *ev);
 #if (NGX_THREADS)
 static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle);
@@ -564,6 +564,33 @@ static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
                     continue;
                 }
 
+
+                ch.command = NGX_CMD_OPEN_CHANNEL;
+                ch.pid = ngx_processes[ngx_process_slot].pid;
+                ch.slot = ngx_process_slot;
+                ch.fd = ngx_processes[ngx_process_slot].channel[0];
+
+                for (n = 0; n < ngx_last_process; n++) {
+
+                    if (n == ngx_process_slot
+                        || ngx_processes[n].pid == -1
+                        || ngx_processes[n].channel[0] == -1)
+                    {
+                        continue;
+                    }
+
+                    ngx_log_debug6(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                          "pass channel s:%d pid:%P fd:%d to s:%i pid:%P fd:%d",
+                          ch.slot, ch.pid, ch.fd,
+                          n, ngx_processes[n].pid,
+                          ngx_processes[n].channel[0]);
+
+                    /* TODO: NGX_AGAIN */
+
+                    ngx_write_channel(ngx_processes[n].channel[0],
+                                      &ch, sizeof(ngx_channel_t), cycle->log);
+                }
+
                 live = 1;
 
                 continue;
@@ -611,7 +638,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_err_t          err;
     ngx_core_conf_t   *ccf;
 
-    ngx_worker_process_init(cycle);
+    ngx_worker_process_init(cycle, 1);
 
     ngx_setproctitle("worker process");
 
@@ -718,7 +745,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 }
 
 
-static void ngx_worker_process_init(ngx_cycle_t *cycle)
+static void ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
 {
     sigset_t           set;
     ngx_int_t          n;
@@ -739,11 +766,24 @@ static void ngx_worker_process_init(ngx_cycle_t *cycle)
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (geteuid() == 0) {
+        if (priority && ccf->priority != 0) {
+            if (setpriority(PRIO_PROCESS, 0, ccf->priority) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "setpriority(%d) failed", ccf->priority);
+            }
+        }
+
         if (setgid(ccf->group) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "setgid(%d) failed", ccf->group);
             /* fatal */
             exit(2);
+        }
+
+        if (initgroups(ccf->username, ccf->group) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "initgroups(%s, %d) failed",
+                          ccf->username, ccf->group);
         }
 
         if (setuid(ccf->user) == -1) {
@@ -1041,7 +1081,7 @@ static void ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data)
     ngx_path_t       **path;
     ngx_event_t       *ev;
 
-    ngx_worker_process_init(cycle);
+    ngx_worker_process_init(cycle, 0);
 
     ev = &cycle->read_events[ngx_channel];
 

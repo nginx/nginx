@@ -20,6 +20,12 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in,
     ngx_err_t     err;
     ngx_chain_t  *cl;
 
+    /* the maximum limit size is the maximum size_t value - the page size */
+
+    if (limit == 0 || limit > MAX_SIZE_T_VALUE - ngx_pagesize) {
+        limit = MAX_SIZE_T_VALUE - ngx_pagesize;
+    }
+
     send = 0;
     sent = 0;
     cl = in;

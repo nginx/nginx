@@ -9,7 +9,9 @@
 #include <ngx_event.h>
 
 
+static void ngx_ssl_write_handler(ngx_event_t *wev);
 static ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size);
+static void ngx_ssl_read_handler(ngx_event_t *rev);
 
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log)
@@ -69,6 +71,25 @@ ssize_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_read: %d", n); 
 
     if (n > 0) {
+        if (c->ssl->saved_write_handler) {
+
+            c->write->event_handler = c->ssl->saved_write_handler;
+            c->ssl->saved_write_handler = NULL;
+            c->write->ready = 1;
+
+            if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            ngx_post_event(c->write);
+
+            ngx_mutex_unlock(ngx_posted_events_mutex);
+        }
+
         return n;
     }
 
@@ -93,13 +114,27 @@ ssize_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
     if (sslerr == SSL_ERROR_WANT_WRITE) {
         ngx_log_error(NGX_LOG_ALERT, c->log, err,
                       "SSL wants to write%s", handshake);
-        return NGX_ERROR;
-#if 0
+
+        c->write->ready = 0;
+
+        if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        /*
+         * we do not set the timer because there is already the read event timer
+         */
+
+        if (c->ssl->saved_write_handler == NULL) {
+            c->ssl->saved_write_handler = c->write->event_handler;
+            c->write->event_handler = ngx_ssl_write_handler;
+        }
+
         return NGX_AGAIN;
-#endif
     }
 
     c->ssl->no_rcv_shut = 1;
+    c->ssl->no_send_shut = 1;
 
     if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, err,
@@ -115,9 +150,18 @@ ssize_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 }
 
 
+static void ngx_ssl_write_handler(ngx_event_t *wev)
+{
+    ngx_connection_t  *c;
+
+    c = wev->data;
+    c->read->event_handler(c->read);
+}
+
+
 /*
  * OpenSSL has no SSL_writev() so we copy several bufs into our 16K buffer
- * before SSL_write() call to decrease a SSL overhead.
+ * before the SSL_write() call to decrease a SSL overhead.
  *
  * Besides for protocols such as HTTP it is possible to always buffer
  * the output to decrease a SSL overhead some more.
@@ -154,6 +198,14 @@ ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
 
         return in;
     }
+
+
+    /* the maximum limit size is the maximum uint32_t value - the page size */
+
+    if (limit == 0 || limit > NGX_MAX_UINT32_VALUE - ngx_pagesize) {
+        limit = NGX_MAX_UINT32_VALUE - ngx_pagesize;
+    }
+
 
     send = 0;
     flush = (in == NULL) ? 1 : 0;
@@ -252,6 +304,25 @@ static ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_write: %d", n);
 
     if (n > 0) {
+        if (c->ssl->saved_read_handler) {
+
+            c->read->event_handler = c->ssl->saved_read_handler;
+            c->ssl->saved_read_handler = NULL;
+            c->read->ready = 1;
+
+            if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            ngx_post_event(c->read);
+
+            ngx_mutex_unlock(ngx_posted_events_mutex);
+        }
+
         return n;
     }
 
@@ -277,13 +348,28 @@ static ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 
         ngx_log_error(NGX_LOG_ALERT, c->log, err,
                       "SSL wants to read%s", handshake);
-        return NGX_ERROR;
-#if 0
+
+        c->read->ready = 0;
+
+        if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        /*
+         * we do not set the timer because there is already
+         * the write event timer
+         */
+
+        if (c->ssl->saved_read_handler == NULL) {
+            c->ssl->saved_read_handler = c->read->event_handler;
+            c->read->event_handler = ngx_ssl_read_handler;
+        }
+
         return NGX_AGAIN;
-#endif
     }
 
     c->ssl->no_rcv_shut = 1;
+    c->ssl->no_send_shut = 1;
 
     ngx_ssl_error(NGX_LOG_ALERT, c->log, err, "SSL_write() failed");
 
@@ -291,21 +377,42 @@ static ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 }
 
 
+static void ngx_ssl_read_handler(ngx_event_t *rev)
+{
+    ngx_connection_t  *c;
+
+    c = rev->data;
+    c->write->event_handler(c->write);
+}
+
+
 ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c)
 {
-    int         n, sslerr;
+    int         n, sslerr, mode;
     ngx_uint_t  again;
 
-    if (c->timedout) {
-        SSL_set_shutdown(c->ssl->ssl, SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN);
+    if (!c->ssl->shutdown_set) {
 
-    } else {
-        if (c->ssl->no_rcv_shut) {
-            SSL_set_shutdown(c->ssl->ssl, SSL_RECEIVED_SHUTDOWN);
+        /* it seems that SSL_set_shutdown() could be called once only */
+
+        if (c->read->timedout) {
+            mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
+
+        } else {
+            mode = 0;
+
+            if (c->ssl->no_rcv_shut) {
+                mode = SSL_RECEIVED_SHUTDOWN;
+            }
+
+            if (c->ssl->no_send_shut) {
+                mode |= SSL_SENT_SHUTDOWN;
+            }
         }
 
-        if (c->ssl->no_send_shut) {
-            SSL_set_shutdown(c->ssl->ssl, SSL_SENT_SHUTDOWN);
+        if (mode) {
+            SSL_set_shutdown(c->ssl->ssl, mode);
+            c->ssl->shutdown_set = 1;
         }
     }
 
@@ -319,15 +426,15 @@ ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c)
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_shutdown: %d", n);
 
-        if (n == 0) {
-            again = 1;
-            break;
-        }
-
-        if (n == 1) {
+        if (n == 1 || (n == 0 && c->read->timedout)) {
             SSL_free(c->ssl->ssl);
             c->ssl = NULL;
             return NGX_OK;
+        }
+
+        if (n == 0) {
+            again = 1;
+            break;
         }
 
         break;
@@ -342,7 +449,7 @@ ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c)
 
     if (again || sslerr == SSL_ERROR_WANT_READ) {
 
-        ngx_add_timer(c->read, 10000);
+        ngx_add_timer(c->read, 30000);
 
         if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
             return NGX_ERROR;

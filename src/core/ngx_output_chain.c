@@ -28,7 +28,8 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
 ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 {
     int           rc, last;
-    size_t        size, bsize;
+    off_t         bsize;
+    size_t        size;
     ngx_chain_t  *cl, *out, **last_out;
 
     if (ctx->in == NULL && ctx->busy == NULL) {
@@ -81,6 +82,8 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, 0,
                               "zero size buf");
 
+                ngx_debug_point();
+
                 ctx->in = ctx->in->next;
 
                 continue;
@@ -118,18 +121,18 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
                     if (ctx->in->buf->last_buf) {
 
-                        if (bsize < ctx->bufs.size) {
+                        if (bsize < (off_t) ctx->bufs.size) {
 
                            /*
                             * allocate small temp buf for the small last buf
                             * or its small last part
                             */
 
-                            size = bsize;
+                            size = (size_t) bsize;
 
                         } else if (ctx->bufs.num == 1
-                                   && (bsize < ctx->bufs.size
-                                                     + (ctx->bufs.size >> 2)))
+                                   && (bsize < (off_t) (ctx->bufs.size
+                                                     + (ctx->bufs.size >> 2))))
                         {
                             /*
                              * allocate a temp buf that equals
@@ -137,7 +140,7 @@ ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                              * than 1.25 of bufs.size and a temp buf is single
                              */
 
-                            size = bsize;
+                            size = (size_t) bsize;
                         }
                     }
 
@@ -306,12 +309,12 @@ static ngx_int_t ngx_output_chain_add_copy(ngx_pool_t *pool,
 static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
                                            ngx_uint_t sendfile)
 {
-    size_t   size;
+    off_t    size;
     ssize_t  n;
 
     size = ngx_buf_size(src);
 
-    if (size > (size_t) (dst->end - dst->pos)) {
+    if (size > dst->end - dst->pos) {
         size = dst->end - dst->pos;
     }
 
@@ -324,9 +327,9 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
 #endif
 
     if (ngx_buf_in_memory(src)) {
-        ngx_memcpy(dst->pos, src->pos, size);
-        src->pos += size;
-        dst->last += size;
+        ngx_memcpy(dst->pos, src->pos, (size_t) size);
+        src->pos += (size_t) size;
+        dst->last += (size_t) size;
 
         if (src->in_file) {
 
@@ -351,7 +354,7 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
         }
 
     } else {
-        n = ngx_read_file(src->file, dst->pos, size, src->file_pos);
+        n = ngx_read_file(src->file, dst->pos, (size_t) size, src->file_pos);
 
         if (n == NGX_ERROR) {
             return n;
@@ -363,9 +366,9 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
         }
 #endif
 
-        if ((size_t) n != size) {
+        if (n != size) {
             ngx_log_error(NGX_LOG_ALERT, src->file->log, 0,
-                          ngx_read_file_n " reads only %z of %uz from file",
+                          ngx_read_file_n " reads only %z of %O from file",
                           n, size);
             if (n == 0) {
                 return NGX_ERROR;
@@ -399,10 +402,19 @@ ngx_int_t ngx_chain_writer(void *data, ngx_chain_t *in)
 {
     ngx_chain_writer_ctx_t *ctx = data;
 
+    off_t         size;
     ngx_chain_t  *cl;
 
 
-    for (/* void */; in; in = in->next) {
+    for (size = 0; in; in = in->next) {
+
+#if 1
+        if (ngx_buf_size(in->buf) == 0 && !ngx_buf_special(in->buf)) {
+            ngx_debug_point();
+        }
+#endif
+
+        size += ngx_buf_size(in->buf);
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
                        "chain writer buf size: %uz", ngx_buf_size(in->buf));
@@ -418,6 +430,23 @@ ngx_int_t ngx_chain_writer(void *data, ngx_chain_t *in)
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
                    "chain writer in: %p", ctx->out);
+
+    for (cl = ctx->out; cl; cl = cl->next) {
+
+#if 1
+
+        if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
+            ngx_debug_point();
+        }
+
+#endif
+
+        size += ngx_buf_size(cl->buf);
+    }
+
+    if (size == 0) {
+        return NGX_OK;
+    }
 
     ctx->out = ngx_send_chain(ctx->connection, ctx->out, ctx->limit);
 

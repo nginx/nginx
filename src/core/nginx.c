@@ -16,6 +16,7 @@ static ngx_int_t ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv);
 static void *ngx_core_module_create_conf(ngx_cycle_t *cycle);
 static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf);
 static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 static ngx_conf_enum_t  ngx_debug_points[] = {
@@ -76,6 +77,13 @@ static ngx_command_t  ngx_core_commands[] = {
     { ngx_string("user"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE12,
       ngx_set_user,
+      0,
+      0,
+      NULL },
+
+    { ngx_string("worker_priority"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_set_priority,
       0,
       0,
       NULL },
@@ -447,6 +455,7 @@ static void *ngx_core_module_create_conf(ngx_cycle_t *cycle)
      *
      * ccf->pid = NULL;
      * ccf->newpid = NULL;
+     * ccf->priority = 0;
      */
     ccf->daemon = NGX_CONF_UNSET;
     ccf->master = NGX_CONF_UNSET;
@@ -494,6 +503,7 @@ static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
             return NGX_CONF_ERROR;
         }
 
+        ccf->username = NGX_USER;
         ccf->user = pwd->pw_uid;
 
         grp = getgrnam(NGX_GROUP);
@@ -562,6 +572,8 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = (ngx_str_t *) cf->args->elts;
 
+    ccf->username = (char *) value[1].data;
+
     pwd = getpwnam((const char *) value[1].data);
     if (pwd == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
@@ -585,4 +597,43 @@ static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 
 #endif
+}
+
+
+static char *ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_core_conf_t  *ccf = conf;
+
+    ngx_str_t        *value;
+    ngx_uint_t        n, minus;
+
+    if (ccf->priority != 0) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (value[1].data[0] == '-') {
+        n = 1;
+        minus = 1;
+
+    } else if (value[1].data[0] == '+') {
+        n = 1;
+        minus = 0;
+
+    } else {
+        n = 0;
+        minus = 0;
+    }
+
+    ccf->priority = ngx_atoi(&value[1].data[n], value[1].len - n);
+    if (ccf->priority == NGX_ERROR) {
+        return "invalid number";
+    }
+
+    if (minus) {
+        ccf->priority = -ccf->priority;
+    }
+
+    return NGX_CONF_OK;
 }

@@ -39,6 +39,11 @@
 #endif
 
 
+#ifndef NGX_HAVE_SO_SNDLOWAT
+#define NGX_HAVE_SO_SNDLOWAT     1
+#endif
+
+
 #if !(NGX_WIN32)
 
 #define ngx_signal_helper(n)     SIG##n

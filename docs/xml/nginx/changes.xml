@@ -6,6 +6,147 @@
             title="nginx">
 
 
+<changes ver="0.1.11" date="02.12.2004">
+
+<change type="feature">
+<para lang="ru">
+директива worker_priority.
+</para>
+<para lang="en">
+the worker_priority directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+под FreeBSD директивы tcp_nopush и tcp_nodelay вместе влияют на передачу
+ответа.
+</para>
+<para lang="en">
+both tcp_nopush and tcp_nodelay directives affect the transferred response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не вызывал initgroups().<br/>
+Спасибо Андрею Ситникову и Андрею Нигматулину.
+</para>
+<para lang="en">
+nginx did not call initgroups().<br/>
+Thanks to Andrew Sitnikov and Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+ngx_http_auto_index_module теперь выдаёт размер файлов в байтах.
+</para>
+<para lang="en">
+now the ngx_http_autoindex_module shows the file size in the bytes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ngx_http_auto_index_module возвращал ошибку 500, если в каталоге есть
+битый symlink.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module returned the 500 error if the broken symlink
+was in a directory.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+файлы больше 4G не передавались с использованием sendfile.
+</para>
+<para lang="en">
+the files bigger than 4G could not be transferred using sendfile.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если бэкенд резолвился в несколько адресов и при ожидании от него ответа
+происходила ошибка, то процесс зацикливался.
+</para>
+<para lang="en">
+if the backend was resolved to several backends and there was an error while
+the response waiting then process may got caught in an endless loop.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании метода /dev/poll рабочий процесс мог завершиться
+с сообщением "unknown cycle".
+</para>
+<para lang="en">
+the worker process may exit with the "unknown cycle" message when the /dev/poll
+method was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки "close() channel failed".
+</para>
+<para lang="en">
+"close() channel failed" errors.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+автоматическое определение групп nobody и nogroup.
+</para>
+<para lang="en">
+the autodetection of the nobody and nogroup groups.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива send_lowat не работала на Linux.
+</para>
+<para lang="en">
+the send_lowat directive did not work on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в конфигурации не было раздела events, то происходил segmentation fault.
+</para>
+<para lang="en">
+the segmentation fault occurred if there was no events section
+in configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался под OpenBSD.
+</para>
+<para lang="en">
+nginx could not be built on OpenBSD.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+двойные слэшы в "://" в URI превращались в ":/".
+</para>
+<para lang="en">
+the double slashes in "://" in the URI were converted to ":/".
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.10" date="26.11.2004">
 
 <change type="bugfix">
@@ -23,11 +164,10 @@ bug appeared in 0.1.9.
 
 <change type="bugfix">
 <para lang="ru">
-исправление в версии 0.1.9 для файлов больше на Linux не работало.
+исправление в версии 0.1.9 для файлов больше 2G на Linux не работало.
 </para>
 <para lang="en">
-the fix in 0.1.9 for the files bigger than 2G on Linux
-did not work.
+the fix in 0.1.9 for the files bigger than 2G on Linux did not work.
 </para>
 </change>
 
@@ -123,7 +263,7 @@ the proxy_max_temp_file_size directive.
 ошибка появилась в 0.1.5.
 </para>
 <para lang="en">
-on FreeBSD the segmentation fault may occure if the size of the transferred
+on FreeBSD the segmentation fault may occur if the size of the transferred
 file was changed;
 bug appeared in 0.1.5.
 </para>

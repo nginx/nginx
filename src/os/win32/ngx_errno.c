@@ -43,7 +43,11 @@ static ngx_str_t  wsa_errors[] = {
     ngx_null_string,                                               /* 10039 */
     ngx_null_string,                                               /* 10040 */
     ngx_null_string,                                               /* 10041 */
-    ngx_null_string,                                               /* 10042 */
+
+    /* WSAENOPROTOOPT 10042 */
+    ngx_string("An unknown, invalid, or unsupported option or level was "
+               "specified in a getsockopt or setsockopt call"),
+
     ngx_null_string,                                               /* 10043 */
     ngx_null_string,                                               /* 10044 */
     ngx_null_string,                                               /* 10045 */

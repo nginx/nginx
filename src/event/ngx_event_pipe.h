@@ -62,7 +62,7 @@ struct ngx_event_pipe_s {
     ngx_bufs_t         bufs;
     ngx_buf_tag_t      tag;
 
-    size_t             busy_size;
+    ssize_t            busy_size;
 
     off_t              read_length;
 

@@ -63,7 +63,7 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
                                               ngx_chain_t *in)
 {
     u_char       *chunk;
-    size_t        size;
+    off_t         size;
     ngx_buf_t    *b;
     ngx_chain_t   out, tail, *cl, *tl, **ll;
 
@@ -106,13 +106,14 @@ static ngx_int_t ngx_http_chunked_body_filter(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        if (!(chunk = ngx_palloc(r->pool, sizeof("00000000" CRLF) - 1))) {
+        chunk = ngx_palloc(r->pool, sizeof("0000000000000000" CRLF) - 1);
+        if (chunk == NULL) {
             return NGX_ERROR;
         }
 
         b->temporary = 1;
         b->pos = chunk;
-        b->last = ngx_sprintf(chunk, "%xz" CRLF, size);
+        b->last = ngx_sprintf(chunk, "%xO" CRLF, size);
 
         out.buf = b;
     }

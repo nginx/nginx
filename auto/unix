@@ -43,31 +43,15 @@ ngx_type="rlim_t"; ngx_types="int"; . auto/types/typedef
 
 . auto/endianess
 
+ngx_type="size_t"; . auto/types/sizeof
+ngx_param=MAX_SIZE_T_VALUE; ngx_value=$ngx_max_value; . auto/types/value
 
-# printf() formats
+ngx_type="off_t"; . auto/types/sizeof
+ngx_param=MAX_OFF_T_VALUE; ngx_value=$ngx_max_value; . auto/types/value
 
-#CC_WARN=$CC_STRONG
-#ngx_fmt_collect=no
-#
-#ngx_fmt_name=OFF_T_FMT; ngx_type="off_t"; . auto/types/sizeof
-ngx_param=OFF_T_MAX_VALUE; ngx_value=$ngx_max_value; . auto/types/value
-#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
-#
-#ngx_fmt_name=TIME_T_FMT; ngx_type="time_t"; . auto/types/sizeof
+ngx_type="time_t"; . auto/types/sizeof
 ngx_param=TIME_T_SIZE; ngx_value=$ngx_size; . auto/types/value
 ngx_param=TIME_T_LEN; ngx_value=$ngx_max_len; . auto/types/value
-#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
-#
-#ngx_fmt_name=SIZE_T_FMT; ngx_type="size_t"; . auto/types/sizeof
-#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
-#
-#ngx_fmt_name=SIZE_T_X_FMT; . auto/fmt/xfmt
-#
-#ngx_fmt_name=PID_T_FMT; ngx_type="pid_t"; . auto/types/sizeof
-#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
-#
-#ngx_fmt_name=RLIM_T_FMT; ngx_type="rlim_t"; . auto/types/sizeof
-#eval ngx_formats=\${ngx_${ngx_size}_fmt}; . auto/fmt/fmt
 
 
 # syscalls, libc calls and some features

@@ -17,7 +17,7 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
 {
     int           rc;
     u_char       *prev;
-    u_long        size, sent, send, sprev;
+    u_long        size, sent, send, prev_send;
     ngx_uint_t    complete;
     ngx_err_t     err;
     ngx_event_t  *wev;
@@ -30,6 +30,12 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
 
     if (!wev->ready) {
         return in;
+    }
+
+    /* the maximum limit size is the maximum u_long value - the page size */
+
+    if (limit == 0 || limit > NGX_MAX_UINT32_VALUE - ngx_pagesize) {
+        limit = NGX_MAX_UINT32_VALUE - ngx_pagesize;
     }
 
     send = 0;
@@ -48,7 +54,7 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
     for ( ;; ) {
         prev = NULL;
         wsabuf = NULL;
-        sprev = send;
+        prev_send = send;
 
         vec.nelts = 0;
 
@@ -105,7 +111,7 @@ ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "WSASend: fd:%d, s:%ul", c->fd, sent);
 
-        if (send - sprev == sent) {
+        if (send - prev_send == sent) {
             complete = 1;
         }
 
@@ -153,8 +159,7 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
 {
     int               rc;
     u_char           *prev;
-    size_t            size;
-    u_long            send, sent;
+    u_long            size, send, sent;
     LPWSABUF          wsabuf;
     ngx_err_t         err;
     ngx_event_t      *wev;
@@ -175,6 +180,12 @@ ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
     if (!wev->complete) {
 
         /* post the overlapped WSASend() */
+
+        /* the maximum limit size is the maximum u_long value - the page size */
+
+        if (limit == 0 || limit > NGX_MAX_UINT32_VALUE - ngx_pagesize) {
+            limit = NGX_MAX_UINT32_VALUE - ngx_pagesize;
+        }
  
         /*
          * WSABUFs must be 4-byte aligned otherwise

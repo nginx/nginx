@@ -275,12 +275,9 @@ ngx_module_t  ngx_http_proxy_module = {
 
 
 static ngx_http_log_op_name_t ngx_http_proxy_log_fmt_ops[] = {
-    { ngx_string("proxy"), /* STUB */ 100,
-                           ngx_http_proxy_log_proxy_state },
-    { ngx_string("proxy_cache_state"), sizeof("BYPASS") - 1,
-                                       ngx_http_proxy_log_cache_state },
-    { ngx_string("proxy_reason"), sizeof("BPS") - 1,
-                                  ngx_http_proxy_log_reason },
+    { ngx_string("proxy"), 0, ngx_http_proxy_log_proxy_state },
+    { ngx_string("proxy_cache_state"), 0, ngx_http_proxy_log_cache_state },
+    { ngx_string("proxy_reason"), 0, ngx_http_proxy_log_reason },
     { ngx_null_string, 0, NULL }
 };
 
@@ -792,111 +789,180 @@ u_char *ngx_http_proxy_log_error(void *data, u_char *buf, size_t len)
 static u_char *ngx_http_proxy_log_proxy_state(ngx_http_request_t *r,
                                               u_char *buf, uintptr_t data)
 {
-    ngx_http_proxy_ctx_t  *p;
+    ngx_uint_t               i;
+    ngx_http_proxy_ctx_t    *p;
+    ngx_http_proxy_state_t  *state;
 
     p = ngx_http_get_module_err_ctx(r, ngx_http_proxy_module);
 
     if (p == NULL) {
+        if (buf == NULL) {
+            return (u_char *) 1;
+        }
+
         *buf = '-';
         return buf + 1;
     }
 
-    if (p->state->cache_state == 0) {
-        *buf++ = '-';
 
-    } else {
-        buf = ngx_cpymem(buf, cache_states[p->state->cache_state - 1].data,
-                         cache_states[p->state->cache_state - 1].len);
+    if (buf == NULL) {
+        /* find the request line length */
+        return (u_char *) (uintptr_t) (p->states.nelts * /* STUB */ 100);
     }
 
-    *buf++ = '/';
 
-    if (p->state->expired == 0) {
-        *buf++ = '-';
+    i = 0;
+    state = p->states.elts;
 
-    } else {
-        buf = ngx_sprintf(buf, "%T", p->state->expired);
+    for ( ;; ) {
+        if (state[i].cache_state == 0) {
+            *buf++ = '-';
+
+        } else {
+            buf = ngx_cpymem(buf, cache_states[state[i].cache_state - 1].data,
+                             cache_states[state[i].cache_state - 1].len);
+        }
+
+        *buf++ = '/';
+
+        if (state[i].expired == 0) {
+            *buf++ = '-';
+
+        } else {
+            buf = ngx_sprintf(buf, "%T", state[i].expired);
+        }
+
+        *buf++ = '/';
+
+        if (state[i].bl_time == 0) {
+            *buf++ = '-';
+
+        } else {
+            buf = ngx_sprintf(buf, "%T", state[i].bl_time);
+        }
+
+        *buf++ = '/';
+
+        *buf++ = '*';
+
+        *buf++ = ' ';
+
+        if (state[i].status == 0) {
+            *buf++ = '-';
+
+        } else {
+            buf = ngx_sprintf(buf, "%ui", state[i].status);
+        }
+
+        *buf++ = '/';
+
+        if (state[i].reason == 0) {
+            *buf++ = '-';
+
+        } else {
+            buf = ngx_cpymem(buf, cache_reasons[state[i].reason - 1].data,
+                             cache_reasons[state[i].reason - 1].len);
+        }
+
+        *buf++ = '/';
+
+        if (state[i].reason < NGX_HTTP_PROXY_CACHE_XAE) {
+            *buf++ = '-';
+
+        } else {
+            buf = ngx_sprintf(buf, "%T", state[i].expires);
+        }
+
+        *buf++ = ' ';
+        *buf++ = '*';
+
+        if (++i == p->states.nelts) {
+            return buf;
+        }
+
+        *buf++ = ',';
+        *buf++ = ' ';
     }
-
-    *buf++ = '/';
-
-    if (p->state->bl_time == 0) {
-        *buf++ = '-';
-
-    } else {
-        buf = ngx_sprintf(buf, "%T", p->state->bl_time);
-    }
-
-    *buf++ = '/';
-
-    *buf++ = '*';
-
-    *buf++ = ' ';
-
-    if (p->state->status == 0) {
-        *buf++ = '-';
-
-    } else {
-        buf = ngx_sprintf(buf, "%ui", p->state->status);
-    }
-
-    *buf++ = '/';
-
-    if (p->state->reason == 0) {
-        *buf++ = '-';
-
-    } else {
-        buf = ngx_cpymem(buf, cache_reasons[p->state->reason - 1].data,
-                         cache_reasons[p->state->reason - 1].len);
-    }
-
-    *buf++ = '/';
-
-    if (p->state->reason < NGX_HTTP_PROXY_CACHE_XAE) {
-        *buf++ = '-';
-
-    } else {
-        buf = ngx_sprintf(buf, "%T", p->state->expires);
-    }
-
-    *buf++ = ' ';
-    *buf++ = '*';
-
-    return buf;
 }
 
 
 static u_char *ngx_http_proxy_log_cache_state(ngx_http_request_t *r,
                                               u_char *buf, uintptr_t data)
 {
-    ngx_http_proxy_ctx_t  *p;
+    ngx_uint_t               i;
+    ngx_http_proxy_ctx_t    *p;
+    ngx_http_proxy_state_t  *state;
 
     p = ngx_http_get_module_err_ctx(r, ngx_http_proxy_module);
 
     if (p == NULL || p->state->cache_state == 0) {
+        if (buf == NULL) {
+            return (u_char *) 1;
+        }
+
         *buf = '-';
         return buf + 1;
     }
 
-    return ngx_cpymem(buf, cache_states[p->state->cache_state - 1].data,
-                      cache_states[p->state->cache_state - 1].len);
+    if (buf == NULL) {
+        /* find the request line length */
+        return (u_char *) (p->states.nelts * sizeof("BYPASS") - 1);
+    }
+
+    i = 0;
+    state = p->states.elts;
+
+    for ( ;; ) {
+        buf = ngx_cpymem(buf, cache_states[state[i].cache_state - 1].data,
+                         cache_states[state[i].cache_state - 1].len);
+
+        if (++i == p->states.nelts) {
+            return buf;
+        }
+
+        *buf++ = ',';
+        *buf++ = ' ';
+    }
 }
 
 
 static u_char *ngx_http_proxy_log_reason(ngx_http_request_t *r, u_char *buf,
                                          uintptr_t data)
 {
-    ngx_http_proxy_ctx_t  *p;
+    ngx_uint_t               i;
+    ngx_http_proxy_ctx_t    *p;
+    ngx_http_proxy_state_t  *state;
 
     p = ngx_http_get_module_err_ctx(r, ngx_http_proxy_module);
 
     if (p == NULL || p->state->reason == 0) {
+        if (buf == NULL) {
+            return (u_char *) 1;
+        }
+
         *buf = '-';
         return buf + 1;
     }
 
-    return ngx_cpymem(buf, cache_reasons[p->state->reason - 1].data,
-                      cache_reasons[p->state->reason - 1].len);
+    if (buf == NULL) {
+        /* find the request line length */
+        return (u_char *) (p->states.nelts * sizeof("BPS") - 1);
+    }
+
+    i = 0;
+    state = p->states.elts;
+
+    for ( ;; ) {
+        buf = ngx_cpymem(buf, cache_reasons[state[i].reason - 1].data,
+                         cache_reasons[state[i].reason - 1].len);
+
+        if (++i == p->states.nelts) {
+            return buf;
+        }
+
+        *buf++ = ',';
+        *buf++ = ' ';
+    }
 }
 
 
@@ -1387,9 +1453,8 @@ static char *ngx_http_proxy_parse_upstream(ngx_str_t *url,
 
 static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data)
 {
-    ssize_t *np = data;
-
 #if (NGX_FREEBSD)
+    ssize_t *np = data;
 
     if (*np >= ngx_freebsd_net_inet_tcp_sendspace) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1401,6 +1466,7 @@ static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data)
     }
 
 #elif !(NGX_HAVE_SO_SNDLOWAT)
+    ssize_t *np = data;
 
     ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                        "\"proxy_send_lowat\" is not supported, ignored");

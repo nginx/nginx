@@ -81,9 +81,12 @@ ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc)
             for ( ;; ) {
                 peer = &pc->peers->peers[pc->cur_peer];
 
-                if (peer->fails <= pc->peers->max_fails
-                    || (now - peer->accessed > pc->peers->fail_timeout))
-                {
+                if (peer->fails <= pc->peers->max_fails) {
+                    break;
+                }
+
+                if (now - peer->accessed > pc->peers->fail_timeout) {
+                    peer->fails = 0;
                     break;
                 }
 
