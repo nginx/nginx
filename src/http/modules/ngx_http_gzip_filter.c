@@ -12,10 +12,21 @@ typedef struct {
 
     ngx_bufs_t           bufs;
 
+    ngx_uint_t           http_version;
+    ngx_uint_t           proxied;
+
     int                  level;
     int                  wbits;
     int                  memlevel;
 } ngx_http_gzip_conf_t;
+
+
+enum {
+    NGX_HTTP_GZIP_PROXIED_OFF = 0,
+    NGX_HTTP_GZIP_PROXIED_NOCACHABLE,
+    NGX_HTTP_GZIP_PROXIED_POOR_CACHABLE,
+    NGX_HTTP_GZIP_PROXIED_ON
+};
 
 
 typedef struct {
@@ -76,6 +87,24 @@ static ngx_conf_post_handler_pt  ngx_http_gzip_set_hash_p =
 
 
 
+static ngx_conf_enum_t  ngx_http_gzip_http_version[] = {
+    { ngx_string("1.0"), NGX_HTTP_VERSION_10 },
+    { ngx_string("1.1"), NGX_HTTP_VERSION_11 },
+    { ngx_null_string, 0 }
+};
+
+
+static ngx_conf_enum_t  ngx_http_gzip_proxied[] = {
+    { ngx_string("off"), NGX_HTTP_GZIP_PROXIED_OFF },
+#if 0
+    { ngx_string("nocachable"), NGX_HTTP_GZIP_PROXIED_NOCACHABLE },
+    { ngx_string("poor_cachable"), NGX_HTTP_GZIP_PROXIED_POOR_CACHABLE },
+#endif
+    { ngx_string("on"), NGX_HTTP_GZIP_PROXIED_ON },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_command_t  ngx_http_gzip_filter_commands[] = {
 
     { ngx_string("gzip"),
@@ -119,6 +148,20 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_gzip_conf_t, no_buffer),
       NULL},
+
+    { ngx_string("gzip_http_version"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_gzip_conf_t, http_version),
+      &ngx_http_gzip_http_version },
+
+    { ngx_string("gzip_proxied"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_gzip_conf_t, proxied),
+      &ngx_http_gzip_proxied },
 
       ngx_null_command
 };
@@ -188,7 +231,7 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
     if (!conf->enable
         || r->headers_out.status != NGX_HTTP_OK
         || r->header_only
-        /* TODO: conf->http_version */
+        || r->http_version < conf->http_version
         || (r->headers_out.content_encoding
             && r->headers_out.content_encoding->value.len)
         || r->headers_in.accept_encoding == NULL
@@ -205,6 +248,27 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
     {
         return ngx_http_next_header_filter(r);
     }
+
+
+    /* TODO: proxied */
+    if (r->headers_in.via && conf->proxied == NGX_HTTP_GZIP_PROXIED_OFF) {
+        return ngx_http_next_header_filter(r);
+    }
+
+
+    /*
+     * if the URL (without the "http://" prefix) is longer than 253 bytes
+     * then MSIE 4.x can not handle the compressed stream - it waits too long,
+     * hangs up or crashes
+     */
+
+    if (r->headers_in.user_agent
+        && r->unparsed_uri.len > 200
+        && ngx_strstr(r->headers_in.user_agent->value.data, "MSIE 4"))
+    {
+        return ngx_http_next_header_filter(r);
+    }
+
 
     ngx_http_create_ctx(r, ctx, ngx_http_gzip_filter_module,
                         sizeof(ngx_http_gzip_ctx_t), NGX_ERROR);
@@ -654,6 +718,9 @@ static void *ngx_http_gzip_create_conf(ngx_conf_t *cf)
 
  /* conf->bufs.num = 0; */
 
+    conf->http_version = NGX_CONF_UNSET_UINT;
+    conf->proxied = NGX_CONF_UNSET_UINT;
+
     conf->level = NGX_CONF_UNSET;
     conf->wbits = NGX_CONF_UNSET;
     conf->memlevel = NGX_CONF_UNSET;
@@ -669,8 +736,15 @@ static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
     ngx_http_gzip_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+
     ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 4,
                               /* STUB: PAGE_SIZE */ 4096);
+
+    ngx_conf_merge_unsigned_value(conf->http_version, prev->http_version,
+                                  NGX_HTTP_VERSION_11);
+    ngx_conf_merge_unsigned_value(conf->proxied, prev->proxied,
+                                  NGX_HTTP_GZIP_PROXIED_OFF);
+
     ngx_conf_merge_value(conf->level, prev->level, 1);
     ngx_conf_merge_value(conf->wbits, prev->wbits, MAX_WBITS);
     ngx_conf_merge_value(conf->memlevel, prev->memlevel, MAX_MEM_LEVEL - 1);

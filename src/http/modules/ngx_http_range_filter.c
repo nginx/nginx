@@ -91,7 +91,10 @@ static ngx_int_t ngx_http_range_header_filter(ngx_http_request_t *r)
 
         /* STUB: we currently support ranges for file hunks only */
         || !r->sendfile
-        || r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)
+        || r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY
+
+        || (r->headers_out.content_encoding
+            && r->headers_out.content_encoding->value.len))
     {
         return ngx_http_next_header_filter(r);
     }

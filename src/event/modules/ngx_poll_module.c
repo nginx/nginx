@@ -66,7 +66,8 @@ static int ngx_poll_init(ngx_cycle_t *cycle)
         nevents = 0;
     }
 
-    if (cycle->old_cycle == NULL
+    if (ngx_process == NGX_PROCESS_WORKER
+        || cycle->old_cycle == NULL
         || cycle->old_cycle->connection_n < cycle->connection_n)
     {
         ngx_test_null(list,
@@ -393,7 +394,8 @@ int ngx_poll_process_events(ngx_cycle_t *cycle)
 
         if (event_list[i].fd == -1) {
             /*
-             * the disabled event, a workaround for our possible bug, see below
+             * the disabled event, a workaround for our possible bug,
+             * see the comment below
              */
             continue;
         }

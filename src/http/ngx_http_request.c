@@ -337,6 +337,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 
         /* the request line has been parsed successfully */
 
+#if 0
         /* TODO: we need to handle proxy URIs */
         if (r->unusual_uri) {
             r->request_line.len = r->request_end - r->request_start;
@@ -349,6 +350,7 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
                                   NGX_HTTP_BAD_REQUEST);
             return;
         }
+#endif
 
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -438,6 +440,10 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
             r->request_line.data[r->request_line.len] = '\0';
         }
 
+        if (r->method == 0) {
+            r->method_name.len = r->method_end - r->request_start + 1;
+            r->method_name.data = r->request_line.data;
+        }
 
         if (r->uri_ext) {
 

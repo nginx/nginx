@@ -9,6 +9,7 @@
 #include <ngx_event.h>
 
 
+
 static int ngx_select_init(ngx_cycle_t *cycle);
 static void ngx_select_done(ngx_cycle_t *cycle);
 static int ngx_select_add_event(ngx_event_t *ev, int event, u_int flags);
@@ -30,10 +31,14 @@ static int            max_write;
 static int            max_fd;
 #endif
 
-static int            nevents;
+static ngx_uint_t     nevents;
 
 static ngx_event_t  **event_index;
+#if 0
 static ngx_event_t  **ready_index;
+#endif
+
+static ngx_event_t   *accept_events;
 
 
 static ngx_str_t    select_name = ngx_string("select");
@@ -77,7 +82,8 @@ static int ngx_select_init(ngx_cycle_t *cycle)
         nevents = 0;
     }
 
-    if (cycle->old_cycle == NULL
+    if (ngx_process == NGX_PROCESS_WORKER
+        || cycle->old_cycle == NULL
         || cycle->old_cycle->connection_n < cycle->connection_n)
     {
         ngx_test_null(index,
@@ -91,6 +97,7 @@ static int ngx_select_init(ngx_cycle_t *cycle)
         }
         event_index = index;
 
+#if 0
         if (ready_index) {
             ngx_free(ready_index);
         }
@@ -98,6 +105,7 @@ static int ngx_select_init(ngx_cycle_t *cycle)
                       ngx_alloc(sizeof(ngx_event_t *) * 2 * cycle->connection_n,
                       cycle->log),
                       NGX_ERROR);
+#endif
     }
 
     ngx_io = ngx_os_io;
@@ -119,7 +127,9 @@ static int ngx_select_init(ngx_cycle_t *cycle)
 static void ngx_select_done(ngx_cycle_t *cycle)
 {
     ngx_free(event_index);
+#if 0
     ngx_free(ready_index);
+#endif
 
     event_index = NULL;
 }
@@ -192,6 +202,9 @@ static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 
     c = ev->data;
 
+    ev->active = 0;
+    ev->posted = 0;
+
     if (ev->index == NGX_INVALID_INDEX) {
         return NGX_OK;
     }
@@ -230,7 +243,6 @@ static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
         event_index[ev->index]->index = ev->index;
     }
 
-    ev->active = 0;
     ev->index = NGX_INVALID_INDEX;
 
     return NGX_OK;
@@ -239,15 +251,16 @@ static int ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 
 static int ngx_select_process_events(ngx_cycle_t *cycle)
 {
-    int                i, ready, nready,found;
-    ngx_err_t          err;
-    ngx_msec_t         timer;
-    ngx_event_t       *ev;
-    ngx_connection_t  *c;
-    ngx_epoch_msec_t   delta;
-    struct timeval     tv, *tp;
+    int                       ready, nready;
+    ngx_uint_t                i, found, lock, expire;
+    ngx_err_t                 err;
+    ngx_msec_t                timer;
+    ngx_event_t              *ev;
+    ngx_connection_t         *c;
+    ngx_epoch_msec_t          delta;
+    struct timeval            tv, *tp;
 #if (HAVE_SELECT_CHANGE_TIMEOUT)
-    static ngx_epoch_msec_t  deltas = 0;
+    static ngx_epoch_msec_t   deltas = 0;
 #endif
 
     work_read_fd_set = master_read_fd_set;
@@ -260,12 +273,24 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
         tv.tv_sec = timer / 1000;
         tv.tv_usec = (timer % 1000) * 1000;
         tp = &tv;
+        expire = 1;
 
     } else {
         tp = NULL;
+        expire = 0;
     }
 
+#if (NGX_DEBUG)
+    for (i = 0; i < nevents; i++) {
+        ev = event_index[i];
+        c = ev->data;
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "select event: fd:%d wr:%d", c->fd,ev->write);
+    }
+#endif
+
 #if !(WIN32)
+
     if (max_fd == -1) {
         for (i = 0; i < nevents; i++) {
             c = event_index[i]->data;
@@ -277,15 +302,18 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "change max_fd: %d", max_fd);
     }
-#endif
 
-#if (NGX_DEBUG)
-    for (i = 0; i < nevents; i++) {
-        ev = event_index[i];
-        c = ev->data;
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "select event: fd:%d wr:%d", c->fd,ev->write);
+    if (ngx_accept_mutex) {
+        if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (ngx_accept_mutex_held == 0 && timer > ngx_accept_mutex_delay) {
+            timer = ngx_accept_mutex_delay;
+            expire = 0;
+        }
     }
+
 #endif
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -372,6 +400,13 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+
+    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+        ngx_accept_mutex_unlock();
+        return NGX_ERROR;
+    }
+
+    lock = 1;
     nready = 0;
 
     for (i = 0; i < nevents; i++) {
@@ -395,10 +430,36 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
         }
 
         if (found) {
+            ev->ready = 1;
+
+            if (ev->oneshot) {
+                if (ev->timer_set) {
+                    ngx_del_timer(ev);
+                }
+
+                if (ev->write) {
+                    ngx_select_del_event(ev, NGX_WRITE_EVENT, 0);
+                } else {
+                    ngx_select_del_event(ev, NGX_READ_EVENT, 0);
+                }
+            }
+
+            if (ev->accept) {
+                ev->next = accept_events;
+                accept_events = ev;
+            } else {
+                ngx_post_event(ev);
+            }
+
+            nready++;
+
+#if 0
             ready_index[nready++] = ev;
+#endif
         }
     }
 
+#if 0
     for (i = 0; i < nready; i++) {
         ev = ready_index[i];
         ready--;
@@ -423,13 +484,54 @@ static int ngx_select_process_events(ngx_cycle_t *cycle)
 
         ev->event_handler(ev);
     }
+#endif
 
-    if (ready != 0) {
+    ev = accept_events;
+
+    for ( ;; ) {
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                      "accept event " PTR_FMT, ev);
+
+        if (ev == NULL) {
+            break;
+        }
+
+        ngx_mutex_unlock(ngx_posted_events_mutex);
+
+        ev->event_handler(ev);
+
+        ev = ev->next;
+
+        if (ev == NULL) {
+            lock = 0;
+            break;
+        }
+
+        if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+            ngx_accept_mutex_unlock();
+            return NGX_ERROR;
+        }
+
+    }
+
+    if (lock) {
+        ngx_mutex_unlock(ngx_posted_events_mutex);
+    }
+
+    ngx_accept_mutex_unlock();
+    accept_events = NULL;
+
+    if (ready != nready) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "select ready != events");
     }
 
-    if (timer && delta) {
+    if (expire && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);
+    }
+
+    if (!ngx_threaded) {
+        ngx_event_process_posted(cycle);
     }
 
     return NGX_OK;

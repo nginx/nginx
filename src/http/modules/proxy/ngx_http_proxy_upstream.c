@@ -117,13 +117,19 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
     r = p->request;
     uc = p->lcf->upstream;
 
-    len = http_methods[p->upstream->method - 1].len
-          + uc->uri.len
-          + r->uri.len - uc->location->len
-          + 1 + r->args.len                                  /* 1 is for "?" */
-          + sizeof(http_version) - 1
-          + sizeof(connection_close_header) - 1
-          + 2;                          /* 2 is for "\r\n" at the header end */
+    if (p->upstream->method) {
+        len = http_methods[p->upstream->method - 1].len;
+
+    } else {
+        len = r->method_name.len;
+    }
+
+    len += uc->uri.len
+           + r->uri.len - uc->location->len
+           + 1 + r->args.len                                 /* 1 is for "?" */
+           + sizeof(http_version) - 1
+           + sizeof(connection_close_header) - 1
+           + 2;                         /* 2 is for "\r\n" at the header end */
 
 
     if (p->lcf->preserve_host && r->headers_in.host) {
@@ -179,8 +185,13 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
 
     /* the request line */
 
-    h->last = ngx_cpymem(h->last, http_methods[p->upstream->method - 1].data,
-                         http_methods[p->upstream->method - 1].len);
+    if (p->upstream->method) {
+        h->last = ngx_cpymem(h->last,
+                             http_methods[p->upstream->method - 1].data,
+                             http_methods[p->upstream->method - 1].len);
+    } else {
+        h->last = ngx_cpymem(h->last, r->method_name.data, r->method_name.len);
+    }
 
     h->last = ngx_cpymem(h->last, uc->uri.data, uc->uri.len);
 

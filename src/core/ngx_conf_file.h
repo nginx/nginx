@@ -42,6 +42,7 @@
 
 
 #define NGX_CONF_UNSET       -1
+#define NGX_CONF_UNSET_UINT  (ngx_uint_t) -1
 #define NGX_CONF_UNSET_SIZE  (size_t) -1
 #define NGX_CONF_UNSET_MSEC  (ngx_msec_t) -1
 
@@ -151,11 +152,17 @@ typedef struct {
 } ngx_conf_num_bounds_t;
 
 
+typedef struct {
+    ngx_str_t   name;
+    ngx_uint_t  value;
+} ngx_conf_enum_t;
+
+
 #define NGX_CONF_BITMASK_SET  1
 
 typedef struct {
-    ngx_str_t  name;
-    int        mask;
+    ngx_str_t   name;
+    ngx_uint_t  mask;
 } ngx_conf_bitmask_t;
 
 
@@ -194,6 +201,11 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 #define ngx_conf_merge_value(conf, prev, default)                            \
     if (conf == NGX_CONF_UNSET) {                                            \
         conf = (prev == NGX_CONF_UNSET) ? default : prev;                    \
+    }
+
+#define ngx_conf_merge_unsigned_value(conf, prev, default)                   \
+    if (conf == NGX_CONF_UNSET_UINT) {                                       \
+        conf = (prev == NGX_CONF_UNSET_UINT) ? default : prev;               \
     }
 
 #define ngx_conf_merge_msec_value(conf, prev, default)                       \
@@ -258,6 +270,7 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_time_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 

@@ -577,7 +577,7 @@ char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
 
     if (ngx_strcasecmp(value[1].data, "on") == 0) {
         flag = 1;
@@ -611,7 +611,7 @@ char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
 
     *field = value[1];
 
@@ -634,7 +634,7 @@ char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
     *np = ngx_atoi(value[1].data, value[1].len);
     if (*np == NGX_ERROR) {
         return "invalid number";
@@ -663,7 +663,7 @@ char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
 
     *sp = ngx_parse_size(&value[1]);
     if (*sp == (size_t) NGX_ERROR) {
@@ -693,7 +693,7 @@ char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
 
     *msp = ngx_parse_time(&value[1], 0);
     if (*msp == (ngx_msec_t) NGX_ERROR) {
@@ -727,7 +727,7 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
 
     *sp = ngx_parse_time(&value[1], 1);
     if (*sp == NGX_ERROR) {
@@ -760,7 +760,7 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
 
     bufs->num = ngx_atoi(value[1].data, value[1].len);
     if (bufs->num == NGX_ERROR || bufs->num == 0) {
@@ -776,6 +776,42 @@ char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+char *ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_uint_t       *np, i;
+    ngx_str_t        *value;
+    ngx_conf_enum_t  *e;
+
+    np = (ngx_uint_t *) (p + cmd->offset);
+
+    if (*np != NGX_CONF_UNSET_UINT) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+    e = cmd->post;
+
+    for (i = 0; e[i].name.len != 0; i++) {
+        if (e[i].name.len != value[1].len
+            || ngx_strcasecmp(e[i].name.data, value[1].data) != 0)
+        {
+            continue;
+        }
+
+        *np = e[i].value;
+
+        return NGX_CONF_OK;
+    }
+
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "invalid value \"%s\"", value[1].data);
+
+    return NGX_CONF_ERROR;
+}
+
+
 char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
@@ -786,14 +822,14 @@ char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     np = (ngx_uint_t *) (p + cmd->offset);
-    value = (ngx_str_t *) cf->args->elts;
+    value = cf->args->elts;
     mask = cmd->post;
 
     for (i = 1; i < cf->args->nelts; i++) {
         for (m = 0; mask[m].name.len != 0; m++) {
 
             if (mask[m].name.len != value[i].len
-                && ngx_strcasecmp(mask[m].name.data, value[i].data) != 0)
+                || ngx_strcasecmp(mask[m].name.data, value[i].data) != 0)
             {
                 continue;
             }

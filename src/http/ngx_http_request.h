@@ -223,6 +223,8 @@ struct ngx_http_request_s {
     ngx_str_t            exten;
     ngx_str_t            unparsed_uri;
 
+    ngx_str_t            method_name;
+
     ngx_http_request_t  *main;
 
     uint32_t             in_addr;
@@ -246,8 +248,10 @@ struct ngx_http_request_s {
 
     unsigned             http_state:4;
 
+#if 0
     /* URI is not started with '/' - "GET http://" */
     unsigned             unusual_uri:1;
+#endif
     /* URI with "/.", "%" and on Win32 with "//" */
     unsigned             complex_uri:1;
     unsigned             header_timeout_set:1;
@@ -281,6 +285,13 @@ struct ngx_http_request_s {
     u_char              *args_start;
     u_char              *request_start;
     u_char              *request_end;
+    u_char              *method_end;
+    u_char              *schema_start;
+    u_char              *schema_end;
+    u_char              *host_start;
+    u_char              *host_end;
+    u_char              *port_start;
+    u_char              *port_end;
     u_char              *header_name_start;
     u_char              *header_name_end;
     u_char              *header_start;

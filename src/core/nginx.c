@@ -85,10 +85,6 @@ int main(int argc, char *const *argv)
     ngx_cycle_t       *cycle, init_cycle;
     ngx_core_conf_t   *ccf;
     ngx_master_ctx_t   ctx;
-#if !(WIN32)
-    size_t             len;
-    u_char             pid[/* STUB */ 10];
-#endif
 
 #if __FreeBSD__
     ngx_debug_init();
@@ -110,10 +106,6 @@ int main(int argc, char *const *argv)
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
-
-#if 0
-    /* STUB */ log->log_level = NGX_LOG_DEBUG_ALL;
-#endif
 
     ngx_memzero(&ctx, sizeof(ngx_master_ctx_t));
     ctx.argc = argc;

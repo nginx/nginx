@@ -5,19 +5,17 @@
 
 ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
 {
-    u_char  ch, *p;
+    u_char  ch, *p, *m;
     enum {
         sw_start = 0,
-        sw_G,
-        sw_GE,
-        sw_H,
-        sw_HE,
-        sw_HEA,
-        sw_P,
-        sw_PO,
-        sw_POS,
+        sw_method,
         sw_space_after_method,
         sw_spaces_before_uri,
+        sw_schema,
+        sw_schema_slash,
+        sw_schema_slash_slash,
+        sw_host,
+        sw_port,
         sw_after_slash_in_uri,
         sw_check_uri,
         sw_uri,
@@ -48,102 +46,46 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
         case sw_start:
             r->request_start = p - 1;
 
-            switch (ch) {
-            case 'G':
-                state = sw_G;
-                break;
-            case 'H':
-                state = sw_H;
-                break;
-            case 'P':
-                state = sw_P;
-                break;
-            default:
+            if (ch < 'A' || ch > 'Z') {
                 return NGX_HTTP_PARSE_INVALID_METHOD;
             }
+
+            state = sw_method;
             break;
 
-        case sw_G:
-            switch (ch) {
-            case 'E':
-                state = sw_GE;
-                break;
-            default:
-                return NGX_HTTP_PARSE_INVALID_METHOD;
-            }
-            break;
+        case sw_method:
+            if (ch == ' ') {
+                r->method_end = p - 1;
+                m = r->request_start;
 
-        case sw_GE:
-            switch (ch) {
-            case 'T':
-                r->method = NGX_HTTP_GET;
-                state = sw_space_after_method;
-                break;
-            default:
-                return NGX_HTTP_PARSE_INVALID_METHOD;
-            }
-            break;
+                if (r->method_end - m == 3) {
 
-        case sw_H:
-            switch (ch) {
-            case 'E':
-                state = sw_HE;
-                break;
-            default:
-                return NGX_HTTP_PARSE_INVALID_METHOD;
-            }
-            break;
+                    if (*m == 'G' && *(m + 1) == 'E' && *(m + 2) == 'T') {
+                        r->method = NGX_HTTP_GET;
+                    }
 
-        case sw_HE:
-            switch (ch) {
-            case 'A':
-                state = sw_HEA;
-                break;
-            default:
-                return NGX_HTTP_PARSE_INVALID_METHOD;
-            }
-            break;
+                } else if (r->method_end - m == 4) {
 
-        case sw_HEA:
-            switch (ch) {
-            case 'D':
-                r->method = NGX_HTTP_HEAD;
-                state = sw_space_after_method;
-                break;
-            default:
-                return NGX_HTTP_PARSE_INVALID_METHOD;
-            }
-            break;
+                    if (*m == 'P' && *(m + 1) == 'O'
+                        && *(m + 2) == 'T' && *(m + 3) == 'T')
+                    {
+                        r->method = NGX_HTTP_POST;
 
-        case sw_P:
-            switch (ch) {
-            case 'O':
-                state = sw_PO;
-                break;
-            default:
-                return NGX_HTTP_PARSE_INVALID_METHOD;
-            }
-            break;
+                    } else if (*m == 'H' && *(m + 1) == 'E'
+                               && *(m + 2) == 'A' && *(m + 3) == 'D')
+                    {
+                        r->method = NGX_HTTP_HEAD;
+                    }
+                }
 
-        case sw_PO:
-            switch (ch) {
-            case 'S':
-                state = sw_POS;
+                state = sw_spaces_before_uri;
                 break;
-            default:
-                return NGX_HTTP_PARSE_INVALID_METHOD;
             }
-            break;
 
-        case sw_POS:
-            switch (ch) {
-            case 'T':
-                r->method = NGX_HTTP_POST;
-                state = sw_space_after_method;
-                break;
-            default:
+            if (ch < 'A' || ch > 'Z') {
                 return NGX_HTTP_PARSE_INVALID_METHOD;
             }
+
             break;
 
         /* single space after method */
@@ -167,9 +109,82 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r)
             case ' ':
                 break;
             default:
-                r->unusual_uri = 1;
+                if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
+                    r->schema_start = p - 1;
+                    state = sw_schema;
+                    break;
+                }
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+            break;
+
+        case sw_schema:
+            switch (ch) {
+            case ':':
+                r->schema_end = p - 1;
+                state = sw_schema_slash;
+                break;
+            default:
+                if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
+                    break;
+                }
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+            break;
+
+        case sw_schema_slash:
+            switch (ch) {
+            case '/':
+                state = sw_schema_slash_slash;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+            break;
+
+        case sw_schema_slash_slash:
+            switch (ch) {
+            case '/':
+                r->host_start = p - 1;
+                state = sw_host;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+            break;
+
+        case sw_host:
+            switch (ch) {
+            case ':':
+                r->host_end = p - 1;
+                state = sw_port;
+                break;
+            case '/':
+                r->host_end = p - 1;
                 r->uri_start = p - 1;
-                state = sw_uri;
+                state = sw_after_slash_in_uri;
+                break;
+            default:
+                if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+                    || (ch >= '0' && ch <= '9') || ch == '.' || ch == '-')
+                {
+                    break;
+                }
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+            break;
+
+        case sw_port:
+            switch (ch) {
+            case '/':
+                r->port_end = p - 1;
+                r->uri_start = p - 1;
+                state = sw_after_slash_in_uri;
+                break;
+            default:
+                if (ch < '0' && ch > '9') {
+                    return NGX_HTTP_PARSE_INVALID_REQUEST;
+                }
                 break;
             }
             break;
