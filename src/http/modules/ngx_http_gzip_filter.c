@@ -157,8 +157,9 @@ static int ngx_http_gzip_header_filter(ngx_http_request_t *r)
     r->headers_out.content_encoding->value.len = 4;
     r->headers_out.content_encoding->value.data = "gzip";
 
-    ctx->length = r->headers_out.content_length;
-    r->headers_out.content_length = -1;
+    ctx->length = r->headers_out.content_length_n;
+    r->headers_out.content_length_n = -1;
+    r->headers_out.content_length = NULL;
     r->filter |= NGX_HTTP_FILTER_NEED_IN_MEMORY;
 
     return next_header_filter(r);

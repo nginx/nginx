@@ -48,6 +48,8 @@ typedef struct {
     ngx_table_elt_t  *last_modified;
     ngx_table_elt_t  *accept_ranges;
 
+    off_t             content_length_n;
+
     ngx_table_t      *headers;
 } ngx_http_proxy_headers_in_t;
 
@@ -74,7 +76,7 @@ struct ngx_http_proxy_ctx_s {
     int                         location_len;
     ngx_str_t                   host_header;
 
-    ngx_event_proxy_t          *event_proxy;
+    ngx_event_pipe_t           *event_pipe;
 
     unsigned                    accel:1;
     unsigned                    cachable:1;

@@ -6,11 +6,6 @@
 
 
 typedef struct {
-    ssize_t  buffer_output;
-} ngx_http_write_filter_conf_t;
-
-
-typedef struct {
     ngx_chain_t  *out;
 } ngx_http_write_filter_ctx_t;
 
@@ -22,6 +17,13 @@ static int ngx_http_write_filter_init(ngx_cycle_t *cycle);
 
 
 static ngx_command_t ngx_http_write_filter_commands[] = {
+
+    {ngx_string("sendfile"),
+     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+     ngx_conf_set_flag_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_write_filter_conf_t, sendfile),
+     NULL},
 
     {ngx_string("buffer_output"),
      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -81,36 +83,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (ce = ctx->out; ce; ce = ce->next) {
         le = &ce->next;
 
-        if (ce->hunk->type & NGX_HUNK_IN_MEMORY) {
-            size += ce->hunk->last - ce->hunk->pos;
-        } else {
-            size += ce->hunk->file_last - ce->hunk->file_pos;
-        }
-
-        if (ce->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
-            flush = size;
-        }
-
-        if (ce->hunk->type & NGX_HUNK_LAST) {
-            last = 1;
-        }
-    }
-
-    /* add the new chain to the existent one */
-
-    for (/* void */; in; in = in->next) {
-        ngx_test_null(ce, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
-
-        ce->hunk = in->hunk;
-        ce->next = NULL;
-        *le = ce;
-        le = &ce->next;
-
-        if (ce->hunk->type & NGX_HUNK_IN_MEMORY) {
-            size += ce->hunk->last - ce->hunk->pos;
-        } else {
-            size += ce->hunk->file_last - ce->hunk->file_pos;
-        }
+        size += ngx_hunk_size(ce->hunk);
 
         if (ce->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
             flush = size;
@@ -123,6 +96,31 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     conf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                         ngx_http_write_filter_module);
+
+    /* add the new chain to the existent one */
+
+    for (/* void */; in; in = in->next) {
+        ngx_test_null(ce, ngx_alloc_chain_entry(r->pool), NGX_ERROR);
+
+        ce->hunk = in->hunk;
+        ce->next = NULL;
+        *le = ce;
+        le = &ce->next;
+
+        if (!(ngx_io.flags & NGX_IO_SENDFILE) || !conf->sendfile) {
+            ce->hunk->type &= ~NGX_HUNK_FILE;
+        }
+
+        size += ngx_hunk_size(ce->hunk);
+
+        if (ce->hunk->type & (NGX_HUNK_FLUSH|NGX_HUNK_RECYCLED)) {
+            flush = size;
+        }
+
+        if (ce->hunk->type & NGX_HUNK_LAST) {
+            last = 1;
+        }
+    }
 
 #if (NGX_DEBUG_WRITE_FILTER)
     ngx_log_debug(r->connection->log,
@@ -176,6 +174,7 @@ static void *ngx_http_write_filter_create_conf(ngx_conf_t *cf)
                   NULL);
 
     conf->buffer_output = NGX_CONF_UNSET;
+    conf->sendfile = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -188,6 +187,7 @@ static char *ngx_http_write_filter_merge_conf(ngx_conf_t *cf,
     ngx_http_write_filter_conf_t *conf = child;
 
     ngx_conf_merge_size_value(conf->buffer_output, prev->buffer_output, 1460);
+    ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
 
     return NULL;
 }

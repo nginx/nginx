@@ -191,6 +191,7 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
     ngx_log_e                  level;
     ngx_err_t                  err;
     ngx_hunk_t                *h;
+    ngx_chain_t                out;
     ngx_http_type_t           *type;
     ngx_http_log_ctx_t        *ctx;
     ngx_http_core_loc_conf_t  *clcf;
@@ -257,7 +258,7 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
 #endif
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length = ngx_file_size(r->file.info);
+    r->headers_out.content_length_n = ngx_file_size(r->file.info);
     r->headers_out.last_modified_time = ngx_file_mtime(r->file.info);
 
     ngx_test_null(r->headers_out.content_type,
@@ -317,7 +318,10 @@ static int ngx_http_static_handler(ngx_http_request_t *r)
     h->file->fd = r->file.fd;
     h->file->log = r->connection->log;
 
-    return ngx_http_output_filter(r, h);
+    out.hunk = h;
+    out.next = NULL;
+
+    return ngx_http_output_filter(r, &out);
 }
 
 

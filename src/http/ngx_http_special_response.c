@@ -152,8 +152,9 @@ static ngx_str_t error_pages[] = {
 
 int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
 {
-    int          err, rc;
-    ngx_hunk_t  *h;
+    int           err, rc;
+    ngx_hunk_t   *h;
+    ngx_chain_t  *out, **le, *ce;
 
     r->headers_out.status = error;
 
@@ -189,9 +190,9 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     }
 
     if (error_pages[err].len) {
-        r->headers_out.content_length = error_pages[err].len
-                                        + sizeof(error_tail) - 1
-                                        + sizeof(msie_stub) - 1;
+        r->headers_out.content_length_n = error_pages[err].len
+                                          + sizeof(error_tail) - 1
+                                          + sizeof(msie_stub) - 1;
 
         ngx_test_null(r->headers_out.content_type,
                       ngx_push_table(r->headers_out.headers),
@@ -203,7 +204,8 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         r->headers_out.content_type->value.data = "text/html";
 
     } else {
-        r->headers_out.content_length = -1;
+        r->headers_out.content_length_n = -1;
+        r->headers_out.content_length = NULL;
     }
 
     rc = ngx_http_send_header(r);
@@ -216,21 +218,25 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         return NGX_OK;
     }
 
-    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
+    out = NULL;
+    le = NULL;
 
+    ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
     h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
     h->pos = error_pages[err].data;
     h->last = error_pages[err].data + error_pages[err].len;
 
-    if (ngx_http_output_filter(r, h) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
+    ngx_alloc_ce_and_set_hunk(ce, h, r->pool, NGX_ERROR);
+    ngx_chain_add_ce(out, le, ce);
+
 
     ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
-
     h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
     h->pos = error_tail;
     h->last = error_tail + sizeof(error_tail) - 1;
+
+    ngx_alloc_ce_and_set_hunk(ce, h, r->pool, NGX_ERROR);
+    ngx_chain_add_ce(out, le, ce);
 
     if (/* STUB: "msie_padding on/off" */ 1
         && r->http_version >= NGX_HTTP_VERSION_10
@@ -238,19 +244,16 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
         && error != NGX_HTTP_REQUEST_URI_TOO_LARGE
        )
     {
-
-        if (ngx_http_output_filter(r, h) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-
         ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
-
         h->type = NGX_HUNK_MEMORY|NGX_HUNK_IN_MEMORY;
         h->pos = msie_stub;
         h->last = msie_stub + sizeof(msie_stub) - 1;
+
+        ngx_alloc_ce_and_set_hunk(ce, h, r->pool, NGX_ERROR);
+        ngx_chain_add_ce(out, le, ce);
     }
 
     h->type |= NGX_HUNK_LAST;
 
-    return ngx_http_output_filter(r, h);
+    return ngx_http_output_filter(r, out);
 }

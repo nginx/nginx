@@ -49,7 +49,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
     if (r->main
         || r->http_version < NGX_HTTP_VERSION_10
         || r->headers_out.status != NGX_HTTP_OK
-        || r->headers_out.content_length == -1
+        || r->headers_out.content_length_n == -1
         /* STUB: we currently support ranges for file hunks only */
         || r->filter & NGX_HTTP_FILTER_NEED_IN_MEMORY)
     {
@@ -103,7 +103,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
             break;
         }
 
-        if (start >= r->headers_out.content_length) {
+        if (start >= r->headers_out.content_length_n) {
             rc = NGX_HTTP_RANGE_NOT_SATISFIABLE;
             break;
         }
@@ -114,7 +114,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
             ngx_test_null(range, ngx_push_array(&r->headers_out.ranges),
                           NGX_ERROR);
             range->start = start;
-            range->end = r->headers_out.content_length;
+            range->end = r->headers_out.content_length_n;
 
             if (*p++ == ',') {
                 continue;
@@ -139,7 +139,7 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
             break;
         }
 
-        if (end >= r->headers_out.content_length || start >= end) {
+        if (end >= r->headers_out.content_length_n || start >= end) {
             rc = NGX_HTTP_RANGE_NOT_SATISFIABLE;
             break;
         }
@@ -170,9 +170,10 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
         r->headers_out.content_range->value.len =
                         ngx_snprintf(r->headers_out.content_range->value.data,
                                      8 + 20 + 1, "bytes */" OFF_FMT,
-                                     r->headers_out.content_length);
+                                     r->headers_out.content_length_n);
 
-        r->headers_out.content_length = -1;
+        r->headers_out.content_length_n = -1;
+        r->headers_out.content_length = NULL;
 
         return rc;
 
@@ -193,9 +194,9 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                                       6 + 20 + 1 + 20 + 1 + 20 + 1,
                                       "bytes " OFF_FMT "-" OFF_FMT "/" OFF_FMT,
                                       range->start, range->end - 1,
-                                      r->headers_out.content_length);
+                                      r->headers_out.content_length_n);
 
-            r->headers_out.content_length = range->end - range->start;
+            r->headers_out.content_length_n = range->end - range->start;
 
         } else {
 
@@ -267,13 +268,14 @@ static int ngx_http_range_header_filter(ngx_http_request_t *r)
                                      20 + 1 + 20 + 1 + 20 + 5,
                                      OFF_FMT "-" OFF_FMT "/" OFF_FMT CRLF CRLF,
                                      range[i].start, range[i].end - 1,
-                                     r->headers_out.content_length);
+                                     r->headers_out.content_length_n);
 
                  len += ctx->boundary_header.len + range[i].content_range.len
                         + (size_t) (range[i].end - range[i].start);
             }
 
-            r->headers_out.content_length = len;
+            r->headers_out.content_length_n = len;
+            r->headers_out.content_length = NULL;
         }
     }
 

@@ -9,6 +9,7 @@ static void ngx_http_init_request(ngx_event_t *ev);
 static void ngx_http_process_request_line(ngx_event_t *rev);
 static void ngx_http_process_request_headers(ngx_event_t *rev);
 static ssize_t ngx_http_read_request_header(ngx_http_request_t *r);
+static int ngx_http_process_request_header(ngx_http_request_t *r);
 
 static void ngx_http_set_write_handler(ngx_http_request_t *r);
 
@@ -256,7 +257,8 @@ ngx_log_debug(rev->log, "IN: %08x" _ in_port);
     r->file.fd = NGX_INVALID_FILE;
 
     r->headers_in.content_length_n = -1;
-    r->headers_out.content_length = -1;
+    r->headers_in.keep_alive_n = -1;
+    r->headers_out.content_length_n = -1;
     r->headers_out.last_modified_time = -1;
 
     rev->event_handler = ngx_http_process_request_line;
@@ -503,14 +505,11 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
 static void ngx_http_process_request_headers(ngx_event_t *rev)
 {
     int                        rc, i, offset;
-    size_t                     len;
     ssize_t                    n;
     ngx_table_elt_t           *h;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
-    ngx_http_server_name_t    *name;
     ngx_http_core_srv_conf_t  *cscf;
-    ngx_http_core_loc_conf_t  *clcf;
 
     c = rev->data;
     r = c->data;
@@ -604,59 +603,11 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
 
             ngx_log_debug(r->connection->log, "HTTP header done");
 
-            if (r->headers_in.host) {
-                for (len = 0; len < r->headers_in.host->value.len; len++) {
-                    if (r->headers_in.host->value.data[len] == ':') {
-                        break;
-                    }
-                }
-                r->headers_in.host_name_len = len;
+            rc = ngx_http_process_request_header(r);
 
-                /* find the name based server configuration */
-
-                name = r->virtual_names->elts;
-                for (i = 0; i < r->virtual_names->nelts; i++) {
-                    if (r->headers_in.host_name_len != name[i].name.len) {
-                        continue;
-                    }
-
-                    if (ngx_strncasecmp(r->headers_in.host->value.data,
-                                        name[i].name.data,
-                                        r->headers_in.host_name_len) == 0)
-                    {
-                        r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
-                        r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
-
-                        clcf = ngx_http_get_module_loc_conf(r,
-                                                         ngx_http_core_module);
-                        c->log->file = clcf->err_log->file;
-                        c->log->log_level = clcf->err_log->log_level;
-
-                        break;
-                    }
-                }
-
-            } else {
-                if (r->http_version > NGX_HTTP_VERSION_10) {
-                    ngx_http_header_parse_error(r,
-                                                NGX_HTTP_PARSE_NO_HOST_HEADER,
-                                                NGX_HTTP_BAD_REQUEST);
-                    return;
-                }
-                r->headers_in.host_name_len = 0;
-            }
-
-            if (r->headers_in.content_length) {
-                r->headers_in.content_length_n =
-                             ngx_atoi(r->headers_in.content_length->value.data,
-                                      r->headers_in.content_length->value.len);
-
-                if (r->headers_in.content_length_n == NGX_ERROR) {
-                    ngx_http_header_parse_error(r,
-                                             NGX_HTTP_PARSE_INVALID_CL_HEADER,
-                                             NGX_HTTP_BAD_REQUEST);
-                    return;
-                }
+            if (rc != NGX_OK) {
+                ngx_http_header_parse_error(r, rc, NGX_HTTP_BAD_REQUEST);
+                return;
             }
 
             if (r->header_timeout_set) {
@@ -763,6 +714,86 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
     r->header_in->last += n;
 
     return n;
+}
+
+
+static int ngx_http_process_request_header(ngx_http_request_t *r)
+{
+    int                        i;
+    size_t                     len;
+    ngx_http_server_name_t    *name;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    if (r->headers_in.host) {
+        for (len = 0; len < r->headers_in.host->value.len; len++) {
+            if (r->headers_in.host->value.data[len] == ':') {
+                break;
+            }
+        }
+        r->headers_in.host_name_len = len;
+
+        /* find the name based server configuration */
+
+        name = r->virtual_names->elts;
+        for (i = 0; i < r->virtual_names->nelts; i++) {
+            if (r->headers_in.host_name_len != name[i].name.len) {
+                continue;
+            }
+
+            if (ngx_strncasecmp(r->headers_in.host->value.data,
+                                name[i].name.data,
+                                r->headers_in.host_name_len) == 0)
+            {
+                r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
+                r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
+
+                clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+                r->connection->log->file = clcf->err_log->file;
+                r->connection->log->log_level = clcf->err_log->log_level;
+
+                break;
+            }
+        }
+
+    } else {
+        if (r->http_version > NGX_HTTP_VERSION_10) {
+            return NGX_HTTP_PARSE_NO_HOST_HEADER;
+        }
+        r->headers_in.host_name_len = 0;
+    }
+
+    if (r->headers_in.content_length) {
+        r->headers_in.content_length_n =
+                             ngx_atoi(r->headers_in.content_length->value.data,
+                                      r->headers_in.content_length->value.len);
+
+        if (r->headers_in.content_length_n == NGX_ERROR) {
+            return NGX_HTTP_PARSE_INVALID_CL_HEADER;
+        }
+    }
+
+    if (r->headers_in.connection) {
+        if (r->headers_in.connection->value.len == 5
+            && ngx_strcasecmp(r->headers_in.connection->value.data, "close")
+                                                                          == 0)
+        {
+            r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
+
+        } else if (r->headers_in.connection->value.len == 10
+                   && ngx_strcasecmp(r->headers_in.connection->value.data,
+                                                            "keep-alive") == 0)
+        {
+            r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
+
+            if (r->headers_in.keep_alive) {
+                r->headers_in.keep_alive_n =
+                                 ngx_atoi(r->headers_in.keep_alive->value.data,
+                                          r->headers_in.keep_alive->value.len);
+            }
+        }
+    }
+
+    return NGX_OK;
 }
 
 
@@ -1283,12 +1314,15 @@ static void ngx_http_empty_handler(ngx_event_t *wev)
 
 int ngx_http_send_last(ngx_http_request_t *r)
 {
-    ngx_hunk_t  *h;
+    ngx_hunk_t   *h;
+    ngx_chain_t   out;
 
     ngx_test_null(h, ngx_calloc_hunk(r->pool), NGX_ERROR);
     h->type = NGX_HUNK_LAST;
+    out.hunk = h;
+    out.next = NULL;
 
-    return ngx_http_output_filter(r, h);
+    return ngx_http_output_filter(r, &out);
 }
 
 

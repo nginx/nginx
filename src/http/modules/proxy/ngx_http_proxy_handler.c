@@ -2,8 +2,8 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-/* STUB */ #include <ngx_event_connect.h>
-/* STUB */ #include <ngx_event_proxy.h>
+#include <ngx_event_connect.h>
+#include <ngx_event_pipe.h>
 #include <ngx_http.h>
 #include <ngx_http_proxy_handler.h>
 
@@ -632,12 +632,13 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 {
     int                  rc, i;
     ngx_table_elt_t     *ch, *ph;
-    ngx_event_proxy_t   *ep;
+    ngx_event_pipe_t    *ep;
     ngx_http_request_t  *r;
 
     r = p->request;
 
-    r->headers_out.content_length = -1;
+    r->headers_out.content_length_n = -1;
+    r->headers_out.content_length = NULL;
 
     /* copy an upstream header to r->headers_out */
 
@@ -655,13 +656,6 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
             }
         }
 
-        if (&ph[i] == p->headers_in.content_length) {
-            r->headers_out.content_length =
-                             ngx_atoi(p->headers_in.content_length->value.data,
-                                      p->headers_in.content_length->value.len);
-            continue;
-        }
-
         ch = ngx_push_table(r->headers_out.headers);
         if (ch == NULL) {
             ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -673,6 +667,14 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
         if (&ph[i] == p->headers_in.content_type) {
             r->headers_out.content_type = ch;
             r->headers_out.content_type->key.len = 0;
+            continue;
+        }
+
+        if (&ph[i] == p->headers_in.content_length) {
+            r->headers_out.content_length_n =
+                             ngx_atoi(p->headers_in.content_length->value.data,
+                                      p->headers_in.content_length->value.len);
+            r->headers_out.content_length = ch;
             continue;
         }
     }
@@ -700,14 +702,14 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
 
     p->header_sent = 1;
 
-    ep = ngx_pcalloc(r->pool, sizeof(ngx_event_proxy_t));
+    ep = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t));
     if (ep == NULL) {
         ngx_http_proxy_finalize_request(p, 0);
         return;
     }
 
-    ep->input_filter = ngx_event_proxy_copy_input_filter;
-    ep->output_filter = (ngx_event_proxy_output_filter_pt)
+    ep->input_filter = ngx_event_pipe_copy_input_filter;
+    ep->output_filter = (ngx_event_pipe_output_filter_pt)
                                                         ngx_http_output_filter;
     ep->output_ctx = r;
     ep->bufs = p->lcf->bufs;
@@ -743,14 +745,17 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->preread_size = p->header_in->last - p->header_in->pos;
 
     /*
-     * event_proxy would do p->header_in->last += ep->preread_size
-     * as these bytes were read.
+     * event_pipe would do p->header_in->last += ep->preread_size
+     * as though these bytes were read.
      */
     p->header_in->last = p->header_in->pos;
 
-    /* STUB */ ep->cachable = 0;
+    /* STUB */ ep->cachable = 1;
+#if 0
+    ep->max_temp_file_size = 1000000000;
+#endif
 
-    p->event_proxy = ep;
+    p->event_pipe = ep;
 
 #if 0
     lcx = p->log->data;
@@ -771,7 +776,7 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
     ngx_connection_t      *c;
     ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
-    ngx_event_proxy_t     *ep;
+    ngx_event_pipe_t      *ep;
 
     c = ev->data;
 
@@ -786,7 +791,7 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
         r = p->request;
     }
 
-    ep = p->event_proxy;
+    ep = p->event_pipe;
 
     if (ev->timedout) {
         if (ev->write) {
@@ -797,7 +802,7 @@ static void ngx_http_proxy_process_body(ngx_event_t *ev)
         }
 
     } else {
-        if (ngx_event_proxy(ep, ev->write) == NGX_ABORT) {
+        if (ngx_event_pipe(ep, ev->write) == NGX_ABORT) {
             ngx_http_proxy_finalize_request(p, 0);
             return;
         }
@@ -1159,14 +1164,14 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     conf->bufs.num = 10;
     conf->bufs.size = 4096;
-    conf->max_busy_len = 8192 + 4096;
+    conf->max_busy_len = 8192;
 
 
     /* CHECK in _init conf->max_temp_size >= conf->bufs.size !!! */
     conf->max_temp_file_size = 4096 * 6;
 
 
-    conf->temp_file_write_size = 4096 * 2;
+    conf->temp_file_write_size = 4096 * 1;
 
     ngx_test_null(conf->temp_path, ngx_pcalloc(cf->pool, sizeof(ngx_path_t)),
                   NULL);

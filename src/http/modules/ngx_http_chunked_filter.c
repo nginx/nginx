@@ -39,7 +39,7 @@ static int ngx_http_chunked_header_filter(ngx_http_request_t *r)
         return next_header_filter(r);
     }
 
-    if (r->headers_out.content_length == -1) {
+    if (r->headers_out.content_length_n == -1) {
         if (r->http_version < NGX_HTTP_VERSION_11) {
             r->keepalive = 0;
 

@@ -10,11 +10,11 @@
 #define NGX_HTTP_HEAD  2
 #define NGX_HTTP_POST  3
 
-#define NGX_HTTP_CONN_CLOSE       0
-#define NGX_HTTP_CONN_KEEP_ALIVE  1
+#define NGX_HTTP_CONNECTION_CLOSE         1
+#define NGX_HTTP_CONNECTION_KEEP_ALIVE    2
 
 
-#define NGX_NONE                        1
+#define NGX_NONE                          1
 
 
 #define NGX_HTTP_PARSE_HEADER_DONE        1
@@ -63,9 +63,6 @@ typedef struct {
 
 
 typedef struct {
-    size_t            host_name_len;
-    ssize_t           content_length_n;
-
     ngx_table_elt_t  *host;
     ngx_table_elt_t  *connection;
     ngx_table_elt_t  *if_modified_since;
@@ -76,6 +73,11 @@ typedef struct {
 
     ngx_table_elt_t  *user_agent;
     ngx_table_elt_t  *keep_alive;
+
+    size_t            host_name_len;
+    ssize_t           content_length_n;
+    size_t            connection_type;
+    ssize_t           keep_alive_n;
 
     ngx_table_t      *headers;
 } ngx_http_headers_in_t;
@@ -107,6 +109,7 @@ typedef struct {
     ngx_table_elt_t  *server;
     ngx_table_elt_t  *date;
     ngx_table_elt_t  *content_type;
+    ngx_table_elt_t  *content_length;
     ngx_table_elt_t  *content_encoding;
     ngx_table_elt_t  *location;
     ngx_table_elt_t  *last_modified;
@@ -118,7 +121,7 @@ typedef struct {
 
     ngx_table_t      *headers;
 
-    off_t             content_length;
+    off_t             content_length_n;
     char             *etag;
     time_t            date_time;
     time_t            last_modified_time;

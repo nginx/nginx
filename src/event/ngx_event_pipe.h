@@ -1,5 +1,5 @@
-#ifndef _NGX_EVENT_PROXY_H_INCLUDED_
-#define _NGX_EVENT_PROXY_H_INCLUDED_
+#ifndef _NGX_EVENT_PIPE_H_INCLUDED_
+#define _NGX_EVENT_PIPE_H_INCLUDED_
 
 
 #include <ngx_config.h>
@@ -7,14 +7,14 @@
 #include <ngx_event.h>
 
 
-typedef struct ngx_event_proxy_s  ngx_event_proxy_t;
+typedef struct ngx_event_pipe_s  ngx_event_pipe_t;
 
-typedef int (*ngx_event_proxy_input_filter_pt)(ngx_event_proxy_t *p,
-                                               ngx_hunk_t *hunk);
-typedef int (*ngx_event_proxy_output_filter_pt)(void *data, ngx_hunk_t *hunk);
+typedef int (*ngx_event_pipe_input_filter_pt)(ngx_event_pipe_t *p,
+                                              ngx_hunk_t *hunk);
+typedef int (*ngx_event_pipe_output_filter_pt)(void *data, ngx_chain_t *chain);
 
 
-struct ngx_event_proxy_s {
+struct ngx_event_pipe_s {
     ngx_chain_t       *free_raw_hunks;
     ngx_chain_t       *in;
     ngx_chain_t      **last_in;
@@ -30,10 +30,10 @@ struct ngx_event_proxy_s {
      * from the raw hunks to an incoming chain
      */
 
-    ngx_event_proxy_input_filter_pt    input_filter;
+    ngx_event_pipe_input_filter_pt    input_filter;
     void                              *input_ctx;
 
-    ngx_event_proxy_output_filter_pt   output_filter;
+    ngx_event_pipe_output_filter_pt   output_filter;
     void                              *output_ctx;
 
     unsigned           read:1;
@@ -68,12 +68,8 @@ struct ngx_event_proxy_s {
 };
 
 
-int ngx_event_proxy(ngx_event_proxy_t *p, int do_write);
-int ngx_event_proxy_copy_input_filter(ngx_event_proxy_t *p, ngx_hunk_t *hunk);
-
-/* STUB */
-int ngx_event_proxy_read_upstream(ngx_event_proxy_t *p);
-int ngx_event_proxy_write_to_downstream(ngx_event_proxy_t *p);
+int ngx_event_pipe(ngx_event_pipe_t *p, int do_write);
+int ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_hunk_t *hunk);
 
 
-#endif /* _NGX_EVENT_PROXY_H_INCLUDED_ */
+#endif /* _NGX_EVENT_PIPE_H_INCLUDED_ */

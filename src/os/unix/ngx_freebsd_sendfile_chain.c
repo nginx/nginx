@@ -154,6 +154,11 @@ ngx_log_debug(c->log, "NOPUSH");
             hdtr.trailers = (struct iovec *) trailer.elts;
             hdtr.trl_cnt = trailer.nelts;
 
+            /*
+             * the old sendfile() "nbytes bug":
+             * http://www.freebsd.org/cgi/query-pr.cgi?pr=33771
+             */
+
             if (ngx_freebsd_sendfile_nbytes_bug == 0) {
                 hsize = 0;
             }
@@ -194,7 +199,6 @@ ngx_log_debug(c->log, "NOPUSH");
             if (rc == -1) {
                 err = ngx_errno;
                 if (err == NGX_EAGAIN) {
-                    eagain = 1;
                     ngx_log_error(NGX_LOG_INFO, c->log, err, "writev() EAGAIN");
 
                 } else if (err == NGX_EINTR) {
@@ -256,6 +260,11 @@ ngx_log_debug(c->log, "NOPUSH");
         in = ce;
 
         if (eagain) {
+            /*
+             * sendfile() can return EAGAIN even if it has sent
+             * a whole file part and successive sendfile() would
+             * return EAGAIN right away and would not send anything.
+             */
             c->write->ready = 0;
             break;
         }

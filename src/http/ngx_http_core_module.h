@@ -110,7 +110,6 @@ typedef struct {
     ngx_array_t  *types;
     ngx_str_t     default_type;
 
-    int           sendfile;                /* sendfile */
     ngx_msec_t    send_timeout;            /* send_timeout */
     ssize_t       send_lowat;              /* send_lowat */
     ssize_t       discarded_buffer_size;   /* discarded_buffer_size */

@@ -159,9 +159,11 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         len += 15 + r->headers_out.content_range->value.len + 2;
     }
 
-    if (r->headers_out.content_length >= 0) {
-        /* "Content-Length: ... \r\n", 2^64 is 20 characters */
-        len += 48;
+    if (r->headers_out.content_length == NULL) {
+        if (r->headers_out.content_length_n >= 0) {
+            /* "Content-Length: ... \r\n", 2^64 is 20 characters */
+            len += 48;
+        }
     }
 
     if (r->headers_out.content_type && r->headers_out.content_type->value.len) {
@@ -260,11 +262,13 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
         *(h->last++) = CR; *(h->last++) = LF;
     }
 
-    /* 2^64 is 20 characters  */
-    if (r->headers_out.content_length >= 0) {
-        h->last += ngx_snprintf(h->last, 49,
-                                "Content-Length: " OFF_FMT CRLF,
-                                r->headers_out.content_length);
+    if (r->headers_out.content_length == NULL) {
+        /* 2^64 is 20 characters  */
+        if (r->headers_out.content_length_n >= 0) {
+            h->last += ngx_snprintf(h->last, 49,
+                                    "Content-Length: " OFF_FMT CRLF,
+                                    r->headers_out.content_length_n);
+        }
     }
 
     if (r->headers_out.content_type && r->headers_out.content_type->value.len) {

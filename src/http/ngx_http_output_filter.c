@@ -84,11 +84,11 @@ ngx_module_t  ngx_http_output_filter_module = {
 
 
 
-int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
+int ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                             rc, last;
     ssize_t                         size;
-    ngx_chain_t                     out, *ce, **le;
+    ngx_chain_t                    *ce;
     ngx_http_output_filter_ctx_t   *ctx;
     ngx_http_output_filter_conf_t  *conf;
 
@@ -103,33 +103,27 @@ int ngx_http_output_filter(ngx_http_request_t *r, ngx_hunk_t *hunk)
 
     /*
      * the short path for the case when the chain ctx->in is empty
-     * and there's no hunk or the hunk does not require the copy
+     * and the incoming chain is empty too or it has the single hunk
+     * that does not require the copy
      */
 
     if (ctx->in == NULL) {
 
-        if (hunk == NULL) {
-            return ngx_next_filter(r, NULL);
+        if (in == NULL) {
+            return ngx_next_filter(r, in);
         }
 
-        if (!need_to_copy(r, hunk)) {
-            out.hunk = hunk;
-            out.next = NULL;
-            return ngx_next_filter(r, &out);
+        if (in->next == NULL && (!need_to_copy(r, in->hunk))) {
+            return ngx_next_filter(r, in);
         }
     }
 
     /* add the incoming hunk to the chain ctx->in */
 
-    if (hunk) {
-        le = &ctx->in;
-
-        for (ce = ctx->in; ce; ce = ce->next) {
-            le = &ce->next;
+    if (in) {
+        if (ngx_chain_add_copy(r->pool, &ctx->in, in) == NGX_ERROR) {
+            return NGX_ERROR;
         }
-
-        ngx_add_hunk_to_chain(ce, hunk, r->pool, NGX_ERROR);
-        *le = ce;
     }
 
     conf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
