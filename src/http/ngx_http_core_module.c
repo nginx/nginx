@@ -992,6 +992,11 @@ static int ngx_cmp_locations(const void *one, const void *two)
         return 1;
     }
 
+    if (!first->regex && second->regex) {
+        /* shift the regex matches to the end */
+        return -1;
+    }
+
     if (first->regex || second->regex) {
         /* do not sort the regex matches */
         return 0;
@@ -1061,8 +1066,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
     if (cf->args->nelts == 3) {
         if (value[1].len == 1 && value[1].data[0] == '=') {
-            clcf->name.len = value[2].len;
-            clcf->name.data = value[2].data;
+            clcf->name = value[2];
             clcf->exact_match = 1;
 
         } else if ((value[1].len == 1 && value[1].data[0] == '~')
@@ -1098,8 +1102,7 @@ static char *ngx_location_block(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         }
 
     } else {
-        clcf->name.len = value[1].len;
-        clcf->name.data = value[1].data;
+        clcf->name = value[1];
     }
 
     pclcf = pctx->loc_conf[ngx_http_core_module.ctx_index];

@@ -6,6 +6,22 @@
             title="nginx">
 
 
+<changes ver="0.1.6" date="11.11.2004">
+
+<change type="bugfix">
+<para lang="ru">
+при некоторых комбинациях директив location c регулярными выражениями
+использовалась конфигурация не из того location.
+</para>
+<para lang="en">
+some location directive combiations with the regular expressions caused
+the wrong configuration choose.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.5" date="11.11.2004">
 
 <change type="bugfix">
@@ -22,11 +38,11 @@ alerts.
 <change type="bugfix">
 <para lang="ru">
 в режиме прокси без использования sendfile на Solaris возникала
-ошибка "writev() failed (22: Invalid argument)". На других платформах,
-не поддерживающих sendfile, процесс зацикливался.
+ошибка "writev() failed <nobr>(22: Invalid argument)".</nobr>
+На других платформах, не поддерживающих sendfile, процесс зацикливался.
 </para>
 <para lang="en">
-there were the "writev() failed (22: Invalid argument)" errors on
+there were the "writev() failed <nobr>(22: Invalid argument)"</nobr> errors on
 Solaris in proxy mode without sendfile. On other platforms that do not
 support sendfile at all the process got caught in an endless loop.
 </para>
