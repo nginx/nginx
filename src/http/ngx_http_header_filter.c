@@ -114,13 +114,14 @@ ngx_http_header_t  ngx_http_headers_out[] = {
 
 static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
 {
-    u_char           *p;
-    size_t            len;
-    ngx_uint_t        status, i;
-    ngx_buf_t        *b;
-    ngx_chain_t      *ln;
-    ngx_list_part_t  *part;
-    ngx_table_elt_t  *header;
+    u_char                    *p;
+    size_t                     len;
+    ngx_uint_t                 status, i;
+    ngx_buf_t                 *b;
+    ngx_chain_t               *ln;
+    ngx_list_part_t           *part;
+    ngx_table_elt_t           *header;
+    ngx_http_core_loc_conf_t  *clcf;
 
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
@@ -222,8 +223,25 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
         len += sizeof("Transfer-Encoding: chunked" CRLF) - 1;
     }
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
     if (r->keepalive) {
         len += sizeof("Connection: keep-alive" CRLF) - 1;
+
+        /*
+         * MSIE and Opera ignore the "Keep-Alive: timeout=<N>" header.
+         * MSIE keeps the connection alive for about 60-65 seconds.
+         * Opera keeps the connection alive very long.
+         * Mozilla keeps the connection alive for N plus about 1-10 seconds.
+         * Konqueror keeps the connection alive for about N seconds.
+         */
+
+        if (clcf->keepalive_header
+            && (r->headers_in.gecko || r->headers_in.konqueror))
+        {
+            len += sizeof("Keep-Alive: timeout=") - 1 + TIME_T_LEN + 2;
+        }
+
     } else {
         len += sizeof("Connection: closed" CRLF) - 1;
     }
@@ -242,11 +260,6 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
             header = part->elts;
             i = 0;
         }
-
-#if 0
-    header = r->headers_out.headers.elts;
-    for (i = 0; i < r->headers_out.headers.nelts; i++) {
-#endif
 
         if (header[i].key.len == 0) {
             continue;
@@ -357,6 +370,15 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
         b->last = ngx_cpymem(b->last, "Connection: keep-alive" CRLF,
                              sizeof("Connection: keep-alive" CRLF) - 1);
 
+        if (clcf->keepalive_header
+            && (r->headers_in.gecko || r->headers_in.konqueror))
+        {
+            b->last += ngx_snprintf((char *) b->last,
+                            sizeof("Keep-Alive: timeout=") + TIME_T_LEN + 2,
+                            "Keep-Alive: timeout=" TIME_T_FMT CRLF,
+                            clcf->keepalive_header);
+        }
+
     } else {
         b->last = ngx_cpymem(b->last, "Connection: close" CRLF,
                              sizeof("Connection: close" CRLF) - 1);
@@ -376,10 +398,6 @@ static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r)
             header = part->elts;
             i = 0;
         }
-
-#if 0
-    for (i = 0; i < r->headers_out.headers.nelts; i++) {
-#endif
 
         if (header[i].key.len == 0) {
             continue;

@@ -1023,7 +1023,7 @@ static ssize_t ngx_http_read_request_header(ngx_http_request_t *r)
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 {
-    u_char                    *ua;
+    u_char                    *ua, *user_agent;
     size_t                     len;
     ngx_uint_t                 i;
     ngx_http_server_name_t    *name;
@@ -1126,13 +1126,14 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
          * in CPU cache
          */
 
-        ua = (u_char *) ngx_strstr(r->headers_in.user_agent->value.data,
-                                   "MSIE");
-        if (ua
-            && ua + 8 < r->headers_in.user_agent->value.data
-                                         + r->headers_in.user_agent->value.len)
-        {
+        user_agent = r->headers_in.user_agent->value.data;
+
+        ua = (u_char *) ngx_strstr(user_agent, "MSIE");
+
+        if (ua && ua + 8 < user_agent + r->headers_in.user_agent->value.len) {
+
             r->headers_in.msie = 1;
+
             if (ua[4] == ' ' && ua[5] == '4' && ua[6] == '.') {
                 r->headers_in.msie4 = 1;
             }
@@ -1144,10 +1145,20 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r)
 #endif
         }
 
-        if (ngx_strstr(r->headers_in.user_agent->value.data, "Opera")) {
+        if (ngx_strstr(user_agent, "Opera")) {
             r->headers_in.opera = 1;
             r->headers_in.msie = 0;
             r->headers_in.msie4 = 0;
+        }
+
+        if (!r->headers_in.msie && !r->headers_in.opera) {
+
+            if (ngx_strstr(user_agent, "Gecko")) {
+                r->headers_in.gecko = 1;
+
+            } else if (ngx_strstr(user_agent, "Konqueror")) {
+                r->headers_in.konqueror = 1;
+            }
         }
     }
 

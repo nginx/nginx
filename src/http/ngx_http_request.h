@@ -149,6 +149,8 @@ typedef struct {
     unsigned          msie:1;
     unsigned          msie4:1;
     unsigned          opera:1;
+    unsigned          gecko:1;
+    unsigned          konqueror:1;
 } ngx_http_headers_in_t;
 
 

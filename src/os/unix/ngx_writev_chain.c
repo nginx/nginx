@@ -4,17 +4,20 @@
 #include <ngx_event.h>
 
 
+#define NGX_IOVS  8
+
+
 ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
-    u_char          *prev;
-    ssize_t          n, size;
-    off_t            send, sprev, sent;
-    struct iovec    *iov;
-    ngx_uint_t       eintr, complete;
-    ngx_err_t        err;
-    ngx_array_t      vec;
-    ngx_chain_t     *cl;
-    ngx_event_t     *wev;
+    u_char        *prev;
+    ssize_t        n, size;
+    off_t          send, sprev, sent;
+    ngx_uint_t     eintr, complete;
+    ngx_err_t      err;
+    ngx_array_t    vec;
+    ngx_chain_t   *cl;
+    ngx_event_t   *wev;
+    struct iovec  *iov, iovs[NGX_IOVS];
 
     wev = c->write;
 
@@ -34,16 +37,21 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
 #endif
 
-    ngx_init_array(vec, c->pool, 10, sizeof(struct iovec), NGX_CHAIN_ERROR);
-
     send = 0;
     complete = 0;
+
+    vec.elts = iovs;
+    vec.size = sizeof(struct iovec);
+    vec.nalloc = NGX_IOVS;
+    vec.pool = c->pool;
 
     for ( ;; ) {
         prev = NULL;
         iov = NULL;
         eintr = 0;
         sprev = send;
+
+        vec.nelts = 0;
 
         /* create the iovec and coalesce the neighbouring bufs */
 
@@ -63,7 +71,10 @@ ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 iov->iov_len += size;
 
             } else {
-                ngx_test_null(iov, ngx_push_array(&vec), NGX_CHAIN_ERROR);
+                if (!(iov = ngx_array_push(&vec))) {
+                    return NGX_CHAIN_ERROR;
+                }
+
                 iov->iov_base = (void *) cl->buf->pos;
                 iov->iov_len = size;
             }

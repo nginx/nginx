@@ -37,6 +37,7 @@ static char *ngx_set_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_set_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_set_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 static char *ngx_http_lowat_check(ngx_conf_t *cf, void *post, void *data);
 
@@ -227,10 +228,10 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
     { ngx_string("keepalive_timeout"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_msec_slot,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
+      ngx_set_keepalive,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, keepalive_timeout),
+      0,
       NULL },
 
     { ngx_string("lingering_time"),
@@ -1370,6 +1371,7 @@ static void *ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->limit_rate = NGX_CONF_UNSET_SIZE;
     lcf->discarded_buffer_size = NGX_CONF_UNSET_SIZE;
     lcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
+    lcf->keepalive_header = NGX_CONF_UNSET;
     lcf->lingering_time = NGX_CONF_UNSET_MSEC;
     lcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
     lcf->reset_timedout_connection = NGX_CONF_UNSET;
@@ -1457,7 +1459,9 @@ static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_size_value(conf->discarded_buffer_size,
                               prev->discarded_buffer_size, 1500);
     ngx_conf_merge_msec_value(conf->keepalive_timeout,
-                              prev->keepalive_timeout, 70000);
+                              prev->keepalive_timeout, 75000);
+    ngx_conf_merge_sec_value(conf->keepalive_header,
+                              prev->keepalive_header, 0);
     ngx_conf_merge_msec_value(conf->lingering_time,
                               prev->lingering_time, 30000);
     ngx_conf_merge_msec_value(conf->lingering_timeout,
@@ -1705,6 +1709,44 @@ static char *ngx_set_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         err->overwrite = overwrite;
         err->uri = value[cf->args->nelts - 1];
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *ngx_set_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *lcf = conf;
+
+    ngx_str_t  *value;
+
+    if (lcf->keepalive_timeout != NGX_CONF_UNSET_MSEC) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    lcf->keepalive_timeout = ngx_parse_time(&value[1], 0);
+    if (lcf->keepalive_timeout == (ngx_msec_t) NGX_ERROR) {
+        return "invalid value";
+    }
+
+    if (lcf->keepalive_timeout == (ngx_msec_t) NGX_PARSE_LARGE_TIME) {
+        return "value must be less than 597 hours";
+    }
+
+    if (cf->args->nelts == 2) {
+        return NGX_CONF_OK;
+    }
+
+    lcf->keepalive_header = ngx_parse_time(&value[2], 1);
+    if (lcf->keepalive_header == NGX_ERROR) {
+        return "invalid value";
+    }
+
+    if (lcf->keepalive_header == NGX_PARSE_LARGE_TIME) {
+        return "value must be less than 68 years";
     }
 
     return NGX_CONF_OK;
