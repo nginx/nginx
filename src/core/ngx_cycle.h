@@ -26,7 +26,7 @@ struct ngx_cycle_s {
 
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
-void ngx_reopen_files(ngx_cycle_t *cycle);
+void ngx_reopen_files(ngx_cycle_t *cycle, uid_t user);
 
 
 extern volatile ngx_cycle_t  *ngx_cycle;

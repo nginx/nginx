@@ -362,7 +362,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 }
 
 
-void ngx_reopen_files(ngx_cycle_t *cycle)
+void ngx_reopen_files(ngx_cycle_t *cycle, uid_t user)
 {
     ngx_fd_t          fd;
     ngx_int_t         i;
@@ -385,6 +385,19 @@ void ngx_reopen_files(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           ngx_open_file_n " \"%s\" failed", file[i].name.data);
             continue;
+        }
+
+        if (user != (uid_t) -1) {
+            if (chown(file[i].name.data, user, -1) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "chown \"%s\" failed", file[i].name.data);
+
+                if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                                  ngx_close_file_n " \"%s\" failed",
+                                  file[i].name.data);
+                }
+            }
         }
 
 #if (WIN32)
