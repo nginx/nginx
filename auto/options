@@ -30,9 +30,10 @@ EVENT_AIO=NO
 USE_THREADS=NO
 
 HTTP_CHARSET=YES
-HTTP_REWRITE=YES
 HTTP_GZIP=YES
 HTTP_SSI=YES
+HTTP_STATUS=YES
+HTTP_REWRITE=YES
 HTTP_PROXY=YES
 
 USE_PCRE=NO
@@ -82,9 +83,10 @@ do
         --with-threads)                  USE_THREADS="pthreads"     ;;
 
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
-        --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_ssi_module)       HTTP_SSI=NO                ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
+        --without-http_status_module)    HTTP_STATUS=NO             ;;
+        --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
 
         --with-cc=*)                     CC="$value"                ;;

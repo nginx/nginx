@@ -161,6 +161,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
         }
     }
 
+    r->signature = NGX_HTTP_MODULE;
     r->http_state = NGX_HTTP_INITING_REQUEST_STATE;
 
     /* find the server configuration for the address:port */
@@ -1382,6 +1383,8 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r)
         c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
     }
 
+    r->http_state = NGX_HTTP_KEEPALIVE_STATE;
+
     if (rev->ready) {
         ngx_http_keepalive_handler(rev);
     }
@@ -1687,6 +1690,8 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
     /* ctx->url was allocated from r->pool */
     ctx = log->data;
     ctx->url = NULL;
+
+    r->request_line.len = 0;
 
     ngx_destroy_pool(r->pool);
 

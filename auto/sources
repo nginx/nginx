@@ -240,16 +240,20 @@ HTTP_CHARSET_FILTER_MODULE=ngx_http_charset_filter_module
 HTTP_CHARSET_SRCS=src/http/modules/ngx_http_charset_filter.c
 
 
-HTTP_REWRITE_MODULE=ngx_http_rewrite_module
-HTTP_REWRITE_SRCS=src/http/modules/ngx_http_rewrite_handler.c
-
-
 HTTP_GZIP_FILTER_MODULE=ngx_http_gzip_filter_module
 HTTP_GZIP_SRCS=src/http/modules/ngx_http_gzip_filter.c
 
 
 HTTP_SSI_FILTER_MODULE=ngx_http_ssi_filter_module
 HTTP_SSI_SRCS=src/http/modules/ngx_http_ssi_filter.c
+
+
+HTTP_STATUS_MODULE=ngx_http_status_module
+HTTP_STATUS_SRCS=src/http/modules/ngx_http_status_handler.c
+
+
+HTTP_REWRITE_MODULE=ngx_http_rewrite_module
+HTTP_REWRITE_SRCS=src/http/modules/ngx_http_rewrite_handler.c
 
 
 HTTP_PROXY_MODULE=ngx_http_proxy_module
