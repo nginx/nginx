@@ -40,7 +40,7 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
              */
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                          "stale posted event " PTR_FMT, ev);
+                           "stale posted event " PTR_FMT, ev);
             continue;
         }
 

@@ -256,6 +256,10 @@ void ngx_event_accept(ngx_event_t *ev)
             rev->ready = 1;
         }
 
+        if (rev->ready) {
+            rev->returned_instance = rev->instance;
+        }
+
         c->ctx = ls->ctx;
         c->servers = ls->servers;
 

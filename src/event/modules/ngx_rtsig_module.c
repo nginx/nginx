@@ -476,11 +476,12 @@ ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle)
 static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 {
     int                name[2], len, rtsig_max, rtsig_nr;
-    ngx_uint_t         i;
+    ngx_uint_t         i, n;
     ngx_connection_t  *c;
 
     /* TODO: old cylces */
 
+    n = 0;
     c = cycle->connections;
     for (current = 0; current < cycle->connection_n; current++) {
 
@@ -491,6 +492,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
         }
 
         if (c[i].read->active && c[i].read->event_handler) {
+            n++;
             c[i].read->ready = 1;
 
             if (!ngx_threaded) {
@@ -508,6 +510,7 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
         }
 
         if (c[i].write->active && c[i].write->event_handler) {
+            n++;
             c[i].write->ready = 1;
     
             if (!ngx_threaded) {
@@ -524,13 +527,13 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
             }
         }
 
-        if (i && (i % 100 == 0)) {
+        if (n && (n % 100 == 0)) {
 
             /*
              * Check the current rt queue length to prevent the new overflow.
              *
              * Learn the /proc/sys/kernel/rtsig-max value because
-             * it can be changed sisnce the last checking
+             * it can be changed sisnce the last checking.
              */
 
             name[0] = CTL_KERN;
@@ -553,10 +556,12 @@ static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
             /*
              * drain rt signal queue if the /proc/sys/kernel/rtsig-nr
-             * is bigger then "/proc/sys/kernel/rtsig-max / 4"
+             * is bigger than "/proc/sys/kernel/rtsig-max / 4"
              */
 
             if (rtsig_max / 4 < rtsig_nr) {
+                ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                               "rtsig queue state: %d/%d", rtsig_nr, rtsig_max);
                 while (ngx_rtsig_process_events(cycle) == NGX_OK) { /* void */ }
             }
         }
