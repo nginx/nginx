@@ -144,7 +144,7 @@ typedef struct {
 } ngx_http_headers_out_t;
 
 
-typedef struct {
+struct ngx_http_cleanup_s {
     union {
         struct {
             ngx_fd_t                 fd;
@@ -157,8 +157,9 @@ typedef struct {
         } cache;
     } data;
 
+    unsigned                         valid:1;
     unsigned                         cache:1;
-} ngx_http_cleanup_t;
+};
 
 
 typedef int (*ngx_http_handler_pt)(ngx_http_request_t *r);
@@ -194,8 +195,6 @@ struct ngx_http_request_s {
     ngx_str_t            args;
     ngx_str_t            exten;
     ngx_str_t            unparsed_uri;
-    ngx_str_t            path;
-    int                  path_allocated;
 
     ngx_http_request_t  *main;
 

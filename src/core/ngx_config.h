@@ -38,6 +38,9 @@
 typedef int    ngx_int_t;
 typedef u_int  ngx_uint_t;
 
+/* STUB: autoconf */
+#define PTR_FMT  "%X"
+
 #include <ngx_auto_config.h>
 
 

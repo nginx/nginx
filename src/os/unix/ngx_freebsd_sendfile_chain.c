@@ -5,16 +5,16 @@
 
 
 /*
- * sendfile() often sends 4K pages over ethernet in 3 packets: 2x1460 and 1176
- * or in 6 packets: 5x1460 and 892.  Besides although sendfile() allows
- * to pass the header and the trailer it never sends the header or the trailer
- * with the part of the file in one packet.  So we use TCP_NOPUSH (similar
- * to Linux's TCP_CORK) to postpone the sending - it not only sends the header
- * and the first part of the file in one packet but also sends 4K pages
- * in the full packets.
+ * FreeBSD's sendfile() often sends 4K pages over ethernet in 3 packets: 2x1460
+ * and 1176 or in 6 packets: 5x1460 and 892.  Besides although sendfile()
+ * allows to pass the header and the trailer it never sends the header or
+ * the trailer with the part of the file in one packet.  So we use TCP_NOPUSH
+ * (similar to Linux's TCP_CORK) to postpone the sending - it not only sends
+ * the header and the first part of the file in one packet but also sends
+ * 4K pages in the full packets.
  *
- * Until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush the pending
- * data that less than MSS so the data can be sent with 5 second delay.
+ * Until FreeBSD 4.5 the turning TCP_NOPUSH off does not flush a pending
+ * data that less than MSS so that data can be sent with 5 second delay.
  * We do not use TCP_NOPUSH on FreeBSD prior to 4.5 although it can be used
  * for non-keepalive HTTP connections.
  */

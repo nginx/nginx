@@ -7,13 +7,17 @@
 typedef struct {
     ngx_array_t             indices;
     size_t                  max_index_len;
-    ngx_http_cache_hash_t  *cache;
-} ngx_http_index_conf_t;
+    ngx_http_cache_hash_t  *index_cache;
+} ngx_http_index_loc_conf_t;
 
 
 typedef struct {
-    int          index;
-    unsigned     tested:1;
+    ngx_int_t          index;
+    char              *last;
+    ngx_str_t          path;
+    ngx_str_t          redirect;
+    ngx_http_cache_t  *cache;
+    unsigned           tested:1;
 } ngx_http_index_ctx_t;
 
 
@@ -26,8 +30,8 @@ static ngx_int_t ngx_http_index_error(ngx_http_request_t *r,
                                       ngx_http_index_ctx_t *ctx, ngx_err_t err);
 
 static int ngx_http_index_init(ngx_cycle_t *cycle);
-static void *ngx_http_index_create_conf(ngx_conf_t *cf);
-static char *ngx_http_index_merge_conf(ngx_conf_t *cf,
+static void *ngx_http_index_create_loc_conf(ngx_conf_t *cf);
+static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
                                        void *parent, void *child);
 static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
                                       void *conf);
@@ -43,10 +47,10 @@ static ngx_command_t  ngx_http_index_commands[] = {
       NULL },
 
     { ngx_string("index_cache"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1234,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE3,
       ngx_http_set_cache_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_index_conf_t, cache),
+      offsetof(ngx_http_index_loc_conf_t, index_cache),
       NULL },
 
       ngx_null_command
@@ -62,8 +66,8 @@ ngx_http_module_t  ngx_http_index_module_ctx = {
     NULL,                                  /* create server configuration */
     NULL,                                  /* merge server configuration */
 
-    ngx_http_index_create_conf,            /* create location configration */
-    ngx_http_index_merge_conf              /* merge location configration */
+    ngx_http_index_create_loc_conf,        /* create location configration */
+    ngx_http_index_merge_loc_conf          /* merge location configration */
 };
 
 
@@ -89,72 +93,77 @@ ngx_module_t  ngx_http_index_module = {
 
 int ngx_http_index_handler(ngx_http_request_t *r)
 {
-    char                      *name, *file;
-    uint32_t                   crc;
-    ngx_int_t                  rc;
-    ngx_str_t                  redirect, *index;
-    ngx_err_t                  err;
-    ngx_fd_t                   fd;
-    ngx_http_cache_t          *cache;
-    ngx_http_index_ctx_t      *ctx;
-    ngx_http_index_conf_t     *ilcf;
-    ngx_http_core_loc_conf_t  *clcf;
+    char                       *name;
+    uint32_t                    crc;
+    size_t                      len;
+    ngx_fd_t                    fd;
+    ngx_int_t                   rc;
+    ngx_str_t                  *index;
+    ngx_err_t                   err;
+    ngx_log_t                  *log;
+    ngx_http_index_ctx_t       *ctx;
+    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_index_loc_conf_t  *ilcf;
 
     if (r->uri.data[r->uri.len - 1] != '/') {
         return NGX_DECLINED;
     }
 
+    log = r->connection->log;
+
+    /*
+     * we use context because the handler supports an async file opening
+     * and thus can be called several times
+     */
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     ilcf = ngx_http_get_module_loc_conf(r, ngx_http_index_module);
-
-    if (ilcf->cache) {
-        cache = ngx_http_cache_get(ilcf->cache, &r->uri, &crc);
-
-ngx_log_debug(r->connection->log, "index cache get: %x" _ cache);
-
-        if (cache && ilcf->cache->update >= ngx_cached_time - cache->updated) {
-
-            cache->accessed = ngx_cached_time;
-
-            redirect.len = cache->data.value.len;
-            if (!(redirect.data = ngx_palloc(r->pool, redirect.len + 1))) {
-                ngx_http_cache_unlock(ilcf->cache, cache, r->connection->log);
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
-            }
-
-            ngx_memcpy(redirect.data, cache->data.value.data, redirect.len + 1);
-            ngx_http_cache_unlock(ilcf->cache, cache, r->connection->log);
-
-            return ngx_http_internal_redirect(r, &redirect, NULL);
-        }
-
-    } else {
-        cache = NULL;
-    }
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_index_module);
     if (ctx == NULL) {
         ngx_http_create_ctx(r, ctx, ngx_http_index_module,
                             sizeof(ngx_http_index_ctx_t),
                             NGX_HTTP_INTERNAL_SERVER_ERROR);
-    }
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        if (ilcf->index_cache) {
+            ctx->cache = ngx_http_cache_get(ilcf->index_cache, NULL,
+                                            &r->uri, &crc);
 
-    if (r->path.data == NULL) {
-        r->path_allocated = clcf->doc_root.len + r->uri.len
-                                                         + ilcf->max_index_len;
-        ngx_test_null(r->path.data,
-                      ngx_palloc(r->pool, r->path_allocated),
-                      NGX_HTTP_INTERNAL_SERVER_ERROR);
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+                           "http index cache get: " PTR_FMT, ctx->cache);
 
-        redirect.data = ngx_cpymem(r->path.data, clcf->doc_root.data,
-                                   clcf->doc_root.len);
-        file = ngx_cpystrn(redirect.data, r->uri.data, r->uri.len + 1);
-        r->path.len = file - r->path.data;
+            if (ctx->cache && ctx->cache->valid) {
 
-    } else{
-        redirect.data = r->path.data + r->path.len;
-        file = redirect.data + r->uri.len;
+                ctx->cache->accessed = ngx_cached_time;
+
+                ctx->redirect.len = ctx->cache->data.value.len;
+                ctx->redirect.data = ngx_palloc(r->pool, ctx->redirect.len + 1);
+                if (ctx->redirect.data == NULL) {
+                    ngx_http_cache_unlock(ilcf->index_cache, ctx->cache, log);
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+
+                ngx_memcpy(ctx->redirect.data, ctx->cache->data.value.data,
+                           ctx->redirect.len + 1);
+                ngx_http_cache_unlock(ilcf->index_cache, ctx->cache, log);
+
+                return ngx_http_internal_redirect(r, &ctx->redirect, NULL);
+            }
+
+        } else {
+            ctx->cache = NULL;
+        }
+
+        len = clcf->doc_root.len + r->uri.len + ilcf->max_index_len;
+        if (!(ctx->path.data = ngx_palloc(r->pool, len))) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        ctx->redirect.data = ngx_cpymem(ctx->path.data, clcf->doc_root.data,
+                                        clcf->doc_root.len);
+        ctx->last = ngx_cpystrn(ctx->redirect.data, r->uri.data,
+                                r->uri.len + 1);
+        ctx->path.len = ctx->last - ctx->path.data;
     }
 
     index = ilcf->indices.elts;
@@ -164,8 +173,9 @@ ngx_log_debug(r->connection->log, "index cache get: %x" _ cache);
             name = index[ctx->index].data;
 
         } else {
-            ngx_memcpy(file, index[ctx->index].data, index[ctx->index].len + 1);
-            name = r->path.data;
+            ngx_memcpy(ctx->last, index[ctx->index].data,
+                       index[ctx->index].len + 1);
+            name = ctx->path.data;
         }
 
         fd = ngx_open_file(name, NGX_FILE_RDONLY, NGX_FILE_OPEN);
@@ -177,8 +187,8 @@ ngx_log_debug(r->connection->log, "index cache get: %x" _ cache);
         if (fd == NGX_INVALID_FILE) {
             err = ngx_errno;
 
-ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
-              "DEBUG: " ngx_open_file_n " %s failed", name);
+            ngx_log_error(NGX_LOG_DEBUG, log, err,
+                          "debug: " ngx_open_file_n " %s failed", name);
 
             if (err == NGX_ENOTDIR) {
                 return ngx_http_index_error(r, ctx, err);
@@ -201,80 +211,68 @@ ngx_log_error(NGX_LOG_DEBUG, r->connection->log, err,
                 continue;
             }
 
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
+            ngx_log_error(NGX_LOG_ERR, log, err,
                           ngx_open_file_n " %s failed", name);
 
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
+
+
+        /* STUB: open file cache */
 
         r->file.name.data = name;
         r->file.fd = fd;
 
         if (index[ctx->index].data[0] == '/') {
             r->file.name.len = index[ctx->index].len;
-            redirect.len = index[ctx->index].len;
-            redirect.data = index[ctx->index].data;
+            ctx->redirect.len = index[ctx->index].len;
+            ctx->redirect.data = index[ctx->index].data;
 
         } else {
-            redirect.len = r->uri.len + index[ctx->index].len;
+            ctx->redirect.len = r->uri.len + index[ctx->index].len;
             r->file.name.len = clcf->doc_root.len + r->uri.len
                                                        + index[ctx->index].len;
         }
 
-        if (ilcf->cache) {
+        /**/
 
-            if (cache) {
-                if (redirect.len == cache->data.value.len
-                    && ngx_memcmp(cache->data.value.data, redirect.data,
-                                                            redirect.len) == 0)
+
+        if (ilcf->index_cache) {
+
+            if (ctx->cache) {
+                if (ctx->redirect.len == ctx->cache->data.value.len
+                    && ngx_memcmp(ctx->cache->data.value.data,
+                                  ctx->redirect.data, ctx->redirect.len) == 0)
                 {
-                    cache->accessed = ngx_cached_time;
-                    cache->updated = ngx_cached_time;
-                    ngx_http_cache_unlock(ilcf->cache, cache,
-                                          r->connection->log);
+                    ctx->cache->accessed = ngx_cached_time;
+                    ctx->cache->updated = ngx_cached_time;
+                    ngx_http_cache_unlock(ilcf->index_cache, ctx->cache, log);
 
-                    return ngx_http_internal_redirect(r, &redirect, NULL);
-
-                } else {
-                    if (redirect.len > cache->data.value.len) {
-                         ngx_free(cache->data.value.data);
-                         cache->data.value.data = NULL;
-                    }
+                    return ngx_http_internal_redirect(r, &ctx->redirect, NULL);
                 }
             }
 
-            if (cache == NULL) {
-                cache = ngx_http_cache_alloc(ilcf->cache, &r->uri, crc,
-                                             r->connection->log);
-            }
+            ctx->redirect.len++;
+            ctx->cache = ngx_http_cache_alloc(ilcf->index_cache, ctx->cache,
+                                              NULL, &r->uri, crc,
+                                              &ctx->redirect, log);
+            ctx->redirect.len--;
 
-ngx_log_debug(r->connection->log, "index cache alloc: %x" _ cache);
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+                           "http index cache alloc: " PTR_FMT, ctx->cache);
 
-            if (cache) {
-                cache->fd = NGX_INVALID_FILE;
-                cache->accessed = ngx_cached_time;
-                cache->last_modified = 0;
-                cache->updated = ngx_cached_time;
-
-                cache->data.value.len = redirect.len;
-                if (cache->data.value.data == NULL) {
-                    cache->data.value.data = ngx_alloc(redirect.len + 1,
-                                                       r->connection->log);
-                    if (cache->data.value.data == NULL) {
-                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-                    }
-                }
-
-                ngx_memcpy(cache->data.value.data, redirect.data,
-                           redirect.len + 1);
+            if (ctx->cache) {
+                ctx->cache->fd = NGX_INVALID_FILE;
+                ctx->cache->accessed = ngx_cached_time;
+                ctx->cache->last_modified = 0;
+                ctx->cache->updated = ngx_cached_time;
+                ctx->cache->valid = 1;
+                ctx->cache->memory = 1;
+                ngx_http_cache_unlock(ilcf->index_cache, ctx->cache, log);
             }
         }
 
-        if (cache) {
-            ngx_http_cache_unlock(ilcf->cache, cache, r->connection->log);
-        }
-
-        return ngx_http_internal_redirect(r, &redirect, NULL);
+        return ngx_http_internal_redirect(r, &ctx->redirect, NULL);
     }
 
     return NGX_DECLINED;
@@ -286,27 +284,27 @@ static ngx_int_t ngx_http_index_test_dir(ngx_http_request_t *r,
 {
     ngx_err_t  err;
 
-    r->path.data[r->path.len - 1] = '\0';
-    r->path.data[r->path.len] = '\0';
+    ctx->path.data[ctx->path.len - 1] = '\0';
+    ctx->path.data[ctx->path.len] = '\0';
 
-ngx_log_debug(r->connection->log, "IS_DIR: %s" _ r->path.data);
+ngx_log_debug(r->connection->log, "IS_DIR: %s" _ ctx->path.data);
 
-    if (ngx_file_info(r->path.data, &r->file.info) == -1) {
+    if (ngx_file_info(ctx->path.data, &r->file.info) == -1) {
 
         err = ngx_errno;
 
         if (err == NGX_ENOENT) {
-            r->path.data[r->path.len - 1] = '/';
+            ctx->path.data[ctx->path.len - 1] = '/';
             return ngx_http_index_error(r, ctx, err);
         }
 
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
-                      ngx_file_info_n " %s failed", r->path.data);
+                      ngx_file_info_n " %s failed", ctx->path.data);
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    r->path.data[r->path.len - 1] = '/';
+    ctx->path.data[ctx->path.len - 1] = '/';
 
     if (ngx_is_dir(&r->file.info)) {
         return NGX_OK;
@@ -322,13 +320,13 @@ static ngx_int_t ngx_http_index_error(ngx_http_request_t *r,
 {
     if (err == NGX_EACCES) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                      "\"%s\" is forbidden", r->path.data);
+                      "\"%s\" is forbidden", ctx->path.data);
     
         return NGX_HTTP_FORBIDDEN;
     }
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                  "\"%s\" is not found", r->path.data);
+                  "\"%s\" is not found", ctx->path.data);
     return NGX_HTTP_NOT_FOUND;
 }
 
@@ -342,27 +340,29 @@ static int ngx_http_index_init(ngx_cycle_t *cycle)
     ctx = (ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index];
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
 
-    ngx_test_null(h, ngx_push_array(
-                             &cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers),
-                  NGX_ERROR);
+    h = ngx_push_array(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
     *h = ngx_http_index_handler;
 
     return NGX_OK;
 }
 
 
-static void *ngx_http_index_create_conf(ngx_conf_t *cf)
+static void *ngx_http_index_create_loc_conf(ngx_conf_t *cf)
 {
-    ngx_http_index_conf_t  *conf;
+    ngx_http_index_loc_conf_t  *conf;
 
-    ngx_test_null(conf, ngx_palloc(cf->pool, sizeof(ngx_http_index_conf_t)),
+    ngx_test_null(conf, ngx_palloc(cf->pool, sizeof(ngx_http_index_loc_conf_t)),
                   NGX_CONF_ERROR);
 
     ngx_init_array(conf->indices, cf->pool, 3, sizeof(ngx_str_t),
                    NGX_CONF_ERROR);
     conf->max_index_len = 0;
 
-    conf->cache = NULL;
+    conf->index_cache = NULL;
 
     return conf;
 }
@@ -370,18 +370,18 @@ static void *ngx_http_index_create_conf(ngx_conf_t *cf)
 
 /* TODO: remove duplicate indices */
 
-static char *ngx_http_index_merge_conf(ngx_conf_t *cf,
-                                       void *parent, void *child)
+static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
+                                           void *parent, void *child)
 {
-    ngx_http_index_conf_t *prev = parent;
-    ngx_http_index_conf_t *conf = child;
+    ngx_http_index_loc_conf_t  *prev = parent;
+    ngx_http_index_loc_conf_t  *conf = child;
 
     int         i;
     ngx_str_t  *index, *prev_index;
 
     if (conf->max_index_len == 0) {
         if (prev->max_index_len != 0) {
-            ngx_memcpy(conf, prev, sizeof(ngx_http_index_conf_t));
+            ngx_memcpy(conf, prev, sizeof(ngx_http_index_loc_conf_t));
             return NGX_CONF_OK;
         }
 
@@ -408,8 +408,8 @@ static char *ngx_http_index_merge_conf(ngx_conf_t *cf,
         conf->max_index_len = prev->max_index_len;
     }
 
-    if (conf->cache == NULL) {
-        conf->cache = prev->cache;
+    if (conf->index_cache == NULL) {
+        conf->index_cache = prev->index_cache;
     }
 
     return NGX_CONF_OK;
@@ -421,7 +421,7 @@ static char *ngx_http_index_merge_conf(ngx_conf_t *cf,
 static char *ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd,
                                       void *conf)
 {
-    ngx_http_index_conf_t *ilcf = conf;
+    ngx_http_index_loc_conf_t *ilcf = conf;
 
     int         i;
     ngx_str_t  *index, *value;

@@ -7,22 +7,37 @@
 #include <ngx_http.h>
 
 
+/*
+ * The 7 uses before an allocation.
+ * We can use maximum 7 bits, i.e up to the 127 uses.
+ */
+#define NGX_HTTP_CACHE_LAZY_ALLOCATION_BITS  3
+
 typedef struct {
-    uint32_t       crc;
-    ngx_str_t      key;
-    time_t         accessed;
+    uint32_t         crc;
+    ngx_str_t        key;
+    time_t           accessed;
 
-    unsigned       refs:20;    /* 1048576 references */
-    unsigned       count:2;    /* lazy allocation: the 4 uses */
-    unsigned       deleted:1;
+    unsigned         refs:20;    /* 1048576 references */
 
-    ngx_fd_t       fd;
-    time_t         last_modified;
-    time_t         updated;
+    unsigned         count:NGX_HTTP_CACHE_LAZY_ALLOCATION_BITS;
+
+    unsigned         valid:1;
+    unsigned         deleted:1;
+    unsigned         memory:1;
+    unsigned         mmap:1;
+    unsigned         notify:1;
+
+    ngx_fd_t         fd;
+#if (NGX_USE_HTTP_FILE_CACHE_UNIQ)
+    ngx_file_uniq_t  uniq;       /* no needed with kqueue */
+#endif
+    time_t           last_modified;
+    time_t           updated;
 
     union {
-        off_t      size;
-        ngx_str_t  value;
+        off_t        size;
+        ngx_str_t    value;
     } data;
 } ngx_http_cache_t;
 
@@ -69,39 +84,38 @@ typedef struct {
 } ngx_http_cache_ctx_t;
 
 
-typedef struct {
-    ngx_http_cache_hash_t    *open_files;
-} ngx_http_cache_conf_t;
-
-
 
 #define NGX_HTTP_CACHE_STALE     1
 #define NGX_HTTP_CACHE_AGED      2
 #define NGX_HTTP_CACHE_THE_SAME  3
 
 
+ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *cache,
+                                     ngx_http_cleanup_t *cleanup,
+                                     ngx_str_t *key, uint32_t *crc);
+
+ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *hash,
+                                       ngx_http_cache_t *cache,
+                                       ngx_http_cleanup_t *cleanup,
+                                       ngx_str_t *key, uint32_t crc,
+                                       ngx_str_t *value, ngx_log_t *log);
+void ngx_http_cache_free(ngx_http_cache_t *cache,
+                         ngx_str_t *key, ngx_str_t *value, ngx_log_t *log);
+void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
+                           ngx_http_cache_t *cache, ngx_log_t *log);
+
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx);
 int ngx_http_cache_open_file(ngx_http_cache_ctx_t *ctx, ngx_file_uniq_t uniq);
 int ngx_http_cache_update_file(ngx_http_request_t *r,ngx_http_cache_ctx_t *ctx,
                                ngx_str_t *temp_file);
 
-ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *cache,
-                                     ngx_str_t *key, uint32_t *crc);
-ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *cache,
-                                       ngx_str_t *key, uint32_t crc,
-                                       ngx_log_t *log);
-void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
-                           ngx_http_cache_t *cache, ngx_log_t *log);
+int ngx_http_send_cached(ngx_http_request_t *r);
 
 
 int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
                                              ngx_dir_t *dir);
 
 char *ngx_http_set_cache_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-
-
-extern ngx_module_t  ngx_http_cache_module;
-
 
 
 #endif /* _NGX_HTTP_CACHE_H_INCLUDED_ */

@@ -13,13 +13,6 @@
 #endif
 
 
-static int ngx_crc(char *data, size_t len);
-
-static void *ngx_http_cache_create_conf(ngx_conf_t *cf);
-static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
-                                          void *parent, void *child);
-
-
 static ngx_http_module_t  ngx_http_cache_module_ctx = {
     NULL,                                  /* pre conf */
 
@@ -29,8 +22,8 @@ static ngx_http_module_t  ngx_http_cache_module_ctx = {
     NULL,                                  /* create server configuration */
     NULL,                                  /* merge server configuration */
 
-    ngx_http_cache_create_conf,            /* create location configuration */
-    ngx_http_core_merge_loc_conf           /* merge location configuration */
+    NULL,                                  /* create location configuration */
+    NULL                                   /* merge location configuration */
 };
 
 
@@ -43,6 +36,248 @@ ngx_module_t  ngx_http_cache_module = {
     NULL                                   /* init child */
 };
 
+
+ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *hash,
+                                     ngx_http_cleanup_t *cleanup,
+                                     ngx_str_t *key, uint32_t *crc)
+{
+    ngx_uint_t         i;
+    ngx_http_cache_t  *c;
+
+    *crc = ngx_crc(key->data, key->len);
+
+    c = hash->elts + *crc % hash->hash * hash->nelts;
+
+    ngx_mutex_lock(&hash->mutex);
+
+    for (i = 0; i < hash->nelts; i++) {
+        if (c[i].crc == *crc
+            && c[i].key.len == key->len
+            && ngx_rstrncmp(c[i].key.data, key->data, key->len) == 0)
+        {
+            c[i].refs++;
+            ngx_mutex_unlock(&hash->mutex);
+
+            if (c[i].notify) {
+                if (!(ngx_event_flags & NGX_HAVE_KQUEUE_EVENT)) {
+                    c[i].valid = 0;
+                }
+
+            } else if (ngx_cached_time - c[i].updated >= hash->update) {
+                c[i].valid = 0;
+            }
+
+            if (cleanup) {
+                cleanup->data.cache.hash = hash;
+                cleanup->data.cache.cache = &c[i];
+                cleanup->valid = 1;
+                cleanup->cache = 1;
+            }
+
+            return &c[i];
+        }
+    }
+
+    ngx_mutex_unlock(&hash->mutex);
+
+    return NULL;
+}
+
+
+ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *hash,
+                                       ngx_http_cache_t *cache,
+                                       ngx_http_cleanup_t *cleanup,
+                                       ngx_str_t *key, uint32_t crc,
+                                       ngx_str_t *value, ngx_log_t *log)
+{
+    time_t             old;
+    ngx_uint_t         i;
+    ngx_http_cache_t  *c;
+
+    old = ngx_cached_time + 1;
+
+    c = hash->elts + crc % hash->hash * hash->nelts;
+
+    ngx_mutex_lock(&hash->mutex);
+
+    if (cache == NULL) {
+
+        /* allocate a new entry */
+
+        for (i = 0; i < hash->nelts; i++) {
+            if (c[i].refs > 0) {
+                /* a busy entry */
+                continue;
+            }
+
+            if (c[i].key.len == 0) {
+                /* a free entry is found */
+                cache = &c[i];
+                break;
+            }
+
+            /* looking for the oldest cache entry */
+
+            if (old > c[i].accessed) {
+
+                old = c[i].accessed;
+                cache = &c[i];
+            }
+        }
+
+        if (cache == NULL) {
+            ngx_mutex_unlock(&hash->mutex);
+            return NULL;
+        }
+
+        ngx_http_cache_free(cache, key, value, log);
+
+        if (cache->key.data == NULL) {
+            cache->key.data = ngx_alloc(key->len, log);
+            if (cache->key.data == NULL) {
+                ngx_http_cache_free(cache, NULL, NULL, log);
+                ngx_mutex_unlock(&hash->mutex);
+                return NULL;
+            }
+        }
+
+        cache->key.len = key->len;
+        ngx_memcpy(cache->key.data, key->data, key->len);
+
+    } else if (value) {
+        ngx_http_cache_free(cache, key, value, log);
+    }
+
+    if (value) {
+        if (cache->data.value.data == NULL) {
+            cache->data.value.data = ngx_alloc(value->len, log);
+            if (cache->data.value.data == NULL) {
+                ngx_http_cache_free(cache, NULL, NULL, log);
+                ngx_mutex_unlock(&hash->mutex);
+                return NULL;
+            }
+        }
+
+        cache->data.value.len = value->len;
+        ngx_memcpy(cache->data.value.data, value->data, value->len);
+    }
+
+    cache->crc = crc;
+    cache->key.len = key->len;
+
+    cache->refs = 1;
+    cache->count = 0;
+
+    cache->valid = 1;
+    cache->deleted = 0;
+    cache->memory = 0;
+    cache->mmap = 0;
+    cache->notify = 0;
+
+    if (cleanup) {
+        cleanup->data.cache.hash = hash;
+        cleanup->data.cache.cache = cache;
+        cleanup->valid = 1;
+        cleanup->cache = 1;
+    }
+
+    ngx_mutex_unlock(&hash->mutex);
+
+    return cache;
+}
+
+
+void ngx_http_cache_free(ngx_http_cache_t *cache,
+                         ngx_str_t *key, ngx_str_t *value, ngx_log_t *log)
+{
+    if (cache->memory) {
+        if (cache->data.value.data
+            && (value == NULL || value->len > cache->data.value.len))
+        {
+            ngx_free(cache->data.value.data);
+            cache->data.value.data = NULL;
+        }
+    }
+
+    /* TODO: mmap */
+
+    cache->data.value.len = 0;
+
+    if (cache->fd != NGX_INVALID_FILE) {
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+                       "http cache close fd: %d", cache->fd);
+
+        if (ngx_close_file(cache->fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed",
+                          cache->key.data);
+        }
+
+        cache->fd = NGX_INVALID_FILE;
+    }
+
+    if (cache->key.data && (key == NULL || key->len > cache->key.len)) {
+        ngx_free(cache->key.data);
+        cache->key.data = NULL;
+    }
+
+    cache->key.len = 0;
+
+    cache->refs = 0;
+}
+
+
+void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
+                           ngx_http_cache_t *cache, ngx_log_t *log)
+{
+    ngx_mutex_lock(&hash->mutex);
+
+    cache->refs--;
+
+    if (cache->refs == 0 && cache->deleted) {
+        ngx_http_cache_free(cache, NULL, NULL, log);
+    }
+
+    ngx_mutex_unlock(&hash->mutex);
+}
+
+
+#if 0
+
+ngx_add_file_event(ngx_fd_t, ngx_event_handler_pt *handler, void *data)
+{
+    ngx_event_t  *ev;
+
+    ev = &ngx_cycle->read_events[fd];
+    ngx_memzero(ev, sizeof(ngx_event_t);
+
+    ev->data = data;
+    ev->event_handler = handler;
+
+    return ngx_add_event(ev, NGX_VNODE_EVENT, 0);
+}
+
+
+void ngx_http_cache_invalidate(ngx_event_t *ev)
+{
+    ngx_http_cache_ctx_t  *ctx;
+
+    ctx = ev->data;
+
+    ngx_http_cache_lock(&ctx->hash->mutex);
+
+    if (ctx->cache->refs == 0)
+        ngx_http_cache_free(ctx->cache, NULL, NULL, ctx->log);
+
+    } else {
+        ctx->cache->deleted = 1;
+    }
+
+    ngx_http_cache_unlock(&ctx->hash->mutex);
+}
+
+#endif
 
 
 int ngx_http_cache_get_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx)
@@ -77,125 +312,6 @@ ngx_log_debug(r->connection->log, "FILE: %s" _ ctx->file.name.data);
     /* TODO: look open files cache */
 
     return ngx_http_cache_open_file(ctx, 0);
-}
-
-
-ngx_http_cache_t *ngx_http_cache_get(ngx_http_cache_hash_t *cache,
-                                     ngx_str_t *key, uint32_t *crc)
-{
-    ngx_uint_t         i;
-    ngx_http_cache_t  *c;
-
-    *crc = ngx_crc(key->data, key->len);
-
-    c = cache->elts + *crc % cache->hash * cache->nelts;
-
-    ngx_mutex_lock(&cache->mutex);
-
-    for (i = 0; i < cache->nelts; i++) {
-        if (c[i].crc == *crc
-            && c[i].key.len == key->len
-            && ngx_rstrncmp(c[i].key.data, key->data, key->len) == 0)
-        {
-            c[i].refs++;
-            ngx_mutex_unlock(&cache->mutex);
-            return &c[i];
-        }
-    }
-
-    ngx_mutex_unlock(&cache->mutex);
-
-    return NULL;
-}
-
-
-ngx_http_cache_t *ngx_http_cache_alloc(ngx_http_cache_hash_t *cache,
-                                       ngx_str_t *key, uint32_t crc,
-                                       ngx_log_t *log)
-{
-    time_t             old;
-    ngx_uint_t         i;
-    ngx_http_cache_t  *c, *found;
-
-    old = ngx_cached_time + 1;
-    found = NULL;
-
-    c = cache->elts + crc % cache->hash * cache->nelts;
-
-    ngx_mutex_lock(&cache->mutex);
-
-    for (i = 0; i < cache->nelts; i++) {
-        if (c[i].refs > 0) {
-            /* a busy entry */
-            continue;
-        }
-
-        if (c[i].key.data == NULL) {
-            /* a free entry is found */
-            found = &c[i];
-            break;
-        }
-
-        /* looking for the oldest cache entry */
-
-        if (old > c[i].accessed) {
-
-            old = c[i].accessed;
-            found = &c[i];
-        }
-    }
-
-    if (found) {
-        if (found->key.data) {
-            if (key->len > found->key.len) {
-                ngx_free(found->key.data);
-                found->key.data = NULL;
-            }
-        }
-
-        if (found->key.data == NULL) {
-            found->key.data = ngx_alloc(key->len, log);
-            if (found->key.data == NULL) {
-                ngx_mutex_unlock(&cache->mutex);
-                return NULL;
-            }
-        }
-
-        ngx_memcpy(found->key.data, key->data, key->len);
-
-        found->crc = crc;
-        found->key.len = key->len;
-        found->refs = 1;
-        found->count = 0;
-        found->deleted = 0;
-    }
-
-    ngx_mutex_unlock(&cache->mutex);
-
-    return found;
-}
-
-
-void ngx_http_cache_unlock(ngx_http_cache_hash_t *hash,
-                           ngx_http_cache_t *cache, ngx_log_t *log)
-{
-    ngx_mutex_lock(&hash->mutex);
-
-    cache->refs--;
-
-    if (cache->refs == 0 && cache->deleted) {
-ngx_log_debug(log, "CLOSE FILE: %d" _ cache->fd);
-        if (cache->fd != NGX_INVALID_FILE) {
-            if (ngx_close_file(cache->fd) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                              ngx_close_file_n " \"%s\" failed",
-                              cache->key.data);
-            }
-        }
-        cache->key.data = NULL;
-    }
-
-    ngx_mutex_unlock(&hash->mutex);
 }
 
 
@@ -331,6 +447,57 @@ int ngx_http_cache_update_file(ngx_http_request_t *r, ngx_http_cache_ctx_t *ctx,
 }
 
 
+/* TODO: currently fd only */
+
+ngx_int_t ngx_http_send_cached(ngx_http_request_t *r)
+{
+    ngx_int_t            rc;
+    ngx_hunk_t          *h;
+    ngx_chain_t          out;
+    ngx_http_log_ctx_t  *ctx;
+
+    ctx = r->connection->log->data;
+    ctx->action = "sending response to client";
+
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = r->cache->data.size;
+    r->headers_out.last_modified_time = r->cache->last_modified;
+
+    if (ngx_http_set_content_type(r) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    /* we need to allocate all before the header would be sent */
+
+    if (!(h = ngx_pcalloc(r->pool, sizeof(ngx_hunk_t)))) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (!(h->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t)))) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    rc = ngx_http_send_header(r);
+
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return rc;
+    }
+
+    h->type = r->main ? NGX_HUNK_FILE : NGX_HUNK_FILE|NGX_HUNK_LAST;
+
+    h->file_pos = 0;
+    h->file_last = ngx_file_size(&r->file.info);
+
+    h->file->fd = r->cache->fd;
+    h->file->log = r->connection->log;
+
+    out.hunk = h;
+    out.next = NULL;
+
+    return ngx_http_output_filter(r, &out);
+}
+
+
 int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
                                              ngx_dir_t *dir)
 {
@@ -375,85 +542,13 @@ int ngx_garbage_collector_http_cache_handler(ngx_gc_t *gc, ngx_str_t *name,
 }
 
 
-/* 32-bit crc16 */
-
-static int ngx_crc(char *data, size_t len)
-{
-    uint32_t  sum;
-
-    for (sum = 0; len; len--) {
-        /*
-         * gcc 2.95.2 x86 and icc 7.1.006 compile that operator
-         *                                into the single rol opcode.
-         * msvc 6.0sp2 compiles it into four opcodes.
-         */
-        sum = sum >> 1 | sum << 31;
-
-        sum += *data++;
-    }
-
-    return sum;
-}
-
-
-static void *ngx_http_cache_create_conf(ngx_conf_t *cf)
-{
-    ngx_http_cache_conf_t  *conf;
-
-    if (!(conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_cache_conf_t)))) {
-        return NGX_CONF_ERROR;
-    }
-
-    return conf;
-}
-
-
-static char *ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
-                                          void *parent, void *child)
-{
-    ngx_http_cache_conf_t *prev = parent;
-    ngx_http_cache_conf_t *conf = child;
-
-    if (conf->open_files == NULL) {
-        conf->open_files = prev->open_files;
-    }
-
-#if 0
-    if (conf->open_files == NULL) {
-        if (prev->open_files) {
-            conf->open_files = prev->open_files;
-
-        } else {
-            conf->open_files = ngx_pcalloc(cf->pool,
-                                           sizeof(ngx_http_cache_hash_t));
-            if (conf->open_files == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            conf->open_files->hash = NGX_HTTP_CACHE_HASH;
-            conf->open_files->nelts = NGX_HTTP_CACHE_NELTS;
-
-            conf->open_files->elts = ngx_pcalloc(cf->pool,
-                                                 NGX_HTTP_CACHE_HASH
-                                                 * NGX_HTTP_CACHE_NELTS
-                                                 * sizeof(ngx_http_cache_t));
-            if (conf->open_files->elts == NULL) {
-                return NGX_CONF_ERROR;
-            }
-        }
-    }
-#endif
-
-    return NGX_CONF_OK;
-}
-
-
 char *ngx_http_set_cache_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    ngx_int_t              i, dup, invalid;
+    ngx_int_t              i, j, dup, invalid;
     ngx_str_t              *value, line;
+    ngx_http_cache_t       *c;
     ngx_http_cache_hash_t  *ch, **chp;
 
     chp = (ngx_http_cache_hash_t **) (p + cmd->offset);
@@ -564,6 +659,14 @@ char *ngx_http_set_cache_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            ch->hash * ch->nelts * sizeof(ngx_http_cache_t));
     if (ch->elts == NULL) {
         return NGX_CONF_ERROR;
+    }
+
+    for (i = 0; i < (ngx_int_t) ch->hash; i++) {
+        c = ch->elts + i * ch->nelts;
+
+        for (j = 0; j < (ngx_int_t) ch->nelts; j++) {
+            c[j].fd = NGX_INVALID_FILE;
+        }
     }
 
     return NGX_CONF_OK;

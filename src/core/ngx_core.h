@@ -28,6 +28,7 @@ typedef struct ngx_connection_s  ngx_connection_t;
 #include <ngx_types.h>
 #include <ngx_file.h>
 #include <ngx_files.h>
+#include <ngx_crc.h>
 #include <ngx_regex.h>
 #include <ngx_times.h>
 #include <ngx_inet.h>

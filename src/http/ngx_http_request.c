@@ -359,6 +359,21 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         if (r->complex_uri) {
             rc = ngx_http_parse_complex_uri(r);
 
+            if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
+                ngx_http_close_request(r, rc);
+                ngx_http_close_connection(c);
+                return;
+            }
+
+            if (rc != NGX_OK) {
+                r->request_line.len = r->request_end - r->request_start;
+                r->request_line.data = r->request_start;
+                r->request_line.data[r->request_line.len] = '\0';
+
+                ngx_http_client_error(r, rc, NGX_HTTP_BAD_REQUEST);
+                return;
+            }
+
         } else {
             ngx_cpystrn(r->uri.data, r->uri_start, r->uri.len + 1);
         }
@@ -386,16 +401,6 @@ static void ngx_http_process_request_line(ngx_event_t *rev)
         } else {
             r->request_line.data = r->request_start;
             r->request_line.data[r->request_line.len] = '\0';
-        }
-
-
-        if (rc != NGX_OK) {
-            /*
-             * we check ngx_http_parse_complex_uri() result here to log
-             * the request line
-             */
-            ngx_http_client_error(r, rc, NGX_HTTP_BAD_REQUEST);
-            return;
         }
 
 
@@ -536,7 +541,8 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
     c = rev->data;
     r = c->data;
 
-    ngx_log_debug(rev->log, "http process request header line");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "http process request header line");
 
     if (rev->timedout) {
         ngx_http_client_error(r, 0, NGX_HTTP_REQUEST_TIME_OUT);
@@ -1387,13 +1393,16 @@ int ngx_http_send_last(ngx_http_request_t *r)
 void ngx_http_close_request(ngx_http_request_t *r, int error)
 {
     ngx_int_t            i;
+    ngx_log_t           *log;
     ngx_http_log_ctx_t  *ctx;
     ngx_http_cleanup_t  *cleanup;
 
-    ngx_log_debug(r->connection->log, "close http request");
+    log = r->connection->log;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "http close request");
 
     if (r->pool == NULL) {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
                       "http request already closed");
         return;
     }
@@ -1406,29 +1415,36 @@ void ngx_http_close_request(ngx_http_request_t *r, int error)
 
     cleanup = r->cleanup.elts;
     for (i = 0; i < r->cleanup.nelts; i++) {
-        if (cleanup[i].cache) {
-            ngx_http_cache_unlock(cleanup[i].data.cache.hash,
-                                  cleanup[i].data.cache.cache,
-                                  r->connection->log);
+        if (!cleanup[i].valid) {
             continue;
         }
 
+        if (cleanup[i].cache) {
+            ngx_http_cache_unlock(cleanup[i].data.cache.hash,
+                                  cleanup[i].data.cache.cache, log);
+            continue;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "http cleanup fd: %d",
+                       cleanup[i].data.file.fd);
+
         if (ngx_close_file(cleanup[i].data.file.fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           ngx_close_file_n " \"%s\" failed",
                           cleanup[i].data.file.name);
         }
     }
 
+    /* STUB */
     if (r->file.fd != NGX_INVALID_FILE) {
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           ngx_close_file_n " \"%s\" failed", r->file.name.data);
         }
     }
 
     /* ctx->url was allocated from r->pool */
-    ctx = r->connection->log->data;
+    ctx = log->data;
     ctx->url = NULL;
 
     ngx_destroy_pool(r->pool);

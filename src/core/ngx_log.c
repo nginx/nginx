@@ -169,12 +169,12 @@ void ngx_log_error(int level, ngx_log_t *log, ngx_err_t err,
 }
 
 
-void ngx_log_debug_core(ngx_log_t *log, const char *fmt, ...)
+void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...)
 {
     va_list    args;
 
     va_start(args, fmt);
-    ngx_log_error_core(NGX_LOG_DEBUG, log, 0, fmt, args);
+    ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, args);
     va_end(args);
 }
 

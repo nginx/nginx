@@ -7,6 +7,7 @@
 #include <ngx_garbage_collector.h>
 
 typedef struct ngx_http_request_s  ngx_http_request_t;
+typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 
 #include <ngx_http_cache.h>
 #include <ngx_http_request.h>

@@ -51,6 +51,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_listening_t             *ls;
     ngx_http_module_t           *module;
     ngx_conf_t                   pcf;
+    ngx_http_handler_pt         *h;
     ngx_http_conf_ctx_t         *ctx;
     ngx_http_in_port_t          *in_port, *inport;
     ngx_http_in_addr_t          *in_addr, *inaddr;
@@ -219,17 +220,24 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_init_array(cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
                    cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
                    NGX_CONF_ERROR);
-
     cmcf->phases[NGX_HTTP_REWRITE_PHASE].type = NGX_OK;
-    cmcf->phases[NGX_HTTP_REWRITE_PHASE].post_handler =
-                                                 ngx_http_find_location_config;
 
 
-    ngx_init_array(cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].handlers,
+    ngx_init_array(cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers,
+                   cf->cycle->pool, 1, sizeof(ngx_http_handler_pt),
+                   NGX_CONF_ERROR);
+    cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].type = NGX_OK;
+
+    ngx_test_null(h, ngx_push_array(
+                           &cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers),
+                  NGX_CONF_ERROR);
+    *h = ngx_http_find_location_config;
+
+
+    ngx_init_array(cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,
                    cf->cycle->pool, 10, sizeof(ngx_http_handler_pt),
                    NGX_CONF_ERROR);
-
-    cmcf->phases[NGX_HTTP_TRANSLATE_PHASE].type = NGX_OK;
+    cmcf->phases[NGX_HTTP_CONTENT_PHASE].type = NGX_OK;
 
 
     /* create the lists of the ports, the addresses and the server names

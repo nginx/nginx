@@ -6,17 +6,17 @@
 #include <ngx_core.h>
 
 
-typedef enum {
-    NGX_LOG_STDERR = 0,
-    NGX_LOG_EMERG,
-    NGX_LOG_ALERT,
-    NGX_LOG_CRIT,
-    NGX_LOG_ERR,
-    NGX_LOG_WARN,
-    NGX_LOG_NOTICE,
-    NGX_LOG_INFO,
-    NGX_LOG_DEBUG
-} ngx_log_e;
+#define NGX_LOG_STDERR          0
+#define NGX_LOG_EMERG           1
+#define NGX_LOG_ALERT           2
+#define NGX_LOG_CRIT            3
+#define NGX_LOG_ERR             4
+#define NGX_LOG_WARN            5
+#define NGX_LOG_NOTICE          6
+#define NGX_LOG_INFO            7
+#define NGX_LOG_DEBUG           8
+
+#define NGX_LOG_DEBUG_HTTP   0x80
 
 
 /*
@@ -71,19 +71,14 @@ struct ngx_log_s {
     ngx_open_file_t     *file;
     void                *data;
     ngx_log_handler_pt   handler;
-
-#if 0
-/* STUB */
-    char     *action;
-    char     *context;
-/* */
-#endif
 };
 
 #define MAX_ERROR_STR	2048
 
 #define _               ,
 
+
+/*********************************/
 
 #if (HAVE_GCC_VARIADIC_MACROS)
 
@@ -94,7 +89,7 @@ struct ngx_log_s {
 
 #if (NGX_DEBUG)
 #define ngx_log_debug(log, args...) \
-    if (log->log_level == NGX_LOG_DEBUG) \
+    if (log->log_level & NGX_LOG_DEBUG) \
         ngx_log_error_core(NGX_LOG_DEBUG, log, 0, args)
 #else
 #define ngx_log_debug(log, args...)
@@ -110,6 +105,7 @@ struct ngx_log_s {
 void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
 
+/*********************************/
 
 #elif (HAVE_C99_VARIADIC_MACROS)
 
@@ -136,13 +132,16 @@ void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
 void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, ...);
 
+/*********************************/
 
 #else /* NO VARIADIC MACROS */
+
+#define HAVE_VARIADIC_MACROS  0
 
 #if (NGX_DEBUG)
 #define ngx_log_debug(log, text) \
     if (log->log_level == NGX_LOG_DEBUG) \
-        ngx_log_debug_core(log, text)
+        ngx_log_debug_core(log, 0, text)
 #else
 #define ngx_log_debug(log, text)
 #endif
@@ -158,12 +157,56 @@ void ngx_log_error(int level, ngx_log_t *log, ngx_err_t err,
                    const char *fmt, ...);
 void ngx_log_error_core(int level, ngx_log_t *log, ngx_err_t err,
                         const char *fmt, va_list args);
-void ngx_log_debug_core(ngx_log_t *log, const char *fmt, ...);
+void ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...);
 void ngx_assert_core(ngx_log_t *log, const char *fmt, ...);
 
 
 #endif /* VARIADIC MACROS */
 
+
+/*********************************/
+
+#if (HAVE_VARIADIC_MACROS)
+
+#if (NGX_DEBUG)
+#define ngx_log_debug0(level, log, err, fmt) \
+    if (log->log_level & level) \
+        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt)
+#else
+#define ngx_log_debug0(level, log, err, fmt)
+#endif
+
+#if (NGX_DEBUG)
+#define ngx_log_debug1(level, log, err, fmt, arg1) \
+    if (log->log_level & level) \
+        ngx_log_error_core(NGX_LOG_DEBUG, log, err, fmt, arg1)
+#else
+#define ngx_log_debug1(level, log, err, fmt, arg1)
+#endif
+
+/*********************************/
+
+#else /* NO VARIADIC MACROS */
+
+#if (NGX_DEBUG)
+#define ngx_log_debug0(level, log, err, fmt) \
+    if (log->log_level & level) \
+        ngx_log_debug_core(log, err, fmt)
+#else
+#define ngx_log_debug0(level, log, err, fmt)
+#endif
+
+#if (NGX_DEBUG)
+#define ngx_log_debug1(level, log, err, fmt, arg1) \
+    if (log->log_level & level) \
+        ngx_log_debug_core(log, err, fmt, arg1)
+#else
+#define ngx_log_debug1(level, log, err, fmt, arg1)
+#endif
+#endif
+
+
+/*********************************/
 
 #define ngx_log_alloc_log(pool, log)  ngx_palloc(pool, log, sizeof(ngx_log_t))
 #define ngx_log_copy_log(new, old)    ngx_memcpy(new, old, sizeof(ngx_log_t))

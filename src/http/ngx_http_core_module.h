@@ -17,15 +17,19 @@ typedef struct {
 } ngx_http_listen_t;
 
 
+typedef enum {
+    NGX_HTTP_REWRITE_PHASE = 0,
+    NGX_HTTP_FIND_CONFIG_PHASE,
+    NGX_HTTP_CONTENT_PHASE,
+    NGX_HTTP_LAST_PHASE
+} ngx_http_phases;
+
+
 typedef struct {
     ngx_array_t          handlers;
     int                  type;                /* NGX_OK, NGX_DECLINED */
-    ngx_http_handler_pt  post_handler;
 } ngx_http_phase_t;
 
-#define NGX_HTTP_REWRITE_PHASE    0
-#define NGX_HTTP_TRANSLATE_PHASE  1
-#define NGX_HTTP_LAST_PHASE       2
 
 typedef struct {
     ngx_array_t       servers;         /* array of ngx_http_core_srv_conf_t */
@@ -128,34 +132,15 @@ typedef struct {
     int           msie_padding;            /* msie_padding */
     ngx_array_t  *error_pages;             /* error_page */
 
+    ngx_http_cache_hash_t  *open_files;
+
     ngx_regex_t  *regex;
 
     unsigned      exact_match:1;
-
     unsigned      auto_redirect:1;
 
     ngx_log_t    *err_log;
 } ngx_http_core_loc_conf_t;
-
-
-
-
-#if 0
-typedef struct {
-    int dummy;
-} ngx_http_core_conf_t;
-#endif
-
-
-#if 0
-#define ngx_http_set_loc_handler(conf_ctx, ngx_http_handler)                  \
-    {                                                                         \
-        ngx_http_conf_ctx_t       *cx = conf_ctx;                             \
-        ngx_http_core_loc_conf_t  *lcf;                                       \
-        lcf = cx->loc_conf[ngx_http_core_module_ctx.index];                   \
-        lcf->handler = ngx_http_handler;                                      \
-    }
-#endif
 
 
 extern ngx_http_module_t  ngx_http_core_module_ctx;
@@ -167,6 +152,8 @@ extern int ngx_http_max_module;
 
 int ngx_http_find_location_config(ngx_http_request_t *r);
 int ngx_http_core_translate_handler(ngx_http_request_t *r);
+
+ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
 
 int ngx_http_internal_redirect(ngx_http_request_t *r,
                                ngx_str_t *uri, ngx_str_t *args);

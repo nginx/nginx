@@ -134,7 +134,7 @@ int main(int argc, char *const *argv)
     /* life cycle */
 
     for ( ;; ) {
-        /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG;
+        /* STUB */ cycle->log->log_level = NGX_LOG_DEBUG|NGX_LOG_DEBUG_HTTP;
 
 #if 0
 

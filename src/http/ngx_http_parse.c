@@ -642,6 +642,7 @@ int ngx_http_parse_complex_uri(ngx_http_request_t *r)
     state = sw_usual;
     p = r->uri_start;
     u = r->uri.data;
+    r->uri_ext = NULL;
 
     ch = *p++;
 
@@ -654,6 +655,7 @@ ngx_log_debug(r->connection->log, "S: %d UN: '%x:%c', URI: '%c'" _
         case sw_usual:
             switch(ch) {
             case '/':
+                r->uri_ext = NULL;
                 state = sw_slash;
                 *u++ = ch;
                 break;
@@ -661,6 +663,8 @@ ngx_log_debug(r->connection->log, "S: %d UN: '%x:%c', URI: '%c'" _
                 quoted_state = state;
                 state = sw_quoted;
                 break;
+            case '.':
+                r->uri_ext = u + 1;
             default:
                 *u++ = ch;
                 break;
@@ -810,6 +814,18 @@ ngx_log_debug(r->connection->log, "S: %d UN: '%x:%c', URI: '%c'" _
 
     r->uri.len = u - r->uri.data;
     r->uri.data[r->uri.len] = '\0';
+
+    if (r->uri_ext) {
+        r->exten.len = u - r->uri_ext;
+
+        if (!(r->exten.data = ngx_palloc(r->pool, r->exten.len + 1))) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        ngx_cpystrn(r->exten.data, r->uri_ext, r->exten.len + 1);
+    }
+
+    r->uri_ext = NULL;
 
     return NGX_OK;
 }
