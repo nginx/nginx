@@ -514,7 +514,10 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             && ngx_event_timer_rbtree == &ngx_event_timer_sentinel)
         {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
-            ngx_destroy_pool(cycle->pool);
+            /*
+             * we do not destroy cycle->pool here because a signal handler
+             * that uses cycle->log can be called at this point
+             */
             exit(0);
         }
 
@@ -524,7 +527,10 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");
-            ngx_destroy_pool(cycle->pool);
+            /*
+             * we do not destroy cycle->pool here because a signal handler
+             * that uses cycle->log can be called at this point
+             */
             exit(0);
         }
 

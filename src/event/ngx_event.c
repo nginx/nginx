@@ -223,7 +223,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     if (ngx_accept_mutex_ptr && ccf->worker_processes > 1 && ecf->accept_mutex)
     {
         ngx_accept_mutex = ngx_accept_mutex_ptr;
-        ngx_accept_mutex_held = 1;
+        ngx_accept_mutex_held = 0;
         ngx_accept_mutex_delay = ecf->accept_mutex_delay;
     }
 
@@ -371,15 +371,13 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 
         rev->event_handler = &ngx_event_accept;
 
+        if (ngx_accept_mutex) {
+            continue;
+        }
+
         if (ngx_event_flags & NGX_USE_SIGIO_EVENT) {
-
-            if (ngx_accept_mutex) {
-                ngx_accept_mutex_held = 0;
-
-            } else {
-                if (ngx_add_conn(c) == NGX_ERROR) {
-                    return NGX_ERROR;
-                }
+            if (ngx_add_conn(c) == NGX_ERROR) {
+                return NGX_ERROR;
             }
 
         } else {

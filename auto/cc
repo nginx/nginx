@@ -4,7 +4,8 @@ CFLAGS="$CFLAGS $CC_OPT"
 case $CC in
 
     *gcc*)
-         # gcc 2.7.2.3, 2.8.1, 2.95.4, 3.3.2, 3.3.3, 3.4
+         # gcc 2.7.2.3, 2.8.1, 2.95.4,
+         #     3.2.3, 3.3.2, 3.3.3, 3.3.4, 3.4
 
          # optimization
          #CFLAGS="$CFLAGS -O2 -fomit-frame-pointer"
@@ -89,7 +90,7 @@ case $CC in
 
 
     *icc)
-         # Intel C++ compiler 7.1
+         # Intel C++ compiler 7.1, 8.0
 
          # optimization
          CFLAGS="$CFLAGS -O"
@@ -241,7 +242,7 @@ case $CC in
 
 
     wcl386)
-         # Open Watcom C 1.0
+         # Open Watcom C 1.0, 1.2
 
          # optimization
 
