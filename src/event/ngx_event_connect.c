@@ -38,8 +38,6 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     pc->cached = 0;
     pc->connection = NULL;
 
-    peer = &pc->peers->peers[0];
-
     if (pc->peers->number > 1) {
 
         /* there are several peers */
@@ -84,6 +82,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
             }
         }
     }
+
+    peer = &pc->peers->peers[pc->cur_peer];
 
     /* ngx_unlock_mutex(pc->peers->mutex); */
 
@@ -182,6 +182,8 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
     addr.sin_addr.s_addr = peer->addr;
     addr.sin_port = peer->port;
 
+ngx_log_debug(pc->log, "CONNECT: %s" _ peer->addr_port_text.data);
+
     rc = connect(s, (struct sockaddr *) &addr, sizeof(struct sockaddr_in));
 
     if (rc == -1) {
@@ -232,6 +234,12 @@ int ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
 void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc)
 {
+    pc->cur_peer++;
+
+    if (pc->cur_peer >= pc->peers->number) {
+        pc->cur_peer = 0;
+    }
+
     pc->tries--;
 
     return;

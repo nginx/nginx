@@ -629,7 +629,7 @@ static void ngx_http_process_request_headers(ngx_event_t *rev)
                 return;
             }
 
-            if (r->header_timeout_set) {
+            if (rev->timer_set) {
                 ngx_del_timer(rev);
             }
 

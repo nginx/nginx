@@ -201,7 +201,7 @@ static int ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
     {
         c = ev->data;
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                      "previous event were not passed in kernel", c->fd);
+                      "previous event on #%d were not passed in kernel", c->fd);
 
         return NGX_ERROR;
     }

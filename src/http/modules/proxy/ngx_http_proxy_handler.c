@@ -457,6 +457,7 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
                 return;
             }
 
+            ngx_event_connect_peer_failed(&p->upstream);
             ngx_http_proxy_close_connection(c);
         }
 

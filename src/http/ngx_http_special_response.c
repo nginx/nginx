@@ -157,6 +157,12 @@ int ngx_http_special_response_handler(ngx_http_request_t *r, int error)
     ngx_chain_t               *out, **ll, *cl;
     ngx_http_core_loc_conf_t  *clcf;
 
+    rc = ngx_http_discard_body(r);
+
+    if (rc != NGX_OK) {
+        return rc;
+    }
+
     r->headers_out.status = error;
 
     if (error < NGX_HTTP_BAD_REQUEST) {
