@@ -6,10 +6,16 @@
 #include <ngx_core.h>
 
 
-/* INVALID_FILE_ATTRIBUTES specified but not defined at least in MSVC6SP2 */
+/* INVALID_FILE_ATTRIBUTES is specified but not defined at least in MSVC6SP2 */
 #ifndef INVALID_FILE_ATTRIBUTES
-#define INVALID_FILE_ATTRIBUTES     0xFFFFFFFF
+#define INVALID_FILE_ATTRIBUTES     0xffffffff
 #endif
+
+/* INVALID_SET_FILE_POINTER is not defined at least in MSVC6SP2 */
+#ifndef INVALID_SET_FILE_POINTER
+#define INVALID_SET_FILE_POINTER    0xffffffff
+#endif
+
 
 #define NGX_INVALID_FILE            INVALID_HANDLE_VALUE
 #define NGX_FILE_ERROR              0

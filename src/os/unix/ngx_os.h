@@ -1,5 +1,5 @@
-#ifndef _NGX_OS_INIT_H_INCLUDED_
-#define _NGX_OS_INIT_H_INCLUDED_
+#ifndef _NGX_OS_H_INCLUDED_
+#define _NGX_OS_H_INCLUDED_
 
 
 #include <ngx_config.h>
@@ -33,10 +33,12 @@ typedef struct {
 
 
 int ngx_os_init(ngx_log_t *log);
-
-#if !(WIN32)
 int ngx_daemon(ngx_log_t *log);
-#endif
+int ngx_posix_init(ngx_log_t *log);
+
+ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size);
+ssize_t ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *entry);
+ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in);
 
 
 extern ngx_os_io_t  ngx_os_io;
@@ -48,4 +50,9 @@ extern int          restart;
 extern int          rotate;
 
 
-#endif /* _NGX_OS_INIT_H_INCLUDED_ */
+#ifdef __FreeBSD__
+#include <ngx_freebsd.h>
+#endif
+
+
+#endif /* _NGX_OS_H_INCLUDED_ */

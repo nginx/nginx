@@ -3,12 +3,6 @@
 #include <ngx_core.h>
 
 
-/* STUB */
-ssize_t ngx_unix_recv(ngx_connection_t *c, char *buf, size_t size);
-ngx_chain_t *ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in);
-int ngx_posix_init(ngx_log_t *log);
-
-
 char ngx_linux_kern_ostype[50];
 char ngx_linux_kern_osrelease[20];
 

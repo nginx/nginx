@@ -4,9 +4,6 @@
 #include <ngx_event.h>
 #include <ngx_http.h>
 #include <nginx.h>
-#if __FreeBSD__
-#include <ngx_freebsd_init.h>
-#endif
 
 
 static void ngx_http_phase_event_handler(ngx_event_t *rev);

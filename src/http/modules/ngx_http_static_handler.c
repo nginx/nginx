@@ -87,30 +87,52 @@ ngx_log_debug(r->connection->log, "HTTP filename: '%s'" _ r->file.name.data);
 
 #if (WIN9X)
 
-    /*
-     * There is no way to open a file or a directory in Win9X with
-     * one syscall: Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag.
-     * So we need to check its type before the opening
-     */
+    if (ngx_win32_version < NGX_WIN_NT) {
 
-    r->file.info.dwFileAttributes = GetFileAttributes(r->file.name.data);
-    if (r->file.info.dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
-        err = ngx_errno;
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                      ngx_file_type_n " \"%s\" failed", r->file.name.data);
+        /*
+         * There is no way to open a file or a directory in Win9X with
+         * one syscall: Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag.
+         * So we need to check its type before the opening.
+         */
 
-        if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
-            return NGX_HTTP_NOT_FOUND;
+        r->file.info.dwFileAttributes = GetFileAttributes(r->file.name.data);
+        if (r->file.info.dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
+            err = ngx_errno;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
+                          ngx_file_type_n " \"%s\" failed", r->file.name.data);
 
-        } else if (err == NGX_EACCES) {
-            return NGX_HTTP_FORBIDDEN;
+            if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
+                return NGX_HTTP_NOT_FOUND;
 
-        } else {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            } else if (err == NGX_EACCES) {
+                return NGX_HTTP_FORBIDDEN;
+
+            } else {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+        }
+
+        if (ngx_is_dir(r->file.info)) {
+ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
+
+            if (!(r->headers_out.location =
+                   ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
+            {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            *last++ = '/';
+            *last = '\0';
+            r->headers_out.location->key.len = 8;
+            r->headers_out.location->key.data = "Location" ;
+            r->headers_out.location->value.len = last - location;
+            r->headers_out.location->value.data = location;
+
+            return NGX_HTTP_MOVED_PERMANENTLY;
         }
     }
 
-#else
+#endif
 
     if (r->file.fd == NGX_INVALID_FILE) {
         r->file.fd = ngx_open_file(r->file.name.data,
@@ -163,7 +185,6 @@ ngx_log_debug(r->connection->log, "FILE: %d" _ r->file.fd);
     if (ngx_is_dir(r->file.info)) {
 ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
-#if !(WIN9X)
         if (ngx_close_file(r->file.fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
                           ngx_close_file_n " \"%s\" failed", r->file.name.data);
@@ -171,7 +192,6 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
 
         r->file.fd = NGX_INVALID_FILE;
         r->file.info_valid = 0;
-#endif
 
         if (!(r->headers_out.location =
                    ngx_http_add_header(&r->headers_out, ngx_http_headers_out)))
@@ -202,7 +222,6 @@ ngx_log_debug(r->connection->log, "HTTP DIR: '%s'" _ r->file.name.data);
         return NGX_HTTP_NOT_FOUND;
     }
 
-#endif
 #endif
 
     r->content_handler = ngx_http_static_handler;

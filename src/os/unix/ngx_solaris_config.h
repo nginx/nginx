@@ -22,6 +22,7 @@
 #include <sys/filio.h>          /* FIONBIO */
 #include <sys/stropts.h>        /* INFTIM */
 #include <sys/socket.h>
+#include <sys/systeminfo.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -32,8 +33,9 @@ typedef uint32_t  u_int32_t;
 #define OFF_FMT    "%lld"
 #define SIZE_FMT   "%d"
 #define SIZEX_FMT  "%x"
-#define PID_FMT    "%ld"
 #define TIME_FMT   "%lu"
+#define PID_FMT    "%ld"
+#define RLIM_FMT   "%lu"
 
 
 #ifndef HAVE_SELECT

@@ -1,5 +1,6 @@
 
-#include <ngx_freebsd_init.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
 
 
 /* FreeBSD 3.4 at least */

@@ -24,23 +24,35 @@
 #include <osreldate.h>
 
 
+/* TODO: autoconf */
+#if __FreeBSD_version < 300007
+typedef u_int64_t  uint64_t;
+typedef u_int32_t  uintptr_t;
+#endif
+
+
+#if __FreeBSD_version < 330002  /* exactly */
+typedef uint32_t   socklen_t;
+#endif
+
+
 #if (i386)
 
 #define OFF_FMT    "%lld"
 #define SIZE_FMT   "%d"
 #define SIZEX_FMT  "%x"
-#define TIME_FMT   "%lu"
 
 #else  /* amd64, alpha, sparc64, ia64 */
 
 #define OFF_FMT    "%ld"
 #define SIZE_FMT   "%ld"
 #define SIZEX_FMT  "%lx"
-#define TIME_FMT   "%lu"
 
 #endif
 
+#define TIME_FMT   "%lu"
 #define PID_FMT    "%d"
+#define RLIM_FMT   "%lld"
 
 
 #ifndef HAVE_SELECT

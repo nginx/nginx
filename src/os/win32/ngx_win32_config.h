@@ -4,10 +4,7 @@
 
 #define WIN32       1
 
-/* STUB */
 #define NGX_WIN_NT  200000
-extern int  ngx_win32_version;
-/**/
 
 
 
