@@ -72,6 +72,10 @@ ngx_event_module_t  ngx_kqueue_module_ctx = {
         NULL,                              /* delete an connection */
         ngx_kqueue_process_events,         /* process the events */
         ngx_kqueue_init,                   /* init the events */
+#if 0
+        ngx_kqueue_commit,                 /* commit the events */
+        ngx_kqueue_rollback,               /* rollback the events */
+#endif
         ngx_kqueue_done                    /* done the events */
     }
 
@@ -82,7 +86,12 @@ ngx_module_t  ngx_kqueue_module = {
     &ngx_kqueue_module_ctx,                /* module context */
     ngx_kqueue_commands,                   /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
-    NULL                                   /* init module */
+    NULL,                                  /* init module */
+    NULL,                                  /* commit module */
+    NULL,                                  /* rollback module */
+#if 0
+    NULL                                   /* init child */
+#endif
 };
 
 
@@ -170,9 +179,6 @@ static void ngx_kqueue_commit(ngx_cycle_t *cycle, ngx_log_t *log)
     nevents = kcf->events;
 
     ngx_event_timer_commit(cycle, log);
-
-    /* TODO: re-add active events with new udata
-             if ecf->connections was increased */
 
     ngx_event_actions = ngx_kqueue_module_ctx.actions;
     ngx_io = ngx_os_io;

@@ -53,7 +53,9 @@ ngx_module_t *ngx_modules[] = {
     &ngx_events_module,
     &ngx_event_core_module,
 
+#if 0
     &ngx_select_module,
+#endif
 #if (HAVE_POLL)
     &ngx_poll_module,
 #endif

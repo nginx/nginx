@@ -108,12 +108,38 @@ ngx_module_t  ngx_event_core_module = {
     &ngx_event_core_module_ctx,            /* module context */
     ngx_event_core_commands,               /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
-    NULL                                   /* init module */
+    ngx_event_init_module,                 /* init module */
+    ngx_event_commit,                      /* commit module */
+    ngx_event_rollback,                    /* rollback module */
+    ngx_event_init_child                   /* init child */
 };
 
 
 
-int ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
+static int ngx_event_init_module(ngx_cycle_t *cycle, ngx_log_t *log)
+{
+    if (cycle->one_process) {
+        return ngx_event_init(cycle, log);
+    }
+
+    return NGX_OK;
+}
+
+
+static int ngx_event_init_child(ngx_cycle_t *cycle)
+{
+    if (!cycle->one_process) {
+        if (ngx_event_init(cycle, cycle->log) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+        ngx_event_commit(cycle, cycle->log);
+    }
+
+    return NGX_OK;
+}
+
+
+static int ngx_event_init(ngx_cycle_t *cycle, ngx_log_t *log)
 {
     int                  m, i, fd;
     ngx_event_t         *rev, *wev;
@@ -125,7 +151,7 @@ int ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
     ngx_iocp_conf_t     *iocpcf;
 #endif
 
-    ecf = ngx_event_get_conf(ngx_event_core_module);
+    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
 ngx_log_debug(log, "CONN: %d" _ ecf->connections);
 ngx_log_debug(log, "TYPE: %d" _ ecf->use);
@@ -142,6 +168,9 @@ ngx_log_debug(log, "TYPE: %d" _ ecf->use);
             }
             break;
         }
+    }
+
+    if (ecf->connections) {
     }
 
     ngx_test_null(ngx_connections,
@@ -232,6 +261,16 @@ ngx_log_debug(log, "TYPE: %d" _ ecf->use);
     }
 
     return NGX_OK;
+}
+
+
+static void ngx_event_commit(ngx_cycle_t *cycle, ngx_log_t *log)
+{
+}
+
+
+static void ngx_event_rollback(ngx_cycle_t *cycle, ngx_log_t *log)
+{
 }
 
 
