@@ -2,4 +2,5 @@
 all:
 	cl -nologo -c -MT -O2 -Ob1 -Oi -Gs -D MD5_ASM -D L_ENDIAN	\
 		md5_dgst.c md5_one.c
+
 	link -lib -out:md5.lib md5_dgst.obj md5_one.obj asm/m-win32.obj

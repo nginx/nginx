@@ -158,7 +158,7 @@ do
     fi
 
     if [ $MAKE_SL = YES ]; then
-        echo $ngx_n " $obj," $ngx_c                                >> $MAKEFILE
+        echo $ngx_n " $obj" $ngx_c                                >> $MAKEFILE
     else
         echo "	$obj \\"                                          >> $MAKEFILE
     fi
