@@ -1,0 +1,62 @@
+
+echo $ngx_n "checking for $ngx_type printf() format ..." $ngx_c
+echo >> $NGX_ERR
+echo "checking for $ngx_type printf() format" >> $NGX_ERR
+
+ngx_fmt=no
+comma=
+fmtX=
+
+for fmt in $ngx_formats
+do
+
+    cat << END > $NGX_AUTOTEST.c
+
+int main() {
+    printf("$fmt", ($ngx_type) $ngx_max_size);
+    return 0;
+}
+
+END
+
+    eval "$CC_WARN $CC_TEST_FLAGS -o $NGX_AUTOTEST $NGX_AUTOTEST.c \
+          >> $NGX_ERR 2>&1"
+
+    max_size=`echo $ngx_max_size | sed -e "s/L*\$//"`
+
+    if [ -x $NGX_AUTOTEST ]; then
+        if [ "`$NGX_AUTOTEST`" = $max_size ]; then
+            ngx_fmt=$fmt
+        fi
+    fi
+
+    rm $NGX_AUTOTEST*
+
+    if [ $ngx_fmt != no ]; then
+        break
+    fi
+
+    fmtX=`echo $fmt | sed -e "s/d/X/"`
+
+    echo $ngx_n "$comma \"${fmtX}\" is not appropriate" $ngx_c
+    comma=","
+done
+
+
+if [ $ngx_fmt = no ]; then
+    echo "$0: error: printf() $ngx_type format not found"
+    exit 1
+fi
+
+fmtX="%0`expr 2 \* ${ngx_ptr_bytes}`"
+ngx_fmt=`echo $ngx_fmt | sed -e "s/d/X/" -e "s/^%/$fmtX/"`
+
+echo "$comma \"${ngx_fmt}\" used"
+
+cat << END >> $NGX_AUTO_CONFIG_H
+
+#ifndef $ngx_fmt_name
+#define $ngx_fmt_name  "$ngx_fmt"
+#endif
+
+END

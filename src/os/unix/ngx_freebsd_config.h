@@ -29,6 +29,7 @@
 #include <grp.h>
 #include <netdb.h>
 #include <dirent.h>
+#include <libutil.h>            /* setproctitle() brefore 4.1 */
 #include <osreldate.h>
 
 #include <ngx_auto_config.h>
@@ -71,6 +72,12 @@
 #include <sys/event.h>
 #endif
 
+
+#if (__FreeBSD_version < 430000 || __FreeBSD_version < 500012)
+
+pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);
+
+#endif
 
 #ifndef IOV_MAX
 #define IOV_MAX   1024

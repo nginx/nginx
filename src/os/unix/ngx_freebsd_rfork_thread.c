@@ -15,10 +15,10 @@
  * The condition variable implementation uses the SysV semaphore set of two
  * semaphores. The first is used by the CV mutex, and the second is used
  * by CV itself.
+ *
+ * This threads implementation currently works on i486 and amd64
+ * platforms only.
  */
-
-
-extern int  __isthreaded;
 
 
 static inline int ngx_gettid();
@@ -36,7 +36,7 @@ static ngx_uint_t   max_threads;
 static ngx_tid_t   *tids;  /* the threads tids array */
 
 
-/* the thread-safe errno */
+/* the thread-safe libc errno */
 
 static int   errno0;   /* the main thread's errno */
 static int  *errnos;   /* the threads errno's array */
@@ -48,6 +48,41 @@ int *__error()
     tid = ngx_gettid();
 
     return tid ? &errnos[tid - 1] : &errno0;
+}
+
+
+/*
+ * __isthreaded enables spinlock() in some libc functions, i.e. in malloc()
+ * and some other places.  Nevertheless we protect our malloc()/free() calls
+ * by own mutex that is more efficient than the spinlock.
+ *
+ * We define own _spinlock() because a weak referenced _spinlock() stub in
+ * src/lib/libc/gen/_spinlock_stub.c does nothing.
+ */
+
+extern int  __isthreaded;
+
+void _spinlock(ngx_atomic_t *lock)
+{
+    ngx_int_t  tries;
+
+    tries = 0;
+    for ( ;; ) {
+
+        if (*lock) {
+            if (ngx_freebsd_hw_ncpu > 1 && tries++ < 1000) {
+                continue;
+            }
+
+            sched_yield();
+            tries = 0;
+
+        } else {
+            if (ngx_atomic_cmp_set(lock, 0, 1)) {
+                return;
+            }
+        }
+    }
 }
 
 
@@ -70,7 +105,8 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
 
     if (stack == MAP_FAILED) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "mmap(%08X:%d, MAP_STACK) thread stack failed",
+                      "mmap(" PTR_FMT ":" SIZE_T_FMT
+                      ", MAP_STACK) thread stack failed",
                       last_stack, usable_stack_size);
         return NGX_ERROR;
     }
@@ -82,7 +118,7 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
     stack_top = stack + usable_stack_size;
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, log, 0,
-                   "thread stack: %08X-%08X", stack, stack_top);
+                   "thread stack: " PTR_FMT "-" PTR_FMT, stack, stack_top);
 
 #if 1
     id = rfork_thread(RFPROC|RFTHREAD|RFMEM, stack_top, func, arg);
@@ -113,12 +149,12 @@ int ngx_create_thread(ngx_tid_t *tid, int (*func)(void *arg), void *arg,
 
 ngx_int_t ngx_init_threads(int n, size_t size, ngx_log_t *log)
 {
-    int    len;
-    char  *red_zone, *zone;
+    size_t   len;
+    char    *red_zone, *zone;
 
     max_threads = n;
 
-    len = 4;
+    len = sizeof(usrstack);
     if (sysctlbyname("kern.usrstack", &usrstack, &len, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                       "sysctlbyname(kern.usrstack) failed");
@@ -129,12 +165,14 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_log_t *log)
     red_zone = usrstack - (size + rz_size);
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, log, 0,
-                   "usrstack: %08X, red zone: %08X", usrstack, red_zone);
+                   "usrstack: " PTR_FMT " red zone: " PTR_FMT,
+                   usrstack, red_zone);
 
     zone = mmap(red_zone, rz_size, PROT_NONE, MAP_ANON, -1, 0);
     if (zone == MAP_FAILED) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "mmap(%08X:%d, PROT_NONE, MAP_ANON) red zone failed",
+                      "mmap(" PTR_FMT ":" SIZE_T_FMT
+                      ", PROT_NONE, MAP_ANON) red zone failed",
                       red_zone, rz_size);
         return NGX_ERROR;
     }
@@ -177,7 +215,15 @@ static inline int ngx_gettid()
         return 0;
     }
 
-    __asm__ ("mov %%esp, %0" : "=q" (sp));
+#if ( __i386__ )
+
+    __asm__ volatile ("mov %%esp, %0" : "=q" (sp));
+
+#elif ( __amd64__ )
+
+    __asm__ volatile ("mov %%rsp, %0" : "=q" (sp));
+
+#endif
 
     return (usrstack - sp) / stack_size;
 }
@@ -258,7 +304,7 @@ void ngx_mutex_done(ngx_mutex_t *m)
                       "semctl(IPC_RMID) failed");
     }
 
-    ngx_free(m);
+    ngx_free((void *) m);
 }
 
 
@@ -271,10 +317,10 @@ ngx_int_t ngx_mutex_do_lock(ngx_mutex_t *m, ngx_int_t try)
 #if (NGX_DEBUG)
     if (try) {
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, m->log, 0,
-                       "try lock mutex %08X lock:%X", m, m->lock);
+                       "try lock mutex " PTR_FMT " lock:%X", m, m->lock);
     } else {
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, m->log, 0,
-                       "lock mutex %08X lock:%X", m, m->lock);
+                       "lock mutex " PTR_FMT " lock:%X", m, m->lock);
     }
 #endif
 
@@ -305,7 +351,7 @@ ngx_int_t ngx_mutex_do_lock(ngx_mutex_t *m, ngx_int_t try)
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_CORE, m->log, 0,
-                           "mutex %08X lock:%X", m, m->lock);
+                           "mutex " PTR_FMT " lock:%X", m, m->lock);
 
             /*
              * The mutex is locked so we increase a number
@@ -316,8 +362,8 @@ ngx_int_t ngx_mutex_do_lock(ngx_mutex_t *m, ngx_int_t try)
 
             if ((lock & ~NGX_MUTEX_LOCK_BUSY) > nthreads) {
                 ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
-                              "%d threads wait for mutex %0X, "
-                              "while only %d threads are available",
+                              "%d threads wait for mutex " PTR_FMT
+                              ", while only %d threads are available",
                               lock & ~NGX_MUTEX_LOCK_BUSY, m, nthreads);
                 return NGX_ERROR;
             }
@@ -325,7 +371,7 @@ ngx_int_t ngx_mutex_do_lock(ngx_mutex_t *m, ngx_int_t try)
             if (ngx_atomic_cmp_set(&m->lock, old, lock)) {
 
                 ngx_log_debug2(NGX_LOG_DEBUG_CORE, m->log, 0,
-                               "wait mutex %08X lock:%X", m, m->lock);
+                               "wait mutex " PTR_FMT " lock:%X", m, m->lock);
 
                 /*
                  * The number of the waiting threads has been increased
@@ -341,7 +387,7 @@ ngx_int_t ngx_mutex_do_lock(ngx_mutex_t *m, ngx_int_t try)
                 if (semop(m->semid, &op, 1) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
                                   "semop() failed while waiting "
-                                  "on mutex %08X", m);
+                                  "on mutex " PTR_FMT, m);
                     return NGX_ERROR;
                 }
 
@@ -368,7 +414,7 @@ ngx_int_t ngx_mutex_do_lock(ngx_mutex_t *m, ngx_int_t try)
         if (tries++ > 1000) {
 
             ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0,
-                           "mutex %08X is contested", m);
+                           "mutex " PTR_FMT " is contested", m);
 
             /* the mutex is probably contested so we are giving up now */
 
@@ -380,7 +426,7 @@ ngx_int_t ngx_mutex_do_lock(ngx_mutex_t *m, ngx_int_t try)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, m->log, 0,
-                   "mutex %08X is locked, lock:%X", m, m->lock);
+                   "mutex " PTR_FMT " is locked, lock:%X", m, m->lock);
 
     return NGX_OK;
 }
@@ -395,7 +441,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 
     if (!(old & NGX_MUTEX_LOCK_BUSY)) {
         ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
-                      "tring to unlock the free mutex %0X", m);
+                      "tring to unlock the free mutex " PTR_FMT, m);
         return NGX_ERROR;
     }
 
@@ -413,7 +459,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 
     if (m->semid == -1) {
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0,
-                       "mutex %08X is unlocked", m);
+                       "mutex " PTR_FMT " is unlocked", m);
 
         return NGX_OK;
     }
@@ -448,8 +494,8 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
 
             if (semop(m->semid, &op, 1) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
-                              "semop() failed while waking up on mutex %08X",
-                              m);
+                              "semop() failed while waking up on mutex "
+                              PTR_FMT, m);
                 return NGX_ERROR;
             }
 
@@ -460,7 +506,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, m->log, 0,
-                   "mutex %08X is unlocked", m);
+                   "mutex " PTR_FMT " is unlocked", m);
 
     return NGX_OK;
 }

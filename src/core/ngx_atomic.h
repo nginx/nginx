@@ -6,9 +6,9 @@
 #include <ngx_core.h>
 
 
-#ifdef __i386__
+#if ( __i386__ || __amd64__ )
 
-typedef uint32_t  ngx_atomic_t;
+typedef volatile uint32_t  ngx_atomic_t;
 
 #if (NGX_SMP)
 #define NGX_SMP_LOCK  "lock"
@@ -21,13 +21,13 @@ static ngx_inline uint32_t ngx_atomic_inc(ngx_atomic_t *value)
 {
     uint32_t  old;
 
-    __asm__ __volatile ("
+    __asm__ volatile (
 
-        movl   $1, %0
-    "   NGX_SMP_LOCK
-    "   xaddl  %0, %1
+    "   movl   $1, %0;   "
+        NGX_SMP_LOCK
+    "   xaddl  %0, %1;   "
 
-    ": "=a" (old) : "m" (*value));
+    : "=a" (old) : "m" (*value));
 
     return old;
 }
@@ -37,13 +37,13 @@ static ngx_inline uint32_t ngx_atomic_dec(ngx_atomic_t *value)
 {
     uint32_t  old;
 
-    __asm__ __volatile ("
+    __asm__ volatile (
 
-        movl   $-1, %0
-    "   NGX_SMP_LOCK
-    "   xaddl  %0, %1
+    "   movl   $-1, %0;  "
+        NGX_SMP_LOCK
+    "   xaddl  %0, %1;   "
 
-    ": "=a" (old) : "m" (*value));
+    : "=a" (old) : "m" (*value));
 
     return old;
 }
@@ -55,21 +55,21 @@ static ngx_inline uint32_t ngx_atomic_cmp_set(ngx_atomic_t *lock,
 {
     uint32_t  res;
 
-    __asm__ __volatile ("
+    __asm__ volatile (
 
-    "   NGX_SMP_LOCK
-    "   cmpxchgl  %3, %1
-        setzb     %%al
-        movzbl    %%al, %0
+        NGX_SMP_LOCK
+    "   cmpxchgl  %3, %1;   "
+    "   setzb     %%al;     "
+    "   movzbl    %%al, %0; "
 
-    ": "=a" (res) : "m" (*lock), "a" (old), "q" (set));
+    : "=a" (res) : "m" (*lock), "a" (old), "q" (set));
 
     return res;
 }
 
 #else
 
-typedef uint32_t  ngx_atomic_t;
+typedef volatile uint32_t  ngx_atomic_t;
 
 /* STUB */
 #define ngx_atomic_inc(x)   x++;

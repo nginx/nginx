@@ -59,7 +59,7 @@ echo "nginx: \\"                              >> $MAKEFILE
 
 for src in $CORE_SRCS $HTTP_SRCS
 do
-    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
+    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
     echo "	$OBJS/$obj \\"                >> $MAKEFILE
 done
 
@@ -74,7 +74,7 @@ echo "	\$(CC) ${BINOUT}nginx \\"             >> $MAKEFILE
 
 for src in $CORE_SRCS $HTTP_SRCS
 do
-    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
+    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
     echo "	$OBJS/$obj \\"                >> $MAKEFILE
 done
 
@@ -100,7 +100,7 @@ echo                                          >> $MAKEFILE
 
 for src in $CORE_SRCS
 do
-    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/"`
+    obj=`echo $src | sed -e "s/\.c\$/.$OBJEXT/" -e "s/\.S\$/.$OBJEXT/"`
 
     echo "$OBJS/$obj: \\"                     >> $MAKEFILE
     echo "	$src $deps"                   >> $MAKEFILE

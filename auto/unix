@@ -4,16 +4,18 @@ ngx_fmt_collect=yes
 
 # C types
 
-ngx_type="int"; . auto/types/sizeof;
+ngx_type="int"; . auto/types/sizeof
 ngx_formats="%d"; . auto/fmt/fmt
 
-ngx_type="long"; . auto/types/sizeof;
+ngx_type="long"; . auto/types/sizeof
 ngx_formats="%ld"; . auto/fmt/fmt
 
-ngx_type="long long"; . auto/types/sizeof;
+ngx_type="long long"; . auto/types/sizeof
 ngx_formats="%lld %qd"; . auto/fmt/fmt
 
 ngx_type="void *"; . auto/types/sizeof; ngx_ptr_bytes=$ngx_bytes
+ngx_fmt_name=PTR_FMT;
+eval ngx_formats=\${ngx_${ngx_bytes}_fmt}; . auto/fmt/ptrfmt
 
 
 # POSIX types

@@ -120,6 +120,7 @@ FREEBSD_DEPS=src/os/unix/ngx_freebsd_config.h
 FREEBSD_SRCS=src/os/unix/ngx_freebsd_init.c
 FREEBSD_SENDFILE_SRCS=src/os/unix/ngx_freebsd_sendfile_chain.c
 FREEBSD_RFORK_SRCS="src/os/unix/ngx_freebsd_rfork_thread.c"
+FREEBSD_RFORK_THREAD_SRCS="src/os/unix/rfork_thread.S"
 
 LINUX_DEPS=src/os/unix/ngx_linux_config.h
 LINUX_SRCS=src/os/unix/ngx_linux_init.c

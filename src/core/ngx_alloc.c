@@ -9,10 +9,11 @@ void *ngx_alloc(size_t size, ngx_log_t *log)
 
     if (!(p = malloc(size))) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                      "malloc() %d bytes failed", size);
+                      "malloc() " SIZE_T_FMT " bytes failed", size);
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0, "malloc: %08x:%d", p, size);
+    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0,
+                   "malloc: " PTR_FMT ":" SIZE_T_FMT, p, size);
 
     return p;
 }
@@ -57,7 +58,7 @@ void ngx_destroy_pool(ngx_pool_t *pool)
     for (l = pool->large; l; l = l->next) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
-                       "free: %08x", l->alloc);
+                       "free: " PTR_FMT, l->alloc);
 
         if (l->alloc) {
             free(l->alloc);
@@ -72,7 +73,8 @@ void ngx_destroy_pool(ngx_pool_t *pool)
      */
 
     for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
-        ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0, "free: %08x", p);
+        ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
+                       "free: " PTR_FMT, p);
 
         if (n == NULL) {
             break;
@@ -179,7 +181,7 @@ void ngx_pfree(ngx_pool_t *pool, void *p)
     for (l = pool->large; l; l = l->next) {
         if (p == l->alloc) {
             ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
-                           "free: %08x", l->alloc);
+                           "free: " PTR_FMT, l->alloc);
             free(l->alloc);
             l->alloc = NULL;
         }

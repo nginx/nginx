@@ -649,10 +649,18 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
 #if (NGX_THREADS)
 
-    ngx_init_threads(5, 128 * 1024 * 1024, cycle->log);
+    if (ngx_init_threads(5, 128 * 1024 * 1024, cycle->log) == NGX_ERROR) {
+        /* fatal */
+        exit(1);
+    }
 
     for (i = 0; i < 1; i++) {
-        ngx_create_thread(&tid, ngx_worker_thread_cycle, cycle, cycle->log);
+        if (ngx_create_thread(&tid, ngx_worker_thread_cycle,
+                              cycle, cycle->log) != 0)
+        {
+            /* fatal */
+            exit(1);
+        }
     }
 
 #endif

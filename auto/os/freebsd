@@ -11,9 +11,21 @@ version=`grep "#define __FreeBSD_version" /usr/include/osreldate.h \
          | sed -e 's/^.* \(.*\)$/\1/'`
 
 
+# setproctitle() in libutil
+
+if [ \( $version -ge 500000 -a $version -lt 500012 \) \
+     -o $version -lt 410002 ]
+then
+    echo " + setproctitle() in libutil"
+
+    CORE_LIBS="$CORE_LIBS -lutil"
+fi
+
 # sendfile
 
 if [ $version -gt 300007 ]; then
+    echo " + sendfile() found"
+
     have=HAVE_SENDFILE . auto/have
     CORE_SRCS="$CORE_SRCS $FREEBSD_SENDFILE_SRCS"
 fi
@@ -24,6 +36,8 @@ fi
 if [ \( $version -lt 500000 -a $version -ge 410000 \) \
      -o $version -ge 500011 ]
 then
+    echo " + kqueue found"
+
     have=HAVE_KQUEUE . auto/have
     have=HAVE_CLEAR_EVENT . auto/have
     CORE_SRCS="$CORE_SRCS $KQUEUE_SRCS"
@@ -37,6 +51,8 @@ fi
 if [ \( $version -lt 500000 -a $version -ge 430000 \) \
      -o $version -ge 500018 ]
 then
+    echo " + kqueue's NOTE_LAWAT found"
+
     have=HAVE_LOWAT_EVENT . auto/have
 fi
 

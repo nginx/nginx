@@ -46,10 +46,6 @@ typedef u_int  ngx_uint_t;
 typedef int    ngx_flag_t;
 
 
-/* STUB: autoconf */
-#define PTR_FMT  "%08X"
-
-
 #ifndef NGX_SERVER_ROOT
 #define NGX_SERVER_ROOT   "./"
 #if 0

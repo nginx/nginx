@@ -28,7 +28,7 @@ typedef pid_t  ngx_tid_t;
 
 #define NGX_MUTEX_LOCK_BUSY  0x80000000
 
-typedef struct {
+typedef volatile struct {
     ngx_atomic_t  lock;
     ngx_log_t    *log;
     int           semid;
