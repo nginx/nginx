@@ -4,10 +4,8 @@
 
 #define _GNU_SOURCE             /* pread(), pwrite(), gethostname() */
 
-#if 0
 #define _FILE_OFFSET_BITS  64
 #define _LARGEFILE_SOURCE
-#endif
 
 
 #include <unistd.h>
@@ -28,21 +26,18 @@
 #include <sys/sysctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+
+#if (HAVE_SENDFILE64)
 #include <sys/sendfile.h>
+#else
+extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
+#endif
+
 #include <netinet/in.h>
 #include <netinet/tcp.h>        /* TCP_CORK */
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <netdb.h>
-
-
-
-#if 0
-#define SIZE_FMT   "%d"
-#define SIZEX_FMT  "%x"
-#define PID_FMT    "%d"
-#define RLIM_FMT   "%lu"
-#endif
 
 
 

@@ -9,9 +9,10 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
     int             fd;
     char           *prev;
     off_t           fprev;
-    size_t          sent;
+    size_t          sent, size;
     ssize_t         n;
     ngx_int_t       eintr;
+    ngx_err_t       err;
     sendfilevec_t  *sfv;
     ngx_array_t     vec;
     ngx_event_t    *wev;
@@ -26,9 +27,13 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
     do {
         fd = SFV_FD_SELF;
         prev = NULL;
+        fprev = 0;
         sfv = NULL;
         eintr = 0;
         sent = 0;
+
+        ngx_init_array(vec, c->pool, 10, sizeof(sendfilevec_t),
+                       NGX_CHAIN_ERROR);
 
         /* create the sendfilevec and coalesce the neighbouring hunks */
 
@@ -47,7 +52,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
                     ngx_test_null(sfv, ngx_push_array(&vec), NGX_CHAIN_ERROR);
                     sfv->sfv_fd = SFV_FD_SELF;
                     sfv->sfv_flag = 0;
-                    sfv->sfv_off = cl->hunk->pos;
+                    sfv->sfv_off = (off_t) (uintptr_t) cl->hunk->pos;
                     sfv->sfv_len = cl->hunk->last - cl->hunk->pos;
                 }
 
@@ -72,7 +77,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
             }
         }
 
-        n = sendfile(c->fd, vec->elts, vec->nelts, &sent);
+        n = sendfilev(c->fd, vec.elts, vec.nelts, &sent);
 
         if (n == -1) {
             err = ngx_errno;
@@ -93,7 +98,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in)
         }
 
 #if (NGX_DEBUG_WRITE_CHAIN)
-        ngx_log_debug(c->log, "sendfilev: %d " SIZE_T_FMT ", n _ sent);
+        ngx_log_debug(c->log, "sendfilev: %d " SIZE_T_FMT _ n _ sent);
 #endif
 
         c->sent += sent;

@@ -22,6 +22,7 @@ fi
 
 
 NGX_FUNC_INC="#include <sys/sendfile.h>"
+NGX_FUNC_LIBS="-lsendfile"
 NGX_FUNC_TEST="int fd = 1; sendfilevec_t vec[1];
                size_t sent = 1; ssize_t n;
                n = sendfilev(fd, vec, 1, &sent)"

@@ -62,4 +62,9 @@ extern int          rotate;
 #endif
 
 
+#ifdef SOLARIS
+#include <ngx_solaris.h>
+#endif
+
+
 #endif /* _NGX_OS_H_INCLUDED_ */

@@ -12,8 +12,13 @@ ngx_os_io_t ngx_os_io = {
     ngx_unix_recv,
     NULL,
     NULL,
+#if (HAVE_SENDFILE)
+    ngx_solaris_sendfilev_chain,
+    NGX_IO_SENDFILE
+#else
     ngx_writev_chain,
     0
+#endif
 };
 
 

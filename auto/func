@@ -9,7 +9,7 @@ echo "$NGX_UNISTD_H" > autotest.c
 echo "$NGX_FUNC_INC" >> autotest.c
 echo "int main() { $NGX_FUNC_TEST; return 0; }" >> autotest.c
 
-eval "$CC $CC_TEST_FLAGS -o autotest autotest.c > $NGX_ERR 2>&1"
+eval "$CC $CC_TEST_FLAGS -o autotest autotest.c $NGX_FUNC_LIBS > $NGX_ERR 2>&1"
 
 if [ -x autotest ]; then
     echo " + $NGX_FUNC found"
