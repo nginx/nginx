@@ -19,6 +19,7 @@
 #define NGX_FILE_RDWR            O_RDWR
 #define NGX_FILE_CREATE_OR_OPEN  O_CREAT
 #define NGX_FILE_OPEN            0
+#define NGX_FILE_TRUNCATE        O_TRUNC
 #define NGX_FILE_APPEND          O_APPEND
 
 

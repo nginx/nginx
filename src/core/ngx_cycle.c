@@ -469,7 +469,7 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
     file.log = cycle->log;
 
     file.fd = ngx_open_file(file.name.data, NGX_FILE_RDWR,
-                            NGX_FILE_CREATE_OR_OPEN);
+                            NGX_FILE_CREATE_OR_OPEN|NGX_FILE_TRUNCATE);
 
     if (file.fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
