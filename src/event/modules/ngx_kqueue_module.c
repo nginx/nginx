@@ -79,6 +79,8 @@ int ngx_kqueue_init(int max_connections, ngx_log_t *log)
 #endif
                      |NGX_HAVE_KQUEUE_EVENT;
 
+    ngx_write_chain_proc = ngx_freebsd_write_chain;
+
 #endif
 
 #endif

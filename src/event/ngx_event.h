@@ -116,6 +116,9 @@ typedef enum {
 #if (HAVE_KQUEUE)
     NGX_KQUEUE_EVENT_N,
 #endif
+#if (HAVE_AIO)
+    NGX_AIO_EVENT_N,
+#endif
 #if (HAVE_IOCP)
     NGX_IOCP_EVENT_N,
 #endif

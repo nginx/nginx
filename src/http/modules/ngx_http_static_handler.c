@@ -141,7 +141,7 @@ int ngx_http_static_handler(ngx_http_request_t *r)
     if (r->header_only)
         return rc;
 
-#if 0
+#if 1
 
     h->type = NGX_HUNK_FILE|NGX_HUNK_LAST;
     h->pos.file = 0;

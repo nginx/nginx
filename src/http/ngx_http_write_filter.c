@@ -4,6 +4,7 @@
 #include <ngx_core.h>
 #include <ngx_hunk.h>
 #include <ngx_conf_file.h>
+#include <ngx_connection.h>
 
 #include <ngx_event_write.h>
 
@@ -81,7 +82,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         le = &ce->next;
         size += ce->hunk->last.file - ce->hunk->pos.file;
 
-#if (NGX_DEBUG_WRITE_FILTER0)
+#if (NGX_DEBUG_WRITE_FILTER)
         ngx_log_debug(r->connection->log, "write filter: old chunk: %x "
                       QX_FMT " " QD_FMT _
                       ce->hunk->type _ ce->hunk->pos.file _
@@ -107,7 +108,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         le = &ce->next;
         size += ce->hunk->last.file - ce->hunk->pos.file;
 
-#if (NGX_DEBUG_WRITE_FILTER0)
+#if (NGX_DEBUG_WRITE_FILTER)
         ngx_log_debug(r->connection->log, "write filter: new hunk: %x "
                       QX_FMT " " QD_FMT _
                       ce->hunk->type _ ce->hunk->pos.file _
@@ -127,7 +128,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ngx_http_get_module_loc_conf(r->main ? r->main : r,
                                              ngx_http_write_filter_module);
 
-#if (NGX_DEBUG_WRITE_FILTER0)
+#if (NGX_DEBUG_WRITE_FILTER)
     ngx_log_debug(r->connection->log, "write filter: last:%d flush:%d" _
                   last _ flush);
 #endif
@@ -138,7 +139,7 @@ int ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_OK;
     }
 
-    chain = ngx_event_write(r->connection, ctx->out, flush);
+    chain = ngx_write_chain(r->connection, ctx->out, flush);
 
 #if (NGX_DEBUG_WRITE_FILTER)
     ngx_log_debug(r->connection->log, "write filter %x" _ chain);

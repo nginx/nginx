@@ -95,7 +95,8 @@ static int ngx_http_header_filter(ngx_http_request_t *r)
             ngx_log_debug(r->connection->log, "%d %d" _
                           ims _ r->headers_out.last_modified_time);
 
-            if (ims != NGX_ERROR && ims >= r->headers_out.last_modified_time) {
+            /* I think that the date equality is correcter */
+            if (ims != NGX_ERROR && ims == r->headers_out.last_modified_time) {
                 r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
                 r->headers_out.content_length = -1;
                 r->headers_out.content_type->key.len = 0;

@@ -5,6 +5,7 @@
 #include <ngx_log.h>
 #include <ngx_recv.h>
 #include <ngx_connection.h>
+#include <ngx_event.h>
 
 #if (HAVE_KQUEUE)
 #include <ngx_kqueue_module.h>

@@ -25,6 +25,10 @@
 #include <ngx_kqueue_module.h>
 #endif
 
+#if (HAVE_AIO)
+#include <ngx_aio_module.h>
+#endif
+
 #if (HAVE_IOCP)
 #include <ngx_event_acceptex.h>
 #include <ngx_iocp_module.h>
@@ -54,6 +58,9 @@ static int (*ngx_event_init[]) (int max_connections, ngx_log_t *log) = {
 #if (HAVE_KQUEUE)
     ngx_kqueue_init,
 #endif
+#if (HAVE_AIO)
+    ngx_aio_init,
+#endif
 #if (HAVE_IOCP)
     ngx_iocp_init
 #endif
@@ -81,6 +88,9 @@ void ngx_pre_thread(ngx_array_t *ls, ngx_pool_t *pool, ngx_log_t *log)
 #endif
 #if 0
     ngx_event_type = NGX_DEVPOLL_EVENT_N;
+#endif
+#if 0
+    ngx_event_type = NGX_AIO_EVENT_N;
 #endif
 #if 0
     ngx_event_type = NGX_IOCP_EVENT_N;
