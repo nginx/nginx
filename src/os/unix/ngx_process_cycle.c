@@ -95,7 +95,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
                 if (ngx_modules[i]->init_process) {
                     if (ngx_modules[i]->init_process(cycle) == NGX_ERROR) {
                         /* fatal */
-                        exit(1);
+                        exit(2);
                     }
                 }
             }
@@ -418,7 +418,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         if (ngx_modules[i]->init_process) {
             if (ngx_modules[i]->init_process(cycle) == NGX_ERROR) {
                 /* fatal */
-                exit(1);
+                exit(2);
             }
         }
     }
@@ -429,7 +429,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     if (ngx_init_threads(5, 128 * 1024 * 1024, cycle) == NGX_ERROR) {
         /* fatal */
-        exit(1);
+        exit(2);
     }
 
     for (i = 0; i < 1; i++) {
@@ -437,7 +437,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
                               cycle, cycle->log) != 0)
         {
             /* fatal */
-            exit(1);
+            exit(2);
         }
     }
 
@@ -494,7 +494,22 @@ int ngx_worker_thread_cycle(void *data)
 {
     ngx_cycle_t *cycle = data;
 
+    ngx_err_t       err;
+    sigset_t        set;
     struct timeval  tv;
+
+    sigfillset(&set);
+    sigdelset(&set, SIGALRM);
+    sigdelset(&set, ngx_signal_value(NGX_TERMINATE_SIGNAL));
+    sigdelset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+
+    err = ngx_thread_sigmask(SIG_BLOCK, &set, NULL);
+    if (err) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
+                      ngx_thread_sigmask_n " failed");
+        return 1;
+    }
+
 
     /* STUB */
 

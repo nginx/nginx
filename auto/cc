@@ -119,4 +119,9 @@ case $CC in
          CC_STRONG="$CC -W3 -WX"
     ;;
 
+
+    wcc386)
+         # Open Watcom 1.0
+    ;;
+
 esac

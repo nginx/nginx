@@ -43,7 +43,10 @@ do
 done
 echo                                          >> $MAKEFILE
 
-inc=`echo "$CORE_INCS -I $OBJS" | sed -e "s/\//\\\\\\/g"`
+inc="$CORE_INCS -I $OBJS"
+if [ $PLATFORM = win32 ]; then
+    inc=`echo $inc | sed -e "s/\//\\\\\\/g"`
+fi
 echo "CORE_INCS = $inc"                       >> $MAKEFILE
 echo                                          >> $MAKEFILE
 
@@ -57,7 +60,10 @@ do
 done
 echo                                          >> $MAKEFILE
 
-inc=`echo "$HTTP_INCS" | sed -e "s/\//\\\\\\/g"`
+inc="$HTTP_INCS"
+if [ $PLATFORM = win32 ]; then
+    inc=`echo $inc | sed -e "s/\//\\\\\\/g"`
+fi
 echo "HTTP_INCS = $inc"                       >> $MAKEFILE
 echo                                          >> $MAKEFILE
 

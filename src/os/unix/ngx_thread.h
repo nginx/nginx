@@ -36,6 +36,12 @@ typedef volatile struct {
 } ngx_mutex_t;
 
 
+#define ngx_thread_sigmask(how, set, oset)                         \
+            (sigprocmask(how, set, oset) == -1) ? ngx_errno : 0
+
+#define ngx_thread_sigmask_n  "sigprocmask()"
+
+
 extern char    *ngx_freebsd_kern_usrstack;
 extern size_t   ngx_thread_stack_size;
 
@@ -74,6 +80,9 @@ typedef pthread_t  ngx_tid_t;
 
 #define ngx_gettid()   ((ngx_int_t) pthread_getspecific(0))
 #define ngx_log_tid    ngx_thread_self()
+
+#define ngx_thread_sigmask     pthread_sigmask
+#define ngx_thread_sigmask_n  "pthread_sigmask()"
 
 #endif
 

@@ -40,10 +40,9 @@
 #define ngx_inline   __inline
 
 
-#if 1
+#ifdef _MSC_VER
 typedef unsigned __int32  uint32_t;
-#else
-/* OWC has not __int32 */
+#else /* __WATCOMC__ */
 typedef unsigned int      uint32_t;
 #endif
 
