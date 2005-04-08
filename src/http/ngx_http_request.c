@@ -344,7 +344,7 @@ void ngx_http_init_request(ngx_event_t *rev)
 
         if (c->ssl == NULL) {
             if (ngx_ssl_create_session(sscf->ssl_ctx, c, NGX_SSL_BUFFER)
-                                                                  == NGX_ERROR)
+                == NGX_ERROR)
             {
                 ngx_http_close_connection(c);
                 return;
@@ -707,12 +707,15 @@ ngx_http_process_request_line(ngx_event_t *rev)
 static void
 ngx_http_process_request_headers(ngx_event_t *rev)
 {
-    ssize_t              n;
-    ngx_int_t            rc, rv, i;
-    ngx_str_t            header;
-    ngx_table_elt_t     *h, **cookie;
-    ngx_connection_t    *c;
-    ngx_http_request_t  *r;
+    ssize_t                     n;
+    ngx_int_t                   rc, rv;
+    ngx_uint_t                  key;
+    ngx_str_t                   header;
+    ngx_table_elt_t            *h, **cookie;
+    ngx_connection_t           *c;
+    ngx_http_header_t          *hh;
+    ngx_http_request_t         *r;
+    ngx_http_core_main_conf_t  *cmcf;
 
     c = rev->data;
     r = c->data;
@@ -727,6 +730,9 @@ ngx_http_process_request_headers(ngx_event_t *rev)
         ngx_http_close_connection(c);
         return;
     }
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    hh = (ngx_http_header_t *) cmcf->headers_in_hash.buckets;
 
     rc = NGX_AGAIN;
 
@@ -791,6 +797,8 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 return;
             }
 
+            h->hash = r->header_hash;
+
             h->key.len = r->header_name_end - r->header_name_start;
             h->key.data = r->header_name_start;
             h->key.data[h->key.len] = '\0';
@@ -812,19 +820,13 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 *cookie = h;
 
             } else {
+                key = h->hash % cmcf->headers_in_hash.hash_size;
 
-                for (i = 0; ngx_http_headers_in[i].name.len != 0; i++) {
-                    if (ngx_http_headers_in[i].name.len != h->key.len) {
-                        continue;
-                    }
-
-                    if (ngx_strcasecmp(ngx_http_headers_in[i].name.data,
-                                       h->key.data) == 0)
-                    {
-                        *((ngx_table_elt_t **) ((char *) &r->headers_in
-                                         + ngx_http_headers_in[i].offset)) = h;
-                        break;
-                    }
+                if (hh[key].name.len == h->key.len
+                    && ngx_strcasecmp(hh[key].name.data, h->key.data) == 0)
+                {
+                    *((ngx_table_elt_t **)
+                              ((char *) &r->headers_in + hh[key].offset)) = h;
                 }
             }
 
@@ -1237,9 +1239,9 @@ ngx_http_find_virtual_server(ngx_http_request_t *r)
     ngx_int_t                   rc;
     ngx_uint_t                  i, n, key, found;
     ngx_http_server_name_t     *name;
-    ngx_http_core_main_conf_t  *cmcf;
-    ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_core_srv_conf_t   *cscf;
+    ngx_http_core_main_conf_t  *cmcf;
 
     if (r->virtual_names->hash) {
         cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);

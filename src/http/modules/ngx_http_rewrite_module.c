@@ -1021,6 +1021,7 @@ ngx_http_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     regex->uri = 1;
     regex->args = 1;
     regex->redirect = 0;
+    regex->break_cycle = 0;
     regex->name = value[1];
 
     last = 0;
@@ -1466,6 +1467,7 @@ ngx_http_rewrite_if_condition(ngx_conf_t *cf, ngx_http_rewrite_loc_conf_t *lcf)
         regex->uri = 0;
         regex->args = 0;
         regex->redirect = 0;
+        regex->break_cycle = 0;
         regex->name = value[last];
 
         return NGX_CONF_OK;

@@ -55,6 +55,7 @@ typedef struct {
     ngx_bufs_t                  bufs;
 
     ngx_flag_t                  redirect_errors;
+    ngx_flag_t                  pass_unparsed_uri;
     ngx_flag_t                  x_powered_by;
     ngx_flag_t                  cyclic_temp_file;
 
@@ -87,9 +88,9 @@ struct ngx_http_upstream_s {
                                                   ngx_int_t rc);
     ngx_uint_t                  method;
 
-    ngx_str_t                   schema;
-    ngx_str_t                   uri;
-    ngx_str_t                  *location;
+    ngx_str_t                   schema0;
+    ngx_str_t                   uri0;
+    ngx_str_t                  *location0;
 
     ngx_http_log_ctx_t         *log_ctx;
     ngx_log_handler_pt          log_handler;

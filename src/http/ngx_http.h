@@ -32,6 +32,7 @@ typedef struct ngx_http_variable_value_s  ngx_http_variable_value_t;
 #include <ngx_http_log_module.h>
 #include <ngx_http_core_module.h>
 #include <ngx_http_variables.h>
+#include <ngx_http_script.h>
 
 #if (NGX_HTTP_SSL)
 #include <ngx_http_ssl_module.h>

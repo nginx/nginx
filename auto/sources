@@ -13,7 +13,7 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_palloc.h \
            src/core/ngx_array.h \
            src/core/ngx_list.h \
-           src/core/ngx_table.h \
+           src/core/ngx_hash.h \
            src/core/ngx_buf.h \
            src/core/ngx_string.h \
            src/core/ngx_parse.h \
@@ -34,6 +34,7 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_palloc.c \
            src/core/ngx_array.c \
            src/core/ngx_list.c \
+           src/core/ngx_hash.c \
            src/core/ngx_buf.c \
            src/core/ngx_output_chain.c \
            src/core/ngx_string.c \
@@ -243,6 +244,7 @@ HTTP_DEPS="src/http/ngx_http.h \
            src/http/ngx_http_core_module.h \
            src/http/ngx_http_cache.h \
            src/http/ngx_http_variables.h \
+           src/http/ngx_http_script.h \
            src/http/ngx_http_upstream.h \
            src/http/ngx_http_busy_lock.h \
            src/http/ngx_http_log_module.h"
@@ -258,6 +260,7 @@ HTTP_SRCS="src/http/ngx_http.c \
            src/http/ngx_http_log_module.c \
            src/http/ngx_http_request_body.c \
            src/http/ngx_http_variables.c \
+           src/http/ngx_http_script.c \
            src/http/ngx_http_upstream.c \
            src/http/ngx_http_parse_time.c \
            src/http/modules/ngx_http_static_module.c \
@@ -320,6 +323,8 @@ HTTP_SSL_SRCS=src/http/modules/ngx_http_ssl_module.c
 
 
 HTTP_PROXY_MODULE=ngx_http_proxy_module
+#HTTP_PROXY_SRCS=src/http/modules/ngx_http_proxy_module.c
+
 HTTP_PROXY_INCS="src/http/modules/proxy"
 HTTP_PROXY_DEPS=src/http/modules/proxy/ngx_http_proxy_handler.h
 HTTP_PROXY_SRCS="src/http/modules/proxy/ngx_http_proxy_handler.c \

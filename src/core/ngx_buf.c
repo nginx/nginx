@@ -44,6 +44,27 @@ ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
 
 
 ngx_chain_t *
+ngx_alloc_chain_link(ngx_pool_t *pool)
+{
+    ngx_chain_t  *cl;
+
+    cl = pool->chain;
+
+    if (cl) {
+        pool->chain = cl->next;
+        return cl;
+    }
+
+    cl = ngx_palloc(pool, sizeof(ngx_chain_t));
+    if (cl == NULL) {
+        return NULL;
+    }
+
+    return cl;
+}
+
+
+ngx_chain_t *
 ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
 {
     u_char       *p;

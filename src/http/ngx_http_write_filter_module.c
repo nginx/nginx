@@ -231,6 +231,12 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
+    for (cl = ctx->out; cl && cl != chain; /* void */) {
+        ln = cl;
+        cl = cl->next;
+        ngx_free_chain(r->pool, ln);
+    }
+
     ctx->out = chain;
 
     if (chain || (last && c->buffered)) {

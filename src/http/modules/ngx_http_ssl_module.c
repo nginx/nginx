@@ -197,6 +197,12 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+#if 0
+    SSL_CTX_set_options(conf->ssl_ctx, SSL_OP_ALL);
+    SSL_CTX_set_options(conf->ssl_ctx, SSL_OP_NO_SSLv3);
+    SSL_CTX_set_options(conf->ssl_ctx, SSL_OP_SINGLE_DH_USE);
+#endif
+
     if (conf->ciphers.len) {
         if (SSL_CTX_set_cipher_list(conf->ssl_ctx,
                                    (const char *) conf->ciphers.data) == 0)

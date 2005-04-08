@@ -396,7 +396,7 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
 
     u->conf = &flcf->upstream;
 
-    u->location = flcf->location;
+    u->location0 = flcf->location;
 
     u->create_request = ngx_http_fastcgi_create_request;
     u->reinit_request = ngx_http_fastcgi_reinit_request;
@@ -411,10 +411,10 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
     u->log_ctx = r->connection->log->data;
     u->log_handler = ngx_http_upstream_log_error;
 
-    u->schema.len = sizeof("fastcgi://") - 1;
-    u->schema.data = (u_char *) "fastcgi://";
-    u->uri.len = sizeof("/") - 1;
-    u->uri.data = (u_char *) "/";
+    u->schema0.len = sizeof("fastcgi://") - 1;
+    u->schema0.data = (u_char *) "fastcgi://";
+    u->uri0.len = sizeof("/") - 1;
+    u->uri0.data = (u_char *) "/";
 
     r->upstream = u;
 
@@ -1244,7 +1244,8 @@ ngx_http_fastcgi_reinit_request(ngx_http_request_t *r)
 }
 
 
-static ngx_int_t ngx_http_fastcgi_process_header(ngx_http_request_t *r)
+static ngx_int_t
+ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 {
     u_char                  *start, *last;
     ngx_str_t               *status_line, line;
@@ -2127,16 +2128,16 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
 
     conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
-    conf->upstream.send_lowat = NGX_CONF_UNSET_SIZE;
-
-    conf->upstream.header_buffer_size = NGX_CONF_UNSET_SIZE;
     conf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
-    conf->upstream.busy_buffers_size = NGX_CONF_UNSET_SIZE;
 
+    conf->upstream.send_lowat = NGX_CONF_UNSET_SIZE;
+    conf->upstream.header_buffer_size = NGX_CONF_UNSET_SIZE;
+    conf->upstream.busy_buffers_size = NGX_CONF_UNSET_SIZE;
     conf->upstream.max_temp_file_size = NGX_CONF_UNSET_SIZE; 
     conf->upstream.temp_file_write_size = NGX_CONF_UNSET_SIZE;
     
     conf->upstream.redirect_errors = NGX_CONF_UNSET;
+    conf->upstream.pass_unparsed_uri = NGX_CONF_UNSET;
     conf->upstream.x_powered_by = NGX_CONF_UNSET;
 
     /* "fastcgi_cyclic_temp_file" is disabled */
@@ -2156,24 +2157,20 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout,
                               prev->upstream.connect_timeout, 60000);
+
     ngx_conf_merge_msec_value(conf->upstream.send_timeout,
                               prev->upstream.send_timeout, 60000);
-    ngx_conf_merge_size_value(conf->upstream.send_lowat,
-                              prev->upstream.send_lowat, 0);
 
     ngx_conf_merge_msec_value(conf->upstream.read_timeout,
                               prev->upstream.read_timeout, 60000);
 
-    ngx_conf_merge_msec_value(conf->upstream.redirect_errors,
-                              prev->upstream.redirect_errors, 0);
-
-    ngx_conf_merge_msec_value(conf->upstream.x_powered_by,
-                              prev->upstream.x_powered_by, 1);
-
+    ngx_conf_merge_size_value(conf->upstream.send_lowat,
+                              prev->upstream.send_lowat, 0);
 
     ngx_conf_merge_size_value(conf->upstream.header_buffer_size, 
                               prev->upstream.header_buffer_size,
                               (size_t) ngx_pagesize);
+
 
     ngx_conf_merge_bufs_value(conf->upstream.bufs, prev->upstream.bufs,
                               8, ngx_pagesize);
@@ -2267,6 +2264,23 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               ngx_garbage_collector_temp_handler, cf);
 
 
+    ngx_conf_merge_msec_value(conf->upstream.redirect_errors,
+                              prev->upstream.redirect_errors, 0);
+
+    ngx_conf_merge_msec_value(conf->upstream.pass_unparsed_uri,
+                              prev->upstream.pass_unparsed_uri, 0);
+
+    if (conf->upstream.pass_unparsed_uri && conf->location->len > 1) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "\"fastcgi_pass_unparsed_uri\" can be set for "
+                      "location \"/\" or given by regular expression.");
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_conf_merge_msec_value(conf->upstream.x_powered_by,
+                              prev->upstream.x_powered_by, 1);
+
+
     ngx_conf_merge_bitmask_value(conf->params, prev->params,
                               (NGX_CONF_BITMASK_SET
                                |NGX_HTTP_FASTCGI_REMOTE_ADDR
@@ -2288,6 +2302,11 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->vars == NULL) {
         conf->vars = prev->vars;
+    }
+
+    if (conf->peers == NULL) {
+        conf->peers = prev->peers;
+        conf->upstream = prev->upstream;
     }
 
     return NGX_CONF_OK;

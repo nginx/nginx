@@ -12,6 +12,11 @@
 #include <ngx_core.h>
 
 
+#ifndef NGX_CYCLE_POOL_SIZE
+#define NGX_CYCLE_POOL_SIZE     16384
+#endif
+
+
 #define NGX_DEBUG_POINTS_STOP   1
 #define NGX_DEBUG_POINTS_ABORT  2
 

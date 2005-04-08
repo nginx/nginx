@@ -54,7 +54,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     log = old_cycle->log;
 
-    pool = ngx_create_pool(16 * 1024, log);
+    pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, log);
     if (pool == NULL) {
         return NULL;
     }

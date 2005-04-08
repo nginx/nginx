@@ -48,6 +48,8 @@ typedef struct {
     ngx_http_phase_t           phases[NGX_HTTP_LAST_PHASE];
     ngx_array_t                index_handlers;
 
+    ngx_hash_t                 headers_in_hash;
+
     ngx_uint_t                 server_names_hash;
     ngx_uint_t                 server_names_hash_threshold;
 

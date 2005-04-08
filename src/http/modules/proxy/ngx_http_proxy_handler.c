@@ -1332,6 +1332,11 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
         conf->x_vars = prev->x_vars;
     }
 
+    if (conf->peers == NULL) {
+        conf->peers = prev->peers;
+        conf->upstream = prev->upstream;
+    }
+
     return NULL;
 }
 

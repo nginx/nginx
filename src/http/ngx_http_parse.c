@@ -11,7 +11,7 @@
 
 ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
-    u_char  ch, *p, *m;
+    u_char  c, ch, *p, *m;
     enum {
         sw_start = 0,
         sw_method,
@@ -109,7 +109,9 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         /* space* before URI */
         case sw_spaces_before_uri:
-            if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
+
+            c = (u_char) (ch | 0x20);
+            if (c >= 'a' && c <= 'f') {
                 r->schema_start = p;
                 state = sw_schema;
                 break;
@@ -128,7 +130,9 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             break;
 
         case sw_schema:
-            if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
+
+            c = (u_char) (ch | 0x20);
+            if (c >= 'a' && c <= 'f') {
                 break;
             }
 
@@ -164,8 +168,13 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             break;
 
         case sw_host:
-            if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
-                || (ch >= '0' && ch <= '9') || ch == '.' || ch == '-')
+
+            c = (u_char) (ch | 0x20);
+            if (c >= 'a' && c <= 'f') {
+                break;
+            }
+
+            if ((ch >= '0' && ch <= '9') || ch == '.' || ch == '-')
             {
                 break;
             }
@@ -204,10 +213,13 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         /* check "/.", "//", "%", and "\" (Win32) in URI */
         case sw_after_slash_in_uri:
 
-            if ((ch >= 'a' && ch <= 'z')
-                || (ch >= 'A' && ch <= 'Z')
-                || (ch >= '0' && ch <= '9'))
-            {
+            c = (u_char) (ch | 0x20);
+            if (c >= 'a' && c <= 'f') {
+                state = sw_check_uri;
+                break;
+            }
+
+            if (ch >= '0' && ch <= '9') {
                 state = sw_check_uri;
                 break;
             }
@@ -263,10 +275,12 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         /* check "/", "%" and "\" (Win32) in URI */
         case sw_check_uri:
 
-            if ((ch >= 'a' && ch <= 'z')
-                || (ch >= 'A' && ch <= 'Z')
-                || (ch >= '0' && ch <= '9'))
-            {
+            c = (u_char) (ch | 0x20);
+            if (c >= 'a' && c <= 'f') {
+                break;
+            }
+
+            if (ch >= '0' && ch <= '9') {
                 break;
             }
 
@@ -490,7 +504,8 @@ done:
 
 ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
-    u_char  c, ch, *p;
+    u_char      c, ch, *p;
+    ngx_uint_t  hash;
     enum {
         sw_start = 0,
         sw_name,
@@ -504,6 +519,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
     } state;
 
     state = r->state;
+    hash = r->header_hash;
 
     for (p = b->pos; p < b->last; p++) {
         ch = *p;
@@ -528,14 +544,17 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 
                 c = (u_char) (ch | 0x20);
                 if (c >= 'a' && c <= 'z') {
+                    hash = c;
                     break;
                 }
 
                 if (ch == '-') {
+                    hash = ch;
                     break;
                 }
 
                 if (ch >= '0' && ch <= '9') {
+                    hash = ch;
                     break;
                 }
 
@@ -550,6 +569,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_name:
             c = (u_char) (ch | 0x20);
             if (c >= 'a' && c <= 'z') {
+                hash += c;
                 break;
             }
 
@@ -560,10 +580,12 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
 
             if (ch == '-') {
+                hash += ch;
                 break;
             }
 
             if (ch >= '0' && ch <= '9') {
+                hash += ch;
                 break;
             }
 
@@ -681,6 +703,7 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 
     b->pos = p;
     r->state = state;
+    r->header_hash = hash;
 
     return NGX_AGAIN;
 
@@ -688,6 +711,7 @@ done:
 
     b->pos = p + 1;
     r->state = sw_start;
+    r->header_hash = hash;
 
     return NGX_OK;
 

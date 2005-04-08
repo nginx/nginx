@@ -73,60 +73,60 @@
 
 
 struct ngx_command_s {
-    ngx_str_t     name;
-    int           type;
-    char       *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-    int           conf;
-    int           offset;
-    void         *post;
+    ngx_str_t             name;
+    ngx_uint_t            type;
+    char               *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+    ngx_uint_t            conf;
+    ngx_uint_t            offset;
+    void                 *post;
 };
 
 #define ngx_null_command   { ngx_null_string, 0, NULL, 0, 0, NULL }
 
 
 struct ngx_open_file_s {
-    ngx_fd_t   fd;
-    ngx_str_t  name;
+    ngx_fd_t              fd;
+    ngx_str_t             name;
 #if 0
     /* e.g. append mode, error_log */
-    int        flags;
+    ngx_uint_t            flags;
     /* e.g. reopen db file */
-    int      (*handler)(void *data, ngx_open_file_t *file);
-    void      *data;
+    ngx_uint_t          (*handler)(void *data, ngx_open_file_t *file);
+    void                 *data;
 #endif
 };
 
 
 struct ngx_module_s {
-    ngx_uint_t       ctx_index;
-    ngx_uint_t       index;
-    void            *ctx;
-    ngx_command_t   *commands;
-    ngx_uint_t       type;
-    ngx_int_t      (*init_module)(ngx_cycle_t *cycle);
-    ngx_int_t      (*init_process)(ngx_cycle_t *cycle);
+    ngx_uint_t            ctx_index;
+    ngx_uint_t            index;
+    void                 *ctx;
+    ngx_command_t        *commands;
+    ngx_uint_t            type;
+    ngx_int_t           (*init_module)(ngx_cycle_t *cycle);
+    ngx_int_t           (*init_process)(ngx_cycle_t *cycle);
 #if 0
-    ngx_int_t      (*init_thread)(ngx_cycle_t *cycle);
+    ngx_int_t           (*init_thread)(ngx_cycle_t *cycle);
 #endif
 };
 
 
 typedef struct {
-    ngx_str_t       name;
-    void         *(*create_conf)(ngx_cycle_t *cycle);
-    char         *(*init_conf)(ngx_cycle_t *cycle, void *conf);
+    ngx_str_t             name;
+    void               *(*create_conf)(ngx_cycle_t *cycle);
+    char               *(*init_conf)(ngx_cycle_t *cycle, void *conf);
 } ngx_core_module_t; 
 
 
 typedef struct {
-    ngx_file_t   file;
-    ngx_buf_t   *buffer;
-    ngx_uint_t   line;
+    ngx_file_t            file;
+    ngx_buf_t            *buffer;
+    ngx_uint_t            line;
 } ngx_conf_file_t;
 
 
 typedef char *(*ngx_conf_handler_pt)(ngx_conf_t *cf,
-                                     ngx_command_t *dummy, void *conf);
+    ngx_command_t *dummy, void *conf);
 
 
 struct ngx_conf_s {
@@ -157,22 +157,22 @@ typedef struct {
 
 typedef struct {
     ngx_conf_post_handler_pt  post_handler;
-    int                       low;
-    int                       high;
+    ngx_int_t                 low;
+    ngx_int_t                 high;
 } ngx_conf_num_bounds_t;
 
 
 typedef struct {
-    ngx_str_t   name;
-    ngx_uint_t  value;
+    ngx_str_t                 name;
+    ngx_uint_t                value;
 } ngx_conf_enum_t;
 
 
 #define NGX_CONF_BITMASK_SET  1
 
 typedef struct {
-    ngx_str_t   name;
-    ngx_uint_t  mask;
+    ngx_str_t                 name;
+    ngx_uint_t                mask;
 } ngx_conf_bitmask_t;
 
 

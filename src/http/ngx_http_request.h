@@ -386,11 +386,12 @@ struct ngx_http_request_s {
     u_char                           *header_name_end;
     u_char                           *header_start;
     u_char                           *header_end;
+    ngx_uint_t                        header_hash;
 };
 
 
-extern ngx_http_header_t ngx_http_headers_in[];
-extern ngx_http_header_t ngx_http_headers_out[];
+extern ngx_http_header_t   ngx_http_headers_in[];
+extern ngx_http_header_t   ngx_http_headers_out[];
 
 
 

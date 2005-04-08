@@ -119,8 +119,10 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 /* get the free buf */
 
                 if (ctx->free) {
-                    ctx->buf = ctx->free->buf;
-                    ctx->free = ctx->free->next;
+                    cl = ctx->free;
+                    ctx->buf = cl->buf;
+                    ctx->free = cl->next;
+                    ngx_free_chain(ctx->pool, cl);
 
                 } else if (out || ctx->allocated == ctx->bufs.num) {
 

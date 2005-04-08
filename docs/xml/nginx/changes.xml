@@ -9,14 +9,37 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.28" date="08.04.2005">
+
+<change type="bugfix">
+<para lang="ru">
+при проксировании больших файлов nginx сильно нагружал процессор.
+</para>
+<para lang="en">
+nginx hogs CPU while proxing the huge files.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался gcc 4.0 на Linux.
+</para>
+<para lang="en">
+nginx could not be built by gcc 4.0 on Linux.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.27" date="28.03.2005">
 
 <change type="feature">
 <para lang="ru">
-параметр blocked в директиве invalid_referers.
+параметр blocked в директиве valid_referers.
 </para>
 <para lang="en">
-the "blocked" parameter of the "invalid_referers" directive.
+the "blocked" parameter of the "valid_referers" directive.
 </para>
 </change>
 

@@ -55,8 +55,6 @@ struct ngx_buf_s {
 };
 
 
-typedef struct ngx_chain_s       ngx_chain_t;
-
 struct ngx_chain_s {
     ngx_buf_t    *buf;
     ngx_chain_t  *next;
@@ -119,7 +117,11 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
 #define ngx_alloc_buf(pool)  ngx_palloc(pool, sizeof(ngx_buf_t))
 #define ngx_calloc_buf(pool) ngx_pcalloc(pool, sizeof(ngx_buf_t))
 
-#define ngx_alloc_chain_link(pool) ngx_palloc(pool, sizeof(ngx_chain_t))
+ngx_chain_t *ngx_alloc_chain_link(ngx_pool_t *pool);
+#define ngx_free_chain(pool, cl)                                             \
+    cl->next = pool->chain;                                                  \
+    pool->chain = cl
+
 
 
 ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in);

@@ -4,21 +4,27 @@ types {
     text/xml                       xml rss;
     text/css                       css;
     text/plain                     txt;
+    text/x-component               htc;
 
     image/gif                      gif;
     image/png                      png;
     image/jpeg                     jpeg jpg;
     image/x-icon                   ico;
+    image/x-jng                    jng;
 
     application/pdf                pdf;
     application/x-shockwave-flash  swf;
     application/x-javascript       js;
+    application/x-rar-compressed   rar;
+    application/x-xpinstall        xpi;
 
     audio/mpeg                     mp3;
     audio/x-realaudio              ra;
 
     video/mpeg                     mpeg mpg;
     video/quicktime                mov;
+    video/x-flv                    flv;
     video/x-msvideo                avi;
     video/x-ms-wmv                 wmv;
+    video/x-mng                    mng;
 }

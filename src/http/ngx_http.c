@@ -90,7 +90,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(&in_ports, sizeof(ngx_array_t));
 #endif
 
-
     /* the main http context */
 
     ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));
@@ -316,6 +315,22 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     cmcf->phases[NGX_HTTP_CONTENT_PHASE].type = NGX_OK;
 
+
+    cmcf->headers_in_hash.max_size = 100;
+    cmcf->headers_in_hash.bucket_limit = 1;
+    cmcf->headers_in_hash.bucket_size = sizeof(ngx_http_header_t);
+    cmcf->headers_in_hash.name = "http headers_in";
+
+    if (ngx_hash_init(&cmcf->headers_in_hash, cf->pool, ngx_http_headers_in)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, cf->log, 0,
+                   "http headers_in hash size: %ui, max buckets per entry: %ui",
+                    cmcf->headers_in_hash.hash_size,
+                    cmcf->headers_in_hash.min_buckets);
 
     /*
      * create the lists of ports, addresses and server names

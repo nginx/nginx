@@ -22,6 +22,7 @@ ngx_create_pool(size_t size, ngx_log_t *log)
     p->end = (u_char *) p + size;
     p->next = NULL;
     p->large = NULL;
+    p->chain = NULL;
     p->log = log;
 
     return p;

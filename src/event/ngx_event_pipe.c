@@ -84,7 +84,7 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
     ssize_t       n, size;
     ngx_int_t     rc;
     ngx_buf_t    *b;
-    ngx_chain_t  *chain, *cl;
+    ngx_chain_t  *chain, *cl, *ln;
 
     if (p->upstream_eof || p->upstream_error || p->upstream_done) {
         return NGX_OK;
@@ -293,7 +293,9 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 }
 
                 n -= size;
+                ln = cl;
                 cl = cl->next;
+                ngx_free_chain(p->pool, ln);
 
             } else {
                 cl->buf->last += n;
@@ -686,8 +688,10 @@ ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
     }
 
     if (p->free) {
-        b = p->free->buf;
-        p->free = p->free->next;
+        cl = p->free;
+        b = cl->buf;
+        p->free = cl->next;
+        ngx_free_chain(p->pool, cl);
 
     } else {
         b = ngx_alloc_buf(p->pool);
