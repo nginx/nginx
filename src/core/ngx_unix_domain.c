@@ -14,8 +14,8 @@
 #undef sun
 
 
-ngx_peers_t *ngx_unix_upstream_parse(ngx_conf_t *cf,
-                                     ngx_unix_domain_upstream_t *u)
+ngx_peers_t *
+ngx_unix_upstream_parse(ngx_conf_t *cf, ngx_unix_domain_upstream_t *u)
 {
     size_t               len;
     ngx_uint_t           i;

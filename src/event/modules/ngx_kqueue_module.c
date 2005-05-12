@@ -94,7 +94,7 @@ ngx_event_module_t  ngx_kqueue_module_ctx = {
 };
 
 ngx_module_t  ngx_kqueue_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_kqueue_module_ctx,                /* module context */
     ngx_kqueue_commands,                   /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
@@ -192,10 +192,12 @@ ngx_kqueue_init(ngx_cycle_t *cycle)
     ngx_event_actions = ngx_kqueue_module_ctx.actions;
 
     ngx_event_flags = NGX_USE_ONESHOT_EVENT
+#if 1
 #if (NGX_HAVE_CLEAR_EVENT)
                      |NGX_USE_CLEAR_EVENT
 #else
                      |NGX_USE_LEVEL_EVENT
+#endif
 #endif
 #if (NGX_HAVE_LOWAT_EVENT)
                      |NGX_USE_LOWAT_EVENT
@@ -615,6 +617,10 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle)
                 ngx_kqueue_dump_event(ev->log, &event_list[i]);
             }
 
+            if (ev->oneshot) {
+                ev->active = 0;
+            }
+
 #if (NGX_THREADS)
 
             if (ngx_threaded && !ev->accept) {
@@ -663,7 +669,7 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle)
         }
 
         if (!ngx_threaded && !ngx_accept_mutex_held) {
-            ev->event_handler(ev);
+            ev->handler(ev);
             continue;
         }
 
@@ -678,7 +684,7 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
         ngx_mutex_unlock(ngx_posted_events_mutex);
 
-        ev->event_handler(ev);
+        ev->handler(ev);
 
         if (ngx_accept_disabled > 0) {
             ngx_accept_mutex_unlock();

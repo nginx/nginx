@@ -2,14 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-cat << END >> $NGX_AUTO_HEADERS_H
-
-#ifndef NGX_WIN32
-#define NGX_WIN32  1
-#endif
-
-END
-
+have=NGX_WIN32 . auto/have_headers
 
 CORE_INCS="$WIN32_INCS"
 CORE_DEPS="$WIN32_DEPS"

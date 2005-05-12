@@ -13,7 +13,8 @@ static ngx_int_t ngx_http_chunked_filter_init(ngx_cycle_t *cycle);
 
 
 static ngx_http_module_t  ngx_http_chunked_filter_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -27,7 +28,7 @@ static ngx_http_module_t  ngx_http_chunked_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_chunked_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_chunked_filter_module_ctx,   /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -43,7 +44,7 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 static ngx_int_t
 ngx_http_chunked_header_filter(ngx_http_request_t *r)
 {
-    if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED) {
+    if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED || r->main) {
         return ngx_http_next_header_filter(r);
     }
 

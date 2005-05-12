@@ -64,7 +64,7 @@ ngx_feature="setproctitle()"
 ngx_feature_name="NGX_HAVE_SETPROCTITLE"
 ngx_feature_run=no
 ngx_feature_incs=
-ngx_feature_libs=
+ngx_feature_libs=$NGX_SETPROCTITLE_LIB
 ngx_feature_test="setproctitle(\"test\");"
 . auto/feature
 

@@ -517,7 +517,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         ngx_old_cycles.nalloc = n;
         ngx_old_cycles.pool = ngx_temp_pool;
 
-        ngx_cleaner_event.event_handler = ngx_clean_old_cycles;
+        ngx_cleaner_event.handler = ngx_clean_old_cycles;
         ngx_cleaner_event.log = cycle->log;
         ngx_cleaner_event.data = &dumb;
         dumb.fd = (ngx_socket_t) -1;

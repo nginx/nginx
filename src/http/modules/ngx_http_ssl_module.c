@@ -64,7 +64,8 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_ssl_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     ngx_http_ssl_create_main_conf,         /* create main configuration */
     ngx_http_ssl_init_main_conf,           /* init main configuration */
@@ -78,7 +79,7 @@ static ngx_http_module_t  ngx_http_ssl_module_ctx = {
 
 
 ngx_module_t  ngx_http_ssl_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_ssl_module_ctx,              /* module context */
     ngx_http_ssl_commands,                 /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -196,6 +197,13 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0, "SSL_CTX_new() failed");
         return NGX_CONF_ERROR;
     }
+
+    if (ngx_pool_cleanup_add(cf->pool, ngx_ssl_cleanup_ctx, conf->ssl_ctx)
+        == NULL)
+    {
+        return NGX_CONF_ERROR;
+    }
+
 
 #if 0
     SSL_CTX_set_options(conf->ssl_ctx, SSL_OP_ALL);

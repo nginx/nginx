@@ -12,8 +12,9 @@ ngx_epoch_msec_t  ngx_elapsed_msec;
 ngx_epoch_msec_t  ngx_old_elapsed_msec;
 ngx_epoch_msec_t  ngx_start_msec;
 
+ngx_int_t  ngx_gmtoff;
+
 static ngx_tm_t   ngx_cached_gmtime;
-static ngx_int_t  ngx_gmtoff;
 
 
 /*

@@ -207,7 +207,8 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_gzip_filter_module_ctx = {
-    ngx_http_gzip_add_log_formats,         /* pre conf */
+    ngx_http_gzip_add_log_formats,         /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -221,7 +222,7 @@ static ngx_http_module_t  ngx_http_gzip_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_gzip_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_gzip_filter_module_ctx,      /* module context */
     ngx_http_gzip_filter_commands,         /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -257,6 +258,11 @@ struct gztrailer {
 #endif
 
 
+static ngx_str_t  ngx_http_gzip_no_cache = ngx_string("no-cache");
+static ngx_str_t  ngx_http_gzip_no_store = ngx_string("no-store");
+static ngx_str_t  ngx_http_gzip_private = ngx_string("private");
+
+
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
@@ -276,8 +282,9 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
             && r->headers_out.status != NGX_HTTP_FORBIDDEN
             && r->headers_out.status != NGX_HTTP_NOT_FOUND)
         || r->header_only
+        || r->main
         || r->http_version < conf->http_version
-        || r->headers_out.content_type == NULL
+        || r->headers_out.content_type.len == 0
         || (r->headers_out.content_encoding
             && r->headers_out.content_encoding->value.len)
         || r->headers_in.accept_encoding == NULL
@@ -294,8 +301,8 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
     type = conf->types->elts;
 
     for (i = 0; i < conf->types->nelts; i++) {
-        if (r->headers_out.content_type->value.len >= type[i].name.len
-            && ngx_strncasecmp(r->headers_out.content_type->value.data, 
+        if (r->headers_out.content_type.len >= type[i].name.len
+            && ngx_strncasecmp(r->headers_out.content_type.data, 
                                type[i].name.data, type[i].name.len) == 0)
         {
             found = 1;
@@ -346,6 +353,7 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
+    r->headers_out.content_encoding->hash = 1;
     r->headers_out.content_encoding->key.len = sizeof("Content-Encoding") - 1;
     r->headers_out.content_encoding->key.data = (u_char *) "Content-Encoding";
     r->headers_out.content_encoding->value.len = sizeof("gzip") - 1;
@@ -353,10 +361,12 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
 
     ctx->length = r->headers_out.content_length_n;
     r->headers_out.content_length_n = -1;
+
     if (r->headers_out.content_length) {
-        r->headers_out.content_length->key.len = 0;
+        r->headers_out.content_length->hash = 0;
         r->headers_out.content_length = NULL;
     }
+
     r->filter_need_in_memory = 1;
 
     return ngx_http_next_header_filter(r);
@@ -404,22 +414,25 @@ ngx_http_gzip_proxied(ngx_http_request_t *r, ngx_http_gzip_conf_t *conf)
         return NGX_DECLINED;
     }
 
-    if (r->headers_out.cache_control) {
+    if (r->headers_out.cache_control.elts) {
 
         if ((conf->proxied & NGX_HTTP_GZIP_PROXIED_NO_CACHE)
-            && ngx_strstr(r->headers_out.cache_control->value.data, "no-cache"))
+            && ngx_http_parse_multi_header_lines(&r->headers_out.cache_control,
+                   &ngx_http_gzip_no_cache, NULL) >= 0)
         {
             return NGX_OK;
         }
 
         if ((conf->proxied & NGX_HTTP_GZIP_PROXIED_NO_STORE)
-            && ngx_strstr(r->headers_out.cache_control->value.data, "no-store"))
+            && ngx_http_parse_multi_header_lines(&r->headers_out.cache_control,
+                   &ngx_http_gzip_no_store, NULL) >= 0)
         {
             return NGX_OK;
         }
 
         if ((conf->proxied & NGX_HTTP_GZIP_PROXIED_PRIVATE)
-            && ngx_strstr(r->headers_out.cache_control->value.data, "private"))
+            && ngx_http_parse_multi_header_lines(&r->headers_out.cache_control,
+                   &ngx_http_gzip_private, NULL) >= 0)
         {
             return NGX_OK;
         }
@@ -484,8 +497,8 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
          * and do not wait while a whole response will be sent to a client.
          *
          * 8K is for zlib deflate_state, it takes
-         *  * 5816 bytes on x86 and sparc64 (32-bit mode)
-         *  * 5920 bytes on amd64 and sparc64
+         *  *) 5816 bytes on i386 and sparc64 (32-bit mode)
+         *  *) 5920 bytes on amd64 and sparc64
          */
 
         ctx->allocated = 8192 + (1 << (wbits + 2)) + (1 << (memlevel + 9));
@@ -696,7 +709,8 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             if (ctx->flush == Z_SYNC_FLUSH) {
 
-                ctx->out_buf->flush = 0;
+                ctx->zstream.avail_out = 0;
+                ctx->out_buf->flush = 1;
                 ctx->flush = Z_NO_FLUSH;
 
                 cl = ngx_alloc_chain_link(r->pool);

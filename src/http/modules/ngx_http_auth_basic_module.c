@@ -60,7 +60,8 @@ static ngx_command_t  ngx_http_auth_basic_commands[] = {
 
 
 ngx_http_module_t  ngx_http_auth_basic_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -74,7 +75,7 @@ ngx_http_module_t  ngx_http_auth_basic_module_ctx = {
 
 
 ngx_module_t  ngx_http_auth_basic_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_auth_basic_module_ctx,       /* module context */
     ngx_http_auth_basic_commands,          /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -327,6 +328,7 @@ ngx_http_auth_basic_set_realm(ngx_http_request_t *r, ngx_str_t *realm)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    r->headers_out.www_authenticate->hash = 1;
     r->headers_out.www_authenticate->key.len = sizeof("WWW-Authenticate") - 1;
     r->headers_out.www_authenticate->key.data = (u_char *) "WWW-Authenticate";
     r->headers_out.www_authenticate->value = *realm;

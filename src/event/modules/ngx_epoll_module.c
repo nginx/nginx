@@ -121,7 +121,7 @@ ngx_event_module_t  ngx_epoll_module_ctx = {
 };
 
 ngx_module_t  ngx_epoll_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_epoll_module_ctx,               /* module context */
     ngx_epoll_commands,                  /* module directives */
     NGX_EVENT_MODULE,                    /* module type */
@@ -573,7 +573,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle)
                 wev->ready = 1;
 
                 if (!ngx_accept_mutex_held) {
-                    wev->event_handler(wev);
+                    wev->handler(wev);
 
                 } else {
                     ngx_post_event(wev);
@@ -600,7 +600,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle)
             rev->ready = 1;
 
             if (!ngx_threaded && !ngx_accept_mutex_held) {
-                rev->event_handler(rev);
+                rev->handler(rev);
 
             } else if (!rev->accept) {
                 ngx_post_event(rev);
@@ -609,7 +609,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle)
 
                 ngx_mutex_unlock(ngx_posted_events_mutex);
 
-                rev->event_handler(rev);
+                rev->handler(rev);
 
                 if (ngx_accept_disabled > 0) {
                     ngx_accept_mutex_unlock();

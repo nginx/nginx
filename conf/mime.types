@@ -17,6 +17,7 @@ types {
     application/x-javascript       js;
     application/x-rar-compressed   rar;
     application/x-xpinstall        xpi;
+    application/x-x509-ca-cert     der pem crt;
 
     audio/mpeg                     mp3;
     audio/x-realaudio              ra;

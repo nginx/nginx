@@ -12,7 +12,7 @@
 
 static void *ngx_worker_thread_cycle(void *data);
 static long __stdcall ngx_window_procedure(HWND window, u_int message,
-                                           u_int wparam, long lparam);
+    u_int wparam, long lparam);
 
 #if 0
 ngx_pid_t     ngx_new_binary;
@@ -45,7 +45,8 @@ sig_atomic_t  ngx_change_binary;
 static HMENU  ngx_menu;
 
 
-void ngx_master_process_cycle(ngx_cycle_t *cycle)
+void
+ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
     ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "master mode is not supported");
 
@@ -53,7 +54,8 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle)
 }
 
 
-void ngx_single_process_cycle(ngx_cycle_t *cycle)
+void
+ngx_single_process_cycle(ngx_cycle_t *cycle)
 {
     int               rc;
     ngx_int_t         i;
@@ -165,7 +167,7 @@ void ngx_single_process_cycle(ngx_cycle_t *cycle)
 
 
     if (ngx_system_tray_icon(window, NIM_ADD, tray, (u_char *) " nginx")
-                                                                  == NGX_ERROR)
+        != NGX_OK)
     {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "Shell_NotifyIcon(NIM_ADD) failed");
@@ -200,7 +202,8 @@ void ngx_single_process_cycle(ngx_cycle_t *cycle)
 }
 
 
-static void *ngx_worker_thread_cycle(void *data)
+static void *
+ngx_worker_thread_cycle(void *data)
 {
     ngx_cycle_t  *cycle;
 
@@ -216,8 +219,8 @@ static void *ngx_worker_thread_cycle(void *data)
 }
 
 
-static long __stdcall ngx_window_procedure(HWND window, u_int message,
-                                           u_int wparam, long lparam)
+static long __stdcall
+ngx_window_procedure(HWND window, u_int message, u_int wparam, long lparam)
 {
     POINT  mouse;
 
@@ -251,13 +254,13 @@ static long __stdcall ngx_window_procedure(HWND window, u_int message,
     case WM_COMMAND:
         if (wparam == NGX_WM_ABOUT) {
             ngx_message_box("nginx", MB_OK, 0,
-                            NGINX_VER CRLF "(C) 2002-2004 Igor Sysoev");
+                            NGINX_VER CRLF "(C) 2002-2005 Igor Sysoev");
             return 0;
         }
 
         if (wparam == NGX_WM_EXIT) {
             if (ngx_system_tray_icon(window, NIM_DELETE, NULL, NULL)
-                                                                  == NGX_ERROR)
+                != NGX_OK)
             {
                 ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_errno,
                               "Shell_NotifyIcon(NIM_DELETE) failed");

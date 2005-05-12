@@ -9,11 +9,20 @@
 
 
 ngx_int_t
-ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names)
+ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names, ngx_uint_t nelts)
 {
     u_char      *p;
-    ngx_str_t   *n, *bucket;
-    ngx_uint_t   i, key, size, best, *test, buckets, min_buckets;
+    ngx_str_t   *name, *bucket;
+    ngx_uint_t   i, n, key, size, best, *test, buckets, min_buckets;
+
+    if (nelts == 0) {
+        for (name = (ngx_str_t *) names;
+             name->len;
+             name = (ngx_str_t *) ((char *) name + hash->bucket_size))
+        {
+            nelts++;
+        }
+    }
 
     test = ngx_alloc(hash->max_size * sizeof(ngx_uint_t), pool->log);
     if (test == NULL) {
@@ -34,14 +43,14 @@ ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names)
             test[i] = 0;
         }
 
-        for (n = (ngx_str_t *) names;
-             n->len;
-             n = (ngx_str_t *) ((char *) n + hash->bucket_size))
+        for (n = 0, name = (ngx_str_t *) names;
+             n < nelts;
+             n++, name = (ngx_str_t *) ((char *) name + hash->bucket_size))
         {
             key = 0;
 
-            for (i = 0; i < n->len; i++) {
-                key += ngx_tolower(n->data[i]);
+            for (i = 0; i < name->len; i++) {
+                key += ngx_tolower(name->data[i]);
             }
 
             key %= size;
@@ -57,7 +66,7 @@ ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names)
             }
         }
 
-        if (n->len == 0) {
+        if (n == nelts) {
             if (min_buckets > buckets) {
                 min_buckets = buckets;
                 best = size;
@@ -91,14 +100,14 @@ ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names)
             test[i] = 0;
         }
 
-        for (n = (ngx_str_t *) names;
-             n->len;
-             n = (ngx_str_t *) ((char *) n + hash->bucket_size))
+        for (n = 0, name = (ngx_str_t *) names;
+             n < nelts;
+             n++, name = (ngx_str_t *) ((char *) name + hash->bucket_size))
         {
             key = 0;
 
-            for (i = 0; i < n->len; i++) {
-                key += ngx_tolower(n->data[i]);
+            for (i = 0; i < name->len; i++) {
+                key += ngx_tolower(name->data[i]);
             }
 
             key %= best;
@@ -122,21 +131,21 @@ ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names)
         }
     }
 
-    for (n = (ngx_str_t *) names;
-         n->len;
-         n = (ngx_str_t *) ((char *) n + hash->bucket_size))
+    for (n = 0, name = (ngx_str_t *) names;
+         n < nelts;
+         n++, name = (ngx_str_t *) ((char *) name + hash->bucket_size))
     {
         key = 0;
 
-        for (i = 0; i < n->len; i++) {
-            key += ngx_tolower(n->data[i]);
+        for (i = 0; i < name->len; i++) {
+            key += ngx_tolower(name->data[i]);
         }
 
         key %= best;
 
         if (hash->bucket_limit == 1) {
             p = (u_char *) hash->buckets + key * hash->bucket_size;
-            ngx_memcpy(p, n, hash->bucket_size);
+            ngx_memcpy(p, name, hash->bucket_size);
             continue;
         }
 
@@ -147,7 +156,7 @@ ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names)
             bucket->len &= 0x7fffffff;
         }
 
-        ngx_memcpy(bucket, n, hash->bucket_size);
+        ngx_memcpy(bucket, name, hash->bucket_size);
         bucket->len |= 0x80000000;
     }
 

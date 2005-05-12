@@ -106,7 +106,9 @@ ngx_event_accept(ngx_event_t *ev)
                 return;
             }
 
-            ngx_log_error(NGX_LOG_ALERT, ev->log, err,
+            ngx_log_error((err == NGX_ECONNABORTED) ? NGX_LOG_CRIT:
+                                                      NGX_LOG_ALERT,
+                          ev->log, err,
                           "accept() on %V failed", &ls->listening->addr_text);
 
             if (err == NGX_ECONNABORTED) {

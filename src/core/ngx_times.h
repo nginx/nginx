@@ -53,6 +53,7 @@ extern ngx_epoch_msec_t  ngx_elapsed_msec;
  */
 extern ngx_epoch_msec_t  ngx_old_elapsed_msec;
 
+extern ngx_int_t         ngx_gmtoff;
 
 
 #endif /* _NGX_TIMES_H_INCLUDED_ */

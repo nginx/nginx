@@ -6,6 +6,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_setproctitle.h>
 
 
 #if (NGX_SETPROCTITLE_USES_ENV)
@@ -131,19 +132,4 @@ ngx_setproctitle(char *title)
                    "setproctitle: \"%s\"", ngx_os_argv[0]);
 }
 
-
-#elif !defined(ngx_setproctitle)
-
-ngx_int_t
-ngx_init_setproctitle(ngx_log_t *log)
-{
-    return NGX_OK;
-}
-
-void
-ngx_setproctitle(char *title)
-{
-    return;
-}
-
-#endif
+#endif /* NGX_SETPROCTITLE_USES_ENV */

@@ -43,7 +43,7 @@ ngx_int_t ngx_event_busy_lock(ngx_event_busy_lock_t *bl,
     } else if (ctx->timer && bl->waiting < bl->max_waiting) {
         bl->waiting++;
         ngx_add_timer(ctx->event, ctx->timer);
-        ctx->event->event_handler = ngx_event_busy_lock_handler;
+        ctx->event->handler = ngx_event_busy_lock_handler;
 
         if (bl->events) {
             bl->last->next = ctx;
@@ -92,7 +92,7 @@ ngx_int_t ngx_event_busy_lock_cachable(ngx_event_busy_lock_t *bl,
         if (ctx->timer && bl->waiting < bl->max_waiting) {
             bl->waiting++;
             ngx_add_timer(ctx->event, ctx->timer);
-            ctx->event->event_handler = ngx_event_busy_lock_handler;
+            ctx->event->handler = ngx_event_busy_lock_handler;
 
             if (bl->events == NULL) {
                 bl->events = ctx;
@@ -296,7 +296,7 @@ static void ngx_event_busy_lock_handler(ngx_event_t *ev)
 
     ngx_mutex_unlock(ngx_posted_events_mutex);
 
-    ev->event_handler = ngx_event_busy_lock_posted_handler;
+    ev->handler = ngx_event_busy_lock_posted_handler;
 }
 
 

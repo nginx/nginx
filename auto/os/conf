@@ -23,6 +23,15 @@ case "$NGX_PLATFORM" in
         . auto/os/freebsd
     ;;
 
+    Darwin:*)
+        have=NGX_DARWIN . auto/have_headers
+        have=NGX_HAVE_INHERITED_NONBLOCK . auto/have
+        CORE_INCS="$UNIX_INCS"
+        CORE_DEPS="$UNIX_DEPS $POSIX_DEPS"
+        CORE_SRCS="$UNIX_SRCS"
+        CRYPT_LIB=
+    ;;
+
     Linux:*)
         . auto/os/linux
     ;;
@@ -47,16 +56,16 @@ esac
 
 case "$NGX_MACHINE" in
 
-     i386|i686|i86pc|amd64)
-         have=NGX_HAVE_NONALIGNED . auto/have
-     ;;
+    i386|i686|i86pc|amd64)
+        have=NGX_HAVE_NONALIGNED . auto/have
+    ;;
 
 esac
 
 
 if [ "$NGX_PLATFORM" != win32 ]; then
 
-     NGX_USER=${NGX_USER:-nobody}
+    NGX_USER=${NGX_USER:-nobody}
 
     if [ -z "$NGX_GROUP" -a $NGX_USER = nobody ] ; then
        if grep nobody /etc/group 2>&1 >/dev/null; then

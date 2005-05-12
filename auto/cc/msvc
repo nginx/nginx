@@ -6,18 +6,31 @@
 
 # optimizations
 
-# maximize speed
+# maximize speed, equivalent to -Og -Oi -Ot -Oy -Ob2 -Gs -GF -Gy
 CFLAGS="$CFLAGS -O2"
+
 # enable global optimization
-CFLAGS="$CFLAGS -Og"
+#CFLAGS="$CFLAGS -Og"
 # enable intrinsic functions
-CFLAGS="$CFLAGS -Oi"
-# inline expansion
-CFLAGS="$CFLAGS -Ob1"
+#CFLAGS="$CFLAGS -Oi"
+
+# disable inline expansion
+#CFLAGS="$CFLAGS -Ob0"
+# explicit inline expansion
+#CFLAGS="$CFLAGS -Ob1"
+# explicit and implicit inline expansion
+#CFLAGS="$CFLAGS -Ob2"
+
 # enable frame pointer omission
-CFLAGS="$CFLAGS -Oy"
+#CFLAGS="$CFLAGS -Oy"
 # disable stack checking calls
-CFLAGS="$CFLAGS -Gs"
+#CFLAGS="$CFLAGS -Gs"
+
+# pools strings as read/write
+#CFLAGS="$CFLAGS -Gf"
+# pools strings as read-only
+#CFLAGS="$CFLAGS -GF"
+
 
 case $CPU in
     pentium)

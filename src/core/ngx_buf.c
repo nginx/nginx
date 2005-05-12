@@ -31,7 +31,7 @@ ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
      *     b->file = NULL;
      *     b->shadow = NULL;
      *     b->tag = 0;
-     *
+     *     and flags
      */
 
     b->pos = b->start;
@@ -94,6 +94,7 @@ ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
          *     b->file = NULL;
          *     b->shadow = NULL;
          *     b->tag = 0;
+         *     and flags
          *
          */
 

@@ -53,8 +53,6 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    ngx_init_setproctitle(log);
-
 
     return ngx_posix_init(log);
 }

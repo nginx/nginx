@@ -41,7 +41,8 @@ static ngx_command_t  ngx_http_headers_filter_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_headers_filter_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -55,7 +56,7 @@ static ngx_http_module_t  ngx_http_headers_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_headers_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_headers_filter_module_ctx,   /* module context */
     ngx_http_headers_filter_commands,      /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -71,10 +72,11 @@ static ngx_int_t
 ngx_http_headers_filter(ngx_http_request_t *r)
 {
     size_t                    len;
+    ngx_uint_t                i;
     ngx_table_elt_t          *expires, *cc;
     ngx_http_headers_conf_t  *conf;
 
-    if (r->headers_out.status != NGX_HTTP_OK) {
+    if (r->headers_out.status != NGX_HTTP_OK || r->main) {
         return ngx_http_next_header_filter(r);
     }
 
@@ -82,28 +84,43 @@ ngx_http_headers_filter(ngx_http_request_t *r)
 
     if (conf->expires != NGX_HTTP_EXPIRES_OFF) {
 
-        expires = ngx_list_push(&r->headers_out.headers);
+        expires = r->headers_out.expires;
+
         if (expires == NULL) {
-            return NGX_ERROR;
+
+            expires = ngx_list_push(&r->headers_out.headers);
+            if (expires == NULL) {
+                return NGX_ERROR;
+            }
+
+            r->headers_out.expires = expires;
+
+            expires->hash = 1;
+            expires->key.len = sizeof("Expires") - 1;
+            expires->key.data = (u_char *) "Expires";
         }
-
-        r->headers_out.expires = expires;
-
-        cc = ngx_list_push(&r->headers_out.headers);
-        if (cc == NULL) {
-            return NGX_ERROR;
-        }
-
-        r->headers_out.cache_control = cc;
 
         len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT");
-
-        expires->key.len = sizeof("Expires") - 1;
-        expires->key.data = (u_char *) "Expires";
         expires->value.len = len - 1;
 
-        cc->key.len = sizeof("Cache-Control") - 1;
-        cc->key.data = (u_char *) "Cache-Control";
+        cc = r->headers_out.cache_control.elts;
+
+        if (cc == NULL) {
+
+            cc = ngx_list_push(&r->headers_out.headers);
+            if (cc == NULL) {
+                return NGX_ERROR;
+            }
+
+            cc->hash = 1;
+            cc->key.len = sizeof("Cache-Control") - 1;
+            cc->key.data = (u_char *) "Cache-Control";
+
+        } else {
+            for (i = 1; i < r->headers_out.cache_control.nelts; i++) {
+                cc[i].hash = 0;
+            }
+        }
 
         if (conf->expires == NGX_HTTP_EXPIRES_EPOCH) {
             expires->value.data = (u_char *) "Thu, 01 Jan 1970 00:00:01 GMT";

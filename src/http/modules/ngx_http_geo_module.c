@@ -34,7 +34,8 @@ static ngx_command_t  ngx_http_geo_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_geo_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -48,7 +49,7 @@ static ngx_http_module_t  ngx_http_geo_module_ctx = {
 
 
 ngx_module_t  ngx_http_geo_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_geo_module_ctx,              /* module context */
     ngx_http_geo_commands,                 /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -110,7 +111,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         name.data++;
     }
 
-    var = ngx_http_add_variable(cf, &name, 1);
+    var = ngx_http_add_variable(cf, &name, 0);
     if (var == NULL) {
         return NGX_CONF_ERROR;
     }

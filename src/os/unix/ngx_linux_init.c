@@ -73,8 +73,6 @@ ngx_os_init(ngx_log_t *log)
         ngx_linux_rtsig_max = 0;
     }
 
-    ngx_init_setproctitle(log);
-
 
     return ngx_posix_init(log);
 }

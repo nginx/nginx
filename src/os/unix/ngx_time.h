@@ -54,6 +54,8 @@ typedef struct tm      ngx_tm_t;
 
 
 void ngx_localtime(ngx_tm_t *tm);
+void ngx_libc_localtime(struct tm *tm);
+void ngx_libc_gmtime(struct tm *tm);
 
 #define ngx_gettimeofday(tp)  gettimeofday(tp, NULL);
 #define ngx_msleep(ms)        usleep(ms * 1000)

@@ -16,10 +16,13 @@
 
 #define NGX_HTTP_SSI_ERROR        1
 
+#define NGX_HTTP_SSI_DATE_LEN     2048
+
 
 typedef struct {
     ngx_flag_t        enable;
     ngx_flag_t        silent_errors;
+    ngx_flag_t        ignore_recycled_buffers;
 
     size_t            min_file_chunk;
     size_t            value_len;
@@ -50,6 +53,10 @@ typedef struct {
     size_t             looked;
 
     size_t             value_len;
+
+    ngx_uint_t         output;        /* unsigned  output:1; */
+
+    ngx_str_t          timefmt;
 } ngx_http_ssi_ctx_t;
 
 
@@ -70,7 +77,8 @@ typedef struct {
     ngx_http_ssi_command_pt   handler;
     ngx_http_ssi_param_t     *params;
 
-    ngx_uint_t                flush;    /* unsigned  flush:1; */
+    unsigned                  conditional:1;
+    unsigned                  flush:1;
 } ngx_http_ssi_command_t;
 
 
@@ -98,12 +106,28 @@ typedef enum {
 } ngx_http_ssi_state_e;
 
 
+static ngx_int_t ngx_http_ssi_output(ngx_http_request_t *r,
+    ngx_http_ssi_ctx_t *ctx);
 static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ctx);
 
 static ngx_int_t ngx_http_ssi_echo(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ctx, ngx_str_t **params);
+static ngx_int_t ngx_http_ssi_config(ngx_http_request_t *r,
+    ngx_http_ssi_ctx_t *ctx, ngx_str_t **params);
+static ngx_int_t ngx_http_ssi_include(ngx_http_request_t *r,
+    ngx_http_ssi_ctx_t *ctx, ngx_str_t **params);
+static ngx_int_t ngx_http_ssi_if(ngx_http_request_t *r,
+    ngx_http_ssi_ctx_t *ctx, ngx_str_t **params);
+static ngx_int_t ngx_http_ssi_else(ngx_http_request_t *r,
+    ngx_http_ssi_ctx_t *ctx, ngx_str_t **params);
+static ngx_int_t ngx_http_ssi_endif(ngx_http_request_t *r,
+    ngx_http_ssi_ctx_t *ctx, ngx_str_t **params);
 
+static ngx_http_variable_value_t *
+    ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r, uintptr_t gmt);
+
+static ngx_int_t ngx_http_ssi_add_variables(ngx_conf_t *cf);
 static void *ngx_http_ssi_create_conf(ngx_conf_t *cf);
 static char *ngx_http_ssi_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
@@ -126,6 +150,13 @@ static ngx_command_t  ngx_http_ssi_filter_commands[] = {
       offsetof(ngx_http_ssi_conf_t, silent_errors),
       NULL },
 
+    { ngx_string("ssi_ignore_recycled_buffers"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_ssi_conf_t, ignore_recycled_buffers),
+      NULL },
+
     { ngx_string("ssi_min_file_chunk"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_size_slot,
@@ -139,7 +170,8 @@ static ngx_command_t  ngx_http_ssi_filter_commands[] = {
 
     
 static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
-    NULL,                                  /* pre conf */
+    ngx_http_ssi_add_variables,            /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -153,7 +185,7 @@ static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_ssi_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_ssi_filter_module_ctx,       /* module context */
     ngx_http_ssi_filter_commands,          /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -174,8 +206,16 @@ static u_char ngx_http_ssi_error_string[] =
 static ngx_str_t ngx_http_ssi_none = ngx_string("(none)");
 
 
-#define  NGX_HTTP_SSI_ECHO_VAR      0
-#define  NGX_HTTP_SSI_ECHO_DEFAULT  1
+#define  NGX_HTTP_SSI_ECHO_VAR         0
+#define  NGX_HTTP_SSI_ECHO_DEFAULT     1
+
+#define  NGX_HTTP_SSI_CONFIG_TIMEFMT   0
+
+#define  NGX_HTTP_SSI_INCLUDE_VIRTUAL  0
+#define  NGX_HTTP_SSI_INCLUDE_FILE     1
+
+#define  NGX_HTTP_SSI_IF_EXPR          0
+
 
 static ngx_http_ssi_param_t  ngx_http_ssi_echo_params[] = {
     { ngx_string("var"), NGX_HTTP_SSI_ECHO_VAR, 1 },
@@ -183,11 +223,58 @@ static ngx_http_ssi_param_t  ngx_http_ssi_echo_params[] = {
     { ngx_null_string, 0, 0 }
 };
 
+static ngx_http_ssi_param_t  ngx_http_ssi_include_params[] = {
+    { ngx_string("virtual"), NGX_HTTP_SSI_INCLUDE_VIRTUAL, 0 },
+#if 0
+    { ngx_string("file"), NGX_HTTP_SSI_INCLUDE_FILE, 0 },
+#endif
+    { ngx_null_string, 0, 0 }
+};
+
+
+static ngx_http_ssi_param_t  ngx_http_ssi_config_params[] = {
+    { ngx_string("timefmt"), NGX_HTTP_SSI_CONFIG_TIMEFMT, 0 },
+    { ngx_null_string, 0, 0 }
+};
+
+
+static ngx_http_ssi_param_t  ngx_http_ssi_if_params[] = {
+    { ngx_string("expr"), NGX_HTTP_SSI_IF_EXPR, 0 },
+    { ngx_null_string, 0, 0 }
+};
+
+
+static ngx_http_ssi_param_t  ngx_http_ssi_no_params[] = {
+    { ngx_null_string, 0, 0 }
+};
+
 
 static ngx_http_ssi_command_t  ngx_http_ssi_commands[] = {
-    { ngx_string("echo"), ngx_http_ssi_echo, ngx_http_ssi_echo_params, 0 },
-    { ngx_null_string, NULL, NULL, 0 }
+    { ngx_string("echo"), ngx_http_ssi_echo, ngx_http_ssi_echo_params, 0, 0 },
+    { ngx_string("config"), ngx_http_ssi_config,
+                       ngx_http_ssi_config_params, 0, 0 },
+    { ngx_string("include"), ngx_http_ssi_include,
+                       ngx_http_ssi_include_params, 0, 1 },
+
+    { ngx_string("if"), ngx_http_ssi_if, ngx_http_ssi_if_params, 0, 0 },
+    { ngx_string("else"), ngx_http_ssi_else, ngx_http_ssi_no_params, 1, 0 },
+    { ngx_string("endif"), ngx_http_ssi_endif, ngx_http_ssi_no_params, 1, 0 },
+
+    { ngx_null_string, NULL, NULL, 0, 0 }
 };
+
+
+static ngx_http_variable_t  ngx_http_ssi_vars[] = {
+
+    { ngx_string("date_local"), ngx_http_ssi_date_gmt_local_variable, 0,
+      NGX_HTTP_VAR_NOCACHABLE },
+
+    { ngx_string("date_gmt"), ngx_http_ssi_date_gmt_local_variable, 1,
+      NGX_HTTP_VAR_NOCACHABLE },
+
+    { ngx_null_string, NULL, 0, 0 }
+};
+
 
 
 static ngx_int_t
@@ -204,9 +291,9 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
 
     /* TODO: "text/html" -> custom types */
 
-    if (r->headers_out.content_type
-        && ngx_strncasecmp(r->headers_out.content_type->value.data,
-                                                          "text/html", 5) != 0)
+    if (r->headers_out.content_type.len == 0
+        || ngx_strncasecmp(r->headers_out.content_type.data, "text/html", 5)
+           != 0)
     {
         return ngx_http_next_header_filter(r);
     }
@@ -223,25 +310,32 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
     ctx->value_len = conf->value_len;
     ctx->last_out = &ctx->out;
 
+    ctx->output = 1;
+
     ctx->params.elts = ctx->params_array;
     ctx->params.size = sizeof(ngx_table_elt_t);
     ctx->params.nalloc = NGX_HTTP_SSI_PARAMS_N;
     ctx->params.pool = r->pool;
 
-    r->headers_out.content_length_n = -1;
-    if (r->headers_out.content_length) {
-        r->headers_out.content_length->key.len = 0;
-        r->headers_out.content_length = NULL;
-    }
-
-    r->headers_out.last_modified_time = -1;
-    if (r->headers_out.last_modified) {
-        r->headers_out.last_modified->key.len = 0;
-        r->headers_out.last_modified = NULL;
-    }
+    ctx->timefmt.len = sizeof("%A, %d-%b-%Y %H:%M:%S %Z") - 1;
+    ctx->timefmt.data = (u_char *) "%A, %d-%b-%Y %H:%M:%S %Z";
 
     r->filter_need_in_memory = 1;
     r->filter_ssi_need_in_memory = 1;
+
+    if (r->main == NULL) {
+        r->headers_out.content_length_n = -1;
+        if (r->headers_out.content_length) {
+            r->headers_out.content_length->hash = 0;
+            r->headers_out.content_length = NULL;
+        }
+
+        r->headers_out.last_modified_time = -1;
+        if (r->headers_out.last_modified) {
+            r->headers_out.last_modified->hash = 0;
+            r->headers_out.last_modified = NULL;
+        }
+    }
 
     return ngx_http_next_header_filter(r);
 }
@@ -277,8 +371,8 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http ssi filter");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http ssi filter \"%V\"", &r->uri);
 
     while (ctx->in || ctx->buf) {
 
@@ -312,19 +406,50 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             if (ctx->copy_start != ctx->copy_end) {
 
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                               "saved: %d", ctx->saved);
+                if (ctx->output) {
 
-                if (ctx->saved) {
+                    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                                   "saved: %d", ctx->saved);
+
+                    if (ctx->saved) {
+
+                        if (ctx->free) {
+                            cl = ctx->free;
+                            ctx->free = ctx->free->next;
+                            b = cl->buf;
+                            ngx_memzero(b, sizeof(ngx_buf_t));
+
+                        } else {
+                            b = ngx_calloc_buf(r->pool);
+                            if (b == NULL) {
+                                return NGX_ERROR;
+                            }
+
+                            cl = ngx_alloc_chain_link(r->pool);
+                            if (cl == NULL) {
+                                return NGX_ERROR;
+                            }
+
+                            cl->buf = b;
+                        }
+
+                        b->memory = 1;
+                        b->pos = ngx_http_ssi_string;
+                        b->last = ngx_http_ssi_string + ctx->saved;
+
+                        *ctx->last_out = cl;
+                        ctx->last_out = &cl->next;
+
+                        ctx->saved = 0;
+                    }
 
                     if (ctx->free) {
                         cl = ctx->free;
                         ctx->free = ctx->free->next;
                         b = cl->buf;
-                        ngx_memzero(b, sizeof(ngx_buf_t));
 
                     } else {
-                        b = ngx_calloc_buf(r->pool);
+                        b = ngx_alloc_buf(r->pool);
                         if (b == NULL) {
                             return NGX_ERROR;
                         }
@@ -337,56 +462,31 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                         cl->buf = b;
                     }
 
-                    b->memory = 1;
-                    b->pos = ngx_http_ssi_string;
-                    b->last = ngx_http_ssi_string + ctx->saved;
+                    ngx_memcpy(b, ctx->buf, sizeof(ngx_buf_t));
 
+                    b->last_buf = 0;
+                    b->recycled = 0;
+                    b->pos = ctx->copy_start;
+                    b->last = ctx->copy_end;
+
+                    if (b->in_file) {
+                        if (conf->min_file_chunk < (size_t) (b->last - b->pos))
+                        {
+                            b->file_last = b->file_pos + (b->last - b->start);
+                            b->file_pos += b->pos - b->start;
+
+                        } else {
+                            b->in_file = 0;
+                        }
+                    }
+
+                    cl->next = NULL;
                     *ctx->last_out = cl;
                     ctx->last_out = &cl->next;
 
+                } else {
                     ctx->saved = 0;
                 }
-
-                if (ctx->free) {
-                    cl = ctx->free;
-                    ctx->free = ctx->free->next;
-                    b = cl->buf;
-
-                } else {
-                    b = ngx_alloc_buf(r->pool);
-                    if (b == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    cl = ngx_alloc_chain_link(r->pool);
-                    if (cl == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    cl->buf = b;
-                }
-
-                ngx_memcpy(b, ctx->buf, sizeof(ngx_buf_t));
-
-                b->last_buf = 0;
-                b->recycled = 0;
-                b->pos = ctx->copy_start;
-                b->last = ctx->copy_end;
-
-                if (b->in_file) {
-
-                    if (conf->min_file_chunk < (size_t) (b->last - b->pos)) {
-                        b->file_last = b->file_pos + (b->last - b->start);
-                        b->file_pos += b->pos - b->start;
-
-                    } else {
-                        b->in_file = 0;
-                    }
-                }
-
-                cl->next = NULL;
-                *ctx->last_out = cl;
-                ctx->last_out = &cl->next;
             }
 
             if (ctx->state == ssi_start_state) {
@@ -420,10 +520,14 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     break;
                 }
 
-                if (cmd->name.len == 0) {
+                if (cmd->name.len == 0 && ctx->output) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "invalid SSI command: \"%V\"", &ctx->command);
                     goto ssi_error;
+                }
+
+                if (!ctx->output && !cmd->conditional) {
+                    continue;
                 }
 
                 ngx_memzero(params,
@@ -479,6 +583,14 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     }
                 }
 
+                if (cmd->flush && ctx->out) {
+                    rc = ngx_http_ssi_output(r, ctx);
+
+                    if (rc == NGX_ERROR) {
+                        return NGX_ERROR;
+                    }
+                }
+
                 if (cmd->handler(r, ctx, params) == NGX_OK) {
                     continue;
                 }
@@ -525,9 +637,9 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             continue;
         }
 
-        if (ctx->buf->recycled || ctx->buf->last_buf) {
-            if (b == NULL) {
+        if (ctx->buf->last_buf || ctx->buf->recycled) {
 
+            if (b == NULL) {
                 if (ctx->free) {
                     cl = ctx->free;
                     ctx->free = ctx->free->next;
@@ -548,14 +660,19 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     cl->buf = b;
                 }
 
+                b->sync = 1;
+
                 cl->next = NULL;
                 *ctx->last_out = cl;
                 ctx->last_out = &cl->next;
             }
 
             b->last_buf = ctx->buf->last_buf;
-            b->flush = ctx->buf->recycled;
             b->shadow = ctx->buf;
+
+            if (conf->ignore_recycled_buffers == 0)  {
+                b->recycled = ctx->buf->recycled;
+            }
         }
 
         ctx->buf = NULL;
@@ -566,6 +683,17 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (ctx->out == NULL && ctx->busy == NULL) {
         return NGX_OK;
     }
+
+    return ngx_http_ssi_output(r, ctx);
+}
+
+
+static ngx_int_t
+ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
+{
+    ngx_int_t     rc;
+    ngx_buf_t    *b;
+    ngx_chain_t  *cl;
 
     rc = ngx_http_next_body_filter(r, ctx->out);
 
@@ -1154,7 +1282,7 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     var = params[NGX_HTTP_SSI_ECHO_VAR];
 
     for (i = 0; i < var->len; i++) {
-        var->data[i] = ngx_toupper(var->data[i]);
+        var->data[i] = ngx_tolower(var->data[i]);
     }
 
     vv = ngx_http_get_variable(r, var);
@@ -1163,7 +1291,7 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         return NGX_HTTP_SSI_ERROR;
     }
 
-    if (vv == NGX_HTTP_VARIABLE_NOT_FOUND) {
+    if (vv == NGX_HTTP_VAR_NOT_FOUND) {
         value = params[NGX_HTTP_SSI_ECHO_DEFAULT];
 
         if (value == NULL) {
@@ -1204,6 +1332,325 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 }
 
 
+static ngx_int_t
+ngx_http_ssi_config(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
+    ngx_str_t **params)
+{
+    ngx_str_t  *value;
+
+    value = params[NGX_HTTP_SSI_CONFIG_TIMEFMT];
+
+    if (value) {
+        ctx->timefmt = *value;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
+    ngx_str_t **params)
+{
+    u_char                      ch, *p, **value;
+    size_t                     *size, len;
+    ngx_uint_t                  i, j, n, bracket;
+    ngx_str_t                   uri, args, name;
+    ngx_array_t                 lengths, values;
+    ngx_http_variable_value_t  *vv;
+
+    /* TODO: file, virtual vs file */
+
+    uri = *params[NGX_HTTP_SSI_INCLUDE_VIRTUAL];
+    args.len = 0;
+    args.data = NULL;
+
+    n = ngx_http_script_variables_count(&uri);
+
+    if (n > 0) {
+
+        if (ngx_array_init(&lengths, r->pool, 8, sizeof(size_t *)) != NGX_OK) {
+            return NGX_HTTP_SSI_ERROR;
+        }
+
+        if (ngx_array_init(&values, r->pool, 8, sizeof(u_char *)) != NGX_OK) {
+            return NGX_HTTP_SSI_ERROR;
+        }
+
+        len = 0;
+
+        for (i = 0; i < uri.len; /* void */ ) {
+
+            name.len = 0;
+
+            if (uri.data[i] == '$') {
+
+                if (++i == uri.len) {
+                    goto invalid_variable;
+                }
+
+                if (uri.data[i] == '{') {
+                    bracket = 1;
+
+                    if (++i == uri.len) {
+                        goto invalid_variable;
+                    }
+
+                    name.data = &uri.data[i];
+
+                } else {
+                    bracket = 0;
+                    name.data = &uri.data[i];
+                }
+
+                for ( /* void */ ; i < uri.len; i++, name.len++) {
+                    ch = uri.data[i];
+
+                    if (ch == '}' && bracket) {
+                        i++;
+                        bracket = 0;
+                        break;
+                    }
+
+                    if ((ch >= 'A' && ch <= 'Z')
+                        || (ch >= 'a' && ch <= 'z')
+                        || (ch >= '0' && ch <= '9')
+                        || ch == '_')
+                    {
+                        continue;
+                    }
+
+                    break;
+                }
+
+                if (bracket) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "the closing bracket in \"%V\" "
+                                  "variable is missing", &name);
+                    return NGX_HTTP_SSI_ERROR;
+                }
+
+                if (name.len == 0) {
+                    goto invalid_variable;
+                }
+
+                for (j = 0; j < name.len; j++) {
+                    name.data[j] = ngx_tolower(name.data[j]);
+                }
+
+                vv = ngx_http_get_variable(r, &name);
+
+                if (vv == NULL) {
+                    return NGX_HTTP_SSI_ERROR;
+                }
+
+                if (vv == NGX_HTTP_VAR_NOT_FOUND) {
+                    continue;
+                }
+
+                name = vv->text;
+
+            } else {
+                name.data = &uri.data[i];
+
+                while (i < uri.len && uri.data[i] != '$') {
+                    i++;
+                    name.len++;
+                }
+            }
+
+            len += name.len;
+
+            size = ngx_array_push(&lengths);
+            if (size == NULL) {
+                return NGX_HTTP_SSI_ERROR;
+            }
+
+            *size = name.len;
+
+            value = ngx_array_push(&values);
+            if (value == NULL) {
+                return NGX_HTTP_SSI_ERROR;
+            }
+
+            *value = name.data;
+        }
+
+        p = ngx_palloc(r->pool, len);
+        if (p == NULL) {
+            return NGX_HTTP_SSI_ERROR;
+        }
+
+        uri.len = len;
+        uri.data = p;
+
+        size = lengths.elts;
+        value = values.elts;
+
+        for (i = 0; i < values.nelts; i++) {
+            p = ngx_cpymem(p, value[i], size[i]);
+        }
+    }
+
+    for (i = 0; i < uri.len; i++) {
+        if (uri.data[i] == '?') {
+            args.len = uri.len - i - 1;
+            args.data = &uri.data[i + 1];
+            uri.len -= args.len + 1;
+
+            break;
+        }
+    }
+
+    if (ngx_http_subrequest(r, &uri, &args) != NGX_OK) {
+        return NGX_HTTP_SSI_ERROR;
+    }
+
+    return NGX_OK;
+
+invalid_variable:
+
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "invalid variable name in \"%V\"", &uri);
+
+    return NGX_ERROR;
+}
+
+
+static ngx_int_t
+ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
+    ngx_str_t **params)
+{
+    ngx_str_t                  *expr, var;
+    ngx_uint_t                  i;
+    ngx_http_variable_value_t  *vv;
+
+    expr = params[NGX_HTTP_SSI_IF_EXPR];
+
+    if (expr->data[0] != '$') {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "invalid variable name in \"%V\"", expr);
+        return NGX_HTTP_SSI_ERROR;
+    }
+
+    var.len = expr->len - 1;
+    var.data = expr->data + 1;
+
+    for (i = 0; i < var.len; i++) {
+        var.data[i] = ngx_tolower(var.data[i]);
+    }
+
+    vv = ngx_http_get_variable(r, &var);
+
+    if (vv == NULL) {
+        return NGX_HTTP_SSI_ERROR;
+    }
+
+    if (vv != NGX_HTTP_VAR_NOT_FOUND && vv->text.len != 0) {
+        ctx->output = 1;
+
+    } else {
+        ctx->output = 0;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_ssi_else(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
+    ngx_str_t **params)
+{
+    ctx->output = !ctx->output;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_ssi_endif(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
+    ngx_str_t **params)
+{
+    ctx->output = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_http_variable_value_t *
+ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r, uintptr_t gmt)
+{
+    ngx_http_ssi_ctx_t         *ctx;
+    ngx_http_variable_value_t  *vv;
+    struct tm                   tm;
+    char                        buf[NGX_HTTP_SSI_DATE_LEN];
+
+    vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
+    if (vv == NULL) {
+        return NULL;
+    }
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
+
+    if (ctx->timefmt.len == sizeof("%s") - 1
+        && ctx->timefmt.data[0] == '%' && ctx->timefmt.data[1] == 's')
+    {
+        vv->value = ngx_time() + (gmt ? 0 : ngx_gmtoff);
+
+        vv->text.data = ngx_palloc(r->pool, NGX_TIME_T_LEN);
+        if (vv->text.data == NULL) {
+            return NULL;
+        }
+
+        vv->text.len = ngx_sprintf(vv->text.data, "%T", vv->value)
+                       - vv->text.data;
+        return vv;
+    }
+
+    if (gmt) {
+        ngx_libc_gmtime(&tm);
+    } else {
+        ngx_libc_localtime(&tm);
+    }
+
+    vv->value = ngx_time() + (gmt ? 0 : ngx_gmtoff);
+
+    vv->text.len = strftime(buf, NGX_HTTP_SSI_DATE_LEN,
+                            (char *) ctx->timefmt.data, &tm);
+    if (vv->text.len == 0) {
+        return NULL;
+    }
+
+    vv->text.data = ngx_palloc(r->pool, vv->text.len);
+    if (vv->text.data == NULL) {
+        return NULL;
+    }
+
+    ngx_memcpy(vv->text.data, buf, vv->text.len);
+
+    return vv;
+}
+
+
+static ngx_int_t
+ngx_http_ssi_add_variables(ngx_conf_t *cf)
+{
+    ngx_http_variable_t  *var, *v;
+
+    for (v = ngx_http_ssi_vars; v->name.len; v++) {
+        var = ngx_http_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
+            return NGX_ERROR;
+        }
+
+        var->handler = v->handler;
+        var->data = v->data;
+    }
+
+    return NGX_OK; 
+}
+
+
 static void *
 ngx_http_ssi_create_conf(ngx_conf_t *cf)
 {
@@ -1216,6 +1663,7 @@ ngx_http_ssi_create_conf(ngx_conf_t *cf)
 
     conf->enable = NGX_CONF_UNSET;
     conf->silent_errors = NGX_CONF_UNSET;
+    conf->ignore_recycled_buffers = NGX_CONF_UNSET;
 
     conf->min_file_chunk = NGX_CONF_UNSET_SIZE;
     conf->value_len = NGX_CONF_UNSET_SIZE;
@@ -1232,6 +1680,8 @@ ngx_http_ssi_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
     ngx_conf_merge_value(conf->silent_errors, prev->silent_errors, 0);
+    ngx_conf_merge_value(conf->ignore_recycled_buffers,
+                         prev->ignore_recycled_buffers, 0);
 
     ngx_conf_merge_size_value(conf->min_file_chunk, prev->min_file_chunk, 1024);
     ngx_conf_merge_size_value(conf->value_len, prev->value_len, 256);

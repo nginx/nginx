@@ -249,7 +249,10 @@ void ngx_http_proxy_cache_busy_lock(ngx_http_proxy_ctx_t *p);
 
 #endif
 
-void ngx_http_proxy_check_broken_connection(ngx_event_t *ev);
+void ngx_http_proxy_rd_check_broken_connection(ngx_http_request_t *r);
+void ngx_http_proxy_wr_check_broken_connection(ngx_http_request_t *r);
+void ngx_http_proxy_check_broken_connection(ngx_http_request_t *r,
+    ngx_event_t *ev);
 
 void ngx_http_proxy_busy_lock_handler(ngx_event_t *rev);
 void ngx_http_proxy_upstream_busy_lock(ngx_http_proxy_ctx_t *p);
@@ -265,7 +268,7 @@ int ngx_http_proxy_copy_header(ngx_http_proxy_ctx_t *p,
 
 
 extern ngx_module_t  ngx_http_proxy_module;
-extern ngx_http_header_t ngx_http_proxy_headers_in[];
+extern ngx_http_header0_t ngx_http_proxy_headers_in[];
 
 
 

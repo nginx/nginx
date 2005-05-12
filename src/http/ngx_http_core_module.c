@@ -17,11 +17,12 @@
 #define NGX_HTTP_LOCATION_REGEX           4
 
 
-static void ngx_http_core_phase_event_handler(ngx_event_t *rev);
 static void ngx_http_core_run_phases(ngx_http_request_t *r);
 static ngx_int_t ngx_http_core_find_location(ngx_http_request_t *r,
     ngx_array_t *locations, size_t len);
 
+static ngx_int_t ngx_http_core_preconfiguration(ngx_conf_t *cf);
+static ngx_int_t ngx_http_core_postconfiguration(ngx_conf_t *cf);
 static void *ngx_http_core_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_http_core_create_srv_conf(ngx_conf_t *cf);
@@ -54,9 +55,10 @@ static char *ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 static char *ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data);
-static ngx_int_t ngx_http_core_init(ngx_cycle_t *cycle);
 
 static ngx_conf_post_t  ngx_http_core_lowat_post =
                                                  { ngx_http_core_lowat_check };
@@ -183,7 +185,8 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
     { ngx_string("root"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_core_root,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -281,6 +284,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("internal"),
+      NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS,
+      ngx_http_core_internal,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
     { ngx_string("lingering_time"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -310,7 +320,8 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
     { ngx_string("error_page"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_2MORE,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_2MORE,
       ngx_http_core_error_page,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -339,7 +350,8 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
 
 ngx_http_module_t  ngx_http_core_module_ctx = {
-    NULL,                                  /* pre conf */
+    ngx_http_core_preconfiguration,        /* preconfiguration */
+    ngx_http_core_postconfiguration,       /* postconfiguration */
 
     ngx_http_core_create_main_conf,        /* create main configuration */
     ngx_http_core_init_main_conf,          /* init main configuration */
@@ -353,11 +365,11 @@ ngx_http_module_t  ngx_http_core_module_ctx = {
 
 
 ngx_module_t  ngx_http_core_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_core_module_ctx,             /* module context */
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
-    ngx_http_core_init,                    /* init module */
+    NULL,                                  /* init module */
     NULL                                   /* init process */
 };
 
@@ -413,29 +425,15 @@ ngx_http_handler(ngx_http_request_t *r)
     /* TEST STUB */ r->lingering_close = 1;
 #endif
 
-    r->connection->write->event_handler = ngx_http_core_phase_event_handler;
+    r->write_event_handler = ngx_http_core_run_phases;
 
     r->valid_unparsed_uri = 1;
+    r->valid_location = 1;
     r->uri_changed = 1;
-    r->uri_changes = 11;
+    r->uri_changes = NGX_HTTP_MAX_REWRITE_CYCLES + 1;
 
     r->phase = NGX_HTTP_REWRITE_PHASE;
     r->phase_handler = 0;
-
-    ngx_http_core_run_phases(r);
-}
-
-
-static void
-ngx_http_core_phase_event_handler(ngx_event_t *ev)
-{
-    ngx_connection_t    *c;
-    ngx_http_request_t  *r;
-
-    c = ev->data;
-    r = c->data;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "phase event handler");
 
     ngx_http_core_run_phases(r);
 }
@@ -448,6 +446,9 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
     ngx_http_handler_pt        *h;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_core_main_conf_t  *cmcf;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http phase handler");
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
@@ -478,7 +479,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
         }
 
         if (r->phase == NGX_HTTP_CONTENT_PHASE && r->content_handler) {
-            r->connection->write->event_handler = ngx_http_empty_handler;
+            r->write_event_handler = ngx_http_request_empty_handler;
             ngx_http_finalize_request(r, r->content_handler(r));
             return;
         }
@@ -564,6 +565,10 @@ ngx_http_find_location_config(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+    if (!r->internal && clcf->internal) {
+        return NGX_HTTP_NOT_FOUND;
+    }
+
     r->connection->log->file = clcf->err_log->file;
     if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
         r->connection->log->log_level = clcf->err_log->log_level;
@@ -607,6 +612,11 @@ ngx_http_find_location_config(ngx_http_request_t *r)
         if (r->headers_out.location == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
+
+        /*
+         * we do not need to set the r->headers_out.location->hash and
+         * r->headers_out.location->key fields
+         */
 
         r->headers_out.location->value = clcf->name;
 
@@ -765,16 +775,6 @@ ngx_http_set_content_type(ngx_http_request_t *r)
     ngx_http_type_t           *type;
     ngx_http_core_loc_conf_t  *clcf;
 
-    r->headers_out.content_type = ngx_list_push(&r->headers_out.headers);
-    if (r->headers_out.content_type == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    r->headers_out.content_type->key.len = 0;
-    r->headers_out.content_type->key.data = NULL;
-    r->headers_out.content_type->value.len = 0;
-    r->headers_out.content_type->value.data = NULL;
-
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->exten.len) {
@@ -810,9 +810,6 @@ ngx_http_set_content_type(ngx_http_request_t *r)
             r->low_case_exten = 1;
         }
 
-#if 0
-        key = ngx_crc(r->exten.data, r->exten.key);
-#endif
         ngx_http_types_hash_key(key, r->exten);
 
         type = clcf->types[key].elts;
@@ -824,14 +821,14 @@ ngx_http_set_content_type(ngx_http_request_t *r)
             if (ngx_memcmp(r->exten.data, type[i].exten.data, r->exten.len)
                                                                            == 0)
             {
-                r->headers_out.content_type->value = type[i].type;
+                r->headers_out.content_type = type[i].type;
                 break;
             }
         }
     }
 
-    if (r->headers_out.content_type->value.len == 0) {
-        r->headers_out.content_type->value = clcf->default_type;
+    if (r->headers_out.content_type.len == 0) {
+        r->headers_out.content_type= clcf->default_type;
     }
 
     return NGX_OK;
@@ -841,10 +838,6 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 ngx_int_t
 ngx_http_send_header(ngx_http_request_t *r)
 {
-    if (r->main) {
-        return NGX_OK;
-    }
-
     if (r->err_ctx) {
         r->headers_out.status = r->err_status;
         r->headers_out.status_line.len = 0;
@@ -863,12 +856,13 @@ ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http output filter \"%V\"", &r->uri);
+
     rc = ngx_http_top_body_filter(r, in);
 
     if (rc == NGX_ERROR) {
-
         /* NGX_ERROR may be returned by any filter */
-
         r->connection->write->error = 1;
     }
 
@@ -924,6 +918,114 @@ ngx_http_set_exten(ngx_http_request_t *r)
 
 
 ngx_int_t
+ngx_http_subrequest(ngx_http_request_t *r,
+    ngx_str_t *uri, ngx_str_t *args)
+{
+    ngx_http_request_t            *sr;
+    ngx_http_core_srv_conf_t      *cscf;
+    ngx_http_postponed_request_t  *pr, *p;
+
+    sr = ngx_pcalloc(r->pool, sizeof(ngx_http_request_t));
+    if (sr == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    sr->signature = NGX_HTTP_MODULE;
+    sr->connection = r->connection;
+
+    sr->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
+    if (sr->ctx == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (ngx_list_init(&sr->headers_out.headers, r->pool, 20,
+                      sizeof(ngx_table_elt_t)) == NGX_ERROR)
+    {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+    sr->main_conf = cscf->ctx->main_conf;
+    sr->srv_conf = cscf->ctx->srv_conf;
+    sr->loc_conf = cscf->ctx->loc_conf;
+
+    sr->pool = r->pool;
+
+    sr->headers_in = r->headers_in;
+
+    sr->start_time = ngx_time();
+    sr->headers_out.content_length_n = -1;
+    sr->headers_out.last_modified_time = -1;
+
+    sr->request_body = r->request_body;
+
+    sr->method = NGX_HTTP_GET;
+    sr->http_version = r->http_version;
+    sr->http_major = r->http_minor;
+
+    sr->request_line = r->request_line;
+    sr->uri = *uri;
+    if (args) {
+        sr->args = *args;
+    }
+    sr->unparsed_uri = r->unparsed_uri;
+    sr->method_name = r->method_name;
+    sr->http_protocol = r->http_protocol;
+
+    if (ngx_http_set_exten(sr) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    sr->main = r->main ? r->main : r;
+    sr->parent = r;
+    sr->read_event_handler = ngx_http_request_empty_handler;
+    sr->write_event_handler = ngx_http_request_empty_handler;
+
+    if (r->connection->data == r) {
+        sr->connection->data = sr;
+    }
+
+    sr->in_addr = r->in_addr;
+    sr->port = r->port;
+    sr->port_text = r->port_text;
+    sr->server_name = r->server_name;
+
+    sr->variables = r->variables;
+
+    sr->log_handler = r->log_handler;
+
+    pr = ngx_palloc(r->pool, sizeof(ngx_http_postponed_request_t));
+    if (pr == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    pr->request = sr;
+    pr->out = NULL;
+    pr->next = NULL;
+
+    if (r->postponed) {
+        for (p = r->postponed; p->next; p = p->next) { /* void */ }
+        p->next = pr;
+
+    } else {
+        r->postponed = pr;
+    }
+
+    sr->internal = 1;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http subrequest \"%V\"", uri);
+
+    ngx_http_handler(sr);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http subrequest \"%V\" done", uri);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args)
 {
@@ -936,6 +1038,10 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 
     if (args) {
         r->args = *args;
+
+    } else {
+        r->args.len = 0;
+        r->args.data = NULL;
     }
 
     if (ngx_http_set_exten(r) != NGX_OK) {
@@ -960,6 +1066,8 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
     r->loc_conf = cscf->ctx->loc_conf;
+
+    r->internal = 1;
 
     ngx_http_handler(r);
 
@@ -1376,6 +1484,20 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 }
 
 
+static ngx_int_t
+ngx_http_core_preconfiguration(ngx_conf_t *cf)
+{
+    return ngx_http_variables_add_core_vars(cf);
+}
+
+
+static ngx_int_t
+ngx_http_core_postconfiguration(ngx_conf_t *cf)
+{
+    return ngx_http_variables_init_vars(cf);
+}
+
+
 static void *
 ngx_http_core_create_main_conf(ngx_conf_t *cf)
 {
@@ -1575,6 +1697,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->client_max_body_size = NGX_CONF_UNSET_SIZE;
     lcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
     lcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
+    lcf->internal = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->tcp_nopush = NGX_CONF_UNSET;
     lcf->tcp_nodelay = NGX_CONF_UNSET;
@@ -1673,9 +1796,12 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                               (size_t) 2 * ngx_pagesize);
     ngx_conf_merge_msec_value(conf->client_body_timeout,
                               prev->client_body_timeout, 60000);
+
+    ngx_conf_merge_value(conf->internal, prev->internal, 0);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
     ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 0);
+
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 60000);
     ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
     ngx_conf_merge_size_value(conf->postpone_output, prev->postpone_output,
@@ -1963,6 +2089,20 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
+ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *lcf = conf;
+
+    lcf->err_log = ngx_log_create_errlog(cf->cycle, cf->args);
+    if (lcf->err_log == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    return ngx_set_error_log_levels(cf, lcf->err_log);
+}
+
+
+static char *
 ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
@@ -2004,16 +2144,17 @@ ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
-    lcf->err_log = ngx_log_create_errlog(cf->cycle, cf->args);
-    if (lcf->err_log == NULL) {
-        return NGX_CONF_ERROR;
+    if (lcf->internal != NGX_CONF_UNSET) {
+        return "is duplicate";
     }
 
-    return ngx_set_error_log_levels(cf, lcf->err_log);
+    lcf->internal = 1;
+
+    return NGX_CONF_OK;
 }
 
 
@@ -2043,11 +2184,4 @@ ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data)
 #endif
 
     return NGX_CONF_OK;
-}
-
-
-static ngx_int_t
-ngx_http_core_init(ngx_cycle_t *cycle)
-{
-    return ngx_http_variables_init(cycle);
 }

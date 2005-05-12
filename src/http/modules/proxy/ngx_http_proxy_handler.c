@@ -311,7 +311,7 @@ static ngx_http_log_op_name_t ngx_http_proxy_log_fmt_ops[] = {
 
 
 
-ngx_http_header_t ngx_http_proxy_headers_in[] = {
+ngx_http_header0_t ngx_http_proxy_headers_in[] = {
     { ngx_string("Date"), offsetof(ngx_http_proxy_headers_in_t, date) },
     { ngx_string("Server"), offsetof(ngx_http_proxy_headers_in_t, server) },
 
@@ -490,13 +490,25 @@ static ngx_int_t ngx_http_proxy_cache_get(ngx_http_proxy_ctx_t *p)
 #endif
 
 
-void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
+void ngx_http_proxy_rd_check_broken_connection(ngx_http_request_t *r)
+{
+    ngx_http_proxy_check_broken_connection(r, r->connection->read);
+}
+
+
+void ngx_http_proxy_wr_check_broken_connection(ngx_http_request_t *r)
+{
+    ngx_http_proxy_check_broken_connection(r, r->connection->read);
+}
+
+
+void ngx_http_proxy_check_broken_connection(ngx_http_request_t *r,
+    ngx_event_t *ev)
 {
     int                    n;
     char                   buf[1];
     ngx_err_t              err;
     ngx_connection_t      *c;
-    ngx_http_request_t    *r;
     ngx_http_proxy_ctx_t  *p;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
@@ -510,8 +522,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
             return;
         }
 
-        c = ev->data;
-        r = c->data;
+        c = r->connection;
         p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
         ev->eof = 1;
@@ -542,8 +553,7 @@ void ngx_http_proxy_check_broken_connection(ngx_event_t *ev)
 
 #endif
 
-    c = ev->data;
-    r = c->data;
+    c = r->connection;
     p = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
     n = recv(c->fd, buf, 1, MSG_PEEK);
@@ -710,13 +720,6 @@ void ngx_http_proxy_finalize_request(ngx_http_proxy_ctx_t *p, int rc)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http proxy cache fd: %d",
                        p->cache->ctx.file.fd);
-    }
-
-    if (p->upstream && p->upstream->event_pipe) {
-        r->file.fd = p->upstream->event_pipe->temp_file->file.fd;
-
-    } else if (p->cache) {
-        r->file.fd = p->cache->ctx.file.fd;
     }
 
     if (rc == 0 && r->main == NULL) {

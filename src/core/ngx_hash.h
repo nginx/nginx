@@ -31,7 +31,8 @@ typedef struct {
 } ngx_table_elt_t;
 
 
-ngx_int_t ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names);
+ngx_int_t ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names,
+    ngx_uint_t nelts);
 
 
 #endif /* _NGX_HASH_H_INCLUDED_ */

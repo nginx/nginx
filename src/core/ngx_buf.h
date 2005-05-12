@@ -44,7 +44,9 @@ struct ngx_buf_s {
     unsigned         recycled:1;
     unsigned         in_file:1;
     unsigned         flush:1;
+    unsigned         sync:1;
     unsigned         last_buf:1;
+    unsigned         last_in_chain:1;
 
     unsigned         last_shadow:1;
     unsigned         temp_file:1;
@@ -104,7 +106,8 @@ typedef struct {
 #define ngx_buf_in_memory(b)        (b->temporary || b->memory || b->mmap)
 #define ngx_buf_in_memory_only(b)   (ngx_buf_in_memory(b) && !b->in_file)
 #define ngx_buf_special(b)                                                   \
-    ((b->flush || b->last_buf) && !ngx_buf_in_memory(b) && !b->in_file)
+    ((b->flush || b->last_buf || b->sync)                                    \
+     && !ngx_buf_in_memory(b) && !b->in_file)
 
 #define ngx_buf_size(b)                                                      \
     (ngx_buf_in_memory(b) ? (off_t) (b->last - b->pos):                      \

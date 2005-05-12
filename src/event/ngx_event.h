@@ -113,8 +113,7 @@ struct ngx_event_s {
     unsigned         available:1;
 #endif
 
-    /* TODO rename to handler */
-    ngx_event_handler_pt  event_handler;
+    ngx_event_handler_pt  handler;
 
 
 #if (NGX_HAVE_AIO)
@@ -474,6 +473,10 @@ ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle);
 ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
 
 
+ngx_int_t ngx_handle_read_event(ngx_event_t *rev, u_int flags);
+ngx_int_t ngx_handle_write_event(ngx_event_t *wev, size_t lowat);
+
+
 #if (NGX_WIN32)
 void ngx_event_acceptex(ngx_event_t *ev);
 int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
@@ -494,160 +497,6 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 #if (NGX_WIN32)
 #include <ngx_iocp_module.h>
 #endif
-
-
-
-static ngx_inline ngx_int_t ngx_handle_read_event(ngx_event_t *rev, u_int flags)
-{
-    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
-
-        /* kqueue, epoll */
-
-        if (!rev->active && !rev->ready) {
-            if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT)
-                                                                == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-        }
-
-        return NGX_OK;
-
-    } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
-
-        /* select, poll, /dev/poll */
-
-        if (!rev->active && !rev->ready) {
-            if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT)
-                                                                  == NGX_ERROR)
-            {
-                return NGX_ERROR;
-            }
-
-            return NGX_OK;
-        }
-
-        if (rev->active && (rev->ready || (flags & NGX_CLOSE_EVENT))) {
-            if (ngx_del_event(rev, NGX_READ_EVENT, flags) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            return NGX_OK;
-        }
-    }
-
-    /* aio, iocp, rtsig */
-
-    return NGX_OK;
-}
-
-
-static ngx_inline ngx_int_t ngx_handle_level_read_event(ngx_event_t *rev)
-{
-    if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
-        if (!rev->active && !rev->ready) {
-            if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT)
-                                                                  == NGX_ERROR)
-            {
-                return NGX_ERROR;
-            }
-
-            return NGX_OK;
-        }
-
-        if (rev->active && rev->ready) {
-            if (ngx_del_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            return NGX_OK;
-        }
-    }
-
-    return NGX_OK;
-}
-
-
-static ngx_inline ngx_int_t ngx_handle_write_event(ngx_event_t *wev,
-                                                   size_t lowat)
-{
-    ngx_connection_t  *c;
-
-    if (lowat) {
-        c = (ngx_connection_t *) wev->data;
-
-        if (ngx_send_lowat(c, lowat) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-    }
-
-    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
-
-        /* kqueue, epoll */
-
-        if (!wev->active && !wev->ready) {
-            if (ngx_add_event(wev, NGX_WRITE_EVENT,
-                              NGX_CLEAR_EVENT | (lowat ? NGX_LOWAT_EVENT : 0))
-                                                                  == NGX_ERROR)
-            {
-                return NGX_ERROR;
-            }
-        }
-
-        return NGX_OK;
-
-    } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
-
-        /* select, poll, /dev/poll */
-
-        if (!wev->active && !wev->ready) {
-            if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT)
-                                                                  == NGX_ERROR)
-            {
-                return NGX_ERROR;
-            }
-
-            return NGX_OK;
-        }
-
-        if (wev->active && wev->ready) {
-            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            return NGX_OK;
-        }
-    }
-
-    /* aio, iocp, rtsig */
-
-    return NGX_OK;
-}
-
-
-static ngx_inline ngx_int_t ngx_handle_level_write_event(ngx_event_t *wev)
-{
-    if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
-        if (!wev->active && !wev->ready) {
-            if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT)
-                                                                  == NGX_ERROR)
-            {
-                return NGX_ERROR;
-            }
-
-            return NGX_OK;
-        }
-
-        if (wev->active && wev->ready) {
-            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            return NGX_OK;
-        }
-    }
-
-    return NGX_OK;
-}
 
 
 #endif /* _NGX_EVENT_H_INCLUDED_ */

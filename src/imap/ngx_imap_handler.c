@@ -47,7 +47,7 @@ void ngx_imap_init_connection(ngx_connection_t *c)
         return;
     }
 
-    c->read->event_handler = ngx_imap_init_session;
+    c->read->handler = ngx_imap_init_session;
 
     ngx_add_timer(c->read, /* STUB */ 60000);
 
@@ -93,7 +93,7 @@ static void ngx_imap_init_session(ngx_event_t *rev)
         return;
     }
 
-    c->read->event_handler = ngx_pop3_auth_state;
+    c->read->handler = ngx_pop3_auth_state;
 
     ngx_pop3_auth_state(rev);
 }

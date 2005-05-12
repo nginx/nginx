@@ -6,6 +6,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_setproctitle.h>
 
 
 ngx_int_t   ngx_ncpu;
@@ -96,6 +97,8 @@ ngx_int_t ngx_posix_init(ngx_log_t *log)
 {
     ngx_signal_t      *sig;
     struct sigaction   sa;
+
+    ngx_init_setproctitle(log);
 
     ngx_pagesize = getpagesize();
 

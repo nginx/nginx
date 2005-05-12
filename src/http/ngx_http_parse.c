@@ -9,7 +9,8 @@
 #include <ngx_http.h>
 
 
-ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
+ngx_int_t
+ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
     u_char  c, ch, *p, *m;
     enum {
@@ -63,7 +64,7 @@ ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         case sw_method:
             if (ch == ' ') {
-                r->method_end = p;
+                r->method_end = p - 1;
                 m = r->request_start;
 
                 if (p - m == 3) {
@@ -502,7 +503,8 @@ done:
 }
 
 
-ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
+ngx_int_t
+ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
     u_char      c, ch, *p;
     ngx_uint_t  hash;
@@ -513,7 +515,6 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_value,
         sw_space_after_value,
         sw_ignore_line,
-        sw_skip_line,
         sw_almost_done,
         sw_header_almost_done
     } state;
@@ -528,8 +529,6 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         /* first char */
         case sw_start:
-            r->invalid_header = 0;
-
             switch (ch) {
             case CR:
                 r->header_end = p;
@@ -548,18 +547,11 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                     break;
                 }
 
-                if (ch == '-') {
-                    hash = ch;
-                    break;
-                }
-
                 if (ch >= '0' && ch <= '9') {
                     hash = ch;
                     break;
                 }
 
-                r->invalid_header = 1;
-                state = sw_skip_line;
                 break;
 
             }
@@ -589,18 +581,31 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                 break;
             }
 
+            if (ch == CR) {
+                r->header_name_end = p;
+                r->header_start = p;
+                r->header_end = p;
+                state = sw_almost_done;
+                break;
+            }
+
+            if (ch == LF) {
+                r->header_name_end = p;
+                r->header_start = p;
+                r->header_end = p;
+                goto done;
+            }
+
             /* IIS may send the duplicate "HTTP/1.1 ..." lines */
             if (ch == '/'
-                && r->proxy
-                && p - r->header_start == 4
-                && ngx_strncmp(r->header_start, "HTTP", 4) == 0)
+                && r->upstream
+                && p - r->header_name_start == 4
+                && ngx_strncmp(r->header_name_start, "HTTP", 4) == 0)
             {
                 state = sw_ignore_line;
                 break;
             }
 
-            r->invalid_header = 1;
-            state = sw_skip_line;
             break;
 
         /* space* before header value */
@@ -609,11 +614,13 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
             case ' ':
                 break;
             case CR:
-                r->header_start = r->header_end = p;
+                r->header_start = p;
+                r->header_end = p;
                 state = sw_almost_done;
                 break;
             case LF:
-                r->header_start = r->header_end = p;
+                r->header_start = p;
+                r->header_end = p;
                 goto done;
             default:
                 r->header_start = p;
@@ -666,21 +673,6 @@ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
             break;
 
-        /* skip header line */
-        case sw_skip_line:
-            switch (ch) {
-            case CR:
-                r->header_end = p;
-                state = sw_almost_done;
-                break;
-            case LF:
-                r->header_end = p;
-                goto done;
-            default:
-                break;
-            }
-            break;
-
         /* end of header line */
         case sw_almost_done:
             switch (ch) {
@@ -724,7 +716,8 @@ header_done:
 }
 
 
-ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r)
+ngx_int_t
+ngx_http_parse_complex_uri(ngx_http_request_t *r)
 {
     u_char  c, ch, decoded, *p, *u;
     enum {
@@ -1000,4 +993,76 @@ done:
     r->uri_ext = NULL;
 
     return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
+    ngx_str_t *value)
+{
+    ngx_uint_t         i;
+    u_char            *start, *last, *end, ch;
+    ngx_table_elt_t  **h;
+
+    h = headers->elts;
+
+    for (i = 0; i < headers->nelts; i++) {
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, headers->pool->log, 0,
+                       "parse header: \"%V: %V\"", &h[i]->key, &h[i]->value);
+
+        if (name->len > h[i]->value.len) {
+            continue;
+        }
+    
+        start = h[i]->value.data;
+        end = h[i]->value.data + h[i]->value.len;
+
+        while (start < end) {
+
+            if (ngx_strncasecmp(start, name->data, name->len) != 0) {
+                goto skip;
+            }
+
+            for (start += name->len; start < end && *start == ' '; start++) {
+                /* void */
+            }
+
+            if (value == NULL) {
+                if (start == end || *start == ',') {
+                    return i;
+                }
+
+                goto skip;
+            }
+
+            if (start == end || *start++ != '=') {
+                /* the invalid header value */
+                goto skip;
+            }
+
+            while (start < end && *start == ' ') { start++; }
+
+            for (last = start; last < end && *last != ';'; last++) {
+                /* void */
+            }
+
+            value->len = last - start;
+            value->data = start;
+
+            return i;
+
+        skip:
+            while (start < end) {
+                ch = *start++;
+                if (ch == ';' || ch == ',') {
+                    break;
+                }
+            }
+
+            while (start < end && *start == ' ') { start++; }
+        }
+    }
+
+    return NGX_DECLINED;
 }

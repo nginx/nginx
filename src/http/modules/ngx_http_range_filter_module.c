@@ -54,7 +54,8 @@ static ngx_int_t ngx_http_range_body_filter_init(ngx_cycle_t *cycle);
 
 
 static ngx_http_module_t  ngx_http_range_header_filter_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -68,7 +69,7 @@ static ngx_http_module_t  ngx_http_range_header_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_range_header_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_range_header_filter_module_ctx, /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -78,7 +79,8 @@ ngx_module_t  ngx_http_range_header_filter_module = {
 
 
 static ngx_http_module_t  ngx_http_range_body_filter_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -92,7 +94,7 @@ static ngx_http_module_t  ngx_http_range_body_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_range_body_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_range_body_filter_module_ctx, /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -120,6 +122,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
 
     if (r->http_version < NGX_HTTP_VERSION_10
         || r->headers_out.status != NGX_HTTP_OK
+        || r->main
         || r->headers_out.content_length_n == -1
         || !r->filter_allow_ranges)
     {
@@ -136,6 +139,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
             return NGX_ERROR;
         }
 
+        r->headers_out.accept_ranges->hash = 1;
         r->headers_out.accept_ranges->key.len = sizeof("Accept-Ranges") - 1;
         r->headers_out.accept_ranges->key.data = (u_char *) "Accept-Ranges";
         r->headers_out.accept_ranges->value.len = sizeof("bytes") - 1;
@@ -269,6 +273,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
 
         r->headers_out.content_range = content_range;
 
+        content_range->hash = 1;
         content_range->key.len = sizeof("Content-Range") - 1;
         content_range->key.data = (u_char *) "Content-Range";
 
@@ -303,6 +308,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
 
         r->headers_out.content_range = content_range;
 
+        content_range->hash = 1;
         content_range->key.len = sizeof("Content-Range") - 1;
         content_range->key.data = (u_char *) "Content-Range";
 
@@ -338,7 +344,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
 
     len = sizeof(CRLF "--") - 1 + NGX_ATOMIC_T_LEN
           + sizeof(CRLF "Content-Type: ") - 1
-          + r->headers_out.content_type->value.len
+          + r->headers_out.content_type.len
           + sizeof(CRLF "Content-Range: bytes ") - 1;
 
     if (r->headers_out.charset.len) {
@@ -366,7 +372,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
                                            "Content-Type: %V; charset=%V" CRLF
                                            "Content-Range: bytes ",
                                            boundary,
-                                           &r->headers_out.content_type->value,
+                                           &r->headers_out.content_type,
                                            &r->headers_out.charset)
                                    - ctx->boundary_header.data;
 
@@ -378,26 +384,26 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
                                            "Content-Type: %V" CRLF
                                            "Content-Range: bytes ",
                                            boundary,
-                                           &r->headers_out.content_type->value)
+                                           &r->headers_out.content_type)
                                    - ctx->boundary_header.data;
     }
 
-    r->headers_out.content_type->value.data =
-         ngx_palloc(r->pool,
-                    sizeof("Content-Type: multipart/byteranges; boundary=") - 1
-                    + NGX_ATOMIC_T_LEN);
+    r->headers_out.content_type.data =
+        ngx_palloc(r->pool,
+                   sizeof("Content-Type: multipart/byteranges; boundary=") - 1
+                   + NGX_ATOMIC_T_LEN);
 
-    if (r->headers_out.content_type->value.data == NULL) {
+    if (r->headers_out.content_type.data == NULL) {
         return NGX_ERROR;
     }
 
     /* "Content-Type: multipart/byteranges; boundary=0123456789" */
 
-    r->headers_out.content_type->value.len =
-                           ngx_sprintf(r->headers_out.content_type->value.data,
+    r->headers_out.content_type.len =
+                           ngx_sprintf(r->headers_out.content_type.data,
                                        "multipart/byteranges; boundary=%0muA",
                                        boundary)
-                           - r->headers_out.content_type->value.data;
+                           - r->headers_out.content_type.data;
 
 
     /* the size of the last boundary CRLF "--0123456789--" CRLF */

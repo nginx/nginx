@@ -2,14 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-cat << END >> $NGX_AUTO_HEADERS_H
-
-#ifndef NGX_FREEBSD
-#define NGX_FREEBSD  1
-#endif
-
-END
-
+have=NGX_FREEBSD . auto/have_headers
 
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $FREEBSD_DEPS"
@@ -39,6 +32,7 @@ then
     echo " + setproctitle() in libutil"
 
     CORE_LIBS="$CORE_LIBS -lutil"
+    NGX_SETPROCTITLE_LIB="-lutil"
 fi
 
 # sendfile

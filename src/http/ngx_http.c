@@ -53,7 +53,7 @@ static ngx_core_module_t  ngx_http_module_ctx = {
 
 
 ngx_module_t  ngx_http_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_module_ctx,                  /* module context */
     ngx_http_commands,                     /* module directives */
     NGX_CORE_MODULE,                       /* module type */
@@ -83,11 +83,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_main_conf_t   *cmcf;
 #if (NGX_WIN32)
     ngx_iocp_conf_t             *iocpcf;
-#endif
-
-#if (NGX_SUPPRESS_WARN)
-    /* MSVC thinks "in_ports" may be used without having been initialized */
-    ngx_memzero(&in_ports, sizeof(ngx_array_t));
 #endif
 
     /* the main http context */
@@ -156,12 +151,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         module = ngx_modules[m]->ctx;
         mi = ngx_modules[m]->ctx_index;
 
-        if (module->pre_conf) {
-            if (module->pre_conf(cf) != NGX_OK) {
-                return NGX_CONF_ERROR;
-            }
-        }
-
         if (module->create_main_conf) {
             ctx->main_conf[mi] = module->create_main_conf(cf);
             if (ctx->main_conf[mi] == NULL) {
@@ -184,11 +173,26 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    pcf = *cf;
+    cf->ctx = ctx;
+
+    for (m = 0; ngx_modules[m]; m++) {
+        if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
+            continue;
+        }
+
+        module = ngx_modules[m]->ctx;
+        mi = ngx_modules[m]->ctx_index;
+
+        if (module->preconfiguration) {
+            if (module->preconfiguration(cf) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+        }
+    }
 
     /* parse inside the http{} block */
 
-    pcf = *cf;
-    cf->ctx = ctx;
     cf->module_type = NGX_HTTP_MODULE;
     cf->cmd_type = NGX_HTTP_MAIN_CONF;
     rv = ngx_conf_parse(cf, NULL);
@@ -264,11 +268,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
 
-    /* we needed http{}'s cf->ctx while the merging configuration */
-
-    *cf = pcf;
-
-
     /* init lists of the handlers */
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
@@ -321,7 +320,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cmcf->headers_in_hash.bucket_size = sizeof(ngx_http_header_t);
     cmcf->headers_in_hash.name = "http headers_in";
 
-    if (ngx_hash_init(&cmcf->headers_in_hash, cf->pool, ngx_http_headers_in)
+    if (ngx_hash_init(&cmcf->headers_in_hash, cf->pool, ngx_http_headers_in, 0)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
@@ -329,8 +328,32 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, cf->log, 0,
                    "http headers_in hash size: %ui, max buckets per entry: %ui",
-                    cmcf->headers_in_hash.hash_size,
-                    cmcf->headers_in_hash.min_buckets);
+                   cmcf->headers_in_hash.hash_size,
+                   cmcf->headers_in_hash.min_buckets);
+
+    for (m = 0; ngx_modules[m]; m++) {
+        if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
+            continue;
+        }
+
+        module = ngx_modules[m]->ctx;
+        mi = ngx_modules[m]->ctx_index;
+
+        if (module->postconfiguration) {
+            if (module->postconfiguration(cf) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+        }
+    }
+
+
+    /*
+     * http{}'s cf->ctx was needed while the configuration merging
+     * and in postconfiguration process
+     */
+
+    *cf = pcf;
+
 
     /*
      * create the lists of ports, addresses and server names

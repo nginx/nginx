@@ -9,6 +9,319 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.29" date="12.05.2005">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_module поддерживает команду include virtual.
+</para>
+<para lang="en">
+the ngx_http_ssi_module supports "include virtual" command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_module поддерживает условную команду вида
+'if expr="$NAME"' и команды else и endif.
+Допускается только один уровень вложенности.
+</para>
+<para lang="en">
+the ngx_http_ssi_module supports the condition command like
+'if expr="$NAME"' and "else" and "endif" commands.
+Only one nested level is supported.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_module поддерживает две переменные DATE_LOCAL и DATE_GMT
+и команду config timefmt.
+</para>
+<para lang="en">
+the ngx_http_ssi_module supports the DATE_LOCAL and DATE_GMT variables
+and "config timefmt" command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssi_ignore_recycled_buffers.
+</para>
+<para lang="en">
+the "ssi_ignore_recycled_buffers" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если переменная QUERY_STRING не была определена, то в команде echo
+не ставилось значение по умолчанию.
+</para>
+<para lang="en">
+the "echo" command did not show the default value for the empty QUERY_STRING
+variable.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+модуль ngx_http_proxy_module полностью переписан.
+</para>
+<para lang="en">
+the ngx_http_proxy_module was rewritten.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_redirect, proxy_pass_request_headers,
+proxy_pass_request_body и proxy_method.
+</para>
+<para lang="en">
+the "proxy_redirect", "proxy_pass_request_headers",
+"proxy_pass_request_body", and "proxy_method" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_set_header.
+Директива proxy_x_var упразднена и должна быть заменена директивой
+proxy_set_header.
+</para>
+<para lang="en">
+the "proxy_set_header" directive.
+The "proxy_x_var" is canceled and must be replaced with the proxy_set_header
+directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива proxy_preserve_host упразднена и должна быть заменена директивами
+"proxy_set_header Host $host" и "proxy_redirect off"
+или директивой <nobr>"proxy_set_header Host $host:$proxy_port"</nobr>
+и соответствующими ей директивами proxy_redirect.
+</para>
+<para lang="en">
+the "proxy_preserve_host" is canceled and must be replaced with
+the "proxy_set_header Host $host" and the "proxy_redirect off" directives,
+the <nobr>"proxy_set_header Host $host:$proxy_port" directive</nobr>
+and the appropriate proxy_redirect directives.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива proxy_set_x_real_ip упразднена и должна быть заменена директивой
+"proxy_set_header X-Real-IP $remote_addr".
+</para>
+<para lang="en">
+the "proxy_set_x_real_ip" is canceled and must be replaced with
+the "proxy_set_header X-Real-IP $remote_addr" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива proxy_add_x_forwarded_for упразднена и должна быть заменена
+директивой
+<nobr>"proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for".</nobr>
+</para>
+<para lang="en">
+the "proxy_add_x_forwarded_for" is canceled and must be replaced with
+<nobr>the "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for"</nobr>
+directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива proxy_set_x_url упразднена и должна быть заменена директивой
+<nobr>"proxy_set_header X-URL http://$host:$server_port$request_uri".</nobr>
+</para>
+<para lang="en">
+the "proxy_set_x_url" is canceled and must be replaced with
+the "proxy_set_header X-URL http://$host:$server_port$request_uri"
+directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива fastcgi_param.
+</para>
+<para lang="en">
+the "fastcgi_param" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директивы fastcgi_set_var и fastcgi_params упразднены и должны быть
+замены директивами fastcgi_param.
+</para>
+<para lang="en">
+the "fastcgi_set_var" and "fastcgi_params" directive are canceled and
+must be replaced with the fastcgi_param directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива index может использовать переменные.
+</para>
+<para lang="en">
+the "index" directive can use the variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива index может быть указана на уровне http и server.
+</para>
+<para lang="en">
+the "index" directive can be used at http and server levels.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+только последний параметр в директиве index может быть абсолютным.
+</para>
+<para lang="en">
+the last index only in the "index" directive can be absolute.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в директиве rewrite могут использоваться переменные.
+</para>
+<para lang="en">
+the "rewrite" directive can use the variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива internal.
+</para>
+<para lang="en">
+the "internal" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные CONTENT_LENGTH, CONTENT_TYPE, REMOTE_PORT, SERVER_ADDR,
+SERVER_PORT, SERVER_PROTOCOL, DOCUMENT_ROOT, SERVER_NAME,
+REQUEST_METHOD, REQUEST_URI и REMOTE_USER.
+</para>
+<para lang="en">
+the CONTENT_LENGTH, CONTENT_TYPE, REMOTE_PORT, SERVER_ADDR,
+SERVER_PORT, SERVER_PROTOCOL, DOCUMENT_ROOT, SERVER_NAME,
+REQUEST_METHOD, REQUEST_URI, and REMOTE_USER variables.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+nginx теперь передаёт неверные строки в заголовках запроса клиента и
+ответа бэкенда.
+</para>
+<para lang="en">
+nginx now passes the invalid lines in a client request headers
+or a backend response header.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если бэкенд долго не передавал ответ и send_timeout был меньше, чем
+proxy_read_timeout, то клиенту возвращался ответ 408.
+</para>
+<para lang="en">
+if the backend did not transfer response for a long time and
+the "send_timeout" was less than "proxy_read_timeout", then nginx
+returned the 408 response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если бэкенд передавал неверную строку в заголовке ответа, то происходил
+segmentation fault;
+ошибка появилась в 0.1.26.
+</para>
+<para lang="en">
+the segmentation fault was occurred if the backend sent an invalid line
+in response header;
+bug appeared in 0.1.26.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании отказоустойчивой конфигурации в FastCGI мог
+происходить segmentation fault.
+</para>
+<para lang="en">
+the segmentation fault may occurred in FastCGI fault tolerance configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива expires не удаляла уже установленные строки заголовка
+"Expires" и "Cache-Control".
+</para>
+<para lang="en">
+the "expires" directive did not remove the previous "Expires" and
+"Cache-Control" headers.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не учитывал завершающую точку в строке заголовка запроса "Host".
+</para>
+<para lang="en">
+nginx did not take into account trailing dot in "Host" header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_auth_module не работал на Linux.
+</para>
+<para lang="en">
+the ngx_http_auth_module did not work under Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива rewrite неверно работала, если в запросе присутствовали аргументы.
+</para>
+<para lang="en">
+the rewrite directive worked incorrectly, if the arguments were in a request.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на MacOS X.
+</para>
+<para lang="en">
+nginx could not be built on MacOS X.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.28" date="08.04.2005">
 
 <change type="bugfix">
@@ -586,7 +899,7 @@ the rewrite/location cycle and sets the current configuration to the request.
 
 <changes ver="0.1.17" date="03.02.2005">
 
-<change type="feature">
+<change type="change">
 <para lang="ru">
 модуль ngx_http_rewrite_module полностью переписан.
 Теперь можно делать редиректы, возвращать коды ошибок

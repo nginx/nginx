@@ -106,7 +106,8 @@ static ngx_command_t  ngx_http_charset_filter_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_charset_filter_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     ngx_http_charset_create_main_conf,     /* create main configuration */
     ngx_http_charset_init_main_conf,       /* init main configuration */
@@ -120,7 +121,7 @@ static ngx_http_module_t  ngx_http_charset_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_charset_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_charset_filter_module_ctx,   /* module context */
     ngx_http_charset_filter_commands,      /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -148,19 +149,18 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    if (r->headers_out.content_type == NULL) {
+    if (r->headers_out.content_type.len == 0) {
         return ngx_http_next_header_filter(r);
     }
 
-    if (ngx_strncasecmp(r->headers_out.content_type->value.data,
-                                                              "text/", 5) != 0
-        && ngx_strncasecmp(r->headers_out.content_type->value.data,
-                                          "application/x-javascript", 24) != 0)
+    if (ngx_strncasecmp(r->headers_out.content_type.data, "text/", 5) != 0
+        && ngx_strncasecmp(r->headers_out.content_type.data,
+                           "application/x-javascript", 24) != 0)
     {
         return ngx_http_next_header_filter(r);
     }
 
-    if (ngx_strstr(r->headers_out.content_type->value.data, "charset") != NULL)
+    if (ngx_strstr(r->headers_out.content_type.data, "charset") != NULL)
     {
         return ngx_http_next_header_filter(r);
     }

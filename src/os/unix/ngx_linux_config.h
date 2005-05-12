@@ -97,10 +97,5 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #define NGX_HAVE_SELECT_CHANGE_TIMEOUT   1
 #endif
 
-#ifndef NGX_SETPROCTITLE_USES_ENV
-#define NGX_SETPROCTITLE_USES_ENV    1
-#define NGX_SETPROCTITLE_PAD         '\0' 
-#endif
-
 
 #endif /* _NGX_LINUX_CONFIG_H_INCLUDED_ */

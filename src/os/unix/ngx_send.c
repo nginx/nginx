@@ -63,7 +63,7 @@ ssize_t ngx_unix_send(ngx_connection_t *c, u_char *buf, size_t size)
 
         } else {
             wev->error = 1;
-            ngx_connection_error(c, err, "recv() failed");
+            ngx_connection_error(c, err, "send() failed");
             return NGX_ERROR;
         }
     }

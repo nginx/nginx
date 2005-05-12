@@ -114,6 +114,9 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     s = ngx_socket(peer->sockaddr->sa_family, SOCK_STREAM, 0);
 
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, 0,
+                   "socket %d", s);
+
     if (s == -1) {
         ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                       ngx_socket_n " failed");

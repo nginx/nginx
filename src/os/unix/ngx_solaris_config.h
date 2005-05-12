@@ -83,10 +83,4 @@
 #endif
 
 
-#ifndef NGX_SETPROCTITLE_USES_ENV
-#define NGX_SETPROCTITLE_USES_ENV  1
-#define NGX_SETPROCTITLE_PAD       ' '
-#endif
-
-
 #endif /* _NGX_SOLARIS_CONFIG_H_INCLUDED_ */

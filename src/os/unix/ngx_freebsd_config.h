@@ -97,9 +97,6 @@ pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);
 #endif
 
 
-#define ngx_setproctitle  setproctitle
-
-
 extern char *malloc_options;
 
 

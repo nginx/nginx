@@ -63,7 +63,8 @@ static ngx_command_t  ngx_http_autoindex_commands[] = {
 
 
 ngx_http_module_t  ngx_http_autoindex_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -77,7 +78,7 @@ ngx_http_module_t  ngx_http_autoindex_module_ctx = {
 
 
 ngx_module_t  ngx_http_autoindex_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_autoindex_module_ctx,        /* module context */ 
     ngx_http_autoindex_commands,           /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -419,16 +420,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.content_length_n = b->last - b->pos;
-
-    r->headers_out.content_type = ngx_list_push(&r->headers_out.headers);
-    if (r->headers_out.content_type == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    r->headers_out.content_type->key.len = 0;
-    r->headers_out.content_type->key.data = NULL;
-    r->headers_out.content_type->value.len = sizeof("text/html") - 1;
-    r->headers_out.content_type->value.data = (u_char *) "text/html";
+    r->headers_out.content_type.len = sizeof("text/html") - 1;
+    r->headers_out.content_type.data = (u_char *) "text/html";
 
     rc = ngx_http_send_header(r);
 
@@ -436,9 +429,11 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    if (!r->main) {
+    if (r->main == NULL) {
         b->last_buf = 1;
     }
+
+    b->last_in_chain = 1;
 
     out.buf = b;
     out.next = NULL;

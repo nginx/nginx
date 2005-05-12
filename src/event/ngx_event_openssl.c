@@ -170,7 +170,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
 
         if (c->ssl->saved_write_handler) {
 
-            c->write->event_handler = c->ssl->saved_write_handler;
+            c->write->handler = c->ssl->saved_write_handler;
             c->ssl->saved_write_handler = NULL;
             c->write->ready = 1;
 
@@ -223,8 +223,8 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
          */
 
         if (c->ssl->saved_write_handler == NULL) {
-            c->ssl->saved_write_handler = c->write->event_handler;
-            c->write->event_handler = ngx_ssl_write_handler;
+            c->ssl->saved_write_handler = c->write->handler;
+            c->write->handler = ngx_ssl_write_handler;
         }
 
         return NGX_AGAIN;
@@ -253,7 +253,7 @@ ngx_ssl_write_handler(ngx_event_t *wev)
     ngx_connection_t  *c;
 
     c = wev->data;
-    c->read->event_handler(c->read);
+    c->read->handler(c->read);
 }
 
 
@@ -405,7 +405,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     if (n > 0) {
         if (c->ssl->saved_read_handler) {
 
-            c->read->event_handler = c->ssl->saved_read_handler;
+            c->read->handler = c->ssl->saved_read_handler;
             c->ssl->saved_read_handler = NULL;
             c->read->ready = 1;
 
@@ -460,8 +460,8 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
          */
 
         if (c->ssl->saved_read_handler == NULL) {
-            c->ssl->saved_read_handler = c->read->event_handler;
-            c->read->event_handler = ngx_ssl_read_handler;
+            c->ssl->saved_read_handler = c->read->handler;
+            c->read->handler = ngx_ssl_read_handler;
         }
 
         return NGX_AGAIN;
@@ -482,7 +482,7 @@ ngx_ssl_read_handler(ngx_event_t *rev)
     ngx_connection_t  *c;
 
     c = rev->data;
-    c->write->event_handler(c->write);
+    c->write->handler(c->write);
 }
 
 
@@ -591,4 +591,13 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
     ERR_error_string_n(ERR_get_error(), (char *) p, last - p);
 
     ngx_log_error(level, log, err, "%s)", errstr);
+}
+
+
+void
+ngx_ssl_cleanup_ctx(void *data)
+{
+   SSL_CTX  *ctx = data;
+
+   SSL_CTX_free(ctx);
 }

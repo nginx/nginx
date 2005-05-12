@@ -29,6 +29,14 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#ifdef __WATCOMC__
+#define _TIME_T_DEFINED
+typedef long  time_t;
+/* OpenWatcom defines time_t as "unsigned long" */
+#endif
+
+#include <time.h>      /* localtime(), strftime() */
+
 
 #ifdef _MSC_VER
 
@@ -50,11 +58,6 @@
 
 /* FD_SET() and FD_CLR(): conditional expression is constant */
 #pragma warning(disable:4127)
-
-#if 0
-/* assignment within conditional expression */
-#pragma warning(disable:4706)
-#endif
 
 /* function 'ngx_handle_write_event' not inlined */
 #pragma warning(disable:4710)
@@ -80,11 +83,6 @@
 
 /* unreferenced formal parameter */
 #pragma warn -8057
-
-#if 0
-/* assignment within conditional expression */
-#pragma warn -8060
-#endif
 
 #endif
 
@@ -117,7 +115,6 @@ typedef unsigned __int64  uint64_t;
 typedef u_int             uintptr_t;
 
 typedef int               ssize_t;
-typedef long              time_t;
 typedef __int64           off_t;
 typedef uint32_t          in_addr_t;
 typedef u_short           in_port_t;

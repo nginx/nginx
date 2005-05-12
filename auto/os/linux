@@ -2,13 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-cat << END >> $NGX_AUTO_HEADERS_H
-
-#ifndef NGX_LINUX
-#define NGX_LINUX  1
-#endif
-
-END
+have=NGX_LINUX . auto/have_headers
 
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $LINUX_DEPS"

@@ -82,9 +82,9 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
     p->upstream.connection->data = s;
     p->upstream.connection->pool = s->connection->pool;
 
-    s->connection->read->event_handler = ngx_imap_proxy_block_read;
-    p->upstream.connection->read->event_handler = ngx_imap_proxy_auth_handler;
-    p->upstream.connection->write->event_handler = ngx_imap_proxy_dummy_handler;
+    s->connection->read->handler = ngx_imap_proxy_block_read;
+    p->upstream.connection->read->handler = ngx_imap_proxy_auth_handler;
+    p->upstream.connection->write->handler = ngx_imap_proxy_dummy_handler;
 }
 
 
@@ -200,10 +200,10 @@ static void ngx_imap_proxy_auth_handler(ngx_event_t *rev)
     s->proxy->buffer->pos = s->proxy->buffer->start;
     s->proxy->buffer->last = s->proxy->buffer->start;
 
-    s->connection->read->event_handler = ngx_imap_proxy_handler;
-    s->connection->write->event_handler = ngx_imap_proxy_handler;
-    rev->event_handler = ngx_imap_proxy_handler;
-    c->write->event_handler = ngx_imap_proxy_handler;
+    s->connection->read->handler = ngx_imap_proxy_handler;
+    s->connection->write->handler = ngx_imap_proxy_handler;
+    rev->handler = ngx_imap_proxy_handler;
+    c->write->handler = ngx_imap_proxy_handler;
 }
 
 

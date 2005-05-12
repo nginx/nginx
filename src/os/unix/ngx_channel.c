@@ -137,7 +137,7 @@ ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
 
     if (ch->command == NGX_CMD_OPEN_CHANNEL) {
 
-        if (cmsg.cm.cmsg_len < sizeof(cmsg)) {
+        if (cmsg.cm.cmsg_len < (socklen_t) sizeof(cmsg)) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "recvmsg() returned too small ancillary data");
             return NGX_ERROR;
@@ -215,7 +215,7 @@ ngx_int_t ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd,
 
     ev = (event == NGX_READ_EVENT) ? rev : wev;
 
-    ev->event_handler = handler;
+    ev->handler = handler;
 
     if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
         if (ngx_add_conn(c) == NGX_ERROR) {

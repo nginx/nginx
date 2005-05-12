@@ -14,7 +14,8 @@ static ngx_int_t ngx_http_not_modified_filter_init(ngx_cycle_t *cycle);
 
 
 static ngx_http_module_t  ngx_http_not_modified_filter_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -28,7 +29,7 @@ static ngx_http_module_t  ngx_http_not_modified_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_not_modified_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_not_modified_filter_module_ctx, /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -45,6 +46,7 @@ static ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     time_t  ims;
 
     if (r->headers_out.status != NGX_HTTP_OK
+        || r->main
         || r->headers_in.if_modified_since == NULL
         || r->headers_out.last_modified_time == -1)
     {
@@ -63,12 +65,11 @@ static ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
 
     if (ims != NGX_ERROR && ims == r->headers_out.last_modified_time) {
         r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
-        r->headers_out.content_type->key.len = 0;
-        r->headers_out.content_type = NULL;
+        r->headers_out.content_type.len = 0;
         r->headers_out.content_length_n = -1;
         r->headers_out.content_length = NULL;
 #if 0
-        r->headers_out.accept_ranges->key.len = 0;
+        r->headers_out.accept_ranges->hash = 0;
 #endif
     }
 

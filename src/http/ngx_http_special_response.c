@@ -331,22 +331,15 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
             msie_padding = 1;
         }
 
-        r->headers_out.content_type = ngx_list_push(&r->headers_out.headers);
-        if (r->headers_out.content_type == NULL) {
-            return NGX_ERROR;
-        }
-
-        r->headers_out.content_type->key.len = sizeof("Content-Type") - 1;
-        r->headers_out.content_type->key.data = (u_char *) "Content-Type";
-        r->headers_out.content_type->value.len = sizeof("text/html") - 1;
-        r->headers_out.content_type->value.data = (u_char *) "text/html";
+        r->headers_out.content_type.len = sizeof("text/html") - 1;
+        r->headers_out.content_type.data = (u_char *) "text/html";
 
     } else {
         r->headers_out.content_length_n = -1;
     }
 
     if (r->headers_out.content_length) {
-        r->headers_out.content_length->key.len = 0;
+        r->headers_out.content_length->hash = 0;
         r->headers_out.content_length = NULL;
     }
 
@@ -415,7 +408,11 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         cl->buf = b;
     }
 
-    b->last_buf = 1;
+    if (r->main == NULL) {
+        b->last_buf = 1;
+    }
+
+    b->last_in_chain = 1;
 
     cl->next = NULL;
 

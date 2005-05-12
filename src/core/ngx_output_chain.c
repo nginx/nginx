@@ -49,7 +49,7 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 #if (NGX_SENDFILE_LIMIT)
             && !(in->buf->in_file && in->buf->file_last > NGX_SENDFILE_LIMIT)
 #endif
-            && (!ngx_output_chain_need_to_copy(ctx, in->buf)))
+            && !ngx_output_chain_need_to_copy(ctx, in->buf))
         {
             return ctx->output_filter(ctx->filter_ctx, in);
         }
@@ -132,7 +132,7 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
                     size = ctx->bufs.size;
 
-                    if (ctx->in->buf->last_buf) {
+                    if (ctx->in->buf->last_in_chain) {
 
                         if (bsize < (off_t) ctx->bufs.size) {
 
@@ -202,6 +202,11 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
         }
 
         if (out == NULL && last != NGX_NONE) {
+
+            if (ctx->in) {
+                return NGX_AGAIN;
+            }
+
             return last;
         }
 

@@ -27,7 +27,7 @@ static ngx_command_t  ngx_conf_commands[] = {
 
 
 ngx_module_t  ngx_conf_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     NULL,                                  /* module context */
     ngx_conf_commands,                     /* module directives */
     NGX_CONF_MODULE,                       /* module type */
@@ -336,7 +336,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
 {
     u_char      *start, ch, *src, *dst;
     int          len;
-    int          found, need_space, last_space, sharp_comment;
+    int          found, need_space, last_space, sharp_comment, variable;
     int          quoted, s_quoted, d_quoted;
     ssize_t      n;
     ngx_str_t   *word;
@@ -346,6 +346,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
     need_space = 0;
     last_space = 1;
     sharp_comment = 0;
+    variable = 0;
     quoted = s_quoted = d_quoted = 0;
 
     cf->args->nelts = 0;
@@ -492,8 +493,19 @@ ngx_conf_read_token(ngx_conf_t *cf)
             }
 
         } else {
+            if (ch == '{' && variable) {
+                continue;
+            }
+
+            variable = 0;
+
             if (ch == '\\') {
                 quoted = 1;
+                continue;
+            }
+
+            if (ch == '$') {
+                variable = 1;
                 continue;
             }
 
@@ -795,6 +807,45 @@ ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (cmd->post) {
         post = cmd->post;
         return post->post_handler(cf, post, field);
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
+ngx_conf_set_table_elt_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_str_t         *value;
+    ngx_array_t      **a;
+    ngx_table_elt_t   *elt;
+    ngx_conf_post_t   *post;
+
+    a = (ngx_array_t **) (p + cmd->offset);
+
+    if (*a == NULL) {
+        *a = ngx_array_create(cf->pool, 4, sizeof(ngx_table_elt_t));
+        if (*a == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    elt = ngx_array_push(*a);
+    if (elt == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    elt->hash = 0;
+    elt->key = value[1];
+    elt->value = value[2];
+
+    if (cmd->post) {
+        post = cmd->post;
+        return post->post_handler(cf, post, elt);
     }
 
     return NGX_CONF_OK;

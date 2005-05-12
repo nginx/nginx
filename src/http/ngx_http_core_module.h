@@ -49,6 +49,7 @@ typedef struct {
     ngx_array_t                index_handlers;
 
     ngx_hash_t                 headers_in_hash;
+    ngx_hash_t                 variables_hash;
 
     ngx_uint_t                 server_names_hash;
     ngx_uint_t                 server_names_hash_threshold;
@@ -56,6 +57,7 @@ typedef struct {
     size_t                     max_server_name_len;
 
     ngx_array_t                variables;        /* ngx_http_variable_t */
+    ngx_array_t                all_variables;    /* ngx_http_variable_t */
 } ngx_http_core_main_conf_t;
 
 
@@ -197,6 +199,7 @@ struct ngx_http_core_loc_conf_s {
 
     time_t        keepalive_header;        /* keepalive_timeout */
 
+    ngx_flag_t    internal;                /* internal */
     ngx_flag_t    sendfile;                /* sendfile */
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */
     ngx_flag_t    tcp_nodelay;             /* tcp_nodelay */
@@ -230,6 +233,8 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r);
 ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
 ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 
+ngx_int_t ngx_http_subrequest(ngx_http_request_t *r,
+    ngx_str_t *uri, ngx_str_t *args);
 ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args);
 

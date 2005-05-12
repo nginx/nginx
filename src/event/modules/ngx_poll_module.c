@@ -50,7 +50,7 @@ ngx_event_module_t  ngx_poll_module_ctx = {
 };
 
 ngx_module_t  ngx_poll_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_poll_module_ctx,                  /* module context */
     NULL,                                  /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
@@ -536,7 +536,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle)
             }
         }
 
-        ev->event_handler(ev);
+        ev->handler(ev);
     }
 #endif
 
@@ -553,7 +553,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle)
 
         ngx_mutex_unlock(ngx_posted_events_mutex);
 
-        ev->event_handler(ev);
+        ev->handler(ev);
 
         if (ngx_accept_disabled > 0) {
             lock = 0;

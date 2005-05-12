@@ -63,7 +63,7 @@
 #define NGX_CONF_BLOCK_DONE  2
 #define NGX_CONF_FILE_DONE   3
 
-#define NGX_MODULE           0, 0
+#define NGX_MODULE_V1        0, 0, 1, 0, 0
 
 #define NGX_CORE_MODULE      0x45524F43  /* "CORE" */
 #define NGX_CONF_MODULE      0x464E4F43  /* "CONF" */
@@ -100,6 +100,10 @@ struct ngx_open_file_s {
 struct ngx_module_s {
     ngx_uint_t            ctx_index;
     ngx_uint_t            index;
+    ngx_uint_t            version;
+    ngx_uint_t            spare0;
+    ngx_uint_t            spare1;
+
     void                 *ctx;
     ngx_command_t        *commands;
     ngx_uint_t            type;
@@ -280,6 +284,8 @@ void ngx_cdecl ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf,
 
 char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_table_elt_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);

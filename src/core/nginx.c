@@ -107,7 +107,7 @@ static ngx_core_module_t  ngx_core_module_ctx = {
 
 
 ngx_module_t  ngx_core_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_core_module_ctx,                  /* module context */
     ngx_core_commands,                     /* module directives */
     NGX_CORE_MODULE,                       /* module type */

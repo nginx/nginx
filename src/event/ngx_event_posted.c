@@ -33,7 +33,7 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
 
         ngx_delete_posted_event(ev);
 
-        ev->event_handler(ev);
+        ev->handler(ev);
     }
 }
 
@@ -137,7 +137,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 
             ngx_mutex_unlock(ngx_posted_events_mutex);
 
-            ev->event_handler(ev);
+            ev->handler(ev);
 
             if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
                 return NGX_ERROR;

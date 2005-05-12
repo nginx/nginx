@@ -102,13 +102,6 @@
 #endif
 
 
-#if (NGX_HAVE_SETPROCTITLE)
-#define ngx_setproctitle        setproctitle
-#else
-#define ngx_setproctitle(title)
-#endif
-
-
 #define NGX_POSIX_IO  1
 
 

@@ -132,7 +132,7 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
 
         rev->ovlp.event = rev;
         wev->ovlp.event = wev;
-        rev->event_handler = ngx_event_acceptex;
+        rev->handler = ngx_event_acceptex;
 
         rev->data = c;
         wev->data = c;

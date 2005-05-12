@@ -22,22 +22,42 @@
 #define NGX_DEFAULT_POOL_SIZE   (16 * 1024)
 
 
+typedef void (*ngx_pool_cleanup_pt)(void *data);
+
+typedef struct ngx_pool_cleanup_s  ngx_pool_cleanup_t;
+
+struct ngx_pool_cleanup_s {
+    ngx_pool_cleanup_pt   handler;
+    void                 *data;
+    ngx_pool_cleanup_t   *next;
+};
+
+
 typedef struct ngx_pool_large_s  ngx_pool_large_t;
 
 struct ngx_pool_large_s {
-    ngx_pool_large_t  *next;
-    void              *alloc;
+    ngx_pool_large_t     *next;
+    void                 *alloc;
 };
 
 
 struct ngx_pool_s {
-    u_char            *last;
-    u_char            *end;
-    ngx_chain_t       *chain;
-    ngx_pool_t        *next;
-    ngx_pool_large_t  *large;
-    ngx_log_t         *log;
+    u_char               *last;
+    u_char               *end;
+    ngx_chain_t          *chain;
+    ngx_pool_t           *next;
+    ngx_pool_large_t     *large;
+    ngx_pool_cleanup_t   *cleanup;
+    ngx_log_t            *log;
 };
+
+
+typedef struct {
+    ngx_fd_t              fd;
+    u_char               *name;
+    ngx_log_t            *log;
+} ngx_pool_cleanup_file_t;
+
 
 
 void *ngx_alloc(size_t size, ngx_log_t *log);
@@ -49,6 +69,11 @@ void ngx_destroy_pool(ngx_pool_t *pool);
 void *ngx_palloc(ngx_pool_t *pool, size_t size);
 void *ngx_pcalloc(ngx_pool_t *pool, size_t size);
 ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p);
+
+
+ngx_pool_cleanup_t *ngx_pool_cleanup_add(ngx_pool_t *p,
+    ngx_pool_cleanup_pt handler, void *data);
+void ngx_pool_cleanup_file(void *data);
 
 
 #endif /* _NGX_PALLOC_H_INCLUDED_ */

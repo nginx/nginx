@@ -46,8 +46,10 @@ int ngx_http_busy_lock(ngx_http_busy_lock_t *bl, ngx_http_busy_lock_ctx_t *bc)
     if (bl->waiting < bl->max_waiting) {
         bl->waiting++;
 
+#if 0
         ngx_add_timer(bc->event, 1000);
         bc->event->event_handler = bc->event_handler;
+#endif
 
         /* TODO: ngx_handle_level_read_event() */
 
@@ -95,9 +97,11 @@ int ngx_http_busy_lock_cachable(ngx_http_busy_lock_t *bl,
     }
 
     if (bl->waiting < bl->max_waiting) {
+#if 0
         bl->waiting++;
         ngx_add_timer(bc->event, 1000);
         bc->event->event_handler = bc->event_handler;
+#endif
 
         /* TODO: ngx_handle_level_read_event() */
 

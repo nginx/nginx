@@ -24,6 +24,7 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev);
 static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev);
 static ssize_t ngx_http_proxy_read_upstream_header(ngx_http_proxy_ctx_t *);
 static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p);
+static void ngx_http_proxy_process_downstream(ngx_http_request_t *r);
 static void ngx_http_proxy_process_body(ngx_event_t *ev);
 static void ngx_http_proxy_next_upstream(ngx_http_proxy_ctx_t *p,
                                          ngx_uint_t ft_type);
@@ -112,7 +113,7 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
         len = http_methods[p->upstream->method - 1].len + uc->uri.len;
 
     } else {
-        len = r->method_name.len + uc->uri.len;
+        len = r->method_name.len + 1 + uc->uri.len;
     }
 
     if (p->lcf->pass_unparsed_uri && r->valid_unparsed_uri) {
@@ -261,7 +262,8 @@ static ngx_chain_t *ngx_http_proxy_create_request(ngx_http_proxy_ctx_t *p)
                              http_methods[p->upstream->method - 1].data,
                              http_methods[p->upstream->method - 1].len);
     } else {
-        b->last = ngx_cpymem(b->last, r->method_name.data, r->method_name.len);
+        b->last = ngx_cpymem(b->last, r->method_name.data,
+                             r->method_name.len + 1);
     }
 
     b->last = ngx_cpymem(b->last, uc->uri.data, uc->uri.len);
@@ -502,12 +504,11 @@ static void ngx_http_proxy_init_upstream(ngx_http_request_t *r)
         ngx_del_timer(r->connection->read);
     }
 
-    r->connection->read->event_handler = ngx_http_proxy_check_broken_connection;
+    r->read_event_handler = ngx_http_proxy_rd_check_broken_connection;
 
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
-        r->connection->write->event_handler =
-                                        ngx_http_proxy_check_broken_connection;
+        r->write_event_handler = ngx_http_proxy_wr_check_broken_connection;
 
         if (!r->connection->write->active) {
             if (ngx_add_event(r->connection->write, NGX_WRITE_EVENT,
@@ -770,8 +771,8 @@ static void ngx_http_proxy_connect(ngx_http_proxy_ctx_t *p)
     c = p->upstream->peer.connection;
 
     c->data = p;
-    c->write->event_handler = ngx_http_proxy_send_request_handler;
-    c->read->event_handler = ngx_http_proxy_process_upstream_status_line;
+    c->write->handler = ngx_http_proxy_send_request_handler;
+    c->read->handler = ngx_http_proxy_process_upstream_status_line;
 
     c->sendfile = r->connection->sendfile;
 
@@ -925,9 +926,9 @@ static void ngx_http_proxy_send_request(ngx_http_proxy_ctx_t *p)
     }
 #endif
 
-    c->write->event_handler = ngx_http_proxy_dummy_handler;
+    c->write->handler = ngx_http_proxy_dummy_handler;
 
-    if (ngx_handle_level_write_event(c->write) == NGX_ERROR) {
+    if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
         ngx_http_proxy_finalize_request(p, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
@@ -1124,7 +1125,7 @@ static void ngx_http_proxy_process_upstream_status_line(ngx_event_t *rev)
     }
 
 
-    c->read->event_handler = ngx_http_proxy_process_upstream_headers;
+    c->read->handler = ngx_http_proxy_process_upstream_headers;
     ngx_http_proxy_process_upstream_headers(rev);
 }
 
@@ -1174,7 +1175,7 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
 
         rc = ngx_http_parse_header_line(p->request, p->header_in);
 
-        if (rc == NGX_OK) {
+        if (rc == NGX_OK && !r->invalid_header) {
 
             /* a header line has been parsed successfully */
 
@@ -1240,6 +1241,10 @@ static void ngx_http_proxy_process_upstream_headers(ngx_event_t *rev)
             return;
 
         } else if (rc != NGX_AGAIN) {
+
+            if (r->invalid_header) {
+                rc = NGX_HTTP_PARSE_INVALID_HEADER;
+            }
 
             /* there was error while a header line parsing */
 
@@ -1465,13 +1470,18 @@ static void ngx_http_proxy_send_response(ngx_http_proxy_ctx_t *p)
     ep->send_timeout = clcf->send_timeout;
     ep->send_lowat = clcf->send_lowat;
 
-    p->upstream->peer.connection->read->event_handler =
-                                                   ngx_http_proxy_process_body;
-    r->connection->write->event_handler = ngx_http_proxy_process_body;
+    p->upstream->peer.connection->read->handler = ngx_http_proxy_process_body;
+    r->write_event_handler = ngx_http_proxy_process_downstream;
 
     ngx_http_proxy_process_body(p->upstream->peer.connection->read);
 
     return;
+}
+
+
+static void ngx_http_proxy_process_downstream(ngx_http_request_t *r)
+{
+    ngx_http_proxy_process_body(r->connection->write);
 }
 
 

@@ -21,7 +21,8 @@
  */
 
 
-static ngx_inline size_t ngx_sprint_uchar(u_char *text, u_char c, size_t len)
+static
+ngx_inline size_t ngx_sprint_uchar(u_char *text, u_char c, size_t len)
 {
     size_t      n;
     ngx_uint_t  c1, c2;
@@ -65,8 +66,8 @@ static ngx_inline size_t ngx_sprint_uchar(u_char *text, u_char c, size_t len)
 
 /* AF_INET only */
 
-size_t ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text,
-                     size_t len)
+size_t
+ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text, size_t len)
 {
     u_char              *p;
     size_t               n;
@@ -119,7 +120,8 @@ size_t ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text,
     return n;
 }
 
-size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len)
+size_t
+ngx_inet_ntop(int family, void *addr, u_char *text, size_t len)
 {
     u_char      *p;
     size_t       n;
@@ -173,7 +175,8 @@ size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len)
 
 /* AF_INET only */
 
-ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr)
+ngx_int_t
+ngx_ptocidr(ngx_str_t *text, void *cidr)
 {
     ngx_int_t         m;
     ngx_uint_t        i;
@@ -217,7 +220,8 @@ ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr)
 }
 
 
-ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
+ngx_peers_t *
+ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 {
     char                *err;
     u_char              *host;
@@ -392,7 +396,8 @@ ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 }
 
 
-char *ngx_inet_parse_host_port(ngx_inet_upstream_t *u)
+char *
+ngx_inet_parse_host_port(ngx_inet_upstream_t *u)
 {
     size_t      i;
     ngx_int_t   port;

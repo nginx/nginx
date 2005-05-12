@@ -106,7 +106,8 @@ static ngx_command_t  ngx_http_log_commands[] = {
 
 
 ngx_http_module_t  ngx_http_log_module_ctx = {
-    ngx_http_log_set_formats,              /* pre conf */
+    ngx_http_log_set_formats,              /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     ngx_http_log_create_main_conf,         /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -120,7 +121,7 @@ ngx_http_module_t  ngx_http_log_module_ctx = {
 
 
 ngx_module_t  ngx_http_log_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_log_module_ctx,              /* module context */
     ngx_http_log_commands,                 /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -388,6 +389,11 @@ ngx_http_log_header_in_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
     for (i = 0; ngx_http_headers_in[i].name.len != 0; i++) {
 
         if (ngx_http_headers_in[i].name.len != value->len) {
+            continue;
+        }
+
+        /* STUB: "Cookie" speacial handling */
+        if (ngx_http_headers_in[i].offset == 0) {
             continue;
         }
 
@@ -733,22 +739,17 @@ static ngx_int_t
 ngx_http_log_variable_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
     ngx_str_t *value)
 {
-    ngx_uint_t            i;
-    ngx_http_variable_t  *var;
+    ngx_int_t  index;
 
-    for (i = 0; i < value->len; i++) {
-        value->data[i] = ngx_toupper(value->data[i]);
-    }
-
-    var = ngx_http_add_variable(cf, value, 0);
-    if (var == NULL) {
+    index = ngx_http_get_variable_index(cf, value);
+    if (index == NGX_ERROR) {
         return NGX_ERROR;
     }
 
     op->len = 0;
     op->getlen = ngx_http_log_variable_getlen;
     op->run = ngx_http_log_variable;
-    op->data = var->index;
+    op->data = index;
 
     return NGX_OK;
 }
@@ -762,7 +763,7 @@ ngx_http_log_variable_getlen(ngx_http_request_t *r, uintptr_t data)
     value = ngx_http_get_indexed_variable(r, data);
 
     if (value == NULL
-        || value == NGX_HTTP_VARIABLE_NOT_FOUND
+        || value == NGX_HTTP_VAR_NOT_FOUND
         || value->text.len == 0)
     {
         return 1;
@@ -780,7 +781,7 @@ ngx_http_log_variable(ngx_http_request_t *r, u_char *buf, ngx_http_log_op_t *op)
     value = ngx_http_get_indexed_variable(r, op->data);
 
     if (value == NULL
-        || value == NGX_HTTP_VARIABLE_NOT_FOUND
+        || value == NGX_HTTP_VAR_NOT_FOUND
         || value->text.len == 0)
     {
         *buf = '-';

@@ -54,7 +54,7 @@ ngx_event_module_t  ngx_aio_module_ctx = {
 };
 
 ngx_module_t  ngx_aio_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_aio_module_ctx,                   /* module context */
     NULL,                                  /* module directives */
     NGX_EVENT_MODULE,                      /* module type */

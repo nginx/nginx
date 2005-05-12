@@ -20,7 +20,8 @@ typedef struct {
 
 
 typedef struct {
-    ngx_int_t   (*pre_conf)(ngx_conf_t *cf);
+    ngx_int_t   (*preconfiguration)(ngx_conf_t *cf);
+    ngx_int_t   (*postconfiguration)(ngx_conf_t *cf);
 
     void       *(*create_main_conf)(ngx_conf_t *cf);
     char       *(*init_main_conf)(ngx_conf_t *cf, void *conf);

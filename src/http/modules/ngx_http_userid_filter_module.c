@@ -19,7 +19,7 @@
 
 
 typedef struct {
-    ngx_flag_t  enable;
+    ngx_uint_t  enable;
 
     ngx_int_t   service;
 
@@ -83,7 +83,7 @@ static ngx_conf_enum_t  ngx_http_userid_state[] = {
 
 
 static ngx_conf_post_handler_pt  ngx_http_userid_domain_p =
-                                                        ngx_http_userid_domain;
+    ngx_http_userid_domain;
 
 static ngx_conf_post_handler_pt  ngx_http_userid_path_p = ngx_http_userid_path;
 static ngx_conf_post_handler_pt  ngx_http_userid_p3p_p = ngx_http_userid_p3p;
@@ -145,7 +145,8 @@ static ngx_command_t  ngx_http_userid_commands[] = {
 
 
 ngx_http_module_t  ngx_http_userid_filter_module_ctx = {
-    ngx_http_userid_add_log_formats,       /* pre conf */
+    ngx_http_userid_add_log_formats,       /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -159,7 +160,7 @@ ngx_http_module_t  ngx_http_userid_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_userid_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_userid_filter_module_ctx,    /* module context */
     ngx_http_userid_commands,              /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -185,6 +186,10 @@ ngx_http_userid_filter(ngx_http_request_t *r)
     ngx_int_t                rc;
     ngx_http_userid_ctx_t   *ctx;
     ngx_http_userid_conf_t  *conf;
+
+    if (r->main) {
+        return ngx_http_next_header_filter(r);
+    }
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_userid_filter_module);
 
@@ -225,81 +230,46 @@ static ngx_int_t
 ngx_http_userid_get_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     ngx_http_userid_conf_t *conf)
 {
-    u_char            *start, *last, *end;
-    ngx_uint_t         i;
+    ngx_int_t          n;
     ngx_str_t          src, dst;
     ngx_table_elt_t  **cookies;
 
-    cookies = r->headers_in.cookies.elts;
-
-    for (i = 0; i < r->headers_in.cookies.nelts; i++) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "cookie: \"%V\"", &cookies[i]->value);
-
-        if (conf->name.len >= cookies[i]->value.len) {
-            continue;
-        }
-
-        start = cookies[i]->value.data;
-        end = cookies[i]->value.data + cookies[i]->value.len;
-
-        while (start < end) {
-
-            if (ngx_strncmp(start, conf->name.data, conf->name.len) != 0) {
-
-                while (start < end && *start++ != ';') { /* void */ }
-                while (start < end && *start == ' ') { start++; }
-
-                continue;
-            }
-
-            start += conf->name.len;
-
-            while (start < end && *start == ' ') { start++; }
-
-            if (start == end || *start++ != '=') {
-                /* the invalid "Cookie" header */
-                break;
-            }
-
-            while (start < end && *start == ' ') { start++; }
-
-            last = start;
-
-            while (last < end && *last++ != ';') { /* void */ }
-
-            if (last - start < 22) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "client sent too short userid cookie \"%V\"",
-                              &cookies[i]->value);
-                break;
-            }
-
-            /*
-             * we have to limit encoded string to 22 characters
-             * because there are already the millions cookies with a garbage
-             * instead of the correct base64 trail "=="
-             */
-
-            src.len = 22;
-            src.data = start;
-            dst.data = (u_char *) ctx->uid_got;
-
-            if (ngx_decode_base64(&dst, &src) == NGX_ERROR) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "client sent invalid userid cookie \"%V\"",
-                              &cookies[i]->value);
-                break;
-            }
-
-            ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "uid: %08XD%08XD%08XD%08XD",
-                           ctx->uid_got[0], ctx->uid_got[1],
-                           ctx->uid_got[2], ctx->uid_got[3]);
-
-            return NGX_OK;
-        }
+    n = ngx_http_parse_multi_header_lines(&r->headers_in.cookies, &conf->name,
+                                          &src);
+    if (n == NGX_DECLINED) {
+        return NGX_OK;
     }
+
+    if (src.len < 22) {
+        cookies = r->headers_in.cookies.elts;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "client sent too short userid cookie \"%V\"",
+                      &cookies[n]->value);
+        return NGX_OK;
+    }
+
+    /*
+     * we have to limit encoded string to 22 characters
+     * because there are already the millions cookies with a garbage
+     * instead of the correct base64 trail "=="
+     */
+
+    src.len = 22;
+
+    dst.data = (u_char *) ctx->uid_got;
+
+    if (ngx_decode_base64(&dst, &src) == NGX_ERROR) {
+        cookies = r->headers_in.cookies.elts;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "client sent invalid userid cookie \"%V\"",
+                      &cookies[n]->value);
+        return NGX_OK;
+    }
+
+    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "uid: %08XD%08XD%08XD%08XD",
+                   ctx->uid_got[0], ctx->uid_got[1],
+                   ctx->uid_got[2], ctx->uid_got[3]);
 
     return NGX_OK;
 }
@@ -404,6 +374,7 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
         return NGX_ERROR;
     }
 
+    set_cookie->hash = 1;
     set_cookie->key.len = sizeof("Set-Cookie") - 1;
     set_cookie->key.data = (u_char *) "Set-Cookie";
     set_cookie->value.len = p - cookie;
@@ -421,6 +392,7 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
         return NGX_ERROR;
     }
 
+    p3p->hash = 1;
     p3p->key.len = sizeof("P3P") - 1;
     p3p->key.data = (u_char *) "P3P";
     p3p->value = conf->p3p;
@@ -570,7 +542,7 @@ ngx_http_userid_create_conf(ngx_conf_t *cf)
      *     conf->p3p.date = NULL;
      */
 
-    conf->enable = NGX_CONF_UNSET;
+    conf->enable = NGX_CONF_UNSET_UINT;
     conf->service = NGX_CONF_UNSET;
     conf->expires = NGX_CONF_UNSET;
 
@@ -584,7 +556,8 @@ ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_userid_conf_t *prev = parent;
     ngx_http_userid_conf_t *conf = child;
 
-    ngx_conf_merge_value(conf->enable, prev->enable, NGX_HTTP_USERID_OFF);
+    ngx_conf_merge_unsigned_value(conf->enable, prev->enable,
+                                  NGX_HTTP_USERID_OFF);
 
     ngx_conf_merge_str_value(conf->name, prev->name, "uid");
     ngx_conf_merge_str_value(conf->domain, prev->domain, "");

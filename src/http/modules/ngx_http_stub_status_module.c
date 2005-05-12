@@ -22,7 +22,8 @@ static ngx_command_t  ngx_http_status_commands[] = {
 
     
 ngx_http_module_t  ngx_http_stub_status_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -36,7 +37,7 @@ ngx_http_module_t  ngx_http_stub_status_module_ctx = {
 
 
 ngx_module_t  ngx_http_stub_status_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_stub_status_module_ctx,      /* module context */
     ngx_http_status_commands,              /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -63,15 +64,8 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    r->headers_out.content_type = ngx_list_push(&r->headers_out.headers);
-    if (r->headers_out.content_type == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    r->headers_out.content_type->key.len = 0;
-    r->headers_out.content_type->key.data = NULL;
-    r->headers_out.content_type->value.len = sizeof("text/plain") - 1;
-    r->headers_out.content_type->value.data = (u_char *) "text/plain";
+    r->headers_out.content_type.len = sizeof("text/plain") - 1;
+    r->headers_out.content_type.data = (u_char *) "text/plain";
 
     if (r->method == NGX_HTTP_HEAD) {
         r->headers_out.status = NGX_HTTP_OK;
@@ -103,14 +97,14 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     rd = *ngx_stat_reading;
     wr = *ngx_stat_writing;
 
-    b->last = ngx_sprintf(b->last, "Active connections: %A \n", ac);
+    b->last = ngx_sprintf(b->last, "Active connections: %uA \n", ac);
 
     b->last = ngx_cpymem(b->last, "server accepts handled requests\n",
                          sizeof("server accepts handled requests\n") - 1);
 
-    b->last = ngx_sprintf(b->last, " %A %A %A \n", ap, hn, rq);
+    b->last = ngx_sprintf(b->last, " %uA %uA %uA \n", ap, hn, rq);
 
-    b->last = ngx_sprintf(b->last, "Reading: %A Writing: %A Waiting: %A \n",
+    b->last = ngx_sprintf(b->last, "Reading: %uA Writing: %uA Waiting: %uA \n",
                           rd, wr, ac - (rd + wr));
 
     r->headers_out.status = NGX_HTTP_OK;

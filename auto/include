@@ -39,14 +39,7 @@ if [ -x $NGX_AUTOTEST ]; then
                   |  tr '[a-z]' '[A-Z]'`
 
 
-    cat << END >> $NGX_AUTO_HEADERS_H
-
-#ifndef NGX_HAVE_$ngx_name
-#define NGX_HAVE_$ngx_name  1
-#endif
-
-END
-
+    have=NGX_HAVE_$ngx_name . auto/have_headers
 
     eval "NGX_INCLUDE_$ngx_name='#include <$ngx_include>'"
 

@@ -38,8 +38,10 @@ ngx_int_t
 ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
     int persistent)
 {
-    ngx_err_t           err;
-    ngx_atomic_uint_t   n;
+    ngx_err_t                 err;
+    ngx_atomic_uint_t         n;
+    ngx_pool_cleanup_file_t  *cln;
+
 
     file->name.len = path->name.len + 1 + path->len + NGX_ATOMIC_T_LEN;
 
@@ -74,6 +76,20 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
                        "temp fd:%d", file->fd);
 
         if (file->fd != NGX_INVALID_FILE) {
+            cln = ngx_palloc(pool, sizeof(ngx_pool_cleanup_file_t));
+            if (cln == NULL) {
+                return NGX_ERROR; 
+            }
+
+            cln->fd = file->fd;
+            cln->name = file->name.data;
+            cln->log = pool->log;
+
+            if (ngx_pool_cleanup_add(pool, ngx_pool_cleanup_file, cln) == NULL)
+            {
+                return NGX_ERROR;
+            }
+
             return NGX_OK;
         }
 

@@ -64,13 +64,13 @@ ngx_int_t ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
         }
     }
 
-    if (p->downstream->fd != -1) {
+    if (p->downstream->fd != -1 && p->downstream->data == p->output_ctx) {
         wev = p->downstream->write;
         if (ngx_handle_write_event(wev, p->send_lowat) == NGX_ERROR) {
             return NGX_ABORT;
         }
 
-        if (wev->active) {
+        if (wev->active && !wev->ready && !wev->delayed) {
             ngx_add_timer(wev, p->send_timeout);
         }
     }
@@ -180,8 +180,10 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 chain->buf = b;
                 chain->next = NULL;
 
-            } else if (!p->cachable && p->downstream->write->ready) {
-
+            } else if (!p->cachable
+                       && p->downstream->data == p->output_ctx
+                       && p->downstream->write->ready)
+            {
                 /*
                  * if the bufs are not needed to be saved in a cache and
                  * a downstream is ready then write the bufs to a downstream
@@ -409,9 +411,17 @@ static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
             /* pass the p->out and p->in chains to the output filter */
 
+            for (cl = p->busy; cl; cl = cl->next) {
+                cl->buf->recycled = 0;
+            }
+
             if (p->out) {
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
                                "pipe write downstream flush out");
+
+                for (cl = p->out; cl; cl = cl->next) {
+                    cl->buf->recycled = 0;
+                }
 
                 if (p->output_filter(p->output_ctx, p->out) == NGX_ERROR) {
                     p->downstream_error = 1;
@@ -424,6 +434,10 @@ static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             if (p->in) {
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
                                "pipe write downstream flush in");
+
+                for (cl = p->in; cl; cl = cl->next) {
+                    cl->buf->recycled = 0;
+                }
 
                 if (p->output_filter(p->output_ctx, p->in) == NGX_ERROR) {
                     p->downstream_error = 1;
@@ -442,7 +456,9 @@ static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             break;
         }
 
-        if (!p->downstream->write->ready) {
+        if (p->downstream->data != p->output_ctx
+            || !p->downstream->write->ready)
+        {
             break;
         }
 

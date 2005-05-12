@@ -11,7 +11,8 @@
 #define NGX_MAX_TEXT   2048
 
 
-void ngx_cdecl ngx_message_box(char *title, ngx_uint_t type, ngx_err_t err,
+void __cdecl
+ngx_message_box(char *title, ngx_uint_t type, ngx_err_t err,
     const char *fmt, ...)
 {
     va_list  args;

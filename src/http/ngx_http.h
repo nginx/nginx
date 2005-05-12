@@ -12,11 +12,16 @@
 #include <ngx_core.h>
 #include <ngx_garbage_collector.h>
 
-typedef struct ngx_http_request_s  ngx_http_request_t;
-typedef struct ngx_http_log_ctx_s  ngx_http_log_ctx_t;
-typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
-typedef struct ngx_http_in_addr_s  ngx_http_in_addr_t;
-typedef struct ngx_http_variable_value_s  ngx_http_variable_value_t;
+
+typedef struct ngx_http_request_s   ngx_http_request_t;
+typedef struct ngx_http_upstream_s  ngx_http_upstream_t;
+typedef struct ngx_http_log_ctx_s   ngx_http_log_ctx_t;
+typedef struct ngx_http_in_addr_s   ngx_http_in_addr_t;
+
+typedef ngx_int_t (*ngx_http_header_handler_pt)(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
+typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r, u_char *buf,
+    size_t len);
 
 
 #if (NGX_HTTP_CACHE)
@@ -25,13 +30,13 @@ typedef struct ngx_http_variable_value_s  ngx_http_variable_value_t;
 /* STUB */
 #include <ngx_http_cache.h>
 
-#include <ngx_http_upstream.h>
+#include <ngx_http_variables.h>
 #include <ngx_http_request.h>
+#include <ngx_http_upstream.h>
 #include <ngx_http_config.h>
 #include <ngx_http_busy_lock.h>
 #include <ngx_http_log_module.h>
 #include <ngx_http_core_module.h>
-#include <ngx_http_variables.h>
 #include <ngx_http_script.h>
 
 #if (NGX_HTTP_SSL)
@@ -58,16 +63,18 @@ void ngx_http_init_connection(ngx_connection_t *c);
 ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b);
 ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r);
 ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b);
+ngx_int_t ngx_http_parse_multi_header_lines(ngx_array_t *headers,
+    ngx_str_t *name, ngx_str_t *value);
 
 ngx_int_t ngx_http_find_server_conf(ngx_http_request_t *r);
 void ngx_http_handler(ngx_http_request_t *r);
-void ngx_http_finalize_request(ngx_http_request_t *r, int error);
-void ngx_http_writer(ngx_event_t *wev);
+void ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc);
 
 void ngx_http_empty_handler(ngx_event_t *wev);
+void ngx_http_request_empty_handler(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_send_last(ngx_http_request_t *r);
-void ngx_http_close_request(ngx_http_request_t *r, int error);
+void ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error);
 void ngx_http_close_connection(ngx_connection_t *c);
 u_char * ngx_http_log_error_info(ngx_http_request_t *r, u_char *buf,
     size_t len);

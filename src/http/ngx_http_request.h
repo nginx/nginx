@@ -8,6 +8,9 @@
 #define _NGX_HTTP_REQUEST_H_INCLUDED_
 
 
+#define NGX_HTTP_MAX_REWRITE_CYCLES        10
+
+
 #define NGX_HTTP_DISCARD_BUFFER_SIZE       4096
 #define NGX_HTTP_LINGERING_BUFFER_SIZE     4096
 
@@ -114,7 +117,14 @@ typedef enum {
 typedef struct {
     ngx_str_t                         name;
     ngx_uint_t                        offset;
+    ngx_http_header_handler_pt        handler;
 } ngx_http_header_t;
+
+
+typedef struct {
+    ngx_str_t                         name;
+    ngx_uint_t                        offset;
+} ngx_http_header0_t;
 
 
 typedef struct {
@@ -183,7 +193,6 @@ typedef struct {
 
     ngx_table_elt_t                  *server;
     ngx_table_elt_t                  *date;
-    ngx_table_elt_t                  *content_type;
     ngx_table_elt_t                  *content_length;
     ngx_table_elt_t                  *content_encoding;
     ngx_table_elt_t                  *location;
@@ -192,11 +201,13 @@ typedef struct {
     ngx_table_elt_t                  *accept_ranges;
     ngx_table_elt_t                  *www_authenticate;
     ngx_table_elt_t                  *expires;
-    ngx_table_elt_t                  *cache_control;
     ngx_table_elt_t                  *etag;
 
+    ngx_str_t                         content_type;
     ngx_str_t                         charset;
     ngx_array_t                       ranges;
+
+    ngx_array_t                       cache_control;
 
     off_t                             content_length_n;
     time_t                            date_time;
@@ -215,24 +226,6 @@ typedef struct {
 } ngx_http_request_body_t;
 
 
-struct ngx_http_cleanup_s {
-    union {
-        struct {
-            ngx_fd_t                  fd;
-            u_char                   *name;
-        } file;
-
-        struct {
-            ngx_http_cache_hash_t    *hash;
-            ngx_http_cache_entry_t   *cache;
-        } cache;
-    } data;
-
-    unsigned                          valid:1;
-    unsigned                          cache:1;
-};
-
-
 typedef struct {
     ngx_http_request_t               *request;
 
@@ -246,7 +239,18 @@ typedef struct {
 } ngx_http_connection_t;
 
 
+typedef struct ngx_http_postponed_request_s  ngx_http_postponed_request_t;
+
+struct ngx_http_postponed_request_s {
+    ngx_http_request_t            *request;
+    ngx_chain_t                   *out;
+    ngx_http_postponed_request_t  *next;
+};
+
+
 typedef ngx_int_t (*ngx_http_handler_pt)(ngx_http_request_t *r);
+typedef void (*ngx_http_event_handler_pt)(ngx_http_request_t *r);
+
 
 struct ngx_http_request_s {
     uint32_t                          signature;         /* "HTTP" */
@@ -258,11 +262,12 @@ struct ngx_http_request_s {
     void                            **srv_conf;
     void                            **loc_conf;
 
+    ngx_http_event_handler_pt         read_event_handler;
+    ngx_http_event_handler_pt         write_event_handler;
+
     ngx_http_cache_t                 *cache;
 
     ngx_http_upstream_t              *upstream;
-
-    ngx_file_t                        file;
 
     ngx_pool_t                       *pool;
     ngx_buf_t                        *header_in;
@@ -289,7 +294,10 @@ struct ngx_http_request_s {
     ngx_str_t                         method_name;
     ngx_str_t                         http_protocol;
  
+    ngx_chain_t                      *out;
     ngx_http_request_t               *main;
+    ngx_http_request_t               *parent;
+    ngx_http_postponed_request_t     *postponed;
 
     uint32_t                          in_addr;
     ngx_uint_t                        port;
@@ -303,18 +311,17 @@ struct ngx_http_request_s {
 
     ngx_http_variable_value_t       **variables;
 
-    ngx_array_t                       cleanup;
-
     /* used to learn the Apache compatible response length without a header */
     size_t                            header_size;
 
     size_t                            request_length;
 
-    u_char                           *discarded_buffer;
     void                            **err_ctx;
     ngx_uint_t                        err_status;
 
     ngx_http_connection_t            *http_connection;
+
+    ngx_http_log_handler_pt           log_handler;
 
     unsigned                          http_state:4;
 
@@ -330,11 +337,10 @@ struct ngx_http_request_s {
     /* URI with "\0" or "%00" */
     unsigned                          zero_in_uri:1;
 
+    unsigned                          valid_location:1;
     unsigned                          valid_unparsed_uri:1;
     unsigned                          uri_changed:1;
     unsigned                          uri_changes:4;
-
-    unsigned                          invalid_header:1;
 
     unsigned                          low_case_exten:1;
     unsigned                          header_timeout_set:1;
@@ -346,14 +352,16 @@ struct ngx_http_request_s {
 #if 0
     unsigned                          cachable:1;
 #endif
-    unsigned                          pipeline:1;
 
+    unsigned                          pipeline:1;
     unsigned                          plain_http:1;
     unsigned                          chunked:1;
     unsigned                          header_only:1;
     unsigned                          keepalive:1;
     unsigned                          lingering_close:1;
+    unsigned                          internal:1;
     unsigned                          closed:1;
+    unsigned                          done:1;
 
     unsigned                          filter_need_in_memory:1;
     unsigned                          filter_ssi_need_in_memory:1;
@@ -364,8 +372,6 @@ struct ngx_http_request_s {
     unsigned                          stat_reading:1;
     unsigned                          stat_writing:1;
 #endif
-
-    ngx_uint_t                        headers_n;
 
     /* used to parse HTTP headers */
     ngx_uint_t                        state;
@@ -391,8 +397,7 @@ struct ngx_http_request_s {
 
 
 extern ngx_http_header_t   ngx_http_headers_in[];
-extern ngx_http_header_t   ngx_http_headers_out[];
-
+extern ngx_http_header0_t   ngx_http_headers_out[];
 
 
 #endif /* _NGX_HTTP_REQUEST_H_INCLUDED_ */

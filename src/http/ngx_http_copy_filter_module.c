@@ -34,7 +34,8 @@ static ngx_command_t  ngx_http_copy_filter_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_copy_filter_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -48,7 +49,7 @@ static ngx_http_module_t  ngx_http_copy_filter_module_ctx = {
 
 
 ngx_module_t  ngx_http_copy_filter_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_copy_filter_module_ctx,      /* module context */
     ngx_http_copy_filter_commands,         /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -63,6 +64,7 @@ static ngx_http_output_body_filter_pt    ngx_http_next_filter;
 static ngx_int_t
 ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
+    ngx_int_t                     rc;
     ngx_output_chain_ctx_t       *ctx;
     ngx_http_copy_filter_conf_t  *conf;
 
@@ -70,12 +72,13 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
-    ctx = ngx_http_get_module_ctx(r->main ? r->main : r,
-                                            ngx_http_copy_filter_module);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "copy filter: \"%V\"", &r->uri);
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_copy_filter_module);
 
     if (ctx == NULL) {
-        conf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                            ngx_http_copy_filter_module);
+        conf = ngx_http_get_module_loc_conf(r, ngx_http_copy_filter_module);
 
         ctx = ngx_pcalloc(r->pool, sizeof(ngx_output_chain_ctx_t));
         if (ctx == NULL) {
@@ -97,7 +100,12 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     }
 
-    return ngx_output_chain(ctx, in);
+    rc = ngx_output_chain(ctx, in);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "copy filter: %i \"%V\"", rc, &r->uri);
+
+    return rc;
 }
 
 

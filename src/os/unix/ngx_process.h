@@ -62,12 +62,6 @@ void ngx_debug_point(void);
 #endif
 
 
-#if !defined(ngx_setproctitle)
-ngx_int_t ngx_init_setproctitle(ngx_log_t *log);
-void ngx_setproctitle(char *title);
-#endif
-
-
 extern int            ngx_argc;
 extern char         **ngx_argv;
 extern char         **ngx_os_argv;

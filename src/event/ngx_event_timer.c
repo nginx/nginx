@@ -156,7 +156,7 @@ ngx_event_expire_timers(ngx_msec_t timer)
 
             ev->timedout = 1;
 
-            ev->event_handler(ev);
+            ev->handler(ev);
 
             continue;
         }

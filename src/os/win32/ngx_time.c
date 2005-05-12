@@ -36,6 +36,28 @@ void ngx_gettimeofday(struct timeval *tp)
 }
 
 
+void ngx_libc_localtime(struct tm *tm)
+{
+    time_t      now;
+    struct tm  *t;
+
+    now = ngx_time();
+    t = localtime(&now);
+    *tm = *t;
+}
+
+
+void ngx_libc_gmtime(struct tm *tm)
+{
+    time_t      now;
+    struct tm  *t;
+
+    now = ngx_time();
+    t = gmtime(&now);
+    *tm = *t;
+}
+
+
 ngx_int_t ngx_gettimezone(void)
 {
     TIME_ZONE_INFORMATION  tz;

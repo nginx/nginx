@@ -54,7 +54,8 @@ static ngx_command_t  ngx_http_access_commands[] = {
 
 
 ngx_http_module_t  ngx_http_access_module_ctx = {
-    NULL,                                  /* pre conf */
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -68,7 +69,7 @@ ngx_http_module_t  ngx_http_access_module_ctx = {
 
 
 ngx_module_t  ngx_http_access_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_http_access_module_ctx,           /* module context */
     ngx_http_access_commands,              /* module directives */
     NGX_HTTP_MODULE,                       /* module type */

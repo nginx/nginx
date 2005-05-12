@@ -57,6 +57,11 @@ case $CPU in
         CPU_OPT="-march=pentium4"
     ;;
 
+    opteron)
+        # optimize for Opteron, gcc 3.x
+        CPU_OPT="-march=opteron"
+    ;;
+
     sparc64)
         # build 64-bit UltraSparc binary
         CPU_OPT="-m64"

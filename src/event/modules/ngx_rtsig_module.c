@@ -118,7 +118,7 @@ ngx_event_module_t  ngx_rtsig_module_ctx = {
 };
 
 ngx_module_t  ngx_rtsig_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_rtsig_module_ctx,               /* module context */
     ngx_rtsig_commands,                  /* module directives */
     NGX_EVENT_MODULE,                    /* module type */
@@ -461,11 +461,11 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
                     rev->ready = 1;
 
                     if (!ngx_threaded && !ngx_accept_mutex_held) {
-                        rev->event_handler(rev);
+                        rev->handler(rev);
 
                     } else if (rev->accept) {
                         if (ngx_accept_disabled <= 0) {
-                            rev->event_handler(rev);
+                            rev->handler(rev);
                         }
 
                     } else {
@@ -495,7 +495,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
                     wev->ready = 1;
 
                     if (!ngx_threaded && !ngx_accept_mutex_held) {
-                        wev->event_handler(wev);
+                        wev->handler(wev);
 
                     } else {
                         ngx_post_event(wev);
@@ -598,11 +598,11 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
             events = 0;
 
-            if (c->read->active && c->read->event_handler) {
+            if (c->read->active && c->read->handler) {
                 events |= POLLIN;
             }
 
-            if (c->write->active && c->write->event_handler) {
+            if (c->write->active && c->write->handler) {
                 events |= POLLOUT;
             }
 
@@ -652,7 +652,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
             if (rev->active
                 && !rev->closed
-                && rev->event_handler
+                && rev->handler
                 && (overflow_list[i].revents
                                           & (POLLIN|POLLERR|POLLHUP|POLLNVAL)))
             {
@@ -664,7 +664,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
                 } else {
                     rev->ready = 1;
-                    rev->event_handler(rev); 
+                    rev->handler(rev); 
                 }
             }
 
@@ -672,7 +672,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
             if (wev->active
                 && !wev->closed
-                && wev->event_handler
+                && wev->handler
                 && (overflow_list[i].revents
                                          & (POLLOUT|POLLERR|POLLHUP|POLLNVAL)))
             {
@@ -684,7 +684,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
                 } else {
                     wev->ready = 1;
-                    wev->event_handler(wev); 
+                    wev->handler(wev); 
                 }
             }
         }

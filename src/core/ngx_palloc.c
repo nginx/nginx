@@ -23,6 +23,7 @@ ngx_create_pool(size_t size, ngx_log_t *log)
     p->next = NULL;
     p->large = NULL;
     p->chain = NULL;
+    p->cleanup = NULL;
     p->log = log;
 
     return p;
@@ -32,8 +33,15 @@ ngx_create_pool(size_t size, ngx_log_t *log)
 void
 ngx_destroy_pool(ngx_pool_t *pool)
 {
-    ngx_pool_t        *p, *n;
-    ngx_pool_large_t  *l;
+    ngx_pool_t          *p, *n;
+    ngx_pool_large_t    *l;
+    ngx_pool_cleanup_t  *c;
+
+    for (c = pool->cleanup; c; c = c->next) {
+        if (c->handler) {
+            c->handler(c->data);
+        }
+    }
 
     for (l = pool->large; l; l = l->next) {
 
@@ -196,6 +204,39 @@ ngx_pcalloc(ngx_pool_t *pool, size_t size)
 
     return p;
 }
+
+
+ngx_pool_cleanup_t *
+ngx_pool_cleanup_add(ngx_pool_t *p, ngx_pool_cleanup_pt handler, void *data)
+{
+    ngx_pool_cleanup_t  *c;
+
+    c = ngx_palloc(p, sizeof(ngx_pool_cleanup_t));
+    if (c == NULL) {
+        return NULL;
+    }
+
+    c->handler = handler;
+    c->data = data;
+    c->next = p->cleanup;
+
+    p->cleanup = c;
+
+    return c;
+}
+
+
+void
+ngx_pool_cleanup_file(void *data)
+{
+    ngx_pool_cleanup_file_t  *c = data;
+
+    if (ngx_close_file(c->fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", c->name);
+    }
+}
+
 
 #if 0
 

@@ -69,7 +69,7 @@ ngx_event_module_t  ngx_iocp_module_ctx = {
 };
 
 ngx_module_t  ngx_iocp_module = {
-    NGX_MODULE,
+    NGX_MODULE_V1,
     &ngx_iocp_module_ctx,                  /* module context */
     ngx_iocp_commands,                     /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
@@ -294,9 +294,9 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
     ev->available = bytes;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "iocp event handler: %p", ev->event_handler);
+                   "iocp event handler: %p", ev->handler);
 
-    ev->event_handler(ev);
+    ev->handler(ev);
 
     if (timer != INFINITE && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);
