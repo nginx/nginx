@@ -263,7 +263,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
                         valid = 0;
                     }
 
-                } else if (cf->args->nelts <= 10
+                } else if (cf->args->nelts <= NGX_CONF_MAX_ARGS
                            && (cmd->type
                                & argument_number[cf->args->nelts - 1]))
                 {

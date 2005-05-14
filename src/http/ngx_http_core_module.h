@@ -87,6 +87,8 @@ typedef struct {
     ngx_msec_t                 client_header_timeout;
 
     ngx_uint_t                 restrict_host_names;
+
+    ngx_flag_t                 ignore_invalid_headers;
 } ngx_http_core_srv_conf_t;
 
 

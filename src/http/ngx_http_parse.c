@@ -529,6 +529,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         /* first char */
         case sw_start:
+            r->invalid_header = 0;
+
             switch (ch) {
             case CR:
                 r->header_end = p;
@@ -551,6 +553,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                     hash = ch;
                     break;
                 }
+
+                r->invalid_header = 1;
 
                 break;
 
@@ -605,6 +609,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                 state = sw_ignore_line;
                 break;
             }
+
+            r->invalid_header = 1;
 
             break;
 

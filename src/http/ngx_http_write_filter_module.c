@@ -168,6 +168,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_OK;
     }
 
+#if 0
     /*
      * avoid the output if there are no incoming bufs but there are
      * the postponed requests or data
@@ -176,6 +177,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (in == NULL && r->postponed) {
         return NGX_OK;
     }
+#endif
 
     if (c->write->delayed) {
         return NGX_AGAIN;

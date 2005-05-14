@@ -779,12 +779,6 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
         return;
     }
 
-    if (n == NGX_HTTP_INTERNAL_SERVER_ERROR) {
-        ngx_http_upstream_finalize_request(r, u,
-                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return;
-    }
-
     u->header_in.last += n;
 
 #if 0

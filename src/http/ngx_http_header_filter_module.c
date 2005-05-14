@@ -48,7 +48,7 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_null_string,  /* "201 Created" */
     ngx_null_string,  /* "202 Accepted" */
     ngx_null_string,  /* "203 Non-Authoritative Information" */
-    ngx_null_string,  /* "204 No Content" */
+    ngx_string("204 No Content"),
     ngx_null_string,  /* "205 Reset Content" */
     ngx_string("206 Partial Content"),
 
@@ -167,8 +167,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.last_modified_time != -1) {
         if (r->headers_out.status != NGX_HTTP_OK
-            && r->headers_out.status != NGX_HTTP_NOT_MODIFIED
-            && r->headers_out.status != NGX_HTTP_PARTIAL_CONTENT)
+            && r->headers_out.status != NGX_HTTP_PARTIAL_CONTENT
+            && r->headers_out.status != NGX_HTTP_NOT_MODIFIED)
         {
             r->headers_out.last_modified_time = -1;
             r->headers_out.last_modified = NULL;
@@ -192,6 +192,16 @@ ngx_http_header_filter(ngx_http_request_t *r)
         if (r->headers_out.status < NGX_HTTP_MOVED_PERMANENTLY) {
             /* 2XX */
             status = r->headers_out.status - NGX_HTTP_OK;
+
+            if (r->headers_out.status == NGX_HTTP_NO_CONTENT) {
+                r->header_only = 1;
+                r->headers_out.content_type.len = 0;
+                r->headers_out.content_type.data = NULL;
+                r->headers_out.last_modified_time = -1;
+                r->headers_out.last_modified = NULL;
+                r->headers_out.content_length = NULL;
+                r->headers_out.content_length_n = -1;
+            }
 
         } else if (r->headers_out.status < NGX_HTTP_BAD_REQUEST) {
             /* 3XX */

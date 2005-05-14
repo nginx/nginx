@@ -9,6 +9,69 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.30" date="14.05.2005">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании SSI рабочий процесс мог зациклиться.
+</para>
+<para lang="en">
+the worker process may got caught in an endless loop if the SSI was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании SSL ответ мог передаваться не до конца.
+</para>
+<para lang="en">
+the response encrypted by SSL may not transferred complete.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если длина части ответа, полученного за один раз от проксируемого или
+FastCGI сервера была равна 500 байт, то nginx возвращал код ответа 500;
+в режиме прокси ошибка появилась только в 0.1.29.
+</para>
+<para lang="en">
+if the length of the response part received at once from proxied
+or FastCGI server was equal to 500, then nginx returns the 500 response code;
+in proxy mode the bug appeared in 0.1.29 only.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не считал неверными директивы с 8-ю или 9-ю параметрами.
+</para>
+<para lang="en">
+nginx did not consider the directives with 8 or 9 parameters as invalid.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива return может возвращать код ответа 204.
+</para>
+<para lang="en">
+the "return" directive can return the 204 response code.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ignore_invalid_headers.
+</para>
+<para lang="en">
+the "ignore_invalid_headers" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.29" date="12.05.2005">
 
 <change type="feature">
@@ -159,12 +222,12 @@ the "fastcgi_param" directive.
 
 <change type="change">
 <para lang="ru">
-директивы fastcgi_set_var и fastcgi_params упразднены и должны быть
-замены директивами fastcgi_param.
+директивы fastcgi_root, fastcgi_set_var и fastcgi_params упразднены
+и должны быть замены директивами fastcgi_param.
 </para>
 <para lang="en">
-the "fastcgi_set_var" and "fastcgi_params" directive are canceled and
-must be replaced with the fastcgi_param directives.
+the "fastcgi_root", "fastcgi_set_var" and "fastcgi_params" directive
+are canceled and must be replaced with the fastcgi_param directives.
 </para>
 </change>
 

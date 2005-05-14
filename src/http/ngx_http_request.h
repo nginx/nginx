@@ -42,6 +42,7 @@
 
 
 #define NGX_HTTP_OK                        200
+#define NGX_HTTP_NO_CONTENT                204
 #define NGX_HTTP_PARTIAL_CONTENT           206
 
 #define NGX_HTTP_SPECIAL_RESPONSE          300
@@ -336,6 +337,8 @@ struct ngx_http_request_s {
 
     /* URI with "\0" or "%00" */
     unsigned                          zero_in_uri:1;
+
+    unsigned                          invalid_header:1;
 
     unsigned                          valid_location:1;
     unsigned                          valid_unparsed_uri:1;

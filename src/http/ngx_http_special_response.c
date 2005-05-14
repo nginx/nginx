@@ -191,6 +191,10 @@ static char error_504_page[] =
 
 static ngx_str_t error_pages[] = {
 
+    ngx_null_string,             /* 204 */
+
+#define NGX_HTTP_LEVEL_200  1
+
     /* ngx_null_string, */       /* 300 */
     ngx_string(error_301_page),
     ngx_string(error_302_page),
@@ -290,17 +294,23 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         }
     }
 
-    if (error < NGX_HTTP_BAD_REQUEST) {
+    if (error == NGX_HTTP_NO_CONTENT) {
+        /* 204 */
+        err = 0;
+
+    } else if (error < NGX_HTTP_BAD_REQUEST) {
         /* 3XX */
         err = error - NGX_HTTP_MOVED_PERMANENTLY;
 
     } else if (error < NGX_HTTP_NGX_CODES) {
         /* 4XX */
-        err = error - NGX_HTTP_BAD_REQUEST + NGX_HTTP_LEVEL_300;
+        err = error - NGX_HTTP_BAD_REQUEST + NGX_HTTP_LEVEL_200
+                                           + NGX_HTTP_LEVEL_300;
 
     } else {
         /* 49X, 5XX */
-        err = error - NGX_HTTP_NGX_CODES + NGX_HTTP_LEVEL_300
+        err = error - NGX_HTTP_NGX_CODES + NGX_HTTP_LEVEL_200
+                                         + NGX_HTTP_LEVEL_300
                                          + NGX_HTTP_LEVEL_400;
         switch (error) {
             case NGX_HTTP_TO_HTTPS:

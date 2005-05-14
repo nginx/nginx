@@ -725,6 +725,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
     ngx_connection_t           *c;
     ngx_http_header_t          *hh;
     ngx_http_request_t         *r;
+    ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_main_conf_t  *cmcf;
 
     c = rev->data;
@@ -742,6 +743,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
     }
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
     hh = (ngx_http_header_t *) cmcf->headers_in_hash.buckets;
 
     rc = NGX_AGAIN;
@@ -783,8 +785,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
         if (rc == NGX_OK) {
 
-#if 0
-            if (r->invalid_header) {
+            if (r->invalid_header && cscf->ignore_invalid_headers) {
 
                 /* there was error while a header line parsing */
 
@@ -796,7 +797,6 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                               &header);
                 continue;
             }
-#endif
 
             /* a header line has been parsed successfully */
 
@@ -1406,7 +1406,9 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http finalize request: %d, \"%V\"", rc, &r->uri);
 
-    if (r->parent && rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+    if (r->parent
+        && (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_HTTP_NO_CONTENT))
+    {
         ngx_http_finalize_request(r, ngx_http_special_response_handler(r, rc));
         return;
     }
@@ -1450,7 +1452,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_HTTP_NO_CONTENT) {
 
         if (r->connection->read->timer_set) {
             ngx_del_timer(r->connection->read);
