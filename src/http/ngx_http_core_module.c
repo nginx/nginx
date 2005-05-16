@@ -1023,6 +1023,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     sr->internal = 1;
 
+    sr->main_filter_need_in_memory = r->main_filter_need_in_memory;
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http subrequest \"%V\"", uri);
 

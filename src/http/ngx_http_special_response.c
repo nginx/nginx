@@ -300,7 +300,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 
     } else if (error < NGX_HTTP_BAD_REQUEST) {
         /* 3XX */
-        err = error - NGX_HTTP_MOVED_PERMANENTLY;
+        err = error - NGX_HTTP_MOVED_PERMANENTLY + NGX_HTTP_LEVEL_200;
 
     } else if (error < NGX_HTTP_NGX_CODES) {
         /* 4XX */

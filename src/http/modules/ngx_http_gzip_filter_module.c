@@ -367,7 +367,7 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
         r->headers_out.content_length = NULL;
     }
 
-    r->filter_need_in_memory = 1;
+    r->main_filter_need_in_memory = 1;
 
     return ngx_http_next_header_filter(r);
 }

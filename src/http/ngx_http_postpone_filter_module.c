@@ -98,7 +98,7 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
         out = in;
     }
 
-    if (out == NULL && r->out == NULL) {
+    if (out == NULL && r->out == NULL && !r->connection->buffered) {
         return NGX_OK;
     }
 

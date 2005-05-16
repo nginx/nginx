@@ -288,8 +288,9 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             return NGX_CHAIN_ERROR;
         }
 
-        if (n < 0) {
-            n = 0;
+        if (n == NGX_AGAIN) {
+            c->buffered = 1;
+            return in;
         }
 
         in->buf->pos += n;

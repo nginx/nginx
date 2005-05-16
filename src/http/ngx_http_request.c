@@ -384,7 +384,7 @@ void ngx_http_init_request(ngx_event_t *rev)
             c->ssl->no_rcv_shut = 1;
         }
 
-        r->filter_need_in_memory = 1;
+        r->main_filter_need_in_memory = 1;
     }
 
 #endif

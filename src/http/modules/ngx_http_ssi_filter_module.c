@@ -321,7 +321,6 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
     ctx->timefmt.data = (u_char *) "%A, %d-%b-%Y %H:%M:%S %Z";
 
     r->filter_need_in_memory = 1;
-    r->filter_ssi_need_in_memory = 1;
 
     if (r->main == NULL) {
         r->headers_out.content_length_n = -1;
@@ -464,10 +463,11 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                     ngx_memcpy(b, ctx->buf, sizeof(ngx_buf_t));
 
-                    b->last_buf = 0;
-                    b->recycled = 0;
                     b->pos = ctx->copy_start;
                     b->last = ctx->copy_end;
+                    b->shadow = NULL;
+                    b->last_buf = 0;
+                    b->recycled = 0;
 
                     if (b->in_file) {
                         if (conf->min_file_chunk < (size_t) (b->last - b->pos))

@@ -9,6 +9,49 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.31" date="16.05.2005">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании SSL ответ мог передаваться не до конца.
+</para>
+<para lang="en">
+the response encrypted by SSL may not transferred complete.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при обработке SSI в ответе, полученного от FastCGI-сервера.
+</para>
+<para lang="en">
+errors while processing FastCGI response by SSI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании SSI и сжатия.
+</para>
+<para lang="en">
+errors while using SSI and gzipping.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+редирект с кодом 301 передавался без тела ответа;
+ошибка появилась в 0.1.30.
+</para>
+<para lang="en">
+the redirect with the 301 code was transferred without response body;
+bug appeared in 0.1.30.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.30" date="14.05.2005">
 
 <change type="bugfix">
