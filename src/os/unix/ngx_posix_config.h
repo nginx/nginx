@@ -8,13 +8,13 @@
 #define _NGX_POSIX_CONFIG_H_INCLUDED_
 
 
-#if 0
+#if (NGX_HPUX)
 #define _XOPEN_SOURCE
 #define _XOPEN_SOURCE_EXTENDED  1
 #endif
 
 
-#if 0
+#if (NGX_TRU64)
 #define _REENTRANT
 #endif
 

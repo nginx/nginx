@@ -15,6 +15,8 @@ static ngx_http_variable_value_t *
 static ngx_http_variable_value_t *
     ngx_http_variable_header(ngx_http_request_t *r, uintptr_t data);
 static ngx_http_variable_value_t *
+    ngx_http_variable_headers(ngx_http_request_t *r, uintptr_t data);
+static ngx_http_variable_value_t *
     ngx_http_variable_unknown_header(ngx_http_request_t *r, uintptr_t data);
 static ngx_http_variable_value_t *
     ngx_http_variable_host(ngx_http_request_t *r, uintptr_t data);
@@ -62,6 +64,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("http_x_forwarded_for"), ngx_http_variable_header,
       offsetof(ngx_http_request_t, headers_in.x_forwarded_for), 0 },
 #endif
+
+    { ngx_string("http_cookie"), ngx_http_variable_headers,
+      offsetof(ngx_http_request_t, headers_in.cookies), 0 },
 
     { ngx_string("content_length"), ngx_http_variable_header,
       offsetof(ngx_http_request_t, headers_in.content_length), 0 },
@@ -328,6 +333,62 @@ ngx_http_variable_header(ngx_http_request_t *r, uintptr_t data)
 
     vv->value = 0;
     vv->text = h->value;
+
+    return vv;
+}
+
+
+static ngx_http_variable_value_t *
+ngx_http_variable_headers(ngx_http_request_t *r, uintptr_t data)
+{
+    u_char                      *p;
+    ngx_uint_t                   i;
+    ngx_array_t                 *a;
+    ngx_table_elt_t            **h;
+    ngx_http_variable_value_t   *vv;
+
+    a = (ngx_array_t *) ((char *) r + data);
+
+    if (a->nelts == 0) {
+        return NGX_HTTP_VAR_NOT_FOUND;
+    }
+
+    vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
+    if (vv == NULL) {
+        return NULL;
+    }
+
+    vv->value = 0;
+
+    h = a->elts;
+
+    if (a->nelts == 1) {
+        vv->text = (*h)->value;
+        return vv;
+    }
+
+    vv->text.len = (size_t) - (ssize_t) (sizeof("; ") - 1);
+
+    for (i = 0; i < a->nelts; i++) {
+        vv->text.len += h[i]->value.len + sizeof("; ") - 1;
+    }
+
+    vv->text.data = ngx_palloc(r->pool, vv->text.len);
+    if (vv->text.data == NULL) {
+        return NULL;
+    }
+
+    p = vv->text.data;
+
+    for (i = 0; /* void */ ; i++) {
+        p = ngx_cpymem(p, h[i]->value.data, h[i]->value.len);
+
+        if (i == a->nelts - 1) {
+            break;
+        }
+
+        *p++ = ';'; *p++ = ' ';
+    }
 
     return vv;
 }

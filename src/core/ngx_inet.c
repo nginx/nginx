@@ -419,7 +419,7 @@ ngx_inet_parse_host_port(ngx_inet_upstream_t *u)
     u->host.data = url->data;
     u->host_header = *url;
 
-    for (/* void */; i < url->len; i++) {
+    for ( /* void */ ; i < url->len; i++) {
 
         if (url->data[i] == ':') {
             u->port_text.data = &url->data[i] + 1;

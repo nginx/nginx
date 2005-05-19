@@ -32,7 +32,7 @@ ngx_type="sig_atomic_t"; ngx_types="int"; . auto/types/typedef
 . auto/types/sizeof
 ngx_param=NGX_SIG_ATOMIC_T_SIZE; ngx_value=$ngx_size; . auto/types/value
 
-ngx_type="socklen_t"; ngx_types="uint32_t"; . auto/types/typedef
+ngx_type="socklen_t"; ngx_types="int"; . auto/types/typedef
 
 ngx_type="in_addr_t"; ngx_types="uint32_t"; . auto/types/typedef
 

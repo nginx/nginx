@@ -23,9 +23,9 @@ ngx_int_t        ngx_last_process;
 ngx_process_t    ngx_processes[NGX_MAX_PROCESSES];
 
 
-ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
-                            ngx_spawn_proc_pt proc, void *data,
-                            char *name, ngx_int_t respawn)
+ngx_pid_t
+ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
+    char *name, ngx_int_t respawn)
 {
     u_long     on;
     ngx_pid_t  pid;
@@ -185,14 +185,16 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
 }
 
 
-ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx)
+ngx_pid_t
+ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx)
 {
     return ngx_spawn_process(cycle, ngx_execute_proc, ctx, ctx->name,
                              NGX_PROCESS_DETACHED);
 }
 
 
-static void ngx_execute_proc(ngx_cycle_t *cycle, void *data)
+static void
+ngx_execute_proc(ngx_cycle_t *cycle, void *data)
 {
     ngx_exec_ctx_t  *ctx = data;
 
@@ -206,7 +208,8 @@ static void ngx_execute_proc(ngx_cycle_t *cycle, void *data)
 }
 
 
-void ngx_process_get_status()
+void
+ngx_process_get_status(void)
 {
     int              status;
     char            *process;
@@ -301,7 +304,8 @@ void ngx_process_get_status()
 }
 
 
-void ngx_debug_point()
+void
+ngx_debug_point(void)
 {
     ngx_core_conf_t  *ccf;
 

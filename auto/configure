@@ -27,6 +27,7 @@ fi
 . auto/os/conf
 
 if [ "$NGX_PLATFORM" != win32 ]; then
+    . auto/os/features
     . auto/threads
 fi
 

@@ -16,30 +16,36 @@
 #define ngx_setproctitle           setproctitle
 
 
-#elif !defined NGX_SETPROCTITLE_USES_ENV
+#else /* !NGX_HAVE_SETPROCTITLE */
 
-#define NGX_SETPROCTITLE_USES_ENV  1
+#if !defined NGX_SETPROCTITLE_USES_ENV
 
 #if (NGX_SOLARIS)
 
+#define NGX_SETPROCTITLE_USES_ENV  1
 #define NGX_SETPROCTITLE_PAD       ' '
-
-#elif (NGX_LINUX) || (NGX_DARWIN)
-
-#define NGX_SETPROCTITLE_PAD       '\0'
-
-#endif
 
 ngx_int_t ngx_init_setproctitle(ngx_log_t *log);
 void ngx_setproctitle(char *title);
 
+#elif (NGX_LINUX) || (NGX_DARWIN)
 
-#else /* !NGX_SETPROCTITLE_USES_ENV */
+#define NGX_SETPROCTITLE_USES_ENV  1
+#define NGX_SETPROCTITLE_PAD       '\0'
+
+ngx_int_t ngx_init_setproctitle(ngx_log_t *log);
+void ngx_setproctitle(char *title);
+
+#else
 
 #define ngx_init_setproctitle(log)
 #define ngx_setproctitle(title)
 
-#endif
+#endif /* OSes */
+
+#endif /* NGX_SETPROCTITLE_USES_ENV */
+
+#endif /* NGX_HAVE_SETPROCTITLE */
 
 
 #endif /* _NGX_SETPROCTITLE_H_INCLUDED_ */

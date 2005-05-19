@@ -33,7 +33,7 @@ typedef enum {
     ngx_http_fastcgi_st_padding_length,
     ngx_http_fastcgi_st_reserved,
     ngx_http_fastcgi_st_data,
-    ngx_http_fastcgi_st_padding,
+    ngx_http_fastcgi_st_padding
 } ngx_http_fastcgi_state_e;
 
 

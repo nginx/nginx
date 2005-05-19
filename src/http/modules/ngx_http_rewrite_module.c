@@ -16,16 +16,10 @@ typedef struct {
 
 
 typedef struct {
-    ngx_str_t                  *name;
-    ngx_http_variable_value_t  *value;
-} ngx_http_rewrite_variable_t;
-
-
-typedef struct {
     ngx_array_t                *codes;        /* uintptr_t */
     ngx_array_t                *referers;     /* ngx_http_rewrite_referer_t */
 
-    ngx_uint_t                  max_captures;
+    ngx_uint_t                  captures;
     ngx_uint_t                  stack_size;
 
     ngx_flag_t                  log;
@@ -159,8 +153,8 @@ ngx_http_rewrite_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (cf->max_captures) {
-        e->captures = ngx_palloc(r->pool, cf->max_captures * sizeof(int));
+    if (cf->captures) {
+        e->captures = ngx_palloc(r->pool, cf->captures * sizeof(int));
         if (e->captures == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -542,10 +536,10 @@ ngx_http_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (regex->ncaptures) {
         regex->ncaptures = (regex->ncaptures + 1) * 3;
-    }
 
-    if (lcf->max_captures < regex->ncaptures) {
-        lcf->max_captures = regex->ncaptures;
+        if (lcf->captures < regex->ncaptures) {
+            lcf->captures = regex->ncaptures;
+        }
     }
 
     regex_end = ngx_http_script_add_code(lcf->codes,
@@ -735,7 +729,7 @@ static char *
 ngx_http_rewrite_if_condition(ngx_conf_t *cf, ngx_http_rewrite_loc_conf_t *lcf)
 {
     ngx_str_t                     *value, err;
-    ngx_uint_t                     cur, last;
+    ngx_uint_t                     cur, last, n;
     ngx_http_script_regex_code_t  *regex;
     u_char                         errstr[NGX_MAX_CONF_ERRSTR];
 
@@ -822,6 +816,16 @@ ngx_http_rewrite_if_condition(ngx_conf_t *cf, ngx_http_rewrite_loc_conf_t *lcf)
         regex->next = sizeof(ngx_http_script_regex_code_t);
         regex->test = 1;
         regex->name = value[last];
+
+        n = ngx_regex_capture_count(regex->regex);
+
+        if (n) {
+            regex->ncaptures = (n + 1) * 3;
+
+            if (lcf->captures < regex->ncaptures) {
+                lcf->captures = regex->ncaptures;
+            }
+        }
 
         return NGX_CONF_OK;
     }
@@ -977,11 +981,13 @@ ngx_http_rewrite_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_rewrite_loc_conf_t *lcf = conf;
 
-    ngx_int_t                      n, index;
-    ngx_str_t                     *value;
-    ngx_http_variable_t           *v;
-    ngx_http_script_var_code_t    *var;
-    ngx_http_script_value_code_t  *val;
+    ngx_int_t                              n, index;
+    ngx_str_t                             *value;
+    ngx_http_variable_t                   *v;
+    ngx_http_script_compile_t              sc;
+    ngx_http_script_var_code_t            *var;
+    ngx_http_script_value_code_t          *val;
+    ngx_http_script_complex_value_code_t  *complex;
 
     value = cf->args->elts;
 
@@ -1007,22 +1013,49 @@ ngx_http_rewrite_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     v->handler = ngx_http_rewrite_var;
     v->data = index;
 
-    val = ngx_http_script_start_code(cf->pool, &lcf->codes,
-                                     sizeof(ngx_http_script_value_code_t));
-    if (val == NULL) {
-        return NGX_CONF_ERROR;
+    n = ngx_http_script_variables_count(&value[2]);
+
+    if (n == 0) {
+        val = ngx_http_script_start_code(cf->pool, &lcf->codes,
+                                         sizeof(ngx_http_script_value_code_t));
+        if (val == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        n = ngx_atoi(value[2].data, value[2].len);
+
+        if (n == NGX_ERROR) {
+            n = 0;
+        }
+
+        val->code = ngx_http_script_value_code;
+        val->value = (uintptr_t) n;
+        val->text_len = (uintptr_t) value[2].len;
+        val->text_data = (uintptr_t) value[2].data;
+
+    } else {
+        complex = ngx_http_script_start_code(cf->pool, &lcf->codes,
+                                 sizeof(ngx_http_script_complex_value_code_t));
+        if (complex == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        complex->code = ngx_http_script_complex_value_code;
+        complex->lengths = NULL;
+
+        ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+
+        sc.cf = cf; 
+        sc.source = &value[2];
+        sc.lengths = &complex->lengths;
+        sc.values = &lcf->codes;
+        sc.variables = n;
+        sc.complete_lengths = 1;
+
+        if (ngx_http_script_compile(&sc) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
     }
-
-    n = ngx_atoi(value[2].data, value[2].len);
-
-    if (n == NGX_ERROR) {
-        n = 0;
-    }
-
-    val->code = ngx_http_script_value_code;
-    val->value = (uintptr_t) n;
-    val->text_len = (uintptr_t) value[2].len;
-    val->text_data = (uintptr_t) value[2].data;
 
     var = ngx_http_script_start_code(cf->pool, &lcf->codes,
                                      sizeof(ngx_http_script_var_code_t));

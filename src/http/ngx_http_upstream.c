@@ -77,71 +77,80 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
     { ngx_string("Status"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, status),
-                 /* STUB */ ngx_http_upstream_ignore_header_line, 0 },
+                 /* STUB */ ngx_http_upstream_ignore_header_line, 0, 0 },
 
     { ngx_string("Content-Type"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, content_type),
-                 ngx_http_upstream_copy_content_type, 0 },
+                 ngx_http_upstream_copy_content_type, 0, 0 },
 
     { ngx_string("Content-Length"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, content_length),
-                 ngx_http_upstream_copy_content_length, 0 },
+                 ngx_http_upstream_copy_content_length, 0, 0 },
 
     { ngx_string("Date"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, date),
                  ngx_http_upstream_conditional_copy_header_line,
-                 offsetof(ngx_http_upstream_conf_t, pass_date) },
+                 offsetof(ngx_http_upstream_conf_t, pass_date), 0 },
 
     { ngx_string("Server"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, server),
                  ngx_http_upstream_conditional_copy_header_line,
-                 offsetof(ngx_http_upstream_conf_t, pass_server) },
+                 offsetof(ngx_http_upstream_conf_t, pass_server), 0 },
 
     { ngx_string("Location"),
                  ngx_http_upstream_ignore_header_line, 0,
-                 ngx_http_upstream_rewrite_location, 0 },
+                 ngx_http_upstream_rewrite_location, 0, 0 },
 
     { ngx_string("Refresh"),
                  ngx_http_upstream_ignore_header_line, 0,
-                 ngx_http_upstream_rewrite_refresh, 0 },
+                 ngx_http_upstream_rewrite_refresh, 0, 0 },
+
+    { ngx_string("Set-Cookie"),
+                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_copy_header_line, 0, 1 },
 
     { ngx_string("Cache-Control"),
                  ngx_http_upstream_process_multi_header_lines,
                  offsetof(ngx_http_upstream_headers_in_t, cache_control),
                  ngx_http_upstream_copy_multi_header_lines,
-                 offsetof(ngx_http_headers_out_t, cache_control) },
+                 offsetof(ngx_http_headers_out_t, cache_control), 1 },
 
     { ngx_string("Connection"),
                  ngx_http_upstream_ignore_header_line, 0,
-                 ngx_http_upstream_ignore_header_line, 0 },
+                 ngx_http_upstream_ignore_header_line, 0, 0 },
 
     { ngx_string("X-Pad"),
                  ngx_http_upstream_ignore_header_line, 0,
-                 ngx_http_upstream_ignore_header_line, 0 },
+                 ngx_http_upstream_ignore_header_line, 0, 0 },
 
     { ngx_string("X-Powered-By"),
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_conditional_copy_header_line,
-                 offsetof(ngx_http_upstream_conf_t, pass_x_powered_by) },
+                 offsetof(ngx_http_upstream_conf_t, pass_x_powered_by), 0 },
 
     { ngx_string("X-Accel-Expires"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, x_accel_expires),
                  ngx_http_upstream_conditional_copy_header_line,
-                 offsetof(ngx_http_upstream_conf_t, pass_x_accel_expires) },
+                 offsetof(ngx_http_upstream_conf_t, pass_x_accel_expires), 0 },
+
+    { ngx_string("X-Accel-Redirect"),
+                 ngx_http_upstream_process_header_line,
+                 offsetof(ngx_http_upstream_headers_in_t, x_accel_redirect),
+                 ngx_http_upstream_ignore_header_line, 0, 0 },
 
 #if (NGX_HTTP_GZIP)
     { ngx_string("Content-Encoding"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, content_encoding),
-                 ngx_http_upstream_copy_content_encoding, 0 },
+                 ngx_http_upstream_copy_content_encoding, 0, 0 },
 #endif
 
-    { ngx_null_string, NULL, 0, NULL, 0 }
+    { ngx_null_string, NULL, 0, NULL, 0, 0 }
 };
 
 
@@ -698,14 +707,18 @@ ngx_http_upstream_send_request_handler(ngx_event_t *wev)
 static void
 ngx_http_upstream_process_header(ngx_event_t *rev)
 {
-    ssize_t                    n;
-    ngx_int_t                  rc;
-    ngx_uint_t                 i;
-    ngx_connection_t          *c;
-    ngx_http_request_t        *r;
-    ngx_http_upstream_t       *u;
-    ngx_http_err_page_t       *err_page;
-    ngx_http_core_loc_conf_t  *clcf;
+    ssize_t                         n;
+    ngx_int_t                       rc;
+    ngx_uint_t                      i, key;
+    ngx_list_part_t                *part;
+    ngx_table_elt_t                *h;
+    ngx_connection_t               *c;
+    ngx_http_request_t             *r;
+    ngx_http_upstream_t            *u;
+    ngx_http_err_page_t            *err_page;
+    ngx_http_core_loc_conf_t       *clcf;
+    ngx_http_upstream_header_t     *hh;
+    ngx_http_upstream_main_conf_t  *umcf;
 
     c = rev->data;
     r = c->data;
@@ -873,6 +886,48 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
                 }
             }
         }
+    }
+
+    if (r->upstream->headers_in.x_accel_redirect) {
+        ngx_http_upstream_finalize_request(r, u, NGX_DECLINED);
+
+        umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+        hh = (ngx_http_upstream_header_t *) umcf->headers_in_hash.buckets;
+
+        part = &r->upstream->headers_in.headers.part;
+        h = part->elts;
+
+        for (i = 0; /* void */; i++) {
+
+            if (i >= part->nelts) {
+                if (part->next == NULL) {
+                    break;
+                }
+    
+                part = part->next;
+                h = part->elts;
+                i = 0;
+            }
+
+            key = h[i].hash % umcf->headers_in_hash.hash_size;
+
+            if (hh[key].redirect
+                && hh[key].name.len == h[i].key.len
+                && ngx_strcasecmp(hh[key].name.data, h[i].key.data) == 0)
+            {
+                if (hh[key].copy_handler(r, &h[i], hh[key].conf) != NGX_OK) {
+                    ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+                    return;
+                }
+
+            }
+        }
+
+        ngx_http_internal_redirect(r,
+                              &r->upstream->headers_in.x_accel_redirect->value,
+                              NULL);
+        return;
     }
 
     ngx_http_upstream_send_response(r, u);
@@ -1307,6 +1362,11 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 #endif
 
     r->log_handler = u->saved_log_handler;
+
+    if (rc == NGX_DECLINED) {
+        return;
+    }
+
     r->connection->log->action = "sending to client";
 
     if (rc == 0 && r->main == NULL) {

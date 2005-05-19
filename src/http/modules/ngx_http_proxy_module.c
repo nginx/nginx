@@ -542,7 +542,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     while (*(uintptr_t *) le.ip) {
         lcode = *(ngx_http_script_len_code_pt *) le.ip;
-        lcode(&le);
+
+        /* skip the header line name length */
+        (void) lcode(&le);
 
         if (*(ngx_http_script_len_code_pt *) le.ip) {
 

@@ -19,7 +19,7 @@ typedef struct {
     ngx_http_variable_value_t      *sp;
 
     ngx_str_t                       buf;
-    ngx_str_t                      *line;
+    ngx_str_t                       line;
 
     /* the start of the rewritten arguments */
     u_char                         *args;
@@ -29,6 +29,7 @@ typedef struct {
     unsigned                        log:1;
 
     int                            *captures;
+    ngx_uint_t                      ncaptures;
 
     ngx_int_t                       status;
     ngx_http_request_t             *request;
@@ -130,6 +131,12 @@ typedef struct {
 
 typedef struct {
     ngx_http_script_code_pt          code;
+    ngx_array_t                     *lengths;
+} ngx_http_script_complex_value_code_t;
+
+
+typedef struct {
+    ngx_http_script_code_pt          code;
     uintptr_t                        value;
     uintptr_t                        text_len;
     uintptr_t                        text_data;
@@ -155,6 +162,7 @@ void ngx_http_script_copy_capture_code(ngx_http_script_engine_t *e);
 void ngx_http_script_start_args_code(ngx_http_script_engine_t *e);
 void ngx_http_script_return_code(ngx_http_script_engine_t *e);
 void ngx_http_script_if_code(ngx_http_script_engine_t *e);
+void ngx_http_script_complex_value_code(ngx_http_script_engine_t *e);
 void ngx_http_script_value_code(ngx_http_script_engine_t *e);
 void ngx_http_script_set_var_code(ngx_http_script_engine_t *e);
 void ngx_http_script_var_code(ngx_http_script_engine_t *e);

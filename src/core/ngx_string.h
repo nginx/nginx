@@ -59,12 +59,12 @@ typedef struct {
  * while ZeroMemory() and bzero() are the calls.
  * icc may also inline several mov's of a zeroed register for small blocks.
  */
-#define ngx_memzero(buf, n)       memset(buf, 0, n)
-#define ngx_memset(buf, c, n)     memset(buf, c, n)
+#define ngx_memzero(buf, n)       (void) memset(buf, 0, n)
+#define ngx_memset(buf, c, n)     (void) memset(buf, c, n)
 
 
 /* msvc and icc compile memcpy() to the inline "rep movs" */
-#define ngx_memcpy(dst, src, n)   memcpy(dst, src, n)
+#define ngx_memcpy(dst, src, n)   (void) memcpy(dst, src, n)
 #define ngx_cpymem(dst, src, n)   ((u_char *) memcpy(dst, src, n)) + (n)
 
 

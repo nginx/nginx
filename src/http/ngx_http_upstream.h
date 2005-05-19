@@ -87,6 +87,7 @@ typedef struct {
     ngx_uint_t                      offset;
     ngx_http_header_handler_pt      copy_handler;
     ngx_uint_t                      conf;
+    ngx_uint_t                      redirect;  /* unsigned   redirect:1; */
 } ngx_http_upstream_header_t;
 
 
@@ -101,6 +102,7 @@ typedef struct {
     ngx_table_elt_t                *expires;
     ngx_table_elt_t                *etag;
     ngx_table_elt_t                *x_accel_expires;
+    ngx_table_elt_t                *x_accel_redirect;
 
     ngx_table_elt_t                *content_type;
     ngx_table_elt_t                *content_length;

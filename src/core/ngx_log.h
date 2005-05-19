@@ -130,6 +130,7 @@ void ngx_cdecl ngx_log_debug_core(ngx_log_t *log, ngx_err_t err,
 #define ngx_log_debug7  ngx_log_debug
 #define ngx_log_debug8  ngx_log_debug
 
+
 #else /* NO VARIADIC MACROS */
 
 #define ngx_log_debug0(level, log, err, fmt)                                  \

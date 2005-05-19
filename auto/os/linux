@@ -7,7 +7,6 @@ have=NGX_LINUX . auto/have_headers
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $LINUX_DEPS"
 CORE_SRCS="$UNIX_SRCS $LINUX_SRCS"
-CRYPT_LIB="-lcrypt"
 
 ngx_spacer='
 '

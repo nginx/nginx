@@ -1,0 +1,14 @@
+
+# Copyright (C) Igor Sysoev
+
+
+# aCC: HP ANSI C++ B3910B A.03.55.02
+
+# C89 mode
+
+CFLAGS="$CFLAGS -Ae"
+CC_TEST_FLAGS="-Ae"
+
+PCRE_OPT="$PCRE_OPT -Ae"
+ZLIB_OPT="$ZLIB_OPT -Ae"
+MD5_OPT="$MD5_OPT -Ae"

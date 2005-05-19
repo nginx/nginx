@@ -9,6 +9,52 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.32" date="19.05.2005">
+
+<change type="bugfix">
+<para lang="ru">
+в редиректах, выдаваемых с помощью директивы rewrite, не передавались аргументы;
+ошибка появилась в 0.1.29.
+</para>
+<para lang="en">
+the arguments were omitted in the redirects, issued by the "rewrite" directive;
+bug appeared in 0.1.29.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива if поддерживает выделения в регулярных выражениях.
+</para>
+<para lang="en">
+the "if" directive supports the captures in regular expressions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива set поддерживает переменные и выделения из регулярных выражений.
+</para>
+<para lang="en">
+the "set" directive supports the variables and the captures of regular
+expressions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в режиме прокси и FastCGI поддерживается строка заголовка X-Accel-Redirect
+в ответе бэкенда.
+</para>
+<para lang="en">
+the "X-Accel-Redirect" response header line is supported in proxy and FastCGI
+mode.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.31" date="16.05.2005">
 
 <change type="bugfix">
