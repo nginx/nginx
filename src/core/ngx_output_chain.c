@@ -381,12 +381,12 @@ ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src, ngx_uint_t sendfile)
         n = ngx_read_file(src->file, dst->pos, (size_t) size, src->file_pos);
 
         if (n == NGX_ERROR) {
-            return n;
+            return (ngx_int_t) n;
         }
 
 #if (NGX_FILE_AIO_READ)
         if (n == NGX_AGAIN) {
-            return n;
+            return (ngx_int_t) n;
         }
 #endif
 

@@ -9,6 +9,53 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.33" date="23.05.2005">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с параметром --without-pcre;
+ошибка появилась в 0.1.29.
+</para>
+<para lang="en">
+nginx could not be built with the --without-pcre parameter;
+bug appeared in 0.1.29.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+3, 5, 7 и 8 директив proxy_set_header на одном уровне вызывали
+bus fault при запуске.
+</para>
+<para lang="en">
+3, 4, 7, and 8 the "proxy_set_header" directives in one level cause
+the bus fault on start up.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в редиректах внутри HTTPS сервера был указан протокол HTTP.
+</para>
+<para lang="en">
+the HTTP protocol was specified in the HTTPS redirects.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если директива rewrite использовала выделения внутри директивы if, то
+возвращалась ошибка 500.
+</para>
+<para lang="en">
+if the "rewrite" directive used the captures inside the "if" directive, then
+the 500 error code was returned.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.32" date="19.05.2005">
 
 <change type="bugfix">

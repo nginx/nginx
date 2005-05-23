@@ -14,7 +14,7 @@ void ngx_localtime(ngx_tm_t *tm)
     time_t     now;
 
     now = ngx_time();
-    localtime_r(&now, tm);
+    (void) localtime_r(&now, tm);
 
 #else
     time_t     now;
@@ -37,7 +37,7 @@ void ngx_libc_localtime(struct tm *tm)
     time_t      now;
 
     now = ngx_time();
-    localtime_r(&now, tm);
+    (void) localtime_r(&now, tm);
 
 #else
     time_t      now;
@@ -57,7 +57,7 @@ void ngx_libc_gmtime(struct tm *tm)
     time_t      now;
 
     now = ngx_time();
-    gmtime_r(&now, tm);
+    (void) gmtime_r(&now, tm);
 
 #else
     time_t      now;

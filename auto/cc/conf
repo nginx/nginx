@@ -124,7 +124,7 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/feature
 
 
-    if [ $NGX_CC_NAME = 'ccc' ]; then
+    if [ "$NGX_CC_NAME" = "ccc" ]; then
         echo "checking for C99 variadic macros ... disabled"
     else
         ngx_feature="C99 variadic macros"

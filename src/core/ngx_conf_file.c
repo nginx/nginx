@@ -457,7 +457,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 return NGX_OK;
 
             case '}':
-                if (cf->args->nelts > 0) {
+                if (cf->args->nelts != 0) {
                     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                                   "unexpected \"}\" in %s:%ui",
                                   cf->conf_file->file.name.data,

@@ -72,7 +72,7 @@ ngx_unix_upstream_parse(ngx_conf_t *cf, ngx_unix_domain_upstream_t *u)
     peers->number = 1;
 
     sun->sun_family = AF_UNIX;
-    ngx_cpystrn((u_char *) sun->sun_path, u->url.data + 5, len + 1);
+    (void) ngx_cpystrn((u_char *) sun->sun_path, u->url.data + 5, len + 1);
 
     peers->peer[0].sockaddr = (struct sockaddr *) sun;
     peers->peer[0].socklen = sizeof(struct sockaddr_un);

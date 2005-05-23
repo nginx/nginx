@@ -17,8 +17,8 @@ typedef struct {
 
     struct sockaddr  *sockaddr;
     socklen_t         socklen;    /* size of sockaddr */
-    int               addr;       /* offset to address in sockaddr */
-    int               addr_text_max_len;
+    size_t            addr;       /* offset to address in sockaddr */
+    size_t            addr_text_max_len;
     ngx_str_t         addr_text;
 
     int               family;

@@ -15,7 +15,7 @@ ngx_cpystrn(u_char *dst, u_char *src, size_t n)
         return dst;
     }
 
-    for (/* void */; --n; dst++, src++) {
+    for ( /* void */ ; --n; dst++, src++) {
         *dst = *src;
 
         if (*dst == '\0') {

@@ -311,8 +311,8 @@ static char  ngx_http_proxy_version[] = " HTTP/1.0" CRLF;
 
 
 static ngx_table_elt_t  ngx_http_proxy_headers[] = {
-    { 0, ngx_string("Host"), ngx_string("$proxy_host"), },
-    { 0, ngx_string("Connection"), ngx_string("close"), },
+    { 0, ngx_string("Host"), ngx_string("$proxy_host") },
+    { 0, ngx_string("Connection"), ngx_string("close") },
     { 0, ngx_null_string, ngx_null_string }
 };
 
@@ -1559,6 +1559,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
 
         *s = *h;
+
+        src = conf->headers_source->elts;
 
     next:
 

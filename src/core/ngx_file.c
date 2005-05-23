@@ -61,8 +61,8 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
     n = ngx_next_temp_number(0);
 
     for ( ;; ) {
-        ngx_sprintf(file->name.data + path->name.len + 1 + path->len,
-                    "%0muA%Z", n);
+        (void) ngx_sprintf(file->name.data + path->name.len + 1 + path->len,
+                           "%0muA%Z", n);
 
         ngx_create_hashed_filename(file, path);
 
@@ -123,7 +123,8 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
 void
 ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
 {
-    ngx_uint_t  i, name, pos, level;
+    size_t      name, pos, level;
+    ngx_uint_t  i;
 
     name = file->name.len;
     pos = path->name.len + 1;
@@ -151,8 +152,9 @@ ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
 ngx_int_t
 ngx_create_path(ngx_file_t *file, ngx_path_t *path)
 {
-    int        i, pos;
-    ngx_err_t  err;
+    size_t      pos;
+    ngx_err_t   err;
+    ngx_uint_t  i;
 
     pos = path->name.len;
 
@@ -344,7 +346,7 @@ ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
             }
         }
 
-        if (user == (ngx_uid_t) -1) {
+        if (user == (ngx_uid_t) NGX_CONF_UNSET_UINT) {
             continue;
         }
 

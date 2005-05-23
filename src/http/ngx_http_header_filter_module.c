@@ -264,11 +264,26 @@ ngx_http_header_filter(ngx_http_request_t *r)
     {
         r->headers_out.location->hash = 0;
 
-        len += sizeof("Location: http://") - 1
-               + r->server_name.len + r->headers_out.location->value.len + 2;
+#if (NGX_HTTP_SSL)
+        if (r->connection->ssl) {
+            len += sizeof("Location: https://") - 1
+                   + r->server_name.len
+                   + r->headers_out.location->value.len + 2;
 
-        if (r->port != 80) {
-            len += r->port_text->len;
+            if (r->port != 443) {
+                len += r->port_text->len;
+            }
+
+        } else
+#endif
+        {
+            len += sizeof("Location: http://") - 1
+                   + r->server_name.len
+                   + r->headers_out.location->value.len + 2;
+
+            if (r->port != 80) {
+                len += r->port_text->len;
+            }
         }
     }
 
@@ -396,13 +411,33 @@ ngx_http_header_filter(ngx_http_request_t *r)
         && r->headers_out.location->value.data[0] == '/')
     {
         p = b->last + sizeof("Location: ") - 1;
-        b->last = ngx_cpymem(b->last, "Location: http://",
-                             sizeof("Location: http://") - 1);
+
+        b->last = ngx_cpymem(b->last, "Location: http",
+                             sizeof("Location: http") - 1);
+
+#if (NGX_HTTP_SSL)
+        if (r->connection->ssl) {
+            *b->last++ ='s';
+        }
+#endif
+
+        *b->last++ = ':'; *b->last++ = '/'; *b->last++ = '/';
         b->last = ngx_cpymem(b->last, r->server_name.data,
                              r->server_name.len);
-        if (r->port != 80) {
-            b->last = ngx_cpymem(b->last, r->port_text->data,
-                                 r->port_text->len);
+
+#if (NGX_HTTP_SSL)
+        if (r->connection->ssl) {
+            if (r->port != 443) {
+                b->last = ngx_cpymem(b->last, r->port_text->data,
+                                     r->port_text->len);
+            }
+        } else
+#endif
+        {
+            if (r->port != 80) {
+                b->last = ngx_cpymem(b->last, r->port_text->data,
+                                     r->port_text->len);
+            }
         }
 
         b->last = ngx_cpymem(b->last, r->headers_out.location->value.data,

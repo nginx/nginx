@@ -126,9 +126,9 @@ typedef long               ngx_flag_t;
 
 
 #if ((__GNU__ == 2) && (__GNUC_MINOR__ < 8))
-#define NGX_MAX_UINT32_VALUE  0xffffffffLL
+#define NGX_MAX_UINT32_VALUE  (uint32_t) 0xffffffffLL
 #else
-#define NGX_MAX_UINT32_VALUE  0xffffffff
+#define NGX_MAX_UINT32_VALUE  (uint32_t) 0xffffffff
 #endif
 
 

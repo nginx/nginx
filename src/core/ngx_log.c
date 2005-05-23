@@ -179,7 +179,7 @@ ngx_log_write(ngx_log_t *log, u_char *errstr, size_t len)
 
     errstr[len++] = LF;
 
-    write(log->file->fd, errstr, len);
+    (void) write(log->file->fd, errstr, len);
 
 #endif
 }

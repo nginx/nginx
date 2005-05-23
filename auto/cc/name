@@ -34,7 +34,7 @@ if `$CC -v 2>&1 | grep 'gcc version' 2>&1 >/dev/null`; then
     echo " using GNU C compiler"
 
 else
-if `$CC -V 2>&1 | grep '^Intel(R) C++ Compiler' 2>&1 >/dev/null`; then
+if `$CC -V 2>&1 | grep '^Intel(R) C' 2>&1 >/dev/null`; then
     NGX_CC_NAME=icc
     echo " using Intel C++ compiler"
 
@@ -49,6 +49,7 @@ if `$CC -V 2>&1 | grep '^aCC: ' 2>&1 >/dev/null`; then
     echo " using HP aC++ compiler"
 
 else
+    NGX_CC_NAME=unknown
     echo " unknown"
 
 fi # acc

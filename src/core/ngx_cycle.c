@@ -717,7 +717,7 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
             continue;
         }
 #else
-        if (user != (ngx_uid_t) -1) {
+        if (user != (ngx_uid_t) NGX_CONF_UNSET_UINT) {
 
             if (ngx_file_info((const char *) file[i].name.data, &fi) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,

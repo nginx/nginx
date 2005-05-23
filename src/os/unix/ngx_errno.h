@@ -52,7 +52,7 @@ u_char *ngx_strerror_r(int err, u_char *errstr, size_t size);
 
 #else
 
-/* Solaris has thread-safe strerror() */
+/* Solaris and Tru64 UNIX have thread-safe strerror() */
 
 #define ngx_strerror_r(err, errstr, size)  \
     ngx_cpystrn(errstr, (u_char *) strerror(err), size)

@@ -10,27 +10,30 @@ ngx_include_opt="-I"
 
 CFLAGS="$CFLAGS -msg_enable level6 -msg_fatal level6"
 
+CFLAGS="$CFLAGS -msg_disable unknownmacro"
+CFLAGS="$CFLAGS -msg_disable unusedincl"
 CFLAGS="$CFLAGS -msg_disable unnecincl"
 CFLAGS="$CFLAGS -msg_disable nestincl"
-CFLAGS="$CFLAGS -msg_disable unusedincl"
-CFLAGS="$CFLAGS -msg_disable unknownmacro"
 CFLAGS="$CFLAGS -msg_disable strctpadding"
 CFLAGS="$CFLAGS -msg_disable ansialiascast"
 CFLAGS="$CFLAGS -msg_disable inlinestoclsmod"
 CFLAGS="$CFLAGS -msg_disable cxxkeyword"
 CFLAGS="$CFLAGS -msg_disable longlongsufx"
+CFLAGS="$CFLAGS -msg_disable valuepres"
 
 # STUB
 CFLAGS="$CFLAGS -msg_disable truncintcast"
 CFLAGS="$CFLAGS -msg_disable trunclongcast"
+
 CFLAGS="$CFLAGS -msg_disable truncintasn"
 CFLAGS="$CFLAGS -msg_disable trunclongint"
 CFLAGS="$CFLAGS -msg_disable intconcastsgn"
 CFLAGS="$CFLAGS -msg_disable intconstsign"
-CFLAGS="$CFLAGS -msg_disable hexoctunsign"
 CFLAGS="$CFLAGS -msg_disable switchlong"
-CFLAGS="$CFLAGS -msg_disable valuepres"
 CFLAGS="$CFLAGS -msg_disable subscrbounds2"
+
+CFLAGS="$CFLAGS -msg_disable hexoctunsign"
+
 CFLAGS="$CFLAGS -msg_disable ignorecallval"
 CFLAGS="$CFLAGS -msg_disable nonstandcast"
 CFLAGS="$CFLAGS -msg_disable embedcomment"
@@ -38,4 +41,5 @@ CFLAGS="$CFLAGS -msg_disable unreachcode"
 CFLAGS="$CFLAGS -msg_disable questcompare2"
 CFLAGS="$CFLAGS -msg_disable unusedtop"
 CFLAGS="$CFLAGS -msg_disable unrefdecl"
+
 CFLAGS="$CFLAGS -msg_disable bitnotint"

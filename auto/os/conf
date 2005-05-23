@@ -53,8 +53,9 @@ case "$NGX_PLATFORM" in
     ;;
 
     OSF1:*)
-        # HP Tru64
+        # Tru64 UNIX
         have=NGX_TRU64 . auto/have_headers
+        have=NGX_HAVE_STRERROR_R . auto/nohave
         CORE_INCS="$UNIX_INCS"
         CORE_DEPS="$UNIX_DEPS $POSIX_DEPS"
         CORE_SRCS="$UNIX_SRCS"

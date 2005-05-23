@@ -556,8 +556,7 @@ ngx_http_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     regex_end->redirect = regex->redirect;
 
     if (last) {
-        code = ngx_http_script_add_code(lcf->codes, sizeof(uintptr_t),
-                                        &regex);
+        code = ngx_http_script_add_code(lcf->codes, sizeof(uintptr_t), &regex);
         if (code == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -710,6 +709,11 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (rv != NGX_CONF_OK) {
         return rv;
+    }
+
+
+    if (lcf->captures < nlcf->captures) {
+        lcf->captures = nlcf->captures;
     }
 
 

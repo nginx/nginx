@@ -33,8 +33,8 @@ struct ngx_file_s {
 
 struct ngx_path_s {
     ngx_str_t           name;
-    ngx_uint_t          len;
-    ngx_uint_t          level[3];
+    size_t              len;
+    size_t              level[3];
     ngx_gc_handler_pt   cleaner;
 
     u_char             *conf_file;

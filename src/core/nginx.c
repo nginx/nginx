@@ -440,7 +440,7 @@ ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
             return NGX_ERROR;
         }
 
-        ngx_cpystrn((u_char *) ngx_argv[i], (u_char *) argv[i], len);
+        (void) ngx_cpystrn((u_char *) ngx_argv[i], (u_char *) argv[i], len);
     }
 
     ngx_argv[i] = NULL;
@@ -473,8 +473,8 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->master = NGX_CONF_UNSET;
     ccf->worker_processes = NGX_CONF_UNSET;
     ccf->debug_points = NGX_CONF_UNSET;
-    ccf->user = (ngx_uid_t) NGX_CONF_UNSET;
-    ccf->group = (ngx_gid_t) NGX_CONF_UNSET;
+    ccf->user = (ngx_uid_t) NGX_CONF_UNSET_UINT;
+    ccf->group = (ngx_gid_t) NGX_CONF_UNSET_UINT;
 #if (NGX_THREADS)
     ccf->worker_threads = NGX_CONF_UNSET;
     ccf->thread_stack_size = NGX_CONF_UNSET_SIZE;
@@ -507,7 +507,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #if !(NGX_WIN32)
 
-    if (ccf->user == (uid_t) NGX_CONF_UNSET && geteuid() == 0) {
+    if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) {
 
         pwd = getpwnam(NGX_USER);
         if (pwd == NULL) {
@@ -573,7 +573,7 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     struct group     *grp;
     ngx_str_t        *value;
 
-    if (ccf->user != (uid_t) NGX_CONF_UNSET) {
+    if (ccf->user != (uid_t) NGX_CONF_UNSET_UINT) {
         return "is duplicate";
     }
 

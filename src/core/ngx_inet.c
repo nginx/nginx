@@ -225,8 +225,9 @@ ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 {
     char                *err;
     u_char              *host;
+    size_t               len;
     in_addr_t            in_addr;
-    ngx_uint_t           i, len;
+    ngx_uint_t           i;
     ngx_peers_t         *peers;
     struct hostent      *h;
     struct sockaddr_in  *sin;
@@ -281,7 +282,7 @@ ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
         return NULL;
     }
 
-    ngx_cpystrn(host, u->host.data, u->host.len + 1);
+    (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
 
     /* AF_INET only */
 

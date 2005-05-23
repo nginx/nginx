@@ -155,14 +155,14 @@ ngx_time_update(time_t s)
 
     p = cached_http_time[slot];
 
-    ngx_sprintf(p, "%s, %02d %s %4d %02d:%02d:%02d GMT",
-                week[ngx_cached_gmtime.ngx_tm_wday],
-                ngx_cached_gmtime.ngx_tm_mday,
-                months[ngx_cached_gmtime.ngx_tm_mon - 1],
-                ngx_cached_gmtime.ngx_tm_year,
-                ngx_cached_gmtime.ngx_tm_hour,
-                ngx_cached_gmtime.ngx_tm_min,
-                ngx_cached_gmtime.ngx_tm_sec);
+    (void) ngx_sprintf(p, "%s, %02d %s %4d %02d:%02d:%02d GMT",
+                       week[ngx_cached_gmtime.ngx_tm_wday],
+                       ngx_cached_gmtime.ngx_tm_mday,
+                       months[ngx_cached_gmtime.ngx_tm_mon - 1],
+                       ngx_cached_gmtime.ngx_tm_year,
+                       ngx_cached_gmtime.ngx_tm_hour,
+                       ngx_cached_gmtime.ngx_tm_min,
+                       ngx_cached_gmtime.ngx_tm_sec);
 
     ngx_cached_http_time.data = p;
 
@@ -175,7 +175,7 @@ ngx_time_update(time_t s)
 #elif (NGX_HAVE_GMTOFF)
 
     ngx_localtime(&tm);
-    ngx_gmtoff = tm.ngx_tm_gmtoff / 60;
+    ngx_gmtoff = (ngx_int_t) (tm.ngx_tm_gmtoff / 60);
 
 #else
 
@@ -187,22 +187,22 @@ ngx_time_update(time_t s)
 
     p = cached_err_log_time[slot];
 
-    ngx_sprintf(p, "%4d/%02d/%02d %02d:%02d:%02d",
-                tm.ngx_tm_year, tm.ngx_tm_mon,
-                tm.ngx_tm_mday, tm.ngx_tm_hour,
-                tm.ngx_tm_min, tm.ngx_tm_sec);
+    (void) ngx_sprintf(p, "%4d/%02d/%02d %02d:%02d:%02d",
+                       tm.ngx_tm_year, tm.ngx_tm_mon,
+                       tm.ngx_tm_mday, tm.ngx_tm_hour,
+                       tm.ngx_tm_min, tm.ngx_tm_sec);
 
     ngx_cached_err_log_time.data = p;
 
 
     p = cached_http_log_time[slot];
 
-    ngx_sprintf(p, "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
-                tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
-                tm.ngx_tm_year, tm.ngx_tm_hour,
-                tm.ngx_tm_min, tm.ngx_tm_sec,
-                ngx_gmtoff < 0 ? '-' : '+',
-                abs(ngx_gmtoff / 60), abs(ngx_gmtoff % 60));
+    (void) ngx_sprintf(p, "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
+                       tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
+                       tm.ngx_tm_year, tm.ngx_tm_hour,
+                       tm.ngx_tm_min, tm.ngx_tm_sec,
+                       ngx_gmtoff < 0 ? '-' : '+',
+                       abs(ngx_gmtoff / 60), abs(ngx_gmtoff % 60));
 
     ngx_cached_http_log_time.data = p;
 

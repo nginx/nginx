@@ -463,6 +463,9 @@ ngx_http_script_start_args_code(ngx_http_script_engine_t *e)
 }
 
 
+
+#if (NGX_PCRE)
+
 void
 ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
 {
@@ -692,6 +695,8 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
 
     e->ip += sizeof(ngx_http_script_regex_end_code_t);
 }
+
+#endif
 
 
 void
