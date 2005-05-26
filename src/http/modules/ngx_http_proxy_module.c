@@ -1576,6 +1576,10 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
         *name = src[i].key;
 
+        if (src[i].value.len == 0) {
+            continue;
+        }
+
         if (ngx_http_script_variables_count(&src[i].value) == 0) {
             copy = ngx_array_push_n(conf->headers_set_len,
                                     sizeof(ngx_http_script_copy_code_t));

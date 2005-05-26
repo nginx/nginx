@@ -9,6 +9,49 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.34" date="26.05.2005">
+
+<change type="bugfix">
+<para lang="ru">
+при включении больших ответов с помощью SSI рабочий процесс мог зациклиться.
+</para>
+<para lang="en">
+the worker process may got caught in an endless loop if the big response
+part were include by SSI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменные, устанавливаемые директивой "set", не были доступны в SSI.
+</para>
+<para lang="en">
+the variables set by the "set" directive were not available in SSI.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива autoindex_localtime.
+</para>
+<para lang="en">
+the "autoindex_localtime" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+пустое значение в директиве proxy_set_header запрещает передачу заголовка.
+</para>
+<para lang="en">
+the empty value of the "proxy_set_header" directive forbids the client
+request header line passing.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.33" date="23.05.2005">
 
 <change type="bugfix">

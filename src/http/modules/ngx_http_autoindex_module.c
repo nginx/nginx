@@ -33,6 +33,7 @@ typedef struct {
 
 typedef struct {
     ngx_flag_t     enable;
+    ngx_flag_t     localtime;
 } ngx_http_autoindex_loc_conf_t;
 
 
@@ -56,6 +57,13 @@ static ngx_command_t  ngx_http_autoindex_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_autoindex_loc_conf_t, enable),
+      NULL },
+
+    { ngx_string("autoindex_localtime"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_autoindex_loc_conf_t, localtime),
       NULL },
 
       ngx_null_command
@@ -391,7 +399,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         *b->last++ = ' ';
 
-        ngx_gmtime(entry[i].mtime, &tm);
+        ngx_gmtime(entry[i].mtime + ngx_gmtoff * 60 * alcf->localtime, &tm);
 
         b->last = ngx_sprintf(b->last, "%02d-%s-%d %02d:%02d ",
                               tm.ngx_tm_mday,
@@ -542,6 +550,7 @@ ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf)
     }
 
     conf->enable = NGX_CONF_UNSET;
+    conf->localtime = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -554,6 +563,7 @@ ngx_http_autoindex_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_autoindex_loc_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->localtime, prev->localtime, 0);
 
     return NGX_CONF_OK;
 }

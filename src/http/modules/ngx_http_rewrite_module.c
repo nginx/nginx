@@ -313,7 +313,7 @@ ngx_http_rewrite_var(ngx_http_request_t *r, uintptr_t data)
 
     /*
      * the ngx_http_rewrite_module sets variables directly in r->variables,
-     * and they should be handle by ngx_http_get_indexed_variable(),
+     * and they should be handled by ngx_http_get_indexed_variable(),
      * so the handler is called only if the variable is not initialized
      */
 

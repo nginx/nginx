@@ -276,7 +276,12 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name)
     if (v[key].name.len == name->len
         && ngx_strncmp(v[key].name.data, name->data, name->len) == 0)
     {
-        return v[key].handler(r, v[key].data);
+        if (v[key].flags & NGX_HTTP_VAR_INDEXED) {
+            return ngx_http_get_indexed_variable(r, v[key].data);
+
+        } else {
+            return v[key].handler(r, v[key].data);
+        }
     }
 
     if (ngx_strncmp(name->data, "http_", 5) == 0) {
@@ -701,7 +706,7 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
             {
                 v[i].handler = av[n].handler;
                 v[i].data = av[n].data;
-                v[i].flags = av[n].flags;
+                v[i].flags = av[n].flags | NGX_HTTP_VAR_INDEXED;
 
                 goto next;
             }

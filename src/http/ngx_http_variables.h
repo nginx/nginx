@@ -30,6 +30,7 @@ typedef ngx_http_variable_value_t *
 
 #define NGX_HTTP_VAR_CHANGABLE   1
 #define NGX_HTTP_VAR_NOCACHABLE  2
+#define NGX_HTTP_VAR_INDEXED     4
 
 
 struct ngx_http_variable_s {
