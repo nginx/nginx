@@ -339,8 +339,15 @@ IMAP_INCS="src/imap"
 
 IMAP_DEPS="src/imap/ngx_imap.h"
 
-IMAP_MODULE=ngx_imap_module
+IMAP_MODULES="ngx_imap_module ngx_imap_core_module"
+
 IMAP_SRCS="src/imap/ngx_imap.c \
+           src/imap/ngx_imap_core_module.c \
            src/imap/ngx_imap_handler.c \
-           src/imap/ngx_imap_parse.c \
-           src/imap/ngx_imap_proxy.c"
+           src/imap/ngx_imap_parse.c"
+
+IMAP_AUTH_HTTP_MODULE="ngx_imap_auth_http_module"
+IMAP_AUTH_HTTP_SRCS="src/imap/ngx_imap_auth_http_module.c"
+
+IMAP_PROXY_MODULE="ngx_imap_proxy_module"
+IMAP_PROXY_SRCS="src/imap/ngx_imap_proxy_module.c"

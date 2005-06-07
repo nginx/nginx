@@ -360,7 +360,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
      * to quickly find the server core module configuration at run-time
      */
 
-    if (ngx_array_init(&in_ports, cf->pool, 10, sizeof(ngx_http_in_port_t))
+    if (ngx_array_init(&in_ports, cf->pool, 2, sizeof(ngx_http_in_port_t))
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
@@ -434,6 +434,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                             if (inaddr == NULL) {
                                 return NGX_CONF_ERROR;
                             }
+                            in_addr = in_port[p].addrs.elts;
 
                             /*
                              * the INADDR_ANY must be the last resort
@@ -578,7 +579,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 }
 
                 for (n = 0; n < cmcf->server_names_hash; n++) {
-                    if (ngx_array_init(&in_addr[a].hash[n], cf->pool, 5,
+                    if (ngx_array_init(&in_addr[a].hash[n], cf->pool, 4,
                                      sizeof(ngx_http_server_name_t)) != NGX_OK)
                     {
                         return NGX_CONF_ERROR;
@@ -595,6 +596,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     if (s_name == NULL) {
                         return NGX_CONF_ERROR;
                     }
+                    name = in_addr[a].names.elts;
 
                     *s_name = name[s];
                 }
@@ -748,7 +750,7 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_in_port_t *in_port,
     ngx_http_in_addr_t  *in_addr;
 
     if (in_port->addrs.elts == NULL) {
-        if (ngx_array_init(&in_port->addrs, cf->pool, 10,
+        if (ngx_array_init(&in_port->addrs, cf->pool, 4,
                            sizeof(ngx_http_in_addr_t)) != NGX_OK)
         {
             return NGX_ERROR;
@@ -794,7 +796,7 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_in_addr_t *in_addr,
     ngx_http_server_name_t  *server_names, *name;
 
     if (in_addr->names.elts == NULL) {
-        if (ngx_array_init(&in_addr->names, cf->pool, 10,
+        if (ngx_array_init(&in_addr->names, cf->pool, 4,
                            sizeof(ngx_http_server_name_t)) != NGX_OK)
         {
             return NGX_ERROR;
@@ -802,7 +804,7 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_in_addr_t *in_addr,
     }
 
     if (in_addr->wildcards.elts == NULL) {
-        if (ngx_array_init(&in_addr->wildcards, cf->pool, 10,
+        if (ngx_array_init(&in_addr->wildcards, cf->pool, 1,
                            sizeof(ngx_http_server_name_t)) != NGX_OK)
         {
             return NGX_ERROR;
@@ -834,6 +836,7 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_in_addr_t *in_addr,
         if (name == NULL) {
             return NGX_ERROR;
         }
+        server_names = cscf->server_names.elts;
 
         *name = server_names[i];
     }

@@ -20,7 +20,7 @@ typedef struct {
     ngx_str_t                  file_name;
     ngx_int_t                  line;
 
-    unsigned                   default_server:1;
+    ngx_uint_t                 default_server; /* unsigned  default_server:1; */
 } ngx_http_listen_t;
 
 
@@ -206,6 +206,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */
     ngx_flag_t    tcp_nodelay;             /* tcp_nodelay */
     ngx_flag_t    reset_timedout_connection; /* reset_timedout_connection */
+    ngx_flag_t    port_in_redirect;        /* port_in_redirect */
     ngx_flag_t    msie_padding;            /* msie_padding */
 
     ngx_array_t  *error_pages;             /* error_page */

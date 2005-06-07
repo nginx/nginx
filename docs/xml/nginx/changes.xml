@@ -9,6 +9,78 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.35" date="07.06.2005">
+
+<change type="feature">
+<para lang="ru">
+директива working_directory.
+</para>
+<para lang="en">
+the "working_directory" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива port_in_redirect.
+</para>
+<para lang="en">
+the "port_in_redirect" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если заголовок ответа бэкенда не помещался в один пакет, то
+происходил segmentation fault;
+ошибка появилась в 0.1.29.
+</para>
+<para lang="en">
+the segmentation fault was occurred if the backend response header was in
+several packets;
+bug appeared in 0.1.29.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если было сконфигурировано более 10 серверов или в сервере не описана
+директива "listen",
+то при запуске мог произойти segmentation fault.
+</para>
+<para lang="en">
+if more than 10 servers were configured or some server did not use the
+"listen" directive, then the segmentation fault was occurred on the start.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если ответ не помещался во временный файл,
+то мог произойти segmentation fault.
+</para>
+<para lang="en">
+the segmentation fault might occur if the response was bigger than
+the temporary file.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx возвращал ошибку 400 на запросы вида
+<nobr>"GET http://www.domain.com/uri HTTP/1.0"</nobr>;
+ошибка появилась в 0.1.28.
+</para>
+<para lang="en">
+nginx returned the 400 response on requests like
+<nobr>"GET http://www.domain.com/uri HTTP/1.0"</nobr>;
+bug appeared in 0.1.28.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.34" date="26.05.2005">
 
 <change type="bugfix">

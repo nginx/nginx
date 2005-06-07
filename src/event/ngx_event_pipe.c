@@ -210,6 +210,10 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
                                "pipe temp offset: %O", p->temp_file->offset);
 
+                if (rc == NGX_BUSY) {
+                    break;
+                }
+
                 if (rc == NGX_AGAIN) {
                     if (ngx_event_flags & NGX_USE_LEVEL_EVENT
                         && p->upstream->read->active
@@ -616,6 +620,10 @@ static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         } while (cl);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "size: %z", size);
+
+        if (ll == NULL) {
+            return NGX_BUSY;
+        }
 
         if (cl) {
            p->in = cl;

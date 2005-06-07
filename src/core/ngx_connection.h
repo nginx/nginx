@@ -144,8 +144,7 @@ struct ngx_connection_s {
 
 
 ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
-                                                 in_addr_t addr,
-                                                 in_port_t port);
+    in_addr_t addr, in_port_t port);
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);
 ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle);
 void ngx_close_listening_sockets(ngx_cycle_t *cycle);

@@ -8,7 +8,8 @@
 #define _NGX_HTTP_CONFIG_H_INCLUDED_
 
 
-#include <ngx_alloc.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_http.h>
 
 

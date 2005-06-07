@@ -1722,6 +1722,10 @@ ngx_http_discard_body(ngx_http_request_t *r)
     ssize_t       size;
     ngx_event_t  *rev;
 
+    if (r->main) {
+        return NGX_OK;
+    }
+
     rev = r->connection->read;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http set discard body");

@@ -4,6 +4,12 @@
 
 # Intel C++ compiler 7.1, 8.0, 8.1
 
+NGX_ICC_VER=`$CC -V 2>&1 | grep 'Version' 2>&1 \
+                         | sed -e 's/^.* Version \(.*\)   Build.*$/\1/'`
+
+echo " + icc version: $NGX_ICC_VER"
+
+
 # optimizations
 
 CFLAGS="$CFLAGS -O"
@@ -72,8 +78,6 @@ CFLAGS="$CFLAGS -wd269"
 CFLAGS="$CFLAGS -wd810"
 # parameter was never referenced
 CFLAGS="$CFLAGS -wd869"
-# "cc" clobber ignored, warnings for Liunx's htons()
-CFLAGS="$CFLAGS -wd1469"
 
 # STUB
 # enumerated type mixed with another type
@@ -86,8 +90,20 @@ CFLAGS="$CFLAGS -wd981"
 CFLAGS="$CFLAGS -wd1418"
 # external declaration in primary source file
 CFLAGS="$CFLAGS -wd1419"
-# non-POD class type passed through ellipsis
-CFLAGS="$CFLAGS -wd1595"
+
+case "$NGX_ICC_VER" in
+    8.*)
+        # "cc" clobber ignored, warnings for Liunx's htons()
+        CFLAGS="$CFLAGS -wd1469"
+
+        # STUB
+        # non-POD class type passed through ellipsis
+        CFLAGS="$CFLAGS -wd1595"
+    ;;
+
+    *)
+    ;;
+esac
 
 # stop on warning
 CFLAGS="$CFLAGS -Werror"

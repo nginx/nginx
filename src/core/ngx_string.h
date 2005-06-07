@@ -100,6 +100,7 @@ ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src);
 #define NGX_ESCAPE_URI   0
 #define NGX_ESCAPE_ARGS  1
 #define NGX_ESCAPE_HTML  2
+#define NGX_ESCAPE_UTF   3
 
 uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
     ngx_uint_t type);

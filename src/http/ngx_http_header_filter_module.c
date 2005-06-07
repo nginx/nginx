@@ -258,6 +258,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
         len += sizeof("Last-Modified: Mon, 28 Sep 1970 06:00:00 GMT" CRLF) - 1;
     }
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
     if (r->headers_out.location
         && r->headers_out.location->value.len
         && r->headers_out.location->value.data[0] == '/')
@@ -270,7 +272,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
                    + r->server_name.len
                    + r->headers_out.location->value.len + 2;
 
-            if (r->port != 443) {
+            if (clcf->port_in_redirect && r->port != 443) {
                 len += r->port_text->len;
             }
 
@@ -281,7 +283,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
                    + r->server_name.len
                    + r->headers_out.location->value.len + 2;
 
-            if (r->port != 80) {
+            if (clcf->port_in_redirect && r->port != 80) {
                 len += r->port_text->len;
             }
         }
@@ -290,8 +292,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
     if (r->chunked) {
         len += sizeof("Transfer-Encoding: chunked" CRLF) - 1;
     }
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->keepalive) {
         len += sizeof("Connection: keep-alive" CRLF) - 1;
@@ -425,18 +425,20 @@ ngx_http_header_filter(ngx_http_request_t *r)
         b->last = ngx_cpymem(b->last, r->server_name.data,
                              r->server_name.len);
 
+        if (clcf->port_in_redirect) {
 #if (NGX_HTTP_SSL)
-        if (r->connection->ssl) {
-            if (r->port != 443) {
-                b->last = ngx_cpymem(b->last, r->port_text->data,
-                                     r->port_text->len);
-            }
-        } else
+            if (r->connection->ssl) {
+                if (r->port != 443) {
+                    b->last = ngx_cpymem(b->last, r->port_text->data,
+                                         r->port_text->len);
+                }
+            } else
 #endif
-        {
-            if (r->port != 80) {
-                b->last = ngx_cpymem(b->last, r->port_text->data,
-                                     r->port_text->len);
+            {
+                if (r->port != 80) {
+                    b->last = ngx_cpymem(b->last, r->port_text->data,
+                                         r->port_text->len);
+                }
             }
         }
 

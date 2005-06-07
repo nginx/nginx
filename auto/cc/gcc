@@ -4,7 +4,7 @@
 
 # gcc 2.7.2.3, 2.8.1, 2.95.4, egcs-1.1.2
 #     3.0.4, 3.1.1, 3.2.3, 3.3.2, 3.3.3, 3.3.4, 3.4.0, 3.4.2
-#     4.0.0
+#     4.0.0, 4.0.1, 4.1.0
 
 
 NGX_GCC_VER=`$CC -v 2>&1 | grep 'gcc version' 2>&1 \
@@ -55,6 +55,11 @@ case $CPU in
     pentium4)
         # optimize for Pentium 4, gcc 3.x
         CPU_OPT="-march=pentium4"
+    ;;
+
+    athlon)
+        # optimize for Athlon, gcc 3.x
+        CPU_OPT="-march=athlon"
     ;;
 
     opteron)

@@ -112,7 +112,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_spaces_before_uri:
 
             c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'f') {
+            if (c >= 'a' && c <= 'z') {
                 r->schema_start = p;
                 state = sw_schema;
                 break;
@@ -133,7 +133,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_schema:
 
             c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'f') {
+            if (c >= 'a' && c <= 'z') {
                 break;
             }
 
@@ -171,7 +171,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_host:
 
             c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'f') {
+            if (c >= 'a' && c <= 'z') {
                 break;
             }
 
@@ -215,7 +215,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_after_slash_in_uri:
 
             c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'f') {
+            if (c >= 'a' && c <= 'z') {
                 state = sw_check_uri;
                 break;
             }
@@ -277,7 +277,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_check_uri:
 
             c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'f') {
+            if (c >= 'a' && c <= 'z') {
                 break;
             }
 

@@ -12,33 +12,39 @@
 
 
 static void ngx_imap_init_session(ngx_event_t *rev);
+
 static void ngx_pop3_auth_state(ngx_event_t *rev);
 static ngx_int_t ngx_pop3_read_command(ngx_imap_session_t *s);
 
-
-static u_char pop3_greeting[] = "+OK " NGINX_VER " ready" CRLF;
-#if 0
-static u_char imap_greeting[] = "* OK " NGINX_VER " ready" CRLF;
-#endif
-
-static u_char pop3_ok[] = "+OK" CRLF;
-static u_char pop3_invalid_command[] = "-ERR invalid command" CRLF;
+static void ngx_imap_auth_state(ngx_event_t *rev);
 
 
-void ngx_imap_init_connection(ngx_connection_t *c)
+static ngx_str_t  greetings[] = {
+   ngx_string("+OK " NGINX_VER " ready" CRLF),
+   ngx_string("* OK " NGINX_VER " ready" CRLF)
+};
+
+static u_char  pop3_ok[] = "+OK" CRLF;
+static u_char  pop3_invalid_command[] = "-ERR invalid command" CRLF;
+
+
+void
+ngx_imap_init_connection(ngx_connection_t *c)
 {
-    u_char   *greeting;
-    ssize_t   size;
+    ssize_t                    size;
+    ngx_imap_conf_ctx_t       *ctx;
+    ngx_imap_core_srv_conf_t  *cscf;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0,
-                   "imap init connection");
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0, "imap init connection");
 
     c->log_error = NGX_ERROR_INFO;
 
-    greeting = pop3_greeting;
-    size = sizeof(pop3_greeting) - 1;
+    ctx = c->ctx;
+    cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
 
-    if (ngx_send(c, greeting, size) < size) {
+    size = greetings[cscf->protocol].len;
+
+    if (ngx_send(c, greetings[cscf->protocol].data, size) < size) {
         /*
          * we treat the incomplete sending as NGX_ERROR
          * because it is very strange here
@@ -49,7 +55,7 @@ void ngx_imap_init_connection(ngx_connection_t *c)
 
     c->read->handler = ngx_imap_init_session;
 
-    ngx_add_timer(c->read, /* STUB */ 60000);
+    ngx_add_timer(c->read, cscf->timeout);
 
     if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
         ngx_imap_close_connection(c);
@@ -57,11 +63,14 @@ void ngx_imap_init_connection(ngx_connection_t *c)
 }
 
 
-static void ngx_imap_init_session(ngx_event_t *rev)
+static void
+ngx_imap_init_session(ngx_event_t *rev)
 {
-    size_t               size;
-    ngx_connection_t    *c;
-    ngx_imap_session_t  *s;
+    size_t                     size;
+    ngx_connection_t          *c;
+    ngx_imap_session_t        *s;
+    ngx_imap_conf_ctx_t       *ctx;
+    ngx_imap_core_srv_conf_t  *cscf;
 
     c = rev->data;
 
@@ -80,12 +89,33 @@ static void ngx_imap_init_session(ngx_event_t *rev)
     c->data = s;
     s->connection = c;
 
+    s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_imap_max_module);
+    if (s->ctx == NULL) {
+        ngx_imap_close_connection(c);
+        return;
+    }
+
+    ctx = c->ctx;
+    s->main_conf = ctx->main_conf;
+    s->srv_conf = ctx->srv_conf;
+
     if (ngx_array_init(&s->args, c->pool, 2, sizeof(ngx_str_t)) == NGX_ERROR) {
         ngx_imap_close_connection(c);
         return;
     }
 
-    size = /* STUB: pop3: 128, imap: configurable 4K default */ 128;
+    cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
+
+    s->protocol = cscf->protocol;
+
+    if (cscf->protocol == NGX_IMAP_POP3_PROTOCOL) {
+        size = 128;
+        c->read->handler = ngx_pop3_auth_state;
+
+    } else {
+        size = cscf->imap_client_buffer_size;
+        c->read->handler = ngx_imap_auth_state;
+    }
 
     s->buffer = ngx_create_temp_buf(c->pool, size);
     if (s->buffer == NULL) {
@@ -93,13 +123,23 @@ static void ngx_imap_init_session(ngx_event_t *rev)
         return;
     }
 
-    c->read->handler = ngx_pop3_auth_state;
-
-    ngx_pop3_auth_state(rev);
+    c->read->handler(rev);
 }
 
 
-static void ngx_pop3_auth_state(ngx_event_t *rev)
+static void
+ngx_imap_auth_state(ngx_event_t *rev)
+{
+    ngx_connection_t  *c;
+
+    c = rev->data;
+
+    ngx_imap_close_connection(c);
+}
+
+
+static void
+ngx_pop3_auth_state(ngx_event_t *rev)
 {
     u_char              *text;
     ssize_t              size;
@@ -196,7 +236,7 @@ static void ngx_pop3_auth_state(ngx_event_t *rev)
                     s->buffer->pos = s->buffer->start;
                     s->buffer->last = s->buffer->start;
 
-                    ngx_imap_proxy_init(s);
+                    ngx_imap_auth_http_init(s);
 
                     return;
 
@@ -245,7 +285,8 @@ static void ngx_pop3_auth_state(ngx_event_t *rev)
 }
 
 
-static ngx_int_t ngx_pop3_read_command(ngx_imap_session_t *s)
+static ngx_int_t
+ngx_pop3_read_command(ngx_imap_session_t *s)
 {
     ssize_t    n;
     ngx_int_t  rc;
@@ -288,7 +329,8 @@ static ngx_int_t ngx_pop3_read_command(ngx_imap_session_t *s)
 
 #if 0
 
-void ngx_imap_close_session(ngx_imap_session_t *s)
+void
+ngx_imap_close_session(ngx_imap_session_t *s)
 {
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
                    "close imap session");
@@ -299,7 +341,8 @@ void ngx_imap_close_session(ngx_imap_session_t *s)
 #endif
 
 
-void ngx_imap_close_connection(ngx_connection_t *c)
+void
+ngx_imap_close_connection(ngx_connection_t *c)
 {
     ngx_pool_t  *pool;
 

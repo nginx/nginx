@@ -57,6 +57,8 @@ typedef struct {
      ngx_uid_t                user;
      ngx_gid_t                group;
 
+     ngx_str_t                working_directory;
+
      ngx_str_t                pid;
      ngx_str_t                newpid;
 

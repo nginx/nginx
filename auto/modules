@@ -51,6 +51,12 @@ if [ $NGX_TEST_BUILD_SOLARIS_SENDFILEV = YES ]; then
 fi
 
 
+if [ $HTTP != YES ]; then
+    have=NGX_CRYPT . auto/nohave
+    CRYPT_LIB=
+fi
+
+
 if [ $HTTP_SSI = YES ]; then
     HTTP_POSTPONE=YES
 fi
@@ -219,10 +225,14 @@ if [ $HTTP = YES ]; then
 fi
 
 
-IMAP_MODULES=$IMAP_MODULE
-
 if [ $IMAP = YES ]; then
     modules="$modules $IMAP_MODULES"
+
+    modules="$modules $IMAP_AUTH_HTTP_MODULE"
+    IMAP_SRCS="$IMAP_SRCS $IMAP_AUTH_HTTP_SRCS"
+
+    modules="$modules $IMAP_PROXY_MODULE"
+    IMAP_SRCS="$IMAP_SRCS $IMAP_PROXY_SRCS"
 fi
 
 

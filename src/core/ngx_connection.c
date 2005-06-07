@@ -12,9 +12,8 @@
 ngx_os_io_t  ngx_io;
 
 
-ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
-                                                  in_addr_t addr,
-                                                  in_port_t port)
+ngx_listening_t *
+ngx_listening_inet_stream_socket(ngx_conf_t *cf, in_addr_t addr, in_port_t port)
 {
     size_t               len;
     ngx_listening_t     *ls;
@@ -60,7 +59,8 @@ ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
 }
 
 
-ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
+ngx_int_t
+ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
     size_t               len;
     ngx_uint_t           i;
@@ -121,7 +121,8 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 }
 
 
-ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
+ngx_int_t
+ngx_open_listening_sockets(ngx_cycle_t *cycle)
 {
     ngx_uint_t        tries, failed, reuseaddr, i;
     ngx_err_t         err;
@@ -261,7 +262,8 @@ ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle)
 }
 
 
-void ngx_close_listening_sockets(ngx_cycle_t *cycle)
+void
+ngx_close_listening_sockets(ngx_cycle_t *cycle)
 {
     ngx_uint_t        i;
     ngx_socket_t      fd;
@@ -309,7 +311,8 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle)
 }
 
 
-void ngx_close_connection(ngx_connection_t *c)
+void
+ngx_close_connection(ngx_connection_t *c)
 {
     ngx_socket_t  fd;
 
@@ -398,7 +401,8 @@ void ngx_close_connection(ngx_connection_t *c)
 }
 
 
-ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
+ngx_int_t
+ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
 {
     ngx_uint_t  level;
 

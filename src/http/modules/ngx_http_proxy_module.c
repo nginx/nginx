@@ -1013,6 +1013,10 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             return NGX_OK;
         }
 
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
         /* there was error while a header line parsing */
 
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,

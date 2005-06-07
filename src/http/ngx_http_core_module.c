@@ -319,6 +319,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, reset_timedout_connection),
       NULL },
 
+    { ngx_string("port_in_redirect"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, port_in_redirect),
+      NULL },
+
     { ngx_string("msie_padding"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -1113,10 +1120,10 @@ ngx_http_delay_handler(ngx_http_request_t *r)
 static char *
 ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
-    int                         m;
     char                       *rv;
     void                       *mconf;
-    ngx_conf_t                  save;
+    ngx_uint_t                  m;
+    ngx_conf_t                  pcf;
     ngx_http_module_t          *module;
     ngx_http_conf_ctx_t        *ctx, *http_ctx;
     ngx_http_core_srv_conf_t   *cscf, **cscfp;
@@ -1189,13 +1196,13 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
     /* parse inside server{} */
 
-    save = *cf;
+    pcf = *cf;
     cf->ctx = ctx;
     cf->cmd_type = NGX_HTTP_SRV_CONF;
 
     rv = ngx_conf_parse(cf, NULL);
 
-    *cf = save;
+    *cf = pcf;
 
     if (rv != NGX_CONF_OK) {
         return rv;
@@ -1622,6 +1629,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         ls->port = (getuid() == 0) ? 80 : 8000;
 #endif
         ls->family = AF_INET;
+        ls->default_server = 0;
     }
 
     if (conf->server_names.nelts == 0) {
@@ -1726,6 +1734,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->lingering_time = NGX_CONF_UNSET_MSEC;
     lcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
     lcf->reset_timedout_connection = NGX_CONF_UNSET;
+    lcf->port_in_redirect = NGX_CONF_UNSET;
     lcf->msie_padding = NGX_CONF_UNSET;
 
     return lcf;
@@ -1839,6 +1848,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
 
     ngx_conf_merge_value(conf->reset_timedout_connection,
                               prev->reset_timedout_connection, 0);
+    ngx_conf_merge_value(conf->port_in_redirect, prev->port_in_redirect, 1);
     ngx_conf_merge_value(conf->msie_padding, prev->msie_padding, 1);
 
     if (conf->open_files == NULL) {
@@ -1857,8 +1867,8 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     u_char             *addr;
     ngx_int_t           port;
     ngx_uint_t          p;
-    struct hostent     *h;
     ngx_str_t          *args;
+    struct hostent     *h;
     ngx_http_listen_t  *ls;
 
     /*
@@ -1874,9 +1884,9 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     /* AF_INET only */
 
     ls->family = AF_INET;
-    ls->default_server = 0;
     ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
+    ls->default_server = 0;
 
     args = cf->args->elts;
     addr = args[1].data;

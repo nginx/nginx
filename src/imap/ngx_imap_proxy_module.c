@@ -11,19 +11,57 @@
 #include <ngx_imap.h>
 
 
+typedef struct {
+    ngx_flag_t  enable;
+} ngx_imap_proxy_conf_t;
+
+
 static void ngx_imap_proxy_block_read(ngx_event_t *rev);
 static void ngx_imap_proxy_auth_handler(ngx_event_t *rev);
 static void ngx_imap_proxy_dummy_handler(ngx_event_t *ev);
 static ngx_int_t ngx_imap_proxy_read_response(ngx_imap_session_t *s);
 static void ngx_imap_proxy_handler(ngx_event_t *ev);
 static void ngx_imap_proxy_close_session(ngx_imap_session_t *s);
+static void *ngx_imap_proxy_create_conf(ngx_conf_t *cf);
+static char *ngx_imap_proxy_merge_conf(ngx_conf_t *cf, void *parent,
+    void *child);
 
 
-void ngx_imap_proxy_init(ngx_imap_session_t *s)
+static ngx_command_t  ngx_imap_proxy_commands[] = {
+    { ngx_string("proxy"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_proxy_conf_t, enable),
+      NULL },
+
+      ngx_null_command
+};
+
+
+static ngx_imap_module_t  ngx_imap_proxy_module_ctx = {
+    NULL,                                  /* create main configuration */
+    NULL,                                  /* init main configuration */
+
+    ngx_imap_proxy_create_conf,            /* create server configuration */
+    ngx_imap_proxy_merge_conf              /* merge server configuration */
+};
+
+
+ngx_module_t  ngx_imap_proxy_module = {
+    NGX_MODULE_V1,
+    &ngx_imap_proxy_module_ctx,            /* module context */
+    ngx_imap_proxy_commands,               /* module directives */
+    NGX_IMAP_MODULE,                       /* module type */
+    NULL,                                  /* init module */
+    NULL                                   /* init process */
+};
+
+
+void
+ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peers_t *peers)
 {
     ngx_int_t              rc;
-    ngx_peers_t           *peers;
-    struct sockaddr_in    *sin;
     ngx_imap_proxy_ctx_t  *p;
 
     p = ngx_pcalloc(s->connection->pool, sizeof(ngx_imap_proxy_ctx_t));
@@ -34,43 +72,9 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
 
     s->proxy = p;
 
-    /**/
-
-    peers = ngx_pcalloc(s->connection->pool, sizeof(ngx_peers_t));
-    if (peers == NULL) {
-        ngx_imap_close_connection(s->connection);
-        return;
-    }
-
     p->upstream.peers = peers;
     p->upstream.log = s->connection->log;
     p->upstream.log_error = NGX_ERROR_ERR;
-
-    sin = ngx_pcalloc(s->connection->pool, sizeof(struct sockaddr_in));
-    if (sin == NULL) {
-        ngx_imap_close_connection(s->connection);
-        return;
-    }
-
-    peers->peer[0].sockaddr = (struct sockaddr *) sin;
-    peers->peer[0].socklen = sizeof(struct sockaddr_in);
-
-    sin->sin_port = htons(110);
-#if 1
-    sin->sin_addr.s_addr = inet_addr("81.19.64.101");
-    peers->peer[0].name.len = sizeof("81.19.64.101:110") - 1;
-    peers->peer[0].name.data = (u_char *) "81.19.64.101:110";
-#else
-    sin->sin_addr.s_addr = inet_addr("81.19.69.70");
-    peers->peer[0].name.len = sizeof("81.19.69.70:110") - 1;
-    peers->peer[0].name.data = (u_char *) "81.19.69.70:110";
-#endif
-
-    peers->number = 1;
-
-    peers->peer[0].max_fails = 1;
-    peers->peer[0].fail_timeout = 60;
-    peers->peer[0].weight = 1;
 
     rc = ngx_event_connect_peer(&p->upstream);
 
@@ -88,7 +92,8 @@ void ngx_imap_proxy_init(ngx_imap_session_t *s)
 }
 
 
-static void ngx_imap_proxy_block_read(ngx_event_t *rev)
+static void
+ngx_imap_proxy_block_read(ngx_event_t *rev)
 {
     ngx_connection_t    *c;
     ngx_imap_session_t  *s;
@@ -104,7 +109,8 @@ static void ngx_imap_proxy_block_read(ngx_event_t *rev)
 }
 
 
-static void ngx_imap_proxy_auth_handler(ngx_event_t *rev)
+static void
+ngx_imap_proxy_auth_handler(ngx_event_t *rev)
 {
     u_char              *p;
     ngx_int_t            rc;
@@ -207,13 +213,15 @@ static void ngx_imap_proxy_auth_handler(ngx_event_t *rev)
 }
 
 
-static void ngx_imap_proxy_dummy_handler(ngx_event_t *ev)
+static void
+ngx_imap_proxy_dummy_handler(ngx_event_t *ev)
 {
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, ev->log, 0, "imap proxy dummy handler");
 }
 
 
-static ngx_int_t ngx_imap_proxy_read_response(ngx_imap_session_t *s)
+static ngx_int_t
+ngx_imap_proxy_read_response(ngx_imap_session_t *s)
 {
     u_char     *p;
     ssize_t     n;
@@ -267,7 +275,8 @@ static ngx_int_t ngx_imap_proxy_read_response(ngx_imap_session_t *s)
 }
 
 
-static void ngx_imap_proxy_handler(ngx_event_t *ev)
+static void
+ngx_imap_proxy_handler(ngx_event_t *ev)
 {
     size_t               size;
     ssize_t              n;
@@ -387,12 +396,44 @@ static void ngx_imap_proxy_handler(ngx_event_t *ev)
 }
 
 
-static void ngx_imap_proxy_close_session(ngx_imap_session_t *s)
+static void
+ngx_imap_proxy_close_session(ngx_imap_session_t *s)
 {
-    if (ngx_close_socket(s->proxy->upstream.connection->fd) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, s->connection->log, ngx_socket_errno,
-                      ngx_close_socket_n " failed");
+    if (s->proxy->upstream.connection) {
+        ngx_log_debug1(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
+                       "close imap proxy connection: %d",
+                       s->proxy->upstream.connection->fd);
+
+        ngx_close_connection(s->proxy->upstream.connection);
     }
 
     ngx_imap_close_connection(s->connection);
+}
+
+
+static void *
+ngx_imap_proxy_create_conf(ngx_conf_t *cf)
+{           
+    ngx_imap_proxy_conf_t  *pcf;
+            
+    pcf = ngx_pcalloc(cf->pool, sizeof(ngx_imap_proxy_conf_t));
+    if (pcf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    pcf->enable = NGX_CONF_UNSET;
+
+    return pcf;
+}
+
+
+static char *
+ngx_imap_proxy_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+{
+    ngx_imap_proxy_conf_t *prev = parent;
+    ngx_imap_proxy_conf_t *conf = child;
+
+    ngx_conf_merge_msec_value(conf->enable, prev->enable, 0);
+
+    return NGX_CONF_OK;
 }
