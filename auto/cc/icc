@@ -97,7 +97,7 @@ case "$NGX_ICC_VER" in
         CFLAGS="$CFLAGS -wd1469"
 
         # STUB
-        # non-POD class type passed through ellipsis
+        # non-POD class type passed through ellipsis, Linux only ?
         CFLAGS="$CFLAGS -wd1595"
     ;;
 

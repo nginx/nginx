@@ -9,6 +9,79 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.36" date="15.06.2005">
+
+<change type="change">
+<para lang="ru">
+если в заголовке запросе есть дублирующиеся строки "Host", "Connection",
+"Content-Length" и "Authorization", то nginx теперь выдаёт ошибку 400.
+</para>
+<para lang="en">
+if the request header has duplicate the "Host", "Connection", "Content-Length",
+or "Authorization" lines, then nginx now returns the 400 error.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива post_accept_timeout упразднена.
+</para>
+<para lang="en">
+The "post_accept_timeout" directive was canceled.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры default, af=, bl=, deferred и bind в директиве listen.
+</para>
+<para lang="en">
+the "default", "af=", "bl=", "deferred", and "bind" parameters
+of the "listen" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка accept фильтров во FreeBSD.
+</para>
+<para lang="en">
+the FreeBSD accept filters support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка TCP_DEFER_ACCEPT в Linux.
+</para>
+<para lang="en">
+the Linux TCP_DEFER_ACCEPT support.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_autoindex_module не поддерживал имена файлов в UTF-8.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module did not support the file names in UTF-8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после добавления новый лог-файл ротация этого лога по сигналу -USR1
+выполнялась, только если переконфигурировать nginx два раза по сигналу -HUP.
+</para>
+<para lang="en">
+the new log file can be rotated by the -USR1 signal only if
+the reconfiguration by the -HUP signal was made twice.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.35" date="07.06.2005">
 
 <change type="feature">

@@ -66,8 +66,9 @@ static char *
 ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                        *rv;
-    ngx_uint_t                   mi, m, s, l, p, a, n;
-    ngx_uint_t                   port_found, addr_found, virtual_names, key;
+    ngx_uint_t                   mi, m, s, l, p, a, n, key;
+    ngx_uint_t                   port_found, addr_found;
+    ngx_uint_t                   virtual_names, separate_binding;
     ngx_conf_t                   pcf;
     ngx_array_t                  in_ports;
     ngx_listening_t             *ls;
@@ -408,9 +409,9 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                              * for this address:port
                              */
 
-                            if (lscf[l].default_server) {
+                            if (lscf[l].conf.default_server) {
 
-                                if (in_addr[a].default_server) {
+                                if (in_addr[a].conf.default_server) {
                                     ngx_log_error(NGX_LOG_ERR, cf->log, 0,
                                         "the duplicate default server in %V:%d",
                                         &lscf[l].file_name, lscf[l].line);
@@ -419,7 +420,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                 }
 
                                 in_addr[a].core_srv_conf = cscfp[s];
-                                in_addr[a].default_server = 1;
+                                in_addr[a].conf.default_server = 1;
                             }
 
                             addr_found = 1;
@@ -449,8 +450,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                             in_addr[a].names.elts = NULL;
                             in_addr[a].hash = NULL;
                             in_addr[a].wildcards.elts = NULL;
-                            in_addr[a].default_server = lscf[l].default_server;
                             in_addr[a].core_srv_conf = cscfp[s];
+                            in_addr[a].conf = lscf[l].conf;
 
                             if (ngx_http_add_names(cf, &in_addr[a], cscfp[s])
                                 != NGX_OK)
@@ -518,6 +519,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     in_port = in_ports.elts;
     for (p = 0; p < in_ports.nelts; p++) {
 
+        separate_binding = 0;
+
         /*
          * check whether all name-based servers have the same configuraiton
          * as the default server, or some servers restrict the host names
@@ -525,6 +528,10 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         in_addr = in_port[p].addrs.elts;
         for (a = 0; a < in_port[p].addrs.nelts; a++) {
+
+            if (in_addr[a].conf.bind) {
+                separate_binding = 1;
+            }
 
             virtual_names = 0;
 
@@ -608,7 +615,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
          * to the "*:port" only and ignore the other bindings
          */
 
-        if (in_addr[a - 1].addr == INADDR_ANY) {
+        if (in_addr[a - 1].addr == INADDR_ANY && !separate_binding) {
             a--;
 
         } else {
@@ -624,15 +631,13 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
 
-            ls->backlog = -1;
-
             ls->addr_ntop = 1;
 
             ls->handler = ngx_http_init_connection;
 
             cscf = in_addr[a].core_srv_conf;
             ls->pool_size = cscf->connection_pool_size;
-            ls->post_accept_timeout = cscf->post_accept_timeout;
+            ls->post_accept_timeout = cscf->client_header_timeout;
 
             clcf = cscf->ctx->loc_conf[ngx_http_core_module.ctx_index];
             ls->log = clcf->err_log;
@@ -642,6 +647,16 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             if (iocpcf->acceptex_read) {
                 ls->post_accept_buffer_size = cscf->client_header_buffer_size;
             }
+#endif
+
+            ls->backlog = in_addr[a].conf.backlog;
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+            ls->accept_filter = in_addr[a].conf.accept_filter;
+#endif
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+            ls->deferred_accept = in_addr[a].conf.deferred_accept;
 #endif
 
             ls->ctx = ctx;
@@ -766,8 +781,8 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_in_port_t *in_port,
     in_addr->names.elts = NULL;
     in_addr->hash = NULL;
     in_addr->wildcards.elts = NULL;
-    in_addr->default_server = lscf->default_server;
     in_addr->core_srv_conf = cscf;
+    in_addr->conf = lscf->conf;
 
 #if (NGX_DEBUG)
     {

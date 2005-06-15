@@ -247,6 +247,9 @@ ngx_event_accept(ngx_event_t *ev)
 
         if (ev->deferred_accept) {
             rev->ready = 1;
+#if (NGX_HAVE_KQUEUE)
+            rev->available = 1;
+#endif
         }
 
         c->ctx = ls->ctx;

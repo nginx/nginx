@@ -217,6 +217,16 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         return ngx_http_autoindex_error(r, &dir, dname.data);
     }
 
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_type.len = sizeof("text/html") - 1;
+    r->headers_out.content_type.data = (u_char *) "text/html";
+
+    rc = ngx_http_send_header(r);
+
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return rc;
+    }
+
     fname.len = 0;
 #if (NGX_SUPPRESS_WARN)
     fname.data = NULL;
@@ -334,6 +344,10 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                + sizeof(" 28-Sep-1970 12:00 ") - 1
                + 19
                + 2;
+
+        if (r->utf8) {
+            len += entry[i].name.len - ngx_utf_length(&entry[i].name);
+        }
     }
 
     b = ngx_create_temp_buf(r->pool, len);
@@ -380,7 +394,11 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         b->last = ngx_cpystrn(b->last, entry[i].name.data,
                               NGX_HTTP_AUTOINDEX_NAME_LEN + 1);
 
-        len = entry[i].name.len;
+        if (r->utf8) {
+            len = ngx_utf_length(&entry[i].name);
+        } else {
+            len = entry[i].name.len;
+        }
 
         if (len > NGX_HTTP_AUTOINDEX_NAME_LEN) {
             b->last = ngx_cpymem(b->last - 3, "..&gt;</a>",
@@ -425,17 +443,6 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     b->last = ngx_cpymem(b->last, "</pre><hr>", sizeof("</pre><hr>") - 1);
 
     b->last = ngx_cpymem(b->last, tail, sizeof(tail) - 1);
-
-    r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = b->last - b->pos;
-    r->headers_out.content_type.len = sizeof("text/html") - 1;
-    r->headers_out.content_type.data = (u_char *) "text/html";
-
-    rc = ngx_http_send_header(r);
-
-    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-        return rc;
-    }
 
     if (r->main == NULL) {
         b->last_buf = 1;

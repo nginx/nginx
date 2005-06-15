@@ -55,9 +55,7 @@ END
 
 $PCRE/pcre.h:	$NGX_MAKEFILE
 	cd $PCRE \\
-	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi
-
-	cd $PCRE \\
+	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi \\
 	&& CC="\$(CC)" CFLAGS="$PCRE_OPT" \\
 	./configure --disable-shared
 

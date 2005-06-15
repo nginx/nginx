@@ -102,13 +102,6 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_srv_conf_t, connection_pool_size),
       NULL },
 
-    { ngx_string("post_accept_timeout"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_msec_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_core_srv_conf_t, post_accept_timeout),
-      NULL },
-
     { ngx_string("request_pool_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
@@ -160,9 +153,9 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
     { ngx_string("listen"),
 #if 0
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_1MORE,
 #else
-      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE12,
+      NGX_HTTP_SRV_CONF|NGX_CONF_1MORE,
 #endif
       ngx_http_core_listen,
       NGX_HTTP_SRV_CONF_OFFSET,
@@ -1592,7 +1585,6 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
     }
 
     cscf->connection_pool_size = NGX_CONF_UNSET_SIZE;
-    cscf->post_accept_timeout = NGX_CONF_UNSET_MSEC;
     cscf->request_pool_size = NGX_CONF_UNSET_SIZE;
     cscf->client_header_timeout = NGX_CONF_UNSET_MSEC;
     cscf->client_header_buffer_size = NGX_CONF_UNSET_SIZE;
@@ -1621,6 +1613,8 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
 
+        ngx_memzero(ls, sizeof(ngx_http_listen_t));
+
         ls->addr = INADDR_ANY;
 #if (NGX_WIN32)
         ls->port = 80;
@@ -1629,7 +1623,6 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         ls->port = (getuid() == 0) ? 80 : 8000;
 #endif
         ls->family = AF_INET;
-        ls->default_server = 0;
     }
 
     if (conf->server_names.nelts == 0) {
@@ -1662,8 +1655,6 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
                               prev->connection_pool_size, 256);
-    ngx_conf_merge_msec_value(conf->post_accept_timeout,
-                              prev->post_accept_timeout, 60000);
     ngx_conf_merge_size_value(conf->request_pool_size,
                               prev->request_pool_size, 4096);
     ngx_conf_merge_msec_value(conf->client_header_timeout,
@@ -1859,89 +1850,145 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
 }
 
 
+/* AF_INET only */
+
 static char *
 ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_srv_conf_t *scf = conf;
 
-    u_char             *addr;
-    ngx_int_t           port;
-    ngx_uint_t          p;
-    ngx_str_t          *args;
-    struct hostent     *h;
-    ngx_http_listen_t  *ls;
+    char                 *err;
+    ngx_str_t            *value;
+    ngx_uint_t            n;
+    struct hostent       *h;
+    ngx_http_listen_t    *ls;
+    ngx_inet_upstream_t   inet_upstream;
 
     /*
      * TODO: check duplicate 'listen' directives,
      *       add resolved name to server names ???
      */
 
+    value = cf->args->elts;
+    
+    ngx_memzero(&inet_upstream, sizeof(ngx_inet_upstream_t));
+
+    inet_upstream.url = value[1];
+    inet_upstream.port_only = 1;
+
+    err = ngx_inet_parse_host_port(&inet_upstream);
+
+    if (err) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "%s in \"%V\" of the \"listen\" directive",
+                           err, &inet_upstream.url);
+        return NGX_CONF_ERROR; 
+    }
+
     ls = ngx_array_push(&scf->listen);
     if (ls == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    /* AF_INET only */
+    ngx_memzero(ls, sizeof(ngx_http_listen_t));
 
     ls->family = AF_INET;
+    ls->port = (in_port_t) (inet_upstream.default_port ?
+                                                      80 : inet_upstream.port);
     ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
-    ls->default_server = 0;
+    ls->conf.backlog = -1;
 
-    args = cf->args->elts;
-    addr = args[1].data;
+    if (inet_upstream.host.len) {
+        inet_upstream.host.data[inet_upstream.host.len] = '\0';
 
-    for (p = 0; p < args[1].len; p++) {
-        if (addr[p] == ':') {
-            addr[p++] = '\0';
-            break;
+        ls->addr = inet_addr((const char *) inet_upstream.host.data);
+
+        if (ls->addr == INADDR_NONE) {
+            h = gethostbyname((const char *) inet_upstream.host.data);
+
+            if (h == NULL || h->h_addr_list[0] == NULL) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "can not resolve host \"%s\" "
+                                   "in the \"listen\" directive",
+                                   inet_upstream.host.data);
+                return NGX_CONF_ERROR;
+            }
+    
+            ls->addr = *(in_addr_t *)(h->h_addr_list[0]);
         }
-    }
-
-    if (p == args[1].len) {
-        /* no ":" in the "listen" */
-        p = 0;
-    }
-
-    port = ngx_atoi(&addr[p], args[1].len - p);
-
-    if (port == NGX_ERROR && p == 0) {
-
-        /* "listen host" */
-        ls->port = 80;
-
-    } else if ((port == NGX_ERROR && p != 0) /* "listen host:NONNUMBER" */
-               || (port < 1 || port > 65536)) { /* "listen 99999" */
-
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid port \"%s\" in \"%V\" directive, "
-                           "it must be a number between 1 and 65535",
-                           &addr[p], &cmd->name);
-
-        return NGX_CONF_ERROR;
-
-    } else if (p == 0) {
-        ls->addr = INADDR_ANY;
-        ls->port = (in_port_t) port;
-        return NGX_CONF_OK;
 
     } else {
-        ls->port = (in_port_t) port;
+        ls->addr = INADDR_ANY;
     }
 
-    ls->addr = inet_addr((const char *) addr);
+    if (cf->args->nelts == 2) {
+        return NGX_CONF_OK;
+    }
 
-    if (ls->addr == INADDR_NONE) {
-        h = gethostbyname((const char *) addr);
+    if (ngx_strcmp(value[2].data, "default") == 0) {
+        ls->conf.default_server = 1;
+        n = 3;
+    } else {
+        n = 2;
+    }
 
-        if (h == NULL || h->h_addr_list[0] == NULL) {
+    for ( /* void */ ; n < cf->args->nelts; n++) {
+
+        if (ls->conf.default_server == 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                              "can not resolve host \"%s\" "
-                              "in \"%V\" directive", addr, &cmd->name);
+                               "\"%V\" parameter can be specified for "
+                               "the default \"listen\" directive only",
+                               &value[n]);
             return NGX_CONF_ERROR;
         }
 
-        ls->addr = *(in_addr_t *)(h->h_addr_list[0]);
+        if (ngx_strcmp(value[n].data, "bind") == 0) {
+            ls->conf.bind = 1;
+            continue;
+        }
+
+        if (ngx_strncmp(value[n].data, "bl=", 3) == 0) {
+            ls->conf.backlog = ngx_atoi(value[n].data + 3, value[n].len - 3);
+            ls->conf.bind = 1;
+
+            if (ls->conf.backlog == NGX_ERROR || ls->conf.backlog == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid backlog \"%V\"", &value[n]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[n].data, "af=", 3) == 0) {
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+            ls->conf.accept_filter = (char *) &value[n].data[3];
+            ls->conf.bind = 1;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "accept filters \"%V\" are not supported "
+                               "on this platform, ignored",
+                               &value[n]);
+#endif
+            continue;
+        }
+
+        if (ngx_strcmp(value[n].data, "deferred") == 0) {
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+            ls->conf.deferred_accept = 1;
+            ls->conf.bind = 1;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the deferred accept is not supported "
+                               "on this platform, ignored");
+#endif
+            continue;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the invalid \"%V\" parameter", &value[n]);
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;

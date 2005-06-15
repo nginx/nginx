@@ -14,13 +14,30 @@
 
 
 typedef struct {
+    unsigned                   default_server:1;
+    unsigned                   bind:1;
+
+    int                        backlog;
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+    char                      *accept_filter;
+#endif
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+    ngx_uint_t                 deferred_accept;
+#endif
+
+} ngx_http_listen_conf_t;
+
+
+typedef struct {
     in_addr_t                  addr;
     in_port_t                  port;
     int                        family;
+
     ngx_str_t                  file_name;
     ngx_int_t                  line;
 
-    ngx_uint_t                 default_server; /* unsigned  default_server:1; */
+    ngx_http_listen_conf_t     conf;
 } ngx_http_listen_t;
 
 
@@ -83,7 +100,6 @@ typedef struct {
 
     ngx_bufs_t                 large_client_header_buffers;
 
-    ngx_msec_t                 post_accept_timeout;
     ngx_msec_t                 client_header_timeout;
 
     ngx_uint_t                 restrict_host_names;
@@ -111,7 +127,7 @@ struct ngx_http_in_addr_s {
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
 
-    ngx_uint_t                 default_server; /* unsigned  default_server:1; */
+    ngx_http_listen_conf_t     conf;
 };
 
 

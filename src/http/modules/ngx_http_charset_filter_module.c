@@ -12,15 +12,17 @@
 typedef struct {
     char       **tables;
     ngx_str_t    name;
-    ngx_uint_t   server;  /* unsigned     server:1; */
+
+    unsigned     server:1;
+    unsigned     utf8:1;
 } ngx_http_charset_t;
 
 
 typedef struct {
-    ngx_int_t   src;
-    ngx_int_t   dst;
-    char       *src2dst;
-    char       *dst2src;
+    ngx_int_t    src;
+    ngx_int_t    dst;
+    char        *src2dst;
+    char        *dst2src;
 } ngx_http_charset_tables_t;
 
 
@@ -31,17 +33,17 @@ typedef struct {
 
 
 typedef struct {
-    ngx_flag_t  enable;
-    ngx_flag_t  autodetect;
+    ngx_flag_t   enable;
+    ngx_flag_t   autodetect;
 
-    ngx_int_t   default_charset;
-    ngx_int_t   source_charset;
+    ngx_int_t    default_charset;
+    ngx_int_t    source_charset;
 } ngx_http_charset_loc_conf_t;
 
 
 typedef struct {
-    ngx_int_t   server;
-    ngx_int_t   client;
+    ngx_int_t    server;
+    ngx_int_t    client;
 } ngx_http_charset_ctx_t;
 
 
@@ -183,6 +185,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
 
     charsets = mcf->charsets.elts;
     r->headers_out.charset = charsets[lcf->default_charset].name;
+    r->utf8 = charsets[lcf->default_charset].utf8;
 
     if (lcf->default_charset == lcf->source_charset) {
         return ngx_http_next_header_filter(r);
@@ -447,6 +450,10 @@ ngx_http_add_charset(ngx_array_t *charsets, ngx_str_t *name)
     c->tables = NULL;
     c->name = *name;
     c->server = 0;
+
+    if (ngx_strcasecmp(name->data, "utf-8") == 0) {
+        c->utf8 = 1;
+    }
 
     return i;
 }

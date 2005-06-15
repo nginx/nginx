@@ -62,10 +62,18 @@ ngx_listening_inet_stream_socket(ngx_conf_t *cf, in_addr_t addr, in_port_t port)
 ngx_int_t
 ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
-    size_t               len;
-    ngx_uint_t           i;
-    ngx_listening_t     *ls;
-    struct sockaddr_in  *sin;
+    size_t                     len;
+    ngx_uint_t                 i;
+    ngx_listening_t           *ls;
+    struct sockaddr_in        *sin;
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+    socklen_t                  aflen;
+    struct accept_filter_arg   af;
+#endif
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+    socklen_t                  tlen;
+    int                        timeout;
+#endif
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
@@ -98,7 +106,6 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
         ls[i].addr_text_max_len = INET_ADDRSTRLEN;
 
-
         ls[i].addr_text.data = ngx_palloc(cycle->pool, INET_ADDRSTRLEN - 1
                                                        + sizeof(":65535") - 1);
         if (ls[i].addr_text.data == NULL) {
@@ -115,6 +122,54 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         ls[i].addr_text.len = ngx_sprintf(ls[i].addr_text.data + len, ":%d",
                                           ntohs(sin->sin_port))
                               - ls[i].addr_text.data;
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+
+        ngx_memzero(&af, sizeof(struct accept_filter_arg));
+        aflen = sizeof(struct accept_filter_arg);
+
+        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, &af, &aflen)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, ngx_errno,
+                          "getsockopt(SO_ACCEPTFILTER) for %V failed, ignored",
+                          &ls[i].addr_text);
+            continue;
+        }
+
+        if (aflen < sizeof(struct accept_filter_arg) || af.af_name[0] == '\0') {
+            continue;
+        }
+
+        ls[i].accept_filter = ngx_palloc(cycle->pool, 16);
+        if (ls[i].accept_filter == NULL) {
+            return NGX_ERROR;
+        }
+
+        (void) ngx_cpystrn((u_char *) ls[i].accept_filter,
+                           (u_char *) af.af_name, 16);
+#endif
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+
+        timeout = 0;
+        tlen = sizeof(int);
+
+        if (getsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout, &tlen)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, ngx_errno,
+                          "getsockopt(TCP_DEFER_ACCEPT) for %V failed, ignored",
+                          &ls[i].addr_text);
+            continue;
+        }
+
+        if (tlen < sizeof(int) || timeout == 0) {
+            continue;
+        }
+
+        ls[i].deferred_accept = 1;
+#endif
     }
 
     return NGX_OK;

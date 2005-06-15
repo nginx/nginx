@@ -249,7 +249,8 @@ ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (err) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "%s in \"%V\" of the \"listen\" directive", err);
+                           "%s in \"%V\" of the \"listen\" directive",
+                           err, &inet_upstream.url);
         return NGX_CONF_ERROR;
     }
 

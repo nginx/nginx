@@ -47,11 +47,17 @@ typedef struct {
     unsigned          nonblocking_accept:1;
     unsigned          nonblocking:1;
     unsigned          shared:1;    /* shared between threads or processes */
+    unsigned          addr_ntop:1;
+
 #if (NGX_HAVE_DEFERRED_ACCEPT)
     unsigned          deferred_accept:1;
+    unsigned          delete_deferred:1;
+    unsigned          add_deferred:1;
+#ifdef SO_ACCEPTFILTER
+    char             *accept_filter;
+#endif
 #endif
 
-    unsigned          addr_ntop:1;
 } ngx_listening_t;
 
 

@@ -96,11 +96,11 @@ void ngx_md5_text(u_char *text, u_char *md5);
 void ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src);
 ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src);
 
+size_t ngx_utf_length(ngx_str_t *utf);
 
 #define NGX_ESCAPE_URI   0
 #define NGX_ESCAPE_ARGS  1
 #define NGX_ESCAPE_HTML  2
-#define NGX_ESCAPE_UTF   3
 
 uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
     ngx_uint_t type);

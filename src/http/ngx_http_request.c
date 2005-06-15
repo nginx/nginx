@@ -22,6 +22,8 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_process_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_process_unique_header_line(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
@@ -62,10 +64,10 @@ static char *ngx_http_client_errors[] = {
 
 ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("Host"), offsetof(ngx_http_headers_in_t, host),
-                 ngx_http_process_header_line },
+                 ngx_http_process_unique_header_line },
 
     { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection),
-                 ngx_http_process_header_line },
+                 ngx_http_process_unique_header_line },
 
     { ngx_string("If-Modified-Since"),
                  offsetof(ngx_http_headers_in_t, if_modified_since),
@@ -79,7 +81,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 
     { ngx_string("Content-Length"),
                  offsetof(ngx_http_headers_in_t, content_length),
-                 ngx_http_process_header_line },
+                 ngx_http_process_unique_header_line },
 
     { ngx_string("Content-Type"),
                  offsetof(ngx_http_headers_in_t, content_type),
@@ -104,7 +106,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 
     { ngx_string("Authorization"),
                  offsetof(ngx_http_headers_in_t, authorization),
-                 ngx_http_process_header_line },
+                 ngx_http_process_unique_header_line },
 
     { ngx_string("Keep-Alive"), offsetof(ngx_http_headers_in_t, keep_alive),
                  ngx_http_process_header_line },
@@ -112,12 +114,6 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 #if (NGX_HTTP_PROXY)
     { ngx_string("X-Forwarded-For"),
                  offsetof(ngx_http_headers_in_t, x_forwarded_for),
-                 ngx_http_process_header_line },
-
-    { ngx_string("X-Real-IP"), offsetof(ngx_http_headers_in_t, x_real_ip),
-                 ngx_http_process_header_line },
-
-    { ngx_string("X-URL"), offsetof(ngx_http_headers_in_t, x_url),
                  ngx_http_process_header_line },
 #endif
 
@@ -906,12 +902,12 @@ ngx_http_read_request_header(ngx_http_request_t *r)
         return n;
     }
 
-    if (!rev->ready) {
-        return NGX_AGAIN;
+    if (rev->ready) {
+        n = r->connection->recv(r->connection, r->header_in->last,
+                                r->header_in->end - r->header_in->last);
+    } else {
+        n = NGX_AGAIN;
     }
-
-    n = r->connection->recv(r->connection, r->header_in->last,
-                            r->header_in->end - r->header_in->last);
 
     if (n == NGX_AGAIN) {
         if (!r->header_timeout_set) {
@@ -1107,21 +1103,44 @@ ngx_http_process_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
+ngx_http_process_unique_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    ngx_table_elt_t  **ph;
+
+    ph = (ngx_table_elt_t **) ((char *) &r->headers_in + offset);
+
+    if (*ph == NULL) {
+        *ph = h;
+        return NGX_OK;
+    }
+
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                  "client sent duplicate header line: \"%V: %V\"",
+                  &h->key, &h->value);
+
+    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+
+    return NGX_ERROR;
+}
+
+
+static ngx_int_t
 ngx_http_process_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
     ngx_table_elt_t  **cookie;
 
     cookie = ngx_array_push(&r->headers_in.cookies);
-    if (cookie == NULL) {
-        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        ngx_http_close_connection(r->connection);
-        return NGX_ERROR;
+    if (cookie) {
+        *cookie = h;
+        return NGX_OK;
     }
 
-    *cookie = h;
+    ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    ngx_http_close_connection(r->connection);
 
-    return NGX_OK;
+    return NGX_ERROR;
 }
 
 

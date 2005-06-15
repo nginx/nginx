@@ -152,8 +152,6 @@ typedef struct {
 
 #if (NGX_HTTP_PROXY)
     ngx_table_elt_t                  *x_forwarded_for;
-    ngx_table_elt_t                  *x_real_ip;
-    ngx_table_elt_t                  *x_url;
 #endif
 
 #if (NGX_HTTP_HEADERS)
@@ -365,6 +363,7 @@ struct ngx_http_request_s {
     unsigned                          internal:1;
     unsigned                          closed:1;
     unsigned                          done:1;
+    unsigned                          utf8:1;
 
     unsigned                          main_filter_need_in_memory:1;
     unsigned                          filter_need_in_memory:1;

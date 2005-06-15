@@ -76,7 +76,7 @@
 #endif
 
 
-#if defined SO_ACCEPTFILTER && !defined NGX_HAVE_DEFERRED_ACCEPT
+#if (defined SO_ACCEPTFILTER && !defined NGX_HAVE_DEFERRED_ACCEPT)
 #define NGX_HAVE_DEFERRED_ACCEPT  1
 #endif
 

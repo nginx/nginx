@@ -39,18 +39,24 @@ static ngx_str_t  error_log = ngx_null_string;
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
-    void               *rv;
-    ngx_uint_t          i, n, failed;
-    ngx_log_t          *log;
-    ngx_conf_t          conf;
-    ngx_pool_t         *pool;
-    ngx_cycle_t        *cycle, **old;
-    ngx_socket_t        fd;
-    ngx_list_part_t    *part;
-    ngx_open_file_t    *file;
-    ngx_listening_t    *ls, *nls;
-    ngx_core_conf_t    *ccf;
-    ngx_core_module_t  *module;
+    void                      *rv;
+    ngx_uint_t                 i, n, failed;
+    ngx_log_t                 *log;
+    ngx_conf_t                 conf;
+    ngx_pool_t                *pool;
+    ngx_cycle_t               *cycle, **old;
+    ngx_socket_t               fd;
+    ngx_list_part_t           *part;
+    ngx_open_file_t           *file;
+    ngx_listening_t           *ls, *nls;
+    ngx_core_conf_t           *ccf;
+    ngx_core_module_t         *module;
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+    struct accept_filter_arg   af;
+#endif
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+    int                        timeout;
+#endif
 
     log = old_cycle->log;
 
@@ -307,7 +313,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                     }
 
                     if (ngx_cmp_sockaddr(nls[n].sockaddr, ls[i].sockaddr)
-                                                                     == NGX_OK)
+                        == NGX_OK)
                     {
                         fd = ls[i].fd;
 #if (NGX_WIN32)
@@ -330,8 +336,44 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                         }
 
                         nls[n].fd = ls[i].fd;
-                        nls[i].remain = 1;
+                        nls[n].remain = 1;
                         ls[i].remain = 1;
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+
+                        /*
+                         * FreeBSD, except the most recent versions,
+                         * can not remove accept filter
+                         */
+                        nls[n].deferred_accept = ls[i].deferred_accept;
+
+                        if (ls[i].accept_filter && nls[n].accept_filter) {
+                            if (ngx_strcmp(ls[i].accept_filter,
+                                           nls[n].accept_filter) != 0)
+                            {
+                                nls[n].delete_deferred = 1;
+                                nls[n].add_deferred = 1;
+                            }
+
+                        } else if (ls[i].accept_filter) {
+                            nls[n].delete_deferred = 1;
+
+                        } else if (nls[n].accept_filter) {
+                            nls[n].add_deferred = 1;
+                        }
+#endif
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+
+                        if (ls[n].deferred_accept && !nls[n].deferred_accept) {
+                            nls[n].delete_deferred = 1;
+
+                        } else if (ls[i].deferred_accept
+                                   != nls[n].deferred_accept)
+                        {
+                            nls[n].add_deferred = 1;
+                        }
+#endif
                         break;
                     }
                 }
@@ -345,6 +387,16 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
             ls = cycle->listening.elts;
             for (i = 0; i < cycle->listening.nelts; i++) {
                 ls[i].open = 1;
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+                if (ls[i].accept_filter) {
+                    ls[i].add_deferred = 1;
+                }
+#endif
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+                if (ls[i].deferred_accept) {
+                    ls[i].add_deferred = 1;
+                }
+#endif
             }
         }
 
@@ -352,6 +404,81 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
             if (ngx_open_listening_sockets(cycle) == NGX_ERROR) {
                 failed = 1;
             }
+
+#if (NGX_HAVE_DEFERRED_ACCEPT)
+
+            if (!failed) {
+                ls = cycle->listening.elts;
+                for (i = 0; i < cycle->listening.nelts; i++) {
+
+#ifdef SO_ACCEPTFILTER
+                    if (ls[i].delete_deferred) {
+                        if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER,
+                                       NULL, 0) == -1)
+                        {
+                            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                                        "setsockopt(SO_ACCEPTFILTER, NULL) "
+                                        "for %V failed, ignored",
+                                        &ls[i].addr_text);
+
+                            if (ls[i].accept_filter) {
+                                ngx_log_error(NGX_LOG_ALERT, log, 0,
+                                        "could not change the accept filter "
+                                        "to \"%s\" for %V, ignored",
+                                        ls[i].accept_filter, &ls[i].addr_text);
+                            }
+
+                            continue;
+                        }
+
+                        ls[i].deferred_accept = 0;
+                    }
+
+                    if (ls[i].add_deferred) {
+                        ngx_memzero(&af, sizeof(struct accept_filter_arg));
+                        (void) ngx_cpystrn((u_char *) af.af_name,
+                                           (u_char *) ls[i].accept_filter, 16);
+
+                        if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER,
+                                 &af, sizeof(struct accept_filter_arg)) == -1)
+                        {
+                            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                                        "setsockopt(SO_ACCEPTFILTER, \"%s\") "
+                                        "for %V failed, ignored",
+                                        ls[i].accept_filter, &ls[i].addr_text);
+                            continue;
+                        }
+
+                        ls[i].deferred_accept = 1;
+                    }
+#endif
+
+#ifdef TCP_DEFER_ACCEPT
+                    if (ls[i].add_deferred || ls[i].delete_deferred) {
+                        timeout = 0;
+
+                        if (ls[i].add_deferred) {
+                            timeout = (int) (ls[i].post_accept_timeout / 1000);
+                        }
+
+                        if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT,
+                                       &timeout, sizeof(int)) == -1)
+                        {
+                            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                                        "setsockopt(TCP_DEFER_ACCEPT, %d) "
+                                        "for %V failed, ignored",
+                                        timeout, &ls[i].addr_text);
+                            continue;
+                        }
+                    }
+
+                    if (ls[i].add_deferred) {
+                        ls[i].deferred_accept = 1;
+                    }
+#endif
+                }
+            }
+#endif
         }
     }
 
@@ -682,6 +809,7 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
                 break;
             }
             part = part->next;
+            file = part->elts;
             i = 0;
         }
 

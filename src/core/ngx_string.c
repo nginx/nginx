@@ -728,6 +728,35 @@ ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
 }
 
 
+size_t
+ngx_utf_length(ngx_str_t *utf)
+{
+    u_char      c;
+    size_t      len;
+    ngx_uint_t  i;
+
+    for (len = 0, i = 0; i < utf->len; len++, i++) {
+
+        c = utf->data[i];
+
+        if (c < 0x80) {
+            continue;
+        }
+
+        if (c < 0xC0) {
+            /* invalid utf */
+            return utf->len;
+        }
+
+        for (c <<= 1; c & 0x80; c <<= 1) {
+            i++;
+        }
+    }
+
+    return len;
+}
+
+
 uintptr_t
 ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 {
@@ -792,30 +821,8 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
           0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
           0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */ };
 
-                      /* " ", """, "%", "'", %00-%1F, %7F-%FF */
-
-    static uint32_t   utf[] =
-        { 0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-
-                      /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
-          0x800000ad, /* 0000 0000 0000 0000  0000 0000 1010 1101 */
-
-                      /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
-          0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
-
-                      /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
-          0x80000000, /* 1000 0000 0000 0000  0000 0000 0000 0000 */
-
-          0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
-          0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
-          0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
-          0x00000000  /* 0000 0000 0000 0000  0000 0000 0000 0000 */ };
-
 
     switch (type) {
-    case NGX_ESCAPE_UTF:
-        escape = utf;
-        break;
     case NGX_ESCAPE_HTML:
         escape = html;
         break;
