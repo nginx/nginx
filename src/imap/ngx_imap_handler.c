@@ -24,6 +24,11 @@ static ngx_str_t  greetings[] = {
    ngx_string("* OK " NGINX_VER " ready" CRLF)
 };
 
+static ngx_str_t  internal_server_errors[] = {
+   ngx_string("-ERR internal server error" CRLF),
+   ngx_string("* BAD internal server error" CRLF),
+};
+
 static u_char  pop3_ok[] = "+OK" CRLF;
 static u_char  pop3_invalid_command[] = "-ERR invalid command" CRLF;
 
@@ -339,6 +344,16 @@ ngx_imap_close_session(ngx_imap_session_t *s)
 }
 
 #endif
+
+
+void
+ngx_imap_session_internal_server_error(ngx_imap_session_t *s)
+{
+    (void) ngx_send(s->connection, internal_server_errors[s->protocol].data,
+                    internal_server_errors[s->protocol].len);
+
+    ngx_imap_close_connection(s->connection);
+}
 
 
 void

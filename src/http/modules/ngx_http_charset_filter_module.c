@@ -34,7 +34,6 @@ typedef struct {
 
 typedef struct {
     ngx_flag_t   enable;
-    ngx_flag_t   autodetect;
 
     ngx_int_t    default_charset;
     ngx_int_t    source_charset;
@@ -94,13 +93,6 @@ static ngx_command_t  ngx_http_charset_filter_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_charset_loc_conf_t, enable),
-      NULL },
-
-    { ngx_string("autodetect_charset"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_charset_loc_conf_t, autodetect),
       NULL },
 
       ngx_null_command
@@ -570,7 +562,6 @@ ngx_http_charset_create_loc_conf(ngx_conf_t *cf)
     }
 
     lcf->enable = NGX_CONF_UNSET;
-    lcf->autodetect = NGX_CONF_UNSET;
     lcf->default_charset = NGX_CONF_UNSET;
     lcf->source_charset = NGX_CONF_UNSET;
 
@@ -585,8 +576,6 @@ ngx_http_charset_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_charset_loc_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
-    ngx_conf_merge_value(conf->autodetect, prev->autodetect, 0);
-
 
     if (conf->default_charset == NGX_CONF_UNSET) {
         conf->default_charset = prev->default_charset;

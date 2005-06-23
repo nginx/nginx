@@ -62,6 +62,7 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *    %V                        pointer to ngx_str_t
  *    %s                        null-terminated string
  *    %Z                        '\0'
+ *    %N                        '\n'
  *    %c                        char
  *    %%                        %
  *
@@ -311,6 +312,15 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
 
             case 'Z':
                 *buf++ = '\0';
+                fmt++;
+
+                continue;
+
+            case 'N':
+#if (NGX_WIN32)
+                *buf++ = CR;
+#endif
+                *buf++ = LF;
                 fmt++;
 
                 continue;

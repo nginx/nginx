@@ -1230,7 +1230,7 @@ static void
 ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_uint_t ft_type)
 {
-    ngx_uint_t  status;
+    ngx_uint_t  status, down;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http next upstream, %xD", ft_type);
@@ -1239,10 +1239,14 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_http_busy_unlock(u->conf->busy_lock, &u->busy_lock);
 #endif
 
-    if (ft_type != NGX_HTTP_UPSTREAM_FT_HTTP_404) {
-        ngx_event_connect_peer_failed(&u->peer);
+    if (ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404) {
+        down = 0;
+    } else {
+        down = 1;
     }
-    
+
+    ngx_event_connect_peer_failed(&u->peer, down);
+
     if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ETIMEDOUT,
                       "upstream timed out");
@@ -1285,14 +1289,13 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     if (status) {
         u->state->status = status;
 
-        if (u->peer.tries == 0 || !(u->conf->next_upstream & ft_type))
-        {
+        if (u->peer.tries == 0 || !(u->conf->next_upstream & ft_type)) {
 
 #if (NGX_HTTP_CACHE)
 
             if (u->stale && (u->conf->use_stale & ft_type)) {
                 ngx_http_upstream_finalize_request(r, u,
-                                       ngx_http_send_cached_response(r));
+                                             ngx_http_send_cached_response(r));
                 return;
             }
 

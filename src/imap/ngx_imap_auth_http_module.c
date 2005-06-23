@@ -23,6 +23,7 @@ typedef struct {
 
 typedef struct {
     ngx_buf_t              *request;
+    ngx_buf_t              *response;
     ngx_peer_connection_t   peer;
 } ngx_imap_auth_http_ctx_t;
 
@@ -91,7 +92,7 @@ ngx_imap_auth_http_init(ngx_imap_session_t *s)
 
     ctx = ngx_pcalloc(s->connection->pool, sizeof(ngx_imap_auth_http_ctx_t));
     if (ctx == NULL) {
-        ngx_imap_close_connection(s->connection);
+        ngx_imap_session_internal_server_error(s);
         return;
     }
 
@@ -99,7 +100,7 @@ ngx_imap_auth_http_init(ngx_imap_session_t *s)
 
     ctx->request = ngx_imap_auth_http_create_request(s, ahcf);
     if (ctx->request == NULL) {
-        ngx_imap_close_connection(s->connection);
+        ngx_imap_session_internal_server_error(s);
         return;
     }
 
@@ -112,7 +113,7 @@ ngx_imap_auth_http_init(ngx_imap_session_t *s)
     rc = ngx_event_connect_peer(&ctx->peer);
 
     if (rc == NGX_ERROR) {
-        ngx_imap_close_connection(s->connection);
+        ngx_imap_session_internal_server_error(s);
         return;
     }
 
@@ -153,8 +154,8 @@ ngx_imap_auth_http_write_handler(ngx_event_t *wev)
     if (wev->timedout) {  
         ngx_log_error(NGX_LOG_ERR, wev->log, NGX_ETIMEDOUT,
                       "auth http server timed out");
-        ngx_imap_close_connection(ctx->peer.connection);
-        ngx_imap_close_connection(s->connection);
+        ngx_close_connection(ctx->peer.connection);
+        ngx_imap_session_internal_server_error(s);
         return;
     }
 
@@ -163,8 +164,8 @@ ngx_imap_auth_http_write_handler(ngx_event_t *wev)
     n = ngx_send(c, ctx->request->pos, size);
 
     if (n == NGX_ERROR) {
-        ngx_imap_close_connection(ctx->peer.connection);
-        ngx_imap_close_connection(s->connection);
+        ngx_close_connection(ctx->peer.connection);
+        ngx_imap_session_internal_server_error(s);
         return;
     }
 
@@ -192,22 +193,51 @@ ngx_imap_auth_http_write_handler(ngx_event_t *wev)
 static void
 ngx_imap_auth_http_read_handler(ngx_event_t *rev)
 {
+    ssize_t                     n, size;
     ngx_peers_t                *peers;
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
-#if 0
     ngx_imap_auth_http_ctx_t  *ctx;
-#endif
 
     c = rev->data;
     s = c->data;
 
-#if 0
-    ctx = ngx_imap_get_module_ctx(s, ngx_imap_auth_http_module);
-#endif
-
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0,
                    "imap auth http read handler");
+
+    ctx = ngx_imap_get_module_ctx(s, ngx_imap_auth_http_module);
+
+    if (rev->timedout) {  
+        ngx_log_error(NGX_LOG_ERR, rev->log, NGX_ETIMEDOUT,
+                      "auth http server timed out");
+        ngx_close_connection(ctx->peer.connection);
+        ngx_imap_session_internal_server_error(s);
+        return;
+    }
+
+    if (ctx->response == NULL) {
+        ctx->response = ngx_create_temp_buf(s->connection->pool, 1024);
+        if (ctx->response == NULL) {
+            ngx_close_connection(ctx->peer.connection);
+            ngx_imap_session_internal_server_error(s);
+            return;
+        }
+    }
+
+    size = ctx->response->last - ctx->response->pos;
+
+    n = ngx_recv(c, ctx->response->pos, size);
+
+    if (n == NGX_ERROR || n == 0) {
+        ngx_close_connection(ctx->peer.connection);
+        ngx_imap_session_internal_server_error(s);
+        return;
+    }
+
+
+
+
+
 
     peers = NULL;
 
@@ -231,8 +261,8 @@ ngx_imap_auth_http_block_read(ngx_event_t *rev)
 
         ctx = ngx_imap_get_module_ctx(s, ngx_imap_auth_http_module);
 
-        ngx_imap_close_connection(ctx->peer.connection);
-        ngx_imap_close_connection(s->connection);
+        ngx_close_connection(ctx->peer.connection);
+        ngx_imap_session_internal_server_error(s);
     }
 }
 

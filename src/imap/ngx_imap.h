@@ -136,6 +136,7 @@ typedef struct {
 
 void ngx_imap_init_connection(ngx_connection_t *c);
 void ngx_imap_close_connection(ngx_connection_t *c);
+void ngx_imap_session_internal_server_error(ngx_imap_session_t *s);
 
 ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s);
 

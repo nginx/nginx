@@ -744,7 +744,7 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
     }
 
     if (!ngx_test_config) {
-        len = ngx_sprintf(pid, "%P", ngx_pid) - pid;
+        len = ngx_sprintf(pid, "%P%N", ngx_pid) - pid;
 
         if (ngx_write_file(&file, pid, len, 0) == NGX_ERROR) {
             return NGX_ERROR;

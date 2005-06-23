@@ -24,6 +24,7 @@ typedef struct {
 
 typedef struct {
     ngx_str_t      name;
+    size_t         utf_len;
     ngx_uint_t     escape;
     ngx_uint_t     dir;
     time_t         mtime;
@@ -212,7 +213,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 #endif
 
     if (ngx_array_init(&entries, pool, 50, sizeof(ngx_http_autoindex_entry_t))
-                                                                  == NGX_ERROR)
+        == NGX_ERROR)
     {
         return ngx_http_autoindex_error(r, &dir, dname.data);
     }
@@ -304,6 +305,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         }
 
         entry->name.len = len;        
+
         entry->escape = 2 * ngx_escape_uri(NULL, ngx_de_name(&dir), len,
                                            NGX_ESCAPE_HTML);
 
@@ -313,6 +315,12 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         }
 
         ngx_cpystrn(entry->name.data, ngx_de_name(&dir), len + 1);
+
+        if (r->utf8) {
+            entry->utf_len = ngx_utf_length(&entry->name);
+        } else {
+            entry->utf_len = len;
+        }
 
         entry->dir = ngx_de_is_dir(&dir);
         entry->mtime = ngx_de_mtime(&dir);
@@ -336,18 +344,15 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     entry = entries.elts;
     for (i = 0; i < entries.nelts; i++) {
         len += sizeof("<a href=\"") - 1
-               + 1                                          /* 1 is for "/" */
-               + entry[i].name.len + entry[i].escape
-               + sizeof("\">") - 1
-               + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
-               + sizeof("</a>") - 1
-               + sizeof(" 28-Sep-1970 12:00 ") - 1
-               + 19
-               + 2;
-
-        if (r->utf8) {
-            len += entry[i].name.len - ngx_utf_length(&entry[i].name);
-        }
+            + 1                                          /* 1 is for "/" */
+            + entry[i].name.len + entry[i].escape
+            + sizeof("\">") - 1
+            + entry[i].name.len - entry[i].utf_len
+            + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
+            + sizeof("</a>") - 1
+            + sizeof(" 28-Sep-1970 12:00 ") - 1
+            + 19
+            + 2;
     }
 
     b = ngx_create_temp_buf(r->pool, len);
@@ -394,11 +399,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         b->last = ngx_cpystrn(b->last, entry[i].name.data,
                               NGX_HTTP_AUTOINDEX_NAME_LEN + 1);
 
-        if (r->utf8) {
-            len = ngx_utf_length(&entry[i].name);
-        } else {
-            len = entry[i].name.len;
-        }
+        len = entry[i].utf_len;
 
         if (len > NGX_HTTP_AUTOINDEX_NAME_LEN) {
             b->last = ngx_cpymem(b->last - 3, "..&gt;</a>",

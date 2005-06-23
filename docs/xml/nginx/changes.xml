@@ -9,6 +9,44 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.37" date="23.06.2005">
+
+<change type="change">
+<para lang="ru">
+в конце файла nginx.pid теперь добавляется "\n".
+</para>
+<para lang="en">
+now the "\n" is added to the end of the "nginx.pid" file.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при включении большого количества вставок или нескольких больших вставок
+с помощью SSI ответ мог передаваться не полностью.
+</para>
+<para lang="en">
+the responses may be transferred not completely,
+if many parts or the big parts were included by SSI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если все бэкенды возвращали ответ 404, то при использовании параметра http_404
+в директивах proxy_next_upstream или fastcgi_next_upstream, nginx
+начинал запрашивать все бэкенды снова.
+</para>
+<para lang="en">
+if all backends had returned the 404 reponse and the "http_404" parameter of
+the "proxy_next_upstream" or "fastcgi_next_upstream" directives was used,
+then nginx started to request all backends again.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.36" date="15.06.2005">
 
 <change type="change">

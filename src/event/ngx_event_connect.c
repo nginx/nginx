@@ -376,18 +376,20 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
 
 void
-ngx_event_connect_peer_failed(ngx_peer_connection_t *pc)
+ngx_event_connect_peer_failed(ngx_peer_connection_t *pc, ngx_uint_t down)
 {
     time_t  now;
 
-    now = ngx_time();
+    if (down) {
+        now = ngx_time();
 
-    /* ngx_lock_mutex(pc->peers->mutex); */
+        /* ngx_lock_mutex(pc->peers->mutex); */
 
-    pc->peers->peer[pc->cur_peer].fails++;
-    pc->peers->peer[pc->cur_peer].accessed = now;
+        pc->peers->peer[pc->cur_peer].fails++;
+        pc->peers->peer[pc->cur_peer].accessed = now;
 
-    /* ngx_unlock_mutex(pc->peers->mutex); */
+        /* ngx_unlock_mutex(pc->peers->mutex); */
+    }
 
     pc->cur_peer++;
 

@@ -285,7 +285,7 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
 }
 
 
-#elif ( __ppc__ )
+#elif ( __ppc__ || __powerpc__ )
 
 #define NGX_HAVE_ATOMIC_OPS  1
 

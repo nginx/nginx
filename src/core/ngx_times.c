@@ -60,11 +60,11 @@ ngx_thread_volatile ngx_str_t  ngx_cached_http_log_time;
 
 
 static u_char  cached_err_log_time[NGX_TIME_SLOTS]
-                                               [sizeof("1970/09/28 12:00:00")];
+                                  [sizeof("1970/09/28 12:00:00")];
 static u_char  cached_http_time[NGX_TIME_SLOTS]
-                                     [sizeof("Mon, 28 Sep 1970 06:00:00 GMT")];
+                                  [sizeof("Mon, 28 Sep 1970 06:00:00 GMT")];
 static u_char  cached_http_log_time[NGX_TIME_SLOTS]
-                                        [sizeof("28/Sep/1970:12:00:00 +0600")];
+                                  [sizeof("28/Sep/1970:12:00:00 +0600")];
 
 
 static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };

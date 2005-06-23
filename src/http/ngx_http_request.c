@@ -31,7 +31,7 @@ static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
 static ngx_int_t ngx_http_find_virtual_server(ngx_http_request_t *r);
 
 static void ngx_http_request_handler(ngx_event_t *ev);
-static void ngx_http_set_write_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
 static void ngx_http_writer(ngx_http_request_t *r);
 static ngx_int_t ngx_http_postponed_handler(ngx_http_request_t *r);
 
@@ -1433,7 +1433,9 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     }
 
     if (r->parent || rc == NGX_AGAIN) {
-        r->write_event_handler = ngx_http_writer;
+        if (ngx_http_set_write_handler(r) != NGX_OK) {
+            return;
+        }
     }
 
     r->done = 1;
@@ -1497,7 +1499,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
 
     } else if (rc == NGX_AGAIN || r->out) {
-        ngx_http_set_write_handler(r);
+        (void) ngx_http_set_write_handler(r);
         return;
     }
 
@@ -1541,7 +1543,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 }
 
 
-static void
+static ngx_int_t
 ngx_http_set_write_handler(ngx_http_request_t *r)
 {
     ngx_event_t               *wev;
@@ -1549,10 +1551,12 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
+    r->write_event_handler = ngx_http_writer;
+
     wev = r->connection->write;
 
     if (wev->ready && wev->delayed) {
-        return;
+        return NGX_OK;
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -1563,7 +1567,10 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
     if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
         ngx_http_close_request(r, 0);
         ngx_http_close_connection(r->connection);
+        return NGX_ERROR;
     }
+
+    return NGX_OK;
 }
 
 

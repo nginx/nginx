@@ -67,7 +67,7 @@ typedef struct {
 
 
 ngx_int_t ngx_event_connect_peer(ngx_peer_connection_t *pc);
-void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc);
+void ngx_event_connect_peer_failed(ngx_peer_connection_t *pc, ngx_uint_t down);
 
 
 #endif /* _NGX_EVENT_CONNECT_H_INCLUDED_ */
