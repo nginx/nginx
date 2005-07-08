@@ -18,12 +18,30 @@ static char *ngx_imap_core_server(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_imap_core_capability(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 
 static ngx_conf_enum_t  ngx_imap_core_procotol[] = {
     { ngx_string("pop3"), NGX_IMAP_POP3_PROTOCOL },
     { ngx_string("imap"), NGX_IMAP_IMAP_PROTOCOL },
     { ngx_null_string, 0 }
+};
+
+
+static ngx_str_t  ngx_pop3_default_capabilities[] = {
+    ngx_string("TOP"),
+    ngx_string("USER"),
+    ngx_string("UIDL"),
+    ngx_null_string
+};
+
+
+static ngx_str_t  ngx_imap_default_capabilities[] = {
+    ngx_string("IMAP4"),
+    ngx_string("IMAP4rev1"),
+    ngx_string("UIDPLUS"),
+    ngx_null_string
 };
 
 
@@ -69,6 +87,20 @@ static ngx_command_t  ngx_imap_core_commands[] = {
       ngx_conf_set_msec_slot,
       NGX_IMAP_SRV_CONF_OFFSET,
       offsetof(ngx_imap_core_srv_conf_t, timeout),
+      NULL },
+
+    { ngx_string("pop3_capabilities"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_1MORE,
+      ngx_imap_core_capability,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_core_srv_conf_t, pop3_capabilities),
+      NULL },
+
+    { ngx_string("imap_capabilities"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_1MORE,
+      ngx_imap_core_capability,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_core_srv_conf_t, imap_capabilities),
       NULL },
 
       ngx_null_command
@@ -121,13 +153,25 @@ ngx_imap_core_create_srv_conf(ngx_conf_t *cf)
             
     cscf = ngx_pcalloc(cf->pool, sizeof(ngx_imap_core_srv_conf_t));
     if (cscf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     cscf->imap_client_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->proxy_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->timeout = NGX_CONF_UNSET_MSEC;
     cscf->protocol = NGX_CONF_UNSET_UINT;
+
+    if (ngx_array_init(&cscf->pop3_capabilities, cf->pool, 4, sizeof(ngx_str_t))
+        != NGX_OK)
+    {
+        return NULL;
+    }
+
+    if (ngx_array_init(&cscf->imap_capabilities, cf->pool, 4, sizeof(ngx_str_t))
+        != NGX_OK)
+    {
+        return NULL;
+    }
 
     return cscf;
 }
@@ -139,6 +183,11 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_imap_core_srv_conf_t *prev = parent;
     ngx_imap_core_srv_conf_t *conf = child;
 
+    size_t       size;
+    ngx_buf_t   *b;
+    ngx_str_t   *c, *d;
+    ngx_uint_t   i;
+
     ngx_conf_merge_size_value(conf->imap_client_buffer_size,
                               prev->imap_client_buffer_size,
                               (size_t) ngx_pagesize);
@@ -147,6 +196,88 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
     ngx_conf_merge_unsigned_value(conf->protocol, prev->protocol,
                               NGX_IMAP_IMAP_PROTOCOL);
+
+
+    if (conf->pop3_capabilities.nelts == 0) {
+        conf->pop3_capabilities = prev->pop3_capabilities;
+    }
+
+    if (conf->pop3_capabilities.nelts == 0) {
+
+        for (d = ngx_pop3_default_capabilities; d->len; d++) {
+            c = ngx_array_push(&conf->pop3_capabilities);
+            if (c == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            *c = *d;
+        }
+    }
+
+    size = sizeof("+OK Capability list follows" CRLF) - 1
+           + sizeof("." CRLF) - 1;
+
+    c = conf->pop3_capabilities.elts;
+    for (i = 0; i < conf->pop3_capabilities.nelts; i++) {
+        size += c[i].len + sizeof(CRLF) - 1;
+    }
+
+    b = ngx_create_temp_buf(cf->pool, size);
+    if (b == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    b->last = ngx_cpymem(b->last, "+OK Capability list follows" CRLF,
+                         sizeof("+OK Capability list follows" CRLF) - 1);
+
+    for (i = 0; i < conf->pop3_capabilities.nelts; i++) {
+        b->last = ngx_cpymem(b->last, c[i].data, c[i].len);
+        *b->last++ = CR; *b->last++ = LF;
+    }
+
+    *b->last++ = '.'; *b->last++ = CR; *b->last++ = LF;
+
+    conf->pop3_capability = b;
+
+
+    if (conf->imap_capabilities.nelts == 0) {
+        conf->imap_capabilities = prev->imap_capabilities;
+    }
+
+    if (conf->imap_capabilities.nelts == 0) {
+
+        for (d = ngx_imap_default_capabilities; d->len; d++) {
+            c = ngx_array_push(&conf->imap_capabilities);
+            if (c == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            *c = *d;
+        }
+    }
+
+    size = sizeof("* CAPABILITY") - 1 + sizeof(CRLF) - 1;
+
+    c = conf->imap_capabilities.elts;
+    for (i = 0; i < conf->imap_capabilities.nelts; i++) {
+        size += 1 + c[i].len;
+    }
+
+    b = ngx_create_temp_buf(cf->pool, size);
+    if (b == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    b->last = ngx_cpymem(b->last, "* CAPABILITY", sizeof("* CAPABILITY") - 1);
+
+    for (i = 0; i < conf->imap_capabilities.nelts; i++) {
+        *b->last++ = ' ';
+        b->last = ngx_cpymem(b->last, c[i].data, c[i].len);
+    }
+
+    *b->last++ = CR; *b->last++ = LF;
+
+    conf->imap_capability = b;
 
     return NGX_CONF_OK;
 }
@@ -293,6 +424,32 @@ ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     /* STUB */
     ls->log = cf->cycle->new_log;
     /**/
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_imap_core_capability(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_str_t    *c, *value;
+    ngx_uint_t    i;
+    ngx_array_t  *a;
+
+    a = (ngx_array_t *) (p + cmd->offset);
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+        c = ngx_array_push(a);
+        if (c == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        *c = value[i];
+    }
 
     return NGX_CONF_OK;
 }

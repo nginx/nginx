@@ -558,6 +558,7 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
 
         if (code->break_cycle) {
             r->valid_location = 0;
+            r->uri_changed = 0;
 
         } else {
             r->uri_changed = 1;
@@ -709,6 +710,15 @@ ngx_http_script_return_code(ngx_http_script_engine_t *e)
     e->status = code->status;
 
     e->ip += sizeof(ngx_http_script_return_code_t) - sizeof(uintptr_t);
+}
+
+
+void
+ngx_http_script_break_code(ngx_http_script_engine_t *e)
+{
+    e->request->uri_changed = 0;
+
+    e->ip = ngx_http_script_exit;
 }
 
 

@@ -210,8 +210,10 @@ ngx_http_static_handler(ngx_http_request_t *r)
             rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        ngx_log_error(level, log, err,
-                      ngx_open_file_n " \"%s\" failed", name.data);
+        if (rc != NGX_HTTP_NOT_FOUND || clcf->log_not_found) {
+            ngx_log_error(level, log, err,
+                          ngx_open_file_n " \"%s\" failed", name.data);
+        }
 
         return rc;
     }

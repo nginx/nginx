@@ -9,6 +9,129 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.38" date="08.07.2005">
+
+<change type="feature">
+<para lang="ru">
+директива limit_rate поддерживается в режиме прокси и FastCGI.
+</para>
+<para lang="en">
+the "limit_rate" directive is supported in in proxy and FastCGI mode.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в режиме прокси и FastCGI поддерживается строка заголовка "X-Accel-Limit-Rate"
+в ответе бэкенда.
+</para>
+<para lang="en">
+the "X-Accel-Limit-Rate" response header line is supported in proxy and FastCGI
+mode.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива break.
+</para>
+<para lang="en">
+the "break" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива log_not_found.
+</para>
+<para lang="en">
+the "log_not_found" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении запроса с помощью строки заголовка "X-Accel-Redirect"
+не изменялся код ответа.
+</para>
+<para lang="en">
+the response status code was not changed when request was redirected
+by the ""X-Accel-Redirect" header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменные, установленные директивой set не могли использоваться в SSI.
+</para>
+<para lang="en">
+the variables set by the "set" directive could not be used in SSI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при включении в SSI более одного удалённого подзапроса
+мог произойти segmentation fault.
+</para>
+<para lang="en">
+the segmentation fault may occurred if the SSI page has more than one
+remote subrequest.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если статусная строка в ответе бэкенда передавалась в двух пакетах, то
+nginx считал ответ неверным;
+ошибка появилась в 0.1.29.
+</para>
+<para lang="en">
+nginx treated the backend response as invalid if the status line in the
+header was transferred in two packets;
+bug appeared in 0.1.29.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssi_types.
+</para>
+<para lang="en">
+the "ssi_types" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива autoindex_exact_size.
+</para>
+<para lang="en">
+the "autoindex_exact_size" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_autoindex_module не поддерживал длинные имена файлов в UTF-8.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module did not support the long file names in UTF-8.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+IMAP/POP3 прокси.
+</para>
+<para lang="en">
+the IMAP/POP3 proxy.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.37" date="23.06.2005">
 
 <change type="change">
@@ -316,7 +439,7 @@ expressions.
 
 <change type="feature">
 <para lang="ru">
-в режиме прокси и FastCGI поддерживается строка заголовка X-Accel-Redirect
+в режиме прокси и FastCGI поддерживается строка заголовка "X-Accel-Redirect"
 в ответе бэкенда.
 </para>
 <para lang="en">

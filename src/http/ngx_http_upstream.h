@@ -48,6 +48,7 @@ typedef struct {
     ngx_msec_t                      connect_timeout;
     ngx_msec_t                      send_timeout;
     ngx_msec_t                      read_timeout;
+    ngx_msec_t                      timeout;
 
     size_t                          send_lowat;
     size_t                          header_buffer_size;
@@ -103,6 +104,7 @@ typedef struct {
     ngx_table_elt_t                *etag;
     ngx_table_elt_t                *x_accel_expires;
     ngx_table_elt_t                *x_accel_redirect;
+    ngx_table_elt_t                *x_accel_limit_rate;
 
     ngx_table_elt_t                *content_type;
     ngx_table_elt_t                *content_length;
@@ -120,8 +122,6 @@ typedef struct {
 
 
 struct ngx_http_upstream_s {
-    ngx_http_request_t             *request;
-
     ngx_peer_connection_t           peer;
 
     ngx_event_pipe_t                pipe;
@@ -145,6 +145,8 @@ struct ngx_http_upstream_s {
                                         ngx_int_t rc);
     ngx_int_t                     (*rewrite_redirect)(ngx_http_request_t *r,
                                         ngx_table_elt_t *h, size_t prefix);
+
+    ngx_msec_t                      timeout;
 
     ngx_uint_t                      method;
 

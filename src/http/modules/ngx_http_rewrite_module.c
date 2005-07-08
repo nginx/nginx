@@ -36,6 +36,8 @@ static ngx_int_t ngx_http_rewrite_init(ngx_cycle_t *cycle);
 static char *ngx_http_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_rewrite_return(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_rewrite_break(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char * ngx_http_rewrite_if_condition(ngx_conf_t *cf,
@@ -62,6 +64,14 @@ static ngx_command_t  ngx_http_rewrite_commands[] = {
       NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                        |NGX_CONF_TAKE1,
       ngx_http_rewrite_return,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("break"),
+      NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                       |NGX_CONF_NOARGS,
+      ngx_http_rewrite_break,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -595,6 +605,24 @@ ngx_http_rewrite_return(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ret->status == (uintptr_t) NGX_ERROR) {
         return NGX_CONF_ERROR;
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_rewrite_break(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_rewrite_loc_conf_t *lcf = conf;
+
+    ngx_http_script_code_pt  *code;
+
+    code = ngx_http_script_start_code(cf->pool, &lcf->codes, sizeof(uintptr_t));
+    if (code == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    *code = ngx_http_script_break_code;
 
     return NGX_CONF_OK;
 }

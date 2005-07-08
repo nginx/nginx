@@ -753,17 +753,59 @@ ngx_utf_length(ngx_str_t *utf)
             continue;
         }
 
-        if (c < 0xC0) {
-            /* invalid utf */
-            return utf->len;
+        if (c >= 0xc0) {
+            for (c <<= 1; c & 0x80; c <<= 1) {
+                i++;
+            }
+
+            continue;
         }
 
-        for (c <<= 1; c & 0x80; c <<= 1) {
-            i++;
-        }
+        /* invalid utf */
+
+        return utf->len;
     }
 
     return len;
+}
+
+
+u_char *
+ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n)
+{
+    u_char  c;
+
+    if (n == 0) {
+        return dst;
+    }
+
+    for ( /* void */ ; --n; dst++, src++) {
+
+        c = *src;
+        *dst = c;
+
+        if (c < 0x80) {
+            if (*dst != '\0') {
+                continue;
+            }
+
+            return dst;
+        }
+
+        if (c >= 0xc0) {
+            for (c <<= 1; c & 0x80; c <<= 1) {
+               *++dst = *++src;
+            }
+
+            continue;
+        }
+
+        /* invalid utf */
+    }
+
+    *dst = '\0';
+
+    return dst;
 }
 
 

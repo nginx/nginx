@@ -15,7 +15,7 @@ ngx_create_pool(size_t size, ngx_log_t *log)
 
     p = ngx_alloc(size, log);
     if (p == NULL) {
-       return NULL;
+        return NULL;
     }
 
     p->last = (u_char *) p + sizeof(ngx_pool_t);

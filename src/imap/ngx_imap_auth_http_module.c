@@ -12,24 +12,54 @@
 
 
 typedef struct {
-    ngx_peers_t            *peers;
+    ngx_peers_t                    *peers;
 
-    ngx_msec_t              timeout;
+    ngx_msec_t                      timeout;
 
-    ngx_str_t               host_header;
-    ngx_str_t               uri;
+    ngx_str_t                       host_header;
+    ngx_str_t                       uri;
 } ngx_imap_auth_http_conf_t;
 
 
-typedef struct {
-    ngx_buf_t              *request;
-    ngx_buf_t              *response;
-    ngx_peer_connection_t   peer;
-} ngx_imap_auth_http_ctx_t;
+typedef struct ngx_imap_auth_http_ctx_s  ngx_imap_auth_http_ctx_t;
+
+typedef void (*ngx_imap_auth_http_handler_pt)(ngx_imap_session_t *s,
+    ngx_imap_auth_http_ctx_t *ctx);
+
+struct ngx_imap_auth_http_ctx_s {
+    ngx_buf_t                      *request;
+    ngx_buf_t                      *response;
+    ngx_peer_connection_t           peer;
+
+    ngx_imap_auth_http_handler_pt   handler;
+
+    ngx_uint_t                      state;
+    ngx_uint_t                      hash;   /* no needed ? */
+
+    u_char                         *header_name_start;
+    u_char                         *header_name_end;
+    u_char                         *header_start;
+    u_char                         *header_end;
+
+    ngx_str_t                       addr;
+    ngx_str_t                       port;
+    ngx_str_t                       err;
+
+    ngx_msec_t                      sleep;
+
+    ngx_peers_t                    *peers;
+};
 
 
 static void ngx_imap_auth_http_write_handler(ngx_event_t *wev);
 static void ngx_imap_auth_http_read_handler(ngx_event_t *rev);
+static void ngx_imap_auth_http_ignore_status_line(ngx_imap_session_t *s,
+    ngx_imap_auth_http_ctx_t *ctx);
+static void ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
+    ngx_imap_auth_http_ctx_t *ctx);
+static void ngx_imap_auth_sleep_handler(ngx_event_t *rev);
+static ngx_int_t ngx_imap_auth_http_parse_header_line(ngx_imap_session_t *s,
+    ngx_imap_auth_http_ctx_t *ctx);
 static void ngx_imap_auth_http_block_read(ngx_event_t *rev);
 static void ngx_imap_auth_http_dummy_handler(ngx_event_t *ev);
 static ngx_buf_t *ngx_imap_auth_http_create_request(ngx_imap_session_t *s,
@@ -124,6 +154,8 @@ ngx_imap_auth_http_init(ngx_imap_session_t *s)
     ctx->peer.connection->read->handler = ngx_imap_auth_http_read_handler;
     ctx->peer.connection->write->handler = ngx_imap_auth_http_write_handler;
 
+    ctx->handler = ngx_imap_auth_http_ignore_status_line;
+
     if (rc == NGX_OK) {
         ngx_imap_auth_http_write_handler(ctx->peer.connection->write);
         return;
@@ -194,7 +226,6 @@ static void
 ngx_imap_auth_http_read_handler(ngx_event_t *rev)
 {
     ssize_t                     n, size;
-    ngx_peers_t                *peers;
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
     ngx_imap_auth_http_ctx_t  *ctx;
@@ -224,24 +255,604 @@ ngx_imap_auth_http_read_handler(ngx_event_t *rev)
         }
     }
 
-    size = ctx->response->last - ctx->response->pos;
+    size = ctx->response->end - ctx->response->last;
 
     n = ngx_recv(c, ctx->response->pos, size);
 
-    if (n == NGX_ERROR || n == 0) {
-        ngx_close_connection(ctx->peer.connection);
-        ngx_imap_session_internal_server_error(s);
+    if (n > 0) {
+        ctx->response->last += n;
+
+        ctx->handler(s, ctx);
         return;
     }
 
+    if (n == NGX_AGAIN) {
+        return;
+    }
+
+    ngx_close_connection(ctx->peer.connection);
+    ngx_imap_session_internal_server_error(s);
+}
 
 
+static void
+ngx_imap_auth_http_ignore_status_line(ngx_imap_session_t *s,
+    ngx_imap_auth_http_ctx_t *ctx)
+{
+    u_char  *p, ch;
+    enum  {
+        sw_start = 0,
+        sw_H,
+        sw_HT,
+        sw_HTT,
+        sw_HTTP,
+        sw_skip,
+        sw_almost_done
+    } state;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
+                   "imap auth http process status line");
+
+    state = ctx->state;
+
+    for (p = ctx->response->pos; p < ctx->response->last; p++) {
+        ch = *p;
+
+        switch (state) {
+
+        /* "HTTP/" */
+        case sw_start:
+            if (ch == 'H') {
+                state = sw_H;
+                break;
+            }
+            goto next;
+
+        case sw_H:
+            if (ch == 'T') {
+                state = sw_HT;
+                break;
+            }
+            goto next;
+
+        case sw_HT:
+            if (ch == 'T') {
+                state = sw_HTT;
+                break;
+            }
+            goto next;
+
+        case sw_HTT:
+            if (ch == 'P') {
+                state = sw_HTTP;
+                break;
+            }
+            goto next;
+
+        case sw_HTTP:
+            if (ch == '/') {
+                state = sw_skip;
+                break;
+            }
+            goto next;
+
+        /* any text until end of line */
+        case sw_skip:
+            switch (ch) {
+            case CR:
+                state = sw_almost_done;
+
+                break;
+            case LF: 
+                goto done;
+            }
+            break;
+
+        /* end of status line */
+        case sw_almost_done:
+            if (ch == LF) {
+                goto done;
+            }
+
+            ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                          "auth http server sent invalid response");
+            ngx_close_connection(ctx->peer.connection);
+            ngx_imap_session_internal_server_error(s);
+            return;
+        }
+    }
+
+    ctx->response->pos = p;
+    ctx->state = state;
+
+    return;
+
+next:
+
+    p = ctx->response->start - 1;
+
+done:
+
+    ctx->response->pos = p + 1;
+    ctx->state = 0;
+    ctx->handler = ngx_imap_auth_http_process_headers;
+    ctx->handler(s, ctx);
+}
 
 
+static void
+ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
+    ngx_imap_auth_http_ctx_t *ctx)
+{
+    u_char              *p;
+    size_t               len, size;
+    ngx_int_t            rc, port, n;
+    struct sockaddr_in  *sin;
 
-    peers = NULL;
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
+                   "imap auth http process headers");
 
-    ngx_imap_proxy_init(s, peers);
+    for ( ;; ) {
+        rc = ngx_imap_auth_http_parse_header_line(s, ctx);
+
+        if (rc == NGX_OK) {
+
+#if (NGX_DEBUG)
+            {
+            ngx_str_t  key, value;
+
+            key.len = ctx->header_name_end - ctx->header_name_start;
+            key.data = ctx->header_name_start;
+            value.len = ctx->header_end - ctx->header_start;
+            value.data = ctx->header_start;
+
+            ngx_log_debug2(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
+                           "auth http header: \"%V: %V\"",
+                           &key, &value);
+            }
+#endif
+
+            len = ctx->header_name_end - ctx->header_name_start;
+
+            if (len == sizeof("Auth-Status") - 1
+                && ngx_strncasecmp(ctx->header_name_start, "Auth-Status",
+                                   sizeof("Auth-Status") - 1) == 0)
+            {
+                len = ctx->header_end - ctx->header_start;
+
+                if (len == 2
+                    && ctx->header_start[0] == 'O'
+                    && ctx->header_start[1] == 'K')
+                {
+                    continue;
+                }
+
+                if (s->protocol == NGX_IMAP_POP3_PROTOCOL) {
+                    size = sizeof("-ERR") - 1 + len + sizeof(CRLF) - 1;
+
+                } else {
+                    size = s->tag.len + sizeof("NO") - 1 + len
+                           + sizeof(CRLF) - 1;
+                }
+
+                p = ngx_pcalloc(s->connection->pool, size);
+                if (p == NULL) {
+                    ngx_imap_session_internal_server_error(s);
+                    return;
+                }
+
+                ctx->err.data = p;
+
+                if (s->protocol == NGX_IMAP_POP3_PROTOCOL) {
+                    *p++ = '-'; *p++ = 'E'; *p++ = 'R'; *p++ = 'R';
+
+                } else {
+                    p = ngx_cpymem(p, s->tag.data, s->tag.len);
+                    *p++ = 'N'; *p++ = 'O';
+                }
+
+                *p++ = ' ';
+                p = ngx_cpymem(p, ctx->header_start, len);
+                *p++ = CR; *p++ = LF;
+
+                ctx->err.len = p - ctx->err.data;
+
+                continue;
+            }
+
+            if (len == sizeof("Auth-Server") - 1
+                && ngx_strncasecmp(ctx->header_name_start, "Auth-Server",
+                                   sizeof("Auth-Server") - 1) == 0)
+            {
+                ctx->addr.len = ctx->header_end - ctx->header_start;
+                ctx->addr.data = ctx->header_start;
+
+                continue;
+            }
+
+            if (len == sizeof("Auth-Port") - 1
+                && ngx_strncasecmp(ctx->header_name_start, "Auth-Port",
+                                   sizeof("Auth-Port") - 1) == 0)
+            {
+                ctx->port.len = ctx->header_end - ctx->header_start;
+                ctx->port.data = ctx->header_start;
+
+                continue;
+            }
+
+            if (len == sizeof("Auth-User") - 1
+                && ngx_strncasecmp(ctx->header_name_start, "Auth-User",
+                                   sizeof("Auth-User") - 1) == 0)
+            {
+                s->login.len = ctx->header_end - ctx->header_start;
+                s->login.data = ctx->header_start;
+
+                continue;
+            }
+
+            if (len == sizeof("Auth-Wait") - 1
+                && ngx_strncasecmp(ctx->header_name_start, "Auth-Wait",
+                                   sizeof("Auth-Wait") - 1) == 0)
+            {
+                n = ngx_atoi(ctx->header_start,
+                             ctx->header_end - ctx->header_start);
+
+                if (n != NGX_ERROR) {
+                    ctx->sleep = n;
+                }
+
+                continue;
+            }
+
+            /* ignore other headers */
+
+            continue;
+        }
+
+        if (rc == NGX_DONE) {
+            ngx_log_debug0(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
+                           "auth http header done");
+
+            ngx_close_connection(ctx->peer.connection);
+
+            if (ctx->err.len) {
+                (void) ngx_send(s->connection, ctx->err.data, ctx->err.len);
+
+                if (ctx->sleep == 0) {
+                    ngx_imap_close_connection(s->connection);
+                    return;
+                }
+
+                ngx_add_timer(s->connection->read, ctx->sleep * 1000);
+
+                s->connection->read->handler = ngx_imap_auth_sleep_handler;
+
+                return;
+            }
+
+            if (ctx->addr.len == 0 || ctx->port.len == 0) {
+                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                              "auth http server did not send server or port");
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            ctx->peers = ngx_pcalloc(s->connection->pool, sizeof(ngx_peers_t));
+            if (ctx->peers == NULL) {
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            sin = ngx_pcalloc(s->connection->pool, sizeof(struct sockaddr_in));
+            if (sin == NULL) {
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            sin->sin_family = AF_INET;
+
+            port = ngx_atoi(ctx->port.data, ctx->port.len);
+            if (port == NGX_ERROR || port < 1 || port > 65536) {
+                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                              "auth http server sent invalid server "
+                              "port:\"%V\"", &ctx->port);
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            sin->sin_port = htons((in_port_t) port);
+
+            ctx->addr.data[ctx->addr.len] = '\0';
+            sin->sin_addr.s_addr = inet_addr((char *) ctx->addr.data);
+            if (sin->sin_addr.s_addr == INADDR_NONE) {
+                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                              "auth http server sent invalid server "
+                              "address:\"%V\"", &ctx->addr);
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            ctx->peers->number = 1;
+
+            ctx->peers->peer[0].sockaddr = (struct sockaddr *) sin;
+            ctx->peers->peer[0].socklen = sizeof(struct sockaddr_in);
+
+            len = ctx->addr.len + 1 + ctx->port.len;
+
+            ctx->peers->peer[0].name.len = len;
+
+            ctx->peers->peer[0].name.data = ngx_palloc(s->connection->pool,
+                                                       len);
+            if (ctx->peers->peer[0].name.data == NULL) {
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            len = ctx->addr.len;
+
+            ngx_memcpy(ctx->peers->peer[0].name.data, ctx->addr.data, len);
+
+            ctx->peers->peer[0].name.data[len++] = ':';
+
+            ngx_memcpy(ctx->peers->peer[0].name.data + len,
+                       ctx->port.data, ctx->port.len);
+
+            ctx->peers->peer[0].uri_separator = "";
+
+            ngx_imap_proxy_init(s, ctx->peers);
+
+            return;
+        }
+
+        if (rc == NGX_AGAIN ) {
+            return;
+        }
+
+        /* rc == NGX_ERROR */
+
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                      "auth http server sent invalid header in response");
+        ngx_close_connection(ctx->peer.connection);
+        ngx_imap_session_internal_server_error(s);
+
+        return;
+    }
+}
+
+
+static void
+ngx_imap_auth_sleep_handler(ngx_event_t *rev)
+{
+    ngx_connection_t    *c;
+    ngx_imap_session_t  *s;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap auth sleep handler");
+
+    c = rev->data;
+    s = c->data;
+
+    if (rev->timedout) {
+
+        rev->timedout = 0;
+
+        if (s->protocol == NGX_IMAP_POP3_PROTOCOL) {
+            s->imap_state = ngx_pop3_start;
+            s->connection->read->handler = ngx_pop3_auth_state;
+
+        } else {
+            s->imap_state = ngx_imap_start;
+            s->connection->read->handler = ngx_imap_auth_state;
+        }
+
+        if (rev->ready) {
+            s->connection->read->handler(rev);
+            return;
+        }
+
+        if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+            ngx_imap_close_connection(s->connection);
+        }
+
+        return;
+    }
+
+    if (rev->active) {
+        if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+            ngx_imap_close_connection(s->connection);
+        }
+    }
+}
+
+
+static ngx_int_t
+ngx_imap_auth_http_parse_header_line(ngx_imap_session_t *s,
+    ngx_imap_auth_http_ctx_t *ctx)
+{
+    u_char      c, ch, *p;
+    ngx_uint_t  hash;
+    enum {
+        sw_start = 0,
+        sw_name,
+        sw_space_before_value,
+        sw_value,
+        sw_space_after_value,
+        sw_almost_done, 
+        sw_header_almost_done
+    } state;
+
+    state = ctx->state; 
+    hash = ctx->hash;
+
+    for (p = ctx->response->pos; p < ctx->response->last; p++) {
+        ch = *p;
+
+        switch (state) {
+
+        /* first char */
+        case sw_start:
+
+            switch (ch) {
+            case CR:
+                ctx->header_end = p; 
+                state = sw_header_almost_done;
+                break;
+            case LF: 
+                ctx->header_end = p;
+                goto header_done;
+            default:
+                state = sw_name;
+                ctx->header_name_start = p;
+
+                c = (u_char) (ch | 0x20);
+                if (c >= 'a' && c <= 'z') {
+                    hash = c;
+                    break;
+                }
+
+                if (ch >= '0' && ch <= '9') {
+                    hash = ch;
+                    break;
+                }
+
+                return NGX_ERROR;
+            }
+            break;
+
+        /* header name */
+        case sw_name:
+            c = (u_char) (ch | 0x20);
+            if (c >= 'a' && c <= 'z') {
+                hash += c;
+                break;
+            }
+
+            if (ch == ':') {
+                ctx->header_name_end = p;
+                state = sw_space_before_value;
+                break;
+            }
+
+            if (ch == '-') {
+                hash += ch;
+                break;
+            }
+
+            if (ch >= '0' && ch <= '9') {
+                hash += ch;
+                break;
+            }
+
+            if (ch == CR) {
+                ctx->header_name_end = p;
+                ctx->header_start = p;
+                ctx->header_end = p;
+                state = sw_almost_done;
+                break;
+            }
+
+            if (ch == LF) {
+                ctx->header_name_end = p;
+                ctx->header_start = p;
+                ctx->header_end = p;
+                goto done;
+            }
+
+            return NGX_ERROR;
+
+        /* space* before header value */
+        case sw_space_before_value:
+            switch (ch) {
+            case ' ':
+                break;
+            case CR:
+                ctx->header_start = p;
+                ctx->header_end = p;
+                state = sw_almost_done;
+                break;
+            case LF:
+                ctx->header_start = p;
+                ctx->header_end = p;
+                goto done;
+            default:
+                ctx->header_start = p;
+                state = sw_value;
+                break;
+            }
+            break;
+
+        /* header value */
+        case sw_value:
+            switch (ch) {
+            case ' ':
+                ctx->header_end = p;
+                state = sw_space_after_value;
+                break;
+            case CR:
+                ctx->header_end = p;
+                state = sw_almost_done;
+                break;
+            case LF:
+                ctx->header_end = p;
+                goto done;
+            }
+            break;
+
+        /* space* before end of header line */
+        case sw_space_after_value:
+            switch (ch) {
+            case ' ':
+                break;
+            case CR:
+                state = sw_almost_done;
+                break;
+            case LF:
+                goto done;
+            default:
+                state = sw_value;
+                break;
+            }
+            break;
+
+        /* end of header line */
+        case sw_almost_done:
+            switch (ch) {
+            case LF:
+                goto done;
+            default:
+                return NGX_ERROR;
+            }
+
+        /* end of header */
+        case sw_header_almost_done:
+            switch (ch) {
+            case LF:
+                goto header_done;
+            default:
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    ctx->response->pos = p;
+    ctx->state = state;
+    ctx->hash = hash;
+
+    return NGX_AGAIN;
+
+done:
+
+    ctx->response->pos = p + 1;
+    ctx->state = sw_start;
+    ctx->hash = hash;
+
+    return NGX_OK;
+
+header_done:
+
+    ctx->response->pos = p + 1;
+    ctx->state = sw_start;
+
+    return NGX_DONE;
 }
 
 
@@ -288,6 +899,8 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s,
           + sizeof("Auth-User: ") - 1 + s->login.len + sizeof(CRLF) - 1
           + sizeof("Auth-Pass: ") - 1 + s->passwd.len + sizeof(CRLF) - 1
           + sizeof("Auth-Protocol: imap" CRLF) - 1
+          + sizeof("Auth-Login-Attempt: ") - 1 + NGX_INT_T_LEN
+                + sizeof(CRLF) - 1
           + sizeof("Client-IP: ") - 1 + s->connection->addr_text.len
                 + sizeof(CRLF) - 1
           + sizeof(CRLF) - 1;
@@ -324,6 +937,9 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s,
                          sizeof("imap") - 1);
     *b->last++ = CR; *b->last++ = LF;
 
+    b->last = ngx_sprintf(b->last, "Auth-Login-Attempt: %ui" CRLF,
+                          s->login_attempt);
+
     b->last = ngx_cpymem(b->last, "Client-IP: ", sizeof("Client-IP: ") - 1);
     b->last = ngx_cpymem(b->last, s->connection->addr_text.data,
                          s->connection->addr_text.len);
@@ -338,7 +954,7 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s,
 
     l.len = b->last - b->pos;
     l.data = b->pos;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
                    "imap auth http header:\n\"%V\"", &l);
     }
 #endif
@@ -440,7 +1056,7 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         for (i = 0; i < ahcf->peers->number; i++) {
-            ahcf->peers->peer[i].uri_separator = ":";
+            ahcf->peers->peer[i].uri_separator = "";
         }
 
         ahcf->host_header = inet_upstream.host_header;

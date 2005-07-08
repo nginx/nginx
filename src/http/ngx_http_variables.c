@@ -706,7 +706,9 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
             {
                 v[i].handler = av[n].handler;
                 v[i].data = av[n].data;
-                v[i].flags = av[n].flags | NGX_HTTP_VAR_INDEXED;
+
+                av[n].flags |= NGX_HTTP_VAR_INDEXED;
+                v[i].flags = av[n].flags;
 
                 goto next;
             }

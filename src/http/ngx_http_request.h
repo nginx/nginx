@@ -310,6 +310,8 @@ struct ngx_http_request_s {
 
     ngx_http_variable_value_t       **variables;
 
+    size_t                            limit_rate;
+
     /* used to learn the Apache compatible response length without a header */
     size_t                            header_size;
 
@@ -361,7 +363,6 @@ struct ngx_http_request_s {
     unsigned                          keepalive:1;
     unsigned                          lingering_close:1;
     unsigned                          internal:1;
-    unsigned                          closed:1;
     unsigned                          done:1;
     unsigned                          utf8:1;
 

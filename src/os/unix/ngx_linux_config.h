@@ -88,6 +88,11 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
+#ifndef NGX_HAVE_GNU_CRYPT_R
+#define NGX_HAVE_GNU_CRYPT_R         1
+#endif
+
+
 #ifndef NGX_HAVE_INHERITED_NONBLOCK
 #define NGX_HAVE_INHERITED_NONBLOCK  0
 #endif

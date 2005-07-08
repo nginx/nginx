@@ -35,6 +35,7 @@ typedef struct {
 typedef struct {
     ngx_flag_t     enable;
     ngx_flag_t     localtime;
+    ngx_flag_t     exact_size;
 } ngx_http_autoindex_loc_conf_t;
 
 
@@ -65,6 +66,13 @@ static ngx_command_t  ngx_http_autoindex_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_autoindex_loc_conf_t, localtime),
+      NULL },
+
+    { ngx_string("autoindex_exact_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_autoindex_loc_conf_t, exact_size),
       NULL },
 
       ngx_null_command
@@ -117,10 +125,11 @@ static u_char tail[] =
 static ngx_int_t
 ngx_http_autoindex_handler(ngx_http_request_t *r)
 {
-    u_char                         *last;
-    size_t                          len;
+    u_char                         *last, scale;
+    off_t                           length;
+    size_t                          len, copy;
     ngx_tm_t                        tm;
-    ngx_int_t                       rc;
+    ngx_int_t                       rc, size;
     ngx_uint_t                      i, level;
     ngx_err_t                       err;
     ngx_buf_t                      *b;
@@ -351,7 +360,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
             + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
             + sizeof("</a>") - 1
             + sizeof(" 28-Sep-1970 12:00 ") - 1
-            + 19
+            + 20
             + 2;
     }
 
@@ -396,14 +405,27 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         *b->last++ = '"';
         *b->last++ = '>';
 
-        b->last = ngx_cpystrn(b->last, entry[i].name.data,
-                              NGX_HTTP_AUTOINDEX_NAME_LEN + 1);
-
         len = entry[i].utf_len;
 
+        if (len) {
+            if (len > NGX_HTTP_AUTOINDEX_NAME_LEN) {
+                copy = NGX_HTTP_AUTOINDEX_NAME_LEN - 3 + 1;
+
+            } else {
+                copy = NGX_HTTP_AUTOINDEX_NAME_LEN + 1;
+            }
+
+            b->last = ngx_utf_cpystrn(b->last, entry[i].name.data, copy);
+            last = b->last;
+
+        } else {
+            b->last = ngx_cpystrn(b->last, entry[i].name.data,
+                                  NGX_HTTP_AUTOINDEX_NAME_LEN + 1);
+            last = b->last - 3;
+        }
+
         if (len > NGX_HTTP_AUTOINDEX_NAME_LEN) {
-            b->last = ngx_cpymem(b->last - 3, "..&gt;</a>",
-                                 sizeof("..&gt;</a>") - 1);
+            b->last = ngx_cpymem(last, "..&gt;</a>", sizeof("..&gt;</a>") - 1);
 
         } else {
             if (entry[i].dir && NGX_HTTP_AUTOINDEX_NAME_LEN - len > 0) {
@@ -427,12 +449,55 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                               tm.ngx_tm_hour,
                               tm.ngx_tm_min);
 
-        if (entry[i].dir) {
-            b->last = ngx_cpymem(b->last,  "                  -",
-                                 sizeof("                  -") - 1);
+        if (alcf->exact_size) {
+            if (entry[i].dir) {
+                b->last = ngx_cpymem(b->last,  "                  -",
+                                     sizeof("                  -") - 1);
+            } else {
+                b->last = ngx_sprintf(b->last, "%19O", entry[i].size);
+            } 
 
         } else {
-            b->last = ngx_sprintf(b->last, "%19O", entry[i].size);
+            if (entry[i].dir) {
+                b->last = ngx_cpymem(b->last,  "     -", sizeof("     -") - 1);
+
+            } else {
+                length = entry[i].size;
+
+                if (length > 1024 * 1024 * 1024 - 1) {
+                    size = (ngx_int_t) (length / (1024 * 1024 * 1024));
+                    if ((length % (1024 * 1024 * 1024))
+                                                > (1024 * 1024 * 1024 / 2 - 1))
+                    { 
+                        size++;
+                    }
+                    scale = 'G';
+
+                } else if (length > 1024 * 1024 - 1) {
+                    size = (ngx_int_t) (length / (1024 * 1024));
+                    if ((length % (1024 * 1024)) > (1024 * 1024 / 2 - 1)) {
+                        size++;
+                    }
+                    scale = 'M';
+
+                } else if (length > 9999) {
+                    size = (ngx_int_t) (length / 1024);
+                    if (length % 1024 > 511) {
+                        size++;
+                    }
+                    scale = 'K';
+
+                } else {
+                    size = (ngx_int_t) length;
+                    scale = ' ';
+                }
+
+                b->last = ngx_sprintf(b->last, "%6i", size);
+
+                if (scale != ' ') {
+                    *b->last++ = scale;
+                }
+            }
         }
 
         *b->last++ = CR;
@@ -559,6 +624,7 @@ ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf)
 
     conf->enable = NGX_CONF_UNSET;
     conf->localtime = NGX_CONF_UNSET;
+    conf->exact_size = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -572,6 +638,7 @@ ngx_http_autoindex_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
     ngx_conf_merge_value(conf->localtime, prev->localtime, 0);
+    ngx_conf_merge_value(conf->exact_size, prev->exact_size, 1);
 
     return NGX_CONF_OK;
 }

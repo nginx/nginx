@@ -68,12 +68,16 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_output_chain_ctx_t       *ctx;
     ngx_http_copy_filter_conf_t  *conf;
 
-    if (r->connection->write->error) {
-        return NGX_ERROR;
-    }
-
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "copy filter: \"%V\"", &r->uri);
+
+    if (r->connection->closed) {
+        rc = ngx_http_next_filter(r, in);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "copy closed filter: %i \"%V\"", rc, &r->uri);
+        return rc;
+    }
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_copy_filter_module);
 

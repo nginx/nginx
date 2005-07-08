@@ -39,6 +39,8 @@ static ngx_int_t
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_ignore_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_process_limit_rate(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_copy_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t
@@ -141,6 +143,10 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
     { ngx_string("X-Accel-Redirect"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, x_accel_redirect),
+                 ngx_http_upstream_ignore_header_line, 0, 0 },
+
+    { ngx_string("X-Accel-Limit-Rate"),
+                 ngx_http_upstream_process_limit_rate, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
 
 #if (NGX_HTTP_GZIP)
@@ -299,11 +305,18 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ngx_connection_t     *c;
     ngx_http_upstream_t  *u;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
-                   "http upstream check client, write event:%d", ev->write);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+                   "http upstream check client, write event:%d, \"%V\"",
+                   ev->write, &r->uri);
 
     c = r->connection;
     u = r->upstream;
+
+    if (c->closed) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        return;
+    }
 
     if (u->peer.connection == NULL) {
         return;
@@ -318,6 +331,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
         }
 
         ev->eof = 1;
+        c->closed = 1;
 
         if (ev->kq_errno) {
             ev->error = 1;
@@ -325,9 +339,8 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
 
         if (!u->cachable && u->peer.connection) {
             ngx_log_error(NGX_LOG_INFO, ev->log, ev->kq_errno,
-                          "kevent() reported that client closed "
-                          "prematurely connection, "
-                          "so upstream connection is closed too");
+                          "kevent() reported that client closed prematurely "
+                          "connection, so upstream connection is closed too");
             ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_CLIENT_CLOSED_REQUEST);
             return;
@@ -374,6 +387,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     }
 
     ev->eof = 1;
+    c->closed = 1;
 
     if (n == -1) {
         if (err == NGX_EAGAIN) {
@@ -924,6 +938,8 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
             }
         }
 
+        r->headers_out.status_line.len = 0;
+
         ngx_http_internal_redirect(r,
                               &r->upstream->headers_in.x_accel_redirect->value,
                               NULL);
@@ -1155,9 +1171,33 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
 
     if (ev->timedout) {
         if (ev->write) {
-            p->downstream_error = 1;
-            ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT,
-                          "client timed out");
+            if (ev->delayed) {
+
+                ev->timedout = 0;
+                ev->delayed = 0;
+
+                if (!ev->ready) {
+                    ngx_add_timer(ev, p->send_timeout);
+
+                    if (ngx_handle_write_event(ev, p->send_lowat) == NGX_ERROR)
+                    {
+                        ngx_http_upstream_finalize_request(r, u, 0);
+                        return;
+                    }
+
+                    return;
+                }
+
+                if (ngx_event_pipe(p, ev->write) == NGX_ABORT) {
+                    ngx_http_upstream_finalize_request(r, u, 0);
+                    return;
+                }
+
+            } else {
+                p->downstream_error = 1;
+                ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT,
+                              "client timed out");
+            }
 
         } else {
             p->upstream_error = 1; 
@@ -1166,6 +1206,17 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
         }
 
     } else {
+        if (ev->write && ev->delayed) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http downstream delayed");
+
+            if (ngx_handle_write_event(ev, p->send_lowat) == NGX_ERROR) {
+                return;
+            }
+
+            return;
+        }
+
         if (ngx_event_pipe(p, ev->write) == NGX_ABORT) {
             ngx_http_upstream_finalize_request(r, u, 0);
             return;
@@ -1281,6 +1332,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     }
 
     if (r->connection->write->eof) {
+        r->connection->closed = 1;
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_CLIENT_CLOSED_REQUEST);
         return;
@@ -1427,6 +1479,24 @@ static ngx_int_t
 ngx_http_upstream_ignore_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_limit_rate(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{   
+    ngx_int_t  n;
+
+    r->upstream->headers_in.x_accel_limit_rate = h;
+
+    n = ngx_atoi(h->value.data, h->value.len);
+
+    if (n != NGX_ERROR) {
+        r->limit_rate = (size_t) n;
+    }
+
     return NGX_OK;
 }
 

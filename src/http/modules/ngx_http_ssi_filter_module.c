@@ -24,6 +24,8 @@ typedef struct {
     ngx_flag_t        silent_errors;
     ngx_flag_t        ignore_recycled_buffers;
 
+    ngx_array_t      *types;     /* array of ngx_str_t */
+
     size_t            min_file_chunk;
     size_t            value_len;
 } ngx_http_ssi_conf_t;
@@ -127,6 +129,8 @@ static ngx_int_t ngx_http_ssi_endif(ngx_http_request_t *r,
 static ngx_http_variable_value_t *
     ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r, uintptr_t gmt);
 
+static char *ngx_http_ssi_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
 static ngx_int_t ngx_http_ssi_add_variables(ngx_conf_t *cf);
 static void *ngx_http_ssi_create_conf(ngx_conf_t *cf);
 static char *ngx_http_ssi_merge_conf(ngx_conf_t *cf,
@@ -162,6 +166,13 @@ static ngx_command_t  ngx_http_ssi_filter_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_ssi_conf_t, min_file_chunk),
+      NULL },
+
+    { ngx_string("ssi_types"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_http_ssi_types,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
       NULL },
 
       ngx_null_command
@@ -201,7 +212,7 @@ static ngx_int_t (*ngx_http_next_body_filter) (ngx_http_request_t *r,
 
 static u_char ngx_http_ssi_string[] = "<!--";
 static u_char ngx_http_ssi_error_string[] =
-                          "[an error occurred while processing the directive]";
+    "[an error occurred while processing the directive]";
 
 static ngx_str_t ngx_http_ssi_none = ngx_string("(none)");
 
@@ -280,24 +291,34 @@ static ngx_http_variable_t  ngx_http_ssi_vars[] = {
 static ngx_int_t
 ngx_http_ssi_header_filter(ngx_http_request_t *r)
 {
+    ngx_uint_t            i;
+    ngx_str_t            *type;
     ngx_http_ssi_ctx_t   *ctx;
     ngx_http_ssi_conf_t  *conf;
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
 
-    if (!conf->enable) {
-        return ngx_http_next_header_filter(r);
-    }
-
-    /* TODO: "text/html" -> custom types */
-
-    if (r->headers_out.content_type.len == 0
-        || ngx_strncasecmp(r->headers_out.content_type.data, "text/html", 5)
-           != 0)
+    if (!conf->enable
+        || r->headers_out.content_type.len == 0)
     {
         return ngx_http_next_header_filter(r);
     }
 
+
+    type = conf->types->elts;
+    for (i = 0; i < conf->types->nelts; i++) {
+        if (r->headers_out.content_type.len >= type[i].len
+            && ngx_strncasecmp(r->headers_out.content_type.data,
+                               type[i].data, type[i].len) == 0)
+        {
+            goto found;
+        }
+    }
+
+    return ngx_http_next_header_filter(r);
+
+
+found:
 
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_ctx_t));
     if (ctx == NULL) {
@@ -1632,6 +1653,56 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r, uintptr_t gmt)
 }
 
 
+static char *
+ngx_http_ssi_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_ssi_conf_t *scf = conf;
+
+    ngx_str_t   *value, *type;
+    ngx_uint_t   i;
+
+    if (scf->types == NULL) {
+        scf->types = ngx_array_create(cf->pool, 4, sizeof(ngx_str_t));
+        if (scf->types == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        type = ngx_array_push(scf->types);
+        if (type == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        type->len = sizeof("text/html") - 1;
+        type->data = (u_char *) "text/html";
+    }
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strcmp(value[i].data, "text/html") == 0) {
+            continue;
+        }
+
+        type = ngx_array_push(scf->types);
+        if (type == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        type->len = value[i].len;
+
+        type->data = ngx_palloc(cf->pool, type->len + 1);
+        if (type->data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_cpystrn(type->data, value[i].data, type->len + 1);
+    }
+
+    return NGX_CONF_OK;
+}
+
+
 static ngx_int_t
 ngx_http_ssi_add_variables(ngx_conf_t *cf)
 {
@@ -1661,6 +1732,12 @@ ngx_http_ssi_create_conf(ngx_conf_t *cf)
         return NGX_CONF_ERROR;
     }
 
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     conf->types = NULL;
+     */
+
     conf->enable = NGX_CONF_UNSET;
     conf->silent_errors = NGX_CONF_UNSET;
     conf->ignore_recycled_buffers = NGX_CONF_UNSET;
@@ -1678,6 +1755,8 @@ ngx_http_ssi_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_ssi_conf_t *prev = parent;
     ngx_http_ssi_conf_t *conf = child;
 
+    ngx_str_t  *type;
+
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
     ngx_conf_merge_value(conf->silent_errors, prev->silent_errors, 0);
     ngx_conf_merge_value(conf->ignore_recycled_buffers,
@@ -1685,6 +1764,26 @@ ngx_http_ssi_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_size_value(conf->min_file_chunk, prev->min_file_chunk, 1024);
     ngx_conf_merge_size_value(conf->value_len, prev->value_len, 256);
+
+    if (conf->types == NULL) {
+        if (prev->types == NULL) {
+            conf->types = ngx_array_create(cf->pool, 1, sizeof(ngx_str_t));
+            if (conf->types == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            type = ngx_array_push(conf->types);
+            if (type == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            type->len = sizeof("text/html") - 1;
+            type->data = (u_char *) "text/html";
+
+        } else {
+            conf->types = prev->types;
+        }
+    }
 
     return NGX_CONF_OK;
 }

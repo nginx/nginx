@@ -48,12 +48,17 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_request_t            *mr;
     ngx_http_postponed_request_t  *pr, **ppr;
 
-    if (r->connection->write->error) {
-        return NGX_ERROR;
-    }
-
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http postpone filter \"%V\" %p", &r->uri, in);
+
+    if (r->connection->closed) {
+
+        if (r->postponed) {
+            r->postponed = r->postponed->next;
+        }
+
+        return NGX_ERROR;
+    }
 
     if (r != r->connection->data || (r->postponed && in)) {
 
@@ -112,7 +117,7 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (rc == NGX_ERROR) {
         /* NGX_ERROR may be returned by any filter */
-        r->connection->write->error = 1;
+        r->connection->closed = 1;
     }
 
     return rc;

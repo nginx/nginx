@@ -36,6 +36,12 @@ typedef struct {
 
     ngx_uint_t            protocol;
 
+    ngx_buf_t            *pop3_capability;
+    ngx_buf_t            *imap_capability;
+
+    ngx_array_t           pop3_capabilities;
+    ngx_array_t           imap_capabilities;
+
     /* server ctx */
     ngx_imap_conf_ctx_t  *ctx;
 } ngx_imap_core_srv_conf_t;
@@ -51,9 +57,18 @@ typedef struct {
 
 
 typedef enum {
-    ngx_pop3_start = 0,
-    ngx_pop3_user
+    ngx_imap_start = 0,
+    ngx_imap_login,
+    ngx_imap_user,
+    ngx_imap_passwd,
 } ngx_imap_state_e;
+
+
+typedef enum {
+    ngx_pop3_start = 0,
+    ngx_pop3_user,
+    ngx_pop3_passwd
+} ngx_po3_state_e;
 
 
 typedef struct {
@@ -68,6 +83,7 @@ typedef struct {
     ngx_connection_t       *connection;
 
     ngx_buf_t              *buffer;
+    ngx_str_t               out;
 
     void                  **ctx;
     void                  **main_conf;
@@ -75,39 +91,55 @@ typedef struct {
 
     ngx_imap_proxy_ctx_t   *proxy;
 
-    ngx_imap_state_e        imap_state;
+    ngx_uint_t              imap_state;
 
     unsigned                protocol:1;
+    unsigned                quoted:1;
 
     ngx_str_t               login;
     ngx_str_t               passwd;
 
+    ngx_str_t               tag;
+
     ngx_uint_t              command;
     ngx_array_t             args;
+
+    ngx_uint_t              login_attempt;
 
     /* used to parse IMAP/POP3 command */
 
     ngx_uint_t              state;
+    u_char                 *cmd_start;
     u_char                 *arg_start;
     u_char                 *arg_end;
+    ngx_uint_t              literal_len;
 } ngx_imap_session_t;
 
 
 #define NGX_POP3_USER       1
 #define NGX_POP3_PASS       2
-#define NGX_POP3_APOP       3
-#define NGX_POP3_STAT       4
-#define NGX_POP3_LIST       5
-#define NGX_POP3_RETR       6
-#define NGX_POP3_DELE       7
-#define NGX_POP3_NOOP       8
-#define NGX_POP3_RSET       9
-#define NGX_POP3_TOP        10
-#define NGX_POP3_UIDL       11
-#define NGX_POP3_QUIT       12
+#define NGX_POP3_CAPA       3
+#define NGX_POP3_QUIT       4
+#define NGX_POP3_NOOP       5
+#define NGX_POP3_APOP       6
+#define NGX_POP3_STAT       7
+#define NGX_POP3_LIST       8
+#define NGX_POP3_RETR       9
+#define NGX_POP3_DELE       10
+#define NGX_POP3_RSET       11
+#define NGX_POP3_TOP        12
+#define NGX_POP3_UIDL       13
 
 
-#define NGX_IMAP_PARSE_INVALID_COMMAND  10
+#define NGX_IMAP_LOGIN      1
+#define NGX_IMAP_LOGOUT     2
+#define NGX_IMAP_CAPABILITY 3
+#define NGX_IMAP_NOOP       4
+
+#define NGX_IMAP_NEXT       5
+
+
+#define NGX_IMAP_PARSE_INVALID_COMMAND  20
 
 
 #define NGX_IMAP_PROXY_INVALID  10
@@ -135,9 +167,12 @@ typedef struct {
 
 
 void ngx_imap_init_connection(ngx_connection_t *c);
+void ngx_imap_auth_state(ngx_event_t *rev);
+void ngx_pop3_auth_state(ngx_event_t *rev);
 void ngx_imap_close_connection(ngx_connection_t *c);
 void ngx_imap_session_internal_server_error(ngx_imap_session_t *s);
 
+ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s);
 ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s);
 
 

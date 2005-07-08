@@ -244,6 +244,9 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
     ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
 
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http special response: %d, \"%V\"", error, &r->uri);
+
     rc = ngx_http_discard_body(r);
 
     if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {

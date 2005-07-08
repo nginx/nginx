@@ -761,7 +761,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
         }
     }
 
-    ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                   "rt signal queue overflow recovered");
 
     overflow = 0;

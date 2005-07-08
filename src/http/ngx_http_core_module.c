@@ -326,6 +326,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, msie_padding),
       NULL },
 
+    { ngx_string("log_not_found"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, log_not_found),
+      NULL },
+
     { ngx_string("error_page"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                         |NGX_CONF_2MORE,
@@ -633,6 +640,8 @@ ngx_http_find_location_config(ngx_http_request_t *r)
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
 
+    r->limit_rate = clcf->limit_rate;
+
     if (clcf->handler) {
         r->content_handler = clcf->handler;
     }
@@ -862,10 +871,6 @@ ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     ngx_int_t  rc;
 
-    if (r->connection->write->error) {
-        return NGX_ERROR;
-    }
-
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http output filter \"%V\"", &r->uri);
 
@@ -873,7 +878,7 @@ ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (rc == NGX_ERROR) {
         /* NGX_ERROR may be returned by any filter */
-        r->connection->write->error = 1;
+        r->connection->closed = 1;
     }
 
     return rc;
@@ -1727,6 +1732,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->reset_timedout_connection = NGX_CONF_UNSET;
     lcf->port_in_redirect = NGX_CONF_UNSET;
     lcf->msie_padding = NGX_CONF_UNSET;
+    lcf->log_not_found = NGX_CONF_UNSET;
 
     return lcf;
 }
@@ -1841,6 +1847,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
                               prev->reset_timedout_connection, 0);
     ngx_conf_merge_value(conf->port_in_redirect, prev->port_in_redirect, 1);
     ngx_conf_merge_value(conf->msie_padding, prev->msie_padding, 1);
+    ngx_conf_merge_value(conf->log_not_found, prev->log_not_found, 1);
 
     if (conf->open_files == NULL) {
         conf->open_files = prev->open_files;

@@ -182,7 +182,8 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
             } else if (!p->cachable
                        && p->downstream->data == p->output_ctx
-                       && p->downstream->write->ready)
+                       && p->downstream->write->ready
+                       && !p->downstream->write->delayed)
             {
                 /*
                  * if the bufs are not needed to be saved in a cache and
@@ -461,7 +462,8 @@ static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         }
 
         if (p->downstream->data != p->output_ctx
-            || !p->downstream->write->ready)
+            || !p->downstream->write->ready
+            || p->downstream->write->delayed)
         {
             break;
         }

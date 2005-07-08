@@ -97,6 +97,8 @@ void ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src);
 ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src);
 
 size_t ngx_utf_length(ngx_str_t *utf);
+u_char * ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n);
+
 
 #define NGX_ESCAPE_URI   0
 #define NGX_ESCAPE_ARGS  1

@@ -914,7 +914,7 @@ ngx_http_proxy_parse_status_line(ngx_http_request_t *r, ngx_http_proxy_ctx_t *p)
             }
             break;
 
-        /* end of request line */
+        /* end of status line */
         case sw_almost_done:
             p->status_end = pos - 1;
             switch (ch) {
@@ -926,7 +926,7 @@ ngx_http_proxy_parse_status_line(ngx_http_request_t *r, ngx_http_proxy_ctx_t *p)
         }
     }
 
-    u->header_in.pos = pos + 1;
+    u->header_in.pos = pos;
     r->state = state;
 
     return NGX_AGAIN;
@@ -1803,7 +1803,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         for (i = 0; i < plcf->peers->number; i++) {
-            plcf->peers->peer[i].uri_separator = ":";
+            plcf->peers->peer[i].uri_separator = "";
         }
 
         plcf->host_header = inet_upstream.host_header;

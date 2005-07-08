@@ -128,6 +128,7 @@ struct ngx_connection_s {
     unsigned            single_connection:1;
     unsigned            unexpected_eof:1;
     unsigned            timedout:1;
+    unsigned            closed:1;
 
     unsigned            sendfile:1;
     unsigned            sndlowat:1;

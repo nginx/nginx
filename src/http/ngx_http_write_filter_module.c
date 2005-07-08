@@ -47,6 +47,12 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
 
+    c = r->connection;
+
+    if (c->closed) {
+        return NGX_ERROR;
+    }
+
     size = 0;
     flush = 0;
     last = 0;
@@ -151,8 +157,6 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     *ll = NULL;
 
-    c = r->connection;
-
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http write filter: l:%d f:%d s:%O", last, flush, size);
 
@@ -197,19 +201,20 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     sent = c->sent;
 
-    chain = c->send_chain(c, r->out, clcf->limit_rate);
+    chain = c->send_chain(c, r->out, r->limit_rate);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http write filter %p", chain);
 
-    if (clcf->limit_rate) {
+    if (r->limit_rate) {
         sent = c->sent - sent;
         c->write->delayed = 1;
         ngx_add_timer(r->connection->write,
-                      (ngx_msec_t) (sent * 1000 / clcf->limit_rate));
+                      (ngx_msec_t) (sent * 1000 / r->limit_rate));
     }
 
     if (chain == NGX_CHAIN_ERROR) {
+        c->closed = 1;
         return NGX_ERROR;
     }
 

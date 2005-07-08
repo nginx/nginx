@@ -90,11 +90,6 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("Range"), offsetof(ngx_http_headers_in_t, range),
                  ngx_http_process_header_line },
 
-#if 0
-    { ngx_string("If-Range"), offsetof(ngx_http_headers_in_t, if_range),
-                 ngx_http_process_header_line },
-#endif
-
 #if (NGX_HTTP_GZIP)
     { ngx_string("Accept-Encoding"),
                  offsetof(ngx_http_headers_in_t, accept_encoding),
@@ -1441,6 +1436,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     r->done = 1;
 
     if (r != r->connection->data) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http finalize non-active request: \"%V\"", &r->uri);
         return;
     }
 
@@ -1448,11 +1445,17 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
         pr = r->parent;
 
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http parent request: \"%V\"", &pr->uri);
+
         if (rc != NGX_AGAIN) {
             pr->connection->data = pr;
         }
 
         if (pr->postponed) {
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http request: \"%V\" has postponed", &pr->uri);
 
             if (rc != NGX_AGAIN && pr->postponed->request == r) {
                 pr->postponed = pr->postponed->next;
@@ -1462,9 +1465,13 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                 }
             }
 
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http request: \"%V\" still has postponed",
+                           &pr->uri);
+
             if (pr->done) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                               "http wake request: \"%V\"", &pr->uri);
+                               "http wake parent request: \"%V\"", &pr->uri);
 
                 pr->write_event_handler(pr);
             }
@@ -1483,7 +1490,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             ngx_del_timer(r->connection->write);
         }
 
-        if (rc == NGX_HTTP_CLIENT_CLOSED_REQUEST || r->closed) {
+        if (r->connection->closed) {
             ngx_http_close_request(r, 0);
             ngx_http_close_connection(r->connection);
             return;
@@ -1492,13 +1499,15 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         ngx_http_finalize_request(r, ngx_http_special_response_handler(r, rc));
 
         return;
+    }
 
-    } else if (rc == NGX_ERROR) {
+    if (rc == NGX_ERROR || r->connection->closed) {
         ngx_http_close_request(r, 0);
         ngx_http_close_connection(r->connection);
         return;
+    }
 
-    } else if (rc == NGX_AGAIN || r->out) {
+    if (rc == NGX_AGAIN || r->out) {
         (void) ngx_http_set_write_handler(r);
         return;
     }
@@ -1552,6 +1561,10 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
     r->write_event_handler = ngx_http_writer;
+
+    if (r->connection->closed) {
+        return NGX_OK;
+    }
 
     wev = r->connection->write;
 
@@ -1673,6 +1686,9 @@ static ngx_int_t
 ngx_http_postponed_handler(ngx_http_request_t *r)
 {
     ngx_int_t                      rc;
+#if 0
+    ngx_http_request_t            *mr;
+#endif
     ngx_http_postponed_request_t  *pr;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1687,20 +1703,16 @@ ngx_http_postponed_handler(ngx_http_request_t *r)
         rc = ngx_http_output_filter(r, NULL);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http postponed output filter: %d", rc);
+                       "http postponed output filter: %d", rc);
 
         if (rc == NGX_AGAIN) {
             return rc;
         }
 
-        if (rc == NGX_ERROR) {
-            /* NGX_ERROR may be returned by any filter */
-            r->connection->write->error = 1;
-
-            ngx_http_finalize_request(r, rc);
-
-            return NGX_DONE;
-        }
+        /*
+         * we treat NGX_ERROR as NGX_OK, because we need to complete
+         * all postponed requests
+         */
 
         pr = r->postponed;
 
@@ -1713,7 +1725,7 @@ ngx_http_postponed_handler(ngx_http_request_t *r)
     r->connection->data = r;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http postponed request \"%V\"", &r->uri);
+                   "http wake child request \"%V\"", &r->uri);
 
     r->write_event_handler(r);
 
@@ -1833,7 +1845,7 @@ ngx_http_read_discarded_body(ngx_http_request_t *r)
 
     if (n == NGX_ERROR) {
 
-        r->closed = 1;
+        r->connection->closed = 1;
 
         /*
          * if a client request body is discarded then we already set
