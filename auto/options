@@ -225,6 +225,10 @@ cat << END
   --http-fastcgi-temp-path=PATH      set path to the http fastcgi temporary
                                      files path
 
+  --without-http                     disable HTTP server
+
+  --with-imap                        enable IMAP4/POP3 proxy module
+
   --with-cc=PATH                     set path to C compiler
   --with-cpp=PATH                    set path to C preprocessor
   --with-cc-opt=OPTIONS              set additional options for C compiler

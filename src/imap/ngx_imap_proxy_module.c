@@ -169,8 +169,18 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         return;
     }
 
-    if (rc == NGX_ERROR) {
+    if (rc == NGX_ERROR || rc == NGX_IMAP_PROXY_INVALID) {
         ngx_imap_proxy_internal_server_error(s);
+        return;
+    }
+
+    if (rc == NGX_IMAP_PROXY_ERROR) {
+        s->connection->read->handler = ngx_imap_proxy_handler;
+        s->connection->write->handler = ngx_imap_proxy_handler;
+        rev->handler = ngx_imap_proxy_handler;
+        c->write->handler = ngx_imap_proxy_handler;
+
+        ngx_imap_proxy_handler(c->read);
         return;
     }
 
@@ -198,14 +208,14 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
     case ngx_imap_login:
         ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap proxy send user");
 
-        line.len = s->login.len + 1 + NGX_SIZE_T_LEN + 1 + 2;
+        line.len = s->login.len + 1 + 1 + NGX_SIZE_T_LEN + 1 + 2;
         line.data = ngx_palloc(c->pool, line.len);
         if (line.data == NULL) {
             ngx_imap_proxy_internal_server_error(s);
             return;
         }
 
-        line.len = ngx_sprintf(line.data, "%V{%uz}" CRLF,
+        line.len = ngx_sprintf(line.data, "%V {%uz}" CRLF,
                                &s->login, s->passwd.len)
                    - line.data;
 
@@ -298,8 +308,18 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         return;
     }
 
-    if (rc == NGX_ERROR) {
+    if (rc == NGX_ERROR || rc == NGX_IMAP_PROXY_INVALID) {
         ngx_imap_proxy_internal_server_error(s);
+        return;
+    }
+
+    if (rc == NGX_IMAP_PROXY_ERROR) {
+        s->connection->read->handler = ngx_imap_proxy_handler;
+        s->connection->write->handler = ngx_imap_proxy_handler;
+        rev->handler = ngx_imap_proxy_handler;
+        c->write->handler = ngx_imap_proxy_handler;
+
+        ngx_imap_proxy_handler(c->read);
         return;
     }
 
@@ -424,13 +444,17 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
         }
 
     } else {
+        if (p[0] == 'N' && p[1] == 'O') {
+            return NGX_IMAP_PROXY_ERROR;
+        }
+
         if (what == NGX_IMAP_WAIT_OK) {
             if (p[0] == '*' && p[1] == ' ' && p[2] == 'O' && p[3] == 'K') {
                 return NGX_OK;
             }
 
         } else {
-            if (p[0] == '+' && p[1] == ' ' && p[2] == 'O' && p[3] == 'K') {
+            if (p[0] == '+') {
                 return NGX_OK;
             }
         }
@@ -528,7 +552,7 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
 
                 if (n == NGX_AGAIN || n < (ssize_t) size) {
                     if (ngx_handle_write_event(dst->write, /* TODO: LOWAT */ 0)
-                                                                  == NGX_ERROR)
+                        == NGX_ERROR)
                     {
                         ngx_imap_proxy_close_session(s);
                         return;

@@ -52,9 +52,14 @@ typedef struct {
 
     size_t                          send_lowat;
     size_t                          header_buffer_size;
+
     size_t                          busy_buffers_size;
     size_t                          max_temp_file_size;
     size_t                          temp_file_write_size;
+
+    size_t                          busy_buffers_size_conf;
+    size_t                          max_temp_file_size_conf;
+    size_t                          temp_file_write_size_conf;
 
     ngx_uint_t                      next_upstream;
     ngx_uint_t                      method;
@@ -95,6 +100,9 @@ typedef struct {
 typedef struct {
     ngx_list_t                      headers;
 
+    ngx_uint_t                      status_n;
+    ngx_str_t                       status_line;
+
     ngx_table_elt_t                *status;
     ngx_table_elt_t                *date;
     ngx_table_elt_t                *server;
@@ -112,6 +120,7 @@ typedef struct {
     ngx_table_elt_t                *last_modified;
     ngx_table_elt_t                *location;
     ngx_table_elt_t                *accept_ranges;
+    ngx_table_elt_t                *www_authenticate;
 
 #if (NGX_HTTP_GZIP)
     ngx_table_elt_t                *content_encoding;

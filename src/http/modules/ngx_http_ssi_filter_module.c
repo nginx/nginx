@@ -1373,8 +1373,8 @@ static ngx_int_t
 ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
-    u_char                      ch, *p, **value;
-    size_t                     *size, len;
+    u_char                      ch, *p, **value, *data;
+    size_t                     *size, len, prefix;
     ngx_uint_t                  i, j, n, bracket;
     ngx_str_t                   uri, args, name;
     ngx_array_t                 lengths, values;
@@ -1385,6 +1385,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     uri = *params[NGX_HTTP_SSI_INCLUDE_VIRTUAL];
     args.len = 0;
     args.data = NULL;
+    prefix = 0;
 
     n = ngx_http_script_variables_count(&uri);
 
@@ -1497,6 +1498,24 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
             *value = name.data;
         }
 
+        size = lengths.elts;
+        value = values.elts;
+
+        for (i = 0; i < values.nelts; i++) {
+            if (size[i] != 0) {
+                if (*value[i] != '/') {
+                    for (prefix = r->uri.len; prefix; prefix--) {
+                        if (r->uri.data[prefix - 1] == '/') {
+                            len += prefix;
+                            break;
+                        }
+                    }
+                }
+
+                break;
+            }
+        }
+
         p = ngx_palloc(r->pool, len);
         if (p == NULL) {
             return NGX_HTTP_SSI_ERROR;
@@ -1505,11 +1524,36 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         uri.len = len;
         uri.data = p;
 
-        size = lengths.elts;
-        value = values.elts;
+        if (prefix) {
+            p = ngx_cpymem(p, r->uri.data, prefix);
+        }
 
         for (i = 0; i < values.nelts; i++) {
             p = ngx_cpymem(p, value[i], size[i]);
+        }
+
+    } else {
+        if (uri.data[0] != '/') {
+            for (prefix = r->uri.len; prefix; prefix--) {
+                if (r->uri.data[prefix - 1] == '/') {
+                    break;
+                }
+            }
+
+            if (prefix) {
+                len = prefix + uri.len;
+
+                data = ngx_palloc(r->pool, len);
+                if (data == NULL) {
+                    return NGX_HTTP_SSI_ERROR;
+                }
+
+                p = ngx_cpymem(data, r->uri.data, prefix);
+                ngx_memcpy(p, uri.data, uri.len);
+
+                uri.len = len;
+                uri.data = data;
+            }
         }
     }
 

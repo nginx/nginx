@@ -16,7 +16,7 @@ static ngx_int_t ngx_imap_read_command(ngx_imap_session_t *s);
 
 static ngx_str_t  greetings[] = {
    ngx_string("+OK POP3 ready" CRLF),
-   ngx_string("* OK IMAP ready" CRLF)
+   ngx_string("* OK IMAP4 ready" CRLF)
 };
 
 static ngx_str_t  internal_server_errors[] = {
@@ -27,7 +27,7 @@ static ngx_str_t  internal_server_errors[] = {
 static u_char  pop3_ok[] = "+OK" CRLF;
 static u_char  pop3_invalid_command[] = "-ERR invalid command" CRLF;
 
-static u_char  imap_ok[] = "OK" CRLF;
+static u_char  imap_ok[] = "OK completed" CRLF;
 static u_char  imap_next[] = "+ OK" CRLF;
 static u_char  imap_bye[] = "* BYE" CRLF;
 static u_char  imap_invalid_command[] = "BAD invalid command" CRLF;

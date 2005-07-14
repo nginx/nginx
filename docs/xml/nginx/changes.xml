@@ -9,6 +9,125 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.39" date="14.07.2005">
+
+<change>
+<para lang="ru">
+Изменения в модуле ngx_http_charset_module:
+директива default_charset упразднена;
+директива charset задаёт кодировку ответа;
+директива source_charset задаёт только исходную кодировку.
+</para>
+<para lang="en">
+The changes in the ngx_http_charset_module:
+the "default_charset" directive is canceled;
+the "charset" directive sets the response charset;
+the "source_charset" directive sets the source charset only.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении ошибки 401, полученной от бэкенда, не передавалась
+строка заголовка "WWW-Authenticate".
+</para>
+<para lang="en">
+the backend "WWW-Authenticate" header line did not transferred while
+the 401 response code redirecting.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модули ngx_http_proxy_module и ngx_http_fastcgi_module могли закрыть
+соединение до того, как что-нибудь было передано клиенту;
+ошибка появилась в 0.1.38.
+</para>
+<para lang="en">
+the ngx_http_proxy_module and ngx_http_fastcgi_module may close
+a connection before anything was transferred to a client;
+bug appeared in 0.1.38.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+обработка ошибки инициализации в crypt_r() в Linux glibc. 
+</para>
+<para lang="en">
+the Linux glibc crypt_r() initialization bug.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_ssi_module не поддерживал относительные URI в
+команде include virtual.
+</para>
+<para lang="en">
+the ngx_http_ssi_module did not support the relative URI in
+the "include virtual" command.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в строке заголовка ответа бэкенда была строка "Location",
+которую nginx не должен был изменять, то в ответе передавалось тело 500 ошибки;
+ошибка появилась в 0.1.29.
+</para>
+<para lang="en">
+if the backend response had the "Location" header line and nginx
+should not rewrite this line, then the 500 code response body was transferred;
+bug appeared in 0.1.29.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+некоторые директивы модулей ngx_http_proxy_module и ngx_http_fastcgi_module
+не наследовались с уровня server на уровень location;
+ошибка появилась в 0.1.29.
+</para>
+<para lang="en">
+some directives of the ngx_http_proxy_module and ngx_http_fastcgi_module
+were not inherited from the server to the location level;
+bug appeared in 0.1.29.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_ssl_module не поддерживал цепочки сертификатов.
+</para>
+<para lang="en">
+the ngx_http_ssl_module did not support the certificate chain.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибка в модуле ngx_http_autoindex_module при показе длинных имён файлов;
+ошибка появилась в 0.1.38.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module did not show correctly the long file names;
+bug appeared in 0.1.38.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправления в IMAP/POP3 прокси при взаимодействии с бэкендом на стадии login.
+</para>
+<para lang="en">
+Bugfixes in IMAP/POP3 proxy in interaction with a backend at the login state.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.38" date="08.07.2005">
 
 <change type="feature">

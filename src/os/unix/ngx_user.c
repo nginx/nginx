@@ -33,8 +33,8 @@ ngx_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
     ngx_set_errno(0);
 
     cd.initialized = 0;
-    /* work around the glibc-2.2.5 bug */
-    cd.current_saltbits = 0;
+    /* work around the glibc bug */
+    cd.current_salt[0] = ~salt[0];
 
     value = crypt_r((char *) key, (char *) salt, &cd);
 

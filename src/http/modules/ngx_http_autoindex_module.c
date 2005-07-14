@@ -315,15 +315,15 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         entry->name.len = len;        
 
-        entry->escape = 2 * ngx_escape_uri(NULL, ngx_de_name(&dir), len,
-                                           NGX_ESCAPE_HTML);
-
-        entry->name.data = ngx_palloc(pool, len + entry->escape + 1);
+        entry->name.data = ngx_palloc(pool, len + 1);
         if (entry->name.data == NULL) {
             return ngx_http_autoindex_error(r, &dir, dname.data);
         }
 
         ngx_cpystrn(entry->name.data, ngx_de_name(&dir), len + 1);
+
+        entry->escape = 2 * ngx_escape_uri(NULL, ngx_de_name(&dir), len,
+                                           NGX_ESCAPE_HTML);
 
         if (r->utf8) {
             entry->utf_len = ngx_utf_length(&entry->name);
@@ -353,14 +353,14 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     entry = entries.elts;
     for (i = 0; i < entries.nelts; i++) {
         len += sizeof("<a href=\"") - 1
-            + 1                                          /* 1 is for "/" */
             + entry[i].name.len + entry[i].escape
+            + 1                                          /* 1 is for "/" */
             + sizeof("\">") - 1
             + entry[i].name.len - entry[i].utf_len
             + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
             + sizeof("</a>") - 1
             + sizeof(" 28-Sep-1970 12:00 ") - 1
-            + 20
+            + 20                                         /* the file size */
             + 2;
     }
 
@@ -407,7 +407,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         len = entry[i].utf_len;
 
-        if (len) {
+        if (entry[i].name.len - len) {
             if (len > NGX_HTTP_AUTOINDEX_NAME_LEN) {
                 copy = NGX_HTTP_AUTOINDEX_NAME_LEN - 3 + 1;
 

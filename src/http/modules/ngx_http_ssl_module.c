@@ -221,18 +221,19 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    if (SSL_CTX_use_certificate_file(conf->ssl_ctx,
-                                     (char *) conf->certificate.data,
-                                     SSL_FILETYPE_PEM) == 0) {
+    if (SSL_CTX_use_certificate_chain_file(conf->ssl_ctx,
+                                         (char *) conf->certificate.data) == 0)
+    {
         ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
-                      "SSL_CTX_use_certificate_file(\"%s\") failed",
+                      "SSL_CTX_use_certificate_chain_file(\"%s\") failed",
                       conf->certificate.data);
         return NGX_CONF_ERROR;
     }
 
     if (SSL_CTX_use_PrivateKey_file(conf->ssl_ctx,
                                     (char *) conf->certificate_key.data,
-                                    SSL_FILETYPE_PEM) == 0) {
+                                    SSL_FILETYPE_PEM) == 0)
+    {
         ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
                       "SSL_CTX_use_PrivateKey_file(\"%s\") failed",
                       conf->certificate_key.data);

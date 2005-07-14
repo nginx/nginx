@@ -252,7 +252,7 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
             goto invalid;
 
         case sw_literal_argument:
-            if (--s->literal_len) {
+            if (s->literal_len && --s->literal_len) {
                 break;
             }
 
@@ -281,7 +281,8 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
             case LF:
                 goto done;
             default:
-                goto invalid;
+                state = sw_spaces_before_argument;
+                break;
             }
             break;
 

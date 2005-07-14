@@ -277,7 +277,7 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.busy_buffers_size),
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.busy_buffers_size_conf),
       NULL },
 
     { ngx_string("fastcgi_temp_path"),
@@ -291,14 +291,14 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.max_temp_file_size),
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.max_temp_file_size_conf),
       NULL },
 
     { ngx_string("fastcgi_temp_file_write_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.temp_file_write_size),
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.temp_file_write_size_conf),
       NULL },
 
     { ngx_string("fastcgi_next_upstream"),
@@ -1001,16 +1001,16 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                         return NGX_HTTP_INTERNAL_SERVER_ERROR;
                     }
 
-                    r->headers_out.status = status;
-                    r->headers_out.status_line = *status_line;
+                    u->headers_in.status_n = status;
+                    u->headers_in.status_line = *status_line;
 
                 } else {
-                    r->headers_out.status = 200;
-                    r->headers_out.status_line.len = sizeof("200 OK") - 1;
-                    r->headers_out.status_line.data = (u_char *) "200 OK";
+                    u->headers_in.status_n = 200;
+                    u->headers_in.status_line.len = sizeof("200 OK") - 1;
+                    u->headers_in.status_line.data = (u_char *) "200 OK";
                 }
 
-                u->state->status = r->headers_out.status;
+                u->state->status = u->headers_in.status_n;
 #if 0
                 if (u->cachable) {
                     u->cachable = ngx_http_upstream_is_cachable(r);
@@ -1452,9 +1452,10 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
 
     conf->upstream.send_lowat = NGX_CONF_UNSET_SIZE;
     conf->upstream.header_buffer_size = NGX_CONF_UNSET_SIZE;
-    conf->upstream.busy_buffers_size = NGX_CONF_UNSET_SIZE;
-    conf->upstream.max_temp_file_size = NGX_CONF_UNSET_SIZE; 
-    conf->upstream.temp_file_write_size = NGX_CONF_UNSET_SIZE;
+
+    conf->upstream.busy_buffers_size_conf = NGX_CONF_UNSET_SIZE;
+    conf->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE; 
+    conf->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
 
     conf->upstream.pass_unparsed_uri = NGX_CONF_UNSET;
     conf->upstream.method = NGX_CONF_UNSET_UINT;
@@ -1523,23 +1524,28 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
 
-    ngx_conf_merge_size_value(conf->upstream.busy_buffers_size, 
-                              prev->upstream.busy_buffers_size,
+    ngx_conf_merge_size_value(conf->upstream.busy_buffers_size_conf,
+                              prev->upstream.busy_buffers_size_conf,
                               NGX_CONF_UNSET_SIZE);
 
-    if (conf->upstream.busy_buffers_size == NGX_CONF_UNSET_SIZE) {
+    if (conf->upstream.busy_buffers_size_conf == NGX_CONF_UNSET_SIZE) {
         conf->upstream.busy_buffers_size = 2 * size;
+    } else {
+        conf->upstream.busy_buffers_size =
+                                         conf->upstream.busy_buffers_size_conf;
+    }
 
-    } else if (conf->upstream.busy_buffers_size < size) {
+    if (conf->upstream.busy_buffers_size < size) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
              "\"fastcgi_busy_buffers_size\" must be equal or bigger than "
              "maximum of the value of \"fastcgi_header_buffer_size\" and "
              "one of the \"fastcgi_buffers\"");
 
         return NGX_CONF_ERROR;
+    }
 
-    } else if (conf->upstream.busy_buffers_size
-               > (conf->upstream.bufs.num - 1) * conf->upstream.bufs.size)
+    if (conf->upstream.busy_buffers_size
+        > (conf->upstream.bufs.num - 1) * conf->upstream.bufs.size)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
              "\"fastcgi_busy_buffers_size\" must be less than "
@@ -1549,14 +1555,18 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
 
-    ngx_conf_merge_size_value(conf->upstream.temp_file_write_size, 
-                              prev->upstream.temp_file_write_size,
+    ngx_conf_merge_size_value(conf->upstream.temp_file_write_size_conf,
+                              prev->upstream.temp_file_write_size_conf,
                               NGX_CONF_UNSET_SIZE);
 
-    if (conf->upstream.temp_file_write_size == NGX_CONF_UNSET_SIZE) {
+    if (conf->upstream.temp_file_write_size_conf == NGX_CONF_UNSET_SIZE) {
         conf->upstream.temp_file_write_size = 2 * size;
+    } else {
+        conf->upstream.temp_file_write_size =
+                                      conf->upstream.temp_file_write_size_conf;
+    }
 
-    } else if (conf->upstream.temp_file_write_size < size) {
+    if (conf->upstream.temp_file_write_size < size) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
              "\"fastcgi_temp_file_write_size\" must be equal or bigger than "
              "maximum of the value of \"fastcgi_header_buffer_size\" and "
@@ -1566,16 +1576,19 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
 
-    ngx_conf_merge_size_value(conf->upstream.max_temp_file_size,
-                              prev->upstream.max_temp_file_size,
+    ngx_conf_merge_size_value(conf->upstream.max_temp_file_size_conf,
+                              prev->upstream.max_temp_file_size_conf,
                               NGX_CONF_UNSET_SIZE);
 
-    if (conf->upstream.max_temp_file_size == NGX_CONF_UNSET_SIZE) {
-
+    if (conf->upstream.max_temp_file_size_conf == NGX_CONF_UNSET_SIZE) {
         conf->upstream.max_temp_file_size = 1024 * 1024 * 1024;
+    } else {
+        conf->upstream.max_temp_file_size =
+                                        conf->upstream.max_temp_file_size_conf;
+    }
 
-    } else if (conf->upstream.max_temp_file_size != 0
-               && conf->upstream.max_temp_file_size < size)
+    if (conf->upstream.max_temp_file_size != 0
+        && conf->upstream.max_temp_file_size < size)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
              "\"fastcgi_max_temp_file_size\" must be equal to zero to disable "
@@ -1598,7 +1611,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               NGX_HTTP_FASTCGI_TEMP_PATH, 1, 2, 0,
                               ngx_garbage_collector_temp_handler, cf);
 
-    ngx_conf_merge_msec_value(conf->upstream.pass_unparsed_uri,
+    ngx_conf_merge_value(conf->upstream.pass_unparsed_uri,
                               prev->upstream.pass_unparsed_uri, 0);
 
     if (conf->upstream.pass_unparsed_uri && conf->upstream.location->len > 1) {
@@ -1617,10 +1630,10 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->upstream.pass_request_body,
                               prev->upstream.pass_request_body, 1);
 
-    ngx_conf_merge_msec_value(conf->upstream.redirect_errors,
+    ngx_conf_merge_value(conf->upstream.redirect_errors,
                               prev->upstream.redirect_errors, 0);
 
-    ngx_conf_merge_msec_value(conf->upstream.pass_x_powered_by,
+    ngx_conf_merge_value(conf->upstream.pass_x_powered_by,
                               prev->upstream.pass_x_powered_by, 1);
 
 
@@ -1628,7 +1641,6 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->peers == NULL) {
         conf->peers = prev->peers;
-        conf->upstream = prev->upstream;
     }
 
     if (conf->params_source == NULL) {

@@ -103,6 +103,11 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_conditional_copy_header_line,
                  offsetof(ngx_http_upstream_conf_t, pass_server), 0 },
 
+    { ngx_string("WWW-Authenticate"),
+                 ngx_http_upstream_process_header_line,
+                 offsetof(ngx_http_upstream_headers_in_t, www_authenticate),
+                 ngx_http_upstream_copy_header_line, 0, 0 },
+
     { ngx_string("Location"),
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_rewrite_location, 0, 0 },
@@ -113,7 +118,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
     { ngx_string("Set-Cookie"),
                  ngx_http_upstream_ignore_header_line, 0,
-                 ngx_http_upstream_copy_header_line, 0, 1 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("Cache-Control"),
                  ngx_http_upstream_process_multi_header_lines,
@@ -386,9 +391,6 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
         return;
     }
 
-    ev->eof = 1;
-    c->closed = 1;
-
     if (n == -1) {
         if (err == NGX_EAGAIN) {
             return;
@@ -399,6 +401,9 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     } else { /* n == 0 */
         err = 0;
     }
+
+    ev->eof = 1;
+    c->closed = 1;
 
     if (!u->cachable && u->peer.connection) {
         ngx_log_error(NGX_LOG_INFO, ev->log, err,
@@ -851,7 +856,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 
     /* rc == NGX_OK */
 
-    if (r->headers_out.status == NGX_HTTP_INTERNAL_SERVER_ERROR) {
+    if (u->headers_in.status_n == NGX_HTTP_INTERNAL_SERVER_ERROR) {
 
         if (u->peer.tries > 1
             && (u->conf->next_upstream & NGX_HTTP_UPSTREAM_FT_HTTP_500))
@@ -867,14 +872,14 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
             && (u->conf->use_stale & NGX_HTTP_UPSTREAM_FT_HTTP_500))
         {
             ngx_http_upstream_finalize_request(r, u,
-                                             ngx_http_send_cached_response(r));
+                                              ngx_http_send_cached_response(r));
             return;
         }
 
 #endif
     }
 
-    if (r->headers_out.status == NGX_HTTP_NOT_FOUND
+    if (u->headers_in.status_n == NGX_HTTP_NOT_FOUND
         && u->peer.tries > 1
         && u->conf->next_upstream & NGX_HTTP_UPSTREAM_FT_HTTP_404)
     {
@@ -883,7 +888,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
     }
 
 
-    if (r->headers_out.status >= NGX_HTTP_BAD_REQUEST
+    if (u->headers_in.status_n >= NGX_HTTP_BAD_REQUEST
         && u->conf->redirect_errors
         && r->err_ctx == NULL)
     {
@@ -893,9 +898,25 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 
             err_page = clcf->error_pages->elts;
             for (i = 0; i < clcf->error_pages->nelts; i++) {
-                if (err_page[i].status == (ngx_int_t) r->headers_out.status) {
+                if (err_page[i].status == (ngx_int_t) u->headers_in.status_n) {
+
+                    if (u->headers_in.status_n == NGX_HTTP_UNAUTHORIZED) {
+
+                        r->headers_out.www_authenticate =
+                                        ngx_list_push(&r->headers_out.headers);
+
+                        if (r->headers_out.www_authenticate == NULL) {
+                            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+                            return;
+                        }
+
+                        *r->headers_out.www_authenticate = 
+                                               *u->headers_in.www_authenticate;
+                    }
+
                     ngx_http_upstream_finalize_request(r, u,
-                                                       r->headers_out.status);
+                                                       u->headers_in.status_n);
                     return;
                 }
             }
@@ -937,8 +958,6 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 
             }
         }
-
-        r->headers_out.status_line.len = 0;
 
         ngx_http_internal_redirect(r,
                               &r->upstream->headers_in.x_accel_redirect->value,
@@ -1000,6 +1019,9 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return;
         }
     }
+
+    r->headers_out.status = u->headers_in.status_n;
+    r->headers_out.status_line = u->headers_in.status_line;
 
     rc = ngx_http_send_header(r);
 
@@ -1622,6 +1644,10 @@ ngx_http_upstream_rewrite_location(ngx_http_request_t *r, ngx_table_elt_t *h,
     if (r->upstream->rewrite_redirect) {
         rc = r->upstream->rewrite_redirect(r, ho, 0);
 
+        if (rc == NGX_DECLINED) {
+            return NGX_OK;
+        }
+
         if (rc == NGX_OK) {
             r->headers_out.location = ho;
 
@@ -1664,6 +1690,10 @@ ngx_http_upstream_rewrite_refresh(ngx_http_request_t *r, ngx_table_elt_t *h,
             rc = r->upstream->rewrite_redirect(r, ho, p + 4 - ho->value.data);
 
         } else {
+            return NGX_OK;
+        }
+
+        if (rc == NGX_DECLINED) {
             return NGX_OK;
         }
 
