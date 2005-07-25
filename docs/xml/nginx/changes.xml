@@ -9,6 +9,65 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.40" date="22.07.2005">
+
+<change type="bugfix">
+<para lang="ru">
+если клиент слал очень длинную строку заголовка, то в логе не помещалась
+информация, связанная с этим запросом.
+</para>
+<para lang="en">
+if a client sent too long header line, then the request information
+did not logged in the error log.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании "X-Accel-Redirect" не передавалась строка "Set-Cookie";
+ошибка появилась в 0.1.39.
+</para>
+<para lang="en">
+the "Set-Cookie" header line was not transferred when the "X-Accel-Redirect"
+was used;
+bug appeared in 0.1.39.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании "X-Accel-Redirect" не передавалась строка
+"Content-Disposition".
+</para>
+<para lang="en">
+the "Content-Disposition" header line was not transferred when
+the "X-Accel-Redirect" was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+по сигналу SIGQUIT основной процесс не закрывал сокеты, на которых он слушал.
+</para>
+<para lang="en">
+the master process did not close the listen socket on the SIGQUIT signal.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после обновления исполняемого файла на лету на Linux и Solaris
+название процесса в команде ps становилось короче.
+</para>
+<para lang="en">
+after on-line upgrade on Linux and Solaris the process name
+became shorter in the "ps" command.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.39" date="14.07.2005">
 
 <change>

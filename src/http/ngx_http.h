@@ -74,8 +74,6 @@ void ngx_http_empty_handler(ngx_event_t *wev);
 void ngx_http_request_empty_handler(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_send_last(ngx_http_request_t *r);
-void ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error);
-void ngx_http_close_connection(ngx_connection_t *c);
 u_char * ngx_http_log_error_info(ngx_http_request_t *r, u_char *buf,
     size_t len);
 

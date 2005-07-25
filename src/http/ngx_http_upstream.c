@@ -118,7 +118,11 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
     { ngx_string("Set-Cookie"),
                  ngx_http_upstream_ignore_header_line, 0,
-                 ngx_http_upstream_copy_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 1 },
+
+    { ngx_string("Content-Disposition"),
+                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_copy_header_line, 0, 1 },
 
     { ngx_string("Cache-Control"),
                  ngx_http_upstream_process_multi_header_lines,
@@ -221,14 +225,13 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     }
 
     r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
+    r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
     
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
-    
-        r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
 
         if (!c->write->active) {
-            if (ngx_add_event(c->write, NGX_WRITE_EVENT,
-                                                NGX_CLEAR_EVENT) == NGX_ERROR)
+            if (ngx_add_event(c->write, NGX_WRITE_EVENT, NGX_CLEAR_EVENT)
+                == NGX_ERROR)
             {
                 ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;

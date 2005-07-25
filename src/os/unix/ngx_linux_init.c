@@ -81,10 +81,10 @@ ngx_os_init(ngx_log_t *log)
 void
 ngx_os_status(ngx_log_t *log)
 {
-    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
+    ngx_log_error(NGX_LOG_NOTICE, log, 0, "OS: %s %s",
                   ngx_linux_kern_ostype, ngx_linux_kern_osrelease);
 
-    ngx_log_error(NGX_LOG_INFO, log, 0, "sysctl(KERN_RTSIGMAX): %d",
+    ngx_log_error(NGX_LOG_NOTICE, log, 0, "sysctl(KERN_RTSIGMAX): %d",
                   ngx_linux_rtsig_max);
 
 

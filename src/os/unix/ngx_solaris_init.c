@@ -61,10 +61,10 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
 void ngx_os_status(ngx_log_t *log)
 {
 
-    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
+    ngx_log_error(NGX_LOG_NOTICE, log, 0, "OS: %s %s",
                   ngx_solaris_sysname, ngx_solaris_release);
 
-    ngx_log_error(NGX_LOG_INFO, log, 0, "version: %s",
+    ngx_log_error(NGX_LOG_NOTICE, log, 0, "version: %s",
                   ngx_solaris_version);
 
     ngx_posix_status(log);

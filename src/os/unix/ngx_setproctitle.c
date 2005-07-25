@@ -6,7 +6,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_setproctitle.h>
 
 
 #if (NGX_SETPROCTITLE_USES_ENV)

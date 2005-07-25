@@ -232,22 +232,22 @@ void ngx_os_status(ngx_log_t *log)
 {
     ngx_uint_t  i;
 
-    ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %s %s",
+    ngx_log_error(NGX_LOG_NOTICE, log, 0, "OS: %s %s",
                   ngx_freebsd_kern_ostype, ngx_freebsd_kern_osrelease);
 
 #ifdef __DragonFly_version
-    ngx_log_error(NGX_LOG_INFO, log, 0,
+    ngx_log_error(NGX_LOG_NOTICE, log, 0,
                   "kern.osreldate: %d, built on %d",
                   ngx_freebsd_kern_osreldate, __DragonFly_version);
 #else
-    ngx_log_error(NGX_LOG_INFO, log, 0,
+    ngx_log_error(NGX_LOG_NOTICE, log, 0,
                   "kern.osreldate: %d, built on %d",
                   ngx_freebsd_kern_osreldate, __FreeBSD_version);
 #endif
 
     for (i = 0; sysctls[i].name; i++) {
         if (sysctls[i].exists) {
-            ngx_log_error(NGX_LOG_INFO, log, 0, "%s: %d",
+            ngx_log_error(NGX_LOG_NOTICE, log, 0, "%s: %d",
                           sysctls[i].name, *sysctls[i].value);
         }
     }

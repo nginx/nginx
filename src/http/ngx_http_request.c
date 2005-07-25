@@ -43,6 +43,8 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
 static void ngx_http_lingering_close_handler(ngx_event_t *ev);
+static void ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error);
+static void ngx_http_close_connection(ngx_connection_t *c);
 
 static u_char *ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len);
 static u_char *ngx_http_log_error_handler(ngx_http_request_t *r, u_char *buf,
@@ -756,6 +758,14 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 if (rv == NGX_DECLINED) {
                     header.len = r->header_in->end - r->header_name_start;
                     header.data = r->header_name_start;
+
+                    if (header.len > NGX_MAX_ERROR_STR - 300) {
+                        header.len = NGX_MAX_ERROR_STR - 300;
+                        header.data[header.len++] = '.';
+                        header.data[header.len++] = '.';
+                        header.data[header.len++] = '.';
+                    }
+
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
                                   "client sent too long header line: \"%V\"",
                                   &header);
@@ -2340,8 +2350,7 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "http close request");
 
     if (r->pool == NULL) {
-        ngx_log_error(NGX_LOG_ALERT, log, 0,
-                      "http request already closed");
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "http request already closed");
         return;
     }
 
@@ -2389,8 +2398,8 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
 
 #if (NGX_HTTP_SSL)
 
-void
-ngx_ssl_close_handler(ngx_event_t *ev)
+static void
+ngx_http_ssl_close_handler(ngx_event_t *ev)
 {
     ngx_connection_t  *c;
 
@@ -2408,7 +2417,7 @@ ngx_ssl_close_handler(ngx_event_t *ev)
 #endif
 
 
-void
+static void
 ngx_http_close_connection(ngx_connection_t *c)
 {
     ngx_pool_t  *pool;
@@ -2420,8 +2429,8 @@ ngx_http_close_connection(ngx_connection_t *c)
 
     if (c->ssl) {
         if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
-            c->read->handler = ngx_ssl_close_handler;
-            c->write->handler = ngx_ssl_close_handler;
+            c->read->handler = ngx_http_ssl_close_handler;
+            c->write->handler = ngx_http_ssl_close_handler;
             return;
         }
     }

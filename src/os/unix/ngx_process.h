@@ -8,6 +8,9 @@
 #define _NGX_PROCESS_H_INCLUDED_
 
 
+#include <ngx_setproctitle.h>
+
+
 typedef pid_t       ngx_pid_t;
 
 typedef void (*ngx_spawn_proc_pt) (ngx_cycle_t *cycle, void *data);

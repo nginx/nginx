@@ -886,18 +886,6 @@ ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 
 ngx_int_t
-ngx_http_redirect(ngx_http_request_t *r, int redirect)
-{
-    /* STUB */
-
-    /* log request */
-
-    ngx_http_close_request(r, 0);
-    return NGX_OK;
-}
-
-
-ngx_int_t
 ngx_http_set_exten(ngx_http_request_t *r)
 {
     ngx_int_t  i;

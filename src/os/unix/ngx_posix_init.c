@@ -6,7 +6,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_setproctitle.h>
 
 
 ngx_int_t   ngx_ncpu;
@@ -137,7 +136,7 @@ ngx_int_t ngx_posix_init(ngx_log_t *log)
 
 void ngx_posix_status(ngx_log_t *log)
 {
-    ngx_log_error(NGX_LOG_INFO, log, 0,
+    ngx_log_error(NGX_LOG_NOTICE, log, 0,
                   "getrlimit(RLIMIT_NOFILE): %r:%r",
                   rlmt.rlim_cur, rlmt.rlim_max);
 }

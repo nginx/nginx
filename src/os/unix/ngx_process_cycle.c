@@ -7,7 +7,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <ngx_setproctitle.h>
 #include <ngx_channel.h>
 
 
@@ -69,11 +68,13 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     u_char            *p;
     size_t             size;
     ngx_int_t          i;
+    ngx_uint_t         n;
     sigset_t           set;
     struct timeval     tv;
     struct itimerval   itv;
     ngx_uint_t         live;
     ngx_msec_t         delay;
+    ngx_listening_t   *ls;
     ngx_core_conf_t   *ccf;
 
     sigemptyset(&set);
@@ -179,6 +180,17 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
         if (ngx_quit) {
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+
+            ls = cycle->listening.elts;
+            for (n = 0; n < cycle->listening.nelts; n++) {
+                if (ngx_close_socket(ls[n].fd) == -1) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
+                                  ngx_close_socket_n " %V failed",
+                                  &ls[n].addr_text);
+                }
+            }
+            cycle->listening.nelts = 0;
+
             continue;
         }
 

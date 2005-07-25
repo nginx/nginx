@@ -264,6 +264,8 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         s->connection->write->handler = ngx_imap_proxy_handler;
         rev->handler = ngx_imap_proxy_handler;
         c->write->handler = ngx_imap_proxy_handler;
+
+        ngx_del_timer(c->read);
     }
 }
 
@@ -384,6 +386,8 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         s->connection->write->handler = ngx_imap_proxy_handler;
         rev->handler = ngx_imap_proxy_handler;
         c->write->handler = ngx_imap_proxy_handler;
+
+        ngx_del_timer(c->read);
     }
 }
 
