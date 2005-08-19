@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.41" date="25.07.2005">
+
+<change type="bugfix">
+<para lang="ru">
+если переменная использовалась в файле конфигурации,
+то она не могла использоваться в SSI.
+</para>
+<para lang="en">
+if the variable was used in the configuration file,
+then it can not be used in SSI.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.40" date="22.07.2005">
 
 <change type="bugfix">

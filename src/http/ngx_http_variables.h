@@ -38,6 +38,7 @@ struct ngx_http_variable_s {
     ngx_http_get_variable_pt   handler;
     uintptr_t                  data;
     ngx_uint_t                 flags;
+    ngx_uint_t                 index;
 };
 
 

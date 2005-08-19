@@ -278,12 +278,12 @@ static ngx_http_ssi_command_t  ngx_http_ssi_commands[] = {
 static ngx_http_variable_t  ngx_http_ssi_vars[] = {
 
     { ngx_string("date_local"), ngx_http_ssi_date_gmt_local_variable, 0,
-      NGX_HTTP_VAR_NOCACHABLE },
+      NGX_HTTP_VAR_NOCACHABLE, 0 },
 
     { ngx_string("date_gmt"), ngx_http_ssi_date_gmt_local_variable, 1,
-      NGX_HTTP_VAR_NOCACHABLE },
+      NGX_HTTP_VAR_NOCACHABLE, 0 },
 
-    { ngx_null_string, NULL, 0, 0 }
+    { ngx_null_string, NULL, 0, 0, 0 }
 };
 
 

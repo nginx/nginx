@@ -320,19 +320,19 @@ static ngx_table_elt_t  ngx_http_proxy_headers[] = {
 static ngx_http_variable_t  ngx_http_proxy_vars[] = {
 
     { ngx_string("proxy_host"), ngx_http_proxy_host_variable, 0,
-      NGX_HTTP_VAR_CHANGABLE },
+      NGX_HTTP_VAR_CHANGABLE, 0 },
 
     { ngx_string("proxy_port"), ngx_http_proxy_port_variable, 0,
-      NGX_HTTP_VAR_CHANGABLE },
+      NGX_HTTP_VAR_CHANGABLE, 0 },
 
     { ngx_string("proxy_add_x_forwarded_for"),
-      ngx_http_proxy_add_x_forwarded_for_variable, 0, 0 },
+      ngx_http_proxy_add_x_forwarded_for_variable, 0, 0, 0 },
 
 #if 0
-    { ngx_string("proxy_add_via"), NULL, 0, 0 },
+    { ngx_string("proxy_add_via"), NULL, 0, 0, 0 },
 #endif
 
-    { ngx_null_string, NULL, 0, 0 }
+    { ngx_null_string, NULL, 0, 0, 0 }
 };
 
 
