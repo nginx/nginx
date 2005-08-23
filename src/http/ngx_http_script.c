@@ -687,6 +687,14 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
     if (code->uri) {
         r->uri = e->buf;
 
+        if (r->uri.len == 0) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "the rewritten URI has a zero length");
+            e->ip = ngx_http_script_exit;
+            e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+            return;
+        }
+
         if (ngx_http_set_exten(r) != NGX_OK) {
             e->ip = ngx_http_script_exit;
             e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -737,6 +745,7 @@ ngx_http_script_if_code(ngx_http_script_engine_t *e)
     if (e->sp->value) {
         if (code->loc_conf) {
             e->request->loc_conf = code->loc_conf;
+            ngx_http_update_location_config(e->request);
         }
 
         e->ip += sizeof(ngx_http_script_if_code_t);

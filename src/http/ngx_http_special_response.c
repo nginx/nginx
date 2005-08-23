@@ -161,7 +161,7 @@ static char error_501_page[] =
 "<html>" CRLF
 "<head><title>501 Method Not Implemented</title></head>" CRLF
 "<body bgcolor=\"white\">" CRLF
-"<center><h1>500 Method Not Implemented</h1></center>" CRLF
+"<center><h1>501 Method Not Implemented</h1></center>" CRLF
 ;
 
 

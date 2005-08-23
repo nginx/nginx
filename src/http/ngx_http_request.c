@@ -1696,9 +1696,6 @@ static ngx_int_t
 ngx_http_postponed_handler(ngx_http_request_t *r)
 {
     ngx_int_t                      rc;
-#if 0
-    ngx_http_request_t            *mr;
-#endif
     ngx_http_postponed_request_t  *pr;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,

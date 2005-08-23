@@ -916,7 +916,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
 #endif
 
     if (ngx_add_channel_event(cycle, ngx_channel, NGX_READ_EVENT,
-                                             ngx_channel_handler) == NGX_ERROR)
+                              ngx_channel_handler) == NGX_ERROR)
     {
         /* fatal */
         exit(2);

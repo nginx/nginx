@@ -67,7 +67,7 @@ ngx_event_find_timer(void)
                          (node->key * NGX_TIMER_RESOLUTION - ngx_elapsed_msec);
 #endif
 
-    return timer > 0 ? timer: 0 ;
+    return timer > 0 ? timer : 0 ;
 }
 
 

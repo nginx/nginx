@@ -586,27 +586,7 @@ ngx_http_find_location_config(ngx_http_request_t *r)
         return NGX_HTTP_NOT_FOUND;
     }
 
-    r->connection->log->file = clcf->err_log->file;
-    if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
-        r->connection->log->log_level = clcf->err_log->log_level;
-    }
-
-    if ((ngx_io.flags & NGX_IO_SENDFILE) && clcf->sendfile) {
-        r->connection->sendfile = 1;
-
-    } else {
-        r->connection->sendfile = 0;
-    }
-
-    if (r->keepalive && clcf->keepalive_timeout == 0) {
-        r->keepalive = 0;
-    }
-
-    if (!clcf->tcp_nopush) {
-        /* disable TCP_NOPUSH/TCP_CORK use */
-        r->connection->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
-    }
-
+    ngx_http_update_location_config(r);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http cl:%z max:%uz",
@@ -640,13 +620,43 @@ ngx_http_find_location_config(ngx_http_request_t *r)
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
 
+    return NGX_OK;
+}
+
+
+void
+ngx_http_update_location_config(ngx_http_request_t *r)
+{
+    ngx_http_core_loc_conf_t  *clcf;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    r->connection->log->file = clcf->err_log->file;
+    if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
+        r->connection->log->log_level = clcf->err_log->log_level;
+    }
+
+    if ((ngx_io.flags & NGX_IO_SENDFILE) && clcf->sendfile) {
+        r->connection->sendfile = 1;
+
+    } else {
+        r->connection->sendfile = 0;
+    }
+
+    if (r->keepalive && clcf->keepalive_timeout == 0) {
+        r->keepalive = 0;
+    }
+
+    if (!clcf->tcp_nopush) {
+        /* disable TCP_NOPUSH/TCP_CORK use */
+        r->connection->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
+    }
+
     r->limit_rate = clcf->limit_rate;
 
     if (clcf->handler) {
         r->content_handler = clcf->handler;
     }
-
-    return NGX_OK;
 }
 
 
@@ -1071,6 +1081,8 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
     r->loc_conf = cscf->ctx->loc_conf;
+
+    ngx_http_update_location_config(r);
 
     r->internal = 1;
 

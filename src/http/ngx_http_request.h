@@ -241,9 +241,9 @@ typedef struct {
 typedef struct ngx_http_postponed_request_s  ngx_http_postponed_request_t;
 
 struct ngx_http_postponed_request_s {
-    ngx_http_request_t            *request;
-    ngx_chain_t                   *out;
-    ngx_http_postponed_request_t  *next;
+    ngx_http_request_t               *request;
+    ngx_chain_t                      *out;
+    ngx_http_postponed_request_t     *next;
 };
 
 

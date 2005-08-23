@@ -67,6 +67,7 @@ ngx_int_t ngx_http_parse_multi_header_lines(ngx_array_t *headers,
     ngx_str_t *name, ngx_str_t *value);
 
 ngx_int_t ngx_http_find_server_conf(ngx_http_request_t *r);
+void ngx_http_update_location_config(ngx_http_request_t *r);
 void ngx_http_handler(ngx_http_request_t *r);
 void ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc);
 

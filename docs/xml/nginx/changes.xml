@@ -9,6 +9,35 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.42" date="23.08.2005">
+
+<change type="bugfix">
+<para lang="ru">
+если URI запроса получался нулевой длины после обработки модулем
+ngx_http_rewrite_module, то в модуле ngx_http_proxy_module происходил
+segmentation fault или bus error.
+</para>
+<para lang="en">
+if the request URI had a zero length after the processing in
+the ngx_http_proxy_module, then the segmentation fault or bus error occurred
+in the ngx_http_proxy_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива limit_rate не работала внутри блока if;
+ошибка появилась в 0.1.38.
+</para>
+<para lang="en">
+the "limit_rate" directive did not work inside the "if" block;
+bug appeared in 0.1.38.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.41" date="25.07.2005">
 
 <change type="bugfix">
