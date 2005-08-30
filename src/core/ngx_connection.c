@@ -123,6 +123,8 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
                                           ntohs(sin->sin_port))
                               - ls[i].addr_text.data;
 
+        ls[i].backlog = -1;
+
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
 
         ngx_memzero(&af, sizeof(struct accept_filter_arg));
@@ -467,7 +469,8 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
         return 0;
     }
 
-    if (err == NGX_ECONNRESET
+    if (err == 0
+        || err == NGX_ECONNRESET
 #if !(NGX_WIN32)
         || err == NGX_EPIPE
 #endif

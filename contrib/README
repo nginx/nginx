@@ -1,0 +1,6 @@
+
+geo2nginx.pl 	by Andrei Nigmatulin
+
+	The perl script to convert CSV geoip database (free download
+	at http://www.maxmind.com/app/geoip_country) to format, suitable
+	for use with ngx_http_geo_module.

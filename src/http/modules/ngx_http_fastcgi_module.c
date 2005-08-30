@@ -144,15 +144,6 @@ static ngx_http_fastcgi_request_start_t  ngx_http_fastcgi_request_start = {
 };
 
 
-#if 0
-static ngx_str_t ngx_http_fastcgi_methods[] = {
-    ngx_string("GET"),
-    ngx_string("HEAD"),
-    ngx_string("POST")
-};
-#endif
-
-
 static ngx_str_t  ngx_http_fastcgi_script_name =
     ngx_string("fastcgi_script_name");
 
@@ -428,9 +419,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
             }
             le.ip += sizeof(uintptr_t);
 
-            if (val_len) {
-                len += 1 + key_len + ((val_len > 127) ? 4 : 1) + val_len;
-            }
+            len += 1 + key_len + ((val_len > 127) ? 4 : 1) + val_len;
         }
     }
 
@@ -527,21 +516,17 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
             }
             le.ip += sizeof(uintptr_t);
 
-            if (val_len) {
-                *e.pos++ = (u_char) key_len;
+            *e.pos++ = (u_char) key_len;
 
-                if (val_len > 127) {
-                    *e.pos++ = (u_char) (((val_len >> 24) & 0x7f) | 0x80);
-                    *e.pos++ = (u_char) ((val_len >> 16) & 0xff);
-                    *e.pos++ = (u_char) ((val_len >> 8) & 0xff);
-                    *e.pos++ = (u_char) (val_len & 0xff);
+            if (val_len > 127) {
+                *e.pos++ = (u_char) (((val_len >> 24) & 0x7f) | 0x80);
+                *e.pos++ = (u_char) ((val_len >> 16) & 0xff);
+                *e.pos++ = (u_char) ((val_len >> 8) & 0xff);
+                *e.pos++ = (u_char) (val_len & 0xff);
 
-                } else {
-                    *e.pos++ = (u_char) val_len;
-                }
+            } else {
+                *e.pos++ = (u_char) val_len;
             }
-
-            e.skip = val_len ? 0 : 1;
 
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;

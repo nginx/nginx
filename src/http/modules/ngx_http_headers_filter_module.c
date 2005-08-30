@@ -73,7 +73,7 @@ ngx_http_headers_filter(ngx_http_request_t *r)
 {
     size_t                    len;
     ngx_uint_t                i;
-    ngx_table_elt_t          *expires, *cc;
+    ngx_table_elt_t          *expires, *cc, **ccp;
     ngx_http_headers_conf_t  *conf;
 
     if (r->headers_out.status != NGX_HTTP_OK || r->main) {
@@ -103,9 +103,20 @@ ngx_http_headers_filter(ngx_http_request_t *r)
         len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT");
         expires->value.len = len - 1;
 
-        cc = r->headers_out.cache_control.elts;
+        ccp = r->headers_out.cache_control.elts;
 
-        if (cc == NULL) {
+        if (ccp == NULL) {
+
+            if (ngx_array_init(&r->headers_out.cache_control, r->pool,
+                               1, sizeof(ngx_table_elt_t *)) != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            ccp = ngx_array_push(&r->headers_out.cache_control);
+            if (ccp == NULL) {
+                return NGX_ERROR;
+            }
 
             cc = ngx_list_push(&r->headers_out.headers);
             if (cc == NULL) {
@@ -116,10 +127,14 @@ ngx_http_headers_filter(ngx_http_request_t *r)
             cc->key.len = sizeof("Cache-Control") - 1;
             cc->key.data = (u_char *) "Cache-Control";
 
+            *ccp = cc;
+
         } else {
             for (i = 1; i < r->headers_out.cache_control.nelts; i++) {
-                cc[i].hash = 0;
+                ccp[i]->hash = 0;
             }
+
+            cc = ccp[0];
         }
 
         if (conf->expires == NGX_HTTP_EXPIRES_EPOCH) {

@@ -362,6 +362,7 @@ struct ngx_http_request_s {
     unsigned                          header_only:1;
     unsigned                          keepalive:1;
     unsigned                          lingering_close:1;
+    unsigned                          discard_body:1;
     unsigned                          internal:1;
     unsigned                          done:1;
     unsigned                          utf8:1;

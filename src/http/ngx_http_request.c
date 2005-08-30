@@ -637,8 +637,24 @@ ngx_http_process_request_line(ngx_event_t *rev)
                            "http exten: \"%V\"", &r->exten);
 
             if (r->http_version < NGX_HTTP_VERSION_10) {
+
+                if (rev->timer_set) {
+                    ngx_del_timer(rev);
+                }
+
+#if (NGX_STAT_STUB)
+                ngx_atomic_dec(ngx_stat_reading);
+                r->stat_reading = 0;
+                ngx_atomic_inc(ngx_stat_writing);
+                r->stat_writing = 1;
+#endif
+
+                rev->handler = ngx_http_request_handler;
+                c->write->handler = ngx_http_request_handler;
                 r->read_event_handler = ngx_http_block_read;
+
                 ngx_http_handler(r);
+
                 return;
             }
 
@@ -868,6 +884,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
             r->read_event_handler = ngx_http_block_read;
 
             ngx_http_handler(r);
+
             return;
         }
 
@@ -1782,6 +1799,8 @@ ngx_http_discard_body(ngx_http_request_t *r)
     if (r->headers_in.content_length_n <= 0) {
         return NGX_OK;
     }
+
+    r->discard_body = 1;
 
     size = r->header_in->last - r->header_in->pos;
 

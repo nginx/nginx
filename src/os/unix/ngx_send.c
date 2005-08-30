@@ -20,9 +20,8 @@ ssize_t ngx_unix_send(ngx_connection_t *c, u_char *buf, size_t size)
 #if (NGX_HAVE_KQUEUE)
 
     if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT) && wev->pending_eof) {
-        ngx_log_error(NGX_LOG_INFO, c->log, wev->kq_errno,
-                      "kevent() reported about an closed connection");
-
+        (void) ngx_connection_error(c, wev->kq_errno,
+                               "kevent() reported about an closed connection");
         wev->error = 1;
         return NGX_ERROR;
     }
@@ -63,7 +62,7 @@ ssize_t ngx_unix_send(ngx_connection_t *c, u_char *buf, size_t size)
 
         } else {
             wev->error = 1;
-            ngx_connection_error(c, err, "send() failed");
+            (void) ngx_connection_error(c, err, "send() failed");
             return NGX_ERROR;
         }
     }

@@ -34,9 +34,8 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 #if (NGX_HAVE_KQUEUE)
 
     if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT) && wev->pending_eof) {
-        ngx_log_error(NGX_LOG_INFO, c->log, wev->kq_errno,
-                      "kevent() reported about an closed connection");
-
+        (void) ngx_connection_error(c, wev->kq_errno,
+                               "kevent() reported about an closed connection");
         wev->error = 1;
         return NGX_CHAIN_ERROR;
     }
@@ -117,7 +116,7 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             } else {
                 wev->error = 1;
-                ngx_connection_error(c, err, "writev() failed");
+                (void) ngx_connection_error(c, err, "writev() failed");
                 return NGX_CHAIN_ERROR;
             }
         }

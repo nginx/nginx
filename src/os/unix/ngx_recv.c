@@ -29,20 +29,12 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                 rev->ready = 0;
                 rev->eof = 1;
 
-                ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
-                              "kevent() reported about an closed connection");
-
                 if (rev->kq_errno) {
                     rev->error = 1;
                     ngx_set_socket_errno(rev->kq_errno);
 
-                    if (rev->kq_errno == NGX_ECONNRESET
-                        && c->log_error == NGX_ERROR_IGNORE_ECONNRESET)
-                    {
-                        return 0;
-                    }
-
-                    return NGX_ERROR;
+                    return ngx_connection_error(c, rev->kq_errno,
+                               "kevent() reported about an closed connection");
                 }
 
                 return 0;

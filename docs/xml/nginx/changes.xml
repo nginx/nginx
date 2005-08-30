@@ -9,6 +9,71 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.43" date="30.08.2005">
+
+<change type="feature">
+<para lang="ru">
+listen(2) backlog в директиве listen можно менять по сигналу -HUP.
+</para>
+<para lang="en">
+the listen(2) backlog in the "listen" directive
+can be changed using the -HUP signal.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+скрипт geo2nginx.pl добавлен в contrib.
+</para>
+<para lang="en">
+the geo2nginx.pl script was added to contrib.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+параметры FastCGI, с пустым значениями, теперь передаются серверу.
+</para>
+<para lang="en">
+the FastCGI parameters with the empty values now are passed to a server.
+</para>
+</change>
+
+<!--
+
+<change type="bugfix">
+<para lang="ru">
+при ошибках в работе с проксированным сервером или FastCGI сервером
+мог произойти segmentation fault;
+в режиме прокси ошибка появилась в 0.1.29.
+</para>
+<para lang="en">
+the segmentation fault may occurred if there were errors while
+working with proxied or FastCGI server;
+in the proxied mode the bug appeared in 0.1.29.
+</para>
+</change>
+
+-->
+
+<change type="bugfix">
+<para lang="ru">
+если в ответе проксированного сервера или FastCGI сервера была строка
+"Cache-Control", то при использовании директивы expires происходил
+segmentation fault или рабочий процесс мог зациклится;
+в режиме прокси ошибка появилась в 0.1.29.
+</para>
+<para lang="en">
+the segmentation fault occurred or the worker process may got caught
+in an endless loop if the proxied or FastCGI server sent the "Cache-Control"
+header line and the "expires" directive was used;
+in the proxied mode the bug appeared in 0.1.29.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.42" date="23.08.2005">
 
 <change type="bugfix">

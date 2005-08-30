@@ -45,6 +45,7 @@ typedef struct {
     unsigned          bound:1;       /* already bound */
     unsigned          inherited:1;   /* inherited from previous process */
     unsigned          nonblocking_accept:1;
+    unsigned          change_backlog:1;
     unsigned          nonblocking:1;
     unsigned          shared:1;    /* shared between threads or processes */
     unsigned          addr_ntop:1;

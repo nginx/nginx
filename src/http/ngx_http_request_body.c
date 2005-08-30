@@ -31,7 +31,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (r->request_body) {
+    if (r->request_body || r->discard_body) {
         post_handler(r);
         return NGX_OK;
     }

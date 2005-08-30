@@ -339,6 +339,10 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                         nls[n].remain = 1;
                         ls[i].remain = 1;
 
+                        if (ls[n].backlog != nls[i].backlog) {
+                            nls[n].change_backlog = 1;
+                        }
+
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
 
                         /*
@@ -405,11 +409,20 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                 failed = 1;
             }
 
-#if (NGX_HAVE_DEFERRED_ACCEPT)
-
             if (!failed) {
                 ls = cycle->listening.elts;
                 for (i = 0; i < cycle->listening.nelts; i++) {
+
+                    if (ls[i].change_backlog) {
+                        if (listen(ls[i].fd, ls[i].backlog) == -1) {
+                            ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
+                                          "changing the listen() backlog to %d "
+                                          "for %V failed, ignored",
+                                          &ls[i].addr_text, ls[i].backlog);
+                        }
+                    }
+
+#if (NGX_HAVE_DEFERRED_ACCEPT)
 
 #ifdef SO_ACCEPTFILTER
                     if (ls[i].delete_deferred) {
@@ -476,9 +489,9 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                         ls[i].deferred_accept = 1;
                     }
 #endif
+#endif
                 }
             }
-#endif
         }
     }
 
