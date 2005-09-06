@@ -32,6 +32,8 @@ static ngx_http_variable_value_t *
     ngx_http_variable_document_root(ngx_http_request_t *r, uintptr_t data);
 static ngx_http_variable_value_t *
     ngx_http_variable_request_filename(ngx_http_request_t *r, uintptr_t data);
+static ngx_http_variable_value_t *
+    ngx_http_variable_remote_user(ngx_http_request_t *r, uintptr_t data);
 
 
 /*
@@ -108,8 +110,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("request_method"), ngx_http_variable_request,
       offsetof(ngx_http_request_t, method_name), 0, 0 },
 
-    { ngx_string("remote_user"), ngx_http_variable_request,
-      offsetof(ngx_http_request_t, headers_in.user), 0, 0 },
+    { ngx_string("remote_user"), ngx_http_variable_remote_user, 0, 0, 0 },
 
     { ngx_null_string, NULL, 0, 0, 0 }
 };
@@ -652,6 +653,34 @@ ngx_http_variable_request_filename(ngx_http_request_t *r, uintptr_t data)
         ngx_memcpy(p, r->uri.data + clcf->name.len,
                    r->uri.len + 1 - clcf->name.len);
     }
+
+    return vv;
+}
+
+
+static ngx_http_variable_value_t *
+ngx_http_variable_remote_user(ngx_http_request_t *r, uintptr_t data)
+{
+    ngx_int_t                   rc;
+    ngx_http_variable_value_t  *vv;
+
+    rc = ngx_http_auth_basic_user(r);
+
+    if (rc == NGX_DECLINED) {
+        return NGX_HTTP_VAR_NOT_FOUND;
+    }
+
+    if (rc == NGX_ERROR) {
+        return NULL;
+    }
+
+    vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
+    if (vv == NULL) {
+        return NULL;
+    }
+
+    vv->value = 0;
+    vv->text = r->headers_in.user;
 
     return vv;
 }

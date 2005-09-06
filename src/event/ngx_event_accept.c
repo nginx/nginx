@@ -256,6 +256,7 @@ ngx_event_accept(ngx_event_t *ev)
         c->servers = ls->servers;
 
         c->recv = ngx_recv;
+        c->send = ngx_send;
         c->send_chain = ngx_send_chain;
 
         c->log = log;

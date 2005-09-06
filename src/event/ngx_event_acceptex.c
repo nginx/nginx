@@ -151,6 +151,7 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
         c->servers = ls->servers;
 
         c->recv = ngx_recv;
+        c->send = ngx_send;
         c->send_chain = ngx_send_chain;
 
         c->pool = ngx_create_pool(ls->pool_size, ls->log);

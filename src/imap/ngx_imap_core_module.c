@@ -75,13 +75,6 @@ static ngx_command_t  ngx_imap_core_commands[] = {
       offsetof(ngx_imap_core_srv_conf_t, imap_client_buffer_size),
       NULL },
 
-    { ngx_string("proxy_buffer"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_IMAP_SRV_CONF_OFFSET,
-      offsetof(ngx_imap_core_srv_conf_t, proxy_buffer_size),
-      NULL },
-
     { ngx_string("timeout"),
       NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -157,7 +150,6 @@ ngx_imap_core_create_srv_conf(ngx_conf_t *cf)
     }
 
     cscf->imap_client_buffer_size = NGX_CONF_UNSET_SIZE;
-    cscf->proxy_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->timeout = NGX_CONF_UNSET_MSEC;
     cscf->protocol = NGX_CONF_UNSET_UINT;
 
@@ -190,8 +182,6 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_size_value(conf->imap_client_buffer_size,
                               prev->imap_client_buffer_size,
-                              (size_t) ngx_pagesize);
-    ngx_conf_merge_size_value(conf->proxy_buffer_size, prev->proxy_buffer_size,
                               (size_t) ngx_pagesize);
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
     ngx_conf_merge_unsigned_value(conf->protocol, prev->protocol,

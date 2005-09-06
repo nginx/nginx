@@ -13,6 +13,10 @@
 static void ngx_imap_init_session(ngx_event_t *rev);
 static ngx_int_t ngx_imap_read_command(ngx_imap_session_t *s);
 
+#if (NGX_IMAP_SSL)
+static void ngx_imap_ssl_close_handler(ngx_event_t *ev);
+#endif
+
 
 static ngx_str_t  greetings[] = {
    ngx_string("+OK POP3 ready" CRLF),
@@ -36,8 +40,12 @@ static u_char  imap_invalid_command[] = "BAD invalid command" CRLF;
 void
 ngx_imap_init_connection(ngx_connection_t *c)
 {
-    ssize_t                    size;
+    ngx_imap_session_t        *s;
     ngx_imap_conf_ctx_t       *ctx;
+#if (NGX_IMAP_SSL)
+    ngx_int_t                  rc;
+    ngx_imap_ssl_conf_t       *sslcf;
+#endif
     ngx_imap_core_srv_conf_t  *cscf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0, "imap init connection");
@@ -45,25 +53,122 @@ ngx_imap_init_connection(ngx_connection_t *c)
     c->log_error = NGX_ERROR_INFO;
 
     ctx = c->ctx;
-    cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
 
-    size = greetings[cscf->protocol].len;
+#if (NGX_IMAP_SSL)
 
-    if (ngx_send(c, greetings[cscf->protocol].data, size) < size) {
-        /*
-         * we treat the incomplete sending as NGX_ERROR
-         * because it is very strange here
-         */
+    sslcf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_ssl_module);
+
+    if (sslcf->enable) {
+
+        if (ngx_ssl_create_session(sslcf->ssl_ctx, c, NGX_SSL_BUFFER)
+            == NGX_ERROR)
+        {
+            ngx_imap_close_connection(c);
+            return;
+        }
+
+        rc = ngx_ssl_handshake(c);
+
+        if (rc == NGX_ERROR) {
+            ngx_imap_close_connection(c);
+            return;
+        }
+
+        c->recv = ngx_ssl_recv;
+        c->send = ngx_ssl_write;
+        c->send_chain = ngx_ssl_send_chain;
+    }
+
+#endif
+
+    s = ngx_pcalloc(c->pool, sizeof(ngx_imap_session_t));
+    if (s == NULL) {
         ngx_imap_close_connection(c);
         return;
     }
 
-    c->read->handler = ngx_imap_init_session;
+    c->data = s;
+    s->connection = c;
 
+    cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
+    s->protocol = cscf->protocol;
+
+    s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_imap_max_module);
+    if (s->ctx == NULL) {
+        ngx_imap_session_internal_server_error(s);
+        return;
+    }
+
+    s->main_conf = ctx->main_conf;
+    s->srv_conf = ctx->srv_conf;
+
+    s->out = greetings[s->protocol];
+
+    c->read->handler = ngx_imap_init_session;
+    c->write->handler = ngx_imap_send;
+
+    ngx_add_timer(c->write, cscf->timeout);
     ngx_add_timer(c->read, cscf->timeout);
 
     if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
         ngx_imap_close_connection(c);
+    }
+
+    ngx_imap_send(c->write);
+}
+
+
+void
+ngx_imap_send(ngx_event_t *wev)
+{
+    ngx_int_t            n;
+    ngx_connection_t    *c;
+    ngx_imap_session_t  *s;
+
+    c = wev->data;
+    s = c->data;
+
+    if (wev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        ngx_imap_close_connection(c);
+        return;
+    }
+
+    if (s->out.len == 0) {
+        if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+            ngx_imap_close_connection(c);
+        }
+
+        return;
+    }
+
+    n = c->send(c, s->out.data, s->out.len);
+
+    if (n > 0) {
+        s->out.len -= n;
+
+        if (s->quit) {
+            ngx_imap_close_connection(c);
+            return;
+        }
+
+        if (s->blocked) {
+            c->read->handler(c->read);
+        }
+
+        return;
+    }
+
+    if (n == NGX_ERROR) {
+        ngx_imap_close_connection(c);
+        return;
+    }
+
+    /* n == NGX_AGAIN */
+
+    if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+        ngx_imap_close_connection(c);
+        return;
     }
 }
 
@@ -74,7 +179,6 @@ ngx_imap_init_session(ngx_event_t *rev)
     size_t                     size;
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
-    ngx_imap_conf_ctx_t       *ctx;
     ngx_imap_core_srv_conf_t  *cscf;
 
     c = rev->data;
@@ -85,40 +189,20 @@ ngx_imap_init_session(ngx_event_t *rev)
         return;
     }
 
-    s = ngx_pcalloc(c->pool, sizeof(ngx_imap_session_t));
-    if (s == NULL) {
-        ngx_imap_session_internal_server_error(s);
-        return;
-    }
-
-    c->data = s;
-    s->connection = c;
-
-    s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_imap_max_module);
-    if (s->ctx == NULL) {
-        ngx_imap_session_internal_server_error(s);
-        return;
-    }
-
-    ctx = c->ctx;
-    s->main_conf = ctx->main_conf;
-    s->srv_conf = ctx->srv_conf;
+    s = c->data;
 
     if (ngx_array_init(&s->args, c->pool, 2, sizeof(ngx_str_t)) == NGX_ERROR) {
         ngx_imap_session_internal_server_error(s);
         return;
     }
 
-    cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
-
-    s->protocol = cscf->protocol;
-
-    if (cscf->protocol == NGX_IMAP_POP3_PROTOCOL) {
+    if (s->protocol == NGX_IMAP_POP3_PROTOCOL) {
         size = 128;
         s->imap_state = ngx_pop3_start;
         c->read->handler = ngx_pop3_auth_state;
 
     } else {
+        cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
         size = cscf->imap_client_buffer_size;
         s->imap_state = ngx_imap_start;
         c->read->handler = ngx_imap_auth_state;
@@ -137,11 +221,11 @@ ngx_imap_init_session(ngx_event_t *rev)
 void
 ngx_imap_auth_state(ngx_event_t *rev)
 {
-    u_char                    *text, *last, *out, *p;
-    ssize_t                    size, text_len, last_len;
+    u_char                    *text, *last, *p;
+    ssize_t                    text_len, last_len;
     ngx_str_t                 *arg;
     ngx_int_t                  rc;
-    ngx_uint_t                 quit, tag;
+    ngx_uint_t                 tag;
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
     ngx_imap_core_srv_conf_t  *cscf;
@@ -157,6 +241,14 @@ ngx_imap_auth_state(ngx_event_t *rev)
         return;
     }
 
+    if (s->out.len) {
+        ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0, "imap send handler busy");
+        s->blocked = 1;
+        return;
+    }
+
+    s->blocked = 0;
+
     rc = ngx_imap_read_command(s);
 
     ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0, "imap auth: %i", rc);
@@ -165,7 +257,6 @@ ngx_imap_auth_state(ngx_event_t *rev)
         return;
     }
 
-    quit = 0;
     tag = 1;
 
     text = NULL;
@@ -235,9 +326,9 @@ ngx_imap_auth_state(ngx_event_t *rev)
             break;
 
         case NGX_IMAP_LOGOUT:
+            s->quit = 1;
             text = imap_bye;
             text_len = sizeof(imap_bye) - 1;
-            quit = 1;
             break;
 
         case NGX_IMAP_NOOP:
@@ -260,18 +351,19 @@ ngx_imap_auth_state(ngx_event_t *rev)
     }
 
     if (tag) {
-        if (s->out.len < text_len + s->tag.len + last_len) {
-
-            s->out.len = text_len + s->tag.len + last_len;
-            s->out.data = ngx_palloc(c->pool, s->out.len);
-            if (s->out.data == NULL) {
+        if (s->tagged_line.len < s->tag.len + text_len + last_len) {
+            s->tagged_line.len = s->tag.len + text_len + last_len;
+            s->tagged_line.data = ngx_palloc(c->pool, s->tagged_line.len);
+            if (s->tagged_line.data == NULL) {
                 ngx_imap_close_connection(c);
                 return;
             }
         }
 
-        out = s->out.data;
-        p = out;
+        s->out.data = s->tagged_line.data;
+        s->out.len = s->tag.len + text_len + last_len;
+
+        p = s->out.data;
 
         if (text) {
             p = ngx_cpymem(p, text, text_len);
@@ -279,35 +371,20 @@ ngx_imap_auth_state(ngx_event_t *rev)
         p = ngx_cpymem(p, s->tag.data, s->tag.len);
         ngx_memcpy(p, last, last_len);
 
-        size = text_len + s->tag.len + last_len;
 
     } else {
-        out = last;
-        size = last_len;
+        s->out.data = last;
+        s->out.len = last_len;
     }
 
-    if (ngx_send(c, out, size) < size) {
-        /*
-         * we treat the incomplete sending as NGX_ERROR
-         * because it is very strange here
-         */
-        ngx_imap_close_connection(c);
-        return;
+    if (rc != NGX_IMAP_NEXT) {
+        s->args.nelts = 0;
+        s->buffer->pos = s->buffer->start;
+        s->buffer->last = s->buffer->start;
+        s->tag.len = 0;
     }
 
-    if (rc == NGX_IMAP_NEXT) {
-        return;
-    }
-
-    if (quit) {
-        ngx_imap_close_connection(c);
-        return;
-    }
-
-    s->args.nelts = 0;
-    s->buffer->pos = s->buffer->start;
-    s->buffer->last = s->buffer->start;
-    s->tag.len = 0;
+    ngx_imap_send(c->write);
 }
 
 
@@ -317,7 +394,6 @@ ngx_pop3_auth_state(ngx_event_t *rev)
     u_char                    *text;
     ssize_t                    size;
     ngx_int_t                  rc;
-    ngx_uint_t                 quit;
     ngx_str_t                 *arg;
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
@@ -334,13 +410,20 @@ ngx_pop3_auth_state(ngx_event_t *rev)
         return;
     }
 
+    if (s->out.len) {
+        ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0, "imap send handler busy");
+        s->blocked = 1;
+        return;
+    }
+
+    s->blocked = 0;
+
     rc = ngx_imap_read_command(s);
 
     if (rc == NGX_AGAIN || rc == NGX_ERROR) {
         return;
     }
 
-    quit = 0;
     text = pop3_ok;
     size = sizeof(pop3_ok) - 1;
 
@@ -381,7 +464,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                 break;
 
             case NGX_POP3_QUIT:
-                quit = 1;
+                s->quit = 1;
                 break;
 
             case NGX_POP3_NOOP:
@@ -441,7 +524,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                 break;
 
             case NGX_POP3_QUIT:
-                quit = 1;
+                s->quit = 1;
                 break;
 
             case NGX_POP3_NOOP:
@@ -466,23 +549,14 @@ ngx_pop3_auth_state(ngx_event_t *rev)
         size = sizeof(pop3_invalid_command) - 1;
     }
 
-    if (ngx_send(c, text, size) < size) {
-        /*
-         * we treat the incomplete sending as NGX_ERROR
-         * because it is very strange here
-         */
-        ngx_imap_close_connection(c);
-        return;
-    }
-
-    if (quit) {
-        ngx_imap_close_connection(c);
-        return;
-    }
-
     s->args.nelts = 0;
     s->buffer->pos = s->buffer->start;
     s->buffer->last = s->buffer->start;
+
+    s->out.data = text;
+    s->out.len = size;
+
+    ngx_imap_send(c->write);
 }
 
 
@@ -492,8 +566,8 @@ ngx_imap_read_command(ngx_imap_session_t *s)
     ssize_t    n;
     ngx_int_t  rc;
 
-    n = ngx_recv(s->connection, s->buffer->last,
-                 s->buffer->end - s->buffer->last);
+    n = s->connection->recv(s->connection, s->buffer->last,
+                            s->buffer->end - s->buffer->last);
 
     if (n == NGX_ERROR || n == 0) {
         ngx_imap_close_connection(s->connection);
@@ -538,10 +612,10 @@ ngx_imap_read_command(ngx_imap_session_t *s)
 void
 ngx_imap_session_internal_server_error(ngx_imap_session_t *s)
 {
-    (void) ngx_send(s->connection, internal_server_errors[s->protocol].data,
-                    internal_server_errors[s->protocol].len);
+    s->out = internal_server_errors[s->protocol];
+    s->quit = 1;
 
-    ngx_imap_close_connection(s->connection);
+    ngx_imap_send(s->connection->write);
 }
 
 
@@ -553,9 +627,42 @@ ngx_imap_close_connection(ngx_connection_t *c)
     ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
                    "close imap connection: %d", c->fd);
 
+#if (NGX_IMAP_SSL)
+
+    if (c->ssl) {
+        if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
+            c->read->handler = ngx_imap_ssl_close_handler;
+            c->write->handler = ngx_imap_ssl_close_handler;
+            return;
+        }
+    }
+
+#endif
+
     pool = c->pool;
 
     ngx_close_connection(c);
 
     ngx_destroy_pool(pool);
 }
+
+
+#if (NGX_IMAP_SSL)
+ 
+static void
+ngx_imap_ssl_close_handler(ngx_event_t *ev)
+{
+    ngx_connection_t  *c;
+
+    c = ev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, ev->log, 0, "http ssl close handler");
+
+    if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
+        return;
+    }
+
+    ngx_imap_close_connection(c);
+}
+
+#endif

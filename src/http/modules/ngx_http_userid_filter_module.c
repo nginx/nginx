@@ -26,18 +26,22 @@ typedef struct {
     ngx_str_t   name;
     ngx_str_t   domain;
     ngx_str_t   path;
-    time_t      expires;
     ngx_str_t   p3p;
+
+    time_t      expires;
+
+    u_char      mark;
 } ngx_http_userid_conf_t;
 
 
 typedef struct {
     uint32_t    uid_got[4];
     uint32_t    uid_set[4];
+    ngx_str_t   cookie;
 } ngx_http_userid_ctx_t;
 
 
-static ngx_int_t ngx_http_userid_get_uid(ngx_http_request_t *r,
+static void ngx_http_userid_get_uid(ngx_http_request_t *r,
     ngx_http_userid_ctx_t *ctx, ngx_http_userid_conf_t *conf);
 static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
     ngx_http_userid_ctx_t *ctx, ngx_http_userid_conf_t *conf);
@@ -61,6 +65,9 @@ static char *ngx_http_userid_path(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_http_userid_expires(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_userid_p3p(ngx_conf_t *cf, void *post, void *data);
+static char *ngx_http_userid_mark(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+
 
 
 static uint32_t  sequencer_v1 = 1;
@@ -84,7 +91,6 @@ static ngx_conf_enum_t  ngx_http_userid_state[] = {
 
 static ngx_conf_post_handler_pt  ngx_http_userid_domain_p =
     ngx_http_userid_domain;
-
 static ngx_conf_post_handler_pt  ngx_http_userid_path_p = ngx_http_userid_path;
 static ngx_conf_post_handler_pt  ngx_http_userid_p3p_p = ngx_http_userid_p3p;
 
@@ -99,28 +105,28 @@ static ngx_command_t  ngx_http_userid_commands[] = {
       ngx_http_userid_state },
 
     { ngx_string("userid_service"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_userid_conf_t, service),
       NULL },
 
     { ngx_string("userid_name"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_userid_conf_t, name),
       NULL },
 
     { ngx_string("userid_domain"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_userid_conf_t, domain),
       &ngx_http_userid_domain_p },
 
     { ngx_string("userid_path"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_userid_conf_t, path),
@@ -139,6 +145,13 @@ static ngx_command_t  ngx_http_userid_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_userid_conf_t, p3p),
       &ngx_http_userid_p3p_p },
+
+    { ngx_string("userid_mark"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_userid_mark,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
 
       ngx_null_command
 };
@@ -205,15 +218,24 @@ ngx_http_userid_filter(ngx_http_request_t *r)
 
     ngx_http_set_ctx(r, ctx, ngx_http_userid_filter_module);
 
+    ngx_http_userid_get_uid(r, ctx, conf);
 
-    rc = ngx_http_userid_get_uid(r, ctx, conf);
-
-    if (rc != NGX_OK) {
-        return rc;
+    if (conf->enable == NGX_HTTP_USERID_LOG) {
+        return ngx_http_next_header_filter(r);
     }
 
-    if (conf->enable == NGX_HTTP_USERID_LOG || ctx->uid_got[3] != 0) {
-        return ngx_http_next_header_filter(r);
+    if (ctx->uid_got[3] != 0) {
+        if (conf->mark == '\0') {
+            return ngx_http_next_header_filter(r);
+
+        } else {
+            if (ctx->cookie.len > 23
+                && ctx->cookie.data[22] == conf->mark
+                && ctx->cookie.data[23] == '=')
+            {
+                return ngx_http_next_header_filter(r);
+            }
+        }
     }
 
     rc = ngx_http_userid_set_uid(r, ctx, conf);
@@ -226,7 +248,7 @@ ngx_http_userid_filter(ngx_http_request_t *r)
 }
 
 
-static ngx_int_t
+static void
 ngx_http_userid_get_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     ngx_http_userid_conf_t *conf)
 {
@@ -235,23 +257,29 @@ ngx_http_userid_get_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     ngx_table_elt_t  **cookies;
 
     n = ngx_http_parse_multi_header_lines(&r->headers_in.cookies, &conf->name,
-                                          &src);
+                                          &ctx->cookie);
     if (n == NGX_DECLINED) {
-        return NGX_OK;
+        return;
     }
 
-    if (src.len < 22) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "uid cookie: \"%V\"", &ctx->cookie);
+
+    if (ctx->cookie.len < 22) {
         cookies = r->headers_in.cookies.elts;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "client sent too short userid cookie \"%V\"",
                       &cookies[n]->value);
-        return NGX_OK;
+        return;
     }
 
+    src = ctx->cookie;
+
     /*
-     * we have to limit encoded string to 22 characters
-     * because there are already the millions cookies with a garbage
-     * instead of the correct base64 trail "=="
+     * we have to limit the encoded string to 22 characters because
+     *  1) cookie may be marked by "userid_mark",
+     *  2) and there are already the millions cookies with a garbage
+     *     instead of the correct base64 trail "=="
      */
 
     src.len = 22;
@@ -263,15 +291,13 @@ ngx_http_userid_get_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "client sent invalid userid cookie \"%V\"",
                       &cookies[n]->value);
-        return NGX_OK;
+        return;
     }
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "uid: %08XD%08XD%08XD%08XD",
                    ctx->uid_got[0], ctx->uid_got[1],
                    ctx->uid_got[2], ctx->uid_got[3]);
-
-    return NGX_OK;
 }
 
 
@@ -286,47 +312,58 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     ngx_str_t            src, dst;
     ngx_table_elt_t     *set_cookie, *p3p;
 
-    /* TODO: mutex for sequencers */
+    /*
+     * TODO: in the threaded mode the sequencers should be in TLS and their
+     * ranges should be divided between threads
+     */
 
-    if (conf->enable == NGX_HTTP_USERID_V1) {
-        if (conf->service == NGX_CONF_UNSET) {
-            ctx->uid_set[0] = 0;
+    if (ctx->uid_got[3] == 0) {
+
+        if (conf->enable == NGX_HTTP_USERID_V1) {
+            if (conf->service == NGX_CONF_UNSET) {
+                ctx->uid_set[0] = 0;
+            } else {
+                ctx->uid_set[0] = conf->service;
+            }
+            ctx->uid_set[1] = ngx_time();
+            ctx->uid_set[2] = ngx_pid;
+            ctx->uid_set[3] = sequencer_v1;
+            sequencer_v1 += 0x100;
+
         } else {
-            ctx->uid_set[0] = htonl(conf->service);
-        }
+            if (conf->service == NGX_CONF_UNSET) {
+                if (r->in_addr == 0) {
+                    slen = sizeof(struct sockaddr_in);
+                    if (getsockname(r->connection->fd,
+                                    (struct sockaddr *) &sin, &slen) == -1)
+                    {
+                        ngx_log_error(NGX_LOG_CRIT, r->connection->log,
+                                      ngx_socket_errno, "getsockname() failed");
+                    }
 
-        ctx->uid_set[1] = ngx_time();
-        ctx->uid_set[2] = ngx_pid;
-        ctx->uid_set[3] = sequencer_v1;
-        sequencer_v1 += 0x100;
-
-    } else {
-        if (conf->service == NGX_CONF_UNSET) {
-            if (r->in_addr == 0) {
-                slen = sizeof(struct sockaddr_in);
-                if (getsockname(r->connection->fd,
-                                (struct sockaddr *) &sin, &slen) == -1)
-                {
-                    ngx_log_error(NGX_LOG_CRIT, r->connection->log,
-                                  ngx_socket_errno, "getsockname() failed");
+                    r->in_addr = sin.sin_addr.s_addr;
                 }
 
-                r->in_addr = sin.sin_addr.s_addr;
+                ctx->uid_set[0] = htonl(r->in_addr);
+
+            } else {
+                ctx->uid_set[0] = htonl(conf->service);
             }
 
-            ctx->uid_set[0] = htonl(r->in_addr);
-
-        } else {
-            ctx->uid_set[0] = htonl(conf->service);
+            ctx->uid_set[1] = htonl(ngx_time());
+            ctx->uid_set[2] = htonl(ngx_pid);
+            ctx->uid_set[3] = htonl(sequencer_v2);
+            sequencer_v2 += 0x100;
+            if (sequencer_v2 < 0x03030302) {
+                sequencer_v2 = 0x03030302;
+            }
         }
 
-        ctx->uid_set[1] = htonl(ngx_time());
-        ctx->uid_set[2] = htonl(ngx_pid);
-        ctx->uid_set[3] = htonl(sequencer_v2);
-        sequencer_v2 += 0x100;
-        if (sequencer_v2 < 0x03030302) {
-            sequencer_v2 = 0x03030302;
-        }
+    } else {
+        ctx->uid_set[0] = ctx->uid_got[0];
+        ctx->uid_set[1] = ctx->uid_got[1];
+        ctx->uid_set[2] = ctx->uid_got[2];
+        ctx->uid_set[3] = ctx->uid_got[3];
     }
 
     len = conf->name.len + 1 + ngx_base64_encoded_length(16) + conf->path.len;
@@ -347,13 +384,24 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     p = ngx_cpymem(cookie, conf->name.data, conf->name.len);
     *p++ = '=';
 
-    src.len = 16;
-    src.data = (u_char *) ctx->uid_set;
-    dst.data = p;
+    if (ctx->uid_got[3] == 0) {
+        src.len = 16;
+        src.data = (u_char *) ctx->uid_set;
+        dst.data = p;
 
-    ngx_encode_base64(&dst, &src);
+        ngx_encode_base64(&dst, &src);
 
-    p += dst.len;
+        p += dst.len;
+
+        if (conf->mark) {
+            *(p - 2) = conf->mark;
+        }
+
+    } else {
+        p = ngx_cpymem(p, ctx->cookie.data, 22);
+        *p++ = conf->mark;
+        *p++ = '=';
+    }
 
     if (conf->expires == NGX_HTTP_USERID_MAX_EXPIRES) {
         p = ngx_cpymem(p, expires, sizeof(expires) - 1);
@@ -545,6 +593,7 @@ ngx_http_userid_create_conf(ngx_conf_t *cf)
     conf->enable = NGX_CONF_UNSET_UINT;
     conf->service = NGX_CONF_UNSET;
     conf->expires = NGX_CONF_UNSET;
+    conf->mark = (u_char) '\xFF';
 
     return conf;
 }   
@@ -566,6 +615,14 @@ ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->service, prev->service, NGX_CONF_UNSET);
     ngx_conf_merge_sec_value(conf->expires, prev->expires, 0);
+
+    if (conf->mark == (u_char) '\xFF') {
+        if (prev->mark == (u_char) '\xFF') {
+            conf->mark = '\0';
+        } else {
+            conf->mark = prev->mark;
+        }
+    }
 
     return NGX_CONF_OK;
 }
@@ -627,7 +684,7 @@ ngx_http_userid_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_userid_conf_t *ucf = conf;
 
-    ngx_str_t   *value;
+    ngx_str_t  *value;
 
     if (ucf->expires != NGX_CONF_UNSET) {
         return "is duplicate";
@@ -667,6 +724,39 @@ ngx_http_userid_p3p(ngx_conf_t *cf, void *post, void *data)
         p3p->len = 0;
         p3p->data = (u_char *) "";
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_userid_mark(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_userid_conf_t *ucf = conf;
+
+    ngx_str_t  *value;
+
+    if (ucf->mark != (u_char) '\xFF') {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        ucf->mark = '\0';
+        return NGX_CONF_OK;
+    }
+
+    if (value[1].len != 1
+        || !((value[1].data[0] >= '0' && value[1].data[0] <= '9')
+              || (value[1].data[0] >= 'A' && value[1].data[0] <= 'Z')
+              || (value[1].data[0] >= 'a' && value[1].data[0] <= 'z')
+              || value[1].data[0] == '='))
+    {
+        return "value must be \"off\" or a single letter, digit or \"=\"";
+    }
+
+    ucf->mark = value[1].data[0];
 
     return NGX_CONF_OK;
 }

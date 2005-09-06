@@ -292,6 +292,8 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 
                 r->err_ctx = r->ctx;
 
+                r->method = NGX_HTTP_GET;
+
                 return ngx_http_internal_redirect(r, &err_page[i].uri, NULL);
             }
         }

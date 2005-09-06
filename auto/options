@@ -64,6 +64,7 @@ HTTP_FASTCGI=YES
 HTTP_STUB_STATUS=NO
 
 IMAP=NO
+IMAP_SSL=NO
 
 NGX_ADDONS=
 
@@ -141,6 +142,7 @@ do
         --with-http_stub_status_module)  HTTP_STUB_STATUS=YES       ;;
 
         --with-imap)                     IMAP=YES                   ;;
+        --with-imap_ssl_module)          IMAP_SSL=YES               ;;
 
         --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
 

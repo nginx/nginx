@@ -13,6 +13,11 @@
 #include <ngx_event.h>
 #include <ngx_event_connect.h>
 
+#if (NGX_IMAP_SSL)
+#include <ngx_imap_ssl_module.h>
+#endif
+
+
 
 typedef struct {
     void   **main_conf;
@@ -32,7 +37,6 @@ typedef struct {
     ngx_msec_t            timeout;
 
     size_t                imap_client_buffer_size;
-    size_t                proxy_buffer_size;
 
     ngx_uint_t            protocol;
 
@@ -82,8 +86,8 @@ typedef struct {
 
     ngx_connection_t       *connection;
 
-    ngx_buf_t              *buffer;
     ngx_str_t               out;
+    ngx_buf_t              *buffer;
 
     void                  **ctx;
     void                  **main_conf;
@@ -93,6 +97,8 @@ typedef struct {
 
     ngx_uint_t              imap_state;
 
+    unsigned                blocked:1;
+    unsigned                quit:1;
     unsigned                protocol:1;
     unsigned                quoted:1;
 
@@ -100,6 +106,7 @@ typedef struct {
     ngx_str_t               passwd;
 
     ngx_str_t               tag;
+    ngx_str_t               tagged_line;
 
     ngx_uint_t              command;
     ngx_array_t             args;
@@ -167,6 +174,7 @@ typedef struct {
 
 
 void ngx_imap_init_connection(ngx_connection_t *c);
+void ngx_imap_send(ngx_event_t *wev);
 void ngx_imap_auth_state(ngx_event_t *rev);
 void ngx_pop3_auth_state(ngx_event_t *rev);
 void ngx_imap_close_connection(ngx_connection_t *c);

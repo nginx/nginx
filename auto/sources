@@ -346,6 +346,10 @@ IMAP_SRCS="src/imap/ngx_imap.c \
            src/imap/ngx_imap_handler.c \
            src/imap/ngx_imap_parse.c"
 
+IMAP_SSL_MODULE="ngx_imap_ssl_module"
+IMAP_SSL_DEPS="src/imap/ngx_imap_ssl_module.h"
+IMAP_SSL_SRCS="src/imap/ngx_imap_ssl_module.c"
+
 IMAP_AUTH_HTTP_MODULE="ngx_imap_auth_http_module"
 IMAP_AUTH_HTTP_SRCS="src/imap/ngx_imap_auth_http_module.c"
 

@@ -252,6 +252,7 @@ ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
 ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
+ngx_int_t ngx_http_auth_basic_user(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_subrequest(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args);

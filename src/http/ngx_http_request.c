@@ -11,9 +11,6 @@
 
 
 static void ngx_http_init_request(ngx_event_t *ev);
-#if (NGX_HTTP_SSL)
-static void ngx_http_ssl_handshake(ngx_event_t *rev);
-#endif
 static void ngx_http_process_request_line(ngx_event_t *rev);
 static void ngx_http_process_request_headers(ngx_event_t *rev);
 static ssize_t ngx_http_read_request_header(ngx_http_request_t *r);
@@ -49,6 +46,11 @@ static void ngx_http_close_connection(ngx_connection_t *c);
 static u_char *ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len);
 static u_char *ngx_http_log_error_handler(ngx_http_request_t *r, u_char *buf,
     size_t len);
+
+#if (NGX_HTTP_SSL)
+static void ngx_http_ssl_handshake(ngx_event_t *rev);
+static void ngx_http_ssl_close_handler(ngx_event_t *ev);
+#endif
 
 
 static char *ngx_http_client_errors[] = {
@@ -490,6 +492,7 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
                            "https ssl handshake: 0x%02Xd", buf[0]);
 
             c->recv = ngx_ssl_recv;
+            c->send = ngx_ssl_write;
             c->send_chain = ngx_ssl_send_chain;
 
             rc = ngx_ssl_handshake(c);
@@ -2412,27 +2415,6 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
 }
 
 
-#if (NGX_HTTP_SSL)
-
-static void
-ngx_http_ssl_close_handler(ngx_event_t *ev)
-{
-    ngx_connection_t  *c;
-
-    c = ev->data;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "http ssl close handler");
-
-    if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
-        return;
-    }
-
-    ngx_http_close_connection(c);
-}
-
-#endif
-
-
 static void
 ngx_http_close_connection(ngx_connection_t *c)
 {
@@ -2441,7 +2423,7 @@ ngx_http_close_connection(ngx_connection_t *c)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "close http connection: %d", c->fd);
 
-#if (NGX_OPENSSL)
+#if (NGX_HTTP_SSL)
 
     if (c->ssl) {
         if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
@@ -2463,6 +2445,27 @@ ngx_http_close_connection(ngx_connection_t *c)
 
     ngx_destroy_pool(pool);
 }
+
+
+#if (NGX_HTTP_SSL)
+
+static void
+ngx_http_ssl_close_handler(ngx_event_t *ev)
+{
+    ngx_connection_t  *c;
+
+    c = ev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "http ssl close handler");
+
+    if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
+        return;
+    }
+
+    ngx_http_close_connection(c);
+}
+
+#endif
 
 
 static u_char *

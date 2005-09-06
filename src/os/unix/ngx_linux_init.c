@@ -14,7 +14,7 @@ char ngx_linux_kern_osrelease[20];
 int ngx_linux_rtsig_max;
 
 
-ngx_os_io_t ngx_os_io = {
+static ngx_os_io_t ngx_linux_io = {
     ngx_unix_recv,
     ngx_readv_chain,
     ngx_unix_send,
@@ -29,7 +29,7 @@ ngx_os_io_t ngx_os_io = {
 
 
 ngx_int_t
-ngx_os_init(ngx_log_t *log)
+ngx_os_specific_init(ngx_log_t *log)
 {
     int        name[2];
     size_t     len;
@@ -74,19 +74,18 @@ ngx_os_init(ngx_log_t *log)
     }
 
 
-    return ngx_posix_init(log);
+    ngx_os_io = ngx_linux_io;
+
+    return NGX_OK;
 }
 
 
 void
-ngx_os_status(ngx_log_t *log)
+ngx_os_specific_status(ngx_log_t *log)
 {
     ngx_log_error(NGX_LOG_NOTICE, log, 0, "OS: %s %s",
                   ngx_linux_kern_ostype, ngx_linux_kern_osrelease);
 
     ngx_log_error(NGX_LOG_NOTICE, log, 0, "sysctl(KERN_RTSIGMAX): %d",
                   ngx_linux_rtsig_max);
-
-
-    ngx_posix_status(log);
 }

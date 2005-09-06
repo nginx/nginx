@@ -90,8 +90,9 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
     off_t                            offset;
     ssize_t                          n;
     ngx_fd_t                         fd;
-    ngx_str_t                        auth, encoded, pwd;
-    ngx_uint_t                       i, login, len, left, passwd;
+    ngx_int_t                        rc;
+    ngx_str_t                        pwd;
+    ngx_uint_t                       i, login, left, passwd;
     ngx_file_t                       file;
     ngx_http_auth_basic_ctx_t       *ctx;
     ngx_http_auth_basic_loc_conf_t  *alcf;
@@ -115,56 +116,15 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
                                                  &alcf->realm);
     }
 
-    if (r->headers_in.authorization == NULL) {
+    rc = ngx_http_auth_basic_user(r);
+
+    if (rc == NGX_DECLINED) {
         return ngx_http_auth_basic_set_realm(r, &alcf->realm);
     }
 
-    encoded = r->headers_in.authorization->value;
-
-    if (encoded.len < sizeof("Basic ") - 1
-        || ngx_strncasecmp(encoded.data, "Basic ", sizeof("Basic ") - 1) != 0)
-    {
-        return ngx_http_auth_basic_set_realm(r, &alcf->realm);
-    }
-
-    encoded.len -= sizeof("Basic ") - 1;
-    encoded.data += sizeof("Basic ") - 1;
-
-    while (encoded.len && encoded.data[0] == ' ') {
-        encoded.len--;
-        encoded.data++;
-    }
-
-    if (encoded.len == 0) {
-        return ngx_http_auth_basic_set_realm(r, &alcf->realm);
-    }
-
-    auth.len = ngx_base64_decoded_length(encoded.len);
-    auth.data = ngx_palloc(r->pool, auth.len + 1);
-    if (auth.data == NULL) {
+    if (rc == NGX_ERROR) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-
-    if (ngx_decode_base64(&auth, &encoded) != NGX_OK) {
-        return ngx_http_auth_basic_set_realm(r, &alcf->realm);
-    }
-
-    auth.data[auth.len] = '\0';
-
-    for (len = 0; len < auth.len; len++) {
-        if (auth.data[len] == ':') {
-            break;
-        }
-    }
-
-    if (len == auth.len) {
-        return ngx_http_auth_basic_set_realm(r, &alcf->realm);
-    }
-
-    r->headers_in.user.len = len;
-    r->headers_in.user.data = auth.data;
-    r->headers_in.passwd.len = auth.len - len - 1;
-    r->headers_in.passwd.data = &auth.data[len + 1];
 
     fd = ngx_open_file(alcf->user_file.data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
@@ -208,12 +168,12 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
                     break;
                 }
 
-                if (buf[i] != auth.data[login]) {
+                if (buf[i] != r->headers_in.user.data[login]) {
                     state = sw_skip;
                     break;
                 }
 
-                if (login == len) {
+                if (login == r->headers_in.user.len) {
                     state = sw_passwd;
                     passwd = i + 1;
                 }

@@ -9,6 +9,49 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.44" date="06.09.2005">
+
+<change type="feature">
+<para lang="ru">
+IMAP/POP3 прокси поддерживает SSL.
+</para>
+<para lang="en">
+the IMAP/POP3 proxy supports SSL.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_timeout.
+</para>
+<para lang="en">
+the "proxy_timeout" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива userid_mark.
+</para>
+<para lang="en">
+the "userid_mark" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+значение переменной $remote_user определяется независимо от того,
+используется ли авторизация или нет.
+</para>
+<para lang="en">
+the $remote_user variable value is determined independently of
+authorization use.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.43" date="30.08.2005">
 
 <change type="feature">

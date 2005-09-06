@@ -102,7 +102,4 @@
 #endif
 
 
-#define NGX_POSIX_IO  1
-
-
 #endif /* _NGX_POSIX_CONFIG_H_INCLUDED_ */

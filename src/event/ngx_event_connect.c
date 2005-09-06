@@ -229,6 +229,10 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     c->write = wev;
     wev->write = 1;
 
+    c->recv = ngx_recv;
+    c->send = ngx_send;
+    c->send_chain = ngx_send_chain;
+
     c->log = pc->log;
     rev->log = pc->log;
     wev->log = pc->log;

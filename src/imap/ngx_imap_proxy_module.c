@@ -13,6 +13,8 @@
 
 typedef struct {
     ngx_flag_t  enable;
+    size_t      buffer_size;
+    ngx_msec_t  timeout;
 } ngx_imap_proxy_conf_t;
 
 
@@ -35,11 +37,26 @@ static char *ngx_imap_proxy_merge_conf(ngx_conf_t *cf, void *parent,
 
 
 static ngx_command_t  ngx_imap_proxy_commands[] = {
+
     { ngx_string("proxy"),
       NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_IMAP_SRV_CONF_OFFSET,
       offsetof(ngx_imap_proxy_conf_t, enable),
+      NULL },
+
+    { ngx_string("proxy_buffer"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_proxy_conf_t, buffer_size),
+      NULL },
+
+    { ngx_string("proxy_timeout"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_proxy_conf_t, timeout),
       NULL },
 
       ngx_null_command
@@ -131,12 +148,12 @@ ngx_imap_proxy_block_read(ngx_event_t *rev)
 static void
 ngx_imap_proxy_imap_handler(ngx_event_t *rev)
 {
-    u_char                    *p;
-    ngx_int_t                  rc;
-    ngx_str_t                  line;
-    ngx_connection_t          *c;
-    ngx_imap_session_t        *s;
-    ngx_imap_core_srv_conf_t  *cscf;
+    u_char                 *p;
+    ngx_int_t               rc;
+    ngx_str_t               line;
+    ngx_connection_t       *c;
+    ngx_imap_session_t     *s;
+    ngx_imap_proxy_conf_t  *pcf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0,
                    "imap proxy imap auth handler");
@@ -152,10 +169,9 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
     }
 
     if (s->proxy->buffer == NULL) {
-        cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
+        pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
 
-        s->proxy->buffer = ngx_create_temp_buf(c->pool,
-                                               cscf->proxy_buffer_size);
+        s->proxy->buffer = ngx_create_temp_buf(c->pool, pcf->buffer_size);
         if (s->proxy->buffer == NULL) {
             ngx_imap_proxy_internal_server_error(s);
             return;
@@ -247,7 +263,7 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         break;
     }
 
-    if (ngx_send(c, line.data, line.len) < (ssize_t) line.len) {
+    if (c->send(c, line.data, line.len) < (ssize_t) line.len) {
         /*
          * we treat the incomplete sending as NGX_ERROR
          * because it is very strange here
@@ -265,6 +281,8 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         rev->handler = ngx_imap_proxy_handler;
         c->write->handler = ngx_imap_proxy_handler;
 
+        pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
+        ngx_add_timer(s->connection->read, pcf->timeout);
         ngx_del_timer(c->read);
     }
 }
@@ -273,12 +291,12 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
 static void
 ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
 {
-    u_char                    *p;
-    ngx_int_t                  rc;
-    ngx_str_t                  line;
-    ngx_connection_t          *c;
-    ngx_imap_session_t        *s;
-    ngx_imap_core_srv_conf_t  *cscf;
+    u_char                 *p;
+    ngx_int_t               rc;
+    ngx_str_t               line;
+    ngx_connection_t       *c;
+    ngx_imap_session_t     *s;
+    ngx_imap_proxy_conf_t  *pcf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0,
                    "imap proxy pop3 auth handler");
@@ -294,10 +312,9 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
     }
 
     if (s->proxy->buffer == NULL) {
-        cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
+        pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
 
-        s->proxy->buffer = ngx_create_temp_buf(c->pool,
-                                               cscf->proxy_buffer_size);
+        s->proxy->buffer = ngx_create_temp_buf(c->pool, pcf->buffer_size);
         if (s->proxy->buffer == NULL) {
             ngx_imap_proxy_internal_server_error(s);
             return;
@@ -369,7 +386,7 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         break;
     }
 
-    if (ngx_send(c, line.data, line.len) < (ssize_t) line.len) {
+    if (c->send(c, line.data, line.len) < (ssize_t) line.len) {
         /*
          * we treat the incomplete sending as NGX_ERROR
          * because it is very strange here
@@ -387,6 +404,8 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         rev->handler = ngx_imap_proxy_handler;
         c->write->handler = ngx_imap_proxy_handler;
 
+        pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
+        ngx_add_timer(s->connection->read, pcf->timeout);
         ngx_del_timer(c->read);
     }
 }
@@ -408,7 +427,8 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
 
     b = s->proxy->buffer;
 
-    n = ngx_recv(s->proxy->upstream.connection, b->last, b->end - b->last);
+    n = s->proxy->upstream.connection->recv(s->proxy->upstream.connection,
+                                            b->last, b->end - b->last);
 
     if (n == NGX_ERROR || n == 0) {
         return NGX_ERROR;
@@ -475,12 +495,13 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
 static void
 ngx_imap_proxy_handler(ngx_event_t *ev)
 {
-    size_t               size;
-    ssize_t              n;
-    ngx_buf_t           *b;
-    ngx_uint_t           again, do_write;
-    ngx_connection_t    *c, *src, *dst;
-    ngx_imap_session_t  *s;
+    size_t                  size;
+    ssize_t                 n;
+    ngx_buf_t              *b;
+    ngx_uint_t              again, do_write;
+    ngx_connection_t       *c, *src, *dst;
+    ngx_imap_session_t     *s;
+    ngx_imap_proxy_conf_t  *pcf;
 
     c = ev->data;
     s = c->data;
@@ -537,7 +558,7 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
             size = b->last - b->pos;
 
             if (size && dst->write->ready) {
-                n = ngx_send(dst, b->pos, size);
+                n = dst->send(dst, b->pos, size);
 
                 if (n == NGX_ERROR) {
                     ngx_imap_proxy_close_session(s);
@@ -568,7 +589,7 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
         size = b->end - b->last;
 
         if (size && src->read->ready) {
-            n = ngx_recv(src, b->last, size);
+            n = src->recv(src, b->last, size);
 
             if (n == NGX_ERROR || n == 0) {
                 ngx_imap_proxy_close_session(s);
@@ -586,6 +607,11 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
                     ngx_imap_proxy_close_session(s);
                     return;
                 }
+            }
+
+            if (c == s->connection) {
+                pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
+                ngx_add_timer(c->read, pcf->timeout);
             }
         }
 
@@ -634,6 +660,8 @@ ngx_imap_proxy_create_conf(ngx_conf_t *cf)
     }
 
     pcf->enable = NGX_CONF_UNSET;
+    pcf->buffer_size = NGX_CONF_UNSET_SIZE;
+    pcf->timeout = NGX_CONF_UNSET_MSEC;
 
     return pcf;
 }
@@ -645,7 +673,10 @@ ngx_imap_proxy_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_imap_proxy_conf_t *prev = parent;
     ngx_imap_proxy_conf_t *conf = child;
 
-    ngx_conf_merge_msec_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
+                              (size_t) ngx_pagesize);
+    ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 24 * 60 * 60000);
 
     return NGX_CONF_OK;
 }

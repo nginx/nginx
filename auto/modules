@@ -228,6 +228,14 @@ fi
 if [ $IMAP = YES ]; then
     modules="$modules $IMAP_MODULES"
 
+    if [ $IMAP_SSL = YES ]; then
+        modules="$modules $IMAP_SSL_MODULE"
+        IMAP_DEPS="$IMAP_DEPS $IMAP_SSL_DEPS"
+        IMAP_SRCS="$IMAP_SRCS $IMAP_SSL_SRCS"
+        have=NGX_IMAP_SSL . auto/have
+        USE_OPENSSL=YES
+    fi
+
     modules="$modules $IMAP_AUTH_HTTP_MODULE"
     IMAP_SRCS="$IMAP_SRCS $IMAP_AUTH_HTTP_SRCS"
 

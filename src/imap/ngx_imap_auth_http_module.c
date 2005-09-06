@@ -516,12 +516,13 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
             ngx_close_connection(ctx->peer.connection);
 
             if (ctx->err.len) {
-                (void) ngx_send(s->connection, ctx->err.data, ctx->err.len);
+                s->out = ctx->err;
 
                 if (ctx->sleep == 0) {
-                    ngx_imap_close_connection(s->connection);
-                    return;
+                    s->quit = 1;
                 }
+
+                ngx_imap_send(s->connection->write);
 
                 ngx_add_timer(s->connection->read, ctx->sleep * 1000);
 

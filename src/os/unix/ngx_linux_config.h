@@ -103,4 +103,7 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
+#define NGX_HAVE_OS_SPECIFIC_INIT    1
+
+
 #endif /* _NGX_LINUX_CONFIG_H_INCLUDED_ */

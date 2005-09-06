@@ -92,6 +92,7 @@ struct ngx_connection_s {
     ngx_socket_t        fd;
 
     ngx_recv_pt         recv;
+    ngx_send_pt         send;
     ngx_send_chain_pt   send_chain;
 
     ngx_listening_t    *listening;

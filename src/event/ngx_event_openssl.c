@@ -13,7 +13,6 @@
 
 static ngx_int_t ngx_ssl_handle_recv(ngx_connection_t *c, int n);
 static void ngx_ssl_write_handler(ngx_event_t *wev);
-static ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size);
 static void ngx_ssl_read_handler(ngx_event_t *rev);
 
 
@@ -209,8 +208,10 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
     }
 
     if (sslerr == SSL_ERROR_WANT_WRITE) {
-        ngx_log_error(NGX_LOG_ALERT, c->log, err,
-                      "SSL wants to write%s", handshake);
+
+        ngx_log_error(NGX_LOG_INFO, c->log, err,
+                      "client does SSL %shandshake",
+                      SSL_is_init_finished(c->ssl->ssl) ? "re" : "");
 
         c->write->ready = 0;
 
@@ -391,12 +392,11 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 }
 
 
-static ssize_t
+ssize_t
 ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 {
-    int         n, sslerr;
-    ngx_err_t   err;
-    char       *handshake;
+    int        n, sslerr;
+    ngx_err_t  err;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL to write: %d", size);
 
@@ -405,6 +405,47 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_write: %d", n);
 
     if (n > 0) {
+
+#if (NGX_DEBUG)
+
+        if (!c->ssl->handshaked && SSL_is_init_finished(c->ssl->ssl)) {
+            char         buf[129], *s, *d;
+            SSL_CIPHER  *cipher;
+
+            c->ssl->handshaked = 1;
+
+            cipher = SSL_get_current_cipher(c->ssl->ssl);
+
+            if (cipher) {
+                SSL_CIPHER_description(cipher, &buf[1], 128);
+
+                for (s = &buf[1], d = buf; *s; s++) {
+                    if (*s == ' ' && *d == ' ') {
+                        continue;
+                    }
+
+                    if (*s == LF || *s == CR) {
+                        continue;
+                    }
+
+                    *++d = *s;
+                }
+
+                if (*d != ' ') {
+                    d++;
+                }
+
+                *d = '\0';
+
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "SSL cipher: \"%s\"", &buf[1]); 
+            } else {
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "SSL no shared ciphers"); 
+            }
+        }
+#endif
+
         if (c->ssl->saved_read_handler) {
 
             c->read->handler = c->ssl->saved_read_handler;
@@ -440,15 +481,9 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 
     if (sslerr == SSL_ERROR_WANT_READ) {
 
-        if (!SSL_is_init_finished(c->ssl->ssl)) {
-            handshake = " in SSL handshake";
-
-        } else {
-            handshake = "";
-        }
-
-        ngx_log_error(NGX_LOG_ALERT, c->log, err,
-                      "SSL wants to read%s", handshake);
+        ngx_log_error(NGX_LOG_INFO, c->log, err,
+                      "client does SSL %shandshake",
+                      SSL_is_init_finished(c->ssl->ssl) ? "re" : "");
 
         c->read->ready = 0;
 

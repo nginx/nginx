@@ -236,6 +236,10 @@ main(int argc, char *const *argv)
 
 #else
 
+    if (ngx_init_signals(cycle->log) == NGX_ERROR) {
+        return 1;
+    }
+
     if (!ngx_inherited && ccf->daemon) {
         if (ngx_daemon(cycle->log) == NGX_ERROR) {
             return 1;

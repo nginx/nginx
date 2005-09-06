@@ -34,10 +34,9 @@ typedef struct {
 void ngx_debug_init(void);
 ngx_int_t ngx_os_init(ngx_log_t *log);
 void ngx_os_status(ngx_log_t *log);
+ngx_int_t ngx_os_specific_init(ngx_log_t *log);
+void ngx_os_specific_status(ngx_log_t *log);
 ngx_int_t ngx_daemon(ngx_log_t *log);
-ngx_int_t ngx_posix_init(ngx_log_t *log);
-void ngx_posix_status(ngx_log_t *log);
-ngx_int_t ngx_posix_post_conf_init(ngx_log_t *log);
 
 
 ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size);

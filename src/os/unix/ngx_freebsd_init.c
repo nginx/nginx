@@ -27,7 +27,7 @@ ngx_uint_t ngx_freebsd_sendfile_nbytes_bug;
 ngx_uint_t ngx_freebsd_use_tcp_nopush;
 
 
-ngx_os_io_t ngx_os_io = {
+static ngx_os_io_t ngx_freebsd_io = {
     ngx_unix_recv,
     ngx_readv_chain,
     ngx_unix_send,
@@ -74,7 +74,8 @@ sysctl_t sysctls[] = {
 };
 
 
-void ngx_debug_init()
+void
+ngx_debug_init()
 {
 #if (NGX_DEBUG && !NGX_NO_DEBUG_MALLOC)
 
@@ -88,7 +89,8 @@ void ngx_debug_init()
 }
 
 
-ngx_int_t ngx_os_init(ngx_log_t *log)
+ngx_int_t
+ngx_os_specific_init(ngx_log_t *log)
 {
     int         version, somaxconn;
     size_t      size;
@@ -223,12 +225,14 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
 
     ngx_tcp_nodelay_and_tcp_nopush = 1;
 
+    ngx_os_io = ngx_freebsd_io;
 
-    return ngx_posix_init(log);
+    return NGX_OK;
 }
 
 
-void ngx_os_status(ngx_log_t *log)
+void
+ngx_os_specific_status(ngx_log_t *log)
 {
     ngx_uint_t  i;
 
@@ -251,7 +255,4 @@ void ngx_os_status(ngx_log_t *log)
                           sysctls[i].name, *sysctls[i].value);
         }
     }
-
-
-    ngx_posix_status(log);
 }

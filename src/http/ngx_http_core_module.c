@@ -931,6 +931,76 @@ ngx_http_set_exten(ngx_http_request_t *r)
 
 
 ngx_int_t
+ngx_http_auth_basic_user(ngx_http_request_t *r)
+{
+    ngx_str_t   auth, encoded;
+    ngx_uint_t  len;
+
+    if (r->headers_in.user.len == 0 && r->headers_in.user.data != NULL) {
+        return NGX_DECLINED;
+    }
+
+    if (r->headers_in.authorization == NULL) {
+        r->headers_in.user.data = (u_char *) "";
+        return NGX_DECLINED;
+    }
+
+    encoded = r->headers_in.authorization->value;
+
+    if (encoded.len < sizeof("Basic ") - 1
+        || ngx_strncasecmp(encoded.data, "Basic ", sizeof("Basic ") - 1) != 0)
+    {
+        r->headers_in.user.data = (u_char *) "";
+        return NGX_DECLINED;
+    }
+
+    encoded.len -= sizeof("Basic ") - 1;
+    encoded.data += sizeof("Basic ") - 1;
+
+    while (encoded.len && encoded.data[0] == ' ') {
+        encoded.len--;
+        encoded.data++;
+    }
+
+    if (encoded.len == 0) {
+        r->headers_in.user.data = (u_char *) "";
+        return NGX_DECLINED;
+    }
+    
+    auth.len = ngx_base64_decoded_length(encoded.len);
+    auth.data = ngx_palloc(r->pool, auth.len + 1); 
+    if (auth.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_decode_base64(&auth, &encoded) != NGX_OK) {
+        r->headers_in.user.data = (u_char *) "";
+        return NGX_DECLINED;
+    }
+    
+    auth.data[auth.len] = '\0';
+    
+    for (len = 0; len < auth.len; len++) { 
+        if (auth.data[len] == ':') {
+            break;
+        }
+    }
+    
+    if (len == auth.len) {
+        r->headers_in.user.data = (u_char *) "";
+        return NGX_DECLINED;
+    }
+
+    r->headers_in.user.len = len;
+    r->headers_in.user.data = auth.data;
+    r->headers_in.passwd.len = auth.len - len - 1;
+    r->headers_in.passwd.data = &auth.data[len + 1];
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_http_subrequest(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args)
 {
