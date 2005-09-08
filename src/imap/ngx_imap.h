@@ -123,6 +123,12 @@ typedef struct {
 } ngx_imap_session_t;
 
 
+typedef struct {
+    ngx_str_t           *client;
+    ngx_imap_session_t  *session;
+} ngx_imap_log_ctx_t;
+
+
 #define NGX_POP3_USER       1
 #define NGX_POP3_PASS       2
 #define NGX_POP3_CAPA       3

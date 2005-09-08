@@ -11,7 +11,9 @@
 
 
 static void ngx_imap_init_session(ngx_event_t *rev);
+static void ngx_imap_init_protocol(ngx_event_t *rev);
 static ngx_int_t ngx_imap_read_command(ngx_imap_session_t *s);
+static u_char *ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 #if (NGX_IMAP_SSL)
 static void ngx_imap_ssl_close_handler(ngx_event_t *ev);
@@ -40,19 +42,48 @@ static u_char  imap_invalid_command[] = "BAD invalid command" CRLF;
 void
 ngx_imap_init_connection(ngx_connection_t *c)
 {
+    ngx_imap_log_ctx_t  *ctx;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0, "imap init connection");
+
+    ctx = ngx_palloc(c->pool, sizeof(ngx_imap_log_ctx_t));
+    if (ctx == NULL) {
+        ngx_imap_close_connection(c);
+        return;
+    } 
+
+    ctx->client = &c->addr_text;
+    ctx->session = NULL;
+
+    c->log->connection = c->number;
+    c->log->handler = ngx_imap_log_error;
+    c->log->data = ctx;
+    c->log->action = "sending client greeting line";
+
+    c->log_error = NGX_ERROR_INFO;
+
+    ngx_imap_init_session(c->read);
+}
+
+
+static void
+ngx_imap_init_session(ngx_event_t *rev)
+{
+    ngx_connection_t          *c;
     ngx_imap_session_t        *s;
+    ngx_imap_log_ctx_t        *lctx;
     ngx_imap_conf_ctx_t       *ctx;
+    ngx_imap_core_srv_conf_t  *cscf;
 #if (NGX_IMAP_SSL)
     ngx_int_t                  rc;
     ngx_imap_ssl_conf_t       *sslcf;
 #endif
-    ngx_imap_core_srv_conf_t  *cscf;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0, "imap init connection");
-
-    c->log_error = NGX_ERROR_INFO;
+    c = rev->data;
 
     ctx = c->ctx;
+
+    cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
 
 #if (NGX_IMAP_SSL)
 
@@ -74,6 +105,17 @@ ngx_imap_init_connection(ngx_connection_t *c)
             return;
         }
 
+        if (rc == NGX_AGAIN) {
+            ngx_add_timer(rev, cscf->timeout);
+            c->read->handler = ngx_imap_init_session;
+
+            if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+                ngx_imap_close_connection(c);
+            }
+
+            return;
+        }
+
         c->recv = ngx_ssl_recv;
         c->send = ngx_ssl_write;
         c->send_chain = ngx_ssl_send_chain;
@@ -90,7 +132,6 @@ ngx_imap_init_connection(ngx_connection_t *c)
     c->data = s;
     s->connection = c;
 
-    cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
     s->protocol = cscf->protocol;
 
     s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_imap_max_module);
@@ -104,13 +145,15 @@ ngx_imap_init_connection(ngx_connection_t *c)
 
     s->out = greetings[s->protocol];
 
-    c->read->handler = ngx_imap_init_session;
+    lctx = c->log->data;
+    lctx->session = s;
+
+    c->read->handler = ngx_imap_init_protocol;
     c->write->handler = ngx_imap_send;
 
-    ngx_add_timer(c->write, cscf->timeout);
-    ngx_add_timer(c->read, cscf->timeout);
+    ngx_add_timer(rev, cscf->timeout);
 
-    if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
         ngx_imap_close_connection(c);
     }
 
@@ -121,9 +164,10 @@ ngx_imap_init_connection(ngx_connection_t *c)
 void
 ngx_imap_send(ngx_event_t *wev)
 {
-    ngx_int_t            n;
-    ngx_connection_t    *c;
-    ngx_imap_session_t  *s;
+    ngx_int_t                  n;
+    ngx_connection_t          *c;
+    ngx_imap_session_t        *s;
+    ngx_imap_core_srv_conf_t  *cscf;
 
     c = wev->data;
     s = c->data;
@@ -147,6 +191,10 @@ ngx_imap_send(ngx_event_t *wev)
     if (n > 0) {
         s->out.len -= n;
 
+        if (wev->timer_set) {
+            ngx_del_timer(wev);
+        }
+
         if (s->quit) {
             ngx_imap_close_connection(c);
             return;
@@ -166,6 +214,10 @@ ngx_imap_send(ngx_event_t *wev)
 
     /* n == NGX_AGAIN */
 
+    cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
+
+    ngx_add_timer(c->write, cscf->timeout);
+
     if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
         ngx_imap_close_connection(c);
         return;
@@ -174,7 +226,7 @@ ngx_imap_send(ngx_event_t *wev)
 
 
 static void
-ngx_imap_init_session(ngx_event_t *rev)
+ngx_imap_init_protocol(ngx_event_t *rev)
 {
     size_t                     size;
     ngx_connection_t          *c;
@@ -182,6 +234,8 @@ ngx_imap_init_session(ngx_event_t *rev)
     ngx_imap_core_srv_conf_t  *cscf;
 
     c = rev->data;
+
+    c->log->action = "in auth state";
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
@@ -666,3 +720,52 @@ ngx_imap_ssl_close_handler(ngx_event_t *ev)
 }
 
 #endif
+
+
+static u_char *
+ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len)
+{
+    u_char                 *p;
+    ngx_imap_session_t     *s;
+    ngx_imap_log_ctx_t     *ctx;
+
+    if (log->action) {
+        p = ngx_snprintf(buf, len, " while %s", log->action);
+        len -= p - buf;
+        buf = p;
+    }
+    
+    ctx = log->data;
+
+    p = ngx_snprintf(buf, len, ", client: %V", ctx->client);
+    len -= p - buf;
+    buf = p;
+
+    s = ctx->session;
+
+    if (s == NULL) {
+        return p;
+    }
+
+    p = ngx_snprintf(buf, len, ", server: %V",
+                     &s->connection->listening->addr_text);
+    len -= p - buf;
+    buf = p;
+
+    if (s->login.len == 0) {
+        return p;
+    }
+
+    p = ngx_snprintf(buf, len, ", login: \"%V\"", &s->login);
+    len -= p - buf;
+    buf = p;
+
+    if (s->proxy == NULL) {
+        return p;
+    }
+
+    p = ngx_snprintf(buf, len, ", upstream: %V",
+                     &s->proxy->upstream.peers->peer[0].name);
+
+    return p;
+}

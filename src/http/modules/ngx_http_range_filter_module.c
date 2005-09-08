@@ -73,8 +73,14 @@ ngx_module_t  ngx_http_range_header_filter_module = {
     &ngx_http_range_header_filter_module_ctx, /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
+    NULL,                                  /* init master */
     ngx_http_range_header_filter_init,     /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
 };
 
 
@@ -98,8 +104,14 @@ ngx_module_t  ngx_http_range_body_filter_module = {
     &ngx_http_range_body_filter_module_ctx, /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
+    NULL,                                  /* init master */
     ngx_http_range_body_filter_init,       /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
 };
 
 

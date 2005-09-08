@@ -65,8 +65,14 @@ ngx_module_t  ngx_imap_ssl_module = {
     &ngx_imap_ssl_module_ctx,              /* module context */
     ngx_imap_ssl_commands,                 /* module directives */
     NGX_IMAP_MODULE,                       /* module type */
+    NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
 };
 
 
@@ -169,6 +175,8 @@ ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                       conf->certificate_key.data);
         return NGX_CONF_ERROR;
     }
+
+    SSL_CTX_set_verify(conf->ssl_ctx, SSL_VERIFY_NONE, NULL);
 
     return NGX_CONF_OK;
 }

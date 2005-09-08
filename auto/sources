@@ -55,6 +55,11 @@ REGEX_DEPS=src/core/ngx_regex.h
 REGEX_SRCS=src/core/ngx_regex.c
 
 
+OPENSSL_MODULE=ngx_openssl_module
+OPENSSL_DEPS=src/event/ngx_event_openssl.h
+OPENSSL_SRCS=src/event/ngx_event_openssl.c
+
+
 EVENT_MODULES="ngx_events_module ngx_event_core_module"
 
 EVENT_INCS="src/event src/event/modules"
@@ -102,10 +107,6 @@ AIO_SRCS="src/event/modules/ngx_aio_module.c \
           src/os/unix/ngx_aio_write.c \
           src/os/unix/ngx_aio_read_chain.c \
           src/os/unix/ngx_aio_write_chain.c"
-
-
-OPENSSL_DEPS=src/event/ngx_event_openssl.h
-OPENSSL_SRCS=src/event/ngx_event_openssl.c
 
 
 UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"

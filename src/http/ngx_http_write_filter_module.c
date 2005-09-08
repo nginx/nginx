@@ -33,8 +33,14 @@ ngx_module_t  ngx_http_write_filter_module = {
     &ngx_http_write_filter_module_ctx,     /* module context */
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
+    NULL,                                  /* init master */
     ngx_http_write_filter_init,            /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
 };
 
 
@@ -226,7 +232,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     r->out = chain;
 
-    if (chain || c->buffered) {
+    if (chain || (c->buffered && r->postponed == NULL)) {
         return NGX_AGAIN;
     }
 

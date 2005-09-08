@@ -8,12 +8,62 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
-#include <openssl/engine.h>
+
+typedef struct {
+    ngx_str_t  engine;
+} ngx_openssl_conf_t;
 
 
 static ngx_int_t ngx_ssl_handle_recv(ngx_connection_t *c, int n);
 static void ngx_ssl_write_handler(ngx_event_t *wev);
 static void ngx_ssl_read_handler(ngx_event_t *rev);
+static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
+static char *ngx_openssl_init_conf(ngx_cycle_t *cycle, void *conf);
+
+#if !(NGX_SSL_ENGINE)
+static char *ngx_openssl_noengine(ngx_conf_t *cf, ngx_command_t *cmd,
+     void *conf);
+#endif
+
+
+static ngx_command_t  ngx_openssl_commands[] = {
+
+    { ngx_string("ssl_engine"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+#if (NGX_SSL_ENGINE)
+      ngx_conf_set_str_slot,
+#else
+      ngx_openssl_noengine,
+#endif
+      0,
+      offsetof(ngx_openssl_conf_t, engine),
+      NULL },
+
+      ngx_null_command
+};
+
+
+static ngx_core_module_t  ngx_openssl_module_ctx = {
+    ngx_string("openssl"),
+    ngx_openssl_create_conf,
+    ngx_openssl_init_conf
+};  
+
+
+ngx_module_t  ngx_openssl_module = {
+    NGX_MODULE_V1,
+    &ngx_openssl_module_ctx,               /* module context */
+    ngx_openssl_commands,                  /* module directives */
+    NGX_CORE_MODULE,                       /* module type */
+    NULL,                                  /* init master */
+    NULL,                                  /* init module */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
+};  
 
 
 ngx_int_t
@@ -21,7 +71,10 @@ ngx_ssl_init(ngx_log_t *log)
 {
     SSL_library_init();
     SSL_load_error_strings();
+
+#if (NGX_SSL_ENGINE)
     ENGINE_load_builtin_engines();
+#endif
 
     return NGX_OK;
 }
@@ -638,3 +691,74 @@ ngx_ssl_cleanup_ctx(void *data)
 
    SSL_CTX_free(ctx);
 }
+
+
+static void *
+ngx_openssl_create_conf(ngx_cycle_t *cycle)
+{
+    ngx_openssl_conf_t  *oscf;
+    
+    oscf = ngx_pcalloc(cycle->pool, sizeof(ngx_openssl_conf_t));
+    if (oscf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+    
+    /*
+     * set by ngx_pcalloc():
+     * 
+     *     oscf->engine.len = 0;
+     *     oscf->engine.data = NULL;
+     */    
+
+    return oscf;
+}
+
+
+static char *
+ngx_openssl_init_conf(ngx_cycle_t *cycle, void *conf)
+{
+#if (NGX_SSL_ENGINE)
+    ngx_openssl_conf_t *oscf = conf;
+    
+    ENGINE  *engine;
+
+    if (oscf->engine.len == 0) {
+        return NGX_CONF_OK;
+    }
+    
+    engine = ENGINE_by_id((const char *) oscf->engine.data);
+
+    if (engine == NULL) {
+        ngx_ssl_error(NGX_LOG_WARN, cycle->log, 0,
+                      "ENGINE_by_id(\"%V\") failed", &oscf->engine);
+        return NGX_CONF_ERROR;
+    }
+
+    if (ENGINE_set_default(engine, ENGINE_METHOD_ALL) == 0) {
+        ngx_ssl_error(NGX_LOG_WARN, cycle->log, 0,
+                      "ENGINE_set_default(\"%V\", ENGINE_METHOD_ALL) failed",
+                      &oscf->engine);
+        return NGX_CONF_ERROR;
+    }
+
+    ENGINE_free(engine);
+
+#endif
+
+    return NGX_CONF_OK;
+}
+
+
+#if !(NGX_SSL_ENGINE)
+
+static char *
+ngx_openssl_noengine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "\"ssl_engine\" is not supported: " NGX_SSL_NAME
+                       " library does not support crypto accelerators");
+
+    return NGX_CONF_ERROR;
+}
+
+#endif

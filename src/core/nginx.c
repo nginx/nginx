@@ -118,8 +118,14 @@ ngx_module_t  ngx_core_module = {
     &ngx_core_module_ctx,                  /* module context */
     ngx_core_commands,                     /* module directives */
     NGX_CORE_MODULE,                       /* module type */
+    NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
 };
 
 
@@ -153,6 +159,7 @@ main(int argc, char *const *argv)
         return 1;
     }
 
+    /* STUB */
 #if (NGX_OPENSSL)
     ngx_ssl_init(log);
 #endif

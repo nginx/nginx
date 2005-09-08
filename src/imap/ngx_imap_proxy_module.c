@@ -77,8 +77,14 @@ ngx_module_t  ngx_imap_proxy_module = {
     &ngx_imap_proxy_module_ctx,            /* module context */
     ngx_imap_proxy_commands,               /* module directives */
     NGX_IMAP_MODULE,                       /* module type */
+    NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
 };
 
 
@@ -101,9 +107,11 @@ ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peers_t *peers)
     p->upstream.log = s->connection->log;
     p->upstream.log_error = NGX_ERROR_ERR;
 
+    s->connection->log->action = "in upstream auth state";
+
     rc = ngx_event_connect_peer(&p->upstream);
 
-    if (rc == NGX_ERROR) {
+    if (rc == NGX_ERROR || rc == NGX_CONNECT_ERROR) {
         ngx_imap_session_internal_server_error(s);
         return;
     }
@@ -284,6 +292,8 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
         ngx_add_timer(s->connection->read, pcf->timeout);
         ngx_del_timer(c->read);
+
+        c->log->action = "proxying";
     }
 }
 
@@ -407,6 +417,8 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
         ngx_add_timer(s->connection->read, pcf->timeout);
         ngx_del_timer(c->read);
+
+        c->log->action = "proxying";
     }
 }
 

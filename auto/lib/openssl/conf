@@ -4,8 +4,6 @@
 
 if [ $OPENSSL != NONE ]; then
     CORE_INCS="$CORE_INCS $OPENSSL/include"
-    CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
-    CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
 
     case "$CC" in
         *)
@@ -36,8 +34,6 @@ else
         . auto/feature
 
         if [ $ngx_found = yes ]; then
-            CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
-            CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             OPENSSL=YES
         fi

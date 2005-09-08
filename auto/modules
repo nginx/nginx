@@ -61,17 +61,22 @@ if [ $HTTP_SSI = YES ]; then
     HTTP_POSTPONE=YES
 fi
 
+# the module order is important
+#     ngx_http_autoindex_module
+#     ngx_http_index_module
+#
+#
 # the filter order is important
 #     ngx_http_write_filter
 #     ngx_http_header_filter
 #     ngx_http_chunked_filter
 #     ngx_http_range_header_filter
-#     ngx_http_ssl_filter
 #     ngx_http_gzip_filter
 #     ngx_http_postpone_filter
 #     ngx_http_charset_filter
 #     ngx_http_ssi_filter
-#     ngx_http_headers_filter
+#         ngx_http_userid_filter
+#         ngx_http_headers_filter
 #     ngx_http_copy_filter
 #     ngx_http_range_body_filter
 #     ngx_http_not_modified_filter
@@ -212,7 +217,22 @@ if test -n "$NGX_ADDONS"; then
 fi
 
 
+if [ $IMAP_SSL = YES ]; then
+    IMAP_DEPS="$IMAP_DEPS $IMAP_SSL_DEPS"
+    IMAP_SRCS="$IMAP_SRCS $IMAP_SSL_SRCS"
+    have=NGX_IMAP_SSL . auto/have
+    USE_OPENSSL=YES
+fi
+
+
 modules="$CORE_MODULES $EVENT_MODULES"
+
+
+if [ $USE_OPENSSL = YES ]; then
+    modules="$modules $OPENSSL_MODULE"
+    CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
+    CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
+fi
 
 if [ $HTTP = YES ]; then
     modules="$modules $HTTP_MODULES $HTTP_FILTER_MODULES \
@@ -230,10 +250,6 @@ if [ $IMAP = YES ]; then
 
     if [ $IMAP_SSL = YES ]; then
         modules="$modules $IMAP_SSL_MODULE"
-        IMAP_DEPS="$IMAP_DEPS $IMAP_SSL_DEPS"
-        IMAP_SRCS="$IMAP_SRCS $IMAP_SSL_SRCS"
-        have=NGX_IMAP_SSL . auto/have
-        USE_OPENSSL=YES
     fi
 
     modules="$modules $IMAP_AUTH_HTTP_MODULE"

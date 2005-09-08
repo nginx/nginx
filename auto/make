@@ -124,7 +124,7 @@ if test -n "$NGX_ADDON_SRCS"; then
 
 cat << END                                                >> $NGX_MAKEFILE
 
-ADDON_DEPS = \$(CORE_DPES) $NGX_ADDON_DEPS
+ADDON_DEPS = \$(CORE_DEPS) $NGX_ADDON_DEPS
 
 END
 

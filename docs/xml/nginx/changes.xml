@@ -9,6 +9,41 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.1.45" date="08.09.2005">
+
+<change type="change">
+<para lang="ru">
+директива ssl_engine упразднена в модуле ngx_http_ssl_module и
+перенесена на глобальный уровень.
+</para>
+<para lang="en">
+the "ssl_engine" directive is canceled in the ngx_http_ssl_module
+and now is introduced at global level.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы с подзапросами, включённые с помощью SSI, не передавались
+через SSL соединение.
+</para>
+<para lang="en">
+the responses with SSI subrequests did not transferred via SSL connection.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Разные исправления в IMAP/POP3 прокси.
+</para>
+<para lang="en">
+Various bug fixes in the IMAP/POP3 proxy.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.44" date="06.09.2005">
 
 <change type="feature">
@@ -22,10 +57,10 @@ the IMAP/POP3 proxy supports SSL.
 
 <change type="feature">
 <para lang="ru">
-директива proxy_timeout.
+директива proxy_timeout модуля ngx_imap_proxy_module.
 </para>
 <para lang="en">
-the "proxy_timeout" directive.
+the "proxy_timeout" directive of the ngx_imap_proxy_module.
 </para>
 </change>
 
@@ -75,7 +110,7 @@ the geo2nginx.pl script was added to contrib.
 
 <change type="change">
 <para lang="ru">
-параметры FastCGI, с пустым значениями, теперь передаются серверу.
+параметры FastCGI с пустым значениями теперь передаются серверу.
 </para>
 <para lang="en">
 the FastCGI parameters with the empty values now are passed to a server.

@@ -54,8 +54,14 @@ ngx_module_t  ngx_poll_module = {
     &ngx_poll_module_ctx,                  /* module context */
     NULL,                                  /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
+    NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
 };
 
 

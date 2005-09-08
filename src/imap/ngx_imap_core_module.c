@@ -114,8 +114,14 @@ ngx_module_t  ngx_imap_core_module = {
     &ngx_imap_core_module_ctx,             /* module context */
     ngx_imap_core_commands,                /* module directives */
     NGX_IMAP_MODULE,                       /* module type */
+    NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
 };
 
 

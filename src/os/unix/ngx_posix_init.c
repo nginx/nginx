@@ -30,8 +30,6 @@ ngx_os_io_t ngx_os_io = {
 ngx_int_t
 ngx_os_init(ngx_log_t *log)
 {
-    ngx_log_error(NGX_LOG_NOTICE, log, 0, NGINX_VER);
-
 #if (NGX_HAVE_OS_SPECIFIC_INIT)
     if (ngx_os_specific_init(log) != NGX_OK) {
         return NGX_ERROR;
@@ -67,6 +65,8 @@ ngx_os_init(ngx_log_t *log)
 void
 ngx_os_status(ngx_log_t *log)
 {
+    ngx_log_error(NGX_LOG_NOTICE, log, 0, NGINX_VER);
+
 #if (NGX_HAVE_OS_SPECIFIC_INIT)
     ngx_os_specific_status(log);
 #endif

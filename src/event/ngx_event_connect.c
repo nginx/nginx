@@ -17,7 +17,7 @@ ngx_int_t
 ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     int                  rc;
-    ngx_uint_t           instance;
+    ngx_uint_t           instance, level;
     u_int                event;
     time_t               now;
     ngx_err_t            err;
@@ -283,20 +283,15 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         /* Winsock returns WSAEWOULDBLOCK (NGX_EAGAIN) */
 
         if (err != NGX_EINPROGRESS && err != NGX_EAGAIN) {
-            ngx_connection_error(c, err, "connect() failed");
 
-#if 0
-#undef sun
-            {
-            struct sockaddr_un  *sun;
-
-            sun = (struct sockaddr_un *) peer->sockaddr;
-
-            ngx_log_error(NGX_LOG_ALERT, pc->log, 0,
-                          "\"%s\", f:%d, l:%uz",
-                          sun->sun_path, sun->sun_family, peer->socklen);
+            if (err == NGX_ECONNREFUSED || err == NGX_EHOSTUNREACH) {
+                level = NGX_LOG_ERR;
+            } else {
+                level = NGX_LOG_CRIT;
             }
-#endif
+
+            ngx_log_error(level, c->log, err, "connect() to %V failed",
+                          &peer->name);
 
             return NGX_CONNECT_ERROR;
         }

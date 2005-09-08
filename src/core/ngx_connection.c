@@ -67,6 +67,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
     ngx_listening_t           *ls;
     struct sockaddr_in        *sin;
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+    ngx_err_t                  err;
     socklen_t                  aflen;
     struct accept_filter_arg   af;
 #endif
@@ -133,7 +134,13 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         if (getsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, &af, &aflen)
             == -1)
         {
-            ngx_log_error(NGX_LOG_NOTICE, cycle->log, ngx_errno,
+            err = ngx_errno;
+
+            if (err == NGX_EINVAL) {
+                continue;
+            }
+
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, err,
                           "getsockopt(SO_ACCEPTFILTER) for %V failed, ignored",
                           &ls[i].addr_text);
             continue;

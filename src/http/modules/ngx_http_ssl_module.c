@@ -8,28 +8,17 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#include <openssl/engine.h>
-
 
 #define NGX_DEFLAUT_CERTIFICATE      "cert.pem"
 #define NGX_DEFLAUT_CERTIFICATE_KEY  "cert.pem"
 
 
-static void *ngx_http_ssl_create_main_conf(ngx_conf_t *cf);
-static char *ngx_http_ssl_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     void *parent, void *child);
 
 
 static ngx_command_t  ngx_http_ssl_commands[] = {
-
-    { ngx_string("ssl_engine"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
-      NGX_HTTP_MAIN_CONF_OFFSET,
-      offsetof(ngx_http_ssl_main_conf_t, engine),
-      NULL },
 
     { ngx_string("ssl"),
       NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
@@ -67,8 +56,8 @@ static ngx_http_module_t  ngx_http_ssl_module_ctx = {
     NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
-    ngx_http_ssl_create_main_conf,         /* create main configuration */
-    ngx_http_ssl_init_main_conf,           /* init main configuration */
+    NULL,                                  /* create main configuration */
+    NULL,                                  /* init main configuration */
 
     ngx_http_ssl_create_srv_conf,          /* create server configuration */
     ngx_http_ssl_merge_srv_conf,           /* merge server configuration */
@@ -83,62 +72,15 @@ ngx_module_t  ngx_http_ssl_module = {
     &ngx_http_ssl_module_ctx,              /* module context */
     ngx_http_ssl_commands,                 /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
+    NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL                                   /* init process */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
 };
-
-
-static void *
-ngx_http_ssl_create_main_conf(ngx_conf_t *cf)
-{
-    ngx_http_ssl_main_conf_t  *mcf;
-
-    mcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_main_conf_t));
-    if (mcf == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    /*
-     * set by ngx_pcalloc():
-     *
-     *     mcf->engine.len = 0;
-     *     mcf->engine.data = NULL;
-     */
-
-    return mcf;
-}
-
-
-static char *
-ngx_http_ssl_init_main_conf(ngx_conf_t *cf, void *conf)
-{
-    ngx_http_ssl_main_conf_t *mcf = conf;
-
-    ENGINE  *engine;
-
-    if (mcf->engine.len == 0) {
-        return NGX_CONF_OK;
-    }
-
-    engine = ENGINE_by_id((const char *) mcf->engine.data);
-
-    if (engine == NULL) {
-        ngx_ssl_error(NGX_LOG_WARN, cf->log, 0,
-                      "ENGINE_by_id(\"%V\") failed", &mcf->engine);
-        return NGX_CONF_ERROR;
-    }
-
-    if (ENGINE_set_default(engine, ENGINE_METHOD_ALL) == 0) {
-        ngx_ssl_error(NGX_LOG_WARN, cf->log, 0,
-                      "ENGINE_set_default(\"%V\", ENGINE_METHOD_ALL) failed",
-                      &mcf->engine);
-        return NGX_CONF_ERROR;
-    }
-
-    ENGINE_free(engine);
-
-    return NGX_CONF_OK;
-}
 
 
 static void *
@@ -240,11 +182,15 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    SSL_CTX_set_verify(conf->ssl_ctx, SSL_VERIFY_NONE, NULL);
+
     return NGX_CONF_OK;
 }
 
 
 #if 0
+
+/* how to enumrate server' configs */
 
 static ngx_int_t
 ngx_http_ssl_init_process(ngx_cycle_t *cycle)

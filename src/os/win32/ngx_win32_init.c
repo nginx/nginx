@@ -6,6 +6,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <nginx.h>
 
 
 ngx_uint_t  ngx_win32_version;
@@ -165,6 +166,8 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
 void ngx_os_status(ngx_log_t *log)
 {
     ngx_osviex_stub_t  *osviex_stub;
+
+    ngx_log_error(NGX_LOG_NOTICE, log, 0, NGINX_VER);
 
     if (osviex) {
 
