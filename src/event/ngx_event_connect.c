@@ -360,5 +360,7 @@ ngx_event_connect_peer_failed(ngx_peer_connection_t *pc, ngx_uint_t down)
         pc->cur_peer = 0;
     }
 
-    pc->tries--;
+    if (pc->tries) {
+        pc->tries--;
+    }
 }

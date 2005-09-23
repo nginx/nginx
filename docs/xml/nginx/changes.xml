@@ -9,6 +9,24 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.2.1" date="23.09.2005">
+
+<change type="bugfix">
+<para lang="ru">
+если все бэкенды, используемые для балансировки нагрузки, оказывались
+в нерабочем состоянии после одной ошибки, то nginx мог зациклится;
+ошибка появилась в 0.2.0.
+</para>
+<para lang="en">
+if all backend using in load-balancing failed after one error, then
+nginx may got caught in an endless loop;
+bug appeared in 0.2.0.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.2.0" date="23.09.2005">
 
 <change>
@@ -104,7 +122,6 @@ nginx did not try do connect to them during 60 seconds.
 </para>
 <para lang="en">
 in IMAP/POP3 command argument parsing.
-Thanks to Rob Mueller.
 </para>
 </change>
 
