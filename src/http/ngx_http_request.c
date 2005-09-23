@@ -359,7 +359,7 @@ void ngx_http_init_request(ngx_event_t *rev)
     if (sscf->enable) {
 
         if (c->ssl == NULL) {
-            if (ngx_ssl_create_session(sscf->ssl_ctx, c, NGX_SSL_BUFFER)
+            if (ngx_ssl_create_connection(sscf->ssl_ctx, c, NGX_SSL_BUFFER)
                 == NGX_ERROR)
             {
                 ngx_http_close_connection(c);
@@ -1732,10 +1732,6 @@ ngx_http_postponed_handler(ngx_http_request_t *r)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http postponed output filter: %d", rc);
 
-        if (rc == NGX_AGAIN) {
-            return rc;
-        }
-
         /*
          * we treat NGX_ERROR as NGX_OK, because we need to complete
          * all postponed requests
@@ -1744,6 +1740,11 @@ ngx_http_postponed_handler(ngx_http_request_t *r)
         pr = r->postponed;
 
         if (pr == NULL) {
+
+            if (rc == NGX_AGAIN) {
+                return NGX_AGAIN;
+            }
+
             return NGX_OK;
         }
     }

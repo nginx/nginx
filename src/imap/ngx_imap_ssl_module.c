@@ -76,6 +76,9 @@ ngx_module_t  ngx_imap_ssl_module = {
 };
 
 
+static u_char ngx_imap_session_id_ctx[] = "IMAP";
+
+
 static void *
 ngx_imap_ssl_create_conf(ngx_conf_t *cf)
 {           
@@ -176,7 +179,16 @@ ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    SSL_CTX_set_verify(conf->ssl_ctx, SSL_VERIFY_NONE, NULL);
+    SSL_CTX_set_options(conf->ssl_ctx, SSL_OP_ALL);
+
+    SSL_CTX_set_mode(conf->ssl_ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+
+    SSL_CTX_set_read_ahead(conf->ssl_ctx, 1);
+
+    SSL_CTX_set_session_cache_mode(conf->ssl_ctx, SSL_SESS_CACHE_SERVER);
+
+    SSL_CTX_set_session_id_context(conf->ssl_ctx, ngx_imap_session_id_ctx,
+                                   sizeof(ngx_imap_session_id_ctx) - 1);
 
     return NGX_CONF_OK;
 }

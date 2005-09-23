@@ -336,7 +336,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                         }
 
                         nls[n].fd = ls[i].fd;
-                        nls[n].remain = 1;
+                        nls[n].previous = &ls[i];
                         ls[i].remain = 1;
 
                         if (ls[n].backlog != nls[i].backlog) {
@@ -594,7 +594,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         if (ngx_close_socket(ls[i].fd) == -1) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                          ngx_close_socket_n " %V failed",
+                          ngx_close_socket_n " listening socket on %V failed",
                           &ls[i].addr_text);
         }
     }
@@ -627,7 +627,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
-    if (old_cycle->connections == NULL) {
+    if (old_cycle->connections0 == NULL) {
         /* an old cycle is an init cycle */
         ngx_destroy_pool(old_cycle->pool);
         return cycle;
@@ -742,7 +742,8 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
     }
 
     ngx_memzero(&file, sizeof(ngx_file_t));
-    file.name = (ngx_inherited && getppid() > 1) ? ccf->newpid : ccf->pid;
+
+    file.name = ccf->pid;
     file.log = cycle->log;
 
     trunc = ngx_test_config ? 0: NGX_FILE_TRUNCATE;
@@ -786,12 +787,7 @@ void ngx_delete_pidfile(ngx_cycle_t *cycle)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    if (ngx_inherited && getppid() > 1) {
-        name = ccf->newpid.data;
-
-    } else { 
-        name = ccf->pid.data;
-    }
+    name = ngx_new_binary ? ccf->oldpid.data : ccf->pid.data;
 
     if (ngx_delete_file(name) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -963,7 +959,7 @@ static void ngx_clean_old_cycles(ngx_event_t *ev)
         found = 0;
 
         for (n = 0; n < cycle[i]->connection_n; n++) {
-            if (cycle[i]->connections[n].fd != (ngx_socket_t) -1) {
+            if (cycle[i]->connections0[n].fd != (ngx_socket_t) -1) {
                 found = 1;
 
                 ngx_log_debug1(NGX_LOG_DEBUG_CORE, log, 0, "live fd:%d", n);

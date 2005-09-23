@@ -35,6 +35,7 @@ typedef DWORD                      ngx_err_t;
 #define NGX_ENOTCONN               WSAENOTCONN
 #define NGX_ETIMEDOUT              WSAETIMEDOUT
 #define NGX_ECONNREFUSED           WSAECONNREFUSED
+#define NGX_ENAMETOOLONG           ERROR_BAD_PATHNAME
 #define NGX_EHOSTUNREACH           WSAEHOSTUNREACH
 #define NGX_ENOMOREFILES           ERROR_NO_MORE_FILES
 

@@ -82,7 +82,10 @@ ngx_http_headers_filter(ngx_http_request_t *r)
     ngx_table_elt_t          *expires, *cc, **ccp;
     ngx_http_headers_conf_t  *conf;
 
-    if (r->headers_out.status != NGX_HTTP_OK || r->main) {
+    if ((r->headers_out.status != NGX_HTTP_OK
+         && r->headers_out.status != NGX_HTTP_NOT_MODIFIED)
+        || r->main)
+    {
         return ngx_http_next_header_filter(r);
     }
 

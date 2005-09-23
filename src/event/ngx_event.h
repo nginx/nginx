@@ -218,62 +218,68 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 
 /*
- * The event filter requires to read/write the whole data -
+ * The event filter requires to read/write the whole data:
  * select, poll, /dev/poll, kqueue, epoll.
  */
 #define NGX_USE_LEVEL_EVENT      0x00000001
 
 /*
  * The event filter is deleted after a notification without an additional
- * syscall - select, poll, kqueue, epoll, Solaris 10's event ports.
+ * syscall: select, poll, kqueue, epoll, Solaris 10's event ports.
  */
 #define NGX_USE_ONESHOT_EVENT    0x00000002
 
 /*
- * The event filter notifies only the changes and an initial level -
+ * The event filter notifies only the changes and an initial level:
  * kqueue, epoll.
  */
 #define NGX_USE_CLEAR_EVENT      0x00000004
 
 /*
- * The event filter has kqueue features - the eof flag, errno,
+ * The event filter has kqueue features: the eof flag, errno,
  * available data, etc.
  */
-#define NGX_USE_KQUEUE_EVENT    0x00000008
+#define NGX_USE_KQUEUE_EVENT     0x00000008
 
 /*
- * The event filter supports low water mark - kqueue's NOTE_LOWAT.
+ * The event filter supports low water mark: kqueue's NOTE_LOWAT.
  * kqueue in FreeBSD 4.1-4.2 has no NOTE_LOWAT so we need a separate flag.
  */
-#define NGX_USE_LOWAT_EVENT     0x00000010
+#define NGX_USE_LOWAT_EVENT      0x00000010
 
 /*
- * The event filter requires to do i/o operation until EAGAIN -
+ * The event filter requires to do i/o operation until EAGAIN:
  * epoll, rt signals.
  */
-#define NGX_USE_GREEDY_EVENT    0x00000020
+#define NGX_USE_GREEDY_EVENT     0x00000020
 
 /*
- * The event filter is epoll,
+ * The event filter is epoll.
  */
 #define NGX_USE_EPOLL_EVENT      0x00000040
 
 /*
- * No need to add or delete the event filters - rt signals.
+ * No need to add or delete the event filters: rt signals.
  */
 #define NGX_USE_RTSIG_EVENT      0x00000080
 
 /*
- * No need to add or delete the event filters - overlapped, aio_read,
+ * No need to add or delete the event filters: overlapped, aio_read,
  * aioread, io_submit.
  */
 #define NGX_USE_AIO_EVENT        0x00000100
 
 /*
- * Need to add socket or handle only once - i/o completion port.
+ * Need to add socket or handle only once: i/o completion port.
  * It also requires NGX_HAVE_AIO and NGX_USE_AIO_EVENT to be set.
  */
 #define NGX_USE_IOCP_EVENT       0x00000200
+
+/*
+ * The event filter has no opaque data and requires file descriptors table:
+ * poll, /dev/poll, rt signals.
+ */
+#define NGX_USE_FD_EVENT         0x00000400
 
 
 
@@ -391,11 +397,12 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define ngx_del_timer        ngx_event_del_timer
 
 
+extern ngx_os_io_t  ngx_io;
+
 #define ngx_recv             ngx_io.recv
 #define ngx_recv_chain       ngx_io.recv_chain
 #define ngx_send             ngx_io.send
 #define ngx_send_chain       ngx_io.send_chain
-
 
 
 #define NGX_EVENT_MODULE      0x544E5645  /* "EVNT" */
@@ -471,6 +478,7 @@ void ngx_event_accept(ngx_event_t *ev);
 ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle);
 ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle);
 ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
+u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
 ngx_int_t ngx_handle_read_event(ngx_event_t *rev, u_int flags);
@@ -479,7 +487,8 @@ ngx_int_t ngx_handle_write_event(ngx_event_t *wev, size_t lowat);
 
 #if (NGX_WIN32)
 void ngx_event_acceptex(ngx_event_t *ev);
-int ngx_event_post_acceptex(ngx_listening_t *ls, int n);
+ngx_int_t ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n);
+u_char *ngx_acceptex_log_error(ngx_log_t *log, u_char *buf, size_t len);
 #endif
 
 

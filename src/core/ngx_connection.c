@@ -237,13 +237,14 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
             }
 
 #if (NGX_WIN32)
+
             /*
              * Winsock assignes a socket number divisible by 4
              * so to find a connection we divide a socket number by 4.
              */
 
             if (s % 4) {
-                ngx_log_error(NGX_LOG_EMERG, ls->log, 0,
+                ngx_log_error(NGX_LOG_EMERG, log, 0,
                               ngx_socket_n " created socket %d", s);
                 return NGX_ERROR;
             }
@@ -329,9 +330,9 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 void
 ngx_close_listening_sockets(ngx_cycle_t *cycle)
 {
-    ngx_uint_t        i;
-    ngx_socket_t      fd;
-    ngx_listening_t  *ls;
+    ngx_uint_t         i;
+    ngx_listening_t   *ls;
+    ngx_connection_t  *c;
 
     if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
         return;
@@ -342,35 +343,87 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
-        fd = ls[i].fd;
 
-#if (NGX_WIN32)
-        /*
-         * Winsock assignes a socket number divisible by 4
-         * so to find a connection we divide a socket number by 4.
-         */
-
-        fd /= 4;
-#endif
+        c = ls[i].connection;
 
         if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-            if (cycle->connections[fd].read->active) {
-                ngx_del_conn(&cycle->connections[fd], NGX_CLOSE_EVENT);
+            if (c->read->active) {
+                ngx_del_conn(c, NGX_CLOSE_EVENT);
             }
 
         } else {
-            if (cycle->read_events[fd].active) {
-                ngx_del_event(&cycle->read_events[fd],
-                              NGX_READ_EVENT, NGX_CLOSE_EVENT);
+            if (c->read->active) {
+                ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
             }
         }
 
-        if (ngx_close_socket(fd) == -1) {
+        ngx_free_connection(c);
+
+        c->fd = (ngx_socket_t) -1;
+
+        if (ngx_close_socket(ls[i].fd) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
                           ngx_close_socket_n " %V failed", &ls[i].addr_text);
         }
+    }
+}
 
-        cycle->connections[fd].fd = (ngx_socket_t) -1;
+
+ngx_connection_t *
+ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
+{
+    ngx_connection_t *c;
+
+    /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
+
+    if (ngx_cycle->files && (ngx_uint_t) s >= ngx_cycle->files_n) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      "the new socket has number %d, "
+                      "but only %ui files are available",
+                      s, ngx_cycle->files_n);
+        return NULL;
+    }
+
+    /* ngx_mutex_lock */
+
+    c = ngx_cycle->free_connections;
+
+    if (c == NULL) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      "%ui worker_connections is not enough",
+                      ngx_cycle->connection_n);
+
+        /* ngx_mutex_unlock */
+
+        return NULL;
+    }
+
+    ngx_cycle->free_connections = c->data;
+    ngx_cycle->free_connection_n--;
+
+    /* ngx_mutex_unlock */
+
+    if (ngx_cycle->files) {
+        ngx_cycle->files[s] = c;
+    }
+
+    return c;
+}
+
+
+void
+ngx_free_connection(ngx_connection_t *c)
+{
+    /* ngx_mutex_lock */
+
+    c->data = ngx_cycle->free_connections;
+    ngx_cycle->free_connections = c;
+    ngx_cycle->free_connection_n++;
+
+    /* ngx_mutex_unlock */
+
+    if (ngx_cycle->files) {
+        ngx_cycle->files[c->fd] = NULL;
     }
 }
 
@@ -451,9 +504,10 @@ ngx_close_connection(ngx_connection_t *c)
 
 #endif
 
+    ngx_free_connection(c);
+
     fd = c->fd;
     c->fd = (ngx_socket_t) -1;
-    c->data = NULL;
 
     if (ngx_close_socket(fd) == -1) {
 

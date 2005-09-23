@@ -62,6 +62,7 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     char             *rv;
     ngx_fd_t          fd;
     ngx_int_t         rc;
+    ngx_uint_t        block;
     ngx_conf_file_t  *prev;
 
 #if (NGX_SUPPRESS_WARN)
@@ -103,13 +104,20 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         cf->conf_file->file.offset = 0;
         cf->conf_file->file.log = cf->log;;
         cf->conf_file->line = 1;
+
+        block = 0;
+
+    } else {
+        block = 1;
     }
+
 
     for ( ;; ) {
         rc = ngx_conf_read_token(cf);
 
         /*
          * ngx_conf_read_token() may return
+         *
          *    NGX_ERROR             there is error
          *    NGX_OK                the token terminated by ";" was found
          *    NGX_CONF_BLOCK_START  the token terminated by "{" was found
@@ -118,6 +126,19 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
          */
 
         if (rc == NGX_ERROR) {
+            break;
+        }
+
+        if (rc == NGX_CONF_BLOCK_DONE) {
+            block = 0;
+        }
+
+        if (rc == NGX_CONF_FILE_DONE && block) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                         "unexpected end of file in %s:%ui, expecting \"}\"",
+                         cf->conf_file->file.name.data,
+                         cf->conf_file->line);
+            rc = NGX_ERROR;
             break;
         }
 
@@ -639,7 +660,7 @@ ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
 
     name->len = cycle->root.len + old.len;
 
-    if (cycle->connections) {
+    if (cycle->connections0) {
         name->data = ngx_palloc(cycle->pool, name->len + 1);
         if (name->data == NULL) {
             return  NGX_ERROR;

@@ -307,6 +307,7 @@ struct ngx_http_request_s {
     ngx_uint_t                        phase;
     ngx_int_t                         phase_handler;
     ngx_http_handler_pt               content_handler;
+    ngx_uint_t                        access_code;
 
     ngx_http_variable_value_t       **variables;
 

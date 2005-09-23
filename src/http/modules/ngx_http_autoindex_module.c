@@ -203,7 +203,10 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     if (ngx_open_dir(&dname, &dir) == NGX_ERROR) {
         err = ngx_errno;
 
-        if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
+        if (err == NGX_ENOENT
+            || err == NGX_ENOTDIR
+            || err == NGX_ENAMETOOLONG)
+        {
             level = NGX_LOG_ERR;
             rc = NGX_HTTP_NOT_FOUND;
 

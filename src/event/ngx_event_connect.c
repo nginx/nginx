@@ -10,22 +10,18 @@
 #include <ngx_event_connect.h>
 
 
-#define NGX_RESOLVER_BUFSIZE  8192
-
-
 ngx_int_t
 ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
-    int                  rc;
-    ngx_uint_t           instance, level;
-    u_int                event;
-    time_t               now;
-    ngx_err_t            err;
-    ngx_peer_t          *peer;
-    ngx_socket_t         s;
-    ngx_event_t         *rev, *wev;
-    ngx_connection_t    *c;
-    ngx_event_conf_t    *ecf;
+    int                rc;
+    ngx_uint_t         instance, level, i;
+    u_int              event;
+    time_t             now;
+    ngx_err_t          err;
+    ngx_peer_t        *peer;
+    ngx_socket_t       s;
+    ngx_event_t       *rev, *wev;
+    ngx_connection_t  *c;
 
     now = ngx_time();
 
@@ -47,6 +43,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
         pc->connection = c;
         pc->cached = 1;
+
         return NGX_OK;
     }
 
@@ -102,9 +99,16 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
             pc->tries--;
 
             if (pc->tries == 0) {
+
+                /* all peers failed, mark them as live for quick recovery */
+
+                for (i = 0; i < pc->peers->number; i++) {
+                    pc->peers->peer[i].fails = 0;
+                }
+
                 /* ngx_unlock_mutex(pc->peers->mutex); */
 
-                return NGX_ERROR;
+                return NGX_BUSY;
             }
         }
     }
@@ -124,33 +128,34 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     }
 
 
-    ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
+    c = ngx_get_connection(s, pc->log);
 
-    /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
-
-    if ((ngx_uint_t) s >= ecf->connections) {
-
-        ngx_log_error(NGX_LOG_ALERT, pc->log, 0,
-                      "socket() returned socket #%d while only %d "
-                      "connections was configured, closing the socket",
-                      s, ecf->connections);
-
+    if (c == NULL) {
         if (ngx_close_socket(s) == -1) {
             ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                           ngx_close_socket_n "failed");
         }
 
-        /* TODO: sleep for some time */
-
         return NGX_ERROR;
     }
 
+    rev = c->read;
+    wev = c->write;
+
+    ngx_memzero(c, sizeof(ngx_connection_t));
+
+    c->read = rev;
+    c->write = wev;
+    c->fd = s;
+    c->log = pc->log;
 
     if (pc->rcvbuf) {
         if (setsockopt(s, SOL_SOCKET, SO_RCVBUF,
                        (const void *) &pc->rcvbuf, sizeof(int)) == -1) {
             ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                           "setsockopt(SO_RCVBUF) failed");
+
+            ngx_free_connection(c);
 
             if (ngx_close_socket(s) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
@@ -165,6 +170,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                       ngx_nonblocking_n " failed");
 
+        ngx_free_connection(c);
+
         if (ngx_close_socket(s) == -1) {
             ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                           ngx_close_socket_n " failed");
@@ -173,46 +180,19 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         return NGX_ERROR;
     }
 
-#if (NGX_WIN32)
+    c->recv = ngx_recv;
+    c->send = ngx_send;
+    c->send_chain = ngx_send_chain;
 
-    /*
-     * Winsock assignes a socket number divisible by 4
-     * so to find a connection we divide a socket number by 4.
-     */
+    c->log_error = pc->log_error;
 
-    if (s % 4) {
-        ngx_log_error(NGX_LOG_EMERG, pc->log, 0,
-                      ngx_socket_n
-                      " created socket %d, not divisible by 4", s);
-        exit(1);
+    if (peer->sockaddr->sa_family != AF_INET) {
+        c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
+        c->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
     }
-
-    c = &ngx_cycle->connections[s / 4];
-    rev = &ngx_cycle->read_events[s / 4];
-    wev = &ngx_cycle->write_events[s / 4];
-
-#else
-
-    c = &ngx_cycle->connections[s];
-    rev = &ngx_cycle->read_events[s];
-    wev = &ngx_cycle->write_events[s];
-
-#endif
 
     instance = rev->instance;
 
-#if (NGX_THREADS)
-
-    if (*(&c->lock)) {
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, 0,
-                       "spinlock in connect, fd:%d", s);
-        ngx_spinlock(&c->lock, 1000);
-        ngx_unlock(&c->lock);
-    }
-
-#endif
-
-    ngx_memzero(c, sizeof(ngx_connection_t));
     ngx_memzero(rev, sizeof(ngx_event_t));
     ngx_memzero(wev, sizeof(ngx_event_t));
 
@@ -225,26 +205,10 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     rev->data = c;
     wev->data = c;
 
-    c->read = rev;
-    c->write = wev;
     wev->write = 1;
 
-    c->recv = ngx_recv;
-    c->send = ngx_send;
-    c->send_chain = ngx_send_chain;
-
-    c->log = pc->log;
     rev->log = pc->log;
     wev->log = pc->log;
-
-    c->fd = s;
-
-    c->log_error = pc->log_error;
-
-    if (peer->sockaddr->sa_family != AF_INET) {
-        c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
-        c->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
-    }
 
     pc->connection = c;
 
@@ -272,8 +236,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     } 
 
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0,
-                   "connect to %V, #%d", &peer->name, c->number);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pc->log, 0,
+                   "connect to %V, fd:%d #%d", &peer->name, s, c->number);
 
     rc = connect(s, peer->sockaddr, peer->socklen);
 
@@ -293,7 +257,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
             ngx_log_error(level, c->log, err, "connect() to %V failed",
                           &peer->name);
 
-            return NGX_CONNECT_ERROR;
+            return NGX_DECLINED;
         }
     }
 

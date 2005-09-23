@@ -9,26 +9,26 @@
 #include <ngx_event.h>
 
 
-static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log);
-static u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
+/* the buffer size is enough to hold "struct sockaddr_un" */
+#define NGX_SOCKLEN  512
+
+
+static void ngx_close_accepted_connection(ngx_connection_t *c);
 
 
 void
 ngx_event_accept(ngx_event_t *ev)
 {
-    ngx_uint_t         instance;
-#if 0
-    ngx_uint_t         accepted;
-#endif
-    socklen_t          len;
-    struct sockaddr   *sa;
+    socklen_t          sl;
     ngx_err_t          err;
     ngx_log_t         *log;
-    ngx_pool_t        *pool;
+    ngx_uint_t         instance;
     ngx_socket_t       s;
     ngx_event_t       *rev, *wev;
-    ngx_connection_t  *c, *ls;
+    ngx_listening_t   *ls;
+    ngx_connection_t  *c, *lc;
     ngx_event_conf_t  *ecf;
+    char               sa[NGX_SOCKLEN];
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
@@ -39,77 +39,28 @@ ngx_event_accept(ngx_event_t *ev)
         ev->available = ecf->multi_accept;
     }
 
-    ls = ev->data;
+    lc = ev->data;
+    ls = lc->listening;
+    ev->ready = 0;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "accept on %V, ready: %d",
-                   &ls->listening->addr_text, ev->available);
-
-    ev->ready = 0;
-    pool = NULL;
-#if 0
-    accepted = 0;
-#endif
+                   "accept on %V, ready: %d", &ls->addr_text, ev->available);
 
     do {
+        sl = NGX_SOCKLEN;
 
-        if (pool == NULL) {
-
-            /*
-             * Create the pool before accept() to avoid the copying of
-             * the sockaddr.  Although accept() can fail it is uncommon
-             * case and besides the pool can be got from the free pool list.
-             */
-
-            pool = ngx_create_pool(ls->listening->pool_size, ev->log);
-            if (pool == NULL) {
-                return;
-            }
-        }
-
-        sa = ngx_palloc(pool, ls->listening->socklen);
-        if (sa == NULL) {
-            ngx_destroy_pool(pool);
-            return;
-        }
-
-        log = ngx_palloc(pool, sizeof(ngx_log_t));
-        if (log == NULL) {
-            ngx_destroy_pool(pool);
-            return;
-        }
-
-        ngx_memcpy(log, ls->log, sizeof(ngx_log_t));
-        pool->log = log;
-
-        log->data = &ls->listening->addr_text;
-        log->handler = ngx_accept_log_error;
-
-        len = ls->listening->socklen;
-
-        s = accept(ls->fd, sa, &len);
+        s = accept(lc->fd, (struct sockaddr *) sa, &sl);
 
         if (s == -1) {
             err = ngx_socket_errno;
 
             if (err == NGX_EAGAIN) {
-#if 0
-                if (!(ngx_event_flags & NGX_USE_RTSIG_EVENT))
-                {
-                    ngx_log_error(NGX_LOG_NOTICE, log, err,
-                                  "EAGAIN after %d accepted connection(s)",
-                                  accepted);
-                }
-#endif
-
-                ngx_destroy_pool(pool);
                 return;
             }
 
             ngx_log_error((err == NGX_ECONNABORTED) ? NGX_LOG_CRIT:
                                                       NGX_LOG_ALERT,
-                          ev->log, err,
-                          "accept() on %V failed", &ls->listening->addr_text);
+                          ev->log, err, "accept() failed");
 
             if (err == NGX_ECONNABORTED) {
                 if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
@@ -117,12 +68,10 @@ ngx_event_accept(ngx_event_t *ev)
                 }
 
                 if (ev->available) {
-                    /* reuse the previously allocated pool */
                     continue;
                 }
             }
 
-            ngx_destroy_pool(pool);
             return;
         }
 
@@ -131,34 +80,58 @@ ngx_event_accept(ngx_event_t *ev)
         ngx_atomic_inc(ngx_stat_active);
 #endif
 
-        ngx_accept_disabled = (ngx_uint_t) s + NGX_ACCEPT_THRESHOLD
-                                                            - ecf->connections;
+        ngx_accept_disabled = NGX_ACCEPT_THRESHOLD
+                              - ngx_cycle->free_connection_n;
 
-        /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
+        c = ngx_get_connection(s, ev->log);
 
-        if ((ngx_uint_t) s >= ecf->connections) {
+        if (c == NULL) {
+            if (ngx_close_socket(s) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                              ngx_close_socket_n " failed");
+            }
 
-            ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                          "accept() on %V returned socket #%d while "
-                          "only %d connections was configured, "
-                          "closing the connection",
-                          &ls->listening->addr_text, s, ecf->connections);
+            return;
+        }
 
-            ngx_close_accepted_socket(s, log);
-            ngx_destroy_pool(pool);
+        rev = c->read;
+        wev = c->write;
+
+        ngx_memzero(c, sizeof(ngx_connection_t));
+
+        c->read = rev;
+        c->write = wev;
+        c->fd = s;
+        c->log = ev->log;
+
+        c->pool = ngx_create_pool(ls->pool_size, ev->log);
+        if (c->pool == NULL) {
+            ngx_close_accepted_connection(c);
+            return;
+        }
+
+        c->sockaddr = ngx_palloc(c->pool, sl);
+        if (c->sockaddr == NULL) {
+            ngx_close_accepted_connection(c);
+            return;
+        }
+
+        ngx_memcpy(c->sockaddr, sa, sl);
+
+        log = ngx_palloc(c->pool, sizeof(ngx_log_t));
+        if (log == NULL) {
+            ngx_close_accepted_connection(c);
             return;
         }
 
         /* set a blocking mode for aio and non-blocking mode for others */
 
         if (ngx_inherited_nonblocking) {
-            if ((ngx_event_flags & NGX_USE_AIO_EVENT)) {
+            if (ngx_event_flags & NGX_USE_AIO_EVENT) {
                 if (ngx_blocking(s) == -1) {
-                    ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
+                    ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                   ngx_blocking_n " failed");
-
-                    ngx_close_accepted_socket(s, log);
-                    ngx_destroy_pool(pool);
+                    ngx_close_accepted_connection(c);
                     return;
                 }
             }
@@ -166,61 +139,35 @@ ngx_event_accept(ngx_event_t *ev)
         } else {
             if (!(ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_RTSIG_EVENT))) {
                 if (ngx_nonblocking(s) == -1) {
-                    ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
+                    ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                   ngx_nonblocking_n " failed");
-
-                    ngx_close_accepted_socket(s, log);
-                    ngx_destroy_pool(pool);
+                    ngx_close_accepted_connection(c);
                     return;
                 }
             }
         }
 
-#if (NGX_WIN32)
-        /*
-         * Winsock assignes a socket number divisible by 4
-         * so to find a connection we divide a socket number by 4.
-         */
+        *log = ls->log;
 
-        if (s % 4) {
-            ngx_log_error(NGX_LOG_EMERG, ev->log, 0,
-                          "accept() on %V returned socket #%d, "
-                          "not divisible by 4",
-                          &ls->listening->addr_text, s);
-            exit(1);
-        }
+        c->recv = ngx_recv;
+        c->send = ngx_send;
+        c->send_chain = ngx_send_chain;
 
-        c = &ngx_cycle->connections[s / 4];
-        rev = &ngx_cycle->read_events[s / 4];
-        wev = &ngx_cycle->write_events[s / 4];
-#else
-        c = &ngx_cycle->connections[s];
-        rev = &ngx_cycle->read_events[s];
-        wev = &ngx_cycle->write_events[s];
-#endif
+        c->log = log;
+        c->pool->log = log;
+
+        c->listening = ls;
+        c->socklen = sl;
+
+        c->unexpected_eof = 1;
+
+        c->ctx = lc->ctx;
+        c->servers = lc->servers;
 
         instance = rev->instance;
 
-#if (NGX_THREADS)
-
-        if (*(&c->lock)) {
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                           "spinlock in accept, fd:%d", s);
-            ngx_spinlock(&c->lock, 1000);
-            ngx_unlock(&c->lock);
-        }
-
-#endif
-
         ngx_memzero(rev, sizeof(ngx_event_t));
         ngx_memzero(wev, sizeof(ngx_event_t));
-        ngx_memzero(c, sizeof(ngx_connection_t));
-
-        c->pool = pool;
-
-        c->listening = ls->listening;
-        c->sockaddr = sa;
-        c->socklen = len;
 
         rev->instance = !instance;
         wev->instance = !instance;
@@ -230,12 +177,6 @@ ngx_event_accept(ngx_event_t *ev)
 
         rev->data = c;
         wev->data = c;
-
-        c->read = rev;
-        c->write = wev;
-
-        c->fd = s;
-        c->unexpected_eof = 1;
 
         wev->write = 1;
         wev->ready = 1;
@@ -252,14 +193,6 @@ ngx_event_accept(ngx_event_t *ev)
 #endif
         }
 
-        c->ctx = ls->ctx;
-        c->servers = ls->servers;
-
-        c->recv = ngx_recv;
-        c->send = ngx_send;
-        c->send_chain = ngx_send_chain;
-
-        c->log = log;
         rev->log = log;
         wev->log = log;
 
@@ -285,24 +218,21 @@ ngx_event_accept(ngx_event_t *ev)
         wev->own_lock = &c->lock;
 #endif
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                        "accept: fd:%d c:%d", s, c->number);
 
-        if (c->listening->addr_ntop) {
-            c->addr_text.data = ngx_palloc(c->pool,
-                                           c->listening->addr_text_max_len);
+        if (ls->addr_ntop) {
+            c->addr_text.data = ngx_palloc(c->pool, ls->addr_text_max_len);
             if (c->addr_text.data == NULL) {
-                ngx_close_accepted_socket(s, log);
-                ngx_destroy_pool(pool);
+                ngx_close_accepted_connection(c);
                 return;
             }
     
-            c->addr_text.len = ngx_sock_ntop(c->listening->family, c->sockaddr,
+            c->addr_text.len = ngx_sock_ntop(ls->family, c->sockaddr,
                                              c->addr_text.data,
-                                             c->listening->addr_text_max_len);
+                                             ls->addr_text_max_len);
             if (c->addr_text.len == 0) {
-                ngx_close_accepted_socket(s, log);
-                ngx_destroy_pool(pool);
+                ngx_close_accepted_connection(c);
                 return;
             }
         }
@@ -328,26 +258,19 @@ ngx_event_accept(ngx_event_t *ev)
 
         if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
             if (ngx_add_conn(c) == NGX_ERROR) {
-                ngx_close_accepted_socket(s, log);
-                ngx_destroy_pool(pool);
+                ngx_close_accepted_connection(c);
                 return;
             }
         }
 
-        pool = NULL;
-
         log->data = NULL;
         log->handler = NULL;
 
-        ls->listening->handler(c);
+        ls->handler(c);
 
         if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
             ev->available--;
         }
-
-#if 0
-        accepted++;
-#endif
 
     } while (ev->available);
 }
@@ -389,27 +312,22 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 ngx_int_t
 ngx_enable_accept_events(ngx_cycle_t *cycle)
 {
-    ngx_uint_t        i;
-    ngx_listening_t  *s;
+    ngx_uint_t         i;
+    ngx_listening_t   *ls;
+    ngx_connection_t  *c;
 
-    s = cycle->listening.elts;
+    ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
 
-        /*
-         * we do not need to handle the Winsock sockets here (divide a socket
-         * number by 4) because this function would never called
-         * in the Winsock environment
-         */
+        c = ls[i].connection;
 
         if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-            if (ngx_add_conn(&cycle->connections[s[i].fd]) == NGX_ERROR) {
+            if (ngx_add_conn(c) == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
         } else {
-            if (ngx_add_event(&cycle->read_events[s[i].fd], NGX_READ_EVENT, 0)
-                                                                  == NGX_ERROR)
-            {
+            if (ngx_add_event(c->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
                 return NGX_ERROR;
             }
         }
@@ -422,36 +340,27 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
 ngx_int_t
 ngx_disable_accept_events(ngx_cycle_t *cycle)
 {
-    ngx_uint_t        i;
-    ngx_listening_t  *s;
+    ngx_uint_t         i;
+    ngx_listening_t   *ls;
+    ngx_connection_t  *c;
 
-    s = cycle->listening.elts;
+    ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
 
-        /*
-         * we do not need to handle the Winsock sockets here (divide a socket
-         * number by 4) because this function would never called
-         * in the Winsock environment
-         */
+        c = ls[i].connection;
+
+        if (!c->read->active) {
+            continue;
+        }
 
         if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-            if (!cycle->connections[s[i].fd].read->active) {
-                continue;
-            }
-
-            if (ngx_del_conn(&cycle->connections[s[i].fd], NGX_DISABLE_EVENT)
-                                                                  == NGX_ERROR)
-            {
+            if (ngx_del_conn(c, NGX_DISABLE_EVENT) == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
         } else {
-            if (!cycle->read_events[s[i].fd].active) {
-                continue;
-            }
-
-            if (ngx_del_event(&cycle->read_events[s[i].fd], NGX_READ_EVENT,
-                                               NGX_DISABLE_EVENT) == NGX_ERROR)
+            if (ngx_del_event(c->read, NGX_READ_EVENT, NGX_DISABLE_EVENT)
+                == NGX_ERROR)
             {
                 return NGX_ERROR;
             }
@@ -463,11 +372,22 @@ ngx_disable_accept_events(ngx_cycle_t *cycle)
 
 
 static void
-ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log)
+ngx_close_accepted_connection(ngx_connection_t *c)
 {
-    if (ngx_close_socket(s) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
+    ngx_socket_t  fd;
+
+    ngx_free_connection(c);
+
+    fd = c->fd;
+    c->fd = (ngx_socket_t) -1;
+
+    if (ngx_close_socket(fd) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
                       ngx_close_socket_n " failed");
+    }
+
+    if (c->pool) {
+        ngx_destroy_pool(c->pool);
     }
 
 #if (NGX_STAT_STUB)
@@ -476,8 +396,9 @@ ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log)
 }
 
 
-static u_char *
+u_char *
 ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
-    return ngx_snprintf(buf, len, " while accept() on %V", log->data);
+    return ngx_snprintf(buf, len, " while accepting new connection on %V",
+                        log->data);
 }

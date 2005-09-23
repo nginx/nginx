@@ -150,7 +150,8 @@ ngx_imap_auth_http_init(ngx_imap_session_t *s)
 
     rc = ngx_event_connect_peer(&ctx->peer);
 
-    if (rc == NGX_ERROR || rc == NGX_CONNECT_ERROR) {
+    if (rc == NGX_ERROR || rc == NGX_BUSY || rc == NGX_DECLINED) {
+        ngx_close_connection(ctx->peer.connection);
         ngx_imap_session_internal_server_error(s);
         return;
     }
@@ -448,6 +449,7 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
 
                 p = ngx_pcalloc(s->connection->pool, size);
                 if (p == NULL) {
+                    ngx_close_connection(ctx->peer.connection);
                     ngx_imap_session_internal_server_error(s);
                     return;
                 }
@@ -641,8 +643,9 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
 static void
 ngx_imap_auth_sleep_handler(ngx_event_t *rev)
 {
-    ngx_connection_t    *c;
-    ngx_imap_session_t  *s;
+    ngx_connection_t          *c;
+    ngx_imap_session_t        *s;
+    ngx_imap_core_srv_conf_t  *cscf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap auth sleep handler");
 
@@ -662,6 +665,18 @@ ngx_imap_auth_sleep_handler(ngx_event_t *rev)
             s->connection->read->handler = ngx_imap_auth_state;
         }
 
+        c->log->action = "in auth state";
+
+        ngx_imap_send(s->connection->write);
+
+        if (c->closed) {
+            return;
+        }
+
+        cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
+
+        ngx_add_timer(rev, cscf->timeout);
+
         if (rev->ready) {
             s->connection->read->handler(rev);
             return;
@@ -670,8 +685,6 @@ ngx_imap_auth_sleep_handler(ngx_event_t *rev)
         if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
             ngx_imap_close_connection(s->connection);
         }
-
-        ngx_imap_send(s->connection->write);
 
         return;
     }

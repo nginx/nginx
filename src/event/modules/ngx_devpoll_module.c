@@ -177,7 +177,7 @@ ngx_devpoll_init(ngx_cycle_t *cycle)
 
     ngx_event_actions = ngx_devpoll_module_ctx.actions;
 
-    ngx_event_flags = NGX_USE_LEVEL_EVENT;
+    ngx_event_flags = NGX_USE_LEVEL_EVENT|NGX_USE_FD_EVENT;
 
     return NGX_OK;
 }
@@ -449,36 +449,16 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle)
     lock = 1;
 
     for (i = 0; i < events; i++) {
-        c = &ngx_cycle->connections[event_list[i].fd];
+        c = ngx_cycle->files[event_list[i].fd];
 
         if (c->fd == -1) {
-            if (ngx_cycle->read_events[event_list[i].fd].closed) {
+            if (c->read->closed) {
                 continue;
             }
 
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "unexpected event");
             continue;
         }
-
-#if 0
-        if (c->fd == -1) {
-            old_cycle = ngx_old_cycles.elts;
-            for (j = 0; j < ngx_old_cycles.nelts; j++) {
-                if (old_cycle[j] == NULL) {
-                    continue;
-                }
-                c = &old_cycle[j]->connections[event_list[i].fd];
-                if (c->fd != -1) {
-                    break;
-                }
-            }
-        }
-
-        if (c->fd == -1) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "unknown cycle");
-            exit(1);
-        }
-#endif
 
         revents = event_list[i].revents;
 

@@ -113,6 +113,13 @@ static ngx_conf_post_t  ngx_accept_mutex_post = { ngx_accept_mutex_check } ;
 
 static ngx_command_t  ngx_event_core_commands[] = {
 
+    { ngx_string("worker_connections"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_event_connections,
+      0,
+      0,
+      NULL },
+
     { ngx_string("connections"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_event_connections,
@@ -322,13 +329,15 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 static ngx_int_t
 ngx_event_module_init(ngx_cycle_t *cycle)
 {
-#if !(NGX_WIN32)
-
-    size_t               size;
     void              ***cf;
-    char                *shared;
-    ngx_core_conf_t     *ccf;
     ngx_event_conf_t    *ecf;
+#if !(NGX_WIN32)
+    char                *shared;
+    size_t               size;
+    ngx_int_t            limit;
+    struct rlimit        rlmt;
+    ngx_core_conf_t     *ccf;
+#endif
 
     cf = ngx_get_conf(cycle->conf_ctx, ngx_events_module);
 
@@ -343,8 +352,29 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
                   "using the \"%s\" event method", ecf->name);
 
+#if !(NGX_WIN32)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "getrlimit(RLIMIT_NOFILE) failed, ignored");
+
+    } else {
+        if (ecf->connections > (ngx_uint_t) rlmt.rlim_cur
+            && (ccf->rlimit_nofile == NGX_CONF_UNSET
+                || ecf->connections > (ngx_uint_t) ccf->rlimit_nofile))
+        {
+            limit = (ccf->rlimit_nofile == NGX_CONF_UNSET) ?
+                         (ngx_int_t) rlmt.rlim_cur : ccf->rlimit_nofile;
+
+            ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                          "%ui worker_connections are more than "
+                          "open file resource limit: %i",
+                          ecf->connections, limit);
+        }
+    }
+
 
     if (ccf->master == 0 || ngx_accept_mutex_ptr) {
         return NGX_OK;
@@ -390,7 +420,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
                    "counter: %p, %d",
                    ngx_connection_counter, *ngx_connection_counter);
 
-#endif
+#endif /* !(NGX_WIN32) */
 
     return NGX_OK;
 }
@@ -400,15 +430,16 @@ static ngx_int_t
 ngx_event_process_init(ngx_cycle_t *cycle)
 {
     ngx_uint_t           m, i;
-    ngx_socket_t         fd;
     ngx_event_t         *rev, *wev;
-    ngx_listening_t     *s;
-    ngx_connection_t    *c;
+    ngx_listening_t     *ls;
+    ngx_connection_t    *c, *next, *old;
     ngx_core_conf_t     *ccf;
     ngx_event_conf_t    *ecf;
     ngx_event_module_t  *module;
 #if (NGX_WIN32)
     ngx_iocp_conf_t     *iocpcf;
+#else
+    struct rlimit        rlmt;
 #endif
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
@@ -449,28 +480,42 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         }
     }
 
-    cycle->connections = ngx_alloc(sizeof(ngx_connection_t) * ecf->connections,
-                                   cycle->log);
-    if (cycle->connections == NULL) {
-        return NGX_ERROR;
+#if !(NGX_WIN32)
+
+    if (ngx_event_flags & NGX_USE_FD_EVENT) {
+
+        if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "getrlimit(RLIMIT_NOFILE) failed");
+            return NGX_ERROR;
+        }
+
+        cycle->files_n = (ngx_uint_t) rlmt.rlim_cur;
+
+        cycle->files = ngx_calloc(sizeof(ngx_connection_t *) * cycle->files_n,
+                                  cycle->log);
+        if (cycle->files == NULL) {
+            return NGX_ERROR;
+        }
     }
 
-    c = cycle->connections;
-    for (i = 0; i < cycle->connection_n; i++) {
-        c[i].fd = (ngx_socket_t) -1;
-        c[i].data = NULL;
-#if (NGX_THREADS)
-        c[i].lock = 0;
 #endif
-    }
 
-    cycle->read_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
+    cycle->connections0 = ngx_alloc(sizeof(ngx_connection_t) * ecf->connections,
                                    cycle->log);
-    if (cycle->read_events == NULL) {
+    if (cycle->connections0 == NULL) {
         return NGX_ERROR;
     }
 
-    rev = cycle->read_events;
+    c = cycle->connections0;
+
+    cycle->read_events0 = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
+                                   cycle->log);
+    if (cycle->read_events0 == NULL) {
+        return NGX_ERROR;
+    }
+
+    rev = cycle->read_events0;
     for (i = 0; i < cycle->connection_n; i++) {
         rev[i].closed = 1;
         rev[i].instance = 1;
@@ -480,13 +525,13 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 #endif
     }
 
-    cycle->write_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
+    cycle->write_events0 = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
                                     cycle->log);
-    if (cycle->write_events == NULL) {
+    if (cycle->write_events0 == NULL) {
         return NGX_ERROR;
     }
 
-    wev = cycle->write_events;
+    wev = cycle->write_events0;
     for (i = 0; i < cycle->connection_n; i++) {
         wev[i].closed = 1;
 #if (NGX_THREADS)
@@ -495,40 +540,56 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 #endif
     }
 
+    i = cycle->connection_n;
+    next = NULL;
+
+    do {
+        i--;
+
+        c[i].data = next;
+        c[i].read = &cycle->read_events0[i];
+        c[i].write = &cycle->write_events0[i];
+        c[i].fd = (ngx_socket_t) -1;
+
+        next = &c[i];
+
+#if (NGX_THREADS)
+        c[i].lock = 0;
+#endif
+    } while (i);
+
+    cycle->free_connections = next;
+    cycle->free_connection_n = ecf->connections;
+
     /* for each listening socket */
 
-    s = cycle->listening.elts;
+    ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
 
-        fd = s[i].fd;
+        c = ngx_get_connection(ls[i].fd, cycle->log);
 
-#if (NGX_WIN32)
-        /*
-         * Winsock assignes a socket number divisible by 4
-         * so to find a connection we divide a socket number by 4.
-         */
+        if (c == NULL) {
+            return NGX_ERROR;
+        }
 
-        fd /= 4;
-#endif
-
-        c = &cycle->connections[fd];
-        rev = &cycle->read_events[fd];
-        wev = &cycle->write_events[fd];
+        rev = c->read;
+        wev = c->write;
 
         ngx_memzero(c, sizeof(ngx_connection_t));
+
+        c->read = rev;
+        c->write = wev;
+        c->fd = ls[i].fd;
+        c->log = &ls[i].log;
+
+        c->listening = &ls[i];
+        ls[i].connection = c;
+
+        c->ctx = ls[i].ctx;
+        c->servers = ls[i].servers;
+
         ngx_memzero(rev, sizeof(ngx_event_t));
         ngx_memzero(wev, sizeof(ngx_event_t));
-
-        c->fd = s[i].fd;
-        c->listening = &s[i];
-
-        c->ctx = s[i].ctx;
-        c->servers = s[i].servers;
-        c->log = s[i].log;
-        c->read = rev;
-
-        /* required by iocp in "c->write->active = 1" */
-        c->write = wev;
 
         /* required by poll */
         wev->index = NGX_INVALID_INDEX;
@@ -542,24 +603,26 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         rev->accept = 1;
 
 #if (NGX_HAVE_DEFERRED_ACCEPT)
-        rev->deferred_accept = s[i].deferred_accept;
+        rev->deferred_accept = ls[i].deferred_accept;
 #endif
 
         if (!(ngx_event_flags & NGX_USE_IOCP_EVENT)) {
-            if (s[i].remain) {
+            if (ls[i].previous) {
 
                 /*
                  * delete the old accept events that were bound to
                  * the old cycle read events array
                  */
 
-                if (ngx_del_event(&cycle->old_cycle->read_events[fd],
-                                 NGX_READ_EVENT, NGX_CLOSE_EVENT) == NGX_ERROR)
+                old = ls[i].previous->connection;
+
+                if (ngx_del_event(old->read, NGX_READ_EVENT, NGX_CLOSE_EVENT)
+                    == NGX_ERROR)
                 {
                     return NGX_ERROR;
                 }
 
-                cycle->old_cycle->connections[fd].fd = (ngx_socket_t) -1;
+                old->fd = (ngx_socket_t) -1;
             }
         }
 
@@ -572,9 +635,11 @@ ngx_event_process_init(ngx_cycle_t *cycle)
                 return NGX_ERROR;
             }
 
+            ls[i].log.handler = ngx_acceptex_log_error;
+
             iocpcf = ngx_event_get_conf(cycle->conf_ctx, ngx_iocp_module);
-            if (ngx_event_post_acceptex(&s[i], iocpcf->post_acceptex)
-                                                                  == NGX_ERROR)
+            if (ngx_event_post_acceptex(&ls[i], iocpcf->post_acceptex)
+                == NGX_ERROR)
             {
                 return NGX_ERROR;
             }
@@ -607,6 +672,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         }
 
 #endif
+
     }
 
     return NGX_OK;

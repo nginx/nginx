@@ -109,7 +109,9 @@ ngx_poll_init(ngx_cycle_t *cycle)
 
     ngx_event_actions = ngx_poll_module_ctx.actions;
 
-    ngx_event_flags = NGX_USE_LEVEL_EVENT|NGX_USE_ONESHOT_EVENT;
+    ngx_event_flags = NGX_USE_LEVEL_EVENT
+                      |NGX_USE_ONESHOT_EVENT
+                      |NGX_USE_FD_EVENT;
 
     return NGX_OK;
 }
@@ -229,7 +231,7 @@ ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
             event_list[ev->index] = event_list[nevents];
 
-            c = &ngx_cycle->connections[event_list[nevents].fd];
+            c = ngx_cycle->files[event_list[nevents].fd];
 
             if (c->fd == -1) {
                 cycle = ngx_old_cycles.elts;
@@ -237,7 +239,7 @@ ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
                     if (cycle[i] == NULL) {
                         continue;
                     }
-                    c = &cycle[i]->connections[event_list[nevents].fd];
+                    c = cycle[i]->files[event_list[nevents].fd];
                     if (c->fd != -1) {
                         break;
                     }
@@ -425,7 +427,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle)
             continue;
         }
 
-        c = &ngx_cycle->connections[event_list[i].fd];
+        c = ngx_cycle->files[event_list[i].fd];
 
         if (c->fd == -1) {
             old_cycle = ngx_old_cycles.elts;
@@ -433,7 +435,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle)
                 if (old_cycle[n] == NULL) {
                     continue;
                 }
-                c = &old_cycle[n]->connections[event_list[i].fd];
+                c = old_cycle[n]->files[event_list[i].fd];
                 if (c->fd != -1) {
                     break;
                 }

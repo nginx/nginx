@@ -165,7 +165,9 @@ ngx_rtsig_init(ngx_cycle_t *cycle)
 
     ngx_event_actions = ngx_rtsig_module_ctx.actions;
 
-    ngx_event_flags = NGX_USE_RTSIG_EVENT|NGX_USE_GREEDY_EVENT;
+    ngx_event_flags = NGX_USE_RTSIG_EVENT
+                      |NGX_USE_GREEDY_EVENT
+                      |NGX_USE_FD_EVENT;
 
     return NGX_OK;
 }
@@ -428,7 +430,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
 
         /* TODO: old_cycles */
 
-        c = &ngx_cycle->connections[si.si_fd];
+        c = ngx_cycle->files[si.si_fd];
 
         instance = signo - rtscf->signo;
 
@@ -596,7 +598,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
                 break;
             }
 
-            c = &cycle->connections[overflow_current++];
+            c = cycle->files[overflow_current++];
 
             if (c->fd == -1) {
                 continue;
@@ -652,7 +654,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
         }
 
         for (i = 0; i < n; i++) {
-            c = &cycle->connections[overflow_list[i].fd];
+            c = cycle->files[overflow_list[i].fd];
 
             rev = c->read;
 

@@ -8,7 +8,9 @@
 #define _NGX_PROCESS_H_INCLUDED_
 
 
-typedef DWORD        ngx_pid_t;
+typedef DWORD            ngx_pid_t;
+#define NGX_INVALID_PID  0
+
 
 #define ngx_getpid   GetCurrentProcessId
 #define ngx_log_pid  ngx_pid

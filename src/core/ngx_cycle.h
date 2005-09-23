@@ -28,14 +28,20 @@ struct ngx_cycle_s {
     ngx_log_t                *log;
     ngx_log_t                *new_log;
 
+    ngx_connection_t        **files;
+    ngx_connection_t         *free_connections;
+    ngx_uint_t                free_connection_n;
+
     ngx_array_t               listening;
     ngx_array_t               pathes;
     ngx_list_t                open_files;
 
     ngx_uint_t                connection_n;
-    ngx_connection_t         *connections;
-    ngx_event_t              *read_events;
-    ngx_event_t              *write_events;
+    ngx_uint_t                files_n;
+
+    ngx_connection_t         *connections0;
+    ngx_event_t              *read_events0;
+    ngx_event_t              *write_events0;
 
     ngx_cycle_t              *old_cycle;
 
@@ -51,6 +57,9 @@ typedef struct {
      ngx_int_t                worker_processes;
      ngx_int_t                debug_points;
 
+     ngx_int_t                rlimit_nofile;
+     ngx_int_t                rlimit_sigpending;
+
      int                      priority;
 
      char                    *username;
@@ -60,7 +69,7 @@ typedef struct {
      ngx_str_t                working_directory;
 
      ngx_str_t                pid;
-     ngx_str_t                newpid;
+     ngx_str_t                oldpid;
 
 #if (NGX_THREADS)
      ngx_int_t                worker_threads;

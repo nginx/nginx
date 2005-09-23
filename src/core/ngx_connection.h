@@ -12,54 +12,60 @@
 #include <ngx_core.h>
 
 
-typedef struct {
-    ngx_socket_t      fd;
+typedef struct ngx_listening_s  ngx_listening_t;
 
-    struct sockaddr  *sockaddr;
-    socklen_t         socklen;    /* size of sockaddr */
-    size_t            addr;       /* offset to address in sockaddr */
-    size_t            addr_text_max_len;
-    ngx_str_t         addr_text;
+struct ngx_listening_s {
+    ngx_socket_t        fd;
 
-    int               family;
-    int               type;
+    struct sockaddr    *sockaddr;
+    socklen_t           socklen;    /* size of sockaddr */
+    size_t              addr;       /* offset to address in sockaddr */
+    size_t              addr_text_max_len;
+    ngx_str_t           addr_text;
 
-    void            (*handler)(ngx_connection_t *c); /* handler of accepted
-                                                        connection */
-    void             *ctx;        /* ngx_http_conf_ctx_t, for example */
-    void             *servers;    /* array of ngx_http_in_addr_t, for example */
+    int                 family;
+    int                 type;
+    int                 backlog;
 
-    ngx_log_t        *log;
-    int               backlog;
+    /* handler of accepted connection */
+    void              (*handler)(ngx_connection_t *c);
 
-    size_t            pool_size;
-    size_t            post_accept_buffer_size; /* should be here because
-                                                  of the AcceptEx() preread */
-    time_t            post_accept_timeout;     /* should be here because
-                                                  of the deferred accept */
+    void               *ctx;      /* ngx_http_conf_ctx_t, for example */
+    void               *servers;  /* array of ngx_http_in_addr_t, for example */
 
-    unsigned          open:1;
-    unsigned          remain:1;
-    unsigned          ignore:1;
+    ngx_log_t           log;
 
-    unsigned          bound:1;       /* already bound */
-    unsigned          inherited:1;   /* inherited from previous process */
-    unsigned          nonblocking_accept:1;
-    unsigned          change_backlog:1;
-    unsigned          nonblocking:1;
-    unsigned          shared:1;    /* shared between threads or processes */
-    unsigned          addr_ntop:1;
+    size_t              pool_size;
+    /* should be here because of the AcceptEx() preread */
+    size_t              post_accept_buffer_size;
+    /* should be here because of the deferred accept */
+    time_t              post_accept_timeout;
+
+    ngx_listening_t    *previous;
+    ngx_connection_t   *connection;
+
+    unsigned            open:1;
+    unsigned            remain:1;
+    unsigned            ignore:1;
+
+    unsigned            bound:1;       /* already bound */
+    unsigned            inherited:1;   /* inherited from previous process */
+    unsigned            nonblocking_accept:1;
+    unsigned            change_backlog:1;
+    unsigned            nonblocking:1;
+    unsigned            shared:1;    /* shared between threads or processes */
+    unsigned            addr_ntop:1;
 
 #if (NGX_HAVE_DEFERRED_ACCEPT)
-    unsigned          deferred_accept:1;
-    unsigned          delete_deferred:1;
-    unsigned          add_deferred:1;
+    unsigned            deferred_accept:1;
+    unsigned            delete_deferred:1;
+    unsigned            add_deferred:1;
 #ifdef SO_ACCEPTFILTER
-    char             *accept_filter;
+    char               *accept_filter;
 #endif
 #endif
 
-} ngx_listening_t;
+};
 
 
 typedef enum {
@@ -160,8 +166,8 @@ void ngx_close_listening_sockets(ngx_cycle_t *cycle);
 void ngx_close_connection(ngx_connection_t *c);
 ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text);
 
-
-extern ngx_os_io_t  ngx_io;
+ngx_connection_t *ngx_get_connection(ngx_socket_t s, ngx_log_t *log);
+void ngx_free_connection(ngx_connection_t *c);
 
 
 #endif /* _NGX_CONNECTION_H_INCLUDED_ */

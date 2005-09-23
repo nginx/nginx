@@ -284,6 +284,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("satisfy_any"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, satisfy_any),
+      NULL },
+
     { ngx_string("internal"),
       NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS,
       ngx_http_core_internal,
@@ -401,49 +408,42 @@ ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->unexpected_eof = 0;
 
-    switch (r->headers_in.connection_type) {
-    case 0:
-        if (r->http_version > NGX_HTTP_VERSION_10) {
+    if (r->err_ctx == NULL) {
+        switch (r->headers_in.connection_type) {
+        case 0:
+            if (r->http_version > NGX_HTTP_VERSION_10) {
+                r->keepalive = 1;
+            } else {
+                r->keepalive = 0;
+            }
+            break;
+
+        case NGX_HTTP_CONNECTION_CLOSE:
+            r->keepalive = 0;
+            break;
+
+        case NGX_HTTP_CONNECTION_KEEP_ALIVE:
             r->keepalive = 1;
-        } else {
+            break;
+        }
+
+        if (r->keepalive && r->headers_in.msie && r->method == NGX_HTTP_POST) {
+
+            /*
+             * MSIE may wait for some time if the response for the POST request
+             * is sent over the keepalive connection
+             */
+
             r->keepalive = 0;
         }
-        break;
 
-    case NGX_HTTP_CONNECTION_CLOSE:
-        r->keepalive = 0;
-        break;
+        if (r->headers_in.content_length_n > 0) {
+            r->lingering_close = 1;
 
-    case NGX_HTTP_CONNECTION_KEEP_ALIVE:
-        r->keepalive = 1;
-        break;
+        } else {
+            r->lingering_close = 0;
+        }
     }
-
-    if (r->keepalive && r->headers_in.msie && r->method == NGX_HTTP_POST) {
-
-        /*
-         * MSIE may wait for some time if the response for the POST request
-         * is sent over the keepalive connection
-         */
-
-        r->keepalive = 0;
-    }
-
-#if 0
-    /* TEST STUB */ r->http_version = NGX_HTTP_VERSION_10;
-    /* TEST STUB */ r->keepalive = 0;
-#endif
-
-    if (r->headers_in.content_length_n > 0) {
-        r->lingering_close = 1;
-
-    } else {
-        r->lingering_close = 0;
-    }
-
-#if 0
-    /* TEST STUB */ r->lingering_close = 1;
-#endif
 
     r->write_event_handler = ngx_http_core_run_phases;
 
@@ -498,6 +498,10 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
             r->phase = NGX_HTTP_FIND_CONFIG_PHASE;
         }
 
+        if (r->phase == NGX_HTTP_ACCESS_PHASE && r->main) {
+            continue;
+        }
+
         if (r->phase == NGX_HTTP_CONTENT_PHASE && r->content_handler) {
             r->write_event_handler = ngx_http_request_empty_handler;
             ngx_http_finalize_request(r, r->content_handler(r));
@@ -515,7 +519,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
                 /*
                  * we should never use r here because 
-                 * it could point to already freed data
+                 * it may point to already freed data
                  */
 
                 return;
@@ -523,6 +527,30 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
             if (rc == NGX_DECLINED) {
                 continue;
+            }
+
+            if (r->phase == NGX_HTTP_ACCESS_PHASE) {
+                clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+                if (clcf->satisfy_any) {
+
+                    if (rc == NGX_OK) {
+                        r->access_code = 0;
+
+                        if (r->headers_out.www_authenticate) {
+                            r->headers_out.www_authenticate->hash = 0;
+                        }
+
+                        break;
+                    }
+
+                    if (rc == NGX_HTTP_FORBIDDEN || rc == NGX_HTTP_UNAUTHORIZED)
+                    {
+                        r->access_code = rc;
+
+                        continue;
+                    }
+                }
             }
 
             if (rc >= NGX_HTTP_SPECIAL_RESPONSE
@@ -545,6 +573,12 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
             if (rc == NGX_OK && cmcf->phases[r->phase].type == NGX_OK) {
                 break;
             }
+
+        }
+
+        if (r->phase == NGX_HTTP_ACCESS_PHASE && r->access_code) {
+            ngx_http_finalize_request(r, r->access_code);
+            return;
         }
     }
 
@@ -1102,6 +1136,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     sr->internal = 1;
 
+    sr->discard_body = r->discard_body;
     sr->main_filter_need_in_memory = r->main_filter_need_in_memory;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1793,6 +1828,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->client_max_body_size = NGX_CONF_UNSET_SIZE;
     lcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
     lcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
+    lcf->satisfy_any = NGX_CONF_UNSET;
     lcf->internal = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->tcp_nopush = NGX_CONF_UNSET;
@@ -1895,6 +1931,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
     ngx_conf_merge_msec_value(conf->client_body_timeout,
                               prev->client_body_timeout, 60000);
 
+    ngx_conf_merge_value(conf->satisfy_any, prev->satisfy_any, 0);
     ngx_conf_merge_value(conf->internal, prev->internal, 0);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);

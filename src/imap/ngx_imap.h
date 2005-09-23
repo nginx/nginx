@@ -101,6 +101,8 @@ typedef struct {
     unsigned                quit:1;
     unsigned                protocol:1;
     unsigned                quoted:1;
+    unsigned                backslash:1;
+    unsigned                no_sync_literal:1;
 
     ngx_str_t               login;
     ngx_str_t               passwd;

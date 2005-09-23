@@ -23,7 +23,7 @@
 
 
 typedef struct {
-    SSL                   *ssl;
+    SSL                   *connection;
     ngx_int_t              last;
     ngx_buf_t             *buf;
     ngx_event_handler_pt   saved_read_handler;
@@ -49,8 +49,8 @@ typedef SSL_CTX  ngx_ssl_ctx_t;
 
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
-ngx_int_t ngx_ssl_create_session(ngx_ssl_ctx_t *ctx, ngx_connection_t *c,
-                                 ngx_uint_t flags);
+ngx_int_t ngx_ssl_create_connection(ngx_ssl_ctx_t *ctx, ngx_connection_t *c,
+    ngx_uint_t flags);
 
 #define ngx_ssl_handshake(c)     NGX_OK
 

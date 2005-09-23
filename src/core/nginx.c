@@ -42,6 +42,13 @@ static ngx_command_t  ngx_core_commands[] = {
       offsetof(ngx_core_conf_t, master),
       NULL },
 
+    { ngx_string("pid"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      0,
+      offsetof(ngx_core_conf_t, pid),
+      NULL },
+
     { ngx_string("worker_processes"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -55,6 +62,41 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       offsetof(ngx_core_conf_t, debug_points),
       &ngx_debug_points },
+
+    { ngx_string("user"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE12,
+      ngx_set_user,
+      0,
+      0,
+      NULL },
+
+    { ngx_string("worker_priority"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_set_priority,
+      0,
+      0,
+      NULL },
+
+    { ngx_string("worker_rlimit_nofile"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_core_conf_t, rlimit_nofile),
+      NULL },
+
+    { ngx_string("worker_rlimit_sigpending"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_core_conf_t, rlimit_sigpending),
+      NULL },
+
+    { ngx_string("working_directory"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      0,
+      offsetof(ngx_core_conf_t, working_directory),
+      NULL },
 
 #if (NGX_THREADS)
 
@@ -73,34 +115,6 @@ static ngx_command_t  ngx_core_commands[] = {
       NULL },
 
 #endif
-
-    { ngx_string("user"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE12,
-      ngx_set_user,
-      0,
-      0,
-      NULL },
-
-    { ngx_string("worker_priority"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
-      ngx_set_priority,
-      0,
-      0,
-      NULL },
-
-    { ngx_string("pid"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
-      0,
-      offsetof(ngx_core_conf_t, pid),
-      NULL },
-
-    { ngx_string("working_directory"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
-      0,
-      offsetof(ngx_core_conf_t, working_directory),
-      NULL },
 
       ngx_null_command
 };
@@ -324,13 +338,15 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 }
 
 
-ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
+ngx_pid_t
+ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 {
     char             *env[3], *var;
     u_char           *p;
     ngx_uint_t        i;
     ngx_pid_t         pid;
     ngx_exec_ctx_t    ctx;
+    ngx_core_conf_t  *ccf;
     ngx_listening_t  *ls;
 
     ctx.path = argv[0];
@@ -374,7 +390,33 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 
     ctx.envp = (char *const *) &env;
 
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ngx_rename_file((char *) ccf->pid.data, (char *) ccf->oldpid.data)
+        != NGX_OK)
+    {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      ngx_rename_file_n " %s to %s failed "
+                      "before executing new binary process \"%s\"",
+                      ccf->pid.data, ccf->oldpid.data, argv[0]);
+
+        ngx_free(var);
+
+        return NGX_INVALID_PID;
+    }
+
     pid = ngx_execute(cycle, &ctx);
+
+    if (pid == NGX_INVALID_PID) {
+        if (ngx_rename_file((char *) ccf->oldpid.data, (char *) ccf->pid.data)
+            != NGX_OK)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          ngx_rename_file_n " %s back to %s failed "
+                          "after try to executing new binary process \"%s\"",
+                          ccf->oldpid.data, ccf->pid.data, argv[0]);
+        }
+    }
 
     ngx_free(var);
 
@@ -382,7 +424,8 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 }
 
 
-static ngx_int_t ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
+static ngx_int_t
+ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
 {
     ngx_int_t  i;
 
@@ -485,7 +528,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
      * set by pcalloc()
      *
      *     ccf->pid = NULL;
-     *     ccf->newpid = NULL;
+     *     ccf->oldpid = NULL;
      *     ccf->priority = 0;
      */
 
@@ -493,8 +536,13 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->master = NGX_CONF_UNSET;
     ccf->worker_processes = NGX_CONF_UNSET;
     ccf->debug_points = NGX_CONF_UNSET;
+
+    ccf->rlimit_nofile = NGX_CONF_UNSET;
+    ccf->rlimit_sigpending = NGX_CONF_UNSET;
+
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET_UINT;
     ccf->group = (ngx_gid_t) NGX_CONF_UNSET_UINT;
+
 #if (NGX_THREADS)
     ccf->worker_threads = NGX_CONF_UNSET;
     ccf->thread_stack_size = NGX_CONF_UNSET_SIZE;
@@ -558,15 +606,15 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    ccf->newpid.len = ccf->pid.len + sizeof(NGX_NEWPID_EXT);
+    ccf->oldpid.len = ccf->pid.len + sizeof(NGX_OLDPID_EXT);
 
-    ccf->newpid.data = ngx_palloc(cycle->pool, ccf->newpid.len);
-    if (ccf->newpid.data == NULL) {
+    ccf->oldpid.data = ngx_palloc(cycle->pool, ccf->oldpid.len);
+    if (ccf->oldpid.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    ngx_memcpy(ngx_cpymem(ccf->newpid.data, ccf->pid.data, ccf->pid.len),
-               NGX_NEWPID_EXT, sizeof(NGX_NEWPID_EXT));
+    ngx_memcpy(ngx_cpymem(ccf->oldpid.data, ccf->pid.data, ccf->pid.len),
+               NGX_OLDPID_EXT, sizeof(NGX_OLDPID_EXT));
 
 #endif
 

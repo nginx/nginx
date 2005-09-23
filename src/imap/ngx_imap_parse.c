@@ -20,7 +20,9 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
         sw_command,
         sw_spaces_before_argument,
         sw_argument,
+        sw_backslash,
         sw_literal,
+        sw_no_sync_literal_argument,
         sw_start_literal_argument,
         sw_literal_argument,
         sw_end_literal_argument,
@@ -225,6 +227,22 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
                     goto done;
                 }
                 break;
+            case '\\':
+                if (s->quoted) {
+                    s->backslash = 1;
+                    state = sw_backslash;
+                }
+                break;
+            }
+            break;
+
+        case sw_backslash:
+            switch (ch) {
+            case CR:
+            case LF:
+                goto invalid;
+            default:
+                state = sw_argument;
             }
             break;
 
@@ -237,6 +255,18 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
                 state = sw_start_literal_argument;
                 break;
             }
+            if (ch == '+') {
+                state = sw_no_sync_literal_argument;
+                break;
+            }
+            goto invalid;
+
+        case sw_no_sync_literal_argument:
+            if (ch == '}') {
+                s->no_sync_literal = 1;
+                state = sw_start_literal_argument;
+                break;
+            }
             goto invalid;
 
         case sw_start_literal_argument:
@@ -246,10 +276,17 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
             case LF:
                 s->buffer->pos = p + 1;
                 s->arg_start = p + 1;
-                s->state = sw_literal_argument;
-                return NGX_IMAP_NEXT;
+                if (s->no_sync_literal == 0) {
+                    s->state = sw_literal_argument;
+                    return NGX_IMAP_NEXT;
+                }
+                state = sw_literal_argument;
+                s->no_sync_literal = 0;
+                break;
+            default:
+                goto invalid;
             }
-            goto invalid;
+            break;
 
         case sw_literal_argument:
             if (s->literal_len && --s->literal_len) {
@@ -312,9 +349,11 @@ done:
         }
         arg->len = s->arg_end - s->arg_start;
         arg->data = s->arg_start;
+
         s->arg_start = NULL;
         s->cmd_start = NULL;
         s->quoted = 0;
+        s->no_sync_literal = 0;
         s->literal_len = 0;
     }
 
@@ -326,6 +365,7 @@ invalid:
 
     s->state = sw_start;
     s->quoted = 0;
+    s->no_sync_literal = 0;
     s->literal_len = 0;
 
     return NGX_IMAP_PARSE_INVALID_COMMAND;
@@ -432,7 +472,14 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
 
         case sw_argument:
             switch (ch) {
-            case ' ':
+
+         /* 
+          * the space should be considered part of the at username
+          * or password, but not of argument in other commands
+          *
+          * case ' ':
+          */
+
             case CR:
             case LF:
                 arg = ngx_array_push(&s->args);

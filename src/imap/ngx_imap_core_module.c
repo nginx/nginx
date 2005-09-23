@@ -418,7 +418,9 @@ ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->ctx = cf->ctx;
 
     /* STUB */
-    ls->log = cf->cycle->new_log;
+    ls->log = *cf->cycle->new_log;
+    ls->log.data = &ls->addr_text;
+    ls->log.handler = ngx_accept_log_error;
     /**/
 
     return NGX_CONF_OK;

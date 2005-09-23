@@ -94,7 +94,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "no more than %d processes can be spawned",
                           NGX_MAX_PROCESSES);
-            return NGX_ERROR;
+            return NGX_INVALID_PID;
         }
     }
 
@@ -107,7 +107,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
         {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "socketpair() failed while spawning \"%s\"", name);
-            return NGX_ERROR;
+            return NGX_INVALID_PID;
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
@@ -120,7 +120,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
                           ngx_nonblocking_n " failed while spawning \"%s\"",
                           name);
             ngx_close_channel(ngx_processes[s].channel, cycle->log);
-            return NGX_ERROR;
+            return NGX_INVALID_PID;
         }
 
         if (ngx_nonblocking(ngx_processes[s].channel[1]) == -1) {
@@ -128,7 +128,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
                           ngx_nonblocking_n " failed while spawning \"%s\"",
                           name);
             ngx_close_channel(ngx_processes[s].channel, cycle->log);
-            return NGX_ERROR;
+            return NGX_INVALID_PID;
         }
 
         on = 1;
@@ -136,14 +136,14 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "ioctl(FIOASYNC) failed while spawning \"%s\"", name);
             ngx_close_channel(ngx_processes[s].channel, cycle->log);
-            return NGX_ERROR;
+            return NGX_INVALID_PID;
         }
 
         if (fcntl(ngx_processes[s].channel[0], F_SETOWN, ngx_pid) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "fcntl(F_SETOWN) failed while spawning \"%s\"", name);
             ngx_close_channel(ngx_processes[s].channel, cycle->log);
-            return NGX_ERROR;
+            return NGX_INVALID_PID;
         }
 
         if (fcntl(ngx_processes[s].channel[0], F_SETFD, FD_CLOEXEC) == -1) {
@@ -151,7 +151,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
                           "fcntl(FD_CLOEXEC) failed while spawning \"%s\"",
                            name);
             ngx_close_channel(ngx_processes[s].channel, cycle->log);
-            return NGX_ERROR;
+            return NGX_INVALID_PID;
         }
 
         if (fcntl(ngx_processes[s].channel[1], F_SETFD, FD_CLOEXEC) == -1) {
@@ -159,7 +159,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
                           "fcntl(FD_CLOEXEC) failed while spawning \"%s\"",
                            name);
             ngx_close_channel(ngx_processes[s].channel, cycle->log);
-            return NGX_ERROR;
+            return NGX_INVALID_PID;
         }
 
         ngx_channel = ngx_processes[s].channel[1];
@@ -180,7 +180,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "fork() failed while spawning \"%s\"", name);
         ngx_close_channel(ngx_processes[s].channel, cycle->log);
-        return NGX_ERROR;
+        return NGX_INVALID_PID;
 
     case 0:
         ngx_pid = ngx_getpid();

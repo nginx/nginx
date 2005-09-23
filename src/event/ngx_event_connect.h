@@ -13,9 +13,6 @@
 #include <ngx_event.h>
 
 
-#define NGX_CONNECT_ERROR   -10
-
-
 typedef struct {
     struct sockaddr    *sockaddr;
     socklen_t           socklen;

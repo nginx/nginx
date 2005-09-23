@@ -9,6 +9,139 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.2.0" date="23.09.2005">
+
+<change>
+<para lang="ru">
+Изменились имена pid-файлов, используемые во время обновления исполняемого
+файла. Ручное переименование теперь не нужно.
+Старый основной процесс добавляет к своему pid-файл суффикс ".oldbin"
+и запускает новый исполняемый файл.
+Новый основной процесс создаёт обычный pid-файл без суффикса ".newbin".
+Если новый основной процесс выходит, то старый процесс переименовывает свой
+pid-файл c суффиксом ".oldbin" в pid-файл без суффикса.
+При обновлении с версии 0.1.х до 0.2.0 нужно учитывать, что старый процесс
+0.1.x и новый процесс 0.2.0 оба используют pid-файл без суффиксов.
+</para>
+<para lang="en">
+The pid-file names used during online upgrade was changed and now is not
+required a manual rename operation.
+The old master process adds the ".oldbin" suffix to its pid-file and
+executes a new binary file.
+The new master process creates usual pid-file without the ".newbin" suffix.
+If the master process exits, then old master process renames back
+its pid-file with the ".oldbin" suffix to the pid-file without suffix.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива worker_connections, новое название директивы connections;
+директива теперь задаёт максимальное число соединений,
+а не максимально возможный номер дескриптора для сокета.
+</para>
+<para lang="en">
+the "worker_connections" directive, new name of the "connections" directive;
+now the directive specifies maximum number of connections,
+but not maximum socket descriptor number.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+SSL поддерживает кэширование сессий в пределах одного рабочего процесса.
+</para>
+<para lang="en">
+SSL supports the session cache inside one worker process.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива satisfy_any.
+</para>
+<para lang="en">
+the "satisfy_any" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+модули ngx_http_access_module и ngx_http_auth_basic_module не работают
+для подзапросов.
+</para>
+<para lang="en">
+the ngx_http_access_module and ngx_http_auth_basic_module do not run
+for subrequests.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы worker_rlimit_nofile и worker_rlimit_sigpending.
+</para>
+<para lang="en">
+the "worker_rlimit_nofile" and "worker_rlimit_sigpending" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если все бэкенды, используемые для балансировки нагрузки, оказывались
+в нерабочем состоянии после одной ошибки, то nginx не обращался к ним
+в течение 60 секунд.
+</para>
+<para lang="en">
+if all backend using in load-balancing failed after one error, then
+nginx did not try do connect to them during 60 seconds.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в парсинге аргументов IMAP/POP3 команд.
+Спасибо Rob Mueller.
+</para>
+<para lang="en">
+in IMAP/POP3 command argument parsing.
+Thanks to Rob Mueller.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании SSL в IMAP/POP3 прокси.
+</para>
+<para lang="en">
+errors while using SSL in IMAP/POP3 proxy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании SSI и сжатия.
+</para>
+<para lang="en">
+errors while using SSI and gzipping.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в ответах 304 не добавлялись строки заголовка ответа "Expires" и
+"Cache-Control".
+Спасибо Александру Кукушкину.
+</para>
+<para lang="en">
+the "Expires" and "Cache-Control" header lines were omitted
+from the 304 responses.
+Thanks to Alexandr Kukushkin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.1.45" date="08.09.2005">
 
 <change type="change">

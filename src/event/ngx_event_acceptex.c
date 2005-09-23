@@ -9,11 +9,17 @@
 #include <ngx_event.h>
 
 
-void ngx_event_acceptex(ngx_event_t *rev)
+static void ngx_close_posted_connection(ngx_connection_t *c);
+
+
+void
+ngx_event_acceptex(ngx_event_t *rev)
 {
     ngx_connection_t  *c;
 
     c = rev->data;
+
+    c->log->handler = ngx_accept_log_error;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "AcceptEx: %d", c->fd);
 
@@ -78,11 +84,13 @@ void ngx_event_acceptex(ngx_event_t *rev)
 }
 
 
-int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
+ngx_int_t
+ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n)
 {
     u_long             rcvd;
-    ngx_int_t          i;
     ngx_err_t          err;
+    ngx_log_t         *log;
+    ngx_uint_t         i;
     ngx_event_t       *rev, *wev;
     ngx_socket_t       s;
     ngx_connection_t  *c;
@@ -93,39 +101,82 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
 
         s = ngx_socket(ls->family, ls->type, 0);
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ls->log, 0,
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, &ls->log, 0,
                        ngx_socket_n " s:%d", s);
 
         if (s == -1) {
-            ngx_log_error(NGX_LOG_ALERT, ls->log, ngx_socket_errno,
-                          ngx_socket_n " for AcceptEx() %s post failed",
-                          ls->addr_text.data);
+            ngx_log_error(NGX_LOG_ALERT, &ls->log, ngx_socket_errno,
+                          ngx_socket_n " failed");
 
             return NGX_ERROR;
         }
 
-        /*
-         * Winsock assignes a socket number divisible by 4
-         * so to find a connection we divide a socket number by 4.
-         */
+        c = ngx_get_connection(s, &ls->log);
 
-        if (s % 4) {
-            ngx_log_error(NGX_LOG_EMERG, ls->log, 0,
-                          ngx_socket_n
-                          " created socket %d, not divisible by 4", s);
-
-            exit(1);
+        if (c == NULL) {
+            return NGX_ERROR;
         }
 
-        c = &ngx_cycle->connections[s / 4];
-        rev = &ngx_cycle->read_events[s / 4];
-        wev = &ngx_cycle->write_events[s / 4];
+        rev = c->read;
+        wev = c->write;
 
         ngx_memzero(c, sizeof(ngx_connection_t));
+
+        c->read = rev;
+        c->write = wev;
+        c->fd = s;
+        c->log = &ls->log;
+
+        c->pool = ngx_create_pool(ls->pool_size, &ls->log);
+        if (c->pool == NULL) {
+            ngx_close_posted_connection(c);
+            return NGX_ERROR;
+        }
+
+        log = ngx_palloc(c->pool, sizeof(ngx_log_t));
+        if (log == NULL) {
+            ngx_close_posted_connection(c);
+            return NGX_ERROR;
+        }
+
+        c->buffer = ngx_create_temp_buf(c->pool, ls->post_accept_buffer_size
+                                                 + 2 * (ls->socklen + 16));
+        if (c->buffer == NULL) {
+            ngx_close_posted_connection(c);
+            return NGX_ERROR;
+        }
+
+        c->local_sockaddr = ngx_palloc(c->pool, ls->socklen);
+        if (c->local_sockaddr == NULL) {
+            ngx_close_posted_connection(c);
+            return NGX_ERROR;
+        }
+
+        c->sockaddr = ngx_palloc(c->pool, ls->socklen);
+        if (c->sockaddr == NULL) {
+            ngx_close_posted_connection(c);
+            return NGX_ERROR;
+        }
+
+        *log = ls->log;
+        c->log = log;
+
+        c->recv = ngx_recv;
+        c->send = ngx_send;
+        c->send_chain = ngx_send_chain;
+
+        c->unexpected_eof = 1;
+
+        c->ctx = ls->ctx;
+        c->servers = ls->servers;
+
+        c->listening = ls;
+
         ngx_memzero(rev, sizeof(ngx_event_t));
         ngx_memzero(wev, sizeof(ngx_event_t));
 
-        c->listening = ls;
+        rev->data = c;
+        wev->data = c;
 
         rev->index = NGX_INVALID_INDEX;
         wev->index = NGX_INVALID_INDEX;
@@ -134,58 +185,15 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
         wev->ovlp.event = wev;
         rev->handler = ngx_event_acceptex;
 
-        rev->data = c;
-        wev->data = c;
-
-        c->read = rev;
-        c->write = wev;
-
-        c->fd = s;
-        c->unexpected_eof = 1;
-
         rev->ready = 1;
         wev->write = 1;
         wev->ready = 1;
 
-        c->ctx = ls->ctx;
-        c->servers = ls->servers;
-
-        c->recv = ngx_recv;
-        c->send = ngx_send;
-        c->send_chain = ngx_send_chain;
-
-        c->pool = ngx_create_pool(ls->pool_size, ls->log);
-        if (c->pool == NULL) {
-            return NGX_ERROR;
-        }
-
-        c->buffer = ngx_create_temp_buf(c->pool,
-                                        ls->post_accept_buffer_size
-                                        + 2 * (c->listening->socklen + 16));
-        if (c->buffer == NULL) {
-            return NGX_ERROR;
-        }
-
-        c->local_sockaddr = ngx_palloc(c->pool, ls->socklen);
-        if (c->local_sockaddr == NULL) {
-            return NGX_ERROR;
-        }
-
-        c->sockaddr = ngx_palloc(c->pool, ls->socklen);
-        if (c->sockaddr == NULL) {
-            return NGX_ERROR;
-        }
-
-        c->log = ngx_palloc(c->pool, sizeof(ngx_log_t));
-        if (c->log == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(c->log, ls->log, sizeof(ngx_log_t));
-        c->read->log = c->log;
-        c->write->log = c->log;
+        rev->log = c->log;
+        wev->log = c->log;
 
         if (ngx_add_event(rev, 0, NGX_IOCP_IO) == NGX_ERROR) {
+            ngx_close_posted_connection(c);
             return NGX_ERROR;
         }
 
@@ -196,13 +204,42 @@ int ngx_event_post_acceptex(ngx_listening_t *ls, int n)
 
             err = ngx_socket_errno;
             if (err != WSA_IO_PENDING) {
-                ngx_log_error(NGX_LOG_ALERT, ls->log, err,
+                ngx_log_error(NGX_LOG_ALERT, &ls->log, err,
                               "AcceptEx() %s falied", ls->addr_text.data);
 
+                ngx_close_posted_connection(c);
                 return NGX_ERROR;
             }
         }
     }
 
     return NGX_OK;
+}
+
+
+static void
+ngx_close_posted_connection(ngx_connection_t *c)
+{
+    ngx_socket_t  fd;
+
+    ngx_free_connection(c);
+
+    fd = c->fd;
+    c->fd = (ngx_socket_t) -1;
+
+    if (ngx_close_socket(fd) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
+                      ngx_close_socket_n " failed");
+    }
+
+    if (c->pool) {
+        ngx_destroy_pool(c->pool);
+    }
+}
+
+
+u_char *
+ngx_acceptex_log_error(ngx_log_t *log, u_char *buf, size_t len)
+{
+    return ngx_snprintf(buf, len, " while posting AcceptEx() on %V", log->data);
 }

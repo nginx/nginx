@@ -646,7 +646,10 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->post_accept_timeout = cscf->client_header_timeout;
 
             clcf = cscf->ctx->loc_conf[ngx_http_core_module.ctx_index];
-            ls->log = clcf->err_log;
+
+            ls->log = *clcf->err_log;
+            ls->log.data = &ls->addr_text;
+            ls->log.handler = ngx_accept_log_error;
 
 #if (NGX_WIN32)
             iocpcf = ngx_event_get_conf(cf->cycle->conf_ctx, ngx_iocp_module);

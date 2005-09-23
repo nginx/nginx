@@ -203,7 +203,10 @@ ngx_http_static_handler(ngx_http_request_t *r)
     if (fd == NGX_INVALID_FILE) {
         err = ngx_errno;
 
-        if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
+        if (err == NGX_ENOENT
+            || err == NGX_ENOTDIR
+            || err == NGX_ENAMETOOLONG)
+        {
             level = NGX_LOG_ERR;
             rc = NGX_HTTP_NOT_FOUND;
 

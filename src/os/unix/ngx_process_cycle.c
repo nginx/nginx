@@ -513,9 +513,10 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 static ngx_uint_t
 ngx_reap_childs(ngx_cycle_t *cycle)
 {
-    ngx_int_t      i, n;
-    ngx_uint_t     live;
-    ngx_channel_t  ch;
+    ngx_int_t         i, n;
+    ngx_uint_t        live;
+    ngx_channel_t     ch;
+    ngx_core_conf_t  *ccf;
 
     ch.command = NGX_CMD_CLOSE_CHANNEL;
     ch.fd = -1;
@@ -575,7 +576,7 @@ ngx_reap_childs(ngx_cycle_t *cycle)
                 if (ngx_spawn_process(cycle, ngx_processes[i].proc,
                                       ngx_processes[i].data,
                                       ngx_processes[i].name, i)
-                                                                  == NGX_ERROR)
+                    == NGX_INVALID_PID)
                 {
                     ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                                   "can not respawn %s", ngx_processes[i].name);
@@ -615,6 +616,20 @@ ngx_reap_childs(ngx_cycle_t *cycle)
             }
 
             if (ngx_processes[i].pid == ngx_new_binary) {
+
+                ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
+                                                       ngx_core_module);
+
+                if (ngx_rename_file((char *) ccf->oldpid.data,
+                                    (char *) ccf->pid.data)
+                    != NGX_OK)
+                {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                                  ngx_rename_file_n " %s back to %s failed "
+                                  "after the new binary process \"%s\" exited",
+                                  ccf->oldpid.data, ccf->pid.data, ngx_argv[0]);
+                }
+
                 ngx_new_binary = 0;
                 if (ngx_noaccepting) {
                     ngx_restart = 1;
@@ -795,6 +810,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
     sigset_t           set;
     ngx_int_t          n;
     ngx_uint_t         i;
+    struct rlimit      rlmt;
     struct timeval     tv;
     ngx_core_conf_t   *ccf;
     ngx_listening_t   *ls;
@@ -817,6 +833,30 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
                               "setpriority(%d) failed", ccf->priority);
             }
         }
+
+        if (ccf->rlimit_nofile != NGX_CONF_UNSET) {
+            rlmt.rlim_cur = (rlim_t) ccf->rlimit_nofile;
+            rlmt.rlim_max = (rlim_t) ccf->rlimit_nofile;
+
+            if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "setrlimit(RLIMIT_NOFILE, %i) failed",
+                              ccf->rlimit_nofile);
+            }
+        }
+
+#ifdef RLIMIT_SIGPENDING
+        if (ccf->rlimit_sigpending != NGX_CONF_UNSET) {
+            rlmt.rlim_cur = (rlim_t) ccf->rlimit_sigpending;
+            rlmt.rlim_max = (rlim_t) ccf->rlimit_sigpending;
+
+            if (setrlimit(RLIMIT_SIGPENDING, &rlmt) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "setrlimit(RLIMIT_SIGPENDING, %i) failed",
+                              ccf->rlimit_sigpending);
+            }
+        }
+#endif
 
         if (setgid(ccf->group) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
@@ -874,7 +914,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
      */ 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
-        ls[i].remain = 0;
+        ls[i].previous = NULL;
     }
 
     for (i = 0; ngx_modules[i]; i++) {
@@ -928,6 +968,7 @@ static void
 ngx_channel_handler(ngx_event_t *ev)
 {
     ngx_int_t          n;
+    ngx_socket_t       fd;
     ngx_channel_t      ch;
     ngx_connection_t  *c;
 
@@ -945,12 +986,17 @@ ngx_channel_handler(ngx_event_t *ev)
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %i", n);
 
     if (n == NGX_ERROR) {
-        if (close(c->fd) == -1) {
+
+        ngx_free_connection(c);
+
+        fd = c->fd;
+        c->fd = (ngx_socket_t) -1;
+
+        if (close(fd) == -1) {
             ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
                           "close() channel failed");
         }
 
-        c->fd = -1;
         return;
     }
 
@@ -1144,7 +1190,7 @@ ngx_garbage_collector_cycle(ngx_cycle_t *cycle, void *data)
 
     ngx_worker_process_init(cycle, 0);
 
-    ev = &cycle->read_events[ngx_channel];
+    ev = &cycle->read_events0[ngx_channel];
 
     ngx_accept_mutex = NULL;
 

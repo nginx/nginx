@@ -111,8 +111,8 @@ ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peers_t *peers)
 
     rc = ngx_event_connect_peer(&p->upstream);
 
-    if (rc == NGX_ERROR || rc == NGX_CONNECT_ERROR) {
-        ngx_imap_session_internal_server_error(s);
+    if (rc == NGX_ERROR || rc == NGX_BUSY || rc == NGX_DECLINED) {
+        ngx_imap_proxy_internal_server_error(s);
         return;
     }
 

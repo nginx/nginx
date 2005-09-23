@@ -33,6 +33,7 @@ static ngx_str_t  internal_server_errors[] = {
 static u_char  pop3_ok[] = "+OK" CRLF;
 static u_char  pop3_invalid_command[] = "-ERR invalid command" CRLF;
 
+static u_char  imap_star[] = "* ";
 static u_char  imap_ok[] = "OK completed" CRLF;
 static u_char  imap_next[] = "+ OK" CRLF;
 static u_char  imap_bye[] = "* BYE" CRLF;
@@ -42,25 +43,47 @@ static u_char  imap_invalid_command[] = "BAD invalid command" CRLF;
 void
 ngx_imap_init_connection(ngx_connection_t *c)
 {
-    ngx_imap_log_ctx_t  *ctx;
+    ngx_imap_log_ctx_t   *lctx;
+#if (NGX_IMAP_SSL)
+    ngx_imap_conf_ctx_t  *ctx;
+    ngx_imap_ssl_conf_t  *sslcf;
+#endif
 
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, c->log, 0, "imap init connection");
 
-    ctx = ngx_palloc(c->pool, sizeof(ngx_imap_log_ctx_t));
-    if (ctx == NULL) {
+    lctx = ngx_palloc(c->pool, sizeof(ngx_imap_log_ctx_t));
+    if (lctx == NULL) {
         ngx_imap_close_connection(c);
         return;
     } 
 
-    ctx->client = &c->addr_text;
-    ctx->session = NULL;
+    lctx->client = &c->addr_text;
+    lctx->session = NULL;
 
     c->log->connection = c->number;
     c->log->handler = ngx_imap_log_error;
-    c->log->data = ctx;
+    c->log->data = lctx;
     c->log->action = "sending client greeting line";
 
     c->log_error = NGX_ERROR_INFO;
+
+#if (NGX_IMAP_SSL)
+
+    ctx = c->ctx;
+    sslcf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_ssl_module);
+
+    if (sslcf->enable) {
+        if (ngx_ssl_create_connection(sslcf->ssl_ctx, c, 0) == NGX_ERROR) {
+            ngx_imap_close_connection(c);
+            return;
+        }
+
+        c->recv = ngx_ssl_recv;
+        c->send = ngx_ssl_write;
+        c->send_chain = ngx_ssl_send_chain;
+    }
+
+#endif
 
     ngx_imap_init_session(c->read);
 }
@@ -76,27 +99,15 @@ ngx_imap_init_session(ngx_event_t *rev)
     ngx_imap_core_srv_conf_t  *cscf;
 #if (NGX_IMAP_SSL)
     ngx_int_t                  rc;
-    ngx_imap_ssl_conf_t       *sslcf;
 #endif
 
     c = rev->data;
-
     ctx = c->ctx;
-
     cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
 
 #if (NGX_IMAP_SSL)
 
-    sslcf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_ssl_module);
-
-    if (sslcf->enable) {
-
-        if (ngx_ssl_create_session(sslcf->ssl_ctx, c, NGX_SSL_BUFFER)
-            == NGX_ERROR)
-        {
-            ngx_imap_close_connection(c);
-            return;
-        }
+    if (c->ssl) {
 
         rc = ngx_ssl_handshake(c);
 
@@ -116,9 +127,6 @@ ngx_imap_init_session(ngx_event_t *rev)
             return;
         }
 
-        c->recv = ngx_ssl_recv;
-        c->send = ngx_ssl_write;
-        c->send_chain = ngx_ssl_send_chain;
     }
 
 #endif
@@ -275,11 +283,11 @@ ngx_imap_init_protocol(ngx_event_t *rev)
 void
 ngx_imap_auth_state(ngx_event_t *rev)
 {
-    u_char                    *text, *last, *p;
+    u_char                    *text, *last, *p, *dst, *src, *end;
     ssize_t                    text_len, last_len;
     ngx_str_t                 *arg;
     ngx_int_t                  rc;
-    ngx_uint_t                 tag;
+    ngx_uint_t                 tag, i;
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
     ngx_imap_core_srv_conf_t  *cscf;
@@ -323,6 +331,27 @@ ngx_imap_auth_state(ngx_event_t *rev)
 
         ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0, "imap auth command: %i",
                        s->command);
+
+        if (s->backslash) {
+
+            arg = s->args.elts;
+
+            for (i = 0; i < s->args.nelts; i++) {
+                dst = arg[i].data;
+                end = dst + arg[i].len;
+
+                for (src = dst; src < end; dst++) {
+                    *dst = *src;
+                    if (*src++ == '\\') {
+                        *dst = *src++;
+                    }
+                }
+
+                arg[i].len = dst - arg[i].data;
+            }
+
+            s->backslash = 0;
+        }
 
         switch (s->command) {
 
@@ -405,6 +434,11 @@ ngx_imap_auth_state(ngx_event_t *rev)
     }
 
     if (tag) {
+        if (s->tag.len == 0) {
+            s->tag.len = sizeof(imap_star) - 1;
+            s->tag.data = (u_char *) imap_star;
+        }
+
         if (s->tagged_line.len < s->tag.len + text_len + last_len) {
             s->tagged_line.len = s->tag.len + text_len + last_len;
             s->tagged_line.data = ngx_palloc(c->pool, s->tagged_line.len);
@@ -692,6 +726,8 @@ ngx_imap_close_connection(ngx_connection_t *c)
     }
 
 #endif
+
+    c->closed = 1;
 
     pool = c->pool;
 
