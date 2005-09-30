@@ -156,6 +156,7 @@ ngx_imap_proxy_block_read(ngx_event_t *rev)
 static void
 ngx_imap_proxy_imap_handler(ngx_event_t *rev)
 {
+    char                   *action;
     u_char                 *p;
     ngx_int_t               rc;
     ngx_str_t               line;
@@ -293,6 +294,11 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         ngx_add_timer(s->connection->read, pcf->timeout);
         ngx_del_timer(c->read);
 
+        action = c->log->action;
+        c->log->action = NULL;
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
+        c->log->action = action;
+
         c->log->action = "proxying";
     }
 }
@@ -301,6 +307,7 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
 static void
 ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
 {
+    char                   *action;
     u_char                 *p;
     ngx_int_t               rc;
     ngx_str_t               line;
@@ -418,6 +425,11 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         ngx_add_timer(s->connection->read, pcf->timeout);
         ngx_del_timer(c->read);
 
+        action = c->log->action;
+        c->log->action = NULL;
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
+        c->log->action = action;
+
         c->log->action = "proxying";
     }
 }
@@ -507,6 +519,7 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
 static void
 ngx_imap_proxy_handler(ngx_event_t *ev)
 {
+    char                   *action;
     size_t                  size;
     ssize_t                 n;
     ngx_buf_t              *b;
@@ -603,7 +616,17 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
         if (size && src->read->ready) {
             n = src->recv(src, b->last, size);
 
-            if (n == NGX_ERROR || n == 0) {
+            if (n == NGX_ERROR) {
+                ngx_imap_proxy_close_session(s);
+                return;
+            }
+
+            if (n == 0) {
+                action = c->log->action;
+                c->log->action = NULL;
+                ngx_log_error(NGX_LOG_INFO, c->log, 0, "proxied session done");
+                c->log->action = action;
+
                 ngx_imap_proxy_close_session(s);
                 return;
             }

@@ -117,7 +117,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         name.data++;
     }
 
-    var = ngx_http_add_variable(cf, &name, 0);
+    var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGABLE);
     if (var == NULL) {
         return NGX_CONF_ERROR;
     }

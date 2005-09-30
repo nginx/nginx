@@ -271,21 +271,14 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         len = ngx_de_namelen(&dir);
 
-        if (len == 1 && ngx_de_name(&dir)[0] == '.') {
-            continue;
-        }
-
-        if (len == 2
-            && ngx_de_name(&dir)[0] == '.'
-            && ngx_de_name(&dir)[1] == '.')
-        {
+        if (ngx_de_name(&dir)[0] == '.') {
             continue;
         }
 
         if (!dir.valid_info) {
 
-            if (dname.len + 1 + len > fname.len) {
-                fname.len = dname.len + 1 + len + 32;
+            if (dname.len + 1 + len + 1 > fname.len) {
+                fname.len = dname.len + 1 + len + 1 + 32;
 
                 fname.data = ngx_palloc(pool, fname.len);
                 if (fname.data == NULL) {
@@ -468,7 +461,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         } else {
             if (entry[i].dir) {
-                b->last = ngx_cpymem(b->last,  "     -", sizeof("     -") - 1);
+                b->last = ngx_cpymem(b->last,  "      -",
+                                     sizeof("      -") - 1);
 
             } else {
                 length = entry[i].size;
@@ -498,13 +492,14 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
                 } else {
                     size = (ngx_int_t) length;
-                    scale = ' ';
+                    scale = '\0';
                 }
 
-                b->last = ngx_sprintf(b->last, "%6i", size);
+                if (scale) {
+                    b->last = ngx_sprintf(b->last, "%6i%c", size, scale);
 
-                if (scale != ' ') {
-                    *b->last++ = scale;
+                } else {
+                    b->last = ngx_sprintf(b->last, " %6i", size);
                 }
             }
         }

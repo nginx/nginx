@@ -15,12 +15,18 @@
 
 typedef struct {
     ngx_flag_t      enable;
+
+    ngx_ssl_t       ssl;
+
+    ngx_flag_t      prefer_server_ciphers;
+
+    ngx_uint_t      protocols;
+
     ngx_str_t       certificate;
     ngx_str_t       certificate_key;
 
     ngx_str_t       ciphers;
 
-    ngx_ssl_ctx_t  *ssl_ctx;
 } ngx_imap_ssl_conf_t;
 
 

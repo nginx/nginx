@@ -49,6 +49,7 @@ static u_char *ngx_http_log_error_handler(ngx_http_request_t *r, u_char *buf,
 
 #if (NGX_HTTP_SSL)
 static void ngx_http_ssl_handshake(ngx_event_t *rev);
+static void ngx_http_ssl_handshake_handler(ngx_connection_t *c);
 static void ngx_http_ssl_close_handler(ngx_event_t *ev);
 #endif
 
@@ -359,7 +360,7 @@ void ngx_http_init_request(ngx_event_t *rev)
     if (sscf->enable) {
 
         if (c->ssl == NULL) {
-            if (ngx_ssl_create_connection(sscf->ssl_ctx, c, NGX_SSL_BUFFER)
+            if (ngx_ssl_create_connection(&sscf->ssl, c, NGX_SSL_BUFFER)
                 == NGX_ERROR)
             {
                 ngx_http_close_connection(c);
@@ -367,16 +368,6 @@ void ngx_http_init_request(ngx_event_t *rev)
             }
 
             rev->handler = ngx_http_ssl_handshake;
-
-            /*
-             * The majority of browsers do not send the "close notify" alert.
-             * Among them are MSIE, Mozilla, Netscape 4, Konqueror, and Links.
-             * And what is more, MSIE ignores the server's alert.
-             *
-             * Opera always sends the alert.
-             */
-
-            c->ssl->no_rcv_shut = 1;
         }
 
         r->main_filter_need_in_memory = 1;
@@ -491,21 +482,16 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                            "https ssl handshake: 0x%02Xd", buf[0]);
 
-            c->recv = ngx_ssl_recv;
-            c->send = ngx_ssl_write;
-            c->send_chain = ngx_ssl_send_chain;
-
             rc = ngx_ssl_handshake(c);
 
-            if (rc == NGX_ERROR) {
-                ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
-                ngx_http_close_connection(r->connection);
+            if (rc == NGX_AGAIN) {
+                c->ssl->handler = ngx_http_ssl_handshake_handler;
                 return;
             }
 
-            if (rc != NGX_OK) {
-                return;
-            }
+            ngx_http_ssl_handshake_handler(c);
+
+            return;
 
         } else {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
@@ -518,6 +504,41 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
     rev->handler = ngx_http_process_request_line;
     ngx_http_process_request_line(rev);
 }
+
+
+static void
+ngx_http_ssl_handshake_handler(ngx_connection_t *c)
+{
+    ngx_http_request_t  *r;
+
+    if (c->ssl->handshaked) {
+
+        /*
+         * The majority of browsers do not send the "close notify" alert.
+         * Among them are MSIE, old Mozilla, Netscape 4, Konqueror,
+         * and Links.  And what is more, MSIE ignores the server's alert.
+         *
+         * Opera and recent Mozilla send the alert.
+         */
+
+        c->ssl->no_wait_shutdown = 1;
+
+        c->read->handler = ngx_http_process_request_line;
+        /* STUB: epoll edge */ c->write->handler = ngx_http_empty_handler;
+
+        ngx_http_process_request_line(c->read);
+
+        return;
+    }
+
+    r = c->data;
+
+    ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
+    ngx_http_close_connection(r->connection);
+
+    return;
+}
+
 
 #endif
 
@@ -1290,7 +1311,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 #if 0
             /* MSIE ignores the SSL "close notify" alert */
             if (c->ssl) {
-                r->connection->ssl->no_send_shut = 1;
+                c->ssl->no_send_shutdown = 1;
             }
 #endif
         }
@@ -2126,7 +2147,7 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
                           "keepalive connection", &c->addr_text);
 #if (NGX_HTTP_SSL)
             if (c->ssl) {
-                c->ssl->no_send_shut = 1;
+                c->ssl->no_send_shutdown = 1;
             }
 #endif
             ngx_http_close_connection(c);

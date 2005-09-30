@@ -45,9 +45,9 @@ struct ngx_imap_auth_http_ctx_s {
     ngx_str_t                       port;
     ngx_str_t                       err;
 
-    ngx_msec_t                      sleep;
+    time_t                          sleep;
 
-    ngx_peers_t                    *peers;
+    ngx_pool_t                     *pool;
 };
 
 
@@ -63,7 +63,7 @@ static ngx_int_t ngx_imap_auth_http_parse_header_line(ngx_imap_session_t *s,
 static void ngx_imap_auth_http_block_read(ngx_event_t *rev);
 static void ngx_imap_auth_http_dummy_handler(ngx_event_t *ev);
 static ngx_buf_t *ngx_imap_auth_http_create_request(ngx_imap_session_t *s,
-    ngx_imap_auth_http_conf_t *ahcf);
+    ngx_pool_t *pool, ngx_imap_auth_http_conf_t *ahcf);
 
 static void *ngx_imap_auth_http_create_conf(ngx_conf_t *cf);
 static char *ngx_imap_auth_http_merge_conf(ngx_conf_t *cf, void *parent,
@@ -123,21 +123,32 @@ void
 ngx_imap_auth_http_init(ngx_imap_session_t *s)
 {
     ngx_int_t                   rc;
+    ngx_pool_t                 *pool;
     ngx_imap_auth_http_ctx_t   *ctx;
     ngx_imap_auth_http_conf_t  *ahcf;
 
     s->connection->log->action = "in http auth state";
 
-    ctx = ngx_pcalloc(s->connection->pool, sizeof(ngx_imap_auth_http_ctx_t));
-    if (ctx == NULL) {
+    pool = ngx_create_pool(2048, s->connection->log);
+    if (pool == NULL) {
         ngx_imap_session_internal_server_error(s);
         return;
     }
 
+    ctx = ngx_pcalloc(pool, sizeof(ngx_imap_auth_http_ctx_t));
+    if (ctx == NULL) {
+        ngx_destroy_pool(pool);
+        ngx_imap_session_internal_server_error(s);
+        return;
+    }
+
+    ctx->pool = pool;
+
     ahcf = ngx_imap_get_module_srv_conf(s, ngx_imap_auth_http_module);
 
-    ctx->request = ngx_imap_auth_http_create_request(s, ahcf);
+    ctx->request = ngx_imap_auth_http_create_request(s, pool, ahcf);
     if (ctx->request == NULL) {
+        ngx_destroy_pool(ctx->pool);
         ngx_imap_session_internal_server_error(s);
         return;
     }
@@ -152,6 +163,7 @@ ngx_imap_auth_http_init(ngx_imap_session_t *s)
 
     if (rc == NGX_ERROR || rc == NGX_BUSY || rc == NGX_DECLINED) {
         ngx_close_connection(ctx->peer.connection);
+        ngx_destroy_pool(ctx->pool);
         ngx_imap_session_internal_server_error(s);
         return;
     }
@@ -197,6 +209,7 @@ ngx_imap_auth_http_write_handler(ngx_event_t *wev)
                       "auth http server %V timed out",
                       &ctx->peer.peers->peer[0].name);
         ngx_close_connection(ctx->peer.connection);
+        ngx_destroy_pool(ctx->pool);
         ngx_imap_session_internal_server_error(s);
         return;
     }
@@ -207,6 +220,7 @@ ngx_imap_auth_http_write_handler(ngx_event_t *wev)
 
     if (n == NGX_ERROR) {
         ngx_close_connection(ctx->peer.connection);
+        ngx_destroy_pool(ctx->pool);
         ngx_imap_session_internal_server_error(s);
         return;
     }
@@ -253,14 +267,16 @@ ngx_imap_auth_http_read_handler(ngx_event_t *rev)
                       "auth http server %V timed out",
                       &ctx->peer.peers->peer[0].name);
         ngx_close_connection(ctx->peer.connection);
+        ngx_destroy_pool(ctx->pool);
         ngx_imap_session_internal_server_error(s);
         return;
     }
 
     if (ctx->response == NULL) {
-        ctx->response = ngx_create_temp_buf(s->connection->pool, 1024);
+        ctx->response = ngx_create_temp_buf(ctx->pool, 1024);
         if (ctx->response == NULL) {
             ngx_close_connection(ctx->peer.connection);
+            ngx_destroy_pool(ctx->pool);
             ngx_imap_session_internal_server_error(s);
             return;
         }
@@ -282,6 +298,7 @@ ngx_imap_auth_http_read_handler(ngx_event_t *rev)
     }
 
     ngx_close_connection(ctx->peer.connection);
+    ngx_destroy_pool(ctx->pool);
     ngx_imap_session_internal_server_error(s);
 }
 
@@ -369,6 +386,7 @@ ngx_imap_auth_http_ignore_status_line(ngx_imap_session_t *s,
                           "auth http server &V sent invalid response",
                           &ctx->peer.peers->peer[0].name);
             ngx_close_connection(ctx->peer.connection);
+            ngx_destroy_pool(ctx->pool);
             ngx_imap_session_internal_server_error(s);
             return;
         }
@@ -397,8 +415,10 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
     ngx_imap_auth_http_ctx_t *ctx)
 {
     u_char              *p;
+    time_t               timer;
     size_t               len, size;
     ngx_int_t            rc, port, n;
+    ngx_peers_t         *peers;
     struct sockaddr_in  *sin;
 
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
@@ -450,6 +470,7 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                 p = ngx_pcalloc(s->connection->pool, size);
                 if (p == NULL) {
                     ngx_close_connection(ctx->peer.connection);
+                    ngx_destroy_pool(ctx->pool);
                     ngx_imap_session_internal_server_error(s);
                     return;
                 }
@@ -530,16 +551,20 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
 
             if (ctx->err.len) {
                 s->out = ctx->err;
+                timer = ctx->sleep;
 
-                if (ctx->sleep == 0) {
+                ngx_destroy_pool(ctx->pool);
+
+                ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
+                              "client login failed");
+
+                if (timer == 0) {
                     s->quit = 1;
-
                     ngx_imap_send(s->connection->write);
-
                     return;
                 }
 
-                ngx_add_timer(s->connection->read, ctx->sleep * 1000);
+                ngx_add_timer(s->connection->read, timer * 1000);
 
                 s->connection->read->handler = ngx_imap_auth_sleep_handler;
 
@@ -550,18 +575,21 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                 ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                               "auth http server %V did not send server or port",
                               &ctx->peer.peers->peer[0].name);
+                ngx_destroy_pool(ctx->pool);
                 ngx_imap_session_internal_server_error(s);
                 return;
             }
 
-            ctx->peers = ngx_pcalloc(s->connection->pool, sizeof(ngx_peers_t));
-            if (ctx->peers == NULL) {
+            peers = ngx_pcalloc(s->connection->pool, sizeof(ngx_peers_t));
+            if (peers == NULL) {
+                ngx_destroy_pool(ctx->pool);
                 ngx_imap_session_internal_server_error(s);
                 return;
             }
 
             sin = ngx_pcalloc(s->connection->pool, sizeof(struct sockaddr_in));
             if (sin == NULL) {
+                ngx_destroy_pool(ctx->pool);
                 ngx_imap_session_internal_server_error(s);
                 return;
             }
@@ -574,6 +602,7 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                               "auth http server %V sent invalid server "
                               "port:\"%V\"",
                               &ctx->peer.peers->peer[0].name, &ctx->port);
+                ngx_destroy_pool(ctx->pool);
                 ngx_imap_session_internal_server_error(s);
                 return;
             }
@@ -587,38 +616,40 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                               "auth http server %V sent invalid server "
                               "address:\"%V\"",
                               &ctx->peer.peers->peer[0].name, &ctx->addr);
+                ngx_destroy_pool(ctx->pool);
                 ngx_imap_session_internal_server_error(s);
                 return;
             }
 
-            ctx->peers->number = 1;
+            peers->number = 1;
 
-            ctx->peers->peer[0].sockaddr = (struct sockaddr *) sin;
-            ctx->peers->peer[0].socklen = sizeof(struct sockaddr_in);
+            peers->peer[0].sockaddr = (struct sockaddr *) sin;
+            peers->peer[0].socklen = sizeof(struct sockaddr_in);
 
             len = ctx->addr.len + 1 + ctx->port.len;
 
-            ctx->peers->peer[0].name.len = len;
+            peers->peer[0].name.len = len;
 
-            ctx->peers->peer[0].name.data = ngx_palloc(s->connection->pool,
-                                                       len);
-            if (ctx->peers->peer[0].name.data == NULL) {
+            peers->peer[0].name.data = ngx_palloc(s->connection->pool, len);
+            if (peers->peer[0].name.data == NULL) {
+                ngx_destroy_pool(ctx->pool);
                 ngx_imap_session_internal_server_error(s);
                 return;
             }
 
             len = ctx->addr.len;
 
-            ngx_memcpy(ctx->peers->peer[0].name.data, ctx->addr.data, len);
+            ngx_memcpy(peers->peer[0].name.data, ctx->addr.data, len);
 
-            ctx->peers->peer[0].name.data[len++] = ':';
+            peers->peer[0].name.data[len++] = ':';
 
-            ngx_memcpy(ctx->peers->peer[0].name.data + len,
+            ngx_memcpy(peers->peer[0].name.data + len,
                        ctx->port.data, ctx->port.len);
 
-            ctx->peers->peer[0].uri_separator = "";
+            peers->peer[0].uri_separator = "";
 
-            ngx_imap_proxy_init(s, ctx->peers);
+            ngx_destroy_pool(ctx->pool);
+            ngx_imap_proxy_init(s, peers);
 
             return;
         }
@@ -633,6 +664,7 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                       "auth http server %V sent invalid header in response",
                       &ctx->peer.peers->peer[0].name);
         ngx_close_connection(ctx->peer.connection);
+        ngx_destroy_pool(ctx->pool);
         ngx_imap_session_internal_server_error(s);
 
         return;
@@ -906,6 +938,7 @@ ngx_imap_auth_http_block_read(ngx_event_t *rev)
         ctx = ngx_imap_get_module_ctx(s, ngx_imap_auth_http_module);
 
         ngx_close_connection(ctx->peer.connection);
+        ngx_destroy_pool(ctx->pool);
         ngx_imap_session_internal_server_error(s);
     }
 }
@@ -920,7 +953,7 @@ ngx_imap_auth_http_dummy_handler(ngx_event_t *ev)
 
 
 static ngx_buf_t *
-ngx_imap_auth_http_create_request(ngx_imap_session_t *s,
+ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
     ngx_imap_auth_http_conf_t *ahcf)
 {
     size_t      len;
@@ -938,7 +971,7 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s,
                 + sizeof(CRLF) - 1
           + sizeof(CRLF) - 1;
 
-    b = ngx_create_temp_buf(s->connection->pool, len);
+    b = ngx_create_temp_buf(pool, len);
     if (b == NULL) {
         return NULL;
     }
@@ -981,7 +1014,7 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s,
     /* add "\r\n" at the header end */
     *b->last++ = CR; *b->last++ = LF;
 
-#if (NGX_DEBUG)
+#if (NGX_DEBUG_IMAP_PASSWD)
     {
     ngx_str_t  l;
 

@@ -9,6 +9,80 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.2.2" date="30.09.2005">
+
+<change type="feature">
+<para lang="ru">
+команда config errmsg в модуле ngx_http_ssi_module.
+</para>
+<para lang="en">
+the "config errmsg" command of the ngx_http_ssi_module.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+переменные модуля ngx_http_geo_module можно переопределять директивой set.
+</para>
+<para lang="en">
+the ngx_http_geo_module variables can be overridden by the "set" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_protocols и ssl_prefer_server_ciphers модулей
+ngx_http_ssl_module и ngx_imap_ssl_module.
+</para>
+<para lang="en">
+the "ssl_protocols" and "ssl_prefer_server_ciphers" directives
+of the ngx_http_ssl_module and ngx_imap_ssl_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибка в модуле ngx_http_autoindex_module при показе длинных имён файлов;
+</para>
+<para lang="en">
+the ngx_http_autoindex_module did not show correctly the long file names;
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_autoindex_module теперь не показывает файлы,
+начинающиеся на точку.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module now do not show the files starting by dot.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если SSL handshake завершался с ошибкой, то это могло привести также
+в закрытию другого соединения.
+Спасибо Rob Mueller.
+</para>
+<para lang="en">
+if the SSL handshake failed then another connection may be closed too.
+Thanks to Rob Mueller.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+экспортные версии MSIE 5.x не могли соединиться по HTTPS.
+</para>
+<para lang="en">
+the export versions of MSIE 5.x could not connect via HTTPS.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.2.1" date="23.09.2005">
 
 <change type="bugfix">
@@ -38,8 +112,9 @@ bug appeared in 0.2.0.
 Новый основной процесс создаёт обычный pid-файл без суффикса ".newbin".
 Если новый основной процесс выходит, то старый процесс переименовывает свой
 pid-файл c суффиксом ".oldbin" в pid-файл без суффикса.
-При обновлении с версии 0.1.х до 0.2.0 нужно учитывать, что старый процесс
-0.1.x и новый процесс 0.2.0 оба используют pid-файл без суффиксов.
+При обновлении с версии 0.1.х до 0.2.0 нужно учитывать, что оба
+процесса&mdash;старый 0.1.x и новый 0.2.0&mdash;используют pid-файл
+без суффиксов.
 </para>
 <para lang="en">
 The pid-file names used during online upgrade was changed and now is not
@@ -122,6 +197,7 @@ nginx did not try do connect to them during 60 seconds.
 </para>
 <para lang="en">
 in IMAP/POP3 command argument parsing.
+Thanks to Rob Mueller.
 </para>
 </change>
 

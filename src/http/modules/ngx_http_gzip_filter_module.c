@@ -181,7 +181,7 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
       &ngx_http_gzip_http_version },
 
     { ngx_string("gzip_proxied"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_gzip_conf_t, proxied),

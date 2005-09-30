@@ -12,7 +12,7 @@
 #include <ngx_core.h>
 
 
-#if ( __i386__ )
+#if ( __i386__ || __i386 )
 
 #define NGX_HAVE_ATOMIC_OPS  1
 
@@ -109,7 +109,7 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
 }
 
 
-#elif ( __amd64__ )
+#elif ( __amd64__ || __amd64 )
 
 #define NGX_HAVE_ATOMIC_OPS  1
 
@@ -183,7 +183,7 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
 }
 
 
-#elif ( __sparc__ )
+#elif ( __sparc__ || __sparcv9 )
 
 #define NGX_HAVE_ATOMIC_OPS  1
 

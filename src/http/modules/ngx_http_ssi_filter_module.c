@@ -59,6 +59,7 @@ typedef struct {
     ngx_uint_t         output;        /* unsigned  output:1; */
 
     ngx_str_t          timefmt;
+    ngx_str_t          errmsg;
 } ngx_http_ssi_ctx_t;
 
 
@@ -217,8 +218,6 @@ static ngx_int_t (*ngx_http_next_body_filter) (ngx_http_request_t *r,
 
 
 static u_char ngx_http_ssi_string[] = "<!--";
-static u_char ngx_http_ssi_error_string[] =
-    "[an error occurred while processing the directive]";
 
 static ngx_str_t ngx_http_ssi_none = ngx_string("(none)");
 
@@ -226,7 +225,8 @@ static ngx_str_t ngx_http_ssi_none = ngx_string("(none)");
 #define  NGX_HTTP_SSI_ECHO_VAR         0
 #define  NGX_HTTP_SSI_ECHO_DEFAULT     1
 
-#define  NGX_HTTP_SSI_CONFIG_TIMEFMT   0
+#define  NGX_HTTP_SSI_CONFIG_ERRMSG    0
+#define  NGX_HTTP_SSI_CONFIG_TIMEFMT   1
 
 #define  NGX_HTTP_SSI_INCLUDE_VIRTUAL  0
 #define  NGX_HTTP_SSI_INCLUDE_FILE     1
@@ -250,6 +250,7 @@ static ngx_http_ssi_param_t  ngx_http_ssi_include_params[] = {
 
 
 static ngx_http_ssi_param_t  ngx_http_ssi_config_params[] = {
+    { ngx_string("errmsg"), NGX_HTTP_SSI_CONFIG_ERRMSG, 0 },
     { ngx_string("timefmt"), NGX_HTTP_SSI_CONFIG_TIMEFMT, 0 },
     { ngx_null_string, 0, 0 }
 };
@@ -346,6 +347,11 @@ found:
 
     ctx->timefmt.len = sizeof("%A, %d-%b-%Y %H:%M:%S %Z") - 1;
     ctx->timefmt.data = (u_char *) "%A, %d-%b-%Y %H:%M:%S %Z";
+
+    ctx->errmsg.len =
+              sizeof("[an error occurred while processing the directive]") - 1;
+    ctx->errmsg.data = (u_char *)
+                     "[an error occurred while processing the directive]";
 
     r->filter_need_in_memory = 1;
 
@@ -653,9 +659,8 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             }
 
             b->memory = 1;
-            b->pos = ngx_http_ssi_error_string;
-            b->last = ngx_http_ssi_error_string
-                      + sizeof(ngx_http_ssi_error_string) - 1;
+            b->pos = ctx->errmsg.data;
+            b->last = ctx->errmsg.data + ctx->errmsg.len;
 
             cl->next = NULL;
             *ctx->last_out = cl;
@@ -1369,6 +1374,12 @@ ngx_http_ssi_config(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     if (value) {
         ctx->timefmt = *value;
+    }
+
+    value = params[NGX_HTTP_SSI_CONFIG_ERRMSG];
+
+    if (value) {
+        ctx->errmsg = *value;
     }
 
     return NGX_OK;

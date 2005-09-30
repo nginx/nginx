@@ -28,7 +28,7 @@ struct ngx_listening_s {
     int                 backlog;
 
     /* handler of accepted connection */
-    void              (*handler)(ngx_connection_t *c);
+    ngx_connection_handler_pt   handler;
 
     void               *ctx;      /* ngx_http_conf_ctx_t, for example */
     void               *servers;  /* array of ngx_http_in_addr_t, for example */
@@ -118,7 +118,7 @@ struct ngx_connection_s {
     ngx_str_t           addr_text;
 
 #if (NGX_OPENSSL)
-    ngx_ssl_t          *ssl;
+    ngx_ssl_connection_t  *ssl;
 #endif
 
 #if (NGX_HAVE_IOCP)

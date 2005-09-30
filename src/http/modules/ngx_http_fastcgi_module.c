@@ -293,7 +293,7 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       NULL },
 
     { ngx_string("fastcgi_next_upstream"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_ANY,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.next_upstream),

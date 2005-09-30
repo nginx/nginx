@@ -23,7 +23,7 @@ typedef struct ngx_peers_s       ngx_peers_t;
 typedef struct ngx_connection_s  ngx_connection_t;
 
 typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
-
+typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 
 
 #define  NGX_OK          0

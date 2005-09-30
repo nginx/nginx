@@ -1,5 +1,6 @@
 
 <!ENTITY  nbsp         "&#xA0;" >
+<!ENTITY  mdash        "&#xA0;- " >
 
 
 <!ELEMENT change_log   (changes)* >
