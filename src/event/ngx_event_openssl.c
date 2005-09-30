@@ -320,7 +320,7 @@ ngx_ssl_handshake_handler(ngx_event_t *ev)
 
     c = ev->data;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "ssl handshake handler: %d", ev->write);
 
     if (ngx_ssl_handshake(c) == NGX_AGAIN) {

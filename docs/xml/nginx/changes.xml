@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.2.3" date="30.09.2005">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался без параметра --with-debug;
+ошибка появилась в 0.2.2.
+</para>
+<para lang="en">
+nginx could not be built without the --with-debug option;
+bug appeared in 0.2.2.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.2.2" date="30.09.2005">
 
 <change type="feature">
