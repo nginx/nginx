@@ -428,9 +428,15 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
             return NGX_OK;
         }
 
-        /* TODO: old_cycles */
-
         c = ngx_cycle->files[si.si_fd];
+
+        if (c == NULL) {
+            /* the stale event */
+
+            ngx_accept_mutex_unlock();
+
+            return NGX_OK;
+        }
 
         instance = signo - rtscf->signo;
 

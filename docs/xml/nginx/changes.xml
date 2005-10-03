@@ -9,6 +9,46 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.2.4" date="03.10.2005">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_module поддерживает выражения
+"$var=text", "$var!=text", "$var=/text/" и "$var!=/text/"
+в команде if.
+</para>
+<para lang="en">
+the ngx_http_ssi_module supports
+"$var=text", "$var!=text", "$var=/text/", and "$var!=/text/" expressions
+in the "if" command.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при проксировании location без слэша в конце;
+ошибка появилась в 0.1.44.
+</para>
+<para lang="en">
+in proxying location without trailing slash;
+bug appeared in 0.1.44.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании метода rtsig мог произойти segmentation fault;
+ошибка появилась в 0.2.0.
+</para>
+<para lang="en">
+the segmentation fault may occurred if the "rtsig" method was used;
+bug appeared in 0.2.0.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.2.3" date="30.09.2005">
 
 <change type="bugfix">
@@ -29,7 +69,7 @@ bug appeared in 0.2.2.
 
 <change type="feature">
 <para lang="ru">
-команда config errmsg в модуле ngx_http_ssi_module.
+команда config errmsg в модуле ngx_http_sssi_module.
 </para>
 <para lang="en">
 the "config errmsg" command of the ngx_http_ssi_module.
@@ -78,7 +118,7 @@ the ngx_http_autoindex_module now do not show the files starting by dot.
 <change type="bugfix">
 <para lang="ru">
 если SSL handshake завершался с ошибкой, то это могло привести также
-в закрытию другого соединения.
+к закрытию другого соединения.
 Спасибо Rob Mueller.
 </para>
 <para lang="en">

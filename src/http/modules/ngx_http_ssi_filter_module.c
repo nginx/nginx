@@ -1603,9 +1603,16 @@ static ngx_int_t
 ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
-    ngx_str_t                  *expr, var;
-    ngx_uint_t                  i;
+    u_char                     *p, *last;
+    ngx_str_t                  *expr, var, left, right;
+    ngx_int_t                   rc;
+    ngx_uint_t                  negative, noregex;
     ngx_http_variable_value_t  *vv;
+#if (NGX_PCRE)
+    ngx_str_t                   err;
+    ngx_regex_t                *regex;
+    u_char                      errstr[NGX_MAX_CONF_ERRSTR];
+#endif
 
     expr = params[NGX_HTTP_SSI_IF_EXPR];
 
@@ -1615,11 +1622,26 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         return NGX_HTTP_SSI_ERROR;
     }
 
-    var.len = expr->len - 1;
     var.data = expr->data + 1;
+    last = expr->data + expr->len;
 
-    for (i = 0; i < var.len; i++) {
-        var.data[i] = ngx_tolower(var.data[i]);
+    for (p = var.data; p < last; p++) {
+        if (*p >= 'A' && *p <= 'Z') {
+            *p |= 0x20;
+            continue;
+        }
+
+        if ((*p >= 'a' && *p <= 'z') || (*p >= '0' && *p <= '9') || *p == '_') {
+            continue;
+        }
+
+        break;
+    }
+
+    var.len = p - var.data;
+
+    while (p < last && *p == ' ') {
+        p++;
     }
 
     vv = ngx_http_get_variable(r, &var);
@@ -1628,7 +1650,100 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         return NGX_HTTP_SSI_ERROR;
     }
 
-    if (vv != NGX_HTTP_VAR_NOT_FOUND && vv->text.len != 0) {
+    if (p == last) {
+        if (vv != NGX_HTTP_VAR_NOT_FOUND && vv->text.len != 0) {
+            ctx->output = 1;
+
+        } else {
+            ctx->output = 0;
+        }
+
+        return NGX_OK;
+    }
+
+    if (p < last && *p == '=') {
+        negative = 0;
+        p++;
+
+    } else if (p + 1 < last && *p == '!' && *(p + 1) == '=') {
+        negative = 1;
+        p += 2;
+
+    } else {
+        goto invalid_expression;
+    }
+
+    while (p < last && *p == ' ') {
+        p++;
+    }
+
+    if (p < last && *p == '/') {
+        if (*(last - 1) != '/') {
+            goto invalid_expression;
+        }
+
+        noregex = 0;
+        last--;
+	p++;
+
+    } else {
+        noregex = 1;
+    }
+
+    right.len = last - p;
+    right.data = p;
+
+    if (vv == NGX_HTTP_VAR_NOT_FOUND) {
+        left.len = 0;
+        left.data = (u_char *) "";
+
+    } else {
+        left = vv->text;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "left: \"%V\" right: \"%V\"", &left, &right);
+
+    if (noregex) {
+        if (left.len != right.len) {
+            rc = -1;
+
+        } else {
+            rc = ngx_strncmp(left.data, right.data, right.len);
+        }
+
+    } else {
+#if (NGX_PCRE)
+        err.len = NGX_MAX_CONF_ERRSTR;
+        err.data = errstr;
+
+        right.data[right.len] = '\0';
+
+        regex = ngx_regex_compile(&right, 0, r->pool, &err);
+
+        if (regex == NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s", err.data);
+            return NGX_HTTP_SSI_ERROR;
+        }
+
+        rc = ngx_regex_exec(regex, &left, NULL, 0);
+
+        if (rc != NGX_REGEX_NO_MATCHED && rc < 0) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          ngx_regex_exec_n " failed: %d on \"%V\" using \"%V\"",
+                          rc, &left, &right);
+            return NGX_HTTP_SSI_ERROR;
+        }
+#else
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "the using of the regex \"%V\" in SSI "
+                      "requires PCRE library", &right);
+
+        return NGX_HTTP_SSI_ERROR;
+#endif
+    }
+
+    if ((rc == 0 && !negative) || (rc != 0 && negative)) {
         ctx->output = 1;
 
     } else {
@@ -1636,6 +1751,13 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     }
 
     return NGX_OK;
+
+invalid_expression:
+
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "invalid expression in \"%V\"", expr);
+
+    return NGX_HTTP_SSI_ERROR;
 }
 
 

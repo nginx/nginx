@@ -430,7 +430,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     escape = 0;
 
-    loc_len = r->valid_location ? u->conf->location->len - 1 : 0;
+    loc_len = r->valid_location ? u->conf->location->len : 0;
 
     if (plcf->upstream.pass_unparsed_uri && r->valid_unparsed_uri) {
         len += r->unparsed_uri.len;
@@ -514,12 +514,12 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                              r->method_name.len + 1);
     }
 
-    b->last = ngx_cpymem(b->last, u->conf->uri.data, u->conf->uri.len - 1);
-
     if (plcf->upstream.pass_unparsed_uri && r->valid_unparsed_uri) {
         b->last = ngx_cpymem(b->last, r->unparsed_uri.data,
                              r->unparsed_uri.len);
     } else {
+        b->last = ngx_cpymem(b->last, u->conf->uri.data, u->conf->uri.len);
+
         if (escape) {
             ngx_escape_uri(b->last, r->uri.data + loc_len,
                            r->uri.len - loc_len, NGX_ESCAPE_URI);
