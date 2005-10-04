@@ -280,7 +280,7 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
             && r->headers_out.status != NGX_HTTP_FORBIDDEN
             && r->headers_out.status != NGX_HTTP_NOT_FOUND)
         || r->header_only
-        || r->main
+        || r->main != r
         || r->http_version < conf->http_version
         || r->headers_out.content_type.len == 0
         || (r->headers_out.content_encoding

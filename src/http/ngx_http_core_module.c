@@ -498,7 +498,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
             r->phase = NGX_HTTP_FIND_CONFIG_PHASE;
         }
 
-        if (r->phase == NGX_HTTP_ACCESS_PHASE && r->main) {
+        if (r->phase == NGX_HTTP_ACCESS_PHASE && r->main != r) {
             continue;
         }
 
@@ -1099,7 +1099,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    sr->main = r->main ? r->main : r;
+    sr->main = r->main;
     sr->parent = r;
     sr->read_event_handler = ngx_http_request_empty_handler;
     sr->write_event_handler = ngx_http_request_empty_handler;

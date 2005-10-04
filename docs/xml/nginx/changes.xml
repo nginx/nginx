@@ -9,6 +9,51 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.2.5" date="04.10.2005">
+
+<change type="change">
+<para lang="ru">
+дублирующее значение переменной модуля ngx_http_geo_module теперь
+выдаёт предупреждение и изменяёт старое значение.
+</para>
+<para lang="en">
+the duplicate value of the ngx_http_geo_module variable now causes
+the warning and changes old value.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_module поддерживает команду set.
+</para>
+<para lang="en">
+the ngx_http_ssi_module supports the "set" command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_module поддерживает параметр file в команде include.
+</para>
+<para lang="en">
+the ngx_http_ssi_module supports the "file" parameter in the "include" command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_module поддерживает подстановку значений переменных
+в выражениях команды if.
+</para>
+<para lang="en">
+the ngx_http_ssi_module supports the variable value substitutions in
+epxiressions of the "if" command.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.2.4" date="03.10.2005">
 
 <change type="feature">

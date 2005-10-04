@@ -495,7 +495,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     if (r->request_body) {
-        if (r->request_body->temp_file && r->main == NULL) {
+        if (r->request_body->temp_file && r->main == r) {
 
             /*
              * the r->request_body->buf can be reused for one request only,
@@ -560,7 +560,7 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
     /* reinit the subrequest's ngx_output_chain() context */
 
     if (r->request_body) {
-        if (r->request_body->temp_file && r->main && u->output.buf) {
+        if (r->request_body->temp_file && r->main != r && u->output.buf) {
 
             u->output.free = ngx_alloc_chain_link(r->pool);
             if (u->output.free == NULL) {
@@ -1454,7 +1454,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     r->connection->log->action = "sending to client";
 
-    if (rc == 0 && r->main == NULL) {
+    if (rc == 0 && r->main == r) {
         rc = ngx_http_send_last(r);
     }
 

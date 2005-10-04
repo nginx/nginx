@@ -134,7 +134,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
 
     if (r->http_version < NGX_HTTP_VERSION_10
         || r->headers_out.status != NGX_HTTP_OK
-        || r->main
+        || r->main != r
         || r->headers_out.content_length_n == -1
         || !r->filter_allow_ranges)
     {

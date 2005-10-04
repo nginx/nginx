@@ -51,7 +51,6 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     ngx_int_t                      rc;
     ngx_chain_t                   *out;
-    ngx_http_request_t            *mr;
     ngx_http_postponed_request_t  *pr, **ppr;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -110,16 +109,14 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
         out = in;
     }
 
-    mr = r->main ? r->main : r;
-
-    if (out == NULL && mr->out == NULL && !mr->connection->buffered) {
+    if (out == NULL && r->main->out == NULL && !r->main->connection->buffered) {
         return NGX_OK;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http postpone filter out \"%V\"", &r->uri);
 
-    rc = ngx_http_next_filter(mr, out);
+    rc = ngx_http_next_filter(r->main, out);
 
     if (rc == NGX_ERROR) {
         /* NGX_ERROR may be returned by any filter */

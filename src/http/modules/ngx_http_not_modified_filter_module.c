@@ -52,7 +52,7 @@ static ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     time_t  ims;
 
     if (r->headers_out.status != NGX_HTTP_OK
-        || r->main
+        || r->main != r
         || r->headers_in.if_modified_since == NULL
         || r->headers_out.last_modified_time == -1)
     {

@@ -182,11 +182,11 @@ static char *
 ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
     ngx_int_t                   rc, n;
-    ngx_uint_t                  i;
     ngx_str_t                  *value, file;
+    ngx_uint_t                  i;
     ngx_inet_cidr_t             cidrin;
     ngx_http_geo_conf_t        *geo;
-    ngx_http_variable_value_t  *var, **v;
+    ngx_http_variable_value_t  *var, *old, **v;
 
     geo = cf->ctx;
 
@@ -274,17 +274,33 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         *v = var;
     }
 
-    rc = ngx_radix32tree_insert(geo->tree, cidrin.addr, cidrin.mask,
-                                (uintptr_t) var);
-    if (rc == NGX_ERROR) {
-        return NGX_CONF_ERROR;
+    for (i = 2; i; i--) {
+        rc = ngx_radix32tree_insert(geo->tree, cidrin.addr, cidrin.mask,
+                                    (uintptr_t) var);
+        if (rc == NGX_OK) {
+            return NGX_CONF_OK;
+        }
+
+        if (rc == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
+
+        /* rc == NGX_BUSY */
+
+        old  = (ngx_http_variable_value_t *)
+                    ngx_radix32tree_find(geo->tree, cidrin.addr & cidrin.mask);
+
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "duplicate parameter \"%V\", value: \"%V\", "
+                           "old value: \"%V\"",
+                           &value[0], &var->text, &old->text);
+
+        rc = ngx_radix32tree_delete(geo->tree, cidrin.addr, cidrin.mask);
+
+        if (rc == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
     }
 
-    if (rc == NGX_BUSY) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "duplicate parameter \"%V\"",
-                           &value[0]);
-        return NGX_CONF_ERROR;
-    }
-
-    return NGX_CONF_OK;
+    return NGX_CONF_ERROR;
 }

@@ -361,11 +361,11 @@ ngx_http_script_copy_var_len_code(ngx_http_script_engine_t *e)
 
     value = ngx_http_get_indexed_variable(e->request, code->index);
 
-    if (value == NULL || value == NGX_HTTP_VAR_NOT_FOUND) {
-        return 0;
+    if (value && value != NGX_HTTP_VAR_NOT_FOUND) {
+        return value->text.len;
     }
 
-    return value->text.len;
+    return 0;
 }
 
 
@@ -382,15 +382,14 @@ ngx_http_script_copy_var_code(ngx_http_script_engine_t *e)
     if (!e->skip) {
         value = ngx_http_get_indexed_variable(e->request, code->index);
 
-        if (value == NULL || value == NGX_HTTP_VAR_NOT_FOUND) {
-            return;
-        }
+        if (value && value != NGX_HTTP_VAR_NOT_FOUND) {
+            e->pos = ngx_cpymem(e->pos, value->text.data, value->text.len);
 
-        e->pos = ngx_cpymem(e->pos, value->text.data, value->text.len);
-
-        if (e->log) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
-                       "http script var: \"%V\"", &e->buf);
+            if (e->log) {
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP,
+                               e->request->connection->log, 0,
+                               "http script var: \"%V\"", &e->buf);
+            }
         }
     }
 }
@@ -879,19 +878,18 @@ ngx_http_script_var_code(ngx_http_script_engine_t *e)
 
     value = ngx_http_get_indexed_variable(e->request, code->index);
 
-    if (value == NULL || value == NGX_HTTP_VAR_NOT_FOUND) {
-        e->sp->value = 0;
-        e->sp->text.len = 0;
-        e->sp->text.data = (u_char *) "";
+    if (value && value != NGX_HTTP_VAR_NOT_FOUND) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script var: %ui, \"%V\"", value->value, &value->text);
+        *e->sp = *value;
         e->sp++;
 
         return;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
-                   "http script var: %ui, \"%V\"", value->value, &value->text);
-
-    *e->sp = *value;
+    e->sp->value = 0;
+    e->sp->text.len = 0;
+    e->sp->text.data = (u_char *) "";
     e->sp++;
 }
 

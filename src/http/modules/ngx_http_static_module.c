@@ -339,7 +339,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
     b->in_file = 1;
 
-    if (r->main == NULL) {
+    if (r->main == r) {
         b->last_buf = 1;
     }
 

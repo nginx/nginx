@@ -423,6 +423,8 @@ void ngx_http_init_request(ngx_event_t *rev)
     c->single_connection = 1;
     r->connection = c;
 
+    r->main = r;
+
     r->start_time = ngx_time();
 
     r->headers_in.content_length_n = -1;
@@ -1666,8 +1668,7 @@ ngx_http_writer(ngx_http_request_t *r)
         wev->delayed = 0;
 
         if (!wev->ready) {
-            clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                                ngx_http_core_module);
+            clcf = ngx_http_get_module_loc_conf(r->main, ngx_http_core_module);
             ngx_add_timer(wev, clcf->send_timeout);
 
             if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
@@ -1683,8 +1684,7 @@ ngx_http_writer(ngx_http_request_t *r)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0,
                            "http writer delayed");
 
-            clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                                ngx_http_core_module);
+            clcf = ngx_http_get_module_loc_conf(r->main, ngx_http_core_module);
 
             if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
                 ngx_http_close_request(r, 0);
@@ -1712,8 +1712,7 @@ ngx_http_writer(ngx_http_request_t *r)
                    "http writer output filter: %d, \"%V\"", rc, &r->uri);
 
     if (rc == NGX_AGAIN) {
-        clcf = ngx_http_get_module_loc_conf(r->main ? r->main : r,
-                                            ngx_http_core_module);
+        clcf = ngx_http_get_module_loc_conf(r->main, ngx_http_core_module);
         if (!wev->ready && !wev->delayed) {
             ngx_add_timer(wev, clcf->send_timeout);
         }
@@ -1809,7 +1808,7 @@ ngx_http_discard_body(ngx_http_request_t *r)
     ssize_t       size;
     ngx_event_t  *rev;
 
-    if (r->main) {
+    if (r->main != r) {
         return NGX_OK;
     }
 
