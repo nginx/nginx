@@ -70,7 +70,6 @@ typedef struct {
     ngx_flag_t                      pass_request_body;
 
     ngx_flag_t                      redirect_errors;
-    ngx_flag_t                      pass_unparsed_uri;
     ngx_flag_t                      cyclic_temp_file;
 
     ngx_flag_t                      pass_x_powered_by;
@@ -163,6 +162,8 @@ struct ngx_http_upstream_s {
 
     ngx_http_upstream_state_t      *state;
     ngx_array_t                     states;  /* of ngx_http_upstream_state_t */
+
+    ngx_str_t                       uri;
 
     unsigned                        cachable:1;
     unsigned                        accel:1;

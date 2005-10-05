@@ -283,18 +283,31 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         for (i = 0; i < clcf->error_pages->nelts; i++) {
 
             if (err_page[i].status == error) {
-
-                if (err_page[i].overwrite) {
-                    r->err_status = err_page[i].overwrite;
-                } else {
-                    r->err_status = error;
-                }
-
+                r->err_status = err_page[i].overwrite;
                 r->err_ctx = r->ctx;
 
                 r->method = NGX_HTTP_GET;
 
-                return ngx_http_internal_redirect(r, &err_page[i].uri, NULL);
+                if (err_page[i].uri.data[0] == '/') {
+                    return ngx_http_internal_redirect(r, &err_page[i].uri,
+                                                      NULL);
+                }
+
+                r->headers_out.location =
+                                        ngx_list_push(&r->headers_out.headers);
+
+                if (r->headers_out.location) {
+                    r->err_status = NGX_HTTP_MOVED_TEMPORARILY;
+                    error = NGX_HTTP_MOVED_TEMPORARILY;
+
+                    r->headers_out.location->hash = 1;
+                    r->headers_out.location->key.len = sizeof("Location") - 1;
+                    r->headers_out.location->key.data = (u_char *) "Location";
+                    r->headers_out.location->value = err_page[i].uri;
+
+                } else {
+                    error = NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
             }
         }
     }

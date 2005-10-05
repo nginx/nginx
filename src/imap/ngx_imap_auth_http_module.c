@@ -1068,7 +1068,6 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {   
     ngx_imap_auth_http_conf_t *ahcf = conf;
 
-    ngx_uint_t                   i;
     ngx_str_t                   *value, *url;
     ngx_inet_upstream_t          inet_upstream;
 #if (NGX_HAVE_UNIX_DOMAIN)
@@ -1093,8 +1092,6 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ahcf->peers == NULL) {
             return NGX_CONF_ERROR;
         }
-
-        ahcf->peers->peer[0].uri_separator = ":";
 
         ahcf->host_header.len = sizeof("localhost") - 1;
         ahcf->host_header.data = (u_char *) "localhost";
@@ -1121,12 +1118,13 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        for (i = 0; i < ahcf->peers->number; i++) {
-            ahcf->peers->peer[i].uri_separator = "";
-        }
-
         ahcf->host_header = inet_upstream.host_header;
         ahcf->uri = inet_upstream.uri;
+    }
+
+    if (ahcf->uri.len) {
+        ahcf->uri.len = sizeof("/") - 1;
+        ahcf->uri.data = (u_char *) "/";
     }
 
     return NGX_CONF_OK;

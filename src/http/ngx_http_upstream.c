@@ -1793,8 +1793,6 @@ static u_char *
 ngx_http_upstream_log_error(ngx_http_request_t *r, u_char *buf, size_t len)
 {
     u_char                 *p;
-    ngx_str_t               line;
-    uintptr_t               escape;
     ngx_http_upstream_t    *u;
     ngx_peer_connection_t  *peer;
 
@@ -1809,61 +1807,9 @@ ngx_http_upstream_log_error(ngx_http_request_t *r, u_char *buf, size_t len)
                      &u->conf->schema,
                      &peer->peers->peer[peer->cur_peer].name,
                      peer->peers->peer[peer->cur_peer].uri_separator,
-                     &u->conf->uri);
+                     &u->uri);
     len -= p - buf;
     buf = p;
-
-    if (r->quoted_uri) {
-        escape = 2 * ngx_escape_uri(NULL, r->uri.data + u->conf->location->len,
-                                    r->uri.len - u->conf->location->len,
-                                    NGX_ESCAPE_URI);
-    } else {
-        escape = 0;
-    }
-
-    if (escape) {
-        if (len >= r->uri.len - u->conf->location->len + escape) {
-
-            ngx_escape_uri(buf, r->uri.data + u->conf->location->len,
-                           r->uri.len - u->conf->location->len, NGX_ESCAPE_URI);
-
-            buf += r->uri.len - u->conf->location->len + escape;
-            len -= r->uri.len - u->conf->location->len + escape;
-
-        } else {
-            p = ngx_palloc(r->pool,
-                           r->uri.len - u->conf->location->len + escape);
-            if (p == NULL) {
-                return buf;
-            }
-
-            ngx_escape_uri(p, r->uri.data + u->conf->location->len,
-                           r->uri.len - u->conf->location->len, NGX_ESCAPE_URI);
-
-            line.len = len;
-            line.data = p;
-
-            return ngx_snprintf(buf, len, "%V", &line);
-        }
-
-    } else {
-        line.len = r->uri.len - u->conf->location->len;
-        if (line.len > len) {
-            line.len = len;
-        }
-
-        line.data = r->uri.data + u->conf->location->len;
-        p = ngx_snprintf(buf, len, "%V", &line);
-
-        len -= p - buf;
-        buf = p;
-    }
-
-    if (r->args.len) {
-        p = ngx_snprintf(buf, len, "?%V", &r->args);
-        len -= p - buf;
-        buf = p;
-    }
 
     return ngx_http_log_error_info(r, buf, len);
 }

@@ -691,7 +691,7 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (pclcf->locations.elts == NULL) {
         if (ngx_array_init(&pclcf->locations, cf->pool, 4, sizeof(void *))
-                                                                  == NGX_ERROR)
+            == NGX_ERROR)
         {
             return NGX_CONF_ERROR;
         }
@@ -758,6 +758,10 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if_code->next = (u_char *) lcf->codes->elts + lcf->codes->nelts
                                                 - (u_char *) if_code;
+
+    /* the code array belong to parent block */
+
+    nlcf->codes = NULL;
 
     return NGX_CONF_OK;
 }
@@ -1048,8 +1052,10 @@ ngx_http_rewrite_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    v->handler = ngx_http_rewrite_var;
-    v->data = index;
+    if (v->handler == NULL) {
+        v->handler = ngx_http_rewrite_var;
+        v->data = index;
+    }
 
     n = ngx_http_script_variables_count(&value[2]);
 

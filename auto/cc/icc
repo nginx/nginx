@@ -90,9 +90,11 @@ CFLAGS="$CFLAGS -wd981"
 CFLAGS="$CFLAGS -wd1418"
 # external declaration in primary source file
 CFLAGS="$CFLAGS -wd1419"
+# explicit conversion of a 64-bit integral type to a smaller integral type
+CFLAGS="$CFLAGS -wd1683"
 
 case "$NGX_ICC_VER" in
-    8.*)
+    8.* | 9.*)
         # "cc" clobber ignored, warnings for Liunx's htons()
         CFLAGS="$CFLAGS -wd1469"
 

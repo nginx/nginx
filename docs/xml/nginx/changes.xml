@@ -9,12 +9,87 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.2.6" date="05.10.2005">
+
+<change type="change">
+<para lang="ru">
+с 60 до 10 секунд уменьшено время повторного обращения к бэкенду
+при использовании распределения нагрузки.
+</para>
+<para lang="en">
+while using load-balancing the time before the failed backend retry
+was decreased from 60 to 10 seconds.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива proxy_pass_unparsed_uri упразднена, оригинальный запрос теперь
+передаётся, если в директиве proxy_pass отсутствует URI.
+</para>
+<para lang="en">
+the "proxy_pass_unparsed_uri" was canceled, the original URI now passed,
+if the URI part is omitted in "proxy_pass" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива error_page поддерживает редиректы и позволяет более гибко
+менять код ошибки.
+</para>
+<para lang="en">
+the "error_page" directive supports redirects and allows more flexible
+to change an error code.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+в проксированных подзапросах теперь игнорируется переданный charset.
+</para>
+<para lang="en">
+the charset in the "Content-Type" header line now is ignored
+in proxied subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если после изменения URI в блоке if для запроса не находилась
+новая конфигурация, то правила модуля ngx_http_rewrite_module выполнялись
+снова.
+</para>
+<para lang="en">
+if the URI was changed in the "if" block and request did not found
+new configuration, then the ngx_http_rewrite_module rules ran again.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если директива set устанавливала переменную модуля ngx_http_geo_module
+в какой-либо части конфигурации, то эта переменная не была доступна в
+других частях конфигурации и выдавалась ошибка "using uninitialized variable";
+ошибка появилась в 0.2.2.
+</para>
+<para lang="en">
+if the "set" directive set the ngx_http_geo_module variable in some
+configuration part, the this variable was not available in other
+configuration parts and the "using uninitialized variable" error was occurred;
+bug appeared in 0.2.2.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.2.5" date="04.10.2005">
 
 <change type="change">
 <para lang="ru">
 дублирующее значение переменной модуля ngx_http_geo_module теперь
-выдаёт предупреждение и изменяёт старое значение.
+выдаёт предупреждение и изменяет старое значение.
 </para>
 <para lang="en">
 the duplicate value of the ngx_http_geo_module variable now causes
@@ -47,7 +122,7 @@ the ngx_http_ssi_module supports the "file" parameter in the "include" command.
 </para>
 <para lang="en">
 the ngx_http_ssi_module supports the variable value substitutions in
-epxiressions of the "if" command.
+expressions of the "if" command.
 </para>
 </change>
 

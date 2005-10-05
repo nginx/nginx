@@ -162,7 +162,8 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    if (ngx_strstr(r->headers_out.content_type.data, "charset") != NULL)
+    if (r->main == r
+        && ngx_strstr(r->headers_out.content_type.data, "charset") != NULL)
     {
         return ngx_http_next_header_filter(r);
     }

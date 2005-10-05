@@ -148,11 +148,6 @@ static ngx_str_t  ngx_http_fastcgi_script_name =
     ngx_string("fastcgi_script_name");
 
 
-#if (NGX_PCRE)
-static ngx_str_t ngx_http_fastcgi_uri = ngx_string("/");
-#endif
-
-
 static ngx_conf_post_t  ngx_http_fastcgi_lowat_post =
     { ngx_http_fastcgi_lowat_check };
 
@@ -1448,7 +1443,6 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE; 
     conf->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
 
-    conf->upstream.pass_unparsed_uri = NGX_CONF_UNSET;
     conf->upstream.method = NGX_CONF_UNSET_UINT;
     conf->upstream.pass_request_headers = NGX_CONF_UNSET;
     conf->upstream.pass_request_body = NGX_CONF_UNSET;
@@ -1601,16 +1595,6 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->upstream.temp_path,
                               NGX_HTTP_FASTCGI_TEMP_PATH, 1, 2, 0,
                               ngx_garbage_collector_temp_handler, cf);
-
-    ngx_conf_merge_value(conf->upstream.pass_unparsed_uri,
-                              prev->upstream.pass_unparsed_uri, 0);
-
-    if (conf->upstream.pass_unparsed_uri && conf->upstream.location->len > 1) {
-        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                      "\"fastcgi_pass_unparsed_uri\" can be set for "
-                      "location \"/\" or given by regular expression.");
-        return NGX_CONF_ERROR;
-    }
 
     if (conf->upstream.method == NGX_CONF_UNSET_UINT) {
         conf->upstream.method = prev->upstream.method; 
@@ -1812,6 +1796,10 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_unix_domain_upstream_t   unix_upstream;
 #endif
 
+    if (lcf->upstream.schema.len) {
+        return "is duplicate";
+    }
+
     value = cf->args->elts;
 
     if (ngx_strncasecmp(value[1].data, "unix:", 5) == 0) {
@@ -1827,6 +1815,8 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (lcf->peers == NULL) {
             return NGX_CONF_ERROR;
         }
+
+        lcf->peers->peer[0].uri_separator = "";
 
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1850,18 +1840,12 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     lcf->upstream.schema.len = sizeof("fastcgi://") - 1;
     lcf->upstream.schema.data = (u_char *) "fastcgi://";
-    lcf->upstream.uri.len = sizeof("/") - 1;
-    lcf->upstream.uri.data = (u_char *) "/";
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
     clcf->handler = ngx_http_fastcgi_handler;
 
-#if (NGX_PCRE)
-    lcf->upstream.location = clcf->regex ? &ngx_http_fastcgi_uri : &clcf->name;
-#else
     lcf->upstream.location = &clcf->name;
-#endif
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;

@@ -34,13 +34,6 @@ ngx_unix_upstream_parse(ngx_conf_t *cf, ngx_unix_domain_upstream_t *u)
                 break;
             }
         }
-
-        if (u->uri.len == 0) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "the unix domain upstream \"%V\" has no URI",
-                               &u->name);
-            return NULL;
-        }
     }
 
     if (len == 0) {

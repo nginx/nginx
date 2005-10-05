@@ -346,7 +346,7 @@ ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 
             peers->peer[i].weight = 1;
             peers->peer[i].max_fails = 1;
-            peers->peer[i].fail_timeout = 60;
+            peers->peer[i].fail_timeout = 10;
         }
 
     } else {
@@ -471,7 +471,8 @@ ngx_inet_parse_host_port(ngx_inet_upstream_t *u)
 
     } else {
         if (u->port_text.len == 0) {
-            return "no URI";
+            u->default_port = 1;
+            return NULL;
         }
 
         port = ngx_atoi(u->port_text.data, u->port_text.len);

@@ -626,6 +626,11 @@ ngx_http_find_location_config(ngx_http_request_t *r)
         return NGX_HTTP_NOT_FOUND;
     }
 
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "using configuration \"%s%V\"",
+                   (clcf->noname ? "*" : (clcf->exact_match ? "=" : "")),
+                   &clcf->name);
+
     ngx_http_update_location_config(r);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -708,7 +713,8 @@ ngx_http_core_find_location(ngx_http_request_t *r,
     ngx_uint_t                 i, found, noregex;
     ngx_http_core_loc_conf_t  *clcf, **clcfp;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "find location");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "find location for \"%V\"", &r->uri);
 
     found = 0;
     noregex = 0;
@@ -907,7 +913,7 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 ngx_int_t
 ngx_http_send_header(ngx_http_request_t *r)
 {
-    if (r->err_ctx) {
+    if (r->err_status) {
         r->headers_out.status = r->err_status;
         r->headers_out.status_line.len = 0;
     }
@@ -2237,18 +2243,23 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        overwrite = ngx_atoi(&value[i].data[1], value[i].len - 1);
+        if (value[i].len > 1) {
+            overwrite = ngx_atoi(&value[i].data[1], value[i].len - 1);
 
-        if (overwrite == NGX_ERROR) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid value \"%V\"", &value[i]);
-            return NGX_CONF_ERROR;
+            if (overwrite == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid value \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+        } else {
+            overwrite = 0;
         }
 
         n = 2;
 
     } else {
-        overwrite = 0;
+        overwrite = -1;
         n = 1;
     }
 
@@ -2273,7 +2284,8 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        err->overwrite = overwrite;
+        err->overwrite = (overwrite >= 0) ? overwrite : err->status;
+
         err->uri = value[cf->args->nelts - 1];
     }
 

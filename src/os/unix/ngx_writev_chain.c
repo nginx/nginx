@@ -81,7 +81,7 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             size = cl->buf->last - cl->buf->pos;
 
             if (send + size > limit) {
-                size = limit - send;
+                size = (ssize_t) limit - send;
             }
 
             if (prev == cl->buf->pos) {
