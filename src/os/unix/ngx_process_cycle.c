@@ -33,7 +33,6 @@ ngx_pid_t     ngx_pid;
 ngx_uint_t    ngx_threaded;
 
 sig_atomic_t  ngx_reap;
-sig_atomic_t  ngx_timer;
 sig_atomic_t  ngx_sigio;
 sig_atomic_t  ngx_terminate;
 sig_atomic_t  ngx_quit;
@@ -194,19 +193,6 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ngx_timer) {
-            ngx_timer = 0;
-
-            if (!ngx_noaccepting) {
-                ngx_start_worker_processes(cycle, ccf->worker_processes,
-                                           NGX_PROCESS_JUST_RESPAWN);
-                ngx_start_garbage_collector(cycle, NGX_PROCESS_JUST_RESPAWN);
-                live = 1;
-                ngx_signal_worker_processes(cycle,
-                                        ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
-            }
-        }
-
         if (ngx_reconfigure) {
             ngx_reconfigure = 0;
 
@@ -320,9 +306,8 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 static void
 ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 {
-    ngx_int_t         i;
-    ngx_channel_t     ch;
-    struct itimerval  itv;
+    ngx_int_t      i;
+    ngx_channel_t  ch;
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start worker processes");
 
@@ -356,22 +341,6 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
             ngx_write_channel(ngx_processes[i].channel[0],
                               &ch, sizeof(ngx_channel_t), cycle->log);
         }
-    }
-
-    /*
-     * we have to limit the maximum life time of the worker processes
-     * by 10 days because our millisecond event timer is limited
-     * by 24 days on 32-bit platforms
-     */
-
-    itv.it_interval.tv_sec = 0;
-    itv.it_interval.tv_usec = 0;
-    itv.it_value.tv_sec = 10 * 24 * 60 * 60;
-    itv.it_value.tv_usec = 0;
-
-    if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "setitimer() failed");
     }
 }
 
@@ -811,16 +780,8 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
     ngx_int_t          n;
     ngx_uint_t         i;
     struct rlimit      rlmt;
-    struct timeval     tv;
     ngx_core_conf_t   *ccf;
     ngx_listening_t   *ls;
-
-    ngx_gettimeofday(&tv);
-
-    ngx_start_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
-    ngx_old_elapsed_msec = 0;
-    ngx_elapsed_msec = 0;
-
 
     ngx_process = NGX_PROCESS_WORKER;
 

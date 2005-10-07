@@ -387,56 +387,31 @@ ngx_epoll_process_events(ngx_cycle_t *cycle)
     int                events;
     uint32_t           revents;
     ngx_int_t          instance, i;
-    ngx_uint_t         lock, accept_lock, expire;
+    ngx_uint_t         lock, accept_lock;
     ngx_err_t          err;
     ngx_log_t         *log;
-    ngx_msec_t         timer;
+    ngx_msec_t         timer, delta;
     ngx_event_t       *rev, *wev;
     struct timeval     tv;
     ngx_connection_t  *c;
-    ngx_epoch_msec_t   delta;
 
-    for ( ;; ) { 
-        timer = ngx_event_find_timer();
+    timer = ngx_event_find_timer();
 
 #if (NGX_THREADS)
 
-        if (timer == NGX_TIMER_ERROR) {
-            return NGX_ERROR;
-        }
+    if (timer == NGX_TIMER_ERROR) {
+        return NGX_ERROR;
+    }
 
-        if (timer == NGX_TIMER_INFINITE || timer > 500) {
-            timer = 500;
-            break;
-        }
+    if (timer == NGX_TIMER_INFINITE || timer > 500) {
+        timer = 500;
+        break;
+    }
 
 #endif
 
-        if (timer != 0) {
-            break;
-        }
-
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "epoll expired timer");
-
-        ngx_event_expire_timers((ngx_msec_t)
-                                    (ngx_elapsed_msec - ngx_old_elapsed_msec));
-
-        if (ngx_posted_events && ngx_threaded) {
-            ngx_wakeup_worker_thread(cycle);
-        }
-    }
-
     /* NGX_TIMER_INFINITE == INFTIM */
 
-    if (timer == NGX_TIMER_INFINITE) {
-        expire = 0;
-
-    } else {
-        expire = 1;
-    }
-
-    ngx_old_elapsed_msec = ngx_elapsed_msec;
     accept_lock = 0;
 
     if (ngx_accept_mutex) {
@@ -455,13 +430,12 @@ ngx_epoll_process_events(ngx_cycle_t *cycle)
                        || timer > ngx_accept_mutex_delay)
             {
                 timer = ngx_accept_mutex_delay;
-                expire = 0;
             }
         }
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "epoll timer: %d", timer);
+                   "epoll timer: %M", timer);
 
     events = epoll_wait(ep, event_list, nevents, timer);
 
@@ -474,15 +448,14 @@ ngx_epoll_process_events(ngx_cycle_t *cycle)
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
-    delta = ngx_elapsed_msec;
-    ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
-                                          + tv.tv_usec / 1000 - ngx_start_msec;
+    delta = ngx_current_time;
+    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_elapsed_msec - delta;
+        delta = ngx_current_time - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "epoll timer: %d, delta: %d", timer, (int) delta);
+                       "epoll timer: %M, delta: %M", timer, delta);
     } else {
         if (events == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
@@ -645,9 +618,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle)
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }
 
-    if (expire && delta) {
-        ngx_event_expire_timers((ngx_msec_t) delta);
-    }
+    ngx_event_expire_timers();
 
     if (ngx_posted_events) {
         if (ngx_threaded) {

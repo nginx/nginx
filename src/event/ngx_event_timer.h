@@ -16,24 +16,12 @@
 #define NGX_TIMER_INFINITE  (ngx_msec_t) -1
 #define NGX_TIMER_ERROR     (ngx_msec_t) -2
 
-
-/*
- * the 32-bit timer key value resolution
- *
- * 1 msec - 24 days
- * 10 msec - 8 months
- * 50 msec - 3 years 5 months
- * 100 msec - 6 years 10 months
- */
-
-#define NGX_TIMER_RESOLUTION  1
-
 #define NGX_TIMER_LAZY_DELAY  300
 
 
 ngx_int_t ngx_event_timer_init(ngx_log_t *log);
 ngx_msec_t ngx_event_find_timer(void);
-void ngx_event_expire_timers(ngx_msec_t timer);
+void ngx_event_expire_timers(void);
 
 
 #if (NGX_THREADS)
@@ -49,7 +37,7 @@ static ngx_inline void
 ngx_event_del_timer(ngx_event_t *ev)
 {
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "event timer del: %d: %d",
+                   "event timer del: %d: %M",
                     ngx_event_ident(ev->data), ev->rbtree_key);
 
     if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
@@ -75,14 +63,10 @@ ngx_event_del_timer(ngx_event_t *ev)
 static ngx_inline void
 ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
-    ngx_int_t  key;
+    ngx_rbtree_key_t      key;
+    ngx_rbtree_key_int_t  diff;
 
-    key = (ngx_int_t)
-              (ngx_elapsed_msec / NGX_TIMER_RESOLUTION * NGX_TIMER_RESOLUTION
-                                              + timer) / NGX_TIMER_RESOLUTION;
-#if 0
-                             (ngx_elapsed_msec + timer) / NGX_TIMER_RESOLUTION;
-#endif
+    key = ngx_current_time + timer;
 
     if (ev->timer_set) {
 
@@ -92,11 +76,11 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
          * the rbtree operations for the fast connections.
          */
 
-        if (abs(key - ev->rbtree_key)
-                                 < NGX_TIMER_LAZY_DELAY / NGX_TIMER_RESOLUTION)
-        {
+        diff = (ngx_rbtree_key_int_t) (key - ev->rbtree_key);
+
+        if (ngx_abs(diff) < NGX_TIMER_LAZY_DELAY) {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                           "event timer: %d, old: %i, new: %i",
+                           "event timer: %d, old: %M, new: %M",
                             ngx_event_ident(ev->data), ev->rbtree_key, key);
             return;
         }
@@ -106,9 +90,9 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 
     ev->rbtree_key = key;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "event timer add: %d: %i",
-                    ngx_event_ident(ev->data), ev->rbtree_key);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "event timer add: %d: %M:%M",
+                    ngx_event_ident(ev->data), timer, ev->rbtree_key);
 
     if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
         return;

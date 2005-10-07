@@ -265,34 +265,17 @@ static ngx_int_t
 ngx_select_process_events(ngx_cycle_t *cycle)
 {
     int                       ready, nready;
-    ngx_uint_t                i, found, lock, expire;
+    ngx_uint_t                i, found, lock;
     ngx_err_t                 err;
-    ngx_msec_t                timer;
+    ngx_msec_t                timer, delta;
     ngx_event_t              *ev;
     ngx_connection_t         *c;
-    ngx_epoch_msec_t          delta;
     struct timeval            tv, *tp;
 #if (NGX_HAVE_SELECT_CHANGE_TIMEOUT)
-    static ngx_epoch_msec_t   deltas = 0;
+    static ngx_msec_t         deltas = 0;
 #endif
 
-    for ( ;; ) {
-        timer = ngx_event_find_timer();
-
-        if (timer != 0) {
-            break;
-        }
-
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "select expired timer");
-
-        ngx_event_expire_timers((ngx_msec_t)
-                                    (ngx_elapsed_msec - ngx_old_elapsed_msec));
-    }
-
-    ngx_old_elapsed_msec = ngx_elapsed_msec;
-
-    expire = 1;
+    timer = ngx_event_find_timer();
 
 #if !(NGX_WIN32)
 
@@ -310,7 +293,6 @@ ngx_select_process_events(ngx_cycle_t *cycle)
                     || timer > ngx_accept_mutex_delay))
             {
                 timer = ngx_accept_mutex_delay;
-                expire = 0;
             }
         }
     }
@@ -347,16 +329,15 @@ ngx_select_process_events(ngx_cycle_t *cycle)
 
     if (timer == NGX_TIMER_INFINITE) {
         tp = NULL;
-        expire = 0;
 
     } else {
-        tv.tv_sec = timer / 1000;
-        tv.tv_usec = (timer % 1000) * 1000;
+        tv.tv_sec = (long) (timer / 1000);
+        tv.tv_usec = (long) ((timer % 1000) * 1000);
         tp = &tv;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "select timer: %d", timer);
+                   "select timer: %M", timer);
 
     work_read_fd_set = master_read_fd_set;
     work_write_fd_set = master_write_fd_set;
@@ -386,7 +367,7 @@ ngx_select_process_events(ngx_cycle_t *cycle)
 #if (NGX_HAVE_SELECT_CHANGE_TIMEOUT)
 
     if (timer != NGX_TIMER_INFINITE) {
-        delta = timer - (tv.tv_sec * 1000 + tv.tv_usec / 1000);
+        delta = timer - ((ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000);
 
         /*
          * learn the real time and update the cached time
@@ -399,22 +380,23 @@ ngx_select_process_events(ngx_cycle_t *cycle)
             ngx_time_update(tv.tv_sec);
             deltas = tv.tv_usec / 1000;
 
-            ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
-                                          + tv.tv_usec / 1000 - ngx_start_msec;
+            ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000
+                                                           + tv.tv_usec / 1000;
         } else {
-            ngx_elapsed_msec += delta;
+            ngx_current_time += delta;
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "select timer: %d, delta: %d", timer, (int) delta);
+                       "select timer: %M, delta: %M", timer, delta);
 
     } else {
-        delta = 0;
+        deltas = 0;
+
         ngx_gettimeofday(&tv);
         ngx_time_update(tv.tv_sec);
 
-        ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
-                                          + tv.tv_usec / 1000 - ngx_start_msec;
+        delta = ngx_current_time;
+        ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
@@ -429,15 +411,14 @@ ngx_select_process_events(ngx_cycle_t *cycle)
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
-    delta = ngx_elapsed_msec;
-    ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
-                                          + tv.tv_usec / 1000 - ngx_start_msec;
+    delta = ngx_current_time;
+    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_elapsed_msec - delta;
+        delta = ngx_current_time - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "select timer: %d, delta: %d", timer, (int) delta);
+                       "select timer: %M, delta: %M", timer, delta);
 
     } else {
         if (ready == 0) {
@@ -594,9 +575,7 @@ ngx_select_process_events(ngx_cycle_t *cycle)
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "select ready != events");
     }
 
-    if (expire && delta) {
-        ngx_event_expire_timers((ngx_msec_t) delta);
-    }
+    ngx_event_expire_timers();
 
     if (!ngx_threaded) {
         ngx_event_process_posted(cycle);

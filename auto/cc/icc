@@ -9,6 +9,8 @@ NGX_ICC_VER=`$CC -V 2>&1 | grep 'Version' 2>&1 \
 
 echo " + icc version: $NGX_ICC_VER"
 
+have=NGX_COMPILER value="\"Intel C Compiler $NGX_ICC_VER\"" . auto/define
+
 
 # optimizations
 

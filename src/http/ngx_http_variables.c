@@ -619,8 +619,6 @@ ngx_http_variable_document_root(ngx_http_request_t *r, uintptr_t data)
 static ngx_http_variable_value_t *
 ngx_http_variable_request_filename(ngx_http_request_t *r, uintptr_t data)
 {
-    u_char                     *p;
-    ngx_http_core_loc_conf_t   *clcf;
     ngx_http_variable_value_t  *vv;
 
     vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
@@ -630,29 +628,13 @@ ngx_http_variable_request_filename(ngx_http_request_t *r, uintptr_t data)
 
     vv->value = 0;
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-    if (!clcf->alias) {
-        vv->text.len = clcf->root.len + r->uri.len;
-        vv->text.data = ngx_palloc(r->pool, vv->text.len);
-        if (vv->text.data == NULL) {
-            return NULL;
-        }
-
-        p = ngx_cpymem(vv->text.data, clcf->root.data, clcf->root.len);
-        ngx_memcpy(p, r->uri.data, r->uri.len + 1);
-
-    } else {
-        vv->text.len = clcf->root.len + r->uri.len + 2 - clcf->name.len;
-        vv->text.data = ngx_palloc(r->pool, vv->text.len);
-        if (vv->text.data == NULL) {
-            return NULL;
-        }
-
-        p = ngx_cpymem(vv->text.data, clcf->root.data, clcf->root.len);
-        ngx_memcpy(p, r->uri.data + clcf->name.len,
-                   r->uri.len + 1 - clcf->name.len);
+    if (ngx_http_map_uri_to_path(r, &vv->text, 0) == NULL) {
+        return NULL;
     }
+
+    /* ngx_http_map_uri_to_path() allocates memory for terminating '\0' */
+
+    vv->text.len--;
 
     return vv;
 }

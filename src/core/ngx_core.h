@@ -36,6 +36,7 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 
 
 #include <ngx_atomic.h>
+#include <ngx_rbtree.h>
 #include <ngx_time.h>
 #include <ngx_socket.h>
 #include <ngx_errno.h>
@@ -59,7 +60,6 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #if (NGX_PCRE)
 #include <ngx_regex.h>
 #endif
-#include <ngx_rbtree.h>
 #include <ngx_radix_tree.h>
 #include <ngx_times.h>
 #include <ngx_inet.h>
@@ -79,6 +79,9 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #define LF     (u_char) 10
 #define CR     (u_char) 13
 #define CRLF   "\x0d\x0a"
+
+
+#define ngx_abs(value)   (((value) >= 0) ? (value) : - (value))
 
 
 #endif /* _NGX_CORE_H_INCLUDED_ */

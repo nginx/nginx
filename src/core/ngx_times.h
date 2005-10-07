@@ -39,21 +39,13 @@ extern ngx_thread_volatile ngx_str_t  ngx_cached_err_log_time;
 extern ngx_thread_volatile ngx_str_t  ngx_cached_http_time;
 extern ngx_thread_volatile ngx_str_t  ngx_cached_http_log_time;
 
-extern ngx_epoch_msec_t    ngx_start_msec;
+extern ngx_int_t   ngx_gmtoff;
 
 /*
- * msecs elapsed since ngx_start_msec in the current event cycle,
- * used in ngx_event_add_timer() and ngx_event_find_timer()
+ * milliseconds elapsed since epoch and truncated to ngx_msec_t,
+ * used in event timers
  */
-extern ngx_epoch_msec_t  ngx_elapsed_msec;
-
-/*
- * msecs elapsed since ngx_start_msec in the previous event cycle,
- * used in ngx_event_expire_timers()
- */
-extern ngx_epoch_msec_t  ngx_old_elapsed_msec;
-
-extern ngx_int_t         ngx_gmtoff;
+extern ngx_msec_t  ngx_current_time;
 
 
 #endif /* _NGX_TIMES_H_INCLUDED_ */

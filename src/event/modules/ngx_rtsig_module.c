@@ -283,55 +283,34 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
 {
     int                 signo;
     ngx_int_t           instance;
-    ngx_uint_t          expire;
-    ngx_msec_t          timer;
+    ngx_msec_t          timer, delta;
     ngx_err_t           err;
     siginfo_t           si;
     ngx_event_t        *rev, *wev;
     struct timeval      tv;
     struct timespec     ts, *tp;
     struct sigaction    sa;
-    ngx_epoch_msec_t    delta;
     ngx_connection_t   *c;
     ngx_rtsig_conf_t   *rtscf;
 
     if (overflow) {
         timer = 0;
-        expire = 0;
 
     } else {
-        for ( ;; ) {
-            timer = ngx_event_find_timer();
+        timer = ngx_event_find_timer();
 
 #if (NGX_THREADS)
 
-            if (timer == NGX_TIMER_ERROR) {
-                return NGX_ERROR;
-            }
-
-            if (timer == NGX_TIMER_INFINITE || timer > 500) {
-                timer = 500;
-                break;
-            }
-
-#endif
-
-            if (timer != 0) {
-                break;
-            }
-
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "rtsig expired timer");
-
-            ngx_event_expire_timers((ngx_msec_t)
-                                    (ngx_elapsed_msec - ngx_old_elapsed_msec));
-
-            if (ngx_posted_events && ngx_threaded) {
-                ngx_wakeup_worker_thread(cycle);
-            }
+        if (timer == NGX_TIMER_ERROR) {
+            return NGX_ERROR;
         }
 
-        expire = 1;
+        if (timer == NGX_TIMER_INFINITE || timer > 500) {
+            timer = 500;
+            break;
+        }
+
+#endif
 
         if (ngx_accept_mutex) {
             if (ngx_accept_disabled > 0) {
@@ -349,7 +328,6 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
                         || timer > ngx_accept_mutex_delay))
                 {
                     timer = ngx_accept_mutex_delay;
-                    expire = 0;
                 } 
             }
         }
@@ -357,7 +335,6 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
 
     if (timer == NGX_TIMER_INFINITE) {
         tp = NULL;
-        expire = 0;
 
     } else {
         ts.tv_sec = timer / 1000;
@@ -365,10 +342,8 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
         tp = &ts;
     }
 
-    ngx_old_elapsed_msec = ngx_elapsed_msec;
-
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "rtsig timer: %d", timer);
+                   "rtsig timer: %M", timer);
 
     /* Linux's sigwaitinfo() is sigtimedwait() with the NULL timeout pointer */
 
@@ -402,9 +377,8 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
-    delta = ngx_elapsed_msec;
-    ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
-                                          + tv.tv_usec / 1000 - ngx_start_msec;
+    delta = ngx_current_time;
+    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     if (err) {
         ngx_accept_mutex_unlock();
@@ -414,10 +388,10 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
     }
 
     if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_elapsed_msec - delta;
+        delta = ngx_current_time - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "rtsig timer: %d, delta: %d", timer, (int) delta);
+                       "rtsig timer: %M, delta: %M", timer, delta);
     }
 
     rtscf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_rtsig_module);
@@ -557,9 +531,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
 
     ngx_accept_mutex_unlock();
 
-    if (expire && delta) {
-        ngx_event_expire_timers((ngx_msec_t) delta);
-    }
+    ngx_event_expire_timers();
 
     if (ngx_posted_events) {
         if (ngx_threaded) {

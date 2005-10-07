@@ -57,6 +57,7 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *    %[0][width][u][x|X]L      int64_t/uint64_t
  *    %[0][width|m][u][x|X]A    ngx_atomic_int_t/ngx_atomic_uint_t
  *    %P                        ngx_pid_t
+ *    %M                        ngx_msec_t
  *    %r                        rlim_t
  *    %p                        pointer
  *    %V                        pointer to ngx_str_t
@@ -65,9 +66,6 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *    %N                        '\n'
  *    %c                        char
  *    %%                        %
- *
- *  TODO:
- *    %M                        ngx_msec_t
  *
  *  reserved:
  *    %t                        ptrdiff_t
@@ -220,6 +218,11 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
             case 'T':
                 i64 = (int64_t) va_arg(args, time_t);
                 sign = 1;
+                break;
+
+            case 'M':
+                ui64 = (uint64_t) va_arg(args, ngx_msec_t);
+                sign = 0;
                 break;
 
             case 'z':

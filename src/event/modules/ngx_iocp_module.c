@@ -184,23 +184,21 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
     u_int              key;
     u_long             bytes;
     ngx_err_t          err;
-    ngx_msec_t         timer;
+    ngx_msec_t         timer, delta;
     ngx_event_t       *ev;
     struct timeval     tv;
-    ngx_epoch_msec_t   delta;
     ngx_event_ovlp_t  *ovlp;
 
     timer = ngx_event_find_timer();
-    ngx_old_elapsed_msec = ngx_elapsed_msec;
 
-    if (timer == 0) {
+    if (timer == NGX_TIMER_INFINITE) {
         timer = INFINITE;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "iocp timer: %d", timer);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "iocp timer: %M", timer);
 
     rc = GetQueuedCompletionStatus(iocp, &bytes, (LPDWORD) &key,
-                                   (LPOVERLAPPED *) &ovlp, timer);
+                                   (LPOVERLAPPED *) &ovlp, (u_long) timer);
 
     if (rc == 0) {
         err = ngx_errno;
@@ -214,15 +212,14 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "iocp: %d b:%d k:%d ov:%p", rc, bytes, key, ovlp);
 
-    delta = ngx_elapsed_msec;
-    ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
-                                          + tv.tv_usec / 1000 - ngx_start_msec;
+    delta = ngx_current_time;
+    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     if (timer != INFINITE) {
-        delta = ngx_elapsed_msec - delta;
+        delta = ngx_current_time - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "iocp timer: %d, delta: %d", timer, (int) delta);
+                       "iocp timer: %M, delta: %M", timer, delta);
     }
 
     if (err) {
@@ -234,9 +231,7 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
                 return NGX_ERROR;
             }
 
-            if (timer != INFINITE && delta) {
-                ngx_event_expire_timers((ngx_msec_t) delta);
-            }
+            ngx_event_expire_timers();
 
             return NGX_OK;
         }
@@ -268,9 +263,7 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, err,
                        "iocp: aborted event %p", ev); 
 
-        if (timer != INFINITE && delta) {
-            ngx_event_expire_timers((ngx_msec_t) delta);
-        }
+        ngx_event_expire_timers();
 
         return NGX_OK;
     }
@@ -304,9 +297,7 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
 
     ev->handler(ev);
 
-    if (timer != INFINITE && delta) {
-        ngx_event_expire_timers((ngx_msec_t) delta);
-    }
+    ngx_event_expire_timers();
 
     return NGX_OK;
 }

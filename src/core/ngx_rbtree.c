@@ -47,7 +47,12 @@ ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
     temp = *root;
 
     for ( ;; ) {
-        if (node->key < temp->key) {
+
+        /*  node->key < temp->key */
+
+        if ((ngx_rbtree_key_int_t) node->key - (ngx_rbtree_key_int_t) temp->key
+            < 0)
+        {
             if (temp->left == sentinel) {
                 temp->left = node;
                 break;

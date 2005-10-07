@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.0" date="07.10.2005">
+
+<change type="change">
+<para lang="ru">
+убрано десятидневное ограничение времени работы рабочего процесса.
+Ограничение было введено из-за переполнения таймеров миллисекунд.
+</para>
+<para lang="en">
+the 10-days live time limit of worker process was eliminated.
+The limit was introduced because of millisecond timers overflow.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.2.6" date="05.10.2005">
 
 <change type="change">

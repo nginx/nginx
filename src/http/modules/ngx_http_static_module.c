@@ -72,18 +72,18 @@ ngx_module_t  ngx_http_static_module = {
 static ngx_int_t
 ngx_http_static_handler(ngx_http_request_t *r)
 {
-    u_char                      *last;
-    ngx_fd_t                     fd;
-    ngx_int_t                    rc;
-    ngx_uint_t                   level;
-    ngx_str_t                    name, location;
-    ngx_err_t                    err;
-    ngx_log_t                   *log;
-    ngx_buf_t                   *b;
-    ngx_chain_t                  out;
-    ngx_file_info_t              fi;
-    ngx_pool_cleanup_file_t     *cln;
-    ngx_http_core_loc_conf_t    *clcf;
+    u_char                    *last, *location;
+    ngx_fd_t                   fd;
+    ngx_int_t                  rc;
+    ngx_uint_t                 level;
+    ngx_str_t                  path;
+    ngx_err_t                  err;
+    ngx_log_t                 *log;
+    ngx_buf_t                 *b;
+    ngx_chain_t                out;
+    ngx_file_info_t            fi;
+    ngx_pool_cleanup_file_t   *cln;
+    ngx_http_core_loc_conf_t  *clcf;
 
     if (r->uri.data[r->uri.len - 1] == '/') {
         return NGX_DECLINED;
@@ -106,99 +106,20 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
     log = r->connection->log;
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
     /*
-     * make a file name, reserve 2 bytes for a trailing '/'
-     * in a possible redirect and for the last '\0'
+     * ngx_http_map_uri_to_path() allocates memory for terminating '\0'
+     * so we do not need to reserve memory for '/' for possible redirect
      */
 
-    if (!clcf->alias) {
-        name.data = ngx_palloc(r->pool, clcf->root.len + r->uri.len + 2);
-        if (name.data == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        location.data = ngx_cpymem(name.data, clcf->root.data, clcf->root.len);
-        last = ngx_cpystrn(location.data, r->uri.data, r->uri.len + 1);
-
-        name.len = last - name.data;
-        location.len = last - location.data + 1;
-
-    } else {
-        name.data = ngx_palloc(r->pool, clcf->root.len + r->uri.len + 2
-                                        - clcf->name.len);
-        if (name.data == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        last = ngx_cpymem(name.data, clcf->root.data, clcf->root.len);
-        last = ngx_cpystrn(last, r->uri.data + clcf->name.len,
-                           r->uri.len + 1 - clcf->name.len);
-
-        name.len = last - name.data;
-
-        location.data = ngx_palloc(r->pool, r->uri.len + 2);
-        if (location.data == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        last = ngx_cpystrn(location.data, r->uri.data, r->uri.len + 1);
-
-        location.len = last - location.data + 1;
+    last = ngx_http_map_uri_to_path(r, &path, 0);
+    if (last == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                   "http filename: \"%s\"", name.data);
+                   "http filename: \"%s\"", path.data);
 
-    /* open file */
-
-#if (NGX_WIN9X)
-
-    if (ngx_win32_version < NGX_WIN_NT) {
-
-        /*
-         * there is no way to open a file or a directory in Win9X with
-         * one syscall because Win9X has no FILE_FLAG_BACKUP_SEMANTICS flag
-         * so we need to check its type before the opening
-         */
-
-        if (ngx_file_info(name.data, &fi) == NGX_FILE_ERROR) {
-            err = ngx_errno;
-            ngx_log_error(NGX_LOG_ERR, log, err,
-                          ngx_file_info_n " \"%s\" failed", name.data);
-
-            if (err == NGX_ENOENT || err == NGX_ENOTDIR) {
-                return NGX_HTTP_NOT_FOUND;
-
-            } else if (err == NGX_EACCES) {
-                return NGX_HTTP_FORBIDDEN;
-
-            } else {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
-            }
-        }
-
-        if (ngx_is_dir(&fi)) {
-            r->headers_out.location = ngx_http_add_header(&r->headers_out,
-                                                          ngx_http_headers_out);
-            if (r->headers_out.location == NULL) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
-            }
-
-            *last++ = '/';
-            *last = '\0';
-            r->headers_out.location->value.len = last - location;
-            r->headers_out.location->value.data = location;
-
-            return NGX_HTTP_MOVED_PERMANENTLY;
-        }
-    }
-
-#endif
-
-
-    fd = ngx_open_file(name.data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
+    fd = ngx_open_file(path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
     if (fd == NGX_INVALID_FILE) {
         err = ngx_errno;
@@ -219,9 +140,11 @@ ngx_http_static_handler(ngx_http_request_t *r)
             rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
         if (rc != NGX_HTTP_NOT_FOUND || clcf->log_not_found) {
             ngx_log_error(level, log, err,
-                          ngx_open_file_n " \"%s\" failed", name.data);
+                          ngx_open_file_n " \"%s\" failed", path.data);
         }
 
         return rc;
@@ -231,11 +154,11 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
     if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
-                      ngx_fd_info_n " \"%s\" failed", name.data);
+                      ngx_fd_info_n " \"%s\" failed", path.data);
 
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                          ngx_close_file_n " \"%s\" failed", name.data);
+                          ngx_close_file_n " \"%s\" failed", path.data);
         }
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -247,23 +170,37 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                          ngx_close_file_n " \"%s\" failed", name.data);
+                          ngx_close_file_n " \"%s\" failed", path.data);
         }
-
-        *last++ = '/';
-        *last = '\0';
 
         r->headers_out.location = ngx_palloc(r->pool, sizeof(ngx_table_elt_t));
         if (r->headers_out.location == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        if (!clcf->alias) {
+            location = path.data + clcf->root.len;
+
+        } else {
+            location = ngx_palloc(r->pool, r->uri.len + 1);
+            if (location == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            last = ngx_cpymem(location, r->uri.data, r->uri.len);
+        }
+
+        *last = '/';
+
         /*
          * we do not need to set the r->headers_out.location->hash and
          * r->headers_out.location->key fields
          */
 
-        r->headers_out.location->value = location;
+        r->headers_out.location->value.len = r->uri.len + 1;
+        r->headers_out.location->value.data = location;
 
         return NGX_HTTP_MOVED_PERMANENTLY;
     }
@@ -272,11 +209,11 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
     if (!ngx_is_file(&fi)) {
         ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
-                      "\"%s\" is not a regular file", name.data);
+                      "\"%s\" is not a regular file", path.data);
 
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                          ngx_close_file_n " \"%s\" failed", name.data);
+                          ngx_close_file_n " \"%s\" failed", path.data);
         }
 
         return NGX_HTTP_NOT_FOUND;
@@ -292,7 +229,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
     }
 
     cln->fd = fd;
-    cln->name = name.data;
+    cln->name = path.data;
     cln->log = r->pool->log;
 
     if (ngx_pool_cleanup_add(r->pool, ngx_pool_cleanup_file, cln) == NULL) {
@@ -349,7 +286,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
     b->file_last = ngx_file_size(&fi);
 
     b->file->fd = fd;
-    b->file->name = name;
+    b->file->name = path;
     b->file->log = log;
 
     out.buf = b;

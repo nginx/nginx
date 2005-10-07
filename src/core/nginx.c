@@ -218,7 +218,7 @@ main(int argc, char *const *argv)
     if (cycle == NULL) {
         if (ngx_test_config) {
             ngx_log_error(NGX_LOG_EMERG, log, 0,
-                          "the configuration file \"%s\" test failed",
+                          "the configuration file %s test failed",
                           init_cycle.conf_file.data);
         }
 
@@ -227,7 +227,7 @@ main(int argc, char *const *argv)
 
     if (ngx_test_config) {
         ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "the configuration file \"%s\" was tested successfully",
+                      "the configuration file %s was tested successfully",
                       cycle->conf_file.data);
         return 0;
     }

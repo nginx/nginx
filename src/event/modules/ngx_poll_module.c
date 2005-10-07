@@ -278,40 +278,18 @@ static ngx_int_t
 ngx_poll_process_events(ngx_cycle_t *cycle)
 {
     int                 ready, revents;
-    ngx_int_t           i, nready;
-    ngx_uint_t          n, found, lock, expire;
-    ngx_msec_t          timer;
     ngx_err_t           err;
+    ngx_int_t           i, nready;
+    ngx_uint_t          n, found, lock;
+    ngx_msec_t          timer, delta;
     ngx_cycle_t       **old_cycle;
     ngx_event_t        *ev;
-    ngx_epoch_msec_t    delta;
     ngx_connection_t   *c;
     struct timeval      tv;
 
-    for ( ;; ) {
-        timer = ngx_event_find_timer();
-
-        if (timer != 0) {
-            break;
-        }
-
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "poll expired timer");
-
-        ngx_event_expire_timers((ngx_msec_t)
-                                (ngx_elapsed_msec - ngx_old_elapsed_msec));
-    }
+    timer = ngx_event_find_timer();
 
     /* NGX_TIMER_INFINITE == INFTIM */
-
-    if (timer == NGX_TIMER_INFINITE) {
-        expire = 0;
-
-    } else {
-        expire = 1;
-    }
-
-    ngx_old_elapsed_msec = ngx_elapsed_msec; 
 
 #if (NGX_DEBUG0)
     if (cycle->log->log_level & NGX_LOG_DEBUG_ALL) {
@@ -337,12 +315,11 @@ ngx_poll_process_events(ngx_cycle_t *cycle)
                     || timer > ngx_accept_mutex_delay))
             { 
                 timer = ngx_accept_mutex_delay;
-                expire = 0;
             } 
         }
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "poll timer: %d", timer);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "poll timer: %M", timer);
 
     ready = poll(event_list, (u_int) nevents, (int) timer);
 
@@ -355,9 +332,8 @@ ngx_poll_process_events(ngx_cycle_t *cycle)
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
-    delta = ngx_elapsed_msec;
-    ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
-                                          + tv.tv_usec / 1000 - ngx_start_msec;
+    delta = ngx_current_time;
+    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "poll ready %d of %d", ready, nevents);
@@ -370,10 +346,10 @@ ngx_poll_process_events(ngx_cycle_t *cycle)
     }
 
     if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_elapsed_msec - delta;
+        delta = ngx_current_time - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "poll timer: %d, delta: %d", timer, (int) delta);
+                       "poll timer: %M, delta: %M", timer, delta);
     } else {
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
@@ -593,9 +569,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle)
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "poll ready != events");
     }
 
-    if (expire && delta) {
-        ngx_event_expire_timers((ngx_msec_t) delta);
-    }
+    ngx_event_expire_timers();
 
     if (!ngx_threaded) {
         ngx_event_process_posted(cycle);

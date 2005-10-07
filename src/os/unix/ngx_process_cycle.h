@@ -37,7 +37,6 @@ extern ngx_uint_t      ngx_threaded;
 extern ngx_uint_t      ngx_exiting;
 
 extern sig_atomic_t    ngx_reap;
-extern sig_atomic_t    ngx_timer;
 extern sig_atomic_t    ngx_sigio;
 extern sig_atomic_t    ngx_quit;
 extern sig_atomic_t    ngx_debug_quit;

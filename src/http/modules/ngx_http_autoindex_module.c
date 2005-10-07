@@ -39,13 +39,15 @@ typedef struct {
 } ngx_http_autoindex_loc_conf_t;
 
 
-#define NGX_HTTP_AUTOINDEX_NAME_LEN  50
+#define NGX_HTTP_AUTOINDEX_PREALLOCATE  50
+
+#define NGX_HTTP_AUTOINDEX_NAME_LEN     50
 
 
 static int ngx_libc_cdecl ngx_http_autoindex_cmp_entries(const void *one,
     const void *two);
 static ngx_int_t ngx_http_autoindex_error(ngx_http_request_t *r,
-    ngx_dir_t *dir, u_char *name);
+    ngx_dir_t *dir, ngx_str_t *name);
 static ngx_int_t ngx_http_autoindex_init(ngx_cycle_t *cycle);
 static void *ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_autoindex_merge_loc_conf(ngx_conf_t *cf,
@@ -131,20 +133,19 @@ static u_char tail[] =
 static ngx_int_t
 ngx_http_autoindex_handler(ngx_http_request_t *r)
 {
-    u_char                         *last, scale;
+    u_char                         *last, *filename, scale;
     off_t                           length;
-    size_t                          len, copy;
+    size_t                          len, copy, allocated;
     ngx_tm_t                        tm;
-    ngx_int_t                       rc, size;
-    ngx_uint_t                      i, level;
     ngx_err_t                       err;
     ngx_buf_t                      *b;
-    ngx_chain_t                     out;
-    ngx_str_t                       dname, fname;
+    ngx_int_t                       rc, size;
+    ngx_str_t                       path;
     ngx_dir_t                       dir;
+    ngx_uint_t                      i, level;
     ngx_pool_t                     *pool;
+    ngx_chain_t                     out;
     ngx_array_t                     entries;
-    ngx_http_core_loc_conf_t       *clcf;
     ngx_http_autoindex_entry_t     *entry;
     ngx_http_autoindex_loc_conf_t  *alcf;
 
@@ -166,41 +167,21 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    /* TODO: pool should be temporary pool */
-    pool = r->pool;
+    /* NGX_DIR_MASK_LEN is lesser than NGX_HTTP_AUTOINDEX_PREALLOCATE */
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-    if (clcf->alias) {
-        dname.data = ngx_palloc(pool, clcf->root.len + r->uri.len
-                                                     + NGX_DIR_MASK_LEN + 1
-                                                     - clcf->name.len);
-        if (dname.data == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-    
-        last = ngx_cpymem(dname.data, clcf->root.data, clcf->root.len);
-        last = ngx_cpystrn(last, r->uri.data + clcf->name.len,
-                           r->uri.len - clcf->name.len + 1);
-
-    } else {
-        dname.data = ngx_palloc(pool, clcf->root.len + r->uri.len
-                                                     + NGX_DIR_MASK_LEN);
-        if (dname.data == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        last = ngx_cpymem(dname.data, clcf->root.data, clcf->root.len);
-        last = ngx_cpystrn(last, r->uri.data, r->uri.len);
+    last = ngx_http_map_uri_to_path(r, &path, NGX_HTTP_AUTOINDEX_PREALLOCATE);
+    if (last == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    dname.len = last - dname.data;
+    allocated = path.len;
+    path.len = last - path.data - 1;
+    path.data[path.len] = '\0';
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http autoindex: \"%s\"", dname.data);
+                   "http autoindex: \"%s\"", path.data);
 
-
-    if (ngx_open_dir(&dname, &dir) == NGX_ERROR) {
+    if (ngx_open_dir(&path, &dir) == NGX_ERROR) {
         err = ngx_errno;
 
         if (err == NGX_ENOENT
@@ -220,20 +201,25 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         }
 
         ngx_log_error(level, r->connection->log, err,
-                      ngx_open_dir_n " \"%s\" failed", dname.data);
+                      ngx_open_dir_n " \"%s\" failed", path.data);
 
         return rc;
     }
 
 #if (NGX_SUPPRESS_WARN)
+
     /* MSVC thinks 'entries' may be used without having been initialized */
     ngx_memzero(&entries, sizeof(ngx_array_t));
+
 #endif
 
-    if (ngx_array_init(&entries, pool, 50, sizeof(ngx_http_autoindex_entry_t))
-        == NGX_ERROR)
+    /* TODO: pool should be temporary pool */
+    pool = r->pool;
+
+    if (ngx_array_init(&entries, pool, 40, sizeof(ngx_http_autoindex_entry_t))
+        != NGX_OK)
     {
-        return ngx_http_autoindex_error(r, &dir, dname.data);
+        return ngx_http_autoindex_error(r, &dir, &path);
     }
 
     r->headers_out.status = NGX_HTTP_OK;
@@ -246,10 +232,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    fname.len = 0;
-#if (NGX_SUPPRESS_WARN)
-    fname.data = NULL;
-#endif
+    filename = path.data;
+    filename[path.len] = '/';
 
     for ( ;; ) {
         ngx_set_errno(0);
@@ -259,8 +243,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
             if (err != NGX_ENOMOREFILES) {
                 ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
-                              ngx_read_dir_n " \"%s\" failed", dname.data);
-                return ngx_http_autoindex_error(r, &dir, dname.data);
+                              ngx_read_dir_n " \"%V\" failed", &path);
+                return ngx_http_autoindex_error(r, &dir, &path);
             }
 
             break; 
@@ -277,49 +261,51 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         if (!dir.valid_info) {
 
-            if (dname.len + 1 + len + 1 > fname.len) {
-                fname.len = dname.len + 1 + len + 1 + 32;
+            /* 1 byte for '/' and 1 byte for terminating '\0' */
 
-                fname.data = ngx_palloc(pool, fname.len);
-                if (fname.data == NULL) {
-                    return ngx_http_autoindex_error(r, &dir, dname.data);
+            if (path.len + 1 + len + 1 > allocated) {
+                allocated = path.len + 1 + len + 1
+                                     + NGX_HTTP_AUTOINDEX_PREALLOCATE;
+
+                filename = ngx_palloc(pool, allocated);
+                if (filename == NULL) {
+                    return ngx_http_autoindex_error(r, &dir, &path);
                 }
 
-                last = ngx_cpystrn(fname.data, dname.data,
-                                   dname.len + 1);
+                last = ngx_cpystrn(filename, path.data, path.len + 1);
                 *last++ = '/';
             }
 
             ngx_cpystrn(last, ngx_de_name(&dir), len + 1);
 
-            if (ngx_de_info(fname.data, &dir) == NGX_FILE_ERROR) {
+            if (ngx_de_info(filename, &dir) == NGX_FILE_ERROR) {
                 err = ngx_errno;
 
                 if (err != NGX_ENOENT) {
                     ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
-                                  ngx_de_info_n " \"%s\" failed", fname.data);
-                    return ngx_http_autoindex_error(r, &dir, dname.data);
+                                  ngx_de_info_n " \"%s\" failed", filename);
+                    return ngx_http_autoindex_error(r, &dir, &path);
                 }
 
-                if (ngx_de_link_info(fname.data, &dir) == NGX_FILE_ERROR) {
+                if (ngx_de_link_info(filename, &dir) == NGX_FILE_ERROR) {
                     ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                                   ngx_de_link_info_n " \"%s\" failed",
-                                  fname.data);
-                    return ngx_http_autoindex_error(r, &dir, dname.data);
+                                  filename);
+                    return ngx_http_autoindex_error(r, &dir, &path);
                 }
             }
         }
 
         entry = ngx_array_push(&entries);
         if (entry == NULL) {
-            return ngx_http_autoindex_error(r, &dir, dname.data);
+            return ngx_http_autoindex_error(r, &dir, &path);
         }
 
         entry->name.len = len;        
 
         entry->name.data = ngx_palloc(pool, len + 1);
         if (entry->name.data == NULL) {
-            return ngx_http_autoindex_error(r, &dir, dname.data);
+            return ngx_http_autoindex_error(r, &dir, &path);
         }
 
         ngx_cpystrn(entry->name.data, ngx_de_name(&dir), len + 1);
@@ -340,7 +326,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     if (ngx_close_dir(&dir) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                      ngx_close_dir_n " \"%s\" failed", dname.data);
+                      ngx_close_dir_n " \"%s\" failed", &path);
     }
 
     len = sizeof(title) - 1
@@ -586,11 +572,11 @@ ngx_http_autoindex_alloc(ngx_http_autoindex_ctx_t *ctx, size_t size)
 
 
 static ngx_int_t
-ngx_http_autoindex_error(ngx_http_request_t *r, ngx_dir_t *dir, u_char *name)
+ngx_http_autoindex_error(ngx_http_request_t *r, ngx_dir_t *dir, ngx_str_t *name)
 {
     if (ngx_close_dir(dir) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                      ngx_close_dir_n " \"%s\" failed", name);
+                      ngx_close_dir_n " \"%V\" failed", name);
     }
 
     return NGX_HTTP_INTERNAL_SERVER_ERROR;

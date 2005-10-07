@@ -24,10 +24,8 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t               current;
-    size_t                   allocated;
 
-    u_char                  *path;
-    ngx_str_t                uri;
+    ngx_str_t                path;
     ngx_str_t                index;
 
     ngx_uint_t               tested;     /* unsigned  tested:1 */
@@ -37,8 +35,6 @@ typedef struct {
 #define NGX_HTTP_DEFAULT_INDEX   "index.html"
 
 
-static ngx_int_t ngx_http_index_alloc(ngx_http_request_t *r, size_t size,
-    ngx_http_index_ctx_t *ctx, ngx_http_core_loc_conf_t *clcf);
 static ngx_int_t ngx_http_index_test_dir(ngx_http_request_t *r,
     ngx_http_index_ctx_t *ctx);
 static ngx_int_t ngx_http_index_error(ngx_http_request_t *r,
@@ -120,11 +116,12 @@ ngx_module_t  ngx_http_index_module = {
 static ngx_int_t
 ngx_http_index_handler(ngx_http_request_t *r)
 {
-    u_char                       *name;
+    u_char                       *last;
     size_t                        len;
     ngx_fd_t                      fd;
     ngx_int_t                     rc;
     ngx_err_t                     err;
+    ngx_str_t                     uri;
     ngx_log_t                    *log;
     ngx_uint_t                    i;
     ngx_http_index_t             *index;
@@ -152,7 +149,6 @@ ngx_http_index_handler(ngx_http_request_t *r)
      * and may be called several times
      */
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     ilcf = ngx_http_get_module_loc_conf(r, ngx_http_index_module);
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_index_module);
@@ -184,7 +180,9 @@ ngx_http_index_handler(ngx_http_request_t *r)
             e.ip = index[i].lengths->elts;
             e.request = r;
 
-            len = 1;
+            /* 1 byte for terminating '\0' and 4 bytes is preallocation */
+
+            len = 1 + 4;
 
             while (*(uintptr_t *) e.ip) {
                 lcode = *(ngx_http_script_len_code_pt *) e.ip;
@@ -194,14 +192,21 @@ ngx_http_index_handler(ngx_http_request_t *r)
             ctx->index.len = len;
         }
 
-        if (len > ctx->allocated) {
-            if (ngx_http_index_alloc(r, len, ctx, clcf) != NGX_OK) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        if (len > ctx->path.len) {
+
+            last = ngx_http_map_uri_to_path(r, &ctx->path, len);
+            if (last == NULL) {
+                return NGX_ERROR;
             }
+
+            ctx->index.data = last;
         }
 
         if (index[i].values == NULL) {
-            ngx_memcpy(ctx->index.data, index[i].name.data, ctx->index.len);
+
+            /* index[i].name.len includes the terminating '\0' */
+
+            ngx_memcpy(ctx->index.data, index[i].name.data, index[i].name.len);
 
         } else {
             e.ip = index[i].values->elts;
@@ -220,12 +225,10 @@ ngx_http_index_handler(ngx_http_request_t *r)
             *e.pos++ = '\0';
         }
 
-        name = ctx->path;
-
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                       "open index \"%s\"", name);
+                       "open index \"%s\"", ctx->path.data);
 
-        fd = ngx_open_file(name, NGX_FILE_RDONLY, NGX_FILE_OPEN);
+        fd = ngx_open_file(ctx->path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
         if (fd == (ngx_fd_t) NGX_AGAIN) {
             ctx->current = i;
@@ -236,7 +239,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             err = ngx_errno;
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, err,
-                           ngx_open_file_n " \"%s\" failed", name);
+                           ngx_open_file_n " \"%s\" failed", ctx->path.data);
 
             if (err == NGX_ENOTDIR) {
                 return ngx_http_index_error(r, ctx, err);
@@ -260,7 +263,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             }
 
             ngx_log_error(NGX_LOG_ERR, log, err,
-                          ngx_open_file_n " \"%s\" failed", name);
+                          ngx_open_file_n " \"%s\" failed", ctx->path.data);
 
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -272,64 +275,34 @@ ngx_http_index_handler(ngx_http_request_t *r)
         }
 
         cln->fd = fd;
-        cln->name = name;
+        cln->name = ctx->path.data;
         cln->log = r->pool->log;
 
         if (ngx_pool_cleanup_add(r->pool, ngx_pool_cleanup_file, cln) == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-        if (clcf->alias) {
-            name = ngx_cpymem(ctx->uri.data, r->uri.data, r->uri.len);
-            ngx_memcpy(name, ctx->index.data, ctx->index.len - 1);
+        uri.len = r->uri.len + ctx->index.len - 1;
+
+        if (!clcf->alias) {
+            uri.data = ctx->path.data + clcf->root.len;
+
+        } else {
+            uri.data = ngx_palloc(r->pool, uri.len);
+            if (uri.data == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            last = ngx_cpymem(uri.data, r->uri.data, r->uri.len);
+            ngx_memcpy(last, ctx->index.data, ctx->index.len - 1);
         }
 
-        ctx->uri.len = r->uri.len + ctx->index.len - 1;
-
-        return ngx_http_internal_redirect(r, &ctx->uri, &r->args);
+        return ngx_http_internal_redirect(r, &uri, &r->args);
     }
 
     return NGX_DECLINED;
-}
-
-
-static ngx_int_t
-ngx_http_index_alloc(ngx_http_request_t *r, size_t size,
-    ngx_http_index_ctx_t *ctx, ngx_http_core_loc_conf_t *clcf)
-{
-    ctx->allocated = size;
-
-    if (!clcf->alias) {
-        ctx->path = ngx_palloc(r->pool, clcf->root.len + r->uri.len + size);
-        if (ctx->path == NULL) {
-            return NGX_ERROR;
-        }
-
-        ctx->uri.data = ngx_cpymem(ctx->path, clcf->root.data, clcf->root.len);
-
-        ctx->index.data = ngx_cpymem(ctx->uri.data, r->uri.data, r->uri.len);
-
-    } else {
-        ctx->path = ngx_palloc(r->pool,
-                          clcf->root.len + r->uri.len - clcf->name.len + size);
-        if (ctx->path == NULL) {
-            return NGX_ERROR;
-        }
-
-        ctx->uri.data = ngx_palloc(r->pool, r->uri.len + size);
-        if (ctx->uri.data == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(ctx->path, clcf->root.data, clcf->root.len);
-
-        ctx->index.data = ngx_cpymem(ctx->path + clcf->root.len,
-                                     r->uri.data + clcf->name.len,
-                                     r->uri.len - clcf->name.len);
-    }
-
-    return NGX_OK;
 }
 
 
@@ -342,9 +315,9 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_index_ctx_t *ctx)
     *(ctx->index.data - 1) = '\0';
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http index check dir: \"%s\"", ctx->path);
+                   "http index check dir: \"%s\"", ctx->path.data);
 
-    if (ngx_file_info(ctx->path, &fi) == -1) {
+    if (ngx_file_info(ctx->path.data, &fi) == -1) {
 
         err = ngx_errno;
 
@@ -354,7 +327,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_index_ctx_t *ctx)
         }
 
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
-                      ngx_file_info_n " \"%s\" failed", ctx->path);
+                      ngx_file_info_n " \"%s\" failed", ctx->path.data);
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -366,7 +339,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_index_ctx_t *ctx)
     }
 
     ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                  "\"%s\" is not a directory", ctx->path);
+                  "\"%s\" is not a directory", ctx->path.data);
 
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
 }
@@ -378,13 +351,13 @@ ngx_http_index_error(ngx_http_request_t *r, ngx_http_index_ctx_t *ctx,
 {
     if (err == NGX_EACCES) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                      "\"%s\" is forbidden", ctx->path);
+                      "\"%s\" is forbidden", ctx->path.data);
     
         return NGX_HTTP_FORBIDDEN;
     }
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                  "\"%s\" is not found", ctx->path);
+                  "\"%s\" is not found", ctx->path.data);
 
     return NGX_HTTP_NOT_FOUND;
 }
@@ -494,13 +467,14 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         n = ngx_http_script_variables_count(&value[i]);
 
         if (n == 0) {
-            index->name.len++;
-
             if (ilcf->max_index_len != 0
                 && ilcf->max_index_len < index->name.len)
             {
                 ilcf->max_index_len = index->name.len;
             }
+
+            /* include the terminating '\0' to the length to use ngx_memcpy() */
+            index->name.len++;
 
             continue;
         }

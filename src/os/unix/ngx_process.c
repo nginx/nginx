@@ -354,11 +354,6 @@ ngx_signal_handler(int signo)
             break;
 
         case SIGALRM:
-            if (!ngx_terminate) {
-                ngx_timer = 1;
-                action = ", shutting down old worker processes";
-            }
-
             break;
 
         case SIGIO:

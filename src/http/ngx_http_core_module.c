@@ -911,37 +911,6 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 
 
 ngx_int_t
-ngx_http_send_header(ngx_http_request_t *r)
-{
-    if (r->err_status) {
-        r->headers_out.status = r->err_status;
-        r->headers_out.status_line.len = 0;
-    }
-
-    return ngx_http_top_header_filter(r);
-}
-
-
-ngx_int_t
-ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
-{
-    ngx_int_t  rc;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http output filter \"%V\"", &r->uri);
-
-    rc = ngx_http_top_body_filter(r, in);
-
-    if (rc == NGX_ERROR) {
-        /* NGX_ERROR may be returned by any filter */
-        r->connection->closed = 1;
-    }
-
-    return rc;
-}
-
-
-ngx_int_t
 ngx_http_set_exten(ngx_http_request_t *r)
 {
     ngx_int_t  i;
@@ -973,6 +942,63 @@ ngx_http_set_exten(ngx_http_request_t *r)
     r->low_case_exten = 0;
 
     return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_send_header(ngx_http_request_t *r)
+{
+    if (r->err_status) {
+        r->headers_out.status = r->err_status;
+        r->headers_out.status_line.len = 0;
+    }
+
+    return ngx_http_top_header_filter(r);
+}
+
+
+ngx_int_t
+ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
+{
+    ngx_int_t  rc;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http output filter \"%V\"", &r->uri);
+
+    rc = ngx_http_top_body_filter(r, in);
+
+    if (rc == NGX_ERROR) {
+        /* NGX_ERROR may be returned by any filter */
+        r->connection->closed = 1;
+    }
+
+    return rc;
+}
+
+
+u_char *
+ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
+    size_t reserved)
+{
+    u_char                    *last;
+    size_t                     alias;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    alias = clcf->alias ? clcf->name.len : 0;
+
+    path->len = clcf->root.len + r->uri.len - alias + 1 + reserved;
+
+    path->data = ngx_palloc(r->pool, path->len);
+    if (path->data == NULL) {
+        return NULL;
+    }
+
+    last = ngx_cpymem(path->data, clcf->root.data, clcf->root.len);
+    last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
+
+    return last;
 }
 
 

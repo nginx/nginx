@@ -60,27 +60,17 @@ ngx_event_find_timer(void)
 
     ngx_mutex_unlock(ngx_event_timer_mutex);
 
-    timer = (ngx_msec_t)
-         (node->key * NGX_TIMER_RESOLUTION -
-               ngx_elapsed_msec / NGX_TIMER_RESOLUTION * NGX_TIMER_RESOLUTION);
-#if 0
-                         (node->key * NGX_TIMER_RESOLUTION - ngx_elapsed_msec);
-#endif
+    timer = (ngx_msec_t) node->key - ngx_current_time;
 
     return timer > 0 ? timer : 0 ;
 }
 
 
 void
-ngx_event_expire_timers(ngx_msec_t timer)
+ngx_event_expire_timers(void)
 {
     ngx_event_t   *ev;
     ngx_rbtree_t  *node;
-
-    if (timer < 0) {
-        /* avoid the endless loop if the time goes backward for some reason */
-        timer = 0;
-    }
 
     for ( ;; ) {
 
@@ -95,8 +85,11 @@ ngx_event_expire_timers(ngx_msec_t timer)
         node = ngx_rbtree_min((ngx_rbtree_t *) ngx_event_timer_rbtree,
                               &ngx_event_timer_sentinel);
 
-        if (node->key <= (ngx_msec_t)
-                         (ngx_old_elapsed_msec + timer) / NGX_TIMER_RESOLUTION)
+        /* node->key <= ngx_current_time */
+
+        if ((ngx_rbtree_key_int_t) node->key
+                                      - (ngx_rbtree_key_int_t) ngx_current_time
+            <= 0)
         {
             ev = (ngx_event_t *)
                            ((char *) node - offsetof(ngx_event_t, rbtree_key));
@@ -120,7 +113,7 @@ ngx_event_expire_timers(ngx_msec_t timer)
 #endif
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                           "event timer del: %d: %i",
+                           "event timer del: %d: %M",
                            ngx_event_ident(ev->data), ev->rbtree_key);
 
             ngx_rbtree_delete((ngx_rbtree_t **) &ngx_event_timer_rbtree,

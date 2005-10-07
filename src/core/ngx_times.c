@@ -8,11 +8,9 @@
 #include <ngx_core.h>
 
 
-ngx_epoch_msec_t  ngx_elapsed_msec;
-ngx_epoch_msec_t  ngx_old_elapsed_msec;
-ngx_epoch_msec_t  ngx_start_msec;
+ngx_msec_t        ngx_current_time;
 
-ngx_int_t  ngx_gmtoff;
+ngx_int_t         ngx_gmtoff;
 
 static ngx_tm_t   ngx_cached_gmtime;
 
@@ -91,9 +89,7 @@ ngx_time_init(void)
 
     ngx_gettimeofday(&tv);
 
-    ngx_start_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
-    ngx_old_elapsed_msec = 0;
-    ngx_elapsed_msec = 0;
+    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
 #if !(NGX_WIN32)
     tzset();

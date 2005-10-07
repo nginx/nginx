@@ -2234,7 +2234,7 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
     rev = c->read;
     rev->handler = ngx_http_lingering_close_handler;
 
-    r->lingering_time = ngx_time() + clcf->lingering_time / 1000;
+    r->lingering_time = ngx_time() + (time_t) (clcf->lingering_time / 1000);
     ngx_add_timer(rev, clcf->lingering_timeout);
 
     if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {

@@ -136,11 +136,11 @@ struct ngx_event_s {
      * STUB: The inline of "ngx_rbtree_t  rbtree;"
      */
 
-    ngx_int_t        rbtree_key;
-    void            *rbtree_left;
-    void            *rbtree_right;
-    void            *rbtree_parent;
-    char             rbtree_color;
+    ngx_rbtree_key_t   rbtree_key;
+    void              *rbtree_left;
+    void              *rbtree_right;
+    void              *rbtree_parent;
+    char               rbtree_color;
 
 
     unsigned         closed:1;
