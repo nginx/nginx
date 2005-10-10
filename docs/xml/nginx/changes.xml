@@ -9,12 +9,39 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.1" date="10.10.2005">
+
+<change type="bugfix">
+<para lang="ru">
+во время переполнения очереди сигналов при использовании метода rtsig
+происходил segmentation fault;
+ошибка появилась в 0.2.0.
+</para>
+<para lang="en">
+the segmentation fault occurred when the signal queue overflowed
+if the "rtsig" method was used;
+bug appeared in 0.2.0.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+корректная обработка пар "\\", "\"", "\'" и "\$" в SSI.
+</para>
+<para lang="en">
+correct handling of the "\\", "\"", "\'", and "\$" pairs in SSI.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.0" date="07.10.2005">
 
 <change type="change">
 <para lang="ru">
 убрано десятидневное ограничение времени работы рабочего процесса.
-Ограничение было введено из-за переполнения таймеров миллисекунд.
+Ограничение было введено из-за переполнения миллисекундных таймеров.
 </para>
 <para lang="en">
 the 10-days live time limit of worker process was eliminated.

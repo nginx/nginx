@@ -75,16 +75,16 @@ static ngx_int_t ngx_http_charset_postconfiguration(ngx_conf_t *cf);
 static ngx_command_t  ngx_http_charset_filter_commands[] = {
 
     { ngx_string("charset"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF
-                        |NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF
+                        |NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_set_charset_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_charset_loc_conf_t, charset),
       NULL },
 
     { ngx_string("source_charset"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF
-                        |NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF
+                        |NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_set_charset_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_charset_loc_conf_t, source_charset),

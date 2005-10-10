@@ -462,7 +462,6 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle)
 
     if (timer == NGX_TIMER_INFINITE || timer > 500) {
         timer = 500;
-        break;
     }
 
 #endif

@@ -35,15 +35,15 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #define  NGX_ABORT      -6
 
 
+#include <ngx_errno.h>
 #include <ngx_atomic.h>
+#include <ngx_thread.h>
 #include <ngx_rbtree.h>
 #include <ngx_time.h>
 #include <ngx_socket.h>
-#include <ngx_errno.h>
 #include <ngx_types.h>
 #include <ngx_shared.h>
 #include <ngx_process.h>
-#include <ngx_thread.h>
 #include <ngx_user.h>
 #include <ngx_string.h>
 #include <ngx_parse.h>

@@ -1130,14 +1130,15 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 
         case ssi_double_quoted_value_state:
             switch (ch) {
-            case '\\':
-                ctx->saved_state = ssi_double_quoted_value_state;
-                state = ssi_quoted_symbol_state;
-                break;
-
             case '"':
                 state = ssi_postparam_state;
                 break;
+
+            case '\\':
+                ctx->saved_state = ssi_double_quoted_value_state;
+                state = ssi_quoted_symbol_state;
+
+                /* fall through */
 
             default:
                 ctx->param->value.data[ctx->param->value.len++] = ch;
@@ -1157,14 +1158,15 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 
         case ssi_quoted_value_state:
             switch (ch) {
-            case '\\':
-                ctx->saved_state = ssi_quoted_value_state;
-                state = ssi_quoted_symbol_state;
-                break;
-
             case '\'':
                 state = ssi_postparam_state;
                 break;
+
+            case '\\':
+                ctx->saved_state = ssi_quoted_value_state;
+                state = ssi_quoted_symbol_state;
+
+                /* fall through */
 
             default:
                 ctx->param->value.data[ctx->param->value.len++] = ch;
@@ -1183,6 +1185,20 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
             break;
 
         case ssi_quoted_symbol_state:
+            state = ctx->saved_state;
+
+            if (ch == '\\') {
+                break;
+            }
+
+            if (ch == '"' && state == ssi_double_quoted_value_state) {
+                break;
+            }
+
+            if (ch == '\'' && state == ssi_quoted_value_state) {
+                break;
+            }
+
             ctx->param->value.data[ctx->param->value.len++] = ch;
 
             if (ctx->param->value.len == ctx->value_len) {
@@ -1197,7 +1213,6 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 }
             }
 
-            state = ctx->saved_state;
             break;
 
         case ssi_postparam_state:
@@ -1486,13 +1501,25 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
             }
 
         } else {
-            part.len = 0;
             part.data = &text->data[i];
 
-            while (i < text->len && text->data[i] != '$') {
-                i++;
-                part.len++;
+            for (p = part.data; i < text->len; i++) {
+                ch = text->data[i];
+
+                if (ch == '$') {
+                    if (text->data[i - 1] != '\\') {
+                        break;
+                    }
+
+                    *(p - 1) = ch;
+
+                    continue;
+                }
+
+                *p++ = ch;
             }
+
+            part.len = p - part.data;
         }
 
         len += part.len;

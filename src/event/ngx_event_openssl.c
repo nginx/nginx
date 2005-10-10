@@ -144,6 +144,10 @@ ngx_ssl_certificate(ngx_ssl_t *ssl, u_char *cert, u_char *key)
 ngx_int_t
 ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl)
 {
+    if (SSL_CTX_need_tmp_RSA(ssl->ctx) == 0) {
+        return NGX_OK;
+    }
+
     ssl->rsa512_key = RSA_generate_key(512, RSA_F4, NULL, NULL);
 
     if (ssl->rsa512_key) {
@@ -851,7 +855,10 @@ ngx_ssl_cleanup_ctx(void *data)
 {
    ngx_ssl_t  *ssl = data;
 
-   RSA_free(ssl->rsa512_key);
+   if (ssl->rsa512_key) {
+       RSA_free(ssl->rsa512_key);
+   }
+
    SSL_CTX_free(ssl->ctx);
 }
 

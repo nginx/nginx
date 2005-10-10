@@ -16,25 +16,37 @@ typedef ngx_uint_t  ngx_rbtree_key_t;
 typedef ngx_int_t   ngx_rbtree_key_int_t;
 
 
-typedef struct ngx_rbtree_s  ngx_rbtree_t;
+typedef struct ngx_rbtree_node_s  ngx_rbtree_node_t;
 
-struct ngx_rbtree_s {
-    ngx_rbtree_key_t   key;
-    ngx_rbtree_t      *left;
-    ngx_rbtree_t      *right;
-    ngx_rbtree_t      *parent;
-    char               color;
+struct ngx_rbtree_node_s {
+    ngx_rbtree_key_t       key;
+    ngx_rbtree_node_t     *left;
+    ngx_rbtree_node_t     *right;
+    ngx_rbtree_node_t     *parent;
+    char                   color;
 };
 
 
-void ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-    ngx_rbtree_t *node);
-void ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-    ngx_rbtree_t *node);
+typedef struct ngx_rbtree_s  ngx_rbtree_t;
+
+typedef ngx_rbtree_t *(*ngx_rbtree_insert_pt) (ngx_rbtree_node_t *root,
+    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
+
+struct ngx_rbtree_s {
+    ngx_rbtree_node_t     *root;
+    ngx_rbtree_node_t     *sentinel;
+ /* ngx_rbtree_insert_pt   insert; */
+};
 
 
-static ngx_inline ngx_rbtree_t *
-ngx_rbtree_min(ngx_rbtree_t *node, ngx_rbtree_t *sentinel)
+void ngx_rbtree_insert(ngx_thread_volatile ngx_rbtree_t *tree,
+    ngx_rbtree_node_t *node);
+void ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
+    ngx_rbtree_node_t *node);
+
+
+static ngx_inline ngx_rbtree_node_t *
+ngx_rbtree_min(ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
 {
     while (node->left != sentinel) {
         node = node->left;

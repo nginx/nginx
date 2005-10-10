@@ -1122,7 +1122,7 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ahcf->uri = inet_upstream.uri;
     }
 
-    if (ahcf->uri.len) {
+    if (ahcf->uri.len == 0) {
         ahcf->uri.len = sizeof("/") - 1;
         ahcf->uri.data = (u_char *) "/";
     }

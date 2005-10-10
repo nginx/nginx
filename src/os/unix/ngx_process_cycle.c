@@ -703,7 +703,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     for ( ;; ) {
         if (ngx_exiting
-            && ngx_event_timer_rbtree == &ngx_event_timer_sentinel)
+            && ngx_event_timer_rbtree.root == ngx_event_timer_rbtree.sentinel)
         {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
 

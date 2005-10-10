@@ -9,8 +9,8 @@
 
 
 /*
- * The code is based on the algorithm described in the "Introduction
- * to Algorithms" by Cormen, Leiserson and Rivest.
+ * The red-black tree code is based on the algorithm described in
+ * the "Introduction to Algorithms" by Cormen, Leiserson and Rivest.
  */
 
 #define ngx_rbt_red(node)           ((node)->color = 1)
@@ -20,19 +20,22 @@
 #define ngx_rbt_copy_color(n1, n2)  (n1->color = n2->color)
 
 
-static ngx_inline void ngx_rbtree_left_rotate(ngx_rbtree_t **root,
-    ngx_rbtree_t *sentinel, ngx_rbtree_t *node);
-static ngx_inline void ngx_rbtree_right_rotate(ngx_rbtree_t **root,
-    ngx_rbtree_t *sentinel, ngx_rbtree_t *node);
+static ngx_inline void ngx_rbtree_left_rotate(ngx_rbtree_node_t **root,
+    ngx_rbtree_node_t *sentinel, ngx_rbtree_node_t *node);
+static ngx_inline void ngx_rbtree_right_rotate(ngx_rbtree_node_t **root,
+    ngx_rbtree_node_t *sentinel, ngx_rbtree_node_t *node);
 
 
 void
-ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-    ngx_rbtree_t *node)
+ngx_rbtree_insert(ngx_thread_volatile ngx_rbtree_t *tree,
+    ngx_rbtree_node_t *node)
 {
-    ngx_rbtree_t  *temp;
+    ngx_rbtree_node_t  **root, *temp, *sentinel;
 
     /* a binary tree insert */
+
+    root = (ngx_rbtree_node_t **) &tree->root;
+    sentinel = tree->sentinel;
 
     if (*root == sentinel) {
         node->parent = NULL;
@@ -43,6 +46,17 @@ ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
 
         return;
     }
+
+    /*
+     * The rbtree is currently used by event timers only.  Timer values
+     * 1) are spread in small range, usually several minutes,
+     * 2) and overflow each 49 days, if milliseconds are stored in 32 bits.
+     * The below comparison takes into account that overflow.
+     *
+     * If there will be a necessity to use the rbtree for values with
+     * other comparison rules, then a whole "for ( ;; )" loop should
+     * be made as tree->insert() function.
+     */
 
     temp = *root;
 
@@ -130,13 +144,16 @@ ngx_rbtree_insert(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
 
 
 void
-ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-    ngx_rbtree_t *node)
+ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
+    ngx_rbtree_node_t *node)
 {
-    ngx_int_t      is_red;
-    ngx_rbtree_t  *subst, *temp, *w;
+    ngx_int_t            is_red;
+    ngx_rbtree_node_t  **root, *sentinel, *subst, *temp, *w;
 
     /* a binary tree delete */
+
+    root = (ngx_rbtree_node_t **) &tree->root;
+    sentinel = tree->sentinel;
 
     if (node->left == sentinel) {
         temp = node->right;
@@ -295,10 +312,10 @@ ngx_rbtree_delete(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
 
 
 static ngx_inline void
-ngx_rbtree_left_rotate(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-    ngx_rbtree_t *node)
+ngx_rbtree_left_rotate(ngx_rbtree_node_t **root, ngx_rbtree_node_t *sentinel,
+    ngx_rbtree_node_t *node)
 {
-    ngx_rbtree_t  *temp;
+    ngx_rbtree_node_t  *temp;
 
     temp = node->right;
     node->right = temp->left;
@@ -325,10 +342,10 @@ ngx_rbtree_left_rotate(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
 
 
 static ngx_inline void
-ngx_rbtree_right_rotate(ngx_rbtree_t **root, ngx_rbtree_t *sentinel,
-    ngx_rbtree_t *node)
+ngx_rbtree_right_rotate(ngx_rbtree_node_t **root, ngx_rbtree_node_t *sentinel,
+    ngx_rbtree_node_t *node)
 {
-    ngx_rbtree_t  *temp;
+    ngx_rbtree_node_t  *temp;
 
     temp = node->left;
     node->left = temp->right;

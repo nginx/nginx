@@ -51,7 +51,11 @@ typedef struct {
 
 
 #define ngx_getpid   getpid
+
+#ifndef ngx_log_pid
 #define ngx_log_pid  ngx_pid
+#endif
+
 
 ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     ngx_spawn_proc_pt proc, void *data, char *name, ngx_int_t respawn);

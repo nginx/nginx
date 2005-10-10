@@ -14,7 +14,6 @@
 
 typedef pid_t  ngx_tid_t;
 
-#undef ngx_log_pid
 #define ngx_log_pid    ngx_thread_self()
 #define ngx_log_tid    0
 

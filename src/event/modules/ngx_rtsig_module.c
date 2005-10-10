@@ -307,7 +307,6 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle)
 
         if (timer == NGX_TIMER_INFINITE || timer > 500) {
             timer = 500;
-            break;
         }
 
 #endif
@@ -578,7 +577,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
             c = cycle->files[overflow_current++];
 
-            if (c->fd == -1) {
+            if (c == NULL || c->fd == -1) {
                 continue;
             }
 
@@ -633,6 +632,10 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle)
 
         for (i = 0; i < n; i++) {
             c = cycle->files[overflow_list[i].fd];
+
+            if (c == NULL) {
+                continue;
+            }
 
             rev = c->read;
 

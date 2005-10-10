@@ -130,18 +130,7 @@ struct ngx_event_s {
 
     ngx_log_t       *log;
 
-    /* TODO: threads: padding to cache line */
-
-    /*
-     * STUB: The inline of "ngx_rbtree_t  rbtree;"
-     */
-
-    ngx_rbtree_key_t   rbtree_key;
-    void              *rbtree_left;
-    void              *rbtree_right;
-    void              *rbtree_parent;
-    char               rbtree_color;
-
+    ngx_rbtree_node_t   timer;
 
     unsigned         closed:1;
 
