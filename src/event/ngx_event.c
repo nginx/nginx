@@ -40,7 +40,7 @@ ngx_uint_t            ngx_event_flags;
 ngx_event_actions_t   ngx_event_actions;
 
 
-ngx_atomic_t          connection_counter;
+ngx_atomic_t          connection_counter = 1;
 ngx_atomic_t         *ngx_connection_counter = &connection_counter;
 
 
@@ -49,6 +49,7 @@ ngx_atomic_t         *ngx_accept_mutex;
 ngx_uint_t            ngx_accept_mutex_held;
 ngx_msec_t            ngx_accept_mutex_delay;
 ngx_int_t             ngx_accept_disabled;
+ngx_file_t            ngx_accept_mutex_lock_file;
 
 
 #if (NGX_STAT_STUB)
@@ -349,7 +350,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
     ecf = (*cf)[ngx_event_core_module.ctx_index];
 
-    ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                   "using the \"%s\" event method", ecf->name);
 
 #if !(NGX_WIN32)
@@ -501,21 +502,21 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
 #endif
 
-    cycle->connections0 = ngx_alloc(sizeof(ngx_connection_t) * ecf->connections,
+    cycle->connections = ngx_alloc(sizeof(ngx_connection_t) * ecf->connections,
                                    cycle->log);
-    if (cycle->connections0 == NULL) {
+    if (cycle->connections == NULL) {
         return NGX_ERROR;
     }
 
-    c = cycle->connections0;
+    c = cycle->connections;
 
-    cycle->read_events0 = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
+    cycle->read_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
                                    cycle->log);
-    if (cycle->read_events0 == NULL) {
+    if (cycle->read_events == NULL) {
         return NGX_ERROR;
     }
 
-    rev = cycle->read_events0;
+    rev = cycle->read_events;
     for (i = 0; i < cycle->connection_n; i++) {
         rev[i].closed = 1;
         rev[i].instance = 1;
@@ -525,13 +526,13 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 #endif
     }
 
-    cycle->write_events0 = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
+    cycle->write_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
                                     cycle->log);
-    if (cycle->write_events0 == NULL) {
+    if (cycle->write_events == NULL) {
         return NGX_ERROR;
     }
 
-    wev = cycle->write_events0;
+    wev = cycle->write_events;
     for (i = 0; i < cycle->connection_n; i++) {
         wev[i].closed = 1;
 #if (NGX_THREADS)
@@ -547,8 +548,8 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         i--;
 
         c[i].data = next;
-        c[i].read = &cycle->read_events0[i];
-        c[i].write = &cycle->write_events0[i];
+        c[i].read = &cycle->read_events[i];
+        c[i].write = &cycle->write_events[i];
         c[i].fd = (ngx_socket_t) -1;
 
         next = &c[i];
@@ -572,14 +573,6 @@ ngx_event_process_init(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-        rev = c->read;
-        wev = c->write;
-
-        ngx_memzero(c, sizeof(ngx_connection_t));
-
-        c->read = rev;
-        c->write = wev;
-        c->fd = ls[i].fd;
         c->log = &ls[i].log;
 
         c->listening = &ls[i];
@@ -588,18 +581,9 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         c->ctx = ls[i].ctx;
         c->servers = ls[i].servers;
 
-        ngx_memzero(rev, sizeof(ngx_event_t));
-        ngx_memzero(wev, sizeof(ngx_event_t));
-
-        /* required by poll */
-        wev->index = NGX_INVALID_INDEX;
+        rev = c->read;
 
         rev->log = c->log;
-        rev->data = c;
-        rev->index = NGX_INVALID_INDEX;
-
-        rev->available = 0;
-
         rev->accept = 1;
 
 #if (NGX_HAVE_DEFERRED_ACCEPT)

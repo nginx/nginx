@@ -23,8 +23,8 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/headers
 fi
 
-. auto/cc/conf
 . auto/os/conf
+. auto/cc/conf
 
 if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/os/features

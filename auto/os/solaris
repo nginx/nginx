@@ -12,17 +12,7 @@ CORE_LIBS="$CORE_LIBS -lsocket -lnsl -lrt"
 # Solaris's make does not support a blank line between target and rules
 ngx_spacer=
 
-CC_AUX_FLAGS="$CC_AUX_FLAGS -D_FILE_OFFSET_BITS=64 -lrt"
-
-
-case "$NGX_PLATFORM" in
-
-    *:sun4u)
-        # "-mcpu=v9" enables the "casa" assembler instruction
-        CFLAGS="$CFLAGS -mcpu=v9"
-    ;;
-
-esac
+CC_AUX_FLAGS="$CC_AUX_FLAGS -D_FILE_OFFSET_BITS=64 -lsocket -lnsl -lrt"
 
 
 if [ $ZLIB_ASM != NO ]; then

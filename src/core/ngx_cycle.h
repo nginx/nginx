@@ -39,9 +39,9 @@ struct ngx_cycle_s {
     ngx_uint_t                connection_n;
     ngx_uint_t                files_n;
 
-    ngx_connection_t         *connections0;
-    ngx_event_t              *read_events0;
-    ngx_event_t              *write_events0;
+    ngx_connection_t         *connections;
+    ngx_event_t              *read_events;
+    ngx_event_t              *write_events;
 
     ngx_cycle_t              *old_cycle;
 

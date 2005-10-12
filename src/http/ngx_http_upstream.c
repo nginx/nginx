@@ -251,13 +251,6 @@ ngx_http_upstream_init(ngx_http_request_t *r)
         u->request_bufs = r->request_body->bufs;
     }
 
-    if (u->conf->method == NGX_CONF_UNSET_UINT) {
-        u->method = r->method;
-
-    } else {
-        u->method = u->conf->method;
-    }
-
     if (u->create_request(r) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;

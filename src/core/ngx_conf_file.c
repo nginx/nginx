@@ -660,7 +660,7 @@ ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
 
     name->len = cycle->root.len + old.len;
 
-    if (cycle->connections0) {
+    if (cycle->connections) {
         name->data = ngx_palloc(cycle->pool, name->len + 1);
         if (name->data == NULL) {
             return  NGX_ERROR;

@@ -343,10 +343,6 @@ ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
             peers->peer[i].name.len = len + u->port_text.len;
 
             peers->peer[i].uri_separator = "";
-
-            peers->peer[i].weight = 1;
-            peers->peer[i].max_fails = 1;
-            peers->peer[i].fail_timeout = 10;
         }
 
     } else {

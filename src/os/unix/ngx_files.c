@@ -8,9 +8,10 @@
 #include <ngx_core.h>
 
 
-ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
+ssize_t
+ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
-    ssize_t n;
+    ssize_t  n;
 
     ngx_log_debug4(NGX_LOG_DEBUG_CORE, file->log, 0,
                    "read: %d, %p, %uz, %O", file->fd, buf, size, offset);
@@ -53,9 +54,10 @@ ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 }
 
 
-ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
+ssize_t
+ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
-    ssize_t n;
+    ssize_t  n;
 
     ngx_log_debug4(NGX_LOG_DEBUG_CORE, file->log, 0,
                    "write: %d, %p, %uz, %O", file->fd, buf, size, offset);
@@ -109,7 +111,8 @@ ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 }
 
 
-ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent)
+ngx_fd_t
+ngx_open_tempfile(u_char *name, ngx_uint_t persistent)
 {
     ngx_fd_t  fd;
 
@@ -125,8 +128,9 @@ ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent)
 
 #define NGX_IOVS  8
 
-ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
-                                off_t offset, ngx_pool_t *pool)
+ssize_t
+ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
+    ngx_pool_t *pool)
 {
     u_char        *prev;
     size_t         size;
@@ -216,7 +220,8 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 }
 
 
-ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
+ngx_int_t
+ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
     dir->dir = opendir((const char *) name->data);
 
@@ -225,6 +230,64 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
     }
 
     dir->valid_info = 0;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_lock_file(ngx_file_t *file)
+{
+    ngx_err_t     err;
+    struct flock  fl;
+
+    fl.l_whence = SEEK_SET;
+    fl.l_len = 0;
+    fl.l_pid = 0;
+    fl.l_type = F_WRLCK;
+    fl.l_start = 0;
+
+    if (fcntl(file->fd, F_SETLK, &fl) == -1) {
+        err = ngx_errno;
+
+        if (err == NGX_EAGAIN) {
+            return NGX_BUSY;
+        }
+
+        ngx_log_error(NGX_LOG_ALERT, file->log, err,
+                      "fcntl(%s, F_SETLK, F_WRLCK) failed", file->name.data);
+
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_unlock_file(ngx_file_t *file)
+{
+    ngx_err_t     err;
+    struct flock  fl;
+
+    fl.l_whence = SEEK_SET;
+    fl.l_len = 0;
+    fl.l_pid = 0;
+    fl.l_type = F_UNLCK;
+    fl.l_start = 0;
+
+    if (fcntl(file->fd, F_SETLK, &fl) == -1) {
+        err = ngx_errno;
+
+        if (err == NGX_EAGAIN) {
+            return NGX_BUSY;
+        }
+
+        ngx_log_error(NGX_LOG_ALERT, file->log, err,
+                      "fcntl(%s, F_SETLK, F_UNLCK) failed", file->name.data);
+
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
 }

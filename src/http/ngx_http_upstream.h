@@ -62,7 +62,9 @@ typedef struct {
     size_t                          temp_file_write_size_conf;
 
     ngx_uint_t                      next_upstream;
-    ngx_uint_t                      method;
+    ngx_uint_t                      max_fails;
+
+    time_t                          fail_timeout;
 
     ngx_bufs_t                      bufs;
 
@@ -156,7 +158,7 @@ struct ngx_http_upstream_s {
 
     ngx_msec_t                      timeout;
 
-    ngx_uint_t                      method;
+    ngx_str_t                       method;
 
     ngx_http_log_handler_pt         saved_log_handler;
 

@@ -1,0 +1,95 @@
+
+# Copyright (C) Igor Sysoev
+
+
+# Sun C 5.7 Patch 117837-04 2005/05/11
+
+NGX_SUNC_VER=`$CC -V 2>&1 | grep 'Sun C' 2>&1 \
+                         | sed -e 's/^.* Sun C \(.*\)/\1/'`
+
+echo " + Sun C version: $NGX_SUNC_VER"
+
+have=NGX_COMPILER value="\"Sun C $NGX_SUNC_VER\"" . auto/define
+
+
+case "$NGX_PLATFORM" in
+
+    *:i86pc)
+        NGX_AUX=" src/os/unix/ngx_sunpro_x86.il"
+    ;;
+
+    *:sun4u)
+        # "-xarch=v9" enables the "casa" assembler instruction
+        CFLAGS="$CFLAGS -xarch=v9"
+        CORE_LINK="$CORE_LINK -xarch=v9"
+        NGX_AUX=" src/os/unix/ngx_sunpro_sparc64.il"
+    ;;
+
+esac
+
+
+# optimizations
+
+CFLAGS="$CFLAGS -fast"
+
+
+case $CPU in
+    pentium)
+        # optimize for Pentium and Athlon
+        CPU_OPT="-xchip=pentium"
+    ;;
+
+    pentiumpro)
+        # optimize for Pentium Pro, Pentium II
+        CPU_OPT="-xchip=pentium_pro"
+    ;;
+
+    pentium3)
+        # optimize for Pentium III
+        CPU_OPT="-xchip=pentium3"
+        #CPU_OPT="$CPU_OPT -xarch=sse"
+        CPU_OPT="$CPU_OPT -xcache=16/32/4:256/32/4"
+    ;;
+
+    pentium4)
+        # optimize for Pentium 4
+        CPU_OPT="-xchip=pentium4"
+        #CPU_OPT="$CPU_OPT -xarch=sse2"
+        CPU_OPT="$CPU_OPT -xcache=8/64/4:256/128/8"
+    ;;
+
+    opteron)
+        # optimize for Opteron
+        CPU_OPT="-xchip=opteron"
+        #CPU_OPT="$CPU_OPT -xarch=sse2"
+        CPU_OPT="$CPU_OPT -xcache=64/64/2:1024/64/16"
+    ;;
+
+    amd64)
+        # build 64-bit amd64 binary
+        CPU_OPT="-xarch=amd64"
+        CORE_LINK="$CORE_LINK -xarch=amd64"
+        NGX_AUX=" src/os/unix/ngx_sunpro_amd64.il"
+    ;;
+
+esac
+
+
+CFLAGS="$CFLAGS $CPU_OPT"
+
+
+if [ ".$PCRE_OPT" = "." ]; then
+    PCRE_OPT="-fast $CPU_OPT"
+fi
+
+if [ ".$MD5_OPT" = "." ]; then
+    MD5_OPT="-fast $CPU_OPT"
+fi
+
+if [ ".$ZLIB_OPT" = "." ]; then
+    ZLIB_OPT="-fast $CPU_OPT"
+fi
+
+
+# stop on warning
+CFLAGS="$CFLAGS -errwarn=%all"

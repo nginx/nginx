@@ -182,7 +182,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
                 return NGX_ERROR;
             }
 
-            iov->iov_base = chain->buf->last;
+            iov->iov_base = (void *) chain->buf->last;
             iov->iov_len = chain->buf->end - chain->buf->last;
         }
 

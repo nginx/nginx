@@ -115,6 +115,7 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
     uint32_t        ui32;
     int64_t         i64;
     uint64_t        ui64;
+    ngx_msec_t      ms;
     ngx_str_t      *s;
     ngx_uint_t      width, sign, hexadecimal, max_width;
     static u_char   hex[] = "0123456789abcdef";
@@ -221,8 +222,14 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                 break;
 
             case 'M':
-                ui64 = (uint64_t) va_arg(args, ngx_msec_t);
-                sign = 0;
+                ms = (ngx_msec_t) va_arg(args, ngx_msec_t);
+                if ((ngx_msec_int_t) ms == -1) {
+                    sign = 1;
+                    i64 = -1;
+                } else {
+                    sign = 0;
+                    ui64 = (uint64_t) ms;
+                }
                 break;
 
             case 'z':

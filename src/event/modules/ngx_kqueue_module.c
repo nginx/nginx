@@ -511,7 +511,7 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "kevent timer: %d, changes: %d", timer, n);
+                   "kevent timer: %M, changes: %d", timer, n);
 
     events = kevent(ngx_kqueue, change_list, n, event_list, nevents, tp);
 

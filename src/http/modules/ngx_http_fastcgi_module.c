@@ -151,10 +151,6 @@ static ngx_str_t  ngx_http_fastcgi_script_name =
 static ngx_conf_post_t  ngx_http_fastcgi_lowat_post =
     { ngx_http_fastcgi_lowat_check };
 
-static ngx_conf_enum_t  ngx_http_fastcgi_set_methods[] = {
-    { ngx_string("get"), NGX_HTTP_GET },
-    { ngx_null_string, 0 }
-};
 
 static ngx_conf_bitmask_t  ngx_http_fastcgi_next_upstream_masks[] = {
     { ngx_string("error"), NGX_HTTP_UPSTREAM_FT_ERROR },
@@ -209,13 +205,6 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.header_buffer_size),
       NULL },
-
-    { ngx_string("fastcgi_method"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_enum_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.method),
-      ngx_http_fastcgi_set_methods },
 
     { ngx_string("fastcgi_pass_request_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -293,6 +282,20 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.next_upstream),
       &ngx_http_fastcgi_next_upstream_masks },
+
+    { ngx_string("fastcgi_upstream_max_fails"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.max_fails),
+      NULL },
+
+    { ngx_string("fastcgi_upstream_fail_timeout"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_sec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.fail_timeout),
+      NULL },
 
     { ngx_string("fastcgi_param"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
@@ -1443,7 +1446,9 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE; 
     conf->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
 
-    conf->upstream.method = NGX_CONF_UNSET_UINT;
+    conf->upstream.max_fails = NGX_CONF_UNSET_UINT;
+    conf->upstream.fail_timeout = NGX_CONF_UNSET;
+
     conf->upstream.pass_request_headers = NGX_CONF_UNSET;
     conf->upstream.pass_request_body = NGX_CONF_UNSET;
 
@@ -1591,14 +1596,24 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                                |NGX_HTTP_UPSTREAM_FT_ERROR
                                |NGX_HTTP_UPSTREAM_FT_TIMEOUT));
 
+    ngx_conf_merge_unsigned_value(conf->upstream.max_fails,
+                              prev->upstream.max_fails, 1);
+
+    ngx_conf_merge_sec_value(conf->upstream.fail_timeout,
+                              prev->upstream.fail_timeout, 10);
+
+    if (conf->peers && conf->peers->number > 1) {
+        for (i = 0; i < conf->peers->number; i++) {
+            conf->peers->peer[i].weight = 1;
+            conf->peers->peer[i].max_fails = conf->upstream.max_fails;
+            conf->peers->peer[i].fail_timeout = conf->upstream.fail_timeout;
+        }
+    }
+
     ngx_conf_merge_path_value(conf->upstream.temp_path,
                               prev->upstream.temp_path,
                               NGX_HTTP_FASTCGI_TEMP_PATH, 1, 2, 0,
                               ngx_garbage_collector_temp_handler, cf);
-
-    if (conf->upstream.method == NGX_CONF_UNSET_UINT) {
-        conf->upstream.method = prev->upstream.method; 
-    }
 
     ngx_conf_merge_value(conf->upstream.pass_request_headers,
                               prev->upstream.pass_request_headers, 1);

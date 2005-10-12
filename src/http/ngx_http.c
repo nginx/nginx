@@ -721,10 +721,10 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-#if (NGX_DEBUG)
+#if (NGX_DEBUG0)
     {
     u_char      address[20];
-    ngx_uint_t  p, a, n;
+    ngx_uint_t  p, a, nn;
 
     in_port = in_ports.elts;
     for (p = 0; p < in_ports.nelts; p++) {

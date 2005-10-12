@@ -75,7 +75,7 @@ ngx_event_acceptex(ngx_event_t *rev)
 
     ngx_event_post_acceptex(c->listening, 1);
 
-    c->number = ngx_atomic_inc(ngx_connection_counter);
+    c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
     c->listening->handler(c);
 
@@ -116,16 +116,6 @@ ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n)
         if (c == NULL) {
             return NGX_ERROR;
         }
-
-        rev = c->read;
-        wev = c->write;
-
-        ngx_memzero(c, sizeof(ngx_connection_t));
-
-        c->read = rev;
-        c->write = wev;
-        c->fd = s;
-        c->log = &ls->log;
 
         c->pool = ngx_create_pool(ls->pool_size, &ls->log);
         if (c->pool == NULL) {
@@ -172,21 +162,14 @@ ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n)
 
         c->listening = ls;
 
-        ngx_memzero(rev, sizeof(ngx_event_t));
-        ngx_memzero(wev, sizeof(ngx_event_t));
-
-        rev->data = c;
-        wev->data = c;
-
-        rev->index = NGX_INVALID_INDEX;
-        wev->index = NGX_INVALID_INDEX;
+        rev = c->read;
+        wev = c->write;
 
         rev->ovlp.event = rev;
         wev->ovlp.event = wev;
         rev->handler = ngx_event_acceptex;
 
         rev->ready = 1;
-        wev->write = 1;
         wev->ready = 1;
 
         rev->log = c->log;

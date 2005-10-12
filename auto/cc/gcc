@@ -33,6 +33,17 @@ if [ $ngx_found = yes ]; then
     PIPE="-pipe"
 fi
 
+
+case "$NGX_PLATFORM" in
+
+    *:sun4u)
+        # "-mcpu=v9" enables the "casxa" assembler instruction
+        CFLAGS="$CFLAGS -mcpu=v9"
+    ;;
+
+esac
+
+
 # optimizations
 
 #NGX_GCC_OPT="-O2"
@@ -49,7 +60,7 @@ case $CPU in
         CPU_OPT="-march=pentium"
     ;;
 
-    pentiumpro)
+    pentiumpro | pentium3)
         # optimize for Pentium Pro, Pentium II and Pentium III
         CPU_OPT="-march=pentiumpro"
     ;;

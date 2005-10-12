@@ -123,11 +123,22 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_process.h \
             src/os/unix/ngx_setproctitle.h \
             src/os/unix/ngx_atomic.h \
+            src/os/unix/ngx_gcc_atomic_x86.h \
             src/os/unix/ngx_thread.h \
             src/os/unix/ngx_socket.h \
             src/os/unix/ngx_os.h \
             src/os/unix/ngx_user.h \
             src/os/unix/ngx_process_cycle.h"
+
+# add to UNIX_DEPS
+#            src/os/unix/ngx_gcc_atomic_amd64.h \
+#            src/os/unix/ngx_gcc_atomic_sparc64.h \
+#            src/os/unix/ngx_gcc_atomic_ppc.h \
+#            src/os/unix/ngx_sunpro_atomic_sparc64.h \
+#            src/os/unix/ngx_sunpro_x86.il \
+#            src/os/unix/ngx_sunpro_amd64.il \
+#            src/os/unix/ngx_sunpro_sparc64.il \
+
 
 UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/core/ngx_unix_domain.c \

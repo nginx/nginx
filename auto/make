@@ -200,7 +200,7 @@ fi
 cat << END                                                    >> $NGX_MAKEFILE
 
 $ngx_modules_obj:	\$(CORE_DEPS)$ngx_cont$ngx_modules_c
-	$ngx_cc$ngx_tab$ngx_objout$ngx_modules_obj$ngx_tab$ngx_modules_c
+	$ngx_cc$ngx_tab$ngx_objout$ngx_modules_obj$ngx_tab$ngx_modules_c$NGX_AUX
 
 END
 
@@ -219,7 +219,7 @@ do
     cat << END                                                >> $NGX_MAKEFILE
 
 $ngx_obj:	\$(CORE_DEPS)$ngx_cont$ngx_src
-	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src
+	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
 
@@ -248,7 +248,7 @@ if [ $HTTP = YES ]; then
         cat << END                                            >> $NGX_MAKEFILE
 
 $ngx_obj:	\$(CORE_DEPS) \$(HTTP_DEPS)$ngx_cont$ngx_src
-	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src
+	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
      done
@@ -278,7 +278,7 @@ if [ $IMAP = YES ]; then
         cat << END                                            >> $NGX_MAKEFILE
 
 $ngx_obj:	\$(CORE_DEPS) \$(IMAP_DEPS)$ngx_cont$ngx_src
-	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src
+	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
      done
@@ -310,7 +310,7 @@ if test -n "$NGX_ADDON_SRCS"; then
         cat << END                                            >> $NGX_MAKEFILE
 
 $ngx_obj:	\$(ADDON_DEPS)$ngx_cont$ngx_src
-	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src
+	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
      done

@@ -9,6 +9,32 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.2" date="12.10.2005">
+
+<change type="feature">
+<para lang="ru">
+поддержка Sun Studio 10 C compiler.
+</para>
+<para lang="en">
+the Sun Studio 10 C compiler support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_upstream_max_fails, proxy_upstream_fail_timeout,
+fastcgi_upstream_max_fails и fastcgi_upstream_fail_timeout.
+</para>
+<para lang="en">
+the "proxy_upstream_max_fails", "proxy_upstream_fail_timeout",
+"fastcgi_upstream_max_fails", and "fastcgi_upstream_fail_timeout"
+directives.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.1" date="10.10.2005">
 
 <change type="bugfix">

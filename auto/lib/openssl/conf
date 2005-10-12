@@ -36,6 +36,12 @@ else
         if [ $ngx_found = yes ]; then
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             OPENSSL=YES
+
+            case "$NGX_SYSTEM" in
+                SunOS)
+                    CORE_LIBS="$CORE_LIBS -ldl"
+                ;;
+            esac
         fi
 
     fi

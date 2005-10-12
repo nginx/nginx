@@ -33,6 +33,8 @@ static ngx_http_variable_value_t *
 static ngx_http_variable_value_t *
     ngx_http_variable_request_filename(ngx_http_request_t *r, uintptr_t data);
 static ngx_http_variable_value_t *
+    ngx_http_variable_request_method(ngx_http_request_t *r, uintptr_t data);
+static ngx_http_variable_value_t *
     ngx_http_variable_remote_user(ngx_http_request_t *r, uintptr_t data);
 
 
@@ -107,8 +109,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("server_name"), ngx_http_variable_request,
       offsetof(ngx_http_request_t, server_name), 0, 0 },
 
-    { ngx_string("request_method"), ngx_http_variable_request,
-      offsetof(ngx_http_request_t, method_name), 0, 0 },
+    { ngx_string("request_method"), ngx_http_variable_request_method, 0, 0, 0 },
 
     { ngx_string("remote_user"), ngx_http_variable_remote_user, 0, 0, 0 },
 
@@ -635,6 +636,33 @@ ngx_http_variable_request_filename(ngx_http_request_t *r, uintptr_t data)
     /* ngx_http_map_uri_to_path() allocates memory for terminating '\0' */
 
     vv->text.len--;
+
+    return vv;
+}
+
+
+static ngx_http_variable_value_t *
+ngx_http_variable_request_method(ngx_http_request_t *r, uintptr_t data)
+{
+    ngx_http_variable_value_t  *vv;
+
+    if (r->method_name.data == NULL) {
+        return NGX_HTTP_VAR_NOT_FOUND;
+    }
+
+    vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
+    if (vv == NULL) {
+        return NULL;
+    }
+
+    vv->value = 0;
+
+    if (r->upstream && r->upstream->method.len) {
+        vv->text = r->upstream->method;
+
+    } else {
+        vv->text = r->method_name;
+    }
 
     return vv;
 }

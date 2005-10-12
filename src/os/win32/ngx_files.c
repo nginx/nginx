@@ -8,7 +8,8 @@
 #include <ngx_core.h>
 
 
-ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
+ssize_t
+ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
     long        high_offset;
     u_long      n;
@@ -72,7 +73,8 @@ ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 }
 
 
-ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
+ssize_t
+ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
     long        high_offset;
     u_long      n;
@@ -135,8 +137,9 @@ ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 }
 
 
-ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
-                                off_t offset, ngx_pool_t *pool)
+ssize_t
+ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
+    ngx_pool_t *pool)
 {
     u_char   *buf, *prev;
     size_t    size;
@@ -171,8 +174,8 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl,
 }
 
 
-ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
-                                ngx_pool_t *pool)
+ngx_int_t
+ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 {
     u_char             *name;
     ngx_int_t           rc;
@@ -233,7 +236,8 @@ ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
 
 #if 0
 
-ngx_int_t ngx_file_info(char *file, ngx_file_info_t *sb)
+ngx_int_t
+ngx_file_info(char *file, ngx_file_info_t *sb)
 {
     WIN32_FILE_ATTRIBUTE_DATA  fa;
 
@@ -256,7 +260,8 @@ ngx_int_t ngx_file_info(char *file, ngx_file_info_t *sb)
 #endif
 
 
-ngx_int_t ngx_file_info(u_char *file, ngx_file_info_t *sb)
+ngx_int_t
+ngx_file_info(u_char *file, ngx_file_info_t *sb)
 {
     /* Win95 */
 
@@ -270,7 +275,8 @@ ngx_int_t ngx_file_info(u_char *file, ngx_file_info_t *sb)
 }
 
 
-ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
+ngx_int_t
+ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
     ngx_cpystrn(name->data + name->len, NGX_DIR_MASK, NGX_DIR_MASK_LEN + 1);
 
@@ -287,7 +293,8 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 }
 
 
-ngx_int_t ngx_read_dir(ngx_dir_t *dir)
+ngx_int_t
+ngx_read_dir(ngx_dir_t *dir)
 {
     if (dir->ready) {
         dir->ready = 0;
@@ -316,7 +323,8 @@ ngx_de_link_info(u_char *name, ngx_dir_t *dir)
 }
 
 
-ngx_int_t ngx_file_append_mode(ngx_fd_t fd)
+ngx_int_t
+ngx_file_append_mode(ngx_fd_t fd)
 {
 #if 0
     if (LockFile(fd, 0, 0, 0xffffffff, 0xffffffff) == 0) {

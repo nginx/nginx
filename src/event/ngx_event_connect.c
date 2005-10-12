@@ -14,7 +14,7 @@ ngx_int_t
 ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     int                rc;
-    ngx_uint_t         instance, level, i;
+    ngx_uint_t         level, i;
     u_int              event;
     time_t             now;
     ngx_err_t          err;
@@ -81,7 +81,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         for ( ;; ) {
             peer = &pc->peers->peer[pc->cur_peer];
 
-            if (peer->fails <= peer->max_fails) {
+            if (peer->max_fails == 0 || peer->fails <= peer->max_fails) {
                 break;
             }
 
@@ -139,16 +139,6 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         return NGX_ERROR;
     }
 
-    rev = c->read;
-    wev = c->write;
-
-    ngx_memzero(c, sizeof(ngx_connection_t));
-
-    c->read = rev;
-    c->write = wev;
-    c->fd = s;
-    c->log = pc->log;
-
     if (pc->rcvbuf) {
         if (setsockopt(s, SOL_SOCKET, SO_RCVBUF,
                        (const void *) &pc->rcvbuf, sizeof(int)) == -1) {
@@ -191,21 +181,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         c->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
     }
 
-    instance = rev->instance;
-
-    ngx_memzero(rev, sizeof(ngx_event_t));
-    ngx_memzero(wev, sizeof(ngx_event_t));
-
-    rev->instance = !instance;
-    wev->instance = !instance;
-
-    rev->index = NGX_INVALID_INDEX;
-    wev->index = NGX_INVALID_INDEX;
-
-    rev->data = c;
-    wev->data = c;
-
-    wev->write = 1;
+    rev = c->read;
+    wev = c->write;
 
     rev->log = pc->log;
     wev->log = pc->log;
@@ -213,15 +190,15 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     pc->connection = c;
 
     /*
-     * TODO: MT: - atomic increment (x86: lock xadd)
+     * TODO: MT: - ngx_atomic_fetch_add()
      *             or protection by critical section or mutex
      *
      * TODO: MP: - allocated in a shared memory
-     *           - atomic increment (x86: lock xadd)
+     *           - ngx_atomic_fetch_add()
      *             or protection by critical section or mutex
      */
 
-    c->number = ngx_atomic_inc(ngx_connection_counter);
+    c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
 #if (NGX_THREADS)
     rev->lock = pc->lock;

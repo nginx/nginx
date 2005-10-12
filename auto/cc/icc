@@ -94,6 +94,8 @@ CFLAGS="$CFLAGS -wd1418"
 CFLAGS="$CFLAGS -wd1419"
 # explicit conversion of a 64-bit integral type to a smaller integral type
 CFLAGS="$CFLAGS -wd1683"
+# conversion from pointer to same-sized integral type, warning on offsetof()
+CFLAGS="$CFLAGS -wd1684"
 
 case "$NGX_ICC_VER" in
     8.* | 9.*)

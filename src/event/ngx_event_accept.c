@@ -22,7 +22,6 @@ ngx_event_accept(ngx_event_t *ev)
     socklen_t          sl;
     ngx_err_t          err;
     ngx_log_t         *log;
-    ngx_uint_t         instance;
     ngx_socket_t       s;
     ngx_event_t       *rev, *wev;
     ngx_listening_t   *ls;
@@ -76,8 +75,8 @@ ngx_event_accept(ngx_event_t *ev)
         }
 
 #if (NGX_STAT_STUB)
-        ngx_atomic_inc(ngx_stat_accepted);
-        ngx_atomic_inc(ngx_stat_active);
+        ngx_atomic_fetch_add(ngx_stat_accepted, 1);
+        ngx_atomic_fetch_add(ngx_stat_active, 1);
 #endif
 
         ngx_accept_disabled = NGX_ACCEPT_THRESHOLD
@@ -93,16 +92,6 @@ ngx_event_accept(ngx_event_t *ev)
 
             return;
         }
-
-        rev = c->read;
-        wev = c->write;
-
-        ngx_memzero(c, sizeof(ngx_connection_t));
-
-        c->read = rev;
-        c->write = wev;
-        c->fd = s;
-        c->log = ev->log;
 
         c->pool = ngx_create_pool(ls->pool_size, ev->log);
         if (c->pool == NULL) {
@@ -164,21 +153,9 @@ ngx_event_accept(ngx_event_t *ev)
         c->ctx = lc->ctx;
         c->servers = lc->servers;
 
-        instance = rev->instance;
+        rev = c->read;
+        wev = c->write;
 
-        ngx_memzero(rev, sizeof(ngx_event_t));
-        ngx_memzero(wev, sizeof(ngx_event_t));
-
-        rev->instance = !instance;
-        wev->instance = !instance;
-
-        rev->index = NGX_INVALID_INDEX;
-        wev->index = NGX_INVALID_INDEX;
-
-        rev->data = c;
-        wev->data = c;
-
-        wev->write = 1;
         wev->ready = 1;
 
         if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_RTSIG_EVENT)) {
@@ -197,18 +174,18 @@ ngx_event_accept(ngx_event_t *ev)
         wev->log = log;
 
         /*
-         * TODO: MT: - atomic increment (x86: lock xadd)
+         * TODO: MT: - ngx_atomic_fetch_add()
          *             or protection by critical section or light mutex
          *
          * TODO: MP: - allocated in a shared memory
-         *           - atomic increment (x86: lock xadd)
+         *           - ngx_atomic_fetch_add()
          *             or protection by critical section or light mutex
          */
 
-        c->number = ngx_atomic_inc(ngx_connection_counter);
+        c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
 #if (NGX_STAT_STUB)
-        ngx_atomic_inc(ngx_stat_handled);
+        ngx_atomic_fetch_add(ngx_stat_handled, 1);
 #endif
 
 #if (NGX_THREADS)
@@ -391,7 +368,7 @@ ngx_close_accepted_connection(ngx_connection_t *c)
     }
 
 #if (NGX_STAT_STUB)
-    ngx_atomic_dec(ngx_stat_active);
+    ngx_atomic_fetch_add(ngx_stat_active, -1);
 #endif
 }
 

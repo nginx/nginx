@@ -60,8 +60,8 @@ ngx_event_del_timer(ngx_event_t *ev)
 static ngx_inline void
 ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
-    ngx_rbtree_key_t      key;
-    ngx_rbtree_key_int_t  diff;
+    ngx_msec_t      key;
+    ngx_msec_int_t  diff;
 
     key = ngx_current_time + timer;
 
@@ -73,7 +73,7 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
          * the rbtree operations for the fast connections.
          */
 
-        diff = (ngx_rbtree_key_int_t) (key - ev->timer.key);
+        diff = (ngx_msec_int_t) (key - ev->timer.key);
 
         if (ngx_abs(diff) < NGX_TIMER_LAZY_DELAY) {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,

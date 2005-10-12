@@ -627,7 +627,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
-    if (old_cycle->connections0 == NULL) {
+    if (old_cycle->connections == NULL) {
         /* an old cycle is an init cycle */
         ngx_destroy_pool(old_cycle->pool);
         return cycle;
@@ -959,7 +959,7 @@ static void ngx_clean_old_cycles(ngx_event_t *ev)
         found = 0;
 
         for (n = 0; n < cycle[i]->connection_n; n++) {
-            if (cycle[i]->connections0[n].fd != (ngx_socket_t) -1) {
+            if (cycle[i]->connections[n].fd != (ngx_socket_t) -1) {
                 found = 1;
 
                 ngx_log_debug1(NGX_LOG_DEBUG_CORE, log, 0, "live fd:%d", n);

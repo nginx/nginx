@@ -192,29 +192,13 @@ ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd, ngx_int_t event,
         return NGX_ERROR;
     }
 
+    c->pool = cycle->pool;
+
     rev = c->read;
     wev = c->write;
 
-    ngx_memzero(c, sizeof(ngx_connection_t));
-
-    c->read = rev;
-    c->write = wev;
-    c->fd = fd;
-    c->log = cycle->log;
-
-    c->pool = cycle->pool;
-
-    ngx_memzero(rev, sizeof(ngx_event_t));
-    ngx_memzero(wev, sizeof(ngx_event_t));
-
     rev->log = cycle->log;
     wev->log = cycle->log;
-
-    rev->index = NGX_INVALID_INDEX;
-    wev->index = NGX_INVALID_INDEX;
-
-    rev->data = c;
-    wev->data = c;
 
 #if (NGX_THREADS)
     rev->lock = &c->lock;
