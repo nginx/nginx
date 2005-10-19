@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.4" date="19.09.2005">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Linux 2.4+ и MacOS X;
+ошибка появилась в 0.3.3.
+</para>
+<para lang="en">
+nginx could not be built on Linux 2.4+ and MacOS X;
+bug appeared in 0.3.3.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.3" date="19.10.2005">
 
 <change type="change">

@@ -114,9 +114,11 @@ ngx_module_t  ngx_kqueue_module = {
 static ngx_int_t
 ngx_kqueue_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
-    struct kevent       kev;
-    struct timespec     ts;
     ngx_kqueue_conf_t  *kcf;
+    struct timespec     ts;
+#if (NGX_HAVE_TIMER_EVENT)
+    struct kevent       kev;
+#endif
 
     kcf = ngx_event_get_conf(cycle->conf_ctx, ngx_kqueue_module);
 

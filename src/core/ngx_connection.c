@@ -198,7 +198,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (tlen < sizeof(int) || timeout == 0) {
+        if (olen < sizeof(int) || timeout == 0) {
             continue;
         }
 
