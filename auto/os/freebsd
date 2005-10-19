@@ -37,7 +37,7 @@ fi
 # sendfile
 
 if [ $osreldate -gt 300007 ]; then
-    echo " + using sendfile()"
+    echo " + sendfile() found"
 
     have=NGX_HAVE_SENDFILE . auto/have
     CORE_SRCS="$CORE_SRCS $FREEBSD_SENDFILE_SRCS"
@@ -49,7 +49,7 @@ fi
 if [ \( $osreldate -lt 500000 -a $osreldate -ge 410000 \) \
      -o $osreldate -ge 500011 ]
 then
-    echo " + using kqueue"
+    echo " + kqueue found"
 
     have=NGX_HAVE_KQUEUE . auto/have
     have=NGX_HAVE_CLEAR_EVENT . auto/have
@@ -67,8 +67,17 @@ NGX_KQUEUE_CHECKED=YES
 if [ \( $version -lt 500000 -a $version -ge 430000 \) \
      -o $version -ge 500018 ]
 then
-    echo " + using kqueue's NOTE_LOWAT"
+    echo " + kqueue's NOTE_LOWAT found"
     have=NGX_HAVE_LOWAT_EVENT . auto/have
+fi
+
+# kqueue's EVFILT_TIMER
+
+if [ \( $version -lt 500000 -a $version -ge 440001 \) \
+     -o $version -ge 500023 ]
+then
+    echo " + kqueue's EVFILT_TIMER found"
+    have=NGX_HAVE_TIMER_EVENT . auto/have
 fi
 
 

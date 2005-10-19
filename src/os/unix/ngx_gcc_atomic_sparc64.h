@@ -67,3 +67,13 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
         old = res;
     }
 }
+
+
+#if (NGX_SMP)
+#define ngx_memory_barrier()                                                  \
+            __asm__ volatile (                                                \
+            "membar #LoadLoad | #LoadStore | #StoreStore | #StoreLoad"        \
+            ::: "memory")
+#else
+#define ngx_memory_barrier()   __asm__ volatile ("" ::: "memory")
+#endif

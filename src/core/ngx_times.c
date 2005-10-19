@@ -8,61 +8,33 @@
 #include <ngx_core.h>
 
 
-ngx_msec_t        ngx_current_time;
-
-ngx_int_t         ngx_gmtoff;
-
-static ngx_tm_t   ngx_cached_gmtime;
-
-
 /*
- * In the threaded mode only one thread updates the cached time and strings
- * and these operations are protected by the mutex.  The reading of the cached
- * time and strings is not protected by the mutex.  To avoid the race
- * conditions for non-atomic values we use the NGX_TIME_SLOTS slots to store
- * time value and strings.  Thus thread may get the corrupted values only
- * if it is preempted while copying and then it is not scheduled to run
- * more than NGX_TIME_SLOTS seconds.
+ * The time may be updated by signal handler or by several threads.
+ * The time update operations are rare and require to hold the ngx_time_lock.
+ * The time read operations are frequent, so they are lock-free and get time
+ * values and strings from the current slot.  Thus thread may get the corrupted
+ * values only if it is preempted while copying and then it is not scheduled
+ * to run more than NGX_TIME_SLOTS seconds.
  */
 
-#if (NGX_THREADS)
+#define NGX_TIME_SLOTS   64
 
-#define NGX_TIME_SLOTS  60
-static ngx_uint_t       slot = NGX_TIME_SLOTS;
+static ngx_uint_t        slot = NGX_TIME_SLOTS;
+static ngx_atomic_t      ngx_time_lock;
 
-static ngx_mutex_t     *ngx_time_mutex;
+volatile ngx_msec_t      ngx_current_msec;
+volatile ngx_time_t     *ngx_cached_time;
+volatile ngx_str_t       ngx_cached_err_log_time;
+volatile ngx_str_t       ngx_cached_http_time;
+volatile ngx_str_t       ngx_cached_http_log_time;
 
-#else
-
-#define NGX_TIME_SLOTS  1
-#define slot            0
-
-#endif
-
-
-#if (NGX_THREADS && (NGX_TIME_T_SIZE > NGX_SIG_ATOMIC_T_SIZE))
-
-volatile time_t  *ngx_cached_time;
-static time_t     cached_time[NGX_TIME_SLOTS];
-
-#else
-
-volatile time_t   ngx_cached_time;
-
-#endif
-
-
-ngx_thread_volatile ngx_str_t  ngx_cached_err_log_time;
-ngx_thread_volatile ngx_str_t  ngx_cached_http_time;
-ngx_thread_volatile ngx_str_t  ngx_cached_http_log_time;
-
-
-static u_char  cached_err_log_time[NGX_TIME_SLOTS]
-                                  [sizeof("1970/09/28 12:00:00")];
-static u_char  cached_http_time[NGX_TIME_SLOTS]
-                                  [sizeof("Mon, 28 Sep 1970 06:00:00 GMT")];
-static u_char  cached_http_log_time[NGX_TIME_SLOTS]
-                                  [sizeof("28/Sep/1970:12:00:00 +0600")];
+static ngx_time_t        cached_time[NGX_TIME_SLOTS];
+static u_char            cached_err_log_time[NGX_TIME_SLOTS]
+                                    [sizeof("1970/09/28 12:00:00")];
+static u_char            cached_http_time[NGX_TIME_SLOTS]
+                                    [sizeof("Mon, 28 Sep 1970 06:00:00 GMT")];
+static u_char            cached_http_log_time[NGX_TIME_SLOTS]
+                                    [sizeof("28/Sep/1970:12:00:00 +0600")];
 
 
 static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
@@ -72,63 +44,29 @@ static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
 void
 ngx_time_init(void)
 {
-    struct timeval  tv;
-
-    ngx_memzero(&ngx_cached_gmtime, sizeof(ngx_tm_t));
-#ifdef ngx_tm_zone
-    ngx_cached_gmtime.ngx_tm_zone = "GMT";
-#endif
-
     ngx_cached_err_log_time.len = sizeof("1970/09/28 12:00:00") - 1;
     ngx_cached_http_time.len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1;
     ngx_cached_http_log_time.len = sizeof("28/Sep/1970:12:00:00 +0600") - 1;
 
-#if (NGX_THREADS && (NGX_TIME_T_SIZE > NGX_SIG_ATOMIC_T_SIZE))
     ngx_cached_time = &cached_time[0];
-#endif
-
-    ngx_gettimeofday(&tv);
-
-    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
 #if !(NGX_WIN32)
     tzset();
 #endif
 
-    ngx_time_update(tv.tv_sec);
+    ngx_time_update(0, 0);
 }
-
-
-#if (NGX_THREADS)
-
-ngx_int_t
-ngx_time_mutex_init(ngx_log_t *log)
-{
-    ngx_time_mutex = ngx_mutex_init(log, NGX_MUTEX_LIGHT);
-
-    if (ngx_time_mutex == NULL) {
-        return NGX_ERROR;
-    }
-
-    return NGX_OK;
-}
-
-#endif
 
 
 void
-ngx_time_update(time_t s)
+ngx_time_update(time_t sec, ngx_uint_t msec)
 {
-    u_char    *p;
-    ngx_tm_t   tm;
+    u_char          *p0, *p1, *p2;
+    ngx_tm_t         tm, gmt;
+    ngx_time_t      *tp;
+    struct timeval   tv;
 
-    if (ngx_time() == s) {
-        return;
-    }
-
-#if (NGX_THREADS)
-
-    if (ngx_mutex_trylock(ngx_time_mutex) != NGX_OK) {
+    if (!ngx_trylock(&ngx_time_lock)) {
         return;
     }
 
@@ -138,75 +76,80 @@ ngx_time_update(time_t s)
         slot++;
     }
 
-#if (NGX_THREADS && (NGX_TIME_T_SIZE > NGX_SIG_ATOMIC_T_SIZE))
-    ngx_cached_time = &cached_time[slot];
-#endif
+    if (sec == 0) {
+        ngx_gettimeofday(&tv);
 
-#endif
+        sec = tv.tv_sec;
+        msec = tv.tv_usec / 1000;
+    }
 
-    ngx_time() = s;
+    ngx_current_msec = (ngx_msec_t) sec * 1000 + msec;
 
-    ngx_gmtime(s, &ngx_cached_gmtime);
+    tp = &cached_time[slot];
+
+    tp->msec = msec;
+
+    if (tp->sec == sec) {
+        ngx_unlock(&ngx_time_lock);
+        return;
+    }
+
+    tp->sec = sec;
+
+    ngx_gmtime(sec, &gmt);
 
 
-    p = cached_http_time[slot];
+    p0 = cached_http_time[slot];
 
-    (void) ngx_sprintf(p, "%s, %02d %s %4d %02d:%02d:%02d GMT",
-                       week[ngx_cached_gmtime.ngx_tm_wday],
-                       ngx_cached_gmtime.ngx_tm_mday,
-                       months[ngx_cached_gmtime.ngx_tm_mon - 1],
-                       ngx_cached_gmtime.ngx_tm_year,
-                       ngx_cached_gmtime.ngx_tm_hour,
-                       ngx_cached_gmtime.ngx_tm_min,
-                       ngx_cached_gmtime.ngx_tm_sec);
-
-    ngx_cached_http_time.data = p;
-
+    (void) ngx_sprintf(p0, "%s, %02d %s %4d %02d:%02d:%02d GMT",
+                       week[gmt.ngx_tm_wday], gmt.ngx_tm_mday,
+                       months[gmt.ngx_tm_mon - 1], gmt.ngx_tm_year,
+                       gmt.ngx_tm_hour, gmt.ngx_tm_min, gmt.ngx_tm_sec);
 
 #if (NGX_HAVE_GETTIMEZONE)
 
-    ngx_gmtoff = ngx_gettimezone();
-    ngx_gmtime(s + ngx_gmtoff * 60, &tm);
+    tp->gmtoff = ngx_gettimezone();
+    ngx_gmtime(sec + tp->gmtoff * 60, &tm);
 
 #elif (NGX_HAVE_GMTOFF)
 
-    ngx_localtime(&tm);
-    ngx_gmtoff = (ngx_int_t) (tm.ngx_tm_gmtoff / 60);
+    ngx_localtime(sec, &tm);
+    tp->gmtoff = (ngx_int_t) (tm.ngx_tm_gmtoff / 60);
 
 #else
 
-    ngx_localtime(&tm);
-    ngx_gmtoff = ngx_timezone(tm.ngx_tm_isdst);
+    ngx_localtime(sec, &tm);
+    tp->gmtoff = ngx_timezone(tm.ngx_tm_isdst);
 
 #endif
 
 
-    p = cached_err_log_time[slot];
+    p1 = cached_err_log_time[slot];
 
-    (void) ngx_sprintf(p, "%4d/%02d/%02d %02d:%02d:%02d",
+    (void) ngx_sprintf(p1, "%4d/%02d/%02d %02d:%02d:%02d",
                        tm.ngx_tm_year, tm.ngx_tm_mon,
                        tm.ngx_tm_mday, tm.ngx_tm_hour,
                        tm.ngx_tm_min, tm.ngx_tm_sec);
 
-    ngx_cached_err_log_time.data = p;
 
+    p2 = cached_http_log_time[slot];
 
-    p = cached_http_log_time[slot];
-
-    (void) ngx_sprintf(p, "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
+    (void) ngx_sprintf(p2, "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
                        tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
                        tm.ngx_tm_year, tm.ngx_tm_hour,
                        tm.ngx_tm_min, tm.ngx_tm_sec,
-                       ngx_gmtoff < 0 ? '-' : '+',
-                       abs(ngx_gmtoff / 60), abs(ngx_gmtoff % 60));
-
-    ngx_cached_http_log_time.data = p;
+                       tp->gmtoff < 0 ? '-' : '+',
+                       ngx_abs(tp->gmtoff / 60), ngx_abs(tp->gmtoff % 60));
 
 
-#if (NGX_THREADS)
-    ngx_mutex_unlock(ngx_time_mutex);
-#endif
+    ngx_memory_barrier();
 
+    ngx_cached_time = tp;
+    ngx_cached_http_time.data = p0;
+    ngx_cached_err_log_time.data = p1;
+    ngx_cached_http_log_time.data = p2;
+
+    ngx_unlock(&ngx_time_lock);
 }
 
 

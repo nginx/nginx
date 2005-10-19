@@ -10,7 +10,7 @@
 #include <nginx.h>
 
 
-static void *ngx_worker_thread_cycle(void *data);
+static ngx_thread_value_t __stdcall ngx_worker_thread_cycle(void *data);
 static long __stdcall ngx_window_procedure(HWND window, u_int message,
     u_int wparam, long lparam);
 
@@ -202,7 +202,7 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 }
 
 
-static void *
+static ngx_thread_value_t __stdcall
 ngx_worker_thread_cycle(void *data)
 {
     ngx_cycle_t  *cycle;
@@ -212,10 +212,10 @@ ngx_worker_thread_cycle(void *data)
     while (!ngx_quit) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
-        ngx_process_events(cycle);
+        ngx_process_events_and_timers(cycle);
     }
 
-    return NULL;
+    return 0;
 }
 
 

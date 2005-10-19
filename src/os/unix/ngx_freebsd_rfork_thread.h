@@ -55,7 +55,8 @@ extern char    *ngx_freebsd_kern_usrstack;
 extern size_t   ngx_thread_stack_size;
 
 
-static ngx_inline ngx_int_t ngx_gettid()
+static ngx_inline ngx_int_t
+ngx_gettid()
 {
     char  *sp;
 
@@ -97,7 +98,8 @@ ngx_err_t ngx_thread_set_tls(ngx_tls_key_t key, void *value);
 #define ngx_thread_set_tls_n     "the tls key setting"
 
 
-static void *ngx_thread_get_tls(ngx_tls_key_t key)
+static void *
+ngx_thread_get_tls(ngx_tls_key_t key)
 {   
     if (key >= NGX_THREAD_KEYS_MAX) {
         return NULL;
@@ -108,9 +110,9 @@ static void *ngx_thread_get_tls(ngx_tls_key_t key)
 
 
 #define ngx_mutex_trylock(m)  ngx_mutex_dolock(m, 1)
-#define ngx_mutex_lock(m)     ngx_mutex_dolock(m, 0)
+#define ngx_mutex_lock(m)     (void) ngx_mutex_dolock(m, 0)
 ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try);
-ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m);
+void ngx_mutex_unlock(ngx_mutex_t *m);
 
 
 typedef int (*ngx_rfork_thread_func_pt)(void *arg);

@@ -50,3 +50,9 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
         old = res;
     }
 }
+
+
+#define ngx_memory_barrier()                                                  \
+        __asm (".volatile");                                                  \
+        __asm ("membar #LoadLoad | #LoadStore | #StoreStore | #StoreLoad");   \
+        __asm (".nonvolatile")

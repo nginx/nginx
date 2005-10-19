@@ -126,7 +126,8 @@ ngx_http_index_handler(ngx_http_request_t *r)
     ngx_uint_t                    i;
     ngx_http_index_t             *index;
     ngx_http_index_ctx_t         *ctx;
-    ngx_pool_cleanup_file_t      *cln;
+    ngx_pool_cleanup_t           *cln;
+    ngx_pool_cleanup_file_t      *clnf;
     ngx_http_script_code_pt       code;
     ngx_http_script_engine_t      e;
     ngx_http_core_loc_conf_t     *clcf;
@@ -180,9 +181,9 @@ ngx_http_index_handler(ngx_http_request_t *r)
             e.ip = index[i].lengths->elts;
             e.request = r;
 
-            /* 1 byte for terminating '\0' and 4 bytes is preallocation */
+            /* 1 byte for terminating '\0' */
 
-            len = 1 + 4;
+            len = 1;
 
             while (*(uintptr_t *) e.ip) {
                 lcode = *(ngx_http_script_len_code_pt *) e.ip;
@@ -190,6 +191,10 @@ ngx_http_index_handler(ngx_http_request_t *r)
             }
 
             ctx->index.len = len;
+
+            /* 16 bytes are preallocation */
+
+            len += 16;
         }
 
         if (len > ctx->path.len) {
@@ -227,6 +232,11 @@ ngx_http_index_handler(ngx_http_request_t *r)
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                        "open index \"%s\"", ctx->path.data);
+
+        cln = ngx_pool_cleanup_add(r->pool, sizeof(ngx_pool_cleanup_file_t));
+        if (cln == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
 
         fd = ngx_open_file(ctx->path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
@@ -268,19 +278,12 @@ ngx_http_index_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
+        cln->handler = ngx_pool_cleanup_file;
+        clnf = cln->data;
 
-        cln = ngx_palloc(r->pool, sizeof(ngx_pool_cleanup_file_t));
-        if (cln == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR; 
-        }
-
-        cln->fd = fd;
-        cln->name = ctx->path.data;
-        cln->log = r->pool->log;
-
-        if (ngx_pool_cleanup_add(r->pool, ngx_pool_cleanup_file, cln) == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
+        clnf->fd = fd;
+        clnf->name = ctx->path.data;
+        clnf->log = r->pool->log;
 
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 

@@ -66,13 +66,12 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
     ngx_uint_t                 i;
     ngx_listening_t           *ls;
     struct sockaddr_in        *sin;
+    socklen_t                  olen;
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
     ngx_err_t                  err;
-    socklen_t                  aflen;
     struct accept_filter_arg   af;
 #endif
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
-    socklen_t                  tlen;
     int                        timeout;
 #endif
 
@@ -126,12 +125,38 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
         ls[i].backlog = -1;
 
+        olen = sizeof(int);
+
+        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_RCVBUF, (void *) &ls[i].rcvbuf,
+                       &olen)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                          "getsockopt(SO_RCVBUF) %V failed, ignored",
+                          &ls[i].addr_text);
+
+            ls[i].rcvbuf = -1;
+        }
+
+        olen = sizeof(int);
+
+        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_SNDBUF, (void *) &ls[i].sndbuf,
+                       &olen)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                          "getsockopt(SO_SNDBUF) %V failed, ignored",
+                          &ls[i].addr_text);
+
+            ls[i].sndbuf = -1;
+        }
+
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
 
         ngx_memzero(&af, sizeof(struct accept_filter_arg));
-        aflen = sizeof(struct accept_filter_arg);
+        olen = sizeof(struct accept_filter_arg);
 
-        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, &af, &aflen)
+        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, &af, &olen)
             == -1)
         {
             err = ngx_errno;
@@ -146,7 +171,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (aflen < sizeof(struct accept_filter_arg) || af.af_name[0] == '\0') {
+        if (olen < sizeof(struct accept_filter_arg) || af.af_name[0] == '\0') {
             continue;
         }
 
@@ -162,9 +187,9 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
 
         timeout = 0;
-        tlen = sizeof(int);
+        olen = sizeof(int);
 
-        if (getsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout, &tlen)
+        if (getsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout, &olen)
             == -1)
         {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, ngx_errno,
@@ -188,7 +213,8 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 ngx_int_t
 ngx_open_listening_sockets(ngx_cycle_t *cycle)
 {
-    ngx_uint_t        tries, failed, reuseaddr, i;
+    int               reuseaddr;
+    ngx_uint_t        i, tries, failed;
     ngx_err_t         err;
     ngx_log_t        *log;
     ngx_socket_t      s;
@@ -201,9 +227,9 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
     log = cycle->log;
 
-    /* TODO: tries configurable */
+    /* TODO: configurable try number */
 
-    for (tries = /* STUB */ 5; tries; tries--) {
+    for (tries = 5 ; tries; tries--) {
         failed = 0;
 
         /* for each listening socket */
@@ -236,25 +262,19 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 return NGX_ERROR;
             }
 
-#if (NGX_WIN32)
-
-            /*
-             * Winsock assignes a socket number divisible by 4
-             * so to find a connection we divide a socket number by 4.
-             */
-
-            if (s % 4) {
-                ngx_log_error(NGX_LOG_EMERG, log, 0,
-                              ngx_socket_n " created socket %d", s);
-                return NGX_ERROR;
-            }
-#endif
-
             if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
-                           (const void *) &reuseaddr, sizeof(int)) == -1) {
+                           (const void *) &reuseaddr, sizeof(int))
+                == -1)
+            {
                 ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                               "setsockopt(SO_REUSEADDR) %V failed",
                               &ls[i].addr_text);
+
+                if (ngx_close_socket(s) == -1)
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                  ngx_close_socket_n " %V failed",
+                                  &ls[i].addr_text);
+
                 return NGX_ERROR;
             }
 
@@ -265,56 +285,54 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_nonblocking_n " %V failed",
                                   &ls[i].addr_text);
-                    return NGX_ERROR;
-                }
-            }
 
-#if 0
-            if (ls[i].nonblocking) {
-                if (ngx_nonblocking(s) == -1) {
-                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                                  ngx_nonblocking_n " %V failed",
-                                  &ls[i].addr_text);
+                    if (ngx_close_socket(s) == -1)
+                        ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                      ngx_close_socket_n " %V failed",
+                                      &ls[i].addr_text);
+
                     return NGX_ERROR;
                 }
             }
-#endif
 
             if (bind(s, ls[i].sockaddr, ls[i].socklen) == -1) {
                 err = ngx_socket_errno;
+
+                if (err == NGX_EADDRINUSE && ngx_test_config) {
+                    continue;
+                }
+
                 ngx_log_error(NGX_LOG_EMERG, log, err,
                               "bind() to %V failed", &ls[i].addr_text);
-
-                if (err != NGX_EADDRINUSE)
-                    return NGX_ERROR;
 
                 if (ngx_close_socket(s) == -1)
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_close_socket_n " %V failed",
                                   &ls[i].addr_text);
 
+                if (err != NGX_EADDRINUSE) {
+                    return NGX_ERROR;
+                }
+
                 failed = 1;
+
                 continue;
             }
 
-            if (listen(s, ls[i].backlog) == -1) {
-                ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              "listen() to %V failed", &ls[i].addr_text);
-                return NGX_ERROR;
-            }
-
-            /* TODO: deferred accept */
+            ls[i].listen = 1;
 
             ls[i].fd = s;
         }
 
-        if (!failed)
+        if (!failed) {
             break;
+        }
 
         /* TODO: delay configurable */
 
         ngx_log_error(NGX_LOG_NOTICE, log, 0,
                       "try again to bind() after 500ms");
+
         ngx_msleep(500);
     }
 
@@ -324,6 +342,143 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
     }
 
     return NGX_OK;
+}
+
+
+void
+ngx_configure_listening_socket(ngx_cycle_t *cycle)
+{
+    ngx_uint_t                 i;
+    ngx_listening_t           *ls;
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+    struct accept_filter_arg   af;
+#endif
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+    int                        timeout;
+#endif
+
+    ls = cycle->listening.elts;
+    for (i = 0; i < cycle->listening.nelts; i++) {
+
+        if (ls[i].rcvbuf != -1) {
+            if (setsockopt(ls[i].fd, SOL_SOCKET, SO_RCVBUF,
+                           (const void *) &ls[i].rcvbuf, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                              "setsockopt(SO_RCVBUF) %V failed, ignored",
+                              &ls[i].addr_text);
+                return;
+            }
+        }
+
+        if (ls[i].sndbuf != -1) {
+            if (setsockopt(ls[i].fd, SOL_SOCKET, SO_SNDBUF,
+                           (const void *) &ls[i].sndbuf, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                              "setsockopt(SO_SNDBUF) %V failed, ignored",
+                              &ls[i].addr_text);
+                return;
+            }
+        }
+
+        if (ls[i].listen) {
+            if (listen(ls[i].fd, ls[i].backlog) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                              "changing the listen() backlog to %d "
+                              "for %V failed, ignored",
+                              &ls[i].addr_text, ls[i].backlog);
+            }
+        }
+
+        /*
+         * setting deferred mode should be last operation on socket,
+         * because code may prematurely continue cycle on failure
+         */
+
+#if (NGX_HAVE_DEFERRED_ACCEPT)
+
+#ifdef SO_ACCEPTFILTER
+
+        if (ls->delete_deferred) {
+            if (setsockopt(ls->fd, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0) == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                              "setsockopt(SO_ACCEPTFILTER, NULL) "
+                              "for %V failed, ignored",
+                              &ls->addr_text);
+
+                if (ls->accept_filter) {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                                  "could not change the accept filter "
+                                  "to \"%s\" for %V, ignored",
+                                  ls->accept_filter, &ls->addr_text);
+                }
+
+                continue;
+            }
+
+            ls->deferred_accept = 0;
+        }
+
+        if (ls->add_deferred) {
+            ngx_memzero(&af, sizeof(struct accept_filter_arg));
+            (void) ngx_cpystrn((u_char *) af.af_name,
+                               (u_char *) ls->accept_filter, 16);
+
+            if (setsockopt(ls->fd, SOL_SOCKET, SO_ACCEPTFILTER,
+                           &af, sizeof(struct accept_filter_arg))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                              "setsockopt(SO_ACCEPTFILTER, \"%s\") "
+                              " for %V failed, ignored",
+                              ls->accept_filter, &ls->addr_text);
+                continue;
+            }
+
+            ls->deferred_accept = 1;
+        }
+
+#endif
+
+#ifdef TCP_DEFER_ACCEPT
+
+        if (ls->add_deferred || ls->delete_deferred) {
+
+            if (ls->add_deferred) {
+                timeout = (int) (ls->post_accept_timeout / 1000);
+
+            } else {
+                timeout = 0;
+            }
+
+            if (setsockopt(ls->fd, IPPROTO_TCP, TCP_DEFER_ACCEPT,
+                           &timeout, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                              "setsockopt(TCP_DEFER_ACCEPT, %d) for %V failed, "
+                              "ignored",
+                              timeout, &ls->addr_text);
+
+                continue;
+            }
+        }
+
+        if (ls->add_deferred) { 
+            ls->deferred_accept = 1;
+        }
+
+#endif
+
+#endif /* NGX_HAVE_DEFERRED_ACCEPT */
+    }
+
+    return;
 }
 
 
@@ -360,6 +515,9 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
         ngx_free_connection(c);
 
         c->fd = (ngx_socket_t) -1;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                       "close listening %V #%d ", &ls[i].addr_text, ls[i].fd);
 
         if (ngx_close_socket(ls[i].fd) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
@@ -495,27 +653,26 @@ ngx_close_connection(ngx_connection_t *c)
      * before we clean the connection
      */
 
-    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_OK) {
+    ngx_mutex_lock(ngx_posted_events_mutex);
 
-        if (c->read->prev) {
-            ngx_delete_posted_event(c->read);
-        }
-
-        if (c->write->prev) {
-            ngx_delete_posted_event(c->write);
-        }
-
-        c->read->closed = 1;
-        c->write->closed = 1;
-
-        if (c->single_connection) {
-            ngx_unlock(&c->lock);
-            c->read->locked = 0;
-            c->write->locked = 0;
-        }
-
-        ngx_mutex_unlock(ngx_posted_events_mutex);
+    if (c->read->prev) {
+        ngx_delete_posted_event(c->read);
     }
+
+    if (c->write->prev) {
+        ngx_delete_posted_event(c->write);
+    }
+
+    c->read->closed = 1;
+    c->write->closed = 1;
+
+    if (c->single_connection) {
+        ngx_unlock(&c->lock);
+        c->read->locked = 0;
+        c->write->locked = 0;
+    }
+
+    ngx_mutex_unlock(ngx_posted_events_mutex);
 
 #else
 

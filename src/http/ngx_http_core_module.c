@@ -152,11 +152,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
     { ngx_string("listen"),
-#if 0
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_1MORE,
-#else
       NGX_HTTP_SRV_CONF|NGX_CONF_1MORE,
-#endif
       ngx_http_core_listen,
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
@@ -2010,7 +2006,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_srv_conf_t *scf = conf;
 
     char                 *err;
-    ngx_str_t            *value;
+    ngx_str_t            *value, size;
     ngx_uint_t            n;
     struct hostent       *h;
     ngx_http_listen_t    *ls;
@@ -2050,6 +2046,8 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
     ls->conf.backlog = -1;
+    ls->conf.rcvbuf = -1;
+    ls->conf.sndbuf = -1;
 
     if (inet_upstream.host.len) {
         inet_upstream.host.data[inet_upstream.host.len] = '\0';
@@ -2100,8 +2098,8 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        if (ngx_strncmp(value[n].data, "bl=", 3) == 0) {
-            ls->conf.backlog = ngx_atoi(value[n].data + 3, value[n].len - 3);
+        if (ngx_strncmp(value[n].data, "backlog=", 8) == 0) {
+            ls->conf.backlog = ngx_atoi(value[n].data + 8, value[n].len - 8);
             ls->conf.bind = 1;
 
             if (ls->conf.backlog == NGX_ERROR || ls->conf.backlog == 0) {
@@ -2113,9 +2111,41 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        if (ngx_strncmp(value[n].data, "af=", 3) == 0) {
+        if (ngx_strncmp(value[n].data, "rcvbuf=", 7) == 0) {
+            size.len = value[n].len - 7;
+            size.data = value[n].data + 7;
+
+            ls->conf.rcvbuf = ngx_parse_size(&size);
+            ls->conf.bind = 1;
+
+            if (ls->conf.rcvbuf == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid rcvbuf \"%V\"", &value[n]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[n].data, "sndbuf=", 7) == 0) {
+            size.len = value[n].len - 7;
+            size.data = value[n].data + 7;
+
+            ls->conf.sndbuf = ngx_parse_size(&size);
+            ls->conf.bind = 1;
+
+            if (ls->conf.sndbuf == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid sndbuf \"%V\"", &value[n]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[n].data, "accept_filter=", 14) == 0) {
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
-            ls->conf.accept_filter = (char *) &value[n].data[3];
+            ls->conf.accept_filter = (char *) &value[n].data[14];
             ls->conf.bind = 1;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

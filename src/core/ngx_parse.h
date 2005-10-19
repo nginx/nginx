@@ -15,7 +15,7 @@
 #define NGX_PARSE_LARGE_TIME  -2
 
 
-ngx_int_t ngx_parse_size(ngx_str_t *line);
+ssize_t ngx_parse_size(ngx_str_t *line);
 ngx_int_t ngx_parse_time(ngx_str_t *line, ngx_int_t sec);
 
 

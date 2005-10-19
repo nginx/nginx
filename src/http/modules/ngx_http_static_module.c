@@ -82,7 +82,8 @@ ngx_http_static_handler(ngx_http_request_t *r)
     ngx_buf_t                 *b;
     ngx_chain_t                out;
     ngx_file_info_t            fi;
-    ngx_pool_cleanup_file_t   *cln;
+    ngx_pool_cleanup_t        *cln;
+    ngx_pool_cleanup_file_t   *clnf;
     ngx_http_core_loc_conf_t  *clcf;
 
     if (r->uri.data[r->uri.len - 1] == '/') {
@@ -118,6 +119,11 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                    "http filename: \"%s\"", path.data);
+
+    cln = ngx_pool_cleanup_add(r->pool, sizeof(ngx_pool_cleanup_file_t));
+    if (cln == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     fd = ngx_open_file(path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
@@ -223,18 +229,12 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
     log->action = "sending response to client";
 
-    cln = ngx_palloc(r->pool, sizeof(ngx_pool_cleanup_file_t));
-    if (cln == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
+    cln->handler = ngx_pool_cleanup_file;
+    clnf = cln->data;
 
-    cln->fd = fd;
-    cln->name = path.data;
-    cln->log = r->pool->log;
-
-    if (ngx_pool_cleanup_add(r->pool, ngx_pool_cleanup_file, cln) == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
+    clnf->fd = fd;
+    clnf->name = path.data;
+    clnf->log = r->pool->log;
 
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.content_length_n = ngx_file_size(&fi);

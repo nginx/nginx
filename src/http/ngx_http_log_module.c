@@ -309,11 +309,11 @@ ngx_http_log_time(ngx_http_request_t *r, u_char *buf, ngx_http_log_op_t *op)
 static u_char *
 ngx_http_log_msec(ngx_http_request_t *r, u_char *buf, ngx_http_log_op_t *op)
 {
-    struct timeval  tv;
+    ngx_time_t  *tp;
 
-    ngx_gettimeofday(&tv);
+    tp = ngx_timeofday();
 
-    return ngx_sprintf(buf, "%l.%03l", tv.tv_sec, tv.tv_usec / 1000);
+    return ngx_sprintf(buf, "%T.%03M", tp->sec, tp->msec);
 }
 
 

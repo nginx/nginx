@@ -659,6 +659,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
 
             ls->backlog = in_addr[a].conf.backlog;
+            ls->rcvbuf = in_addr[a].conf.rcvbuf;
+            ls->sndbuf = in_addr[a].conf.sndbuf;
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
             ls->accept_filter = in_addr[a].conf.accept_filter;

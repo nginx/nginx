@@ -13,7 +13,7 @@
  * while fcntl(F_SETFL, ~O_NONBLOCK) needs to learn before
  * the previous state using fcntl(F_GETFL).
  *
- * ioctl() and fcntl() are syscalls on at least FreeBSD 2.x, Linux 2.2
+ * ioctl() and fcntl() are syscalls at least in FreeBSD 2.x, Linux 2.2
  * and Solaris 7.
  *
  * ioctl() in Linux 2.4 and 2.6 uses BKL, however, fcntl(F_SETFL) uses it too.
@@ -73,6 +73,7 @@ ngx_tcp_push(ngx_socket_t s)
 
 #elif (NGX_LINUX)
 
+
 int
 ngx_tcp_nopush(ngx_socket_t s)
 {
@@ -83,6 +84,7 @@ ngx_tcp_nopush(ngx_socket_t s)
     return setsockopt(s, IPPROTO_TCP, TCP_CORK,
                       (const void *) &cork, sizeof(int));
 }
+
 
 int
 ngx_tcp_push(ngx_socket_t s)
@@ -102,6 +104,7 @@ ngx_tcp_nopush(ngx_socket_t s)
 {
     return 0;
 }
+
 
 int
 ngx_tcp_push(ngx_socket_t s)

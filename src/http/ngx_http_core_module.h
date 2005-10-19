@@ -18,6 +18,8 @@ typedef struct {
     unsigned                   bind:1;
 
     int                        backlog;
+    int                        rcvbuf;
+    int                        sndbuf;
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
     char                      *accept_filter;

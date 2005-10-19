@@ -31,12 +31,13 @@ typedef struct {
 } ngx_devpoll_conf_t;
 
 
-static ngx_int_t ngx_devpoll_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_devpoll_init(ngx_cycle_t *cycle, ngx_msec_t timer);
 static void ngx_devpoll_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_devpoll_add_event(ngx_event_t *ev, int event, u_int flags);
 static ngx_int_t ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags);
 static ngx_int_t ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags);
-static ngx_int_t ngx_devpoll_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_devpoll_process_events(ngx_cycle_t *cycle,
+    ngx_msec_t timer, ngx_uint_t flags);
 
 static void *ngx_devpoll_create_conf(ngx_cycle_t *cycle);
 static char *ngx_devpoll_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -107,7 +108,7 @@ ngx_module_t  ngx_devpoll_module = {
 
 
 static ngx_int_t
-ngx_devpoll_init(ngx_cycle_t *cycle)
+ngx_devpoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
     size_t               n;
     ngx_devpoll_conf_t  *dpcf;
@@ -323,47 +324,20 @@ ngx_devpoll_set_event(ngx_event_t *ev, int event, u_int flags)
 
 
 ngx_int_t
-ngx_devpoll_process_events(ngx_cycle_t *cycle)
+ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
+    ngx_uint_t flags)
 {
     int                 events, revents;
     size_t              n;
     ngx_err_t           err;
     ngx_int_t           i;
-    ngx_uint_t          lock, accept_lock;
-    ngx_msec_t          timer, delta;
-#if 0
-    ngx_cycle_t       **old_cycle;
-#endif
-    ngx_event_t        *rev, *wev;
+    ngx_uint_t          level;
+    ngx_msec_t          delta;
+    ngx_event_t        *rev, *wev, **queue;
     ngx_connection_t   *c;
     struct dvpoll       dvp;
-    struct timeval      tv;
-
-    timer = ngx_event_find_timer();
 
     /* NGX_TIMER_INFINITE == INFTIM */
-
-    accept_lock = 0;
-
-    if (ngx_accept_mutex) {
-        if (ngx_accept_disabled > 0) {
-            ngx_accept_disabled--;
-
-        } else {
-            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
-                return NGX_ERROR;
-            } 
-
-            if (ngx_accept_mutex_held) {
-                accept_lock = 1;
-
-            } else if (timer == NGX_TIMER_INFINITE
-                       || timer > ngx_accept_mutex_delay)
-            {
-                timer = ngx_accept_mutex_delay;
-            }
-        }
-    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "devpoll timer: %M", timer);
@@ -373,7 +347,6 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle)
         if (write(dp, change_list, n) != (ssize_t) n) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "write(/dev/poll) failed");
-            ngx_accept_mutex_unlock();
             return NGX_ERROR;
         }
     }
@@ -391,21 +364,32 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle)
 
     nchanges = 0;
 
-    ngx_gettimeofday(&tv);
-    ngx_time_update(tv.tv_sec);
-
-    delta = ngx_current_time;
-    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    delta = ngx_current_msec;
+    
+    if (flags & NGX_UPDATE_TIME) {
+        ngx_time_update(0, 0);
+    }
 
     if (err) {
-        ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
-                      cycle->log, err, "ioctl(DP_POLL) failed");
-        ngx_accept_mutex_unlock();
+        if (err == NGX_EINTR) {
+
+            if (ngx_event_timer_alarm) {
+                ngx_event_timer_alarm = 0;
+                return NGX_OK;
+            }
+ 
+            level = NGX_LOG_INFO;
+ 
+        } else { 
+            level = NGX_LOG_ALERT;
+        }
+
+        ngx_log_error(level, cycle->log, err, "ioctl(DP_POLL) failed");
         return NGX_ERROR;
     }
 
     if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_current_time - delta;
+        delta = ngx_current_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "devpoll timer: %M, delta: %M", timer, delta);
@@ -413,17 +397,15 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle)
         if (events == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "ioctl(DP_POLL) returned no events without timeout");
-            ngx_accept_mutex_unlock();
             return NGX_ERROR;
         }
     }
 
-    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-        ngx_accept_mutex_unlock();
-        return NGX_ERROR;
+    if (events == 0) {
+        return NGX_OK;
     }
 
-    lock = 1;
+    ngx_mutex_lock(ngx_posted_events_mutex);
 
     for (i = 0; i < events; i++) {
         c = ngx_cycle->files[event_list[i].fd];
@@ -468,74 +450,49 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle)
             revents |= POLLIN|POLLOUT;
         }
 
-        wev = c->write;
-
-        if ((revents & POLLOUT) && wev->active) {
-            wev->ready = 1;
-
-            if (!ngx_threaded && !ngx_accept_mutex_held) {
-                wev->handler(wev);
-
-            } else {
-                ngx_post_event(wev);
-            }
-        }
-
-        /*
-         * POLLIN must be handled after POLLOUT because we use
-         * the optimization to avoid the unnecessary mutex locking/unlocking
-         * if the accept event is the last one.
-         */
-
         rev = c->read;
 
         if ((revents & POLLIN) && rev->active) {
-            rev->ready = 1;
 
-            if (!ngx_threaded && !ngx_accept_mutex_held) {
+            if ((flags & NGX_POST_THREAD_EVENTS) && !rev->accept) {
+                rev->posted_ready = 1;
+
+            } else {
+                rev->ready = 1;
+            }
+
+            if (flags & NGX_POST_EVENTS) {
+                queue = (ngx_event_t **) (rev->accept ?
+                               &ngx_posted_accept_events : &ngx_posted_events);
+
+                ngx_locked_post_event(rev, queue);
+
+            } else {
                 rev->handler(rev);
+            }
+        }
 
-            } else if (!rev->accept) {
-                ngx_post_event(rev);
+        wev = c->write;
 
-            } else if (ngx_accept_disabled <= 0) {
-                ngx_mutex_unlock(ngx_posted_events_mutex);
+        if ((revents & POLLOUT) && wev->active) {
 
-                c->read->handler(rev);
+            if (flags & NGX_POST_THREAD_EVENTS) {
+                wev->posted_ready = 1;
 
-                if (ngx_accept_disabled > 0) { 
-                    ngx_accept_mutex_unlock();
-                    accept_lock = 0;
-                }
+            } else {
+                wev->ready = 1;
+            }
 
-                if (i + 1 == events) {
-                    lock = 0;
-                    break;
-                }
+            if (flags & NGX_POST_EVENTS) {
+                ngx_locked_post_event(wev, &ngx_posted_events);
 
-                if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-                    if (accept_lock) {
-                        ngx_accept_mutex_unlock();
-                    }
-                    return NGX_ERROR;
-                }
+            } else {
+                wev->handler(wev);
             }
         }
     }
 
-    if (accept_lock) {
-        ngx_accept_mutex_unlock();
-    }
-
-    if (lock) {
-        ngx_mutex_unlock(ngx_posted_events_mutex);
-    }
-
-    ngx_event_expire_timers();
-
-    if (!ngx_threaded) {
-        ngx_event_process_posted(cycle);
-    }
+    ngx_mutex_unlock(ngx_posted_events_mutex);
 
     return NGX_OK;
 }

@@ -37,7 +37,7 @@ fi
 case "$NGX_PLATFORM" in
 
     *:sun4u)
-        # "-mcpu=v9" enables the "casxa" assembler instruction
+        # "-mcpu=v9" enables the "casa" assembler instruction
         CFLAGS="$CFLAGS -mcpu=v9"
     ;;
 
@@ -134,6 +134,8 @@ case "$NGX_GCC_VER" in
         # we have a lot of the unused function arguments
         CFLAGS="$CFLAGS -Wno-unused-parameter"
         CFLAGS="$CFLAGS -Wno-unused-function"
+        CFLAGS="$CFLAGS -Wunused-variable"
+        CFLAGS="$CFLAGS -Wunused-value"
         #CFLAGS="$CFLAGS -Wunreachable-code"
     ;;
 

@@ -51,7 +51,8 @@ void                **ngx_tls;   /* the threads tls's array */
 static int   errno0;   /* the main thread's errno */
 static int  *errnos;   /* the threads errno's array */
 
-int *__error()
+int *
+__error()
 {
     int  tid;
 
@@ -72,7 +73,8 @@ int *__error()
 
 extern int  __isthreaded;
 
-void _spinlock(ngx_atomic_t *lock)
+void
+_spinlock(ngx_atomic_t *lock)
 {
     ngx_int_t  tries;
 
@@ -107,7 +109,8 @@ void _spinlock(ngx_atomic_t *lock)
 
 #ifndef _spinunlock
 
-void _spinunlock(ngx_atomic_t *lock)
+void
+_spinunlock(ngx_atomic_t *lock)
 {
     *lock = 0;
 }
@@ -115,8 +118,9 @@ void _spinunlock(ngx_atomic_t *lock)
 #endif
 
 
-ngx_err_t ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
-                            ngx_log_t *log)
+ngx_err_t
+ngx_create_thread(ngx_tid_t *tid, ngx_thread_value_t (*func)(void *arg),
+    void *arg, ngx_log_t *log)
 {
     ngx_pid_t   id;
     ngx_err_t   err;
@@ -174,7 +178,8 @@ ngx_err_t ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
 }
 
 
-ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
+ngx_int_t
+ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 {
     char              *red_zone, *zone;
     size_t             len;
@@ -264,7 +269,8 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 }
 
 
-ngx_tid_t ngx_thread_self()
+ngx_tid_t
+ngx_thread_self()
 {
     ngx_int_t  tid;
 
@@ -278,7 +284,8 @@ ngx_tid_t ngx_thread_self()
 }
 
 
-ngx_err_t ngx_thread_key_create(ngx_tls_key_t *key)
+ngx_err_t
+ngx_thread_key_create(ngx_tls_key_t *key)
 {
     if (nkeys >= NGX_THREAD_KEYS_MAX) {
         return NGX_ENOMEM;
@@ -290,7 +297,8 @@ ngx_err_t ngx_thread_key_create(ngx_tls_key_t *key)
 }
 
 
-ngx_err_t ngx_thread_set_tls(ngx_tls_key_t key, void *value)
+ngx_err_t
+ngx_thread_set_tls(ngx_tls_key_t key, void *value)
 {
     if (key >= NGX_THREAD_KEYS_MAX) {
         return NGX_EINVAL;
@@ -301,7 +309,8 @@ ngx_err_t ngx_thread_set_tls(ngx_tls_key_t key, void *value)
 }
 
 
-ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
+ngx_mutex_t *
+ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
 {
     ngx_mutex_t  *m;
     union semun   op;
@@ -342,7 +351,8 @@ ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
 }
 
 
-void ngx_mutex_destroy(ngx_mutex_t *m)
+void
+ngx_mutex_destroy(ngx_mutex_t *m)
 {
     if (semctl(m->semid, 0, IPC_RMID) == -1) {
         ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
@@ -353,7 +363,8 @@ void ngx_mutex_destroy(ngx_mutex_t *m)
 }
 
 
-ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
+ngx_int_t
+ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
 {
     uint32_t       lock, old;
     ngx_uint_t     tries;
@@ -414,7 +425,7 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
                               "%D threads wait for mutex %p, "
                               "while only %ui threads are available",
                               lock & ~NGX_MUTEX_LOCK_BUSY, m, nthreads);
-                return NGX_ERROR;
+                ngx_abort();
             }
 
             if (ngx_atomic_cmp_set(&m->lock, old, lock)) {
@@ -436,7 +447,7 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
                 if (semop(m->semid, &op, 1) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
                                  "semop() failed while waiting on mutex %p", m);
-                    return NGX_ERROR;
+                    ngx_abort();
                 }
 
                 ngx_log_debug2(NGX_LOG_DEBUG_MUTEX, m->log, 0,
@@ -483,13 +494,14 @@ ngx_int_t ngx_mutex_dolock(ngx_mutex_t *m, ngx_int_t try)
 }
 
 
-ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
+void
+ngx_mutex_unlock(ngx_mutex_t *m)
 {
     uint32_t       lock, old;
     struct sembuf  op;
 
     if (!ngx_threaded) {
-        return NGX_OK;
+        return;
     }
 
     old = m->lock;
@@ -497,7 +509,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
     if (!(old & NGX_MUTEX_LOCK_BUSY)) {
         ngx_log_error(NGX_LOG_ALERT, m->log, 0,
                       "trying to unlock the free mutex %p", m);
-        return NGX_ERROR;
+        ngx_abort();
     }
 
     /* free the mutex */
@@ -521,7 +533,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
         ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0,
                        "mutex %p is unlocked", m);
 
-        return NGX_OK;
+        return;
     }
 
     /* check whether we need to wake up a waiting thread */
@@ -558,7 +570,7 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
             if (semop(m->semid, &op, 1) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, m->log, ngx_errno,
                               "semop() failed while waking up on mutex %p", m);
-                return NGX_ERROR;
+                ngx_abort();
             }
 
             break;
@@ -570,11 +582,12 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
     ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0,
                    "mutex %p is unlocked", m);
 
-    return NGX_OK;
+    return;
 }
 
 
-ngx_cond_t *ngx_cond_init(ngx_log_t *log)
+ngx_cond_t *
+ngx_cond_init(ngx_log_t *log)
 {
     ngx_cond_t  *cv;
 
@@ -592,7 +605,8 @@ ngx_cond_t *ngx_cond_init(ngx_log_t *log)
 }
 
 
-void ngx_cond_destroy(ngx_cond_t *cv)
+void
+ngx_cond_destroy(ngx_cond_t *cv)
 {
     if (close(cv->kq) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cv->log, ngx_errno,
@@ -603,7 +617,8 @@ void ngx_cond_destroy(ngx_cond_t *cv)
 }
 
 
-ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
+ngx_int_t
+ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
 {
     int              n;
     ngx_err_t        err;
@@ -647,9 +662,7 @@ ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
         cv->tid = ngx_thread_self();
     }
 
-    if (ngx_mutex_unlock(m) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
+    ngx_mutex_unlock(m);
 
     ngx_log_debug3(NGX_LOG_DEBUG_CORE, cv->log, 0,
                    "cv %p wait, kq:%d, signo:%d", cv, cv->kq, cv->signo);
@@ -703,15 +716,14 @@ ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cv->log, 0, "cv %p is waked up", cv);
 
-    if (ngx_mutex_lock(m) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
+    ngx_mutex_lock(m);
 
     return NGX_OK;
 }
 
 
-ngx_int_t ngx_cond_signal(ngx_cond_t *cv)
+ngx_int_t
+ngx_cond_signal(ngx_cond_t *cv)
 {
     ngx_err_t  err;
 

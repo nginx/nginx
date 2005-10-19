@@ -9,6 +9,7 @@
 #include <ngx_event.h>
 
 
+ngx_thread_volatile ngx_event_t  *ngx_posted_accept_events;
 ngx_thread_volatile ngx_event_t  *ngx_posted_events;
 
 #if (NGX_THREADS)
@@ -16,13 +17,15 @@ ngx_mutex_t                      *ngx_posted_events_mutex;
 #endif
 
 
-void ngx_event_process_posted(ngx_cycle_t *cycle)
+void
+ngx_event_process_posted(ngx_cycle_t *cycle,
+    ngx_thread_volatile ngx_event_t **posted)
 {
     ngx_event_t  *ev;
 
     for ( ;; ) {
 
-        ev = (ngx_event_t *) ngx_posted_events;
+        ev = (ngx_event_t *) *posted;
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                       "posted event %p", ev);
@@ -40,7 +43,8 @@ void ngx_event_process_posted(ngx_cycle_t *cycle)
 
 #if (NGX_THREADS) && !(NGX_WIN32)
 
-void ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
+void
+ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
 {
     ngx_int_t     i;
 #if 0
@@ -76,7 +80,8 @@ void ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
 }
 
 
-ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
+ngx_int_t
+ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 {
     ngx_event_t  *ev;
 
@@ -139,9 +144,7 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 
             ev->handler(ev);
 
-            if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
+            ngx_mutex_lock(ngx_posted_events_mutex);
 
             if (ev->locked) {
                 ngx_unlock(ev->lock);
@@ -161,7 +164,8 @@ ngx_int_t ngx_event_thread_process_posted(ngx_cycle_t *cycle)
 
 #else
 
-void ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
+void
+ngx_wakeup_worker_thread(ngx_cycle_t *cycle)
 {
 }
 

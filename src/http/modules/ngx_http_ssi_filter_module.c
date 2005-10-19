@@ -1968,6 +1968,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r, uintptr_t gmt)
 {
     ngx_http_ssi_ctx_t         *ctx;
     ngx_http_variable_value_t  *vv;
+    ngx_time_t                 *tp;
     struct tm                   tm;
     char                        buf[NGX_HTTP_SSI_DATE_LEN];
 
@@ -1976,12 +1977,14 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r, uintptr_t gmt)
         return NULL;
     }
 
+    tp = ngx_timeofday();
+
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
     if (ctx->timefmt.len == sizeof("%s") - 1
         && ctx->timefmt.data[0] == '%' && ctx->timefmt.data[1] == 's')
     {
-        vv->value = ngx_time() + (gmt ? 0 : ngx_gmtoff);
+        vv->value = tp->sec + (gmt ? 0 : tp->gmtoff);
 
         vv->text.data = ngx_palloc(r->pool, NGX_TIME_T_LEN);
         if (vv->text.data == NULL) {
@@ -1994,12 +1997,12 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r, uintptr_t gmt)
     }
 
     if (gmt) {
-        ngx_libc_gmtime(&tm);
+        ngx_libc_gmtime(tp->sec, &tm);
     } else {
-        ngx_libc_localtime(&tm);
+        ngx_libc_localtime(tp->sec, &tm);
     }
 
-    vv->value = ngx_time() + (gmt ? 0 : ngx_gmtoff);
+    vv->value = tp->sec + (gmt ? 0 : tp->gmtoff);
 
     vv->text.len = strftime(buf, NGX_HTTP_SSI_DATE_LEN,
                             (char *) ctx->timefmt.data, &tm);

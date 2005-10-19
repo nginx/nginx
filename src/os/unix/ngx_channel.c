@@ -207,6 +207,9 @@ ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd, ngx_int_t event,
     wev->own_lock = &c->lock;
 #endif
 
+    rev->channel = 1;
+    wev->channel = 1;
+
     ev = (event == NGX_READ_EVENT) ? rev : wev;
 
     ev->handler = handler;

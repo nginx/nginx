@@ -14,7 +14,6 @@
 
 
 #define NGX_TIMER_INFINITE  (ngx_msec_t) -1
-#define NGX_TIMER_ERROR     (ngx_msec_t) -2
 
 #define NGX_TIMER_LAZY_DELAY  300
 
@@ -39,9 +38,7 @@ ngx_event_del_timer(ngx_event_t *ev)
                    "event timer del: %d: %M",
                     ngx_event_ident(ev->data), ev->timer.key);
 
-    if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
-        return;
-    }
+    ngx_mutex_lock(ngx_event_timer_mutex);
 
     ngx_rbtree_delete(&ngx_event_timer_rbtree, &ev->timer);
 
@@ -63,7 +60,7 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     ngx_msec_t      key;
     ngx_msec_int_t  diff;
 
-    key = ngx_current_time + timer;
+    key = ngx_current_msec + timer;
 
     if (ev->timer_set) {
 
@@ -91,9 +88,7 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
                    "event timer add: %d: %M:%M",
                     ngx_event_ident(ev->data), timer, ev->timer.key);
 
-    if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
-        return;
-    }
+    ngx_mutex_lock(ngx_event_timer_mutex);
 
     ngx_rbtree_insert(&ngx_event_timer_rbtree, &ev->timer);
 

@@ -92,6 +92,9 @@ fi
 
 if [ "$NGX_SYSTEM" = "NetBSD" ]; then
 
+    have=NGX_HAVE_TIMER_EVENT . auto/have
+    echo " + kqueue's EVFILT_TIMER found"
+
     # NetBSD 2.0 incompatibly defines kevent.udata as "intptr_t"
 
     cat << END >> $NGX_AUTO_CONFIG_H

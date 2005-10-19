@@ -624,7 +624,7 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
     file = value[1];
 
-    if (ngx_conf_full_name(cf->cycle, &file) == NGX_ERROR){
+    if (ngx_conf_full_name(cf->cycle, &file) == NGX_ERROR) {
         return NGX_CONF_ERROR;
     }
 

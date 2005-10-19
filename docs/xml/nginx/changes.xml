@@ -9,6 +9,141 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.3" date="19.10.2005">
+
+<change type="change">
+<para lang="ru">
+параметры "bl" и "af" директивы listen переименованы в "backlog"
+и "accept_filter".
+</para>
+<para lang="en">
+the "bl" and "af" parameters of the "listen" directive was renamed to
+the "backlog" and "accept_filter".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры "rcvbuf" и "sndbuf" в директиве listen.
+</para>
+<para lang="en">
+the "rcvbuf" and "sndbuf" parameters of the "listen" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+параметр лога $msec теперь не требует дополнительного системного
+вызова gettimeofday().
+</para>
+<para lang="en">
+the "$msec" log parameter does not require now the additional
+the gettimeofday() system call.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ключ -t теперь проверяет директивы listen.
+</para>
+<para lang="en">
+the -t switch now tests the "listen" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве listen был указан неверный адрес, то nginx после
+сигнала -HUP оставлял открытый сокет в состоянии CLOSED.
+</para>
+<para lang="en">
+if the invalid address was specified in the "listen" directive, then
+after the -HUP signal nginx left an open socket in the CLOSED state.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+для индексных файлов, содержащих в имени переменную, мог неверно выставляться
+тип mime по умолчанию;
+ошибка появилась в 0.3.0.
+</para>
+<para lang="en">
+the mime type may be incorrectly set to default value for index file with
+variable in the name;
+bug appeared in 0.3.0.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива timer_resolution.
+</para>
+<para lang="en">
+the "timer_resolution" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр лога $upstream_response_time в миллисекундах.
+</para>
+<para lang="en">
+the millisecond "$upstream_response_time" log parameter.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+временный файл с телом запроса клиента теперь удаляется сразу после того,
+как клиенту передан заголовок ответа.
+</para>
+<para lang="en">
+a temporary file with client request body now is removed just after
+the response header was transferred to a client.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с OpenSSL 0.9.6.
+</para>
+<para lang="en">
+OpenSSL 0.9.6 compatibility.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+пути к файлам с SSL сертификатом и ключом не могли быть относительными.
+</para>
+<para lang="en">
+the SSL certificate and key file paths could not be relative.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива ssl_prefer_server_ciphers не работала для модуля ngx_imap_ssl_module.
+</para>
+<para lang="en">
+the "ssl_prefer_server_ciphers" directive did not work in
+the ngx_imap_ssl_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива ssl_protocols позволяла задать только один протокол.
+</para>
+<para lang="en">
+the "ssl_protocols" directive allowed to specify the single protocol only.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.2" date="12.10.2005">
 
 <change type="feature">

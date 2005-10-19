@@ -8,7 +8,8 @@
 #include <ngx_core.h>
 
 
-void ngx_gettimeofday(struct timeval *tp)
+void
+ngx_gettimeofday(struct timeval *tp)
 {
     uint64_t  intervals;
     FILETIME  ft;
@@ -36,29 +37,28 @@ void ngx_gettimeofday(struct timeval *tp)
 }
 
 
-void ngx_libc_localtime(struct tm *tm)
+void
+ngx_libc_localtime(time_t s, struct tm *tm)
 {
-    time_t      now;
     struct tm  *t;
 
-    now = ngx_time();
-    t = localtime(&now);
+    t = localtime(&s);
     *tm = *t;
 }
 
 
-void ngx_libc_gmtime(struct tm *tm)
+void
+ngx_libc_gmtime(time_t s, struct tm *tm)
 {
-    time_t      now;
     struct tm  *t;
 
-    now = ngx_time();
-    t = gmtime(&now);
+    t = gmtime(&s);
     *tm = *t;
 }
 
 
-ngx_int_t ngx_gettimezone(void)
+ngx_int_t
+ngx_gettimezone(void)
 {
     TIME_ZONE_INFORMATION  tz;
 

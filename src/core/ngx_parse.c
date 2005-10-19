@@ -8,11 +8,13 @@
 #include <ngx_core.h>
 
 
-ngx_int_t ngx_parse_size(ngx_str_t *line)
+ssize_t
+ngx_parse_size(ngx_str_t *line)
 {
     u_char     last;
     size_t     len;
-    ngx_int_t  scale, size;
+    ssize_t    size;
+    ngx_int_t  scale;
 
     len = line->len;
     last = line->data[len - 1];
@@ -34,7 +36,7 @@ ngx_int_t ngx_parse_size(ngx_str_t *line)
         scale = 1;
     }
 
-    size = ngx_atoi(line->data, len);
+    size = ngx_atosz(line->data, len);
     if (size == NGX_ERROR) {
         return NGX_ERROR;
     }
@@ -45,7 +47,8 @@ ngx_int_t ngx_parse_size(ngx_str_t *line)
 }
 
 
-ngx_int_t ngx_parse_time(ngx_str_t *line, ngx_int_t sec)
+ngx_int_t
+ngx_parse_time(ngx_str_t *line, ngx_int_t sec)
 {
     size_t      len;
     u_char     *start, last;

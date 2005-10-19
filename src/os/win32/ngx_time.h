@@ -40,8 +40,8 @@ typedef FILETIME              ngx_mtime_t;
 #define NGX_HAVE_GETTIMEZONE  1
 
 ngx_int_t ngx_gettimezone(void);
-void ngx_libc_localtime(struct tm *tm);
-void ngx_libc_gmtime(struct tm *tm);
+void ngx_libc_localtime(time_t s, struct tm *tm);
+void ngx_libc_gmtime(time_t s, struct tm *tm);
 void ngx_gettimeofday(struct timeval *tp);
 
 

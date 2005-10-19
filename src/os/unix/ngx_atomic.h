@@ -33,6 +33,8 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add);
 
 /* the code in src/os/unix/ngx_sunpro_x86.il */
 
+#define ngx_memory_barrier()        __asm (".volatile"); __asm (".nonvolatile")
+
 
 #else /* ( __GNUC__ || __INTEL_COMPILER ) */
 
@@ -63,6 +65,8 @@ ngx_atomic_int_t
 ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add);
 
 /* the code in src/os/unix/ngx_sunpro_amd64.il */
+
+#define ngx_memory_barrier()        __asm (".volatile"); __asm (".nonvolatile")
 
 
 #else /* ( __GNUC__ || __INTEL_COMPILER ) */

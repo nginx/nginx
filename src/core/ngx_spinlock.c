@@ -12,7 +12,8 @@
  * TODO: the P4 optimized assembler version with the "pause" operation
  */
 
-void ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin)
+void
+ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin)
 {
 
 #if (NGX_HAVE_ATOMIC_OPS)

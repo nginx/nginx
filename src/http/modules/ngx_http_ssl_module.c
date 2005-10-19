@@ -17,6 +17,15 @@ static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     void *parent, void *child);
 
+#if !defined (SSL_OP_CIPHER_SERVER_PREFERENCE)
+
+static char *ngx_http_ssl_nosupported(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+
+static char  ngx_http_ssl_openssl097[] = "OpenSSL 0.9.7 and higher";
+
+#endif
+
 
 static ngx_conf_bitmask_t  ngx_http_ssl_protocols[] = {
     { ngx_string("SSLv2"), NGX_SSL_SSLv2 },
@@ -24,6 +33,7 @@ static ngx_conf_bitmask_t  ngx_http_ssl_protocols[] = {
     { ngx_string("TLSv1"), NGX_SSL_TLSv1 },
     { ngx_null_string, 0 }
 };
+
 
 
 static ngx_command_t  ngx_http_ssl_commands[] = {
@@ -50,14 +60,14 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       NULL },
 
     { ngx_string("ssl_protocols"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, protocols),
       &ngx_http_ssl_protocols },
 
     { ngx_string("ssl_ciphers"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_1MORE,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, ciphers),
@@ -65,10 +75,14 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
 
     { ngx_string("ssl_prefer_server_ciphers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
       ngx_conf_set_flag_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, prefer_server_ciphers),
       NULL },
+#else
+      ngx_http_ssl_nosupported, 0, 0, ngx_http_ssl_openssl097 },
+#endif
 
       ngx_null_command
 };
@@ -144,6 +158,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_ssl_srv_conf_t *prev = parent;
     ngx_http_ssl_srv_conf_t *conf = child;
 
+    ngx_pool_cleanup_t  *cln;
+
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
 
     if (conf->enable == 0) {
@@ -172,28 +188,36 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_pool_cleanup_add(cf->pool, ngx_ssl_cleanup_ctx, &conf->ssl) == NULL)
-    {
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_ssl_certificate(&conf->ssl, conf->certificate.data,
-                            conf->certificate_key.data) != NGX_OK)
+    cln->handler = ngx_ssl_cleanup_ctx;
+    cln->data = &conf->ssl;
+
+    if (ngx_ssl_certificate(cf, &conf->ssl, &conf->certificate,
+                            &conf->certificate_key) != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
     if (SSL_CTX_set_cipher_list(conf->ssl.ctx,
-                                (const char *) conf->ciphers.data) == 0)
+                                (const char *) conf->ciphers.data)
+        == 0)
     {
         ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
                       "SSL_CTX_set_cipher_list(\"%V\") failed",
                       &conf->ciphers);
     }
 
+#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
+
     if (conf->prefer_server_ciphers) {
         SSL_CTX_set_options(conf->ssl.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
     }
+
+#endif
 
     /* a temporary 512-bit RSA key is required for export versions of MSIE */
     if (ngx_ssl_generate_rsa512_key(&conf->ssl) != NGX_OK) {
@@ -207,3 +231,18 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     return NGX_CONF_OK;
 }
+
+
+#if !defined (SSL_OP_CIPHER_SERVER_PREFERENCE)
+
+static char *
+ngx_http_ssl_nosupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "\"%V\" directive is available only in %s,",
+                       &cmd->name, cmd->post);
+
+    return NGX_CONF_ERROR;
+}
+
+#endif

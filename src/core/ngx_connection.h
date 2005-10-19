@@ -25,7 +25,10 @@ struct ngx_listening_s {
 
     int                 family;
     int                 type;
+
     int                 backlog;
+    int                 rcvbuf;
+    int                 sndbuf;
 
     /* handler of accepted connection */
     ngx_connection_handler_pt   handler;
@@ -51,7 +54,7 @@ struct ngx_listening_s {
     unsigned            bound:1;       /* already bound */
     unsigned            inherited:1;   /* inherited from previous process */
     unsigned            nonblocking_accept:1;
-    unsigned            change_backlog:1;
+    unsigned            listen:1;
     unsigned            nonblocking:1;
     unsigned            shared:1;    /* shared between threads or processes */
     unsigned            addr_ntop:1;
@@ -162,6 +165,7 @@ ngx_listening_t *ngx_listening_inet_stream_socket(ngx_conf_t *cf,
     in_addr_t addr, in_port_t port);
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);
 ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle);
+void ngx_configure_listening_socket(ngx_cycle_t *cycle);
 void ngx_close_listening_sockets(ngx_cycle_t *cycle);
 void ngx_close_connection(ngx_connection_t *c);
 ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text);

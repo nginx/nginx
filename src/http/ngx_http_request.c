@@ -163,15 +163,8 @@ ngx_http_init_connection(ngx_connection_t *c)
         /* the deferred accept(), rtsig, aio, iocp */
 
         if (ngx_accept_mutex) {
-            if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
 
-                ngx_http_close_connection(c);
-                return;
-            }
-
-            ngx_post_event(rev); 
-
-            ngx_mutex_unlock(ngx_posted_events_mutex);
+            ngx_post_event(rev, &ngx_posted_events);
 
 #if (NGX_STAT_STUB)
             ngx_atomic_fetch_add(ngx_stat_reading, 1);

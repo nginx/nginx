@@ -2,20 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-if test -z "$NGX_PLATFORM"; then
-    echo "checking for OS"
-
-    NGX_SYSTEM=`uname -s 2>/dev/null`
-    NGX_RELEASE=`uname -r 2>/dev/null`
-    NGX_MACHINE=`uname -m 2>/dev/null`
-
-    echo " + $NGX_SYSTEM $NGX_RELEASE $NGX_MACHINE"
-
-    NGX_PLATFORM="$NGX_SYSTEM:$NGX_RELEASE:$NGX_MACHINE";
-
-else
-    echo "building for $NGX_PLATFORM"
-fi
+echo "checking for $NGX_SYSTEM specific features"
 
 case "$NGX_PLATFORM" in
 

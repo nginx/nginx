@@ -37,7 +37,8 @@ static ngx_str_t  error_log = ngx_null_string;
 #endif
 
 
-ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
+ngx_cycle_t *
+ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void                      *rv;
     ngx_uint_t                 i, n, failed;
@@ -45,18 +46,11 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_conf_t                 conf;
     ngx_pool_t                *pool;
     ngx_cycle_t               *cycle, **old;
-    ngx_socket_t               fd;
     ngx_list_part_t           *part;
     ngx_open_file_t           *file;
     ngx_listening_t           *ls, *nls;
     ngx_core_conf_t           *ccf;
     ngx_core_module_t         *module;
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
-    struct accept_filter_arg   af;
-#endif
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
-    int                        timeout;
-#endif
 
     log = old_cycle->log;
 
@@ -315,39 +309,19 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                     if (ngx_cmp_sockaddr(nls[n].sockaddr, ls[i].sockaddr)
                         == NGX_OK)
                     {
-                        fd = ls[i].fd;
-#if (NGX_WIN32)
-                        /*
-                         * Winsock assignes a socket number divisible by 4 so
-                         * to find a connection we divide a socket number by 4.
-                         */
-
-                        fd /= 4;
-#endif
-                        if (fd >= (ngx_socket_t) cycle->connection_n) {
-                            ngx_log_error(NGX_LOG_EMERG, log, 0,
-                                        "%d connections is not enough to hold "
-                                        "an open listening socket on %V, "
-                                        "required at least %d connections",
-                                        cycle->connection_n,
-                                        &ls[i].addr_text, fd);
-                            failed = 1;
-                            break;
-                        }
-
                         nls[n].fd = ls[i].fd;
                         nls[n].previous = &ls[i];
                         ls[i].remain = 1;
 
                         if (ls[n].backlog != nls[i].backlog) {
-                            nls[n].change_backlog = 1;
+                            nls[n].listen = 1;
                         }
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
 
                         /*
                          * FreeBSD, except the most recent versions,
-                         * can not remove accept filter
+                         * could not remove accept filter
                          */
                         nls[n].deferred_accept = ls[i].deferred_accept;
 
@@ -404,93 +378,13 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
             }
         }
 
-        if (!ngx_test_config && !failed) {
+        if (!failed) {
             if (ngx_open_listening_sockets(cycle) == NGX_ERROR) {
                 failed = 1;
             }
 
-            if (!failed) {
-                ls = cycle->listening.elts;
-                for (i = 0; i < cycle->listening.nelts; i++) {
-
-                    if (ls[i].change_backlog) {
-                        if (listen(ls[i].fd, ls[i].backlog) == -1) {
-                            ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
-                                          "changing the listen() backlog to %d "
-                                          "for %V failed, ignored",
-                                          &ls[i].addr_text, ls[i].backlog);
-                        }
-                    }
-
-#if (NGX_HAVE_DEFERRED_ACCEPT)
-
-#ifdef SO_ACCEPTFILTER
-                    if (ls[i].delete_deferred) {
-                        if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER,
-                                       NULL, 0) == -1)
-                        {
-                            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                                        "setsockopt(SO_ACCEPTFILTER, NULL) "
-                                        "for %V failed, ignored",
-                                        &ls[i].addr_text);
-
-                            if (ls[i].accept_filter) {
-                                ngx_log_error(NGX_LOG_ALERT, log, 0,
-                                        "could not change the accept filter "
-                                        "to \"%s\" for %V, ignored",
-                                        ls[i].accept_filter, &ls[i].addr_text);
-                            }
-
-                            continue;
-                        }
-
-                        ls[i].deferred_accept = 0;
-                    }
-
-                    if (ls[i].add_deferred) {
-                        ngx_memzero(&af, sizeof(struct accept_filter_arg));
-                        (void) ngx_cpystrn((u_char *) af.af_name,
-                                           (u_char *) ls[i].accept_filter, 16);
-
-                        if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER,
-                                 &af, sizeof(struct accept_filter_arg)) == -1)
-                        {
-                            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                                        "setsockopt(SO_ACCEPTFILTER, \"%s\") "
-                                        "for %V failed, ignored",
-                                        ls[i].accept_filter, &ls[i].addr_text);
-                            continue;
-                        }
-
-                        ls[i].deferred_accept = 1;
-                    }
-#endif
-
-#ifdef TCP_DEFER_ACCEPT
-                    if (ls[i].add_deferred || ls[i].delete_deferred) {
-                        timeout = 0;
-
-                        if (ls[i].add_deferred) {
-                            timeout = (int) (ls[i].post_accept_timeout / 1000);
-                        }
-
-                        if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT,
-                                       &timeout, sizeof(int)) == -1)
-                        {
-                            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                                        "setsockopt(TCP_DEFER_ACCEPT, %d) "
-                                        "for %V failed, ignored",
-                                        timeout, &ls[i].addr_text);
-                            continue;
-                        }
-                    }
-
-                    if (ls[i].add_deferred) {
-                        ls[i].deferred_accept = 1;
-                    }
-#endif
-#endif
-                }
+            if (!ngx_test_config && !failed) {
+                ngx_configure_listening_socket(cycle);
             }
         }
     }
@@ -680,7 +574,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 }
 
 
-static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2)
+static ngx_int_t
+ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2)
 {
     struct sockaddr_in  *sin1, *sin2;
 
@@ -707,7 +602,8 @@ static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2)
 
 #if !(NGX_WIN32)
 
-ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
+ngx_int_t
+ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
 {
     ngx_uint_t        trunc;
     size_t            len;
@@ -776,7 +672,8 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
 }
 
 
-void ngx_delete_pidfile(ngx_cycle_t *cycle)
+void
+ngx_delete_pidfile(ngx_cycle_t *cycle)
 {   
     u_char           *name;
     ngx_core_conf_t  *ccf;
@@ -798,7 +695,8 @@ void ngx_delete_pidfile(ngx_cycle_t *cycle)
 #endif
 
 
-void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
+void
+ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 {
     ngx_fd_t          fd;
     ngx_uint_t        i;
@@ -936,7 +834,8 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 }
 
 
-static void ngx_clean_old_cycles(ngx_event_t *ev)
+static void
+ngx_clean_old_cycles(ngx_event_t *ev)
 {
     ngx_uint_t     i, n, found, live;
     ngx_log_t     *log;

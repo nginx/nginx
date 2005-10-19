@@ -8,20 +8,16 @@
 #include <ngx_core.h>
 
 
-void ngx_localtime(ngx_tm_t *tm)
+void
+ngx_localtime(time_t s, ngx_tm_t *tm)
 {
 #if (NGX_HAVE_LOCALTIME_R)
-    time_t     now;
-
-    now = ngx_time();
-    (void) localtime_r(&now, tm);
+    (void) localtime_r(&s, tm);
 
 #else
-    time_t     now;
     ngx_tm_t  *t;
 
-    now = ngx_time();
-    t = localtime(&now);
+    t = localtime(&s);
     *tm = *t;
 
 #endif
@@ -31,40 +27,32 @@ void ngx_localtime(ngx_tm_t *tm)
 }
 
 
-void ngx_libc_localtime(struct tm *tm)
+void
+ngx_libc_localtime(time_t s, struct tm *tm)
 {
 #if (NGX_HAVE_LOCALTIME_R)
-    time_t      now;
-
-    now = ngx_time();
-    (void) localtime_r(&now, tm);
+    (void) localtime_r(&s, tm);
 
 #else
-    time_t      now;
     struct tm  *t;
 
-    now = ngx_time();
-    t = localtime(&now);
+    t = localtime(&s);
     *tm = *t;
 
 #endif
 }
 
 
-void ngx_libc_gmtime(struct tm *tm)
+void
+ngx_libc_gmtime(time_t s, struct tm *tm)
 {
 #if (NGX_HAVE_LOCALTIME_R)
-    time_t      now;
-
-    now = ngx_time();
-    (void) gmtime_r(&now, tm);
+    (void) gmtime_r(&s, tm);
 
 #else
-    time_t      now;
     struct tm  *t;
 
-    now = ngx_time();
-    t = gmtime(&now);
+    t = gmtime(&s);
     *tm = *t;
 
 #endif

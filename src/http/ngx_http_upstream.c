@@ -66,6 +66,8 @@ static size_t ngx_http_upstream_log_status_getlen(ngx_http_request_t *r,
     uintptr_t data);
 static u_char *ngx_http_upstream_log_status(ngx_http_request_t *r,
     u_char *buf, ngx_http_log_op_t *op);
+static u_char *ngx_http_upstream_log_response_time(ngx_http_request_t *r,
+    u_char *buf, ngx_http_log_op_t *op);
 
 static u_char *ngx_http_upstream_log_error(ngx_http_request_t *r, u_char *buf,
     size_t len);
@@ -204,6 +206,8 @@ static ngx_http_log_op_name_t ngx_http_upstream_log_fmt_ops[] = {
     { ngx_string("upstream_status"), 0, NULL,
                                         ngx_http_upstream_log_status_getlen,
                                         ngx_http_upstream_log_status },
+    { ngx_string("upstream_response_time"), NGX_TIME_T_LEN + 4, NULL, NULL,
+                                        ngx_http_upstream_log_response_time },
     { ngx_null_string, 0, NULL, NULL, NULL }
 };
 
@@ -217,6 +221,7 @@ char *ngx_http_upstream_header_errors[] = {
 void
 ngx_http_upstream_init(ngx_http_request_t *r)
 {
+    ngx_time_t                *tp;
     ngx_connection_t          *c;
     ngx_http_upstream_t       *u;
     ngx_http_core_loc_conf_t  *clcf;
@@ -285,6 +290,10 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     }
 
     ngx_memzero(u->state, sizeof(ngx_http_upstream_state_t));
+
+    tp = ngx_timeofday();
+
+    u->state->response_time = tp->sec * 1000 + tp->msec;
 
     ngx_http_upstream_connect(r, u);
 }
@@ -978,6 +987,8 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_list_part_t                *part;
     ngx_table_elt_t                *h;
     ngx_event_pipe_t               *p;
+    ngx_pool_cleanup_t             *cl;
+    ngx_pool_cleanup_file_t        *clf;
     ngx_http_core_loc_conf_t       *clcf;
     ngx_http_upstream_header_t     *hh;
     ngx_http_upstream_main_conf_t  *umcf;
@@ -1032,6 +1043,20 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     u->header_sent = 1;
+
+    if (r->request_body->temp_file) {
+        for (cl = r->pool->cleanup; cl; cl = cl->next) {
+            if (cl->handler == ngx_pool_cleanup_file) {
+                clf = cl->data;
+
+                if (clf->fd == r->request_body->temp_file->file.fd) {
+                    cl->handler(clf);
+                    cl->handler = NULL;
+                    break;
+                }
+            }
+        }
+    }
 
     /* TODO: preallocate event_pipe bufs, look "Content-Length" */
 
@@ -1404,8 +1429,16 @@ static void
 ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {
+    ngx_time_t  *tp;
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
+
+    if (u->state->response_time) {
+        tp = ngx_timeofday();
+        u->state->response_time = tp->sec * 1000 + tp->msec
+                                  - u->state->response_time;
+    }
 
     u->finalize_request(r, rc);
 
@@ -1419,8 +1452,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     u->peer.connection = NULL;
 
-    if (u->header_sent
-        && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
+    if (u->header_sent && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
     {
         rc = 0;
     }
@@ -1770,6 +1802,44 @@ ngx_http_upstream_log_status(ngx_http_request_t *r, u_char *buf,
 
         } else {
             buf = ngx_sprintf(buf, "%ui", state[i].status);
+        }
+
+        if (++i == u->states.nelts) {
+            return buf;
+        }
+
+        *buf++ = ',';
+        *buf++ = ' ';
+    }
+}
+
+
+static u_char *
+ngx_http_upstream_log_response_time(ngx_http_request_t *r, u_char *buf,
+    ngx_http_log_op_t *op)
+{
+    ngx_uint_t                  i;
+    ngx_http_upstream_t        *u;
+    ngx_http_upstream_state_t  *state;
+
+    u = r->upstream;
+
+    if (u == NULL) {
+        *buf = '-';
+        return buf + 1;
+    }
+
+    i = 0;
+    state = u->states.elts;
+
+    for ( ;; ) {
+        if (state[i].status == 0) {
+            *buf++ = '-';
+
+        } else {
+            buf = ngx_sprintf(buf, "%d.%03d",
+                               state[i].response_time / 1000,
+                               state[i].response_time % 1000);
         }
 
         if (++i == u->states.nelts) {

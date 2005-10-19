@@ -101,3 +101,11 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
 }
 
 #endif
+
+
+/*
+ * on x86 the write operations go in a program order, so we need only
+ * to disable the gcc reorder optimizations
+ */
+
+#define ngx_memory_barrier()    __asm__ volatile ("" ::: "memory")

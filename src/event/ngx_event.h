@@ -134,6 +134,9 @@ struct ngx_event_s {
 
     unsigned         closed:1;
 
+    /* to test on worker exit */
+    unsigned         channel:1;
+
 #if (NGX_THREADS)
 
     unsigned         locked:1;
@@ -196,9 +199,10 @@ typedef struct {
     ngx_int_t  (*del_conn)(ngx_connection_t *c, u_int flags);
 
     ngx_int_t  (*process_changes)(ngx_cycle_t *cycle, ngx_uint_t nowait);
-    ngx_int_t  (*process_events)(ngx_cycle_t *cycle);
+    ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
+                   ngx_uint_t flags);
 
-    ngx_int_t  (*init)(ngx_cycle_t *cycle);
+    ngx_int_t  (*init)(ngx_cycle_t *cycle, ngx_msec_t timer);
     void       (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
 
@@ -214,7 +218,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * The event filter is deleted after a notification without an additional
- * syscall: select, poll, kqueue, epoll, Solaris 10's event ports.
+ * syscall: kqueue, epoll, Solaris 10's event ports.
  */
 #define NGX_USE_ONESHOT_EVENT    0x00000002
 
@@ -269,6 +273,12 @@ extern ngx_event_actions_t   ngx_event_actions;
  * poll, /dev/poll, rt signals.
  */
 #define NGX_USE_FD_EVENT         0x00000400
+
+/*
+ * The event module handles periodic or absolute timer event by itself:
+ * kqueue in FreeBSD 4.4 and NetBSD 2.0, Solaris 10's event ports.
+ */
+#define NGX_USE_TIMER_EVENT      0x00000800
 
 
 
@@ -446,13 +456,12 @@ extern ngx_atomic_t  *ngx_stat_writing;
 #endif
 
 
-
-#define ngx_accept_mutex_unlock()                                             \
-           if (ngx_accept_mutex_held) {                                       \
-               *ngx_accept_mutex = 0;                                         \
-           }
+#define NGX_UPDATE_TIME         1
+#define NGX_POST_EVENTS         2
+#define NGX_POST_THREAD_EVENTS  4
 
 
+extern sig_atomic_t           ngx_event_timer_alarm;
 extern ngx_uint_t             ngx_event_flags;
 extern ngx_module_t           ngx_events_module;
 extern ngx_module_t           ngx_event_core_module;
@@ -470,6 +479,7 @@ ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
 u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
+void ngx_process_events_and_timers(ngx_cycle_t *cycle);
 ngx_int_t ngx_handle_read_event(ngx_event_t *rev, u_int flags);
 ngx_int_t ngx_handle_write_event(ngx_event_t *wev, size_t lowat);
 

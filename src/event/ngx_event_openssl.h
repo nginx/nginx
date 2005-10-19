@@ -58,7 +58,8 @@ typedef struct {
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
 ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols);
-ngx_int_t ngx_ssl_certificate(ngx_ssl_t *ssl, u_char *cert, u_char *key);
+ngx_int_t ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_str_t *cert, ngx_str_t *key);
 ngx_int_t ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl);
 ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
     ngx_uint_t flags);

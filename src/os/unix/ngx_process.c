@@ -282,7 +282,6 @@ void
 ngx_signal_handler(int signo)
 {
     char            *action;
-    struct timeval   tv;
     ngx_int_t        ignore;
     ngx_err_t        err;
     ngx_signal_t    *sig;
@@ -297,8 +296,7 @@ ngx_signal_handler(int signo)
         }
     }
 
-    ngx_gettimeofday(&tv);
-    ngx_time_update(tv.tv_sec);
+    ngx_time_update(0, 0);
 
     action = "";
 
@@ -456,6 +454,7 @@ ngx_process_get_status(void)
             if (err == NGX_ECHILD) {
                 ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, errno,
                               "waitpid() failed");
+                return;
             }
 
 #endif
@@ -527,6 +526,6 @@ ngx_debug_point(void)
         break;
 
     case NGX_DEBUG_POINTS_ABORT:
-        abort();
+        ngx_abort();
     }
 }

@@ -10,11 +10,13 @@
 #include <ngx_iocp_module.h>
 
 
-static ngx_int_t ngx_iocp_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_iocp_init(ngx_cycle_t *cycle, ngx_msec_t timer);
+static ngx_thread_value_t __stdcall ngx_iocp_timer(void *data);
 static void ngx_iocp_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key);
 static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, u_int flags);
-static ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
+    ngx_uint_t flags);
 static void *ngx_iocp_create_conf(ngx_cycle_t *cycle);
 static char *ngx_iocp_init_conf(ngx_cycle_t *cycle, void *conf);
 
@@ -93,11 +95,13 @@ ngx_os_io_t ngx_iocp_io = {
 };
 
 
-static HANDLE  iocp;
+static HANDLE      iocp;
+static ngx_tid_t   timer_thread;
+static ngx_msec_t  msec;
 
 
 static ngx_int_t
-ngx_iocp_init(ngx_cycle_t *cycle)
+ngx_iocp_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
     ngx_iocp_conf_t  *cf;
 
@@ -109,7 +113,7 @@ ngx_iocp_init(ngx_cycle_t *cycle)
     }
 
     if (iocp == NULL) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "CreateIoCompletionPort() failed");
         return NGX_ERROR;
     }
@@ -120,7 +124,52 @@ ngx_iocp_init(ngx_cycle_t *cycle)
 
     ngx_event_flags = NGX_USE_AIO_EVENT|NGX_USE_IOCP_EVENT;
 
+    if (timer == 0) {
+        return NGX_OK;
+    }
+
+    /*
+     * The waitable timer could not be used, because
+     * GetQueuedCompletionStatus() does not set a thread to alertable state
+     */
+
+    if (timer_thread == NULL) {
+
+        msec = timer;
+
+        if (ngx_create_thread(&timer_thread, ngx_iocp_timer, &msec, cycle->log)
+            != 0)
+        {
+            return NGX_ERROR;
+        }
+    }
+
+    ngx_event_flags |= NGX_USE_TIMER_EVENT;
+
     return NGX_OK;
+}
+
+
+static ngx_thread_value_t __stdcall
+ngx_iocp_timer(void *data)
+{
+    ngx_msec_t  timer = *(ngx_msec_t *) data;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
+                   "THREAD %p %p", &msec, data);
+
+    for ( ;; ) {
+        Sleep(timer);
+
+        ngx_time_update(0, 0);
+#if 1
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0, "timer");
+#endif
+    }
+
+#ifdef __WATCOMC__
+    return 0;
+#endif
 }
 
 
@@ -178,18 +227,16 @@ ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
 
 
 static
-ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
+ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
+    ngx_uint_t flags)
 {
     int                rc;
     u_int              key;
     u_long             bytes;
     ngx_err_t          err;
-    ngx_msec_t         timer, delta;
+    ngx_msec_t         delta;
     ngx_event_t       *ev;
-    struct timeval     tv;
     ngx_event_ovlp_t  *ovlp;
-
-    timer = ngx_event_find_timer();
 
     if (timer == NGX_TIMER_INFINITE) {
         timer = INFINITE;
@@ -206,17 +253,17 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
         err = 0;
     }
 
-    ngx_gettimeofday(&tv);
-    ngx_time_update(tv.tv_sec);
+    delta = ngx_current_msec;
+    
+    if (flags & NGX_UPDATE_TIME) {
+        ngx_time_update(0, 0);
+    }
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "iocp: %d b:%d k:%d ov:%p", rc, bytes, key, ovlp);
 
-    delta = ngx_current_time;
-    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
     if (timer != INFINITE) {
-        delta = ngx_current_time - delta;
+        delta = ngx_current_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "iocp timer: %M, delta: %M", timer, delta);
@@ -230,8 +277,6 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
 
                 return NGX_ERROR;
             }
-
-            ngx_event_expire_timers();
 
             return NGX_OK;
         }
@@ -262,8 +307,6 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, err,
                        "iocp: aborted event %p", ev); 
-
-        ngx_event_expire_timers();
 
         return NGX_OK;
     }
@@ -296,8 +339,6 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle)
                    "iocp event handler: %p", ev->handler);
 
     ev->handler(ev);
-
-    ngx_event_expire_timers();
 
     return NGX_OK;
 }

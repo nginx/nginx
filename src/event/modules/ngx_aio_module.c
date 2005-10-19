@@ -14,12 +14,13 @@
 #endif
 
 
-static ngx_int_t ngx_aio_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_aio_init(ngx_cycle_t *cycle, ngx_msec_t timer);
 static void ngx_aio_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_aio_add_event(ngx_event_t *ev, int event, u_int flags);
 static ngx_int_t ngx_aio_del_event(ngx_event_t *ev, int event, u_int flags);
 static ngx_int_t ngx_aio_del_connection(ngx_connection_t *c, u_int flags);
-static ngx_int_t ngx_aio_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_aio_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
+    ngx_uint_t flags);
 
 
 ngx_os_io_t ngx_os_aio = {
@@ -73,9 +74,9 @@ ngx_module_t  ngx_aio_module = {
 #if (NGX_HAVE_KQUEUE)
 
 static ngx_int_t
-ngx_aio_init(ngx_cycle_t *cycle)
+ngx_aio_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
-    if (ngx_kqueue_module_ctx.actions.init(cycle) == NGX_ERROR) {
+    if (ngx_kqueue_module_ctx.actions.init(cycle, timer) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -159,9 +160,9 @@ ngx_aio_del_connection(ngx_connection_t *c, u_int flags)
 
 
 static ngx_int_t
-ngx_aio_process_events(ngx_cycle_t *cycle)
+ngx_aio_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
-    return ngx_kqueue_module_ctx.actions.process_events(cycle);
+    return ngx_kqueue_module_ctx.actions.process_events(cycle, timer, flags);
 }
 
 #endif /* NGX_HAVE_KQUEUE */

@@ -50,7 +50,7 @@ ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
     
-    ngx_max_sockets = rlmt.rlim_cur;
+    ngx_max_sockets = (ngx_int_t) rlmt.rlim_cur;
 
 #if (NGX_HAVE_INHERITED_NONBLOCK)
     ngx_inherited_nonblocking = 1;

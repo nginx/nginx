@@ -22,8 +22,18 @@ CFLAGS="$CFLAGS -Ob2"
 
 # single-file IP optimizations
 #IPO="-ip"
+
 # multi-file IP optimizations
-IPO="-ipo -ipo_obj"
+case "$NGX_ICC_VER" in
+    9.*)
+        IPO="-ipo"
+    ;;
+
+    *)
+        IPO="-ipo -ipo_obj"
+    ;;
+esac
+
 CFLAGS="$CFLAGS $IPO"
 CORE_LINK="$CORE_LINK $IPO"
 CORE_LINK="$CORE_LINK -opt_report_file=$NGX_OBJS/opt_report_file"
@@ -72,7 +82,7 @@ CFLAGS="$CFLAGS -wd171"
 CFLAGS="$CFLAGS -wd181"
 # zero used for undefined preprocessing identifier
 CFLAGS="$CFLAGS -wd193"
-#the format string ends before this argument
+# the format string ends before this argument
 CFLAGS="$CFLAGS -wd268"
 # invalid format string conversion
 CFLAGS="$CFLAGS -wd269"
@@ -92,15 +102,17 @@ CFLAGS="$CFLAGS -wd981"
 CFLAGS="$CFLAGS -wd1418"
 # external declaration in primary source file
 CFLAGS="$CFLAGS -wd1419"
-# explicit conversion of a 64-bit integral type to a smaller integral type
-CFLAGS="$CFLAGS -wd1683"
-# conversion from pointer to same-sized integral type, warning on offsetof()
-CFLAGS="$CFLAGS -wd1684"
 
 case "$NGX_ICC_VER" in
     8.* | 9.*)
         # "cc" clobber ignored, warnings for Liunx's htons()
         CFLAGS="$CFLAGS -wd1469"
+        # explicit conversion of a 64-bit integral type to a smaller
+        # integral type
+        CFLAGS="$CFLAGS -wd1683"
+        # conversion from pointer to same-sized integral type,
+        # warning on offsetof()
+        CFLAGS="$CFLAGS -wd1684"
 
         # STUB
         # non-POD class type passed through ellipsis, Linux only ?

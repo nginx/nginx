@@ -10,11 +10,12 @@
 
 
 
-static ngx_int_t ngx_select_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_select_init(ngx_cycle_t *cycle, ngx_msec_t timer);
 static void ngx_select_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_select_add_event(ngx_event_t *ev, int event, u_int flags);
 static ngx_int_t ngx_select_del_event(ngx_event_t *ev, int event, u_int flags);
-static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
+    ngx_uint_t flags);
 static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
@@ -33,11 +34,6 @@ static int            max_fd;
 static ngx_uint_t     nevents;
 
 static ngx_event_t  **event_index;
-#if 0
-static ngx_event_t  **ready_index;
-#endif
-
-static ngx_event_t   *accept_events;
 
 
 static ngx_str_t    select_name = ngx_string("select");
@@ -79,7 +75,7 @@ ngx_module_t  ngx_select_module = {
 
 
 static ngx_int_t
-ngx_select_init(ngx_cycle_t *cycle)
+ngx_select_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
     ngx_event_t  **index;
 
@@ -103,26 +99,15 @@ ngx_select_init(ngx_cycle_t *cycle)
             ngx_memcpy(index, event_index, sizeof(ngx_event_t *) * nevents);
             ngx_free(event_index);
         }
+
         event_index = index;
-
-#if 0
-        if (ready_index) {
-            ngx_free(ready_index);
-        }
-
-        ready_index = ngx_alloc(sizeof(ngx_event_t *) * 2 * cycle->connection_n,
-                                cycle->log);
-        if (ready_index == NULL) {
-            return NGX_ERROR;
-        }
-#endif
     }
 
     ngx_io = ngx_os_io;
 
     ngx_event_actions = ngx_select_module_ctx.actions;
 
-    ngx_event_flags = NGX_USE_LEVEL_EVENT|NGX_USE_ONESHOT_EVENT;
+    ngx_event_flags = NGX_USE_LEVEL_EVENT;
 
 #if (NGX_WIN32)
     max_read = max_write = 0;
@@ -138,9 +123,6 @@ static void
 ngx_select_done(ngx_cycle_t *cycle)
 {
     ngx_free(event_index);
-#if 0
-    ngx_free(ready_index);
-#endif
 
     event_index = NULL;
 }
@@ -262,40 +244,21 @@ ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 
 
 static ngx_int_t
-ngx_select_process_events(ngx_cycle_t *cycle)
+ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
+    ngx_uint_t flags)
 {
-    int                       ready, nready;
-    ngx_uint_t                i, found, lock;
-    ngx_err_t                 err;
-    ngx_msec_t                timer, delta;
-    ngx_event_t              *ev;
-    ngx_connection_t         *c;
-    struct timeval            tv, *tp;
-#if (NGX_HAVE_SELECT_CHANGE_TIMEOUT)
-    static ngx_msec_t         deltas = 0;
+    int                 ready, nready;
+    ngx_uint_t          i, found;
+    ngx_err_t           err;
+    ngx_msec_t          delta;
+    ngx_event_t        *ev, **queue;
+    ngx_connection_t   *c;
+    struct timeval      tv, *tp;
+#if !(NGX_WIN32)
+    ngx_uint_t          level;
 #endif
 
-    timer = ngx_event_find_timer();
-
 #if !(NGX_WIN32)
-
-    if (ngx_accept_mutex) {
-        if (ngx_accept_disabled > 0) {
-            ngx_accept_disabled--;
-
-        } else {
-            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            if (ngx_accept_mutex_held == 0
-                && (timer == NGX_TIMER_INFINITE
-                    || timer > ngx_accept_mutex_delay))
-            {
-                timer = ngx_accept_mutex_delay;
-            }
-        }
-    }
 
     if (max_fd == -1) {
         for (i = 0; i < nevents; i++) {
@@ -353,9 +316,13 @@ ngx_select_process_events(ngx_cycle_t *cycle)
 #endif
 
 #if (NGX_WIN32)
+
     ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp);
+
 #else
+
     ready = select(max_fd + 1, &work_read_fd_set, &work_write_fd_set, NULL, tp);
+
 #endif
 
     if (ready == -1) {
@@ -364,58 +331,14 @@ ngx_select_process_events(ngx_cycle_t *cycle)
         err = 0;
     }
 
-#if (NGX_HAVE_SELECT_CHANGE_TIMEOUT)
+    delta = ngx_current_msec;
 
-    if (timer != NGX_TIMER_INFINITE) {
-        delta = timer - ((ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000);
-
-        /*
-         * learn the real time and update the cached time
-         * if the sum of the last deltas overcomes 1 second
-         */
-
-        deltas += delta;
-        if (deltas > 1000) {
-            ngx_gettimeofday(&tv);
-            ngx_time_update(tv.tv_sec);
-            deltas = tv.tv_usec / 1000;
-
-            ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000
-                                                           + tv.tv_usec / 1000;
-        } else {
-            ngx_current_time += delta;
-        }
-
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "select timer: %M, delta: %M", timer, delta);
-
-    } else {
-        deltas = 0;
-
-        ngx_gettimeofday(&tv);
-        ngx_time_update(tv.tv_sec);
-
-        delta = ngx_current_time;
-        ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
-        if (ready == 0) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "select() returned no events without timeout");
-            ngx_accept_mutex_unlock();
-            return NGX_ERROR;
-        }
+    if (flags & NGX_UPDATE_TIME) {
+        ngx_time_update(0, 0);
     }
 
-#else /* !(NGX_HAVE_SELECT_CHANGE_TIMEOUT) */
-
-    ngx_gettimeofday(&tv);
-    ngx_time_update(tv.tv_sec);
-
-    delta = ngx_current_time;
-    ngx_current_time = (ngx_msec_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
     if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_current_time - delta;
+        delta = ngx_current_msec - delta;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "select timer: %M, delta: %M", timer, delta);
@@ -424,34 +347,48 @@ ngx_select_process_events(ngx_cycle_t *cycle)
         if (ready == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "select() returned no events without timeout");
-            ngx_accept_mutex_unlock();
             return NGX_ERROR;
         }
     }
-
-#endif /* NGX_HAVE_SELECT_CHANGE_TIMEOUT */
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "select ready %d", ready);
 
-    if (err) {
 #if (NGX_WIN32)
+
+    if (err) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, err, "select() failed");
+        return NGX_ERROR;
+    }
+
 #else
-        ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
-                      cycle->log, err, "select() failed");
+
+    if (err) {
+        if (err == NGX_EINTR) {
+
+            if (ngx_event_timer_alarm) {
+                ngx_event_timer_alarm = 0;
+                return NGX_OK;
+            }
+ 
+            level = NGX_LOG_INFO;
+ 
+        } else { 
+            level = NGX_LOG_ALERT;
+        }
+
+        ngx_log_error(level, cycle->log, err, "select() failed");
+        return NGX_ERROR;
+    }
+
 #endif
-        ngx_accept_mutex_unlock();
-        return NGX_ERROR;
+
+    if (nevents == 0) {
+        return NGX_OK;
     }
 
+    ngx_mutex_lock(ngx_posted_events_mutex);
 
-    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-        ngx_accept_mutex_unlock();
-        return NGX_ERROR;
-    }
-
-    lock = 1;
     nready = 0;
 
     for (i = 0; i < nevents; i++) {
@@ -477,108 +414,18 @@ ngx_select_process_events(ngx_cycle_t *cycle)
         if (found) {
             ev->ready = 1;
 
-            if (ev->oneshot) {
-                if (ev->timer_set) {
-                    ngx_del_timer(ev);
-                }
-
-                if (ev->write) {
-                    ngx_select_del_event(ev, NGX_WRITE_EVENT, 0);
-                } else {
-                    ngx_select_del_event(ev, NGX_READ_EVENT, 0);
-                }
-            }
-
-            if (ev->accept) {
-                ev->next = accept_events;
-                accept_events = ev;
-            } else {
-                ngx_post_event(ev);
-            }
+            queue = (ngx_event_t **) (ev->accept ? &ngx_posted_accept_events:
+                                                   &ngx_posted_events);
+            ngx_locked_post_event(ev, queue); 
 
             nready++;
-
-#if 0
-            ready_index[nready++] = ev;
-#endif
         }
     }
 
-#if 0
-    for (i = 0; i < nready; i++) {
-        ev = ready_index[i];
-        ready--;
-
-        if (!ev->active) {
-            continue;
-        }
-
-        ev->ready = 1;
-
-        if (ev->oneshot) {
-            if (ev->timer_set) {
-                ngx_del_timer(ev);
-            }
-
-            if (ev->write) {
-                ngx_select_del_event(ev, NGX_WRITE_EVENT, 0);
-            } else {
-                ngx_select_del_event(ev, NGX_READ_EVENT, 0);
-            }
-        }
-
-        ev->handler(ev);
-    }
-#endif
-
-    ev = accept_events;
-
-    for ( ;; ) {
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                      "accept event %p", ev);
-
-        if (ev == NULL) {
-            break;
-        }
-
-        ngx_mutex_unlock(ngx_posted_events_mutex);
-
-        ev->handler(ev);
-
-        if (ngx_accept_disabled > 0) {
-            lock = 0;
-            break;
-        }
-
-        ev = ev->next;
-
-        if (ev == NULL) {
-            lock = 0;
-            break;
-        }
-
-        if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-            ngx_accept_mutex_unlock();
-            return NGX_ERROR;
-        }
-    }
-
-    ngx_accept_mutex_unlock();
-    accept_events = NULL;
-
-    if (lock) {
-        ngx_mutex_unlock(ngx_posted_events_mutex);
-    }
+    ngx_mutex_unlock(ngx_posted_events_mutex);
 
     if (ready != nready) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "select ready != events");
-    }
-
-    ngx_event_expire_timers();
-
-    if (!ngx_threaded) {
-        ngx_event_process_posted(cycle);
     }
 
     return NGX_OK;
@@ -599,19 +446,25 @@ ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
     /* disable warning: the default FD_SETSIZE is 1024U in FreeBSD 5.x */
 
 #if !(NGX_WIN32)
+
     if ((unsigned) ecf->connections > FD_SETSIZE) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "the maximum number of files "
                       "supported by select() is " ngx_value(FD_SETSIZE));
         return NGX_CONF_ERROR;
     }
+
 #endif
 
 #if (NGX_THREADS) && !(NGX_WIN32)
+
     ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                   "select() is not supported in the threaded mode");
     return NGX_CONF_ERROR;
+
 #else
+
     return NGX_CONF_OK;
+
 #endif
 }

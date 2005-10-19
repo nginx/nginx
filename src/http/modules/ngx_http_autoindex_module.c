@@ -144,6 +144,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     ngx_dir_t                       dir;
     ngx_uint_t                      i, level;
     ngx_pool_t                     *pool;
+    ngx_time_t                     *tp;
     ngx_chain_t                     out;
     ngx_array_t                     entries;
     ngx_http_autoindex_entry_t     *entry;
@@ -372,6 +373,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     b->last = ngx_cpymem(b->last, "<hr><pre><a href=\"../\">../</a>" CRLF,
                          sizeof("<hr><pre><a href=\"../\">../</a>" CRLF) - 1);
 
+    tp = ngx_timeofday();
+
     for (i = 0; i < entries.nelts; i++) {
         b->last = ngx_cpymem(b->last, "<a href=\"", sizeof("<a href=\"") - 1);
 
@@ -428,7 +431,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         *b->last++ = ' ';
 
-        ngx_gmtime(entry[i].mtime + ngx_gmtoff * 60 * alcf->localtime, &tm);
+        ngx_gmtime(entry[i].mtime + tp->gmtoff * 60 * alcf->localtime, &tm);
 
         b->last = ngx_sprintf(b->last, "%02d-%s-%d %02d:%02d ",
                               tm.ngx_tm_mday,

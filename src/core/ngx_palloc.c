@@ -207,7 +207,7 @@ ngx_pcalloc(ngx_pool_t *pool, size_t size)
 
 
 ngx_pool_cleanup_t *
-ngx_pool_cleanup_add(ngx_pool_t *p, ngx_pool_cleanup_pt handler, void *data)
+ngx_pool_cleanup_add(ngx_pool_t *p, size_t size)
 {
     ngx_pool_cleanup_t  *c;
 
@@ -216,11 +216,22 @@ ngx_pool_cleanup_add(ngx_pool_t *p, ngx_pool_cleanup_pt handler, void *data)
         return NULL;
     }
 
-    c->handler = handler;
-    c->data = data;
+    if (size) {
+        c->data = ngx_palloc(p, size);
+        if (c->data == NULL) {
+            return NULL;
+        }
+
+    } else {
+        c->data = NULL;
+    }
+
+    c->handler = NULL;
     c->next = p->cleanup;
 
     p->cleanup = c;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, p->log, 0, "add cleanup: %p", c);
 
     return c;
 }
@@ -230,6 +241,9 @@ void
 ngx_pool_cleanup_file(void *data)
 {
     ngx_pool_cleanup_file_t  *c = data;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, c->log, 0, "run cleanup: %p, fd:%d",
+                   c, c->fd);
 
     if (ngx_close_file(c->fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,

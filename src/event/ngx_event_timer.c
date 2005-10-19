@@ -52,9 +52,7 @@ ngx_event_find_timer(void)
         return NGX_TIMER_INFINITE;
     }
 
-    if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
-        return NGX_TIMER_ERROR;
-    }
+    ngx_mutex_lock(ngx_event_timer_mutex);
 
     root = ngx_event_timer_rbtree.root;
     sentinel = ngx_event_timer_rbtree.sentinel;
@@ -63,7 +61,7 @@ ngx_event_find_timer(void)
 
     ngx_mutex_unlock(ngx_event_timer_mutex);
 
-    timer = (ngx_msec_int_t) node->key - (ngx_msec_int_t) ngx_current_time;
+    timer = (ngx_msec_int_t) node->key - (ngx_msec_int_t) ngx_current_msec;
 
     return (ngx_msec_t) (timer > 0 ? timer : 0);
 }
@@ -79,9 +77,7 @@ ngx_event_expire_timers(void)
 
     for ( ;; ) {
 
-        if (ngx_mutex_lock(ngx_event_timer_mutex) == NGX_ERROR) {
-            return;
-        }
+        ngx_mutex_lock(ngx_event_timer_mutex);
 
         root = ngx_event_timer_rbtree.root;
 
@@ -93,7 +89,7 @@ ngx_event_expire_timers(void)
 
         /* node->key <= ngx_current_time */
 
-        if ((ngx_msec_int_t) node->key - (ngx_msec_int_t) ngx_current_time <= 0)
+        if ((ngx_msec_int_t) node->key - (ngx_msec_int_t) ngx_current_msec <= 0)
         {
             ev = (ngx_event_t *) ((char *) node - offsetof(ngx_event_t, timer));
 
@@ -133,14 +129,9 @@ ngx_event_expire_timers(void)
 
 #if (NGX_THREADS)
             if (ngx_threaded) {
-                if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-                    return;
-                }
-
                 ev->posted_timedout = 1;
-                ngx_post_event(ev);
 
-                ngx_mutex_unlock(ngx_posted_events_mutex);
+                ngx_post_event(ev, &ngx_posted_events);
 
                 ngx_unlock(ev->lock);
 

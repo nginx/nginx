@@ -29,12 +29,12 @@
 
 
 typedef struct {
-    time_t                          bl_time;
+    ngx_msec_t                      bl_time;
     ngx_uint_t                      bl_state;
 
     ngx_uint_t                      status;
-    time_t                          time;
-    
+    ngx_msec_t                      response_time;
+
     ngx_str_t                      *peer;
 } ngx_http_upstream_state_t;
 

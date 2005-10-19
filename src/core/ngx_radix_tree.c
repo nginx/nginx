@@ -205,6 +205,7 @@ ngx_radix32tree_delete(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask)
     for ( ;; ) {
         if (node->parent->right == node) {
             node->parent->right = NULL;
+
         } else {
             node->parent->left = NULL;
         }
@@ -214,11 +215,15 @@ ngx_radix32tree_delete(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask)
 
         node = node->parent;
 
-        if (node->right
-            || node->left
-            || node->value != NGX_RADIX_NO_VALUE
-            || node->parent == NULL)
-        {
+        if (node->right || node->left) {
+            break;
+        }
+
+        if (node->value != NGX_RADIX_NO_VALUE) {
+            break;
+        }
+
+        if (node->parent == NULL) {
             break;
         }
     }

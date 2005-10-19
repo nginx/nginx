@@ -10,7 +10,7 @@
 
 
 static int ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
-                                             ngx_event_busy_lock_ctx_t *ctx);
+    ngx_event_busy_lock_ctx_t *ctx);
 static void ngx_event_busy_lock_handler(ngx_event_t *ev);
 static void ngx_event_busy_lock_posted_handler(ngx_event_t *ev);
 
@@ -23,14 +23,12 @@ static void ngx_event_busy_lock_posted_handler(ngx_event_t *ev);
  * NGX_ERROR:  an error occured while the mutex locking
  */
 
-ngx_int_t ngx_event_busy_lock(ngx_event_busy_lock_t *bl,
-                              ngx_event_busy_lock_ctx_t *ctx)
+ngx_int_t
+ngx_event_busy_lock(ngx_event_busy_lock_t *bl, ngx_event_busy_lock_ctx_t *ctx)
 {
     ngx_int_t  rc;
 
-    if (ngx_mutex_lock(bl->mutex) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
+    ngx_mutex_lock(bl->mutex);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->event->log, 0,
                    "event busy lock: b:%d mb:%d",
@@ -66,14 +64,13 @@ ngx_int_t ngx_event_busy_lock(ngx_event_busy_lock_t *bl,
 }
 
 
-ngx_int_t ngx_event_busy_lock_cachable(ngx_event_busy_lock_t *bl,
-                                       ngx_event_busy_lock_ctx_t *ctx)
+ngx_int_t
+ngx_event_busy_lock_cachable(ngx_event_busy_lock_t *bl,
+    ngx_event_busy_lock_ctx_t *ctx)
 {
     ngx_int_t  rc;
 
-    if (ngx_mutex_lock(bl->mutex) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
+    ngx_mutex_lock(bl->mutex);
 
     rc = ngx_event_busy_lock_look_cachable(bl, ctx);
 
@@ -112,15 +109,14 @@ ngx_int_t ngx_event_busy_lock_cachable(ngx_event_busy_lock_t *bl,
 }
 
 
-ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
-                                ngx_event_busy_lock_ctx_t *ctx)
+void
+ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
+    ngx_event_busy_lock_ctx_t *ctx)
 {
     ngx_event_t                *ev;
     ngx_event_busy_lock_ctx_t  *wakeup;
 
-    if (ngx_mutex_lock(bl->mutex) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
+    ngx_mutex_lock(bl->mutex);
 
     if (bl->events) {
         wakeup = bl->events;
@@ -138,7 +134,7 @@ ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
 
     if (wakeup == NULL) {
         ngx_mutex_unlock(bl->mutex);
-        return NGX_OK;
+        return;
     }
 
     if (ctx->md5) {
@@ -152,13 +148,7 @@ ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
 
             ev = wakeup->event;
 
-            if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            ngx_post_event(ev);
-
-            ngx_mutex_unlock(ngx_posted_events_mutex);
+            ngx_post_event(ev, &ngx_posted_events);
         }
 
         ngx_mutex_unlock(bl->mutex);
@@ -177,27 +167,18 @@ ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
             ngx_del_timer(ev);
         }
 
-        if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-
-        ngx_post_event(ev);
-
-        ngx_mutex_unlock(ngx_posted_events_mutex);
+        ngx_post_event(ev, &ngx_posted_events);
     }
-
-    return NGX_OK;
 }
 
 
-ngx_int_t ngx_event_busy_lock_cancel(ngx_event_busy_lock_t *bl,
-                                     ngx_event_busy_lock_ctx_t *ctx)
+void
+ngx_event_busy_lock_cancel(ngx_event_busy_lock_t *bl,
+    ngx_event_busy_lock_ctx_t *ctx)
 {
     ngx_event_busy_lock_ctx_t  *c, *p;
 
-    if (ngx_mutex_lock(bl->mutex) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
+    ngx_mutex_lock(bl->mutex);
 
     bl->waiting--;
 
@@ -216,13 +197,12 @@ ngx_int_t ngx_event_busy_lock_cancel(ngx_event_busy_lock_t *bl,
     }
 
     ngx_mutex_unlock(bl->mutex);
-
-    return NGX_OK;
 }
 
 
-static int ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
-                                             ngx_event_busy_lock_ctx_t *ctx)
+static ngx_int_t
+ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
+    ngx_event_busy_lock_ctx_t *ctx)
 {
     ngx_int_t    free;
     ngx_uint_t   i, bit, cachable, mask;
@@ -286,21 +266,17 @@ static int ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
 }
 
 
-static void ngx_event_busy_lock_handler(ngx_event_t *ev)
+static void
+ngx_event_busy_lock_handler(ngx_event_t *ev)
 {
-    if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-        return;
-    }
-
-    ngx_post_event(ev);
-
-    ngx_mutex_unlock(ngx_posted_events_mutex);
-
     ev->handler = ngx_event_busy_lock_posted_handler;
+
+    ngx_post_event(ev, &ngx_posted_events);
 }
 
 
-static void ngx_event_busy_lock_posted_handler(ngx_event_t *ev)
+static void
+ngx_event_busy_lock_posted_handler(ngx_event_t *ev)
 {
     ngx_event_busy_lock_ctx_t  *ctx;
 

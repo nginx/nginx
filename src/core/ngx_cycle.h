@@ -54,6 +54,8 @@ typedef struct {
      ngx_flag_t               daemon;
      ngx_flag_t               master;
 
+     ngx_msec_t               timer_resolution;
+
      ngx_int_t                worker_processes;
      ngx_int_t                debug_points;
 

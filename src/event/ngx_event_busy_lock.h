@@ -52,13 +52,13 @@ typedef struct {
 
 
 ngx_int_t ngx_event_busy_lock(ngx_event_busy_lock_t *bl,
-                              ngx_event_busy_lock_ctx_t *ctx);
+    ngx_event_busy_lock_ctx_t *ctx);
 ngx_int_t ngx_event_busy_lock_cachable(ngx_event_busy_lock_t *bl,
-                                       ngx_event_busy_lock_ctx_t *ctx);
-ngx_int_t ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
-                                ngx_event_busy_lock_ctx_t *ctx);
-ngx_int_t ngx_event_busy_lock_cancel(ngx_event_busy_lock_t *bl,
-                                     ngx_event_busy_lock_ctx_t *ctx);
+    ngx_event_busy_lock_ctx_t *ctx);
+void ngx_event_busy_unlock(ngx_event_busy_lock_t *bl,
+    ngx_event_busy_lock_ctx_t *ctx);
+void ngx_event_busy_lock_cancel(ngx_event_busy_lock_t *bl,
+    ngx_event_busy_lock_ctx_t *ctx);
 
 
 #endif /* _NGX_EVENT_BUSY_LOCK_H_INCLUDED_ */

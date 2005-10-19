@@ -98,11 +98,6 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
-#ifndef NGX_HAVE_SELECT_CHANGE_TIMEOUT
-#define NGX_HAVE_SELECT_CHANGE_TIMEOUT   1
-#endif
-
-
 #define NGX_HAVE_OS_SPECIFIC_INIT    1
 
 

@@ -105,7 +105,27 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols)
         return NGX_ERROR;
     }
 
-    SSL_CTX_set_options(ssl->ctx, SSL_OP_ALL);
+    /*
+     * these options are needed on client side only:
+     *    SSL_OP_MICROSOFT_SESS_ID_BUG
+     *    SSL_OP_NETSCAPE_CHALLENGE_BUG
+     *    SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG
+     */
+
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG);
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER);
+
+    /* this option allow a potential SSL 2.0 rollback (CAN-2005-2969) */
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_MSIE_SSLV2_RSA_PADDING);
+
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_SSLEAY_080_CLIENT_DH_BUG);
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_TLS_D5_BUG);
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_TLS_BLOCK_PADDING_BUG);
+
+#ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
+#endif
+
 
     if (ngx_ssl_protocols[protocols >> 1] != 0) {
         SSL_CTX_set_options(ssl->ctx, ngx_ssl_protocols[protocols >> 1]);
@@ -120,20 +140,31 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols)
 
 
 ngx_int_t
-ngx_ssl_certificate(ngx_ssl_t *ssl, u_char *cert, u_char *key)
+ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
+    ngx_str_t *key)
 {
-    if (SSL_CTX_use_certificate_chain_file(ssl->ctx, (char *) cert) == 0) {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_use_certificate_chain_file(\"%s\") failed",
-                      cert);
+    if (ngx_conf_full_name(cf->cycle, cert) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
-    if (SSL_CTX_use_PrivateKey_file(ssl->ctx, (char *) key, SSL_FILETYPE_PEM)
+    if (SSL_CTX_use_certificate_chain_file(ssl->ctx, (char *) cert->data)
         == 0)
     {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_use_PrivateKey_file(\"%s\") failed", key);
+                      "SSL_CTX_use_certificate_chain_file(\"%s\") failed",
+                      cert->data);
+        return NGX_ERROR;
+    }
+
+    if (ngx_conf_full_name(cf->cycle, key) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_use_PrivateKey_file(ssl->ctx, (char *) key->data,
+                                    SSL_FILETYPE_PEM) == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_use_PrivateKey_file(\"%s\") failed", key->data);
         return NGX_ERROR;
     }
 
@@ -402,13 +433,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
                 return NGX_ERROR;
             }
 
-            if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            ngx_post_event(c->write);
-
-            ngx_mutex_unlock(ngx_posted_events_mutex);
+            ngx_post_event(c->write, &ngx_posted_events);
         }
 
         return NGX_OK;
@@ -632,13 +657,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
                 return NGX_ERROR;
             }
 
-            if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            ngx_post_event(c->read);
-
-            ngx_mutex_unlock(ngx_posted_events_mutex);
+            ngx_post_event(c->read, &ngx_posted_events);
         }
 
         return n;
@@ -925,8 +944,8 @@ static char *
 ngx_openssl_noengine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "\"ssl_engine\" is not supported: " NGX_SSL_NAME
-                       " library does not support crypto accelerators");
+                       "\"ssl_engine\" directive is available only in "
+                       "OpenSSL 0.9.7 and higher,");
 
     return NGX_CONF_ERROR;
 }

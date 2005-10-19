@@ -29,17 +29,24 @@ static ngx_conf_enum_t  ngx_debug_points[] = {
 static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("daemon"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_core_conf_t, daemon),
       NULL },
 
     { ngx_string("master_process"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_core_conf_t, master),
+      NULL },
+
+    { ngx_string("timer_resolution"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      0,
+      offsetof(ngx_core_conf_t, timer_resolution),
       NULL },
 
     { ngx_string("pid"),
@@ -534,6 +541,8 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
 
     ccf->daemon = NGX_CONF_UNSET;
     ccf->master = NGX_CONF_UNSET;
+    ccf->timer_resolution = NGX_CONF_UNSET_MSEC;
+
     ccf->worker_processes = NGX_CONF_UNSET;
     ccf->debug_points = NGX_CONF_UNSET;
 
@@ -564,6 +573,8 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
+    ngx_conf_init_msec_value(ccf->timer_resolution, 0);
+
     ngx_conf_init_value(ccf->worker_processes, 1);
     ngx_conf_init_value(ccf->debug_points, 0);
 

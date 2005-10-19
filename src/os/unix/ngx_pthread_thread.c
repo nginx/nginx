@@ -15,8 +15,9 @@ static ngx_uint_t   max_threads;
 static pthread_attr_t  thr_attr;
 
 
-ngx_err_t ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
-                            ngx_log_t *log)
+ngx_err_t
+ngx_create_thread(ngx_tid_t *tid, ngx_thread_value_t (*func)(void *arg),
+    void *arg, ngx_log_t *log)
 {
     int  err;
 
@@ -42,7 +43,8 @@ ngx_err_t ngx_create_thread(ngx_tid_t *tid, void* (*func)(void *arg), void *arg,
 }
 
 
-ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
+ngx_int_t
+ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 {   
     int  err;
 
@@ -70,7 +72,8 @@ ngx_int_t ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 }
 
 
-ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
+ngx_mutex_t *
+ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
 {
     int           err;
     ngx_mutex_t  *m;
@@ -94,7 +97,8 @@ ngx_mutex_t *ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
 }
 
 
-void ngx_mutex_destroy(ngx_mutex_t *m)
+void
+ngx_mutex_destroy(ngx_mutex_t *m)
 {
     int  err;
 
@@ -109,12 +113,13 @@ void ngx_mutex_destroy(ngx_mutex_t *m)
 }
 
 
-ngx_int_t ngx_mutex_lock(ngx_mutex_t *m)
+void
+ngx_mutex_lock(ngx_mutex_t *m)
 {
     int  err;
 
     if (!ngx_threaded) {
-        return NGX_OK;
+        return;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0, "lock mutex %p", m);
@@ -124,16 +129,17 @@ ngx_int_t ngx_mutex_lock(ngx_mutex_t *m)
     if (err != 0) {
         ngx_log_error(NGX_LOG_ALERT, m->log, err,
                       "pthread_mutex_lock(%p) failed", m);
-        return NGX_ERROR;
+        ngx_abort();
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0, "mutex %p is locked", m);
 
-    return NGX_OK;
+    return;
 }
 
 
-ngx_int_t ngx_mutex_trylock(ngx_mutex_t *m)
+ngx_int_t
+ngx_mutex_trylock(ngx_mutex_t *m)
 {
     int  err;
 
@@ -152,7 +158,7 @@ ngx_int_t ngx_mutex_trylock(ngx_mutex_t *m)
     if (err != 0) {
         ngx_log_error(NGX_LOG_ALERT, m->log, err,
                       "pthread_mutex_trylock(%p) failed", m);
-        return NGX_ERROR;
+        ngx_abort();
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0, "mutex %p is locked", m);
@@ -161,12 +167,13 @@ ngx_int_t ngx_mutex_trylock(ngx_mutex_t *m)
 }
 
 
-ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
+void
+ngx_mutex_unlock(ngx_mutex_t *m)
 {
     int  err;
 
     if (!ngx_threaded) {
-        return NGX_OK;
+        return;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0, "unlock mutex %p", m);
@@ -176,16 +183,17 @@ ngx_int_t ngx_mutex_unlock(ngx_mutex_t *m)
     if (err != 0) {
         ngx_log_error(NGX_LOG_ALERT, m->log, err,
                       "pthread_mutex_unlock(%p) failed", m);
-        return NGX_ERROR;
+        ngx_abort();
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_MUTEX, m->log, 0, "mutex %p is unlocked", m);
 
-    return NGX_OK;
+    return;
 }
 
 
-ngx_cond_t *ngx_cond_init(ngx_log_t *log)
+ngx_cond_t *
+ngx_cond_init(ngx_log_t *log)
 {
     int          err;
     ngx_cond_t  *cv;
@@ -209,7 +217,8 @@ ngx_cond_t *ngx_cond_init(ngx_log_t *log)
 }
 
 
-void ngx_cond_destroy(ngx_cond_t *cv)
+void
+ngx_cond_destroy(ngx_cond_t *cv)
 {
     int  err;
 
@@ -224,7 +233,8 @@ void ngx_cond_destroy(ngx_cond_t *cv)
 }
 
 
-ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
+ngx_int_t
+ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
 {
     int  err;
 
@@ -246,7 +256,8 @@ ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m)
 }
 
 
-ngx_int_t ngx_cond_signal(ngx_cond_t *cv)
+ngx_int_t
+ngx_cond_signal(ngx_cond_t *cv)
 {
     int  err;
 

@@ -34,6 +34,9 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf);
 static char *ngx_accept_mutex_check(ngx_conf_t *cf, void *post, void *data);
 
 
+static ngx_uint_t     ngx_timer_resolution;
+sig_atomic_t          ngx_event_timer_alarm;
+
 static ngx_uint_t     ngx_event_max_module;
 
 ngx_uint_t            ngx_event_flags;
@@ -192,6 +195,77 @@ ngx_module_t  ngx_event_core_module = {
 };
 
 
+void
+ngx_process_events_and_timers(ngx_cycle_t *cycle)
+{
+    ngx_uint_t  flags;
+    ngx_msec_t  timer;
+
+    if (ngx_timer_resolution) {
+        timer = NGX_TIMER_INFINITE;
+        flags = 0;
+
+    } else {
+        timer = ngx_event_find_timer();
+        flags = NGX_UPDATE_TIME;
+
+#if (NGX_THREADS)
+
+        if (timer == NGX_TIMER_INFINITE || timer > 500) {
+            timer = 500;
+        }
+
+#endif
+    }
+
+    if (ngx_accept_mutex) {
+        if (ngx_accept_disabled > 0) {
+            ngx_accept_disabled--;
+
+        } else {
+            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+                return;
+            }
+
+            if (ngx_accept_mutex_held) {
+                flags |= NGX_POST_EVENTS;
+
+            } else {
+                if (timer == NGX_TIMER_INFINITE
+                    || timer > ngx_accept_mutex_delay)
+                {
+                    timer = ngx_accept_mutex_delay;
+                }
+            }
+        }
+    }
+
+    (void) ngx_process_events(cycle, timer, flags);
+
+    ngx_event_expire_timers();
+
+    if (ngx_posted_accept_events) {
+        ngx_event_process_posted(cycle, &ngx_posted_accept_events);
+    }
+
+    if (ngx_accept_mutex_held) {
+        ngx_accept_mutex = 0;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "posted events %p", ngx_posted_events);
+
+    if (ngx_posted_events) {
+        if (ngx_threaded) {
+            ngx_wakeup_worker_thread(cycle);
+
+        } else {
+            ngx_event_process_posted(cycle, &ngx_posted_events);
+        }
+    }
+}
+
+
 ngx_int_t
 ngx_handle_read_event(ngx_event_t *rev, u_int flags)
 {
@@ -332,12 +406,12 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 {
     void              ***cf;
     ngx_event_conf_t    *ecf;
+    ngx_core_conf_t     *ccf;
 #if !(NGX_WIN32)
     char                *shared;
     size_t               size;
     ngx_int_t            limit;
     struct rlimit        rlmt;
-    ngx_core_conf_t     *ccf;
 #endif
 
     cf = ngx_get_conf(cycle->conf_ctx, ngx_events_module);
@@ -353,9 +427,11 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                   "using the \"%s\" event method", ecf->name);
 
-#if !(NGX_WIN32)
-
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    ngx_timer_resolution = ccf->timer_resolution;
+
+#if !(NGX_WIN32)
 
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -417,6 +493,8 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
 #endif
 
+    *ngx_connection_counter = 1;
+
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "counter: %p, %d",
                    ngx_connection_counter, *ngx_connection_counter);
@@ -425,6 +503,23 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
     return NGX_OK;
 }
+
+
+#if !(NGX_WIN32)
+
+void
+ngx_timer_signal_handler(int signo)
+{
+    ngx_event_timer_alarm = 1;
+
+    ngx_time_update(0, 0);
+
+#if 1
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0, "timer signal");
+#endif
+}
+
+#endif
 
 
 static ngx_int_t
@@ -441,6 +536,8 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     ngx_iocp_conf_t     *iocpcf;
 #else
     struct rlimit        rlmt;
+    struct sigaction     sa;
+    struct itimerval     itv;
 #endif
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
@@ -473,7 +570,8 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
         if (ngx_modules[m]->ctx_index == ecf->use) {
             module = ngx_modules[m]->ctx;
-            if (module->actions.init(cycle) == NGX_ERROR) {
+            if (module->actions.init(cycle, ngx_timer_resolution) == NGX_ERROR)
+            {
                 /* fatal */
                 exit(2);
             }
@@ -482,6 +580,29 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     }
 
 #if !(NGX_WIN32)
+
+    if (ngx_timer_resolution && !(ngx_event_flags & NGX_USE_TIMER_EVENT)) {
+
+        ngx_memzero(&sa, sizeof(struct sigaction));
+        sa.sa_handler = ngx_timer_signal_handler;
+        sigemptyset(&sa.sa_mask);
+
+        if (sigaction(SIGALRM, &sa, NULL) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "sigaction(SIGALRM) failed");
+            return NGX_ERROR;
+        }
+
+        itv.it_interval.tv_sec = ngx_timer_resolution / 1000;
+        itv.it_interval.tv_usec = (ngx_timer_resolution % 1000) * 1000;
+        itv.it_value.tv_sec = ngx_timer_resolution / 1000;
+        itv.it_value.tv_usec = (ngx_timer_resolution % 1000 ) * 1000;
+
+        if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "setitimer() failed");
+        } 
+    }
 
     if (ngx_event_flags & NGX_USE_FD_EVENT) {
 
