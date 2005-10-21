@@ -159,22 +159,17 @@ ngx_http_init_connection(ngx_connection_t *c)
 
     /* STUB: epoll edge */ c->write->handler = ngx_http_empty_handler;
 
+#if (NGX_STAT_STUB)
+    ngx_atomic_fetch_add(ngx_stat_reading, 1);
+#endif
+
     if (rev->ready) {
         /* the deferred accept(), rtsig, aio, iocp */
 
         if (ngx_accept_mutex) {
-
             ngx_post_event(rev, &ngx_posted_events);
-
-#if (NGX_STAT_STUB)
-            ngx_atomic_fetch_add(ngx_stat_reading, 1);
-#endif
             return;
         }
-
-#if (NGX_STAT_STUB)
-        ngx_atomic_fetch_add(ngx_stat_reading, 1);
-#endif
 
         ngx_http_init_request(rev);
         return;
@@ -183,14 +178,12 @@ ngx_http_init_connection(ngx_connection_t *c)
     ngx_add_timer(rev, c->listening->post_accept_timeout);
 
     if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+#if (NGX_STAT_STUB)
+        ngx_atomic_fetch_add(ngx_stat_reading, -1);
+#endif
         ngx_http_close_connection(c);
         return;
     }
-
-#if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_reading, 1);
-#endif
-
 }
 
 
@@ -213,14 +206,14 @@ void ngx_http_init_request(ngx_event_t *rev)
     ngx_http_ssl_srv_conf_t   *sscf;
 #endif
 
+#if (NGX_STAT_STUB)
+    ngx_atomic_fetch_add(ngx_stat_reading, -1);
+#endif
+
     c = rev->data;
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
-
-#if (NGX_STAT_STUB)
-        ngx_atomic_fetch_add(ngx_stat_reading, -1);
-#endif
 
         ngx_http_close_connection(c);
         return;
@@ -228,20 +221,9 @@ void ngx_http_init_request(ngx_event_t *rev)
 
     hc = c->data;
 
-    if (hc) {
-
-#if (NGX_STAT_STUB)
-        ngx_atomic_fetch_add(ngx_stat_reading, 1);
-#endif
-
-    } else {
+    if (hc == NULL) {
         hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
         if (hc == NULL) {
-
-#if (NGX_STAT_STUB)
-            ngx_atomic_fetch_add(ngx_stat_reading, -1);
-#endif
-
             ngx_http_close_connection(c);
             return;
         }
@@ -261,21 +243,12 @@ void ngx_http_init_request(ngx_event_t *rev)
     } else {
         r = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t));
         if (r == NULL) {
-
-#if (NGX_STAT_STUB)
-            ngx_atomic_fetch_add(ngx_stat_reading, -1);
-#endif
-
             ngx_http_close_connection(c);
             return;
         }
 
         hc->request = r;
     }
-
-#if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_reading, -1);
-#endif
 
     c->data = r;
     r->http_connection = hc;
@@ -1652,8 +1625,15 @@ ngx_http_writer(ngx_http_request_t *r)
             ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
                           "client timed out");
             c->timedout = 1;
-            ngx_http_close_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+
+#if 0
+            ngx_http_close_request(r->main, NGX_HTTP_REQUEST_TIME_OUT);
             ngx_http_close_connection(c);
+#endif
+
+            c->closed = 1;
+            ngx_http_finalize_request(r, 0);
+
             return;
         }
 
@@ -1665,7 +1645,7 @@ ngx_http_writer(ngx_http_request_t *r)
             ngx_add_timer(wev, clcf->send_timeout);
 
             if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
-                ngx_http_close_request(r, 0);
+                ngx_http_close_request(r->main, 0);
                 ngx_http_close_connection(r->connection);
             }
 
@@ -1680,7 +1660,7 @@ ngx_http_writer(ngx_http_request_t *r)
             clcf = ngx_http_get_module_loc_conf(r->main, ngx_http_core_module);
 
             if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
-                ngx_http_close_request(r, 0);
+                ngx_http_close_request(r->main, 0);
                 ngx_http_close_connection(r->connection);
             }
 
@@ -1711,7 +1691,7 @@ ngx_http_writer(ngx_http_request_t *r)
         }
 
         if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
-            ngx_http_close_request(r, 0);
+            ngx_http_close_request(r->main, 0);
             ngx_http_close_connection(r->connection);
         }
 
@@ -1988,8 +1968,13 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "pipelined request");
 
+#if (NGX_STAT_STUB)
+        ngx_atomic_fetch_add(ngx_stat_reading, 1);
+#endif
+
         hc->pipeline = 1;
         c->log->action = "reading client pipelined request line";
+
         ngx_http_init_request(rev);
         return;
     }
@@ -2206,6 +2191,10 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 
     b->last += n;
 
+#if (NGX_STAT_STUB)
+    ngx_atomic_fetch_add(ngx_stat_reading, 1);
+#endif
+
     c->log->handler = ngx_http_log_error;
     c->log->action = "reading client request line";
 
@@ -2388,6 +2377,7 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
     }
 
 #if (NGX_STAT_STUB)
+
     if (r->stat_reading) {
         ngx_atomic_fetch_add(ngx_stat_reading, -1);
     }
@@ -2395,6 +2385,7 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
     if (r->stat_writing) {
         ngx_atomic_fetch_add(ngx_stat_writing, -1);
     }
+
 #endif
 
     if (error && r->headers_out.status == 0) {

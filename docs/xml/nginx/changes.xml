@@ -9,7 +9,47 @@
 <title lang="en">nginx changelog</title>
 
 
-<changes ver="0.3.4" date="19.09.2005">
+<changes ver="0.3.5" date="21.10.2005">
+
+<change type="bugfix">
+<para lang="ru">
+если логин IMAP/POP3 менялся сервером авторизации, то мог произойти
+segmentation fault;
+ошибка появилась в 0.2.2.
+</para>
+<para lang="en">
+the segmentation fault may occurred if the IMAP/POP3 login was changed
+by authorization server;
+bug appeared in 0.2.2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+accept mutex не работал, все соединения обрабатывались одним рабочим процессом;
+ошибка появилась в 0.3.3.
+</para>
+<para lang="en">
+the accept mutex did not work and all connections were handled by one process;
+bug appeared in 0.3.3.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании метода rtsig и директивы timer_resolution
+не работали таймауты.
+</para>
+<para lang="en">
+the timeout did not work if the "rtsig" method and the "timer_resolution"
+directive were used.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.3.4" date="19.10.2005">
 
 <change type="bugfix">
 <para lang="ru">

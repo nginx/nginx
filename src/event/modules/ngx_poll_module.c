@@ -241,7 +241,6 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     ngx_err_t           err;
     ngx_int_t           i, nready;
     ngx_uint_t          found, level;
-    ngx_msec_t          delta;
     ngx_event_t        *ev, **queue;
     ngx_connection_t   *c;
 
@@ -266,8 +265,6 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     } else {
         err = 0;
     }
-
-    delta = ngx_current_msec;
 
     if (flags & NGX_UPDATE_TIME) {
         ngx_time_update(0, 0);
@@ -294,21 +291,14 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         return NGX_ERROR;
     }
 
-    if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_current_msec - delta;
-
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "poll timer: %M, delta: %M", timer, delta);
-    } else {
-        if (ready == 0) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "poll() returned no events without timeout");
-            return NGX_ERROR;
-        }
-    }
-
     if (ready == 0) {
-        return NGX_OK;
+        if (timer != NGX_TIMER_INFINITE) {
+            return NGX_OK;
+        }
+
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "poll() returned no events without timeout");
+        return NGX_ERROR;
     }
 
     ngx_mutex_lock(ngx_posted_events_mutex);

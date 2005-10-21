@@ -391,7 +391,6 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     ngx_uint_t         level;
     ngx_err_t          err;
     ngx_log_t         *log;
-    ngx_msec_t         delta;
     ngx_event_t       *rev, *wev, **queue;
     ngx_connection_t  *c;
 
@@ -408,23 +407,8 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         err = 0;
     }
 
-    delta = ngx_current_msec;
-    
     if (flags & NGX_UPDATE_TIME) {
         ngx_time_update(0, 0);
-    }
-
-    if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_current_msec - delta;
-
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "epoll timer: %M, delta: %M", timer, delta);
-    } else {
-        if (events == 0) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "epoll_wait() returned no events without timeout");
-            return NGX_ERROR;
-        }
     }
 
     if (err) {
@@ -446,7 +430,13 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     }
 
     if (events == 0) {
-        return NGX_OK;
+        if (timer != NGX_TIMER_INFINITE) {
+            return NGX_OK;
+        }
+
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "epoll_wait() returned no events without timeout");
+        return NGX_ERROR;
     }
 
     ngx_mutex_lock(ngx_posted_events_mutex);

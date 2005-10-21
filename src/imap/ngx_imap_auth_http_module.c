@@ -44,6 +44,7 @@ struct ngx_imap_auth_http_ctx_s {
     ngx_str_t                       addr;
     ngx_str_t                       port;
     ngx_str_t                       err;
+    ngx_str_t                       errmsg;
 
     time_t                          sleep;
 
@@ -459,6 +460,9 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                     continue;
                 }
 
+                ctx->errmsg.len = len;
+                ctx->errmsg.data = ctx->header_start;
+
                 if (s->protocol == NGX_IMAP_POP3_PROTOCOL) {
                     size = sizeof("-ERR") - 1 + len + sizeof(CRLF) - 1;
 
@@ -486,6 +490,7 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                 }
 
                 *p++ = ' ';
+
                 p = ngx_cpymem(p, ctx->header_start, len);
                 *p++ = CR; *p++ = LF;
 
@@ -519,7 +524,16 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                                    sizeof("Auth-User") - 1) == 0)
             {
                 s->login.len = ctx->header_end - ctx->header_start;
-                s->login.data = ctx->header_start;
+
+                s->login.data = ngx_palloc(s->connection->pool, s->login.len);
+                if (s->login.data == NULL) {
+                    ngx_close_connection(ctx->peer.connection);
+                    ngx_destroy_pool(ctx->pool);
+                    ngx_imap_session_internal_server_error(s);
+                    return;
+                }
+
+                ngx_memcpy(s->login.data, ctx->header_start, s->login.len);
 
                 continue;
             }
@@ -550,13 +564,13 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
             ngx_close_connection(ctx->peer.connection);
 
             if (ctx->err.len) {
+                ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
+                              "client login failed: \"%V\"", &ctx->errmsg);
+
                 s->out = ctx->err;
                 timer = ctx->sleep;
 
                 ngx_destroy_pool(ctx->pool);
-
-                ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
-                              "client login failed");
 
                 if (timer == 0) {
                     s->quit = 1;

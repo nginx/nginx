@@ -286,7 +286,6 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
     int                 signo;
     ngx_int_t           instance;
-    ngx_msec_t          delta;
     ngx_err_t           err;
     siginfo_t           si;
     ngx_event_t        *rev, *wev;
@@ -317,41 +316,34 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, err,
                        "rtsig signo:%d", signo);
 
-        if (err == NGX_EAGAIN) {
-
-            if (timer == NGX_TIMER_INFINITE) {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
-                              "sigtimedwait() returned EAGAIN without timeout");
-                return NGX_ERROR;
-            }
-
-            err = 0;
+        if (flags & NGX_UPDATE_TIME) {
+            ngx_time_update(0, 0);
         }
 
-    } else {
-        err = 0;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "rtsig signo:%d fd:%d band:%04Xd",
-                       signo, si.si_fd, si.si_band);
-    }
+        if (err == NGX_EAGAIN) {
 
-    delta = ngx_current_msec;
-    
-    if (flags & NGX_UPDATE_TIME) {
-        ngx_time_update(0, 0);
-    }
+            /* timeout */
 
-    if (err) {
+            if (timer != NGX_TIMER_INFINITE) {
+                return NGX_AGAIN;
+            }
+                
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
+                          "sigtimedwait() returned EAGAIN without timeout");
+            return NGX_ERROR;
+        }
+
         ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
                       cycle->log, err, "sigtimedwait() failed");
         return NGX_ERROR;
     }
 
-    if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_current_msec - delta;
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "rtsig signo:%d fd:%d band:%04Xd",
+                   signo, si.si_fd, si.si_band);
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "rtsig timer: %M, delta: %M", timer, delta);
+    if (flags & NGX_UPDATE_TIME) {
+        ngx_time_update(0, 0);
     }
 
     rtscf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_rtsig_module);
@@ -400,7 +392,11 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             wev->handler(wev);
         }
 
+        return NGX_OK;
+
     } else if (signo == SIGALRM) {
+
+        ngx_time_update(0, 0);
 
         return NGX_OK;
 
@@ -431,18 +427,12 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
         return NGX_ERROR;
 
-    } else if (signo != -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                      "sigtimedwait() returned unexpected signal: %d", signo);
-
-        return NGX_ERROR;
     }
 
-    if (signo != -1) {
-        return NGX_OK;
-    }
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                  "sigtimedwait() returned unexpected signal: %d", signo);
 
-    return NGX_AGAIN;
+    return NGX_ERROR;
 }
 
 

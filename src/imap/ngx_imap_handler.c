@@ -767,9 +767,9 @@ ngx_imap_ssl_close_handler(ngx_event_t *ev)
 static u_char *
 ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
-    u_char                 *p;
-    ngx_imap_session_t     *s;
-    ngx_imap_log_ctx_t     *ctx;
+    u_char              *p;
+    ngx_imap_session_t  *s;
+    ngx_imap_log_ctx_t  *ctx;
 
     if (log->action) {
         p = ngx_snprintf(buf, len, " while %s", log->action);

@@ -199,7 +199,7 @@ void
 ngx_process_events_and_timers(ngx_cycle_t *cycle)
 {
     ngx_uint_t  flags;
-    ngx_msec_t  timer;
+    ngx_msec_t  timer, delta;
 
     if (ngx_timer_resolution) {
         timer = NGX_TIMER_INFINITE;
@@ -240,16 +240,25 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
         }
     }
 
+    delta = ngx_current_msec;
+
     (void) ngx_process_events(cycle, timer, flags);
 
-    ngx_event_expire_timers();
+    delta = ngx_current_msec - delta;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "timer delta: %M", delta);
+
+    if (delta) {
+        ngx_event_expire_timers();
+    }
 
     if (ngx_posted_accept_events) {
         ngx_event_process_posted(cycle, &ngx_posted_accept_events);
     }
 
     if (ngx_accept_mutex_held) {
-        ngx_accept_mutex = 0;
+        *ngx_accept_mutex = 0;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,

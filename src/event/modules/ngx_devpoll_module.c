@@ -332,7 +332,6 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_err_t           err;
     ngx_int_t           i;
     ngx_uint_t          level;
-    ngx_msec_t          delta;
     ngx_event_t        *rev, *wev, **queue;
     ngx_connection_t   *c;
     struct dvpoll       dvp;
@@ -349,6 +348,8 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                           "write(/dev/poll) failed");
             return NGX_ERROR;
         }
+
+        nchanges = 0;
     }
 
     dvp.dp_fds = event_list;
@@ -362,10 +363,6 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         err = 0;
     }
 
-    nchanges = 0;
-
-    delta = ngx_current_msec;
-    
     if (flags & NGX_UPDATE_TIME) {
         ngx_time_update(0, 0);
     }
@@ -388,21 +385,14 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         return NGX_ERROR;
     }
 
-    if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_current_msec - delta;
-
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "devpoll timer: %M, delta: %M", timer, delta);
-    } else {
-        if (events == 0) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "ioctl(DP_POLL) returned no events without timeout");
-            return NGX_ERROR;
-        }
-    }
-
     if (events == 0) {
-        return NGX_OK;
+        if (timer != NGX_TIMER_INFINITE) {
+            return NGX_OK;
+        }
+
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "ioctl(DP_POLL) returned no events without timeout");
+        return NGX_ERROR;
     }
 
     ngx_mutex_lock(ngx_posted_events_mutex);
