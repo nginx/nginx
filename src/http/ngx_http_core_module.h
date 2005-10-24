@@ -65,7 +65,7 @@ typedef struct {
     ngx_array_t                servers;         /* ngx_http_core_srv_conf_t */
 
     ngx_http_phase_t           phases[NGX_HTTP_LAST_PHASE];
-    ngx_array_t                index_handlers;
+    ngx_http_handler_pt        log_handler;
 
     ngx_hash_t                 headers_in_hash;
     ngx_hash_t                 variables_hash;
@@ -263,6 +263,8 @@ ngx_int_t ngx_http_subrequest(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args);
 ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args);
+
+ngx_http_cleanup_t *ngx_http_cleanup_add(ngx_http_request_t *r, size_t size);
 
 
 typedef ngx_int_t (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);

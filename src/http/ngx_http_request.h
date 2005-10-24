@@ -125,7 +125,7 @@ typedef struct {
 typedef struct {
     ngx_str_t                         name;
     ngx_uint_t                        offset;
-} ngx_http_header0_t;
+} ngx_http_header_out_t;
 
 
 typedef struct {
@@ -238,6 +238,17 @@ typedef struct {
 } ngx_http_connection_t;
 
 
+typedef void (*ngx_http_cleanup_pt)(void *data);
+
+typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
+
+struct ngx_http_cleanup_s {
+    ngx_http_cleanup_pt   handler;
+    void                 *data;
+    ngx_http_cleanup_t   *next;
+};
+
+
 typedef struct ngx_http_postponed_request_s  ngx_http_postponed_request_t;
 
 struct ngx_http_postponed_request_s {
@@ -325,6 +336,8 @@ struct ngx_http_request_s {
 
     ngx_http_log_handler_pt           log_handler;
 
+    ngx_http_cleanup_t               *cleanup;
+
     unsigned                          http_state:4;
 
     /* URI with "/." and on Win32 with "//" */
@@ -401,8 +414,8 @@ struct ngx_http_request_s {
 };
 
 
-extern ngx_http_header_t   ngx_http_headers_in[];
-extern ngx_http_header0_t   ngx_http_headers_out[];
+extern ngx_http_header_t       ngx_http_headers_in[];
+extern ngx_http_header_out_t   ngx_http_headers_out[];
 
 
 #endif /* _NGX_HTTP_REQUEST_H_INCLUDED_ */

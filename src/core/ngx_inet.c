@@ -452,7 +452,23 @@ ngx_inet_parse_host_port(ngx_inet_upstream_t *u)
         }
     }
 
-    if (u->port_text.data == NULL) {
+    if (u->port_text.data) {
+
+        if (u->port_text.len == 0) {
+            u->port_text.len = &url->data[i] - u->port_text.data;
+
+            if (u->port_text.len == 0) {
+                return "invalid port";
+            }
+        }
+
+        port = ngx_atoi(u->port_text.data, u->port_text.len);
+
+        if (port == NGX_ERROR || port < 1 || port > 65536) {
+            return "invalid port";
+        }
+
+    } else {
         port = ngx_atoi(url->data, url->len);
 
         if (port == NGX_ERROR) {
@@ -464,18 +480,6 @@ ngx_inet_parse_host_port(ngx_inet_upstream_t *u)
 
         u->port_text = *url;
         u->wildcard = 1;
-
-    } else {
-        if (u->port_text.len == 0) {
-            u->default_port = 1;
-            return NULL;
-        }
-
-        port = ngx_atoi(u->port_text.data, u->port_text.len);
-
-        if (port == NGX_ERROR || port < 1 || port > 65536) {
-            return "invalid port";
-        }
     }
 
     u->port = (in_port_t) port;

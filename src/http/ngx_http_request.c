@@ -41,6 +41,7 @@ static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
 static void ngx_http_lingering_close_handler(ngx_event_t *ev);
 static void ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error);
+static void ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error);
 static void ngx_http_close_connection(ngx_connection_t *c);
 
 static u_char *ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len);
@@ -156,8 +157,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 
     rev = c->read;
     rev->handler = ngx_http_init_request;
-
-    /* STUB: epoll edge */ c->write->handler = ngx_http_empty_handler;
+    c->write->handler = ngx_http_empty_handler;
 
 #if (NGX_STAT_STUB)
     ngx_atomic_fetch_add(ngx_stat_reading, 1);
@@ -374,7 +374,6 @@ void ngx_http_init_request(ngx_event_t *rev)
                       sizeof(ngx_table_elt_t)) == NGX_ERROR)
     {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        ngx_http_close_connection(c);
         return;
     }
 
@@ -382,7 +381,6 @@ void ngx_http_init_request(ngx_event_t *rev)
     r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
     if (r->ctx == NULL) {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        ngx_http_close_connection(c);
         return;
     }
 
@@ -435,7 +433,6 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
         c->timedout = 1;
         ngx_http_close_request(r, NGX_HTTP_REQUEST_TIME_OUT);
-        ngx_http_close_connection(c);
         return;
     }
 
@@ -502,7 +499,6 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
     r = c->data;
 
     ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
-    ngx_http_close_connection(r->connection);
 
     return;
 }
@@ -530,7 +526,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
         c->timedout = 1;
         ngx_http_close_request(r, NGX_HTTP_REQUEST_TIME_OUT);
-        ngx_http_close_connection(c);
         return;
     }
 
@@ -568,7 +563,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 r->uri.data = ngx_palloc(r->pool, r->uri.len + 1);
                 if (r->uri.data == NULL) {
                     ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                    ngx_http_close_connection(c);
                     return;
                 }
 
@@ -655,7 +649,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
                                          sizeof(ngx_table_elt_t)) == NGX_ERROR)
             {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                ngx_http_close_connection(c);
                 return;
             }
 
@@ -664,7 +657,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
                                        sizeof(ngx_table_elt_t *)) == NGX_ERROR)
             {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                ngx_http_close_connection(c);
                 return;
             }
 
@@ -694,7 +686,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             if (rv == NGX_ERROR) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                ngx_http_close_connection(c);
                 return;
             }
 
@@ -739,7 +730,6 @@ ngx_http_process_request_headers(ngx_event_t *rev)
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
         c->timedout = 1;
         ngx_http_close_request(r, NGX_HTTP_REQUEST_TIME_OUT);
-        ngx_http_close_connection(c);
         return;
     }
 
@@ -759,7 +749,6 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
                 if (rv == NGX_ERROR) {
                     ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                    ngx_http_close_connection(c);
                     return;
                 }
 
@@ -778,7 +767,6 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                                   "client sent too long header line: \"%V\"",
                                   &header);
                     ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
-                    ngx_http_close_connection(c);
                     return;
                 }
             }
@@ -812,7 +800,6 @@ ngx_http_process_request_headers(ngx_event_t *rev)
             h = ngx_list_push(&r->headers_in.headers);
             if (h == NULL) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                ngx_http_close_connection(c);
                 return;
             }
 
@@ -895,7 +882,6 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                       "client sent invalid header line: \"%V\\r...\"",
                       &header);
         ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
-        ngx_http_close_connection(c);
         return;
     }
 }
@@ -932,7 +918,6 @@ ngx_http_read_request_header(ngx_http_request_t *r)
 
         if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            ngx_http_close_connection(r->connection);
             return NGX_ERROR;
         }
 
@@ -946,7 +931,6 @@ ngx_http_read_request_header(ngx_http_request_t *r)
 
     if (n == 0 || n == NGX_ERROR) {
         ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
-        ngx_http_close_connection(r->connection);
         return NGX_ERROR;
     }
 
@@ -1152,7 +1136,6 @@ ngx_http_process_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-    ngx_http_close_connection(r->connection);
 
     return NGX_ERROR;
 }
@@ -1190,7 +1173,6 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
             if (cscf->restrict_host_names == NGX_HTTP_RESTRICT_HOST_CLOSE) {
                 ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
-                ngx_http_close_connection(r->connection);
                 return NGX_ERROR;
             }
 
@@ -1432,21 +1414,36 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_http_core_loc_conf_t  *clcf;
 
     if (rc == NGX_DONE) {
-        /* r may be already destroyed when rc == NGX_DONE */
+        /* the request pool may be already destroyed */
         return;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http finalize request: %d, \"%V\"", rc, &r->uri);
 
-    if (r->parent
-        && (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_HTTP_NO_CONTENT))
-    {
-        ngx_http_finalize_request(r, ngx_http_special_response_handler(r, rc));
+    if (rc == NGX_ERROR || r->connection->closed) {
+        ngx_http_close_request(r, 0);
         return;
     }
 
-    if (r->parent || rc == NGX_AGAIN) {
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_HTTP_NO_CONTENT) {
+
+        if (r->main == r) {
+            if (r->connection->read->timer_set) {
+                ngx_del_timer(r->connection->read);
+            }
+
+            if (r->connection->write->timer_set) {
+                ngx_del_timer(r->connection->write);
+            }
+        }
+
+        ngx_http_finalize_request(r, ngx_http_special_response_handler(r, rc));
+
+        return;
+    }
+
+    if (r->main != r || rc == NGX_AGAIN) {
         if (ngx_http_set_write_handler(r) != NGX_OK) {
             return;
         }
@@ -1460,7 +1457,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r->parent) {
+    if (r->main != r) {
 
         pr = r->parent;
 
@@ -1499,34 +1496,11 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_HTTP_NO_CONTENT) {
-
-        if (r->connection->read->timer_set) {
-            ngx_del_timer(r->connection->read);
-        }
-
-        if (r->connection->write->timer_set) {
-            ngx_del_timer(r->connection->write);
-        }
-
-        if (r->connection->closed) {
-            ngx_http_close_request(r, 0);
-            ngx_http_close_connection(r->connection);
-            return;
-        }
-
-        ngx_http_finalize_request(r, ngx_http_special_response_handler(r, rc));
-
+    if (rc == NGX_AGAIN) {
         return;
     }
 
-    if (rc == NGX_ERROR || r->connection->closed) {
-        ngx_http_close_request(r, 0);
-        ngx_http_close_connection(r->connection);
-        return;
-    }
-
-    if (rc == NGX_AGAIN || r->out) {
+    if (r->out) {
         (void) ngx_http_set_write_handler(r);
         return;
     }
@@ -1547,7 +1521,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                        "kevent() reported about an closed connection");
 #endif
         ngx_http_close_request(r, 0);
-        ngx_http_close_connection(r->connection);
         return;
     }
 
@@ -1567,7 +1540,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     }
 
     ngx_http_close_request(r, 0);
-    ngx_http_close_connection(r->connection);
 }
 
 
@@ -1580,10 +1552,6 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
     r->write_event_handler = ngx_http_writer;
-
-    if (r->connection->closed) {
-        return NGX_OK;
-    }
 
     wev = r->connection->write;
 
@@ -1598,7 +1566,6 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
 
     if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
         ngx_http_close_request(r, 0);
-        ngx_http_close_connection(r->connection);
         return NGX_ERROR;
     }
 
@@ -1626,14 +1593,7 @@ ngx_http_writer(ngx_http_request_t *r)
                           "client timed out");
             c->timedout = 1;
 
-#if 0
-            ngx_http_close_request(r->main, NGX_HTTP_REQUEST_TIME_OUT);
-            ngx_http_close_connection(c);
-#endif
-
-            c->closed = 1;
-            ngx_http_finalize_request(r, 0);
-
+            ngx_http_close_request(r, NGX_HTTP_REQUEST_TIME_OUT);
             return;
         }
 
@@ -1645,8 +1605,7 @@ ngx_http_writer(ngx_http_request_t *r)
             ngx_add_timer(wev, clcf->send_timeout);
 
             if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
-                ngx_http_close_request(r->main, 0);
-                ngx_http_close_connection(r->connection);
+                ngx_http_close_request(r, 0);
             }
 
             return;
@@ -1660,8 +1619,7 @@ ngx_http_writer(ngx_http_request_t *r)
             clcf = ngx_http_get_module_loc_conf(r->main, ngx_http_core_module);
 
             if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
-                ngx_http_close_request(r->main, 0);
-                ngx_http_close_connection(r->connection);
+                ngx_http_close_request(r, 0);
             }
 
             return;
@@ -1672,7 +1630,7 @@ ngx_http_writer(ngx_http_request_t *r)
         rc = ngx_http_postponed_handler(r);
 
         if (rc == NGX_DONE) {
-            /* r may be already destroyed when rc == NGX_DONE */
+            /* the request pool may be already destroyed */
             return;
         }
 
@@ -1691,8 +1649,7 @@ ngx_http_writer(ngx_http_request_t *r)
         }
 
         if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
-            ngx_http_close_request(r->main, 0);
-            ngx_http_close_connection(r->connection);
+            ngx_http_close_request(r, 0);
         }
 
         return;
@@ -1722,13 +1679,18 @@ ngx_http_postponed_handler(ngx_http_request_t *r)
 
         rc = ngx_http_output_filter(r, NULL);
 
+        if (rc == NGX_DONE) {
+            /* the request pool is already destroyed */
+            return NGX_DONE;
+        }
+
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http postponed output filter: %d", rc);
 
-        /*
-         * we treat NGX_ERROR as NGX_OK, because we need to complete
-         * all postponed requests
-         */
+        if (rc == NGX_ERROR) {
+            ngx_http_close_request(r, 0);
+            return NGX_DONE;
+        }
 
         pr = r->postponed;
 
@@ -1769,7 +1731,6 @@ ngx_http_block_read(ngx_http_request_t *r)
             == NGX_ERROR)
         {
             ngx_http_close_request(r, 0);
-            ngx_http_close_connection(r->connection);
         }
     }
 }
@@ -1832,14 +1793,12 @@ ngx_http_read_discarded_body_handler(ngx_http_request_t *r)
     if (rc == NGX_AGAIN) {
         if (ngx_handle_read_event(r->connection->read, 0) == NGX_ERROR) {
             ngx_http_close_request(r, rc);
-            ngx_http_close_connection(r->connection);
             return;
         }
     }
 
     if (rc != NGX_OK) {
         ngx_http_close_request(r, rc);
-        ngx_http_close_connection(r->connection);
     }
 }
 
@@ -1932,7 +1891,6 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
                 if (hc->free == NULL) {
                     ngx_http_close_request(r, 0);
-                    ngx_http_close_connection(c);
                     return;
                 }
             }
@@ -1951,7 +1909,8 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    ngx_http_close_request(r, 0);
+    ngx_http_request_done(r, 0);
+
     c->data = hc;
 
     ngx_add_timer(rev, clcf->keepalive_timeout);
@@ -2221,7 +2180,6 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
 
     if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
         ngx_http_close_request(r, 0);
-        ngx_http_close_connection(c);
         return;
     }
 
@@ -2234,14 +2192,12 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
                                                                   == NGX_ERROR)
             {
                 ngx_http_close_request(r, 0);
-                ngx_http_close_connection(c);
                 return;
             }
 
         } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
             if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
                 ngx_http_close_request(r, 0);
-                ngx_http_close_connection(c);
                 return;
             }
         }
@@ -2251,7 +2207,6 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
         ngx_connection_error(c, ngx_socket_errno,
                              ngx_shutdown_socket_n " failed");
         ngx_http_close_request(r, 0);
-        ngx_http_close_connection(c);
         return;
     }
 
@@ -2279,14 +2234,12 @@ ngx_http_lingering_close_handler(ngx_event_t *rev)
 
     if (rev->timedout) {
         ngx_http_close_request(r, 0);
-        ngx_http_close_connection(c);
         return;
     }
 
     timer = r->lingering_time - ngx_time();
     if (timer <= 0) {
         ngx_http_close_request(r, 0);
-        ngx_http_close_connection(c);
         return;
     }
 
@@ -2297,7 +2250,6 @@ ngx_http_lingering_close_handler(ngx_event_t *rev)
 
         if (n == NGX_ERROR || n == 0) {
             ngx_http_close_request(r, 0);
-            ngx_http_close_connection(c);
             return;
         }
 
@@ -2305,7 +2257,6 @@ ngx_http_lingering_close_handler(ngx_event_t *rev)
 
     if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
         ngx_http_close_request(r, 0);
-        ngx_http_close_connection(c);
         return;
     }
 
@@ -2362,10 +2313,31 @@ ngx_http_send_last(ngx_http_request_t *r)
 void
 ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
 {
-    ngx_log_t                 *log;
-    struct linger              linger;
-    ngx_http_log_ctx_t        *ctx;
-    ngx_http_core_loc_conf_t  *clcf;
+    ngx_connection_t    *c;
+    ngx_http_cleanup_t  *cln;
+
+    c = r->connection;
+    r = r->main;
+
+    for (cln = r->cleanup; cln; cln = cln->next) {
+        if (cln->handler) {
+            cln->handler(cln->data);
+        }
+    }
+
+    ngx_http_request_done(r, error);
+    ngx_http_close_connection(c);
+}
+
+
+void
+ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
+{
+    ngx_log_t                  *log;
+    struct linger               linger;
+    ngx_http_log_ctx_t         *ctx;
+    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_core_main_conf_t  *cmcf;
 
     log = r->connection->log;
 
@@ -2392,7 +2364,11 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
         r->headers_out.status = error;
     }
 
-    ngx_http_log_handler(r);
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    if (cmcf->log_handler) {
+        cmcf->log_handler(r);
+    }
 
     if (r->connection->timedout) {
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);

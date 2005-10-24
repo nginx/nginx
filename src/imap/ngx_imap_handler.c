@@ -355,9 +355,9 @@ ngx_imap_auth_state(ngx_event_t *rev)
         switch (s->command) {
 
         case NGX_IMAP_LOGIN:
-            if (s->args.nelts == 2) {
+            arg = s->args.elts;
 
-                arg = s->args.elts;
+            if (s->args.nelts == 2 && arg[0].len) {
 
                 s->login.len = arg[0].len;
                 s->login.data = ngx_palloc(c->pool, s->login.len);

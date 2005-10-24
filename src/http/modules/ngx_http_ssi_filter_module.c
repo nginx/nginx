@@ -229,9 +229,8 @@ ngx_module_t  ngx_http_ssi_filter_module = {
 };
 
 
-static ngx_int_t (*ngx_http_next_header_filter) (ngx_http_request_t *r);
-static ngx_int_t (*ngx_http_next_body_filter) (ngx_http_request_t *r,
-    ngx_chain_t *in);
+static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
+static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
 static u_char ngx_http_ssi_string[] = "<!--";
@@ -407,6 +406,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_buf_t               *b;
     ngx_chain_t             *cl;
     ngx_table_elt_t         *param;
+    ngx_connection_t        *c;
     ngx_http_ssi_ctx_t      *ctx;
     ngx_http_ssi_conf_t     *conf;
     ngx_http_ssi_param_t    *prm;
@@ -650,7 +650,15 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     }
                 }
 
-                if (cmd->handler(r, ctx, params) == NGX_OK) {
+                c = r->connection;
+
+                rc = cmd->handler(r, ctx, params);
+
+                if (c->closed) {
+                    return NGX_DONE;
+                }
+
+                if (rc == NGX_OK) {
                     continue;
                 }
             }

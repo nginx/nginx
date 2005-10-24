@@ -56,15 +56,6 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http postpone filter \"%V\" %p", &r->uri, in);
 
-    if (r->connection->closed) {
-
-        if (r->postponed) {
-            r->postponed = r->postponed->next;
-        }
-
-        return NGX_ERROR;
-    }
-
     if (r != r->connection->data || (r->postponed && in)) {
 
         if (r->postponed) {

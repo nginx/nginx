@@ -83,6 +83,7 @@ static char *ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static ngx_int_t ngx_http_log_init(ngx_cycle_t *cycle);
 
 
 static ngx_command_t  ngx_http_log_commands[] = {
@@ -126,7 +127,7 @@ ngx_module_t  ngx_http_log_module = {
     ngx_http_log_commands,                 /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    NULL,                                  /* init module */
+    ngx_http_log_init,                     /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -140,8 +141,14 @@ static ngx_str_t http_access_log = ngx_string(NGX_HTTP_LOG_PATH);
 
 
 static ngx_str_t ngx_http_combined_fmt =
-    ngx_string("%addr - - [%time] \"%request\" %status %apache_length "
-               "\"%{Referer}i\" \"%{User-Agent}i\"");
+#if 0
+    ngx_string("$remote_addr - $remote_user [%time] "
+               "\"$request\" %status %apache_length "
+               "\"$http_referer\" \"$http_user_agent\"");
+#endif
+    ngx_string("%addr - - [%time] "
+               "\"%request\" %status %apache_length "
+               "\"%{referer}i\" \"%{user-agent}i\"");
 
 
 ngx_http_log_op_name_t ngx_http_log_fmt_ops[] = {
@@ -824,7 +831,7 @@ ngx_http_log_create_main_conf(ngx_conf_t *cf)
     }
 
     if (ngx_array_init(&conf->formats, cf->pool, 4, sizeof(ngx_http_log_fmt_t))
-                                                                  == NGX_ERROR)
+        == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
     }
@@ -835,6 +842,9 @@ ngx_http_log_create_main_conf(ngx_conf_t *cf)
     if (value == NULL) {
         return NGX_CONF_ERROR;
     }
+
+    value->len = 0;
+    value->data = NULL;
 
     value = ngx_array_push(cf->args);
     if (value == NULL) {
@@ -853,7 +863,7 @@ ngx_http_log_create_main_conf(ngx_conf_t *cf)
 
     rc = ngx_http_log_set_format(cf, NULL, conf);
     if (rc != NGX_CONF_OK) {
-        return NULL;
+        return NGX_CONF_ERROR;
     }
 
     return conf;
@@ -993,10 +1003,10 @@ ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_log_main_conf_t *lmcf = conf;
 
-    ngx_uint_t                  s, f, invalid;
-    u_char                     *data, *p, *fname;
+    u_char                     *data, *p, *fname, ch;
     size_t                      i, len, fname_len;
-    ngx_str_t                  *value, arg, *a;
+    ngx_str_t                  *value, var, arg, *a;
+    ngx_uint_t                  s, f, bracket;
     ngx_http_log_op_t          *op;
     ngx_http_log_fmt_t         *fmt;
     ngx_http_log_op_name_t     *name;
@@ -1024,11 +1034,9 @@ ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    invalid = 0;
-    data = NULL;
     arg.data = NULL;
 
-    for (s = 2; s < cf->args->nelts && !invalid; s++) {
+    for (s = 2; s < cf->args->nelts; s++) {
 
         i = 0;
 
@@ -1045,8 +1053,7 @@ ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 i++;
 
                 if (i == value[s].len) {
-                    invalid = 1;
-                    break;
+                    goto invalid;
                 }
 
                 if (value[s].data[i] == '{') {
@@ -1061,8 +1068,7 @@ ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     arg.len = &value[s].data[i] - arg.data;
 
                     if (i == value[s].len || arg.len == 0) {
-                        invalid = 1;
-                        break;
+                        goto invalid;
                     }
 
                     i++;
@@ -1083,8 +1089,7 @@ ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 fname_len = &value[s].data[i] - fname;
 
                 if (fname_len == 0) {
-                    invalid = 1;
-                    break;
+                    goto invalid;
                 }
 
                 for (name = ngx_http_log_fmt_ops; name->run; name++) {
@@ -1135,14 +1140,71 @@ ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 }
 
                 if (name->name.len == 0) {
-                    invalid = 1;
+                    goto invalid;
+                }
+
+            } else if (value[s].data[i] == '$') {
+
+                if (++i == value[s].len) {
+                    goto invalid;
+                }
+
+                if (value[s].data[i] == '{') {
+                    bracket = 1;
+
+                    if (++i == value[s].len) {
+                        goto invalid;
+                    }
+
+                    var.data = &value[s].data[i];
+
+                } else {
+                    bracket = 0;
+                    var.data = &value[s].data[i];
+                }
+
+                for (var.len = 0; i < value[s].len; i++, var.len++) {
+                    ch = value[s].data[i];
+
+                    if (ch == '}' && bracket) {
+                        i++;
+                        bracket = 0;
+                        break;
+                    }
+
+                    if ((ch >= 'A' && ch <= 'Z')
+                        || (ch >= 'a' && ch <= 'z')
+                        || (ch >= '0' && ch <= '9')
+                        || ch == '_')
+                    {
+                        continue;
+                    }
+
                     break;
+                }
+
+                if (bracket) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "the closing bracket in \"%V\" "
+                                       "variable is missing", &var);
+                    return NGX_CONF_ERROR;
+                }
+
+                if (var.len == 0) {
+                    goto invalid;
+                }
+
+                if (ngx_http_log_variable_compile(cf, op, &var) != NGX_OK) {
+                    return NGX_CONF_ERROR;
                 }
 
             } else {
                 i++;
 
-                while (i < value[s].len && value[s].data[i] != '%') {
+                while (i < value[s].len
+                       && value[s].data[i] != '$'
+                       && value[s].data[i] != '%')
+                {
                     i++;
                 }
 
@@ -1178,11 +1240,24 @@ ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    if (invalid) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid parameter \"%s\"", data);
-        return NGX_CONF_ERROR;
-    }
-
     return NGX_CONF_OK;
+
+invalid:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%s\"", data);
+
+    return NGX_CONF_ERROR;
+}
+
+
+static ngx_int_t
+ngx_http_log_init(ngx_cycle_t *cycle)
+{
+    ngx_http_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
+
+    cmcf->log_handler = ngx_http_log_handler;
+
+    return NGX_OK;
 }

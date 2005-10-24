@@ -212,12 +212,12 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
         last = ctx->output_filter(ctx->filter_ctx, out);
 
-        ngx_chain_update_chains(&ctx->free, &ctx->busy, &out, ctx->tag);
-        last_out = &out;
-
-        if (last == NGX_ERROR) {
+        if (last == NGX_ERROR || last == NGX_DONE) {
             return last;
         }
+
+        ngx_chain_update_chains(&ctx->free, &ctx->busy, &out, ctx->tag);
+        last_out = &out;
     }
 }
 

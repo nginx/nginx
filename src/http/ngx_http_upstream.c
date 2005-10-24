@@ -29,6 +29,7 @@ static void ngx_http_upstream_process_body(ngx_event_t *ev);
 static void ngx_http_upstream_dummy_handler(ngx_event_t *wev);
 static void ngx_http_upstream_next(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_uint_t ft_type);
+static void ngx_http_upstream_cleanup(void *data);
 static void ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc);
 
@@ -223,6 +224,7 @@ ngx_http_upstream_init(ngx_http_request_t *r)
 {
     ngx_time_t                *tp;
     ngx_connection_t          *c;
+    ngx_http_cleanup_t        *cln;
     ngx_http_upstream_t       *u;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -277,7 +279,8 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     u->writer.pool = r->pool;
 
     if (ngx_array_init(&u->states, r->pool, u->peer.peers->number,
-                       sizeof(ngx_http_upstream_state_t)) != NGX_OK)
+                       sizeof(ngx_http_upstream_state_t))
+        != NGX_OK)
     {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -294,6 +297,16 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     tp = ngx_timeofday();
 
     u->state->response_time = tp->sec * 1000 + tp->msec;
+
+    cln = ngx_http_cleanup_add(r, sizeof(void *));
+    if (cln == NULL) {
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    cln->handler = ngx_http_upstream_cleanup;
+    cln->data = r;
+    u->cleanup = &cln->handler;
 
     ngx_http_upstream_connect(r, u);
 }
@@ -1379,8 +1392,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         }
     }
 
-    if (r->connection->write->eof) {
-        r->connection->closed = 1;
+    if (r->connection->closed) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_CLIENT_CLOSED_REQUEST);
         return;
@@ -1426,6 +1438,18 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
 
 static void
+ngx_http_upstream_cleanup(void *data)
+{
+    ngx_http_request_t *r = data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "cleanup http upstream request: \"%V\"", &r->uri);
+
+    ngx_http_upstream_finalize_request(r, r->upstream, NGX_DONE);
+}
+
+
+static void
 ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {
@@ -1433,6 +1457,8 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
+
+    *u->cleanup = NULL;
 
     if (u->state->response_time) {
         tp = ngx_timeofday();
@@ -1864,7 +1890,7 @@ ngx_http_upstream_log_error(ngx_http_request_t *r, u_char *buf, size_t len)
 
     p = ngx_snprintf(buf, len,
                      ", server: %V, URL: \"%V\","
-                     " upstream: %V%V%s%V",
+                     " upstream: \"%V%V%s%V\"",
                      &r->server_name,
                      &r->unparsed_uri,
                      &u->conf->schema,

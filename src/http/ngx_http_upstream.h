@@ -167,6 +167,8 @@ struct ngx_http_upstream_s {
 
     ngx_str_t                       uri;
 
+    ngx_http_cleanup_pt            *cleanup;
+
     unsigned                        cachable:1;
     unsigned                        accel:1;
 

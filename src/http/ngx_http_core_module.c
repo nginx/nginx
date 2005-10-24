@@ -1172,8 +1172,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     ngx_http_handler(sr);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http subrequest \"%V\" done", uri);
+    /* the request pool may be already destroyed */
 
     return NGX_OK;
 }
@@ -1231,27 +1230,38 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 }
 
 
-#if 0       /* STUB: test the delay http handler */
-
-ngx_int_t
-ngx_http_delay_handler(ngx_http_request_t *r)
+ngx_http_cleanup_t *
+ngx_http_cleanup_add(ngx_http_request_t *r, size_t size)
 {
-    static int  on;
+    ngx_http_cleanup_t  *cln;
 
-    if (on++ == 0) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http set delay");
-        ngx_add_timer(r->connection->write, 10000);
-        return NGX_AGAIN;
+    r = r->main;
+
+    cln = ngx_palloc(r->pool, sizeof(ngx_http_cleanup_t));
+    if (cln == NULL) {
+        return NULL;
     }
 
-    r->connection->write->timedout = 0;
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http reset delay");
-    return NGX_DECLINED;
-}
+    if (size) {
+        cln->data = ngx_palloc(r->pool, size);
+        if (cln->data == NULL) {
+            return NULL;
+        }
 
-#endif
+    } else {
+        cln->data = NULL;
+    }
+
+    cln->handler = NULL;
+    cln->next = r->cleanup;
+
+    r->cleanup = cln;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http cleanup add: %p", cln);
+
+    return cln;
+}
 
 
 static char *
@@ -1665,7 +1675,8 @@ ngx_http_core_create_main_conf(ngx_conf_t *cf)
     }
 
     if (ngx_array_init(&cmcf->servers, cf->pool, 4,
-                       sizeof(ngx_http_core_srv_conf_t *)) == NGX_ERROR)
+                       sizeof(ngx_http_core_srv_conf_t *))
+        == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
     }
@@ -1767,6 +1778,10 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         ls->port = (getuid() == 0) ? 80 : 8000;
 #endif
         ls->family = AF_INET;
+
+        ls->conf.backlog = -1;
+        ls->conf.rcvbuf = -1;
+        ls->conf.sndbuf = -1;
     }
 
     if (conf->server_names.nelts == 0) {

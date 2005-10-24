@@ -50,7 +50,7 @@ case $USE_THREADS in
                 CORE_LIBS="$CORE_LIBS -pthread"
             ;;
 
-            FreeBSD:5*)
+            FreeBSD:[567]*)
                 have=NGX_THREADS . auto/have
                 CORE_SRCS="$CORE_SRCS $PTHREAD_SRCS"
                 CORE_LIBS="$CORE_LIBS -lc_r"

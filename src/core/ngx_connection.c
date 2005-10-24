@@ -367,9 +367,8 @@ ngx_configure_listening_socket(ngx_cycle_t *cycle)
                 == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
-                              "setsockopt(SO_RCVBUF) %V failed, ignored",
-                              &ls[i].addr_text);
-                return;
+                              "setsockopt(SO_RCVBUF, %d) %V failed, ignored",
+                              ls[i].rcvbuf, &ls[i].addr_text);
             }
         }
 
@@ -379,9 +378,8 @@ ngx_configure_listening_socket(ngx_cycle_t *cycle)
                 == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
-                              "setsockopt(SO_SNDBUF) %V failed, ignored",
-                              &ls[i].addr_text);
-                return;
+                              "setsockopt(SO_SNDBUF, %d) %V failed, ignored",
+                              ls[i].sndbuf, &ls[i].addr_text);
             }
         }
 

@@ -9,6 +9,52 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.6" date="24.10.2005">
+
+<change type="change">
+<para lang="ru">
+IMAP/POP3 прокси теперь не передаёт серверу авторизации пустой логин.
+</para>
+<para lang="en">
+now the IMAP/POP3 proxy do not send the empty login to authorization server.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива log_format поддерживает переменные в виде $name.
+</para>
+<para lang="en">
+the "log_format" supports the variables in the $name form.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если хотя бы в одном сервере не было описано ни одной директивы listen, то
+nginx не слушал на 80 порту;
+ошибка появилась в 0.3.3.
+</para>
+<para lang="en">
+if at least in one server was no the "listen" directive, then nginx did not
+listen on the 80 port;
+bug appeared in 0.3.3.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве proxy_pass отсутствовал URI, то всегда использовался порт 80.
+</para>
+<para lang="en">
+if the URI part is omitted in "proxy_pass" directive, the the 80 port was
+always used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.5" date="21.10.2005">
 
 <change type="bugfix">
@@ -449,7 +495,7 @@ bug appeared in 0.2.2.
 
 <change type="feature">
 <para lang="ru">
-команда config errmsg в модуле ngx_http_sssi_module.
+команда config errmsg в модуле ngx_http_ssi_module.
 </para>
 <para lang="en">
 the "config errmsg" command of the ngx_http_ssi_module.

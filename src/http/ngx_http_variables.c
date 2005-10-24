@@ -97,6 +97,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("document_uri"), ngx_http_variable_request,
       offsetof(ngx_http_request_t, uri), 0, 0 },
 
+    { ngx_string("request"), ngx_http_variable_request,
+      offsetof(ngx_http_request_t, request_line), 0, 0 },
+
     { ngx_string("document_root"), ngx_http_variable_document_root, 0, 0, 0 },
 
     { ngx_string("query_string"), ngx_http_variable_request,
@@ -705,7 +708,8 @@ ngx_http_variables_add_core_vars(ngx_conf_t *cf)
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
     if (ngx_array_init(&cmcf->all_variables, cf->pool, 32,
-                       sizeof(ngx_http_variable_t)) == NGX_ERROR)
+                       sizeof(ngx_http_variable_t))
+        == NGX_ERROR)
     {
         return NGX_ERROR;
     }
