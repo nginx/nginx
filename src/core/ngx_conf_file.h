@@ -34,6 +34,7 @@
 
 #define NGX_CONF_TAKE23      (NGX_CONF_TAKE2|NGX_CONF_TAKE3)
 
+#define NGX_CONF_TAKE123     (NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3)
 #define NGX_CONF_TAKE1234    (NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3   \
                               |NGX_CONF_TAKE4)
 
@@ -87,6 +88,11 @@ struct ngx_command_s {
 struct ngx_open_file_s {
     ngx_fd_t              fd;
     ngx_str_t             name;
+
+    u_char               *buffer;
+    u_char               *pos;
+    u_char               *last;
+
 #if 0
     /* e.g. append mode, error_log */
     ngx_uint_t            flags;
@@ -121,10 +127,10 @@ struct ngx_module_s {
 
     ngx_int_t           (*init_process)(ngx_cycle_t *cycle);
     ngx_int_t           (*init_thread)(ngx_cycle_t *cycle);
-    ngx_int_t           (*exit_thread)(ngx_cycle_t *cycle);
-    ngx_int_t           (*exit_process)(ngx_cycle_t *cycle);
+    void                (*exit_thread)(ngx_cycle_t *cycle);
+    void                (*exit_process)(ngx_cycle_t *cycle);
 
-    ngx_int_t           (*exit_master)(ngx_cycle_t *cycle);
+    void                (*exit_master)(ngx_cycle_t *cycle);
 
     uintptr_t             spare_hook0;
     uintptr_t             spare_hook1;

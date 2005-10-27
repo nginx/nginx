@@ -9,6 +9,31 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.7" date="27.10.2005">
+
+<change type="feature">
+<para lang="ru">
+директива access_log поддерживает параметр buffer=.
+</para>
+<para lang="en">
+the "access_log" supports the "buffer=" parameter.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ошибка появилась в 0.3.2.
+</para>
+<para lang="en">
+nginx could not be built on platforms different from i386, amd64, sparc и ppc;
+bug appeared in 0.3.2.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.6" date="24.10.2005">
 
 <change type="change">

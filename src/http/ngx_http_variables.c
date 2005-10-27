@@ -36,6 +36,8 @@ static ngx_http_variable_value_t *
     ngx_http_variable_request_method(ngx_http_request_t *r, uintptr_t data);
 static ngx_http_variable_value_t *
     ngx_http_variable_remote_user(ngx_http_request_t *r, uintptr_t data);
+static ngx_http_variable_value_t *
+    ngx_http_variable_sent(ngx_http_request_t *r, uintptr_t data);
 
 
 /*
@@ -44,8 +46,7 @@ static ngx_http_variable_value_t *
  *                 REMOTE_HOST (null), REMOTE_IDENT (null),
  *                 SERVER_SOFTWARE
  *
- *     Apache SSI: DATE_GMT, DOCUMENT_NAME, LAST_MODIFIED,
- *                 USER_NAME (file owner)
+ *     Apache SSI: DOCUMENT_NAME, LAST_MODIFIED, USER_NAME (file owner)
  */
 
 static ngx_http_variable_t  ngx_http_core_variables[] = {
@@ -115,6 +116,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("request_method"), ngx_http_variable_request_method, 0, 0, 0 },
 
     { ngx_string("remote_user"), ngx_http_variable_remote_user, 0, 0, 0 },
+
+    { ngx_string("sent"), ngx_http_variable_sent, 0, 0, 0 },
+
+    { ngx_string("apache_sent"), ngx_http_variable_sent, 1, 0, 0 },
 
     { ngx_null_string, NULL, 0, 0, 0 }
 };
@@ -694,6 +699,41 @@ ngx_http_variable_remote_user(ngx_http_request_t *r, uintptr_t data)
 
     vv->value = 0;
     vv->text = r->headers_in.user;
+
+    return vv;
+}
+
+
+static ngx_http_variable_value_t *
+ngx_http_variable_sent(ngx_http_request_t *r, uintptr_t data)
+{
+    off_t                       sent;
+    u_char                     *p;
+    ngx_http_variable_value_t  *vv;
+
+    vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
+    if (vv == NULL) {
+        return NULL;
+    }
+
+    sent = r->connection->sent;
+
+    if (data) {
+        sent -= r->header_size;
+
+        if (sent < 0) {
+            sent = 0;
+        }
+    }
+
+    p = ngx_palloc(r->pool, NGX_OFF_T_LEN);
+    if (p == NULL) {
+        return NULL;
+    }
+
+    vv->value = 0;
+    vv->text.len = ngx_sprintf(p, "%O", sent) - p;
+    vv->text.data = p;
 
     return vv;
 }

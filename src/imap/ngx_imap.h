@@ -157,10 +157,6 @@ typedef struct {
 #define NGX_IMAP_PARSE_INVALID_COMMAND  20
 
 
-#define NGX_IMAP_PROXY_INVALID  10
-#define NGX_IMAP_PROXY_ERROR    11
-
-
 #define NGX_IMAP_MODULE      0x50414D49     /* "IMAP" */
 
 #define NGX_IMAP_MAIN_CONF   0x02000000

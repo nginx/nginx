@@ -44,12 +44,16 @@ ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent);
 ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset);
 #define ngx_read_file_n          "read()"
 
-
 ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size,
     off_t offset);
 
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
     off_t offset, ngx_pool_t *pool);
+
+
+#define ngx_write_fd             write
+#define ngx_linefeed(p)          *p++ = LF;
+#define NGX_LINEFEED_SIZE        1
 
 
 #define ngx_rename_file          rename

@@ -276,6 +276,13 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
         ngx_process_events_and_timers(cycle);
 
         if (ngx_terminate || ngx_quit) {
+
+            for (i = 0; ngx_modules[i]; i++) {
+                if (ngx_modules[i]->exit_process) {
+                    ngx_modules[i]->exit_process(cycle);
+                }
+            }
+
             ngx_master_exit(cycle);
         }
 
@@ -623,9 +630,17 @@ ngx_reap_childs(ngx_cycle_t *cycle)
 static void
 ngx_master_exit(ngx_cycle_t *cycle)
 {
+    ngx_uint_t  i;
+
     ngx_delete_pidfile(cycle);
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exit");
+
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->exit_master) {
+            ngx_modules[i]->exit_master(cycle);
+        }
+    }
 
     /*
      * we do not destroy cycle->pool here because a signal handler
@@ -734,6 +749,12 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 #if (NGX_THREADS)
             ngx_wakeup_worker_threads(cycle);
 #endif
+
+            for (i = 0; ngx_modules[i]; i++) {
+                if (ngx_modules[i]->exit_process) {
+                    ngx_modules[i]->exit_process(cycle);
+                }
+            }
 
             c = cycle->connections;
             for (i = 0; i < cycle->connection_n; i++) {

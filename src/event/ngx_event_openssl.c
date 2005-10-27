@@ -22,6 +22,7 @@ static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
     ngx_err_t err, char *text);
 static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
 static char *ngx_openssl_init_conf(ngx_cycle_t *cycle, void *conf);
+static void ngx_openssl_exit(ngx_cycle_t *cycle);
 
 #if !(NGX_SSL_ENGINE)
 static char *ngx_openssl_noengine(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -64,7 +65,7 @@ ngx_module_t  ngx_openssl_module = {
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
     NULL,                                  /* exit process */
-    NULL,                                  /* exit master */
+    ngx_openssl_exit,                      /* exit master */
     NGX_MODULE_V1_PADDING
 };
 
@@ -908,7 +909,7 @@ ngx_openssl_init_conf(ngx_cycle_t *cycle, void *conf)
 {
 #if (NGX_SSL_ENGINE)
     ngx_openssl_conf_t *oscf = conf;
-    
+
     ENGINE  *engine;
 
     if (oscf->engine.len == 0) {
@@ -951,3 +952,12 @@ ngx_openssl_noengine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 #endif
+
+
+static void
+ngx_openssl_exit(ngx_cycle_t *cycle)
+{
+#if (NGX_SSL_ENGINE)
+    ENGINE_cleanup();
+#endif
+}

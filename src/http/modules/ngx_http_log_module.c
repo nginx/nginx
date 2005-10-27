@@ -96,7 +96,7 @@ static ngx_command_t  ngx_http_log_commands[] = {
       NULL },
 
     { ngx_string("access_log"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
       ngx_http_log_set_log,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -190,11 +190,9 @@ ngx_http_log_handler(ngx_http_request_t *r)
     u_char                   *line, *p;
     size_t                    len;
     ngx_http_log_t           *log;
+    ngx_open_file_t          *file;
     ngx_http_log_op_t        *op;
     ngx_http_log_loc_conf_t  *lcf;
-#if (NGX_WIN32)
-    u_long                    written;
-#endif
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http log handler");
@@ -219,11 +217,34 @@ ngx_http_log_handler(ngx_http_request_t *r)
             }
         }
 
-#if (NGX_WIN32)
-        len += 2;
-#else
-        len++;
-#endif
+        len += NGX_LINEFEED_SIZE;
+
+        file = log[l].file;
+
+        if (file->buffer) {
+
+            if (len > (size_t) (file->last - file->pos)) {
+
+                ngx_write_fd(file->fd, file->buffer, file->pos - file->buffer);
+
+                file->pos = file->buffer;
+            }
+
+            if (len <= (size_t) (file->last - file->pos)) {
+
+                p = file->pos;
+
+                for (i = 0; i < log[l].ops->nelts; i++) {
+                    p = op[i].run(r, p, &op[i]);
+                }
+
+                ngx_linefeed(p);
+
+                file->pos = p;
+
+                continue;
+            }
+        }
 
         line = ngx_palloc(r->pool, len);
         if (line == NULL) {
@@ -236,13 +257,9 @@ ngx_http_log_handler(ngx_http_request_t *r)
             p = op[i].run(r, p, &op[i]);
         }
 
-#if (NGX_WIN32)
-        *p++ = CR; *p++ = LF;
-        WriteFile(log[l].file->fd, line, p - line, &written, NULL);
-#else
-        *p++ = LF;
-        write(log[l].file->fd, line, p - line);
-#endif
+        ngx_linefeed(p);
+
+        ngx_write_fd(file->fd, line, p - line);
     }
 
     return NGX_OK;
@@ -942,6 +959,7 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_log_loc_conf_t *llcf = conf;
 
+    ssize_t                    buf;
     ngx_uint_t                 i;
     ngx_str_t                 *value, name;
     ngx_http_log_t            *log;
@@ -974,7 +992,7 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (cf->args->nelts == 3) {
+    if (cf->args->nelts >= 3) {
         name = value[2];
     } else {
         name.len = sizeof("combined") - 1;
@@ -987,14 +1005,51 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             && ngx_strcasecmp(fmt[i].name.data, name.data) == 0)
         {
             log->ops = fmt[i].ops;
-            return NGX_CONF_OK;
+            goto buffer;
         }
     }
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                        "unknown log format \"%V\"", &name);
-
     return NGX_CONF_ERROR;
+
+buffer:
+
+    if (cf->args->nelts == 4) {
+        if (ngx_strncmp(value[3].data, "buffer=", 7) != 0) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[3]);
+            return NGX_CONF_ERROR;
+        }
+
+        name.len = value[3].len - 7;
+        name.data = value[3].data + 7;
+
+        buf = ngx_parse_size(&name);
+
+        if (buf == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[3]);
+            return NGX_CONF_ERROR;
+        }
+
+        if (log->file->buffer && log->file->last - log->file->pos != buf) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "access_log \"%V\" already defined "
+                               "with different buffer size", &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+        log->file->buffer = ngx_palloc(cf->pool, buf);
+        if (log->file->buffer == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        log->file->pos = log->file->buffer;
+        log->file->last = log->file->buffer + buf;
+    }
+
+    return NGX_CONF_OK;
 }
 
 

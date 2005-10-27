@@ -154,7 +154,7 @@ static ngx_inline ngx_atomic_uint_t
 ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
      ngx_atomic_uint_t set)
 {
-     if (*lock == old {
+     if (*lock == old) {
          *lock = set;
          return 1;
      }
@@ -174,8 +174,9 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
      return old;
 }
 
-#endif
+#define ngx_memory_barrier()
 
+#endif
 
 void ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin);
 

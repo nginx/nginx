@@ -32,8 +32,8 @@ static char *ngx_imap_proxy_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
 
 
-#define NGX_IMAP_WAIT_OK    0
-#define NGX_IMAP_WAIT_NEXT  1
+#define NGX_IMAP_WAIT_OK      0
+#define NGX_IMAP_WAIT_NEXT    1
 
 
 static ngx_command_t  ngx_imap_proxy_commands[] = {
@@ -156,7 +156,6 @@ ngx_imap_proxy_block_read(ngx_event_t *rev)
 static void
 ngx_imap_proxy_imap_handler(ngx_event_t *rev)
 {
-    char                   *action;
     u_char                 *p;
     ngx_int_t               rc;
     ngx_str_t               line;
@@ -194,18 +193,8 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         return;
     }
 
-    if (rc == NGX_ERROR || rc == NGX_IMAP_PROXY_INVALID) {
+    if (rc == NGX_ERROR) {
         ngx_imap_proxy_internal_server_error(s);
-        return;
-    }
-
-    if (rc == NGX_IMAP_PROXY_ERROR) {
-        s->connection->read->handler = ngx_imap_proxy_handler;
-        s->connection->write->handler = ngx_imap_proxy_handler;
-        rev->handler = ngx_imap_proxy_handler;
-        c->write->handler = ngx_imap_proxy_handler;
-
-        ngx_imap_proxy_handler(c->read);
         return;
     }
 
@@ -294,10 +283,8 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         ngx_add_timer(s->connection->read, pcf->timeout);
         ngx_del_timer(c->read);
 
-        action = c->log->action;
         c->log->action = NULL;
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
-        c->log->action = action;
 
         c->log->action = "proxying";
     }
@@ -307,7 +294,6 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
 static void
 ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
 {
-    char                   *action;
     u_char                 *p;
     ngx_int_t               rc;
     ngx_str_t               line;
@@ -344,18 +330,8 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         return;
     }
 
-    if (rc == NGX_ERROR || rc == NGX_IMAP_PROXY_INVALID) {
+    if (rc == NGX_ERROR) {
         ngx_imap_proxy_internal_server_error(s);
-        return;
-    }
-
-    if (rc == NGX_IMAP_PROXY_ERROR) {
-        s->connection->read->handler = ngx_imap_proxy_handler;
-        s->connection->write->handler = ngx_imap_proxy_handler;
-        rev->handler = ngx_imap_proxy_handler;
-        c->write->handler = ngx_imap_proxy_handler;
-
-        ngx_imap_proxy_handler(c->read);
         return;
     }
 
@@ -425,10 +401,8 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         ngx_add_timer(s->connection->read, pcf->timeout);
         ngx_del_timer(c->read);
 
-        action = c->log->action;
         c->log->action = NULL;
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
-        c->log->action = action;
 
         c->log->action = "proxying";
     }
@@ -474,7 +448,7 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
             ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                           "upstream sent too long response line: \"%s\"",
                           b->pos);
-            return NGX_IMAP_PROXY_INVALID;
+            return NGX_ERROR;
         }
 
         return NGX_AGAIN;
@@ -487,15 +461,7 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
             return NGX_OK;
         }
 
-        if (p[0] == '-' && p[1] == 'E' && p[2] == 'R' && p[3] == 'R') {
-            return NGX_IMAP_PROXY_ERROR;
-        }
-
     } else {
-        if (p[0] == 'N' && p[1] == 'O') {
-            return NGX_IMAP_PROXY_ERROR;
-        }
-
         if (what == NGX_IMAP_WAIT_OK) {
             if (p[0] == '*' && p[1] == ' ' && p[2] == 'O' && p[3] == 'K') {
                 return NGX_OK;
@@ -512,7 +478,7 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
     ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                   "upstream sent invalid response: \"%s\"", p);
 
-    return NGX_IMAP_PROXY_INVALID;
+    return NGX_ERROR;
 }
 
 

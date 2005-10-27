@@ -8,7 +8,6 @@
 #include <ngx_core.h>
 
 
-static void ngx_log_write(ngx_log_t *log, u_char *errstr, size_t len);
 static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
@@ -152,42 +151,13 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
         p = log->handler(log, p, last - p);
     }
 
-    ngx_log_write(log, errstr, p - errstr);
-}
-
-
-static void
-ngx_log_write(ngx_log_t *log, u_char *errstr, size_t len)
-{
-#if (NGX_WIN32)
-    u_long  written;
-
-    if (len >= NGX_MAX_ERROR_STR - 1) {
-        len = NGX_MAX_ERROR_STR - 2;
+    if (p > last - NGX_LINEFEED_SIZE) {
+        p = last - NGX_LINEFEED_SIZE;
     }
 
-    errstr[len++] = CR;
-    errstr[len++] = LF;
+    ngx_linefeed(p);
 
-    WriteFile(log->file->fd, errstr, len, &written, NULL);
-
-#if 0
-    if (WriteFile(log->file->fd, errstr, len, &written, NULL) == 0) {
-        ngx_message_box("nginx", MB_OK, ngx_errno, "WriteFile() failed");
-    }
-#endif
-
-#else
-
-    if (len == NGX_MAX_ERROR_STR) {
-        len--;
-    }
-
-    errstr[len++] = LF;
-
-    (void) write(log->file->fd, errstr, len);
-
-#endif
+    ngx_write_fd(log->file->fd, errstr, p - errstr);
 }
 
 

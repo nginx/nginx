@@ -11,6 +11,7 @@
 static ngx_int_t ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last);
 static ngx_int_t ngx_conf_read_token(ngx_conf_t *cf);
 static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static void ngx_conf_flush_files(ngx_cycle_t *cycle);
 
 
 static ngx_command_t  ngx_conf_commands[] = {
@@ -36,7 +37,7 @@ ngx_module_t  ngx_conf_module = {
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
-    NULL,                                  /* exit process */
+    ngx_conf_flush_files,                  /* exit process */
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
@@ -742,7 +743,41 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         file->name.data = NULL;
     }
 
+    file->buffer = NULL;
+
     return file;
+}
+
+
+static void
+ngx_conf_flush_files(ngx_cycle_t *cycle)
+{
+    ngx_uint_t        i;
+    ngx_list_part_t  *part;
+    ngx_open_file_t  *file;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, cycle->log, 0, "flush files");
+
+    part = &cycle->open_files.part;
+    file = part->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            file = part->elts;
+            i = 0;
+        }
+
+        if (file[i].buffer == NULL || file[i].pos - file[i].buffer == 0) {
+            continue;
+        }
+
+        ngx_write_fd(file[i].fd, file[i].buffer, file[i].pos - file[i].buffer);
+    }
 }
 
 

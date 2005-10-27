@@ -65,6 +65,11 @@ ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_close_file_n            "CloseHandle()"
 
 
+#define ngx_write_fd(fd, buf, size) WriteFile(fd, buf, size, NULL, NULL)
+#define ngx_linefeed(p)             *p++ = CR; *p++ = LF;
+#define NGX_LINEFEED_SIZE           2
+
+
 #define ngx_delete_file(name)       DeleteFile((const char *) name)
 #define ngx_delete_file_n           "DeleteFile()"
 

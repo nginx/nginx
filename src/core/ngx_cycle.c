@@ -724,6 +724,12 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
             continue;
         }
 
+        if (file[i].buffer && file[i].pos - file[i].buffer != 0) {
+            ngx_write_fd(file[i].fd, file[i].buffer,
+                         file[i].pos - file[i].buffer);
+            file[i].pos = file[i].buffer;
+        }
+
         fd = ngx_open_file(file[i].name.data, NGX_FILE_RDWR,
                            NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 
