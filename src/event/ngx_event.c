@@ -48,6 +48,7 @@ ngx_atomic_t         *ngx_connection_counter = &connection_counter;
 
 
 ngx_atomic_t         *ngx_accept_mutex_ptr;
+ngx_atomic_t         *ngx_accept_mutex_last_owner;
 ngx_atomic_t         *ngx_accept_mutex;
 ngx_uint_t            ngx_accept_mutex_held;
 ngx_msec_t            ngx_accept_mutex_delay;
@@ -249,16 +250,16 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "timer delta: %M", delta);
 
-    if (delta) {
-        ngx_event_expire_timers();
-    }
-
     if (ngx_posted_accept_events) {
         ngx_event_process_posted(cycle, &ngx_posted_accept_events);
     }
 
     if (ngx_accept_mutex_held) {
         *ngx_accept_mutex = 0;
+    }
+
+    if (delta) {
+        ngx_event_expire_timers();
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -470,6 +471,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     /* TODO: adjust cache line size, 128 is P4 cache line size */
 
     size = 128            /* ngx_accept_mutex */
+           + 128          /* ngx_accept_mutex_last_owner */
            + 128;         /* ngx_connection_counter */
 
 #if (NGX_STAT_STUB)
@@ -489,16 +491,17 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     }
 
     ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
-    ngx_connection_counter = (ngx_atomic_t *) (shared + 128);
+    ngx_accept_mutex_last_owner = (ngx_atomic_t *) (shared + 1 * 128);
+    ngx_connection_counter = (ngx_atomic_t *) (shared + 2 * 128);
 
 #if (NGX_STAT_STUB)
 
-    ngx_stat_accepted = (ngx_atomic_t *) (shared + 2 * 128);
-    ngx_stat_handled = (ngx_atomic_t *) (shared + 3 * 128);
-    ngx_stat_requests = (ngx_atomic_t *) (shared + 4 * 128);
-    ngx_stat_active = (ngx_atomic_t *) (shared + 5 * 128);
-    ngx_stat_reading = (ngx_atomic_t *) (shared + 6 * 128);
-    ngx_stat_writing = (ngx_atomic_t *) (shared + 7 * 128);
+    ngx_stat_accepted = (ngx_atomic_t *) (shared + 3 * 128);
+    ngx_stat_handled = (ngx_atomic_t *) (shared + 4 * 128);
+    ngx_stat_requests = (ngx_atomic_t *) (shared + 5 * 128);
+    ngx_stat_active = (ngx_atomic_t *) (shared + 6 * 128);
+    ngx_stat_reading = (ngx_atomic_t *) (shared + 7 * 128);
+    ngx_stat_writing = (ngx_atomic_t *) (shared + 8 * 128);
 
 #endif
 
@@ -1082,10 +1085,10 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 #endif
 #if (NGX_HAVE_RTSIG)
     ngx_uint_t           rtsig;
+    ngx_core_conf_t     *ccf;
 #endif
     ngx_int_t            i, connections;
     ngx_module_t        *module;
-    ngx_core_conf_t     *ccf;
     ngx_event_module_t  *event_module;
 
     connections = NGX_CONF_UNSET_UINT;
@@ -1189,8 +1192,6 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_OK;
     }
 
-#endif
-
     if (ecf->accept_mutex) {
         return NGX_CONF_OK;
     }
@@ -1205,6 +1206,12 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
                   "the \"rtsig\" method requires \"accept_mutex\" to be on");
 
     return NGX_CONF_ERROR;
+
+#else
+
+    return NGX_CONF_OK;
+
+#endif
 }
 
 

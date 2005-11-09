@@ -35,34 +35,11 @@ struct ngx_http_log_op_s {
 
 typedef struct {
     ngx_str_t                   name;
-    ngx_array_t                *ops;        /* array of ngx_http_log_op_t */
-} ngx_http_log_fmt_t;
-
-
-typedef struct {
-    ngx_str_t                   name;
     size_t                      len;
     ngx_http_log_op_compile_pt  compile;
     ngx_http_log_op_getlen_pt   getlen;
     ngx_http_log_op_run_pt      run;
 } ngx_http_log_op_name_t;
-
-
-typedef struct {
-    ngx_array_t                 formats;    /* array of ngx_http_log_fmt_t */
-} ngx_http_log_main_conf_t;
-
-
-typedef struct {
-    ngx_open_file_t            *file;
-    ngx_array_t                *ops;        /* array of ngx_http_log_op_t */
-} ngx_http_log_t;
-
-
-typedef struct {
-    ngx_array_t                *logs;       /* array of ngx_http_log_t */
-    ngx_uint_t                  off;        /* unsigned  off:1 */
-} ngx_http_log_loc_conf_t;
 
 
 extern ngx_http_log_op_name_t ngx_http_log_fmt_ops[];

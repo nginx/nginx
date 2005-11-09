@@ -38,6 +38,7 @@ CFLAGS="$CFLAGS $IPO"
 CORE_LINK="$CORE_LINK $IPO"
 CORE_LINK="$CORE_LINK -opt_report_file=$NGX_OBJS/opt_report_file"
 
+
 case $CPU in
     pentium)
         # optimize for Pentium and Athlon
@@ -104,7 +105,7 @@ CFLAGS="$CFLAGS -wd1418"
 CFLAGS="$CFLAGS -wd1419"
 
 case "$NGX_ICC_VER" in
-    8.* | 9.*)
+    9.*)
         # "cc" clobber ignored, warnings for Liunx's htons()
         CFLAGS="$CFLAGS -wd1469"
         # explicit conversion of a 64-bit integral type to a smaller
@@ -113,6 +114,15 @@ case "$NGX_ICC_VER" in
         # conversion from pointer to same-sized integral type,
         # warning on offsetof()
         CFLAGS="$CFLAGS -wd1684"
+
+        # STUB
+        # non-POD class type passed through ellipsis, Linux only ?
+        CFLAGS="$CFLAGS -wd1595"
+    ;;
+
+    8.*)
+        # "cc" clobber ignored, warnings for Liunx's htons()
+        CFLAGS="$CFLAGS -wd1469"
 
         # STUB
         # non-POD class type passed through ellipsis, Linux only ?

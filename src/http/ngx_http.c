@@ -277,19 +277,31 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /* init lists of the handlers */
 
-    if (ngx_array_init(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt)) != NGX_OK)
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_POST_READ_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
-    cmcf->phases[NGX_HTTP_REWRITE_PHASE].type = NGX_OK;
+    cmcf->phases[NGX_HTTP_POST_READ_PHASE].type = NGX_OK;
+
+
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_SERVER_REWRITE_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    cmcf->phases[NGX_HTTP_SERVER_REWRITE_PHASE].type = NGX_OK;
 
 
     /* the special find config phase for a single handler */
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt)) != NGX_OK)
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -304,8 +316,19 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     *h = ngx_http_find_location_config;
 
 
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    cmcf->phases[NGX_HTTP_REWRITE_PHASE].type = NGX_OK;
+
+
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt)) != NGX_OK)
+                       cf->pool, 4, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -314,7 +337,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,
-                       cf->pool, 4, sizeof(ngx_http_handler_pt)) != NGX_OK)
+                       cf->pool, 4, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -353,6 +377,9 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    if (ngx_http_variables_init_vars(cf) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
     /*
      * http{}'s cf->ctx was needed while the configuration merging

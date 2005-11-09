@@ -11,6 +11,9 @@ ngx_binout="-o "
 ngx_objext="o"
 ngx_binext=
 
+ngx_long_start=
+ngx_long_end=
+
 ngx_regex_dirsep="\/"
 ngx_dirsep='/'
 
@@ -21,6 +24,9 @@ ngx_cont=' \
 ngx_tab=' \
 		'
 ngx_spacer=
+
+ngx_long_regex_cont=$ngx_regex_cont
+ngx_long_cont=$ngx_cont
 
 . auto/cc/name
 

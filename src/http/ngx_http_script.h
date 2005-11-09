@@ -14,46 +14,49 @@
 
 
 typedef struct {
-    u_char                         *ip;
-    u_char                         *pos;
-    ngx_http_variable_value_t      *sp;
+    u_char                     *ip;
+    u_char                     *pos;
+    ngx_http_variable_value_t  *sp;
 
-    ngx_str_t                       buf;
-    ngx_str_t                       line;
+    ngx_str_t                   buf;
+    ngx_str_t                   line;
 
     /* the start of the rewritten arguments */
-    u_char                         *args;
+    u_char                     *args;
 
-    unsigned                        skip:1;
-    unsigned                        quote:1;
-    unsigned                        log:1;
+    unsigned                    flushed:1;
+    unsigned                    skip:1;
+    unsigned                    quote:1;
+    unsigned                    log:1;
 
-    int                            *captures;
-    ngx_uint_t                      ncaptures;
+    int                        *captures;
+    ngx_uint_t                  ncaptures;
 
-    ngx_int_t                       status;
-    ngx_http_request_t             *request;
+    ngx_int_t                   status;
+    ngx_http_request_t         *request;
 } ngx_http_script_engine_t;
 
 
 typedef struct {
-    ngx_conf_t                     *cf;
-    ngx_str_t                      *source;
-    ngx_array_t                   **lengths;
-    ngx_array_t                   **values;
+    ngx_conf_t                 *cf;
+    ngx_str_t                  *source;
 
-    ngx_uint_t                      variables;
-    ngx_uint_t                      ncaptures;
-    ngx_uint_t                      size;
+    ngx_array_t               **flushes;
+    ngx_array_t               **lengths;
+    ngx_array_t               **values;
 
-    void                           *main;
+    ngx_uint_t                  variables;
+    ngx_uint_t                  ncaptures;
+    ngx_uint_t                  size;
 
-    unsigned                        compile_args:1;
-    unsigned                        compile_null:1;
-    unsigned                        complete_lengths:1;
-    unsigned                        complete_values:1;
+    void                       *main;
 
-    unsigned                        args:1;
+    unsigned                    compile_args:1;
+    unsigned                    compile_null:1;
+    unsigned                    complete_lengths:1;
+    unsigned                    complete_values:1;
+
+    unsigned                    args:1;
 } ngx_http_script_compile_t;
 
 
@@ -149,6 +152,8 @@ typedef struct {
 
 ngx_uint_t ngx_http_script_variables_count(ngx_str_t *value);
 ngx_int_t ngx_http_script_compile(ngx_http_script_compile_t *sc);
+void ngx_http_script_flush_no_cachable_variables(ngx_http_request_t *r,
+    ngx_array_t *indices);
 
 void *ngx_http_script_start_code(ngx_pool_t *pool, ngx_array_t **codes,
     size_t size);

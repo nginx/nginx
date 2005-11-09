@@ -763,6 +763,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                        "s:%d in:'%Xd:%c', out:'%c'", state, ch, ch, *u);
 
         switch (state) {
+
         case sw_usual:
             switch(ch) {
 #if (NGX_WIN32)
@@ -810,7 +811,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
-                break;
 #endif
             case '/':
                 break;
@@ -837,7 +837,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
-                /* fall through */
 #endif
             case '/':
                 state = sw_slash;
@@ -866,7 +865,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
-                /* fall through */
 #endif
             case '/':
                 state = sw_slash;
@@ -923,6 +921,9 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 quoted_state = state;
                 state = sw_quoted;
                 break;
+            case '?':
+                r->args_start = p;
+                goto done;
             default:
                 state = sw_usual;
                 *u++ = ch;
@@ -1003,6 +1004,92 @@ done:
 
 
 ngx_int_t
+ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
+    ngx_str_t *args, ngx_uint_t *flags)
+{
+    u_char  ch, *p;
+    size_t  len;
+
+    len = uri->len;
+    p = uri->data;
+
+    if (len == 0 || p[0] == '?') {
+        goto unsafe;
+    }
+
+    if (p[0] == '.' && len == 3 && p[1] == '.' && (p[2] == '/'
+#if (NGX_WIN32)
+                                                   || p[2] == '\\'
+#endif
+        ))
+    {
+        goto unsafe;
+    }
+
+    for ( /* void */ ; len; len--) {
+
+        ch = *p++;
+
+        if (ch == '?') {
+            args->len = len - 1;
+            args->data = p;
+            uri->len -= len;
+
+            return NGX_OK;
+        }
+
+        if (ch == '\0') {
+            *flags |= NGX_HTTP_ZERO_IN_URI;
+            continue;
+        }
+
+        if (ch != '/'
+#if (NGX_WIN32)
+            && ch != '\\'
+#endif
+            )
+        {
+            continue;
+        }
+
+        if (len > 2) {
+
+            /* detect "/../" */
+
+            if (p[2] == '/') {
+                goto unsafe;
+            }
+
+#if (NGX_WIN32)
+
+            if (p[2] == '\\') {
+                goto unsafe;
+            }
+
+            if (len > 3) {
+
+                /* detect "/.../" */
+
+                if (p[3] == '/' || p[3] == '\\') {
+                    goto unsafe;
+                }
+            }
+#endif
+        }
+    }
+
+    return NGX_OK;
+
+unsafe:
+
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "unsafe URI \"%V\" was detected", uri);
+
+    return NGX_ERROR;
+}
+
+
+ngx_int_t
 ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
     ngx_str_t *value)
 {
@@ -1059,6 +1146,7 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
             return i;
 
         skip:
+
             while (start < end) {
                 ch = *start++;
                 if (ch == ';' || ch == ',') {

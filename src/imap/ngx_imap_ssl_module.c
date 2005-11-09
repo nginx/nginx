@@ -83,6 +83,12 @@ static ngx_command_t  ngx_imap_ssl_commands[] = {
       ngx_imap_ssl_nosupported, 0, 0, ngx_imap_ssl_openssl097 },
 #endif
 
+    { ngx_string("ssl_session_timeout"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_sec_slot,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_ssl_conf_t, session_timeout),
+      NULL },
 
       ngx_null_command
 };
@@ -140,6 +146,7 @@ ngx_imap_ssl_create_conf(ngx_conf_t *cf)
      */
 
     scf->enable = NGX_CONF_UNSET;
+    scf->session_timeout = NGX_CONF_UNSET;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
 
     return scf;
@@ -159,6 +166,9 @@ ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->enable == 0) {
         return NGX_CONF_OK;
     }
+
+    ngx_conf_merge_value(conf->session_timeout,
+                         prev->session_timeout, 300);
 
     ngx_conf_merge_value(conf->prefer_server_ciphers,
                          prev->prefer_server_ciphers, 0);
@@ -224,6 +234,8 @@ ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     SSL_CTX_set_session_id_context(conf->ssl.ctx, ngx_imap_session_id_ctx,
                                    sizeof(ngx_imap_session_id_ctx) - 1);
+
+    SSL_CTX_set_timeout(conf->ssl.ctx, conf->session_timeout);
 
     return NGX_CONF_OK;
 }

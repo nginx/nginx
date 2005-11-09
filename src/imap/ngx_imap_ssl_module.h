@@ -22,6 +22,8 @@ typedef struct {
 
     ngx_uint_t      protocols;
 
+    time_t          session_timeout;
+
     ngx_str_t       certificate;
     ngx_str_t       certificate_key;
 

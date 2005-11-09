@@ -14,7 +14,7 @@
 typedef struct {
     in_addr_t     mask;
     in_addr_t     addr;
-    unsigned      deny;
+    ngx_uint_t    deny;      /* unsigned  deny:1; */
 } ngx_http_access_rule_t;
 
 
@@ -106,7 +106,7 @@ ngx_http_access_handler(ngx_http_request_t *r)
     for (i = 0; i < alcf->rules->nelts; i++) {
 
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "%08XD %08XD %08XD",
+                       "access: %08XD %08XD %08XD",
                        sin->sin_addr.s_addr, rule[i].mask, rule[i].addr);
 
         if ((sin->sin_addr.s_addr & rule[i].mask) == rule[i].addr) {

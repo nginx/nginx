@@ -9,6 +9,181 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.8" date="09.11.2005">
+
+<change type="security">
+<para lang="ru">
+nginx теперь проверят URI, полученные от бэкенда в строке "X-Accel-Redirect"
+в заголовке ответа, или в SSI файле на наличие путей "/../" и нулей.
+</para>
+<para lang="en">
+nginx now checks URI got from a backend in "X-Accel-Redirect" header line
+or in SSI file for the "/../" paths and zeroes.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+nginx теперь не воспринимает пустое имя как правильное
+в строке "Authorization" в заголовке запроса.
+</para>
+<para lang="en">
+nginx now does not treat the empty user name in the "Authorization" header
+line as valid one.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_session_timeout модулей
+ngx_http_ssl_module и ngx_imap_ssl_module.
+</para>
+<para lang="en">
+the "ssl_session_timeout" directives
+of the ngx_http_ssl_module and ngx_imap_ssl_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива auth_http_header модуля ngx_imap_auth_http_module.
+</para>
+<para lang="en">
+the "auth_http_header" directive of the ngx_imap_auth_http_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива add_header.
+</para>
+<para lang="en">
+the "add_header" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_realip_module.
+</para>
+<para lang="en">
+the ngx_http_realip_module.
+directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+новые переменные для использования в директиве log_format:
+$bytes_sent, $apache_bytes_sent, $status, $time_gmt,
+$uri, $request_time, $request_length,
+$upstream_status, $upstream_response_time,
+$gzip_ratio,
+$uid_got, $uid_set,
+$connection, $pipe и $msec.
+Параметры в виде "%name" скоро будут упразднены.
+</para>
+<para lang="en">
+the new variables to use in the "log_format" directive:
+$bytes_sent, $apache_bytes_sent, $status, $time_gmt,
+$uri, $request_time, $request_length,
+$upstream_status, $upstream_response_time,
+$gzip_ratio,
+$uid_got, $uid_set,
+$connection, $pipe, and $msec.
+The parameters in the "%name" form will be canceled soon.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+в директиве "if" ложными значениями переменных теперь являются
+пустая строка "" и строки, начинающиеся на "0".
+</para>
+<para lang="en">
+now the false variable values in the "if" directive are the empty string ""
+and string starting with "0".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при работает с проксированными или FastCGI-серверами nginx мог оставлять
+открытыми соединения и временные файлы с запросами клиентов.
+</para>
+<para lang="en">
+while using proxied or FastCGI-server nginx may leave connections
+and temporary files with client requests in open state.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочие процессы не сбрасывал буферизированные логи при плавном выходе.
+</para>
+<para lang="en">
+the worker processes did not flush the buffered logs on graceful exit.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если URI запроса изменялось с помощью rewrite, а затем запрос проксировался
+в location, заданном регулярным выражением, то бэкенду передавался
+неверный запрос;
+ошибка появилась в 0.2.6.
+</para>
+<para lang="en">
+if the request URI was changes by the "rewrite" directive and the request
+was proxied in location given by regular expression, then the incorrect
+request was transferred to backend;
+bug appeared in 0.2.6.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива expires не удаляла уже установленную строку заголовка "Expires".
+</para>
+<para lang="en">
+the "expires" directive did not remove the previous "Expires" header.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании метода rtsig и нескольких рабочих процессах nginx
+мог перестать принимать запросы.
+</para>
+<para lang="en">
+nginx may stop to accept requests if the "rtsig" method and several worker
+processes were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в SSI командах неверно обрабатывались строки "\"" и "\'".
+</para>
+<para lang="en">
+the "\"" and "\'" escape symbols were incorrectly handled in SSI commands.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если ответ заканчивался сразу же после SSI команды, то при использовании
+сжатия ответ передавался не до конца или не передавался вообще.
+</para>
+<para lang="en">
+if the response was ended just after the SSI command and gzipping was used,
+then the response did not transferred complete or did not transferred at all.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.7" date="27.10.2005">
 
 <change type="feature">

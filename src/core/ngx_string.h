@@ -46,7 +46,7 @@ typedef struct {
 #define ngx_strncmp(s1, s2, n)  strncmp((const char *) s1, (const char *) s2, n)
 
 
-/* msvc and icc compile strcmp() to inline loop */
+/* msvc and icc7 compile strcmp() to inline loop */
 #define ngx_strcmp(s1, s2)  strcmp((const char *) s1, (const char *) s2)
 
 
@@ -55,20 +55,55 @@ typedef struct {
 
 
 /*
- * msvc and icc compile memset() to the inline "rep stos"
+ * msvc and icc7 compile memset() to the inline "rep stos"
  * while ZeroMemory() and bzero() are the calls.
- * icc may also inline several mov's of a zeroed register for small blocks.
+ * icc7 may also inline several mov's of a zeroed register for small blocks.
  */
 #define ngx_memzero(buf, n)       (void) memset(buf, 0, n)
 #define ngx_memset(buf, c, n)     (void) memset(buf, c, n)
 
 
-/* msvc and icc compile memcpy() to the inline "rep movs" */
+/*
+ * gcc3, msvc, and icc7 compile memcpy() to the inline "rep movs".
+ * gcc3 compiles memcpy(d, s, 4) to the inline "mov"es.
+ * icc8 compile memcpy(d, s, 4) to the inline "mov"es or XMM moves.
+ */
 #define ngx_memcpy(dst, src, n)   (void) memcpy(dst, src, n)
 #define ngx_cpymem(dst, src, n)   ((u_char *) memcpy(dst, src, n)) + (n)
 
 
-/* msvc and icc compile memcmp() to the inline loop */
+#if ( __INTEL_COMPILER >= 800 )
+
+/*
+ * the simple inline cycle copies the variable length strings up to 16
+ * bytes faster than icc8 autodetecting _intel_fast_memcpy()
+ */
+
+static ngx_inline u_char *
+ngx_copy(u_char *dst, u_char *src, size_t len)
+{
+    if (len < 17) {
+
+        while (len) {
+            *dst++ = *src++;
+            len--;
+        }
+
+        return dst;
+
+    } else {
+        return ngx_cpymem(dst, src, len);
+    }
+}
+
+#else
+
+#define ngx_copy                  ngx_cpymem
+
+#endif
+
+
+/* msvc and icc7 compile memcmp() to the inline loop */
 #define ngx_memcmp                memcmp
 
 

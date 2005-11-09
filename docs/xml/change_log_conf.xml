@@ -15,6 +15,7 @@
     <bugfix>Исправление</bugfix>
     <feature>Добавление</feature>
     <change>Изменение</change>
+    <security>Безопасность</security>
     <workaround>Изменение</workaround>
 </changes>
 
@@ -25,6 +26,7 @@
     <bugfix>Bugfix</bugfix>
     <feature>Feature</feature>
     <change>Change</change>
+    <security>Security</security>
     <workaround>Workaround</workaround>
 
     <month> Jan </month>

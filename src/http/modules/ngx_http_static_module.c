@@ -195,7 +195,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
-            last = ngx_cpymem(location, r->uri.data, r->uri.len);
+            last = ngx_copy(location, r->uri.data, r->uri.len);
         }
 
         *last = '/';

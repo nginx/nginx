@@ -79,7 +79,9 @@ static void ngx_http_gzip_error(ngx_http_gzip_ctx_t *ctx);
 static u_char *ngx_http_gzip_log_ratio(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
 
-static ngx_int_t ngx_http_gzip_add_log_formats(ngx_conf_t *cf);
+static ngx_int_t ngx_http_gzip_add_variables(ngx_conf_t *cf);
+static ngx_int_t ngx_http_gzip_ratio_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 
 static ngx_int_t ngx_http_gzip_filter_init(ngx_cycle_t *cycle);
 static void *ngx_http_gzip_create_conf(ngx_conf_t *cf);
@@ -199,7 +201,7 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_gzip_filter_module_ctx = {
-    ngx_http_gzip_add_log_formats,         /* preconfiguration */
+    ngx_http_gzip_add_variables,           /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
@@ -256,6 +258,7 @@ struct gztrailer {
 #endif
 
 
+static ngx_str_t  ngx_http_gzip_ratio = ngx_string("gzip_ratio");
 static ngx_str_t  ngx_http_gzip_no_cache = ngx_string("no-cache");
 static ngx_str_t  ngx_http_gzip_no_store = ngx_string("no-store");
 static ngx_str_t  ngx_http_gzip_private = ngx_string("private");
@@ -956,9 +959,17 @@ ngx_http_gzip_error(ngx_http_gzip_ctx_t *ctx)
 
 
 static ngx_int_t
-ngx_http_gzip_add_log_formats(ngx_conf_t *cf)
+ngx_http_gzip_add_variables(ngx_conf_t *cf)
 {
+    ngx_http_variable_t     *var;
     ngx_http_log_op_name_t  *op;
+
+    var = ngx_http_add_variable(cf, &ngx_http_gzip_ratio, 0);
+    if (var == NULL) {
+        return NGX_ERROR;
+    }
+
+    var->handler = ngx_http_gzip_ratio_variable;
 
     for (op = ngx_http_gzip_log_fmt_ops; op->name.len; op++) { /* void */ }
     op->run = NULL;
@@ -970,6 +981,50 @@ ngx_http_gzip_add_log_formats(ngx_conf_t *cf)
     }
 
     op->run = (ngx_http_log_op_run_pt) ngx_http_gzip_log_fmt_ops;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_gzip_ratio_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_uint_t            zint, zfrac;
+    ngx_http_gzip_ctx_t  *ctx;
+
+    v->valid = 1; 
+    v->no_cachable = 0;
+    v->not_found = 0;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module);
+
+    if (ctx == NULL || ctx->zout == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->data = ngx_palloc(r->pool, NGX_INT32_LEN + 3);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    zint = (ngx_uint_t) (ctx->zin / ctx->zout);
+    zfrac = (ngx_uint_t) ((ctx->zin * 100 / ctx->zout) % 100);
+
+    if ((ctx->zin * 1000 / ctx->zout) % 10 > 4) {
+
+        /* the rounding, e.g., 2.125 to 2.13 */
+
+        zfrac++;
+
+        if (zfrac > 99) {
+            zint++;
+            zfrac = 0;
+        }
+    }
+
+    v->len = ngx_sprintf(v->data, "%ui.%02ui", zint, zfrac) - v->data;
 
     return NGX_OK;
 }

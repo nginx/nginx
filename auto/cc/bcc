@@ -63,5 +63,9 @@ ngx_binout="-e"
 ngx_objext="obj"
 ngx_binext=".exe"
 
+ngx_long_start='@&&|
+	'
+ngx_long_end='|'
+
 ngx_regex_dirsep='\\'
 ngx_dirsep="\\"

@@ -112,9 +112,15 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("Keep-Alive"), offsetof(ngx_http_headers_in_t, keep_alive),
                  ngx_http_process_header_line },
 
-#if (NGX_HTTP_PROXY)
+#if (NGX_HTTP_PROXY || NGX_HTTP_REALIP)
     { ngx_string("X-Forwarded-For"),
                  offsetof(ngx_http_headers_in_t, x_forwarded_for),
+                 ngx_http_process_header_line },
+#endif
+
+#if (NGX_HTTP_REALIP)
+    { ngx_string("X-Real-IP"),
+                 offsetof(ngx_http_headers_in_t, x_real_ip),
                  ngx_http_process_header_line },
 #endif
 
@@ -190,20 +196,21 @@ ngx_http_init_connection(ngx_connection_t *c)
 static
 void ngx_http_init_request(ngx_event_t *rev)
 {
-    ngx_uint_t                 i;
-    socklen_t                  len;
-    struct sockaddr_in         sin;
-    ngx_connection_t          *c;
-    ngx_http_request_t        *r;
-    ngx_http_in_port_t        *in_port;
-    ngx_http_in_addr_t        *in_addr;
-    ngx_http_log_ctx_t        *ctx;
-    ngx_http_connection_t     *hc;
-    ngx_http_server_name_t    *server_name;
-    ngx_http_core_srv_conf_t  *cscf;
-    ngx_http_core_loc_conf_t  *clcf;
+    ngx_uint_t                  i;
+    socklen_t                   len;
+    struct sockaddr_in          sin;
+    ngx_connection_t           *c;
+    ngx_http_request_t         *r;
+    ngx_http_in_port_t         *in_port;
+    ngx_http_in_addr_t         *in_addr;
+    ngx_http_log_ctx_t         *ctx;
+    ngx_http_connection_t      *hc;
+    ngx_http_server_name_t     *server_name;
+    ngx_http_core_srv_conf_t   *cscf;
+    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_core_main_conf_t  *cmcf;
 #if (NGX_HTTP_SSL)
-    ngx_http_ssl_srv_conf_t   *sscf;
+    ngx_http_ssl_srv_conf_t    *sscf;
 #endif
 
 #if (NGX_STAT_STUB)
@@ -377,9 +384,17 @@ void ngx_http_init_request(ngx_event_t *rev)
         return;
     }
 
-
     r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
     if (r->ctx == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    r->variables = ngx_pcalloc(r->pool, cmcf->variables.nelts
+                                        * sizeof(ngx_http_variable_value_t));
+    if (r->variables == NULL) {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }

@@ -40,6 +40,8 @@
 #define NGX_HTTP_PARSE_HEADER_ERROR        13
 #define NGX_HTTP_PARSE_INVALID_HEADER      13
 
+#define NGX_HTTP_ZERO_IN_URI               1
+
 
 #define NGX_HTTP_OK                        200
 #define NGX_HTTP_NO_CONTENT                204
@@ -150,8 +152,12 @@ typedef struct {
 
     ngx_table_elt_t                  *keep_alive;
 
-#if (NGX_HTTP_PROXY)
+#if (NGX_HTTP_PROXY || NGX_HTTP_REALIP)
     ngx_table_elt_t                  *x_forwarded_for;
+#endif
+
+#if (NGX_HTTP_REALIP)
+    ngx_table_elt_t                  *x_real_ip;
 #endif
 
 #if (NGX_HTTP_HEADERS)
@@ -320,7 +326,7 @@ struct ngx_http_request_s {
     ngx_http_handler_pt               content_handler;
     ngx_uint_t                        access_code;
 
-    ngx_http_variable_value_t       **variables;
+    ngx_http_variable_value_t        *variables;
 
     size_t                            limit_rate;
 
@@ -365,6 +371,16 @@ struct ngx_http_request_s {
     unsigned                          proxy:1;
     unsigned                          bypass_cache:1;
     unsigned                          no_cache:1;
+
+#if (NGX_HTTP_REALIP)
+
+    /*
+     * instead of using the request context data in ngx_http_realip_module
+     * we use the single bit in the request structure
+     */
+    unsigned                          realip_set:1;
+
+#endif
 
 #if 0
     unsigned                          cachable:1;

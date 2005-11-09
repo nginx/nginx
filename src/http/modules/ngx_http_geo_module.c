@@ -65,31 +65,34 @@ ngx_module_t  ngx_http_geo_module = {
 
 
 static ngx_http_variable_value_t  ngx_http_geo_null_value =
-                                                        { 0, ngx_string("0") };
+    ngx_http_variable("");
 
 
 /* AF_INET only */
 
-static ngx_http_variable_value_t *
-ngx_http_geo_variable(ngx_http_request_t *r, uintptr_t data)
+static ngx_int_t
+ngx_http_geo_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
+    uintptr_t data)
 {
     ngx_radix_tree_t *tree = (ngx_radix_tree_t *) data;
 
     struct sockaddr_in         *sin;
-    ngx_http_variable_value_t  *var;
+    ngx_http_variable_value_t  *vv;
 
     sin = (struct sockaddr_in *) r->connection->sockaddr;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http geo started");
 
-    var  = (ngx_http_variable_value_t *)
+    vv = (ngx_http_variable_value_t *)
                        ngx_radix32tree_find(tree, ntohl(sin->sin_addr.s_addr));
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http geo: %V %V", &r->connection->addr_text, &var->text);
+    *v = *vv;
 
-    return var;
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http geo: %V %V", &r->connection->addr_text, v);
+
+    return NGX_OK;
 }
 
 
@@ -182,7 +185,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
-    ngx_int_t                   rc, n;
+    ngx_int_t                   rc;
     ngx_str_t                  *value, file;
     ngx_uint_t                  i;
     ngx_inet_cidr_t             cidrin;
@@ -226,30 +229,18 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         cidrin.mask = ntohl(cidrin.mask);
     }
 
-    n = ngx_atoi(value[1].data, value[1].len);
-
     var = NULL;
     v = geo->values.elts;
 
-    if (n == NGX_ERROR) {
-        for (i = 0; i < geo->values.nelts; i++) {
-            if (v[i]->text.len != value[1].len) {
-                continue;
-            }
-
-            if (ngx_strncmp(value[1].data, v[i]->text.data, value[1].len) == 0)
-            {
-                var = v[i];
-                break;
-            }
+    for (i = 0; i < geo->values.nelts; i++) {
+        if ((size_t) v[i]->len != value[1].len) {
+            continue;
         }
 
-    } else {
-        for (i = 0; i < geo->values.nelts; i++) {
-            if (v[i]->value == (ngx_uint_t) n) {
-                var = v[i];
-                break;
-            }
+        if (ngx_strncmp(value[1].data, v[i]->data, value[1].len) == 0)
+        {
+            var = v[i];
+            break;
         }
     }
 
@@ -259,13 +250,15 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        var->text.len = value[1].len;
-        var->text.data = ngx_pstrdup(geo->pool, &value[1]);
-        if (var->text.data == NULL) {
+        var->len = value[1].len;
+        var->data = ngx_pstrdup(geo->pool, &value[1]);
+        if (var->data == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        var->value = (n == NGX_ERROR) ? 0 : n;
+        var->valid = 1;
+        var->no_cachable = 0;
+        var->not_found = 0;
 
         v = ngx_array_push(&geo->values);
         if (v == NULL) {
@@ -294,7 +287,7 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                            "duplicate parameter \"%V\", value: \"%V\", "
                            "old value: \"%V\"",
-                           &value[0], &var->text, &old->text);
+                           &value[0], var, old);
 
         rc = ngx_radix32tree_delete(geo->tree, cidrin.addr, cidrin.mask);
 

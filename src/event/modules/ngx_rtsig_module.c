@@ -288,7 +288,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     ngx_int_t           instance;
     ngx_err_t           err;
     siginfo_t           si;
-    ngx_event_t        *rev, *wev;
+    ngx_event_t        *rev, *wev, **queue;
     struct timespec     ts, *tp;
     struct sigaction    sa;
     ngx_connection_t   *c;
@@ -381,15 +381,32 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         }
 
         if ((si.si_band & (POLLIN|POLLHUP|POLLERR)) && rev->active) {
+
             rev->ready = 1;
-            rev->handler(rev);
+
+            if (flags & NGX_POST_EVENTS) {
+                queue = (ngx_event_t **) (rev->accept ?
+                               &ngx_posted_accept_events : &ngx_posted_events);
+
+                ngx_locked_post_event(rev, queue);
+
+            } else { 
+                rev->handler(rev);
+            }
         }
 
         wev = c->write;
 
         if ((si.si_band & (POLLOUT|POLLHUP|POLLERR)) && wev->active) {
+
             wev->ready = 1;
-            wev->handler(wev);
+
+            if (flags & NGX_POST_EVENTS) {
+                ngx_locked_post_event(wev, &ngx_posted_events);
+
+            } else {
+                wev->handler(wev);
+            }
         }
 
         return NGX_OK;

@@ -114,5 +114,13 @@ ngx_binout="-Fe"
 ngx_objext="obj"
 ngx_binext=".exe"
 
+ngx_long_start='@<<
+        '
+ngx_long_end='<<'
+ngx_long_regex_cont=' \
+	'
+ngx_long_cont='
+	'
+
 #ngx_regex_dirsep='\\'
 #ngx_dirsep="\\"

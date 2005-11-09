@@ -180,6 +180,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
 
             e.ip = index[i].lengths->elts;
             e.request = r;
+            e.flushed = 1;
 
             /* 1 byte for terminating '\0' */
 
@@ -298,7 +299,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
-            last = ngx_cpymem(uri.data, r->uri.data, r->uri.len);
+            last = ngx_copy(uri.data, r->uri.data, r->uri.len);
             ngx_memcpy(last, ctx->index.data, ctx->index.len - 1);
         }
 
@@ -476,7 +477,7 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 ilcf->max_index_len = index->name.len;
             }
 
-            /* include the terminating '\0' to the length to use ngx_memcpy() */
+            /* include the terminating '\0' to the length to use ngx_copy() */
             index->name.len++;
 
             continue;

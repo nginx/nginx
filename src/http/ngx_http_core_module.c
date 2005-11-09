@@ -22,7 +22,6 @@ static ngx_int_t ngx_http_core_find_location(ngx_http_request_t *r,
     ngx_array_t *locations, size_t len);
 
 static ngx_int_t ngx_http_core_preconfiguration(ngx_conf_t *cf);
-static ngx_int_t ngx_http_core_postconfiguration(ngx_conf_t *cf);
 static void *ngx_http_core_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_http_core_create_srv_conf(ngx_conf_t *cf);
@@ -368,7 +367,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
 ngx_http_module_t  ngx_http_core_module_ctx = {
     ngx_http_core_preconfiguration,        /* preconfiguration */
-    ngx_http_core_postconfiguration,       /* postconfiguration */
+    NULL,                                  /* postconfiguration */
 
     ngx_http_core_create_main_conf,        /* create main configuration */
     ngx_http_core_init_main_conf,          /* init main configuration */
@@ -448,7 +447,8 @@ ngx_http_handler(ngx_http_request_t *r)
     r->uri_changed = 1;
     r->uri_changes = NGX_HTTP_MAX_REWRITE_CYCLES + 1;
 
-    r->phase = NGX_HTTP_REWRITE_PHASE;
+    r->phase = (r->main == r) ? NGX_HTTP_POST_READ_PHASE:
+                                NGX_HTTP_SERVER_REWRITE_PHASE;
     r->phase_handler = 0;
 
     ngx_http_core_run_phases(r);
@@ -991,7 +991,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         return NULL;
     }
 
-    last = ngx_cpymem(path->data, clcf->root.data, clcf->root.len);
+    last = ngx_copy(path->data, clcf->root.data, clcf->root.len);
     last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
 
     return last;
@@ -1054,7 +1054,7 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
         }
     }
     
-    if (len == auth.len) {
+    if (len == 0 || len == auth.len) {
         r->headers_in.user.data = (u_char *) "";
         return NGX_DECLINED;
     }
@@ -1070,7 +1070,7 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
 
 ngx_int_t
 ngx_http_subrequest(ngx_http_request_t *r,
-    ngx_str_t *uri, ngx_str_t *args)
+    ngx_str_t *uri, ngx_str_t *args, ngx_uint_t flags)
 {
     ngx_http_request_t            *sr;
     ngx_http_core_srv_conf_t      *cscf;
@@ -1116,9 +1116,21 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     sr->request_line = r->request_line;
     sr->uri = *uri;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http subrequest \"%V\"", uri);
+
     if (args) {
         sr->args = *args;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http subrequest args \"%V\"", args);
     }
+
+    if (flags & NGX_HTTP_ZERO_IN_URI) {
+        sr->zero_in_uri = 1;
+    }
+
     sr->unparsed_uri = r->unparsed_uri;
     sr->method_name = r->method_name;
     sr->http_protocol = r->http_protocol;
@@ -1167,9 +1179,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->discard_body = r->discard_body;
     sr->main_filter_need_in_memory = r->main_filter_need_in_memory;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http subrequest \"%V\"", uri);
-
     ngx_http_handler(sr);
 
     /* the request pool may be already destroyed */
@@ -1191,6 +1200,9 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 
     if (args) {
         r->args = *args;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "internal redirect args: \"%V\"", args);
 
     } else {
         r->args.len = 0;
@@ -1654,13 +1666,6 @@ static ngx_int_t
 ngx_http_core_preconfiguration(ngx_conf_t *cf)
 {
     return ngx_http_variables_add_core_vars(cf);
-}
-
-
-static ngx_int_t
-ngx_http_core_postconfiguration(ngx_conf_t *cf)
-{
-    return ngx_http_variables_init_vars(cf);
 }
 
 

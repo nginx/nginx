@@ -351,12 +351,12 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     /* status line */
     if (r->headers_out.status_line.len) {
-        b->last = ngx_cpymem(b->last, r->headers_out.status_line.data,
-                             r->headers_out.status_line.len);
+        b->last = ngx_copy(b->last, r->headers_out.status_line.data,
+                           r->headers_out.status_line.len);
 
     } else {
-        b->last = ngx_cpymem(b->last, ngx_http_status_lines[status].data,
-                             ngx_http_status_lines[status].len);
+        b->last = ngx_copy(b->last, ngx_http_status_lines[status].data,
+                           ngx_http_status_lines[status].len);
     }
     *b->last++ = CR; *b->last++ = LF;
 
@@ -377,14 +377,14 @@ ngx_http_header_filter(ngx_http_request_t *r)
         b->last = ngx_cpymem(b->last, "Content-Type: ",
                              sizeof("Content-Type: ") - 1);
         p = b->last;
-        b->last = ngx_cpymem(b->last, r->headers_out.content_type.data,
-                             r->headers_out.content_type.len);
+        b->last = ngx_copy(b->last, r->headers_out.content_type.data,
+                           r->headers_out.content_type.len);
 
         if (r->headers_out.charset.len) {
             b->last = ngx_cpymem(b->last, "; charset=",
                                  sizeof("; charset=") - 1);
-            b->last = ngx_cpymem(b->last, r->headers_out.charset.data,
-                                 r->headers_out.charset.len);
+            b->last = ngx_copy(b->last, r->headers_out.charset.data,
+                               r->headers_out.charset.len);
 
             /* update r->headers_out.content_type for possible logging */
 
@@ -428,28 +428,27 @@ ngx_http_header_filter(ngx_http_request_t *r)
 #endif
 
         *b->last++ = ':'; *b->last++ = '/'; *b->last++ = '/';
-        b->last = ngx_cpymem(b->last, r->server_name.data,
-                             r->server_name.len);
+        b->last = ngx_copy(b->last, r->server_name.data, r->server_name.len);
 
         if (clcf->port_in_redirect) {
 #if (NGX_HTTP_SSL)
             if (r->connection->ssl) {
                 if (r->port != 443) {
-                    b->last = ngx_cpymem(b->last, r->port_text->data,
-                                         r->port_text->len);
+                    b->last = ngx_copy(b->last, r->port_text->data,
+                                       r->port_text->len);
                 }
             } else
 #endif
             {
                 if (r->port != 80) {
-                    b->last = ngx_cpymem(b->last, r->port_text->data,
-                                         r->port_text->len);
+                    b->last = ngx_copy(b->last, r->port_text->data,
+                                       r->port_text->len);
                 }
             }
         }
 
-        b->last = ngx_cpymem(b->last, r->headers_out.location->value.data,
-                             r->headers_out.location->value.len);
+        b->last = ngx_copy(b->last, r->headers_out.location->value.data,
+                           r->headers_out.location->value.len);
 
         /* update r->headers_out.location->value for possible logging */
 
@@ -497,11 +496,10 @@ ngx_http_header_filter(ngx_http_request_t *r)
             continue;
         }
 
-        b->last = ngx_cpymem(b->last, header[i].key.data, header[i].key.len);
+        b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
         *b->last++ = ':' ; *b->last++ = ' ' ;
 
-        b->last = ngx_cpymem(b->last, header[i].value.data,
-                             header[i].value.len);
+        b->last = ngx_copy(b->last, header[i].value.data, header[i].value.len);
         *b->last++ = CR; *b->last++ = LF;
     }
 

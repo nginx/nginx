@@ -438,6 +438,7 @@ typedef struct {
 extern ngx_atomic_t          *ngx_connection_counter;
 
 extern ngx_atomic_t          *ngx_accept_mutex_ptr;
+extern ngx_atomic_t          *ngx_accept_mutex_last_owner;
 extern ngx_atomic_t          *ngx_accept_mutex;
 extern ngx_uint_t             ngx_accept_mutex_held;
 extern ngx_msec_t             ngx_accept_mutex_delay;
@@ -474,8 +475,6 @@ extern ngx_module_t           ngx_event_core_module;
 
 void ngx_event_accept(ngx_event_t *ev);
 ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle);
-ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle);
-ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
 u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 

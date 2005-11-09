@@ -15,9 +15,10 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
 static void ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type);
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo);
 static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle);
-static void ngx_master_exit(ngx_cycle_t *cycle);
+static void ngx_master_process_exit(ngx_cycle_t *cycle);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static void ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority);
+static void ngx_worker_process_exit(ngx_cycle_t *cycle);
 static void ngx_channel_handler(ngx_event_t *ev);
 #if (NGX_THREADS)
 static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle);
@@ -156,7 +157,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
         }
 
         if (!live && (ngx_terminate || ngx_quit)) {
-            ngx_master_exit(cycle);
+            ngx_master_process_exit(cycle);
         }
 
         if (ngx_terminate) {
@@ -283,7 +284,7 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
                 }
             }
 
-            ngx_master_exit(cycle);
+            ngx_master_process_exit(cycle);
         }
 
         if (ngx_reconfigure) {
@@ -628,7 +629,7 @@ ngx_reap_childs(ngx_cycle_t *cycle)
 
 
 static void
-ngx_master_exit(ngx_cycle_t *cycle)
+ngx_master_process_exit(ngx_cycle_t *cycle)
 {
     ngx_uint_t  i;
 
@@ -658,8 +659,6 @@ ngx_master_exit(ngx_cycle_t *cycle)
 static void
 ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
-    ngx_uint_t         i;
-    ngx_connection_t  *c;
 #if (NGX_THREADS)
     ngx_int_t          n;
     ngx_err_t          err;
@@ -717,26 +716,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
 
-
-#if (NGX_THREADS)
-            ngx_terminate = 1;
-
-            ngx_wakeup_worker_threads(cycle);
-#endif
-
-            if (ngx_debug_quit) {
-                ngx_debug_point();
-            }
-
-            /*
-             * we do not destroy cycle->pool here because a signal handler
-             * that uses cycle->log can be called at this point
-             */
-
-#if 0
-            ngx_destroy_pool(cycle->pool);
-#endif
-            exit(0);
+            ngx_worker_process_exit(cycle);
         }
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
@@ -746,41 +726,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
 
-#if (NGX_THREADS)
-            ngx_wakeup_worker_threads(cycle);
-#endif
-
-            for (i = 0; ngx_modules[i]; i++) {
-                if (ngx_modules[i]->exit_process) {
-                    ngx_modules[i]->exit_process(cycle);
-                }
-            }
-
-            c = cycle->connections;
-            for (i = 0; i < cycle->connection_n; i++) {
-                if (c[i].fd != -1
-                    && c[i].read
-                    && !c[i].read->accept
-                    && !c[i].read->channel)
-                {
-                    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                                  "open socket #%d left in %ui connection, "
-                                  "aborting",
-                                  c[i].fd, i);
-                    ngx_abort();
-                }
-            }
-
-            /*
-             * we do not destroy cycle->pool here because a signal handler
-             * that uses cycle->log can be called at this point
-             */
-
-#if 0
-            ngx_destroy_pool(cycle->pool);
-#endif
-
-            exit(0);
+            ngx_worker_process_exit(cycle);
         }
 
         if (ngx_quit) {
@@ -953,6 +899,56 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
         /* fatal */
         exit(2);
     }
+}
+
+
+static void
+ngx_worker_process_exit(ngx_cycle_t *cycle)
+{
+    ngx_uint_t         i;
+    ngx_connection_t  *c;
+
+#if (NGX_THREADS)
+    ngx_terminate = 1;
+
+    ngx_wakeup_worker_threads(cycle);
+#endif
+
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->exit_process) {
+            ngx_modules[i]->exit_process(cycle);
+        }
+    }
+
+    c = cycle->connections;
+    for (i = 0; i < cycle->connection_n; i++) {
+        if (c[i].fd != -1
+            && c[i].read
+            && !c[i].read->accept
+            && !c[i].read->channel)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                          "open socket #%d left in %ui connection, "
+                          "aborting",
+                          c[i].fd, i);
+            ngx_abort();
+        }
+    }
+
+    if (ngx_debug_quit) {
+        ngx_debug_point();
+    }
+
+    /*
+     * we do not destroy cycle->pool here because a signal handler
+     * that uses cycle->log can be called at this point
+     */
+
+#if 0
+    ngx_destroy_pool(cycle->pool);
+#endif
+
+    exit(0);
 }
 
 

@@ -18,6 +18,9 @@ typedef struct {
 
     ngx_str_t                       host_header;
     ngx_str_t                       uri;
+    ngx_str_t                       header;
+
+    ngx_array_t                    *headers;
 } ngx_imap_auth_http_conf_t;
 
 
@@ -70,6 +73,8 @@ static void *ngx_imap_auth_http_create_conf(ngx_conf_t *cf);
 static char *ngx_imap_auth_http_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static char *ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_imap_auth_http_header(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 
 static ngx_command_t  ngx_imap_auth_http_commands[] = {
@@ -86,6 +91,13 @@ static ngx_command_t  ngx_imap_auth_http_commands[] = {
       ngx_conf_set_msec_slot,
       NGX_IMAP_SRV_CONF_OFFSET,
       offsetof(ngx_imap_auth_http_conf_t, timeout),
+      NULL },
+
+    { ngx_string("auth_http_header"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE2,
+      ngx_imap_auth_http_header,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      0,
       NULL },
 
       ngx_null_command
@@ -991,12 +1003,12 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
     }
 
     b->last = ngx_cpymem(b->last, "GET ", sizeof("GET ") - 1);
-    b->last = ngx_cpymem(b->last, ahcf->uri.data, ahcf->uri.len);
+    b->last = ngx_copy(b->last, ahcf->uri.data, ahcf->uri.len);
     b->last = ngx_cpymem(b->last, " HTTP/1.0" CRLF,
                          sizeof(" HTTP/1.0" CRLF) - 1);
 
     b->last = ngx_cpymem(b->last, "Host: ", sizeof("Host: ") - 1);
-    b->last = ngx_cpymem(b->last, ahcf->host_header.data,
+    b->last = ngx_copy(b->last, ahcf->host_header.data,
                          ahcf->host_header.len);
     *b->last++ = CR; *b->last++ = LF;
 
@@ -1004,11 +1016,11 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
                          sizeof("Auth-Method: plain" CRLF) - 1);
 
     b->last = ngx_cpymem(b->last, "Auth-User: ", sizeof("Auth-User: ") - 1);
-    b->last = ngx_cpymem(b->last, s->login.data, s->login.len);
+    b->last = ngx_copy(b->last, s->login.data, s->login.len);
     *b->last++ = CR; *b->last++ = LF;
 
     b->last = ngx_cpymem(b->last, "Auth-Pass: ", sizeof("Auth-Pass: ") - 1);
-    b->last = ngx_cpymem(b->last, s->passwd.data, s->passwd.len);
+    b->last = ngx_copy(b->last, s->passwd.data, s->passwd.len);
     *b->last++ = CR; *b->last++ = LF;
 
     b->last = ngx_cpymem(b->last, "Auth-Protocol: ",
@@ -1021,9 +1033,13 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
                           s->login_attempt);
 
     b->last = ngx_cpymem(b->last, "Client-IP: ", sizeof("Client-IP: ") - 1);
-    b->last = ngx_cpymem(b->last, s->connection->addr_text.data,
+    b->last = ngx_copy(b->last, s->connection->addr_text.data,
                          s->connection->addr_text.len);
     *b->last++ = CR; *b->last++ = LF;
+
+    if (ahcf->header.len) {
+        b->last = ngx_copy(b->last, ahcf->header.data, ahcf->header.len);
+    }
 
     /* add "\r\n" at the header end */
     *b->last++ = CR; *b->last++ = LF;
@@ -1065,6 +1081,11 @@ ngx_imap_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_imap_auth_http_conf_t *prev = parent;
     ngx_imap_auth_http_conf_t *conf = child;
 
+    u_char           *p;
+    size_t            len;
+    ngx_uint_t        i;
+    ngx_table_elt_t  *header;
+
     if (conf->peers == NULL) {
         conf->peers = prev->peers;
         conf->host_header = prev->host_header;
@@ -1072,6 +1093,34 @@ ngx_imap_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
+
+    if (conf->headers == NULL) {
+        conf->headers = prev->headers;
+        conf->header = prev->header;
+    }
+
+    if (conf->headers && conf->header.len == 0) {
+        len = 0;
+        header = conf->headers->elts;
+        for (i = 0; i < conf->headers->nelts; i++) {
+            len += header[i].key.len + 2 + header[i].value.len + 2;
+        }
+
+        p = ngx_palloc(cf->pool, len);
+        if (p == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        conf->header.len = len;
+        conf->header.data = p;
+
+        for (i = 0; i < conf->headers->nelts; i++) {
+            p = ngx_cpymem(p, header[i].key.data, header[i].key.len);
+            *p++ = ':'; *p++ = ' ';
+            p = ngx_cpymem(p, header[i].value.data, header[i].value.len);
+            *p++ = CR; *p++ = LF;
+        }
+    }
 
     return NGX_CONF_OK;
 }
@@ -1087,7 +1136,7 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HAVE_UNIX_DOMAIN)
     ngx_unix_domain_upstream_t   unix_upstream;
 #endif
-    
+
     value = cf->args->elts;
 
     url = &value[1];
@@ -1140,6 +1189,35 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ahcf->uri.len = sizeof("/") - 1;
         ahcf->uri.data = (u_char *) "/";
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_imap_auth_http_header(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{   
+    ngx_imap_auth_http_conf_t *ahcf = conf;
+
+    ngx_str_t        *value;
+    ngx_table_elt_t  *header;
+
+    if (ahcf->headers == NULL) {
+        ahcf->headers = ngx_array_create(cf->pool, 1, sizeof(ngx_table_elt_t));
+        if (ahcf->headers == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    header = ngx_array_push(ahcf->headers);
+    if (header == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    header->key = value[1];
+    header->value = value[2];
 
     return NGX_CONF_OK;
 }

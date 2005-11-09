@@ -220,14 +220,7 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
                        "http client request body recv %z", n);
 
         if (n == NGX_AGAIN) {
-            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_add_timer(c->read, clcf->client_body_timeout);
-
-            if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
-            }
-
-            return NGX_AGAIN;
+            break;
         }
 
         if (n == 0) {
@@ -257,7 +250,18 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
                    "http client request body rest %uz", rb->rest);
 
     if (rb->rest) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_add_timer(c->read, clcf->client_body_timeout);
+
+        if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
         return NGX_AGAIN;
+    }
+
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
     }
 
     if (rb->temp_file) {

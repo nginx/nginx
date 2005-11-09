@@ -50,6 +50,7 @@ HTTP_GZIP=YES
 HTTP_SSL=NO
 HTTP_SSI=YES
 HTTP_POSTPONE=NO
+HTTP_REALIP=NO
 HTTP_ACCESS=YES
 HTTP_AUTH_BASIC=YES
 HTTP_USERID=YES
@@ -125,6 +126,7 @@ do
         --http-fastcgi-temp-path=*)      NGX_HTTP_FASTCGI_TEMP_PATH="$value" ;;
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
+        --with-http_realip_module)       HTTP_REALIP=YES            ;;
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
         --without-http_ssi_module)       HTTP_SSI=NO                ;;

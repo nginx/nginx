@@ -190,7 +190,9 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
             case 'V':
                 s = va_arg(args, ngx_str_t *);
 
-                len = (buf + s->len < last) ? s->len : (size_t) (last - buf);
+                len = s->len & 0xffff;
+                len = (buf + len < last) ? len : (size_t) (last - buf);
+
                 buf = ngx_cpymem(buf, s->data, len);
                 fmt++;
 

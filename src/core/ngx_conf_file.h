@@ -82,7 +82,7 @@ struct ngx_command_s {
     void                 *post;
 };
 
-#define ngx_null_command   { ngx_null_string, 0, NULL, 0, 0, NULL }
+#define ngx_null_command  { ngx_null_string, 0, NULL, 0, 0, NULL }
 
 
 struct ngx_open_file_s {

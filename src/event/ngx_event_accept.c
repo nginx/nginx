@@ -13,6 +13,8 @@
 #define NGX_SOCKLEN  512
 
 
+static ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle);
 static void ngx_close_accepted_connection(ngx_connection_t *c);
 
 
@@ -262,14 +264,19 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "accept mutex locked");
 
-        if (!ngx_accept_mutex_held) {
-            if (ngx_enable_accept_events(cycle) == NGX_ERROR) {
-                *ngx_accept_mutex = 0;
-                return NGX_ERROR;
-            }
-
-            ngx_accept_mutex_held = 1;
+        if (ngx_accept_mutex_held
+            && (!(ngx_event_flags & NGX_USE_RTSIG_EVENT)
+                || *ngx_accept_mutex_last_owner == (ngx_atomic_t) ngx_pid))
+        {
+            return NGX_OK;
         }
+
+        if (ngx_enable_accept_events(cycle) == NGX_ERROR) {
+            *ngx_accept_mutex = 0;
+            return NGX_ERROR;
+        }
+
+        ngx_accept_mutex_held = 1;
 
         return NGX_OK;
     }
@@ -286,7 +293,7 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_enable_accept_events(ngx_cycle_t *cycle)
 {
     ngx_uint_t         i;
@@ -299,9 +306,16 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
         c = ls[i].connection;
 
         if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
+
+            if (ngx_accept_mutex_held) {
+                c->read->disabled = 1;
+            }
+
             if (ngx_add_conn(c) == NGX_ERROR) {
                 return NGX_ERROR;
             }
+
+            *ngx_accept_mutex_last_owner = ngx_pid;
 
         } else {
             if (ngx_add_event(c->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
@@ -314,7 +328,7 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_disable_accept_events(ngx_cycle_t *cycle)
 {
     ngx_uint_t         i;

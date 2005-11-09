@@ -17,6 +17,7 @@ typedef struct {
 
     ngx_str_t                       index;
 
+    ngx_array_t                    *flushes;
     ngx_array_t                    *params_len;
     ngx_array_t                    *params;
     ngx_array_t                    *params_source;
@@ -111,9 +112,8 @@ static ngx_int_t ngx_http_fastcgi_add_variables(ngx_conf_t *cf);
 static void *ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
-static ngx_http_variable_value_t *
-    ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
-    uintptr_t data);
+static ngx_int_t ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 
 static char *ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -410,6 +410,9 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     if (flcf->params_len) {
         ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
 
+        ngx_http_script_flush_no_cachable_variables(r, flcf->flushes);
+        le.flushed = 1;
+
         le.ip = flcf->params_len->elts;
         le.request = r;
 
@@ -507,6 +510,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
         e.ip = flcf->params->elts;
         e.pos = b->last;
         e.request = r;
+        e.flushed = 1;
 
         le.ip = flcf->params_len->elts;
 
@@ -597,8 +601,8 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 *b->last++ = ch;
             }
 
-            b->last = ngx_cpymem(b->last, header[i].value.data,
-                                 header[i].value.len);
+            b->last = ngx_copy(b->last, header[i].value.data,
+                               header[i].value.len);
         }
     }
 
@@ -1634,9 +1638,10 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->params_source == NULL) {
-        conf->params_source = prev->params_source;
+        conf->flushes = prev->flushes;
         conf->params_len = prev->params_len;
         conf->params = prev->params;
+        conf->params_source = prev->params_source;
 
         if (conf->params_source == NULL) {
             return NGX_CONF_OK;
@@ -1647,7 +1652,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->params_len == NULL) {
         return NGX_CONF_ERROR;
     }
-    
+
     conf->params = ngx_array_create(cf->pool, 512, 1);
     if (conf->params == NULL) {
         return NGX_CONF_ERROR;
@@ -1729,6 +1734,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
             sc.cf = cf;
             sc.source = &src[i].value;
+            sc.flushes = &conf->flushes;
             sc.lengths = &conf->params_len;
             sc.values = &conf->params;
 
@@ -1764,38 +1770,36 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 }
 
 
-static ngx_http_variable_value_t *
-ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r, uintptr_t data)
+static ngx_int_t
+ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
 {
     u_char                       *p;
-    ngx_http_variable_value_t    *vv;
     ngx_http_fastcgi_loc_conf_t  *flcf;
 
-    vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
-    if (vv == NULL) {
-        return NULL;
-    }
-
-    vv->value = 0;
+    v->valid = 1; 
+    v->no_cachable = 0;
+    v->not_found = 0;
 
     flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
 
     if (r->uri.data[r->uri.len - 1] != '/') {
-        vv->text = r->uri;
-        return vv;
+        v->len = r->uri.len;
+        v->data = r->uri.data;
+        return NGX_OK;
     }
 
-    vv->text.len = r->uri.len + flcf->index.len;
+    v->len = r->uri.len + flcf->index.len;
 
-    vv->text.data = ngx_palloc(r->pool, vv->text.len);
-    if (vv->text.data == NULL) {
-        return NULL;
+    v->data = ngx_palloc(r->pool, v->len);
+    if (v->data == NULL) {
+        return NGX_ERROR;
     }
 
-    p = ngx_cpymem(vv->text.data, r->uri.data, r->uri.len);
+    p = ngx_copy(v->data, r->uri.data, r->uri.len);
     ngx_memcpy(p, flcf->index.data, flcf->index.len);
 
-    return vv;
+    return NGX_OK;
 }
 
 
@@ -1860,7 +1864,7 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     clcf->handler = ngx_http_fastcgi_handler;
 
-    lcf->upstream.location = &clcf->name;
+    lcf->upstream.location = clcf->name;
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;

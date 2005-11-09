@@ -26,7 +26,9 @@ if [ "$CC" = wcl386 ]; then
     echo MAKE = wmake                                         >> $NGX_MAKEFILE
 
     ngx_regex_cont=' '
+    ngx_long_regex_cont=' '
     ngx_cont=' '
+    ngx_long_cont=' '
     ngx_tab=' '
 
 fi
@@ -170,22 +172,22 @@ ngx_deps=`echo $ngx_all_objs $ngx_modules_obj $ngx_res $LINK_DEPS \
           -e "s/\//$ngx_regex_dirsep/g"`
 
 ngx_objs=`echo $ngx_all_objs $ngx_modules_obj \
-    | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
+    | sed -e "s/  *\([^ ][^ ]*\)/$ngx_long_regex_cont\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
 
 ngx_libs=${CORE_LIBS:+`echo $NGX_LD_OPT $CORE_LIBS \
-    | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_regex_cont/"`}
+    | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`}
 
 ngx_link=${CORE_LINK:+`echo $CORE_LINK \
-    | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_regex_cont/"`}
+    | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`}
 
 
 cat << END                                                    >> $NGX_MAKEFILE
 
 $NGX_OBJS${ngx_dirsep}nginx${ngx_binext}:	$ngx_deps$ngx_spacer
-	\$(LINK) ${ngx_binout}$NGX_OBJS${ngx_dirsep}nginx$ngx_cont$ngx_objs$ngx_libs$ngx_link
+	\$(LINK) ${ngx_long_start}${ngx_binout}$NGX_OBJS${ngx_dirsep}nginx$ngx_long_cont$ngx_objs$ngx_libs$ngx_link
 	$ngx_rcc
-
+${ngx_long_end}
 END
 
 

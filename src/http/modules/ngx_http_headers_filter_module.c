@@ -10,7 +10,9 @@
 
 
 typedef struct {
-    time_t  expires;
+    time_t        expires;
+    ngx_str_t     cache_control;
+    ngx_array_t  *headers;
 } ngx_http_headers_conf_t;
 
 
@@ -22,16 +24,27 @@ typedef struct {
 static ngx_int_t ngx_http_headers_filter_init(ngx_cycle_t *cycle);
 static void *ngx_http_headers_create_conf(ngx_conf_t *cf);
 static char *ngx_http_headers_merge_conf(ngx_conf_t *cf,
-                                         void *parent, void *child);
+    void *parent, void *child);
 static char *ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 
 static ngx_command_t  ngx_http_headers_filter_commands[] = {
 
     { ngx_string("expires"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_headers_expires,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL},
+
+    { ngx_string("add_header"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE2,
+      ngx_http_headers_add,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL},
@@ -79,7 +92,7 @@ ngx_http_headers_filter(ngx_http_request_t *r)
 {
     size_t                    len;
     ngx_uint_t                i;
-    ngx_table_elt_t          *expires, *cc, **ccp;
+    ngx_table_elt_t          *expires, *cc, **ccp, *h, *out;
     ngx_http_headers_conf_t  *conf;
 
     if ((r->headers_out.status != NGX_HTTP_OK
@@ -117,7 +130,8 @@ ngx_http_headers_filter(ngx_http_request_t *r)
         if (ccp == NULL) {
 
             if (ngx_array_init(&r->headers_out.cache_control, r->pool,
-                               1, sizeof(ngx_table_elt_t *)) != NGX_OK)
+                               1, sizeof(ngx_table_elt_t *))
+                != NGX_OK)
             {
                 return NGX_ERROR;
             }
@@ -188,6 +202,50 @@ ngx_http_headers_filter(ngx_http_request_t *r)
         }
     }
 
+    if (conf->cache_control.len) {
+
+        ccp = r->headers_out.cache_control.elts;
+
+        if (ccp == NULL) {
+
+            if (ngx_array_init(&r->headers_out.cache_control, r->pool,
+                               1, sizeof(ngx_table_elt_t *))
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+        }
+
+        ccp = ngx_array_push(&r->headers_out.cache_control);
+        if (ccp == NULL) {
+            return NGX_ERROR;
+        }
+
+        cc = ngx_list_push(&r->headers_out.headers);
+        if (cc == NULL) {
+            return NGX_ERROR;
+        }
+
+        cc->hash = 1;
+        cc->key.len = sizeof("Cache-Control") - 1;
+        cc->key.data = (u_char *) "Cache-Control";
+        cc->value = conf->cache_control;
+
+        *ccp = cc;
+    }
+
+    if (conf->headers) {
+        h = conf->headers->elts;
+        for (i = 0; i < conf->headers->nelts; i++) {
+            out = ngx_list_push(&r->headers_out.headers);
+            if (out == NULL) {
+                return NGX_ERROR;
+            }
+
+            *out = h[i];
+        }
+    }
+
     return ngx_http_next_header_filter(r);
 }
 
@@ -207,10 +265,18 @@ ngx_http_headers_create_conf(ngx_conf_t *cf)
 {   
     ngx_http_headers_conf_t  *conf;
 
-    conf = ngx_palloc(cf->pool, sizeof(ngx_http_headers_conf_t));
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_headers_conf_t));
     if (conf == NULL) {
         return NGX_CONF_ERROR;
     }
+
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     conf->cache_control.len = 0;
+     *     conf->cache_control.data = NULL;
+     *     conf->headers = NULL;
+     */
 
     conf->expires = NGX_HTTP_EXPIRES_UNSET;
 
@@ -227,6 +293,14 @@ ngx_http_headers_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->expires == NGX_HTTP_EXPIRES_UNSET) {
         conf->expires = (prev->expires == NGX_HTTP_EXPIRES_UNSET) ?
                                           NGX_HTTP_EXPIRES_OFF : prev->expires;
+    }
+
+    if (conf->cache_control.data == NULL) {
+        conf->cache_control = prev->cache_control;
+    }
+
+    if (conf->headers == NULL) {
+        conf->headers = prev->headers;
     }
 
     return NGX_CONF_OK;
@@ -284,6 +358,41 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (minus) {
         hcf->expires = - hcf->expires;
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_headers_conf_t *hcf = conf;
+
+    ngx_str_t        *value;
+    ngx_table_elt_t  *h;
+
+    value = cf->args->elts;
+
+    if (ngx_strcasecmp(value[1].data, "cache-control") == 0) {
+        hcf->cache_control = value[2];
+        return NGX_CONF_OK;
+    }
+
+    if (hcf->headers == NULL) {
+        hcf->headers = ngx_array_create(cf->pool, 1, sizeof(ngx_table_elt_t));
+        if (hcf->headers == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    h = ngx_array_push(hcf->headers);
+    if (h == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    h->hash = 1;
+    h->key = value[1];
+    h->value = value[2];
 
     return NGX_CONF_OK;
 }

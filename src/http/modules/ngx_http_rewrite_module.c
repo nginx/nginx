@@ -142,7 +142,7 @@ ngx_module_t  ngx_http_rewrite_module = {
 
 
 static ngx_http_variable_value_t  ngx_http_rewrite_null_value =
-    { 0, ngx_string("") };
+    ngx_http_variable("");
 
 
 static ngx_int_t
@@ -214,9 +214,8 @@ ngx_http_rewrite_invalid_referer_code(ngx_http_script_engine_t *e)
     e->ip += sizeof(uintptr_t);
 
     if (cf->referers == NULL) {
-        e->sp->value = 0;
-        e->sp->text.len = 0;
-        e->sp->text.data = (u_char *) "";
+        e->sp->data = (u_char *) "";
+        e->sp->len = 0;
         e->sp++;
 
         return;
@@ -224,17 +223,15 @@ ngx_http_rewrite_invalid_referer_code(ngx_http_script_engine_t *e)
 
     if (r->headers_in.referer == NULL) {
         if (cf->no_referer) {
-            e->sp->value = 0;
-            e->sp->text.len = 0;
-            e->sp->text.data = (u_char *) "";
+            e->sp->data = (u_char *) "";
+            e->sp->len = 0;
             e->sp++;
 
             return;
 
         } else {
-            e->sp->value = 1;
-            e->sp->text.len = 1;
-            e->sp->text.data = (u_char *) "1";
+            e->sp->data = (u_char *) "1";
+            e->sp->len = 1;
             e->sp++;
 
             return;
@@ -248,17 +245,15 @@ ngx_http_rewrite_invalid_referer_code(ngx_http_script_engine_t *e)
         || (ngx_strncasecmp(ref, "http://", 7) != 0))
     {
         if (cf->blocked_referer) {
-            e->sp->value = 0;
-            e->sp->text.len = 0;
-            e->sp->text.data = (u_char *) "0";
+            e->sp->data = (u_char *) "";
+            e->sp->len = 0;
             e->sp++;
 
             return;
 
         } else {
-            e->sp->value = 1;
-            e->sp->text.len = 1;
-            e->sp->text.data = (u_char *) "1";
+            e->sp->data = (u_char *) "1";
+            e->sp->len = 1;
             e->sp++;
 
             return;
@@ -288,9 +283,8 @@ ngx_http_rewrite_invalid_referer_code(ngx_http_script_engine_t *e)
                 if (ngx_strncmp(&ref[n], refs[i].name.data,
                                 refs[i].name.len) == 0)
                 {
-                    e->sp->value = 0;
-                    e->sp->text.len = 0;
-                    e->sp->text.data = (u_char *) "";
+                    e->sp->data = (u_char *) "";
+                    e->sp->len = 0;
                     e->sp++;
 
                     return;
@@ -300,9 +294,8 @@ ngx_http_rewrite_invalid_referer_code(ngx_http_script_engine_t *e)
         } else {
             if (ngx_strncasecmp(refs[i].name.data, ref, refs[i].name.len) == 0)
             {
-                e->sp->value = 0;
-                e->sp->text.len = 0;
-                e->sp->text.data = (u_char *) "";
+                e->sp->data = (u_char *) "";
+                e->sp->len = 0;
                 e->sp++;
 
                 return;
@@ -310,15 +303,15 @@ ngx_http_rewrite_invalid_referer_code(ngx_http_script_engine_t *e)
         }
     }
 
-    e->sp->value = 1;
-    e->sp->text.len = 1;
-    e->sp->text.data = (u_char *) "1";
+    e->sp->data = (u_char *) "1";
+    e->sp->len = 1;
     e->sp++;
 }
 
 
-static ngx_http_variable_value_t *
-ngx_http_rewrite_var(ngx_http_request_t *r, uintptr_t data)
+static ngx_int_t
+ngx_http_rewrite_var(ngx_http_request_t *r, ngx_http_variable_value_t *v,
+    uintptr_t data)
 {
     ngx_http_variable_t        *var;
     ngx_http_core_main_conf_t  *cmcf;
@@ -336,7 +329,9 @@ ngx_http_rewrite_var(ngx_http_request_t *r, uintptr_t data)
     ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                   "using uninitialized \"%V\" variable", &var[data].name);
 
-    return &ngx_http_rewrite_null_value;
+    *v = ngx_http_rewrite_null_value;
+
+    return NGX_OK;
 }
 
 
@@ -410,6 +405,13 @@ ngx_http_rewrite_init(ngx_cycle_t *cycle)
     ngx_http_core_main_conf_t  *cmcf;
 
     cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
+
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_SERVER_REWRITE_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    *h = ngx_http_rewrite_handler;
 
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers);
     if (h == NULL) {
