@@ -1056,7 +1056,7 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
 
             /* detect "/../" */
 
-            if (p[2] == '/') {
+            if (p[0] == '.' && p[1] == '.' && p[2] == '/') {
                 goto unsafe;
             }
 
@@ -1070,7 +1070,9 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
 
                 /* detect "/.../" */
 
-                if (p[3] == '/' || p[3] == '\\') {
+                if (p[0] == '.' && p[1] == '.' && p[2] == '.'
+                    && (p[3] == '/' || p[3] == '\\'))
+                {
                     goto unsafe;
                 }
             }
