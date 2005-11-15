@@ -10,8 +10,8 @@
 #include <ngx_aio.h>
 
 
-ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in,
-                                 off_t limit)
+ngx_chain_t *
+ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     u_char       *buf, *prev;
     off_t         send, sent;

@@ -262,7 +262,7 @@ ngx_http_headers_filter_init(ngx_cycle_t *cycle)
 
 static void *
 ngx_http_headers_create_conf(ngx_conf_t *cf)
-{   
+{
     ngx_http_headers_conf_t  *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_headers_conf_t));
@@ -350,7 +350,7 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (hcf->expires == NGX_ERROR) {
         return "invalid value";
     }
-    
+
     if (hcf->expires == NGX_PARSE_LARGE_TIME) {
         return "value must be less than 68 years";
     }

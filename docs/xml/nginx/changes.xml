@@ -9,6 +9,125 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.10" date="15.11.2005">
+
+<change type="change">
+<para lang="ru">
+директива valid_referers и переменная $invalid_referer перенесены
+из модуля ngx_http_rewrite_module в новый модуль ngx_http_referer_module.
+</para>
+<para lang="en">
+the "valid_referers" directive and the "$invalid_referer" variable
+was moved to the new ngx_http_referer_module from the ngx_http_rewrite_module.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+имя переменной "$apache_bytes_sent" изменено на "$body_bytes_sent".
+</para>
+<para lang="en">
+the "$apache_bytes_sent" variable name was changed to "$body_bytes_sent".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные "$sent_http_...".
+</para>
+<para lang="en">
+the "$sent_http_..." variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива if поддерживает операции "=" и "!=".
+</para>
+<para lang="en">
+the "if" directive supports the "=" and "!=" operations.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_pass поддерживает протокол HTTPS.
+</para>
+<para lang="en">
+the "proxy_set_body" directive supports the HTTPS protocol.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_set_body.
+</para>
+<para lang="en">
+the "proxy_set_body" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива post_action.
+</para>
+<para lang="en">
+the "post_action" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_empty_gif_module.
+</para>
+<para lang="en">
+the ngx_http_empty_gif_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива worker_cpu_affinity для Linux.
+</para>
+<para lang="en">
+the "worker_cpu_affinity" directive for Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива rewrite не раскодировала символы в редиректах в URI,
+теперь символы раскодируются, кроме символов %00-%25 и %7F-%FF.
+</para>
+<para lang="en">
+the "rewrite" directive did not unescape URI part in redirect,
+now it is unescaped except the %00-%25 and %7F-%FF characters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался компилятором icc 9.0.
+</para>
+<para lang="en">
+nginx could not be built by the icc 9.0 compiler.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если для статического файла нулевого размера был разрешён SSI,
+то ответ передавался неверно при кодировании chunk'ами.
+</para>
+<para lang="en">
+if the SSI was enabled for zero size static file, then the chunked
+response was encoded incorrectly.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.9" date="10.11.2005">
 
 <change type="bugfix">
@@ -85,7 +204,6 @@ the "add_header" directive.
 </para>
 <para lang="en">
 the ngx_http_realip_module.
-directives.
 </para>
 </change>
 

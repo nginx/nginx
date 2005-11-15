@@ -148,7 +148,7 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 
     vec.elts = iovs;
     vec.size = sizeof(struct iovec);
-    vec.nalloc = NGX_IOVS; 
+    vec.nalloc = NGX_IOVS;
     vec.pool = pool;
 
     do {

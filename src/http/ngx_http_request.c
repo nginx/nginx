@@ -51,7 +51,6 @@ static u_char *ngx_http_log_error_handler(ngx_http_request_t *r, u_char *buf,
 #if (NGX_HTTP_SSL)
 static void ngx_http_ssl_handshake(ngx_event_t *rev);
 static void ngx_http_ssl_handshake_handler(ngx_connection_t *c);
-static void ngx_http_ssl_close_handler(ngx_event_t *ev);
 #endif
 
 
@@ -451,7 +450,7 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
         return;
     }
 
-    n = recv(c->fd, buf, 1, MSG_PEEK); 
+    n = recv(c->fd, buf, 1, MSG_PEEK);
 
     if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
         return;
@@ -1346,7 +1345,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r)
         }
 
         if (rc < 0) {
-            /* the server names are lexicographically sorted */ 
+            /* the server names are lexicographically sorted */
             break;
         }
     }
@@ -1520,6 +1519,13 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->post_action.data) {
+        ngx_http_internal_redirect(r, &clcf->post_action, NULL);
+        return;
+    }
+
     if (r->connection->read->timer_set) {
         ngx_del_timer(r->connection->read);
     }
@@ -1538,8 +1544,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         ngx_http_close_request(r, 0);
         return;
     }
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (!ngx_terminate
          && !ngx_exiting
@@ -1894,7 +1898,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
              * If the large header buffers were allocated while the previous
              * request processing then we do not use c->buffer for
              * the pipelined request (see ngx_http_init_request()).
-             * 
+             *
              * Now we would move the large header buffers to the free list.
              */
 
@@ -2178,7 +2182,7 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 
 static void
 ngx_http_set_lingering_close(ngx_http_request_t *r)
-{   
+{
     ngx_event_t               *rev, *wev;
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
@@ -2248,6 +2252,7 @@ ngx_http_lingering_close_handler(ngx_event_t *rev)
                    "http lingering close handler");
 
     if (rev->timedout) {
+        c->timedout = 1;
         ngx_http_close_request(r, 0);
         return;
     }
@@ -2423,8 +2428,7 @@ ngx_http_close_connection(ngx_connection_t *c)
 
     if (c->ssl) {
         if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
-            c->read->handler = ngx_http_ssl_close_handler;
-            c->write->handler = ngx_http_ssl_close_handler;
+            c->ssl->handler = ngx_http_close_connection;
             return;
         }
     }
@@ -2441,27 +2445,6 @@ ngx_http_close_connection(ngx_connection_t *c)
 
     ngx_destroy_pool(pool);
 }
-
-
-#if (NGX_HTTP_SSL)
-
-static void
-ngx_http_ssl_close_handler(ngx_event_t *ev)
-{
-    ngx_connection_t  *c;
-
-    c = ev->data;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "http ssl close handler");
-
-    if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
-        return;
-    }
-
-    ngx_http_close_connection(c);
-}
-
-#endif
 
 
 static u_char *

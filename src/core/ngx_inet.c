@@ -326,7 +326,7 @@ ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
             peers->peer[i].socklen = sizeof(struct sockaddr_in);
 
             len = INET_ADDRSTRLEN - 1 + 1 + u->port_text.len;
-    
+
             peers->peer[i].name.data = ngx_palloc(cf->pool, len);
             if (peers->peer[i].name.data == NULL) {
                 return NULL;

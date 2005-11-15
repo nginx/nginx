@@ -87,12 +87,12 @@ static ngx_command_t  ngx_events_commands[] = {
       ngx_null_command
 };
 
-    
+
 static ngx_core_module_t  ngx_events_module_ctx = {
     ngx_string("events"),
     NULL,
     NULL
-};  
+};
 
 
 ngx_module_t  ngx_events_module = {
@@ -280,7 +280,7 @@ ngx_int_t
 ngx_handle_read_event(ngx_event_t *rev, u_int flags)
 {
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
-    
+
         /* kqueue, epoll */
 
         if (!rev->active && !rev->ready) {
@@ -290,7 +290,7 @@ ngx_handle_read_event(ngx_event_t *rev, u_int flags)
                 return NGX_ERROR;
             }
         }
-    
+
         return NGX_OK;
 
     } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
@@ -328,7 +328,7 @@ ngx_handle_read_event(ngx_event_t *rev, u_int flags)
                 return NGX_ERROR;
             }
         }
-    
+
         return NGX_OK;
     }
 
@@ -401,7 +401,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
                 return NGX_ERROR;
             }
         }
-    
+
         return NGX_OK;
     }
 
@@ -613,7 +613,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "setitimer() failed");
-        } 
+        }
     }
 
     if (ngx_event_flags & NGX_USE_FD_EVENT) {
@@ -809,7 +809,7 @@ ngx_send_lowat(ngx_connection_t *c, size_t lowat)
     }
 
 #endif
-    
+
     if (lowat == 0 || c->sndlowat) {
         return NGX_OK;
     }

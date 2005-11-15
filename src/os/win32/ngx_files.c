@@ -281,11 +281,11 @@ ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
     ngx_cpystrn(name->data + name->len, NGX_DIR_MASK, NGX_DIR_MASK_LEN + 1);
 
     dir->dir = FindFirstFile((const char *) name->data, &dir->fd);
-    
+
     if (dir->dir == INVALID_HANDLE_VALUE) {
-        return NGX_ERROR; 
+        return NGX_ERROR;
     }
-    
+
     dir->valid_info = 1;
     dir->ready = 1;
 
@@ -305,7 +305,7 @@ ngx_read_dir(ngx_dir_t *dir)
         return NGX_ERROR;
     }
 
-    return NGX_OK; 
+    return NGX_OK;
 }
 
 

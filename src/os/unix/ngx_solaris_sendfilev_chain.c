@@ -190,7 +190,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
         for (cl = in; cl; cl = cl->next) {
 
             if (ngx_buf_special(cl->buf)) {
-                continue; 
+                continue;
             }
 
             if (sent == 0) {

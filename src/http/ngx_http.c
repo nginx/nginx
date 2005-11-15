@@ -44,12 +44,12 @@ static ngx_command_t  ngx_http_commands[] = {
       ngx_null_command
 };
 
-    
+
 static ngx_core_module_t  ngx_http_module_ctx = {
     ngx_string("http"),
     NULL,
     NULL
-};  
+};
 
 
 ngx_module_t  ngx_http_module = {
@@ -438,7 +438,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                             }
 
                             /*
-                             * check the duplicate "default" server 
+                             * check the duplicate "default" server
                              * for this address:port
                              */
 

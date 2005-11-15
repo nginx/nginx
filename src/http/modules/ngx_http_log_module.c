@@ -55,7 +55,7 @@ static u_char *ngx_http_log_status(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
 static u_char *ngx_http_log_bytes_sent(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
-static u_char *ngx_http_log_apache_bytes_sent(ngx_http_request_t *r,
+static u_char *ngx_http_log_body_bytes_sent(ngx_http_request_t *r,
     u_char *buf, ngx_http_log_op_t *op);
 static u_char *ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
@@ -173,7 +173,7 @@ static ngx_str_t  http_access_log = ngx_string(NGX_HTTP_LOG_PATH);
 
 static ngx_str_t  ngx_http_combined_fmt =
     ngx_string("$remote_addr - $remote_user [$time_gmt] "
-               "\"$request\" $status $apache_bytes_sent "
+               "\"$request\" $status $body_bytes_sent "
                "\"$http_referer\" \"$http_user_agent\"");
 
 
@@ -186,8 +186,10 @@ static ngx_http_log_var_t  ngx_http_log_vars[] = {
     { ngx_string("request_time"), NGX_TIME_T_LEN, ngx_http_log_request_time },
     { ngx_string("status"), 3, ngx_http_log_status },
     { ngx_string("bytes_sent"), NGX_OFF_T_LEN, ngx_http_log_bytes_sent },
+    { ngx_string("body_bytes_sent"), NGX_OFF_T_LEN,
+                          ngx_http_log_body_bytes_sent },
     { ngx_string("apache_bytes_sent"), NGX_OFF_T_LEN,
-                          ngx_http_log_apache_bytes_sent },
+                          ngx_http_log_body_bytes_sent },
     { ngx_string("request_length"), NGX_SIZE_T_LEN,
                           ngx_http_log_request_length },
 
@@ -209,7 +211,7 @@ ngx_http_log_op_name_t  ngx_http_log_fmt_ops[] = {
     { ngx_string("length"), NGX_OFF_T_LEN,
                           NULL, NULL, ngx_http_log_bytes_sent },
     { ngx_string("apache_length"), NGX_OFF_T_LEN,
-                          NULL, NULL, ngx_http_log_apache_bytes_sent },
+                          NULL, NULL, ngx_http_log_body_bytes_sent },
     { ngx_string("request_length"), NGX_SIZE_T_LEN,
                           NULL, NULL, ngx_http_log_request_length },
 
@@ -429,7 +431,7 @@ ngx_http_log_bytes_sent(ngx_http_request_t *r, u_char *buf,
 
 
 static u_char *
-ngx_http_log_apache_bytes_sent(ngx_http_request_t *r, u_char *buf,
+ngx_http_log_body_bytes_sent(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op)
 {
     off_t  length;
@@ -811,7 +813,7 @@ ngx_http_log_transfer_encoding_header_out(ngx_http_request_t *r, u_char *buf,
 }
 
 
-static ngx_int_t 
+static ngx_int_t
 ngx_http_log_variable_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
     ngx_str_t *value)
 {
@@ -1220,7 +1222,7 @@ ngx_http_log_compile_format(ngx_conf_t *cf, ngx_array_t *ops,
                         if (arg_len == 0) {
                             fname[fname_len] = '\0';
                             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                               "\"%s\" requires argument", 
+                                               "\"%s\" requires argument",
                                                data);
                             return NGX_CONF_ERROR;
                         }
@@ -1296,6 +1298,12 @@ ngx_http_log_compile_format(ngx_conf_t *cf, ngx_array_t *ops,
 
                 if (var.len == 0) {
                     goto invalid;
+                }
+
+                if (ngx_strncmp(var.data, "apache_bytes_sent", 17) == 0) {
+                    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                        "use \"$body_bytes_sent\" instead of "
+                        "\"$apache_bytes_sent\"");
                 }
 
                 for (v = ngx_http_log_vars; v->name.len; v++) {

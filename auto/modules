@@ -65,6 +65,9 @@ fi
 #     ngx_http_autoindex_module
 #     ngx_http_index_module
 #
+#     ngx_http_access_module
+#     ngx_http_realip_module
+#
 #
 # the filter order is important
 #     ngx_http_write_filter
@@ -157,6 +160,11 @@ if [ $HTTP_GEO = YES ]; then
     HTTP_SRCS="$HTTP_SRCS $HTTP_GEO_SRCS"
 fi
 
+if [ $HTTP_REFERER = YES ]; then
+    HTTP_MODULES="$HTTP_MODULES $HTTP_REFERER_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_REFERER_SRCS"
+fi
+
 if [ $HTTP_REWRITE = YES -a $USE_PCRE != DISABLED ]; then
     have=NGX_HTTP_REWRITE . auto/have
     USE_PCRE=YES
@@ -184,6 +192,11 @@ fi
 if [ $HTTP_FASTCGI = YES ]; then
     HTTP_MODULES="$HTTP_MODULES $HTTP_FASTCGI_MODULE"
     HTTP_SRCS="$HTTP_SRCS $HTTP_FASTCGI_SRCS"
+fi
+
+if [ $HTTP_EMPTY_GIF = YES ]; then
+    HTTP_MODULES="$HTTP_MODULES $HTTP_EMPTY_GIF_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_EMPTY_GIF_SRCS"
 fi
 
 # STUB
@@ -243,6 +256,7 @@ fi
 if [ $HTTP = YES ]; then
     modules="$modules $HTTP_MODULES $HTTP_FILTER_MODULES \
              $HTTP_HEADERS_FILTER_MODULE \
+             $HTTP_AUX_FILTER_MODULES \
              $HTTP_COPY_FILTER_MODULE \
              $HTTP_RANGE_BODY_FILTER_MODULE \
              $HTTP_NOT_MODIFIED_FILTER_MODULE"

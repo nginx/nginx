@@ -145,9 +145,9 @@ typedef struct {
 
 #define ngx_http_server_names_hash_key(key, name, len, prime)               \
         {                                                                   \
-            ngx_uint_t  n;                                                  \
-            for (key = 0, n = 0; n < len; n++) {                            \
-                key += name[n];                                             \
+            ngx_uint_t  n0;                                                 \
+            for (key = 0, n0 = 0; n0 < len; n0++) {                         \
+                key += name[n0];                                            \
             }                                                               \
             key %= prime;                                                   \
         }
@@ -202,10 +202,11 @@ struct ngx_http_core_loc_conf_s {
 
     ngx_http_handler_pt  handler;
 
-    ngx_str_t     root;                    /* root, alias */
-
     ngx_array_t  *types;
     ngx_str_t     default_type;
+
+    ngx_str_t     root;                    /* root, alias */
+    ngx_str_t     post_action;
 
     size_t        client_max_body_size;    /* client_max_body_size */
     size_t        client_body_buffer_size; /* client_body_buffer_size */
@@ -245,14 +246,6 @@ struct ngx_http_core_loc_conf_s {
 };
 
 
-
-extern ngx_http_module_t  ngx_http_core_module_ctx;
-extern ngx_module_t  ngx_http_core_module;
-
-extern ngx_uint_t ngx_http_max_module;
-
-
-
 ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
@@ -276,6 +269,37 @@ typedef ngx_int_t (*ngx_http_output_body_filter_pt)
 
 ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
+
+
+extern ngx_http_module_t  ngx_http_core_module_ctx;
+extern ngx_module_t  ngx_http_core_module;
+
+extern ngx_uint_t ngx_http_max_module;
+
+
+#define ngx_http_clear_content_length(r)                                      \
+                                                                              \
+    r->headers_out.content_length_n = -1;                                     \
+    if (r->headers_out.content_length) {                                      \
+        r->headers_out.content_length->hash = 0;                              \
+        r->headers_out.content_length = NULL;                                 \
+    }
+                                                                              \
+#define ngx_http_clear_accept_ranges(r)                                       \
+                                                                              \
+    r->filter_allow_ranges = 0;                                               \
+    if (r->headers_out.accept_ranges) {                                       \
+        r->headers_out.accept_ranges->hash = 0 ;                              \
+        r->headers_out.accept_ranges = NULL;                                  \
+    }
+
+#define ngx_http_clear_last_modified(r)                                       \
+                                                                              \
+    r->headers_out.last_modified_time = -1;                                   \
+    if (r->headers_out.last_modified) {                                       \
+        r->headers_out.last_modified->hash = 0;                               \
+        r->headers_out.last_modified = NULL;                                  \
+    }
 
 
 #endif /* _NGX_HTTP_CORE_H_INCLUDED_ */

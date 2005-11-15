@@ -153,6 +153,7 @@ ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n)
 
         c->recv = ngx_recv;
         c->send = ngx_send;
+        c->recv_chain = ngx_recv_chain;
         c->send_chain = ngx_send_chain;
 
         c->unexpected_eof = 1;

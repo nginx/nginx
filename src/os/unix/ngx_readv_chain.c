@@ -24,7 +24,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     ngx_event_t   *rev;
     struct iovec  *iov, iovs[NGX_IOVS];
 
-    rev = c->read; 
+    rev = c->read;
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,

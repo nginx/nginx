@@ -327,7 +327,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             if (timer != NGX_TIMER_INFINITE) {
                 return NGX_AGAIN;
             }
-                
+
             ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
                           "sigtimedwait() returned EAGAIN without timeout");
             return NGX_ERROR;
@@ -390,7 +390,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
                 ngx_locked_post_event(rev, queue);
 
-            } else { 
+            } else {
                 rev->handler(rev);
             }
         }

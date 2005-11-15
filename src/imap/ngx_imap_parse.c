@@ -473,7 +473,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
         case sw_argument:
             switch (ch) {
 
-         /* 
+         /*
           * the space should be considered part of the at username
           * or password, but not of argument in other commands
           *

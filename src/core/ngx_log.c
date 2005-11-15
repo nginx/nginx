@@ -26,7 +26,7 @@ static ngx_command_t  ngx_errlog_commands[] = {
 
 static ngx_core_module_t  ngx_errlog_module_ctx = {
     ngx_string("errlog"),
-    NULL,                           
+    NULL,
     NULL
 };
 

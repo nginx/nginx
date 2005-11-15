@@ -280,10 +280,10 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                 ngx_event_timer_alarm = 0;
                 return NGX_OK;
             }
- 
+
             level = NGX_LOG_INFO;
- 
-        } else { 
+
+        } else {
             level = NGX_LOG_ALERT;
         }
 
@@ -388,7 +388,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
             queue = (ngx_event_t **) (ev->accept ? &ngx_posted_accept_events:
                                                    &ngx_posted_events);
-            ngx_locked_post_event(ev, queue); 
+            ngx_locked_post_event(ev, queue);
         }
 
         if (revents & POLLOUT) {

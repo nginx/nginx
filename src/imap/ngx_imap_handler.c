@@ -17,7 +17,6 @@ static u_char *ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 #if (NGX_IMAP_SSL)
 static void ngx_imap_ssl_handshake_handler(ngx_connection_t *c);
-static void ngx_imap_ssl_close_handler(ngx_event_t *ev);
 #endif
 
 
@@ -58,7 +57,7 @@ ngx_imap_init_connection(ngx_connection_t *c)
     if (lctx == NULL) {
         ngx_imap_close_connection(c);
         return;
-    } 
+    }
 
     lctx->client = &c->addr_text;
     lctx->session = NULL;
@@ -106,7 +105,7 @@ ngx_imap_init_connection(ngx_connection_t *c)
 
 static void
 ngx_imap_ssl_handshake_handler(ngx_connection_t *c)
-{   
+{
     if (c->ssl->handshaked) {
         ngx_imap_init_session(c);
         return;
@@ -181,6 +180,7 @@ ngx_imap_send(ngx_event_t *wev)
 
     if (wev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        c->timedout = 1;
         ngx_imap_close_connection(c);
         return;
     }
@@ -246,6 +246,7 @@ ngx_imap_init_protocol(ngx_event_t *rev)
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        c->timedout = 1;
         ngx_imap_close_connection(c);
         return;
     }
@@ -298,6 +299,7 @@ ngx_imap_auth_state(ngx_event_t *rev)
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        c->timedout = 1;
         ngx_imap_close_connection(c);
         return;
     }
@@ -498,6 +500,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        c->timedout = 1;
         ngx_imap_close_connection(c);
         return;
     }
@@ -725,8 +728,7 @@ ngx_imap_close_connection(ngx_connection_t *c)
 
     if (c->ssl) {
         if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
-            c->read->handler = ngx_imap_ssl_close_handler;
-            c->write->handler = ngx_imap_ssl_close_handler;
+            c->ssl->handler = ngx_imap_close_connection;
             return;
         }
     }
@@ -743,27 +745,6 @@ ngx_imap_close_connection(ngx_connection_t *c)
 }
 
 
-#if (NGX_IMAP_SSL)
- 
-static void
-ngx_imap_ssl_close_handler(ngx_event_t *ev)
-{
-    ngx_connection_t  *c;
-
-    c = ev->data;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, ev->log, 0, "http ssl close handler");
-
-    if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
-        return;
-    }
-
-    ngx_imap_close_connection(c);
-}
-
-#endif
-
-
 static u_char *
 ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
@@ -776,7 +757,7 @@ ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len)
         len -= p - buf;
         buf = p;
     }
-    
+
     ctx = log->data;
 
     p = ngx_snprintf(buf, len, ", client: %V", ctx->client);

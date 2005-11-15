@@ -27,6 +27,10 @@ typedef struct {
 
     ngx_uint_t          max_fails;
     time_t              fail_timeout;
+
+#if (NGX_SSL)
+    ngx_ssl_session_t  *ssl_session;
+#endif
 } ngx_peer_t;
 
 

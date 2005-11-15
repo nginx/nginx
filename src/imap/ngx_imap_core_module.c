@@ -127,7 +127,7 @@ ngx_module_t  ngx_imap_core_module = {
 
 static void *
 ngx_imap_core_create_main_conf(ngx_conf_t *cf)
-{           
+{
     ngx_imap_core_main_conf_t  *cmcf;
 
     cmcf = ngx_pcalloc(cf->pool, sizeof(ngx_imap_core_main_conf_t));
@@ -147,9 +147,9 @@ ngx_imap_core_create_main_conf(ngx_conf_t *cf)
 
 static void *
 ngx_imap_core_create_srv_conf(ngx_conf_t *cf)
-{           
+{
     ngx_imap_core_srv_conf_t  *cscf;
-            
+
     cscf = ngx_pcalloc(cf->pool, sizeof(ngx_imap_core_srv_conf_t));
     if (cscf == NULL) {
         return NULL;
@@ -299,7 +299,7 @@ ngx_imap_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     imap_ctx = cf->ctx;
     ctx->main_conf = imap_ctx->main_conf;
-    
+
     /* the server{}'s srv_conf */
 
     ctx->srv_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_imap_max_module);
@@ -388,7 +388,7 @@ ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (in_addr == INADDR_NONE) {
             h = gethostbyname((const char *) inet_upstream.host.data);
-    
+
             if (h == NULL || h->h_addr_list[0] == NULL) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "can not resolve host \"%s\" "
@@ -407,7 +407,7 @@ ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ls = ngx_listening_inet_stream_socket(cf, in_addr, inet_upstream.port);
     if (ls == NULL) {
-        return NGX_CONF_ERROR; 
+        return NGX_CONF_ERROR;
     }
 
     ls->backlog = -1;

@@ -1,4 +1,9 @@
 
+/*
+ * Copyright (C) Igor Sysoev
+ */
+
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
@@ -6,7 +11,7 @@
 
 static char *ngx_http_set_status(ngx_conf_t *cf, ngx_command_t *cmd,
                                  void *conf);
-    
+
 static ngx_command_t  ngx_http_status_commands[] = {
 
     { ngx_string("stub_status"),
@@ -17,20 +22,20 @@ static ngx_command_t  ngx_http_status_commands[] = {
       NULL },
 
       ngx_null_command
-};  
+};
 
 
-    
+
 ngx_http_module_t  ngx_http_stub_status_module_ctx = {
     NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
-    
+
     NULL,                                  /* create server configuration */
     NULL,                                  /* merge server configuration */
-    
+
     NULL,                                  /* create location configuration */
     NULL                                   /* merge location configuration */
 };
@@ -59,7 +64,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     ngx_buf_t         *b;
     ngx_chain_t        out;
     ngx_atomic_int_t   ap, hn, ac, rq, rd, wr;
-    
+
     if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
         return NGX_HTTP_NOT_ALLOWED;
     }

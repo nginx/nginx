@@ -173,6 +173,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     c->recv = ngx_recv;
     c->send = ngx_send;
+    c->recv_chain = ngx_recv_chain;
     c->send_chain = ngx_send_chain;
 
     c->log_error = pc->log_error;
@@ -212,7 +213,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         if (ngx_add_conn(c) == NGX_ERROR) {
             return NGX_ERROR;
         }
-    } 
+    }
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pc->log, 0,
                    "connect to %V, fd:%d #%d", &peer->name, s, c->number);
@@ -246,7 +247,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
             return NGX_AGAIN;
         }
- 
+
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pc->log, 0, "connected");
 
         wev->ready = 1;
@@ -270,10 +271,10 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         /*
          * FreeBSD's aio allows to post an operation on non-connected socket.
          * NT does not support it.
-         * 
+         *
          * TODO: check in Win32, etc. As workaround we can use NGX_ONESHOT_EVENT
          */
- 
+
         rev->ready = 1;
         wev->ready = 1;
 

@@ -217,7 +217,7 @@ ngx_imap_auth_http_write_handler(ngx_event_t *wev)
     ngx_log_debug0(NGX_LOG_DEBUG_IMAP, wev->log, 0,
                    "imap auth http write handler");
 
-    if (wev->timedout) {  
+    if (wev->timedout) {
         ngx_log_error(NGX_LOG_ERR, wev->log, NGX_ETIMEDOUT,
                       "auth http server %V timed out",
                       &ctx->peer.peers->peer[0].name);
@@ -275,7 +275,7 @@ ngx_imap_auth_http_read_handler(ngx_event_t *rev)
 
     ctx = ngx_imap_get_module_ctx(s, ngx_imap_auth_http_module);
 
-    if (rev->timedout) {  
+    if (rev->timedout) {
         ngx_log_error(NGX_LOG_ERR, rev->log, NGX_ETIMEDOUT,
                       "auth http server %V timed out",
                       &ctx->peer.peers->peer[0].name);
@@ -384,7 +384,7 @@ ngx_imap_auth_http_ignore_status_line(ngx_imap_session_t *s,
                 state = sw_almost_done;
 
                 break;
-            case LF: 
+            case LF:
                 goto done;
             }
             break;
@@ -767,11 +767,11 @@ ngx_imap_auth_http_parse_header_line(ngx_imap_session_t *s,
         sw_space_before_value,
         sw_value,
         sw_space_after_value,
-        sw_almost_done, 
+        sw_almost_done,
         sw_header_almost_done
     } state;
 
-    state = ctx->state; 
+    state = ctx->state;
     hash = ctx->hash;
 
     for (p = ctx->response->pos; p < ctx->response->last; p++) {
@@ -784,10 +784,10 @@ ngx_imap_auth_http_parse_header_line(ngx_imap_session_t *s,
 
             switch (ch) {
             case CR:
-                ctx->header_end = p; 
+                ctx->header_end = p;
                 state = sw_header_almost_done;
                 break;
-            case LF: 
+            case LF:
                 ctx->header_end = p;
                 goto header_done;
             default:
@@ -1061,9 +1061,9 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
 
 static void *
 ngx_imap_auth_http_create_conf(ngx_conf_t *cf)
-{           
+{
     ngx_imap_auth_http_conf_t  *ahcf;
-            
+
     ahcf = ngx_pcalloc(cf->pool, sizeof(ngx_imap_auth_http_conf_t));
     if (ahcf == NULL) {
         return NGX_CONF_ERROR;
@@ -1128,7 +1128,7 @@ ngx_imap_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 static char *
 ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{   
+{
     ngx_imap_auth_http_conf_t *ahcf = conf;
 
     ngx_str_t                   *value, *url;
@@ -1159,13 +1159,13 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ahcf->host_header.len = sizeof("localhost") - 1;
         ahcf->host_header.data = (u_char *) "localhost";
         ahcf->uri = unix_upstream.uri;
-    
+
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "the unix domain sockets are not supported "
                            "on this platform");
         return NGX_CONF_ERROR;
-    
+
 #endif
 
     } else {
@@ -1196,7 +1196,7 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 static char *
 ngx_imap_auth_http_header(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{   
+{
     ngx_imap_auth_http_conf_t *ahcf = conf;
 
     ngx_str_t        *value;

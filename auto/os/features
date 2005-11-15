@@ -14,7 +14,7 @@ if [ -z "$NGX_GROUP" -a $NGX_USER = nobody ] ; then
         if grep nogroup /etc/group 2>&1 >/dev/null; then
             echo "checking for nogroup group ... found"
             NGX_GROUP=nogroup
-        else 
+        else
             echo "checking for nogroup group ... not found"
             NGX_GROUP=nobody
         fi
@@ -23,7 +23,7 @@ if [ -z "$NGX_GROUP" -a $NGX_USER = nobody ] ; then
 else
     NGX_GROUP=$NGX_USER
 fi
-    
+
 
 ngx_feature="poll()"
 ngx_feature_name=
@@ -31,17 +31,17 @@ ngx_feature_run=no
 ngx_feature_incs="#include <poll.h>"
 ngx_feature_libs=
 ngx_feature_test="int  n, dp; struct pollfd  pl;
-                  dp = 0; 
+                  dp = 0;
                   pl.fd = 0;
                   pl.events = 0;
                   pl.revents = 0;
                   n = poll(&pl, 1, 0)"
 . auto/feature
-    
+
 if [ $ngx_found = no ]; then
     EVENT_POLL=NONE
 fi
-    
+
 
 ngx_feature="/dev/poll"
 ngx_feature_name="NGX_HAVE_DEVPOLL"

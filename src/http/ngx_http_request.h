@@ -69,13 +69,13 @@
 
 /*
  * We use the special code for the plain HTTP requests that are sent to
- * HTTPS port to distinguish it from 4XX in an error page redirection 
+ * HTTPS port to distinguish it from 4XX in an error page redirection
  */
 #define NGX_HTTP_TO_HTTPS                  497
 
 /*
  * We use the special code for the requests with invalid host name
- * to distinguish it from 4XX in an error page redirection 
+ * to distinguish it from 4XX in an error page redirection
  */
 #define NGX_HTTP_INVALID_HOST              498
 
@@ -300,7 +300,7 @@ struct ngx_http_request_s {
     ngx_uint_t                        http_version;
     ngx_uint_t                        http_major;
     ngx_uint_t                        http_minor;
- 
+
     ngx_str_t                         request_line;
     ngx_str_t                         uri;
     ngx_str_t                         args;
@@ -309,7 +309,7 @@ struct ngx_http_request_s {
 
     ngx_str_t                         method_name;
     ngx_str_t                         http_protocol;
- 
+
     ngx_chain_t                      *out;
     ngx_http_request_t               *main;
     ngx_http_request_t               *parent;

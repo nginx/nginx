@@ -98,7 +98,7 @@ ngx_http_module_t  ngx_http_autoindex_module_ctx = {
 
 ngx_module_t  ngx_http_autoindex_module = {
     NGX_MODULE_V1,
-    &ngx_http_autoindex_module_ctx,        /* module context */ 
+    &ngx_http_autoindex_module_ctx,        /* module context */
     ngx_http_autoindex_commands,           /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
@@ -248,7 +248,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                 return ngx_http_autoindex_error(r, &dir, &path);
             }
 
-            break; 
+            break;
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -302,7 +302,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
             return ngx_http_autoindex_error(r, &dir, &path);
         }
 
-        entry->name.len = len;        
+        entry->name.len = len;
 
         entry->name.data = ngx_palloc(pool, len + 1);
         if (entry->name.data == NULL) {
@@ -446,7 +446,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                                      sizeof("                  -") - 1);
             } else {
                 b->last = ngx_sprintf(b->last, "%19O", entry[i].size);
-            } 
+            }
 
         } else {
             if (entry[i].dir) {
@@ -460,7 +460,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                     size = (ngx_int_t) (length / (1024 * 1024 * 1024));
                     if ((length % (1024 * 1024 * 1024))
                                                 > (1024 * 1024 * 1024 / 2 - 1))
-                    { 
+                    {
                         size++;
                     }
                     scale = 'G';

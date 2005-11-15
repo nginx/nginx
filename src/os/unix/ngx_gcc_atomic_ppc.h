@@ -10,7 +10,7 @@
  * this branch is unlikely to be taken.
  * The "1b" means the nearest backward label "1" and the "1f" means
  * the nearest forward label "1".
- *  
+ *
  * The "b" means that the base registers can be used only, i.e.
  * any register except r0.  The r0 register always has a zero value and
  * could not be used in "addi  r0, r0, 1".

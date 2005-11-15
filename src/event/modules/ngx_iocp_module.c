@@ -254,7 +254,7 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     }
 
     delta = ngx_current_msec;
-    
+
     if (flags & NGX_UPDATE_TIME) {
         ngx_time_update(0, 0);
     }
@@ -306,7 +306,7 @@ ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
          */
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, err,
-                       "iocp: aborted event %p", ev); 
+                       "iocp: aborted event %p", ev);
 
         return NGX_OK;
     }

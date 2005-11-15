@@ -28,12 +28,12 @@ static ngx_command_t  ngx_imap_commands[] = {
       ngx_null_command
 };
 
-    
+
 static ngx_core_module_t  ngx_imap_module_ctx = {
     ngx_string("imap"),
     NULL,
     NULL
-};  
+};
 
 
 ngx_module_t  ngx_imap_module = {
@@ -164,7 +164,7 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         /* init imap{} main_conf's */
 
         if (module->init_main_conf) {
-            rv = module->init_main_conf(cf, ctx->main_conf[mi]); 
+            rv = module->init_main_conf(cf, ctx->main_conf[mi]);
             if (rv != NGX_CONF_OK) {
                 *cf = pcf;
                 return rv;
@@ -172,9 +172,9 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         for (s = 0; s < cmcf->servers.nelts; s++) {
-    
+
             /* merge the server{}s' srv_conf's */
-    
+
             if (module->merge_srv_conf) {
                 rv = module->merge_srv_conf(cf,
                                             ctx->srv_conf[mi],
@@ -187,9 +187,9 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    /* imap{}'s cf->ctx was needed while the configuration merging */ 
-    
-    *cf = pcf; 
+    /* imap{}'s cf->ctx was needed while the configuration merging */
+
+    *cf = pcf;
 
     return NGX_CONF_OK;
 }

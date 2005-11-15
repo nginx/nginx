@@ -20,7 +20,8 @@ static ngx_inline void ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free,
 static ngx_int_t ngx_event_pipe_drain_chains(ngx_event_pipe_t *p);
 
 
-ngx_int_t ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
+ngx_int_t
+ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
 {
     u_int         flags;
     ngx_event_t  *rev, *wev;
@@ -79,7 +80,8 @@ ngx_int_t ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
 }
 
 
-static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
+static ngx_int_t
+ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 {
     ssize_t       n, size;
     ngx_int_t     rc;
@@ -123,7 +125,7 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             /*
              * kqueue notifies about the end of file or a pending error.
              * This test allows not to allocate a buf on these conditions
-             * and not to call ngx_recv_chain().
+             * and not to call c->recv_chain().
              */
 
             if (p->upstream->read->available == 0
@@ -221,7 +223,7 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                         && p->upstream->read->ready)
                     {
                         if (ngx_del_event(p->upstream->read, NGX_READ_EVENT, 0)
-                                                                  == NGX_ERROR)
+                            == NGX_ERROR)
                         {
                             return NGX_ABORT;
                         }
@@ -246,11 +248,11 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
                                "no pipe bufs to read in");
-    
+
                 break;
             }
 
-            n = ngx_recv_chain(p->upstream, chain);
+            n = p->upstream->recv_chain(p->upstream, chain);
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
                            "pipe recv chain: %z", n);
@@ -382,7 +384,7 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         if (p->free_bufs) {
             for (cl = p->free_raw_bufs; cl; cl = cl->next) {
                 if (cl->buf->shadow == NULL) {
-                    ngx_pfree(p->pool, cl->buf->start); 
+                    ngx_pfree(p->pool, cl->buf->start);
                 }
             }
         }
@@ -398,7 +400,8 @@ static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 }
 
 
-static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
+static ngx_int_t
+ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 {
     size_t        bsize;
     ngx_uint_t    flush;
@@ -578,7 +581,8 @@ static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 }
 
 
-static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
+static ngx_int_t
+ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 {
     ssize_t       size, bsize;
     ngx_buf_t    *b;
@@ -704,7 +708,8 @@ static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 
 /* the copy input filter */
 
-ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
+ngx_int_t
+ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 {
     ngx_buf_t    *b;
     ngx_chain_t  *cl;
@@ -754,7 +759,8 @@ ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 }
 
 
-static ngx_inline void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
+static ngx_inline void
+ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
 {
     ngx_buf_t  *b, *next;
 
@@ -784,8 +790,8 @@ static ngx_inline void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
 }
 
 
-static ngx_inline void ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free,
-                                                          ngx_buf_t *buf)
+static ngx_inline void
+ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free, ngx_buf_t *buf)
 {
     ngx_buf_t    *s;
     ngx_chain_t  *cl, **ll;
@@ -813,7 +819,8 @@ static ngx_inline void ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free,
 }
 
 
-ngx_int_t ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b)
+ngx_int_t
+ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b)
 {
     ngx_chain_t  *cl;
 
@@ -854,7 +861,8 @@ ngx_int_t ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b)
 }
 
 
-static ngx_int_t ngx_event_pipe_drain_chains(ngx_event_pipe_t *p)
+static ngx_int_t
+ngx_event_pipe_drain_chains(ngx_event_pipe_t *p)
 {
     ngx_chain_t  *cl, *tl;
 

@@ -503,7 +503,7 @@ ngx_http_script_start_args_code(ngx_http_script_engine_t *e)
 {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
                    "http script args");
-    
+
     e->args = e->pos;
     e->ip += sizeof(uintptr_t);
 }
@@ -664,6 +664,7 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
 void
 ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
 {
+    u_char                            *dst, *src;
     ngx_http_request_t                *r;
     ngx_http_script_regex_end_code_t  *code;
 
@@ -678,7 +679,18 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
 
     if (code->redirect) {
 
-        if (code->add_args && r->args.len) { 
+        dst = e->buf.data;
+        src = e->buf.data;
+
+        ngx_unescape_uri(&dst, &src, e->pos - e->buf.data);
+
+        if (src < e->pos) {
+            dst = ngx_copy(dst, src, e->pos - src);
+        }
+
+        e->pos = dst;
+
+        if (code->add_args && r->args.len) {
             *e->pos++ = (u_char) (code->args ? '&' : '?');
             e->pos = ngx_copy(e->pos, r->args.data, r->args.len);
         }
@@ -697,7 +709,7 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
             return;
         }
 
-        r->headers_out.location->hash = 1; 
+        r->headers_out.location->hash = 1;
         r->headers_out.location->key.len = sizeof("Location") - 1;
         r->headers_out.location->key.data = (u_char *) "Location";
         r->headers_out.location->value = e->buf;
@@ -706,7 +718,7 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
         return;
     }
 
-    if (e->args) { 
+    if (e->args) {
         e->buf.len = e->args - e->buf.data;
 
         if (code->add_args && r->args.len) {
@@ -755,9 +767,9 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
 
 void
 ngx_http_script_return_code(ngx_http_script_engine_t *e)
-{   
+{
     ngx_http_script_return_code_t  *code;
-    
+
     code = (ngx_http_script_return_code_t *) e->ip;
 
     e->status = code->status;
@@ -798,9 +810,65 @@ ngx_http_script_if_code(ngx_http_script_engine_t *e)
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
-                   "http script if false");
+                   "http script if: false");
 
     e->ip += code->next;
+}
+
+
+void
+ngx_http_script_equal_code(ngx_http_script_engine_t *e)
+{
+    ngx_http_variable_value_t  *val, *res;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script equal");
+
+    e->sp--;
+    val = e->sp;
+    res = e->sp - 1;
+
+    e->ip += sizeof(uintptr_t);
+
+    if (val->len == res->len && ngx_strncmp(val->data, res->data, res->len)
+        == 0)
+    {
+        *res = ngx_http_variable_true_value;
+        return;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script equal: no");
+
+    *res = ngx_http_variable_null_value;
+}
+
+
+void
+ngx_http_script_not_equal_code(ngx_http_script_engine_t *e)
+{
+    ngx_http_variable_value_t  *val, *res;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script not equal");
+
+    e->sp--;
+    val = e->sp;
+    res = e->sp - 1;
+
+    e->ip += sizeof(uintptr_t);
+
+    if (val->len == res->len && ngx_strncmp(val->data, res->data, res->len)
+        == 0)
+    {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                       "http script not equal: no");
+
+        *res = ngx_http_variable_null_value;
+        return;
+    }
+
+    *res = ngx_http_variable_true_value;
 }
 
 
@@ -840,8 +908,8 @@ ngx_http_script_complex_value_code(ngx_http_script_engine_t *e)
 
     e->pos = e->buf.data;
 
-    e->sp->data = e->buf.data;
     e->sp->len = e->buf.len;
+    e->sp->data = e->buf.data;
     e->sp++;
 }
 
@@ -855,11 +923,12 @@ ngx_http_script_value_code(ngx_http_script_engine_t *e)
 
     e->ip += sizeof(ngx_http_script_value_code_t);
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
-                   "http script value");
-
     e->sp->len = code->text_len;
     e->sp->data = (u_char *) code->text_data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script value: \"%V\"", e->sp);
+
     e->sp++;
 }
 
@@ -914,8 +983,7 @@ ngx_http_script_var_code(ngx_http_script_engine_t *e)
         return;
     }
 
-    e->sp->data = (u_char *) "";
-    e->sp->len = 0;
+    *e->sp = ngx_http_variable_null_value;
     e->sp++;
 }
 

@@ -5,7 +5,7 @@
 
 /  "casa   [%o2] 0x80, %o1, %o0"  and
 /  "casxa  [%o2] 0x80, %o1, %o0"  do the following:
-/ 
+/
 /       if ([%o2] == %o1) {
 /           swap(%o0, [%o2]);
 /       } else {

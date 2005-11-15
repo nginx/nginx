@@ -300,11 +300,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
                                                r->headers_out.content_length_n)
                                    - content_range->value.data;
 
-        r->headers_out.content_length_n = -1;
-        if (r->headers_out.content_length) {
-            r->headers_out.content_length->key.len = 0;
-            r->headers_out.content_length = NULL;
-        }
+        ngx_http_clear_content_length(r);
 
         return rc;
     }
@@ -350,7 +346,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
     if (ctx == NULL) {
         return NGX_ERROR;
     }
-    
+
     ngx_http_set_ctx(r, ctx, ngx_http_range_body_filter_module);
 
 

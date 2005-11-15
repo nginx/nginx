@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 
 
-#define NGX_WSABUFS  8 
+#define NGX_WSABUFS  8
 
 
 ssize_t
@@ -34,7 +34,7 @@ ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     vec.elts = wsabufs;
     vec.nelts = 0;
     vec.size = sizeof(WSABUF);
-    vec.nalloc = NGX_WSABUFS; 
+    vec.nalloc = NGX_WSABUFS;
     vec.pool = c->pool;
 
     /* coalesce the neighbouring bufs */

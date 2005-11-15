@@ -371,6 +371,9 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         r->headers_out.content_length = NULL;
     }
 
+    ngx_http_clear_accept_ranges(r);
+    ngx_http_clear_last_modified(r);
+
     rc = ngx_http_send_header(r);
 
     if (rc == NGX_ERROR || r->header_only) {

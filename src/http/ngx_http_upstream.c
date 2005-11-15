@@ -84,6 +84,12 @@ static ngx_int_t ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
 static void *ngx_http_upstream_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf);
 
+#if (NGX_HTTP_SSL)
+static void ngx_http_upstream_ssl_handshake(ngx_connection_t *c);
+static void ngx_http_upstream_ssl_shutdown(ngx_connection_t *c,
+    ngx_peer_t *peer);
+#endif
+
 
 ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
@@ -147,6 +153,12 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_copy_header_line,
                  offsetof(ngx_http_headers_out_t, expires), 1 },
 
+    { ngx_string("Accept-Ranges"),
+                 ngx_http_upstream_process_header_line,
+                 offsetof(ngx_http_upstream_headers_in_t, accept_ranges),
+                 ngx_http_upstream_copy_header_line,
+                 offsetof(ngx_http_headers_out_t, accept_ranges), 1 },
+
     { ngx_string("Connection"),
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
@@ -199,7 +211,7 @@ ngx_http_module_t  ngx_http_upstream_module_ctx = {
     NULL,                                  /* create location configuration */
     NULL                                   /* merge location configuration */
 };
-    
+
 
 ngx_module_t  ngx_http_upstream_module = {
     NGX_MODULE_V1,
@@ -266,7 +278,7 @@ ngx_http_upstream_init(ngx_http_request_t *r)
 
     r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
     r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
-    
+
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
         if (!c->write->active) {
@@ -359,7 +371,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
 {
     int                  n;
     char                 buf[1];
-    ngx_err_t            err; 
+    ngx_err_t            err;
     ngx_connection_t     *c;
     ngx_http_upstream_t  *u;
 
@@ -482,6 +494,7 @@ static void
 ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t            rc;
+    ngx_peer_t          *peer;
     ngx_connection_t    *c;
 
     r->connection->log->action = "connecting to upstream";
@@ -499,7 +512,8 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return;
     }
 
-    u->state->peer = &u->peer.peers->peer[u->peer.cur_peer].name;
+    peer = &u->peer.peers->peer[u->peer.cur_peer];
+    u->state->peer = &peer->name;
 
     if (rc == NGX_BUSY) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no live upstreams");
@@ -509,6 +523,8 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
         return;
     }
+
+    /* rc == NGX_OK || rc == NGX_AGAIN */
 
     c = u->peer.connection;
 
@@ -568,8 +584,73 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     /* rc == NGX_OK */
 
+#if (NGX_HTTP_SSL)
+
+    if (u->conf->ssl) {
+        if (c->ssl == NULL) {
+
+            if (ngx_ssl_create_connection(u->conf->ssl, c,
+                                          NGX_SSL_BUFFER|NGX_SSL_CLIENT)
+                == NGX_ERROR)
+            {
+                ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
+
+            c->sendfile = 0;
+        }
+
+        if (ngx_ssl_set_session(c, peer->ssl_session) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        rc = ngx_ssl_handshake(c);
+
+        if (rc == NGX_AGAIN) {
+            c->ssl->handler = ngx_http_upstream_ssl_handshake;
+            return;
+        }
+
+        ngx_http_upstream_ssl_handshake(c);
+
+        return;
+    }
+
+#endif
+
     ngx_http_upstream_send_request(r, u);
 }
+
+
+#if (NGX_HTTP_SSL)
+
+static void
+ngx_http_upstream_ssl_handshake(ngx_connection_t *c)
+{
+    ngx_http_request_t   *r;
+    ngx_http_upstream_t  *u;
+
+    r = c->data;
+    u = r->upstream;
+
+    if (c->ssl->handshaked) {
+
+        c->write->handler = ngx_http_upstream_send_request_handler;
+        c->read->handler = ngx_http_upstream_process_header;
+
+        ngx_http_upstream_send_request(r, u);
+
+        return;
+    }
+
+    ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+
+}
+
+#endif
 
 
 static ngx_int_t
@@ -591,7 +672,7 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     /* reinit the request chain */
-    
+
     for (cl = u->request_bufs; cl; cl = cl->next) {
         cl->buf->pos = cl->buf->start;
         cl->buf->file_pos = 0;
@@ -617,9 +698,9 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
     u->output.buf = NULL;
     u->output.in = NULL;
     u->output.busy = NULL;
-    
+
     /* reinit u->header_in buffer */
-    
+
 #if 0
     if (u->cache) {
         u->header_in.pos = u->header_in.start + u->cache->ctx.header_size;
@@ -654,7 +735,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     int                rc;
     ngx_connection_t  *c;
-    
+
     c = u->peer.connection;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -710,17 +791,17 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
                           ngx_tcp_push_n " failed");
             ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return; 
+            return;
         }
 
         c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
     }
-    
+
     ngx_add_timer(c->read, u->conf->read_timeout);
 
 #if 1
     if (c->read->ready) {
-    
+
         /* post aio operation */
 
         /*
@@ -799,7 +880,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
         return;
     }
-    
+
     if (u->header_in.start == NULL) {
         u->header_in.start = ngx_palloc(r->pool, u->conf->header_buffer_size);
         if (u->header_in.start == NULL) {
@@ -831,8 +912,8 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 #endif
     }
 
-    n = ngx_recv(u->peer.connection, u->header_in.last,
-                 u->header_in.end - u->header_in.last);
+    n = u->peer.connection->recv(u->peer.connection, u->header_in.last,
+                                 u->header_in.end - u->header_in.last);
 
     if (n == NGX_AGAIN) {
 #if 0
@@ -958,7 +1039,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
                             return;
                         }
 
-                        *r->headers_out.www_authenticate = 
+                        *r->headers_out.www_authenticate =
                                                *u->headers_in.www_authenticate;
                     }
 
@@ -985,7 +1066,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
                 if (part->next == NULL) {
                     break;
                 }
-    
+
                 part = part->next;
                 h = part->elts;
                 i = 0;
@@ -1054,7 +1135,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             if (part->next == NULL) {
                 break;
             }
-    
+
             part = part->next;
             h = part->elts;
             i = 0;
@@ -1140,13 +1221,13 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->output_filter = (ngx_event_pipe_output_filter_pt) ngx_http_output_filter;
     p->output_ctx = r;
     p->tag = u->output.tag;
-    p->bufs = u->conf->bufs;     
+    p->bufs = u->conf->bufs;
     p->busy_size = u->conf->busy_buffers_size;
     p->upstream = u->peer.connection;
     p->downstream = r->connection;
     p->pool = r->pool;
     p->log = r->connection->log;
-    
+
     p->cachable = u->cachable;
 
     p->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t));
@@ -1159,7 +1240,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->temp_file->file.log = r->connection->log;
     p->temp_file->path = u->conf->temp_path;
     p->temp_file->pool = r->pool;
-    
+
     if (u->cachable) {
         p->temp_file->persistent = 1;
     } else {
@@ -1257,13 +1338,13 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http upstream process downstream");
         c->log->action = "sending to client";
-    
+
     } else {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http upstream process upstream");
         c->log->action = "reading upstream";
     }
-    
+
     p = &u->pipe;
 
     if (ev->timedout) {
@@ -1292,12 +1373,13 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
 
             } else {
                 p->downstream_error = 1;
+                c->timedout = 1;
                 ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT,
                               "client timed out");
             }
 
         } else {
-            p->upstream_error = 1; 
+            p->upstream_error = 1;
             ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT,
                           "upstream timed out");
         }
@@ -1319,7 +1401,7 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
             return;
         }
     }
-    
+
     if (u->peer.connection) {
 
 #if (NGX_HTTP_FILE_CACHE)
@@ -1399,7 +1481,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ETIMEDOUT,
                       "upstream timed out");
     }
-    
+
     if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
         status = 0;
 
@@ -1458,7 +1540,12 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "close http upstream connection: %d",
                        u->peer.connection->fd);
-
+#if (NGX_HTTP_SSL)
+        if (u->peer.connection->ssl) {
+            ngx_http_upstream_ssl_shutdown(u->peer.connection,
+                                       &u->peer.peers->peer[u->peer.cur_peer]);
+        }
+#endif
         ngx_close_connection(u->peer.connection);
     }
 
@@ -1508,7 +1595,15 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "close http upstream connection: %d",
                        u->peer.connection->fd);
+#if (NGX_HTTP_SSL)
 
+        /* TODO: do not shutdown persistent connection */
+
+        if (u->peer.connection->ssl) {
+            ngx_http_upstream_ssl_shutdown(u->peer.connection,
+                                       &u->peer.peers->peer[u->peer.cur_peer]);
+        }
+#endif
         ngx_close_connection(u->peer.connection);
     }
 
@@ -1549,12 +1644,41 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 }
 
 
+#if (NGX_HTTP_SSL)
+
+static void
+ngx_http_upstream_ssl_shutdown(ngx_connection_t *c, ngx_peer_t *peer)
+{
+    /* lock peer mutex */
+
+    if (peer->ssl_session) {
+        ngx_ssl_free_session(peer->ssl_session);
+    }
+
+    peer->ssl_session = ngx_ssl_get_session(c);
+
+    /* unlock peer mutex */
+
+    /*
+     * We send the "close notify" shutdown alert to the upstream only
+     * and do not wait its "close notify" shutdown alert.
+     * It is acceptable according to the TLS standard.
+     */
+
+    c->ssl->no_wait_shutdown = 1;
+
+    (void) ngx_ssl_shutdown(c);
+}
+
+#endif
+
+
 static ngx_int_t
 ngx_http_upstream_process_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
-{   
+{
     ngx_table_elt_t  **ph;
-    
+
     ph = (ngx_table_elt_t **) ((char *) &r->upstream->headers_in + offset);
 
     if (*ph == NULL) {
@@ -1603,7 +1727,7 @@ ngx_http_upstream_ignore_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 static ngx_int_t
 ngx_http_upstream_process_limit_rate(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
-{   
+{
     ngx_int_t  n;
 
     r->upstream->headers_in.x_accel_limit_rate = h;
@@ -2119,7 +2243,7 @@ ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf)
 {
     ngx_http_upstream_main_conf_t  *umcf = conf;
 
-    umcf->headers_in_hash.max_size = 100; 
+    umcf->headers_in_hash.max_size = 100;
     umcf->headers_in_hash.bucket_limit = 1;
     umcf->headers_in_hash.bucket_size = sizeof(ngx_http_upstream_header_t);
     umcf->headers_in_hash.name = "upstream_headers_in";

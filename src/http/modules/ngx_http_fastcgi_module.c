@@ -556,9 +556,9 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
             if (i >= part->nelts) {
                 if (part->next == NULL) {
-                    break; 
+                    break;
                 }
-    
+
                 part = part->next;
                 header = part->elts;
                 i = 0;
@@ -570,7 +570,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 *b->last++ = (u_char) ((len >> 16) & 0xff);
                 *b->last++ = (u_char) ((len >> 8) & 0xff);
                 *b->last++ = (u_char) (len & 0xff);
-    
+
             } else {
                 *b->last++ = (u_char) len;
             }
@@ -876,7 +876,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                     f->length = 0;
                     f->state = ngx_http_fastcgi_st_padding;
 
-                } else { 
+                } else {
                     line.len = u->header_in.last - u->header_in.pos;
                     f->length -= u->header_in.last - u->header_in.pos;
                     u->header_in.pos = u->header_in.last;
@@ -1145,7 +1145,7 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
                     f->length = 0;
                     f->state = ngx_http_fastcgi_st_padding;
 
-                } else { 
+                } else {
                     line.len = f->last - f->pos;
                     f->length -= f->last - f->pos;
                     f->pos = f->last;
@@ -1447,7 +1447,7 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.header_buffer_size = NGX_CONF_UNSET_SIZE;
 
     conf->upstream.busy_buffers_size_conf = NGX_CONF_UNSET_SIZE;
-    conf->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE; 
+    conf->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE;
     conf->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
 
     conf->upstream.max_fails = NGX_CONF_UNSET_UINT;
@@ -1497,7 +1497,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->upstream.send_lowat,
                               prev->upstream.send_lowat, 0);
 
-    ngx_conf_merge_size_value(conf->upstream.header_buffer_size, 
+    ngx_conf_merge_size_value(conf->upstream.header_buffer_size,
                               prev->upstream.header_buffer_size,
                               (size_t) ngx_pagesize);
 
@@ -1693,7 +1693,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
             if (copy == NULL) {
                 return NGX_CONF_ERROR;
             }
-    
+
             copy->code = ngx_http_script_copy_code;
             copy->len = src[i].key.len + src[i].value.len;
 
@@ -1722,7 +1722,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
             if (copy == NULL) {
                 return NGX_CONF_ERROR;
             }
-    
+
             copy->code = ngx_http_script_copy_code;
             copy->len = src[i].key.len;
 
@@ -1777,7 +1777,7 @@ ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
     u_char                       *p;
     ngx_http_fastcgi_loc_conf_t  *flcf;
 
-    v->valid = 1; 
+    v->valid = 1;
     v->no_cachable = 0;
     v->not_found = 0;
 
@@ -1850,7 +1850,7 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         inet_upstream.name = value[1];
         inet_upstream.url = value[1];
-    
+
         lcf->peers = ngx_inet_upstream_parse(cf, &inet_upstream);
         if (lcf->peers == NULL) {
             return NGX_CONF_ERROR;

@@ -61,7 +61,7 @@ static ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
 
     ims = ngx_http_parse_time(r->headers_in.if_modified_since->value.data,
                               r->headers_in.if_modified_since->value.len);
-    
+
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http ims:%d lm:%d", ims, r->headers_out.last_modified_time);
 
@@ -72,11 +72,8 @@ static ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     if (ims != NGX_ERROR && ims == r->headers_out.last_modified_time) {
         r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
         r->headers_out.content_type.len = 0;
-        r->headers_out.content_length_n = -1;
-        r->headers_out.content_length = NULL;
-#if 0
-        r->headers_out.accept_ranges->hash = 0;
-#endif
+        ngx_http_clear_content_length(r);
+        ngx_http_clear_accept_ranges(r);
     }
 
     return ngx_http_next_header_filter(r);

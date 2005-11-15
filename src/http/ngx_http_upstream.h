@@ -85,6 +85,11 @@ typedef struct {
     ngx_str_t                       uri;
     ngx_str_t                       location;
     ngx_str_t                       url;  /* used in proxy_rewrite_location */
+
+#if (NGX_HTTP_SSL)
+    ngx_ssl_t                      *ssl;
+#endif
+
 } ngx_http_upstream_conf_t;
 
 

@@ -16,8 +16,14 @@ static ngx_int_t ngx_http_variable_header(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_headers(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
-static ngx_int_t ngx_http_variable_unknown_header(ngx_http_request_t *r,
+
+static ngx_int_t ngx_http_variable_unknown_header_in(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_unknown_header_out(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_unknown_header(ngx_http_variable_value_t *v,
+    ngx_str_t *var, ngx_list_part_t *part, size_t prefix);
+
 static ngx_int_t ngx_http_variable_host(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_remote_addr(ngx_http_request_t *r,
@@ -122,6 +128,12 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_null_string, NULL, 0, 0, 0 }
 };
+
+
+ngx_http_variable_value_t  ngx_http_variable_null_value =
+    ngx_http_variable("");
+ngx_http_variable_value_t  ngx_http_variable_true_value =
+    ngx_http_variable("1");
 
 
 ngx_http_variable_t *
@@ -324,7 +336,19 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name)
 
     if (ngx_strncmp(name->data, "http_", 5) == 0) {
 
-        if (ngx_http_variable_unknown_header(r, vv, (uintptr_t) name) == NGX_OK)
+        if (ngx_http_variable_unknown_header_in(r, vv, (uintptr_t) name)
+            == NGX_OK)
+        {
+            return vv;
+        }
+
+        return NULL;
+    }
+
+    if (ngx_strncmp(name->data, "sent_http_", 10) == 0) {
+
+        if (ngx_http_variable_unknown_header_out(r, vv, (uintptr_t) name)
+            == NGX_OK)
         {
             return vv;
         }
@@ -446,17 +470,33 @@ ngx_http_variable_headers(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
 
 static ngx_int_t
-ngx_http_variable_unknown_header(ngx_http_request_t *r,
+ngx_http_variable_unknown_header_in(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_str_t  *var = (ngx_str_t *) data;
+    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+                                            &r->headers_in.headers.part,
+                                            sizeof("http_") - 1);
+}
 
+
+static ngx_int_t
+ngx_http_variable_unknown_header_out(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+                                            &r->headers_out.headers.part,
+                                            sizeof("sent_http_") - 1);
+}
+
+
+static ngx_int_t
+ngx_http_variable_unknown_header(ngx_http_variable_value_t *v, ngx_str_t *var,
+    ngx_list_part_t *part, size_t prefix)
+{
     u_char            ch;
     ngx_uint_t        i, n;
-    ngx_list_part_t  *part;
     ngx_table_elt_t  *header;
 
-    part = &r->headers_in.headers.part;
     header = part->elts;
 
     for (i = 0; /* void */ ; i++) {
@@ -471,7 +511,7 @@ ngx_http_variable_unknown_header(ngx_http_request_t *r,
             i = 0;
         }
 
-        for (n = 0; n + 5 < var->len && n < header[i].key.len; n++) {
+        for (n = 0; n + prefix < var->len && n < header[i].key.len; n++) {
             ch = header[i].key.data[n];
 
             if (ch >= 'A' && ch <= 'Z') {
@@ -481,12 +521,12 @@ ngx_http_variable_unknown_header(ngx_http_request_t *r,
                 ch = '_';
             }
 
-            if (var->data[n + 5] != ch) {
+            if (var->data[n + prefix] != ch) {
                 break;
             }
         }
 
-        if (n + 5 == var->len) {
+        if (n + prefix == var->len) {
             v->len = header[i].value.len;
             v->valid = 1;
             v->no_cachable = 0;
@@ -556,12 +596,12 @@ ngx_http_variable_remote_port(ngx_http_request_t *r,
     }
 
     /* AF_INET only */
-    
+
     if (r->connection->sockaddr->sa_family == AF_INET) {
         sin = (struct sockaddr_in *) r->connection->sockaddr;
-    
+
         port = ntohs(sin->sin_port);
-                             
+
         if (port > 0 && port < 65536) {
             v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
         }
@@ -777,7 +817,14 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
         }
 
         if (ngx_strncmp(v[i].name.data, "http_", 5) == 0) {
-            v[i].handler = ngx_http_variable_unknown_header;
+            v[i].handler = ngx_http_variable_unknown_header_in;
+            v[i].data = (uintptr_t) &v[i].name;
+
+            continue;
+        }
+
+        if (ngx_strncmp(v[i].name.data, "sent_http_", 10) == 0) {
+            v[i].handler = ngx_http_variable_unknown_header_out;
             v[i].data = (uintptr_t) &v[i].name;
 
             continue;

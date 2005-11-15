@@ -40,7 +40,7 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
     : "+r" (set) : "r" (lock), "r" (old) : "memory");
 
     return (set == old);
-}   
+}
 
 
 static ngx_inline ngx_atomic_int_t

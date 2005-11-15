@@ -18,6 +18,7 @@ static void ngx_ssl_handshake_handler(ngx_event_t *ev);
 static ngx_int_t ngx_ssl_handle_recv(ngx_connection_t *c, int n);
 static void ngx_ssl_write_handler(ngx_event_t *wev);
 static void ngx_ssl_read_handler(ngx_event_t *rev);
+static void ngx_ssl_shutdown_handler(ngx_event_t *ev);
 static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
     ngx_err_t err, char *text);
 static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
@@ -51,7 +52,7 @@ static ngx_core_module_t  ngx_openssl_module_ctx = {
     ngx_string("openssl"),
     ngx_openssl_create_conf,
     ngx_openssl_init_conf
-};  
+};
 
 
 ngx_module_t  ngx_openssl_module = {
@@ -99,19 +100,20 @@ ngx_ssl_init(ngx_log_t *log)
 ngx_int_t
 ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols)
 {
-    ssl->ctx = SSL_CTX_new(SSLv23_server_method());
+    ssl->ctx = SSL_CTX_new(SSLv23_method());
 
     if (ssl->ctx == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "SSL_CTX_new() failed");
         return NGX_ERROR;
     }
 
-    /*
-     * these options are needed on client side only:
-     *    SSL_OP_MICROSOFT_SESS_ID_BUG
-     *    SSL_OP_NETSCAPE_CHALLENGE_BUG
-     *    SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG
-     */
+    /* client side options */
+
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_MICROSOFT_SESS_ID_BUG);
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_NETSCAPE_CHALLENGE_BUG);
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG);
+
+    /* server side options */
 
     SSL_CTX_set_options(ssl->ctx, SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG);
     SSL_CTX_set_options(ssl->ctx, SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER);
@@ -195,7 +197,7 @@ ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl)
 
 ngx_int_t
 ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
-{   
+{
     ngx_ssl_connection_t  *sc;
 
     sc = ngx_pcalloc(c->pool, sizeof(ngx_ssl_connection_t));
@@ -224,9 +226,28 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
         return NGX_ERROR;
     }
 
-    SSL_set_accept_state(sc->connection);
+    if (flags & NGX_SSL_CLIENT) {
+        SSL_set_connect_state(sc->connection);
+
+    } else {
+        SSL_set_accept_state(sc->connection);
+    }
 
     c->ssl = sc;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session)
+{
+    if (session) {
+        if (SSL_set_session(c->ssl->connection, session) == 0) {
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "SSL_set_session() failed");
+            return NGX_ERROR;
+        }
+    }
 
     return NGX_OK;
 }
@@ -240,7 +261,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     n = SSL_do_handshake(c->ssl->connection);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n); 
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
 
     if (n == 1) {
 
@@ -282,7 +303,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "SSL: %s, cipher: \"%s\"",
-                           SSL_get_version(c->ssl->connection), &buf[1]); 
+                           SSL_get_version(c->ssl->connection), &buf[1]);
 
             if (SSL_session_reused(c->ssl->connection)) {
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -291,7 +312,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
         } else {
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "SSL no shared ciphers"); 
+                           "SSL no shared ciphers");
         }
         }
 #endif
@@ -300,7 +321,8 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
         c->recv = ngx_ssl_recv;
         c->send = ngx_ssl_write;
-        c->send_chain = ngx_ssl_send_chain; 
+        c->recv_chain = ngx_ssl_recv_chain;
+        c->send_chain = ngx_ssl_send_chain;
 
         return NGX_OK;
     }
@@ -338,7 +360,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, err,
-                      "client closed connection in SSL handshake");
+                      "peer closed connection in SSL handshake");
 
         return NGX_ERROR;
     }
@@ -357,7 +379,7 @@ ngx_ssl_handshake_handler(ngx_event_t *ev)
     c = ev->data;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ssl handshake handler: %d", ev->write);
+                   "SSL handshake handler: %d", ev->write);
 
     if (ngx_ssl_handshake(c) == NGX_AGAIN) {
         return;
@@ -368,12 +390,51 @@ ngx_ssl_handshake_handler(ngx_event_t *ev)
 
 
 ssize_t
+ngx_ssl_recv_chain(ngx_connection_t *c, ngx_chain_t *cl)
+{
+    ssize_t     n, bytes;
+    ngx_buf_t  *b;
+
+    bytes = 0;
+
+    while (cl) {
+        b = cl->buf;
+
+        n = ngx_ssl_recv(c, b->last, b->end - b->last);
+
+        if (n > 0) {
+            b->last += n;
+            bytes += n;
+
+            if (b->last == b->end) {
+                cl = cl->next;
+            }
+
+            continue;
+        }
+
+        if (bytes) {
+            return bytes;
+        }
+
+        return n;
+    }
+
+    return bytes;
+}
+
+
+ssize_t
 ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
     int  n, bytes;
 
     if (c->ssl->last == NGX_ERROR) {
         return NGX_ERROR;
+    }
+
+    if (c->ssl->last == NGX_DONE) {
+        return 0;
     }
 
     bytes = 0;
@@ -387,7 +448,7 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 
         n = SSL_read(c->ssl->connection, buf, size);
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_read: %d", n); 
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_read: %d", n);
 
         if (n > 0) {
             bytes += n;
@@ -399,10 +460,13 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 
             if (bytes) {
                 return bytes;
-
-            } else {
-                return c->ssl->last;
             }
+
+            if (c->ssl->last == NGX_DONE) {
+                return 0;
+            }
+
+            return c->ssl->last;
         }
 
         size -= n;
@@ -454,7 +518,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
     if (sslerr == SSL_ERROR_WANT_WRITE) {
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "client started SSL renegotiation");
+                      "peer started SSL renegotiation");
 
         c->write->ready = 0;
 
@@ -478,9 +542,9 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
     c->ssl->no_send_shutdown = 1;
 
     if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, err, "client closed connection");
-
-        return NGX_ERROR;
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "peer shutdown SSL cleanly");
+        return NGX_DONE;
     }
 
     ngx_ssl_connection_error(c, sslerr, err, "SSL_read() failed");
@@ -516,27 +580,37 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ssize_t      send, size;
     ngx_buf_t   *buf;
 
-    buf = c->ssl->buf;
-
-    if (in && in->next == NULL && !c->buffered && !c->ssl->buffer) {
+    if (!c->ssl->buffer || (in && in->next == NULL && !c->buffered)) {
 
         /*
-         * we avoid a buffer copy if the incoming buf is a single,
-         * our buffer is empty, and we do not need to buffer the output
+         * we avoid a buffer copy if
+         *     we do not need to buffer the output
+         *     or the incoming buf is a single and our buffer is empty
          */
 
-        n = ngx_ssl_write(c, in->buf->pos, in->buf->last - in->buf->pos);
+        while (in) {
+            if (ngx_buf_special(in->buf)) {
+                in = in->next;
+                continue;
+            }
 
-        if (n == NGX_ERROR) {
-            return NGX_CHAIN_ERROR;
+            n = ngx_ssl_write(c, in->buf->pos, in->buf->last - in->buf->pos);
+
+            if (n == NGX_ERROR) {
+                return NGX_CHAIN_ERROR;
+            }
+
+            if (n == NGX_AGAIN) {
+                c->buffered = 1;
+                return in;
+            }
+
+            in->buf->pos += n;
+
+            if (in->buf->pos == in->buf->last) {
+                in = in->next;
+            }
         }
-
-        if (n == NGX_AGAIN) {
-            c->buffered = 1;
-            return in;
-        }
-
-        in->buf->pos += n;
 
         return in;
     }
@@ -549,6 +623,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     }
 
 
+    buf = c->ssl->buf;
     send = 0;
     flush = (in == NULL) ? 1 : 0;
 
@@ -576,7 +651,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
              */
 
             if (send + size > limit) {
-                size = limit - send;
+                size = (ssize_t) (limit - send);
                 flush = 1;
             }
 
@@ -588,6 +663,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             buf->last += size;
 
             in->buf->pos += size;
+
             if (in->buf->pos == in->buf->last) {
                 in = in->next;
             }
@@ -678,7 +754,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     if (sslerr == SSL_ERROR_WANT_READ) {
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "client started SSL renegotiation");
+                      "peer started SSL renegotiation");
 
         c->read->ready = 0;
 
@@ -725,7 +801,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     int         n, sslerr, mode;
     ngx_uint_t  again;
 
-    if (c->read->timedout) {
+    if (c->timedout) {
         mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
 
     } else {
@@ -752,7 +828,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_shutdown: %d", n);
 
-        if (n == 1 || (n == 0 && c->read->timedout)) {
+        if (n == 1 || (n == 0 && c->timedout)) {
             SSL_free(c->ssl->connection);
             c->ssl = NULL;
 
@@ -778,6 +854,8 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
         ngx_add_timer(c->read, 30000);
 
+        c->read->handler = ngx_ssl_shutdown_handler;
+
         if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -786,6 +864,8 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     }
 
     if (sslerr == SSL_ERROR_WANT_WRITE) {
+
+        c->write->handler = ngx_ssl_shutdown_handler;
 
         if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
             return NGX_ERROR;
@@ -800,6 +880,29 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     c->ssl = NULL;
 
     return NGX_ERROR;
+}
+
+
+static void
+ngx_ssl_shutdown_handler(ngx_event_t *ev)
+{
+    ngx_connection_t           *c;
+    ngx_connection_handler_pt   handler;
+
+    c = ev->data;
+    handler = c->ssl->handler;
+
+    if (ev->timedout) {
+        c->timedout = 1;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "SSL shutdown handler");
+
+    if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
+        return;
+    }
+
+    handler(c);
 }
 
 
@@ -842,7 +945,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 
 void
 ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
-{   
+{
     u_long   n;
     va_list  args;
     u_char   errstr[NGX_MAX_CONF_ERRSTR], *p, *last;
@@ -887,18 +990,18 @@ static void *
 ngx_openssl_create_conf(ngx_cycle_t *cycle)
 {
     ngx_openssl_conf_t  *oscf;
-    
+
     oscf = ngx_pcalloc(cycle->pool, sizeof(ngx_openssl_conf_t));
     if (oscf == NULL) {
         return NGX_CONF_ERROR;
     }
-    
+
     /*
      * set by ngx_pcalloc():
-     * 
+     *
      *     oscf->engine.len = 0;
      *     oscf->engine.data = NULL;
-     */    
+     */
 
     return oscf;
 }
@@ -915,7 +1018,7 @@ ngx_openssl_init_conf(ngx_cycle_t *cycle, void *conf)
     if (oscf->engine.len == 0) {
         return NGX_CONF_OK;
     }
-    
+
     engine = ENGINE_by_id((const char *) oscf->engine.data);
 
     if (engine == NULL) {

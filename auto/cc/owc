@@ -8,7 +8,7 @@
 
 # maximize speed
 CFLAGS="$CFLAGS -ot"
-# reorder instructions for best pipeline usage 
+# reorder instructions for best pipeline usage
 CFLAGS="$CFLAGS -op"
 # inline intrinsic functions
 CFLAGS="$CFLAGS -oi"
@@ -24,7 +24,7 @@ case $CPU in
         CPU_OPT="-5r"
         # stack-based arguments passing conventions
         #CPU_OPT="-5s"
-    ;; 
+    ;;
 
     pentiumpro)
         # optimize for Pentium Pro, Pentium II and Pentium III
@@ -63,7 +63,7 @@ CFLAGS="$CFLAGS -zq"
 #have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
 
 
-# the precompiled headers 
+# the precompiled headers
 CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.pch"
 NGX_PCH="$NGX_OBJS/ngx_config.pch"
 NGX_BUILD_PCH="-fhq=$NGX_OBJS/ngx_config.pch"

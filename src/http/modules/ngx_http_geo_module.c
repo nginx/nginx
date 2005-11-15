@@ -64,10 +64,6 @@ ngx_module_t  ngx_http_geo_module = {
 };
 
 
-static ngx_http_variable_value_t  ngx_http_geo_null_value =
-    ngx_http_variable("");
-
-
 /* AF_INET only */
 
 static ngx_int_t
@@ -171,7 +167,8 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (ngx_radix32tree_insert(tree, 0, 0,
-                            (uintptr_t) &ngx_http_geo_null_value) == NGX_ERROR)
+                               (uintptr_t) &ngx_http_variable_null_value)
+        == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
     }

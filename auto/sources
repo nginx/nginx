@@ -334,6 +334,10 @@ HTTP_GEO_MODULE=ngx_http_geo_module
 HTTP_GEO_SRCS=src/http/modules/ngx_http_geo_module.c
 
 
+HTTP_REFERER_MODULE=ngx_http_referer_module
+HTTP_REFERER_SRCS=src/http/modules/ngx_http_referer_module.c
+
+
 HTTP_REWRITE_MODULE=ngx_http_rewrite_module
 HTTP_REWRITE_SRCS=src/http/modules/ngx_http_rewrite_module.c
 
@@ -349,6 +353,10 @@ HTTP_PROXY_SRCS=src/http/modules/ngx_http_proxy_module.c
 
 HTTP_FASTCGI_MODULE=ngx_http_fastcgi_module
 HTTP_FASTCGI_SRCS=src/http/modules/ngx_http_fastcgi_module.c
+
+
+HTTP_EMPTY_GIF_MODULE=ngx_http_empty_gif_module
+HTTP_EMPTY_GIF_SRCS=src/http/modules/ngx_http_empty_gif_module.c
 
 
 IMAP_INCS="src/imap"

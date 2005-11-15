@@ -8,6 +8,7 @@ if [ $OPENSSL != NONE ]; then
     case "$CC" in
         *)
             have=NGX_OPENSSL . auto/have
+            have=NGX_SSL . auto/have
             LINK_DEPS="$LINK_DEPS $OPENSSL/libssl.a $OPENSSL/libcrypto.a"
             CORE_LIBS="$CORE_LIBS $OPENSSL/libssl.a $OPENSSL/libcrypto.a"
         ;;
@@ -34,6 +35,7 @@ else
         . auto/feature
 
         if [ $ngx_found = yes ]; then
+            have=NGX_SSL . auto/have
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             OPENSSL=YES
 

@@ -172,6 +172,7 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
                       "upstream timed out");
+        c->timedout = 1;
         ngx_imap_proxy_internal_server_error(s);
         return;
     }
@@ -310,6 +311,7 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
                       "upstream timed out");
+        c->timedout = 1;
         ngx_imap_proxy_internal_server_error(s);
         return;
     }
@@ -501,6 +503,8 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
         if (c == s->connection) {
             ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
                           "client timed out");
+            c->timedout = 1;
+
         } else {
             ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
                           "upstream timed out");
@@ -652,9 +656,9 @@ ngx_imap_proxy_close_session(ngx_imap_session_t *s)
 
 static void *
 ngx_imap_proxy_create_conf(ngx_conf_t *cf)
-{           
+{
     ngx_imap_proxy_conf_t  *pcf;
-            
+
     pcf = ngx_pcalloc(cf->pool, sizeof(ngx_imap_proxy_conf_t));
     if (pcf == NULL) {
         return NGX_CONF_ERROR;

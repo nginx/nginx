@@ -594,7 +594,7 @@ ngx_http_userid_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ngx_http_userid_ctx_t   *ctx;
     ngx_http_userid_conf_t  *conf;
 
-    v->valid = 1; 
+    v->valid = 1;
     v->no_cachable = 0;
     v->not_found = 0;
 
@@ -634,7 +634,7 @@ ngx_http_userid_init(ngx_cycle_t *cycle)
 
 static void *
 ngx_http_userid_create_conf(ngx_conf_t *cf)
-{   
+{
     ngx_http_userid_conf_t  *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_userid_conf_t));
@@ -661,7 +661,7 @@ ngx_http_userid_create_conf(ngx_conf_t *cf)
     conf->mark = (u_char) '\xFF';
 
     return conf;
-}   
+}
 
 
 static char *

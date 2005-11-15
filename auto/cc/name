@@ -5,7 +5,7 @@
 echo $ngx_n "checking for C compiler ...$ngx_c"
 
 
-if [ $CC = cl ]; then
+if [ "$CC" = cl ]; then
     if `$NGX_WINE $CC -v 2>&1 \
         | grep '^Microsoft (R) 32-bit C/C++ Optimizing Compiler Version 13' \
           2>&1 >/dev/null`; then
@@ -19,12 +19,12 @@ if [ $CC = cl ]; then
     fi
 
 else
-if [ $CC = wcl386 ]; then
+if [ "$CC" = wcl386 ]; then
     NGX_CC_NAME=owc
     echo " Open Watcom C compiler"
 
 else
-if [ $CC = bcc32 ]; then
+if [ "$CC" = bcc32 ]; then
     NGX_CC_NAME=bcc
     echo " Borland C++ compiler"
 

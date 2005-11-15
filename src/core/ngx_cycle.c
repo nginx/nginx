@@ -615,7 +615,7 @@ ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
 
         /*
          * do not create the pid file in the first ngx_init_cycle() call
-         * because we need to write the demonized process pid 
+         * because we need to write the demonized process pid
          */
 
         return NGX_OK;
@@ -674,7 +674,7 @@ ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
 
 void
 ngx_delete_pidfile(ngx_cycle_t *cycle)
-{   
+{
     u_char           *name;
     ngx_core_conf_t  *ccf;
 

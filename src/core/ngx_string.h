@@ -141,6 +141,7 @@ u_char * ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n);
 
 uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
     ngx_uint_t type);
+void ngx_unescape_uri(u_char **dst, u_char **src, size_t size);
 
 
 #define  ngx_qsort                qsort

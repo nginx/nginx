@@ -48,7 +48,7 @@ ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     vec.elts = wsabufs;
     vec.size = sizeof(WSABUF);
-    vec.nalloc = NGX_WSABUFS; 
+    vec.nalloc = NGX_WSABUFS;
     vec.pool = c->pool;
 
     for ( ;; ) {
@@ -187,7 +187,7 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         if (limit == 0 || limit > NGX_MAX_UINT32_VALUE - ngx_pagesize) {
             limit = NGX_MAX_UINT32_VALUE - ngx_pagesize;
         }
- 
+
         /*
          * WSABUFs must be 4-byte aligned otherwise
          * WSASend() will return undocumented WSAEINVAL error.
@@ -196,13 +196,13 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         vec.elts = wsabufs;
         vec.nelts = 0;
         vec.size = sizeof(WSABUF);
-        vec.nalloc = NGX_WSABUFS; 
+        vec.nalloc = NGX_WSABUFS;
         vec.pool = c->pool;
 
         send = 0;
         prev = NULL;
         wsabuf = NULL;
- 
+
         /* create the WSABUF and coalesce the neighbouring bufs */
 
         for (cl = in;
@@ -238,7 +238,7 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         ovlp = (LPWSAOVERLAPPED) &c->write->ovlp;
         ngx_memzero(ovlp, sizeof(WSAOVERLAPPED));
- 
+
         rc = WSASend(c->fd, vec.elts, vec.nelts, &sent, 0, ovlp, NULL);
 
         wev->complete = 0;
@@ -257,7 +257,7 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 ngx_connection_error(c, err, "WSASend() failed");
                 return NGX_CHAIN_ERROR;
             }
- 
+
         } else if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
 
              /*
@@ -293,7 +293,7 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                                        &sent, 0, NULL) == 0) {
                 ngx_connection_error(c, ngx_socket_errno,
                                "WSASend() or WSAGetOverlappedResult() failed");
-    
+
                 return NGX_CHAIN_ERROR;
             }
         }

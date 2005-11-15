@@ -99,7 +99,7 @@ typedef struct {
 
     /* add the r->args to the new arguments */
     uintptr_t                        add_args:1;
-    
+
     uintptr_t                        redirect:1;
     uintptr_t                        break_cycle:1;
 
@@ -173,6 +173,8 @@ void ngx_http_script_regex_end_code(ngx_http_script_engine_t *e);
 void ngx_http_script_return_code(ngx_http_script_engine_t *e);
 void ngx_http_script_break_code(ngx_http_script_engine_t *e);
 void ngx_http_script_if_code(ngx_http_script_engine_t *e);
+void ngx_http_script_equal_code(ngx_http_script_engine_t *e);
+void ngx_http_script_not_equal_code(ngx_http_script_engine_t *e);
 void ngx_http_script_complex_value_code(ngx_http_script_engine_t *e);
 void ngx_http_script_value_code(ngx_http_script_engine_t *e);
 void ngx_http_script_set_var_code(ngx_http_script_engine_t *e);

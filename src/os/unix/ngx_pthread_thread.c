@@ -45,7 +45,7 @@ ngx_create_thread(ngx_tid_t *tid, ngx_thread_value_t (*func)(void *arg),
 
 ngx_int_t
 ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
-{   
+{
     int  err;
 
     max_threads = n;
@@ -82,7 +82,7 @@ ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
     if (m == NULL) {
         return NULL;
     }
-    
+
     m->log = log;
 
     err = pthread_mutex_init(&m->mutex, NULL);
@@ -202,7 +202,7 @@ ngx_cond_init(ngx_log_t *log)
     if (cv == NULL) {
         return NULL;
     }
-    
+
     cv->log = log;
 
     err = pthread_cond_init(&cv->cond, NULL);

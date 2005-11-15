@@ -58,7 +58,8 @@ ngx_int_t              ngx_threads_n;
 #endif
 
 
-u_char  master_process[] = "master process";
+u_long         cpu_affinity;
+static u_char  master_process[] = "master process";
 
 
 void
@@ -312,14 +313,17 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 static void
 ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 {
-    ngx_int_t      i;
+    ngx_int_t      i, s;
     ngx_channel_t  ch;
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start worker processes");
 
     ch.command = NGX_CMD_OPEN_CHANNEL;
 
-    while (n--) {
+    for (i = 0; i < n; i++) {
+
+        cpu_affinity = ngx_get_cpu_affinity(i);
+
         ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
                           "worker process", type);
 
@@ -327,11 +331,11 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
         ch.slot = ngx_process_slot;
         ch.fd = ngx_processes[ngx_process_slot].channel[0];
 
-        for (i = 0; i < ngx_last_process; i++) {
+        for (s = 0; s < ngx_last_process; s++) {
 
-            if (i == ngx_process_slot
-                || ngx_processes[i].pid == -1
-                || ngx_processes[i].channel[0] == -1)
+            if (s == ngx_process_slot
+                || ngx_processes[s].pid == -1
+                || ngx_processes[s].channel[0] == -1)
             {
                 continue;
             }
@@ -339,12 +343,12 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
             ngx_log_debug6(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                           "pass channel s:%d pid:%P fd:%d to s:%i pid:%P fd:%d",
                           ch.slot, ch.pid, ch.fd,
-                          i, ngx_processes[i].pid,
-                          ngx_processes[i].channel[0]);
+                          s, ngx_processes[s].pid,
+                          ngx_processes[s].channel[0]);
 
             /* TODO: NGX_AGAIN */
 
-            ngx_write_channel(ngx_processes[i].channel[0],
+            ngx_write_channel(ngx_processes[s].channel[0],
                               &ch, sizeof(ngx_channel_t), cycle->log);
         }
     }
@@ -817,6 +821,20 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
         }
     }
 
+#if (NGX_HAVE_SCHED_SETAFFINITY)
+
+    if (cpu_affinity) {
+        ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
+                      "sched_setaffinity(0x%08Xl)", cpu_affinity);
+
+        if (sched_setaffinity(0, 32, (cpu_set_t *) &cpu_affinity) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "sched_setaffinity(0x%08Xl) failed", cpu_affinity);
+        }
+    }
+
+#endif
+
 #if (NGX_HAVE_PR_SET_DUMPABLE)
 
     /* allow coredump after setuid() in Linux 2.4.x */
@@ -849,7 +867,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
     /*
      * disable deleting previous events for the listening sockets because
      * in the worker processes there are no events at all at this point
-     */ 
+     */
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
         ls[i].previous = NULL;

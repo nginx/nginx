@@ -467,7 +467,7 @@ ngx_configure_listening_socket(ngx_cycle_t *cycle)
             }
         }
 
-        if (ls->add_deferred) { 
+        if (ls->add_deferred) {
             ls->deferred_accept = 1;
         }
 
@@ -625,11 +625,11 @@ ngx_close_connection(ngx_connection_t *c)
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
     }
-    
+
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
     }
-    
+
     if (ngx_del_conn) {
         ngx_del_conn(c, NGX_CLOSE_EVENT);
 

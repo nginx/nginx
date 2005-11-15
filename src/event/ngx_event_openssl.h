@@ -46,12 +46,16 @@ typedef struct {
 } ngx_ssl_connection_t;
 
 
+#define ngx_ssl_session_t       SSL_SESSION
+
+
 #define NGX_SSL_SSLv2    2
 #define NGX_SSL_SSLv3    4
 #define NGX_SSL_TLSv1    8
 
 
 #define NGX_SSL_BUFFER   1
+#define NGX_SSL_CLIENT   2
 
 #define NGX_SSL_BUFSIZE  16384
 
@@ -63,9 +67,15 @@ ngx_int_t ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
 ngx_int_t ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl);
 ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
     ngx_uint_t flags);
+
+ngx_int_t ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session);
+#define ngx_ssl_get_session(c)   SSL_get1_session(c->ssl->connection)
+#define ngx_ssl_free_session     SSL_SESSION_free
+
 ngx_int_t ngx_ssl_handshake(ngx_connection_t *c);
 ssize_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size);
 ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size);
+ssize_t ngx_ssl_recv_chain(ngx_connection_t *c, ngx_chain_t *cl);
 ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
     off_t limit);
 ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c);

@@ -158,7 +158,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                      * and without the TCP_CORK
                      */
 
-                    if (err != NGX_EINTR) { 
+                    if (err != NGX_EINTR) {
                         wev->error = 1;
                         ngx_connection_error(c, err,
                                              "setsockopt(TCP_NODELAY) failed");
@@ -183,7 +183,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                      * we continue a processing without the TCP_CORK
                      */
 
-                    if (err != NGX_EINTR) { 
+                    if (err != NGX_EINTR) {
                         wev->error = 1;
                         ngx_connection_error(c, err,
                                              ngx_tcp_nopush_n " failed");
@@ -192,7 +192,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
 
                 } else {
                     c->tcp_nopush = NGX_TCP_NOPUSH_SET;
-    
+
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                    "tcp_nopush");
                 }
@@ -281,7 +281,7 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
                 } else {
                     wev->error = 1;
                     ngx_connection_error(c, err, "writev() failed");
-                    return NGX_CHAIN_ERROR; 
+                    return NGX_CHAIN_ERROR;
                 }
             }
 
@@ -334,10 +334,10 @@ ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
         }
 
         if (eintr) {
-            continue; 
+            continue;
         }
 
-        if (!complete) { 
+        if (!complete) {
             wev->ready = 0;
             return cl;
         }

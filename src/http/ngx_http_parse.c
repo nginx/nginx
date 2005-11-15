@@ -1109,7 +1109,7 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
         if (name->len > h[i]->value.len) {
             continue;
         }
-    
+
         start = h[i]->value.data;
         end = h[i]->value.data + h[i]->value.len;
 

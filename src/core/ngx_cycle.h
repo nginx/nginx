@@ -64,6 +64,9 @@ typedef struct {
 
      int                      priority;
 
+     ngx_uint_t               cpu_affinity_n;
+     u_long                  *cpu_affinity;
+
      char                    *username;
      ngx_uid_t                user;
      ngx_gid_t                group;
@@ -91,6 +94,7 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle);
 void ngx_delete_pidfile(ngx_cycle_t *cycle);
 void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user);
 ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
+u_long ngx_get_cpu_affinity(ngx_uint_t n);
 
 
 extern volatile ngx_cycle_t  *ngx_cycle;

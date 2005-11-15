@@ -78,7 +78,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     r->headers_out.content_type = ngx_list_push(&r->headers_out.headers);
     if (r->headers_out.content_type == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    } 
+    }
 
     r->headers_out.content_type->key.len = 0;
     r->headers_out.content_type->key.data = NULL;
@@ -281,7 +281,7 @@ static ngx_int_t ngx_http_status(ngx_http_status_ctx_t *ctx)
         if (ctx->head) {
             *ll = cl;
 
-        } else { 
+        } else {
             ctx->head = cl;
         }
 

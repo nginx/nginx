@@ -473,7 +473,8 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
         return NGX_OK;
     }
 
-    ctx->out = ngx_send_chain(ctx->connection, ctx->out, ctx->limit);
+    ctx->out = ctx->connection->send_chain(ctx->connection, ctx->out,
+                                           ctx->limit);
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
                    "chain writer out: %p", ctx->out);

@@ -374,10 +374,10 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                 ngx_event_timer_alarm = 0;
                 return NGX_OK;
             }
- 
+
             level = NGX_LOG_INFO;
- 
-        } else { 
+
+        } else {
             level = NGX_LOG_ALERT;
         }
 
@@ -434,7 +434,7 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
             /*
              * if the error events were returned without POLLIN or POLLOUT,
              * then add these flags to handle the events at least in one
-             * active handler 
+             * active handler
              */
 
             revents |= POLLIN|POLLOUT;

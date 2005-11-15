@@ -418,10 +418,10 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                 ngx_event_timer_alarm = 0;
                 return NGX_OK;
             }
- 
+
             level = NGX_LOG_INFO;
- 
-        } else { 
+
+        } else {
             level = NGX_LOG_ALERT;
         }
 
@@ -471,7 +471,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
                        "epoll: fd:%d ev:%04XD d:%p",
-                       c->fd, revents, event_list[i].data);
+                       c->fd, revents, event_list[i].data.ptr);
 
         if (revents & (EPOLLERR|EPOLLHUP)) {
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,

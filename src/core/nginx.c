@@ -17,13 +17,15 @@ static void *ngx_core_module_create_conf(ngx_cycle_t *cycle);
 static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf);
 static char *ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 
 static ngx_conf_enum_t  ngx_debug_points[] = {
     { ngx_string("stop"), NGX_DEBUG_POINTS_STOP },
     { ngx_string("abort"), NGX_DEBUG_POINTS_ABORT },
     { ngx_null_string, 0 }
-};  
+};
 
 
 static ngx_command_t  ngx_core_commands[] = {
@@ -80,6 +82,13 @@ static ngx_command_t  ngx_core_commands[] = {
     { ngx_string("worker_priority"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_set_priority,
+      0,
+      0,
+      NULL },
+
+    { ngx_string("worker_cpu_affinity"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_1MORE,
+      ngx_set_cpu_affinity,
       0,
       0,
       NULL },
@@ -537,6 +546,8 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
      *     ccf->pid = NULL;
      *     ccf->oldpid = NULL;
      *     ccf->priority = 0;
+     *     ccf->cpu_affinity_n = 0;
+     *     ccf->cpu_affinity = NULL;
      */
 
     ccf->daemon = NGX_CONF_UNSET;
@@ -578,10 +589,26 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(ccf->worker_processes, 1);
     ngx_conf_init_value(ccf->debug_points, 0);
 
+#if (NGX_HAVE_SCHED_SETAFFINITY)
+
+    if (ccf->cpu_affinity_n
+        && ccf->cpu_affinity_n != 1
+        && ccf->cpu_affinity_n != (ngx_uint_t) ccf->worker_processes)
+    {
+        ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                      "number of the \"worker_processes\" is not equal to "
+                      "the number of the \"worker_cpu_affinity\" mask, "
+                      "using last mask for remaining worker processes");
+    }
+
+#endif
+
 #if (NGX_THREADS)
+
     ngx_conf_init_value(ccf->worker_threads, 0);
     ngx_threads_n = ccf->worker_threads;
     ngx_conf_init_size_value(ccf->thread_stack_size, 2 * 1024 * 1024);
+
 #endif
 
 #if !(NGX_WIN32)
@@ -731,4 +758,96 @@ ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+#if (NGX_HAVE_SCHED_SETAFFINITY)
+    ngx_core_conf_t  *ccf = conf;
+
+    u_char            ch;
+    u_long           *mask;
+    ngx_str_t        *value;
+    ngx_uint_t        i, n;
+
+    if (ccf->cpu_affinity) {
+        return "is duplicate";
+    }
+
+    mask = ngx_palloc(cf->pool, (cf->args->nelts - 1) * sizeof(long));
+    if (mask == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ccf->cpu_affinity_n = cf->args->nelts - 1;
+    ccf->cpu_affinity = mask;
+
+    value = cf->args->elts;
+
+    for (n = 1; n < cf->args->nelts; n++) {
+
+        if (value[n].len > 32) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                         "\"worker_cpu_affinity\" supports up to 32 CPU only");
+            return NGX_CONF_ERROR;
+        }
+
+        mask[n - 1] = 0;
+
+        for (i = 0; i < value[n].len; i++) {
+
+            ch = value[n].data[i];
+
+            if (ch == ' ') {
+                continue;
+            }
+
+            mask[n - 1] <<= 1;
+
+            if (ch == '0') {
+                continue;
+            }
+
+            if (ch == '1') {
+                mask[n - 1] |= 1;
+                continue;
+            }
+
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                          "invalid character \"%c\" in \"worker_cpu_affinity\"",
+                          ch);
+            return NGX_CONF_ERROR ;
+        }
+    }
+
+#else
+
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "\"worker_cpu_affinity\" is not supported "
+                       "on this platform, ignored");
+#endif
+
+    return NGX_CONF_OK;
+}
+
+
+u_long
+ngx_get_cpu_affinity(ngx_uint_t n)
+{
+    ngx_core_conf_t  *ccf;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                           ngx_core_module);
+
+    if (ccf->cpu_affinity == NULL) {
+        return 0;
+    }
+
+    if (ccf->cpu_affinity_n > n) {
+        return ccf->cpu_affinity[n];
+    }
+
+    return ccf->cpu_affinity[ccf->cpu_affinity_n - 1];
 }

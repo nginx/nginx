@@ -106,7 +106,7 @@ CFLAGS="$CFLAGS -wd1419"
 
 case "$NGX_ICC_VER" in
     9.*)
-        # "cc" clobber ignored, warnings for Liunx's htons()
+        # "cc" clobber ignored, warnings for Liunx's htonl()/htons()
         CFLAGS="$CFLAGS -wd1469"
         # explicit conversion of a 64-bit integral type to a smaller
         # integral type
@@ -114,19 +114,11 @@ case "$NGX_ICC_VER" in
         # conversion from pointer to same-sized integral type,
         # warning on offsetof()
         CFLAGS="$CFLAGS -wd1684"
-
-        # STUB
-        # non-POD class type passed through ellipsis, Linux only ?
-        CFLAGS="$CFLAGS -wd1595"
     ;;
 
     8.*)
-        # "cc" clobber ignored, warnings for Liunx's htons()
+        # "cc" clobber ignored, warnings for Liunx's htonl()/htons()
         CFLAGS="$CFLAGS -wd1469"
-
-        # STUB
-        # non-POD class type passed through ellipsis, Linux only ?
-        CFLAGS="$CFLAGS -wd1595"
     ;;
 
     *)

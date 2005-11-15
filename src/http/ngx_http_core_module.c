@@ -343,6 +343,14 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("post_action"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, post_action),
+      NULL },
+
     { ngx_string("error_log"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_core_error_log,
@@ -514,7 +522,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
             if (rc == NGX_DONE) {
 
                 /*
-                 * we should never use r here because 
+                 * we should never use r here because
                  * it may point to already freed data
                  */
 
@@ -1034,9 +1042,9 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
         r->headers_in.user.data = (u_char *) "";
         return NGX_DECLINED;
     }
-    
+
     auth.len = ngx_base64_decoded_length(encoded.len);
-    auth.data = ngx_palloc(r->pool, auth.len + 1); 
+    auth.data = ngx_palloc(r->pool, auth.len + 1);
     if (auth.data == NULL) {
         return NGX_ERROR;
     }
@@ -1045,15 +1053,15 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
         r->headers_in.user.data = (u_char *) "";
         return NGX_DECLINED;
     }
-    
+
     auth.data[auth.len] = '\0';
-    
-    for (len = 0; len < auth.len; len++) { 
+
+    for (len = 0; len < auth.len; len++) {
         if (auth.data[len] == ':') {
             break;
         }
     }
-    
+
     if (len == 0 || len == auth.len) {
         r->headers_in.user.data = (u_char *) "";
         return NGX_DECLINED;
@@ -1105,8 +1113,10 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->headers_in = r->headers_in;
 
     sr->start_time = ngx_time();
-    sr->headers_out.content_length_n = -1;
-    sr->headers_out.last_modified_time = -1;
+
+    ngx_http_clear_content_length(sr);
+    ngx_http_clear_accept_ranges(sr);
+    ngx_http_clear_last_modified(sr);
 
     sr->request_body = r->request_body;
 
@@ -1859,11 +1869,10 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
-     *     lcf->root.len = 0;
-     *     lcf->root.data = NULL;
+     *     lcf->root = { 0, NULL };
+     *     lcf->post_action = { 0, NULL };
      *     lcf->types = NULL;
-     *     lcf->default_type.len = 0;
-     *     lcf->default_type.data = NULL;
+     *     lcf->default_type = { 0, NULL };
      *     lcf->err_log = NULL;
      *     lcf->error_pages = NULL;
      *     lcf->client_body_path = NULL;
@@ -1923,13 +1932,17 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
         return NGX_CONF_ERROR;
     }
 
+    if (conf->post_action.data == NULL) {
+        conf->post_action = prev->post_action;
+    }
+
     if (conf->types == NULL) {
         if (prev->types) {
             conf->types = prev->types;
 
         } else {
             conf->types = ngx_palloc(cf->pool, NGX_HTTP_TYPES_HASH_PRIME
-                                                        * sizeof(ngx_array_t)); 
+                                                        * sizeof(ngx_array_t));
             if (conf->types == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -2038,7 +2051,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
      */
 
     value = cf->args->elts;
-    
+
     ngx_memzero(&inet_upstream, sizeof(ngx_inet_upstream_t));
 
     inet_upstream.url = value[1];
@@ -2050,7 +2063,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "%s in \"%V\" of the \"listen\" directive",
                            err, &inet_upstream.url);
-        return NGX_CONF_ERROR; 
+        return NGX_CONF_ERROR;
     }
 
     ls = ngx_array_push(&scf->listen);
@@ -2084,7 +2097,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                    inet_upstream.host.data);
                 return NGX_CONF_ERROR;
             }
-    
+
             ls->addr = *(in_addr_t *)(h->h_addr_list[0]);
         }
 

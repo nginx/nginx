@@ -143,6 +143,7 @@ ngx_http_read_client_request_body_handler(ngx_http_request_t *r)
     ngx_int_t  rc;
 
     if (r->connection->read->timedout) {
+        r->connection->timedout = 1;
         ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
         return;
     }

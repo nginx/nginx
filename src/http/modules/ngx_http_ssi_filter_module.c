@@ -197,7 +197,7 @@ static ngx_command_t  ngx_http_ssi_filter_commands[] = {
 };
 
 
-    
+
 static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
     ngx_http_ssi_add_variables,            /* preconfiguration */
     NULL,                                  /* postconfiguration */
@@ -210,7 +210,7 @@ static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
 
     ngx_http_ssi_create_conf,              /* create location configuration */
     ngx_http_ssi_merge_conf                /* merge location configuration */
-};  
+};
 
 
 ngx_module_t  ngx_http_ssi_filter_module = {
@@ -331,7 +331,8 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
     conf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
 
     if (!conf->enable
-        || r->headers_out.content_type.len == 0)
+        || r->headers_out.content_type.len == 0
+        || r->headers_out.content_length_n == 0)
     {
         return ngx_http_next_header_filter(r);
     }
@@ -381,17 +382,8 @@ found:
     r->filter_need_in_memory = 1;
 
     if (r->main == r) {
-        r->headers_out.content_length_n = -1;
-        if (r->headers_out.content_length) {
-            r->headers_out.content_length->hash = 0;
-            r->headers_out.content_length = NULL;
-        }
-
-        r->headers_out.last_modified_time = -1;
-        if (r->headers_out.last_modified) {
-            r->headers_out.last_modified->hash = 0;
-            r->headers_out.last_modified = NULL;
-        }
+        ngx_http_clear_content_length(r);
+        ngx_http_clear_last_modified(r);
     }
 
     return ngx_http_next_header_filter(r);
@@ -1485,7 +1477,7 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
                 return NGX_ERROR;
             }
 
-            if (var.len == 0) { 
+            if (var.len == 0) {
                 goto invalid_variable;
             }
 
@@ -1983,7 +1975,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
     struct tm            tm;
     char                 buf[NGX_HTTP_SSI_DATE_LEN];
 
-    v->valid = 1; 
+    v->valid = 1;
     v->no_cachable = 0;
     v->not_found = 0;
 
@@ -2092,7 +2084,7 @@ ngx_http_ssi_add_variables(ngx_conf_t *cf)
         var->data = v->data;
     }
 
-    return NGX_OK; 
+    return NGX_OK;
 }
 
 

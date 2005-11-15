@@ -100,7 +100,7 @@ ngx_err_t ngx_thread_set_tls(ngx_tls_key_t key, void *value);
 
 static void *
 ngx_thread_get_tls(ngx_tls_key_t key)
-{   
+{
     if (key >= NGX_THREAD_KEYS_MAX) {
         return NULL;
     }

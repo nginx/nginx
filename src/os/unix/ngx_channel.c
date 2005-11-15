@@ -11,7 +11,7 @@
 
 ngx_int_t
 ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
-    ngx_log_t *log) 
+    ngx_log_t *log)
 {
     ssize_t             n;
     ngx_err_t           err;
@@ -34,7 +34,7 @@ ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
         msg.msg_controllen = sizeof(cmsg);
 
         cmsg.cm.cmsg_len = sizeof(cmsg);
-        cmsg.cm.cmsg_level = SOL_SOCKET; 
+        cmsg.cm.cmsg_level = SOL_SOCKET;
         cmsg.cm.cmsg_type = SCM_RIGHTS;
         *(int *) CMSG_DATA(&cmsg.cm) = ch->fd;
     }
@@ -80,7 +80,7 @@ ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
 
 ngx_int_t
 ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size, ngx_log_t *log)
-{   
+{
     ssize_t             n;
     ngx_err_t           err;
     struct iovec        iov[1];
@@ -165,7 +165,7 @@ ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size, ngx_log_t *log)
 
     if (ch->command == NGX_CMD_OPEN_CHANNEL) {
         if (msg.msg_accrightslen != sizeof(int)) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0, 
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "recvmsg() returned no ancillary data");
             return NGX_ERROR;
         }
@@ -219,8 +219,8 @@ ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd, ngx_int_t event,
             ngx_free_connection(c);
             return NGX_ERROR;
         }
-    
-    } else { 
+
+    } else {
         if (ngx_add_event(ev, event, 0) == NGX_ERROR) {
             ngx_free_connection(c);
             return NGX_ERROR;

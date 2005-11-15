@@ -27,7 +27,7 @@ static char  ngx_imap_ssl_openssl097[] = "OpenSSL 0.9.7 and higher";
 #endif
 
 
-static ngx_conf_bitmask_t  ngx_imap_ssl_protocols[] = { 
+static ngx_conf_bitmask_t  ngx_imap_ssl_protocols[] = {
     { ngx_string("SSLv2"), NGX_SSL_SSLv2 },
     { ngx_string("SSLv3"), NGX_SSL_SSLv3 },
     { ngx_string("TLSv1"), NGX_SSL_TLSv1 },
@@ -124,16 +124,16 @@ static u_char ngx_imap_session_id_ctx[] = "IMAP";
 
 static void *
 ngx_imap_ssl_create_conf(ngx_conf_t *cf)
-{           
+{
     ngx_imap_ssl_conf_t  *scf;
-            
+
     scf = ngx_pcalloc(cf->pool, sizeof(ngx_imap_ssl_conf_t));
     if (scf == NULL) {
         return NGX_CONF_ERROR;
     }
 
     /*
-     * set by ngx_pcalloc():  
+     * set by ngx_pcalloc():
      *
      *     scf->protocols = 0;
      *
@@ -240,12 +240,12 @@ ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
-    
+
 #if !defined (SSL_OP_CIPHER_SERVER_PREFERENCE)
-    
+
 static char *
 ngx_imap_ssl_nosupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{   
+{
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                        "\"%V\" directive is available only in %s,",
                        &cmd->name, cmd->post);

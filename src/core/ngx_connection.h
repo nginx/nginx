@@ -102,6 +102,7 @@ struct ngx_connection_s {
 
     ngx_recv_pt         recv;
     ngx_send_pt         send;
+    ngx_recv_chain_pt   recv_chain;
     ngx_send_chain_pt   send_chain;
 
     ngx_listening_t    *listening;
@@ -120,7 +121,7 @@ struct ngx_connection_s {
     socklen_t           socklen;
     ngx_str_t           addr_text;
 
-#if (NGX_OPENSSL)
+#if (NGX_SSL)
     ngx_ssl_connection_t  *ssl;
 #endif
 

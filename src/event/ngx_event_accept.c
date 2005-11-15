@@ -142,6 +142,7 @@ ngx_event_accept(ngx_event_t *ev)
 
         c->recv = ngx_recv;
         c->send = ngx_send;
+        c->recv_chain = ngx_recv_chain;
         c->send_chain = ngx_send_chain;
 
         c->log = log;
@@ -206,7 +207,7 @@ ngx_event_accept(ngx_event_t *ev)
                 ngx_close_accepted_connection(c);
                 return;
             }
-    
+
             c->addr_text.len = ngx_sock_ntop(ls->family, c->sockaddr,
                                              c->addr_text.data,
                                              ls->addr_text_max_len);

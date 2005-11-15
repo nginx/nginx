@@ -27,7 +27,7 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
     NGX_CASA(set, old, lock);
 
     return (set == old);
-}   
+}
 
 
 static ngx_inline ngx_atomic_int_t

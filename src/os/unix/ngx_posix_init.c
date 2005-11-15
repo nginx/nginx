@@ -49,7 +49,7 @@ ngx_os_init(ngx_log_t *log)
                       "getrlimit(RLIMIT_NOFILE) failed)");
         return NGX_ERROR;
     }
-    
+
     ngx_max_sockets = (ngx_int_t) rlmt.rlim_cur;
 
 #if (NGX_HAVE_INHERITED_NONBLOCK)

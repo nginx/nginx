@@ -85,7 +85,7 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 
     if (ngx_init_threads(ngx_threads_n,
                                    ccf->thread_stack_size, cycle) == NGX_ERROR)
-    {     
+    {
         /* fatal */
         exit(2);
     }
@@ -134,7 +134,7 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
     }
 
 
-    wc.style = CS_HREDRAW|CS_VREDRAW; 
+    wc.style = CS_HREDRAW|CS_VREDRAW;
     wc.lpfnWndProc = ngx_window_procedure;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;

@@ -301,7 +301,7 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
     type = conf->types->elts;
     for (i = 0; i < conf->types->nelts; i++) {
         if (r->headers_out.content_type.len >= type[i].len
-            && ngx_strncasecmp(r->headers_out.content_type.data, 
+            && ngx_strncasecmp(r->headers_out.content_type.data,
                                type[i].data, type[i].len) == 0)
         {
             goto found;
@@ -358,14 +358,11 @@ found:
     r->headers_out.content_encoding->value.data = (u_char *) "gzip";
 
     ctx->length = r->headers_out.content_length_n;
-    r->headers_out.content_length_n = -1;
-
-    if (r->headers_out.content_length) {
-        r->headers_out.content_length->hash = 0;
-        r->headers_out.content_length = NULL;
-    }
 
     r->main_filter_need_in_memory = 1;
+
+    ngx_http_clear_content_length(r);
+    ngx_http_clear_accept_ranges(r);
 
     return ngx_http_next_header_filter(r);
 }
@@ -993,7 +990,7 @@ ngx_http_gzip_ratio_variable(ngx_http_request_t *r,
     ngx_uint_t            zint, zfrac;
     ngx_http_gzip_ctx_t  *ctx;
 
-    v->valid = 1; 
+    v->valid = 1;
     v->no_cachable = 0;
     v->not_found = 0;
 
@@ -1096,7 +1093,7 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->wbits, prev->wbits, MAX_WBITS);
     ngx_conf_merge_size_value(conf->memlevel, prev->memlevel,
                               MAX_MEM_LEVEL - 1);
-    ngx_conf_merge_value(conf->min_length, prev->min_length, 0);
+    ngx_conf_merge_value(conf->min_length, prev->min_length, 20);
     ngx_conf_merge_value(conf->no_buffer, prev->no_buffer, 0);
 
     if (conf->types == NULL) {

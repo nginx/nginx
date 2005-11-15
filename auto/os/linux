@@ -100,3 +100,15 @@ ngx_feature_incs="#include <sys/prctl.h>"
 ngx_feature_libs=
 ngx_feature_test="if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) return 1"
 . auto/feature
+
+
+# sched_setaffinity()
+
+ngx_feature="sched_setaffinity()"
+ngx_feature_name="NGX_HAVE_SCHED_SETAFFINITY"
+ngx_feature_run=no
+ngx_feature_incs="#include <sched.h>"
+ngx_feature_libs=
+ngx_feature_test="long mask = 0;
+                  sched_setaffinity(0, 32, &mask)"
+. auto/feature

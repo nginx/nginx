@@ -44,13 +44,13 @@ ngx_http_module_t  ngx_http_static_module_ctx = {
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
-    
+
     NULL,                                  /* create server configuration */
     NULL,                                  /* merge server configuration */
-    
+
     ngx_http_static_create_loc_conf,       /* create location configuration */
     ngx_http_static_merge_loc_conf         /* merge location configuration */
-};  
+};
 
 
 ngx_module_t  ngx_http_static_module = {
@@ -240,33 +240,23 @@ ngx_http_static_handler(ngx_http_request_t *r)
     r->headers_out.content_length_n = ngx_file_size(&fi);
     r->headers_out.last_modified_time = ngx_file_mtime(&fi);
 
-    if (r->headers_out.content_length_n == 0) {
-        r->header_only = 1;
-    }
-
     if (ngx_http_set_content_type(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-#if (NGX_SUPPRESS_WARN)
-    b = NULL;
-#endif
+    /* we need to allocate all before the header would be sent */
 
-    if (!r->header_only) {
-        /* we need to allocate all before the header would be sent */
-
-        b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
-        if (b == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
-        if (b->file == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        r->filter_allow_ranges = 1;
+    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    if (b == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
+    b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
+    if (b->file == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    r->filter_allow_ranges = 1;
 
     rc = ngx_http_send_header(r);
 
@@ -274,16 +264,12 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    b->in_file = 1;
-
-    if (r->main == r) {
-        b->last_buf = 1;
-    }
-
-    b->last_in_chain = 1;
-
     b->file_pos = 0;
     b->file_last = ngx_file_size(&fi);
+
+    b->in_file = b->file_last ? 1: 0;
+    b->last_buf = (r->main == r) ? 1: 0;
+    b->last_in_chain = 1;
 
     b->file->fd = fd;
     b->file->name = path;
@@ -333,7 +319,7 @@ ngx_http_static_init(ngx_cycle_t *cycle)
     ngx_http_core_main_conf_t  *cmcf;
 
     cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
-    
+
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;

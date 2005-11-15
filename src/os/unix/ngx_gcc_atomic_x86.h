@@ -22,7 +22,7 @@
  *         eax = [m];
  *     }
  *
- * 
+ *
  * The "q" is any of the %eax, %ebx, %ecx, or %edx registers.
  * The "=a" and "a" are the %eax register.  Although we can return result
  * in any register, we use %eax because it is used in cmpxchgl anyway.

@@ -57,9 +57,11 @@ HTTP_USERID=YES
 HTTP_AUTOINDEX=YES
 HTTP_STATUS=NO
 HTTP_GEO=YES
+HTTP_REFERER=YES
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
 HTTP_FASTCGI=YES
+HTTP_EMPTY_GIF=YES
 
 # STUB
 HTTP_STUB_STATUS=NO
@@ -136,9 +138,11 @@ do
         --without-http_autoindex_module) HTTP_AUTOINDEX=NO          ;;
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_geo_module)       HTTP_GEO=NO                ;;
+        --without-http_referer)          HTTP_REFERER=NO            ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
         --without-http_fastcgi_module)   HTTP_FASTCGI=NO            ;;
+        --without-http_epmty_gif_module) HTTP_EMPTY_GIF=NO          ;;
 
         # STUB
         --with-http_stub_status_module)  HTTP_STUB_STATUS=YES       ;;

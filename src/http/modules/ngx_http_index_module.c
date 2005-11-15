@@ -356,7 +356,7 @@ ngx_http_index_error(ngx_http_request_t *r, ngx_http_index_ctx_t *ctx,
     if (err == NGX_EACCES) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
                       "\"%s\" is forbidden", ctx->path.data);
-    
+
         return NGX_HTTP_FORBIDDEN;
     }
 
