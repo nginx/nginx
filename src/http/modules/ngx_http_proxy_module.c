@@ -673,9 +673,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
             code = *(ngx_http_script_code_pt *) e.ip;
             code((ngx_http_script_engine_t *) &e);
         }
-    }
 
-    b->last = e.pos;
+        b->last = e.pos;
+    }
 
 #if (NGX_DEBUG)
     {
@@ -1621,7 +1621,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->body_set = prev->body_set;
     }
 
-    if (conf->body_set_len == 0) {
+    if (conf->body_source.data && conf->body_set_len == NULL) {
 
         ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 

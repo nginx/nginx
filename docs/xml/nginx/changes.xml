@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.11" date="15.11.2005">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не передавал при проксировании тело запроса и строки заголовка клиента;
+ошибка появилась в 0.3.10.
+</para>
+<para lang="en">
+nginx did not pass while proxying the client request headers and body;
+bug appeared in 0.3.10.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.10" date="15.11.2005">
 
 <change type="change">
@@ -18,7 +34,7 @@
 </para>
 <para lang="en">
 the "valid_referers" directive and the "$invalid_referer" variable
-was moved to the new ngx_http_referer_module from the ngx_http_rewrite_module.
+were moved to the new ngx_http_referer_module from the ngx_http_rewrite_module.
 </para>
 </change>
 
