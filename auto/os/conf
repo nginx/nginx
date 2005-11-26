@@ -63,4 +63,8 @@ case "$NGX_MACHINE" in
         have=NGX_HAVE_NONALIGNED . auto/have
     ;;
 
+    sun4u | ia64 )
+        have=NGX_ALIGNMENT value=16 . auto/define
+    ;;
+
 esac

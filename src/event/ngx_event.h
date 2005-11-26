@@ -438,7 +438,6 @@ typedef struct {
 extern ngx_atomic_t          *ngx_connection_counter;
 
 extern ngx_atomic_t          *ngx_accept_mutex_ptr;
-extern ngx_atomic_t          *ngx_accept_mutex_last_owner;
 extern ngx_atomic_t          *ngx_accept_mutex;
 extern ngx_uint_t             ngx_accept_mutex_held;
 extern ngx_msec_t             ngx_accept_mutex_delay;

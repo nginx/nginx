@@ -51,7 +51,7 @@ typedef struct {
     ngx_msec_t                      timeout;
 
     size_t                          send_lowat;
-    size_t                          header_buffer_size;
+    size_t                          buffer_size;
 
     size_t                          busy_buffers_size;
     size_t                          max_temp_file_size;
@@ -68,6 +68,7 @@ typedef struct {
 
     ngx_bufs_t                      bufs;
 
+    ngx_flag_t                      buffering;
     ngx_flag_t                      pass_request_headers;
     ngx_flag_t                      pass_request_body;
 
@@ -85,6 +86,8 @@ typedef struct {
     ngx_str_t                       uri;
     ngx_str_t                       location;
     ngx_str_t                       url;  /* used in proxy_rewrite_location */
+
+    ngx_uint_t                      redirect_404; /* unsigned redirect_404:1; */
 
 #if (NGX_HTTP_SSL)
     ngx_ssl_t                      *ssl;
@@ -139,7 +142,7 @@ typedef struct {
 struct ngx_http_upstream_s {
     ngx_peer_connection_t           peer;
 
-    ngx_event_pipe_t                pipe;
+    ngx_event_pipe_t               *pipe;
 
     ngx_chain_t                    *request_bufs;
 
@@ -150,7 +153,16 @@ struct ngx_http_upstream_s {
 
     ngx_http_upstream_headers_in_t  headers_in;
 
-    ngx_buf_t                       header_in;
+    ngx_buf_t                       buffer;
+    size_t                          length;
+
+    ngx_chain_t                    *out_bufs;
+    ngx_chain_t                    *busy_bufs;
+    ngx_chain_t                    *free_bufs;
+
+    ngx_int_t                     (*input_filter_init)(void *data);
+    ngx_int_t                     (*input_filter)(void *data, ssize_t bytes);
+    void                           *input_filter_ctx;
 
     ngx_int_t                     (*create_request)(ngx_http_request_t *r);
     ngx_int_t                     (*reinit_request)(ngx_http_request_t *r);

@@ -115,6 +115,14 @@ static char error_410_page[] =
 ;
 
 
+static char error_411_page[] =
+"<html>" CRLF
+"<head><title>411 Length Required</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>411 Length Required</h1></center>" CRLF
+;
+
+
 static char error_413_page[] =
 "<html>" CRLF
 "<head><title>413 Request Entity Too Large</title></head>" CRLF
@@ -213,7 +221,7 @@ static ngx_str_t error_pages[] = {
     ngx_string(error_408_page),
     ngx_null_string,             /* 409 */
     ngx_string(error_410_page),
-    ngx_null_string,             /* 411 */
+    ngx_string(error_411_page),
     ngx_null_string,             /* 412 */
     ngx_string(error_413_page),
     ngx_string(error_414_page),

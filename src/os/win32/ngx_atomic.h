@@ -25,7 +25,8 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 /* the new SDK headers */
 
 #define ngx_atomic_cmp_set(lock, old, set)                                    \
-     (InterlockedCompareExchange((long *) lock, set, old) == old)
+     ((ngx_atomic_uint_t) InterlockedCompareExchange((long *) lock, set, old) \
+                          == old)
 
 #else
 

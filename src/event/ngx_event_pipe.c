@@ -122,6 +122,8 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
         } else {
 
+#if (NGX_HAVE_KQUEUE)
+
             /*
              * kqueue notifies about the end of file or a pending error.
              * This test allows not to allocate a buf on these conditions
@@ -129,14 +131,15 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
              */
 
             if (p->upstream->read->available == 0
-                && p->upstream->read->pending_eof)
+                && p->upstream->read->pending_eof
+                /* FreeBSD 5.x-6.x may erroneously report ETIMEDOUT */
+                && p->upstream->read->kq_errno != NGX_ETIMEDOUT)
             {
                 p->upstream->read->ready = 0;
                 p->upstream->read->eof = 0;
                 p->upstream_eof = 1;
                 p->read = 1;
 
-#if (NGX_HAVE_KQUEUE)
                 if (p->upstream->read->kq_errno) {
                     p->upstream->read->error = 1;
                     p->upstream_error = 1;
@@ -144,12 +147,13 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                     ngx_log_error(NGX_LOG_ERR, p->log,
                                   p->upstream->read->kq_errno,
-                                  "readv() failed");
+                                  "kevent() reported that upstream "
+                                  "closed connection");
                 }
-#endif
 
                 break;
             }
+#endif
 
             if (p->free_raw_bufs) {
 

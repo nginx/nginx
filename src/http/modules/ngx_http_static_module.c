@@ -256,7 +256,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    r->filter_allow_ranges = 1;
+    r->allow_ranges = 1;
 
     rc = ngx_http_send_header(r);
 

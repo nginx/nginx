@@ -76,7 +76,11 @@ void ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc);
 void ngx_http_empty_handler(ngx_event_t *wev);
 void ngx_http_request_empty_handler(ngx_http_request_t *r);
 
-ngx_int_t ngx_http_send_last(ngx_http_request_t *r);
+#define NGX_HTTP_LAST   1
+#define NGX_HTTP_FLUSH  2
+
+ngx_int_t ngx_http_send_special(ngx_http_request_t *r, ngx_uint_t flags);
+
 u_char * ngx_http_log_error_info(ngx_http_request_t *r, u_char *buf,
     size_t len);
 

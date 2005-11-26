@@ -58,7 +58,7 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT)
         && wev->pending_eof
-           /* FreeBSD 6.0 may erroneously report ETIMEDOUT */
+           /* FreeBSD 5.x-6.x may erroneously report ETIMEDOUT */
         && wev->kq_errno != NGX_ETIMEDOUT)
     {
         (void) ngx_connection_error(c, wev->kq_errno,

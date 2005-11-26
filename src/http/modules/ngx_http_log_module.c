@@ -172,7 +172,7 @@ static ngx_str_t  http_access_log = ngx_string(NGX_HTTP_LOG_PATH);
 
 
 static ngx_str_t  ngx_http_combined_fmt =
-    ngx_string("$remote_addr - $remote_user [$time_gmt] "
+    ngx_string("$remote_addr - $remote_user [$time_local] "
                "\"$request\" $status $body_bytes_sent "
                "\"$http_referer\" \"$http_user_agent\"");
 
@@ -180,7 +180,7 @@ static ngx_str_t  ngx_http_combined_fmt =
 static ngx_http_log_var_t  ngx_http_log_vars[] = {
     { ngx_string("connection"), NGX_ATOMIC_T_LEN, ngx_http_log_connection },
     { ngx_string("pipe"), 1, ngx_http_log_pipe },
-    { ngx_string("time_gmt"), sizeof("28/Sep/1970:12:00:00 +0600") - 1,
+    { ngx_string("time_local"), sizeof("28/Sep/1970:12:00:00 +0600") - 1,
                           ngx_http_log_time },
     { ngx_string("msec"), NGX_TIME_T_LEN + 4, ngx_http_log_msec },
     { ngx_string("request_time"), NGX_TIME_T_LEN, ngx_http_log_request_time },
@@ -1019,6 +1019,11 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (cf->args->nelts >= 3) {
         name = value[2];
+
+        if (ngx_strcmp(name.data, "combined") == 0) {
+            lmcf->combined_used = 1;
+        }
+
     } else {
         name.len = sizeof("combined") - 1;
         name.data = (u_char *) "combined";
@@ -1384,6 +1389,7 @@ ngx_http_log_init(ngx_conf_t *cf)
 {
     ngx_str_t                  *value;
     ngx_array_t                 a;
+    ngx_http_handler_pt        *h;
     ngx_http_log_fmt_t         *fmt;
     ngx_http_log_main_conf_t   *lmcf;
     ngx_http_core_main_conf_t  *cmcf;
@@ -1412,7 +1418,12 @@ ngx_http_log_init(ngx_conf_t *cf)
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
-    cmcf->log_handler = ngx_http_log_handler;
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    *h = ngx_http_log_handler;
 
     return NGX_OK;
 }

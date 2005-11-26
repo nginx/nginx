@@ -58,6 +58,7 @@
 #define NGX_HTTP_NOT_FOUND                 404
 #define NGX_HTTP_NOT_ALLOWED               405
 #define NGX_HTTP_REQUEST_TIME_OUT          408
+#define NGX_HTTP_LENGTH_REQUIRED           411
 #define NGX_HTTP_REQUEST_ENTITY_TOO_LARGE  413
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE     414
 #define NGX_HTTP_RANGE_NOT_SATISFIABLE     416
@@ -142,6 +143,8 @@ typedef struct {
     ngx_table_elt_t                  *content_type;
 
     ngx_table_elt_t                  *range;
+
+    ngx_table_elt_t                  *transfer_encoding;
 
 #if (NGX_HTTP_GZIP)
     ngx_table_elt_t                  *accept_encoding;
@@ -400,7 +403,7 @@ struct ngx_http_request_s {
     unsigned                          main_filter_need_in_memory:1;
     unsigned                          filter_need_in_memory:1;
     unsigned                          filter_need_temporary:1;
-    unsigned                          filter_allow_ranges:1;
+    unsigned                          allow_ranges:1;
 
 #if (NGX_STAT_STUB)
     unsigned                          stat_reading:1;

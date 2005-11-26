@@ -851,7 +851,8 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
     cmcf->variables_hash.name = "http variables";
 
     if (ngx_hash_init(&cmcf->variables_hash, cf->pool,
-            cmcf->all_variables.elts, cmcf->all_variables.nelts) != NGX_OK)
+                      cmcf->all_variables.elts, cmcf->all_variables.nelts)
+        != NGX_OK)
     {
         return NGX_ERROR;
     }

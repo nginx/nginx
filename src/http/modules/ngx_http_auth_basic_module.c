@@ -332,31 +332,9 @@ ngx_http_auth_basic_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_auth_basic_loc_conf_t  *prev = parent;
     ngx_http_auth_basic_loc_conf_t  *conf = child;
 
-    size_t   len;
-    u_char  *realm, *p;
-
-    if (conf->realm.data) {
-        if (conf->realm.len) {
-            len = sizeof("Basic realm=\"") - 1 + conf->realm.len + 1;
-
-            realm = ngx_palloc(cf->pool, len);
-            if (realm == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            p = ngx_cpymem(realm, "Basic realm=\"",
-                           sizeof("Basic realm=\"") - 1);
-            p = ngx_cpymem(p, conf->realm.data, conf->realm.len);
-            *p = '"';
-
-            conf->realm.len = len;
-            conf->realm.data = realm;
-        }
-
-    } else {
+    if (conf->realm.data == NULL) {
         conf->realm = prev->realm;
     }
-
 
     if (conf->user_file.data) {
         if (ngx_conf_full_name(cf->cycle, &conf->user_file) != NGX_OK) {
@@ -395,10 +373,27 @@ ngx_http_auth_basic(ngx_conf_t *cf, void *post, void *data)
 {
     ngx_str_t  *realm = data;
 
+    size_t   len;
+    u_char  *basic, *p;
+
     if (ngx_strcmp(realm->data, "off") == 0) {
         realm->len = 0;
         realm->data = (u_char *) "";
     }
+
+    len = sizeof("Basic realm=\"") - 1 + realm->len + 1;
+
+    basic = ngx_palloc(cf->pool, len);
+    if (basic == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    p = ngx_cpymem(basic, "Basic realm=\"", sizeof("Basic realm=\"") - 1);
+    p = ngx_cpymem(p, realm->data, realm->len);
+    *p = '"';
+
+    realm->len = len;
+    realm->data = basic;
 
     return NGX_CONF_OK;
 }

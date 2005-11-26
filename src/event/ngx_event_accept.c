@@ -265,9 +265,7 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "accept mutex locked");
 
-        if (ngx_accept_mutex_held
-            && (!(ngx_event_flags & NGX_USE_RTSIG_EVENT)
-                || *ngx_accept_mutex_last_owner == (ngx_atomic_t) ngx_pid))
+        if (ngx_accept_mutex_held && !(ngx_event_flags & NGX_USE_RTSIG_EVENT))
         {
             return NGX_OK;
         }
@@ -308,15 +306,9 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
 
         if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
 
-            if (ngx_accept_mutex_held) {
-                c->read->disabled = 1;
-            }
-
             if (ngx_add_conn(c) == NGX_ERROR) {
                 return NGX_ERROR;
             }
-
-            *ngx_accept_mutex_last_owner = ngx_pid;
 
         } else {
             if (ngx_add_event(c->read, NGX_READ_EVENT, 0) == NGX_ERROR) {

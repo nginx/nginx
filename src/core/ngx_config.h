@@ -76,32 +76,30 @@
 
 #if 1
 /* STUB: autoconf */
-typedef int                ngx_int_t;
-typedef u_int              ngx_uint_t;
-typedef int                ngx_flag_t;
-#define NGX_INT_T_LEN      sizeof("-2147483648") - 1
+typedef int             ngx_int_t;
+typedef u_int           ngx_uint_t;
+typedef int             ngx_flag_t;
+#define NGX_INT_T_LEN   sizeof("-2147483648") - 1
 
 #else
 
-typedef long               ngx_int_t;
-typedef u_long             ngx_uint_t;
-typedef long               ngx_flag_t;
-#define NGX_INT_T_LEN      sizeof("-9223372036854775808") - 1
+typedef long            ngx_int_t;
+typedef u_long          ngx_uint_t;
+typedef long            ngx_flag_t;
+#define NGX_INT_T_LEN   sizeof("-9223372036854775808") - 1
 
 #endif
 
-#define NGX_INT32_LEN      sizeof("-2147483648") - 1
-#define NGX_INT64_LEN      sizeof("-9223372036854775808") - 1
+#define NGX_INT32_LEN   sizeof("-2147483648") - 1
+#define NGX_INT64_LEN   sizeof("-9223372036854775808") - 1
 
 
-#if (NGX_SOLARIS)
-#define NGX_ALIGN       (_MAX_ALIGNMENT - 1)
-#else
-/* TODO: auto_conf */
-#define NGX_ALIGN       (sizeof(unsigned long) - 1)  /* platform word */
+#ifndef NGX_ALIGNMENT
+#define NGX_ALIGNMENT   sizeof(unsigned long)    /* platform word */
 #endif
 
-#define ngx_align(p)    (u_char *) (((uintptr_t) p + NGX_ALIGN) & ~NGX_ALIGN)
+#define ngx_align(p)    (u_char *) (((uintptr_t) p + (NGX_ALIGNMENT - 1))     \
+                                      & ~(NGX_ALIGNMENT - 1))
 
 
 #define ngx_abort       abort
@@ -109,7 +107,7 @@ typedef long               ngx_flag_t;
 
 /* TODO: auto_conf: ngx_inline   inline __inline __inline__ */
 #ifndef ngx_inline
-#define ngx_inline   inline
+#define ngx_inline      inline
 #endif
 
 #define NGX_ACCEPT_THRESHOLD   100

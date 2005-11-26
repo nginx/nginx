@@ -132,6 +132,7 @@ ngx_int_t ngx_chain_writer(void *ctx, ngx_chain_t *in);
 
 ngx_int_t ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
     ngx_chain_t *in);
+ngx_chain_t *ngx_chain_get_free_buf(ngx_pool_t *p, ngx_chain_t **free);
 void ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
     ngx_chain_t **out, ngx_buf_tag_t tag);
 

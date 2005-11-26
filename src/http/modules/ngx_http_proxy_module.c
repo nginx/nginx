@@ -111,6 +111,10 @@ static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data);
 static ngx_conf_post_t  ngx_http_proxy_lowat_post =
     { ngx_http_proxy_lowat_check };
 
+static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_header_buffer_size = {
+    ngx_conf_deprecated, "proxy_header_buffer_size", "proxy_buffer_size"
+};
+
 
 static ngx_conf_bitmask_t  ngx_http_proxy_next_upstream_masks[] = {
     { ngx_string("error"), NGX_HTTP_UPSTREAM_FT_ERROR },
@@ -136,6 +140,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_http_proxy_redirect,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("proxy_buffering"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.buffering),
       NULL },
 
     { ngx_string("proxy_connect_timeout"),
@@ -201,12 +212,19 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, upstream.pass_request_body),
       NULL },
 
+    { ngx_string("proxy_buffer_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.buffer_size),
+      NULL },
+
     { ngx_string("proxy_header_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_proxy_loc_conf_t, upstream.header_buffer_size),
-      NULL },
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.buffer_size),
+      &ngx_conf_deprecated_proxy_header_buffer_size },
 
     { ngx_string("proxy_read_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -333,6 +351,7 @@ static char  ngx_http_proxy_version[] = " HTTP/1.0" CRLF;
 static ngx_table_elt_t  ngx_http_proxy_headers[] = {
     { 0, ngx_string("Host"), ngx_string("$proxy_host") },
     { 0, ngx_string("Connection"), ngx_string("close") },
+    { 0, ngx_string("Keep-Alive"), ngx_string("") },
     { 0, ngx_null_string, ngx_null_string }
 };
 
@@ -395,7 +414,15 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
         u->rewrite_redirect = ngx_http_proxy_rewrite_redirect;
     }
 
-    u->pipe.input_filter = ngx_event_pipe_copy_input_filter;
+    if (plcf->upstream.buffering) {
+
+        u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t));
+        if (u->pipe == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        u->pipe->input_filter = ngx_event_pipe_copy_input_filter;
+    }
 
     u->accel = 1;
 
@@ -828,7 +855,7 @@ ngx_http_proxy_parse_status_line(ngx_http_request_t *r, ngx_http_proxy_ctx_t *p)
 
     state = r->state;
 
-    for (pos = u->header_in.pos; pos < u->header_in.last; pos++) {
+    for (pos = u->buffer.pos; pos < u->buffer.last; pos++) {
         ch = *pos;
 
         switch (state) {
@@ -986,14 +1013,14 @@ ngx_http_proxy_parse_status_line(ngx_http_request_t *r, ngx_http_proxy_ctx_t *p)
         }
     }
 
-    u->header_in.pos = pos;
+    u->buffer.pos = pos;
     r->state = state;
 
     return NGX_AGAIN;
 
 done:
 
-    u->header_in.pos = pos + 1;
+    u->buffer.pos = pos + 1;
 
     if (p->status_end == NULL) {
         p->status_end = pos;
@@ -1019,7 +1046,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
     for ( ;;  ) {
 
-        rc = ngx_http_parse_header_line(r, &r->upstream->header_in);
+        rc = ngx_http_parse_header_line(r, &r->upstream->buffer);
 
         if (rc == NGX_OK) {
 
@@ -1359,7 +1386,6 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     conf->upstream.bufs.num = 0;
-     *     conf->upstream.path = NULL;
      *     conf->upstream.next_upstream = 0;
      *     conf->upstream.temp_path = NULL;
      *     conf->upstream.schema = { 0, NULL };
@@ -1377,12 +1403,14 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->rewrite_locations = NULL;
      */
 
+    conf->upstream.buffering = NGX_CONF_UNSET;
+
     conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
 
     conf->upstream.send_lowat = NGX_CONF_UNSET_SIZE;
-    conf->upstream.header_buffer_size = NGX_CONF_UNSET_SIZE;
+    conf->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
 
     conf->upstream.busy_buffers_size_conf = NGX_CONF_UNSET_SIZE;
     conf->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE;
@@ -1426,6 +1454,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
 
+    ngx_conf_merge_value(conf->upstream.buffering,
+                              prev->upstream.buffering, 1);
+
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout,
                               prev->upstream.connect_timeout, 60000);
 
@@ -1438,8 +1469,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->upstream.send_lowat,
                               prev->upstream.send_lowat, 0);
 
-    ngx_conf_merge_size_value(conf->upstream.header_buffer_size,
-                              prev->upstream.header_buffer_size,
+    ngx_conf_merge_size_value(conf->upstream.buffer_size,
+                              prev->upstream.buffer_size,
                               (size_t) ngx_pagesize);
 
     ngx_conf_merge_bufs_value(conf->upstream.bufs, prev->upstream.bufs,
@@ -1452,7 +1483,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
 
-    size = conf->upstream.header_buffer_size;
+    size = conf->upstream.buffer_size;
     if (size < conf->upstream.bufs.size) {
         size = conf->upstream.bufs.size;
     }

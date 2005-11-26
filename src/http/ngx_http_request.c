@@ -95,6 +95,10 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("Range"), offsetof(ngx_http_headers_in_t, range),
                  ngx_http_process_header_line },
 
+    { ngx_string("Transfer-Encoding"),
+                 offsetof(ngx_http_headers_in_t, transfer_encoding),
+                 ngx_http_process_header_line },
+
 #if (NGX_HTTP_GZIP)
     { ngx_string("Accept-Encoding"),
                  offsetof(ngx_http_headers_in_t, accept_encoding),
@@ -377,7 +381,8 @@ void ngx_http_init_request(ngx_event_t *rev)
 
 
     if (ngx_list_init(&r->headers_out.headers, r->pool, 20,
-                      sizeof(ngx_table_elt_t)) == NGX_ERROR)
+                      sizeof(ngx_table_elt_t))
+        == NGX_ERROR)
     {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -660,7 +665,8 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
 
             if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
-                                         sizeof(ngx_table_elt_t)) == NGX_ERROR)
+                              sizeof(ngx_table_elt_t))
+                == NGX_ERROR)
             {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
@@ -668,7 +674,8 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
 
             if (ngx_array_init(&r->headers_in.cookies, r->pool, 2,
-                                       sizeof(ngx_table_elt_t *)) == NGX_ERROR)
+                               sizeof(ngx_table_elt_t *))
+                == NGX_ERROR)
             {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
@@ -1213,7 +1220,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         if (r->headers_in.content_length_n == NGX_ERROR) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent invalid \"Content-Length\" header");
-            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            ngx_http_finalize_request(r, NGX_HTTP_LENGTH_REQUIRED);
             return NGX_ERROR;
         }
     }
@@ -1221,7 +1228,16 @@ ngx_http_process_request_header(ngx_http_request_t *r)
     if (r->method == NGX_HTTP_POST && r->headers_in.content_length_n == -1) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "client sent POST method without \"Content-Length\" header");
-        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        ngx_http_finalize_request(r, NGX_HTTP_LENGTH_REQUIRED);
+        return NGX_ERROR;
+    }
+
+    if (r->headers_in.transfer_encoding
+        && ngx_strstr(r->headers_in.transfer_encoding->value.data, "chunked"))
+    {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent \"Transfer-Encoding: chunked\" header");
+        ngx_http_finalize_request(r, NGX_HTTP_LENGTH_REQUIRED);
         return NGX_ERROR;
     }
 
@@ -2095,7 +2111,10 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 #if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
-        if (rev->pending_eof) {
+        if (rev->pending_eof
+            /* FreeBSD 5.x-6.x may erroneously report ETIMEDOUT */
+            && rev->kq_errno != NGX_ETIMEDOUT)
+        {
             c->log->handler = NULL;
             ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
                           "kevent() reported that client %V closed "
@@ -2312,7 +2331,7 @@ ngx_http_request_empty_handler(ngx_http_request_t *r)
 
 
 ngx_int_t
-ngx_http_send_last(ngx_http_request_t *r)
+ngx_http_send_special(ngx_http_request_t *r, ngx_uint_t flags)
 {
     ngx_buf_t    *b;
     ngx_chain_t   out;
@@ -2322,7 +2341,14 @@ ngx_http_send_last(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    b->last_buf = 1;
+    if (flags & NGX_HTTP_LAST) {
+        b->last_buf = 1;
+    }
+
+    if (flags & NGX_HTTP_FLUSH) {
+        b->flush = 1;
+    }
+
     out.buf = b;
     out.next = NULL;
 
@@ -2354,8 +2380,10 @@ void
 ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
 {
     ngx_log_t                  *log;
+    ngx_uint_t                  i, n;
     struct linger               linger;
     ngx_http_log_ctx_t         *ctx;
+    ngx_http_handler_pt        *log_handler;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_core_main_conf_t  *cmcf;
 
@@ -2386,8 +2414,10 @@ ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
-    if (cmcf->log_handler) {
-        cmcf->log_handler(r);
+    log_handler = cmcf->phases[NGX_HTTP_LOG_PHASE].handlers.elts;
+    n = cmcf->phases[NGX_HTTP_LOG_PHASE].handlers.nelts;
+    for (i = 0; i < n; i++) {
+        log_handler[i](r);
     }
 
     if (r->connection->timedout) {

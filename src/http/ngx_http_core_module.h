@@ -50,10 +50,12 @@ typedef enum {
     NGX_HTTP_FIND_CONFIG_PHASE,
     NGX_HTTP_REWRITE_PHASE,
 
+    NGX_HTTP_PREACCESS_PHASE,
+
     NGX_HTTP_ACCESS_PHASE,
     NGX_HTTP_CONTENT_PHASE,
 
-    NGX_HTTP_LAST_PHASE
+    NGX_HTTP_LOG_PHASE
 } ngx_http_phases;
 
 
@@ -66,8 +68,7 @@ typedef struct {
 typedef struct {
     ngx_array_t                servers;         /* ngx_http_core_srv_conf_t */
 
-    ngx_http_phase_t           phases[NGX_HTTP_LAST_PHASE];
-    ngx_http_handler_pt        log_handler;
+    ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
 
     ngx_hash_t                 headers_in_hash;
     ngx_hash_t                 variables_hash;
@@ -84,8 +85,8 @@ typedef struct {
 
 typedef struct {
     /*
-     * array of the ngx_http_core_loc_conf_t,
-     * used in the translation handler and in the merge phase
+     * array of the ngx_http_core_loc_conf_t *,
+     * used in the ngx_http_core_find_location() and in the merge phase
      */
     ngx_array_t                locations;
 
@@ -287,7 +288,7 @@ extern ngx_uint_t ngx_http_max_module;
                                                                               \
 #define ngx_http_clear_accept_ranges(r)                                       \
                                                                               \
-    r->filter_allow_ranges = 0;                                               \
+    r->allow_ranges = 0;                                                      \
     if (r->headers_out.accept_ranges) {                                       \
         r->headers_out.accept_ranges->hash = 0 ;                              \
         r->headers_out.accept_ranges = NULL;                                  \

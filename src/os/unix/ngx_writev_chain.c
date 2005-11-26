@@ -33,7 +33,11 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
 #if (NGX_HAVE_KQUEUE)
 
-    if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT) && wev->pending_eof) {
+    if ((ngx_event_flags & NGX_USE_KQUEUE_EVENT)
+        && wev->pending_eof
+           /* FreeBSD 5.x-6.x may erroneously report ETIMEDOUT */
+        && wev->kq_errno != NGX_ETIMEDOUT)
+    {
         (void) ngx_connection_error(c, wev->kq_errno,
                                "kevent() reported about an closed connection");
         wev->error = 1;

@@ -189,6 +189,13 @@ typedef struct {
 
 typedef struct {
     ngx_conf_post_handler_pt  post_handler;
+    char                     *old_name;
+    char                     *new_name;
+} ngx_conf_deprecated_t;
+
+
+typedef struct {
+    ngx_conf_post_handler_pt  post_handler;
     ngx_int_t                 low;
     ngx_int_t                 high;
 } ngx_conf_num_bounds_t;
@@ -208,6 +215,8 @@ typedef struct {
 } ngx_conf_bitmask_t;
 
 
+
+char * ngx_conf_deprecated(ngx_conf_t *cf, void *post, void *data);
 char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 
 

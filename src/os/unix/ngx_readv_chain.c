@@ -32,23 +32,26 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
                        rev->pending_eof, rev->available, rev->kq_errno);
 
         if (rev->available == 0) {
-            if (rev->pending_eof) {
+
+            if (!rev->pending_eof) {
+                return NGX_AGAIN;
+            }
+
+            /* FreeBSD 5.x-6.x may erroneously report ETIMEDOUT */
+            if (rev->kq_errno != NGX_ETIMEDOUT) {
+
                 rev->ready = 0;
                 rev->eof = 1;
-
-                ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
-                              "kevent() reported about an closed connection");
 
                 if (rev->kq_errno) {
                     rev->error = 1;
                     ngx_set_socket_errno(rev->kq_errno);
-                    return NGX_ERROR;
+
+                    return ngx_connection_error(c, rev->kq_errno,
+                               "kevent() reported about an closed connection");
                 }
 
                 return 0;
-
-            } else {
-                return NGX_AGAIN;
             }
         }
     }

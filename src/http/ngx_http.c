@@ -326,8 +326,18 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cmcf->phases[NGX_HTTP_REWRITE_PHASE].type = NGX_OK;
 
 
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_PREACCESS_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    cmcf->phases[NGX_HTTP_PREACCESS_PHASE].type = NGX_OK;
+
+
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
-                       cf->pool, 4, sizeof(ngx_http_handler_pt))
+                       cf->pool, 2, sizeof(ngx_http_handler_pt))
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
@@ -344,6 +354,16 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     cmcf->phases[NGX_HTTP_CONTENT_PHASE].type = NGX_OK;
+
+
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    cmcf->phases[NGX_HTTP_LOG_PHASE].type = NGX_OK;
 
 
     cmcf->headers_in_hash.max_size = 100;

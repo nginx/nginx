@@ -25,7 +25,14 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                        rev->pending_eof, rev->available, rev->kq_errno);
 
         if (rev->available == 0) {
-            if (rev->pending_eof) {
+
+            if (!rev->pending_eof) {
+                return NGX_AGAIN;
+            }
+
+            /* FreeBSD 5.x-6.x may erroneously report ETIMEDOUT */
+            if (rev->kq_errno != NGX_ETIMEDOUT) {
+
                 rev->ready = 0;
                 rev->eof = 1;
 
@@ -38,9 +45,6 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                 }
 
                 return 0;
-
-            } else {
-                return NGX_AGAIN;
             }
         }
     }

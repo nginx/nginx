@@ -44,6 +44,7 @@ struct ngx_pool_large_s {
 struct ngx_pool_s {
     u_char               *last;
     u_char               *end;
+    ngx_pool_t           *current;
     ngx_chain_t          *chain;
     ngx_pool_t           *next;
     ngx_pool_large_t     *large;

@@ -34,9 +34,9 @@ if [ $ngx_found = yes ]; then
 fi
 
 
-case "$NGX_PLATFORM" in
+case "$NGX_MACHINE" in
 
-    *:sun4u)
+    sun4u | sparc )
         # "-mcpu=v9" enables the "casa" assembler instruction
         CFLAGS="$CFLAGS -mcpu=v9"
     ;;
@@ -78,6 +78,13 @@ case $CPU in
     opteron)
         # optimize for Opteron, gcc 3.x
         CPU_OPT="-march=opteron"
+    ;;
+
+    sparc32)
+        # build 32-bit UltraSparc binary
+        CPU_OPT="-m32"
+        CORE_LINK="$CORE_LINK -m32"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS -m32"
     ;;
 
     sparc64)

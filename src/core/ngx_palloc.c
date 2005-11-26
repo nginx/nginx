@@ -20,9 +20,10 @@ ngx_create_pool(size_t size, ngx_log_t *log)
 
     p->last = (u_char *) p + sizeof(ngx_pool_t);
     p->end = (u_char *) p + size;
+    p->current = p;
+    p->chain = NULL;
     p->next = NULL;
     p->large = NULL;
-    p->chain = NULL;
     p->cleanup = NULL;
     p->log = log;
 
@@ -91,7 +92,7 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
         && size <= (size_t) (pool->end - (u_char *) pool)
                                      - (size_t) ngx_align(sizeof(ngx_pool_t)))
     {
-        for (p = pool, n = pool->next; /* void */; p = n, n = n->next) {
+        for (p = pool->current; /* void */ ; p = p->next) {
             m = ngx_align(p->last);
 
             if ((size_t) (p->end - m) >= size) {
@@ -100,7 +101,11 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
                 return m;
             }
 
-            if (n == NULL) {
+            if ((size_t) (p->end - m) < NGX_ALIGNMENT) {
+                p->current = p->next;
+            }
+
+            if (p->next == NULL) {
                 break;
             }
         }
@@ -110,6 +115,10 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
         n = ngx_create_pool((size_t) (p->end - (u_char *) p), p->log);
         if (n == NULL) {
             return NULL;
+        }
+
+        if (p->current == NULL) {
+            p->current = n;
         }
 
         p->next = n;

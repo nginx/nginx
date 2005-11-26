@@ -476,7 +476,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
-    for (/* void */; r->phase < NGX_HTTP_LAST_PHASE; r->phase++) {
+    for (/* void */; r->phase < NGX_HTTP_LOG_PHASE; r->phase++) {
 
         if (r->phase == NGX_HTTP_REWRITE_PHASE + 1 && r->uri_changed) {
 
@@ -1098,7 +1098,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
     }
 
     if (ngx_list_init(&sr->headers_out.headers, r->pool, 20,
-                      sizeof(ngx_table_elt_t)) == NGX_ERROR)
+                      sizeof(ngx_table_elt_t))
+        == NGX_ERROR)
     {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }

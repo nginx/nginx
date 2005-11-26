@@ -61,6 +61,7 @@ HTTP_REFERER=YES
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
 HTTP_FASTCGI=YES
+HTTP_MEMCACHED=YES
 HTTP_EMPTY_GIF=YES
 
 # STUB
@@ -138,11 +139,12 @@ do
         --without-http_autoindex_module) HTTP_AUTOINDEX=NO          ;;
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_geo_module)       HTTP_GEO=NO                ;;
-        --without-http_referer)          HTTP_REFERER=NO            ;;
+        --without-http_referer_module)   HTTP_REFERER=NO            ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
         --without-http_fastcgi_module)   HTTP_FASTCGI=NO            ;;
-        --without-http_epmty_gif_module) HTTP_EMPTY_GIF=NO          ;;
+        --without-http_memcached_module) HTTP_MEMCACHED=NO          ;;
+        --without-http_empty_gif_module) HTTP_EMPTY_GIF=NO          ;;
 
         # STUB
         --with-http_stub_status_module)  HTTP_STUB_STATUS=YES       ;;
@@ -213,6 +215,7 @@ cat << END
   --without-poll_module              disable poll module
 
   --with-http_ssl_module             enable ngx_http_ssl_module
+  --with-http_realip_module          enable ngx_http_realip_module
   --without-http_charset_module      disable ngx_http_charset_module
   --without-http_gzip_module         disable ngx_http_gzip_module
   --without-http_ssi_module          disable ngx_http_ssi_module
@@ -221,9 +224,12 @@ cat << END
   --without-http_auth_basic_module   disable ngx_http_auth_basic_module
   --without-http_autoindex_module    disable ngx_http_autoindex_module
   --without-http_geo_module          disable ngx_http_geo_module
+  --without-http_referer_module      disable ngx_http_referer_module
   --without-http_rewrite_module      disable ngx_http_rewrite_module
   --without-http_proxy_module        disable ngx_http_proxy_module
   --without-http_fastcgi_module      disable ngx_http_fastcgi_module
+  --without-http_memcached_module    disable ngx_http_memcached_module
+  --without-http_empty_gif_module    disable ngx_http_empty_gif_module
 
   --http-log-path=PATH               set path to the http access log
   --http-client-body-temp-path=PATH  set path to the http client request body

@@ -9,6 +9,129 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.12" date="26.11.2005">
+
+<change type="security">
+<para lang="ru">
+если nginx был собран с модулем ngx_http_realip_module, то при использовании
+директивы "satisfy_any on" директивы доступа и аутентификации не работали.
+Модуль ngx_http_realip_module не собирался и не собирается по умолчанию.
+</para>
+<para lang="en">
+if nginx was built with the ngx_http_realip_module and the "satisfy_any on"
+directive was used, then access and authorization directives did not work.
+The ngx_http_realip_module was not built and is not built by default.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+имя переменной "$time_gmt" изменено на "$time_local".
+</para>
+<para lang="en">
+the "$time_gmt" variable name was changed to "$time_local".
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директивы proxy_header_buffer_size и fastcgi_header_buffer_size
+переименованы соответственно в proxy_buffer_size и fastcgi_buffer_size.
+</para>
+<para lang="en">
+the "proxy_header_buffer_size" and "fastcgi_header_buffer_size" directives
+was renamed to the "proxy_buffer_size" and "fastcgi_buffer_size" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_memcached_module.
+</para>
+<para lang="en">
+the ngx_http_memcached_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_buffering.
+</para>
+<para lang="en">
+the "proxy_buffering" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+изменение в работе с accept mutex при использовании метода rtsig;
+ошибка появилась в 0.3.0.
+</para>
+<para lang="en">
+the changes in accept mutex  handling when the "rtsig" method was used;
+bug appeared in 0.3.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если клиент передал строку "Transfer-Encoding: chunked" в заголоовке
+запроса, то nginx теперь выдаёт ошибку 411.
+</para>
+<para lang="en">
+if the client sent the "Transfer-Encoding: chunked" header line, then
+nginx returns the 411 error.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при наследовании директивы auth_basic с уровня http в строке
+"WWW-Authenticate" заголовка ответа выводился realm без текста "Basic realm".
+</para>
+<para lang="en">
+if the "auth_basic" directive was inherited from the http level,
+then the realm in the "WWW-Authenticate" header line was without
+the "Basic realm" text.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве access_log был явно указан формат combined, то в лог
+записывались пустые строки;
+ошибка появилась в 0.3.8.
+</para>
+<para lang="en">
+if the "combined" format was explicitly specified in the "access_log" directive,
+then the empty lines was written to the log;
+bug appeared in 0.3.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не работал на платформе sparc под любыми OS, кроме Solaris.
+</para>
+<para lang="en">
+nginx did not run on the sparc platform under any OS except Solaris.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве if теперь не нужно разделять пробелом строку в кавычках и
+закрывающую скобку.
+</para>
+<para lang="en">
+now it is not necessary to place space between the quoted string and closing
+bracket in the "if" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.11" date="15.11.2005">
 
 <change type="bugfix">
@@ -17,7 +140,7 @@ nginx не передавал при проксировании тело запроса и строки заголовка клиента;
 ошибка появилась в 0.3.10.
 </para>
 <para lang="en">
-nginx did not pass while proxying the client request headers and body;
+nginx did not pass the client request headers and body while proxying;
 bug appeared in 0.3.10.
 </para>
 </change>

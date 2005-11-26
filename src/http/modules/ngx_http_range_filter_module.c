@@ -136,7 +136,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         || r->headers_out.status != NGX_HTTP_OK
         || r->main != r
         || r->headers_out.content_length_n == -1
-        || !r->filter_allow_ranges)
+        || !r->allow_ranges)
     {
         return ngx_http_next_header_filter(r);
     }

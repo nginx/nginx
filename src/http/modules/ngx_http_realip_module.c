@@ -264,7 +264,7 @@ ngx_http_realip_init(ngx_cycle_t *cycle)
 
     *h = ngx_http_realip_handler;
 
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_PREACCESS_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;
     }

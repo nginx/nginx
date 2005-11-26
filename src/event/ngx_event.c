@@ -48,7 +48,6 @@ ngx_atomic_t         *ngx_connection_counter = &connection_counter;
 
 
 ngx_atomic_t         *ngx_accept_mutex_ptr;
-ngx_atomic_t         *ngx_accept_mutex_last_owner;
 ngx_atomic_t         *ngx_accept_mutex;
 ngx_uint_t            ngx_accept_mutex_held;
 ngx_msec_t            ngx_accept_mutex_delay;
@@ -255,7 +254,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
 
     if (ngx_accept_mutex_held) {
-        *ngx_accept_mutex = 0;
+        (void) ngx_atomic_cmp_set(ngx_accept_mutex, ngx_pid, 0);
     }
 
     if (delta) {
@@ -471,7 +470,6 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     /* TODO: adjust cache line size, 128 is P4 cache line size */
 
     size = 128            /* ngx_accept_mutex */
-           + 128          /* ngx_accept_mutex_last_owner */
            + 128;         /* ngx_connection_counter */
 
 #if (NGX_STAT_STUB)
@@ -491,17 +489,16 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     }
 
     ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
-    ngx_accept_mutex_last_owner = (ngx_atomic_t *) (shared + 1 * 128);
-    ngx_connection_counter = (ngx_atomic_t *) (shared + 2 * 128);
+    ngx_connection_counter = (ngx_atomic_t *) (shared + 1 * 128);
 
 #if (NGX_STAT_STUB)
 
-    ngx_stat_accepted = (ngx_atomic_t *) (shared + 3 * 128);
-    ngx_stat_handled = (ngx_atomic_t *) (shared + 4 * 128);
-    ngx_stat_requests = (ngx_atomic_t *) (shared + 5 * 128);
-    ngx_stat_active = (ngx_atomic_t *) (shared + 6 * 128);
-    ngx_stat_reading = (ngx_atomic_t *) (shared + 7 * 128);
-    ngx_stat_writing = (ngx_atomic_t *) (shared + 8 * 128);
+    ngx_stat_accepted = (ngx_atomic_t *) (shared + 2 * 128);
+    ngx_stat_handled = (ngx_atomic_t *) (shared + 3 * 128);
+    ngx_stat_requests = (ngx_atomic_t *) (shared + 4 * 128);
+    ngx_stat_active = (ngx_atomic_t *) (shared + 5 * 128);
+    ngx_stat_reading = (ngx_atomic_t *) (shared + 6 * 128);
+    ngx_stat_writing = (ngx_atomic_t *) (shared + 7 * 128);
 
 #endif
 
@@ -917,6 +914,12 @@ ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ecf->connections != NGX_CONF_UNSET_UINT) {
         return "is duplicate" ;
+    }
+
+    if (ngx_strcmp(cmd->name.data, "connections") == 0) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "the \"connections\" directive is deprecated, "
+                           "use the \"worker_connections\" directive instead");
     }
 
     value = cf->args->elts;

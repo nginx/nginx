@@ -77,8 +77,8 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         fd = ngx_open_file(filename->data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
         if (fd == NGX_INVALID_FILE) {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
-                          ngx_open_file_n " \"%s\" failed", filename->data);
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                              ngx_open_file_n " \"%s\" failed", filename->data);
             return NGX_CONF_ERROR;
         }
 
@@ -451,12 +451,18 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 return NGX_CONF_BLOCK_START;
             }
 
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "unexpected \"%c\" in %s:%ui",
-                          ch, cf->conf_file->file.name.data,
-                          cf->conf_file->line);
+            if (ch == ')') {
+                last_space = 1;
+                need_space = 0;
 
-            return NGX_ERROR;
+            } else {
+                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                               "unexpected \"%c\" in %s:%ui",
+                               ch, cf->conf_file->file.name.data,
+                               cf->conf_file->line);
+
+                 return NGX_ERROR;
+            }
         }
 
         if (last_space) {
@@ -1163,6 +1169,20 @@ char *
 ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     return "unsupported on this platform";
+}
+
+
+char *
+ngx_conf_deprecated(ngx_conf_t *cf, void *post, void *data)
+{
+    ngx_conf_deprecated_t  *d = post;
+
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "the \"%s\" directive is deprecated, "
+                       "use the \"%s\" directive instead",
+                       d->old_name, d->new_name);
+
+    return NGX_CONF_OK;
 }
 
 
