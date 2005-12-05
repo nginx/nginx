@@ -23,8 +23,8 @@
 #define NGX_HEADERS   8
 
 
-ngx_chain_t *ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in,
-                                      off_t limit)
+ngx_chain_t *
+ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     int              rc, tcp_nodelay;
     u_char          *prev;

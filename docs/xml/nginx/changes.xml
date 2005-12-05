@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.14" date="05.12.2005">
+
+<change type="bugfix">
+<para lang="ru">
+в ответе 304 передавалось тело ответа;
+ошибка появилась в 0.3.13.
+</para>
+<para lang="en">
+in the 304 response the body was transferred;
+bug appeared in 0.3.13.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.13" date="05.12.2005">
 
 <change type="feature">

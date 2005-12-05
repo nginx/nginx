@@ -23,7 +23,7 @@ typedef struct sendfilevec {
 #define SFV_FD_SELF  -2
 
 static ssize_t sendfilev(int fd, const struct sendfilevec *vec,
-                         int sfvcnt, size_t *xferred)
+    int sfvcnt, size_t *xferred)
 {
     return -1;
 }
@@ -34,8 +34,8 @@ static ssize_t sendfilev(int fd, const struct sendfilevec *vec,
 #define NGX_SENDFILEVECS   16
 
 
-ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
-                                         off_t limit)
+ngx_chain_t *
+ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     int             fd;
     u_char         *prev;
