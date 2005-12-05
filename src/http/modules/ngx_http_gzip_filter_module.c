@@ -961,7 +961,7 @@ ngx_http_gzip_add_variables(ngx_conf_t *cf)
     ngx_http_variable_t     *var;
     ngx_http_log_op_name_t  *op;
 
-    var = ngx_http_add_variable(cf, &ngx_http_gzip_ratio, 0);
+    var = ngx_http_add_variable(cf, &ngx_http_gzip_ratio, NGX_HTTP_VAR_NOHASH);
     if (var == NULL) {
         return NGX_ERROR;
     }

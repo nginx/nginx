@@ -181,8 +181,8 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_imap_core_srv_conf_t *prev = parent;
     ngx_imap_core_srv_conf_t *conf = child;
 
+    u_char      *p;
     size_t       size;
-    ngx_buf_t   *b;
     ngx_str_t   *c, *d;
     ngx_uint_t   i;
 
@@ -218,22 +218,40 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         size += c[i].len + sizeof(CRLF) - 1;
     }
 
-    b = ngx_create_temp_buf(cf->pool, size);
-    if (b == NULL) {
+    p = ngx_palloc(cf->pool, size);
+    if (p == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    b->last = ngx_cpymem(b->last, "+OK Capability list follows" CRLF,
-                         sizeof("+OK Capability list follows" CRLF) - 1);
+    conf->pop3_capability.len = size;
+    conf->pop3_capability.data = p;
+
+    p = ngx_cpymem(p, "+OK Capability list follows" CRLF,
+                   sizeof("+OK Capability list follows" CRLF) - 1);
 
     for (i = 0; i < conf->pop3_capabilities.nelts; i++) {
-        b->last = ngx_cpymem(b->last, c[i].data, c[i].len);
-        *b->last++ = CR; *b->last++ = LF;
+        p = ngx_cpymem(p, c[i].data, c[i].len);
+        *p++ = CR; *p++ = LF;
     }
 
-    *b->last++ = '.'; *b->last++ = CR; *b->last++ = LF;
+    *p++ = '.'; *p++ = CR; *p = LF;
 
-    conf->pop3_capability = b;
+
+    size += sizeof("STLS" CRLF) - 1;
+
+    p = ngx_palloc(cf->pool, size);
+    if (p == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    conf->pop3_starttls_capability.len = size;
+    conf->pop3_starttls_capability.data = p;
+
+    p = ngx_cpymem(p, conf->pop3_capability.data,
+                   conf->pop3_capability.len - (sizeof("." CRLF) - 1));
+
+    p = ngx_cpymem(p, "STLS" CRLF, sizeof("STLS" CRLF) - 1);
+    *p++ = '.'; *p++ = CR; *p = LF;
 
 
     if (conf->imap_capabilities.nelts == 0) {
@@ -259,21 +277,55 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         size += 1 + c[i].len;
     }
 
-    b = ngx_create_temp_buf(cf->pool, size);
-    if (b == NULL) {
+    p = ngx_palloc(cf->pool, size);
+    if (p == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    b->last = ngx_cpymem(b->last, "* CAPABILITY", sizeof("* CAPABILITY") - 1);
+    conf->imap_capability.len = size;
+    conf->imap_capability.data = p;
+
+    p = ngx_cpymem(p, "* CAPABILITY", sizeof("* CAPABILITY") - 1);
 
     for (i = 0; i < conf->imap_capabilities.nelts; i++) {
-        *b->last++ = ' ';
-        b->last = ngx_cpymem(b->last, c[i].data, c[i].len);
+        *p++ = ' ';
+        p = ngx_cpymem(p, c[i].data, c[i].len);
     }
 
-    *b->last++ = CR; *b->last++ = LF;
+    *p++ = CR; *p = LF;
 
-    conf->imap_capability = b;
+
+    size += sizeof(" STARTTLS") - 1;
+
+    p = ngx_palloc(cf->pool, size);
+    if (p == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    conf->imap_starttls_capability.len = size;
+    conf->imap_starttls_capability.data = p;
+
+    p = ngx_cpymem(p, conf->imap_capability.data,
+                   conf->imap_capability.len - (sizeof(CRLF) - 1));
+    p = ngx_cpymem(p, " STARTTLS", sizeof(" STARTTLS") - 1);
+    *p++ = CR; *p = LF;
+
+
+    size += sizeof(" LOGINDISABLED") - 1;
+
+    p = ngx_palloc(cf->pool, size);
+    if (p == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    conf->imap_starttls_only_capability.len = size;
+    conf->imap_starttls_only_capability.data = p;
+
+    p = ngx_cpymem(p, conf->imap_starttls_capability.data,
+                   conf->imap_starttls_capability.len - (sizeof(CRLF) - 1));
+    p = ngx_cpymem(p, " LOGINDISABLED", sizeof(" LOGINDISABLED") - 1);
+    *p++ = CR; *p = LF;
+
 
     return NGX_CONF_OK;
 }

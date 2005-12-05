@@ -63,6 +63,13 @@ typedef struct {
 #define ngx_memset(buf, c, n)     (void) memset(buf, c, n)
 
 
+#if (NGX_MEMCPY_LIMIT)
+
+void *ngx_memcpy(void *dst, void *src, size_t n);
+#define ngx_cpymem(dst, src, n)   ((u_char *) ngx_memcpy(dst, src, n)) + (n)
+
+#else
+
 /*
  * gcc3, msvc, and icc7 compile memcpy() to the inline "rep movs".
  * gcc3 compiles memcpy(d, s, 4) to the inline "mov"es.
@@ -70,6 +77,8 @@ typedef struct {
  */
 #define ngx_memcpy(dst, src, n)   (void) memcpy(dst, src, n)
 #define ngx_cpymem(dst, src, n)   ((u_char *) memcpy(dst, src, n)) + (n)
+
+#endif
 
 
 #if ( __INTEL_COMPILER >= 800 )

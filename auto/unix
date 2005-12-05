@@ -4,10 +4,7 @@
 
 have=NGX_HAVE_UNIX_DOMAIN . auto/have
 
-
-# STUB
-CC_WARN=
-ngx_fmt_collect=yes
+ngx_feature_libs=
 
 
 # C types

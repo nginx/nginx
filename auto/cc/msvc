@@ -49,6 +49,8 @@ case $CPU in
     ;;
 esac
 
+# __cdecl, use with OpenSSL
+#CPU_OPT="$CPU_OPT -Gd"
 # __stdcall
 #CPU_OPT="$CPU_OPT -Gz"
 # __fastcall

@@ -119,6 +119,25 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
                     }
                     break;
 
+#if (NGX_IMAP_SSL)
+                case 8:
+                    if ((c[0] == 'S'|| c[0] == 's')
+                        && (c[1] == 'T'|| c[1] == 't')
+                        && (c[2] == 'A'|| c[2] == 'a')
+                        && (c[3] == 'R'|| c[3] == 'r')
+                        && (c[4] == 'T'|| c[4] == 't')
+                        && (c[5] == 'T'|| c[5] == 't')
+                        && (c[6] == 'L'|| c[6] == 'l')
+                        && (c[7] == 'S'|| c[7] == 's'))
+                    {
+                        s->command = NGX_IMAP_STARTTLS;
+
+                    } else {
+                        goto invalid;
+                    }
+                    break;
+#endif
+
                 case 10:
                     if ((c[0] == 'C'|| c[0] == 'c')
                         && (c[1] == 'A'|| c[1] == 'a')
@@ -421,7 +440,11 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
                     } else if (c0 == 'N' && c1 == 'O' && c2 == 'O' && c3 == 'P')
                     {
                         s->command = NGX_POP3_NOOP;
-
+#if (NGX_IMAP_SSL)
+                    } else if (c0 == 'S' && c1 == 'T' && c2 == 'L' && c3 == 'S')
+                    {
+                        s->command = NGX_POP3_STLS;
+#endif
                     } else {
                         goto invalid;
                     }

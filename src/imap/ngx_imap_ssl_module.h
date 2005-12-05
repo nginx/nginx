@@ -13,12 +13,18 @@
 #include <ngx_imap.h>
 
 
+#define NGX_IMAP_STARTTLS_OFF   0
+#define NGX_IMAP_STARTTLS_ON    1
+#define NGX_IMAP_STARTTLS_ONLY  2
+
+
 typedef struct {
     ngx_flag_t      enable;
 
     ngx_ssl_t       ssl;
 
     ngx_flag_t      prefer_server_ciphers;
+    ngx_flag_t      starttls;
 
     ngx_uint_t      protocols;
 

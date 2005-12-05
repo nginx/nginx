@@ -182,6 +182,8 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
 
     if (filename) {
+        ngx_pfree(cf->pool, cf->conf_file->buffer->start);
+
         cf->conf_file = prev;
 
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {

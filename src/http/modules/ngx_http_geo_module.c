@@ -130,18 +130,14 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     var->handler = ngx_http_geo_variable;
     var->data = (uintptr_t) tree;
 
-    /*
-     * create the temporary pool of a huge initial size
-     * to process quickly a large number of geo lines
-     */
-
-    pool = ngx_create_pool(512 * 1024, cf->log);
+    pool = ngx_create_pool(16384, cf->log);
     if (pool == NULL) {
         return NGX_CONF_ERROR;
     }
 
     if (ngx_array_init(&geo.values, pool, 512,
-                       sizeof(ngx_http_variable_value_t *)) == NGX_ERROR)
+                       sizeof(ngx_http_variable_value_t *))
+        == NGX_ERROR)
     {
         ngx_destroy_pool(pool);
         return NGX_CONF_ERROR;

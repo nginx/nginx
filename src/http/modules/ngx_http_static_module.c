@@ -244,6 +244,12 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    r->allow_ranges = 1;
+
+    if (r->header_only || (r->main != r && ngx_file_size(&fi) == 0)) {
+        return ngx_http_send_header(r);
+    }
+
     /* we need to allocate all before the header would be sent */
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
@@ -256,11 +262,9 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    r->allow_ranges = 1;
-
     rc = ngx_http_send_header(r);
 
-    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+    if (rc == NGX_ERROR || rc > NGX_OK) {
         return rc;
     }
 

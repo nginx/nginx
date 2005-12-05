@@ -727,7 +727,7 @@ ngx_imap_auth_sleep_handler(ngx_event_t *rev)
 
         ngx_imap_send(s->connection->write);
 
-        if (c->closed) {
+        if (c->destroyed) {
             return;
         }
 
@@ -1180,6 +1180,8 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ahcf->peers == NULL) {
             return NGX_CONF_ERROR;
         }
+
+        ahcf->peers->number = 1;
 
         ahcf->host_header = inet_upstream.host_header;
         ahcf->uri = inet_upstream.uri;

@@ -648,12 +648,16 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 rc = cmd->handler(r, ctx, params);
 
-                if (c->closed) {
+                if (c->destroyed) {
                     return NGX_DONE;
                 }
 
                 if (rc == NGX_OK) {
                     continue;
+                }
+
+                if (rc == NGX_ERROR) {
+                    return NGX_ERROR;
                 }
             }
 

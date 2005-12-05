@@ -1036,3 +1036,19 @@ done:
     *dst = d;
     *src = s;
 }
+
+
+#if (NGX_MEMCPY_LIMIT)
+
+void *
+ngx_memcpy(void *dst, void *src, size_t n)
+{
+    if (n > NGX_MEMCPY_LIMIT) {
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "memcpy %uz bytes", n);
+        ngx_debug_point();
+    }
+
+    return memcpy(dst, src, n);
+}
+
+#endif

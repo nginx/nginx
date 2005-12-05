@@ -2,7 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-# Open Watcom C 1.0, 1.2
+# Open Watcom C 1.0, 1.2, 1.3
 
 # optimizations
 
@@ -60,7 +60,7 @@ CFLAGS="$CFLAGS -d2"
 CFLAGS="$CFLAGS -zq"
 
 # Open Watcom C 1.2
-#have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
+have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
 
 
 # the precompiled headers

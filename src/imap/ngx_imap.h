@@ -20,13 +20,13 @@
 
 
 typedef struct {
-    void   **main_conf;
-    void   **srv_conf;
+    void                  **main_conf;
+    void                  **srv_conf;
 } ngx_imap_conf_ctx_t;
 
 
 typedef struct {
-    ngx_array_t           servers;         /* ngx_imap_core_srv_conf_t */
+    ngx_array_t             servers;         /* ngx_imap_core_srv_conf_t */
 } ngx_imap_core_main_conf_t;
 
 
@@ -34,17 +34,20 @@ typedef struct {
 #define NGX_IMAP_IMAP_PROTOCOL  1
 
 typedef struct {
-    ngx_msec_t            timeout;
+    ngx_msec_t              timeout;
 
-    size_t                imap_client_buffer_size;
+    size_t                  imap_client_buffer_size;
 
-    ngx_uint_t            protocol;
+    ngx_uint_t              protocol;
 
-    ngx_buf_t            *pop3_capability;
-    ngx_buf_t            *imap_capability;
+    ngx_str_t               pop3_capability;
+    ngx_str_t               pop3_starttls_capability;
+    ngx_str_t               imap_capability;
+    ngx_str_t               imap_starttls_capability;
+    ngx_str_t               imap_starttls_only_capability;
 
-    ngx_array_t           pop3_capabilities;
-    ngx_array_t           imap_capabilities;
+    ngx_array_t             pop3_capabilities;
+    ngx_array_t             imap_capabilities;
 
     /* server ctx */
     ngx_imap_conf_ctx_t  *ctx;
@@ -52,11 +55,12 @@ typedef struct {
 
 
 typedef struct {
-    void       *(*create_main_conf)(ngx_conf_t *cf);
-    char       *(*init_main_conf)(ngx_conf_t *cf, void *conf);
+    void                 *(*create_main_conf)(ngx_conf_t *cf);
+    char                 *(*init_main_conf)(ngx_conf_t *cf, void *conf);
 
-    void       *(*create_srv_conf)(ngx_conf_t *cf);
-    char       *(*merge_srv_conf)(ngx_conf_t *cf, void *prev, void *conf);
+    void                 *(*create_srv_conf)(ngx_conf_t *cf);
+    char                 *(*merge_srv_conf)(ngx_conf_t *cf, void *prev,
+                                void *conf);
 } ngx_imap_module_t;
 
 
@@ -126,8 +130,8 @@ typedef struct {
 
 
 typedef struct {
-    ngx_str_t           *client;
-    ngx_imap_session_t  *session;
+    ngx_str_t              *client;
+    ngx_imap_session_t     *session;
 } ngx_imap_log_ctx_t;
 
 
@@ -136,22 +140,24 @@ typedef struct {
 #define NGX_POP3_CAPA       3
 #define NGX_POP3_QUIT       4
 #define NGX_POP3_NOOP       5
-#define NGX_POP3_APOP       6
-#define NGX_POP3_STAT       7
-#define NGX_POP3_LIST       8
-#define NGX_POP3_RETR       9
-#define NGX_POP3_DELE       10
-#define NGX_POP3_RSET       11
-#define NGX_POP3_TOP        12
-#define NGX_POP3_UIDL       13
+#define NGX_POP3_STLS       6
+#define NGX_POP3_APOP       7
+#define NGX_POP3_STAT       8
+#define NGX_POP3_LIST       9
+#define NGX_POP3_RETR       10
+#define NGX_POP3_DELE       11
+#define NGX_POP3_RSET       12
+#define NGX_POP3_TOP        13
+#define NGX_POP3_UIDL       14
 
 
 #define NGX_IMAP_LOGIN      1
 #define NGX_IMAP_LOGOUT     2
 #define NGX_IMAP_CAPABILITY 3
 #define NGX_IMAP_NOOP       4
+#define NGX_IMAP_STARTTLS   5
 
-#define NGX_IMAP_NEXT       5
+#define NGX_IMAP_NEXT       6
 
 
 #define NGX_IMAP_PARSE_INVALID_COMMAND  20

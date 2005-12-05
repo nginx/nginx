@@ -379,6 +379,8 @@ ngx_http_auth_basic(ngx_conf_t *cf, void *post, void *data)
     if (ngx_strcmp(realm->data, "off") == 0) {
         realm->len = 0;
         realm->data = (u_char *) "";
+
+        return NGX_CONF_OK;
     }
 
     len = sizeof("Basic realm=\"") - 1 + realm->len + 1;

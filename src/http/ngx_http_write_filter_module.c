@@ -55,7 +55,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     c = r->connection;
 
-    if (c->closed) {
+    if (c->error) {
         return NGX_ERROR;
     }
 
@@ -220,7 +220,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (chain == NGX_CHAIN_ERROR) {
-        c->closed = 1;
+        c->error = 1;
         return NGX_ERROR;
     }
 

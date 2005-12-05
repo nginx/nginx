@@ -27,6 +27,15 @@ static char  ngx_imap_ssl_openssl097[] = "OpenSSL 0.9.7 and higher";
 #endif
 
 
+static ngx_conf_enum_t  ngx_http_starttls_state[] = {
+    { ngx_string("off"), NGX_IMAP_STARTTLS_OFF },
+    { ngx_string("on"), NGX_IMAP_STARTTLS_ON },
+    { ngx_string("only"), NGX_IMAP_STARTTLS_ONLY },
+    { ngx_null_string, 0 }
+};
+
+
+
 static ngx_conf_bitmask_t  ngx_imap_ssl_protocols[] = {
     { ngx_string("SSLv2"), NGX_SSL_SSLv2 },
     { ngx_string("SSLv3"), NGX_SSL_SSLv3 },
@@ -43,6 +52,13 @@ static ngx_command_t  ngx_imap_ssl_commands[] = {
       NGX_IMAP_SRV_CONF_OFFSET,
       offsetof(ngx_imap_ssl_conf_t, enable),
       NULL },
+
+    { ngx_string("starttls"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_ssl_conf_t, starttls),
+      ngx_http_starttls_state },
 
     { ngx_string("ssl_certificate"),
       NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
@@ -146,6 +162,7 @@ ngx_imap_ssl_create_conf(ngx_conf_t *cf)
      */
 
     scf->enable = NGX_CONF_UNSET;
+    scf->starttls = NGX_CONF_UNSET;
     scf->session_timeout = NGX_CONF_UNSET;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
 
@@ -162,8 +179,9 @@ ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_pool_cleanup_t  *cln;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->starttls, prev->starttls, NGX_IMAP_STARTTLS_OFF);
 
-    if (conf->enable == 0) {
+    if (conf->enable == 0 && conf->starttls == NGX_IMAP_STARTTLS_OFF) {
         return NGX_CONF_OK;
     }
 

@@ -9,6 +9,60 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.13" date="05.12.2005">
+
+<change type="feature">
+<para lang="ru">
+IMAP/POP3 прокси поддерживает STARTTLS и STLS.
+</para>
+<para lang="en">
+the IMAP/POP3 proxy supports STARTTLS and STLS.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+IMAP/POP3 прокси не работала с методами select, poll и /dev/poll.
+</para>
+<para lang="en">
+the IMAP/POP3 proxy did not work with the select, poll, and /dev/poll methods.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки в обработке SSI.
+</para>
+<para lang="en">
+in SSI handling.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+sendfilev() в Solaris теперь не используется при передаче тела запроса
+FastCGI-серверу через unix domain сокет.
+</para>
+<para lang="en">
+now Solaris sendfilev() is not used to transfer the client request body
+to FastCGI-server via the unix domain socket.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива auth_basic не запрещала аутентификацию;
+ошибка появилась в 0.3.11.
+</para>
+<para lang="en">
+the "auth_basic" directive did not disable the authorization;
+bug appeared in 0.3.11.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.12" date="26.11.2005">
 
 <change type="security">
@@ -75,7 +129,7 @@ bug appeared in 0.3.0.
 
 <change type="bugfix">
 <para lang="ru">
-если клиент передал строку "Transfer-Encoding: chunked" в заголоовке
+если клиент передал строку "Transfer-Encoding: chunked" в заголовке
 запроса, то nginx теперь выдаёт ошибку 411.
 </para>
 <para lang="en">

@@ -29,7 +29,7 @@ struct ngx_rbtree_node_s {
 
 typedef struct ngx_rbtree_s  ngx_rbtree_t;
 
-typedef ngx_rbtree_t *(*ngx_rbtree_insert_pt) (ngx_rbtree_node_t *root,
+typedef ngx_rbtree_node_t *(*ngx_rbtree_insert_pt) (ngx_rbtree_node_t *root,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
 struct ngx_rbtree_s {

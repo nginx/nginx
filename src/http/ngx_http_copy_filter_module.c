@@ -70,11 +70,15 @@ static ngx_http_output_body_filter_pt    ngx_http_next_filter;
 static ngx_int_t
 ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
+    ngx_int_t                     rc;
+    ngx_connection_t             *c;
     ngx_output_chain_ctx_t       *ctx;
     ngx_http_copy_filter_conf_t  *conf;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "copy filter: \"%V\"", &r->uri);
+    c = r->connection;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "copy filter: \"%V?%V\"", &r->uri, &r->args);
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_copy_filter_module);
 
@@ -88,7 +92,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         ngx_http_set_ctx(r, ctx, ngx_http_copy_filter_module);
 
-        ctx->sendfile = r->connection->sendfile;
+        ctx->sendfile = c->sendfile;
         ctx->need_in_memory = r->main_filter_need_in_memory
                               || r->filter_need_in_memory;
         ctx->need_in_temp = r->filter_need_temporary;
@@ -102,9 +106,16 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     }
 
-    /* the request pool may be already destroyed after ngx_output_chain()*/
+    rc = ngx_output_chain(ctx, in);
 
-    return ngx_output_chain(ctx, in);
+#if (NGX_DEBUG)
+    if (!c->destroyed) {
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
+    }
+#endif
+
+    return rc;
 }
 
 

@@ -407,12 +407,15 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 static ngx_int_t
 ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 {
-    size_t        bsize;
-    ngx_uint_t    flush;
-    ngx_chain_t  *out, **ll, *cl;
+    size_t             bsize;
+    ngx_uint_t         flush;
+    ngx_chain_t       *out, **ll, *cl;
+    ngx_connection_t  *downstream;
+
+    downstream = p->downstream;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                   "pipe write downstream: %d", p->downstream->write->ready);
+                   "pipe write downstream: %d", downstream->write->ready);
 
     for ( ;; ) {
         if (p->downstream_error) {
@@ -452,6 +455,11 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                 }
 
                 if (p->output_filter(p->output_ctx, p->in) == NGX_ERROR) {
+
+                    if (downstream->destroyed) {
+                        return NGX_ABORT;
+                    }
+
                     p->downstream_error = 1;
                     return ngx_event_pipe_drain_chains(p);
                 }
@@ -468,9 +476,9 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             break;
         }
 
-        if (p->downstream->data != p->output_ctx
-            || !p->downstream->write->ready
-            || p->downstream->write->delayed)
+        if (downstream->data != p->output_ctx
+            || !downstream->write->ready
+            || downstream->write->delayed)
         {
             break;
         }

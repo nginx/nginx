@@ -234,7 +234,7 @@ ngx_module_t  ngx_http_upstream_module = {
 };
 
 
-static ngx_http_log_op_name_t ngx_http_upstream_log_fmt_ops[] = {
+static ngx_http_log_op_name_t  ngx_http_upstream_log_fmt_ops[] = {
     { ngx_string("upstream_status"), 0, NULL,
                                     ngx_http_upstream_log_status_getlen,
                                     ngx_http_upstream_log_status },
@@ -248,10 +248,10 @@ static ngx_http_log_op_name_t ngx_http_upstream_log_fmt_ops[] = {
 static ngx_http_variable_t  ngx_http_upstream_vars[] = {
 
     { ngx_string("upstream_status"),
-      ngx_http_upstream_status_variable, 0, 0, 0 },
+      ngx_http_upstream_status_variable, 0, NGX_HTTP_VAR_NOHASH, 0 },
 
     { ngx_string("upstream_response_time"),
-      ngx_http_upstream_response_time_variable, 0, 0, 0 },
+      ngx_http_upstream_response_time_variable, 0, NGX_HTTP_VAR_NOHASH, 0 },
 
     { ngx_null_string, NULL, 0, 0, 0 }
 };
@@ -387,7 +387,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     c = r->connection;
     u = r->upstream;
 
-    if (c->closed) {
+    if (c->error) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_CLIENT_CLOSED_REQUEST);
         return;
@@ -406,7 +406,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
         }
 
         ev->eof = 1;
-        c->closed = 1;
+        c->error = 1;
 
         if (ev->kq_errno) {
             ev->error = 1;
@@ -473,7 +473,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     }
 
     ev->eof = 1;
-    c->closed = 1;
+    c->error = 1;
 
     if (!u->cachable && u->peer.connection) {
         ngx_log_error(NGX_LOG_INFO, ev->log, err,
@@ -1125,12 +1125,14 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 static void
 ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
+    int                             tcp_nodelay;
     ssize_t                         size;
     ngx_int_t                       rc;
     ngx_uint_t                      i, key;
     ngx_list_part_t                *part;
     ngx_table_elt_t                *h;
     ngx_event_pipe_t               *p;
+    ngx_connection_t               *c;
     ngx_pool_cleanup_t             *cl;
     ngx_pool_cleanup_file_t        *clf;
     ngx_http_core_loc_conf_t       *clcf;
@@ -1209,6 +1211,8 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         }
     }
 
+    c = r->connection;
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (u->pipe == NULL) {
@@ -1231,6 +1235,23 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return;
         }
 
+        if (clcf->tcp_nodelay && c->tcp_nodelay == NGX_TCP_NODELAY_UNSET) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "tcp_nodelay");
+
+            tcp_nodelay = 1;
+
+            if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
+                               (const void *) &tcp_nodelay, sizeof(int)) == -1)
+            {
+                ngx_connection_error(c, ngx_socket_errno,
+                                     "setsockopt(TCP_NODELAY) failed");
+                ngx_http_upstream_finalize_request(r, u, 0);
+                return;
+            }
+
+            c->tcp_nodelay = NGX_TCP_NODELAY_SET;
+        }
+
         size = u->buffer.last - u->buffer.pos;
 
         if (size) {
@@ -1241,7 +1262,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
                 return;
             }
 
-            ngx_http_upstream_process_non_buffered_body(r->connection->write);
+            ngx_http_upstream_process_non_buffered_body(c->write);
 
         } else {
             u->buffer.pos = u->buffer.start;
@@ -1262,7 +1283,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     if (u->cache && u->cache->ctx.file.fd != NGX_INVALID_FILE) {
         if (ngx_close_file(u->cache->ctx.file.fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+            ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
                           ngx_close_file_n " \"%s\" failed",
                           u->cache->ctx.file.name.data);
         }
@@ -1292,9 +1313,9 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->bufs = u->conf->bufs;
     p->busy_size = u->conf->busy_buffers_size;
     p->upstream = u->peer.connection;
-    p->downstream = r->connection;
+    p->downstream = c;
     p->pool = r->pool;
-    p->log = r->connection->log;
+    p->log = c->log;
 
     p->cachable = u->cachable;
 
@@ -1305,7 +1326,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     p->temp_file->file.fd = NGX_INVALID_FILE;
-    p->temp_file->file.log = r->connection->log;
+    p->temp_file->file.log = c->log;
     p->temp_file->path = u->conf->temp_path;
     p->temp_file->pool = r->pool;
 
@@ -1364,7 +1385,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
          */
 
         p->cyclic_temp_file = 1;
-        r->connection->sendfile = 0;
+        c->sendfile = 0;
 
     } else {
         p->cyclic_temp_file = 0;
@@ -1394,8 +1415,9 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
     size_t                     size;
     ssize_t                    n;
     ngx_buf_t                 *b;
+    ngx_int_t                  rc;
     ngx_uint_t                 do_write;
-    ngx_connection_t          *c;
+    ngx_connection_t          *c, *client;
     ngx_http_request_t        *r;
     ngx_http_upstream_t       *u;
     ngx_http_core_loc_conf_t  *clcf;
@@ -1426,6 +1448,7 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
 
     r = c->data;
     u = r->upstream;
+    client = r->connection;
 
     b = &u->buffer;
 
@@ -1438,7 +1461,13 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
         if (do_write) {
 
             if (u->out_bufs || u->busy_bufs) {
-                if (ngx_http_output_filter(r, u->out_bufs) == NGX_ERROR) {
+                rc = ngx_http_output_filter(r, u->out_bufs);
+
+                if (client->destroyed) {
+                    return;
+                }
+
+                if (rc == NGX_ERROR) {
                     ngx_http_upstream_finalize_request(r, u, 0);
                     return;
                 }
@@ -1490,18 +1519,20 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
         break;
     }
 
-    if (ngx_handle_write_event(r->connection->write, clcf->send_lowat)
-        == NGX_ERROR)
-    {
-        ngx_http_upstream_finalize_request(r, u, 0);
-        return;
+    if (client->data == r) {
+        if (ngx_handle_write_event(client->write, clcf->send_lowat)
+            == NGX_ERROR)
+        {
+            ngx_http_upstream_finalize_request(r, u, 0);
+            return;
+        }
     }
 
-    if (r->connection->write->active) {
-        ngx_add_timer(r->connection->write, clcf->send_timeout);
+    if (client->write->active) {
+        ngx_add_timer(client->write, clcf->send_timeout);
 
-    } else if (r->connection->write->timer_set) {
-        ngx_del_timer(r->connection->write);
+    } else if (client->write->timer_set) {
+        ngx_del_timer(client->write);
     }
 
     if (ngx_handle_read_event(u->peer.connection->read, 0) == NGX_ERROR) {
@@ -1512,8 +1543,8 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
     if (u->peer.connection->read->active) {
         ngx_add_timer(u->peer.connection->read, u->conf->read_timeout);
 
-    } else if (r->connection->read->timer_set) {
-        ngx_del_timer(r->connection->read);
+    } else if (u->peer.connection->read->timer_set) {
+        ngx_del_timer(u->peer.connection->read);
     }
 }
 
@@ -1577,13 +1608,14 @@ static void
 ngx_http_upstream_process_body(ngx_event_t *ev)
 {
     ngx_event_pipe_t     *p;
-    ngx_connection_t     *c;
+    ngx_connection_t     *c, *downstream;
     ngx_http_request_t   *r;
     ngx_http_upstream_t  *u;
 
     c = ev->data;
     r = c->data;
     u = r->upstream;
+    downstream = r->connection;
 
     if (ev->write) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -1618,6 +1650,11 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
                 }
 
                 if (ngx_event_pipe(p, ev->write) == NGX_ABORT) {
+
+                    if (downstream->destroyed) {
+                        return;
+                    }
+
                     ngx_http_upstream_finalize_request(r, u, 0);
                     return;
                 }
@@ -1648,6 +1685,11 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
         }
 
         if (ngx_event_pipe(p, ev->write) == NGX_ABORT) {
+
+            if (downstream->destroyed) {
+                return;
+            }
+
             ngx_http_upstream_finalize_request(r, u, 0);
             return;
         }
@@ -1761,7 +1803,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         }
     }
 
-    if (r->connection->closed) {
+    if (r->connection->error) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_CLIENT_CLOSED_REQUEST);
         return;

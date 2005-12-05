@@ -230,7 +230,7 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         }
 
         if (n == 0 || n == NGX_ERROR) {
-            c->closed = 1;
+            c->error = 1;
             return NGX_HTTP_BAD_REQUEST;
         }
 

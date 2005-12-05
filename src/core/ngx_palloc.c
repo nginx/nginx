@@ -102,7 +102,7 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
             }
 
             if ((size_t) (p->end - m) < NGX_ALIGNMENT) {
-                p->current = p->next;
+                pool->current = p->next;
             }
 
             if (p->next == NULL) {
@@ -117,8 +117,8 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
             return NULL;
         }
 
-        if (p->current == NULL) {
-            p->current = n;
+        if (pool->current == NULL) {
+            pool->current = n;
         }
 
         p->next = n;

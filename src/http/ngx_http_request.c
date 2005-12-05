@@ -30,7 +30,6 @@ static ngx_int_t ngx_http_find_virtual_server(ngx_http_request_t *r);
 static void ngx_http_request_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
 static void ngx_http_writer(ngx_http_request_t *r);
-static ngx_int_t ngx_http_postponed_handler(ngx_http_request_t *r);
 
 static void ngx_http_block_read(ngx_http_request_t *r);
 static void ngx_http_read_discarded_body_handler(ngx_http_request_t *r);
@@ -404,6 +403,8 @@ void ngx_http_init_request(ngx_event_t *rev)
     }
 
     c->single_connection = 1;
+    c->destroyed = 0;
+
     r->connection = c;
 
     r->main = r;
@@ -455,7 +456,7 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
         return;
     }
 
-    n = recv(c->fd, buf, 1, MSG_PEEK);
+    n = recv(c->fd, (char *) buf, 1, MSG_PEEK);
 
     if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
         return;
@@ -1448,10 +1449,11 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http finalize request: %d, \"%V\"", rc, &r->uri);
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http finalize request: %d, \"%V?%V\"",
+                   rc, &r->uri, &r->args);
 
-    if (rc == NGX_ERROR || r->connection->closed) {
+    if (rc == NGX_ERROR || r->connection->error) {
         ngx_http_close_request(r, 0);
         return;
     }
@@ -1482,8 +1484,9 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     r->done = 1;
 
     if (r != r->connection->data) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http finalize non-active request: \"%V\"", &r->uri);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http finalize non-active request: \"%V?%V\"",
+                       &r->uri, &r->args);
         return;
     }
 
@@ -1491,8 +1494,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
         pr = r->parent;
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http parent request: \"%V\"", &pr->uri);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http parent request: \"%V?%V\"", &pr->uri, &pr->args);
 
         if (rc != NGX_AGAIN) {
             pr->connection->data = pr;
@@ -1500,8 +1503,9 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
         if (pr->postponed) {
 
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http request: \"%V\" has postponed", &pr->uri);
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http request: \"%V?%V\" has postponed",
+                           &pr->uri, &pr->args);
 
             if (rc != NGX_AGAIN && pr->postponed->request == r) {
                 pr->postponed = pr->postponed->next;
@@ -1511,13 +1515,14 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                 }
             }
 
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http request: \"%V\" still has postponed",
-                           &pr->uri);
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http request: \"%V?%V\" still has postponed",
+                           &pr->uri, &pr->args);
 
-            if (pr->done) {
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                               "http wake parent request: \"%V\"", &pr->uri);
+            if (pr->done || pr->postponed->out) {
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                               "http wake parent request: \"%V?%V\"",
+                               &pr->uri, &pr->args);
 
                 pr->write_event_handler(pr);
             }
@@ -1619,8 +1624,8 @@ ngx_http_writer(ngx_http_request_t *r)
     c = r->connection;
     wev = c->write;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, wev->log, 0,
-                   "http writer handler: \"%V\"", &r->uri);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, wev->log, 0,
+                   "http writer handler: \"%V?%V\"", &r->uri, &r->args);
 
     if (wev->timedout) {
         if (!wev->delayed) {
@@ -1661,21 +1666,15 @@ ngx_http_writer(ngx_http_request_t *r)
         }
     }
 
-    if (r->postponed) {
-        rc = ngx_http_postponed_handler(r);
+    rc = ngx_http_output_filter(r, NULL);
 
-        if (rc == NGX_DONE) {
-            /* the request pool may be already destroyed */
-            return;
-        }
-
-    } else {
-        rc = ngx_http_output_filter(r, NULL);
-
+    if (c->destroyed) {
+        return;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http writer output filter: %d, \"%V\"", rc, &r->uri);
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http writer output filter: %d, \"%V?%V\"",
+                   rc, &r->uri, &r->args);
 
     if (rc == NGX_AGAIN) {
         clcf = ngx_http_get_module_loc_conf(r->main, ngx_http_core_module);
@@ -1690,64 +1689,10 @@ ngx_http_writer(ngx_http_request_t *r)
         return;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, wev->log, 0,
-                   "http writer done: \"%V\"", &r->uri);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, wev->log, 0,
+                   "http writer done: \"%V?%V\"", &r->uri, &r->args);
 
     ngx_http_finalize_request(r, rc);
-}
-
-
-static ngx_int_t
-ngx_http_postponed_handler(ngx_http_request_t *r)
-{
-    ngx_int_t                      rc;
-    ngx_http_postponed_request_t  *pr;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http postpone handler \"%V\"", &r->uri);
-
-    pr = r->postponed;
-
-    if (pr->request == NULL) {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http postponed data \"%V\" %p", &r->uri, pr->out);
-
-        rc = ngx_http_output_filter(r, NULL);
-
-        if (rc == NGX_DONE) {
-            /* the request pool is already destroyed */
-            return NGX_DONE;
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http postponed output filter: %d", rc);
-
-        if (rc == NGX_ERROR) {
-            ngx_http_close_request(r, 0);
-            return NGX_DONE;
-        }
-
-        pr = r->postponed;
-
-        if (pr == NULL) {
-
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            return NGX_OK;
-        }
-    }
-
-    r = pr->request;
-    r->connection->data = r;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http wake child request \"%V\"", &r->uri);
-
-    r->write_event_handler(r);
-
-    return NGX_DONE;
 }
 
 
@@ -1862,7 +1807,7 @@ ngx_http_read_discarded_body(ngx_http_request_t *r)
 
     if (n == NGX_ERROR) {
 
-        r->connection->closed = 1;
+        r->connection->error = 1;
 
         /*
          * if a client request body is discarded then we already set
@@ -2029,20 +1974,10 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
     rev->handler = ngx_http_keepalive_handler;
 
-    if (wev->active) {
-        if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
-            if (ngx_del_event(wev, NGX_WRITE_EVENT, NGX_DISABLE_EVENT)
-                                                                  == NGX_ERROR)
-            {
-                ngx_http_close_connection(c);
-                return;
-            }
-
-        } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
-            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
-                ngx_http_close_connection(c);
-                return;
-            }
+    if (wev->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {
+        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+            ngx_http_close_connection(c);
+            return;
         }
     }
 
@@ -2224,20 +2159,10 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
     wev = c->write;
     wev->handler = ngx_http_empty_handler;
 
-    if (wev->active) {
-        if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
-            if (ngx_del_event(wev, NGX_WRITE_EVENT, NGX_DISABLE_EVENT)
-                                                                  == NGX_ERROR)
-            {
-                ngx_http_close_request(r, 0);
-                return;
-            }
-
-        } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
-            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
-                ngx_http_close_request(r, 0);
-                return;
-            }
+    if (wev->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {
+        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+            ngx_http_close_request(r, 0);
+            return;
         }
     }
 
@@ -2324,7 +2249,7 @@ void
 ngx_http_request_empty_handler(ngx_http_request_t *r)
 {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http requets empty handler");
+                   "http request empty handler");
 
     return;
 }
@@ -2442,6 +2367,8 @@ ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
 
     r->request_line.len = 0;
 
+    r->connection->destroyed = 1;
+
     ngx_destroy_pool(r->pool);
 }
 
@@ -2468,6 +2395,8 @@ ngx_http_close_connection(ngx_connection_t *c)
 #if (NGX_STAT_STUB)
     ngx_atomic_fetch_add(ngx_stat_active, -1);
 #endif
+
+    c->destroyed = 1;
 
     pool = c->pool;
 

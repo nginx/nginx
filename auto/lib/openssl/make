@@ -1,6 +1,7 @@
 
 # Copyright (C) Igor Sysoev
 
+
 if test -n "$OPENSSL_OPT"; then
     NGX_OPENSSL_CONFIG="./Configure \"$OPENSSL_OPT\""
 else

@@ -966,14 +966,14 @@ ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     ngx_int_t  rc;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http output filter \"%V\"", &r->uri);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http output filter \"%V?%V\"", &r->uri, &r->args);
 
     rc = ngx_http_top_body_filter(r, in);
 
     if (rc == NGX_ERROR) {
         /* NGX_ERROR may be returned by any filter */
-        r->connection->closed = 1;
+        r->connection->error = 1;
     }
 
     return rc;
@@ -1080,6 +1080,7 @@ ngx_int_t
 ngx_http_subrequest(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args, ngx_uint_t flags)
 {
+    ngx_connection_t              *c;
     ngx_http_request_t            *sr;
     ngx_http_core_srv_conf_t      *cscf;
     ngx_http_postponed_request_t  *pr, *p;
@@ -1090,7 +1091,9 @@ ngx_http_subrequest(ngx_http_request_t *r,
     }
 
     sr->signature = NGX_HTTP_MODULE;
-    sr->connection = r->connection;
+
+    c = r->connection;
+    sr->connection = c;
 
     sr->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
     if (sr->ctx == NULL) {
@@ -1128,15 +1131,12 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->request_line = r->request_line;
     sr->uri = *uri;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http subrequest \"%V\"", uri);
-
     if (args) {
         sr->args = *args;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http subrequest args \"%V\"", args);
     }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http subrequest \"%V?%V\"", uri, &sr->args);
 
     if (flags & NGX_HTTP_ZERO_IN_URI) {
         sr->zero_in_uri = 1;
@@ -1155,8 +1155,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->read_event_handler = ngx_http_request_empty_handler;
     sr->write_event_handler = ngx_http_request_empty_handler;
 
-    if (r->connection->data == r) {
-        sr->connection->data = sr;
+    if (c->data == r) {
+        c->data = sr;
     }
 
     sr->in_addr = r->in_addr;
@@ -1192,7 +1192,12 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     ngx_http_handler(sr);
 
-    /* the request pool may be already destroyed */
+#if (NGX_LOG_DEBUG)
+    if (!c->destroyed) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http subrequest done \"%V?%V\"", uri, &sr->args);
+    }
+#endif
 
     return NGX_OK;
 }
@@ -1204,21 +1209,18 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 {
     ngx_http_core_srv_conf_t  *cscf;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "internal redirect: \"%V\"", uri);
-
     r->uri = *uri;
 
     if (args) {
         r->args = *args;
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "internal redirect args: \"%V\"", args);
-
     } else {
         r->args.len = 0;
         r->args.data = NULL;
     }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "internal redirect: \"%V?%V\"", uri, &r->args);
 
     if (ngx_http_set_exten(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;

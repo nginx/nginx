@@ -181,6 +181,11 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     if (peer->sockaddr->sa_family != AF_INET) {
         c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
         c->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
+
+#if (NGX_SOLARIS)
+        /* Solaris's sendfilev() supports AF_NCA, AF_INET, and AF_INET6 */
+        c->sendfile = 0;
+#endif
     }
 
     rev = c->read;

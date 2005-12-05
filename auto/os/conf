@@ -63,7 +63,7 @@ case "$NGX_MACHINE" in
         have=NGX_HAVE_NONALIGNED . auto/have
     ;;
 
-    sun4u | ia64 )
+    sun4u | sparc | sparc64 | ia64 )
         have=NGX_ALIGNMENT value=16 . auto/define
     ;;
 

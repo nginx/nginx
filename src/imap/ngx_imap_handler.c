@@ -16,6 +16,7 @@ static ngx_int_t ngx_imap_read_command(ngx_imap_session_t *s);
 static u_char *ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 #if (NGX_IMAP_SSL)
+static void ngx_imap_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c);
 static void ngx_imap_ssl_handshake_handler(ngx_connection_t *c);
 #endif
 
@@ -43,11 +44,10 @@ static u_char  imap_invalid_command[] = "BAD invalid command" CRLF;
 void
 ngx_imap_init_connection(ngx_connection_t *c)
 {
-    ngx_imap_log_ctx_t        *lctx;
+    ngx_imap_log_ctx_t   *lctx;
 #if (NGX_IMAP_SSL)
-    ngx_imap_conf_ctx_t       *ctx;
-    ngx_imap_ssl_conf_t       *sslcf;
-    ngx_imap_core_srv_conf_t  *cscf;
+    ngx_imap_conf_ctx_t  *ctx;
+    ngx_imap_ssl_conf_t  *sslcf;
 #endif
 
     ngx_log_error(NGX_LOG_INFO, c->log, 0, "*%ui client %V connected to %V",
@@ -75,23 +75,7 @@ ngx_imap_init_connection(ngx_connection_t *c)
     sslcf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_ssl_module);
 
     if (sslcf->enable) {
-        if (ngx_ssl_create_connection(&sslcf->ssl, c, 0) == NGX_ERROR) {
-            ngx_imap_close_connection(c);
-            return;
-        }
-
-        if (ngx_ssl_handshake(c) == NGX_AGAIN) {
-
-            cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
-
-            ngx_add_timer(c->read, cscf->timeout);
-
-            c->ssl->handler = ngx_imap_ssl_handshake_handler;
-
-            return;
-        }
-
-        ngx_imap_ssl_handshake_handler(c);
+        ngx_imap_ssl_init_connection(&sslcf->ssl, c);
         return;
     }
 
@@ -104,15 +88,69 @@ ngx_imap_init_connection(ngx_connection_t *c)
 #if (NGX_IMAP_SSL)
 
 static void
+ngx_imap_starttls_handler(ngx_event_t *rev)
+{
+    ngx_connection_t     *c;
+    ngx_imap_session_t   *s;
+    ngx_imap_ssl_conf_t  *sslcf;
+
+    c = rev->data;
+    s = c->data;
+
+    c->log->action = "in starttls state";
+
+    sslcf = ngx_imap_get_module_srv_conf(s, ngx_imap_ssl_module);
+
+    ngx_imap_ssl_init_connection(&sslcf->ssl, c);
+}
+
+
+static void
+ngx_imap_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
+{
+    ngx_imap_conf_ctx_t       *ctx;
+    ngx_imap_core_srv_conf_t  *cscf;
+
+    if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
+        ngx_imap_close_connection(c);
+        return;
+    }
+
+    if (ngx_ssl_handshake(c) == NGX_AGAIN) {
+
+        ctx = c->ctx;
+        cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
+
+        ngx_add_timer(c->read, cscf->timeout);
+
+        c->ssl->handler = ngx_imap_ssl_handshake_handler;
+
+        return;
+    }
+
+    ngx_imap_ssl_handshake_handler(c);
+}
+
+
+static void
 ngx_imap_ssl_handshake_handler(ngx_connection_t *c)
 {
     if (c->ssl->handshaked) {
+
+        if (c->data) {
+            c->read->handler = ngx_imap_init_protocol;
+            c->write->handler = ngx_imap_send;
+
+            ngx_imap_init_protocol(c->read);
+
+            return;
+        }
+
         ngx_imap_init_session(c);
         return;
     }
 
     ngx_imap_close_connection(c);
-    return;
 }
 
 #endif
@@ -253,11 +291,6 @@ ngx_imap_init_protocol(ngx_event_t *rev)
 
     s = c->data;
 
-    if (ngx_array_init(&s->args, c->pool, 2, sizeof(ngx_str_t)) == NGX_ERROR) {
-        ngx_imap_session_internal_server_error(s);
-        return;
-    }
-
     if (s->protocol == NGX_IMAP_POP3_PROTOCOL) {
         size = 128;
         s->imap_state = ngx_pop3_start;
@@ -270,10 +303,19 @@ ngx_imap_init_protocol(ngx_event_t *rev)
         c->read->handler = ngx_imap_auth_state;
     }
 
-    s->buffer = ngx_create_temp_buf(c->pool, size);
     if (s->buffer == NULL) {
-        ngx_imap_session_internal_server_error(s);
-        return;
+        if (ngx_array_init(&s->args, c->pool, 2, sizeof(ngx_str_t))
+            == NGX_ERROR)
+        {
+            ngx_imap_session_internal_server_error(s);
+            return;
+        }
+
+        s->buffer = ngx_create_temp_buf(c->pool, size);
+        if (s->buffer == NULL) {
+            ngx_imap_session_internal_server_error(s);
+            return;
+        }
     }
 
     c->read->handler(rev);
@@ -291,6 +333,9 @@ ngx_imap_auth_state(ngx_event_t *rev)
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
     ngx_imap_core_srv_conf_t  *cscf;
+#if (NGX_IMAP_SSL)
+    ngx_imap_ssl_conf_t       *sslcf;
+#endif
 
     c = rev->data;
     s = c->data;
@@ -357,6 +402,19 @@ ngx_imap_auth_state(ngx_event_t *rev)
         switch (s->command) {
 
         case NGX_IMAP_LOGIN:
+
+#if (NGX_IMAP_SSL)
+
+            if (c->ssl == NULL) {
+                sslcf = ngx_imap_get_module_srv_conf(s, ngx_imap_ssl_module);
+
+                if (sslcf->starttls == NGX_IMAP_STARTTLS_ONLY) {
+                    rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                    break;
+                }
+            }
+#endif
+
             arg = s->args.elts;
 
             if (s->args.nelts == 2 && arg[0].len) {
@@ -410,8 +468,28 @@ ngx_imap_auth_state(ngx_event_t *rev)
 
         case NGX_IMAP_CAPABILITY:
             cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
-            text = cscf->imap_capability->pos;
-            text_len = cscf->imap_capability->last - cscf->imap_capability->pos;
+
+#if (NGX_IMAP_SSL)
+
+            if (c->ssl == NULL) {
+                sslcf = ngx_imap_get_module_srv_conf(s, ngx_imap_ssl_module);
+
+                if (sslcf->starttls == NGX_IMAP_STARTTLS_ON) {
+                    text_len = cscf->imap_starttls_capability.len;
+                    text = cscf->imap_starttls_capability.data;
+                    break;
+                }
+
+                if (sslcf->starttls == NGX_IMAP_STARTTLS_ONLY) {
+                    text_len = cscf->imap_starttls_only_capability.len;
+                    text = cscf->imap_starttls_only_capability.data;
+                    break;
+                }
+            }
+#endif
+
+            text_len = cscf->imap_capability.len;
+            text = cscf->imap_capability.data;
             break;
 
         case NGX_IMAP_LOGOUT:
@@ -422,6 +500,21 @@ ngx_imap_auth_state(ngx_event_t *rev)
 
         case NGX_IMAP_NOOP:
             break;
+
+#if (NGX_IMAP_SSL)
+
+        case NGX_IMAP_STARTTLS:
+            if (c->ssl == NULL) {
+                sslcf = ngx_imap_get_module_srv_conf(s, ngx_imap_ssl_module);
+                if (sslcf->starttls) {
+                    c->read->handler = ngx_imap_starttls_handler;
+                    break;
+                }
+            }
+
+            rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+            break;
+#endif
 
         default:
             rc = NGX_IMAP_PARSE_INVALID_COMMAND;
@@ -492,6 +585,9 @@ ngx_pop3_auth_state(ngx_event_t *rev)
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
     ngx_imap_core_srv_conf_t  *cscf;
+#if (NGX_IMAP_SSL)
+    ngx_imap_ssl_conf_t       *sslcf;
+#endif
 
     c = rev->data;
     s = c->data;
@@ -554,8 +650,22 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
             case NGX_POP3_CAPA:
                 cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
-                text = cscf->pop3_capability->pos;
-                size = cscf->pop3_capability->last - cscf->pop3_capability->pos;
+
+#if (NGX_IMAP_SSL)
+
+                if (c->ssl == NULL) {
+                    sslcf = ngx_imap_get_module_srv_conf(s,
+                                                         ngx_imap_ssl_module);
+                    if (sslcf->starttls) {
+                        size = cscf->pop3_starttls_capability.len;
+                        text = cscf->pop3_starttls_capability.data;
+                        break;
+                    }
+                }
+#endif
+
+                size = cscf->pop3_capability.len;
+                text = cscf->pop3_capability.data;
                 break;
 
             case NGX_POP3_QUIT:
@@ -564,6 +674,22 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
             case NGX_POP3_NOOP:
                 break;
+
+#if (NGX_IMAP_SSL)
+
+            case NGX_POP3_STLS:
+                if (c->ssl == NULL) {
+                    sslcf = ngx_imap_get_module_srv_conf(s,
+                                                         ngx_imap_ssl_module);
+                    if (sslcf->starttls) {
+                        c->read->handler = ngx_imap_starttls_handler;
+                        break;
+                    }
+                }
+
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
+#endif
 
             default:
                 s->imap_state = ngx_pop3_start;
@@ -616,8 +742,8 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
             case NGX_POP3_CAPA:
                 cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
-                text = cscf->pop3_capability->pos;
-                size = cscf->pop3_capability->last - cscf->pop3_capability->pos;
+                size = cscf->pop3_capability.len;
+                text = cscf->pop3_capability.data;
                 break;
 
             case NGX_POP3_QUIT:
@@ -735,7 +861,7 @@ ngx_imap_close_connection(ngx_connection_t *c)
 
 #endif
 
-    c->closed = 1;
+    c->destroyed = 1;
 
     pool = c->pool;
 

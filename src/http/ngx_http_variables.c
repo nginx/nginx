@@ -843,6 +843,13 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
                    "http variables: %ui", cmcf->variables.nelts);
 
 
+    for (n = 0; n < cmcf->all_variables.nelts; n++) {
+        if (av[n].flags & NGX_HTTP_VAR_NOHASH) {
+            av[n].name.data = NULL;
+        }
+    }
+
+
     /* init the all http variables hash */
 
     cmcf->variables_hash.max_size = 500;

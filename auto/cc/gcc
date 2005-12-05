@@ -36,7 +36,7 @@ fi
 
 case "$NGX_MACHINE" in
 
-    sun4u | sparc )
+    sun4u | sparc | sparc64 )
         # "-mcpu=v9" enables the "casa" assembler instruction
         CFLAGS="$CFLAGS -mcpu=v9"
     ;;

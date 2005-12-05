@@ -276,8 +276,10 @@ static ngx_int_t
 ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     ngx_int_t          rc;
+#if 0
     ngx_event_t       *e;
     ngx_connection_t  *c;
+#endif
 
     ev->active = 1;
     ev->disabled = 0;
@@ -285,12 +287,11 @@ ngx_kqueue_add_event(ngx_event_t *ev, int event, u_int flags)
 
     ngx_mutex_lock(list_mutex);
 
-#if 1
+#if 0
 
-    if (nchanges > 0
-        && ev->index < (u_int) nchanges
+    if (ev->index < (u_int) nchanges
         && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
-                                                             == (uintptr_t) ev)
+            == (uintptr_t) ev)
     {
         if (change_list[ev->index].flags == EV_DISABLE) {
 
@@ -346,12 +347,9 @@ ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
     ngx_mutex_lock(list_mutex);
 
-#if 1
-
-    if (nchanges > 0
-        && ev->index < (u_int) nchanges
+    if (ev->index < (u_int) nchanges
         && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
-                                                             == (uintptr_t) ev)
+            == (uintptr_t) ev)
     {
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                        "kevent deleted: %d: ft:%d",
@@ -359,7 +357,9 @@ ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
         /* if the event is still not passed to a kernel we will not pass it */
 
-        if (ev->index < (u_int) --nchanges) {
+        nchanges--;
+
+        if (ev->index < (u_int) nchanges) {
             e = (ngx_event_t *)
                     ((uintptr_t) change_list[nchanges].udata & (uintptr_t) ~1);
             change_list[ev->index] = change_list[nchanges];
@@ -370,8 +370,6 @@ ngx_kqueue_del_event(ngx_event_t *ev, int event, u_int flags)
 
         return NGX_OK;
     }
-
-#endif
 
     /*
      * when the file descriptor is closed the kqueue automatically deletes
@@ -551,7 +549,9 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
         if (event_list[i].flags & EV_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, event_list[i].data,
-                          "kevent() error on %d", event_list[i].ident);
+                          "kevent() error on %d filter:%d flags:%04Xd",
+                          event_list[i].ident, event_list[i].filter,
+                          event_list[i].flags);
             continue;
         }
 

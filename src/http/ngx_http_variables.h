@@ -35,6 +35,7 @@ typedef ngx_int_t (*ngx_http_get_variable_pt) (ngx_http_request_t *r,
 #define NGX_HTTP_VAR_CHANGABLE   1
 #define NGX_HTTP_VAR_NOCACHABLE  2
 #define NGX_HTTP_VAR_INDEXED     4
+#define NGX_HTTP_VAR_NOHASH      8
 
 
 struct ngx_http_variable_s {

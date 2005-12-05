@@ -286,8 +286,6 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
 
         c->log->action = NULL;
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
-
-        c->log->action = "proxying";
     }
 }
 
@@ -405,16 +403,24 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
 
         c->log->action = NULL;
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
-
-        c->log->action = "proxying";
     }
 }
 
 
 static void
-ngx_imap_proxy_dummy_handler(ngx_event_t *ev)
+ngx_imap_proxy_dummy_handler(ngx_event_t *wev)
 {
-    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, ev->log, 0, "imap proxy dummy handler");
+    ngx_connection_t    *c;
+    ngx_imap_session_t  *s;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_IMAP, wev->log, 0, "imap proxy dummy handler");
+
+    if (ngx_handle_write_event(wev, 0) == NGX_ERROR) {
+        c = wev->data;
+        s = c->data;
+
+        ngx_imap_proxy_close_session(s);
+    }
 }
 
 
@@ -487,11 +493,11 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
 static void
 ngx_imap_proxy_handler(ngx_event_t *ev)
 {
-    char                   *action;
+    char                   *action, *recv_action, *send_action;
     size_t                  size;
     ssize_t                 n;
     ngx_buf_t              *b;
-    ngx_uint_t              again, do_write;
+    ngx_uint_t              do_write;
     ngx_connection_t       *c, *src, *dst;
     ngx_imap_session_t     *s;
     ngx_imap_proxy_conf_t  *pcf;
@@ -500,6 +506,8 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
     s = c->data;
 
     if (ev->timedout) {
+        c->log->action = "proxying";
+
         if (c == s->connection) {
             ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
                           "client timed out");
@@ -516,11 +524,15 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
 
     if (c == s->connection) {
         if (ev->write) {
+            recv_action = "proxying and reading from upstream";
+            send_action = "proxying and sending to client";
             src = s->proxy->upstream.connection;
             dst = c;
             b = s->proxy->buffer;
 
         } else {
+            recv_action = "proxying and reading from client";
+            send_action = "proxying and sending to upstream";
             src = c;
             dst = s->proxy->upstream.connection;
             b = s->buffer;
@@ -528,11 +540,15 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
 
     } else {
         if (ev->write) {
+            recv_action = "proxying and reading from upstream";
+            send_action = "proxying and sending to client";
             src = s->connection;
             dst = c;
             b = s->buffer;
 
         } else {
+            recv_action = "proxying and reading from client";
+            send_action = "proxying and sending to upstream";
             src = c;
             dst = s->connection;
             b = s->proxy->buffer;
@@ -545,14 +561,15 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
                    "imap proxy handler: %d, #%d > #%d",
                    do_write, src->fd, dst->fd);
 
-    do {
-        again = 0;
+    for ( ;; ) {
 
-        if (do_write == 1) {
+        if (do_write) {
 
             size = b->last - b->pos;
 
             if (size && dst->write->ready) {
+                c->log->action = send_action;
+
                 n = dst->send(dst, b->pos, size);
 
                 if (n == NGX_ERROR) {
@@ -561,21 +578,11 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
                 }
 
                 if (n > 0) {
-                    again = 1;
                     b->pos += n;
 
                     if (b->pos == b->last) {
                         b->pos = b->start;
                         b->last = b->start;
-                    }
-                }
-
-                if (n == NGX_AGAIN || n < (ssize_t) size) {
-                    if (ngx_handle_write_event(dst->write, /* TODO: LOWAT */ 0)
-                        == NGX_ERROR)
-                    {
-                        ngx_imap_proxy_close_session(s);
-                        return;
                     }
                 }
             }
@@ -584,43 +591,68 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
         size = b->end - b->last;
 
         if (size && src->read->ready) {
+            c->log->action = recv_action;
+
             n = src->recv(src, b->last, size);
 
-            if (n == NGX_ERROR) {
-                ngx_imap_proxy_close_session(s);
-                return;
-            }
-
-            if (n == 0) {
-                action = c->log->action;
-                c->log->action = NULL;
-                ngx_log_error(NGX_LOG_INFO, c->log, 0, "proxied session done");
-                c->log->action = action;
-
-                ngx_imap_proxy_close_session(s);
-                return;
+            if (n == NGX_AGAIN || n == 0) {
+                break;
             }
 
             if (n > 0) {
-                again = 1;
                 do_write = 1;
                 b->last += n;
+
+                continue;
             }
 
-            if (n == NGX_AGAIN || n < (ssize_t) size) {
-                if (ngx_handle_read_event(src->read, 0) == NGX_ERROR) {
-                    ngx_imap_proxy_close_session(s);
-                    return;
-                }
-            }
-
-            if (c == s->connection) {
-                pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
-                ngx_add_timer(c->read, pcf->timeout);
+            if (n == NGX_ERROR) {
+                src->read->eof = 1;
             }
         }
 
-    } while (again);
+        break;
+    }
+
+    c->log->action = "proxying";
+
+    if ((s->connection->read->eof || s->proxy->upstream.connection->read->eof)
+        && s->buffer->pos == s->buffer->last
+        && s->proxy->buffer->pos == s->proxy->buffer->last)
+    {
+        action = c->log->action;
+        c->log->action = NULL;
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "proxied session done");
+        c->log->action = action;
+
+        ngx_imap_proxy_close_session(s);
+        return;
+    }
+
+    if (ngx_handle_write_event(dst->write, 0) == NGX_ERROR) {
+        ngx_imap_proxy_close_session(s);
+        return;
+    }
+
+    if (ngx_handle_read_event(dst->read, 0) == NGX_ERROR) {
+        ngx_imap_proxy_close_session(s);
+        return;
+    }
+
+    if (ngx_handle_write_event(src->write, 0) == NGX_ERROR) {
+        ngx_imap_proxy_close_session(s);
+        return;
+    }
+
+    if (ngx_handle_read_event(src->read, 0) == NGX_ERROR) {
+        ngx_imap_proxy_close_session(s);
+        return;
+    }
+
+    if (c == s->connection) {
+        pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
+        ngx_add_timer(c->read, pcf->timeout);
+    }
 }
 
 

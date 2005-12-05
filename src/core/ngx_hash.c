@@ -47,6 +47,10 @@ ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names, ngx_uint_t nelts)
              n < nelts;
              n++, name = (ngx_str_t *) ((char *) name + hash->bucket_size))
         {
+            if (name->data == NULL) {
+                continue;
+            }
+
             key = 0;
 
             for (i = 0; i < name->len; i++) {
@@ -104,6 +108,10 @@ ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names, ngx_uint_t nelts)
              n < nelts;
              n++, name = (ngx_str_t *) ((char *) name + hash->bucket_size))
         {
+            if (name->data == NULL) {
+                continue;
+            }
+
             key = 0;
 
             for (i = 0; i < name->len; i++) {
@@ -135,6 +143,10 @@ ngx_hash_init(ngx_hash_t *hash, ngx_pool_t *pool, void *names, ngx_uint_t nelts)
          n < nelts;
          n++, name = (ngx_str_t *) ((char *) name + hash->bucket_size))
     {
+        if (name->data == NULL) {
+            continue;
+        }
+
         key = 0;
 
         for (i = 0; i < name->len; i++) {

@@ -301,12 +301,12 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
             *d = '\0';
 
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "SSL: %s, cipher: \"%s\"",
                            SSL_get_version(c->ssl->connection), &buf[1]);
 
             if (SSL_session_reused(c->ssl->connection)) {
-                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                "SSL reused session");
             }
 
@@ -630,7 +630,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     for ( ;; ) {
 
         while (in && buf->last < buf->end) {
-            if (in->buf->last_buf) {
+            if (in->buf->last_buf || in->buf->flush) {
                 flush = 1;
             }
 
@@ -644,11 +644,6 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             if (size > buf->end - buf->last) {
                 size = buf->end - buf->last;
             }
-
-            /*
-             * TODO: the taking in->buf->flush into account can be
-             *       implemented using the limit on the higher level
-             */
 
             if (send + size > limit) {
                 size = (ssize_t) (limit - send);
@@ -943,7 +938,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 }
 
 
-void
+void ngx_cdecl
 ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
 {
     u_long   n;
@@ -958,7 +953,13 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
 
     p = ngx_cpystrn(p, (u_char *) " (SSL:", last - p);
 
-    while (p < last && (n = ERR_get_error())) {
+    while (p < last) {
+
+        n = ERR_get_error();
+
+        if (n == 0) {
+            break;
+        }
 
         *p++ = ' ';
 

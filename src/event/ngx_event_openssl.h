@@ -79,7 +79,7 @@ ssize_t ngx_ssl_recv_chain(ngx_connection_t *c, ngx_chain_t *cl);
 ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
     off_t limit);
 ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c);
-void ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+void ngx_cdecl ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     char *fmt, ...);
 void ngx_ssl_cleanup_ctx(void *data);
 
