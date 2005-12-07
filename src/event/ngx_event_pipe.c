@@ -131,9 +131,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
              */
 
             if (p->upstream->read->available == 0
-                && p->upstream->read->pending_eof
-                /* FreeBSD 5.x-6.x may erroneously report ETIMEDOUT */
-                && p->upstream->read->kq_errno != NGX_ETIMEDOUT)
+                && p->upstream->read->pending_eof)
             {
                 p->upstream->read->ready = 0;
                 p->upstream->read->eof = 0;

@@ -1460,6 +1460,11 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_HTTP_NO_CONTENT) {
 
+        if (rc == NGX_HTTP_CLOSE) {
+            ngx_http_close_request(r, rc);
+            return;
+        }
+
         if (r->main == r) {
             if (r->connection->read->timer_set) {
                 ngx_del_timer(r->connection->read);
@@ -1556,6 +1561,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         ngx_del_timer(r->connection->write);
     }
 
+#if 0
     if (r->connection->read->pending_eof) {
 #if (NGX_HAVE_KQUEUE)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log,
@@ -1565,6 +1571,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         ngx_http_close_request(r, 0);
         return;
     }
+#endif
 
     if (!ngx_terminate
          && !ngx_exiting
@@ -2046,10 +2053,7 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 #if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
-        if (rev->pending_eof
-            /* FreeBSD 5.x-6.x may erroneously report ETIMEDOUT */
-            && rev->kq_errno != NGX_ETIMEDOUT)
-        {
+        if (rev->pending_eof) {
             c->log->handler = NULL;
             ngx_log_error(NGX_LOG_INFO, c->log, rev->kq_errno,
                           "kevent() reported that client %V closed "

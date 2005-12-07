@@ -719,6 +719,9 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
         || err == NGX_EPIPE
 #endif
         || err == NGX_ENOTCONN
+#if !(NGX_CRIT_ETIMEDOUT)
+        || err == NGX_ETIMEDOUT
+#endif
         || err == NGX_ECONNREFUSED
         || err == NGX_EHOSTUNREACH)
     {

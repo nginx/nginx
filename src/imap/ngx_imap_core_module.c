@@ -75,6 +75,13 @@ static ngx_command_t  ngx_imap_core_commands[] = {
       offsetof(ngx_imap_core_srv_conf_t, imap_client_buffer_size),
       NULL },
 
+    { ngx_string("so_keepalive"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_core_srv_conf_t, so_keepalive),
+      NULL },
+
     { ngx_string("timeout"),
       NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -156,8 +163,9 @@ ngx_imap_core_create_srv_conf(ngx_conf_t *cf)
     }
 
     cscf->imap_client_buffer_size = NGX_CONF_UNSET_SIZE;
-    cscf->timeout = NGX_CONF_UNSET_MSEC;
     cscf->protocol = NGX_CONF_UNSET_UINT;
+    cscf->timeout = NGX_CONF_UNSET_MSEC;
+    cscf->so_keepalive = NGX_CONF_UNSET;
 
     if (ngx_array_init(&cscf->pop3_capabilities, cf->pool, 4, sizeof(ngx_str_t))
         != NGX_OK)
@@ -192,6 +200,7 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
     ngx_conf_merge_unsigned_value(conf->protocol, prev->protocol,
                               NGX_IMAP_IMAP_PROTOCOL);
+    ngx_conf_merge_value(conf->so_keepalive, prev->so_keepalive, 0);
 
 
     if (conf->pop3_capabilities.nelts == 0) {

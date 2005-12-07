@@ -91,9 +91,26 @@ ngx_module_t  ngx_imap_proxy_module = {
 void
 ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peers_t *peers)
 {
+    int                        keepalive;
     ngx_int_t                  rc;
     ngx_imap_proxy_ctx_t      *p;
     ngx_imap_core_srv_conf_t  *cscf;
+
+    s->connection->log->action = "connecting to upstream";
+
+    cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
+
+    if (cscf->so_keepalive) {
+        keepalive = 1;
+
+        if (setsockopt(s->connection->fd, SOL_SOCKET, SO_KEEPALIVE,
+                       (const void *) &keepalive, sizeof(int))
+                == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, s->connection->log, ngx_socket_errno,
+                          "setsockopt(SO_KEEPALIVE) failed");
+        }
+    }
 
     p = ngx_pcalloc(s->connection->pool, sizeof(ngx_imap_proxy_ctx_t));
     if (p == NULL) {
@@ -107,8 +124,6 @@ ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peers_t *peers)
     p->upstream.log = s->connection->log;
     p->upstream.log_error = NGX_ERROR_ERR;
 
-    s->connection->log->action = "in upstream auth state";
-
     rc = ngx_event_connect_peer(&p->upstream);
 
     if (rc == NGX_ERROR || rc == NGX_BUSY || rc == NGX_DECLINED) {
@@ -116,7 +131,6 @@ ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peers_t *peers)
         return;
     }
 
-    cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
     ngx_add_timer(p->upstream.connection->read, cscf->timeout);
 
     p->upstream.connection->data = s;
@@ -205,6 +219,8 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0,
                        "imap proxy send login");
 
+        s->connection->log->action = "sending LOGIN command to upstream";
+
         line.len = s->tag.len + sizeof("LOGIN ") - 1
                    + 1 + NGX_SIZE_T_LEN + 1 + 2;
         line.data = ngx_palloc(c->pool, line.len);
@@ -223,6 +239,8 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
     case ngx_imap_login:
         ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap proxy send user");
 
+        s->connection->log->action = "sending user name to upstream";
+
         line.len = s->login.len + 1 + 1 + NGX_SIZE_T_LEN + 1 + 2;
         line.data = ngx_palloc(c->pool, line.len);
         if (line.data == NULL) {
@@ -240,6 +258,8 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
     case ngx_imap_user:
         ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0,
                        "imap proxy send passwd");
+
+        s->connection->log->action = "sending password to upstream";
 
         line.len = s->passwd.len + 2;
         line.data = ngx_palloc(c->pool, line.len);
@@ -340,6 +360,8 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
     case ngx_pop3_start:
         ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap proxy send user");
 
+        s->connection->log->action = "sending user name to upstream";
+
         line.len = sizeof("USER ")  - 1 + s->login.len + 2;
         line.data = ngx_palloc(c->pool, line.len);
         if (line.data == NULL) {
@@ -356,6 +378,8 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
 
     case ngx_pop3_user:
         ngx_log_debug0(NGX_LOG_DEBUG_IMAP, rev->log, 0, "imap proxy send pass");
+
+        s->connection->log->action = "sending password to upstream";
 
         line.len = sizeof("PASS ")  - 1 + s->passwd.len + 2;
         line.data = ngx_palloc(c->pool, line.len);
@@ -430,6 +454,8 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
     u_char     *p;
     ssize_t     n;
     ngx_buf_t  *b;
+
+    s->connection->log->action = "reading response from upstream";
 
     b = s->proxy->buffer;
 

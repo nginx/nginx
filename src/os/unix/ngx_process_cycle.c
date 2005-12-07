@@ -938,23 +938,25 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
         }
     }
 
-    c = cycle->connections;
-    for (i = 0; i < cycle->connection_n; i++) {
-        if (c[i].fd != -1
-            && c[i].read
-            && !c[i].read->accept
-            && !c[i].read->channel)
-        {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "open socket #%d left in %ui connection, "
-                          "aborting",
-                          c[i].fd, i);
-            ngx_abort();
+    if (ngx_quit) {
+        c = cycle->connections;
+        for (i = 0; i < cycle->connection_n; i++) {
+            if (c[i].fd != -1
+                && c[i].read
+                && !c[i].read->accept
+                && !c[i].read->channel)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                              "open socket #%d left in %ui connection, "
+                              "aborting",
+                              c[i].fd, i);
+                ngx_debug_point();
+            }
         }
-    }
 
-    if (ngx_debug_quit) {
-        ngx_debug_point();
+        if (ngx_debug_quit) {
+            ngx_debug_point();
+        }
     }
 
     /*

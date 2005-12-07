@@ -244,11 +244,11 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    r->allow_ranges = 1;
-
-    if (r->header_only || (r->main != r && ngx_file_size(&fi) == 0)) {
+    if (r->main != r && ngx_file_size(&fi) == 0) {
         return ngx_http_send_header(r);
     }
+
+    r->allow_ranges = 1;
 
     /* we need to allocate all before the header would be sent */
 

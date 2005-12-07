@@ -40,6 +40,8 @@ typedef struct {
 
     ngx_uint_t              protocol;
 
+    ngx_flag_t              so_keepalive;
+
     ngx_str_t               pop3_capability;
     ngx_str_t               pop3_starttls_capability;
     ngx_str_t               imap_capability;

@@ -328,14 +328,14 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         /* 3XX */
         err = error - NGX_HTTP_MOVED_PERMANENTLY + NGX_HTTP_LEVEL_200;
 
-    } else if (error < NGX_HTTP_NGX_CODES) {
+    } else if (error < NGX_HTTP_OWN_CODES) {
         /* 4XX */
         err = error - NGX_HTTP_BAD_REQUEST + NGX_HTTP_LEVEL_200
                                            + NGX_HTTP_LEVEL_300;
 
     } else {
         /* 49X, 5XX */
-        err = error - NGX_HTTP_NGX_CODES + NGX_HTTP_LEVEL_200
+        err = error - NGX_HTTP_OWN_CODES + NGX_HTTP_LEVEL_200
                                          + NGX_HTTP_LEVEL_300
                                          + NGX_HTTP_LEVEL_400;
         switch (error) {

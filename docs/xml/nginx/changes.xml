@@ -9,6 +9,40 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.15" date="07.12.2005">
+
+<change type="feature">
+<para lang="ru">
+новой код 444 в директиве return для закрытия соединения.
+</para>
+<para lang="en">
+the new 444 code of the "return" directive to close connection.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива so_keepalive в IMAP/POP3 прокси.
+</para>
+<para lang="en">
+the "so_keepalive" directive in IMAP/POP3 proxy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx теперь вызывает abort() при обнаружении незакрытых соединений
+только при планом выходе и включённой директиве debug_points.
+</para>
+<para lang="en">
+if there are unclosed connection nginx now calls abort() only on gracefull
+quit and active "debug_points" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.14" date="05.12.2005">
 
 <change type="bugfix">

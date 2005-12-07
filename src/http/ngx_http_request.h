@@ -66,7 +66,10 @@
 
 /* Our own HTTP codes */
 
-#define NGX_HTTP_NGX_CODES                 NGX_HTTP_TO_HTTPS
+/* The special code to close connection without any response */
+#define NGX_HTTP_CLOSE                     444
+
+#define NGX_HTTP_OWN_CODES                 NGX_HTTP_TO_HTTPS
 
 /*
  * We use the special code for the plain HTTP requests that are sent to
