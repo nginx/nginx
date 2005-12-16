@@ -9,6 +9,92 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.16" date="16.12.2005">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_map_module.
+</para>
+<para lang="en">
+the ngx_http_map_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы types_hash_max_size и types_hash_bucket_size.
+</para>
+<para lang="en">
+the "types_hash_max_size" and "types_hash_bucket_size" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssi_value_length.
+</para>
+<para lang="en">
+the "ssi_value_length" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива worker_rlimit_core.
+</para>
+<para lang="en">
+the "worker_rlimit_core" directive.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при сборке компиляторами icc 8.1 и 9.0 с оптимизацией для
+<nobr>Pentium 4</nobr> номер соединения в логах всегда был равен 1.
+</para>
+<para lang="en">
+the connection number in logs was always 1 if nginx was built by the
+icc 8.1 or 9.0 compilers with optimization for <nobr>Pentium 4.</nobr>
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+команда config timefmt в SSI задавала неверный формат времени.
+</para>
+<para lang="en">
+the "config timefmt" SSI command set incorrect time format.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не закрывал соединения с IMAP/POP3 бэкендом при использовании SSL
+соединений.
+Спасибо Rob Mueller.
+Ошибка появилась в 0.3.13.
+</para>
+<para lang="en">
+nginx did not close connection to IMAP/POP3 backend for the SSL connections.
+Thanks to Rob Mueller.
+Bug appeared in 0.3.13.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+segmentation fault мог произойти во время SSL shutdown;
+ошибка появилась в 0.3.13.
+</para>
+<para lang="en">
+segmentation fault may occurred in at SSL shutdown;
+bug appeared in 0.3.13.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.15" date="07.12.2005">
 
 <change type="feature">

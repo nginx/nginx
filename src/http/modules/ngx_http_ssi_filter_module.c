@@ -186,6 +186,13 @@ static ngx_command_t  ngx_http_ssi_filter_commands[] = {
       offsetof(ngx_http_ssi_conf_t, min_file_chunk),
       NULL },
 
+    { ngx_string("ssi_value_length"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_ssi_conf_t, value_len),
+      NULL },
+
     { ngx_string("ssi_types"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_ssi_types,
@@ -1728,7 +1735,13 @@ ngx_http_ssi_config(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     value = params[NGX_HTTP_SSI_CONFIG_TIMEFMT];
 
     if (value) {
-        ctx->timefmt = *value;
+        ctx->timefmt.len = value->len;
+        ctx->timefmt.data = ngx_palloc(r->pool, value->len + 1);
+        if (ctx->timefmt.data == NULL) {
+            return NGX_HTTP_SSI_ERROR;
+        }
+
+        ngx_cpystrn(ctx->timefmt.data, value->data, value->len + 1);
     }
 
     value = params[NGX_HTTP_SSI_CONFIG_ERRMSG];

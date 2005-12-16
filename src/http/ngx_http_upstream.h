@@ -40,7 +40,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_hash_t                      headers_in_hash;
+    ngx_hash0_t                     headers_in_hash;
 } ngx_http_upstream_main_conf_t;
 
 

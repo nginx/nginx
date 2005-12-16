@@ -22,7 +22,7 @@ typedef struct {
     ngx_uint_t           http_version;
     ngx_uint_t           proxied;
 
-    int                  level;
+    ngx_int_t            level;
     size_t               wbits;
     size_t               memlevel;
     ssize_t              min_length;
@@ -509,7 +509,7 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->zstream.zfree = ngx_http_gzip_filter_free;
         ctx->zstream.opaque = ctx;
 
-        rc = deflateInit2(&ctx->zstream, conf->level, Z_DEFLATED,
+        rc = deflateInit2(&ctx->zstream, (int) conf->level, Z_DEFLATED,
                           -wbits, memlevel, Z_DEFAULT_STRATEGY);
 
         if (rc != Z_OK) {

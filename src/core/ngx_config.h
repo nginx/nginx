@@ -98,8 +98,8 @@ typedef long            ngx_flag_t;
 #define NGX_ALIGNMENT   sizeof(unsigned long)    /* platform word */
 #endif
 
-#define ngx_align(p)    (u_char *) (((uintptr_t) p + (NGX_ALIGNMENT - 1))     \
-                                      & ~(NGX_ALIGNMENT - 1))
+#define ngx_align(d, a)     (((d) + (a - 1)) & ~(a - 1))
+#define ngx_align_ptr(p, a) (u_char *) (((uintptr_t) (p) + (a - 1)) & ~(a - 1))
 
 
 #define ngx_abort       abort

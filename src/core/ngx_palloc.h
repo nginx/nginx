@@ -13,7 +13,7 @@
 
 
 /*
- * NGX_MAX_ALLOC_FROM_POOL should be (ngx_page_size - 1), i.e. 4095 on x86.
+ * NGX_MAX_ALLOC_FROM_POOL should be (ngx_pagesize - 1), i.e. 4095 on x86.
  * On FreeBSD 5.x it allows to use the zero copy sending.
  * On Windows NT it decreases a number of locked pages in a kernel.
  */

@@ -787,6 +787,17 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
             }
         }
 
+        if (ccf->rlimit_core != NGX_CONF_UNSET) {
+            rlmt.rlim_cur = (rlim_t) ccf->rlimit_core;
+            rlmt.rlim_max = (rlim_t) ccf->rlimit_core;
+
+            if (setrlimit(RLIMIT_CORE, &rlmt) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "setrlimit(RLIMIT_CORE, %i) failed",
+                              ccf->rlimit_core);
+            }
+        }
+
 #ifdef RLIMIT_SIGPENDING
         if (ccf->rlimit_sigpending != NGX_CONF_UNSET) {
             rlmt.rlim_cur = (rlim_t) ccf->rlimit_sigpending;

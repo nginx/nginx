@@ -26,21 +26,21 @@
 ngx_chain_t *
 ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
-    int              rc, tcp_nodelay;
-    u_char          *prev;
-    off_t            size, send, prev_send, aligned, sent, fprev;
-    size_t           file_size;
-    ngx_uint_t       eintr, complete;
-    ngx_err_t        err;
-    ngx_buf_t       *file;
-    ngx_array_t      header;
-    ngx_event_t     *wev;
-    ngx_chain_t     *cl;
-    struct iovec    *iov, headers[NGX_HEADERS];
+    int            rc, tcp_nodelay;
+    off_t          size, send, prev_send, aligned, sent, fprev;
+    u_char        *prev;
+    size_t         file_size;
+    ngx_err_t      err;
+    ngx_buf_t     *file;
+    ngx_uint_t     eintr, complete;
+    ngx_array_t    header;
+    ngx_event_t   *wev;
+    ngx_chain_t   *cl;
+    struct iovec  *iov, headers[NGX_HEADERS];
 #if (NGX_HAVE_SENDFILE64)
-    off_t            offset;
+    off_t          offset;
 #else
-    int32_t          offset;
+    int32_t        offset;
 #endif
 
     wev = c->write;
@@ -233,6 +233,12 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         }
 
         if (file) {
+#if 1
+            if (file_size == 0) {
+                ngx_debug_point();
+                return NGX_CHAIN_ERROR;
+            }
+#endif
 #if (NGX_HAVE_SENDFILE64)
             offset = file->file_pos;
 #else

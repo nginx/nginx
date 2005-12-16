@@ -1561,6 +1561,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         ngx_del_timer(r->connection->write);
     }
 
+    if (r->connection->destroyed) {
+        return;
+    }
+
 #if 0
     if (r->connection->read->pending_eof) {
 #if (NGX_HAVE_KQUEUE)

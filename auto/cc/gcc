@@ -58,26 +58,31 @@ case $CPU in
     pentium)
         # optimize for Pentium and Athlon
         CPU_OPT="-march=pentium"
+        NGX_CPU_CACHE_LINE=32
     ;;
 
     pentiumpro | pentium3)
         # optimize for Pentium Pro, Pentium II and Pentium III
         CPU_OPT="-march=pentiumpro"
+        NGX_CPU_CACHE_LINE=32
     ;;
 
     pentium4)
         # optimize for Pentium 4, gcc 3.x
         CPU_OPT="-march=pentium4"
+        NGX_CPU_CACHE_LINE=128
     ;;
 
     athlon)
         # optimize for Athlon, gcc 3.x
         CPU_OPT="-march=athlon"
+        NGX_CPU_CACHE_LINE=64
     ;;
 
     opteron)
         # optimize for Opteron, gcc 3.x
         CPU_OPT="-march=opteron"
+        NGX_CPU_CACHE_LINE=64
     ;;
 
     sparc32)
@@ -85,6 +90,7 @@ case $CPU in
         CPU_OPT="-m32"
         CORE_LINK="$CORE_LINK -m32"
         CC_AUX_FLAGS="$CC_AUX_FLAGS -m32"
+        NGX_CPU_CACHE_LINE=64
     ;;
 
     sparc64)
@@ -92,6 +98,7 @@ case $CPU in
         CPU_OPT="-m64"
         CORE_LINK="$CORE_LINK -m64"
         CC_AUX_FLAGS="$CC_AUX_FLAGS -m64"
+        NGX_CPU_CACHE_LINE=64
     ;;
 
 esac

@@ -2,7 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-# Intel C++ compiler 7.1, 8.0, 8.1
+# Intel C++ compiler 7.1, 8.0, 8.1, 9.0
 
 NGX_ICC_VER=`$CC -V 2>&1 | grep 'Version' 2>&1 \
                          | sed -e 's/^.* Version \(.*\)   Build.*$/\1/'`

@@ -61,7 +61,16 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
  */
 
 
-#if !(__GNUC__ == 2 && __GNUC_MINOR__ <= 7)
+#if !(( __GNUC__ == 2 && __GNUC_MINOR__ <= 7 ) || ( __INTEL_COMPILER >= 800 ))
+
+/*
+ * icc 8.1 and 9.0 compile broken code with -march=pentium4 option:
+ * ngx_atomic_fetch_add() always return the input "add" value,
+ * so we use the gcc 2.7 version.
+ *
+ * icc 8.1 and 9.0 with -march=pentiumpro option or icc 7.1 compile
+ * correct code.
+ */
 
 static ngx_inline ngx_atomic_int_t
 ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
@@ -77,7 +86,7 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
 }
 
 
-#else /* (__GNUC__ == 2 && __GNUC_MINOR__ <= 7) */
+#else
 
 /*
  * gcc 2.7 does not support "+q", so we have to use the fixed %eax ("=a" and

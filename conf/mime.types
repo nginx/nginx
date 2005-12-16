@@ -1,14 +1,16 @@
 
 types {
-    text/css                              css;
     text/html                             html htm shtml;
-    text/plain                            txt;
+    text/css                              css;
     text/xml                              xml rss;
+    image/gif                             gif;
+    image/jpeg                            jpeg jpg;
+    application/x-javascript              js;
+
+    text/plain                            txt;
     text/x-component                      htc;
     text/mathml                           mml;
 
-    image/gif                             gif;
-    image/jpeg                            jpeg jpg;
     image/png                             png;
     image/x-icon                          ico;
     image/x-jng                           jng;
@@ -17,7 +19,6 @@ types {
     application/mac-binhex40              hqx;
     application/pdf                       pdf;
     application/x-cocoa                   cco;
-    application/x-javascript              js;
     application/x-java-archive-diff       jardiff;
     application/x-java-jnlp-file          jnlp;
     application/x-makeself                run;

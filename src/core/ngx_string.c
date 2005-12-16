@@ -980,19 +980,20 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size)
                 break;
             }
 
-            /* skip the invalid quoted character */
+            /* the invalid quoted character */
 
-            s++;
-            size--;
+            state = sw_usual;
+
+            *d++ = ch;
 
             break;
 
         case sw_quoted_second:
 
+            state = sw_usual;
+
             if (ch >= '0' && ch <= '9') {
                 ch = (u_char) ((decoded << 4) + ch - '0');
-
-                state = sw_usual;
 
                 if (ch > '%' && ch < 0x7f) {
                     *d++ = ch;
@@ -1013,8 +1014,6 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size)
                     goto done;
                 }
 
-                state = sw_usual;
-
                 if (ch > '%' && ch < 0x7f) {
                     *d++ = ch;
                     break;
@@ -1025,7 +1024,7 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size)
                 break;
             }
 
-            /* skip the invalid quoted character */
+            /* the invalid quoted character */
 
             break;
         }

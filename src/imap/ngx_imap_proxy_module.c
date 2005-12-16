@@ -566,15 +566,15 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
 
     } else {
         if (ev->write) {
-            recv_action = "proxying and reading from upstream";
-            send_action = "proxying and sending to client";
+            recv_action = "proxying and reading from client";
+            send_action = "proxying and sending to upstream";
             src = s->connection;
             dst = c;
             b = s->buffer;
 
         } else {
-            recv_action = "proxying and reading from client";
-            send_action = "proxying and sending to upstream";
+            recv_action = "proxying and reading from upstream";
+            send_action = "proxying and sending to client";
             src = c;
             dst = s->connection;
             b = s->proxy->buffer;

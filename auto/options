@@ -57,6 +57,7 @@ HTTP_USERID=YES
 HTTP_AUTOINDEX=YES
 HTTP_STATUS=NO
 HTTP_GEO=YES
+HTTP_MAP=YES
 HTTP_REFERER=YES
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
@@ -88,6 +89,8 @@ USE_ZLIB=NO
 ZLIB=NONE
 ZLIB_OPT=
 ZLIB_ASM=NO
+
+NGX_CPU_CACHE_LINE=
 
 
 for option
@@ -139,6 +142,7 @@ do
         --without-http_autoindex_module) HTTP_AUTOINDEX=NO          ;;
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_geo_module)       HTTP_GEO=NO                ;;
+        --without-http_map_module)       HTTP_MAP=NO                ;;
         --without-http_referer_module)   HTTP_REFERER=NO            ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;

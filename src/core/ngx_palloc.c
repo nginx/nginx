@@ -90,10 +90,16 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
 
     if (size <= (size_t) NGX_MAX_ALLOC_FROM_POOL
         && size <= (size_t) (pool->end - (u_char *) pool)
-                                     - (size_t) ngx_align(sizeof(ngx_pool_t)))
+                   - (size_t) ngx_align_ptr(sizeof(ngx_pool_t), NGX_ALIGNMENT))
     {
         for (p = pool->current; /* void */ ; p = p->next) {
-            m = ngx_align(p->last);
+
+            if (size < sizeof(int) || (size & 1)) {
+                m = p->last;
+
+            } else {
+                m = ngx_align_ptr(p->last, NGX_ALIGNMENT);
+            }
 
             if ((size_t) (p->end - m) >= size) {
                 p->last = m + size;
@@ -122,7 +128,7 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
         }
 
         p->next = n;
-        m = ngx_align(n->last);
+        m = ngx_align_ptr(n->last, NGX_ALIGNMENT);
         n->last = m + size;
 
         return m;

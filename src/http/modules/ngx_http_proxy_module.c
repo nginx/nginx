@@ -42,7 +42,7 @@ typedef struct {
     ngx_array_t                 *body_set;
     ngx_array_t                 *headers_set_len;
     ngx_array_t                 *headers_set;
-    ngx_hash_t                  *headers_set_hash;
+    ngx_hash0_t                 *headers_set_hash;
 
     ngx_array_t                 *headers_source;
     ngx_array_t                 *headers_names;
@@ -1892,7 +1892,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     *code = (uintptr_t) NULL;
 
 
-    conf->headers_set_hash = ngx_pcalloc(cf->pool, sizeof(ngx_hash_t));
+    conf->headers_set_hash = ngx_pcalloc(cf->pool, sizeof(ngx_hash0_t));
     if (conf->headers_set_hash == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -1902,8 +1902,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     conf->headers_set_hash->bucket_size = sizeof(ngx_str_t);
     conf->headers_set_hash->name = "proxy_headers";
 
-    if (ngx_hash_init(conf->headers_set_hash, cf->pool,
-              conf->headers_names->elts, conf->headers_names->nelts) != NGX_OK)
+    if (ngx_hash0_init(conf->headers_set_hash, cf->pool,
+                       conf->headers_names->elts, conf->headers_names->nelts)
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }

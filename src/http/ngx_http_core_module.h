@@ -70,8 +70,8 @@ typedef struct {
 
     ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
 
-    ngx_hash_t                 headers_in_hash;
-    ngx_hash_t                 variables_hash;
+    ngx_hash0_t                headers_in_hash;
+    ngx_hash0_t                variables_hash;
 
     ngx_uint_t                 server_names_hash;
     ngx_uint_t                 server_names_hash_threshold;
@@ -154,23 +154,6 @@ typedef struct {
         }
 
 
-#define NGX_HTTP_TYPES_HASH_PRIME  13
-
-#define ngx_http_types_hash_key(key, ext)                                   \
-        {                                                                   \
-            ngx_uint_t  n;                                                  \
-            for (key = 0, n = 0; n < ext.len; n++) {                        \
-                key += ext.data[n];                                         \
-            }                                                               \
-            key %= NGX_HTTP_TYPES_HASH_PRIME;                               \
-        }
-
-typedef struct {
-    ngx_str_t     exten;
-    ngx_str_t     type;
-} ngx_http_type_t;
-
-
 typedef struct {
     ngx_int_t     status;
     ngx_int_t     overwrite;
@@ -203,11 +186,12 @@ struct ngx_http_core_loc_conf_s {
 
     ngx_http_handler_pt  handler;
 
-    ngx_array_t  *types;
-    ngx_str_t     default_type;
-
     ngx_str_t     root;                    /* root, alias */
     ngx_str_t     post_action;
+
+    ngx_array_t  *types;
+    ngx_hash_t    types_hash;
+    ngx_str_t     default_type;
 
     size_t        client_max_body_size;    /* client_max_body_size */
     size_t        client_body_buffer_size; /* client_body_buffer_size */
@@ -240,6 +224,9 @@ struct ngx_http_core_loc_conf_s {
     ngx_http_cache_hash_t  *open_files;
 
     ngx_log_t    *err_log;
+
+    ngx_uint_t    types_hash_max_size;
+    ngx_uint_t    types_hash_bucket_size;
 
 #if 0
     ngx_http_core_loc_conf_t  *prev_location;

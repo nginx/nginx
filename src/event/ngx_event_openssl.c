@@ -540,6 +540,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
 
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
+    c->read->eof = 1;
 
     if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -814,9 +815,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     SSL_set_shutdown(c->ssl->connection, mode);
 
     again = 0;
-#if (NGX_SUPPRESS_WARN)
     sslerr = 0;
-#endif
 
     for ( ;; ) {
         n = SSL_shutdown(c->ssl->connection);
@@ -845,25 +844,23 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                        "SSL_get_error: %d", sslerr);
     }
 
-    if (again || sslerr == SSL_ERROR_WANT_READ) {
-
-        ngx_add_timer(c->read, 30000);
-
+    if (again
+        || sslerr == SSL_ERROR_WANT_READ
+        || sslerr == SSL_ERROR_WANT_WRITE)
+    {
         c->read->handler = ngx_ssl_shutdown_handler;
+        c->write->handler = ngx_ssl_shutdown_handler;
 
         if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
             return NGX_ERROR;
         }
 
-        return NGX_AGAIN;
-    }
-
-    if (sslerr == SSL_ERROR_WANT_WRITE) {
-
-        c->write->handler = ngx_ssl_shutdown_handler;
-
         if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
             return NGX_ERROR;
+        }
+
+        if (again || sslerr == SSL_ERROR_WANT_READ) {
+            ngx_add_timer(c->read, 30000);
         }
 
         return NGX_AGAIN;
@@ -914,6 +911,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
         if (err == NGX_ECONNRESET
             || err == NGX_EPIPE
             || err == NGX_ENOTCONN
+#if !(NGX_CRIT_ETIMEDOUT)
+            || err == NGX_ETIMEDOUT
+#endif
             || err == NGX_ECONNREFUSED
             || err == NGX_EHOSTUNREACH)
         {
@@ -977,13 +977,13 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
 void
 ngx_ssl_cleanup_ctx(void *data)
 {
-   ngx_ssl_t  *ssl = data;
+    ngx_ssl_t  *ssl = data;
 
-   if (ssl->rsa512_key) {
-       RSA_free(ssl->rsa512_key);
-   }
+    if (ssl->rsa512_key) {
+        RSA_free(ssl->rsa512_key);
+    }
 
-   SSL_CTX_free(ssl->ctx);
+    SSL_CTX_free(ssl->ctx);
 }
 
 

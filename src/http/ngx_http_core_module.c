@@ -164,6 +164,20 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("types_hash_max_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, types_hash_max_size),
+      NULL },
+
+    { ngx_string("types_hash_bucket_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, types_hash_bucket_size),
+      NULL },
+
     { ngx_string("types"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF
                                           |NGX_CONF_BLOCK|NGX_CONF_NOARGS,
@@ -849,9 +863,8 @@ ngx_int_t
 ngx_http_set_content_type(ngx_http_request_t *r)
 {
     u_char                     c, *p, *exten;
-    uint32_t                   key;
+    ngx_str_t                 *type;
     ngx_uint_t                 i;
-    ngx_http_type_t           *type;
     ngx_http_core_loc_conf_t  *clcf;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -876,11 +889,7 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 
                 for (i = 0; i < r->exten.len; i++) {
                     c = r->exten.data[i];
-                    if (c >= 'A' && c <= 'Z') {
-                        *p++ = (u_char) (c | 0x20);
-                    } else {
-                        *p++ = c;
-                    }
+                    *p++ = ngx_tolower(c);
                 }
 
                 r->exten.data = exten;
@@ -889,26 +898,17 @@ ngx_http_set_content_type(ngx_http_request_t *r)
             r->low_case_exten = 1;
         }
 
-        ngx_http_types_hash_key(key, r->exten);
+        type = ngx_hash_find(&clcf->types_hash,
+                             ngx_hash_key(r->exten.data, r->exten.len),
+                             r->exten.data, r->exten.len);
 
-        type = clcf->types[key].elts;
-        for (i = 0; i < clcf->types[key].nelts; i++) {
-            if (r->exten.len != type[i].exten.len) {
-                continue;
-            }
-
-            if (ngx_memcmp(r->exten.data, type[i].exten.data, r->exten.len)
-                                                                           == 0)
-            {
-                r->headers_out.content_type = type[i].type;
-                break;
-            }
+        if (type) {
+            r->headers_out.content_type = *type;
+            return NGX_OK;
         }
     }
 
-    if (r->headers_out.content_type.len == 0) {
-        r->headers_out.content_type= clcf->default_type;
-    }
+    r->headers_out.content_type = clcf->default_type;
 
     return NGX_OK;
 }
@@ -1636,39 +1636,55 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
-    uint32_t          key;
-    ngx_uint_t        i;
-    ngx_str_t        *value;
-    ngx_http_type_t  *type;
+    ngx_str_t       *value, *content_type, *old;
+    ngx_uint_t       i, n;
+    ngx_hash_key_t  *type;
 
     if (lcf->types == NULL) {
-        lcf->types = ngx_palloc(cf->pool, NGX_HTTP_TYPES_HASH_PRIME
-                                                        * sizeof(ngx_array_t));
+        lcf->types = ngx_array_create(cf->pool, 64, sizeof(ngx_hash_key_t));
         if (lcf->types == NULL) {
             return NGX_CONF_ERROR;
         }
+    }
 
-        for (i = 0; i < NGX_HTTP_TYPES_HASH_PRIME; i++) {
-            if (ngx_array_init(&lcf->types[i], cf->pool, 4,
-                                         sizeof(ngx_http_type_t)) == NGX_ERROR)
-            {
-                return NGX_CONF_ERROR;
-            }
-        }
+    content_type = ngx_palloc(cf->pool, sizeof(ngx_str_t));
+    if (content_type == NULL) {
+        return NGX_CONF_ERROR;
     }
 
     value = cf->args->elts;
+    *content_type = value[0];
 
     for (i = 1; i < cf->args->nelts; i++) {
-        ngx_http_types_hash_key(key, value[i]);
 
-        type = ngx_array_push(&lcf->types[key]);
+        for (n = 0; n < value[i].len; n++) {
+            value[i].data[n] = ngx_tolower(value[i].data[n]);
+        }
+
+        type = lcf->types->elts;
+        for (n = 0; n < lcf->types->nelts; n++) {
+            if (ngx_strcmp(value[i].data, type[n].key.data) == 0) {
+                old = type[n].value;
+                type[n].value = content_type;
+
+                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                   "duplicate extention \"%V\", "
+                                   "content type: \"%V\", "
+                                   "old content type: \"%V\"",
+                                   &value[i], content_type, old);
+                continue;
+            }
+        }
+
+
+        type = ngx_array_push(lcf->types);
         if (type == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        type->exten = value[i];
-        type->type = value[0];
+        type->key = value[i];
+        type->key_hash = ngx_hash_key(value[i].data, value[i].len);
+        type->value = content_type;
     }
 
     return NGX_CONF_OK;
@@ -1905,29 +1921,34 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->port_in_redirect = NGX_CONF_UNSET;
     lcf->msie_padding = NGX_CONF_UNSET;
     lcf->log_not_found = NGX_CONF_UNSET;
+    lcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
+    lcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
     return lcf;
 }
 
 
-static ngx_http_type_t ngx_http_core_default_types[] = {
-    { ngx_string("html"), ngx_string("text/html") },
-    { ngx_string("gif"), ngx_string("image/gif") },
-    { ngx_string("jpg"), ngx_string("image/jpeg") },
-    { ngx_null_string, ngx_null_string }
+static ngx_str_t  ngx_http_core_text_html_type = ngx_string("text/html");
+static ngx_str_t  ngx_http_core_image_gif_type = ngx_string("image/gif");
+static ngx_str_t  ngx_http_core_image_jpeg_type = ngx_string("image/jpeg");
+
+static ngx_hash_key_t  ngx_http_core_default_types[] = {
+    { ngx_string("html"), 0, &ngx_http_core_text_html_type },
+    { ngx_string("gif"), 0, &ngx_http_core_image_gif_type },
+    { ngx_string("jpg"), 0, &ngx_http_core_image_jpeg_type },
+    { ngx_null_string, 0, NULL }
 };
 
 
 static char *
-ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
-                                          void *parent, void *child)
+ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_core_loc_conf_t *prev = parent;
     ngx_http_core_loc_conf_t *conf = child;
 
-    uint32_t          key;
     ngx_uint_t        i;
-    ngx_http_type_t  *type;
+    ngx_hash_key_t   *type;
+    ngx_hash_init_t   types_hash;
 
     ngx_conf_merge_str_value(conf->root, prev->root, "html");
 
@@ -1939,36 +1960,77 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf,
         conf->post_action = prev->post_action;
     }
 
-    if (conf->types == NULL) {
-        if (prev->types) {
-            conf->types = prev->types;
+    ngx_conf_merge_unsigned_value(conf->types_hash_max_size,
+                                  prev->types_hash_max_size, 512);
 
-        } else {
-            conf->types = ngx_palloc(cf->pool, NGX_HTTP_TYPES_HASH_PRIME
-                                                        * sizeof(ngx_array_t));
-            if (conf->types == NULL) {
+    ngx_conf_merge_unsigned_value(conf->types_hash_bucket_size,
+                                  prev->types_hash_bucket_size,
+                                  ngx_cacheline_size);
+
+    conf->types_hash_bucket_size = ngx_align(conf->types_hash_bucket_size,
+                                             ngx_cacheline_size);
+
+    /*
+     * the special handling the "types" directive in the "http" section
+     * to inherit the http's conf->types_hash to all servers
+     */
+
+    if (prev->types && prev->types_hash.buckets == NULL) {
+
+        types_hash.hash = &prev->types_hash;
+        types_hash.key = ngx_hash_key_lc;
+        types_hash.max_size = conf->types_hash_max_size;
+        types_hash.bucket_size = conf->types_hash_bucket_size;
+        types_hash.name = "mime_types";
+        types_hash.pool = cf->pool;
+        types_hash.temp_pool = NULL;
+
+        if (ngx_hash_init(&types_hash, prev->types->elts, prev->types->nelts)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    if (conf->types == NULL) {
+        conf->types = prev->types;
+        conf->types_hash = prev->types_hash;
+    }
+
+    if (conf->types == NULL) {
+        conf->types = ngx_array_create(cf->pool, 4, sizeof(ngx_hash_key_t));
+        if (conf->types == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        for (i = 0; ngx_http_core_default_types[i].key.len; i++) {
+            type = ngx_array_push(conf->types);
+            if (type == NULL) {
                 return NGX_CONF_ERROR;
             }
 
-            for (i = 0; i < NGX_HTTP_TYPES_HASH_PRIME; i++) {
-                if (ngx_array_init(&conf->types[i], cf->pool, 4,
-                                   sizeof(ngx_http_type_t)) == NGX_ERROR)
-                {
-                    return NGX_CONF_ERROR;
-                }
-            }
+            type->key = ngx_http_core_default_types[i].key;
+            type->key_hash =
+                       ngx_hash_key_lc(ngx_http_core_default_types[i].key.data,
+                                       ngx_http_core_default_types[i].key.len);
+            type->value = ngx_http_core_default_types[i].value;
+        }
+    }
 
-            for (i = 0; ngx_http_core_default_types[i].exten.len; i++) {
-                ngx_http_types_hash_key(key,
-                                        ngx_http_core_default_types[i].exten);
+    if (conf->types_hash.buckets == NULL) {
 
-                type = ngx_array_push(&conf->types[key]);
-                if (type == NULL) {
-                    return NGX_CONF_ERROR;
-                }
+        types_hash.hash = &conf->types_hash;
+        types_hash.key = ngx_hash_key_lc;
+        types_hash.max_size = conf->types_hash_max_size;
+        types_hash.bucket_size = conf->types_hash_bucket_size;
+        types_hash.name = "mime_types";
+        types_hash.pool = cf->pool;
+        types_hash.temp_pool = NULL;
 
-                *type = ngx_http_core_default_types[i];
-            }
+        if (ngx_hash_init(&types_hash, conf->types->elts, conf->types->nelts)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
         }
     }
 
@@ -2115,6 +2177,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ngx_strcmp(value[2].data, "default") == 0) {
         ls->conf.default_server = 1;
         n = 3;
+
     } else {
         n = 2;
     }

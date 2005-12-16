@@ -116,6 +116,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       offsetof(ngx_http_request_t, args),
       NGX_HTTP_VAR_NOCACHABLE, 0 },
 
+    { ngx_string("args"), ngx_http_variable_request,
+      offsetof(ngx_http_request_t, args),
+      NGX_HTTP_VAR_NOCACHABLE, 0 },
+
     { ngx_string("request_filename"), ngx_http_variable_request_filename, 0,
       NGX_HTTP_VAR_NOCACHABLE, 0 },
 
@@ -857,7 +861,7 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
     cmcf->variables_hash.bucket_size = sizeof(ngx_http_variable_t);
     cmcf->variables_hash.name = "http variables";
 
-    if (ngx_hash_init(&cmcf->variables_hash, cf->pool,
+    if (ngx_hash0_init(&cmcf->variables_hash, cf->pool,
                       cmcf->all_variables.elts, cmcf->all_variables.nelts)
         != NGX_OK)
     {

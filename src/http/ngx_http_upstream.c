@@ -2541,7 +2541,7 @@ ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf)
     umcf->headers_in_hash.bucket_size = sizeof(ngx_http_upstream_header_t);
     umcf->headers_in_hash.name = "upstream_headers_in";
 
-    if (ngx_hash_init(&umcf->headers_in_hash, cf->pool,
+    if (ngx_hash0_init(&umcf->headers_in_hash, cf->pool,
                       ngx_http_upstream_headers_in, 0) != NGX_OK)
     {
         return NGX_CONF_ERROR;
