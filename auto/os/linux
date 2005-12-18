@@ -38,7 +38,7 @@ fi
 
 ngx_feature="epoll"
 ngx_feature_name="NGX_HAVE_EPOLL"
-ngx_feature_run=no
+ngx_feature_run=yes
 ngx_feature_incs="#include <sys/epoll.h>"
 ngx_feature_libs=
 ngx_feature_test="int efd = 0, fd = 1, n;
@@ -62,12 +62,14 @@ fi
 CC_AUX_FLAGS="-D_GNU_SOURCE"
 ngx_feature="sendfile()"
 ngx_feature_name="NGX_HAVE_SENDFILE"
-ngx_feature_run=no
-ngx_feature_incs="#include <sys/sendfile.h>"
+ngx_feature_run=yes
+ngx_feature_incs="#include <sys/sendfile.h>
+#include <errno.h>"
 ngx_feature_libs=
 ngx_feature_test="int s = 0, fd = 1;
                   ssize_t n; off_t off = 0;
-                  n = sendfile(s, fd, &off, 1)"
+                  n = sendfile(s, fd, &off, 1);
+                  if (n == -1 && errno == ENOSYS) return 1"
 . auto/feature
 
 if [ $ngx_found = yes ]; then
@@ -80,12 +82,14 @@ fi
 CC_AUX_FLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 ngx_feature="sendfile64()"
 ngx_feature_name="NGX_HAVE_SENDFILE64"
-ngx_feature_run=no
-ngx_feature_incs="#include <sys/sendfile.h>"
+ngx_feature_run=yes
+ngx_feature_incs="#include <sys/sendfile.h>
+#include <errno.h>"
 ngx_feature_libs=
 ngx_feature_test="int s = 0, fd = 1;
                   ssize_t n; off_t off = 0;
-                  n = sendfile(s, fd, &off, 1)"
+                  n = sendfile(s, fd, &off, 1);
+                  if (n == -1 && errno == ENOSYS) return 1"
 . auto/feature
 
 

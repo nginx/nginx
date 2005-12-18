@@ -266,6 +266,7 @@ HTTP_DEPS="src/http/ngx_http.h \
 
 HTTP_SRCS="src/http/ngx_http.c \
            src/http/ngx_http_core_module.c \
+           src/http/ngx_http_config.c \
            src/http/ngx_http_special_response.c \
            src/http/ngx_http_request.c \
            src/http/ngx_http_parse.c \

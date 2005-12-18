@@ -9,6 +9,58 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.17" date="18.12.2005">
+
+<change type="change">
+<para lang="ru">
+на Linux configure теперь проверяет наличие epoll и sendfile64() в ядре.
+</para>
+<para lang="en">
+now on Linux configure checks the presence of epoll and sendfile64() in kernel.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива map поддерживает доменные имена в формате ".domain.tld".
+</para>
+<para lang="en">
+the "map" directive supports domain names in the ".domain.tld" form.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+во время SSL handshake не иcпользовались таймауты.
+</para>
+<para lang="en">
+the timeouts were not used in SSL handshake.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в использовании протокола HTTPS в директиве proxy_pass.
+</para>
+<para lang="en">
+in the HTTP protocol in the "proxy_pass" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании протокола HTTPS в директиве proxy_pass по умолчанию
+использовался порт 80.
+</para>
+<para lang="en">
+when the HTTP protocol was used in the "proxy_pass" directive the port 80
+was used by default.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.16" date="16.12.2005">
 
 <change type="feature">
@@ -383,7 +435,7 @@ the "if" directive supports the "=" and "!=" operations.
 директива proxy_pass поддерживает протокол HTTPS.
 </para>
 <para lang="en">
-the "proxy_set_body" directive supports the HTTPS protocol.
+the "proxy_pass" directive supports the HTTPS protocol.
 </para>
 </change>
 

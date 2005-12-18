@@ -1926,6 +1926,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     size_t                       add;
     ngx_str_t                   *value, *url;
+    ngx_uint_t                   port;
     ngx_inet_upstream_t          inet_upstream;
     ngx_http_core_loc_conf_t    *clcf;
 #if (NGX_HTTP_SSL)
@@ -1945,12 +1946,14 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_strncasecmp(url->data, "http://", 7) == 0) {
         add = 7;
+        port = 80;
 
     } else if (ngx_strncasecmp(url->data, "https://", 8) == 0) {
 
 #if (NGX_HTTP_SSL)
 
         add = 8;
+        port = 443;
 
         plcf->upstream.ssl = ngx_pcalloc(cf->pool, sizeof(ngx_ssl_t));
         if (plcf->upstream.ssl == NULL) {
@@ -2019,7 +2022,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         inet_upstream.name = *url;
         inet_upstream.url.len = url->len - add;
         inet_upstream.url.data = url->data + add;
-        inet_upstream.default_port_value = 80;
+        inet_upstream.default_port_value = port;
         inet_upstream.uri_part = 1;
 
         plcf->peers = ngx_inet_upstream_parse(cf, &inet_upstream);
@@ -2032,8 +2035,8 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         plcf->upstream.uri = inet_upstream.uri;
     }
 
-    plcf->upstream.schema.len = sizeof("http://") - 1;
-    plcf->upstream.schema.data = (u_char *) "http://";
+    plcf->upstream.schema.len = add;
+    plcf->upstream.schema.data = url->data;
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 

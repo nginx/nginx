@@ -334,6 +334,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
     if (sslerr == SSL_ERROR_WANT_READ) {
         c->read->ready = 0;
         c->read->handler = ngx_ssl_handshake_handler;
+        c->write->handler = ngx_ssl_handshake_handler;
 
         if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
             return NGX_ERROR;
@@ -344,6 +345,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     if (sslerr == SSL_ERROR_WANT_WRITE) {
         c->write->ready = 0;
+        c->read->handler = ngx_ssl_handshake_handler;
         c->write->handler = ngx_ssl_handshake_handler;
 
         if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
@@ -357,6 +359,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
+    c->read->eof = 1;
 
     if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, err,
@@ -364,6 +367,8 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
         return NGX_ERROR;
     }
+
+    c->read->error = 1;
 
     ngx_ssl_connection_error(c, sslerr, err, "SSL_do_handshake() failed");
 
@@ -380,6 +385,11 @@ ngx_ssl_handshake_handler(ngx_event_t *ev)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "SSL handshake handler: %d", ev->write);
+
+    if (ev->timedout) {
+        c->ssl->handler(c);
+        return;
+    }
 
     if (ngx_ssl_handshake(c) == NGX_AGAIN) {
         return;
@@ -548,6 +558,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
         return NGX_DONE;
     }
 
+    c->read->error = 1;
     ngx_ssl_connection_error(c, sslerr, err, "SSL_read() failed");
 
     return NGX_ERROR;
@@ -773,6 +784,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
+    c->write->error = 1;
 
     ngx_ssl_connection_error(c, sslerr, err, "SSL_write() failed");
 
@@ -795,6 +807,7 @@ ngx_int_t
 ngx_ssl_shutdown(ngx_connection_t *c)
 {
     int         n, sslerr, mode;
+    ngx_err_t   err;
     ngx_uint_t  again;
 
     if (c->timedout) {
@@ -866,7 +879,9 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         return NGX_AGAIN;
     }
 
-    ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "SSL_shutdown() failed");
+    err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
+
+    ngx_ssl_connection_error(c, sslerr, err, "SSL_shutdown() failed");
 
     SSL_free(c->ssl->connection);
     c->ssl = NULL;

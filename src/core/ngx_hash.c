@@ -76,10 +76,6 @@ ngx_hash_find_wildcard(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
         n--;
     }
 
-    if (n == 0) {
-        return NULL;
-    }
-
     key = 0;
 
     for (i = n; i < len; i++) {
@@ -93,8 +89,28 @@ ngx_hash_find_wildcard(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
     value = ngx_hash_find(&hwc->hash, key, &name[n], len - n);
 
     if (value) {
+
+        /*
+         * the 2 low bits of value have the special meaning:
+         *     00 - value is data pointer,
+         *     01 - value is pointer to wildcard hash allowing
+         *          "*.example.com" only,
+         *     11 - value is pointer to wildcard hash allowing
+         *          both "example.com" and "*.example.com".
+         */
+
         if ((uintptr_t) value & 1) {
-            hwc = (ngx_hash_wildcard_t *) ((uintptr_t) value & (uintptr_t) ~1);
+
+            hwc = (ngx_hash_wildcard_t *) ((uintptr_t) value & (uintptr_t) ~3);
+
+            if (n == 0) {
+                if ((uintptr_t) value & 2) {
+                    return hwc->value;
+
+                } else {
+                    return NULL;
+                }
+            }
 
             value = ngx_hash_find_wildcard(hwc, name, n - 1);
 
@@ -332,7 +348,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
     ngx_uint_t nelts)
 {
     size_t                len;
-    ngx_uint_t            i, n;
+    ngx_uint_t            i, n, dot;
     ngx_array_t           curr_names, next_names;
     ngx_hash_key_t       *name, *next_name;
     ngx_hash_init_t       h;
@@ -359,9 +375,11 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
                       "wc0: \"%V\"", &names[n].key);
 #endif
 
+        dot = 0;
+
         for (len = 0; len < names[n].key.len; len++) {
             if (names[n].key.data[len] == '.') {
-                len++;
+                dot = 1;
                 break;
             }
         }
@@ -371,7 +389,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
             return NGX_ERROR;
         }
 
-        name->key.len = len - 1;
+        name->key.len = len;
         name->key.data = names[n].key.data;
         name->key_hash = hinit->key(name->key.data, name->key.len);
         name->value = names[n].value;
@@ -380,6 +398,10 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
         ngx_log_error(NGX_LOG_ALERT, hinit->pool->log, 0,
                       "wc1: \"%V\"", &name->key);
 #endif
+
+        if (dot) {
+            len++;
+        }
 
         next_names.nelts = 0;
 
@@ -417,7 +439,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 
 #if 0
             ngx_log_error(NGX_LOG_ALERT, hinit->pool->log, 0,
-                          "wc2: \"%V\"", &next_name->key);
+                          "wc3: \"%V\"", &next_name->key);
 #endif
         }
 
@@ -442,7 +464,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 #endif
             }
 
-            name->value = (void *) ((uintptr_t) wdc | 1);
+            name->value = (void *) ((uintptr_t) wdc | (dot ? 1 : 3));
         }
     }
 
