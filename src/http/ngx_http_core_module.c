@@ -73,18 +73,18 @@ static ngx_conf_enum_t  ngx_http_restrict_host_names[] = {
 
 static ngx_command_t  ngx_http_core_commands[] = {
 
-    { ngx_string("server_names_hash"),
+    { ngx_string("server_names_hash_max_size"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
       NGX_HTTP_MAIN_CONF_OFFSET,
-      offsetof(ngx_http_core_main_conf_t, server_names_hash),
+      offsetof(ngx_http_core_main_conf_t, server_names_hash_max_size),
       NULL },
 
-    { ngx_string("server_names_hash_threshold"),
+    { ngx_string("server_names_hash_bucket_size"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
       NGX_HTTP_MAIN_CONF_OFFSET,
-      offsetof(ngx_http_core_main_conf_t, server_names_hash_threshold),
+      offsetof(ngx_http_core_main_conf_t, server_names_hash_bucket_size),
       NULL },
 
     { ngx_string("server"),
@@ -1715,8 +1715,8 @@ ngx_http_core_create_main_conf(ngx_conf_t *cf)
         return NGX_CONF_ERROR;
     }
 
-    cmcf->server_names_hash = NGX_CONF_UNSET_UINT;
-    cmcf->server_names_hash_threshold = NGX_CONF_UNSET_UINT;
+    cmcf->server_names_hash_max_size = NGX_CONF_UNSET_UINT;
+    cmcf->server_names_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
     return cmcf;
 }
@@ -1727,13 +1727,16 @@ ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf)
 {
     ngx_http_core_main_conf_t *cmcf = conf;
 
-    if (cmcf->server_names_hash == NGX_CONF_UNSET_UINT) {
-        cmcf->server_names_hash = 1009;
+    if (cmcf->server_names_hash_max_size == NGX_CONF_UNSET_UINT) {
+        cmcf->server_names_hash_max_size = 512;
     }
 
-    if (cmcf->server_names_hash_threshold == NGX_CONF_UNSET_UINT) {
-        cmcf->server_names_hash_threshold = 50;
+    if (cmcf->server_names_hash_bucket_size == NGX_CONF_UNSET_UINT) {
+        cmcf->server_names_hash_bucket_size = ngx_cacheline_size;
     }
+
+    cmcf->server_names_hash_bucket_size =
+            ngx_align(cmcf->server_names_hash_bucket_size, ngx_cacheline_size);
 
     return NGX_CONF_OK;
 }
@@ -1756,19 +1759,20 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
      */
 
     if (ngx_array_init(&cscf->locations, cf->pool, 4, sizeof(void *))
-                                                                  == NGX_ERROR)
+        == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
     }
 
     if (ngx_array_init(&cscf->listen, cf->pool, 4, sizeof(ngx_http_listen_t))
-                                                                  == NGX_ERROR)
+        == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
     }
 
     if (ngx_array_init(&cscf->server_names, cf->pool, 4,
-                       sizeof(ngx_http_server_name_t)) == NGX_ERROR)
+                       sizeof(ngx_http_server_name_t))
+        == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
     }
@@ -1790,9 +1794,8 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_core_srv_conf_t *prev = parent;
     ngx_http_core_srv_conf_t *conf = child;
 
-    ngx_http_listen_t          *ls;
-    ngx_http_server_name_t     *sn;
-    ngx_http_core_main_conf_t  *cmcf;
+    ngx_http_listen_t       *ls;
+    ngx_http_server_name_t  *sn;
 
     /* TODO: it does not merge, it inits only */
 
@@ -1837,13 +1840,6 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
         sn->name.len = ngx_strlen(sn->name.data);
         sn->core_srv_conf = conf;
-        sn->wildcard = 0;
-
-        cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
-
-        if (cmcf->max_server_name_len < sn->name.len) {
-            cmcf->max_server_name_len = sn->name.len;
-        }
     }
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
@@ -2279,49 +2275,60 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_core_srv_conf_t *scf = conf;
+    ngx_http_core_srv_conf_t *cscf = conf;
 
-    ngx_uint_t                  i;
-    ngx_str_t                  *value;
-    ngx_http_server_name_t     *sn;
-    ngx_http_core_main_conf_t  *cmcf;
-
-    /* TODO: warn about duplicate 'server_name' directives */
-
-    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+    u_char                   ch;
+    ngx_str_t               *value, name;
+    ngx_uint_t               i;
+    ngx_http_server_name_t  *sn;
 
     value = cf->args->elts;
 
-    for (i = 1; i < cf->args->nelts; i++) {
-        if (value[i].len == 0) {
+    ch = value[1].data[0];
+
+    if (cscf->server_name.data == NULL && value[1].len) {
+        if (ch == '*') {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "server name \"%V\" is invalid "
-                               "in \"%V\" directive",
-                               &value[i], &cmd->name);
+                               "first server name \"%V\" must not be wildcard",
+                               &value[1]);
             return NGX_CONF_ERROR;
         }
 
-        sn = ngx_array_push(&scf->server_names);
+        name = value[1];
+
+        if (ch == '.') {
+            name.len--;
+            name.data++;
+        }
+
+        cscf->server_name.len = name.len;
+        cscf->server_name.data = ngx_pstrdup(cf->pool, &name);
+        if (cscf->server_name.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        ch = value[i].data[0];
+
+        if (value[i].len == 0
+            || (ch == '*' && (value[i].len < 3 || value[i].data[1] != '.'))
+            || (ch == '.' && value[i].len < 2))
+        {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "server name \"%V\" is invalid", &value[i]);
+            return NGX_CONF_ERROR;
+        }
+
+        sn = ngx_array_push(&cscf->server_names);
         if (sn == NULL) {
             return NGX_CONF_ERROR;
         }
 
         sn->name.len = value[i].len;
         sn->name.data = value[i].data;
-        sn->core_srv_conf = scf;
-
-        if (sn->name.data[0] == '*') {
-            sn->name.len--;
-            sn->name.data++;
-            sn->wildcard = 1;
-
-        } else {
-            sn->wildcard = 0;
-        }
-
-        if (cmcf->max_server_name_len < sn->name.len) {
-            cmcf->max_server_name_len = sn->name.len;
-        }
+        sn->core_srv_conf = cscf;
     }
 
     return NGX_CONF_OK;

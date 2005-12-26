@@ -1925,8 +1925,8 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_proxy_loc_conf_t *plcf = conf;
 
     size_t                       add;
+    u_short                      port;
     ngx_str_t                   *value, *url;
-    ngx_uint_t                   port;
     ngx_inet_upstream_t          inet_upstream;
     ngx_http_core_loc_conf_t    *clcf;
 #if (NGX_HTTP_SSL)

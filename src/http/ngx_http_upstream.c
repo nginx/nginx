@@ -344,7 +344,7 @@ ngx_http_upstream_init(ngx_http_request_t *r)
 
     u->state->response_time = tp->sec * 1000 + tp->msec;
 
-    cln = ngx_http_cleanup_add(r, sizeof(void *));
+    cln = ngx_http_cleanup_add(r, 0);
     if (cln == NULL) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;

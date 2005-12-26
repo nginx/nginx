@@ -54,6 +54,29 @@ typedef struct {
 } ngx_hash_init_t;
 
 
+#define NGX_HASH_SMALL            1
+#define NGX_HASH_LARGE            2
+
+#define NGX_HASH_LARGE_ASIZE      16384
+#define NGX_HASH_LARGE_HSIZE      10007
+
+#define NGX_HASH_WILDCARD_KEY     1
+
+
+typedef struct {
+    ngx_uint_t        hsize;
+
+    ngx_pool_t       *pool;
+    ngx_pool_t       *temp_pool;
+
+    ngx_array_t       keys;
+    ngx_array_t      *keys_hash;
+
+    ngx_array_t       dns_wildcards;
+    ngx_array_t      *dns_wildcards_hash;
+} ngx_hash_keys_arrays_t;
+
+
 typedef struct {
     void            **buckets;
     ngx_uint_t        hash_size;
@@ -85,6 +108,10 @@ ngx_int_t ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 #define ngx_hash(key, c)   key * 31 + c
 ngx_uint_t ngx_hash_key(u_char *data, size_t len);
 ngx_uint_t ngx_hash_key_lc(u_char *data, size_t len);
+
+ngx_int_t ngx_hash_keys_array_init(ngx_hash_keys_arrays_t *ha, ngx_uint_t type);
+ngx_int_t ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key,
+    void *value, ngx_uint_t flags);
 
 
 ngx_int_t ngx_hash0_init(ngx_hash0_t *hash, ngx_pool_t *pool, void *names,

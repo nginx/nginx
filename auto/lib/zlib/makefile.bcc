@@ -2,7 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-CFLAGS = -q -O2 -tWM $(CPU_OPT)
+CFLAGS = -q -O2 -tWM -w-8004 -w-8012 $(CPU_OPT)
 
 zlib.lib:
 	bcc32 -c $(CFLAGS) adler32.c crc32.c deflate.c trees.c zutil.c \

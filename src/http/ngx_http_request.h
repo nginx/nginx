@@ -250,14 +250,20 @@ typedef struct {
 } ngx_http_connection_t;
 
 
+typedef struct {
+    ngx_hash_t                        hash;
+    ngx_hash_wildcard_t              *dns_wildcards;
+} ngx_http_virtual_names_t;
+
+
 typedef void (*ngx_http_cleanup_pt)(void *data);
 
 typedef struct ngx_http_cleanup_s  ngx_http_cleanup_t;
 
 struct ngx_http_cleanup_s {
-    ngx_http_cleanup_pt   handler;
-    void                 *data;
-    ngx_http_cleanup_t   *next;
+    ngx_http_cleanup_pt               handler;
+    void                             *data;
+    ngx_http_cleanup_t               *next;
 };
 
 
@@ -325,7 +331,7 @@ struct ngx_http_request_s {
     ngx_uint_t                        port;
     ngx_str_t                        *port_text;    /* ":80" */
     ngx_str_t                         server_name;
-    ngx_http_in_addr_t               *virtual_names;
+    ngx_http_virtual_names_t         *virtual_names;
 
     ngx_uint_t                        phase;
     ngx_int_t                         phase_handler;

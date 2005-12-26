@@ -64,7 +64,7 @@ case "$NGX_MACHINE" in
         NGX_MACH_CACHE_LINE=32
     ;;
 
-    amd64)
+    amd64 | x86_64)
         have=NGX_HAVE_NONALIGNED . auto/have
         NGX_MACH_CACHE_LINE=64
     ;;

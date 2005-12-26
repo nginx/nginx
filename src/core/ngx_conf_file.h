@@ -167,6 +167,7 @@ struct ngx_conf_s {
 
     ngx_cycle_t          *cycle;
     ngx_pool_t           *pool;
+    ngx_pool_t           *temp_pool;
     ngx_conf_file_t      *conf_file;
     ngx_log_t            *log;
 

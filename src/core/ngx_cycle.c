@@ -162,6 +162,12 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         return NULL;
     }
 
+    conf.temp_pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, log);
+    if (conf.temp_pool == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
     conf.ctx = cycle->conf_ctx;
     conf.cycle = cycle;
     conf.pool = pool;
@@ -174,6 +180,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 #endif
 
     if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
+        ngx_destroy_pool(conf.temp_pool);
         ngx_destroy_pool(pool);
         return NULL;
     }
@@ -194,8 +201,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         if (module->init_conf) {
             if (module->init_conf(cycle, cycle->conf_ctx[ngx_modules[i]->index])
-                                                              == NGX_CONF_ERROR)
+                == NGX_CONF_ERROR)
             {
+                ngx_destroy_pool(conf.temp_pool);
                 ngx_destroy_pool(pool);
                 return NULL;
             }
@@ -421,6 +429,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
         if (ngx_test_config) {
+            ngx_destroy_pool(conf.temp_pool);
             ngx_destroy_pool(pool);
             return NULL;
         }
@@ -438,6 +447,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             }
         }
 
+        ngx_destroy_pool(conf.temp_pool);
         ngx_destroy_pool(pool);
         return NULL;
     }
@@ -520,6 +530,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                           file[i].name.data);
         }
     }
+
+    ngx_destroy_pool(conf.temp_pool);
 
     if (old_cycle->connections == NULL) {
         /* an old cycle is an init cycle */

@@ -72,25 +72,4 @@ typedef struct {
          cycle->conf_ctx[ngx_http_module.index])->main_conf[module.ctx_index]
 
 
-#define NGX_HTTP_CONFIG_HASH    10007
-
-#define NGX_HTTP_WILDCARD_HASH  1
-
-typedef struct {
-    ngx_pool_t   *pool;
-    ngx_pool_t   *temp_pool;
-
-    ngx_array_t   keys;
-    ngx_array_t  *keys_hash;
-
-    ngx_array_t   dns_wildcards;
-    ngx_array_t  *dns_hash;
-} ngx_http_hash_conf_t;
-
-
-ngx_int_t ngx_http_config_add_hash(ngx_http_hash_conf_t *h, ngx_str_t *key,
-    void *value, ngx_uint_t flags);
-
-
-
 #endif /* _NGX_HTTP_CONFIG_H_INCLUDED_ */

@@ -320,6 +320,19 @@ END
 fi
 
 
+# the addons config.make
+
+if test -n "$NGX_ADDONS"; then
+
+    for ngx_addon_dir in $NGX_ADDONS
+    do
+        if test -f $ngx_addon_dir/config.make; then
+            . $ngx_addon_dir/config.make
+        fi
+    done
+fi
+
+
 # Win32 resource file
 
 if test -n "$NGX_RES"; then

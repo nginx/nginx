@@ -203,11 +203,10 @@ void ngx_http_init_request(ngx_event_t *rev)
     struct sockaddr_in          sin;
     ngx_connection_t           *c;
     ngx_http_request_t         *r;
-    ngx_http_in_port_t         *in_port;
-    ngx_http_in_addr_t         *in_addr;
+    ngx_http_in_port_t         *hip;
+    ngx_http_in_addr_t         *hia;
     ngx_http_log_ctx_t         *ctx;
     ngx_http_connection_t      *hc;
-    ngx_http_server_name_t     *server_name;
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_core_main_conf_t  *cmcf;
@@ -269,15 +268,15 @@ void ngx_http_init_request(ngx_event_t *rev)
 
     /* AF_INET only */
 
-    in_port = c->servers;
-    in_addr = in_port->addrs.elts;
+    hip = c->servers;
+    hia = hip->addrs;
 
-    r->port = in_port->port;
-    r->port_text = &in_port->port_text;
+    r->port = hip->port;
+    r->port_text = &hip->port_text;
 
     i = 0;
 
-    if (in_port->addrs.nelts > 1) {
+    if (hip->naddrs > 1) {
 
         /*
          * There are several addresses on this port and one of them
@@ -308,24 +307,26 @@ void ngx_http_init_request(ngx_event_t *rev)
 
         /* the last in_port->addrs address is "*" */
 
-        for ( /* void */ ; i < in_port->addrs.nelts - 1; i++) {
-            if (in_addr[i].addr == r->in_addr) {
+        for ( /* void */ ; i < hip->naddrs - 1; i++) {
+            if (hia[i].addr == r->in_addr) {
                 break;
             }
         }
 
     } else {
-        r->in_addr = in_addr[0].addr;
+        r->in_addr = hia[0].addr;
     }
 
-    r->virtual_names = &in_addr[i];
+    r->virtual_names = hia[i].virtual_names;
 
     /* the default server configuration for the address:port */
-    cscf = in_addr[i].core_srv_conf;
+    cscf = hia[i].core_srv_conf;
 
     r->main_conf = cscf->ctx->main_conf;
     r->srv_conf = cscf->ctx->srv_conf;
     r->loc_conf = cscf->ctx->loc_conf;
+
+    r->server_name = cscf->server_name;
 
     rev->handler = ngx_http_process_request_line;
 
@@ -349,9 +350,6 @@ void ngx_http_init_request(ngx_event_t *rev)
     }
 
 #endif
-
-    server_name = cscf->server_names.elts;
-    r->server_name = server_name->name;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     c->log->file = clcf->err_log->file;
@@ -1321,78 +1319,35 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_find_virtual_server(ngx_http_request_t *r)
 {
-    ngx_int_t                   rc;
-    ngx_uint_t                  i, n, key;
-    ngx_http_server_name_t     *name;
-    ngx_http_core_loc_conf_t   *clcf;
-    ngx_http_core_srv_conf_t   *cscf;
-    ngx_http_core_main_conf_t  *cmcf;
+    size_t                     len;
+    u_char                    *host;
+    ngx_http_virtual_names_t  *vn;
+    ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_core_srv_conf_t  *cscf;
 
-    if (r->virtual_names->hash) {
-        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    vn = r->virtual_names;
 
-        ngx_http_server_names_hash_key(key,
-                                       r->headers_in.host->value.data,
-                                       r->headers_in.host_name_len,
-                                       cmcf->server_names_hash);
-
-        name = r->virtual_names->hash[key].elts;
-        n = r->virtual_names->hash[key].nelts;
-
-    } else {
-        name = r->virtual_names->names.elts;
-        n = r->virtual_names->names.nelts;
+    if (vn == NULL) {
+        return NGX_OK;
     }
 
-    for (i = 0; i < n; i++) {
+    host = r->headers_in.host->value.data;
+    len = r->headers_in.host_name_len;
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "server name: %V", &name[i].name);
+    /* STUB: ngx_hash_key() here is STUB */
 
-        if (r->headers_in.host_name_len != name[i].name.len) {
-            continue;
-        }
-
-        rc = ngx_strncmp(r->headers_in.host->value.data,
-                         name[i].name.data, name[i].name.len);
-
-        if (rc == 0) {
-            r->server_name = name[i].name;
+    if (vn->hash.buckets) {
+        cscf = ngx_hash_find(&vn->hash, ngx_hash_key(host, len), host, len);
+        if (cscf) {
             goto found;
         }
-
-        if (rc < 0) {
-            /* the server names are lexicographically sorted */
-            break;
-        }
     }
 
-    if (r->virtual_names->wildcards.nelts) {
+    if (vn->dns_wildcards && vn->dns_wildcards->hash.buckets) {
+        cscf = ngx_hash_find_wildcard(vn->dns_wildcards, host, len);
 
-        name = r->virtual_names->wildcards.elts;
-        for (i = 0; i < r->virtual_names->wildcards.nelts; i++) {
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "server name: %V", &name[i].name);
-
-            if (r->headers_in.host_name_len <= name[i].name.len) {
-                continue;
-            }
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "server name: %s",
-                           r->headers_in.host->value.data
-                           + (r->headers_in.host_name_len - name[i].name.len));
-
-            if (ngx_strncmp(r->headers_in.host->value.data
-                            + (r->headers_in.host_name_len - name[i].name.len),
-                            name[i].name.data, name[i].name.len) == 0)
-            {
-                r->server_name.len = r->headers_in.host_name_len;
-                r->server_name.data = r->headers_in.host->value.data;
-
-                goto found;
-            }
+        if (cscf) {
+            goto found;
         }
     }
 
@@ -1406,8 +1361,11 @@ ngx_http_find_virtual_server(ngx_http_request_t *r)
 
 found:
 
-    r->srv_conf = name[i].core_srv_conf->ctx->srv_conf;
-    r->loc_conf = name[i].core_srv_conf->ctx->loc_conf;
+    r->server_name.len = len;
+    r->server_name.data = host;
+
+    r->srv_conf = cscf->ctx->srv_conf;
+    r->loc_conf = cscf->ctx->loc_conf;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     r->connection->log->file = clcf->err_log->file;

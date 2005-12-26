@@ -295,6 +295,9 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 }
             }
 
+            ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                           "bind() %V #%d ", &ls[i].addr_text, s);
+
             if (bind(s, ls[i].sockaddr, ls[i].socklen) == -1) {
                 err = ngx_socket_errno;
 

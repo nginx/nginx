@@ -9,6 +9,101 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.18" date="26.12.2005">
+
+<change type="feature">
+<para lang="ru">
+директива server_names поддерживает имена вида ".domain.tld".
+</para>
+<para lang="en">
+the "server_names" directive supports the ".domain.tld" names.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server_names использует хэш для имён вида "*.domain.tld"
+и более эффективный хэш для обычных имён.
+</para>
+<para lang="en">
+the "server_names" directive uses the hash for the "*.domain.tld" names
+and more effective hash for usual names.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директивы server_names_hash_max_size и server_names_hash_bucket_size.
+</para>
+<para lang="en">
+the "server_names_hash_max_size" and "server_names_hash_bucket_size" directives.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директивы server_names_hash и server_names_hash_threshold упразднены.
+</para>
+<para lang="en">
+the "server_names_hash" and "server_names_hash_threshold" directives
+were canceled.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива valid_referers использует хэш для имён сайтов.
+</para>
+<para lang="en">
+the "valid_referers" directive uses the hash site names.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь директива valid_referers проверяет только имена сайтов без учёта URI.
+</para>
+<para lang="en">
+now the "valid_referers" directive checks the site names only without
+the URI part.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+некоторые имена вида ".domain.tld" неверно обрабатывались модулем
+ngx_http_map_module.
+</para>
+<para lang="en">
+some ".domain.tld" names incorrectly processed by the ngx_http_map_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если конфигурационного файла не было, то происходил segmentation fault;
+ошибка появилась в 0.3.12.
+</para>
+<para lang="en">
+segmentation fault was occurred if configuration file did not exist;
+bug appeared in 0.3.12.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на 64-битных платформах при старте мог произойти segmentation fault;
+ошибка появилась в 0.3.16.
+</para>
+<para lang="en">
+on 64-bit platforms segmentation fault may occurred on start;
+bug appeared in 0.3.16.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.17" date="18.12.2005">
 
 <change type="change">
@@ -31,10 +126,12 @@ the "map" directive supports domain names in the ".domain.tld" form.
 
 <change type="bugfix">
 <para lang="ru">
-во время SSL handshake не иcпользовались таймауты.
+во время SSL handshake не иcпользовались таймауты;
+ошибка появилась в 0.2.4.
 </para>
 <para lang="en">
-the timeouts were not used in SSL handshake.
+the timeouts were not used in SSL handshake;
+bug appeared in 0.2.4.
 </para>
 </change>
 
@@ -1978,7 +2075,7 @@ or "Authorization" lines, then nginx now returns the 400 error.
 директива post_accept_timeout упразднена.
 </para>
 <para lang="en">
-The "post_accept_timeout" directive was canceled.
+the "post_accept_timeout" directive was canceled.
 </para>
 </change>
 

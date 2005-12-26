@@ -73,10 +73,8 @@ typedef struct {
     ngx_hash0_t                headers_in_hash;
     ngx_hash0_t                variables_hash;
 
-    ngx_uint_t                 server_names_hash;
-    ngx_uint_t                 server_names_hash_threshold;
-
-    size_t                     max_server_name_len;
+    ngx_uint_t                 server_names_hash_max_size;
+    ngx_uint_t                 server_names_hash_bucket_size;
 
     ngx_array_t                variables;        /* ngx_http_variable_t */
     ngx_array_t                all_variables;    /* ngx_http_variable_t */
@@ -99,6 +97,8 @@ typedef struct {
     /* server ctx */
     ngx_http_conf_ctx_t       *ctx;
 
+    ngx_str_t                  server_name;
+
     size_t                     connection_pool_size;
     size_t                     request_pool_size;
     size_t                     client_header_buffer_size;
@@ -115,43 +115,51 @@ typedef struct {
 
 /* list of structures to find core_srv_conf quickly at run time */
 
+
+typedef struct {
+    in_addr_t                  addr;
+    /* the default server configuration for this address:port */
+    ngx_http_core_srv_conf_t  *core_srv_conf;
+    ngx_http_virtual_names_t  *virtual_names;
+} ngx_http_in_addr_t;
+
+
 typedef struct {
     in_port_t                  port;
     ngx_str_t                  port_text;
-    ngx_array_t                addrs;       /* array of ngx_http_in_addr_t */
+    ngx_http_in_addr_t        *addrs;
+    ngx_uint_t                 naddrs;
 } ngx_http_in_port_t;
 
 
-struct ngx_http_in_addr_s {
+typedef struct {
+    in_port_t                  port;
+    ngx_array_t                addrs;     /* array of ngx_http_conf_in_addr_t */
+} ngx_http_conf_in_port_t;
+
+
+typedef struct {
     in_addr_t                  addr;
 
-    ngx_array_t                names;     /* array of ngx_http_server_name_t */
-    ngx_array_t               *hash;      /* hash of ngx_http_server_name_t */
-    ngx_array_t                wildcards;  /* array of ngx_http_server_name_t */
+    ngx_hash_t                 hash;
+    ngx_hash_wildcard_t        *dns_wildcards;
+
+    ngx_array_t                names;      /* array of ngx_http_server_name_t */
 
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
 
-    ngx_http_listen_conf_t     conf;
-};
+    unsigned                   default_server:1;
+    unsigned                   bind:1;
+
+    ngx_http_listen_conf_t    *listen_conf;
+} ngx_http_conf_in_addr_t;
 
 
 typedef struct {
     ngx_str_t                  name;
     ngx_http_core_srv_conf_t  *core_srv_conf; /* virtual name server conf */
-
-    ngx_uint_t                 wildcard;  /* unsigned  wildcard:1 */
 } ngx_http_server_name_t;
-
-
-#define ngx_http_server_names_hash_key(key, name, len, prime)               \
-        {                                                                   \
-            ngx_uint_t  n0;                                                 \
-            for (key = 0, n0 = 0; n0 < len; n0++) {                         \
-                key += name[n0];                                            \
-            }                                                               \
-            key %= prime;                                                   \
-        }
 
 
 typedef struct {
