@@ -102,18 +102,22 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
         out = in;
     }
 
-    if (out == NULL && r->main->out == NULL && !r->main->connection->buffered) {
-        return NGX_OK;
-    }
+    rc = NGX_OK;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http postpone filter out \"%V?%V\"", &r->uri, &r->args);
+    if (out || r->main->out || r->main->connection->buffered) {
 
-    rc = ngx_http_next_filter(r->main, out);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http postpone filter out \"%V?%V\"", &r->uri, &r->args);
 
-    if (rc == NGX_ERROR) {
-        /* NGX_ERROR may be returned by any filter */
-        r->connection->error = 1;
+        if (!(out && out->next == NULL && ngx_buf_sync_only(out->buf))) {
+
+            rc = ngx_http_next_filter(r->main, out);
+
+            if (rc == NGX_ERROR) {
+                /* NGX_ERROR may be returned by any filter */
+                r->connection->error = 1;
+            }
+        }
     }
 
     if (r->postponed == NULL) {
@@ -135,6 +139,7 @@ static ngx_int_t
 ngx_http_postpone_filter_output_postponed_request(ngx_http_request_t *r)
 {
     ngx_int_t                      rc;
+    ngx_chain_t                   *out;
     ngx_http_postponed_request_t  *pr;
 
     for ( ;; ) {
@@ -165,13 +170,17 @@ ngx_http_postpone_filter_output_postponed_request(ngx_http_request_t *r)
             pr = r->postponed;
         }
 
-        if (pr->out) {
+        out = pr->out;
+
+        if (out) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http postpone filter out postponed \"%V?%V\"",
                            &r->uri, &r->args);
 
-            if (ngx_http_next_filter(r->main, pr->out) == NGX_ERROR) {
-                return NGX_ERROR;
+            if (!(out && out->next == NULL && ngx_buf_sync_only(out->buf))) {
+                if (ngx_http_next_filter(r->main, out) == NGX_ERROR) {
+                    return NGX_ERROR;
+                }
             }
         }
 

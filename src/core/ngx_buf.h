@@ -105,9 +105,14 @@ typedef struct {
 
 #define ngx_buf_in_memory(b)        (b->temporary || b->memory || b->mmap)
 #define ngx_buf_in_memory_only(b)   (ngx_buf_in_memory(b) && !b->in_file)
+
 #define ngx_buf_special(b)                                                   \
     ((b->flush || b->last_buf || b->sync)                                    \
      && !ngx_buf_in_memory(b) && !b->in_file)
+
+#define ngx_buf_sync_only(b)                                                 \
+    (b->sync                                                                 \
+     && !ngx_buf_in_memory(b) && !b->in_file && !b->flush && !b->last_buf)
 
 #define ngx_buf_size(b)                                                      \
     (ngx_buf_in_memory(b) ? (off_t) (b->last - b->pos):                      \

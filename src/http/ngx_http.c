@@ -11,8 +11,6 @@
 
 
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static int ngx_libc_cdecl ngx_cmp_server_names(const void *one,
-    const void *two);
 static ngx_int_t ngx_http_add_address(ngx_conf_t *cf,
     ngx_http_conf_in_port_t *in_port, ngx_http_listen_t *lscf,
     ngx_http_core_srv_conf_t *cscf);

@@ -129,13 +129,14 @@ ngx_hash_find_wildcard(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 
 
 #define NGX_HASH_ELT_SIZE(name)                                               \
-            sizeof(void *) + ngx_align((name)->key.len + 1, sizeof(void *))
+    (sizeof(void *) + ngx_align((name)->key.len + 1, sizeof(void *)))
 
 ngx_int_t
 ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
 {
     u_char          *elts;
-    size_t          *test, len;
+    size_t           len;
+    u_short         *test;
     ngx_uint_t       i, n, key, size, start, bucket_size;
     ngx_hash_elt_t  *elt, **buckets;
 
@@ -151,14 +152,14 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
         if (hinit->bucket_size < NGX_HASH_ELT_SIZE(&names[n]) + sizeof(void *))
         {
             ngx_log_error(NGX_LOG_EMERG, hinit->pool->log, 0,
-                          "could not build the %s hash, you should "
+                          "could not build the %s, you should "
                           "increase %s_bucket_size: %i",
                           hinit->name, hinit->name, hinit->bucket_size);
             return NGX_ERROR;
         }
     }
 
-    test = ngx_alloc(hinit->max_size * sizeof(size_t), hinit->pool->log);
+    test = ngx_alloc(hinit->max_size * sizeof(u_short), hinit->pool->log);
     if (test == NULL) {
         return NGX_ERROR;
     }
@@ -170,7 +171,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
 
     for (size = start; size < hinit->max_size; size++) {
 
-        ngx_memzero(test, size * sizeof(size_t));
+        ngx_memzero(test, size * sizeof(u_short));
 
         for (n = 0; n < nelts; n++) {
             if (names[n].key.data == NULL) {
@@ -178,7 +179,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
             }
 
             key = names[n].key_hash % size;
-            test[key] += NGX_HASH_ELT_SIZE(&names[n]);
+            test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
 
 #if 0
             ngx_log_error(NGX_LOG_ALERT, hinit->pool->log, 0,
@@ -186,7 +187,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
                           size, key, test[key], &names[n].key);
 #endif
 
-            if (test[key] > bucket_size) {
+            if (test[key] > (u_short) bucket_size) {
                 goto next;
             }
         }
@@ -199,7 +200,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
     }
 
     ngx_log_error(NGX_LOG_EMERG, hinit->pool->log, 0,
-                  "could not build the %s hash, you should increase "
+                  "could not build the %s, you should increase "
                   "either %s_max_size: %i or %s_bucket_size: %i",
                   hinit->name, hinit->name, hinit->max_size,
                   hinit->name, hinit->bucket_size);
@@ -220,7 +221,7 @@ found:
         }
 
         key = names[n].key_hash % size;
-        test[key] += NGX_HASH_ELT_SIZE(&names[n]);
+        test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
     }
 
     len = 0;
@@ -230,7 +231,7 @@ found:
             continue;
         }
 
-        test[i] = ngx_align(test[i], ngx_cacheline_size);
+        test[i] = (u_short) (ngx_align(test[i], ngx_cacheline_size));
 
         len += test[i];
     }
@@ -291,7 +292,7 @@ found:
             elt->name[i] = ngx_tolower(names[n].key.data[i]);
         }
 
-        test[key] += NGX_HASH_ELT_SIZE(&names[n]);
+        test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
     }
 
     for (i = 0; i < size; i++) {

@@ -291,7 +291,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
         uri.len = r->uri.len + ctx->index.len - 1;
 
         if (!clcf->alias) {
-            uri.data = ctx->path.data + clcf->root.len;
+            uri.data = ctx->path.data + r->root_length;
 
         } else {
             uri.data = ngx_palloc(r->pool, uri.len);

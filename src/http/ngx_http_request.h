@@ -340,6 +340,8 @@ struct ngx_http_request_s {
 
     ngx_http_variable_value_t        *variables;
 
+    size_t                            root_length;
+
     size_t                            limit_rate;
 
     /* used to learn the Apache compatible response length without a header */

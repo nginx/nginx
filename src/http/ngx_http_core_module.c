@@ -984,23 +984,66 @@ u_char *
 ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
     size_t reserved)
 {
-    u_char                    *last;
-    size_t                     alias;
-    ngx_http_core_loc_conf_t  *clcf;
+    u_char                       *last;
+    size_t                        alias, len;
+    ngx_http_script_code_pt       code;
+    ngx_http_script_engine_t      e;
+    ngx_http_core_loc_conf_t     *clcf;
+    ngx_http_script_len_code_pt   lcode;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     alias = clcf->alias ? clcf->name.len : 0;
 
-    path->len = clcf->root.len + r->uri.len - alias + 1 + reserved;
+    if (clcf->root_lengths == NULL) {
 
-    path->data = ngx_palloc(r->pool, path->len);
+        r->root_length = clcf->root.len;
+
+        path->len = clcf->root.len + r->uri.len - alias + 1 + reserved;
+
+        path->data = ngx_palloc(r->pool, path->len);
+        if (path->data == NULL) {
+            return NULL;
+        }
+
+        last = ngx_copy(path->data, clcf->root.data, clcf->root.len);
+        last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
+
+        return last;
+    }
+
+    ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
+
+    e.ip = clcf->root_lengths->elts;
+    e.request = r;
+    e.flushed = 1;
+
+    len = 0;
+
+    while (*(uintptr_t *) e.ip) {
+        lcode = *(ngx_http_script_len_code_pt *) e.ip;
+        len += lcode(&e);
+    }
+
+    r->root_length = len;
+
+    len += r->uri.len - alias + 1 + reserved;
+
+    path->len = len;
+    path->data = ngx_palloc(r->pool, len);
     if (path->data == NULL) {
         return NULL;
     }
 
-    last = ngx_copy(path->data, clcf->root.data, clcf->root.len);
-    last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
+    e.ip = clcf->root_values->elts;
+    e.pos = path->data;
+
+    while (*(uintptr_t *) e.ip) {
+        code = *(ngx_http_script_code_pt *) e.ip;
+        code((ngx_http_script_engine_t *) &e);
+    }
+
+    last = ngx_cpystrn(e.pos, r->uri.data + alias, r->uri.len - alias + 1);
 
     return last;
 }
@@ -1957,7 +2000,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_unsigned_value(conf->types_hash_max_size,
-                                  prev->types_hash_max_size, 512);
+                                  prev->types_hash_max_size, 1024);
 
     ngx_conf_merge_unsigned_value(conf->types_hash_bucket_size,
                                   prev->types_hash_bucket_size,
@@ -1977,7 +2020,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         types_hash.key = ngx_hash_key_lc;
         types_hash.max_size = conf->types_hash_max_size;
         types_hash.bucket_size = conf->types_hash_bucket_size;
-        types_hash.name = "mime_types";
+        types_hash.name = "types_hash";
         types_hash.pool = cf->pool;
         types_hash.temp_pool = NULL;
 
@@ -2019,7 +2062,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         types_hash.key = ngx_hash_key_lc;
         types_hash.max_size = conf->types_hash_max_size;
         types_hash.bucket_size = conf->types_hash_bucket_size;
-        types_hash.name = "mime_types";
+        types_hash.name = "mime_types_hash";
         types_hash.pool = cf->pool;
         types_hash.temp_pool = NULL;
 
@@ -2340,8 +2383,9 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
-    ngx_uint_t   alias;
-    ngx_str_t   *value;
+    ngx_str_t                  *value;
+    ngx_uint_t                  alias, n;
+    ngx_http_script_compile_t   sc;
 
     alias = (cmd->name.len == sizeof("alias") - 1) ? 1 : 0;
 
@@ -2370,6 +2414,26 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (!alias && lcf->root.data[lcf->root.len - 1] == '/') {
         lcf->root.len--;
+    }
+
+    n = ngx_http_script_variables_count(&value[1]);
+
+    if (n == 0) {
+        return NGX_CONF_OK;
+    }
+
+    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+
+    sc.cf = cf;
+    sc.source = &value[1];
+    sc.lengths = &lcf->root_lengths;
+    sc.values = &lcf->root_values;
+    sc.variables = n;
+    sc.complete_lengths = 1;
+    sc.complete_values = 1;
+
+    if (ngx_http_script_compile(&sc) != NGX_OK) {
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;

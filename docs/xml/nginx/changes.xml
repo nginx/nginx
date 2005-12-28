@@ -9,6 +9,38 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.19" date="28.12.2005">
+
+<change type="feature">
+<para lang="ru">
+директивы path и alias поддерживают переменные.
+</para>
+<para lang="en">
+the "path" and "alias" directives support the variables.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь директива valid_referers опять учитывает URI.
+</para>
+<para lang="en">
+now the "valid_referers" directive again checks the URI part.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки в обработке SSI.
+</para>
+<para lang="en">
+in SSI handling.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.18" date="26.12.2005">
 
 <change type="feature">

@@ -197,6 +197,9 @@ struct ngx_http_core_loc_conf_s {
     ngx_str_t     root;                    /* root, alias */
     ngx_str_t     post_action;
 
+    ngx_array_t  *root_lengths;
+    ngx_array_t  *root_values;
+
     ngx_array_t  *types;
     ngx_hash_t    types_hash;
     ngx_str_t     default_type;
