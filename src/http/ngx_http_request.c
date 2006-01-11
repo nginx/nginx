@@ -1423,7 +1423,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             return;
         }
 
-        if (r->main == r) {
+        if (r == r->main) {
             if (r->connection->read->timer_set) {
                 ngx_del_timer(r->connection->read);
             }
@@ -1438,7 +1438,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r->main != r || rc == NGX_AGAIN) {
+    if (r != r->main || rc == NGX_AGAIN) {
         if (ngx_http_set_write_handler(r) != NGX_OK) {
             return;
         }
@@ -1453,7 +1453,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r->main != r) {
+    if (r != r->main) {
 
         pr = r->parent;
 
@@ -1461,7 +1461,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                        "http parent request: \"%V?%V\"", &pr->uri, &pr->args);
 
         if (rc != NGX_AGAIN) {
-            pr->connection->data = pr;
+            r->connection->data = pr;
         }
 
         if (pr->postponed) {
@@ -1472,12 +1472,22 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
             if (rc != NGX_AGAIN && pr->postponed->request == r) {
                 pr->postponed = pr->postponed->next;
-
-                if (pr->postponed == NULL) {
-                    return;
-                }
             }
 
+            if (r->fast_subrequest) {
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http fast subrequest: \"%V?%V\" done",
+                           &r->uri, &r->args);
+                return;
+            }
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http wake parent request: \"%V?%V\"",
+                           &pr->uri, &pr->args);
+
+            pr->write_event_handler(pr);
+
+#if 0
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http request: \"%V?%V\" still has postponed",
                            &pr->uri, &pr->args);
@@ -1489,6 +1499,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
                 pr->write_event_handler(pr);
             }
+#endif
+
         }
 
         return;
@@ -1498,7 +1510,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r->out) {
+    if (r->connection->buffered) {
         (void) ngx_http_set_write_handler(r);
         return;
     }
@@ -1655,7 +1667,11 @@ ngx_http_writer(ngx_http_request_t *r)
             ngx_http_close_request(r, 0);
         }
 
-        return;
+        if (r == r->main) {
+            return;
+        }
+
+        rc = NGX_OK;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, wev->log, 0,
@@ -1691,7 +1707,7 @@ ngx_http_discard_body(ngx_http_request_t *r)
     ssize_t       size;
     ngx_event_t  *rev;
 
-    if (r->main != r) {
+    if (r != r->main) {
         return NGX_OK;
     }
 

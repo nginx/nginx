@@ -244,7 +244,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (r->main != r && ngx_file_size(&fi) == 0) {
+    if (r != r->main && ngx_file_size(&fi) == 0) {
         return ngx_http_send_header(r);
     }
 
@@ -272,7 +272,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
     b->file_last = ngx_file_size(&fi);
 
     b->in_file = b->file_last ? 1: 0;
-    b->last_buf = (r->main == r) ? 1: 0;
+    b->last_buf = (r == r->main) ? 1: 0;
     b->last_in_chain = 1;
 
     b->file->fd = fd;

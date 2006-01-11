@@ -31,7 +31,12 @@ static ssize_t sendfilev(int fd, const struct sendfilevec *vec,
 #endif
 
 
-#define NGX_SENDFILEVECS   16
+#if (IOV_MAX > 64)
+#define NGX_SENDFILEVECS  64
+#else
+#define NGX_SENDFILEVECS  IOV_MAX
+#endif
+
 
 
 ngx_chain_t *

@@ -38,6 +38,9 @@ typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r, u_char *buf,
 #include <ngx_http_core_module.h>
 #include <ngx_http_script.h>
 
+#if (NGX_HTTP_SSI)
+#include <ngx_http_ssi_filter_module.h>
+#endif
 #if (NGX_HTTP_SSL)
 #include <ngx_http_ssl_module.h>
 #endif

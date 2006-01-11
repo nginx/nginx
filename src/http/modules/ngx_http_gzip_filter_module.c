@@ -101,7 +101,6 @@ static ngx_conf_post_handler_pt  ngx_http_gzip_window_p = ngx_http_gzip_window;
 static ngx_conf_post_handler_pt  ngx_http_gzip_hash_p = ngx_http_gzip_hash;
 
 
-
 static ngx_conf_enum_t  ngx_http_gzip_http_version[] = {
     { ngx_string("1.0"), NGX_HTTP_VERSION_10 },
     { ngx_string("1.1"), NGX_HTTP_VERSION_11 },
@@ -283,7 +282,7 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
             && r->headers_out.status != NGX_HTTP_FORBIDDEN
             && r->headers_out.status != NGX_HTTP_NOT_FOUND)
         || r->header_only
-        || r->main != r
+        || r != r->main
         || r->http_version < conf->http_version
         || r->headers_out.content_type.len == 0
         || (r->headers_out.content_encoding
@@ -544,6 +543,8 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return NGX_ERROR;
         }
 
+        r->connection->buffered |= NGX_HTTP_GZIP_BUFFERED;
+
         ctx->last_out = &ctx->out;
 
         ctx->crc32 = crc32(0L, Z_NULL, 0);
@@ -798,6 +799,8 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ctx->zstream.avail_out = 0;
 
                 ctx->done = 1;
+
+                r->connection->buffered &= ~NGX_HTTP_GZIP_BUFFERED;
 
                 break;
             }

@@ -61,6 +61,7 @@ typedef struct {
 #define NGX_HASH_LARGE_HSIZE      10007
 
 #define NGX_HASH_WILDCARD_KEY     1
+#define NGX_HASH_READONLY_KEY     2
 
 
 typedef struct {
@@ -114,6 +115,7 @@ ngx_int_t ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key,
     void *value, ngx_uint_t flags);
 
 
+#define ngx_hash0(key, c)   key + c
 ngx_int_t ngx_hash0_init(ngx_hash0_t *hash, ngx_pool_t *pool, void *names,
     ngx_uint_t nelts);
 

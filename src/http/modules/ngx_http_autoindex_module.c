@@ -503,7 +503,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     b->last = ngx_cpymem(b->last, tail, sizeof(tail) - 1);
 
-    if (r->main == r) {
+    if (r == r->main) {
         b->last_buf = 1;
     }
 

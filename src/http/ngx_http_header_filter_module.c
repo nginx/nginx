@@ -159,7 +159,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     ngx_table_elt_t           *header;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (r->main != r) {
+    if (r != r->main) {
         return NGX_OK;
     }
 

@@ -28,8 +28,13 @@
  */
 
 
-#define NGX_HEADERS   8
-#define NGX_TRAILERS  8
+#if (IOV_MAX > 64)
+#define NGX_HEADERS   64
+#define NGX_TRAILERS  64
+#else
+#define NGX_HEADERS   IOV_MAX
+#define NGX_TRAILERS  IOV_MAX
+#endif
 
 
 ngx_chain_t *

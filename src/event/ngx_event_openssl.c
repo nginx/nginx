@@ -592,7 +592,9 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ssize_t      send, size;
     ngx_buf_t   *buf;
 
-    if (!c->ssl->buffer || (in && in->next == NULL && !c->buffered)) {
+    if (!c->ssl->buffer
+        || (in && in->next == NULL && !(c->buffered & NGX_SSL_BUFFERED)))
+    {
 
         /*
          * we avoid a buffer copy if
@@ -613,7 +615,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             }
 
             if (n == NGX_AGAIN) {
-                c->buffered = 1;
+                c->buffered |= NGX_SSL_BUFFERED;
                 return in;
             }
 
@@ -689,7 +691,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         }
 
         if (n == NGX_AGAIN) {
-            c->buffered = 1;
+            c->buffered |= NGX_SSL_BUFFERED;
             return in;
         }
 
@@ -711,7 +713,12 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         }
     }
 
-    c->buffered = (buf->pos < buf->last) ? 1 : 0;
+    if (buf->pos < buf->last) {
+        c->buffered |= NGX_SSL_BUFFERED;
+
+    } else {
+        c->buffered &= ~NGX_SSL_BUFFERED;
+    }
 
     return in;
 }

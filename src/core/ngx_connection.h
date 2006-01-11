@@ -93,6 +93,10 @@ typedef enum {
 } ngx_connection_tcp_nopush_e;
 
 
+#define NGX_LOWLEVEL_BUFFERED  0x0000000f
+#define NGX_SSL_BUFFERED       0x00000001
+
+
 struct ngx_connection_s {
     void               *data;
     ngx_event_t        *read;
@@ -134,9 +138,10 @@ struct ngx_connection_s {
 
     ngx_atomic_uint_t   number;
 
+    ngx_uint_t          buffered;
+
     unsigned            log_error:2;     /* ngx_connection_log_error_e */
 
-    unsigned            buffered:1;
     unsigned            single_connection:1;
     unsigned            unexpected_eof:1;
     unsigned            timedout:1;

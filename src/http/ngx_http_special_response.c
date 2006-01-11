@@ -447,7 +447,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         cl->buf = b;
     }
 
-    if (r->main == r) {
+    if (r == r->main) {
         b->last_buf = 1;
     }
 

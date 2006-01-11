@@ -9,6 +9,28 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.20" date="11.01.2006">
+
+<change type="bugfix">
+<para lang="ru">
+ошибки в обработке SSI.
+</para>
+<para lang="en">
+in SSI handling.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_memcached_module не поддерживал ключи в виде /uri?args.
+</para>
+<para lang="en">
+the ngx_http_memcached_module did not support the keys in the "/usr?args" form.
+</para>
+</change>
+
+</changes>
+
 <changes ver="0.3.19" date="28.12.2005">
 
 <change type="feature">

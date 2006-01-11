@@ -99,6 +99,13 @@
 #define NGX_HTTP_GATEWAY_TIME_OUT          504
 
 
+#define NGX_HTTP_LOWLEVEL_BUFFERED         0x000000f0
+#define NGX_HTTP_WRITE_BUFFERED            0x00000010
+#define NGX_HTTP_GZIP_BUFFERED             0x00000020
+#define NGX_HTTP_SSI_BUFFERED              0x00000100
+#define NGX_HTTP_COPY_BUFFERED             0x00000200
+
+
 typedef enum {
     NGX_HTTP_RESTRICT_HOST_OFF = 0,
     NGX_HTTP_RESTRICT_HOST_ON,
@@ -378,6 +385,8 @@ struct ngx_http_request_s {
     unsigned                          valid_unparsed_uri:1;
     unsigned                          uri_changed:1;
     unsigned                          uri_changes:4;
+
+    unsigned                          fast_subrequest:1;
 
     unsigned                          low_case_exten:1;
     unsigned                          header_timeout_set:1;

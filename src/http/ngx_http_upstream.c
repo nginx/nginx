@@ -558,7 +558,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
         }
     }
 
-    if (r->request_body && r->request_body->temp_file && r->main == r) {
+    if (r->request_body && r->request_body->temp_file && r == r->main) {
 
         /*
          * the r->request_body->buf can be reused for one request only,
@@ -695,7 +695,7 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
     /* reinit the subrequest's ngx_output_chain() context */
 
     if (r->request_body && r->request_body->temp_file
-        && r->main != r && u->output.buf)
+        && r != r->main && u->output.buf)
     {
         u->output.free = ngx_alloc_chain_link(r->pool);
         if (u->output.free == NULL) {
@@ -1031,12 +1031,20 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 #endif
     }
 
-    if (u->headers_in.status_n == NGX_HTTP_NOT_FOUND
-        && u->peer.tries > 1
-        && u->conf->next_upstream & NGX_HTTP_UPSTREAM_FT_HTTP_404)
-    {
-        ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_HTTP_404);
-        return;
+    if (u->headers_in.status_n == NGX_HTTP_NOT_FOUND) {
+
+        if (u->peer.tries > 1
+            && u->conf->next_upstream & NGX_HTTP_UPSTREAM_FT_HTTP_404)
+        {
+            ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_HTTP_404);
+            return;
+        }
+
+        if (u->conf->redirect_404) {
+            rc = (r->err_ctx == NULL) ? 404 : 204;
+            ngx_http_upstream_finalize_request(r, u, rc);
+            return;
+        }
     }
 
 
@@ -1044,13 +1052,6 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
         && u->conf->redirect_errors
         && r->err_ctx == NULL)
     {
-        if (u->headers_in.status_n == NGX_HTTP_NOT_FOUND
-            && u->conf->redirect_404)
-        {
-            ngx_http_upstream_finalize_request(r, u, 404);
-            return;
-        }
-
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
         if (clcf->error_pages) {
@@ -1947,7 +1948,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     r->connection->log->action = "sending to client";
 
-    if (rc == 0 && r->main == r) {
+    if (rc == 0 && r == r->main) {
         rc = ngx_http_send_special(r, NGX_HTTP_LAST);
     }
 

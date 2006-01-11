@@ -28,9 +28,10 @@ static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
 ngx_int_t
 ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 {
-    int           rc, last;
     off_t         bsize;
     size_t        size;
+    ngx_int_t     rc, last;
+    ngx_uint_t    recycled;
     ngx_chain_t  *cl, *out, **last_out;
 
     if (ctx->in == NULL && ctx->busy == NULL) {
@@ -131,6 +132,7 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                 } else {
 
                     size = ctx->bufs.size;
+                    recycled = 1;
 
                     if (ctx->in->buf->last_in_chain) {
 
@@ -142,6 +144,7 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                             */
 
                             size = (size_t) bsize;
+                            recycled = 0;
 
                         } else if (ctx->bufs.num == 1
                                    && (bsize < (off_t) (ctx->bufs.size
@@ -154,6 +157,7 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                              */
 
                             size = (size_t) bsize;
+                            recycled = 0;
                         }
                     }
 
@@ -163,7 +167,7 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                     }
 
                     ctx->buf->tag = ctx->tag;
-                    ctx->buf->recycled = 1;
+                    ctx->buf->recycled = recycled;
                     ctx->allocated++;
                 }
             }

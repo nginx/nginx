@@ -753,7 +753,9 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
         k = 0;
 
         for (i = 0; i < key->len; i++) {
-            key->data[i] = ngx_tolower(key->data[i]);
+            if (!(flags & NGX_HASH_READONLY_KEY)) {
+                key->data[i] = ngx_tolower(key->data[i]);
+            }
             k = ngx_hash(k, key->data[i]);
         }
 

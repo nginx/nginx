@@ -469,7 +469,7 @@ ngx_http_handler(ngx_http_request_t *r)
     r->uri_changed = 1;
     r->uri_changes = NGX_HTTP_MAX_REWRITE_CYCLES + 1;
 
-    r->phase = (r->main == r) ? NGX_HTTP_POST_READ_PHASE:
+    r->phase = (r == r->main) ? NGX_HTTP_POST_READ_PHASE:
                                 NGX_HTTP_SERVER_REWRITE_PHASE;
     r->phase_handler = 0;
 
@@ -516,7 +516,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
             r->phase = NGX_HTTP_FIND_CONFIG_PHASE;
         }
 
-        if (r->phase == NGX_HTTP_ACCESS_PHASE && r->main != r) {
+        if (r->phase == NGX_HTTP_ACCESS_PHASE && r != r->main) {
             continue;
         }
 
@@ -1229,18 +1229,19 @@ ngx_http_subrequest(ngx_http_request_t *r,
     }
 
     sr->internal = 1;
+    sr->fast_subrequest = 1;
 
     sr->discard_body = r->discard_body;
     sr->main_filter_need_in_memory = r->main_filter_need_in_memory;
 
     ngx_http_handler(sr);
 
-#if (NGX_LOG_DEBUG)
     if (!c->destroyed) {
+        sr->fast_subrequest = 0;
+
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http subrequest done \"%V?%V\"", uri, &sr->args);
     }
-#endif
 
     return NGX_OK;
 }

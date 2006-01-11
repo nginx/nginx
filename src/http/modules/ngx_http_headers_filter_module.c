@@ -97,7 +97,7 @@ ngx_http_headers_filter(ngx_http_request_t *r)
 
     if ((r->headers_out.status != NGX_HTTP_OK
          && r->headers_out.status != NGX_HTTP_NOT_MODIFIED)
-        || r->main != r)
+        || r != r->main)
     {
         return ngx_http_next_header_filter(r);
     }
