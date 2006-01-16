@@ -26,3 +26,7 @@ fi
 if [ $USE_ZLIB = YES ]; then
     . auto/lib/zlib/conf
 fi
+
+if [ $USE_PERL = YES ]; then
+    . auto/lib/perl/conf
+fi

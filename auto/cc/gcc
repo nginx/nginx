@@ -172,3 +172,5 @@ CFLAGS="$CFLAGS -g"
 if [ ".$CPP" = "." ]; then
     CPP="$CC -E"
 fi
+
+NGX_PERL_CFLAGS="$CFLAGS"

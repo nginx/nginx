@@ -9,6 +9,29 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.21" date="16.01.2006">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module.
+</para>
+<para lang="en">
+the ngx_http_perl_module.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива valid_referers разрешает использовать рефереры cовсем без URI.
+</para>
+<para lang="en">
+the "valid_referers" directive allows the referreres without URI part.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.20" date="11.01.2006">
 
 <change type="bugfix">

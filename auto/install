@@ -2,9 +2,23 @@
 # Copyright (C) Igor Sysoev
 
 
+if [ $USE_PERL = YES ]; then
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+install_perl_modules:
+	cd $NGX_OBJS/src/http/modules/perl && make install
+END
+
+    NGX_INSTALL_PERL_MODULES=install_perl_modules
+
+fi
+
+
 cat << END                                                    >> $NGX_MAKEFILE
 
-install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}
+install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}	\
+		$NGX_INSTALL_PERL_MODULES
 	test -d '$NGX_PREFIX' || mkdir -p '$NGX_PREFIX'
 
 	test -d '`dirname "$NGX_SBIN_PATH"`' \

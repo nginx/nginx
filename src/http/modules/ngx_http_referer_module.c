@@ -168,10 +168,6 @@ uri:
 
     len = last - p;
 
-    if (len == 0) {
-        goto invalid;
-    }
-
     if (uri == NGX_HTTP_REFERER_NO_URI_PART) {
         goto valid;
     }

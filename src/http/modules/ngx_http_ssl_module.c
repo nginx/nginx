@@ -40,21 +40,21 @@ static ngx_conf_bitmask_t  ngx_http_ssl_protocols[] = {
 static ngx_command_t  ngx_http_ssl_commands[] = {
 
     { ngx_string("ssl"),
-      NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, enable),
       NULL },
 
     { ngx_string("ssl_certificate"),
-      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, certificate),
       NULL },
 
     { ngx_string("ssl_certificate_key"),
-      NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, certificate_key),

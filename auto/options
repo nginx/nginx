@@ -62,6 +62,7 @@ HTTP_REFERER=YES
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
 HTTP_FASTCGI=YES
+HTTP_PERL=NO
 HTTP_MEMCACHED=YES
 HTTP_EMPTY_GIF=YES
 
@@ -89,6 +90,9 @@ USE_ZLIB=NO
 ZLIB=NONE
 ZLIB_OPT=
 ZLIB_ASM=NO
+
+USE_PERL=NO
+NGX_PERL=perl
 
 NGX_CPU_CACHE_LINE=
 
@@ -149,6 +153,10 @@ do
         --without-http_fastcgi_module)   HTTP_FASTCGI=NO            ;;
         --without-http_memcached_module) HTTP_MEMCACHED=NO          ;;
         --without-http_empty_gif_module) HTTP_EMPTY_GIF=NO          ;;
+
+        --with-http_perl_module)         HTTP_PERL=YES              ;;
+        --with-perl_modules_path=*)      NGX_PERL_MODULES="$value"  ;;
+        --with-perl=*)                   NGX_PERL="$value"          ;;
 
         # STUB
         --with-http_stub_status_module)  HTTP_STUB_STATUS=YES       ;;
@@ -234,6 +242,10 @@ cat << END
   --without-http_fastcgi_module      disable ngx_http_fastcgi_module
   --without-http_memcached_module    disable ngx_http_memcached_module
   --without-http_empty_gif_module    disable ngx_http_empty_gif_module
+
+  --with-http_perl_module            enable ngx_http_perl_module
+  --with-perl_modules_path=PATH      set path to the perl modules
+  --with-perl=PATH                   set path to the perl binary
 
   --http-log-path=PATH               set path to the http access log
   --http-client-body-temp-path=PATH  set path to the http client request body
@@ -412,5 +424,18 @@ case ".$NGX_HTTP_FASTCGI_TEMP_PATH" in
 
     *)
         NGX_HTTP_FASTCGI_TEMP_PATH=$NGX_PREFIX/$NGX_HTTP_FASTCGI_TEMP_PATH
+    ;;
+esac
+
+
+case ".$NGX_PERL_MODULES" in
+    ./*)
+    ;;
+
+    .)
+    ;;
+
+    *)
+        NGX_PERL_MODULES=$NGX_PREFIX/$NGX_PERL_MODULES
     ;;
 esac

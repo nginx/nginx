@@ -350,7 +350,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_ssi_command_t    *cmd;
     ngx_http_ssi_loc_conf_t   *slcf;
     ngx_http_ssi_main_conf_t  *smcf;
-    ngx_str_t                 *params[NGX_HTTP_SSI_MAX_PARAMS];
+    ngx_str_t                 *params[NGX_HTTP_SSI_MAX_PARAMS + 1];
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
@@ -534,7 +534,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 }
 
                 ngx_memzero(params,
-                            NGX_HTTP_SSI_MAX_PARAMS * sizeof(ngx_str_t *));
+                           (NGX_HTTP_SSI_MAX_PARAMS + 1) * sizeof(ngx_str_t *));
 
                 param = ctx->params.elts;
 
