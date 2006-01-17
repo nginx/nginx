@@ -97,9 +97,11 @@ pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);
 #endif
 
 
-extern char *malloc_options;
-
 #define NGX_HAVE_OS_SPECIFIC_INIT    1
+
+
+extern char **environ;
+extern char *malloc_options;
 
 
 #endif /* _NGX_FREEBSD_CONFIG_H_INCLUDED_ */

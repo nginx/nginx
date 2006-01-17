@@ -17,7 +17,7 @@ our @EXPORT = qw(
     HTTP_SERVER_ERROR
 );
 
-our $VERSION = '0.3.21';
+our $VERSION = '0.3.22';
 
 require XSLoader;
 XSLoader::load('nginx', $VERSION);
@@ -47,11 +47,6 @@ nginx - Perl interface to the nginx HTTP server API
 =head1 DESCRIPTION
 
 This module provides a Perl interface to the nginx HTTP server API.
-
-=head2 EXPORT
-
-None by default.
-
 
 
 =head1 SEE ALSO

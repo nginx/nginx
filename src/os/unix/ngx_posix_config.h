@@ -102,4 +102,7 @@
 #endif
 
 
+extern char **environ;
+
+
 #endif /* _NGX_POSIX_CONFIG_H_INCLUDED_ */

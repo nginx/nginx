@@ -144,13 +144,15 @@ size_t ngx_utf_length(ngx_str_t *utf);
 u_char * ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n);
 
 
-#define NGX_ESCAPE_URI   0
-#define NGX_ESCAPE_ARGS  1
-#define NGX_ESCAPE_HTML  2
+#define NGX_ESCAPE_URI     0
+#define NGX_ESCAPE_ARGS    1
+#define NGX_ESCAPE_HTML    2
+
+#define NGX_UNESCAPE_URI   1
 
 uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
     ngx_uint_t type);
-void ngx_unescape_uri(u_char **dst, u_char **src, size_t size);
+void ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type);
 
 
 #define  ngx_qsort                qsort

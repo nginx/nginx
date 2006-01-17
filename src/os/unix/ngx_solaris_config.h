@@ -88,4 +88,7 @@
 #define NGX_HAVE_OS_SPECIFIC_INIT    1
 
 
+extern char **environ;
+
+
 #endif /* _NGX_SOLARIS_CONFIG_H_INCLUDED_ */

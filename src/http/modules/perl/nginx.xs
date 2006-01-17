@@ -156,13 +156,13 @@ uri(r, ...)
 
 
 char *
-query_string(r, ...)
+args(r, ...)
     nginx  r
 
     CODE:
 
     if (items != 1) {
-        croak("$r->query_string(text) is not implemented");
+        croak("$r->args(text) is not implemented");
     }
 
     RETVAL = ngx_palloc(r->pool, r->args.len + 1);
@@ -360,6 +360,9 @@ print(r, ...)
             b->start = p;
             b->end = b->last;
 
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "$r->print: read-only SV: %z", len);
+
             goto out;
         }
     }
@@ -374,11 +377,10 @@ print(r, ...)
             sv = SvRV(sv);
         }
 
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "SV: %p %d %Xd",
-                       sv, SvREFCNT(sv), SvREADONLY(sv));
-
         (void) SvPV(sv, len);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "$r->print: copy SV: %z", len);
 
         size += len;
     }
@@ -513,6 +515,8 @@ rflush(r)
 
     b->flush = 1;
 
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "$r->rflush");
+
     RETVAL = ngx_http_perl_output(r, b);
 
     done:
@@ -549,3 +553,34 @@ internal_redirect(r, uri)
             XSRETURN_EMPTY;
         }
     }
+
+
+char *
+unescape(r, text, type = 0)
+    nginx    r
+    SV      *text
+    int      type
+
+    PREINIT:
+
+    u_char  *p, *dst, *src;
+    STRLEN   n;
+
+    CODE:
+
+    src = (u_char *) SvPV(text, n);
+
+    p = ngx_palloc(r->pool, n + 1);
+    if (p == NULL) {
+        XSRETURN_UNDEF;
+    }
+
+    dst = p;
+
+    ngx_unescape_uri(&dst, &src, n, (ngx_uint_t) type);
+    *dst = '\0';
+
+    RETVAL = (char *) p;
+
+    OUTPUT:
+    RETVAL

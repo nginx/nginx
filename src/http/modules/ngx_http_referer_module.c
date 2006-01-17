@@ -90,10 +90,7 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     rlcf = ngx_http_get_module_loc_conf(r, ngx_http_referer_module);
 
-    if (rlcf->hash.buckets == NULL
-        && rlcf->dns_wildcards == NULL
-        && rlcf->dns_wildcards->hash.buckets == NULL)
-    {
+    if (rlcf->hash.buckets == NULL && rlcf->dns_wildcards == NULL) {
         goto valid;
     }
 
@@ -145,7 +142,7 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         }
     }
 
-    if (rlcf->dns_wildcards && rlcf->dns_wildcards->hash.buckets) {
+    if (rlcf->dns_wildcards) {
         uri = ngx_hash_find_wildcard(rlcf->dns_wildcards, buf, len);
         if (uri) {
             goto uri;

@@ -168,6 +168,8 @@ ngx_module_t  ngx_core_module = {
 
 ngx_uint_t  ngx_max_module;
 
+static char *ngx_null_environ = NULL;
+
 
 int ngx_cdecl
 main(int argc, char *const *argv)
@@ -231,6 +233,8 @@ main(int argc, char *const *argv)
     if (ngx_add_inherited_sockets(&init_cycle) == NGX_ERROR) {
         return 1;
     }
+
+    environ = &ngx_null_environ;
 
     ngx_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {

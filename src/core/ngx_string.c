@@ -931,7 +931,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 
 
 void
-ngx_unescape_uri(u_char **dst, u_char **src, size_t size)
+ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
 {
     u_char  *d, *s, ch, c, decoded;
     enum {
@@ -952,7 +952,7 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size)
 
         switch (state) {
         case sw_usual:
-            if (ch == '?') {
+            if (ch == '?' && type == NGX_UNESCAPE_URI) {
                 *d++ = ch;
                 goto done;
             }
@@ -995,12 +995,18 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size)
             if (ch >= '0' && ch <= '9') {
                 ch = (u_char) ((decoded << 4) + ch - '0');
 
-                if (ch > '%' && ch < 0x7f) {
-                    *d++ = ch;
+                if (type == NGX_UNESCAPE_URI) {
+                    if (ch > '%' && ch < 0x7f) {
+                        *d++ = ch;
+                        break;
+                    }
+
+                    *d++ = '%'; *d++ = *(s - 2); *d++ = *(s - 1);
+
                     break;
                 }
 
-                *d++ = '%'; *d++ = *(s - 2); *d++ = *(s - 1);
+                *d++ = ch;
 
                 break;
             }
@@ -1009,17 +1015,22 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size)
             if (c >= 'a' && c <= 'f') {
                 ch = (u_char) ((decoded << 4) + c - 'a' + 10);
 
-                if (ch == '?') {
-                    *d++ = ch;
-                    goto done;
-                }
+                if (type == NGX_UNESCAPE_URI) {
+                    if (ch == '?') {
+                        *d++ = ch;
+                        goto done;
+                    }
 
-                if (ch > '%' && ch < 0x7f) {
-                    *d++ = ch;
+                    if (ch > '%' && ch < 0x7f) {
+                        *d++ = ch;
+                        break;
+                    }
+
+                    *d++ = '%'; *d++ = *(s - 2); *d++ = *(s - 1);
                     break;
                 }
 
-                *d++ = '%'; *d++ = *(s - 2); *d++ = *(s - 1);
+                *d++ = ch;
 
                 break;
             }

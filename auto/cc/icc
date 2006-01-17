@@ -20,9 +20,6 @@ CFLAGS="$CFLAGS -O"
 # inline any function, at the compiler's discretion
 CFLAGS="$CFLAGS -Ob2"
 
-# single-file IP optimizations
-#IPO="-ip"
-
 # multi-file IP optimizations
 case "$NGX_ICC_VER" in
     9.*)
@@ -33,6 +30,9 @@ case "$NGX_ICC_VER" in
         IPO="-ipo -ipo_obj"
     ;;
 esac
+
+# single-file IP optimizations
+#IPO="-ip"
 
 CFLAGS="$CFLAGS $IPO"
 CORE_LINK="$CORE_LINK $IPO"

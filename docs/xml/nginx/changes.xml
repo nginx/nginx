@@ -9,6 +9,42 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.22" date="17.01.2006">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module поддерживает методы $r->args и $r->unescape.
+</para>
+<para lang="en">
+the ngx_http_perl_module supports the $r->args and $r->unescape methods.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+метод $r->query_string в модуле ngx_http_perl_module упразднён.
+</para>
+<para lang="en">
+the method $r->query_string of ngx_http_perl_module is canceled.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве valid_referers указаны только none или blocked, то
+происходил segmentation fault;
+ошибка появилась в 0.3.18.
+</para>
+<para lang="en">
+segmentation fault was occurred if the "none" or "blocked" values was
+specified in the "valid_referers" directive;
+bug appeared in 0.3.18.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.21" date="16.01.2006">
 
 <change type="feature">
