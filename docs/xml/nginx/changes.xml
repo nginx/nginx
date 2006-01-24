@@ -9,6 +9,38 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.23" date="24.01.2006">
+
+<change type="feature">
+<para lang="ru">
+директива optimize_host_names.
+</para>
+<para lang="en">
+the "optimize_host_names" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании переменных в директивах path и alias.
+</para>
+<para lang="en">
+in using of the variables in the "path" and "alias" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_perl_module неправильно собирался на Linux и Solaris.
+</para>
+<para lang="en">
+the ngx_http_perl_module was incorrectly built on Linux and Solaris.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.22" date="17.01.2006">
 
 <change type="feature">

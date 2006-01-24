@@ -6,14 +6,12 @@
 
 #define PERL_NO_GET_CONTEXT
 
-#include "EXTERN.h"
-#include "perl.h"
-#include "XSUB.h"
-
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
 #include <ngx_http_perl_module.h>
+
+#include "XSUB.h"
 
 
 static ngx_int_t

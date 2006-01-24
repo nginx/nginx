@@ -76,7 +76,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     char                        *rv;
     u_char                       ch;
     ngx_int_t                    rc;
-    ngx_uint_t                   mi, m, s, l, p, a, n, i;
+    ngx_uint_t                   mi, m, s, l, p, a, i;
     ngx_uint_t                   last, bind_all, done;
     ngx_conf_t                   pcf;
     ngx_array_t                  in_ports;
@@ -533,16 +533,20 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         /*
          * check whether all name-based servers have the same configuraiton
-         * as the default server, or some servers restrict the host names
+         *     as the default server,
+         * or some servers restrict the host names,
+         * or some servers disable optimizing the host names
          */
 
         in_addr = in_port[p].addrs.elts;
         for (a = 0; a < in_port[p].addrs.nelts; a++) {
 
             name = in_addr[a].names.elts;
-            for (n = 0; n < in_addr[a].names.nelts; n++) {
-                if (in_addr[a].core_srv_conf != name[n].core_srv_conf
-                    || name[n].core_srv_conf->restrict_host_names
+            for (s = 0; s < in_addr[a].names.nelts; s++) {
+
+                if (in_addr[a].core_srv_conf != name[s].core_srv_conf
+                    || name[s].core_srv_conf->optimize_host_names == 0
+                    || name[s].core_srv_conf->restrict_host_names
                        != NGX_HTTP_RESTRICT_HOST_OFF)
                 {
                     goto virtual_names;
@@ -551,7 +555,9 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             /*
              * if all name-based servers have the same configuration
-             * as the default server, and no servers restrict the host names
+             *         as the default server,
+             *     and no servers restrict the host names,
+             *     and no servers disable optimizing the host names
              * then we do not need to check them at run-time at all
              */
 

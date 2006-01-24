@@ -216,6 +216,16 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_OK;
     }
 
+    if ((conf->no_referer == 1 || conf->blocked_referer == 1)
+        && conf->keys->keys.nelts == 0 && conf->keys->dns_wildcards.nelts)
+    {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "the \"none\" or \"blocked\" referers are specified "
+                      "in the \"valid_referers\" directive "
+                      "without any valid referer");
+        return NGX_CONF_ERROR;
+    }
+
     hash.key = ngx_hash_key_lc;
     hash.max_size = 2048; /* TODO: referer_hash_max_size; */
     hash.bucket_size = 64; /* TODO: referer_hash_bucket_size; */

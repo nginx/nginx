@@ -136,6 +136,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_srv_conf_t, restrict_host_names),
       &ngx_http_restrict_host_names },
 
+    { ngx_string("optimize_host_names"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_core_srv_conf_t, optimize_host_names),
+      NULL },
+
     { ngx_string("ignore_invalid_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -995,6 +1002,13 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
     alias = clcf->alias ? clcf->name.len : 0;
 
+    if (alias && !r->valid_location) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "\"alias\" could not be used in location \"%V\" "
+                      "where URI was rewritten", &clcf->name);
+        return NULL;
+    }
+
     if (clcf->root_lengths == NULL) {
 
         r->root_length = clcf->root.len;
@@ -1826,6 +1840,7 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
     cscf->client_header_timeout = NGX_CONF_UNSET_MSEC;
     cscf->client_header_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->restrict_host_names = NGX_CONF_UNSET_UINT;
+    cscf->optimize_host_names = NGX_CONF_UNSET;
     cscf->ignore_invalid_headers = NGX_CONF_UNSET;
 
     return cscf;
@@ -1907,6 +1922,9 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_unsigned_value(conf->restrict_host_names,
                               prev->restrict_host_names, 0);
+
+    ngx_conf_merge_value(conf->optimize_host_names,
+                              prev->optimize_host_names, 1);
 
     ngx_conf_merge_value(conf->ignore_invalid_headers,
                               prev->ignore_invalid_headers, 1);
@@ -1990,10 +2008,20 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_hash_key_t   *type;
     ngx_hash_init_t   types_hash;
 
-    ngx_conf_merge_str_value(conf->root, prev->root, "html");
+    if (conf->root.data == NULL) {
 
-    if (ngx_conf_full_name(cf->cycle, &conf->root) == NGX_ERROR) {
-        return NGX_CONF_ERROR;
+        conf->root = prev->root;
+        conf->root_lengths = prev->root_lengths;
+        conf->root_values = prev->root_values;
+
+        if (prev->root.data == NULL) {
+            conf->root.len = sizeof("html") - 1;
+            conf->root.data = (u_char *) "html";
+
+            if (ngx_conf_full_name(cf->cycle, &conf->root) == NGX_ERROR) {
+                return NGX_CONF_ERROR;
+            }
+        }
     }
 
     if (conf->post_action.data == NULL) {
@@ -2417,7 +2445,11 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         lcf->root.len--;
     }
 
-    n = ngx_http_script_variables_count(&value[1]);
+    if (ngx_conf_full_name(cf->cycle, &lcf->root) == NGX_ERROR) {
+        return NGX_CONF_ERROR;
+    }
+
+    n = ngx_http_script_variables_count(&lcf->root);
 
     if (n == 0) {
         return NGX_CONF_OK;
@@ -2426,7 +2458,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 
     sc.cf = cf;
-    sc.source = &value[1];
+    sc.source = &lcf->root;
     sc.lengths = &lcf->root_lengths;
     sc.values = &lcf->root_values;
     sc.variables = n;

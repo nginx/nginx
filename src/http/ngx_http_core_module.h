@@ -109,6 +109,7 @@ typedef struct {
 
     ngx_uint_t                 restrict_host_names;
 
+    ngx_flag_t                 optimize_host_names;
     ngx_flag_t                 ignore_invalid_headers;
 } ngx_http_core_srv_conf_t;
 
