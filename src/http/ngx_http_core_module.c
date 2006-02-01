@@ -1880,24 +1880,29 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         ls->conf.sndbuf = -1;
     }
 
-    if (conf->server_names.nelts == 0) {
-        sn = ngx_array_push(&conf->server_names);
-        if (sn == NULL) {
+    if (conf->server_name.data == NULL) {
+        conf->server_name.data = ngx_palloc(cf->pool, NGX_MAXHOSTNAMELEN);
+        if (conf->server_name.data == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        sn->name.data = ngx_palloc(cf->pool, NGX_MAXHOSTNAMELEN);
-        if (sn->name.data == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        if (gethostname((char *) sn->name.data, NGX_MAXHOSTNAMELEN) == -1) {
+        if (gethostname((char *) conf->server_name.data, NGX_MAXHOSTNAMELEN)
+            == -1)
+        {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
                                "gethostname() failed");
             return NGX_CONF_ERROR;
         }
 
-        sn->name.len = ngx_strlen(sn->name.data);
+        conf->server_name.len = ngx_strlen(conf->server_name.data);
+
+        sn = ngx_array_push(&conf->server_names);
+        if (sn == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        sn->name.len = conf->server_name.len;
+        sn->name.data = conf->server_name.data;
         sn->core_srv_conf = conf;
     }
 

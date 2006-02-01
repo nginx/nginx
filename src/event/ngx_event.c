@@ -414,11 +414,12 @@ static ngx_int_t
 ngx_event_module_init(ngx_cycle_t *cycle)
 {
     void              ***cf;
+    u_char              *shared;
+    size_t               size;
     ngx_event_conf_t    *ecf;
     ngx_core_conf_t     *ccf;
+    ngx_shm_t            shm;
 #if !(NGX_WIN32)
-    char                *shared;
-    size_t               size;
     ngx_int_t            limit;
     struct rlimit        rlmt;
 #endif
@@ -461,6 +462,8 @@ ngx_event_module_init(ngx_cycle_t *cycle)
         }
     }
 
+#endif /* !(NGX_WIN32) */
+
 
     if (ccf->master == 0 || ngx_accept_mutex_ptr) {
         return NGX_OK;
@@ -483,10 +486,14 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
 #endif
 
-    shared = ngx_create_shared_memory(size, cycle->log);
-    if (shared == NULL) {
+    shm.size = size;
+    shm.log = cycle->log;
+
+    if (ngx_shm_alloc(&shm) != NGX_OK) {
         return NGX_ERROR;
     }
+
+    shared = shm.addr;
 
     ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
     ngx_connection_counter = (ngx_atomic_t *) (shared + 1 * 128);
@@ -507,8 +514,6 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "counter: %p, %d",
                    ngx_connection_counter, *ngx_connection_counter);
-
-#endif /* !(NGX_WIN32) */
 
     return NGX_OK;
 }

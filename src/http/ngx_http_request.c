@@ -1518,6 +1518,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (clcf->post_action.data) {
+        r->http_version = NGX_HTTP_VERSION_9;
+        r->header_only = 1;
         ngx_http_internal_redirect(r, &clcf->post_action, NULL);
         return;
     }

@@ -119,7 +119,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_alloc.h \
             src/os/unix/ngx_files.h \
             src/os/unix/ngx_channel.h \
-            src/os/unix/ngx_shared.h \
+            src/os/unix/ngx_shmem.h \
             src/os/unix/ngx_process.h \
             src/os/unix/ngx_setproctitle.h \
             src/os/unix/ngx_atomic.h \
@@ -152,7 +152,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_send.c \
             src/os/unix/ngx_writev_chain.c \
             src/os/unix/ngx_channel.c \
-            src/os/unix/ngx_shared.c \
+            src/os/unix/ngx_shmem.c \
             src/os/unix/ngx_process.c \
             src/os/unix/ngx_daemon.c \
             src/os/unix/ngx_setproctitle.c \
@@ -190,7 +190,7 @@ WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_errno.h \
             src/os/win32/ngx_alloc.h \
             src/os/win32/ngx_files.h \
-            src/os/win32/ngx_shared.h \
+            src/os/win32/ngx_shmem.h \
             src/os/win32/ngx_process.h \
             src/os/win32/ngx_atomic.h \
             src/os/win32/ngx_thread.h \
@@ -207,6 +207,7 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_errno.c \
             src/os/win32/ngx_alloc.c \
             src/os/win32/ngx_files.c \
+            src/os/win32/ngx_shmem.c \
             src/os/win32/ngx_time.c \
             src/os/win32/ngx_process.c \
             src/os/win32/ngx_thread.c \

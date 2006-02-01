@@ -42,7 +42,7 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_time.h>
 #include <ngx_socket.h>
 #include <ngx_types.h>
-#include <ngx_shared.h>
+#include <ngx_shmem.h>
 #include <ngx_process.h>
 #include <ngx_user.h>
 #include <ngx_string.h>

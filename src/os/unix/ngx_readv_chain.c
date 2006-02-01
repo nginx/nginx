@@ -111,6 +111,21 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
                     }
                 }
 
+                if (n == 0) {
+
+                    /*
+                     * on FreeBSD recv() may return 0 on closed socket
+                     * even if kqueue reported about available data
+                     */
+
+                    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                                  "recv() returned 0 while kevent() reported "
+                                  "%d available bytes", rev->available);
+
+                    rev->eof = 1;
+                    rev->available = 0;
+                }
+
                 return n;
             }
 

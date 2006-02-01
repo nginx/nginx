@@ -1255,7 +1255,7 @@ ngx_http_proxy_rewrite_redirect(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     for (i = 0; i < plcf->redirects->nelts; i++) {
-        rc = pr->handler(r, h, prefix, pr);
+        rc = pr[i].handler(r, h, prefix, &pr[i]);
 
         if (rc != NGX_DECLINED) {
             return rc;

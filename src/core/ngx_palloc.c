@@ -221,6 +221,46 @@ ngx_pcalloc(ngx_pool_t *pool, size_t size)
 }
 
 
+void *
+ngx_shalloc(size_t size)
+{
+    u_char  *p;
+
+    if (size < sizeof(int) || (size & 1)) {
+        p = ngx_cycle->shm_last;
+
+    } else {
+        p = ngx_align_ptr(ngx_cycle->shm_last, NGX_ALIGNMENT);
+    }
+
+    if ((size_t) (ngx_cycle->shm_end - p) >= size) {
+        ngx_cycle->shm_last = p + size;
+        return p;
+    }
+
+    ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0,
+                  "allocation of %uz bytes in shared memory failed, "
+                  "only %uz are available",
+                  size, ngx_cycle->shm_end - ngx_cycle->shm_last);
+
+    return NULL;
+}
+
+
+void *
+ngx_shcalloc(size_t size)
+{
+    void *p;
+
+    p = ngx_shalloc(size);
+    if (p) {
+        ngx_memzero(p, size);
+    }
+
+    return p;
+}
+
+
 ngx_pool_cleanup_t *
 ngx_pool_cleanup_add(ngx_pool_t *p, size_t size)
 {

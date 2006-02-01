@@ -9,6 +9,7 @@
 #include <ngx_event.h>
 
 
+static void ngx_destroy_cycle_pools(ngx_conf_t *conf);
 static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
 
@@ -40,17 +41,18 @@ static ngx_str_t  error_log = ngx_null_string;
 ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
-    void                      *rv;
-    ngx_uint_t                 i, n, failed;
-    ngx_log_t                 *log;
-    ngx_conf_t                 conf;
-    ngx_pool_t                *pool;
-    ngx_cycle_t               *cycle, **old;
-    ngx_list_part_t           *part;
-    ngx_open_file_t           *file;
-    ngx_listening_t           *ls, *nls;
-    ngx_core_conf_t           *ccf;
-    ngx_core_module_t         *module;
+    void               *rv;
+    ngx_uint_t          i, n, failed;
+    ngx_log_t          *log;
+    ngx_conf_t          conf;
+    ngx_pool_t         *pool;
+    ngx_cycle_t        *cycle, **old;
+    ngx_list_part_t    *part;
+    ngx_open_file_t    *file;
+    ngx_listening_t    *ls, *nls;
+    ngx_core_conf_t    *ccf;
+    ngx_core_module_t  *module;
+
 
     log = old_cycle->log;
 
@@ -69,9 +71,18 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->pool = pool;
     cycle->log = log;
     cycle->old_cycle = old_cycle;
-    cycle->conf_file = old_cycle->conf_file;
     cycle->root.len = sizeof(NGX_PREFIX) - 1;
     cycle->root.data = (u_char *) NGX_PREFIX;
+
+
+    cycle->conf_file.len = old_cycle->conf_file.len;
+    cycle->conf_file.data = ngx_palloc(pool, old_cycle->conf_file.len + 1);
+    if (cycle->conf_file.data == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+    ngx_cpystrn(cycle->conf_file.data, old_cycle->conf_file.data,
+                old_cycle->conf_file.len + 1);
 
 
     n = old_cycle->pathes.nelts ? old_cycle->pathes.nelts : 10;
@@ -99,7 +110,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     if (ngx_list_init(&cycle->open_files, pool, n, sizeof(ngx_open_file_t))
-                                                                  == NGX_ERROR)
+        == NGX_ERROR)
     {
         ngx_destroy_pool(pool);
         return NULL;
@@ -168,6 +179,22 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         return NULL;
     }
 
+
+#if 0
+    cycle->shm.size = /* STUB */ ngx_pagesize;
+    cycle->shm.log = log;
+
+    if (ngx_shm_alloc(&cycle->shm) != NGX_OK) {
+        ngx_destroy_pool(conf.temp_pool);
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
+    cycle->shm_last = cycle->shm.addr;
+    cycle->shm_end = cycle->shm.addr + cycle->shm.size;
+#endif
+
+
     conf.ctx = cycle->conf_ctx;
     conf.cycle = cycle;
     conf.pool = pool;
@@ -180,8 +207,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 #endif
 
     if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
-        ngx_destroy_pool(conf.temp_pool);
-        ngx_destroy_pool(pool);
+        ngx_destroy_cycle_pools(&conf);
         return NULL;
     }
 
@@ -203,8 +229,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             if (module->init_conf(cycle, cycle->conf_ctx[ngx_modules[i]->index])
                 == NGX_CONF_ERROR)
             {
-                ngx_destroy_pool(conf.temp_pool);
-                ngx_destroy_pool(pool);
+                ngx_destroy_cycle_pools(&conf);
                 return NULL;
             }
         }
@@ -397,6 +422,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
+
     if (failed) {
 
         /* rollback the new cycle configuration */
@@ -429,8 +455,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
         if (ngx_test_config) {
-            ngx_destroy_pool(conf.temp_pool);
-            ngx_destroy_pool(pool);
+            ngx_destroy_cycle_pools(&conf);
             return NULL;
         }
 
@@ -447,8 +472,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             }
         }
 
-        ngx_destroy_pool(conf.temp_pool);
-        ngx_destroy_pool(pool);
+        ngx_destroy_cycle_pools(&conf);
         return NULL;
     }
 
@@ -533,16 +557,16 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     ngx_destroy_pool(conf.temp_pool);
 
-    if (old_cycle->connections == NULL) {
-        /* an old cycle is an init cycle */
+    if (ngx_process == NGX_PROCESS_MASTER || ngx_is_init_cycle(old_cycle)) {
+
+        if (old_cycle->shm.addr) {
+            ngx_shm_free(&old_cycle->shm);
+        }
+
         ngx_destroy_pool(old_cycle->pool);
         return cycle;
     }
 
-    if (ngx_process == NGX_PROCESS_MASTER) {
-        ngx_destroy_pool(old_cycle->pool);
-        return cycle;
-    }
 
     if (ngx_temp_pool == NULL) {
         ngx_temp_pool = ngx_create_pool(128, cycle->log);
@@ -586,6 +610,15 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 }
 
 
+static void
+ngx_destroy_cycle_pools(ngx_conf_t *conf)
+{
+    ngx_shm_free(&conf->cycle->shm);
+    ngx_destroy_pool(conf->temp_pool);
+    ngx_destroy_pool(conf->pool);
+}
+
+
 static ngx_int_t
 ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2)
 {
@@ -623,7 +656,7 @@ ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
     ngx_file_t        file;
     ngx_core_conf_t  *ccf, *old_ccf;
 
-    if (!ngx_test_config && old_cycle && old_cycle->conf_ctx == NULL) {
+    if (!ngx_test_config && ngx_is_init_cycle(old_cycle)) {
 
         /*
          * do not create the pid file in the first ngx_init_cycle() call

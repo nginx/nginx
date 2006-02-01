@@ -32,6 +32,10 @@ struct ngx_cycle_s {
     ngx_connection_t         *free_connections;
     ngx_uint_t                free_connection_n;
 
+    ngx_shm_t                 shm;
+    u_char                   *shm_last;
+    u_char                   *shm_end;
+
     ngx_array_t               listening;
     ngx_array_t               pathes;
     ngx_list_t                open_files;
@@ -88,6 +92,9 @@ typedef struct {
 typedef struct {
      ngx_pool_t              *pool;   /* pcre's malloc() pool */
 } ngx_core_tls_t;
+
+
+#define ngx_is_init_cycle(old)  (old && old->conf_ctx == NULL)
 
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);

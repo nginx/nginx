@@ -70,6 +70,21 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                     }
                 }
 
+                if (n == 0) {
+
+                    /*
+                     * on FreeBSD recv() may return 0 on closed socket
+                     * even if kqueue reported about available data
+                     */
+
+                    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                                  "recv() returned 0 while keevnt() reported "
+                                  "%d available bytes", rev->available);
+
+                    rev->eof = 1;
+                    rev->available = 0;
+                }
+
                 return n;
             }
 
