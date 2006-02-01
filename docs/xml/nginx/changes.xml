@@ -9,6 +9,24 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.25" date="01.02.2006">
+
+<change type="bugfix">
+<para lang="ru">
+при неверной конфигурации на старте или во время переконфигурации происходил
+segmentation fault;
+ошибка появилась в 0.3.24.
+</para>
+<para lang="en">
+the segmentation fault was occurred on start or while reconfiguration
+if there was invalid configuration;
+bug appeared in 0.3.24.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.24" date="01.02.2006">
 
 <change type="workaround">

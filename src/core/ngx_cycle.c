@@ -613,7 +613,10 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 static void
 ngx_destroy_cycle_pools(ngx_conf_t *conf)
 {
-    ngx_shm_free(&conf->cycle->shm);
+    if (conf->cycle->shm.addr) {
+        ngx_shm_free(&conf->cycle->shm);
+    }
+
     ngx_destroy_pool(conf->temp_pool);
     ngx_destroy_pool(conf->pool);
 }
