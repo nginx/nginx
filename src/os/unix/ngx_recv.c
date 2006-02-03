@@ -78,7 +78,7 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                      */
 
                     ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                                  "recv() returned 0 while keevnt() reported "
+                                  "recv() returned 0 while kevent() reported "
                                   "%d available bytes", rev->available);
 
                     rev->eof = 1;

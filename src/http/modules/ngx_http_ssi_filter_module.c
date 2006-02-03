@@ -761,7 +761,7 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 static ngx_int_t
 ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 {
-    u_char                *p, *last, *copy_end, ch;
+    u_char                *p, *value, *last, *copy_end, ch;
     size_t                 looked;
     ngx_http_ssi_state_e   state;
 
@@ -914,12 +914,13 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
             default:
                 ctx->command.len = 1;
                 ctx->command.data = ngx_palloc(r->pool,
-                                               NGX_HTTP_SSI_COMMAND_LEN + 1);
+                                               NGX_HTTP_SSI_COMMAND_LEN);
                 if (ctx->command.data == NULL) {
                     return NGX_ERROR;
                 }
 
                 ctx->command.data[0] = ch;
+
                 ctx->key = 0;
                 ctx->key = ngx_hash(ctx->key, ch);
 
@@ -944,17 +945,17 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 break;
 
             default:
-                ctx->command.data[ctx->command.len++] = ch;
-                ctx->key = ngx_hash(ctx->key, ch);
-
                 if (ctx->command.len == NGX_HTTP_SSI_COMMAND_LEN) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "the \"%V\" SSI command is too long",
-                                  &ctx->command);
+                                  "the \"%V%c...\" SSI command is too long",
+                                  &ctx->command, ch);
 
                     state = ssi_error_state;
                     break;
                 }
+
+                ctx->command.data[ctx->command.len++] = ch;
+                ctx->key = ngx_hash(ctx->key, ch);
             }
 
             break;
@@ -979,7 +980,7 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 
                 ctx->param->key.len = 1;
                 ctx->param->key.data = ngx_palloc(r->pool,
-                                                  NGX_HTTP_SSI_PARAM_LEN + 1);
+                                                  NGX_HTTP_SSI_PARAM_LEN);
                 if (ctx->param->key.data == NULL) {
                     return NGX_ERROR;
                 }
@@ -987,10 +988,16 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 ctx->param->key.data[0] = ch;
 
                 ctx->param->value.len = 0;
-                ctx->param->value.data = ngx_palloc(r->pool,
-                                                    ctx->value_len + 1);
-                if (ctx->param->value.data == NULL) {
-                    return NGX_ERROR;
+
+                if (ctx->value_buf == NULL) {
+                    ctx->param->value.data = ngx_palloc(r->pool,
+                                                        ctx->value_len);
+                    if (ctx->param->value.data == NULL) {
+                        return NGX_ERROR;
+                    }
+
+                } else {
+                    ctx->param->value.data = ctx->value_buf;
                 }
 
                 state = ssi_param_state;
@@ -1022,16 +1029,16 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 break;
 
             default:
-                ctx->param->key.data[ctx->param->key.len++] = ch;
-
                 if (ctx->param->key.len == NGX_HTTP_SSI_PARAM_LEN) {
                     state = ssi_error_state;
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "too long \"%V\" parameter in "
+                                  "too long \"%V%c...\" parameter in "
                                   "\"%V\" SSI command",
-                                  &ctx->param->key, &ctx->command);
+                                  &ctx->param->key, ch, &ctx->command);
                     break;
                 }
+
+                ctx->param->key.data[ctx->param->key.len++] = ch;
             }
 
             break;
@@ -1109,17 +1116,17 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 /* fall through */
 
             default:
-                ctx->param->value.data[ctx->param->value.len++] = ch;
-
                 if (ctx->param->value.len == ctx->value_len) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "too long \"%V\" value of \"%V\" parameter "
-                                  "in \"%V\" SSI command",
-                                  &ctx->param->value, &ctx->param->key,
+                                  "too long \"%V%c...\" value of \"%V\" "
+                                  "parameter in \"%V\" SSI command",
+                                  &ctx->param->value, ch, &ctx->param->key,
                                   &ctx->command);
                     state = ssi_error_state;
                     break;
                 }
+
+                ctx->param->value.data[ctx->param->value.len++] = ch;
             }
 
             break;
@@ -1137,17 +1144,17 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 /* fall through */
 
             default:
-                ctx->param->value.data[ctx->param->value.len++] = ch;
-
                 if (ctx->param->value.len == ctx->value_len) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "too long \"%V\" value of \"%V\" parameter "
-                                  "in \"%V\" SSI command",
-                                  &ctx->param->value, &ctx->param->key,
+                                  "too long \"%V%c...\" value of \"%V\" "
+                                  "parameter in \"%V\" SSI command",
+                                  &ctx->param->value, ch, &ctx->param->key,
                                   &ctx->command);
                     state = ssi_error_state;
                     break;
                 }
+
+                ctx->param->value.data[ctx->param->value.len++] = ch;
             }
 
             break;
@@ -1169,23 +1176,38 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 break;
             }
 
-            ctx->param->value.data[ctx->param->value.len++] = ch;
-
             if (ctx->param->value.len == ctx->value_len) {
-                if (ctx->param->value.len == ctx->value_len) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "too long \"%V\" value of \"%V\" parameter "
-                                  "in \"%V\" SSI command",
-                                  &ctx->param->value, &ctx->param->key,
-                                  &ctx->command);
-                    state = ssi_error_state;
-                    break;
-                }
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "too long \"%V%c...\" value of \"%V\" "
+                              "parameter in \"%V\" SSI command",
+                              &ctx->param->value, ch, &ctx->param->key,
+                              &ctx->command);
+                state = ssi_error_state;
+                break;
             }
+
+            ctx->param->value.data[ctx->param->value.len++] = ch;
 
             break;
 
         case ssi_postparam_state:
+
+            if (ctx->param->value.len < ctx->value_len / 2) {
+                value = ngx_palloc(r->pool, ctx->param->value.len);
+                if (value == NULL) {
+                    return NGX_ERROR;
+                }
+
+                ngx_memcpy(value, ctx->param->value.data,
+                           ctx->param->value.len);
+
+                ctx->value_buf = ctx->param->value.data;
+                ctx->param->value.data = value;
+
+            } else {
+                ctx->value_buf = NULL;
+            }
+
             switch (ch) {
             case ' ':
             case CR:

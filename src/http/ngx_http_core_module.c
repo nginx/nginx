@@ -62,6 +62,10 @@ static char *ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data);
 static ngx_conf_post_t  ngx_http_core_lowat_post =
                                                  { ngx_http_core_lowat_check };
 
+static ngx_conf_deprecated_t  ngx_conf_deprecated_optimize_host_names = {
+    ngx_conf_deprecated, "optimize_host_names", "optimize_server_names"
+};
+
 
 static ngx_conf_enum_t  ngx_http_restrict_host_names[] = {
     { ngx_string("off"), NGX_HTTP_RESTRICT_HOST_OFF },
@@ -136,12 +140,19 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_srv_conf_t, restrict_host_names),
       &ngx_http_restrict_host_names },
 
+    { ngx_string("optimize_server_names"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_core_srv_conf_t, optimize_server_names),
+      NULL },
+
     { ngx_string("optimize_host_names"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_core_srv_conf_t, optimize_host_names),
-      NULL },
+      offsetof(ngx_http_core_srv_conf_t, optimize_server_names),
+      &ngx_conf_deprecated_optimize_host_names },
 
     { ngx_string("ignore_invalid_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
@@ -1840,7 +1851,7 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
     cscf->client_header_timeout = NGX_CONF_UNSET_MSEC;
     cscf->client_header_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->restrict_host_names = NGX_CONF_UNSET_UINT;
-    cscf->optimize_host_names = NGX_CONF_UNSET;
+    cscf->optimize_server_names = NGX_CONF_UNSET;
     cscf->ignore_invalid_headers = NGX_CONF_UNSET;
 
     return cscf;
@@ -1928,8 +1939,8 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_unsigned_value(conf->restrict_host_names,
                               prev->restrict_host_names, 0);
 
-    ngx_conf_merge_value(conf->optimize_host_names,
-                              prev->optimize_host_names, 1);
+    ngx_conf_merge_value(conf->optimize_server_names,
+                              prev->optimize_server_names, 1);
 
     ngx_conf_merge_value(conf->ignore_invalid_headers,
                               prev->ignore_invalid_headers, 1);

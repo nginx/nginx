@@ -15,8 +15,8 @@
 
 #define NGX_HTTP_SSI_MAX_PARAMS     16
 
-#define NGX_HTTP_SSI_COMMAND_LEN    31
-#define NGX_HTTP_SSI_PARAM_LEN      31
+#define NGX_HTTP_SSI_COMMAND_LEN    32
+#define NGX_HTTP_SSI_PARAM_LEN      32
 #define NGX_HTTP_SSI_PARAMS_N       4
 
 
@@ -56,6 +56,7 @@ typedef struct {
 
     ngx_uint_t                output;        /* unsigned  output:1; */
 
+    void                     *value_buf;
     ngx_str_t                 timefmt;
     ngx_str_t                 errmsg;
 } ngx_http_ssi_ctx_t;

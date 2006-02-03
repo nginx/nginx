@@ -9,6 +9,31 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.26" date="03.02.2006">
+
+<change type="change">
+<para lang="ru">
+директива optimize_host_names переименована в optimize_server_names.
+</para>
+<para lang="en">
+the "optimize_host_names" directive was renamed to the "optimize_server_names".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при проксировании подзапроса в SSI бэкенду передавался URI основного запроса,
+если в директиве proxy_pass отсутствовал URI.
+</para>
+<para lang="en">
+if in the "proxy_pass" directive was no the URI part, then the main request
+URI was transferred to a backend while proxying the SSI subrequest.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.25" date="01.02.2006">
 
 <change type="bugfix">
@@ -53,13 +78,13 @@ to a client.
 при использовании большого количества лог-файлов происходила утечка памяти. 
 </para>
 <para lang="en">
-the memory leaks were occuring if many log files were used.
+the memory leaks were occurring if many log files were used.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-внтури одного location работала только первая директива proxy_redirect.
+внутри одного location работала только первая директива proxy_redirect.
 </para>
 <para lang="en">
 the first "proxy_redirect" directive was working inside one location.
@@ -69,7 +94,7 @@ the first "proxy_redirect" directive was working inside one location.
 <change type="bugfix">
 <para lang="ru">
 на 64-битных платформах при старте мог произойти segmentation fault,
-если использовалось большое количиство имён в директивах server_name;
+если использовалось большое количество имён в директивах server_name;
 ошибка появилась в 0.3.18.
 </para>
 <para lang="en">
@@ -163,7 +188,7 @@ the ngx_http_perl_module.
 
 <change type="change">
 <para lang="ru">
-директива valid_referers разрешает использовать рефереры cовсем без URI.
+директива valid_referers разрешает использовать рефереры совсем без URI.
 </para>
 <para lang="en">
 the "valid_referers" directive allows the referreres without URI part.

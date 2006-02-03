@@ -442,7 +442,7 @@ static ngx_int_t
 ngx_http_proxy_create_request(ngx_http_request_t *r)
 {
     size_t                        len, loc_len, body_len;
-    ngx_uint_t                    i, key;
+    ngx_uint_t                    i, key, unparsed_uri;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
     ngx_str_t                    *hh, method;
@@ -488,10 +488,12 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     loc_len = r->valid_location ? u->conf->location.len : 0;
 
-    if (u->conf->uri.len == 0 && r->valid_unparsed_uri) {
+    if (u->conf->uri.len == 0 && r->valid_unparsed_uri && r == r->main) {
+        unparsed_uri = 1;
         len += r->unparsed_uri.len;
 
     } else {
+        unparsed_uri = 0;
         if (r->quoted_uri) {
             escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
                                         r->uri.len - loc_len, NGX_ESCAPE_URI);
@@ -581,7 +583,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     u->uri.data = b->last;
 
-    if (u->conf->uri.len == 0 && r->valid_unparsed_uri) {
+    if (unparsed_uri) {
         b->last = ngx_copy(b->last, r->unparsed_uri.data, r->unparsed_uri.len);
 
     } else {
