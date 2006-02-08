@@ -71,3 +71,5 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
 #else
 #define ngx_memory_barrier()   __asm__ volatile ("" ::: "memory")
 #endif
+
+#define ngx_cpu_pause()

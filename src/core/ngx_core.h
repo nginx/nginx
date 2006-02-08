@@ -62,6 +62,7 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #endif
 #include <ngx_radix_tree.h>
 #include <ngx_times.h>
+#include <ngx_shmtx.h>
 #include <ngx_inet.h>
 #if (NGX_HAVE_UNIX_DOMAIN)
 #include <ngx_unix_domain.h>
@@ -82,6 +83,8 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 
 
 #define ngx_abs(value)   (((value) >= 0) ? (value) : - (value))
+
+void ngx_cpuinfo(void);
 
 
 #endif /* _NGX_CORE_H_INCLUDED_ */

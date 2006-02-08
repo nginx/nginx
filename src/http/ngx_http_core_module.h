@@ -71,13 +71,18 @@ typedef struct {
     ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
 
     ngx_hash0_t                headers_in_hash;
-    ngx_hash0_t                variables_hash;
+
+    ngx_hash_t                 variables_hash;
+
+    ngx_array_t                variables;       /* ngx_http_variable_t */
 
     ngx_uint_t                 server_names_hash_max_size;
     ngx_uint_t                 server_names_hash_bucket_size;
 
-    ngx_array_t                variables;        /* ngx_http_variable_t */
-    ngx_array_t                all_variables;    /* ngx_http_variable_t */
+    ngx_uint_t                 variables_hash_max_size;
+    ngx_uint_t                 variables_hash_bucket_size;
+
+    ngx_hash_keys_arrays_t    *variables_keys;
 } ngx_http_core_main_conf_t;
 
 

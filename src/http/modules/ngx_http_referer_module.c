@@ -271,6 +271,8 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->blocked_referer = 0;
     }
 
+    conf->keys = NULL;
+
     return NGX_CONF_OK;
 }
 

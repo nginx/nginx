@@ -1457,11 +1457,10 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
     if (ev->timedout) {
         if (ev->write) {
             c->timedout = 1;
-            ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT,
-                          "client timed out");
+            ngx_connection_error(c, NGX_ETIMEDOUT, "client timed out");
+
         } else {
-            ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT,
-                          "upstream timed out");
+            ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
         }
     }
 
@@ -1681,14 +1680,12 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
             } else {
                 p->downstream_error = 1;
                 c->timedout = 1;
-                ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT,
-                              "client timed out");
+                ngx_connection_error(c, NGX_ETIMEDOUT, "client timed out");
             }
 
         } else {
             p->upstream_error = 1;
-            ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT,
-                          "upstream timed out");
+            ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
         }
 
     } else {

@@ -174,7 +174,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     if (rev->ready) {
         /* the deferred accept(), rtsig, aio, iocp */
 
-        if (ngx_accept_mutex) {
+        if (ngx_use_accept_mutex) {
             ngx_post_event(rev, &ngx_posted_events);
             return;
         }

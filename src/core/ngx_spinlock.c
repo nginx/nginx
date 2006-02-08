@@ -8,36 +8,35 @@
 #include <ngx_core.h>
 
 
-/*
- * TODO: the P4 optimized assembler version with the "pause" operation
- */
-
 void
-ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin)
+ngx_spinlock(ngx_atomic_t *lock, ngx_atomic_int_t value, ngx_uint_t spin)
 {
 
 #if (NGX_HAVE_ATOMIC_OPS)
 
-    ngx_uint_t  tries;
-
-    tries = 0;
+    ngx_uint_t  i, n;
 
     for ( ;; ) {
 
-        if (*lock) {
-            if (ngx_ncpu > 1 && tries++ < spin) {
-                continue;
-            }
+        if (*lock == 0 && ngx_atomic_cmp_set(lock, 0, value)) {
+            return;
+        }
 
-            ngx_sched_yield();
+        if (ngx_ncpu > 1) {
 
-            tries = 0;
+            for (n = 1; n < spin; n <<= 1) {
 
-        } else {
-            if (ngx_atomic_cmp_set(lock, 0, 1)) {
-                return;
+                for (i = 0; i < n; i++) {
+                    ngx_cpu_pause();
+                }
+
+                if (*lock == 0 && ngx_atomic_cmp_set(lock, 0, value)) {
+                    return;
+                }
             }
         }
+
+        ngx_sched_yield();
     }
 
 #else

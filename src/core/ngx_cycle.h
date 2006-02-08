@@ -77,6 +77,7 @@ typedef struct {
      ngx_gid_t                group;
 
      ngx_str_t                working_directory;
+     ngx_str_t                lock_file;
 
      ngx_str_t                pid;
      ngx_str_t                oldpid;
@@ -94,11 +95,11 @@ typedef struct {
 } ngx_core_tls_t;
 
 
-#define ngx_is_init_cycle(old)  (old && old->conf_ctx == NULL)
+#define ngx_is_init_cycle(cycle)  (cycle->conf_ctx == NULL)
 
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
-ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle);
+ngx_int_t ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log);
 void ngx_delete_pidfile(ngx_cycle_t *cycle);
 void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user);
 ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);

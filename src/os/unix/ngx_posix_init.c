@@ -45,6 +45,8 @@ ngx_os_init(ngx_log_t *log)
         ngx_ncpu = 1;
     }
 
+    ngx_cpuinfo();
+
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
                       "getrlimit(RLIMIT_NOFILE) failed)");

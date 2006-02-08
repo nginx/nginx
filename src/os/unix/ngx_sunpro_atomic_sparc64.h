@@ -56,3 +56,5 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
         __asm (".volatile");                                                  \
         __asm ("membar #LoadLoad | #LoadStore | #StoreStore | #StoreLoad");   \
         __asm (".nonvolatile")
+
+#define ngx_cpu_pause()

@@ -235,59 +235,58 @@ ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 }
 
 
-ngx_int_t
-ngx_lock_file(ngx_file_t *file)
+ngx_err_t
+ngx_trylock_fd(ngx_fd_t fd)
 {
-    ngx_err_t     err;
     struct flock  fl;
 
-    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
     fl.l_len = 0;
     fl.l_pid = 0;
     fl.l_type = F_WRLCK;
-    fl.l_start = 0;
+    fl.l_whence = SEEK_SET;
 
-    if (fcntl(file->fd, F_SETLK, &fl) == -1) {
-        err = ngx_errno;
-
-        if (err == NGX_EAGAIN) {
-            return NGX_BUSY;
-        }
-
-        ngx_log_error(NGX_LOG_ALERT, file->log, err,
-                      "fcntl(%s, F_SETLK, F_WRLCK) failed", file->name.data);
-
-        return NGX_ERROR;
+    if (fcntl(fd, F_SETLK, &fl) == -1) {
+        return ngx_errno;
     }
 
-    return NGX_OK;
+    return 0;
 }
 
 
-ngx_int_t
-ngx_unlock_file(ngx_file_t *file)
+ngx_err_t
+ngx_lock_fd(ngx_fd_t fd)
 {
-    ngx_err_t     err;
     struct flock  fl;
 
+    fl.l_start = 0;
+    fl.l_len = 0;
+    fl.l_pid = 0;
+    fl.l_type = F_WRLCK;
     fl.l_whence = SEEK_SET;
+
+    if (fcntl(fd, F_SETLKW, &fl) == -1) {
+        return ngx_errno;
+    }
+
+    return 0;
+}
+
+
+ngx_err_t
+ngx_unlock_fd(ngx_fd_t fd)
+{
+    struct flock  fl;
+
+    fl.l_start = 0;
     fl.l_len = 0;
     fl.l_pid = 0;
     fl.l_type = F_UNLCK;
-    fl.l_start = 0;
+    fl.l_whence = SEEK_SET;
 
-    if (fcntl(file->fd, F_SETLK, &fl) == -1) {
-        err = ngx_errno;
-
-        if (err == NGX_EAGAIN) {
-            return NGX_BUSY;
-        }
-
-        ngx_log_error(NGX_LOG_ALERT, file->log, err,
-                      "fcntl(%s, F_SETLK, F_UNLCK) failed", file->name.data);
-
-        return NGX_ERROR;
+    if (fcntl(fd, F_SETLK, &fl) == -1) {
+        return  ngx_errno;
     }
 
-    return NGX_OK;
+    return 0;
 }

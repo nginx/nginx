@@ -42,6 +42,8 @@ static ngx_int_t ngx_http_variable_request_method(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_remote_user(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 
 
 /*
@@ -130,6 +132,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("remote_user"), ngx_http_variable_remote_user, 0, 0, 0 },
 
+    { ngx_string("body_bytes_sent"), ngx_http_variable_body_bytes_sent,
+      0, 0, 0 },
+
     { ngx_null_string, NULL, 0, 0, 0 }
 };
 
@@ -143,30 +148,34 @@ ngx_http_variable_value_t  ngx_http_variable_true_value =
 ngx_http_variable_t *
 ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
 {
+    ngx_int_t                   rc;
     ngx_uint_t                  i;
+    ngx_hash_key_t             *key;
     ngx_http_variable_t        *v;
     ngx_http_core_main_conf_t  *cmcf;
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
-    v = cmcf->all_variables.elts;
-    for (i = 0; i < cmcf->all_variables.nelts; i++) {
-        if (name->len != v[i].name.len
-            || ngx_strncasecmp(name->data, v[i].name.data, name->len) != 0)
+    key = cmcf->variables_keys->keys.elts;
+    for (i = 0; i < cmcf->variables_keys->keys.nelts; i++) {
+        if (name->len != key[i].key.len
+            || ngx_strncasecmp(name->data, key[i].key.data, name->len) != 0)
         {
             continue;
         }
 
-        if (!(v[i].flags & NGX_HTTP_VAR_CHANGABLE)) {
+        v = key[i].value;
+
+        if (!(v->flags & NGX_HTTP_VAR_CHANGABLE)) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "the duplicate \"%V\" variable", name);
             return NULL;
         }
 
-        return &v[i];
+        return v;
     }
 
-    v = ngx_array_push(&cmcf->all_variables);
+    v = ngx_palloc(cf->pool, sizeof(ngx_http_variable_t));
     if (v == NULL) {
         return NULL;
     }
@@ -185,6 +194,18 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
     v->data = 0;
     v->flags = flags;
     v->index = 0;
+
+    rc = ngx_hash_add_key(cmcf->variables_keys, &v->name, v, 0);
+
+    if (rc == NGX_ERROR) {
+        return NULL;
+    }
+
+    if (rc == NGX_BUSY) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "conflicting variable name \"%V\"", name);
+        return NULL;
+    }
 
     return v;
 }
@@ -298,34 +319,25 @@ ngx_http_get_flushed_variable(ngx_http_request_t *r, ngx_uint_t index)
 
 
 ngx_http_variable_value_t *
-ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name)
+ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key)
 {
-    ngx_uint_t                  i, key;
     ngx_http_variable_t        *v;
     ngx_http_variable_value_t  *vv;
     ngx_http_core_main_conf_t  *cmcf;
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
-    key = 0;
-    for (i = 0; i < name->len; i++) {
-        key += name->data[i];
-    }
+    v = ngx_hash_find(&cmcf->variables_hash, key, name->data, name->len);
 
-    key %= cmcf->variables_hash.hash_size;
-    v = (ngx_http_variable_t *) cmcf->variables_hash.buckets;
-
-    if (v[key].name.len == name->len
-        && ngx_strncmp(v[key].name.data, name->data, name->len) == 0)
-    {
-        if (v[key].flags & NGX_HTTP_VAR_INDEXED) {
-            return ngx_http_get_indexed_variable(r, v[key].index);
+    if (v) {
+        if (v->flags & NGX_HTTP_VAR_INDEXED) {
+            return ngx_http_get_indexed_variable(r, v->index);
 
         } else {
 
             vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
 
-            if (vv && v[key].handler(r, vv, v[key].data) == NGX_OK) {
+            if (vv && v->handler(r, vv, v->data) == NGX_OK) {
                 return vv;
             }
 
@@ -758,28 +770,72 @@ ngx_http_variable_remote_user(ngx_http_request_t *r,
 }
 
 
+static ngx_int_t
+ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    off_t    sent;
+    u_char  *p;
+
+    sent = r->connection->sent - r->header_size;
+
+    if (sent < 0) {
+        sent = 0;
+    }
+
+    p = ngx_palloc(r->pool, NGX_OFF_T_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, "%O", sent) - p;
+    v->valid = 1;
+    v->no_cachable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
 ngx_int_t
 ngx_http_variables_add_core_vars(ngx_conf_t *cf)
 {
-    ngx_http_variable_t        *v, *cv;
+    ngx_int_t                   rc;
+    ngx_http_variable_t        *v;
     ngx_http_core_main_conf_t  *cmcf;
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
-    if (ngx_array_init(&cmcf->all_variables, cf->pool, 32,
-                       sizeof(ngx_http_variable_t))
-        == NGX_ERROR)
+    cmcf->variables_keys = ngx_pcalloc(cf->temp_pool,
+                                       sizeof(ngx_hash_keys_arrays_t));
+    if (cmcf->variables_keys == NULL) {
+        return NGX_ERROR;
+    }
+
+    cmcf->variables_keys->pool = cf->pool;
+    cmcf->variables_keys->temp_pool = cf->pool;
+
+    if (ngx_hash_keys_array_init(cmcf->variables_keys, NGX_HASH_SMALL)
+        != NGX_OK)
     {
         return NGX_ERROR;
     }
 
-    for (cv = ngx_http_core_variables; cv->name.len; cv++) {
-        v = ngx_array_push(&cmcf->all_variables);
-        if (v == NULL) {
-            return NGX_ERROR;
+    for (v = ngx_http_core_variables; v->name.len; v++) {
+        rc = ngx_hash_add_key(cmcf->variables_keys, &v->name, v,
+                              NGX_HASH_READONLY_KEY);
+
+        if (rc == NGX_OK) {
+            continue;
         }
 
-        *v = *cv;
+        if (rc == NGX_BUSY) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "conflicting variable name \"%V\"", &v->name);
+        }
+
+        return NGX_ERROR;
     }
 
     return NGX_OK;
@@ -790,6 +846,8 @@ ngx_int_t
 ngx_http_variables_init_vars(ngx_conf_t *cf)
 {
     ngx_uint_t                  i, n;
+    ngx_hash_key_t             *key;
+    ngx_hash_init_t             hash;
     ngx_http_variable_t        *v, *av;
     ngx_http_core_main_conf_t  *cmcf;
 
@@ -798,23 +856,25 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
     v = cmcf->variables.elts;
-    av = cmcf->all_variables.elts;
+    key = cmcf->variables_keys->keys.elts;
 
     for (i = 0; i < cmcf->variables.nelts; i++) {
 
-        for (n = 0; n < cmcf->all_variables.nelts; n++) {
+        for (n = 0; n < cmcf->variables_keys->keys.nelts; n++) {
 
-            if (v[i].name.len == av[n].name.len
-                && ngx_strncmp(v[i].name.data, av[n].name.data, v[i].name.len)
+            if (v[i].name.len == key[n].key.len
+                && ngx_strncmp(v[i].name.data, key[n].key.data, v[i].name.len)
                    == 0)
             {
-                v[i].handler = av[n].handler;
-                v[i].data = av[n].data;
+                av = key[n].value;
 
-                av[n].flags |= NGX_HTTP_VAR_INDEXED;
-                v[i].flags = av[n].flags;
+                v[i].handler = av->handler;
+                v[i].data = av->data;
 
-                av[n].index = i;
+                av->flags |= NGX_HTTP_VAR_INDEXED;
+                v[i].flags = av->flags;
+
+                av->index = i;
 
                 goto next;
             }
@@ -843,36 +903,32 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
         continue;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                   "http variables: %ui", cmcf->variables.nelts);
 
+    for (n = 0; n < cmcf->variables_keys->keys.nelts; n++) {
+        av = key[n].value;
 
-    for (n = 0; n < cmcf->all_variables.nelts; n++) {
-        if (av[n].flags & NGX_HTTP_VAR_NOHASH) {
-            av[n].name.data = NULL;
+        if (av->flags & NGX_HTTP_VAR_NOHASH) {
+            key[n].key.data = NULL;
         }
     }
 
 
-    /* init the all http variables hash */
+    hash.hash = &cmcf->variables_hash;
+    hash.key = ngx_hash_key;
+    hash.max_size = cmcf->variables_hash_max_size;
+    hash.bucket_size = cmcf->variables_hash_bucket_size;
+    hash.name = "variables_hash";
+    hash.pool = cf->pool;
+    hash.temp_pool = NULL;
 
-    cmcf->variables_hash.max_size = 500;
-    cmcf->variables_hash.bucket_limit = 1;
-    cmcf->variables_hash.bucket_size = sizeof(ngx_http_variable_t);
-    cmcf->variables_hash.name = "http variables";
-
-    if (ngx_hash0_init(&cmcf->variables_hash, cf->pool,
-                      cmcf->all_variables.elts, cmcf->all_variables.nelts)
+    if (ngx_hash_init(&hash, cmcf->variables_keys->keys.elts,
+                      cmcf->variables_keys->keys.nelts)
         != NGX_OK)
     {
         return NGX_ERROR;
     }
 
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                   "http variables hash size: %ui for %ui values, "
-                   "max buckets per entry: %ui",
-                   cmcf->variables_hash.hash_size, cmcf->all_variables.nelts,
-                   cmcf->variables_hash.min_buckets);
+    cmcf->variables_keys = NULL;
 
     return NGX_OK;
 }

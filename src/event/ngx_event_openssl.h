@@ -69,8 +69,13 @@ ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
     ngx_uint_t flags);
 
 ngx_int_t ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session);
-#define ngx_ssl_get_session(c)   SSL_get1_session(c->ssl->connection)
-#define ngx_ssl_free_session     SSL_SESSION_free
+#define ngx_ssl_get_session(c)      SSL_get1_session(c->ssl->connection)
+#define ngx_ssl_free_session        SSL_SESSION_free
+
+
+u_char *ngx_ssl_get_protocol(ngx_connection_t *c);
+u_char *ngx_ssl_get_cipher_name(ngx_connection_t *c);
+
 
 ngx_int_t ngx_ssl_handshake(ngx_connection_t *c);
 ssize_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size);

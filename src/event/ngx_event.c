@@ -31,7 +31,6 @@ static char *ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd,
 
 static void *ngx_event_create_conf(ngx_cycle_t *cycle);
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf);
-static char *ngx_accept_mutex_check(ngx_conf_t *cf, void *post, void *data);
 
 
 static ngx_uint_t     ngx_timer_resolution;
@@ -48,7 +47,8 @@ ngx_atomic_t         *ngx_connection_counter = &connection_counter;
 
 
 ngx_atomic_t         *ngx_accept_mutex_ptr;
-ngx_atomic_t         *ngx_accept_mutex;
+ngx_shmtx_t           ngx_accept_mutex;
+ngx_uint_t            ngx_use_accept_mutex;
 ngx_uint_t            ngx_accept_mutex_held;
 ngx_msec_t            ngx_accept_mutex_delay;
 ngx_int_t             ngx_accept_disabled;
@@ -112,8 +112,6 @@ ngx_module_t  ngx_events_module = {
 
 static ngx_str_t  event_core_name = ngx_string("event_core");
 
-static ngx_conf_post_t  ngx_accept_mutex_post = { ngx_accept_mutex_check } ;
-
 
 static ngx_command_t  ngx_event_core_commands[] = {
 
@@ -150,7 +148,7 @@ static ngx_command_t  ngx_event_core_commands[] = {
       ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_event_conf_t, accept_mutex),
-      &ngx_accept_mutex_post },
+      NULL },
 
     { ngx_string("accept_mutex_delay"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
@@ -218,7 +216,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 #endif
     }
 
-    if (ngx_accept_mutex) {
+    if (ngx_use_accept_mutex) {
         if (ngx_accept_disabled > 0) {
             ngx_accept_disabled--;
 
@@ -254,7 +252,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
 
     if (ngx_accept_mutex_held) {
-        (void) ngx_atomic_cmp_set(ngx_accept_mutex, ngx_pid, 0);
+        ngx_shmtx_unlock(&ngx_accept_mutex);
     }
 
     if (delta) {
@@ -415,7 +413,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 {
     void              ***cf;
     u_char              *shared;
-    size_t               size;
+    size_t               size, cl;
     ngx_event_conf_t    *ecf;
     ngx_core_conf_t     *ccf;
     ngx_shm_t            shm;
@@ -465,24 +463,41 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 #endif /* !(NGX_WIN32) */
 
 
-    if (ccf->master == 0 || ngx_accept_mutex_ptr) {
+    if (ccf->master == 0) {
         return NGX_OK;
     }
 
 
-    /* TODO: adjust cache line size, 128 is P4 cache line size */
+    if (ngx_accept_mutex_ptr) {
 
-    size = 128            /* ngx_accept_mutex */
-           + 128;         /* ngx_connection_counter */
+        /* reinit ngx_accept_mutex */
+
+        if (ngx_shmtx_create(&ngx_accept_mutex, (void *) ngx_accept_mutex_ptr,
+                             ccf->lock_file.data, cycle->log)
+                != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        return NGX_OK;
+    }
+
+
+    /* cl should be equal or bigger than cache line size */
+
+    cl = 128;
+
+    size = cl            /* ngx_accept_mutex */
+           + cl;         /* ngx_connection_counter */
 
 #if (NGX_STAT_STUB)
 
-    size += 128           /* ngx_stat_accepted */
-           + 128          /* ngx_stat_handled */
-           + 128          /* ngx_stat_requests */
-           + 128          /* ngx_stat_active */
-           + 128          /* ngx_stat_reading */
-           + 128;         /* ngx_stat_writing */
+    size += cl           /* ngx_stat_accepted */
+           + cl          /* ngx_stat_handled */
+           + cl          /* ngx_stat_requests */
+           + cl          /* ngx_stat_active */
+           + cl          /* ngx_stat_reading */
+           + cl;         /* ngx_stat_writing */
 
 #endif
 
@@ -496,16 +511,24 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     shared = shm.addr;
 
     ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
-    ngx_connection_counter = (ngx_atomic_t *) (shared + 1 * 128);
+
+    if (ngx_shmtx_create(&ngx_accept_mutex, shared, ccf->lock_file.data,
+                         cycle->log)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    ngx_connection_counter = (ngx_atomic_t *) (shared + 1 * cl);
 
 #if (NGX_STAT_STUB)
 
-    ngx_stat_accepted = (ngx_atomic_t *) (shared + 2 * 128);
-    ngx_stat_handled = (ngx_atomic_t *) (shared + 3 * 128);
-    ngx_stat_requests = (ngx_atomic_t *) (shared + 4 * 128);
-    ngx_stat_active = (ngx_atomic_t *) (shared + 5 * 128);
-    ngx_stat_reading = (ngx_atomic_t *) (shared + 6 * 128);
-    ngx_stat_writing = (ngx_atomic_t *) (shared + 7 * 128);
+    ngx_stat_accepted = (ngx_atomic_t *) (shared + 2 * cl);
+    ngx_stat_handled = (ngx_atomic_t *) (shared + 3 * cl);
+    ngx_stat_requests = (ngx_atomic_t *) (shared + 4 * cl);
+    ngx_stat_active = (ngx_atomic_t *) (shared + 5 * cl);
+    ngx_stat_reading = (ngx_atomic_t *) (shared + 6 * cl);
+    ngx_stat_writing = (ngx_atomic_t *) (shared + 7 * cl);
 
 #endif
 
@@ -557,11 +580,13 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
-    if (ngx_accept_mutex_ptr && ccf->worker_processes > 1 && ecf->accept_mutex)
-    {
-        ngx_accept_mutex = ngx_accept_mutex_ptr;
+    if (ccf->worker_processes > 1 && ecf->accept_mutex) {
+        ngx_use_accept_mutex = 1;
         ngx_accept_mutex_held = 0;
         ngx_accept_mutex_delay = ecf->accept_mutex_delay;
+
+    } else {
+        ngx_use_accept_mutex = 0;
     }
 
 #if (NGX_THREADS)
@@ -775,7 +800,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
         rev->handler = ngx_event_accept;
 
-        if (ngx_accept_mutex) {
+        if (ngx_use_accept_mutex) {
             continue;
         }
 
@@ -1220,23 +1245,4 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     return NGX_CONF_OK;
 
 #endif
-}
-
-
-static char *
-ngx_accept_mutex_check(ngx_conf_t *cf, void *post, void *data)
-{
-#if !(NGX_HAVE_ATOMIC_OPS)
-
-    ngx_flag_t *fp = data;
-
-    *fp = 0;
-
-    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                       "\"accept_mutex\" is not supported on this platform, "
-                       "ignored");
-
-#endif
-
-    return NGX_CONF_OK;
 }

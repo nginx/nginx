@@ -77,6 +77,20 @@ static ngx_conf_enum_t  ngx_http_restrict_host_names[] = {
 
 static ngx_command_t  ngx_http_core_commands[] = {
 
+    { ngx_string("variables_hash_max_size"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      offsetof(ngx_http_core_main_conf_t, variables_hash_max_size),
+      NULL },
+
+    { ngx_string("variables_hash_bucket_size"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      offsetof(ngx_http_core_main_conf_t, variables_hash_bucket_size),
+      NULL },
+
     { ngx_string("server_names_hash_max_size"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -1787,6 +1801,9 @@ ngx_http_core_create_main_conf(ngx_conf_t *cf)
     cmcf->server_names_hash_max_size = NGX_CONF_UNSET_UINT;
     cmcf->server_names_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
+    cmcf->variables_hash_max_size = NGX_CONF_UNSET_UINT;
+    cmcf->variables_hash_bucket_size = NGX_CONF_UNSET_UINT;
+
     return cmcf;
 }
 
@@ -1806,6 +1823,18 @@ ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf)
 
     cmcf->server_names_hash_bucket_size =
             ngx_align(cmcf->server_names_hash_bucket_size, ngx_cacheline_size);
+
+
+    if (cmcf->variables_hash_max_size == NGX_CONF_UNSET_UINT) {
+        cmcf->variables_hash_max_size = 512;
+    }
+
+    if (cmcf->variables_hash_bucket_size == NGX_CONF_UNSET_UINT) {
+        cmcf->variables_hash_bucket_size = 64;
+    }
+
+    cmcf->variables_hash_bucket_size =
+               ngx_align(cmcf->variables_hash_bucket_size, ngx_cacheline_size);
 
     return NGX_CONF_OK;
 }
@@ -2224,7 +2253,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ls->family = AF_INET;
     ls->port = (in_port_t) (inet_upstream.default_port ?
-                                                      80 : inet_upstream.port);
+                            80 : inet_upstream.port);
     ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
     ls->conf.backlog = -1;

@@ -495,7 +495,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     }
 
     ngx_accept_mutex_held = 0;
-    ngx_accept_mutex = NULL;
+    ngx_use_accept_mutex = 0;
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
@@ -726,7 +726,6 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
         || err == NGX_ECONNREFUSED
         || err == NGX_EHOSTUNREACH)
     {
-
         switch (c->log_error) {
 
         case NGX_ERROR_IGNORE_ECONNRESET:

@@ -9,6 +9,7 @@ NGX_SBIN_PATH=
 NGX_CONF_PATH=
 NGX_ERROR_LOG_PATH=
 NGX_PID_PATH=
+NGX_LOCK_PATH=
 NGX_USER=
 NGX_GROUP=
 
@@ -112,6 +113,7 @@ do
         --conf-path=*)                   NGX_CONF_PATH="$value"     ;;
         --error-log-path=*)              NGX_ERROR_LOG_PATH="$value";;
         --pid-path=*)                    NGX_PID_PATH="$value"      ;;
+        --lock-path=*)                   NGX_LOCK_PATH="$value"     ;;
         --user=*)                        NGX_USER="$value"          ;;
         --group=*)                       NGX_GROUP="$value"         ;;
 
@@ -212,6 +214,7 @@ cat << END
   --conf-path=PATH                   set path to the nginx.conf file
   --error-log-path=PATH              set path to the error log
   --pid-path=PATH                    set path to nginx.pid file
+  --lock-path=PATH                   set path to nginx.lock file
 
   --user=USER                        set non-privilege user
                                      for the worker processes
@@ -350,6 +353,20 @@ case ".$NGX_PID_PATH" in
 
     *)
         NGX_PID_PATH=$NGX_PREFIX/$NGX_PID_PATH
+    ;;
+esac
+
+
+case ".$NGX_LOCK_PATH" in
+    ./*)
+    ;;
+
+    .)
+        NGX_LOCK_PATH=$NGX_PREFIX/logs/nginx.lock
+    ;;
+
+    *)
+        NGX_LOCK_PATH=$NGX_PREFIX/$NGX_LOCK_PATH
     ;;
 esac
 

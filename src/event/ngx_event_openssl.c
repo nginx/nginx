@@ -1009,6 +1009,20 @@ ngx_ssl_cleanup_ctx(void *data)
 }
 
 
+u_char *
+ngx_ssl_get_protocol(ngx_connection_t *c)
+{
+    return (u_char *) SSL_get_version(c->ssl->connection);
+}
+
+
+u_char *
+ngx_ssl_get_cipher_name(ngx_connection_t *c)
+{
+    return (u_char *) SSL_get_cipher_name(c->ssl->connection);
+}
+
+
 static void *
 ngx_openssl_create_conf(ngx_cycle_t *cycle)
 {

@@ -58,6 +58,13 @@ static ngx_command_t  ngx_core_commands[] = {
       offsetof(ngx_core_conf_t, pid),
       NULL },
 
+    { ngx_string("lock_file"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      0,
+      offsetof(ngx_core_conf_t, lock_file),
+      NULL },
+
     { ngx_string("worker_processes"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -214,11 +221,11 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    if (ngx_save_argv(&init_cycle, argc, argv) == NGX_ERROR) {
+    if (ngx_save_argv(&init_cycle, argc, argv) != NGX_OK) {
         return 1;
     }
 
-    if (ngx_getopt(&init_cycle, argc, ngx_argv) == NGX_ERROR) {
+    if (ngx_getopt(&init_cycle, argc, ngx_argv) != NGX_OK) {
         return 1;
     }
 
@@ -226,11 +233,11 @@ main(int argc, char *const *argv)
         log->log_level = NGX_LOG_INFO;
     }
 
-    if (ngx_os_init(log) == NGX_ERROR) {
+    if (ngx_os_init(log) != NGX_OK) {
         return 1;
     }
 
-    if (ngx_add_inherited_sockets(&init_cycle) == NGX_ERROR) {
+    if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;
     }
 
@@ -274,7 +281,7 @@ main(int argc, char *const *argv)
     TODO:
 
     if (ccf->run_as_service) {
-        if (ngx_service(cycle->log) == NGX_ERROR) {
+        if (ngx_service(cycle->log) != NGX_OK) {
             return 1;
         }
 
@@ -284,19 +291,19 @@ main(int argc, char *const *argv)
 
 #else
 
-    if (ngx_init_signals(cycle->log) == NGX_ERROR) {
+    if (ngx_init_signals(cycle->log) != NGX_OK) {
         return 1;
     }
 
     if (!ngx_inherited && ccf->daemon) {
-        if (ngx_daemon(cycle->log) == NGX_ERROR) {
+        if (ngx_daemon(cycle->log) != NGX_OK) {
             return 1;
         }
 
         ngx_daemonized = 1;
     }
 
-    if (ngx_create_pidfile(cycle, NULL) == NGX_ERROR) {
+    if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
         return 1;
     }
 
@@ -665,6 +672,15 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ngx_memcpy(ngx_cpymem(ccf->oldpid.data, ccf->pid.data, ccf->pid.len),
                NGX_OLDPID_EXT, sizeof(NGX_OLDPID_EXT));
+
+    if (ccf->lock_file.len == 0) {
+        ccf->lock_file.len = sizeof(NGX_LOCK_PATH) - 1;
+        ccf->lock_file.data = (u_char *) NGX_LOCK_PATH;
+    }
+
+    if (ngx_conf_full_name(cycle, &ccf->lock_file) == NGX_ERROR) {
+        return NGX_CONF_ERROR;
+    }
 
 #endif
 

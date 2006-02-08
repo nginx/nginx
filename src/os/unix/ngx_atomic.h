@@ -34,6 +34,7 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add);
 /* the code in src/os/unix/ngx_sunpro_x86.il */
 
 #define ngx_memory_barrier()        __asm (".volatile"); __asm (".nonvolatile")
+#define ngx_cpu_pause()             __asm ("pause")
 
 
 #else /* ( __GNUC__ || __INTEL_COMPILER ) */
@@ -67,6 +68,7 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add);
 /* the code in src/os/unix/ngx_sunpro_amd64.il */
 
 #define ngx_memory_barrier()        __asm (".volatile"); __asm (".nonvolatile")
+#define ngx_cpu_pause()             __asm ("pause")
 
 
 #else /* ( __GNUC__ || __INTEL_COMPILER ) */
@@ -175,10 +177,11 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
 }
 
 #define ngx_memory_barrier()
+#define ngx_cpu_pause()
 
 #endif
 
-void ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin);
+void ngx_spinlock(ngx_atomic_t *lock, ngx_atomic_int_t value, ngx_uint_t spin);
 
 #define ngx_trylock(lock)  (*(lock) == 0 && ngx_atomic_cmp_set(lock, 0, 1))
 #define ngx_unlock(lock)    *(lock) = 0

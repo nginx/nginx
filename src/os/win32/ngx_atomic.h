@@ -45,7 +45,14 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 #define ngx_memory_barrier()
 
 
-void ngx_spinlock(ngx_atomic_t *lock, ngx_uint_t spin);
+#ifdef __BORLANDC__
+#define ngx_cpu_pause()
+#else
+#define ngx_cpu_pause()       __asm { pause }
+#endif
+
+
+void ngx_spinlock(ngx_atomic_t *lock, ngx_atomic_int_t value, ngx_uint_t spin);
 
 #define ngx_trylock(lock)  (*(lock) == 0 && ngx_atomic_cmp_set(lock, 0, 1))
 #define ngx_unlock(lock)    *(lock) = 0

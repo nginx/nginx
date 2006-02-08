@@ -9,6 +9,7 @@
 #include <ngx_event.h>
 
 
+static ngx_int_t ngx_test_lockfile(u_char *file, ngx_log_t *log);
 static void ngx_destroy_cycle_pools(ngx_conf_t *conf);
 static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
@@ -42,7 +43,7 @@ ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void               *rv;
-    ngx_uint_t          i, n, failed;
+    ngx_uint_t          i, n;
     ngx_log_t          *log;
     ngx_conf_t          conf;
     ngx_pool_t         *pool;
@@ -52,7 +53,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_listening_t    *ls, *nls;
     ngx_core_conf_t    *ccf;
     ngx_core_module_t  *module;
-
+#if !(WIN32)
+    ngx_core_conf_t    *old_ccf;
+#endif
 
     log = old_cycle->log;
 
@@ -236,82 +239,100 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    failed = 0;
-
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
 #if !(NGX_WIN32)
-    if (ngx_create_pidfile(cycle, old_cycle) == NGX_ERROR) {
-        failed = 1;
-    }
-#endif
 
+    if (ngx_test_config) {
 
-    if (!failed) {
-         ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
-                                                ngx_core_module);
+        if (ngx_create_pidfile(&ccf->pid, log) != NGX_OK) {
+            goto failed;
+        }
 
-        if (ngx_create_pathes(cycle, ccf->user) == NGX_ERROR) {
-            failed = 1;
+    } else if (!ngx_is_init_cycle(old_cycle)) {
+
+        /*
+         * we do not create the pid file in the first ngx_init_cycle() call
+         * because we need to write the demonized process pid
+         */
+
+        old_ccf = (ngx_core_conf_t *) ngx_get_conf(old_cycle->conf_ctx,
+                                                   ngx_core_module);
+        if (ccf->pid.len != old_ccf->pid.len
+            || ngx_strcmp(ccf->pid.data, old_ccf->pid.data) != 0)
+        {
+            /* new pid file name */
+
+            if (ngx_create_pidfile(&ccf->pid, log) != NGX_OK) {
+                goto failed;
+            }
+
+            ngx_delete_pidfile(old_cycle);
         }
     }
 
+#endif
 
-    if (!failed) {
 
-        /* open the new files */
+    if (ngx_test_lockfile(ccf->lock_file.data, log) != NGX_OK) {
+        goto failed;
+    }
 
-        part = &cycle->open_files.part;
-        file = part->elts;
 
-        for (i = 0; /* void */ ; i++) {
+    if (ngx_create_pathes(cycle, ccf->user) != NGX_OK) {
+        goto failed;
+    }
 
-            if (i >= part->nelts) {
-                if (part->next == NULL) {
-                    break;
-                }
-                part = part->next;
-                file = part->elts;
-                i = 0;
-            }
 
-            if (file[i].name.data == NULL) {
-                continue;
-            }
+    /* open the new files */
 
-            file[i].fd = ngx_open_file(file[i].name.data,
-                                       NGX_FILE_RDWR,
-                                       NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+    part = &cycle->open_files.part;
+    file = part->elts;
 
-            ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
-                           "log: %p %d \"%s\"",
-                           &file[i], file[i].fd, file[i].name.data);
+    for (i = 0; /* void */ ; i++) {
 
-            if (file[i].fd == NGX_INVALID_FILE) {
-                ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                              ngx_open_file_n " \"%s\" failed",
-                              file[i].name.data);
-                failed = 1;
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
                 break;
             }
+            part = part->next;
+            file = part->elts;
+            i = 0;
+        }
+
+        if (file[i].name.data == NULL) {
+            continue;
+        }
+
+        file[i].fd = ngx_open_file(file[i].name.data, NGX_FILE_RDWR,
+                                   NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+
+        ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
+                       "log: %p %d \"%s\"",
+                       &file[i], file[i].fd, file[i].name.data);
+
+        if (file[i].fd == NGX_INVALID_FILE) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          ngx_open_file_n " \"%s\" failed",
+                          file[i].name.data);
+            goto failed;
+        }
 
 #if (NGX_WIN32)
-            if (ngx_file_append_mode(file[i].fd) == NGX_ERROR) {
-                ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                              ngx_file_append_mode_n " \"%s\" failed",
-                              file[i].name.data);
-                failed = 1;
-                break;
-            }
-#else
-            if (fcntl(file[i].fd, F_SETFD, FD_CLOEXEC) == -1) {
-                ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                              "fcntl(FD_CLOEXEC) \"%s\" failed",
-                              file[i].name.data);
-                failed = 1;
-                break;
-            }
-#endif
+        if (ngx_file_append_mode(file[i].fd) != NGX_OK) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          ngx_file_append_mode_n " \"%s\" failed",
+                          file[i].name.data);
+            goto failed;
         }
+#else
+        if (fcntl(file[i].fd, F_SETFD, FD_CLOEXEC) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          "fcntl(FD_CLOEXEC) \"%s\" failed",
+                          file[i].name.data);
+            goto failed;
+        }
+#endif
     }
 
     cycle->log = cycle->new_log;
@@ -321,159 +342,100 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         cycle->log->log_level = NGX_LOG_ERR;
     }
 
-    if (!failed) {
 
-        /* handle the listening sockets */
+    /* handle the listening sockets */
 
-        if (old_cycle->listening.nelts) {
-            ls = old_cycle->listening.elts;
+    if (old_cycle->listening.nelts) {
+        ls = old_cycle->listening.elts;
+        for (i = 0; i < old_cycle->listening.nelts; i++) {
+            ls[i].remain = 0;
+        }
+
+        nls = cycle->listening.elts;
+        for (n = 0; n < cycle->listening.nelts; n++) {
+
             for (i = 0; i < old_cycle->listening.nelts; i++) {
-                ls[i].remain = 0;
-            }
+                if (ls[i].ignore) {
+                    continue;
+                }
 
-            nls = cycle->listening.elts;
-            for (n = 0; n < cycle->listening.nelts; n++) {
+                if (ngx_cmp_sockaddr(nls[n].sockaddr, ls[i].sockaddr) == NGX_OK)
+                {
+                    nls[n].fd = ls[i].fd;
+                    nls[n].previous = &ls[i];
+                    ls[i].remain = 1;
 
-                for (i = 0; i < old_cycle->listening.nelts; i++) {
-                    if (ls[i].ignore) {
-                        continue;
+                    if (ls[n].backlog != nls[i].backlog) {
+                        nls[n].listen = 1;
                     }
-
-                    if (ngx_cmp_sockaddr(nls[n].sockaddr, ls[i].sockaddr)
-                        == NGX_OK)
-                    {
-                        nls[n].fd = ls[i].fd;
-                        nls[n].previous = &ls[i];
-                        ls[i].remain = 1;
-
-                        if (ls[n].backlog != nls[i].backlog) {
-                            nls[n].listen = 1;
-                        }
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
 
-                        /*
-                         * FreeBSD, except the most recent versions,
-                         * could not remove accept filter
-                         */
-                        nls[n].deferred_accept = ls[i].deferred_accept;
+                    /*
+                     * FreeBSD, except the most recent versions,
+                     * could not remove accept filter
+                     */
+                    nls[n].deferred_accept = ls[i].deferred_accept;
 
-                        if (ls[i].accept_filter && nls[n].accept_filter) {
-                            if (ngx_strcmp(ls[i].accept_filter,
-                                           nls[n].accept_filter) != 0)
-                            {
-                                nls[n].delete_deferred = 1;
-                                nls[n].add_deferred = 1;
-                            }
-
-                        } else if (ls[i].accept_filter) {
-                            nls[n].delete_deferred = 1;
-
-                        } else if (nls[n].accept_filter) {
-                            nls[n].add_deferred = 1;
-                        }
-#endif
-
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
-
-                        if (ls[n].deferred_accept && !nls[n].deferred_accept) {
-                            nls[n].delete_deferred = 1;
-
-                        } else if (ls[i].deferred_accept
-                                   != nls[n].deferred_accept)
+                    if (ls[i].accept_filter && nls[n].accept_filter) {
+                        if (ngx_strcmp(ls[i].accept_filter,
+                                       nls[n].accept_filter)
+                            != 0)
                         {
+                            nls[n].delete_deferred = 1;
                             nls[n].add_deferred = 1;
                         }
-#endif
-                        break;
-                    }
-                }
 
-                if (nls[n].fd == -1) {
-                    nls[n].open = 1;
+                    } else if (ls[i].accept_filter) {
+                        nls[n].delete_deferred = 1;
+
+                    } else if (nls[n].accept_filter) {
+                        nls[n].add_deferred = 1;
+                    }
+#endif
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+
+                    if (ls[n].deferred_accept && !nls[n].deferred_accept) {
+                        nls[n].delete_deferred = 1;
+
+                    } else if (ls[i].deferred_accept != nls[n].deferred_accept)
+                    {
+                        nls[n].add_deferred = 1;
+                    }
+#endif
+                    break;
                 }
             }
 
-        } else {
-            ls = cycle->listening.elts;
-            for (i = 0; i < cycle->listening.nelts; i++) {
-                ls[i].open = 1;
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
-                if (ls[i].accept_filter) {
-                    ls[i].add_deferred = 1;
-                }
-#endif
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
-                if (ls[i].deferred_accept) {
-                    ls[i].add_deferred = 1;
-                }
-#endif
+            if (nls[n].fd == -1) {
+                nls[n].open = 1;
             }
         }
 
-        if (!failed) {
-            if (ngx_open_listening_sockets(cycle) == NGX_ERROR) {
-                failed = 1;
+    } else {
+        ls = cycle->listening.elts;
+        for (i = 0; i < cycle->listening.nelts; i++) {
+            ls[i].open = 1;
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+            if (ls[i].accept_filter) {
+                ls[i].add_deferred = 1;
             }
-
-            if (!ngx_test_config && !failed) {
-                ngx_configure_listening_socket(cycle);
+#endif
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+            if (ls[i].deferred_accept) {
+                ls[i].add_deferred = 1;
             }
+#endif
         }
     }
 
+    if (ngx_open_listening_sockets(cycle) != NGX_OK) {
+        goto failed;
+    }
 
-    if (failed) {
-
-        /* rollback the new cycle configuration */
-
-        part = &cycle->open_files.part;
-        file = part->elts;
-
-        for (i = 0; /* void */ ; i++) {
-
-            if (i >= part->nelts) {
-                if (part->next == NULL) {
-                    break;
-                }
-                part = part->next;
-                file = part->elts;
-                i = 0;
-            }
-
-            if (file[i].fd == NGX_INVALID_FILE
-                || file[i].fd == ngx_stderr_fileno)
-            {
-                continue;
-            }
-
-            if (ngx_close_file(file[i].fd) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                              ngx_close_file_n " \"%s\" failed",
-                              file[i].name.data);
-            }
-        }
-
-        if (ngx_test_config) {
-            ngx_destroy_cycle_pools(&conf);
-            return NULL;
-        }
-
-        ls = cycle->listening.elts;
-        for (i = 0; i < cycle->listening.nelts; i++) {
-            if (ls[i].fd == -1 || !ls[i].open) {
-                continue;
-            }
-
-            if (ngx_close_socket(ls[i].fd) == -1) {
-                ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              ngx_close_socket_n " %V failed",
-                              &ls[i].addr_text);
-            }
-        }
-
-        ngx_destroy_cycle_pools(&conf);
-        return NULL;
+    if (!ngx_test_config) {
+        ngx_configure_listening_socket(cycle);
     }
 
 
@@ -488,7 +450,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                        cycle->log->file,
                        cycle->log->file->fd, cycle->log->file->name.data);
 
-        if (dup2(cycle->log->file->fd, STDERR_FILENO) == NGX_ERROR) {
+        if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           "dup2(STDERR) failed");
             /* fatal */
@@ -502,7 +464,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->init_module) {
-            if (ngx_modules[i]->init_module(cycle) == NGX_ERROR) {
+            if (ngx_modules[i]->init_module(cycle) != NGX_OK) {
                 /* fatal */
                 exit(1);
             }
@@ -564,6 +526,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
         ngx_destroy_pool(old_cycle->pool);
+
+        cycle->old_cycle = NULL;
+
         return cycle;
     }
 
@@ -607,6 +572,58 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     return cycle;
+
+
+failed:
+
+    /* rollback the new cycle configuration */
+
+    part = &cycle->open_files.part;
+    file = part->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            file = part->elts;
+            i = 0;
+        }
+
+        if (file[i].fd == NGX_INVALID_FILE || file[i].fd == ngx_stderr_fileno) {
+            continue;
+        }
+
+        if (ngx_close_file(file[i].fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed",
+                          file[i].name.data);
+        }
+    }
+
+    if (ngx_test_config) {
+        ngx_destroy_cycle_pools(&conf);
+        return NULL;
+    }
+
+    ls = cycle->listening.elts;
+    for (i = 0; i < cycle->listening.nelts; i++) {
+        if (ls[i].fd == -1 || !ls[i].open) {
+            continue;
+        }
+
+        if (ngx_close_socket(ls[i].fd) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                          ngx_close_socket_n " %V failed",
+                          &ls[i].addr_text);
+        }
+    }
+
+    ngx_destroy_cycle_pools(&conf);
+
+    return NULL;
 }
 
 
@@ -651,52 +668,25 @@ ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2)
 #if !(NGX_WIN32)
 
 ngx_int_t
-ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
+ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
 {
-    ngx_uint_t        trunc;
     size_t            len;
-    u_char            pid[NGX_INT64_LEN];
+    ngx_uint_t        trunc;
     ngx_file_t        file;
-    ngx_core_conf_t  *ccf, *old_ccf;
-
-    if (!ngx_test_config && ngx_is_init_cycle(old_cycle)) {
-
-        /*
-         * do not create the pid file in the first ngx_init_cycle() call
-         * because we need to write the demonized process pid
-         */
-
-        return NGX_OK;
-    }
-
-    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
-
-    if (!ngx_test_config && old_cycle) {
-        old_ccf = (ngx_core_conf_t *) ngx_get_conf(old_cycle->conf_ctx,
-                                                   ngx_core_module);
-
-        if (ccf->pid.len == old_ccf->pid.len
-            && ngx_strcmp(ccf->pid.data, old_ccf->pid.data) == 0)
-        {
-
-            /* pid file name is the same */
-
-            return NGX_OK;
-        }
-    }
+    u_char            pid[NGX_INT64_LEN];
 
     ngx_memzero(&file, sizeof(ngx_file_t));
 
-    file.name = ccf->pid;
-    file.log = cycle->log;
+    file.name = *name;
+    file.log = log;
 
-    trunc = ngx_test_config ? 0: NGX_FILE_TRUNCATE;
+    trunc = ngx_test_config ? 0 : NGX_FILE_TRUNCATE;
 
     file.fd = ngx_open_file(file.name.data, NGX_FILE_RDWR,
                             NGX_FILE_CREATE_OR_OPEN|trunc);
 
     if (file.fd == NGX_INVALID_FILE) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       ngx_open_file_n " \"%s\" failed", file.name.data);
         return NGX_ERROR;
     }
@@ -710,11 +700,9 @@ ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
     }
 
     if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                       ngx_close_file_n " \"%s\" failed", file.name.data);
     }
-
-    ngx_delete_pidfile(old_cycle);
 
     return NGX_OK;
 }
@@ -725,10 +713,6 @@ ngx_delete_pidfile(ngx_cycle_t *cycle)
 {
     u_char           *name;
     ngx_core_conf_t  *ccf;
-
-    if (cycle == NULL || cycle->conf_ctx == NULL) {
-        return;
-    }
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
@@ -741,6 +725,36 @@ ngx_delete_pidfile(ngx_cycle_t *cycle)
 }
 
 #endif
+
+
+static ngx_int_t
+ngx_test_lockfile(u_char *file, ngx_log_t *log)
+{
+#if !(NGX_HAVE_ATOMIC_OPS)
+    ngx_fd_t  fd;
+
+    fd = ngx_open_file(file, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN);
+
+    if (fd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      ngx_open_file_n " \"%s\" failed", file);
+        return NGX_ERROR;
+    }
+
+    if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", file);
+    }
+
+    if (ngx_delete_file(file) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                      ngx_delete_file_n " \"%s\" failed", file);
+    }
+
+#endif
+
+    return NGX_OK;
+}
 
 
 void

@@ -119,4 +119,13 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_de_mtime(dir)        (dir)->info.st_mtime
 
 
+ngx_err_t ngx_trylock_fd(ngx_fd_t fd);
+ngx_err_t ngx_lock_fd(ngx_fd_t fd);
+ngx_err_t ngx_unlock_fd(ngx_fd_t fd);
+
+#define ngx_trylock_fd_n         "fcntl(F_SETLK, F_WRLCK)"
+#define ngx_lock_fd_n            "fcntl(F_SETLKW, F_WRLCK)"
+#define ngx_unlock_fd_n          "fcntl(F_SETLK, F_UNLCK)"
+
+
 #endif /* _NGX_FILES_H_INCLUDED_ */

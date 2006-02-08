@@ -9,6 +9,80 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.27" date="08.02.2006">
+
+<change type="change">
+<para lang="ru">
+директивы variables_hash_max_size и variables_hash_bucket_size.
+</para>
+<para lang="en">
+the "variables_hash_max_size" and "variables_hash_bucket_size" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $body_bytes_sent доступна не только в директиве log_format.
+</para>
+<para lang="en">
+the $body_bytes_sent variable can be used not only in the "log_format"
+directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $ssl_protocol и $ssl_cipher.
+</para>
+<para lang="en">
+the $ssl_protocol and $ssl_cipher variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+определение размера строки кэша распространённых процессоров при старте.
+</para>
+<para lang="en">
+the cache line size detection for widespread CPUs at start time.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива accept_mutex теперь поддерживается посредством fcntl(2)
+на платформах, отличных от i386, amd64, sparc64 и ppc.
+</para>
+<para lang="en">
+now the "accept_mutex" directive is supported using fcntl(2)
+on platforms different from i386, amd64, sparc64, and ppc.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива lock_file и параметр автоконфигурации --with-lock-path=PATH.
+</para>
+<para lang="en">
+the "lock_file" directive and the --with-lock-path=PATH autoconfiguration
+directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании протокола HTTPS в директиве proxy_pass не передавались
+запросы с телом.
+</para>
+<para lang="en">
+if the HTTP protocol was used in the "proxy_pass" directive then
+the requests with the body did not transferred.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.26" date="03.02.2006">
 
 <change type="change">
