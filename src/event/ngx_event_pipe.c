@@ -60,8 +60,11 @@ ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
             return NGX_ABORT;
         }
 
-        if (rev->active) {
+        if (rev->active && !rev->ready) {
             ngx_add_timer(rev, p->read_timeout);
+
+        } else if (rev->timer_set) {
+            ngx_del_timer(rev);
         }
     }
 
@@ -71,8 +74,13 @@ ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
             return NGX_ABORT;
         }
 
-        if (wev->active && !wev->ready && !wev->delayed) {
-            ngx_add_timer(wev, p->send_timeout);
+        if (!wev->delayed) {
+            if (wev->active && !wev->ready) {
+                ngx_add_timer(wev, p->send_timeout);
+
+            } else if (wev->timer_set) {
+                ngx_del_timer(wev);
+            }
         }
     }
 

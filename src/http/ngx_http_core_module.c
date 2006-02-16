@@ -67,14 +67,6 @@ static ngx_conf_deprecated_t  ngx_conf_deprecated_optimize_host_names = {
 };
 
 
-static ngx_conf_enum_t  ngx_http_restrict_host_names[] = {
-    { ngx_string("off"), NGX_HTTP_RESTRICT_HOST_OFF },
-    { ngx_string("on"), NGX_HTTP_RESTRICT_HOST_ON },
-    { ngx_string("close"), NGX_HTTP_RESTRICT_HOST_CLOSE },
-    { ngx_null_string, 0 }
-};
-
-
 static ngx_command_t  ngx_http_core_commands[] = {
 
     { ngx_string("variables_hash_max_size"),
@@ -146,13 +138,6 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_core_srv_conf_t, large_client_header_buffers),
       NULL },
-
-    { ngx_string("restrict_host_names"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_enum_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_core_srv_conf_t, restrict_host_names),
-      &ngx_http_restrict_host_names },
 
     { ngx_string("optimize_server_names"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
@@ -747,7 +732,9 @@ ngx_http_update_location_config(ngx_http_request_t *r)
         r->connection->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
     }
 
-    r->limit_rate = clcf->limit_rate;
+    if (r->limit_rate == 0) {
+        r->limit_rate = clcf->limit_rate;
+    }
 
     if (clcf->handler) {
         r->content_handler = clcf->handler;
@@ -1879,7 +1866,6 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
     cscf->request_pool_size = NGX_CONF_UNSET_SIZE;
     cscf->client_header_timeout = NGX_CONF_UNSET_MSEC;
     cscf->client_header_buffer_size = NGX_CONF_UNSET_SIZE;
-    cscf->restrict_host_names = NGX_CONF_UNSET_UINT;
     cscf->optimize_server_names = NGX_CONF_UNSET;
     cscf->ignore_invalid_headers = NGX_CONF_UNSET;
 
@@ -1964,9 +1950,6 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                            "equal to or bigger than \"connection_pool_size\"");
         return NGX_CONF_ERROR;
     }
-
-    ngx_conf_merge_unsigned_value(conf->restrict_host_names,
-                              prev->restrict_host_names, 0);
 
     ngx_conf_merge_value(conf->optimize_server_names,
                               prev->optimize_server_names, 1);

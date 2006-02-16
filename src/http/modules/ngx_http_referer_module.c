@@ -334,6 +334,7 @@ ngx_http_valid_referers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         uri.len = 0;
+        uri.data = NULL;
 
         if (ngx_strcmp(value[i].data, "server_names") == 0) {
 

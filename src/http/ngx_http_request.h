@@ -77,11 +77,7 @@
  */
 #define NGX_HTTP_TO_HTTPS                  497
 
-/*
- * We use the special code for the requests with invalid host name
- * to distinguish it from 4XX in an error page redirection
- */
-#define NGX_HTTP_INVALID_HOST              498
+/* 498 is the canceled code for the requests with invalid host name */
 
 /*
  * HTTP does not define the code for the case when a client closed
@@ -104,13 +100,6 @@
 #define NGX_HTTP_GZIP_BUFFERED             0x00000020
 #define NGX_HTTP_SSI_BUFFERED              0x00000100
 #define NGX_HTTP_COPY_BUFFERED             0x00000200
-
-
-typedef enum {
-    NGX_HTTP_RESTRICT_HOST_OFF = 0,
-    NGX_HTTP_RESTRICT_HOST_ON,
-    NGX_HTTP_RESTRICT_HOST_CLOSE
-} ngx_http_restrict_host_e;
 
 
 typedef enum {

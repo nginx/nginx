@@ -415,9 +415,11 @@ print(r, ...)
 
 
 int
-sendfile(r, filename)
+sendfile(r, filename, offset = -1, bytes = 0)
     nginx                     r
     char                     *filename
+    int                       offset;
+    size_t                    bytes;
 
     PREINIT:
 
@@ -460,17 +462,26 @@ sendfile(r, filename)
         goto done;
     }
 
-    if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                      ngx_fd_info_n " \"%s\" failed", filename);
+    if (offset == -1) {
+        offset = 0;
+    }
 
-        if (ngx_close_file(fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                          ngx_close_file_n " \"%s\" failed", filename);
+    if (bytes == 0) {
+        if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                          ngx_fd_info_n " \"%s\" failed", filename);
+
+            if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                              ngx_close_file_n " \"%s\" failed", filename);
+            }
+
+            RETVAL = NGX_ERROR;
+            goto done;
+
         }
 
-        RETVAL = NGX_ERROR;
-        goto done;
+        bytes = ngx_file_size(&fi) - offset;
     }
 
     cln->handler = ngx_pool_cleanup_file;
@@ -481,8 +492,9 @@ sendfile(r, filename)
     clnf->log = r->pool->log;
 
     b->in_file = 1;
-    b->file_pos = 0;
-    b->file_last = ngx_file_size(&fi);
+
+    b->file_pos = offset;
+    b->file_last = offset + bytes;
 
     b->file->fd = fd;
     b->file->log = r->connection->log;

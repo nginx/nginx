@@ -343,11 +343,6 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
                 r->headers_out.status = NGX_HTTP_BAD_REQUEST;
                 error = NGX_HTTP_BAD_REQUEST;
                 break;
-
-            case NGX_HTTP_INVALID_HOST:
-                r->headers_out.status = NGX_HTTP_NOT_FOUND;
-                error = NGX_HTTP_NOT_FOUND;
-                break;
         }
     }
 

@@ -101,6 +101,16 @@ case $CPU in
         NGX_CPU_CACHE_LINE=64
     ;;
 
+    ppc64)
+        # build 64-bit PowerPC binary
+        CPU_OPT="-m64"
+        CPU_OPT="$CPU_OPT -falign-functions=32 -falign-labels=32"
+        CPU_OPT="$CPU_OPT -falign-loops=32 -falign-jumps=32"
+        CORE_LINK="$CORE_LINK -m64"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS -m64"
+        NGX_CPU_CACHE_LINE=128
+    ;;
+
 esac
 
 

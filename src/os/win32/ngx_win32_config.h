@@ -125,6 +125,7 @@ typedef u_short           in_port_t;
 typedef int               sig_atomic_t;
 
 
+#define NGX_PTR_SIZE            4
 #define NGX_SIZE_T_LEN          sizeof("-2147483648") - 1
 #define NGX_MAX_SIZE_T_VALUE	2147483647
 #define NGX_TIME_T_LEN          sizeof("-2147483648") - 1

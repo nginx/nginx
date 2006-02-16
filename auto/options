@@ -267,7 +267,8 @@ cat << END
   --with-cc-opt=OPTIONS              set additional options for C compiler
   --with-ld-opt=OPTIONS              set additional options for linker
   --with-cpu-opt=CPU                 build for specified CPU, the valid values:
-                                     pentium, pentiumpro, pentium4, sparc64
+                                     pentium, pentiumpro, pentium3, pentium4,
+                                     athlon, opteron, sparc32, sparc64, ppc64
 
   --without-pcre                     disable PCRE libarary usage
   --with-pcre=DIR                    set path to PCRE library sources

@@ -1209,7 +1209,10 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     rc = ngx_http_send_header(r);
 
-    if (rc == NGX_ERROR || rc > NGX_OK) {
+    if (rc == NGX_ERROR
+        || rc > NGX_OK
+                          /* post_action */
+        || (r->http_version == NGX_HTTP_VERSION_9 && r->header_only)) {
         ngx_http_upstream_finalize_request(r, u, rc);
         return;
     }

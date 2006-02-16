@@ -25,7 +25,7 @@ static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
-static ngx_int_t ngx_http_find_virtual_server(ngx_http_request_t *r);
+static void ngx_http_find_virtual_server(ngx_http_request_t *r);
 
 static void ngx_http_request_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
@@ -39,6 +39,7 @@ static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
 static void ngx_http_lingering_close_handler(ngx_event_t *ev);
+static ngx_int_t ngx_http_post_action(ngx_http_request_t *r);
 static void ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error);
 static void ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error);
 static void ngx_http_close_connection(ngx_connection_t *c);
@@ -1164,9 +1165,8 @@ ngx_http_process_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
 static ngx_int_t
 ngx_http_process_request_header(ngx_http_request_t *r)
 {
-    size_t                      len;
-    u_char                     *ua, *user_agent, ch;
-    ngx_http_core_srv_conf_t   *cscf;
+    size_t   len;
+    u_char  *ua, *user_agent, ch;
 
     if (r->headers_in.host) {
         for (len = 0; len < r->headers_in.host->value.len; len++) {
@@ -1185,20 +1185,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
         r->headers_in.host_name_len = len;
 
-        if (ngx_http_find_virtual_server(r) != NGX_OK) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid \"Host\" header");
-
-            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-            if (cscf->restrict_host_names == NGX_HTTP_RESTRICT_HOST_CLOSE) {
-                ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
-                return NGX_ERROR;
-            }
-
-            ngx_http_finalize_request(r, NGX_HTTP_INVALID_HOST);
-            return NGX_ERROR;
-        }
+        ngx_http_find_virtual_server(r);
 
     } else {
         if (r->http_version > NGX_HTTP_VERSION_10) {
@@ -1316,7 +1303,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 }
 
 
-static ngx_int_t
+static void
 ngx_http_find_virtual_server(ngx_http_request_t *r)
 {
     size_t                     len;
@@ -1328,7 +1315,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r)
     vn = r->virtual_names;
 
     if (vn == NULL) {
-        return NGX_OK;
+        return;
     }
 
     host = r->headers_in.host->value.data;
@@ -1351,13 +1338,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r)
         }
     }
 
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-    if (cscf->restrict_host_names == NGX_HTTP_RESTRICT_HOST_OFF) {
-        return NGX_OK;
-    }
-
-    return NGX_ERROR;
+    return;
 
 found:
 
@@ -1374,7 +1355,7 @@ found:
         r->connection->log->log_level = clcf->err_log->log_level;
     }
 
-    return NGX_OK;
+    return;
 }
 
 
@@ -1411,7 +1392,15 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                    "http finalize request: %d, \"%V?%V\"",
                    rc, &r->uri, &r->args);
 
-    if (rc == NGX_ERROR || r->connection->error) {
+    if (rc == NGX_ERROR
+        || rc == NGX_HTTP_REQUEST_TIME_OUT
+        || r->connection->error)
+    {
+
+        if (ngx_http_post_action(r) == NGX_OK) {
+            return;
+        }
+
         ngx_http_close_request(r, 0);
         return;
     }
@@ -1515,12 +1504,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-    if (clcf->post_action.data) {
-        r->http_version = NGX_HTTP_VERSION_9;
-        r->header_only = 1;
-        ngx_http_internal_redirect(r, &clcf->post_action, NULL);
+    if (ngx_http_post_action(r) == NGX_OK) {
         return;
     }
 
@@ -1537,17 +1521,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-#if 0
-    if (r->connection->read->pending_eof) {
-#if (NGX_HAVE_KQUEUE)
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log,
-                       r->connection->read->kq_errno,
-                       "kevent() reported about an closed connection");
-#endif
-        ngx_http_close_request(r, 0);
-        return;
-    }
-#endif
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (!ngx_terminate
          && !ngx_exiting
@@ -1616,7 +1590,7 @@ ngx_http_writer(ngx_http_request_t *r)
                           "client timed out");
             c->timedout = 1;
 
-            ngx_http_close_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+            ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
             return;
         }
 
@@ -2265,7 +2239,27 @@ ngx_http_send_special(ngx_http_request_t *r, ngx_uint_t flags)
 }
 
 
-void
+static ngx_int_t
+ngx_http_post_action(ngx_http_request_t *r)
+{
+    ngx_http_core_loc_conf_t  *clcf;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->post_action.data == NULL) {
+        return NGX_DECLINED;
+    }
+
+    r->http_version = NGX_HTTP_VERSION_9;
+    r->header_only = 1;
+
+    ngx_http_internal_redirect(r, &clcf->post_action, NULL);
+
+    return NGX_OK;
+}
+
+
+static void
 ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
 {
     ngx_connection_t    *c;
@@ -2285,7 +2279,7 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
 }
 
 
-void
+static void
 ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
 {
     ngx_log_t                  *log;

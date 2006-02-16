@@ -148,7 +148,7 @@ ngx_http_empty_gif_handler(ngx_http_request_t *r)
     b->last_buf = 1;
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = b->last - b->pos;
+    r->headers_out.content_length_n = sizeof(ngx_empty_gif);
     r->headers_out.last_modified_time = 23349600;
 
     rc = ngx_http_send_header(r);

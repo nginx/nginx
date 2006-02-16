@@ -115,7 +115,7 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 #endif
 
 
-#elif ( __ppc__ || __powerpc__ )
+#elif ( __powerpc__ || __POWERPC__ )
 
 #define NGX_HAVE_ATOMIC_OPS  1
 

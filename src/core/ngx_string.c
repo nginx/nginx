@@ -312,7 +312,7 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                 hexadecimal = 2;
                 sign = 0;
                 zero = '0';
-                width = 8;
+                width = NGX_PTR_SIZE * 2;
                 break;
 
             case 'c':
