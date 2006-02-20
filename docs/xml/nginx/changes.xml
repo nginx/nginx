@@ -9,6 +9,55 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.29" date="20.02.2006">
+
+<change type="feature">
+<para lang="ru">
+теперь nginx использует меньше памяти, если PHP в режиме FastCGI передаёт
+большое количество предупреждений перед ответом.
+</para>
+<para lang="en">
+now nginx uses less memory, if PHP in FastCGI mode sends many warnings
+before the response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в ответах 204 для запросов версии HTTP/1.1 выдавалась строка заголовка
+"Transfer-Encoding: chunked".
+</para>
+<para lang="en">
+the "Transfer-Encoding: chunked" header line was issued in the 204 responses
+for the HTTP/1.1 requests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx возвращал 502 код ответа, если FastCGI сервер передавал полные строки
+заголовка ответа в отдельных FastCGI записях.
+</para>
+<para lang="en">
+nginx returned the 502 response, if the complete response header lines
+were transferred in a separate FastCGI records.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве post_action был указан проксируемый URI, то он выполнялся
+только после успешного завершения запроса.
+</para>
+<para lang="en">
+if the proxied URI was specified in the "post_action" directive, then it ran
+only after a successful completion of a request.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.28" date="16.02.2006">
 
 <change type="feature">

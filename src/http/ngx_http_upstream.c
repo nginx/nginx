@@ -283,8 +283,12 @@ ngx_http_upstream_init(ngx_http_request_t *r)
         ngx_del_timer(c->read);
     }
 
-    r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
-    r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
+    if (!(r->http_version == NGX_HTTP_VERSION_9 && r->header_only)) {
+        /* not a post_action */
+
+        r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
+        r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
+    }
 
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 

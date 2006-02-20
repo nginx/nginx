@@ -1396,7 +1396,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         || rc == NGX_HTTP_REQUEST_TIME_OUT
         || r->connection->error)
     {
-
         if (ngx_http_post_action(r) == NGX_OK) {
             return;
         }

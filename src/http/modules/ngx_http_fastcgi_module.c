@@ -46,7 +46,7 @@ typedef struct {
     size_t                     length;
     size_t                     padding;
 
-    ngx_uint_t                 header;
+    ngx_uint_t                 fastcgi_stdout;
 } ngx_http_fastcgi_ctx_t;
 
 
@@ -776,7 +776,7 @@ ngx_http_fastcgi_reinit_request(ngx_http_request_t *r)
     }
 
     f->state = ngx_http_fastcgi_st_version;
-    f->header = 0;
+    f->fastcgi_stdout = 0;
 
     return NGX_OK;
 }
@@ -876,13 +876,6 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
         if (f->type == NGX_HTTP_FASTCGI_STDERR) {
 
-            if (f->header) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                              "upstream split a header in FastCGI records");
-
-                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-            }
-
             if (f->length) {
                 line.data = u->buffer.pos;
 
@@ -910,6 +903,18 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                               "FastCGI sent in stderr: \"%V\"", &line);
 
                 if (u->buffer.pos == u->buffer.last) {
+
+                    if (!f->fastcgi_stdout) {
+
+                        /*
+                         * the special handling the large number
+                         * of the PHP warnings to not allocate memory
+                         */
+
+                        u->buffer.pos = u->buffer.start;
+                        u->buffer.last = u->buffer.start;
+                    }
+
                     return NGX_AGAIN;
                 }
 
@@ -922,6 +927,8 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
 
         /* f->type == NGX_HTTP_FASTCGI_STDOUT */
+
+        f->fastcgi_stdout = 1;
 
         start = u->buffer.pos;
 
@@ -938,8 +945,6 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         } else {
             last = NULL;
         }
-
-        f->header = 1;
 
         for ( ;; ) {
 
@@ -991,7 +996,13 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                                "http fastcgi header: \"%V: %V\"",
                                &h->key, &h->value);
 
-                continue;
+                if (u->buffer.pos < u->buffer.last) {
+                    continue;
+                }
+
+                /* the end of the FastCGI record */
+
+                break;
             }
 
             if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
@@ -1045,17 +1056,6 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
         f->length -= u->buffer.pos - start;
 
-        if (rc == NGX_AGAIN) {
-            if (u->buffer.pos == u->buffer.last) {
-                return NGX_AGAIN;
-            }
-
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                          "upstream split a header in FastCGI records");
-
-            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-        }
-
         if (f->length == 0) {
             if (f->padding) {
                 f->state = ngx_http_fastcgi_st_padding;
@@ -1064,7 +1064,20 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
             }
         }
 
-        return NGX_OK;
+        if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
+            return NGX_OK;
+        }
+
+        if (u->buffer.pos == u->buffer.last) {
+            return NGX_AGAIN;
+        }
+
+        if (rc == NGX_AGAIN) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "upstream split a header line in FastCGI records");
+
+            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        }
     }
 }
 
