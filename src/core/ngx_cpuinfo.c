@@ -14,6 +14,39 @@
 static ngx_inline void ngx_cpuid(uint32_t i, uint32_t *buf);
 
 
+#if ( __i386__ )
+
+static ngx_inline void
+ngx_cpuid(uint32_t i, uint32_t *buf)
+{
+
+    /*
+     * we could not use %ebx as output parameter if gcc builds PIC,
+     * and we could not save %ebx on stack, because %esp is used,
+     * when the -fomit-frame-pointer optimization is specified.
+     */
+
+    __asm__ (
+
+    "    mov    %%ebx, %%esi;  "
+
+    "    cpuid;                "
+    "    mov    %%eax, %0;     "
+    "    mov    %%ebx, %1;     "
+    "    mov    %%edx, %2;     "
+    "    mov    %%ecx, %3;     "
+
+    "    mov    %%esi, %%ebx;  "
+
+    : "=m" (buf[0]), "=m" (buf[1]), "=m" (buf[2]), "=m" (buf[3])
+    : "a" (i)
+    : "ecx", "edx", "esi" );
+}
+
+
+#else /* __amd64__ */
+
+
 static ngx_inline void
 ngx_cpuid(uint32_t i, uint32_t *buf)
 {
@@ -30,6 +63,9 @@ ngx_cpuid(uint32_t i, uint32_t *buf)
     buf[2] = edx;
     buf[3] = ecx;
 }
+
+
+#endif
 
 
 /* auto detect the L2 cache line size of modern and widespread CPUs */

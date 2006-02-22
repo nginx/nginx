@@ -26,7 +26,9 @@ typedef struct {
     ngx_str_t                 redirect_uri;
     ngx_str_t                 redirect_args;
 
+#if (NGX_HTTP_SSI)
     ngx_http_ssi_ctx_t       *ssi;
+#endif
 } ngx_http_perl_ctx_t;
 
 

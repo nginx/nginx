@@ -59,7 +59,7 @@ ngx_event_accept(ngx_event_t *ev)
                 return;
             }
 
-            ngx_log_error((err == NGX_ECONNABORTED) ? NGX_LOG_CRIT:
+            ngx_log_error((err == NGX_ECONNABORTED) ? NGX_LOG_ERR:
                                                       NGX_LOG_ALERT,
                           ev->log, err, "accept() failed");
 

@@ -34,8 +34,11 @@ typedef struct {
 } ngx_http_perl_variable_t;
 
 
+#if (NGX_HTTP_SSI)
 static ngx_int_t ngx_http_perl_ssi(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ssi_ctx, ngx_str_t **params);
+#endif
+
 static ngx_int_t
     ngx_http_perl_get_interpreter(ngx_http_perl_main_conf_t *pmcf,
     PerlInterpreter **perl, ngx_log_t *log);
@@ -142,6 +145,8 @@ ngx_module_t  ngx_http_perl_module = {
 };
 
 
+#if (NGX_HTTP_SSI)
+
 #define NGX_HTTP_PERL_SSI_SUB  0
 #define NGX_HTTP_PERL_SSI_ARG  1
 
@@ -152,10 +157,11 @@ static ngx_http_ssi_param_t  ngx_http_perl_ssi_params[] = {
     { ngx_null_string, 0, 0, 0 }
 };
 
-
 static ngx_http_ssi_command_t  ngx_http_perl_ssi_command = {
     ngx_string("perl"), ngx_http_perl_ssi, ngx_http_perl_ssi_params, 0, 1
 };
+
+#endif
 
 
 static void
@@ -310,6 +316,8 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 }
 
 
+#if (NGX_HTTP_SSI)
+
 static ngx_int_t
 ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
     ngx_str_t **params)
@@ -384,6 +392,8 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     return rc;
 }
+
+#endif
 
 
 static ngx_int_t
@@ -763,6 +773,7 @@ ngx_http_perl_cleanup_perl(void *data)
 static ngx_int_t
 ngx_http_perl_preconfiguration(ngx_conf_t *cf)
 {
+#if (NGX_HTTP_SSI)
     ngx_int_t                  rc;
     ngx_http_ssi_main_conf_t  *smcf;
 
@@ -780,6 +791,7 @@ ngx_http_perl_preconfiguration(ngx_conf_t *cf)
 
         return NGX_ERROR;
     }
+#endif
 
     return NGX_OK;
 }

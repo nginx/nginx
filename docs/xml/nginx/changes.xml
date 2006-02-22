@@ -9,6 +9,39 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.30" date="22.02.2006">
+
+<change type="change">
+<para lang="ru">
+уровень записи в лог ошибки ECONNABORTED изменён на error с уровня crit.
+</para>
+<para lang="en">
+the ECONNABORTED error log level was changed to "error" from "crit".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_perl_module не собирался без модуля ngx_http_ssi_filter_module.
+</para>
+<para lang="en">
+the ngx_http_perl_module could not be build without
+the ngx_http_ssi_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на i386 платформе, если использовался PIC.
+</para>
+<para lang="en">
+nginx could not be built on i386 platform, if the PIC was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.29" date="20.02.2006">
 
 <change type="feature">

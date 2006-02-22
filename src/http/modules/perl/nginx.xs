@@ -47,7 +47,9 @@ ngx_http_perl_sv2str(pTHX_ ngx_http_request_t *r, ngx_str_t *s, SV *sv)
 static ngx_int_t
 ngx_http_perl_output(ngx_http_request_t *r, ngx_buf_t *b)
 {
-    ngx_chain_t          *cl, out;
+    ngx_chain_t           out;
+#if (NGX_HTTP_SSI)
+    ngx_chain_t          *cl;
     ngx_http_perl_ctx_t  *ctx;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
@@ -65,6 +67,7 @@ ngx_http_perl_output(ngx_http_request_t *r, ngx_buf_t *b)
 
         return NGX_OK;
     }
+#endif
 
     out.buf = b;
     out.next = NULL;
