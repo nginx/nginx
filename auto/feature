@@ -39,29 +39,46 @@ eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
 
 if [ -x $NGX_AUTOTEST ]; then
 
-    if [ $ngx_feature_run = yes ]; then
+    case "$ngx_feature_run" in
 
-       if $NGX_AUTOTEST 2>&1 > /dev/null; then
-           echo " found"
-           ngx_found=yes
+        yes)
+            if $NGX_AUTOTEST 2>&1 > /dev/null; then
+                echo " found"
+                ngx_found=yes
 
-           if test -n "$ngx_feature_name"; then
-               have=$ngx_have_feature . auto/have
-           fi
+                if test -n "$ngx_feature_name"; then
+                    have=$ngx_have_feature . auto/have
+                fi
 
-       else
-           echo " found but is not working"
-       fi
+            else
+                echo " found but is not working"
+            fi
+        ;;
 
-    else
-       echo " found"
-       ngx_found=yes
+        bug)
+            if $NGX_AUTOTEST 2>&1 > /dev/null; then
+                echo " not found"
 
-       if test -n "$ngx_feature_name"; then
-           have=$ngx_have_feature . auto/have
-       fi
+            else
+                echo " found"
+                ngx_found=yes
 
-    fi
+                if test -n "$ngx_feature_name"; then
+                    have=$ngx_have_feature . auto/have
+                fi
+            fi
+        ;;
+
+        *)
+            echo " found"
+            ngx_found=yes
+
+            if test -n "$ngx_feature_name"; then
+                have=$ngx_have_feature . auto/have
+            fi
+        ;;
+
+    esac
 
 else
     echo " not found"

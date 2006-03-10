@@ -632,7 +632,7 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, SV *sub,
                            "call_sv: %d", status);
 
         } else {
-            line = POPpx;
+            line = SvPVx(POPs, n_a);
             rv->len = n_a;
 
             rv->data = ngx_palloc(r->pool, n_a);

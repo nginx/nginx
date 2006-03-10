@@ -741,10 +741,10 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
     ngx_uint_t flags)
 {
     size_t           len;
+    u_char          *reverse;
     ngx_str_t       *name;
     ngx_uint_t       i, k, n, skip;
     ngx_hash_key_t  *hk;
-    u_char           buf[2048];
 
     if (!(flags & NGX_HASH_WILDCARD_KEY)) {
 
@@ -863,14 +863,19 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
          *      and ".example.com" to "com.example\0"
          */
 
+        reverse = ngx_palloc(ha->temp_pool, key->len);
+        if (reverse == NULL) {
+            return NGX_ERROR;
+        }
+
         len = 0;
         n = 0;
 
         for (i = key->len - 1; i; i--) {
             if (key->data[i] == '.') {
-                ngx_memcpy(&buf[n], &key->data[i + 1], len);
+                ngx_memcpy(&reverse[n], &key->data[i + 1], len);
                 n += len;
-                buf[n++] = '.';
+                reverse[n++] = '.';
                 len = 0;
                 continue;
             }
@@ -879,11 +884,22 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
         }
 
         if (len) {
-            ngx_memcpy(&buf[n], &key->data[1], len);
+            ngx_memcpy(&reverse[n], &key->data[1], len);
             n += len;
         }
 
-        buf[n] = '\0';
+        reverse[n] = '\0';
+
+
+        hk = ngx_array_push(&ha->dns_wildcards);
+        if (hk == NULL) {
+            return NGX_ERROR;
+        }
+
+        hk->key.len = key->len - 1;
+        hk->key.data = reverse;
+        hk->key_hash = 0;
+        hk->value = value;
 
 
         /* check conflicts in wildcard hash */
@@ -922,20 +938,8 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
         if (name->data == NULL) {
             return NGX_ERROR;
         }
+
         ngx_memcpy(name->data, key->data + skip, name->len);
-
-
-        ngx_memcpy(key->data, buf, key->len);
-        key->len--;
-
-        hk = ngx_array_push(&ha->dns_wildcards);
-        if (hk == NULL) {
-            return NGX_ERROR;
-        }
-
-        hk->key = *key;
-        hk->key_hash = 0;
-        hk->value = value;
     }
 
     return NGX_OK;

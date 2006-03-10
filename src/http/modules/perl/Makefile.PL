@@ -13,6 +13,7 @@ WriteMakefile(
     AUTHOR            => 'Igor Sysoev',
 
     CCFLAGS           => "$ENV{NGX_PERL_CFLAGS}",
+    OPTIMIZE          => '-O',
 
     INC               => "-I ../../../../../src/core " .
                          "-I ../../../../../src/event " .

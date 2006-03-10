@@ -9,6 +9,84 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.31" date="10.03.2006">
+
+<change type="change">
+<para lang="ru">
+теперь nginx передаёт неверные ответы проксированного бэкенда.
+</para>
+<para lang="en">
+now nginx passes the malformed proxied backend responses.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы listen поддерживают адрес в виде "*:порт".
+</para>
+<para lang="en">
+the "listen" directives support the address in the "*:port" form.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка EVFILER_TIMER в MacOSX 10.4.
+</para>
+<para lang="en">
+the EVFILER_TIMER support in MacOSX 10.4.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+обход ошибки обработки миллисекундных таймаутов kqueue в 64-битном ядре MacOSX.
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+for MacOSX 64-bit kernel kqueue millisecond timeout bug.
+Thanks Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если внутри одного сервера описаны несколько директив listen, слушающих на
+разных адресах, то имена серверов вида "*.domain.tld" работали только
+для первого адреса;
+ошибка появилась в 0.3.18.
+</para>
+<para lang="en">
+if there were several "listen" directives listening one various addresses
+inside one server, then server names like "*.domain.tld" worked for first
+address only;
+bug appeared in 0.3.18.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании протокола HTTPS в директиве proxy_pass не передавались
+запросы с телом, записанным во временный файл.
+</para>
+<para lang="en">
+if the HTTP protocol was used in the "proxy_pass" directive and
+the request body was in temporarily file then the request was not transferred.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с perl 5.8.8.
+</para>
+<para lang="en">
+perl 5.8.8 compatibility.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.30" date="22.02.2006">
 
 <change type="change">
@@ -32,10 +110,12 @@ the ngx_http_ssi_filter_module.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на i386 платформе, если использовался PIC.
+nginx не собирался на i386 платформе, если использовался PIC;
+ошибка появилась в 0.3.27.
 </para>
 <para lang="en">
-nginx could not be built on i386 platform, if the PIC was used.
+nginx could not be built on i386 platform, if the PIC was used;
+bug appeared in 0.3.27.
 </para>
 </change>
 
@@ -225,7 +305,7 @@ directive.
 </para>
 <para lang="en">
 if the HTTP protocol was used in the "proxy_pass" directive then
-the requests with the body did not transferred.
+the requests with the body was not transferred.
 </para>
 </change>
 

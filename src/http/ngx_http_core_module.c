@@ -2243,6 +2243,10 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->conf.rcvbuf = -1;
     ls->conf.sndbuf = -1;
 
+    if (inet_upstream.host.len == 1 && inet_upstream.host.data[0] == '*') {
+        inet_upstream.host.len = 0;
+    }
+
     if (inet_upstream.host.len) {
         inet_upstream.host.data[inet_upstream.host.len] = '\0';
 

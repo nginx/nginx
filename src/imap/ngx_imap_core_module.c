@@ -442,6 +442,10 @@ ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    if (inet_upstream.host.len == 1 && inet_upstream.host.data[0] == '*') {
+        inet_upstream.host.len = 0;
+    }
+
     if (inet_upstream.host.len) {
         inet_upstream.host.data[inet_upstream.host.len] = '\0';
 

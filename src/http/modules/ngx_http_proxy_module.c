@@ -800,9 +800,11 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "upstream sent no valid HTTP/1.0 header");
 
+#if 0
         if (u->accel) {
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
         }
+#endif
 
         r->http_version = NGX_HTTP_VERSION_9;
         p->status = NGX_HTTP_OK;
@@ -961,6 +963,10 @@ ngx_http_proxy_parse_status_line(ngx_http_request_t *r, ngx_http_proxy_ctx_t *p)
 
         /* HTTP status code */
         case sw_status:
+            if (ch == ' ') {
+                break;
+            }
+
             if (ch < '0' || ch > '9') {
                 return NGX_HTTP_PROXY_PARSE_NO_HEADER;
             }
@@ -1111,8 +1117,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
         /* there was error while a header line parsing */
 
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      ngx_http_upstream_header_errors[rc
-                                               - NGX_HTTP_PARSE_HEADER_ERROR]);
+                      "upstream sent invalid header");
 
         return NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }

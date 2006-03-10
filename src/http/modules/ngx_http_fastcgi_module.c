@@ -1043,8 +1043,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
             /* there was error while a header line parsing */
 
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          ngx_http_upstream_header_errors[rc
-                                                - NGX_HTTP_PARSE_HEADER_ERROR]);
+                          "upstream sent invalid header");
 
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
 

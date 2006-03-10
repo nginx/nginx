@@ -563,6 +563,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         virtual_names:
 
+            ngx_memzero(&ha, sizeof(ngx_hash_keys_arrays_t));
+
             ha.temp_pool = ngx_create_pool(16384, cf->log);
             if (ha.temp_pool == NULL) {
                 return NGX_CONF_ERROR;
@@ -577,6 +579,9 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             name = in_addr[a].names.elts;
             for (s = 0; s < in_addr[a].names.nelts; s++) {
+
+                ngx_log_error(NGX_LOG_ALERT, cf->log, 0,
+                              "server name \"%V\"", &name[s].name);
 
                 ch = name[s].name.data[0];
 
@@ -599,6 +604,9 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
 
             for (s = 0; s < in_addr[a].names.nelts; s++) {
+
+                ngx_log_error(NGX_LOG_ALERT, cf->log, 0,
+                              "wildcard server name \"%V\"", &name[s].name);
 
                 ch = name[s].name.data[0];
 

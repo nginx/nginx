@@ -259,12 +259,6 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
 };
 
 
-char *ngx_http_upstream_header_errors[] = {
-    "upstream sent invalid header",
-    "upstream sent too long header line"
-};
-
-
 void
 ngx_http_upstream_init(ngx_http_request_t *r)
 {
@@ -624,6 +618,7 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
     }
 
     c->sendfile = 0;
+    u->output.sendfile = 0;
 
     peer = &u->peer.peers->peer[u->peer.cur_peer];
 

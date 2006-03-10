@@ -87,13 +87,88 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
         ngx_feature_test="struct kevent  kev;
                           kev.fflags = NOTE_LOWAT;"
         . auto/feature
+
+
+        ngx_feature="kqueue's EVFILT_TIMER"
+        ngx_feature_name="NGX_HAVE_TIMER_EVENT"
+        ngx_feature_run=yes
+        ngx_feature_incs="#include <sys/event.h>
+#include <sys/time.h>"
+        ngx_feature_libs=
+        ngx_feature_test="int      kq;
+                  struct kevent    kev;
+                  struct timespec  ts;
+
+                  if ((kq = kqueue()) == -1) return 1;
+
+                  kev.ident = 0;
+                  kev.filter = EVFILT_TIMER;
+                  kev.flags = EV_ADD|EV_ENABLE;
+                  kev.fflags = 0;
+                  kev.data = 1000;
+                  kev.udata = 0;
+
+                  ts.tv_sec = 0;
+                  ts.tv_nsec = 0;
+
+                  if (kevent(kq, &kev, 1, &kev, 1, &ts) == -1) return 1;
+
+                  if (kev.flags & EV_ERROR) return 1;"
+
+        . auto/feature
+
+
+        if [ "$NGX_SYSTEM" = "Darwin" ]; then
+
+            ngx_feature="MacOSX 64-bit kqueue millisecond timeout bug"
+            ngx_feature_name=
+            ngx_feature_run=bug
+            ngx_feature_incs="#include <sys/event.h>
+#include <sys/time.h>"
+            ngx_feature_libs=
+            ngx_feature_test="int  kq;
+                  struct kevent    kev;
+                  struct timespec  ts;
+                  struct timeval   tv, tv0;
+
+                  kq = kqueue();
+
+                  ts.tv_sec = 0;
+                  ts.tv_nsec = 999000000;
+
+                  gettimeofday(&tv, 0);
+                  kevent(kq, NULL, 0, &kev, 1, &ts);
+                  gettimeofday(&tv0, 0);
+                  timersub(&tv0, &tv, &tv);
+
+                  if (tv.tv_sec * 1000000 + tv.tv_usec < 900000) return 1;"
+
+            . auto/feature
+
+            ngx_macosx_kevent_bug=$ngx_found
+        fi
     fi
 fi
 
-if [ "$NGX_SYSTEM" = "NetBSD" ]; then
 
-    have=NGX_HAVE_TIMER_EVENT . auto/have
-    echo " + kqueue's EVFILT_TIMER found"
+if [ ".$ngx_macosx_kevent_bug" = .yes ]; then
+
+    cat << END >> $NGX_AUTO_CONFIG_H
+
+#define NGX_MACOSX_KEVENT_BUG_SHIFT   << 32
+
+END
+
+else
+    cat << END >> $NGX_AUTO_CONFIG_H
+
+#define NGX_MACOSX_KEVENT_BUG_SHIFT
+
+END
+fi
+
+
+if [ "$NGX_SYSTEM" = "NetBSD" ]; then
 
     # NetBSD 2.0 incompatibly defines kevent.udata as "intptr_t"
 

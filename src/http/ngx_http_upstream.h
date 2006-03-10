@@ -199,7 +199,5 @@ void ngx_http_upstream_init(ngx_http_request_t *r);
 
 extern ngx_module_t  ngx_http_upstream_module;
 
-extern char *ngx_http_upstream_header_errors[];
-
 
 #endif /* _NGX_HTTP_UPSTREAM_H_INCLUDED_ */
