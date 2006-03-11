@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.32" date="11.03.2006">
+
+<change type="bugfix">
+<para lang="ru">
+удаление отладочного логгирования на старте и при переконфигурации;
+ошибка появилась в 0.3.31.
+</para>
+<para lang="en">
+the debug logging on startup and reconfiguration time was removed;
+bug appeared in 0.3.31.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.31" date="10.03.2006">
 
 <change type="change">

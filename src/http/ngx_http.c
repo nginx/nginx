@@ -580,9 +580,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             name = in_addr[a].names.elts;
             for (s = 0; s < in_addr[a].names.nelts; s++) {
 
-                ngx_log_error(NGX_LOG_ALERT, cf->log, 0,
-                              "server name \"%V\"", &name[s].name);
-
                 ch = name[s].name.data[0];
 
                 if (ch == '*' || ch == '.') {
@@ -604,9 +601,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
 
             for (s = 0; s < in_addr[a].names.nelts; s++) {
-
-                ngx_log_error(NGX_LOG_ALERT, cf->log, 0,
-                              "wildcard server name \"%V\"", &name[s].name);
 
                 ch = name[s].name.data[0];
 
