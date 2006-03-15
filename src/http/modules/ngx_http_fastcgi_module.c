@@ -161,6 +161,7 @@ static ngx_conf_bitmask_t  ngx_http_fastcgi_next_upstream_masks[] = {
     { ngx_string("timeout"), NGX_HTTP_UPSTREAM_FT_TIMEOUT },
     { ngx_string("invalid_header"), NGX_HTTP_UPSTREAM_FT_INVALID_HEADER },
     { ngx_string("http_500"), NGX_HTTP_UPSTREAM_FT_HTTP_500 },
+    { ngx_string("http_503"), NGX_HTTP_UPSTREAM_FT_HTTP_503 },
     { ngx_string("http_404"), NGX_HTTP_UPSTREAM_FT_HTTP_404 },
     { ngx_null_string, 0 }
 };

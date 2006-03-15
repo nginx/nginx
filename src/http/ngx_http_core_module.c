@@ -1003,12 +1003,9 @@ u_char *
 ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
     size_t reserved)
 {
-    u_char                       *last;
-    size_t                        alias, len;
-    ngx_http_script_code_pt       code;
-    ngx_http_script_engine_t      e;
-    ngx_http_core_loc_conf_t     *clcf;
-    ngx_http_script_len_code_pt   lcode;
+    u_char                    *last;
+    size_t                     alias;
+    ngx_http_core_loc_conf_t  *clcf;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -1021,11 +1018,13 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         return NULL;
     }
 
+    reserved += r->uri.len - alias + 1;
+
     if (clcf->root_lengths == NULL) {
 
         r->root_length = clcf->root.len;
 
-        path->len = clcf->root.len + r->uri.len - alias + 1 + reserved;
+        path->len = clcf->root.len + reserved;
 
         path->data = ngx_palloc(r->pool, path->len);
         if (path->data == NULL) {
@@ -1033,43 +1032,18 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         }
 
         last = ngx_copy(path->data, clcf->root.data, clcf->root.len);
-        last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
 
-        return last;
+    } else {
+        last = ngx_http_script_run(r, path, clcf->root_lengths->elts, reserved,
+                                   clcf->root_values->elts);
+        if (last == NULL) {
+            return NULL;
+        }
+
+        r->root_length = path->len - reserved;
     }
 
-    ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
-
-    e.ip = clcf->root_lengths->elts;
-    e.request = r;
-    e.flushed = 1;
-
-    len = 0;
-
-    while (*(uintptr_t *) e.ip) {
-        lcode = *(ngx_http_script_len_code_pt *) e.ip;
-        len += lcode(&e);
-    }
-
-    r->root_length = len;
-
-    len += r->uri.len - alias + 1 + reserved;
-
-    path->len = len;
-    path->data = ngx_palloc(r->pool, len);
-    if (path->data == NULL) {
-        return NULL;
-    }
-
-    e.ip = clcf->root_values->elts;
-    e.pos = path->data;
-
-    while (*(uintptr_t *) e.ip) {
-        code = *(ngx_http_script_code_pt *) e.ip;
-        code((ngx_http_script_engine_t *) &e);
-    }
-
-    last = ngx_cpystrn(e.pos, r->uri.data + alias, r->uri.len - alias + 1);
+    last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
 
     return last;
 }

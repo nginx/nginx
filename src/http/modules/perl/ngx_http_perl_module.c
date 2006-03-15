@@ -692,10 +692,18 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, SV *sub,
 static void
 ngx_http_perl_eval_anon_sub(pTHX_ ngx_str_t *handler, SV **sv)
 {
-    if (ngx_strncmp(handler->data, "sub ", 4) == 0
-        || ngx_strncmp(handler->data, "use ", 4) == 0)
+    u_char  *p;
+
+    for (p = handler->data; *p; p++) {
+        if (*p != ' ' && *p != '\t' && *p != CR && *p != LF) {
+            break;
+        }
+    }
+
+    if (ngx_strncmp(p, "sub ", 4) == 0
+        || ngx_strncmp(p, "use ", 4) == 0)
     {
-        *sv = eval_pv((char *) handler->data, FALSE);
+        *sv = eval_pv((char *) p, FALSE);
 
         return;
     }

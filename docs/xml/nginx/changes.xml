@@ -9,6 +9,41 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.33" date="15.03.2006">
+
+<change type="feature">
+<para lang="ru">
+параметр http_503 в директивах proxy_next_upstream или fastcgi_next_upstream.
+</para>
+<para lang="en">
+the "http_503" parameter of the "proxy_next_upstream" or
+"fastcgi_next_upstream" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ngx_http_perl_module не работал со встроенным в конфигурацинный файл кодом,
+если он не начинался сразу же с "sub".
+</para>
+<para lang="en">
+ngx_http_perl_module did not work with inlined in the configuration code,
+if it was not started with the "sub" word.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве post_action.
+</para>
+<para lang="en">
+in the "post_action" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.32" date="11.03.2006">
 
 <change type="bugfix">

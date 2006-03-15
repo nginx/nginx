@@ -491,16 +491,19 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
     } else {
 
+        ts.tv_sec = timer / 1000;
+        ts.tv_nsec = (timer % 1000) * 1000000;
+
         /*
-         * 64-bit MacOSX kernel has the bug: kernel level ts.tv_nsec is
+         * 64-bit Darwin kernel has the bug: kernel level ts.tv_nsec is
          * the int32_t while user level ts.tv_nsec is the long (64-bit),
          * so on the big endian PowerPC all nanoseconds are lost.
-         * NGX_MACOSX_KEVENT_BUG_SHIFT on these machines is "<< 32".
          */
 
-        ts.tv_sec = timer / 1000;
-        ts.tv_nsec = (long) ((timer % 1000) * 1000000)
-                            NGX_MACOSX_KEVENT_BUG_SHIFT;
+#if (NGX_DARWIN_KEVENT_BUG)
+        ts.tv_nsec <<= 32;
+#endif
+
         tp = &ts;
     }
 

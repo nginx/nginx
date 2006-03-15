@@ -282,7 +282,7 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 
 #define ngx_conf_merge_str_value(conf, prev, default)                        \
     if (conf.data == NULL) {                                                 \
-        if (prev.data) {                                                      \
+        if (prev.data) {                                                     \
             conf.len = prev.len;                                             \
             conf.data = prev.data;                                           \
         } else {                                                             \

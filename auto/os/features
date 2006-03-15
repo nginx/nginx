@@ -120,8 +120,8 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
 
         if [ "$NGX_SYSTEM" = "Darwin" ]; then
 
-            ngx_feature="MacOSX 64-bit kqueue millisecond timeout bug"
-            ngx_feature_name=
+            ngx_feature="Darwin 64-bit kqueue millisecond timeout bug"
+            ngx_feature_name=NGX_DARWIN_KEVENT_BUG
             ngx_feature_run=bug
             ngx_feature_incs="#include <sys/event.h>
 #include <sys/time.h>"
@@ -144,27 +144,8 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
                   if (tv.tv_sec * 1000000 + tv.tv_usec < 900000) return 1;"
 
             . auto/feature
-
-            ngx_macosx_kevent_bug=$ngx_found
         fi
     fi
-fi
-
-
-if [ ".$ngx_macosx_kevent_bug" = .yes ]; then
-
-    cat << END >> $NGX_AUTO_CONFIG_H
-
-#define NGX_MACOSX_KEVENT_BUG_SHIFT   << 32
-
-END
-
-else
-    cat << END >> $NGX_AUTO_CONFIG_H
-
-#define NGX_MACOSX_KEVENT_BUG_SHIFT
-
-END
 fi
 
 

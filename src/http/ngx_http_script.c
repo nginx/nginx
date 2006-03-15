@@ -294,6 +294,44 @@ invalid_variable:
 }
 
 
+u_char *
+ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
+    void *code_lengths, size_t len, void *code_values)
+{
+    ngx_http_script_code_pt      code;
+    ngx_http_script_len_code_pt  lcode;
+    ngx_http_script_engine_t     e;
+
+    ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
+
+    e.ip = code_lengths;
+    e.request = r;
+    e.flushed = 1;
+
+    while (*(uintptr_t *) e.ip) {
+        lcode = *(ngx_http_script_len_code_pt *) e.ip;
+        len += lcode(&e);
+    }
+
+
+    value->len = len;
+    value->data = ngx_palloc(r->pool, len);
+    if (value->data == NULL) {
+        return NULL;
+    }
+
+    e.ip = code_values;
+    e.pos = value->data;
+
+    while (*(uintptr_t *) e.ip) {
+        code = *(ngx_http_script_code_pt *) e.ip;
+        code((ngx_http_script_engine_t *) &e);
+    }
+
+    return e.pos;
+}
+
+
 void
 ngx_http_script_flush_no_cachable_variables(ngx_http_request_t *r,
     ngx_array_t *indices)

@@ -152,6 +152,8 @@ typedef struct {
 
 ngx_uint_t ngx_http_script_variables_count(ngx_str_t *value);
 ngx_int_t ngx_http_script_compile(ngx_http_script_compile_t *sc);
+u_char *ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
+    void *code_lengths, size_t reserved, void *code_values);
 void ngx_http_script_flush_no_cachable_variables(ngx_http_request_t *r,
     ngx_array_t *indices);
 

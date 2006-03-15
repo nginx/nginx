@@ -2249,6 +2249,9 @@ ngx_http_post_action(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "post action: \"%V\"", &clcf->post_action);
+
     r->http_version = NGX_HTTP_VERSION_9;
     r->header_only = 1;
 
