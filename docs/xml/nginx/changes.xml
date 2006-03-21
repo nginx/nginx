@@ -9,6 +9,20 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.34" date="21.03.2006">
+
+<change type="feature">
+<para lang="ru">
+директива add_header поддерживает переменные.
+</para>
+<para lang="en">
+the "add_header" directive supports the variables.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.33" date="15.03.2006">
 
 <change type="feature">

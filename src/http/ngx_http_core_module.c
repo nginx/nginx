@@ -2012,6 +2012,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->root.data == NULL) {
 
+        conf->alias = prev->alias;
         conf->root = prev->root;
         conf->root_lengths = prev->root_lengths;
         conf->root_values = prev->root_values;

@@ -10,9 +10,16 @@
 
 
 typedef struct {
-    time_t        expires;
-    ngx_str_t     cache_control;
-    ngx_array_t  *headers;
+    ngx_table_elt_t   value;
+    ngx_array_t      *lengths;
+    ngx_array_t      *values;
+} ngx_http_header_val_t;
+
+
+typedef struct {
+    time_t            expires;
+    ngx_str_t         cache_control;
+    ngx_array_t      *headers;
 } ngx_http_headers_conf_t;
 
 
@@ -92,7 +99,8 @@ ngx_http_headers_filter(ngx_http_request_t *r)
 {
     size_t                    len;
     ngx_uint_t                i;
-    ngx_table_elt_t          *expires, *cc, **ccp, *h, *out;
+    ngx_table_elt_t          *expires, *cc, **ccp, *out;
+    ngx_http_header_val_t    *h;
     ngx_http_headers_conf_t  *conf;
 
     if ((r->headers_out.status != NGX_HTTP_OK
@@ -242,7 +250,20 @@ ngx_http_headers_filter(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
-            *out = h[i];
+            out->hash = h[i].value.hash;
+            out->key = h[i].value.key;
+
+            if (h[i].lengths == NULL) {
+                out->value = h[i].value.value;
+                continue;
+            }
+
+            if (ngx_http_script_run(r, &out->value, h[i].lengths->elts, 0,
+                                    h[i].values->elts)
+                == NULL)
+            {
+                return NGX_ERROR;
+            }
         }
     }
 
@@ -368,8 +389,10 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_headers_conf_t *hcf = conf;
 
-    ngx_str_t        *value;
-    ngx_table_elt_t  *h;
+    ngx_int_t                   n;
+    ngx_str_t                  *value;
+    ngx_http_header_val_t      *h;
+    ngx_http_script_compile_t   sc;
 
     value = cf->args->elts;
 
@@ -379,7 +402,8 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (hcf->headers == NULL) {
-        hcf->headers = ngx_array_create(cf->pool, 1, sizeof(ngx_table_elt_t));
+        hcf->headers = ngx_array_create(cf->pool, 1,
+                                        sizeof(ngx_http_header_val_t));
         if (hcf->headers == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -390,9 +414,31 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    h->hash = 1;
-    h->key = value[1];
-    h->value = value[2];
+    h->value.hash = 1;
+    h->value.key = value[1];
+    h->value.value = value[2];
+    h->lengths = NULL;
+    h->values = NULL;
+
+    n = ngx_http_script_variables_count(&value[2]);
+
+    if (n == 0) {
+        return NGX_CONF_OK;
+    }
+
+    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+
+    sc.cf = cf;
+    sc.source = &value[2];
+    sc.lengths = &h->lengths;
+    sc.values = &h->values;
+    sc.variables = n;
+    sc.complete_lengths = 1;
+    sc.complete_values = 1;
+
+    if (ngx_http_script_compile(&sc) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }
