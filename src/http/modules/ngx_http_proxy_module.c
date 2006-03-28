@@ -487,7 +487,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     escape = 0;
 
-    loc_len = r->valid_location ? u->conf->location.len : 0;
+    loc_len = (r->valid_location && u->conf->uri.len) ? u->conf->location.len:
+                                                        0;
 
     if (u->conf->uri.len == 0 && r->valid_unparsed_uri && r == r->main) {
         unparsed_uri = 1;

@@ -118,9 +118,11 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
                      * even if kqueue reported about available data
                      */
 
+#if 0
                     ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                                   "readv() returned 0 while kevent() reported "
                                   "%d available bytes", rev->available);
+#endif
 
                     rev->eof = 1;
                     rev->available = 0;

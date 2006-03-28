@@ -9,6 +9,33 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.35" date="22.03.2006">
+
+<change type="bugfix">
+<para lang="ru">
+accept-фильтр и TCP_DEFER_ACCEPT устанавливались только для первой
+директивы listen;
+ошибка появилась в 0.3.31.
+</para>
+<para lang="en">
+the accept-filter and the TCP_DEFER_ACCEPT option were set for first "listen"
+directive only;
+bug appeared in 0.3.31.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_pass без URI при использовании в подзапросе.
+</para>
+<para lang="en">
+in the "proxy_pass" directive without the URI part in a subrequest.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.34" date="21.03.2006">
 
 <change type="feature">

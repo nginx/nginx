@@ -404,74 +404,75 @@ ngx_configure_listening_socket(ngx_cycle_t *cycle)
 
 #ifdef SO_ACCEPTFILTER
 
-        if (ls->delete_deferred) {
-            if (setsockopt(ls->fd, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0) == -1)
+        if (ls[i].delete_deferred) {
+            if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)
+                == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                               "setsockopt(SO_ACCEPTFILTER, NULL) "
                               "for %V failed, ignored",
-                              &ls->addr_text);
+                              &ls[i].addr_text);
 
-                if (ls->accept_filter) {
+                if (ls[i].accept_filter) {
                     ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                                   "could not change the accept filter "
                                   "to \"%s\" for %V, ignored",
-                                  ls->accept_filter, &ls->addr_text);
+                                  ls[i].accept_filter, &ls[i].addr_text);
                 }
 
                 continue;
             }
 
-            ls->deferred_accept = 0;
+            ls[i].deferred_accept = 0;
         }
 
-        if (ls->add_deferred) {
+        if (ls[i].add_deferred) {
             ngx_memzero(&af, sizeof(struct accept_filter_arg));
             (void) ngx_cpystrn((u_char *) af.af_name,
-                               (u_char *) ls->accept_filter, 16);
+                               (u_char *) ls[i].accept_filter, 16);
 
-            if (setsockopt(ls->fd, SOL_SOCKET, SO_ACCEPTFILTER,
+            if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER,
                            &af, sizeof(struct accept_filter_arg))
                 == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                               "setsockopt(SO_ACCEPTFILTER, \"%s\") "
                               " for %V failed, ignored",
-                              ls->accept_filter, &ls->addr_text);
+                              ls[i].accept_filter, &ls[i].addr_text);
                 continue;
             }
 
-            ls->deferred_accept = 1;
+            ls[i].deferred_accept = 1;
         }
 
 #endif
 
 #ifdef TCP_DEFER_ACCEPT
 
-        if (ls->add_deferred || ls->delete_deferred) {
+        if (ls[i].add_deferred || ls[i].delete_deferred) {
 
-            if (ls->add_deferred) {
-                timeout = (int) (ls->post_accept_timeout / 1000);
+            if (ls[i].add_deferred) {
+                timeout = (int) (ls[i].post_accept_timeout / 1000);
 
             } else {
                 timeout = 0;
             }
 
-            if (setsockopt(ls->fd, IPPROTO_TCP, TCP_DEFER_ACCEPT,
+            if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT,
                            &timeout, sizeof(int))
                 == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                               "setsockopt(TCP_DEFER_ACCEPT, %d) for %V failed, "
                               "ignored",
-                              timeout, &ls->addr_text);
+                              timeout, &ls[i].addr_text);
 
                 continue;
             }
         }
 
-        if (ls->add_deferred) {
-            ls->deferred_accept = 1;
+        if (ls[i].add_deferred) {
+            ls[i].deferred_accept = 1;
         }
 
 #endif
