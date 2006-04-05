@@ -63,6 +63,7 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     char             *rv;
     ngx_fd_t          fd;
     ngx_int_t         rc;
+    ngx_buf_t        *b;
     ngx_uint_t        block;
     ngx_conf_file_t  *prev;
 
@@ -95,10 +96,22 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                           ngx_fd_info_n " \"%s\" failed", filename->data);
         }
 
-        cf->conf_file->buffer = ngx_create_temp_buf(cf->pool, ngx_pagesize);
-        if (cf->conf_file->buffer == NULL) {
+        b = ngx_calloc_buf(cf->pool);
+        if (b == NULL) {
             return NGX_CONF_ERROR;
         }
+
+        cf->conf_file->buffer = b;
+
+        b->start = ngx_alloc(ngx_pagesize, cf->log);
+        if (b->start == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        b->pos = b->start;
+        b->last = b->start;
+        b->end = b->last + ngx_pagesize;
+        b->temporary = 1;
 
         cf->conf_file->file.fd = fd;
         cf->conf_file->file.name.len = filename->len;
@@ -183,7 +196,7 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
 
     if (filename) {
-        ngx_pfree(cf->pool, cf->conf_file->buffer->start);
+        ngx_free(cf->conf_file->buffer->start);
 
         cf->conf_file = prev;
 

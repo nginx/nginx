@@ -211,8 +211,8 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     char  *p = conf;
 
     ssize_t      level;
-    ngx_uint_t   i, n;
     ngx_str_t   *value;
+    ngx_uint_t   i, n;
     ngx_path_t  *path, **slot;
 
     slot = (ngx_path_t **) (p + cmd->offset);
@@ -229,6 +229,11 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     path->name = value[1];
+
+    if (ngx_conf_full_name(cf->cycle, &path->name) == NGX_ERROR) {
+        return NULL;
+    }
+
     path->len = 0;
     path->cleaner = (ngx_gc_handler_pt) cmd->post;
     path->conf_file = cf->conf_file->file.name.data;

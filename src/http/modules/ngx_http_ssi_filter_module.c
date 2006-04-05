@@ -13,6 +13,7 @@
 #define NGX_HTTP_SSI_DATE_LEN       2048
 
 #define NGX_HTTP_SSI_ADD_PREFIX     1
+#define NGX_HTTP_SSI_ADD_ZERO       2
 
 
 typedef struct {
@@ -247,8 +248,12 @@ static ngx_http_ssi_command_t  ngx_http_ssi_commands[] = {
     { ngx_string("set"), ngx_http_ssi_set, ngx_http_ssi_set_params, 0, 0 },
 
     { ngx_string("if"), ngx_http_ssi_if, ngx_http_ssi_if_params, 0, 0 },
-    { ngx_string("else"), ngx_http_ssi_else, ngx_http_ssi_no_params, 1, 0 },
-    { ngx_string("endif"), ngx_http_ssi_endif, ngx_http_ssi_no_params, 1, 0 },
+    { ngx_string("elif"), ngx_http_ssi_if, ngx_http_ssi_if_params,
+                       NGX_HTTP_SSI_COND_IF, 0 },
+    { ngx_string("else"), ngx_http_ssi_else, ngx_http_ssi_no_params,
+                       NGX_HTTP_SSI_COND_IF, 0 },
+    { ngx_string("endif"), ngx_http_ssi_endif, ngx_http_ssi_no_params,
+                       NGX_HTTP_SSI_COND_ELSE, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0 }
 };
@@ -523,7 +528,17 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     continue;
                 }
 
-                if (!ctx->output && !cmd->conditional) {
+                if (cmd->conditional
+                    && (ctx->conditional == 0
+                        || ctx->conditional > cmd->conditional))
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "invalid context of SSI command: \"%V\"",
+                                  &ctx->command);
+                    goto ssi_error;
+                }
+
+                if (!ctx->output && cmd->conditional == 0) {
                     continue;
                 }
 
@@ -926,6 +941,7 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 ctx->key = ngx_hash(ctx->key, ch);
 
                 ctx->params.nelts = 0;
+
                 state = ssi_command_state;
                 break;
             }
@@ -1565,7 +1581,7 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         }
     }
 
-    p = ngx_palloc(r->pool, len);
+    p = ngx_palloc(r->pool, len + ((flags & NGX_HTTP_SSI_ADD_ZERO) ? 1 : 0));
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -1809,12 +1825,25 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     u_char       *p, *last;
     ngx_str_t    *expr, left, right;
     ngx_int_t     rc;
-    ngx_uint_t    negative, noregex;
+    ngx_uint_t    negative, noregex, flags;
 #if (NGX_PCRE)
     ngx_str_t     err;
     ngx_regex_t  *regex;
     u_char        errstr[NGX_MAX_CONF_ERRSTR];
 #endif
+
+    if (ctx->command.len == 2) {
+        if (ctx->conditional) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "the \"if\" command inside the \"if\" command");
+            return NGX_HTTP_SSI_ERROR;
+        }
+    }
+
+    if (ctx->output_chosen) {
+        ctx->output = 0;
+        return NGX_OK;
+    }
 
     expr = params[NGX_HTTP_SSI_IF_EXPR];
 
@@ -1857,10 +1886,13 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     if (p == last) {
         if (left.len) {
             ctx->output = 1;
+            ctx->output_chosen = 1;
 
         } else {
             ctx->output = 0;
         }
+
+        ctx->conditional = NGX_HTTP_SSI_COND_IF;
 
         return NGX_OK;
     }
@@ -1887,11 +1919,17 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         }
 
         noregex = 0;
+        flags = NGX_HTTP_SSI_ADD_ZERO;
         last--;
 	p++;
 
     } else {
         noregex = 1;
+        flags = 0;
+
+        if (p < last - 1 && p[0] == '\\' && p[1] == '/') {
+	    p++;
+        }
     }
 
     right.len = last - p;
@@ -1900,7 +1938,7 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "right: \"%V\"", &right);
 
-    if (ngx_http_ssi_evaluate_string(r, ctx, &right, 0) != NGX_OK) {
+    if (ngx_http_ssi_evaluate_string(r, ctx, &right, flags) != NGX_OK) {
         return NGX_HTTP_SSI_ERROR;
     }
 
@@ -1948,10 +1986,13 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     if ((rc == 0 && !negative) || (rc != 0 && negative)) {
         ctx->output = 1;
+        ctx->output_chosen = 1;
 
     } else {
         ctx->output = 0;
     }
+
+    ctx->conditional = NGX_HTTP_SSI_COND_IF;
 
     return NGX_OK;
 
@@ -1968,7 +2009,13 @@ static ngx_int_t
 ngx_http_ssi_else(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
-    ctx->output = !ctx->output;
+    if (ctx->output_chosen) {
+        ctx->output = 0;
+    } else {
+        ctx->output = 1;
+    }
+
+    ctx->conditional = NGX_HTTP_SSI_COND_ELSE;
 
     return NGX_OK;
 }
@@ -1979,6 +2026,8 @@ ngx_http_ssi_endif(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
     ctx->output = 1;
+    ctx->output_chosen = 0;
+    ctx->conditional = 0;
 
     return NGX_OK;
 }

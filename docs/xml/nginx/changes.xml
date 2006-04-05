@@ -9,6 +9,102 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.36" date="05.04.2006">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_addition_filter_module.
+</para>
+<para lang="en">
+the ngx_http_addition_filter_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_pass и fastcgi_pass можно использовать внутри блока if.
+</para>
+<para lang="en">
+the "proxy_pass" and "fastcgi_pass" directives may be used inside
+the "if" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_ignore_client_abort и fastcgi_ignore_client_abort.
+</para>
+<para lang="en">
+the "proxy_ignore_client_abort" and "fastcgi_ignore_client_abort" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $request_completion.
+</para>
+<para lang="en">
+the "$request_completion" variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module поддерживает методы $r->request_method и
+$r->remote_addr.
+</para>
+<para lang="en">
+the ngx_http_perl_module supports the $r->request_method and $r->remote_addr.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssi_module поддерживает команду elif.
+</para>
+<para lang="en">
+the ngx_http_ssi_module supports the "elif" command.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строка "\/" в начале выражения команды if модуля ngx_http_ssi_module
+воспринималась неверно.
+</para>
+<para lang="en">
+the "\/" string in the expression of the "if" command of the
+ngx_http_ssi_module was treated incorrectly.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в использовании регулярных выражениях в команде if модуля ngx_http_ssi_module.
+</para>
+<para lang="en">
+in the regular expressions in the "if" command of the ngx_http_ssi_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при задании относительного пути в директивах
+client_body_temp_path, proxy_temp_path, fastcgi_temp_path и perl_modules
+использовался каталог относительно текущего каталога, а не относительно
+префикса сервера.
+</para>
+<para lang="en">
+if the relative path was specified in the "client_body_temp_path",
+"proxy_temp_path", "fastcgi_temp_path", and "perl_modules" directives,
+then the directory was used relatively to a current path but not
+to a server prefix.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.35" date="22.03.2006">
 
 <change type="bugfix">
@@ -64,7 +160,7 @@ the "http_503" parameter of the "proxy_next_upstream" or
 
 <change type="bugfix">
 <para lang="ru">
-ngx_http_perl_module не работал со встроенным в конфигурацинный файл кодом,
+ngx_http_perl_module не работал со встроенным в конфигурационный файл кодом,
 если он не начинался сразу же с "sub".
 </para>
 <para lang="en">

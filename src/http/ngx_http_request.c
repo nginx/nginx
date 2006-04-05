@@ -1503,6 +1503,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
+    if (!r->post_action) {
+        r->request_complete = 1;
+    }
+
     if (ngx_http_post_action(r) == NGX_OK) {
         return;
     }
@@ -2254,6 +2258,7 @@ ngx_http_post_action(ngx_http_request_t *r)
 
     r->http_version = NGX_HTTP_VERSION_9;
     r->header_only = 1;
+    r->post_action = 1;
 
     ngx_http_internal_redirect(r, &clcf->post_action, NULL);
 

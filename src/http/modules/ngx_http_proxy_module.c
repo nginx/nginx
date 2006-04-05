@@ -130,7 +130,7 @@ static ngx_conf_bitmask_t  ngx_http_proxy_next_upstream_masks[] = {
 static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_pass"),
-      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_proxy_pass,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -148,6 +148,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, upstream.buffering),
+      NULL },
+
+    { ngx_string("proxy_ignore_client_abort"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.ignore_client_abort),
       NULL },
 
     { ngx_string("proxy_connect_timeout"),
@@ -1415,6 +1422,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      */
 
     conf->upstream.buffering = NGX_CONF_UNSET;
+    conf->upstream.ignore_client_abort = NGX_CONF_UNSET;
 
     conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
@@ -1467,6 +1475,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->upstream.buffering,
                               prev->upstream.buffering, 1);
+
+    ngx_conf_merge_value(conf->upstream.ignore_client_abort,
+                              prev->upstream.ignore_client_abort, 0);
 
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout,
                               prev->upstream.connect_timeout, 60000);
@@ -1654,6 +1665,10 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->peers == NULL) {
         conf->peers = prev->peers;
+
+        conf->host_header = prev->host_header;
+        conf->port_text = prev->port_text;
+        conf->upstream.schema = prev->upstream.schema;
     }
 
 
@@ -2057,11 +2072,12 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #if (NGX_PCRE)
 
-    if (clcf->regex) {
+    if (clcf->regex || clcf->noname) {
         if (plcf->upstream.uri.len) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"proxy_pass\" may not have URI part in "
-                               "location given by regular expression");
+                               "location given by regular expression or "
+                               "inside the \"if\" statement");
             return NGX_CONF_ERROR;
         }
 

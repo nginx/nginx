@@ -517,6 +517,8 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.cyclic_temp_file = 0;
 
     /* the hardcoded values */
+    conf->upstream.buffering = 0;
+    conf->upstream.ignore_client_abort = 0;
     conf->upstream.send_lowat = 0;
     conf->upstream.bufs.num = 0;
     conf->upstream.busy_buffers_size = 0;

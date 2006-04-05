@@ -23,7 +23,7 @@ static ngx_http_module_t  ngx_http_chunked_filter_module_ctx = {
     NULL,                                  /* merge server configuration */
 
     NULL,                                  /* create location configuration */
-    NULL,                                  /* merge location configuration */
+    NULL                                   /* merge location configuration */
 };
 
 

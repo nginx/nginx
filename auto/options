@@ -52,6 +52,7 @@ HTTP_SSL=NO
 HTTP_SSI=YES
 HTTP_POSTPONE=NO
 HTTP_REALIP=NO
+HTTP_ADDITION=NO
 HTTP_ACCESS=YES
 HTTP_AUTH_BASIC=YES
 HTTP_USERID=YES
@@ -139,6 +140,7 @@ do
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
+        --with-http_addition_module)     HTTP_ADDITION=YES          ;;
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
         --without-http_ssi_module)       HTTP_SSI=NO                ;;

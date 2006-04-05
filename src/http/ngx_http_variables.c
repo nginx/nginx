@@ -44,6 +44,8 @@ static ngx_int_t ngx_http_variable_remote_user(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_completion(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 
 
 /*
@@ -133,6 +135,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("remote_user"), ngx_http_variable_remote_user, 0, 0, 0 },
 
     { ngx_string("body_bytes_sent"), ngx_http_variable_body_bytes_sent,
+      0, 0, 0 },
+
+    { ngx_string("request_completion"), ngx_http_variable_request_completion,
       0, 0, 0 },
 
     { ngx_null_string, NULL, 0, 0, 0 }
@@ -793,6 +798,30 @@ ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
     v->no_cachable = 0;
     v->not_found = 0;
     v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_request_completion(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    if (r->request_complete) {
+        v->len = 2;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = (u_char *) "OK";
+
+        return NGX_OK;
+    }
+
+    v->len = 0;
+    v->valid = 1;
+    v->no_cachable = 0;
+    v->not_found = 0;
+    v->data = (u_char *) "";
 
     return NGX_OK;
 }

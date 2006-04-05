@@ -319,6 +319,10 @@ HTTP_REALIP_MODULE=ngx_http_realip_module
 HTTP_REALIP_SRCS=src/http/modules/ngx_http_realip_module.c
 
 
+HTTP_ADDITION_FILTER_MODULE=ngx_http_addition_filter_module
+HTTP_ADDITION_SRCS=src/http/modules/ngx_http_addition_filter_module.c
+
+
 HTTP_ACCESS_MODULE=ngx_http_access_module
 HTTP_ACCESS_SRCS=src/http/modules/ngx_http_access_module.c
 

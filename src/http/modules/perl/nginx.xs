@@ -178,6 +178,35 @@ args(r, ...)
 
 
 char *
+request_method(r)
+    nginx  r
+
+    CODE:
+
+    RETVAL = ngx_palloc(r->pool, r->method_name.len + 1);
+    if (RETVAL == NULL) {
+        XSRETURN_UNDEF;
+    }
+
+    ngx_cpystrn((u_char *) RETVAL, r->method_name.data, r->method_name.len + 1);
+
+    OUTPUT:
+    RETVAL
+
+
+char *
+remote_addr(r)
+    nginx  r
+
+    CODE:
+
+    RETVAL = (char *) r->connection->addr_text.data;
+
+    OUTPUT:
+    RETVAL
+
+
+char *
 header_in(r, key)
     nginx             r
     SV               *key

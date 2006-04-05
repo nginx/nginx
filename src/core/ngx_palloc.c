@@ -86,7 +86,7 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
 {
     u_char            *m;
     ngx_pool_t        *p, *n;
-    ngx_pool_large_t  *large, *last;
+    ngx_pool_large_t  *large;
 
     if (size <= (size_t) NGX_MAX_ALLOC_FROM_POOL
         && size <= (size_t) (pool->end - (u_char *) pool)
@@ -134,34 +134,6 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
         return m;
     }
 
-    /* allocate a large block */
-
-    large = NULL;
-    last = NULL;
-
-    if (pool->large) {
-        for (last = pool->large; /* void */ ; last = last->next) {
-            if (last->alloc == NULL) {
-                large = last;
-                last = NULL;
-                break;
-            }
-
-            if (last->next == NULL) {
-                break;
-            }
-        }
-    }
-
-    if (large == NULL) {
-        large = ngx_palloc(pool, sizeof(ngx_pool_large_t));
-        if (large == NULL) {
-            return NULL;
-        }
-
-        large->next = NULL;
-    }
-
 #if 0
     p = ngx_memalign(ngx_pagesize, size, pool->log);
     if (p == NULL) {
@@ -174,14 +146,14 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
     }
 #endif
 
-    if (pool->large == NULL) {
-        pool->large = large;
-
-    } else if (last) {
-        last->next = large;
+    large = ngx_palloc(pool, sizeof(ngx_pool_large_t));
+    if (large == NULL) {
+        return NULL;
     }
 
     large->alloc = p;
+    large->next = pool->large;
+    pool->large = large;
 
     return p;
 }

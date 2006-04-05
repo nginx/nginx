@@ -39,6 +39,7 @@ static ngx_int_t ngx_http_perl_ssi(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ssi_ctx, ngx_str_t **params);
 #endif
 
+static void ngx_http_perl_handle_request(ngx_http_request_t *r);
 static ngx_int_t
     ngx_http_perl_get_interpreter(ngx_http_perl_main_conf_t *pmcf,
     PerlInterpreter **perl, ngx_log_t *log);
@@ -174,23 +175,39 @@ ngx_http_perl_xs_init(pTHX)
 static ngx_int_t
 ngx_http_perl_handler(ngx_http_request_t *r)
 {
-    ngx_int_t                   rc;
-    ngx_str_t                   uri, args;
-    ngx_http_perl_ctx_t        *ctx;
-    ngx_http_perl_loc_conf_t   *plcf;
-    ngx_http_perl_main_conf_t  *pmcf;
+    ngx_int_t  rc;
 
     /* TODO: Win32 */
     if (r->zero_in_uri) {
         return NGX_HTTP_NOT_FOUND;
     }
 
+    rc = ngx_http_read_client_request_body(r, ngx_http_perl_handle_request);
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        return rc;
+    }
+
+    return NGX_DONE;
+}
+
+
+static void
+ngx_http_perl_handle_request(ngx_http_request_t *r)
+{
+    ngx_int_t                   rc;
+    ngx_str_t                   uri, args;
+    ngx_http_perl_ctx_t        *ctx;
+    ngx_http_perl_loc_conf_t   *plcf;
+    ngx_http_perl_main_conf_t  *pmcf;
+
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "perl handler");
 
     /* mod_perl's content handler assumes that content type was already set */
 
     if (ngx_http_set_content_type(r) != NGX_OK) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
     }
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
@@ -198,7 +215,8 @@ ngx_http_perl_handler(ngx_http_request_t *r)
     if (ctx == NULL) {
         ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_perl_ctx_t));
         if (ctx == NULL) {
-            return NGX_ERROR;
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+	    return;
         }
 
         ngx_http_set_ctx(r, ctx, ngx_http_perl_module);
@@ -209,7 +227,8 @@ ngx_http_perl_handler(ngx_http_request_t *r)
     rc = ngx_http_perl_get_interpreter(pmcf, &ctx->perl, r->connection->log);
 
     if (rc != NGX_OK) {
-        return rc;
+        ngx_http_finalize_request(r, rc);
+        return;
     }
 
     {
@@ -235,20 +254,24 @@ ngx_http_perl_handler(ngx_http_request_t *r)
     if (ctx->redirect_uri.len) {
         uri = ctx->redirect_uri;
         args = ctx->redirect_args;
+
+    } else {
+        uri.len = 0;
     }
 
     ctx->filename = NULL;
     ctx->redirect_uri.len = 0;
 
     if (uri.len) {
-        return ngx_http_internal_redirect(r, &uri, &args);
+        ngx_http_internal_redirect(r, &uri, &args);
+        return;
     }
 
     if (rc == NGX_OK || rc == NGX_HTTP_OK) {
-        return ngx_http_send_special(r, NGX_HTTP_LAST);
+        ngx_http_send_special(r, NGX_HTTP_LAST);
     }
 
-    return rc;
+    ngx_http_finalize_request(r, rc);
 }
 
 
@@ -447,6 +470,10 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
         pmcf->modules.data = NGX_PERL_MODULES;
     }
 #endif
+
+    if (ngx_conf_full_name(cf->cycle, &pmcf->modules) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
     PERL_SYS_INIT(&ngx_argc, &ngx_argv);
 

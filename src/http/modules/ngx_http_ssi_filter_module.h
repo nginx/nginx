@@ -20,6 +20,10 @@
 #define NGX_HTTP_SSI_PARAMS_N       4
 
 
+#define NGX_HTTP_SSI_COND_IF        1
+#define NGX_HTTP_SSI_COND_ELSE      2
+
+
 typedef struct {
     ngx_hash_t                hash;
     ngx_hash_keys_arrays_t    commands;
@@ -54,7 +58,9 @@ typedef struct {
 
     ngx_array_t               variables;
 
-    ngx_uint_t                output;        /* unsigned  output:1; */
+    unsigned                  conditional:2;
+    unsigned                  output:1;
+    unsigned                  output_chosen:1;
 
     void                     *value_buf;
     ngx_str_t                 timefmt;
@@ -80,7 +86,7 @@ typedef struct {
     ngx_http_ssi_command_pt   handler;
     ngx_http_ssi_param_t     *params;
 
-    unsigned                  conditional:1;
+    unsigned                  conditional:2;
     unsigned                  flush:1;
 } ngx_http_ssi_command_t;
 

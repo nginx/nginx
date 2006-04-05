@@ -277,9 +277,9 @@ ngx_http_upstream_init(ngx_http_request_t *r)
         ngx_del_timer(c->read);
     }
 
-    if (!(r->http_version == NGX_HTTP_VERSION_9 && r->header_only)) {
-        /* not a post_action */
+    u = r->upstream;
 
+    if (!r->post_action && !u->conf->ignore_client_abort) {
         r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
         r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
     }
@@ -295,8 +295,6 @@ ngx_http_upstream_init(ngx_http_request_t *r)
             }
         }
     }
-
-    u = r->upstream;
 
     if (r->request_body) {
         u->request_bufs = r->request_body->bufs;
@@ -1208,10 +1206,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     rc = ngx_http_send_header(r);
 
-    if (rc == NGX_ERROR
-        || rc > NGX_OK
-                          /* post_action */
-        || (r->http_version == NGX_HTTP_VERSION_9 && r->header_only)) {
+    if (rc == NGX_ERROR || rc > NGX_OK || r->post_action) {
         ngx_http_upstream_finalize_request(r, u, rc);
         return;
     }
@@ -1947,11 +1942,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     r->connection->log->action = "sending to client";
 
-    if (rc == 0
-        && r == r->main
-             /* not a post_action */
-        && !(r->http_version == NGX_HTTP_VERSION_9 && r->header_only))
-    {
+    if (rc == 0 && r == r->main && !r->post_action) {
         rc = ngx_http_send_special(r, NGX_HTTP_LAST);
     }
 
