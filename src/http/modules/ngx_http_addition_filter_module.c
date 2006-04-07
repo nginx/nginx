@@ -16,8 +16,7 @@ typedef struct {
 
 
 typedef struct {
-    unsigned    before_body_sent:1;
-    unsigned    after_body_sent:1;
+    ngx_uint_t  before_body_sent;
 } ngx_http_addition_ctx_t;
 
 
@@ -92,16 +91,16 @@ ngx_http_addition_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_addition_filter_module);
+
+    if (conf->before_body.len == 0 && conf->after_body.len == 0) {
+        return ngx_http_next_header_filter(r);
+    }
+
     if (ngx_strncasecmp(r->headers_out.content_type.data, "text/html",
                         sizeof("text/html") - 1)
         != 0)
     {
-        return ngx_http_next_header_filter(r);
-    }
-
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_addition_filter_module);
-
-    if (conf->before_body.len == 0 && conf->after_body.len == 0) {
         return ngx_http_next_header_filter(r);
     }
 
@@ -155,17 +154,14 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (cl = in; cl; cl = cl->next) {
         if (cl->buf->last_buf) {
             cl->buf->last_buf = 0;
+            cl->buf->sync = 1;
             last = 1;
         }
     }
 
     rc = ngx_http_next_body_filter(r, in);
 
-    if (rc == NGX_ERROR
-        || !last
-        || ctx->after_body_sent
-        || conf->after_body.len == 0)
-    {
+    if (rc == NGX_ERROR || !last || conf->after_body.len == 0) {
         return rc;
     }
 
@@ -173,7 +169,7 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
-    ctx->after_body_sent = 1;
+    ngx_http_set_ctx(r, NULL, ngx_http_addition_filter_module);
 
     return ngx_http_send_special(r, NGX_HTTP_LAST);
 }

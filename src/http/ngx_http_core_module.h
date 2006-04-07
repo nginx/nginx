@@ -28,6 +28,8 @@ typedef struct {
     ngx_uint_t                 deferred_accept;
 #endif
 
+    u_char                     addr[INET_ADDRSTRLEN + 6];
+
 } ngx_http_listen_conf_t;
 
 
@@ -195,6 +197,9 @@ struct ngx_http_core_loc_conf_s {
 
     /* pointer to the modules' loc_conf */
     void        **loc_conf ;
+
+    uint32_t      limit_except;
+    void        **limit_except_loc_conf ;
 
     ngx_http_handler_pt  handler;
 

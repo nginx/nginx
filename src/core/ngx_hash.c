@@ -164,10 +164,14 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
         return NGX_ERROR;
     }
 
-    start = nelts / (ngx_cacheline_size / (2 * sizeof(void *)) - 1);
+    bucket_size = hinit->bucket_size - sizeof(void *);
+
+    start = nelts / (bucket_size / (2 * sizeof(void *)) - 1);
     start = start ? start : 1;
 
-    bucket_size = hinit->bucket_size - sizeof(void *);
+    if (hinit->max_size > 10000 && hinit->max_size / nelts < 100) {
+        start = hinit->max_size - 1000;
+    }
 
     for (size = start; size < hinit->max_size; size++) {
 

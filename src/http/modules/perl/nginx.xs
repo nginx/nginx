@@ -261,6 +261,41 @@ header_in(r, key)
     RETVAL
 
 
+SV *
+request_body(r)
+    nginx         r
+
+    PREINIT:
+
+    STRLEN        len;
+    ngx_chain_t  *cl;
+
+    CODE:
+
+    len = 0;
+
+    for (cl = r->request_body->bufs; cl; cl = cl->next) {
+        if (cl->buf->in_file) {
+            XSRETURN_UNDEF;
+        }
+
+        len += cl->buf->last - cl->buf->pos;
+    }
+
+    if (len == 0) {
+        XSRETURN_UNDEF;
+    }
+
+    RETVAL = newSV(len);
+
+    for (cl = r->request_body->bufs; cl; cl = cl->next) {
+        sv_catpvn(RETVAL, cl->buf->pos, cl->buf->last - cl->buf->pos);
+    }
+
+    OUTPUT:
+    RETVAL
+
+
 int
 header_out(r, key, value)
     nginx             r

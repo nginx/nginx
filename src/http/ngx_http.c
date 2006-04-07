@@ -595,8 +595,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 if (rc == NGX_BUSY) {
                     ngx_log_error(NGX_LOG_WARN, cf->log, 0,
-                                  "conflicting server name \"%V\", ignored",
-                                  &name[s].name);
+                                "conflicting server name \"%V\" on %s, ignored",
+                                &name[s].name, in_addr[a].listen_conf->addr);
                 }
             }
 
@@ -617,8 +617,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 if (rc == NGX_BUSY) {
                     ngx_log_error(NGX_LOG_WARN, cf->log, 0,
-                                  "conflicting server name \"%V\", ignored",
-                                  &name[s].name);
+                                "conflicting server name \"%V\" on %s, ignored",
+                                &name[s].name, in_addr[a].listen_conf->addr);
                 }
             }
 

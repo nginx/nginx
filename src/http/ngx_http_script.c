@@ -588,8 +588,15 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         e->ncaptures = 0;
 
         if (code->test) {
-            e->sp->len = 0;
-            e->sp->data = (u_char *) "";
+            if (code->negative_test) {
+                e->sp->len = 1;
+                e->sp->data = (u_char *) "1";
+
+            } else {
+                e->sp->len = 0;
+                e->sp->data = (u_char *) "";
+            }
+
             e->sp++;
 
             e->ip += sizeof(ngx_http_script_regex_code_t);
@@ -618,8 +625,15 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
     e->ncaptures = code->ncaptures;
 
     if (code->test) {
-        e->sp->len = 1;
-        e->sp->data = (u_char *) "1";
+        if (code->negative_test) {
+            e->sp->len = 0;
+            e->sp->data = (u_char *) "";
+
+        } else {
+            e->sp->len = 1;
+            e->sp->data = (u_char *) "1";
+        }
+
         e->sp++;
 
         e->ip += sizeof(ngx_http_script_regex_code_t);
@@ -907,6 +921,69 @@ ngx_http_script_not_equal_code(ngx_http_script_engine_t *e)
     }
 
     *res = ngx_http_variable_true_value;
+}
+
+
+void
+ngx_http_script_file_code(ngx_http_script_engine_t *e)
+{
+    ngx_err_t                     err;
+    ngx_file_info_t               fi;
+    ngx_http_variable_value_t    *value;
+    ngx_http_script_file_code_t  *code;
+
+    value = e->sp - 1;
+
+    code = (ngx_http_script_file_code_t *) e->ip;
+    e->ip += sizeof(ngx_http_script_file_code_t);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script file op %p", code->op);
+
+    if (ngx_file_info(value->data, &fi) == -1) {
+        err = ngx_errno;
+
+        if (err != NGX_ENOENT && err != NGX_ENOTDIR) {
+            ngx_log_error(NGX_LOG_CRIT, e->request->connection->log, err,
+                          ngx_file_info_n " \"%s\" failed", value->data);
+        }
+
+        switch (code->op) {
+        case ngx_http_script_file_plain:
+             goto false;
+        case ngx_http_script_file_not_plain:
+             goto true;
+        }
+
+        goto false;
+    }
+
+    switch (code->op) {
+    case ngx_http_script_file_plain:
+        if (ngx_is_file(&fi)) {
+             goto true;
+        }
+        goto false;
+
+    case ngx_http_script_file_not_plain:
+        if (ngx_is_file(&fi)) {
+            goto false;
+        }
+        goto true;
+    }
+
+false:
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script file op false");
+
+    *value = ngx_http_variable_null_value;
+    return;
+
+true:
+
+    *value = ngx_http_variable_true_value;
+    return;
 }
 
 

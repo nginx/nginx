@@ -21,8 +21,8 @@
  */
 
 
-static
-ngx_inline size_t ngx_sprint_uchar(u_char *text, u_char c, size_t len)
+static ngx_inline size_t
+ngx_sprint_uchar(u_char *text, u_char c, size_t len)
 {
     size_t      n;
     ngx_uint_t  c1, c2;

@@ -9,6 +9,47 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.37" date="07.04.2006">
+
+<change type="feature">
+<para lang="ru">
+директива limit_except.
+</para>
+<para lang="en">
+the "limit_except" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива if поддерживает операторы "!~", "!~*", "-f" и "!-f".
+</para>
+<para lang="en">
+the "if" directive supports the "!~", "!~*", "-f", and "!-f" operators.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module поддерживает метод $r->request_body.
+</para>
+<para lang="en">
+the ngx_http_perl_module supports the $r->request_body method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_addition_filter_module.
+</para>
+<para lang="en">
+in the ngx_http_addition_filter_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.36" date="05.04.2006">
 
 <change type="feature">

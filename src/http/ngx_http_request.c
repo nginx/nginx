@@ -410,6 +410,8 @@ void ngx_http_init_request(ngx_event_t *rev)
 
     r->start_time = ngx_time();
 
+    r->method = NGX_HTTP_UNKNOWN;
+
     r->headers_in.content_length_n = -1;
     r->headers_in.keep_alive_n = -1;
     r->headers_out.content_length_n = -1;

@@ -52,7 +52,6 @@ typedef struct {
     void                       *main;
 
     unsigned                    compile_args:1;
-    unsigned                    compile_null:1;
     unsigned                    complete_lengths:1;
     unsigned                    complete_values:1;
 
@@ -94,6 +93,7 @@ typedef struct {
     uintptr_t                        next;
 
     uintptr_t                        test:1;
+    uintptr_t                        negative_test:1;
     uintptr_t                        uri:1;
     uintptr_t                        args:1;
 
@@ -127,6 +127,18 @@ typedef struct {
     uintptr_t                        status;
     uintptr_t                        null;
 } ngx_http_script_return_code_t;
+
+
+typedef enum {
+    ngx_http_script_file_plain = 0,
+    ngx_http_script_file_not_plain
+} ngx_http_script_file_op_e;
+
+
+typedef struct {
+    ngx_http_script_code_pt          code;
+    uintptr_t                        op;
+} ngx_http_script_file_code_t;
 
 
 typedef struct {
@@ -177,6 +189,7 @@ void ngx_http_script_break_code(ngx_http_script_engine_t *e);
 void ngx_http_script_if_code(ngx_http_script_engine_t *e);
 void ngx_http_script_equal_code(ngx_http_script_engine_t *e);
 void ngx_http_script_not_equal_code(ngx_http_script_engine_t *e);
+void ngx_http_script_file_code(ngx_http_script_engine_t *e);
 void ngx_http_script_complex_value_code(ngx_http_script_engine_t *e);
 void ngx_http_script_value_code(ngx_http_script_engine_t *e);
 void ngx_http_script_set_var_code(ngx_http_script_engine_t *e);

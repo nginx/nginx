@@ -217,7 +217,7 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if ((conf->no_referer == 1 || conf->blocked_referer == 1)
-        && conf->keys->keys.nelts == 0 && conf->keys->dns_wildcards.nelts)
+        && conf->keys->keys.nelts == 0 && conf->keys->dns_wildcards.nelts == 0)
     {
         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                       "the \"none\" or \"blocked\" referers are specified "

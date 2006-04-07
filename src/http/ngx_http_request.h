@@ -19,9 +19,10 @@
 #define NGX_HTTP_VERSION_10                1000
 #define NGX_HTTP_VERSION_11                1001
 
-#define NGX_HTTP_GET                       1
-#define NGX_HTTP_HEAD                      2
-#define NGX_HTTP_POST                      3
+#define NGX_HTTP_UNKNOWN                   1
+#define NGX_HTTP_GET                       2
+#define NGX_HTTP_HEAD                      4
+#define NGX_HTTP_POST                      8
 
 #define NGX_HTTP_CONNECTION_CLOSE          1
 #define NGX_HTTP_CONNECTION_KEEP_ALIVE     2

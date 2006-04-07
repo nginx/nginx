@@ -11,6 +11,12 @@
 #include <nginx.h>
 
 
+typedef struct {
+    char      *name;
+    uint32_t   method;
+} ngx_http_method_name_t;
+
+
 #define NGX_HTTP_LOCATION_EXACT           1
 #define NGX_HTTP_LOCATION_AUTO_REDIRECT   2
 #define NGX_HTTP_LOCATION_NOREGEX         3
@@ -48,6 +54,8 @@ static char *ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -221,6 +229,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
     { ngx_string("alias"),
       NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_core_root,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("limit_except"),
+      NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_1MORE,
+      ngx_http_core_limit_except,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -710,6 +725,11 @@ ngx_http_update_location_config(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t  *clcf;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (r->method & clcf->limit_except) {
+        r->loc_conf = clcf->limit_except_loc_conf;
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    }
 
     r->connection->log->file = clcf->err_log->file;
     if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
@@ -1949,6 +1969,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     lcf->root = { 0, NULL };
+     *     lcf->limit_except = 0;
      *     lcf->post_action = { 0, NULL };
      *     lcf->types = NULL;
      *     lcf->default_type = { 0, NULL };
@@ -2245,6 +2266,9 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ls->addr = INADDR_ANY;
     }
 
+    n = ngx_inet_ntop(AF_INET, &ls->addr, ls->conf.addr, INET_ADDRSTRLEN + 6);
+    ngx_sprintf(&ls->conf.addr[n], ":%ui", ls->port);
+
     if (cf->args->nelts == 2) {
         return NGX_CONF_OK;
     }
@@ -2477,6 +2501,124 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_http_method_name_t  ngx_methods_names[] = {
+   { "GET",  (uint32_t) ~NGX_HTTP_GET },
+   { "HEAD", (uint32_t) ~NGX_HTTP_HEAD },
+   { NULL, 0 }
+};
+
+
+static char *
+ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *clcf = conf;
+
+    char                      *rv;
+    void                      *mconf;
+    ngx_str_t                 *value;
+    ngx_uint_t                 i;
+    ngx_conf_t                 save;
+    ngx_http_module_t         *module;
+    ngx_http_conf_ctx_t       *ctx, *pctx;
+    ngx_http_method_name_t    *name;
+    ngx_http_core_loc_conf_t  *lcf, **clcfp;
+
+    if (clcf->limit_except) {
+        return "duplicate";
+    }
+
+    clcf->limit_except = 0xffffffff;
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+        for (name = ngx_methods_names; name->name; name++) {
+
+            if (ngx_strcasecmp(value[i].data, name->name) == 0) {
+                clcf->limit_except &= name->method;
+                goto next;
+            }
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid method \"%V\"", &value[i]);
+        return NGX_CONF_ERROR;
+
+    next:
+        continue;
+    }
+
+    if (!(clcf->limit_except & NGX_HTTP_GET)) {
+        clcf->limit_except &= (uint32_t) ~NGX_HTTP_HEAD;
+    }
+
+    ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));
+    if (ctx == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    pctx = cf->ctx;
+    ctx->main_conf = pctx->main_conf;
+    ctx->srv_conf = pctx->srv_conf;
+
+    ctx->loc_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
+    if (ctx->loc_conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    for (i = 0; ngx_modules[i]; i++) {
+        if (ngx_modules[i]->type != NGX_HTTP_MODULE) {
+            continue;
+        }
+
+        module = ngx_modules[i]->ctx;
+
+        if (module->create_loc_conf) {
+
+            mconf = module->create_loc_conf(cf);
+            if (mconf == NULL) {
+                 return NGX_CONF_ERROR;
+            }
+
+            ctx->loc_conf[ngx_modules[i]->ctx_index] = mconf;
+        }
+    }
+
+
+    lcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
+    clcf->limit_except_loc_conf = ctx->loc_conf;
+    lcf->loc_conf = ctx->loc_conf;
+    lcf->name = clcf->name;
+    lcf->noname = 1;
+
+    if (clcf->locations.elts == NULL) {
+        if (ngx_array_init(&clcf->locations, cf->pool, 4, sizeof(void *))
+            == NGX_ERROR)
+        {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    clcfp = ngx_array_push(&clcf->locations);
+    if (clcfp == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    *clcfp = lcf;
+
+
+    save = *cf;
+    cf->ctx = ctx;
+    cf->cmd_type = NGX_HTTP_LMT_CONF;
+
+    rv = ngx_conf_parse(cf, NULL);
+
+    *cf = save;
+
+    return rv;
 }
 
 
