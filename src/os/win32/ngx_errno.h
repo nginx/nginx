@@ -26,6 +26,7 @@ typedef DWORD                      ngx_err_t;
 #endif
 #define NGX_EEXIST                 ERROR_ALREADY_EXISTS
 #define NGX_ENOTDIR                ERROR_PATH_NOT_FOUND
+#define NGX_ENOSPC                 ERROR_DISK_FULL
 #define NGX_EPIPE                  EPIPE
 #define NGX_EAGAIN                 WSAEWOULDBLOCK
 #define NGX_EINPROGRESS            WSAEINPROGRESS

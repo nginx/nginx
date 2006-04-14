@@ -426,7 +426,7 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    if (ngx_rename_file((char *) ccf->pid.data, (char *) ccf->oldpid.data)
+    if (ngx_rename_file(ccf->pid.data, ccf->oldpid.data)
         != NGX_OK)
     {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -442,7 +442,7 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     pid = ngx_execute(cycle, &ctx);
 
     if (pid == NGX_INVALID_PID) {
-        if (ngx_rename_file((char *) ccf->oldpid.data, (char *) ccf->pid.data)
+        if (ngx_rename_file(ccf->oldpid.data, ccf->pid.data)
             != NGX_OK)
         {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,

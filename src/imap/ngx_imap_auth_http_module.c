@@ -68,6 +68,8 @@ static void ngx_imap_auth_http_block_read(ngx_event_t *rev);
 static void ngx_imap_auth_http_dummy_handler(ngx_event_t *ev);
 static ngx_buf_t *ngx_imap_auth_http_create_request(ngx_imap_session_t *s,
     ngx_pool_t *pool, ngx_imap_auth_http_conf_t *ahcf);
+static ngx_int_t ngx_imap_auth_http_escape(ngx_pool_t *pool, ngx_str_t *text,
+    ngx_str_t *escaped);
 
 static void *ngx_imap_auth_http_create_conf(ngx_conf_t *cf);
 static char *ngx_imap_auth_http_merge_conf(ngx_conf_t *cf, void *parent,
@@ -984,12 +986,21 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
 {
     size_t      len;
     ngx_buf_t  *b;
+    ngx_str_t   login, passwd;
+
+    if (ngx_imap_auth_http_escape(pool, &s->login, &login) != NGX_OK) {
+        return NULL;
+    }
+
+    if (ngx_imap_auth_http_escape(pool, &s->passwd, &passwd) != NGX_OK) {
+        return NULL;
+    }
 
     len = sizeof("GET ") - 1 + ahcf->uri.len + sizeof(" HTTP/1.0" CRLF) - 1
           + sizeof("Host: ") - 1 + ahcf->host_header.len + sizeof(CRLF) - 1
           + sizeof("Auth-Method: plain" CRLF) - 1
-          + sizeof("Auth-User: ") - 1 + s->login.len + sizeof(CRLF) - 1
-          + sizeof("Auth-Pass: ") - 1 + s->passwd.len + sizeof(CRLF) - 1
+          + sizeof("Auth-User: ") - 1 + login.len + sizeof(CRLF) - 1
+          + sizeof("Auth-Pass: ") - 1 + passwd.len + sizeof(CRLF) - 1
           + sizeof("Auth-Protocol: imap" CRLF) - 1
           + sizeof("Auth-Login-Attempt: ") - 1 + NGX_INT_T_LEN
                 + sizeof(CRLF) - 1
@@ -1016,11 +1027,11 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
                          sizeof("Auth-Method: plain" CRLF) - 1);
 
     b->last = ngx_cpymem(b->last, "Auth-User: ", sizeof("Auth-User: ") - 1);
-    b->last = ngx_copy(b->last, s->login.data, s->login.len);
+    b->last = ngx_copy(b->last, login.data, login.len);
     *b->last++ = CR; *b->last++ = LF;
 
     b->last = ngx_cpymem(b->last, "Auth-Pass: ", sizeof("Auth-Pass: ") - 1);
-    b->last = ngx_copy(b->last, s->passwd.data, s->passwd.len);
+    b->last = ngx_copy(b->last, passwd.data, passwd.len);
     *b->last++ = CR; *b->last++ = LF;
 
     b->last = ngx_cpymem(b->last, "Auth-Protocol: ",
@@ -1056,6 +1067,60 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
 #endif
 
     return b;
+}
+
+
+static ngx_int_t
+ngx_imap_auth_http_escape(ngx_pool_t *pool, ngx_str_t *text, ngx_str_t *escaped)
+{
+    u_char      ch, *p;
+    ngx_uint_t  i, n;
+
+    n = 0;
+
+    for (i = 0; i < text->len; i++) {
+        ch = text->data[i];
+
+        if (ch == CR || ch == LF) {
+            n++;
+        }
+    }
+
+    if (n == 0) {
+        *escaped = *text;
+        return NGX_OK;
+    }
+
+    escaped->len = text->len + n * 2;
+
+    p = ngx_palloc(pool, escaped->len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    escaped->data = p;
+
+    for (i = 0; i < text->len; i++) {
+        ch = text->data[i];
+
+        if (ch == CR) {
+            *p++ = '%';
+            *p++ = '0';
+            *p++ = 'D';
+            continue;
+        }
+
+        if (ch == LF) {
+            *p++ = '%';
+            *p++ = '0';
+            *p++ = 'A';
+            continue;
+        }
+
+        *p++ = ch;
+    }
+
+    return NGX_OK;
 }
 
 

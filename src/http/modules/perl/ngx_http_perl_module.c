@@ -165,10 +165,14 @@ static ngx_http_ssi_command_t  ngx_http_perl_ssi_command = {
 #endif
 
 
+static HV  *nginx_stash;
+
 static void
 ngx_http_perl_xs_init(pTHX)
 {
     newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, __FILE__);
+
+    nginx_stash = gv_stashpv("nginx", TRUE);
 }
 
 
@@ -181,6 +185,9 @@ ngx_http_perl_handler(ngx_http_request_t *r)
     if (r->zero_in_uri) {
         return NGX_HTTP_NOT_FOUND;
     }
+
+    r->request_body_in_single_buf = 1;
+    r->request_body_in_persistent_file = 1;
 
     rc = ngx_http_read_client_request_body(r, ngx_http_perl_handle_request);
 
@@ -259,7 +266,7 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
         uri.len = 0;
     }
 
-    ctx->filename = NULL;
+    ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
 
     if (uri.len) {
@@ -332,7 +339,7 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         v->not_found = 1;
     }
 
-    ctx->filename = NULL;
+    ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
 
     return rc;
@@ -409,7 +416,7 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     ngx_http_perl_free_interpreter(pmcf, ctx->perl);
 
-    ctx->filename = NULL;
+    ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
     ctx->ssi = NULL;
 
@@ -631,8 +638,7 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, SV *sub,
 
     PUSHMARK(sp);
 
-    sv = sv_newmortal();
-    sv_setref_pv(sv, "nginx", r);
+    sv = sv_2mortal(sv_bless(newRV_noinc(newSViv(PTR2IV(r))), nginx_stash));
     XPUSHs(sv);
 
     if (args) {

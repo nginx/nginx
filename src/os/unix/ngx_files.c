@@ -112,11 +112,11 @@ ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 
 
 ngx_fd_t
-ngx_open_tempfile(u_char *name, ngx_uint_t persistent)
+ngx_open_tempfile(u_char *name, ngx_uint_t persistent, ngx_uint_t mode)
 {
     ngx_fd_t  fd;
 
-    fd = open((const char *) name, O_CREAT|O_EXCL|O_RDWR, 0600);
+    fd = open((const char *) name, O_CREAT|O_EXCL|O_RDWR, mode ? mode : 0600);
 
     if (fd != -1 && !persistent) {
         unlink((const char *) name);

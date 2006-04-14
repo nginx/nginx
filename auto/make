@@ -22,7 +22,7 @@ LINK =	$LINK
 
 END
 
-if [ "$CC" = wcl386 ]; then
+if [ "$BMAKE" = wmake ]; then
     echo MAKE = wmake                                         >> $NGX_MAKEFILE
 
     ngx_regex_cont=' '

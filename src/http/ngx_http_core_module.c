@@ -268,6 +268,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, client_body_temp_path),
       (void *) ngx_garbage_collector_temp_handler },
 
+    { ngx_string("client_body_in_file_only"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, client_body_in_file_only),
+      NULL },
+
     { ngx_string("sendfile"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -741,6 +748,11 @@ ngx_http_update_location_config(ngx_http_request_t *r)
 
     } else {
         r->connection->sendfile = 0;
+    }
+
+    if (clcf->client_body_in_file_only) {
+        r->request_body_in_file_only = 1;
+        r->request_body_in_persistent_file = 1;
     }
 
     if (r->keepalive && clcf->keepalive_timeout == 0) {
@@ -1987,6 +1999,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
     lcf->satisfy_any = NGX_CONF_UNSET;
     lcf->internal = NGX_CONF_UNSET;
+    lcf->client_body_in_file_only = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->tcp_nopush = NGX_CONF_UNSET;
     lcf->tcp_nodelay = NGX_CONF_UNSET;
@@ -2151,6 +2164,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->satisfy_any, prev->satisfy_any, 0);
     ngx_conf_merge_value(conf->internal, prev->internal, 0);
+    ngx_conf_merge_value(conf->client_body_in_file_only,
+                              prev->client_body_in_file_only, 0);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
     ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 0);

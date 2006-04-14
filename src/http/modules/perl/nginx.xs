@@ -13,6 +13,20 @@
 
 #include "XSUB.h"
 
+#define ngx_http_perl_set_request(r)                                          \
+    r = INT2PTR(ngx_http_request_t *, SvIV((SV *) SvRV(ST(0))))
+
+
+#define ngx_http_perl_set_targ(p, len, z)                                     \
+                                                                              \
+    sv_upgrade(TARG, SVt_PV);                                                 \
+    SvPOK_on(TARG);                                                           \
+    SvPV_set(TARG, (char *) p);                                               \
+    SvLEN_set(TARG, len + z);                                                 \
+    SvCUR_set(TARG, len);                                                     \
+    SvFAKE_on(TARG);                                                          \
+    SvREADONLY_on(TARG);                                                      \
+
 
 static ngx_int_t
 ngx_http_perl_sv2str(pTHX_ ngx_http_request_t *r, ngx_str_t *s, SV *sv)
@@ -79,15 +93,14 @@ ngx_http_perl_output(ngx_http_request_t *r, ngx_buf_t *b)
 MODULE = nginx    PACKAGE = nginx
 
 
-int
+void
 send_http_header(r, ...)
-    nginx   r
-
-    PREINIT:
-
-    SV     *sv;
-
     CODE:
+
+    ngx_http_request_t  *r;
+    SV                  *sv;
+
+    ngx_http_perl_set_request(r);
 
     if (r->headers_out.status == 0) {
         r->headers_out.status = NGX_HTTP_OK;
@@ -99,127 +112,104 @@ send_http_header(r, ...)
         if (ngx_http_perl_sv2str(aTHX_ r, &r->headers_out.content_type, sv)
             != NGX_OK)
         {
-            RETVAL = NGX_ERROR;
-            goto done;
+            XSRETURN_EMPTY;
         }
 
     } else {
         if (r->headers_out.content_type.len == 0) {
             if (ngx_http_set_content_type(r) != NGX_OK) {
-                RETVAL = NGX_ERROR;
-                goto done;
+                XSRETURN_EMPTY;
             }
         }
     }
 
-    RETVAL = ngx_http_send_header(r);
-
-    done:
-
-    OUTPUT:
-    RETVAL
+    (void) ngx_http_send_header(r);
 
 
-int
+void
 header_only(r)
-    nginx  r
-
-    CODE:
-    RETVAL = r->header_only;
-
-    OUTPUT:
-    RETVAL
-
-
-# The returning "char *" is more quickly than creating SV, because SV returned
-# from XS is never used as permanent storage. Even in simple case:
-# "$uri = $r->uri" the SV returned by $r->uri is copied to $uri's SV.
-
-char *
-uri(r, ...)
-    nginx  r
-
     CODE:
 
-    if (items != 1) {
-        croak("$r->uri(text) is not implemented");
-    }
+    dXSTARG;
+    ngx_http_request_t  *r;
 
-    RETVAL = ngx_palloc(r->pool, r->uri.len + 1);
-    if (RETVAL == NULL) {
-        XSRETURN_UNDEF;
-    }
+    ngx_http_perl_set_request(r);
 
-    ngx_cpystrn((u_char *) RETVAL, r->uri.data, r->uri.len + 1);
+    sv_upgrade(TARG, SVt_IV);
+    sv_setiv(TARG, r->header_only);
 
-    OUTPUT:
-    RETVAL
+    ST(0) = TARG;
 
 
-char *
-args(r, ...)
-    nginx  r
-
+void
+uri(r)
     CODE:
 
-    if (items != 1) {
-        croak("$r->args(text) is not implemented");
-    }
+    dXSTARG;
+    ngx_http_request_t  *r;
 
-    RETVAL = ngx_palloc(r->pool, r->args.len + 1);
-    if (RETVAL == NULL) {
-        XSRETURN_UNDEF;
-    }
+    ngx_http_perl_set_request(r);
+    ngx_http_perl_set_targ(r->uri.data, r->uri.len, 0);
 
-    ngx_cpystrn((u_char *) RETVAL, r->args.data, r->args.len + 1);
-
-    OUTPUT:
-    RETVAL
+    ST(0) = TARG;
 
 
-char *
+void
+args(r)
+    CODE:
+
+    dXSTARG;
+    ngx_http_request_t  *r;
+
+    ngx_http_perl_set_request(r);
+    ngx_http_perl_set_targ(r->args.data, r->args.len, 0);
+
+    ST(0) = TARG;
+
+
+void
 request_method(r)
-    nginx  r
-
     CODE:
 
-    RETVAL = ngx_palloc(r->pool, r->method_name.len + 1);
-    if (RETVAL == NULL) {
-        XSRETURN_UNDEF;
-    }
+    dXSTARG;
+    ngx_http_request_t  *r;
 
-    ngx_cpystrn((u_char *) RETVAL, r->method_name.data, r->method_name.len + 1);
+    ngx_http_perl_set_request(r);
+    ngx_http_perl_set_targ(r->method_name.data, r->method_name.len, 0);
 
-    OUTPUT:
-    RETVAL
+    ST(0) = TARG;
 
 
-char *
+void
 remote_addr(r)
-    nginx  r
-
     CODE:
 
-    RETVAL = (char *) r->connection->addr_text.data;
+    dXSTARG;
+    ngx_http_request_t  *r;
 
-    OUTPUT:
-    RETVAL
+    ngx_http_perl_set_request(r);
+    ngx_http_perl_set_targ(r->connection->addr_text.data,
+                           r->connection->addr_text.len, 1);
+
+    ST(0) = TARG;
 
 
-char *
+void
 header_in(r, key)
-    nginx             r
-    SV               *key
-
-    PREINIT:
-
-    u_char           *p;
-    STRLEN            len;
-    ngx_uint_t        i;
-    ngx_list_part_t  *part;
-    ngx_table_elt_t  *header;
-
     CODE:
+
+    dXSTARG;
+    ngx_http_request_t  *r;
+    SV                  *key;
+    u_char              *p;
+    STRLEN               len;
+    ngx_uint_t           i;
+    ngx_list_part_t     *part;
+    ngx_table_elt_t     *header;
+
+    ngx_http_perl_set_request(r);
+
+    key = ST(1);
 
     if (SvROK(key) && SvTYPE(SvRV(key)) == SVt_PV) {
         key = SvRV(key);
@@ -248,7 +238,7 @@ header_in(r, key)
             continue;
         }
 
-        RETVAL = (char *) header[i].value.data;
+        ngx_http_perl_set_targ(header[i].value.data, header[i].value.len, 0);
 
         goto done;
     }
@@ -257,73 +247,80 @@ header_in(r, key)
 
     done:
 
-    OUTPUT:
-    RETVAL
+    ST(0) = TARG;
 
 
-SV *
+void
 request_body(r)
-    nginx         r
-
-    PREINIT:
-
-    STRLEN        len;
-    ngx_chain_t  *cl;
-
     CODE:
 
-    len = 0;
+    dXSTARG;
+    ngx_http_request_t  *r;
+    size_t               len;
 
-    for (cl = r->request_body->bufs; cl; cl = cl->next) {
-        if (cl->buf->in_file) {
-            XSRETURN_UNDEF;
-        }
+    ngx_http_perl_set_request(r);
 
-        len += cl->buf->last - cl->buf->pos;
+    if (r->request_body->temp_file || r->request_body->bufs == NULL) {
+        XSRETURN_UNDEF;
     }
+
+    len = r->request_body->bufs->buf->last - r->request_body->bufs->buf->pos;
 
     if (len == 0) {
         XSRETURN_UNDEF;
     }
 
-    RETVAL = newSV(len);
+    ngx_http_perl_set_targ(r->request_body->bufs->buf->pos, len, 0);
 
-    for (cl = r->request_body->bufs; cl; cl = cl->next) {
-        sv_catpvn(RETVAL, cl->buf->pos, cl->buf->last - cl->buf->pos);
+    ST(0) = TARG;
+
+
+void
+request_body_file(r)
+    CODE:
+
+    dXSTARG;
+    ngx_http_request_t  *r;
+
+    ngx_http_perl_set_request(r);
+
+    if (r->request_body->temp_file == NULL) {
+        XSRETURN_UNDEF;
     }
 
-    OUTPUT:
-    RETVAL
+    ngx_http_perl_set_targ(r->request_body->temp_file->file.name.data,
+                           r->request_body->temp_file->file.name.len, 1);
+
+    ST(0) = TARG;
 
 
-int
+void
 header_out(r, key, value)
-    nginx             r
-    SV               *key
-    SV               *value
-
-    PREINIT:
-
-    ngx_table_elt_t  *header;
-
     CODE:
+
+    ngx_http_request_t  *r;
+    SV                  *key;
+    SV                  *value;
+    ngx_table_elt_t     *header;
+
+    ngx_http_perl_set_request(r);
+
+    key = ST(1);
+    value = ST(2);
 
     header = ngx_list_push(&r->headers_out.headers);
     if (header == NULL) {
-        RETVAL = NGX_ERROR;
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     header->hash = 1;
 
     if (ngx_http_perl_sv2str(aTHX_ r, &header->key, key) != NGX_OK) {
-        RETVAL = NGX_ERROR;
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     if (ngx_http_perl_sv2str(aTHX_ r, &header->value, value) != NGX_OK) {
-        RETVAL = NGX_ERROR;
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     if (header->key.len == sizeof("Content-Length") - 1
@@ -335,62 +332,51 @@ header_out(r, key, value)
         r->headers_out.content_length = header;
     }
 
-    RETVAL = NGX_OK;
-
-    done:
-
-    OUTPUT:
-    RETVAL
+    XSRETURN_EMPTY;
 
 
-char *
+void
 filename(r)
-    nginx                 r
-
-    PREINIT:
-
-    ngx_str_t             path;
-    ngx_http_perl_ctx_t  *ctx;
-
     CODE:
 
+    dXSTARG;
+    ngx_http_request_t   *r;
+    ngx_http_perl_ctx_t  *ctx;
+
+    ngx_http_perl_set_request(r);
+
     ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
-    if (ctx->filename) {
+    if (ctx->filename.data) {
         goto done;
     }
 
-    if (ngx_http_map_uri_to_path(r, &path, 0) == NULL) {
+    if (ngx_http_map_uri_to_path(r, &ctx->filename, 0) == NULL) {
         XSRETURN_UNDEF;
     }
 
-    ctx->filename = (char *) path.data;
-
-    sv_setpv(PL_statname, ctx->filename);
+    ctx->filename.len--;
+    sv_setpv(PL_statname, (char *) ctx->filename.data);
 
     done:
 
-    RETVAL = ctx->filename;
+    ngx_http_perl_set_targ(ctx->filename.data, ctx->filename.len, 1);
 
-    OUTPUT:
-    RETVAL
+    ST(0) = TARG;
 
 
-int
+void
 print(r, ...)
-    nginx       r
-
-    PREINIT:
-
-    SV         *sv;
-    int         i;
-    u_char     *p;
-    size_t      size;
-    STRLEN      len;
-    ngx_buf_t  *b;
-
     CODE:
 
-    RETVAL = NGX_OK;
+    ngx_http_request_t  *r;
+    SV                  *sv;
+    int                  i;
+    u_char              *p;
+    size_t               size;
+    STRLEN               len;
+    ngx_buf_t           *b;
+
+    ngx_http_perl_set_request(r);
 
     if (items == 2) {
 
@@ -410,13 +396,12 @@ print(r, ...)
             p = (u_char *) SvPV(sv, len);
 
             if (len == 0) {
-                goto done;
+                XSRETURN_EMPTY;
             }
 
             b = ngx_calloc_buf(r->pool);
             if (b == NULL) {
-                RETVAL = NGX_ERROR;
-                goto done;
+                XSRETURN_EMPTY;
             }
 
             b->memory = 1;
@@ -451,13 +436,12 @@ print(r, ...)
     }
 
     if (size == 0) {
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     b = ngx_create_temp_buf(r->pool, size);
     if (b == NULL) {
-        RETVAL = NGX_ERROR;
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     for (i = 1; i < items; i++) {
@@ -473,51 +457,49 @@ print(r, ...)
 
     out:
 
-    RETVAL = ngx_http_perl_output(r, b);
+    (void) ngx_http_perl_output(r, b);
 
-    done:
-
-    OUTPUT:
-    RETVAL
+    XSRETURN_EMPTY;
 
 
-int
+void
 sendfile(r, filename, offset = -1, bytes = 0)
-    nginx                     r
-    char                     *filename
+    CODE:
+
+    ngx_http_request_t       *r;
+    char                     *filename;
     int                       offset;
     size_t                    bytes;
-
-    PREINIT:
-
     ngx_fd_t                  fd;
     ngx_buf_t                *b;
     ngx_file_info_t           fi;
     ngx_pool_cleanup_t       *cln;
     ngx_pool_cleanup_file_t  *clnf;
 
-    CODE:
+    ngx_http_perl_set_request(r);
+
+    filename = SvPV_nolen(ST(1));
 
     if (filename == NULL) {
         croak("sendfile(): NULL filename");
     }
 
+    offset = items < 3 ? -1 : SvIV(ST(2));
+    bytes = items < 4 ? 0 : SvIV(ST(3));
+
     b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
-        RETVAL = NGX_ERROR;
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
     if (b->file == NULL) {
-        RETVAL = NGX_ERROR;
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     cln = ngx_pool_cleanup_add(r->pool, sizeof(ngx_pool_cleanup_file_t));
     if (cln == NULL) {
-        RETVAL = NGX_ERROR;
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     fd = ngx_open_file((u_char *) filename, NGX_FILE_RDONLY, NGX_FILE_OPEN);
@@ -525,8 +507,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
     if (fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       ngx_open_file_n " \"%s\" failed", filename);
-        RETVAL = NGX_ERROR;
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     if (offset == -1) {
@@ -543,9 +524,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
                               ngx_close_file_n " \"%s\" failed", filename);
             }
 
-            RETVAL = NGX_ERROR;
-            goto done;
-
+            XSRETURN_EMPTY;
         }
 
         bytes = ngx_file_size(&fi) - offset;
@@ -566,53 +545,46 @@ sendfile(r, filename, offset = -1, bytes = 0)
     b->file->fd = fd;
     b->file->log = r->connection->log;
 
-    RETVAL = ngx_http_perl_output(r, b);
+    (void) ngx_http_perl_output(r, b);
 
-    done:
-
-    OUTPUT:
-    RETVAL
+    XSRETURN_EMPTY;
 
 
-int
+void
 rflush(r)
-    nginx       r
-
-    PREINIT:
-
-    ngx_buf_t  *b;
-
     CODE:
+
+    ngx_http_request_t  *r;
+    ngx_buf_t           *b;
+
+    ngx_http_perl_set_request(r);
 
     b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
-        RETVAL = NGX_ERROR;
-        goto done;
+        XSRETURN_EMPTY;
     }
 
     b->flush = 1;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "$r->rflush");
 
-    RETVAL = ngx_http_perl_output(r, b);
+    (void) ngx_http_perl_output(r, b);
 
-    done:
-
-    OUTPUT:
-    RETVAL
+    XSRETURN_EMPTY;
 
 
 void
 internal_redirect(r, uri)
-    nginx                 r
-    SV                   *uri
+    CODE:
 
-    PREINIT:
-
+    ngx_http_request_t   *r;
+    SV                   *uri;
     ngx_uint_t            i;
     ngx_http_perl_ctx_t  *ctx;
 
-    CODE:
+    ngx_http_perl_set_request(r);
+
+    uri = ST(1);
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
 
@@ -632,32 +604,35 @@ internal_redirect(r, uri)
     }
 
 
-char *
+void
 unescape(r, text, type = 0)
-    nginx    r
-    SV      *text
-    int      type
-
-    PREINIT:
-
-    u_char  *p, *dst, *src;
-    STRLEN   n;
-
     CODE:
 
-    src = (u_char *) SvPV(text, n);
+    dXSTARG;
+    ngx_http_request_t  *r;
+    SV                  *text;
+    int                  type;
+    u_char              *p, *dst, *src;
+    STRLEN               len;
 
-    p = ngx_palloc(r->pool, n + 1);
+    ngx_http_perl_set_request(r);
+
+    text = ST(1);
+
+    src = (u_char *) SvPV(text, len);
+
+    p = ngx_palloc(r->pool, len + 1);
     if (p == NULL) {
         XSRETURN_UNDEF;
     }
 
     dst = p;
 
-    ngx_unescape_uri(&dst, &src, n, (ngx_uint_t) type);
+    type = items < 3 ? 0 : SvIV(ST(2));
+
+    ngx_unescape_uri(&dst, &src, len, (ngx_uint_t) type);
     *dst = '\0';
 
-    RETVAL = (char *) p;
+    ngx_http_perl_set_targ(p, dst - p, 1);
 
-    OUTPUT:
-    RETVAL
+    ST(0) = TARG;

@@ -37,7 +37,8 @@
 #define ngx_delete_file_n        "unlink()"
 
 
-ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent);
+ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent,
+    ngx_uint_t mode);
 #define ngx_open_tempfile_n      "open()"
 
 
@@ -56,7 +57,7 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 #define NGX_LINEFEED_SIZE        1
 
 
-#define ngx_rename_file          rename
+#define ngx_rename_file(o, n)    rename((const char *) o, (const char *) n)
 #define ngx_rename_file_n        "rename"
 
 

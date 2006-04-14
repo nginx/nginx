@@ -48,7 +48,7 @@ ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_file_append_mode_n      "SetFilePointer()"
 
 
-#define ngx_open_tempfile(name, persistent)                                 \
+#define ngx_open_tempfile(name, persistent, mode)                           \
     CreateFile((const char *) name,                                         \
                GENERIC_READ|GENERIC_WRITE,                                  \
                FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,          \
@@ -74,7 +74,7 @@ ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_delete_file_n           "DeleteFile()"
 
 
-#define ngx_rename_file             MoveFile
+#define ngx_rename_file(o, n)       MoveFile((const char *) o, (const char *) n)
 #define ngx_rename_file_n           "MoveFile()"
 ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
     ngx_pool_t *pool);

@@ -19,10 +19,12 @@
 #define NGX_HTTP_VERSION_10                1000
 #define NGX_HTTP_VERSION_11                1001
 
-#define NGX_HTTP_UNKNOWN                   1
-#define NGX_HTTP_GET                       2
-#define NGX_HTTP_HEAD                      4
-#define NGX_HTTP_POST                      8
+#define NGX_HTTP_UNKNOWN                   0x0001
+#define NGX_HTTP_GET                       0x0002
+#define NGX_HTTP_HEAD                      0x0004
+#define NGX_HTTP_POST                      0x0008
+#define NGX_HTTP_PUT                       0x0010
+#define NGX_HTTP_DELETE                    0x0020
 
 #define NGX_HTTP_CONNECTION_CLOSE          1
 #define NGX_HTTP_CONNECTION_KEEP_ALIVE     2
@@ -44,6 +46,7 @@
 
 
 #define NGX_HTTP_OK                        200
+#define NGX_HTTP_CREATED                   201
 #define NGX_HTTP_NO_CONTENT                204
 #define NGX_HTTP_PARTIAL_CONTENT           206
 
@@ -229,6 +232,7 @@ typedef struct {
     ngx_chain_t                      *bufs;
     ngx_buf_t                        *buf;
     size_t                            rest;
+    ngx_chain_t                      *to_write;
     ngx_http_client_body_handler_pt   post_handler;
 } ngx_http_request_body_t;
 
@@ -374,6 +378,12 @@ struct ngx_http_request_s {
     unsigned                          valid_unparsed_uri:1;
     unsigned                          uri_changed:1;
     unsigned                          uri_changes:4;
+
+    unsigned                          request_body_in_single_buf:1;
+    unsigned                          request_body_in_file_only:1;
+    unsigned                          request_body_in_persistent_file:1;
+    unsigned                          request_body_delete_incomplete_file:1;
+    unsigned                          request_body_file_group_access:1;
 
     unsigned                          fast_subrequest:1;
 

@@ -21,8 +21,7 @@ typedef ngx_http_request_t   *nginx;
 typedef struct {
     PerlInterpreter          *perl;
 
-    char                     *filename;
-
+    ngx_str_t                 filename;
     ngx_str_t                 redirect_uri;
     ngx_str_t                 redirect_args;
 
@@ -45,7 +44,7 @@ extern ngx_module_t  ngx_http_perl_module;
 #endif
 
 
-extern void boot_DynaLoader (pTHX_ CV* cv);
+extern void  boot_DynaLoader(pTHX_ CV* cv);
 
 
 #endif /* _NGX_HTTP_PERL_MODULE_H_INCLUDED_ */

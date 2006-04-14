@@ -47,7 +47,7 @@ ngx_module_t  ngx_http_write_filter_module = {
 ngx_int_t
 ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    off_t                      size, sent;
+    off_t                      size, sent, to_send;
     ngx_uint_t                 last, flush;
     ngx_chain_t               *cl, *ln, **ll, *chain;
     ngx_connection_t          *c;
@@ -209,23 +209,32 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
+    to_send = r->limit_rate * (ngx_time() - r->start_time + 1) - c->sent;
+
+    if (to_send < 0) {
+        to_send = 0;
+    }
+
     sent = c->sent;
 
-    chain = c->send_chain(c, r->out, r->limit_rate);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http write filter to send %O", to_send);
+
+    chain = c->send_chain(c, r->out, to_send);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http write filter %p", chain);
 
-    if (r->limit_rate) {
+    if (chain == NGX_CHAIN_ERROR) {
+        c->error = 1;
+        return NGX_ERROR;
+    }
+
+    if (to_send) {
         sent = c->sent - sent;
         c->write->delayed = 1;
         ngx_add_timer(r->connection->write,
                       (ngx_msec_t) (sent * 1000 / r->limit_rate));
-    }
-
-    if (chain == NGX_CHAIN_ERROR) {
-        c->error = 1;
-        return NGX_ERROR;
     }
 
     for (cl = r->out; cl && cl != chain; /* void */) {

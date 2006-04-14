@@ -199,7 +199,7 @@ static char error_504_page[] =
 
 static ngx_str_t error_pages[] = {
 
-    ngx_null_string,             /* 204 */
+    ngx_null_string,             /* 201, 204 */
 
 #define NGX_HTTP_LEVEL_200  1
 
@@ -320,7 +320,11 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         }
     }
 
-    if (error == NGX_HTTP_NO_CONTENT) {
+    if (error == NGX_HTTP_CREATED) {
+        /* 201 */
+        err = 0;
+
+    } else if (error == NGX_HTTP_NO_CONTENT) {
         /* 204 */
         err = 0;
 

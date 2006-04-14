@@ -23,6 +23,7 @@ typedef struct {
 
 typedef struct {
     ngx_open_file_t            *file;
+    time_t                      disk_full_time;
     ngx_array_t                *ops;        /* array of ngx_http_log_op_t */
 } ngx_http_log_t;
 
@@ -253,6 +254,17 @@ ngx_http_log_handler(ngx_http_request_t *r)
     log = lcf->logs->elts;
     for (l = 0; l < lcf->logs->nelts; l++) {
 
+        if (ngx_time() == log[l].disk_full_time) {
+
+            /*
+             * On FreeBSD writing to a full filesystem with enabled softupdates
+             * may block process for much longer time than writing to non-full
+             * filesystem, so we skip writing the log for one second.
+             */
+
+            continue;
+        }
+
         len = 0;
         op = log[l].ops->elts;
         for (i = 0; i < log[l].ops->nelts; i++) {
@@ -272,7 +284,13 @@ ngx_http_log_handler(ngx_http_request_t *r)
 
             if (len > (size_t) (file->last - file->pos)) {
 
-                ngx_write_fd(file->fd, file->buffer, file->pos - file->buffer);
+                if (ngx_write_fd(file->fd, file->buffer,
+                                 file->pos - file->buffer)
+                    == -1
+                    && ngx_errno == NGX_ENOSPC)
+                {
+                    log[l].disk_full_time = ngx_time();
+                }
 
                 file->pos = file->buffer;
             }
@@ -306,7 +324,11 @@ ngx_http_log_handler(ngx_http_request_t *r)
 
         ngx_linefeed(p);
 
-        ngx_write_fd(file->fd, line, p - line);
+        if (ngx_write_fd(file->fd, line, p - line) == -1
+            && ngx_errno == NGX_ENOSPC)
+        {
+            log[l].disk_full_time = ngx_time();
+        }
     }
 
     return NGX_OK;
@@ -1016,6 +1038,8 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (log->file == NULL) {
         return NGX_CONF_ERROR;
     }
+
+    log->disk_full_time = 0;
 
     if (cf->args->nelts >= 3) {
         name = value[2];

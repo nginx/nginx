@@ -71,6 +71,9 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
                     if (m[0] == 'G' && m[1] == 'E' && m[2] == 'T') {
                         r->method = NGX_HTTP_GET;
+
+                    } else if (m[0] == 'P' && m[1] == 'U' && m[2] == 'T') {
+                        r->method = NGX_HTTP_PUT;
                     }
 
                 } else if (p - m == 4) {
@@ -84,6 +87,14 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                                && m[2] == 'A' && m[3] == 'D')
                     {
                         r->method = NGX_HTTP_HEAD;
+                    }
+
+                } else if (p - m == 6) {
+
+                    if (m[0] == 'D' && m[1] == 'E' && m[2] == 'L'
+                        && m[3] == 'E' && m[4] == 'T' && m[5] == 'E')
+                    {
+                        r->method = NGX_HTTP_DELETE;
                     }
                 }
 

@@ -24,6 +24,7 @@ typedef int               ngx_err_t;
 #define NGX_EEXIST        EEXIST
 #define NGX_ENOTDIR       ENOTDIR
 #define NGX_EINVAL        EINVAL
+#define NGX_ENOSPC        ENOSPC
 #define NGX_EPIPE         EPIPE
 #define NGX_EAGAIN        EAGAIN
 #define NGX_EINPROGRESS   EINPROGRESS

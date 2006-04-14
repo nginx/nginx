@@ -32,9 +32,6 @@ static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
 static void ngx_http_writer(ngx_http_request_t *r);
 
 static void ngx_http_block_read(ngx_http_request_t *r);
-static void ngx_http_read_discarded_body_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_read_discarded_body(ngx_http_request_t *r);
-
 static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
@@ -1679,117 +1676,6 @@ ngx_http_block_read(ngx_http_request_t *r)
             ngx_http_close_request(r, 0);
         }
     }
-}
-
-
-ngx_int_t
-ngx_http_discard_body(ngx_http_request_t *r)
-{
-    ssize_t       size;
-    ngx_event_t  *rev;
-
-    if (r != r->main) {
-        return NGX_OK;
-    }
-
-    rev = r->connection->read;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http set discard body");
-
-    if (rev->timer_set) {
-        ngx_del_timer(rev);
-    }
-
-    if (r->headers_in.content_length_n <= 0) {
-        return NGX_OK;
-    }
-
-    r->discard_body = 1;
-
-    size = r->header_in->last - r->header_in->pos;
-
-    if (size) {
-        if (r->headers_in.content_length_n > size) {
-            r->headers_in.content_length_n -= size;
-
-        } else {
-            r->header_in->pos += r->headers_in.content_length_n;
-            r->headers_in.content_length_n = 0;
-            return NGX_OK;
-        }
-    }
-
-    r->read_event_handler = ngx_http_read_discarded_body_handler;
-
-    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    return ngx_http_read_discarded_body(r);
-}
-
-
-static void
-ngx_http_read_discarded_body_handler(ngx_http_request_t *r)
-{
-    ngx_int_t  rc;
-
-    rc = ngx_http_read_discarded_body(r);
-
-    if (rc == NGX_AGAIN) {
-        if (ngx_handle_read_event(r->connection->read, 0) == NGX_ERROR) {
-            ngx_http_close_request(r, rc);
-            return;
-        }
-    }
-
-    if (rc != NGX_OK) {
-        ngx_http_close_request(r, rc);
-    }
-}
-
-
-static ngx_int_t
-ngx_http_read_discarded_body(ngx_http_request_t *r)
-{
-    ssize_t  size, n;
-    u_char   buffer[NGX_HTTP_DISCARD_BUFFER_SIZE];
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http read discarded body");
-
-    if (r->headers_in.content_length_n == 0) {
-        return NGX_OK;
-    }
-
-
-    size = r->headers_in.content_length_n;
-
-    if (size > NGX_HTTP_DISCARD_BUFFER_SIZE) {
-        size = NGX_HTTP_DISCARD_BUFFER_SIZE;
-    }
-
-    n = r->connection->recv(r->connection, buffer, size);
-
-    if (n == NGX_ERROR) {
-
-        r->connection->error = 1;
-
-        /*
-         * if a client request body is discarded then we already set
-         * some HTTP response code for client and we can ignore the error
-         */
-
-        return NGX_OK;
-    }
-
-    if (n == NGX_AGAIN) {
-        return NGX_AGAIN;
-    }
-
-    r->headers_in.content_length_n -= n;
-
-    return NGX_OK;
 }
 
 
