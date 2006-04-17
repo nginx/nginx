@@ -486,8 +486,8 @@ ngx_http_handler(ngx_http_request_t *r)
         if (r->keepalive && r->headers_in.msie && r->method == NGX_HTTP_POST) {
 
             /*
-             * MSIE may wait for some time if the response for the POST request
-             * is sent over the keepalive connection
+             * MSIE may wait for some time if the response for
+             * the POST request is sent over the keepalive connection
              */
 
             r->keepalive = 0;

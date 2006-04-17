@@ -78,7 +78,6 @@ ngx_event_accept(ngx_event_t *ev)
 
 #if (NGX_STAT_STUB)
         ngx_atomic_fetch_add(ngx_stat_accepted, 1);
-        ngx_atomic_fetch_add(ngx_stat_active, 1);
 #endif
 
         ngx_accept_disabled = NGX_ACCEPT_THRESHOLD
@@ -94,6 +93,10 @@ ngx_event_accept(ngx_event_t *ev)
 
             return;
         }
+
+#if (NGX_STAT_STUB)
+        ngx_atomic_fetch_add(ngx_stat_active, 1);
+#endif
 
         c->pool = ngx_create_pool(ls->pool_size, ev->log);
         if (c->pool == NULL) {

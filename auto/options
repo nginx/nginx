@@ -236,6 +236,9 @@ cat << END
 
   --with-http_ssl_module             enable ngx_http_ssl_module
   --with-http_realip_module          enable ngx_http_realip_module
+  --with-http_addition_module        enable ngx_http_addition_module
+  --with-http_dav_module             enable ngx_http_dav_module
+
   --without-http_charset_module      disable ngx_http_charset_module
   --without-http_gzip_module         disable ngx_http_gzip_module
   --without-http_ssi_module          disable ngx_http_ssi_module
@@ -257,11 +260,10 @@ cat << END
 
   --http-log-path=PATH               set path to the http access log
   --http-client-body-temp-path=PATH  set path to the http client request body
-                                     temporary files path
-  --http-proxy-temp-path=PATH        set path to the http proxy temporary
-                                     files path
+                                     temporary files
+  --http-proxy-temp-path=PATH        set path to the http proxy temporary files
   --http-fastcgi-temp-path=PATH      set path to the http fastcgi temporary
-                                     files path
+                                     files
 
   --without-http                     disable HTTP server
 

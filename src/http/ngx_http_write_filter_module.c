@@ -209,9 +209,20 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
-    to_send = r->limit_rate * (ngx_time() - r->start_time + 1) - c->sent;
+    if (r->limit_rate) {
+        to_send = r->limit_rate * (ngx_time() - r->start_time + 1) - c->sent;
 
-    if (to_send < 0) {
+        if (to_send <= 0) {
+            c->write->delayed = 1;
+            ngx_add_timer(r->connection->write,
+                       (ngx_msec_t) (- to_send * 1000 / r->limit_rate));
+
+            c->buffered |= NGX_HTTP_WRITE_BUFFERED;
+
+            return NGX_AGAIN;
+        }
+
+    } else {
         to_send = 0;
     }
 

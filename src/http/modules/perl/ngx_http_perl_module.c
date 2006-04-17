@@ -188,6 +188,7 @@ ngx_http_perl_handler(ngx_http_request_t *r)
 
     r->request_body_in_single_buf = 1;
     r->request_body_in_persistent_file = 1;
+    r->request_body_delete_incomplete_file = 1;
 
     rc = ngx_http_read_client_request_body(r, ngx_http_perl_handle_request);
 

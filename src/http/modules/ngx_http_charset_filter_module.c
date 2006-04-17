@@ -13,47 +13,48 @@
 
 
 typedef struct {
-    char       **tables;
-    ngx_str_t    name;
+    u_char     **tables;
+    ngx_str_t     name;
 
-    ngx_uint_t   utf8;   /* unsigned     utf8:1; */
+    ngx_uint_t    utf8;   /* unsigned     utf8:1; */
 } ngx_http_charset_t;
 
 
 typedef struct {
-    ngx_int_t    src;
-    ngx_int_t    dst;
+    ngx_int_t     src;
+    ngx_int_t     dst;
 } ngx_http_charset_recode_t;
 
 
 typedef struct {
-    ngx_int_t    src;
-    ngx_int_t    dst;
-    char        *src2dst;
-    char        *dst2src;
+    ngx_int_t     src;
+    ngx_int_t     dst;
+    u_char       *src2dst;
+    u_char       *dst2src;
 } ngx_http_charset_tables_t;
 
 
 typedef struct {
-    ngx_array_t  charsets;               /* ngx_http_charset_t */
-    ngx_array_t  tables;                 /* ngx_http_charset_tables_t */
-    ngx_array_t  recodes;                /* ngx_http_charset_recode_t */
+    ngx_array_t   charsets;               /* ngx_http_charset_t */
+    ngx_array_t   tables;                 /* ngx_http_charset_tables_t */
+    ngx_array_t   recodes;                /* ngx_http_charset_recode_t */
 } ngx_http_charset_main_conf_t;
 
 
 typedef struct {
-    ngx_int_t    charset;
-    ngx_int_t    source_charset;
+    ngx_int_t     charset;
+    ngx_int_t     source_charset;
+    ngx_flag_t    override_charset;
 } ngx_http_charset_loc_conf_t;
 
 
 typedef struct {
-    ngx_int_t    server;
-    ngx_int_t    client;
+    u_char       *table;
+    ngx_int_t     charset;
 } ngx_http_charset_ctx_t;
 
 
-static ngx_uint_t ngx_http_charset_recode(ngx_buf_t *b, char *table);
+static ngx_uint_t ngx_http_charset_recode(ngx_buf_t *b, u_char *table);
 
 static char *ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -88,6 +89,14 @@ static ngx_command_t  ngx_http_charset_filter_commands[] = {
       ngx_http_set_charset_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_charset_loc_conf_t, source_charset),
+      NULL },
+
+    { ngx_string("override_charset"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF
+                        |NGX_HTTP_LIF_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_charset_loc_conf_t, override_charset),
       NULL },
 
     { ngx_string("charset_map"),
@@ -139,16 +148,30 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 static ngx_int_t
 ngx_http_charset_header_filter(ngx_http_request_t *r)
 {
+    size_t                         len;
+    u_char                        *p;
+    ngx_int_t                      charset, source_charset;
+    ngx_uint_t                     i;
     ngx_http_charset_t            *charsets;
     ngx_http_charset_ctx_t        *ctx;
     ngx_http_charset_loc_conf_t   *lcf;
     ngx_http_charset_main_conf_t  *mcf;
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_charset_filter_module);
-    lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
 
-    if (lcf->charset == NGX_HTTP_NO_CHARSET) {
-        return ngx_http_next_header_filter(r);
+    ctx = ngx_http_get_module_ctx(r->main, ngx_http_charset_filter_module);
+
+    if (ctx == NULL) {
+        lcf = ngx_http_get_module_loc_conf(r->main,
+                                           ngx_http_charset_filter_module);
+        charset = lcf->charset;
+
+        if (charset == NGX_HTTP_NO_CHARSET) {
+            return ngx_http_next_header_filter(r);
+        }
+
+    } else {
+        charset = ctx->charset;
     }
 
     if (r->headers_out.content_type.len == 0) {
@@ -162,9 +185,72 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    if (r == r->main
-        && ngx_strstr(r->headers_out.content_type.data, "charset") != NULL)
-    {
+    charsets = mcf->charsets.elts;
+
+    lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
+
+    len = 0;
+
+    for (p = r->headers_out.content_type.data; *p; p++) {
+        if (*p == ';') {
+            len = p - r->headers_out.content_type.data;
+        }
+
+        if (ngx_strncasecmp(p, "charset=", 8) != 0) {
+            continue;
+        }
+
+        p += 8;
+
+        for (i = 0; i < mcf->charsets.nelts; i++) {
+
+            if (ngx_strcasecmp(p, charsets[i].name.data) == 0) {
+
+                if (r == r->main && lcf->override_charset == 0) {
+                    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_charset_ctx_t));
+                    if (ctx == NULL) {
+                        return NGX_ERROR;
+                    }
+
+                    ngx_http_set_ctx(r, ctx, ngx_http_charset_filter_module);
+
+                    ctx->charset = i;
+
+                    return ngx_http_next_header_filter(r);
+                }
+
+                if (i != (ngx_uint_t) charset
+                    && (charsets[i].tables == NULL
+                        || charsets[i].tables[charset] == NULL))
+                {
+                    ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                                  "no \"charset_map\" between the charsets "
+                                  "\"%V\" and \"%V\"",
+                                  &charsets[i].name, &charsets[charset].name);
+
+                    return ngx_http_next_header_filter(r);
+                }
+
+                r->headers_out.content_type.len = len;
+
+                if (r->headers_out.status == NGX_HTTP_MOVED_PERMANENTLY
+                    || r->headers_out.status == NGX_HTTP_MOVED_TEMPORARILY)
+                {
+                    /*
+                     * do not set charset for the redirect because NN 4.x
+                     * uses this charset instead of the next page charset
+                     */
+
+                    r->headers_out.charset.len = 0;
+                    return ngx_http_next_header_filter(r);
+                }
+
+                source_charset = i;
+
+                goto found;
+            }
+        }
+
         return ngx_http_next_header_filter(r);
     }
 
@@ -172,8 +258,8 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
         || r->headers_out.status == NGX_HTTP_MOVED_TEMPORARILY)
     {
         /*
-         * do not set charset for the redirect because NN 4.x uses this
-         * charset instead of the next page charset
+         * do not set charset for the redirect because NN 4.x
+         * use this charset instead of the next page charset
          */
 
         r->headers_out.charset.len = 0;
@@ -184,16 +270,16 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    charsets = mcf->charsets.elts;
-    r->headers_out.charset = charsets[lcf->charset].name;
-    r->utf8 = charsets[lcf->charset].utf8;
+    source_charset = lcf->source_charset;
 
-    if (lcf->source_charset == NGX_CONF_UNSET
-        || lcf->source_charset == lcf->charset)
-    {
+found:
+
+    r->headers_out.charset = charsets[charset].name;
+    r->utf8 = charsets[charset].utf8;
+
+    if (source_charset == NGX_CONF_UNSET || source_charset == charset) {
         return ngx_http_next_header_filter(r);
     }
-
 
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_charset_ctx_t));
     if (ctx == NULL) {
@@ -202,6 +288,8 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
 
     ngx_http_set_ctx(r, ctx, ngx_http_charset_filter_module);
 
+    ctx->table = charsets[source_charset].tables[charset];
+    ctx->charset = charset;
 
     r->filter_need_in_memory = 1;
 
@@ -212,27 +300,17 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    char                          *table;
-    ngx_chain_t                   *cl;
-    ngx_http_charset_t            *charsets;
-    ngx_http_charset_ctx_t        *ctx;
-    ngx_http_charset_loc_conf_t   *lcf;
-    ngx_http_charset_main_conf_t  *mcf;
+    ngx_chain_t             *cl;
+    ngx_http_charset_ctx_t  *ctx;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_charset_filter_module);
 
-    if (ctx == NULL) {
+    if (ctx == NULL || ctx->table == NULL) {
         return ngx_http_next_body_filter(r, in);
     }
 
-    mcf = ngx_http_get_module_main_conf(r, ngx_http_charset_filter_module);
-    lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
-
-    charsets = mcf->charsets.elts;
-    table = charsets[lcf->source_charset].tables[lcf->charset];
-
     for (cl = in; cl; cl = cl->next) {
-        ngx_http_charset_recode(cl->buf, table);
+        (void) ngx_http_charset_recode(cl->buf, ctx->table);
     }
 
     return ngx_http_next_body_filter(r, in);
@@ -240,21 +318,15 @@ ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 
 static ngx_uint_t
-ngx_http_charset_recode(ngx_buf_t *b, char *table)
+ngx_http_charset_recode(ngx_buf_t *b, u_char *table)
 {
-    u_char      *p;
-    ngx_uint_t   change;
-
-    change = 0;
+    u_char  *p;
 
     for (p = b->pos; p < b->last; p++) {
-        if (*p != table[*p]) {
-            change = 1;
-            break;
-        }
-    }
 
-    if (change) {
+        if (*p == table[*p]) {
+            continue;
+        }
 
         while (p < b->last) {
             *p = table[*p];
@@ -262,9 +334,11 @@ ngx_http_charset_recode(ngx_buf_t *b, char *table)
         }
 
         b->in_file = 0;
+
+        return 1;
     }
 
-    return change;
+    return 0;
 }
 
 
@@ -330,8 +404,8 @@ ngx_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     for (i = 0; i < 128; i++) {
-        table->src2dst[i] = (char) i;
-        table->dst2src[i] = (char) i;
+        table->src2dst[i] = (u_char) i;
+        table->dst2src[i] = (u_char) i;
     }
 
     for (/* void */; i < 256; i++) {
@@ -382,8 +456,8 @@ ngx_charset_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
     table = cf->ctx;
 
-    table->src2dst[src] = (char) dst;
-    table->dst2src[dst] = (char) src;
+    table->src2dst[src] = (u_char) dst;
+    table->dst2src[dst] = (u_char) src;
 
     return NGX_CONF_OK;
 }
@@ -519,6 +593,7 @@ ngx_http_charset_create_loc_conf(ngx_conf_t *cf)
 
     lcf->charset = NGX_CONF_UNSET;
     lcf->source_charset = NGX_CONF_UNSET;
+    lcf->override_charset = NGX_CONF_UNSET;
 
     return lcf;
 }
@@ -534,6 +609,7 @@ ngx_http_charset_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_charset_recode_t     *recode;
     ngx_http_charset_main_conf_t  *mcf;
 
+    ngx_conf_merge_value(conf->override_charset, prev->override_charset, 0);
     ngx_conf_merge_value(conf->charset, prev->charset, NGX_HTTP_NO_CHARSET);
 
     if (conf->source_charset == NGX_CONF_UNSET) {
@@ -573,6 +649,7 @@ ngx_http_charset_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 static ngx_int_t
 ngx_http_charset_postconfiguration(ngx_conf_t *cf)
 {
+    u_char                       **src, **dst;
     ngx_int_t                      c;
     ngx_uint_t                     i, t;
     ngx_http_charset_t            *charset;
@@ -591,21 +668,13 @@ ngx_http_charset_postconfiguration(ngx_conf_t *cf)
 
         c = recode[i].src;
 
-        charset[c].tables = ngx_pcalloc(cf->pool,
-                                        sizeof(char *) * mcf->charsets.nelts);
-        if (charset[c].tables == NULL) {
-            return NGX_ERROR;
-        }
-
         for (t = 0; t < mcf->tables.nelts; t++) {
 
             if (c == tables[t].src && recode[i].dst == tables[t].dst) {
-                charset[c].tables[tables[t].dst] = tables[t].src2dst;
                 goto next;
             }
 
             if (c == tables[t].dst && recode[i].dst == tables[t].src) {
-                charset[c].tables[tables[t].src] = tables[t].dst2src;
                 goto next;
             }
         }
@@ -618,6 +687,35 @@ ngx_http_charset_postconfiguration(ngx_conf_t *cf)
 
     next:
         continue;
+    }
+
+
+    for (t = 0; t < mcf->tables.nelts; t++) {
+
+        src = charset[tables[t].src].tables;
+
+        if (src == NULL) {
+            src = ngx_pcalloc(cf->pool, sizeof(u_char *) * mcf->charsets.nelts);
+            if (src == NULL) {
+                return NGX_ERROR;
+            }
+
+            charset[tables[t].src].tables = src;
+        }
+
+        dst = charset[tables[t].dst].tables;
+
+        if (dst == NULL) {
+            dst = ngx_pcalloc(cf->pool, sizeof(u_char *) * mcf->charsets.nelts);
+            if (dst == NULL) {
+                return NGX_ERROR;
+            }
+
+            charset[tables[t].dst].tables = dst;
+        }
+
+        src[tables[t].dst] = tables[t].src2dst;
+        dst[tables[t].src] = tables[t].dst2src;
     }
 
     return NGX_OK;

@@ -1473,21 +1473,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                            &pr->uri, &pr->args);
 
             pr->write_event_handler(pr);
-
-#if 0
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http request: \"%V?%V\" still has postponed",
-                           &pr->uri, &pr->args);
-
-            if (pr->done || pr->postponed->out) {
-                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                               "http wake parent request: \"%V?%V\"",
-                               &pr->uri, &pr->args);
-
-                pr->write_event_handler(pr);
-            }
-#endif
-
         }
 
         return;
@@ -1856,7 +1841,8 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "tcp_nodelay");
 
         if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
-                           (const void *) &tcp_nodelay, sizeof(int)) == -1)
+                       (const void *) &tcp_nodelay, sizeof(int))
+            == -1)
         {
             ngx_connection_error(c, ngx_socket_errno,
                                  "setsockopt(TCP_NODELAY) failed");

@@ -9,6 +9,66 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.39" date="17.04.2006">
+
+<change type="feature">
+<para lang="ru">
+директива uninitialized_variable_warn; уровень логгирования сообщения
+о неинициализированной переменной понижен с уровня alert на warn.
+</para>
+<para lang="en">
+the "uninitialized_variable_warn" directive; the logging level of the
+"uninitialized variable" message was lowered from "alert" to "warn".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива override_charset.
+</para>
+<para lang="en">
+the "override_charset" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+при использовании неизвестной переменной в SSI-командах echo и if expr='$name'
+теперь не записывается в лог сообщение о неизвестной переменной.
+</para>
+<para lang="en">
+now if the unknown variable is used in the "echo" and "if expr='$name'"
+SSI-commands, then the "unknown variable" message is not logged.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+счётчик активных соединений рос при превышении лимита соединений,
+заданного директивой worker_connections;
+ошибка появилась в 0.2.0.
+</para>
+<para lang="en">
+the active connection counter increased on the exceeding of the connection
+limit specified by the "worker_connections" directive;
+bug appeared in 0.2.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при некоторых условия ограничение скорости соединения могло не работать;
+ошибка появилась в 0.3.38.
+</para>
+<para lang="en">
+the limit rate might not work on some condition;
+bug appeared in 0.3.38.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.38" date="14.04.2006">
 
 <change type="feature">

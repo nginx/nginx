@@ -16,6 +16,7 @@ typedef struct {
     ngx_uint_t    stack_size;
 
     ngx_flag_t    log;
+    ngx_flag_t    uninitialized_variable_warn;
 } ngx_http_rewrite_loc_conf_t;
 
 
@@ -91,11 +92,19 @@ static ngx_command_t  ngx_http_rewrite_commands[] = {
       NULL },
 
     { ngx_string("rewrite_log"),
-      NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
-                       |NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF
+                        |NGX_HTTP_LIF_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_rewrite_loc_conf_t, log),
+      NULL },
+
+    { ngx_string("uninitialized_variable_warn"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF
+                        |NGX_HTTP_LIF_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_rewrite_loc_conf_t, uninitialized_variable_warn),
       NULL },
 
       ngx_null_command
@@ -138,11 +147,11 @@ ngx_http_rewrite_handler(ngx_http_request_t *r)
 {
     ngx_http_script_code_pt       code;
     ngx_http_script_engine_t     *e;
-    ngx_http_rewrite_loc_conf_t  *cf;
+    ngx_http_rewrite_loc_conf_t  *rlcf;
 
-    cf = ngx_http_get_module_loc_conf(r, ngx_http_rewrite_module);
+    rlcf = ngx_http_get_module_loc_conf(r, ngx_http_rewrite_module);
 
-    if (cf->codes == NULL) {
+    if (rlcf->codes == NULL) {
         return NGX_DECLINED;
     }
 
@@ -152,13 +161,13 @@ ngx_http_rewrite_handler(ngx_http_request_t *r)
     }
 
     e->sp = ngx_pcalloc(r->pool,
-                        cf->stack_size * sizeof(ngx_http_variable_value_t));
+                        rlcf->stack_size * sizeof(ngx_http_variable_value_t));
     if (e->sp == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (cf->captures) {
-        e->captures = ngx_palloc(r->pool, cf->captures * sizeof(int));
+    if (rlcf->captures) {
+        e->captures = ngx_palloc(r->pool, rlcf->captures * sizeof(int));
         if (e->captures == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -167,10 +176,10 @@ ngx_http_rewrite_handler(ngx_http_request_t *r)
         e->captures = NULL;
     }
 
-    e->ip = cf->codes->elts;
+    e->ip = rlcf->codes->elts;
     e->request = r;
     e->quote = 1;
-    e->log = cf->log;
+    e->log = rlcf->log;
     e->status = NGX_DECLINED;
 
     while (*(uintptr_t *) e->ip) {
@@ -186,8 +195,16 @@ static ngx_int_t
 ngx_http_rewrite_var(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
-    ngx_http_variable_t        *var;
-    ngx_http_core_main_conf_t  *cmcf;
+    ngx_http_variable_t          *var;
+    ngx_http_core_main_conf_t    *cmcf;
+    ngx_http_rewrite_loc_conf_t  *rlcf;
+
+    rlcf = ngx_http_get_module_loc_conf(r, ngx_http_rewrite_module);
+
+    if (rlcf->uninitialized_variable_warn == 0) {
+        *v = ngx_http_variable_null_value;
+        return NGX_OK;
+    }
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
@@ -199,7 +216,7 @@ ngx_http_rewrite_var(ngx_http_request_t *r, ngx_http_variable_value_t *v,
      * so the handler is called only if the variable is not initialized
      */
 
-    ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
                   "using uninitialized \"%V\" variable", &var[data].name);
 
     *v = ngx_http_variable_null_value;
@@ -220,6 +237,7 @@ ngx_http_rewrite_create_loc_conf(ngx_conf_t *cf)
 
     conf->stack_size = NGX_CONF_UNSET_UINT;
     conf->log = NGX_CONF_UNSET;
+    conf->uninitialized_variable_warn = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -234,6 +252,8 @@ ngx_http_rewrite_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     uintptr_t  *code;
 
     ngx_conf_merge_value(conf->log, prev->log, 0);
+    ngx_conf_merge_value(conf->uninitialized_variable_warn,
+                         prev->uninitialized_variable_warn, 1);
     ngx_conf_merge_unsigned_value(conf->stack_size, prev->stack_size, 10);
 
     if (conf->codes == NULL) {
