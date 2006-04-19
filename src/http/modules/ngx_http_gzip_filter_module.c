@@ -969,7 +969,7 @@ ngx_http_gzip_add_variables(ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
-    var->handler = ngx_http_gzip_ratio_variable;
+    var->get_handler = ngx_http_gzip_ratio_variable;
 
     for (op = ngx_http_gzip_log_fmt_ops; op->name.len; op++) { /* void */ }
     op->run = NULL;

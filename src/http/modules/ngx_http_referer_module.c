@@ -298,7 +298,7 @@ ngx_http_valid_referers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    var->handler = ngx_http_referer_variable;
+    var->get_handler = ngx_http_referer_variable;
 
     if (rlcf->keys == NULL) {
         rlcf->keys = ngx_pcalloc(cf->temp_pool, sizeof(ngx_hash_keys_arrays_t));

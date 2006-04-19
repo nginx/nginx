@@ -249,13 +249,13 @@ static ngx_http_log_op_name_t  ngx_http_upstream_log_fmt_ops[] = {
 
 static ngx_http_variable_t  ngx_http_upstream_vars[] = {
 
-    { ngx_string("upstream_status"),
+    { ngx_string("upstream_status"), NULL,
       ngx_http_upstream_status_variable, 0, NGX_HTTP_VAR_NOHASH, 0 },
 
-    { ngx_string("upstream_response_time"),
+    { ngx_string("upstream_response_time"), NULL,
       ngx_http_upstream_response_time_variable, 0, NGX_HTTP_VAR_NOHASH, 0 },
 
-    { ngx_null_string, NULL, 0, 0, 0 }
+    { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
 
 
@@ -2399,7 +2399,7 @@ ngx_http_upstream_add_variables(ngx_conf_t *cf)
             return NGX_ERROR;
         }
 
-        var->handler = v->handler;
+        var->get_handler = v->get_handler;
         var->data = v->data;
     }
 

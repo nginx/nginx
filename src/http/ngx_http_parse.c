@@ -89,6 +89,14 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                         r->method = NGX_HTTP_HEAD;
                     }
 
+                } else if (p - m == 5) {
+
+                    if (m[0] == 'M' && m[1] == 'K'
+                        && m[2] == 'C' && m[3] == 'O' && m[4] == 'L')
+                    {
+                        r->method = NGX_HTTP_MKCOL;
+                    }
+
                 } else if (p - m == 6) {
 
                     if (m[0] == 'D' && m[1] == 'E' && m[2] == 'L'

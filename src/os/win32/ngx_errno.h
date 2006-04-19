@@ -19,6 +19,7 @@ typedef DWORD                      ngx_err_t;
 #define ngx_socket_errno           WSAGetLastError()
 #define ngx_set_socket_errno(err)  WSASetLastError(err)
 
+#define NGX_EPERM                  ERROR_ACCESS_DENIED
 #define NGX_ENOENT                 ERROR_FILE_NOT_FOUND
 #define NGX_EACCES                 ERROR_ACCESS_DENIED
 #if 0

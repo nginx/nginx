@@ -136,13 +136,13 @@ ngx_module_t  ngx_http_ssl_module = {
 
 static ngx_http_variable_t  ngx_http_ssl_vars[] = {
 
-    { ngx_string("ssl_protocol"), ngx_http_ssl_variable,
+    { ngx_string("ssl_protocol"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_protocol, NGX_HTTP_VAR_CHANGABLE, 0 },
 
-    { ngx_string("ssl_cipher"), ngx_http_ssl_variable,
+    { ngx_string("ssl_cipher"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_cipher_name, NGX_HTTP_VAR_CHANGABLE, 0 },
 
-    { ngx_null_string, NULL, 0, 0, 0 }
+    { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
 
 
@@ -190,7 +190,7 @@ ngx_http_ssl_add_variables(ngx_conf_t *cf)
             return NGX_ERROR;
         }
 
-        var->handler = v->handler;
+        var->get_handler = v->get_handler;
         var->data = v->data;
     }
 

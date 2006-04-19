@@ -373,7 +373,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cmcf->phases[NGX_HTTP_LOG_PHASE].type = NGX_OK;
 
 
-    cmcf->headers_in_hash.max_size = 100;
+    cmcf->headers_in_hash.max_size = 200;
     cmcf->headers_in_hash.bucket_limit = 1;
     cmcf->headers_in_hash.bucket_size = sizeof(ngx_http_header_t);
     cmcf->headers_in_hash.name = "http headers_in";

@@ -190,6 +190,10 @@ ngx_http_perl_handler(ngx_http_request_t *r)
     r->request_body_in_persistent_file = 1;
     r->request_body_delete_incomplete_file = 1;
 
+    if (r->request_body_in_file_only) {
+        r->request_body_file_log_level = 0;
+    }
+
     rc = ngx_http_read_client_request_body(r, ngx_http_perl_handle_request);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
@@ -1011,7 +1015,7 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     }
 
-    v->handler = ngx_http_perl_variable;
+    v->get_handler = ngx_http_perl_variable;
     v->data = (uintptr_t) pv;
 
     return NGX_CONF_OK;

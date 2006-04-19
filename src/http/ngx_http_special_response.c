@@ -107,6 +107,14 @@ static char error_408_page[] =
 ;
 
 
+static char error_409_page[] =
+"<html>" CRLF
+"<head><title>409 Conflict</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>409 Conflict</h1></center>" CRLF
+;
+
+
 static char error_410_page[] =
 "<html>" CRLF
 "<head><title>410 Gone</title></head>" CRLF
@@ -136,6 +144,14 @@ static char error_414_page[] =
 "<head><title>414 Request-URI Too Large</title></head>" CRLF
 "<body bgcolor=\"white\">" CRLF
 "<center><h1>414 Request-URI Too Large</h1></center>" CRLF
+;
+
+
+static char error_415_page[] =
+"<html>" CRLF
+"<head><title>415 Unsupported Media Type</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>415 Unsupported Media Type</h1></center>" CRLF
 ;
 
 
@@ -197,6 +213,14 @@ static char error_504_page[] =
 ;
 
 
+static char error_507_page[] =
+"<html>" CRLF
+"<head><title>507 Insufficient Storage</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>507 Insufficient Storage</h1></center>" CRLF
+;
+
+
 static ngx_str_t error_pages[] = {
 
     ngx_null_string,             /* 201, 204 */
@@ -219,13 +243,13 @@ static ngx_str_t error_pages[] = {
     ngx_string(error_406_page),
     ngx_null_string,             /* 407 */
     ngx_string(error_408_page),
-    ngx_null_string,             /* 409 */
+    ngx_string(error_409_page),
     ngx_string(error_410_page),
     ngx_string(error_411_page),
     ngx_null_string,             /* 412 */
     ngx_string(error_413_page),
     ngx_string(error_414_page),
-    ngx_null_string,             /* 415 */
+    ngx_string(error_415_page),
     ngx_string(error_416_page),
 
 #define NGX_HTTP_LEVEL_400  17
@@ -238,7 +262,10 @@ static ngx_str_t error_pages[] = {
     ngx_string(error_501_page),
     ngx_string(error_502_page),
     ngx_string(error_503_page),
-    ngx_string(error_504_page)
+    ngx_string(error_504_page),
+    ngx_null_string,             /* 505 */
+    ngx_null_string,             /* 506 */
+    ngx_string(error_507_page)
 };
 
 
@@ -323,6 +350,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
     if (error == NGX_HTTP_CREATED) {
         /* 201 */
         err = 0;
+        r->header_only = 1;
 
     } else if (error == NGX_HTTP_NO_CONTENT) {
         /* 204 */

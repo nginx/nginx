@@ -127,7 +127,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    var->handler = ngx_http_geo_variable;
+    var->get_handler = ngx_http_geo_variable;
     var->data = (uintptr_t) tree;
 
     pool = ngx_create_pool(16384, cf->log);

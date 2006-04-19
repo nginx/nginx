@@ -1074,6 +1074,24 @@ ngx_http_script_set_var_code(ngx_http_script_engine_t *e)
 
 
 void
+ngx_http_script_var_set_handler_code(ngx_http_script_engine_t *e)
+{
+    ngx_http_script_var_handler_code_t  *code;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script set var handler");
+
+    code = (ngx_http_script_var_handler_code_t *) e->ip;
+
+    e->ip += sizeof(ngx_http_script_var_handler_code_t);
+
+    e->sp--;
+
+    code->handler(e->request, e->sp, code->data);
+}
+
+
+void
 ngx_http_script_var_code(ngx_http_script_engine_t *e)
 {
     ngx_http_variable_value_t   *value;

@@ -74,15 +74,6 @@ static ngx_command_t  ngx_http_rewrite_commands[] = {
       0,
       NULL },
 
-#if 0
-    { ngx_string("valid_referers"),
-      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
-      ngx_http_rewrite_valid_referers,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      0,
-      NULL },
-#endif
-
     { ngx_string("set"),
       NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                        |NGX_CONF_TAKE2,
@@ -879,10 +870,11 @@ ngx_http_rewrite_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_rewrite_loc_conf_t  *lcf = conf;
 
-    ngx_int_t                     index;
-    ngx_str_t                    *value;
-    ngx_http_variable_t          *v;
-    ngx_http_script_var_code_t   *var;
+    ngx_int_t                            index;
+    ngx_str_t                           *value;
+    ngx_http_variable_t                 *v;
+    ngx_http_script_var_code_t          *vcode;
+    ngx_http_script_var_handler_code_t  *vhcode;
 
     value = cf->args->elts;
 
@@ -905,8 +897,8 @@ ngx_http_rewrite_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (v->handler == NULL) {
-        v->handler = ngx_http_rewrite_var;
+    if (v->get_handler == NULL) {
+        v->get_handler = ngx_http_rewrite_var;
         v->data = index;
     }
 
@@ -914,14 +906,28 @@ ngx_http_rewrite_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    var = ngx_http_script_start_code(cf->pool, &lcf->codes,
-                                     sizeof(ngx_http_script_var_code_t));
-    if (var == NULL) {
+    if (v->set_handler) {
+        vhcode = ngx_http_script_start_code(cf->pool, &lcf->codes,
+                                   sizeof(ngx_http_script_var_handler_code_t));
+        if (vhcode == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        vhcode->code = ngx_http_script_var_set_handler_code;
+        vhcode->handler = v->set_handler;
+        vhcode->data = v->data;
+
+        return NGX_CONF_OK;
+    }
+
+    vcode = ngx_http_script_start_code(cf->pool, &lcf->codes,
+                                       sizeof(ngx_http_script_var_code_t));
+    if (vcode == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    var->code = ngx_http_script_set_var_code;
-    var->index = (uintptr_t) index;
+    vcode->code = ngx_http_script_set_var_code;
+    vcode->index = (uintptr_t) index;
 
     return NGX_CONF_OK;
 }

@@ -9,6 +9,38 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.40" date="19.04.2006">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_dav_module поддерживает метод MKCOL.
+</para>
+<para lang="en">
+the ngx_http_dav_module supports the MKCOL method.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива create_full_put_path.
+</para>
+<para lang="en">
+the "create_full_put_path" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $limit_rate.
+</para>
+<para lang="en">
+the "$limit_rate" variable.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.39" date="17.04.2006">
 
 <change type="feature">

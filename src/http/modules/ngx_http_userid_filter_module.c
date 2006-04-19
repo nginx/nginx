@@ -559,7 +559,7 @@ ngx_http_userid_add_variables(ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
-    var->handler = ngx_http_userid_variable;
+    var->get_handler = ngx_http_userid_variable;
     var->data = offsetof(ngx_http_userid_ctx_t, uid_got);
 
     var = ngx_http_add_variable(cf, &ngx_http_userid_set, NGX_HTTP_VAR_NOHASH);
@@ -567,7 +567,7 @@ ngx_http_userid_add_variables(ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
-    var->handler = ngx_http_userid_variable;
+    var->get_handler = ngx_http_userid_variable;
     var->data = offsetof(ngx_http_userid_ctx_t, uid_set);
 
 

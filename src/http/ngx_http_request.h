@@ -25,6 +25,7 @@
 #define NGX_HTTP_POST                      0x0008
 #define NGX_HTTP_PUT                       0x0010
 #define NGX_HTTP_DELETE                    0x0020
+#define NGX_HTTP_MKCOL                     0x0040
 
 #define NGX_HTTP_CONNECTION_CLOSE          1
 #define NGX_HTTP_CONNECTION_KEEP_ALIVE     2
@@ -61,9 +62,11 @@
 #define NGX_HTTP_NOT_FOUND                 404
 #define NGX_HTTP_NOT_ALLOWED               405
 #define NGX_HTTP_REQUEST_TIME_OUT          408
+#define NGX_HTTP_CONFLICT                  409
 #define NGX_HTTP_LENGTH_REQUIRED           411
 #define NGX_HTTP_REQUEST_ENTITY_TOO_LARGE  413
 #define NGX_HTTP_REQUEST_URI_TOO_LARGE     414
+#define NGX_HTTP_UNSUPPORTED_MEDIA_TYPE    415
 #define NGX_HTTP_RANGE_NOT_SATISFIABLE     416
 
 
@@ -96,6 +99,7 @@
 #define NGX_HTTP_BAD_GATEWAY               502
 #define NGX_HTTP_SERVICE_UNAVAILABLE       503
 #define NGX_HTTP_GATEWAY_TIME_OUT          504
+#define NGX_HTTP_INSUFFICIENT_STORAGE      507
 
 
 #define NGX_HTTP_LOWLEVEL_BUFFERED         0x000000f0
@@ -168,6 +172,11 @@ typedef struct {
 #if (NGX_HTTP_HEADERS)
     ngx_table_elt_t                  *accept;
     ngx_table_elt_t                  *accept_language;
+#endif
+
+#if (NGX_HTTP_DAV)
+    ngx_table_elt_t                  *depth;
+    ngx_table_elt_t                  *destination;
 #endif
 
     ngx_str_t                         user;
@@ -384,6 +393,7 @@ struct ngx_http_request_s {
     unsigned                          request_body_in_persistent_file:1;
     unsigned                          request_body_delete_incomplete_file:1;
     unsigned                          request_body_file_group_access:1;
+    unsigned                          request_body_file_log_level:3;
 
     unsigned                          fast_subrequest:1;
 

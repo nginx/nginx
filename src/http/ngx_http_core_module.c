@@ -753,6 +753,10 @@ ngx_http_update_location_config(ngx_http_request_t *r)
     if (clcf->client_body_in_file_only) {
         r->request_body_in_file_only = 1;
         r->request_body_in_persistent_file = 1;
+        r->request_body_file_log_level = NGX_LOG_NOTICE;
+
+    } else {
+        r->request_body_file_log_level = NGX_LOG_WARN;
     }
 
     if (r->keepalive && clcf->keepalive_timeout == 0) {
@@ -1692,8 +1696,17 @@ ngx_http_core_cmp_locations(const void *one, const void *two)
 static char *
 ngx_http_core_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    ngx_http_core_loc_conf_t *lcf = conf;
+
     char        *rv;
     ngx_conf_t   save;
+
+    if (lcf->types == NULL) {
+        lcf->types = ngx_array_create(cf->pool, 64, sizeof(ngx_hash_key_t));
+        if (lcf->types == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
 
     save = *cf;
     cf->handler = ngx_http_core_type;
@@ -1715,13 +1728,6 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     ngx_str_t       *value, *content_type, *old;
     ngx_uint_t       i, n;
     ngx_hash_key_t  *type;
-
-    if (lcf->types == NULL) {
-        lcf->types = ngx_array_create(cf->pool, 64, sizeof(ngx_hash_key_t));
-        if (lcf->types == NULL) {
-            return NGX_CONF_ERROR;
-        }
-    }
 
     content_type = ngx_palloc(cf->pool, sizeof(ngx_str_t));
     if (content_type == NULL) {

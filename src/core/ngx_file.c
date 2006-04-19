@@ -25,8 +25,12 @@ ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
             return rc;
         }
 
-        if (!tf->persistent && tf->warn) {
-            ngx_log_error(NGX_LOG_WARN, tf->file.log, 0, tf->warn);
+        if (tf->log_level == NGX_LOG_NOTICE) {
+            ngx_log_error(NGX_LOG_NOTICE, tf->file.log, 0, tf->warn);
+
+        } else if (tf->log_level == NGX_LOG_WARN) {
+            ngx_log_error(NGX_LOG_WARN, tf->file.log, 0, "%s %V",
+                          tf->warn, &tf->file.name);
         }
     }
 
@@ -179,6 +183,35 @@ ngx_create_path(ngx_file_t *file, ngx_path_t *path)
     }
 
     return NGX_OK;
+}
+
+
+ngx_err_t
+ngx_create_full_path(u_char *dir)
+{
+    u_char     *p, ch;
+    ngx_err_t   err;
+
+    for (p = dir + 1; *p; p++) {
+        ch = *p;
+
+        if (ch != '/') {
+            continue;
+        }
+
+        *p = '\0';
+
+        if (ngx_create_dir(dir) == NGX_FILE_ERROR) {
+            err = ngx_errno;
+            if (err != NGX_EEXIST) {
+                return err;
+            }
+        }
+
+        *p = '/';
+    }
+
+    return 0;
 }
 
 

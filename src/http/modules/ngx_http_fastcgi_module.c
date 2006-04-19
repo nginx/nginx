@@ -1445,7 +1445,7 @@ ngx_http_fastcgi_add_variables(ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
-    var->handler = ngx_http_fastcgi_script_name_variable;
+    var->get_handler = ngx_http_fastcgi_script_name_variable;
 
     return NGX_OK;
 }

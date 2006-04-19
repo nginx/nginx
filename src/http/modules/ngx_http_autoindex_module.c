@@ -162,6 +162,10 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
+    if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+        return NGX_DECLINED;
+    }
+
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_autoindex_module);
 
     if (!alcf->enable) {

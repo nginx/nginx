@@ -133,6 +133,14 @@ ngx_http_header_t  ngx_http_headers_in[] = {
                  ngx_http_process_header_line },
 #endif
 
+#if (NGX_HTTP_DAV)
+    { ngx_string("Depth"), offsetof(ngx_http_headers_in_t, depth),
+                 ngx_http_process_header_line },
+
+    { ngx_string("Destination"), offsetof(ngx_http_headers_in_t, destination),
+                 ngx_http_process_header_line },
+#endif
+
     { ngx_string("Cookie"), 0, ngx_http_process_cookie },
 
     { ngx_null_string, 0, NULL }
@@ -1403,7 +1411,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE || rc == NGX_HTTP_NO_CONTENT) {
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE
+        || rc == NGX_HTTP_CREATED
+        || rc == NGX_HTTP_NO_CONTENT)
+    {
 
         if (rc == NGX_HTTP_CLOSE) {
             ngx_http_close_request(r, rc);
