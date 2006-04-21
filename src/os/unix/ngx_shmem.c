@@ -13,8 +13,9 @@
 ngx_int_t
 ngx_shm_alloc(ngx_shm_t *shm)
 {
-    shm->addr = mmap(NULL, shm->size,
-                     PROT_READ|PROT_WRITE, MAP_ANON|MAP_SHARED, -1, 0);
+    shm->addr = (u_char *) mmap(NULL, shm->size,
+                                PROT_READ|PROT_WRITE,
+                                MAP_ANON|MAP_SHARED, -1, 0);
 
     if (shm->addr == MAP_FAILED) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
@@ -29,7 +30,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
 void
 ngx_shm_free(ngx_shm_t *shm)
 {
-    if (munmap(shm->addr, shm->size) == -1) {
+    if (munmap((void *) shm->addr, shm->size) == -1) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "munmap(%p, %uz) failed", shm->addr, shm->size);
     }
@@ -50,7 +51,8 @@ ngx_shm_alloc(ngx_shm_t *shm)
         return NGX_ERROR;
     }
 
-    shm->addr = mmap(NULL, shm->size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    shm->addr = (u_char *) mmap(NULL, shm->size, PROT_READ|PROT_WRITE,
+                                MAP_SHARED, fd, 0);
 
     if (shm->addr == MAP_FAILED) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
@@ -69,7 +71,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
 void
 ngx_shm_free(ngx_shm_t *shm)
 {
-    if (munmap(shm->addr, shm->size) == -1) {
+    if (munmap((void *) shm->addr, shm->size) == -1) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "munmap(%p, %uz) failed", shm->addr, shm->size);
     }

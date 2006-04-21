@@ -1173,6 +1173,11 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         if (f->type == NGX_HTTP_FASTCGI_STDERR) {
 
             if (f->length) {
+
+                if (f->pos == f->last) {
+                    break;
+                }
+
                 line.data = f->pos;
 
                 if (f->pos + f->length <= f->last) {
@@ -1211,6 +1216,10 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
 
         /* f->type == NGX_HTTP_FASTCGI_STDOUT */
+
+        if (f->pos == f->last) {
+            break;
+        }
 
         if (p->free) {
             b = p->free->buf;

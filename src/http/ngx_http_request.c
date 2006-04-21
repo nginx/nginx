@@ -1218,7 +1218,9 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         }
     }
 
-    if (r->method == NGX_HTTP_POST && r->headers_in.content_length_n == -1) {
+    if (r->method & (NGX_HTTP_POST|NGX_HTTP_PUT)
+        && r->headers_in.content_length_n == -1)
+    {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "client sent POST method without \"Content-Length\" header");
         ngx_http_finalize_request(r, NGX_HTTP_LENGTH_REQUIRED);
@@ -1432,7 +1434,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         }
 
         ngx_http_finalize_request(r, ngx_http_special_response_handler(r, rc));
-
         return;
     }
 
@@ -2154,19 +2155,11 @@ ngx_http_post_action(ngx_http_request_t *r)
 static void
 ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
 {
-    ngx_connection_t    *c;
-    ngx_http_cleanup_t  *cln;
+    ngx_connection_t  *c;
 
     c = r->connection;
-    r = r->main;
 
-    for (cln = r->cleanup; cln; cln = cln->next) {
-        if (cln->handler) {
-            cln->handler(cln->data);
-        }
-    }
-
-    ngx_http_request_done(r, error);
+    ngx_http_request_done(r->main, error);
     ngx_http_close_connection(c);
 }
 
@@ -2177,6 +2170,7 @@ ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
     ngx_log_t                  *log;
     ngx_uint_t                  i, n;
     struct linger               linger;
+    ngx_http_cleanup_t         *cln;
     ngx_http_log_ctx_t         *ctx;
     ngx_http_handler_pt        *log_handler;
     ngx_http_core_loc_conf_t   *clcf;
@@ -2189,6 +2183,12 @@ ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
     if (r->pool == NULL) {
         ngx_log_error(NGX_LOG_ALERT, log, 0, "http request already closed");
         return;
+    }
+
+    for (cln = r->cleanup; cln; cln = cln->next) {
+        if (cln->handler) {
+            cln->handler(cln->data);
+        }
     }
 
 #if (NGX_STAT_STUB)

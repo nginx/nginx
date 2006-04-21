@@ -9,6 +9,52 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.41" date="21.04.2006">
+
+<change type="feature">
+<para lang="ru">
+ключ -v.
+</para>
+<para lang="en">
+the -v switch.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при включении в SSI удалённых подзапросов
+мог произойти segmentation fault.
+</para>
+<para lang="en">
+the segmentation fault may occurred if the SSI page has remote subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке FastCGI.
+</para>
+<para lang="en">
+in FastCGI handling.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если путь к перловым модулям не был указан с помощью
+--with-perl_modules_path=PATH или директивы perl_modules,
+то на старте происходил segmentation fault.
+</para>
+<para lang="en">
+if the perl modules path was not set using
+--with-perl_modules_path=PATH or the "perl_modules", then
+the segmentation fault was occurred.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.40" date="19.04.2006">
 
 <change type="feature">

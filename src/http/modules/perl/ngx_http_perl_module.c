@@ -483,8 +483,10 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
     }
 #endif
 
-    if (ngx_conf_full_name(cf->cycle, &pmcf->modules) != NGX_OK) {
-        return NGX_CONF_ERROR;
+    if (pmcf->modules.data) {
+        if (ngx_conf_full_name(cf->cycle, &pmcf->modules) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
     }
 
     PERL_SYS_INIT(&ngx_argc, &ngx_argv);

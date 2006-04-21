@@ -198,6 +198,8 @@ ngx_log_init(void)
 
 #if (NGX_WIN32)
 
+    ngx_stderr_fileno = GetStdHandle(STD_ERROR_HANDLE);
+
     ngx_stderr.fd = ngx_open_file(NGX_ERROR_LOG_PATH, NGX_FILE_RDWR,
                                   NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
 

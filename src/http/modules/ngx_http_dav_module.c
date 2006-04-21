@@ -116,10 +116,6 @@ ngx_http_dav_handler(ngx_http_request_t *r)
             return NGX_DECLINED;
         }
 
-        if (r->headers_in.content_length_n < 0) {
-            return NGX_HTTP_BAD_REQUEST;
-        }
-
         r->request_body_in_file_only = 1;
         r->request_body_in_persistent_file = 1;
         r->request_body_delete_incomplete_file = 1;
@@ -312,6 +308,8 @@ ok:
             ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
+
+        r->headers_out.content_length_n = 0;
     }
 
     r->headers_out.status = status;

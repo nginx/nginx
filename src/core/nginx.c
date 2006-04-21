@@ -175,7 +175,9 @@ ngx_module_t  ngx_core_module = {
 
 ngx_uint_t  ngx_max_module;
 
-static char *ngx_null_environ = NULL;
+static ngx_uint_t  ngx_show_version;
+
+static char  *ngx_null_environ = NULL;
 
 
 int ngx_cdecl
@@ -227,6 +229,17 @@ main(int argc, char *const *argv)
 
     if (ngx_getopt(&init_cycle, argc, ngx_argv) != NGX_OK) {
         return 1;
+    }
+
+    if (ngx_show_version) {
+        ngx_write_fd(ngx_stderr_fileno, "nginx version: " NGINX_VER CRLF,
+                     sizeof("nginx version: " NGINX_VER CRLF) - 1);
+
+#ifdef NGX_COMPILER
+        ngx_write_fd(ngx_stderr_fileno, "built by " NGX_COMPILER CRLF,
+                     sizeof("built by " NGX_COMPILER CRLF) - 1);
+#endif
+        return 0;
     }
 
     if (ngx_test_config) {
@@ -471,6 +484,10 @@ ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
         }
 
         switch (argv[i][1]) {
+
+        case 'v':
+            ngx_show_version = 1;
+            break;
 
         case 't':
             ngx_test_config = 1;

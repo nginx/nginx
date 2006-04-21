@@ -67,17 +67,18 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->method_end = p - 1;
                 m = r->request_start;
 
-                if (p - m == 3) {
+                switch (p - m) {
 
+                case 3:
                     if (m[0] == 'G' && m[1] == 'E' && m[2] == 'T') {
                         r->method = NGX_HTTP_GET;
 
                     } else if (m[0] == 'P' && m[1] == 'U' && m[2] == 'T') {
                         r->method = NGX_HTTP_PUT;
                     }
+                    break;
 
-                } else if (p - m == 4) {
-
+                case 4:
                     if (m[0] == 'P' && m[1] == 'O'
                         && m[2] == 'S' && m[3] == 'T')
                     {
@@ -88,22 +89,23 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     {
                         r->method = NGX_HTTP_HEAD;
                     }
+                    break;
 
-                } else if (p - m == 5) {
-
+                case 5:
                     if (m[0] == 'M' && m[1] == 'K'
                         && m[2] == 'C' && m[3] == 'O' && m[4] == 'L')
                     {
                         r->method = NGX_HTTP_MKCOL;
                     }
+                    break;
 
-                } else if (p - m == 6) {
-
+                case 6:
                     if (m[0] == 'D' && m[1] == 'E' && m[2] == 'L'
                         && m[3] == 'E' && m[4] == 'T' && m[5] == 'E')
                     {
                         r->method = NGX_HTTP_DELETE;
                     }
+                    break;
                 }
 
                 state = sw_spaces_before_uri;
