@@ -9,6 +9,20 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.43" date="26.04.2006">
+
+<change type="bugfix">
+<para lang="ru">
+× SSI.
+</para>
+<para lang="en">
+in the SSI.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.42" date="26.04.2006">
 
 <change type="feature">

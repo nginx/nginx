@@ -737,6 +737,8 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 #if 1
     b = NULL;
     for (cl = ctx->out; cl; cl = cl->next) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "ssi out: %p %p", cl->buf, cl->buf->pos);
         if (cl->buf == b) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           "the same buf was used in ssi");
@@ -1685,6 +1687,9 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     var = params[NGX_HTTP_SSI_ECHO_VAR];
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "ssi echo \"%V\"", var);
+
     key = 0;
 
     for (i = 0; i < var->len; i++) {
@@ -1798,6 +1803,9 @@ ngx_http_ssi_set(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     name = params[NGX_HTTP_SSI_SET_VAR];
     value = params[NGX_HTTP_SSI_SET_VALUE];
 
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "ssi set \"%V\" \"%V\"", name, value);
+
     if (ngx_http_ssi_evaluate_string(r, ctx, value, 0) != NGX_OK) {
         return NGX_HTTP_SSI_ERROR;
     }
@@ -1860,6 +1868,9 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     }
 
     expr = params[NGX_HTTP_SSI_IF_EXPR];
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "ssi if expr=\"%V\"", expr);
 
     left.data = expr->data;
     last = expr->data + expr->len;
@@ -2025,6 +2036,9 @@ static ngx_int_t
 ngx_http_ssi_else(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "ssi else");
+
     if (ctx->output_chosen) {
         ctx->output = 0;
     } else {
@@ -2041,6 +2055,9 @@ static ngx_int_t
 ngx_http_ssi_endif(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "ssi endif");
+
     ctx->output = 1;
     ctx->output_chosen = 0;
     ctx->conditional = 0;

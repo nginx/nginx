@@ -96,7 +96,8 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
         for (cl = pr->out; cl; cl = cl->next) {
             if (cl->buf == b) {
                 ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                              "the same buf was used in postponed");
+                              "the same buf was used in postponed %p %p",
+                               b, b->pos);
                 ngx_debug_point();
                 return NGX_ERROR;
             }
