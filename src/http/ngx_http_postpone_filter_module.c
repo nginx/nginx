@@ -89,6 +89,22 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return NGX_ERROR;
         }
 
+#if 1
+        {
+        ngx_chain_t  *cl;
+        ngx_buf_t    *b = NULL;
+        for (cl = pr->out; cl; cl = cl->next) {
+            if (cl->buf == b) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              "the same buf was used in postponed");
+                ngx_debug_point();
+                return NGX_ERROR;
+            }
+            b = cl->buf;
+        }
+        }
+#endif
+
         if (r != r->connection->data || r->postponed->request) {
             return NGX_AGAIN;
         }

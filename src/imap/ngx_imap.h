@@ -26,7 +26,46 @@ typedef struct {
 
 
 typedef struct {
-    ngx_array_t             servers;         /* ngx_imap_core_srv_conf_t */
+    in_addr_t               addr;
+    in_port_t               port;
+    int                     family;
+
+    /* server ctx */
+    ngx_imap_conf_ctx_t    *ctx;
+
+    unsigned                bind:1;
+} ngx_imap_listen_t;
+
+
+typedef struct {
+    in_addr_t               addr;
+    ngx_imap_conf_ctx_t    *ctx;
+    ngx_str_t               addr_text;
+} ngx_imap_in_addr_t;
+
+
+typedef struct {
+    ngx_imap_in_addr_t     *addrs;       /* array of ngx_imap_in_addr_t */
+    ngx_uint_t              naddrs;
+} ngx_imap_in_port_t;
+
+
+typedef struct {
+    in_port_t               port;
+    ngx_array_t             addrs;       /* array of ngx_imap_conf_in_addr_t */
+} ngx_imap_conf_in_port_t;
+
+
+typedef struct {
+    in_addr_t               addr;
+    ngx_imap_conf_ctx_t    *ctx;
+    unsigned                bind:1;
+} ngx_imap_conf_in_addr_t;
+
+
+typedef struct {
+    ngx_array_t             servers;     /* ngx_imap_core_srv_conf_t */
+    ngx_array_t             listen;      /* ngx_imap_listen_t */
 } ngx_imap_core_main_conf_t;
 
 
@@ -52,7 +91,7 @@ typedef struct {
     ngx_array_t             imap_capabilities;
 
     /* server ctx */
-    ngx_imap_conf_ctx_t  *ctx;
+    ngx_imap_conf_ctx_t    *ctx;
 } ngx_imap_core_srv_conf_t;
 
 
@@ -109,12 +148,15 @@ typedef struct {
     unsigned                quoted:1;
     unsigned                backslash:1;
     unsigned                no_sync_literal:1;
+    unsigned                starttls:1;
 
     ngx_str_t               login;
     ngx_str_t               passwd;
 
     ngx_str_t               tag;
     ngx_str_t               tagged_line;
+
+    ngx_str_t              *addr_text;
 
     ngx_uint_t              command;
     ngx_array_t             args;
@@ -183,6 +225,9 @@ typedef struct {
 #define ngx_imap_get_module_main_conf(s, module)                             \
     (s)->main_conf[module.ctx_index]
 #define ngx_imap_get_module_srv_conf(s, module)  (s)->srv_conf[module.ctx_index]
+
+#define ngx_imap_conf_get_module_main_conf(cf, module)                       \
+    ((ngx_imap_conf_ctx_t *) cf->ctx)->main_conf[module.ctx_index]
 
 
 void ngx_imap_init_connection(ngx_connection_t *c);

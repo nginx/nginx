@@ -156,9 +156,6 @@ ngx_event_accept(ngx_event_t *ev)
 
         c->unexpected_eof = 1;
 
-        c->ctx = lc->ctx;
-        c->servers = lc->servers;
-
         rev = c->read;
         wev = c->write;
 

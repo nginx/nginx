@@ -9,6 +9,54 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.42" date="26.04.2006">
+
+<change type="feature">
+<para lang="ru">
+параметр bind в директиве listen в IMAP/POP3 прокси.
+</para>
+<para lang="en">
+the "bind" option of the "listen" directive in IMAP/POP3 proxy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании в директиве rewrite одного и того же
+выделения более одного раза.
+</para>
+<para lang="en">
+if the same capture in the "rewrite" directive was used more then once.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в лог не записывались переменные
+$sent_http_content_type, $sent_http_content_length, $sent_http_last_modified,
+$sent_http_connection, $sent_http_keep_alive и $sent_http_transfer_encoding.
+</para>
+<para lang="en">
+the $sent_http_content_type, $sent_http_content_length,
+$sent_http_last_modified, $sent_http_connection, $sent_http_keep_alive,
+and $sent_http_transfer_encoding variables were not written to access log.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $sent_http_cache_control возвращала содержимое только одной
+строки "Cache-Control" в заголовке ответа.
+</para>
+<para lang="en">
+the $sent_http_cache_control returned value of the single "Cache-Control"
+response header line.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.41" date="21.04.2006">
 
 <change type="feature">

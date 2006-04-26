@@ -1328,6 +1328,7 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_http_update_location_config(r);
 
     r->internal = 1;
+    r->method = NGX_HTTP_GET;
 
     ngx_http_handler(r);
 
@@ -2528,6 +2529,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static ngx_http_method_name_t  ngx_methods_names[] = {
    { "GET",  (uint32_t) ~NGX_HTTP_GET },
    { "HEAD", (uint32_t) ~NGX_HTTP_HEAD },
+   { "POST", (uint32_t) ~NGX_HTTP_POST },
    { NULL, 0 }
 };
 

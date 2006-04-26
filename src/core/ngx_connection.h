@@ -33,7 +33,6 @@ struct ngx_listening_s {
     /* handler of accepted connection */
     ngx_connection_handler_pt   handler;
 
-    void               *ctx;      /* ngx_http_conf_ctx_t, for example */
     void               *servers;  /* array of ngx_http_in_addr_t, for example */
 
     ngx_log_t           log;
@@ -112,10 +111,6 @@ struct ngx_connection_s {
     ngx_listening_t    *listening;
 
     off_t               sent;
-
-    void               *ctx;
-    void               *servers;
-
 
     ngx_log_t          *log;
 

@@ -201,11 +201,11 @@ ngx_http_init_connection(ngx_connection_t *c)
 }
 
 
-static
-void ngx_http_init_request(ngx_event_t *rev)
+static void
+ngx_http_init_request(ngx_event_t *rev)
 {
-    ngx_uint_t                  i;
     socklen_t                   len;
+    ngx_uint_t                  i;
     struct sockaddr_in          sin;
     ngx_connection_t           *c;
     ngx_http_request_t         *r;
@@ -274,7 +274,7 @@ void ngx_http_init_request(ngx_event_t *rev)
 
     /* AF_INET only */
 
-    hip = c->servers;
+    hip = c->listening->servers;
     hia = hip->addrs;
 
     r->port = hip->port;
@@ -311,7 +311,7 @@ void ngx_http_init_request(ngx_event_t *rev)
             r->in_addr = sin.sin_addr.s_addr;
         }
 
-        /* the last in_port->addrs address is "*" */
+        /* the last address is "*" */
 
         for ( /* void */ ; i < hip->naddrs - 1; i++) {
             if (hia[i].addr == r->in_addr) {
@@ -1405,6 +1405,12 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         || rc == NGX_HTTP_REQUEST_TIME_OUT
         || r->connection->error)
     {
+        if (rc == NGX_HTTP_CLIENT_CLOSED_REQUEST
+            && r->headers_out.status == 0)
+        {
+            r->headers_out.status = NGX_HTTP_CLIENT_CLOSED_REQUEST;
+        }
+
         if (ngx_http_post_action(r) == NGX_OK) {
             return;
         }

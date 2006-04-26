@@ -91,6 +91,14 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
 
             if (sc->source->data[i] >= '1' && sc->source->data[i] <= '9') {
 
+                n = sc->source->data[i] - '0';
+
+                if (sc->captures_mask & (1 << n)) {
+                    sc->dup_capture = 1;
+                }
+
+                sc->captures_mask |= 1 << n;
+
                 copy_capture = ngx_http_script_add_code(*sc->lengths,
                                    sizeof(ngx_http_script_copy_capture_code_t),
                                    NULL);
@@ -100,7 +108,8 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
 
                 copy_capture->code = (ngx_http_script_code_pt)
                                          ngx_http_script_copy_capture_len_code;
-                copy_capture->n = 2 * (sc->source->data[i] - '0');
+                copy_capture->n = 2 * n;
+
 
                 copy_capture = ngx_http_script_add_code(*sc->values,
                                    sizeof(ngx_http_script_copy_capture_code_t),
@@ -110,13 +119,11 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
                 }
 
                 copy_capture->code = ngx_http_script_copy_capture_code;
-                copy_capture->n = sc->source->data[i] - '0';
+                copy_capture->n = 2 * n;
 
-                if (sc->ncaptures < copy_capture->n) {
-                    sc->ncaptures = copy_capture->n;
+                if (sc->ncaptures < n) {
+                    sc->ncaptures = n;
                 }
-
-                copy_capture->n *= 2;
 
                 i++;
 

@@ -55,7 +55,7 @@ static ngx_command_t  ngx_imap_core_commands[] = {
       NULL },
 
     { ngx_string("listen"),
-      NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_IMAP_SRV_CONF|NGX_CONF_TAKE12,
       ngx_imap_core_listen,
       0,
       0,
@@ -143,7 +143,14 @@ ngx_imap_core_create_main_conf(ngx_conf_t *cf)
     }
 
     if (ngx_array_init(&cmcf->servers, cf->pool, 4,
-                       sizeof(ngx_imap_core_srv_conf_t *)) == NGX_ERROR)
+                       sizeof(ngx_imap_core_srv_conf_t *))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->listen, cf->pool, 4, sizeof(ngx_imap_listen_t))
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -419,12 +426,14 @@ ngx_imap_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    char                 *err;
-    ngx_str_t            *value;
-    in_addr_t             in_addr;
-    struct hostent       *h;
-    ngx_listening_t      *ls;
-    ngx_inet_upstream_t   inet_upstream;
+    char                       *err;
+    ngx_str_t                  *value;
+    in_addr_t                   in_addr;
+    ngx_uint_t                  i;
+    struct hostent             *h;
+    ngx_imap_listen_t          *imls;
+    ngx_inet_upstream_t         inet_upstream;
+    ngx_imap_core_main_conf_t  *cmcf;
 
     value = cf->args->elts;
 
@@ -469,29 +478,46 @@ ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         in_addr = INADDR_ANY;
     }
 
+    cmcf = ngx_imap_conf_get_module_main_conf(cf, ngx_imap_core_module);
 
-    ls = ngx_listening_inet_stream_socket(cf, in_addr, inet_upstream.port);
-    if (ls == NULL) {
+    imls = cmcf->listen.elts;
+
+    for (i = 0; i < cmcf->listen.nelts; i++) {
+
+        if (imls[i].addr != in_addr || imls[i].port != inet_upstream.port) {
+            continue;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "duplicate \"%V\" address and port pair",
+                           &inet_upstream.url);
         return NGX_CONF_ERROR;
     }
 
-    ls->backlog = -1;
-    ls->rcvbuf = -1;
-    ls->sndbuf = -1;
+    imls = ngx_array_push(&cmcf->listen);
+    if (imls == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
-    ls->addr_ntop = 1;
-    ls->handler = ngx_imap_init_connection;
-    ls->pool_size = 256;
+    ngx_memzero(imls, sizeof(ngx_imap_listen_t));
 
-    ls->ctx = cf->ctx;
+    imls->addr = in_addr;
+    imls->port = inet_upstream.port;
+    imls->family = AF_INET;
+    imls->ctx = cf->ctx;
 
-    /* STUB */
-    ls->log = *cf->cycle->new_log;
-    ls->log.data = &ls->addr_text;
-    ls->log.handler = ngx_accept_log_error;
-    /**/
+    if (cf->args->nelts == 2) {
+        return NGX_CONF_OK;
+    }
 
-    return NGX_CONF_OK;
+    if (ngx_strcmp(value[2].data, "bind") == 0) {
+        imls->bind = 1;
+        return NGX_CONF_OK;
+    }
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "the invalid \"%V\" parameter", &value[2]);
+    return NGX_CONF_ERROR;
 }
 
 

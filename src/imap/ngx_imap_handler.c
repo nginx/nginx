@@ -44,35 +44,103 @@ static u_char  imap_invalid_command[] = "BAD invalid command" CRLF;
 void
 ngx_imap_init_connection(ngx_connection_t *c)
 {
-    ngx_imap_log_ctx_t   *lctx;
+    in_addr_t             in_addr;
+    socklen_t             len;
+    ngx_uint_t            i;
+    struct sockaddr_in    sin;
+    ngx_imap_log_ctx_t   *ctx;
+    ngx_imap_in_port_t   *imip;
+    ngx_imap_in_addr_t   *imia;
+    ngx_imap_session_t   *s;
 #if (NGX_IMAP_SSL)
-    ngx_imap_conf_ctx_t  *ctx;
     ngx_imap_ssl_conf_t  *sslcf;
 #endif
 
-    ngx_log_error(NGX_LOG_INFO, c->log, 0, "*%ui client %V connected to %V",
-                  c->number, &c->addr_text, &c->listening->addr_text);
 
-    lctx = ngx_palloc(c->pool, sizeof(ngx_imap_log_ctx_t));
-    if (lctx == NULL) {
+    /* find the server configuration for the address:port */
+
+    /* AF_INET only */
+
+    imip = c->listening->servers;
+    imia = imip->addrs;
+
+    i = 0;
+
+    if (imip->naddrs > 1) {
+
+        /*
+         * There are several addresses on this port and one of them
+         * is the "*:port" wildcard so getsockname() is needed to determine
+         * the server address.
+         *
+         * AcceptEx() already gave this address.
+         */
+
+#if (NGX_WIN32)
+        if (c->local_sockaddr) {
+            in_addr =
+                   ((struct sockaddr_in *) c->local_sockaddr)->sin_addr.s_addr;
+
+        } else
+#endif
+        {
+            len = sizeof(struct sockaddr_in);
+            if (getsockname(c->fd, (struct sockaddr *) &sin, &len) == -1) {
+                ngx_connection_error(c, ngx_socket_errno,
+                                     "getsockname() failed");
+                ngx_imap_close_connection(c);
+                return;
+            }
+
+            in_addr = sin.sin_addr.s_addr;
+        }
+
+        /* the last address is "*" */
+
+        for ( /* void */ ; i < imip->naddrs - 1; i++) {
+            if (in_addr == imia[i].addr) {
+                break;
+            }
+        }
+    }
+
+
+    s = ngx_pcalloc(c->pool, sizeof(ngx_imap_session_t));
+    if (s == NULL) {
         ngx_imap_close_connection(c);
         return;
     }
 
-    lctx->client = &c->addr_text;
-    lctx->session = NULL;
+    s->main_conf = imia[i].ctx->main_conf;
+    s->srv_conf = imia[i].ctx->srv_conf;
+
+    s->addr_text = &imia[i].addr_text;
+
+    c->data = s;
+    s->connection = c;
+
+    ngx_log_error(NGX_LOG_INFO, c->log, 0, "*%ui client %V connected to %V",
+                  c->number, &c->addr_text, s->addr_text);
+
+    ctx = ngx_palloc(c->pool, sizeof(ngx_imap_log_ctx_t));
+    if (ctx == NULL) {
+        ngx_imap_close_connection(c);
+        return;
+    }
+
+    ctx->client = &c->addr_text;
+    ctx->session = s;
 
     c->log->connection = c->number;
     c->log->handler = ngx_imap_log_error;
-    c->log->data = lctx;
+    c->log->data = ctx;
     c->log->action = "sending client greeting line";
 
     c->log_error = NGX_ERROR_INFO;
 
 #if (NGX_IMAP_SSL)
 
-    ctx = c->ctx;
-    sslcf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_ssl_module);
+    sslcf = ngx_imap_get_module_srv_conf(s, ngx_imap_ssl_module);
 
     if (sslcf->enable) {
         ngx_imap_ssl_init_connection(&sslcf->ssl, c);
@@ -96,6 +164,7 @@ ngx_imap_starttls_handler(ngx_event_t *rev)
 
     c = rev->data;
     s = c->data;
+    s->starttls = 1;
 
     c->log->action = "in starttls state";
 
@@ -108,7 +177,7 @@ ngx_imap_starttls_handler(ngx_event_t *rev)
 static void
 ngx_imap_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
 {
-    ngx_imap_conf_ctx_t       *ctx;
+    ngx_imap_session_t        *s;
     ngx_imap_core_srv_conf_t  *cscf;
 
     if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
@@ -118,8 +187,9 @@ ngx_imap_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
 
     if (ngx_ssl_handshake(c) == NGX_AGAIN) {
 
-        ctx = c->ctx;
-        cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
+        s = c->data;
+
+        cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
 
         ngx_add_timer(c->read, cscf->timeout);
 
@@ -135,9 +205,13 @@ ngx_imap_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
 static void
 ngx_imap_ssl_handshake_handler(ngx_connection_t *c)
 {
+    ngx_imap_session_t  *s;
+
     if (c->ssl->handshaked) {
 
-        if (c->data) {
+        s = c->data;
+
+        if (s->starttls) {
             c->read->handler = ngx_imap_init_protocol;
             c->write->handler = ngx_imap_send;
 
@@ -160,24 +234,14 @@ static void
 ngx_imap_init_session(ngx_connection_t *c)
 {
     ngx_imap_session_t        *s;
-    ngx_imap_log_ctx_t        *lctx;
-    ngx_imap_conf_ctx_t       *ctx;
     ngx_imap_core_srv_conf_t  *cscf;
 
     c->read->handler = ngx_imap_init_protocol;
     c->write->handler = ngx_imap_send;
 
-    s = ngx_pcalloc(c->pool, sizeof(ngx_imap_session_t));
-    if (s == NULL) {
-        ngx_imap_close_connection(c);
-        return;
-    }
+    s = c->data;
 
-    ctx = c->ctx;
-    cscf = ngx_imap_get_module_srv_conf(ctx, ngx_imap_core_module);
-
-    c->data = s;
-    s->connection = c;
+    cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
 
     s->protocol = cscf->protocol;
 
@@ -187,13 +251,7 @@ ngx_imap_init_session(ngx_connection_t *c)
         return;
     }
 
-    s->main_conf = ctx->main_conf;
-    s->srv_conf = ctx->srv_conf;
-
     s->out = greetings[s->protocol];
-
-    lctx = c->log->data;
-    lctx->session = s;
 
     ngx_add_timer(c->read, cscf->timeout);
 
@@ -896,8 +954,7 @@ ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len)
         return p;
     }
 
-    p = ngx_snprintf(buf, len, ", server: %V",
-                     &s->connection->listening->addr_text);
+    p = ngx_snprintf(buf, len, ", server: %V", s->addr_text);
     len -= p - buf;
     buf = p;
 

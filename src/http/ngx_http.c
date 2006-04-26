@@ -725,8 +725,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->deferred_accept = in_addr[a].listen_conf->deferred_accept;
 #endif
 
-            ls->ctx = ctx;
-
             hip = ngx_palloc(cf->pool, sizeof(ngx_http_in_port_t));
             if (hip == NULL) {
                 return NGX_CONF_ERROR;

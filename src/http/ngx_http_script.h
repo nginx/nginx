@@ -47,6 +47,7 @@ typedef struct {
 
     ngx_uint_t                  variables;
     ngx_uint_t                  ncaptures;
+    ngx_uint_t                  captures_mask;
     ngx_uint_t                  size;
 
     void                       *main;
@@ -54,6 +55,7 @@ typedef struct {
     unsigned                    compile_args:1;
     unsigned                    complete_lengths:1;
     unsigned                    complete_values:1;
+    unsigned                    dup_capture:1;
 
     unsigned                    args:1;
 } ngx_http_script_compile_t;

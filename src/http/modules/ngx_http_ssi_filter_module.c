@@ -734,6 +734,19 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
     ngx_buf_t    *b;
     ngx_chain_t  *cl;
 
+#if 1
+    b = NULL;
+    for (cl = ctx->out; cl; cl = cl->next) {
+        if (cl->buf == b) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "the same buf was used in ssi");
+            ngx_debug_point();
+            return NGX_ERROR;
+        }
+        b = cl->buf;
+    }
+#endif
+
     rc = ngx_http_next_body_filter(r, ctx->out);
 
     if (ctx->busy == NULL) {

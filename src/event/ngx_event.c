@@ -432,8 +432,10 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
     ecf = (*cf)[ngx_event_core_module.ctx_index];
 
-    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
-                  "using the \"%s\" event method", ecf->name);
+    if (!ngx_test_config) {
+        ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
+                      "using the \"%s\" event method", ecf->name);
+    }
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
@@ -737,9 +739,6 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
         c->listening = &ls[i];
         ls[i].connection = c;
-
-        c->ctx = ls[i].ctx;
-        c->servers = ls[i].servers;
 
         rev = c->read;
 

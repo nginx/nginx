@@ -158,9 +158,6 @@ ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n)
 
         c->unexpected_eof = 1;
 
-        c->ctx = ls->ctx;
-        c->servers = ls->servers;
-
         c->listening = ls;
 
         rev = c->read;

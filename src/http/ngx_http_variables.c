@@ -49,6 +49,19 @@ static ngx_int_t ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
 static ngx_int_t ngx_http_variable_request_completion(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
+static ngx_int_t ngx_http_variable_sent_content_type(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_sent_content_length(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_sent_last_modified(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_sent_connection(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_sent_keep_alive(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_sent_transfer_encoding(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+
 
 /*
  * TODO:
@@ -57,6 +70,13 @@ static ngx_int_t ngx_http_variable_request_completion(ngx_http_request_t *r,
  *                 SERVER_SOFTWARE
  *
  *     Apache SSI: DOCUMENT_NAME, LAST_MODIFIED, USER_NAME (file owner)
+ */
+
+/*
+ * the $http_host, $http_user_agent, $http_referer, $http_via,
+ * and $http_x_forwarded_for variables may be handled by generic
+ * ngx_http_variable_unknown_header_in(), but for perfomance reasons
+ * they are handled using dedicated entries
  */
 
 static ngx_http_variable_t  ngx_http_core_variables[] = {
@@ -145,6 +165,27 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("request_completion"), NULL,
       ngx_http_variable_request_completion,
       0, 0, 0 },
+
+    { ngx_string("sent_http_content_type"), NULL,
+      ngx_http_variable_sent_content_type, 0, 0, 0 },
+
+    { ngx_string("sent_http_content_length"), NULL,
+      ngx_http_variable_sent_content_length, 0, 0, 0 },
+
+    { ngx_string("sent_http_last_modified"), NULL,
+      ngx_http_variable_sent_last_modified, 0, 0, 0 },
+
+    { ngx_string("sent_http_connection"), NULL,
+      ngx_http_variable_sent_connection, 0, 0, 0 },
+
+    { ngx_string("sent_http_keep_alive"), NULL,
+      ngx_http_variable_sent_keep_alive, 0, 0, 0 },
+
+    { ngx_string("sent_http_transfer_encoding"), NULL,
+      ngx_http_variable_sent_transfer_encoding, 0, 0, 0 },
+
+    { ngx_string("sent_http_cache_control"), NULL, ngx_http_variable_headers,
+      offsetof(ngx_http_request_t, headers_out.cache_control), 0, 0 },
 
     { ngx_string("limit_rate"), ngx_http_variable_request_set_size,
       ngx_http_variable_request,
@@ -841,6 +882,178 @@ ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
     v->no_cachable = 0;
     v->not_found = 0;
     v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_sent_content_type(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    if (r->headers_out.content_type.len) {
+        v->len = r->headers_out.content_type.len;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = r->headers_out.content_type.data;
+
+    } else {
+        v->not_found = 1;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_sent_content_length(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    if (r->headers_out.content_length) {
+        v->len = r->headers_out.content_length->value.len;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = r->headers_out.content_length->value.data;
+
+        return NGX_OK;
+    }
+
+    if (r->headers_out.content_length_n >= 0) {
+        p = ngx_palloc(r->pool, NGX_OFF_T_LEN);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        v->len = ngx_sprintf(p, "%O", r->headers_out.content_length_n) - p;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = p;
+
+        return NGX_OK;
+    }
+
+    v->not_found = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_sent_last_modified(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    if (r->headers_out.last_modified) {
+        v->len = r->headers_out.last_modified->value.len;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = r->headers_out.last_modified->value.data;
+
+        return NGX_OK;
+    }
+
+    if (r->headers_out.last_modified_time >= 0) {
+        p = ngx_palloc(r->pool,
+                   sizeof("Last-Modified: Mon, 28 Sep 1970 06:00:00 GMT") - 1);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        v->len = ngx_http_time(p, r->headers_out.last_modified_time) - p;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = p;
+
+        return NGX_OK;
+    }
+
+    v->not_found = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_sent_connection(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    size_t   len;
+    char    *p;
+
+    if (r->keepalive) {
+        len = sizeof("keep-alive") - 1;
+        p = "keep-alive";
+
+    } else {
+        len = sizeof("close") - 1;
+        p = "close";
+    }
+
+    v->len = len;
+    v->valid = 1;
+    v->no_cachable = 0;
+    v->not_found = 0;
+    v->data = (u_char *) p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_sent_keep_alive(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char                    *p;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    if (r->keepalive) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        if (clcf->keepalive_header) {
+
+            p = ngx_palloc(r->pool, sizeof("timeout=") - 1 + NGX_TIME_T_LEN);
+            if (p == NULL) {
+                return NGX_ERROR;
+            }
+
+            v->len = ngx_sprintf(p, "timeout=%T", clcf->keepalive_header) - p;
+            v->valid = 1;
+            v->no_cachable = 0;
+            v->not_found = 0;
+            v->data = p;
+
+            return NGX_OK;
+        }
+    }
+
+    v->not_found = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_sent_transfer_encoding(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    if (r->chunked) {
+        v->len = sizeof("chunked") - 1;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = (u_char *) "chunked";
+
+    } else {
+        v->not_found = 1;
+    }
 
     return NGX_OK;
 }

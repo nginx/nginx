@@ -170,6 +170,10 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
 
+    { ngx_string("Keep-Alive"),
+                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_ignore_header_line, 0, 0 },
+
     { ngx_string("X-Pad"),
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
@@ -626,6 +630,8 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
         return;
     }
 
+    r->connection->log->action = "SSL handshaking to upstream";
+
     rc = ngx_ssl_handshake(c);
 
     if (rc == NGX_AGAIN) {
@@ -852,7 +858,6 @@ ngx_http_upstream_send_request_handler(ngx_event_t *wev)
                    "http upstream send request handler");
 
     if (wev->timedout) {
-        c->log->action = "sending request to upstream";
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
         return;
     }

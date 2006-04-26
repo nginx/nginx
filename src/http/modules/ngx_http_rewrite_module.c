@@ -395,7 +395,7 @@ ngx_http_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     regex->size = sc.size;
     regex->args = sc.args;
 
-    if (sc.variables == 0) {
+    if (sc.variables == 0 && !sc.dup_capture) {
         regex->lengths = NULL;
     }
 

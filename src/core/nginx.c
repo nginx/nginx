@@ -239,7 +239,9 @@ main(int argc, char *const *argv)
         ngx_write_fd(ngx_stderr_fileno, "built by " NGX_COMPILER CRLF,
                      sizeof("built by " NGX_COMPILER CRLF) - 1);
 #endif
-        return 0;
+        if (!ngx_test_config) {
+            return 0;
+        }
     }
 
     if (ngx_test_config) {
