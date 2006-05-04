@@ -86,7 +86,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
     ngx_pool_cleanup_file_t   *clnf;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_HTTP_NOT_ALLOWED;
     }
 

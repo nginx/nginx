@@ -221,11 +221,13 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 {
     char           *rv;
     void           *conf, **confp;
-    ngx_uint_t      i, valid;
+    ngx_uint_t      i, multi;
     ngx_str_t      *name;
     ngx_command_t  *cmd;
 
     name = cf->args->elts;
+
+    multi = 0;
 
     for (i = 0; ngx_modules[i]; i++) {
 
@@ -242,132 +244,138 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
             continue;
         }
 
-        while (cmd->name.len) {
+        for ( /* void */ ; cmd->name.len; cmd++) {
 
-            if (name->len == cmd->name.len
-                && ngx_strcmp(name->data, cmd->name.data) == 0)
-            {
-                /* is the directive's location right ? */
+            if (name->len != cmd->name.len) {
+                continue;
+            }
 
-                if (!(cmd->type & cf->cmd_type)) {
-                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                  "directive \"%s\" in %s:%ui "
-                                  "is not allowed here",
-                                  name->data, cf->conf_file->file.name.data,
-                                  cf->conf_file->line);
-                    return NGX_ERROR;
+            if (ngx_strcmp(name->data, cmd->name.data) != 0) {
+                continue;
+            }
+
+
+            /* is the directive's location right ? */
+
+            if (!(cmd->type & cf->cmd_type)) {
+                if (cmd->type & NGX_CONF_MULTI) {
+                    multi = 1;
+                    continue;
                 }
 
-                if (!(cmd->type & NGX_CONF_BLOCK) && last != NGX_OK) {
-                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                  "directive \"%s\" in %s:%ui "
-                                  "is not terminated by \";\"",
-                                  name->data, cf->conf_file->file.name.data,
-                                  cf->conf_file->line);
-                    return NGX_ERROR;
-                }
+                goto not_allowed;
+            }
 
-                if ((cmd->type & NGX_CONF_BLOCK)
-                    && last != NGX_CONF_BLOCK_START)
-                {
-                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                  "directive \"%s\" in %s:%ui "
-                                  "has not the opening \"{\"",
-                                  name->data, cf->conf_file->file.name.data,
-                                  cf->conf_file->line);
-                    return NGX_ERROR;
-                }
+            if (!(cmd->type & NGX_CONF_BLOCK) && last != NGX_OK) {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "directive \"%s\" in %s:%ui "
+                              "is not terminated by \";\"",
+                              name->data, cf->conf_file->file.name.data,
+                              cf->conf_file->line);
+                return NGX_ERROR;
+            }
 
-                /* is the directive's argument count right ? */
+            if ((cmd->type & NGX_CONF_BLOCK) && last != NGX_CONF_BLOCK_START) {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "directive \"%s\" in %s:%ui "
+                              "has not the opening \"{\"",
+                              name->data, cf->conf_file->file.name.data,
+                              cf->conf_file->line);
+                return NGX_ERROR;
+            }
 
-                if (cmd->type & NGX_CONF_ANY) {
-                    valid = 1;
+            /* is the directive's argument count right ? */
 
-                } else if (cmd->type & NGX_CONF_FLAG) {
+            if (!(cmd->type & NGX_CONF_ANY)) {
 
-                    if (cf->args->nelts == 2) {
-                        valid = 1;
-                    } else {
-                        valid = 0;
+                if (cmd->type & NGX_CONF_FLAG) {
+
+                    if (cf->args->nelts != 2) {
+                        goto invalid;
                     }
 
                 } else if (cmd->type & NGX_CONF_1MORE) {
 
-                    if (cf->args->nelts > 1) {
-                        valid = 1;
-                    } else {
-                        valid = 0;
+                    if (cf->args->nelts < 2) {
+                        goto invalid;
                     }
 
                 } else if (cmd->type & NGX_CONF_2MORE) {
 
-                    if (cf->args->nelts > 2) {
-                        valid = 1;
-                    } else {
-                        valid = 0;
+                    if (cf->args->nelts < 3) {
+                        goto invalid;
                     }
 
-                } else if (cf->args->nelts <= NGX_CONF_MAX_ARGS
-                           && (cmd->type
-                               & argument_number[cf->args->nelts - 1]))
+                } else if (cf->args->nelts > NGX_CONF_MAX_ARGS) {
+
+                    goto invalid;
+
+                } else if (!(cmd->type & argument_number[cf->args->nelts - 1]))
                 {
-                    valid = 1;
-
-                } else {
-                    valid = 0;
+                    goto invalid;
                 }
+            }
 
-                if (!valid) {
-                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                  "invalid number arguments in "
-                                  "directive \"%s\" in %s:%ui",
-                                  name->data, cf->conf_file->file.name.data,
-                                  cf->conf_file->line);
-                    return NGX_ERROR;
+            /* set up the directive's configuration context */
+
+            conf = NULL;
+
+            if (cmd->type & NGX_DIRECT_CONF) {
+                conf = ((void **) cf->ctx)[ngx_modules[i]->index];
+
+            } else if (cmd->type & NGX_MAIN_CONF) {
+                conf = &(((void **) cf->ctx)[ngx_modules[i]->index]);
+
+            } else if (cf->ctx) {
+                confp = *(void **) ((char *) cf->ctx + cmd->conf);
+
+                if (confp) {
+                    conf = confp[ngx_modules[i]->ctx_index];
                 }
+            }
 
-                /* set up the directive's configuration context */
+            rv = cmd->set(cf, cmd, conf);
 
-                conf = NULL;
+            if (rv == NGX_CONF_OK) {
+                return NGX_OK;
+            }
 
-                if (cmd->type & NGX_DIRECT_CONF) {
-                    conf = ((void **) cf->ctx)[ngx_modules[i]->index];
-
-                } else if (cmd->type & NGX_MAIN_CONF) {
-                    conf = &(((void **) cf->ctx)[ngx_modules[i]->index]);
-
-                } else if (cf->ctx) {
-                    confp = *(void **) ((char *) cf->ctx + cmd->conf);
-
-                    if (confp) {
-                        conf = confp[ngx_modules[i]->ctx_index];
-                    }
-                }
-
-                rv = cmd->set(cf, cmd, conf);
-
-                if (rv == NGX_CONF_OK) {
-                    return NGX_OK;
-                }
-
-                if (rv == NGX_CONF_ERROR) {
-                    return NGX_ERROR;
-                }
-
-                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                              "the \"%s\" directive %s in %s:%ui",
-                              name->data, rv, cf->conf_file->file.name.data,
-                              cf->conf_file->line);
-
+            if (rv == NGX_CONF_ERROR) {
                 return NGX_ERROR;
             }
 
-            cmd++;
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "the \"%s\" directive %s in %s:%ui",
+                          name->data, rv, cf->conf_file->file.name.data,
+                          cf->conf_file->line);
+
+            return NGX_ERROR;
         }
     }
 
+    if (multi == 0) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "unknown directive \"%s\" in %s:%ui",
+                      name->data, cf->conf_file->file.name.data,
+                      cf->conf_file->line);
+
+        return NGX_ERROR;
+    }
+
+not_allowed:
+
     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                  "unknown directive \"%s\" in %s:%ui",
+                  "directive \"%s\" in %s:%ui "
+                  "is not allowed here",
+                  name->data, cf->conf_file->file.name.data,
+                  cf->conf_file->line);
+    return NGX_ERROR;
+
+invalid:
+
+    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                  "invalid number arguments in "
+                  "directive \"%s\" in %s:%ui",
                   name->data, cf->conf_file->file.name.data,
                   cf->conf_file->line);
 

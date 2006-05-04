@@ -958,7 +958,7 @@ ngx_http_read_request_header(ngx_http_request_t *r)
     }
 
     if (n == 0 || n == NGX_ERROR) {
-        ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
 
@@ -1480,17 +1480,24 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             }
 
             if (r->fast_subrequest) {
+
+                if (rc == NGX_AGAIN) {
+                    r->fast_subrequest = 0;
+                }
+
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http fast subrequest: \"%V?%V\" done",
                            &r->uri, &r->args);
                 return;
             }
 
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http wake parent request: \"%V?%V\"",
-                           &pr->uri, &pr->args);
+            if (rc != NGX_AGAIN) {
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                               "http wake parent request: \"%V?%V\"",
+                               &pr->uri, &pr->args);
 
-            pr->write_event_handler(pr);
+                pr->write_event_handler(pr);
+            }
         }
 
         return;

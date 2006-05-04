@@ -10,7 +10,7 @@
 
 /*
  * ioctl(FIONBIO) sets a blocking mode with the single syscall
- * while fcntl(F_SETFL, ~O_NONBLOCK) needs to learn before
+ * while fcntl(F_SETFL, !O_NONBLOCK) needs to learn before
  * the previous state using fcntl(F_GETFL).
  *
  * ioctl() and fcntl() are syscalls at least in FreeBSD 2.x, Linux 2.2

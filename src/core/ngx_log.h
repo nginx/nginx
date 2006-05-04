@@ -28,6 +28,7 @@
 #define NGX_LOG_DEBUG_EVENT       0x080
 #define NGX_LOG_DEBUG_HTTP        0x100
 #define NGX_LOG_DEBUG_IMAP        0x200
+#define NGX_LOG_DEBUG_MYSQL       0x400
 
 /*
  * do not forget to update debug_levels[] in src/core/ngx_log.c

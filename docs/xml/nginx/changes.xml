@@ -9,6 +9,39 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.44" date="04.05.2006">
+
+<change type="feature">
+<para lang="ru">
+параметр wait в команде SSI inlcude.
+</para>
+<para lang="en">
+the "wait" parameter in the SSI "include" command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в таблицу перекодировки koi-win добавлены украинские и белорусские символы.
+</para>
+<para lang="en">
+the Ukrainian and Byelorussian characters were added to koi-win conversion
+table.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в SSI.
+</para>
+<para lang="en">
+in the SSI.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.43" date="26.04.2006">
 
 <change type="bugfix">

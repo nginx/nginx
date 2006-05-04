@@ -188,6 +188,7 @@ static ngx_str_t ngx_http_ssi_none = ngx_string("(none)");
 
 #define  NGX_HTTP_SSI_INCLUDE_VIRTUAL  0
 #define  NGX_HTTP_SSI_INCLUDE_FILE     1
+#define  NGX_HTTP_SSI_INCLUDE_WAIT     2
 
 #define  NGX_HTTP_SSI_ECHO_VAR         0
 #define  NGX_HTTP_SSI_ECHO_DEFAULT     1
@@ -204,6 +205,7 @@ static ngx_str_t ngx_http_ssi_none = ngx_string("(none)");
 static ngx_http_ssi_param_t  ngx_http_ssi_include_params[] = {
     { ngx_string("virtual"), NGX_HTTP_SSI_INCLUDE_VIRTUAL, 0, 0 },
     { ngx_string("file"), NGX_HTTP_SSI_INCLUDE_FILE, 0, 0 },
+    { ngx_string("wait"), NGX_HTTP_SSI_INCLUDE_WAIT, 0, 0 },
     { ngx_null_string, 0, 0, 0 }
 };
 
@@ -361,7 +363,12 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
-    if (ctx == NULL || (in == NULL && ctx->in == NULL && ctx->busy == NULL)) {
+    if (ctx == NULL
+        || (in == NULL
+            && ctx->buf == NULL
+            && ctx->in == NULL
+            && ctx->busy == NULL))
+    {
         return ngx_http_next_body_filter(r, in);
     }
 
@@ -371,6 +378,19 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         if (ngx_chain_add_copy(r->pool, &ctx->in, in) == NGX_ERROR) {
             return NGX_ERROR;
         }
+    }
+
+    if (ctx->wait) {
+        if (r->connection->data != r) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http ssi filter \"%V\" wait", &r->uri);
+            return NGX_AGAIN;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http ssi filter \"%V\" continue", &r->uri);
+
+        ctx->wait = 0;
     }
 
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
@@ -632,6 +652,10 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     continue;
                 }
 
+                if (rc == NGX_AGAIN) {
+                    return NGX_AGAIN;
+                }
+
                 if (rc == NGX_ERROR) {
                     return NGX_ERROR;
                 }
@@ -782,8 +806,13 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 
         cl = ctx->busy;
         ctx->busy = cl->next;
-        cl->next = ctx->free;
-        ctx->free = cl;
+
+        if (ngx_buf_in_memory(b) || b->in_file) {
+            /* add data bufs only to the free buf chain */
+
+            cl->next = ctx->free;
+            ctx->free = cl;
+        }
     }
 
     return rc;
@@ -1626,11 +1655,13 @@ static ngx_int_t
 ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
-    ngx_str_t   *uri, *file, args;
+    ngx_int_t    rc;
+    ngx_str_t   *uri, *file, *wait, args;
     ngx_uint_t   flags;
 
     uri = params[NGX_HTTP_SSI_INCLUDE_VIRTUAL];
     file = params[NGX_HTTP_SSI_INCLUDE_FILE];
+    wait = params[NGX_HTTP_SSI_INCLUDE_WAIT];
 
     if (uri && file) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -1643,6 +1674,26 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "no parameter in \"include\" SSI command");
         return NGX_HTTP_SSI_ERROR;
+    }
+
+    if (wait) {
+        if (uri == NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "\"wait\" may not be used with file=\"%V\"",
+                          uri, file);
+            return NGX_HTTP_SSI_ERROR;
+        }
+
+        if (wait->len == 2 && ngx_strncasecmp(wait->data, "no", 2) == 0) {
+            wait = NULL;
+
+        } else if (wait->len != 3 || ngx_strncasecmp(wait->data, "yes", 3) != 0)
+        {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "invalid value \"%V\" in the \"wait\" parameter",
+                          &wait);
+            return NGX_HTTP_SSI_ERROR;
+        }
     }
 
     if (uri == NULL) {
@@ -1666,11 +1717,21 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         return NGX_HTTP_SSI_ERROR;
     }
 
-    if (ngx_http_subrequest(r, uri, &args, flags) != NGX_OK) {
+    rc = ngx_http_subrequest(r, uri, &args, flags);
+
+    if (rc == NGX_ERROR) {
         return NGX_HTTP_SSI_ERROR;
     }
 
-    return NGX_OK;
+    if (wait == NULL) {
+        return NGX_OK;
+    }
+
+    if (rc == NGX_AGAIN) {
+        ctx->wait = 1;
+    }
+
+    return rc;
 }
 
 

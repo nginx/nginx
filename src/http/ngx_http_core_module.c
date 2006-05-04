@@ -1168,7 +1168,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     sr = ngx_pcalloc(r->pool, sizeof(ngx_http_request_t));
     if (sr == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     sr->signature = NGX_HTTP_MODULE;
@@ -1178,14 +1178,14 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     sr->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
     if (sr->ctx == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     if (ngx_list_init(&sr->headers_out.headers, r->pool, 20,
                       sizeof(ngx_table_elt_t))
         == NGX_ERROR)
     {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
@@ -1228,7 +1228,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->http_protocol = r->http_protocol;
 
     if (ngx_http_set_exten(sr) != NGX_OK) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     sr->main = r->main;
@@ -1251,7 +1251,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     pr = ngx_palloc(r->pool, sizeof(ngx_http_postponed_request_t));
     if (pr == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     pr->request = sr;
@@ -1275,10 +1275,18 @@ ngx_http_subrequest(ngx_http_request_t *r,
     ngx_http_handler(sr);
 
     if (!c->destroyed) {
-        sr->fast_subrequest = 0;
-
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http subrequest done \"%V?%V\"", uri, &sr->args);
+
+        if (sr->fast_subrequest) {
+            sr->fast_subrequest = 0;
+
+            if (sr->done) {
+                return NGX_OK;
+            }
+        }
+
+        return NGX_AGAIN;
     }
 
     return NGX_OK;

@@ -14,7 +14,8 @@ END
 ngx_found=no
 
 if test -n "$ngx_feature_name"; then
-    ngx_have_feature=`echo $ngx_feature_name | tr '[a-z]' '[A-Z]'`
+    ngx_have_feature=`echo $ngx_feature_name \
+                   | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
 fi
 
 cat << END > $NGX_AUTOTEST.c

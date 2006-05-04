@@ -35,8 +35,8 @@ if [ -x $NGX_AUTOTEST ]; then
 
     echo " found"
 
-    ngx_name=`echo $ngx_include | sed -e 's/\./_/' -e 's/\//_/' \
-                  |  tr '[a-z]' '[A-Z]'`
+    ngx_name=`echo $ngx_include \
+              | tr abcdefghijklmnopqrstuvwxyz/. ABCDEFGHIJKLMNOPQRSTUVWXYZ__`
 
 
     have=NGX_HAVE_$ngx_name . auto/have_headers

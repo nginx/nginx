@@ -61,6 +61,7 @@ typedef struct {
     unsigned                  conditional:2;
     unsigned                  output:1;
     unsigned                  output_chosen:1;
+    unsigned                  wait:1;
 
     void                     *value_buf;
     ngx_str_t                 timefmt;
