@@ -75,7 +75,10 @@
 /* The special code to close connection without any response */
 #define NGX_HTTP_CLOSE                     444
 
-#define NGX_HTTP_OWN_CODES                 NGX_HTTP_TO_HTTPS
+#define NGX_HTTP_OWN_CODES                 495
+
+#define NGX_HTTPS_CERT_ERROR               495
+#define NGX_HTTPS_NO_CERT                  496
 
 /*
  * We use the special code for the plain HTTP requests that are sent to

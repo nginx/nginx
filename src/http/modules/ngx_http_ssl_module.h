@@ -22,10 +22,14 @@ typedef struct {
 
     ngx_uint_t      protocols;
 
+    ngx_int_t       verify;
+    ngx_int_t       verify_depth;
+
     time_t          session_timeout;
 
     ngx_str_t       certificate;
     ngx_str_t       certificate_key;
+    ngx_str_t       client_certificate;
 
     ngx_str_t       ciphers;
 } ngx_http_ssl_srv_conf_t;

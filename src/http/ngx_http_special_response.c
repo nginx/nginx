@@ -163,6 +163,26 @@ static char error_416_page[] =
 ;
 
 
+static char error_495_page[] =
+"<html>" CRLF
+"<head><title>400 The SSL certificate error</title></head>"
+CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>400 Bad Request</h1></center>" CRLF
+"<center>The SSL certificate error</center>" CRLF
+;
+
+
+static char error_496_page[] =
+"<html>" CRLF
+"<head><title>400 No required SSL certificate was sent</title></head>"
+CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>400 Bad Request</h1></center>" CRLF
+"<center>No required SSL certificate was sent</center>" CRLF
+;
+
+
 static char error_497_page[] =
 "<html>" CRLF
 "<head><title>400 The plain HTTP request was sent to HTTPS port</title></head>"
@@ -254,6 +274,8 @@ static ngx_str_t error_pages[] = {
 
 #define NGX_HTTP_LEVEL_400  17
 
+    ngx_string(error_495_page),  /* 495, https certificate error */
+    ngx_string(error_496_page),  /* 496, https no certificate */
     ngx_string(error_497_page),  /* 497, http to https */
     ngx_string(error_404_page),  /* 498, invalid host name */
     ngx_null_string,             /* 499, client had closed connection */
@@ -296,6 +318,8 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
             case NGX_HTTP_REQUEST_ENTITY_TOO_LARGE:
             case NGX_HTTP_REQUEST_URI_TOO_LARGE:
             case NGX_HTTP_TO_HTTPS:
+            case NGX_HTTPS_CERT_ERROR:
+            case NGX_HTTPS_NO_CERT:
             case NGX_HTTP_INTERNAL_SERVER_ERROR:
                 r->keepalive = 0;
         }
@@ -305,6 +329,8 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         switch (error) {
             case NGX_HTTP_BAD_REQUEST:
             case NGX_HTTP_TO_HTTPS:
+            case NGX_HTTPS_CERT_ERROR:
+            case NGX_HTTPS_NO_CERT:
                 r->lingering_close = 0;
         }
     }
@@ -372,6 +398,8 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
                                          + NGX_HTTP_LEVEL_400;
         switch (error) {
             case NGX_HTTP_TO_HTTPS:
+            case NGX_HTTPS_CERT_ERROR:
+            case NGX_HTTPS_NO_CERT:
                 r->headers_out.status = NGX_HTTP_BAD_REQUEST;
                 error = NGX_HTTP_BAD_REQUEST;
                 break;

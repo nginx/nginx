@@ -164,10 +164,31 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     }
 
     if (SSL_CTX_use_PrivateKey_file(ssl->ctx, (char *) key->data,
-                                    SSL_FILETYPE_PEM) == 0)
+                                    SSL_FILETYPE_PEM)
+        == 0)
     {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "SSL_CTX_use_PrivateKey_file(\"%s\") failed", key->data);
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert)
+{
+    if (ngx_conf_full_name(cf->cycle, cert) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_load_verify_locations(ssl->ctx, (char *) cert->data, NULL)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_load_verify_locations(\"%s\") failed",
+                      cert->data);
         return NGX_ERROR;
     }
 
@@ -1020,6 +1041,88 @@ u_char *
 ngx_ssl_get_cipher_name(ngx_connection_t *c)
 {
     return (u_char *) SSL_get_cipher_name(c->ssl->connection);
+}
+
+
+ngx_int_t
+ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    char       *p;
+    size_t      len;
+    X509       *cert;
+    X509_NAME  *name;
+
+    s->len = 0;
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+
+    if (cert == NULL) {
+        return NGX_OK;
+    }
+
+    name = X509_get_subject_name(cert);
+
+    if (name == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = X509_NAME_oneline(name, NULL, 0);
+
+    for (len = 0; p[len]; len++) { /* void */ }
+
+    s->len = len;
+    s->data = ngx_palloc(pool, len);
+    if (s->data == NULL) {
+        OPENSSL_free(p);
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(s->data, p, len);
+
+    OPENSSL_free(p);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    char       *p;
+    size_t      len;
+    X509       *cert;
+    X509_NAME  *name;
+
+    s->len = 0;
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+
+    if (cert == NULL) {
+        return NGX_OK;
+    }
+
+    name = X509_get_issuer_name(cert);
+
+    if (name == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = X509_NAME_oneline(name, NULL, 0);
+
+    for (len = 0; p[len]; len++) { /* void */ }
+
+    s->len = len;
+    s->data = ngx_palloc(pool, len);
+    if (s->data == NULL) {
+        OPENSSL_free(p);
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(s->data, p, len);
+
+    OPENSSL_free(p);
+
+    return NGX_OK;
 }
 
 

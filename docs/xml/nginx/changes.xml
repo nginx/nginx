@@ -9,6 +9,61 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.45" date="06.05.2006">
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_verify_client, ssl_verify_depth и ssl_client_certificate.
+</para>
+<para lang="en">
+the "ssl_verify_client", "ssl_verify_depth", and "ssl_client_certificate"
+directives.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь переменная $request_method возвращает метод только основного запроса.
+</para>
+<para lang="en">
+the $request_method variable now returns the main request method.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+в таблице перекодировки koi-win изменены коды символа &amp;deg;.
+</para>
+<para lang="en">
+the &amp;deg; symbol codes were changed in koi-win conversion table.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в таблицу перекодировки koi-win добавлены символы евро и номера.
+</para>
+<para lang="en">
+the euro и N symbols were added to koi-win conversion table.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx распределял запросы на несколько машин, то при падении
+одной из них запросы, предназначенные для этой машины, перенаправлялись только
+на одну машину вместо того, чтобы равномерно распределяться между остальными.
+</para>
+<para lang="en">
+if nginx distributed the requests among several backends and some backend
+failed, then requests intended for this backend was directed to one live
+backend only instead of being distributed among the rest.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.44" date="04.05.2006">
 
 <change type="feature">

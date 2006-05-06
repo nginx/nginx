@@ -1172,8 +1172,12 @@ ngx_http_process_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
 static ngx_int_t
 ngx_http_process_request_header(ngx_http_request_t *r)
 {
-    size_t   len;
-    u_char  *ua, *user_agent, ch;
+    size_t                    len;
+    u_char                   *ua, *user_agent, ch;
+#if (NGX_HTTP_SSL)
+    long                      rc;
+    ngx_http_ssl_srv_conf_t  *sscf;
+#endif
 
     if (r->headers_in.host) {
         for (len = 0; len < r->headers_in.host->value.len; len++) {
@@ -1242,6 +1246,34 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         ngx_http_finalize_request(r, NGX_HTTP_TO_HTTPS);
         return NGX_ERROR;
     }
+
+#if (NGX_HTTP_SSL)
+
+    if (r->connection->ssl) {
+        sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
+
+        if (sscf->verify) {
+            rc = SSL_get_verify_result(r->connection->ssl->connection);
+
+            if (rc != X509_V_OK) {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                              "client SSL certificate verify error: %l ", rc);
+                ngx_http_finalize_request(r, NGX_HTTPS_CERT_ERROR);
+                return NGX_ERROR;
+            }
+
+            if (SSL_get_peer_certificate(r->connection->ssl->connection)
+                == NULL)
+            {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                              "client sent no required SSL certificate");
+                ngx_http_finalize_request(r, NGX_HTTPS_NO_CERT);
+                return NGX_ERROR;
+            }
+        }
+    }
+
+#endif
 
     if (r->headers_in.connection) {
         if (r->headers_in.connection->value.len == 5

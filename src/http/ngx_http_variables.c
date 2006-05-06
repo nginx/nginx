@@ -810,19 +810,12 @@ static ngx_int_t
 ngx_http_variable_request_method(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    if (r->method_name.data) {
-        if (r->upstream && r->upstream->method.len) {
-            v->len = r->upstream->method.len;
-            v->data = r->upstream->method.data;
-
-        } else {
-            v->len = r->method_name.len;
-            v->data = r->method_name.data;
-        }
-
+    if (r->main->method_name.data) {
+        v->len = r->main->method_name.len;
         v->valid = 1;
         v->no_cachable = 0;
         v->not_found = 0;
+        v->data = r->main->method_name.data;
 
     } else {
         v->not_found = 1;

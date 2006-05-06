@@ -61,54 +61,75 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
             /* it's a first try - get a current peer */
 
-            pc->cur_peer = pc->peers->current;
+            for ( ;; ) {
+                pc->cur_peer = pc->peers->current;
+
+                peer = &pc->peers->peer[pc->cur_peer];
+
+                if (peer->max_fails == 0 || peer->fails <= peer->max_fails) {
+                    break;
+                }
+
+                if (now - peer->accessed > peer->fail_timeout) {
+                    peer->fails = 0;
+                    break;
+                }
+
+                pc->peers->current++;
+
+                if (pc->peers->current >= pc->peers->number) {
+                    pc->peers->current = 0;
+                }
+
+                pc->peers->weight = pc->peers->peer[pc->peers->current].weight;
+
+                pc->tries--;
+
+                if (pc->tries) {
+                    continue;
+                }
+
+                goto failed;
+            }
 
             pc->peers->weight--;
 
             if (pc->peers->weight == 0) {
                 pc->peers->current++;
-            }
 
-            if (pc->peers->current >= pc->peers->number) {
-                pc->peers->current = 0;
-            }
-
-            if (pc->peers->weight == 0) {
-                pc->peers->weight = pc->peers->peer[pc->peers->current].weight;
-            }
-        }
-
-        for ( ;; ) {
-            peer = &pc->peers->peer[pc->cur_peer];
-
-            if (peer->max_fails == 0 || peer->fails <= peer->max_fails) {
-                break;
-            }
-
-            if (now - peer->accessed > peer->fail_timeout) {
-                peer->fails = 0;
-                break;
-            }
-
-            pc->cur_peer++;
-
-            if (pc->cur_peer >= pc->peers->number) {
-                pc->cur_peer = 0;
-            }
-
-            pc->tries--;
-
-            if (pc->tries == 0) {
-
-                /* all peers failed, mark them as live for quick recovery */
-
-                for (i = 0; i < pc->peers->number; i++) {
-                    pc->peers->peer[i].fails = 0;
+                if (pc->peers->current >= pc->peers->number) {
+                    pc->peers->current = 0;
                 }
 
-                /* ngx_unlock_mutex(pc->peers->mutex); */
+                pc->peers->weight = pc->peers->peer[pc->peers->current].weight;
+            }
 
-                return NGX_BUSY;
+        } else {
+            for ( ;; ) {
+                peer = &pc->peers->peer[pc->cur_peer];
+
+                if (peer->max_fails == 0 || peer->fails <= peer->max_fails) {
+                    break;
+                }
+
+                if (now - peer->accessed > peer->fail_timeout) {
+                    peer->fails = 0;
+                    break;
+                }
+
+                pc->cur_peer++;
+
+                if (pc->cur_peer >= pc->peers->number) {
+                    pc->cur_peer = 0;
+                }
+
+                pc->tries--;
+
+                if (pc->tries) {
+                    continue;
+                }
+
+                goto failed;
             }
         }
     }
@@ -319,6 +340,18 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     wev->ready = 1;
 
     return NGX_OK;
+
+failed:
+
+    /* all peers failed, mark them as live for quick recovery */
+
+    for (i = 0; i < pc->peers->number; i++) {
+        pc->peers->peer[i].fails = 0;
+    }
+
+    /* ngx_unlock_mutex(pc->peers->mutex); */
+
+    return NGX_BUSY;
 }
 
 

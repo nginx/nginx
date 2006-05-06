@@ -31,6 +31,7 @@ typedef struct {
 
 typedef struct {
     SSL                        *connection;
+
     ngx_int_t                   last;
     ngx_buf_t                  *buf;
 
@@ -60,10 +61,15 @@ typedef struct {
 #define NGX_SSL_BUFSIZE  16384
 
 
+#define NGX_SSL_VERIFY   SSL_VERIFY_PEER
+
+
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
 ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols);
 ngx_int_t ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_str_t *cert, ngx_str_t *key);
+ngx_int_t ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_str_t *cert);
 ngx_int_t ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl);
 ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
     ngx_uint_t flags);
@@ -75,6 +81,11 @@ ngx_int_t ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session);
 
 u_char *ngx_ssl_get_protocol(ngx_connection_t *c);
 u_char *ngx_ssl_get_cipher_name(ngx_connection_t *c);
+ngx_int_t ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+
 
 
 ngx_int_t ngx_ssl_handshake(ngx_connection_t *c);
