@@ -47,10 +47,9 @@ static ngx_int_t ngx_http_upstream_ignore_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_limit_rate(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
-static ngx_int_t ngx_http_upstream_copy_header_line(ngx_http_request_t *r,
+static ngx_int_t ngx_http_upstream_process_buffering(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
-static ngx_int_t
-    ngx_http_upstream_conditional_copy_header_line(ngx_http_request_t *r,
+static ngx_int_t ngx_http_upstream_copy_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t
     ngx_http_upstream_copy_multi_header_lines(ngx_http_request_t *r,
@@ -103,7 +102,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
     { ngx_string("Status"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, status),
-                 /* STUB */ ngx_http_upstream_ignore_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("Content-Type"),
                  ngx_http_upstream_process_header_line,
@@ -118,14 +117,14 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
     { ngx_string("Date"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, date),
-                 ngx_http_upstream_conditional_copy_header_line,
-                 offsetof(ngx_http_upstream_conf_t, pass_date), 0 },
+                 ngx_http_upstream_copy_header_line,
+                 offsetof(ngx_http_headers_out_t, date), 0 },
 
     { ngx_string("Server"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, server),
-                 ngx_http_upstream_conditional_copy_header_line,
-                 offsetof(ngx_http_upstream_conf_t, pass_server), 0 },
+                 ngx_http_upstream_copy_header_line,
+                 offsetof(ngx_http_headers_out_t, server), 0 },
 
     { ngx_string("WWW-Authenticate"),
                  ngx_http_upstream_process_header_line,
@@ -174,20 +173,14 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
 
-    { ngx_string("X-Pad"),
-                 ngx_http_upstream_ignore_header_line, 0,
-                 ngx_http_upstream_ignore_header_line, 0, 0 },
-
     { ngx_string("X-Powered-By"),
                  ngx_http_upstream_ignore_header_line, 0,
-                 ngx_http_upstream_conditional_copy_header_line,
-                 offsetof(ngx_http_upstream_conf_t, pass_x_powered_by), 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Expires"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, x_accel_expires),
-                 ngx_http_upstream_conditional_copy_header_line,
-                 offsetof(ngx_http_upstream_conf_t, pass_x_accel_expires), 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Redirect"),
                  ngx_http_upstream_process_header_line,
@@ -196,6 +189,10 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
     { ngx_string("X-Accel-Limit-Rate"),
                  ngx_http_upstream_process_limit_rate, 0,
+                 ngx_http_upstream_ignore_header_line, 0, 0 },
+
+    { ngx_string("X-Accel-Buffering"),
+                 ngx_http_upstream_process_buffering, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
 
 #if (NGX_HTTP_GZIP)
@@ -881,7 +878,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
     ssize_t                         n;
     ngx_int_t                       rc;
     ngx_str_t                      *uri, args;
-    ngx_uint_t                      i, key, flags;
+    ngx_uint_t                      i, flags;
     ngx_list_part_t                *part;
     ngx_table_elt_t                *h;
     ngx_connection_t               *c;
@@ -1089,7 +1086,6 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
         ngx_http_upstream_finalize_request(r, u, NGX_DECLINED);
 
         umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
-        hh = (ngx_http_upstream_header_t *) umcf->headers_in_hash.buckets;
 
         part = &r->upstream->headers_in.headers.part;
         h = part->elts;
@@ -1106,18 +1102,15 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
                 i = 0;
             }
 
-            key = h[i].hash % umcf->headers_in_hash.hash_size;
+            hh = ngx_hash_find(&umcf->headers_in_hash, h[i].hash,
+                               h[i].lowcase_key, h[i].key.len);
 
-            if (hh[key].redirect
-                && hh[key].name.len == h[i].key.len
-                && ngx_strcasecmp(hh[key].name.data, h[i].key.data) == 0)
-            {
-                if (hh[key].copy_handler(r, &h[i], hh[key].conf) != NGX_OK) {
+            if (hh && hh->redirect) {
+                if (hh->copy_handler(r, &h[i], hh->conf) != NGX_OK) {
                     ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
                     return;
                 }
-
             }
         }
 
@@ -1149,7 +1142,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     int                             tcp_nodelay;
     ssize_t                         size;
     ngx_int_t                       rc;
-    ngx_uint_t                      i, key;
+    ngx_uint_t                      i;
     ngx_list_part_t                *part;
     ngx_table_elt_t                *h;
     ngx_event_pipe_t               *p;
@@ -1161,7 +1154,6 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_http_upstream_main_conf_t  *umcf;
 
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
-    hh = (ngx_http_upstream_header_t *) umcf->headers_in_hash.buckets;
 
     part = &r->upstream->headers_in.headers.part;
     h = part->elts;
@@ -1178,12 +1170,17 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             i = 0;
         }
 
-        key = h[i].hash % umcf->headers_in_hash.hash_size;
-
-        if (hh[key].name.len == h[i].key.len
-            && ngx_strcasecmp(hh[key].name.data, h[i].key.data) == 0)
+        if (ngx_hash_find(&u->conf->hide_headers_hash, h[i].hash,
+                          h[i].lowcase_key, h[i].key.len))
         {
-            if (hh[key].copy_handler(r, &h[i], hh[key].conf) != NGX_OK) {
+            continue;
+        }
+
+        hh = ngx_hash_find(&umcf->headers_in_hash, h[i].hash,
+                           h[i].lowcase_key, h[i].key.len);
+
+        if (hh) {
+            if (hh->copy_handler(r, &h[i], hh->conf) != NGX_OK) {
                 ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
@@ -1197,6 +1194,14 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
+    }
+
+    if (r->headers_out.server && r->headers_out.server->value.data == NULL) {
+        r->headers_out.server->hash = 0;
+    }
+
+    if (r->headers_out.date && r->headers_out.date->value.data == NULL) {
+        r->headers_out.date->hash = 0;
     }
 
     r->headers_out.status = u->headers_in.status_n;
@@ -1236,7 +1241,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    if (u->pipe == NULL) {
+    if (!u->buffering) {
 
         if (u->input_filter == NULL) {
             u->input_filter_init = ngx_http_upstream_non_buffered_filter_init;
@@ -2054,6 +2059,37 @@ ngx_http_upstream_process_limit_rate(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
+ngx_http_upstream_process_buffering(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    u_char  c0, c1, c2;
+
+    if (r->upstream->conf->change_buffering) {
+
+        if (h->value.len == 2) {
+            c0 = ngx_tolower(h->value.data[0]);
+            c1 = ngx_tolower(h->value.data[1]);
+
+            if (c0 == 'n' && c1 == 'o') {
+                r->upstream->buffering = 0;
+            }
+
+        } else if (h->value.len == 3) {
+            c0 = ngx_tolower(h->value.data[0]);
+            c1 = ngx_tolower(h->value.data[1]);
+            c2 = ngx_tolower(h->value.data[2]);
+
+            if (c0 == 'y' && c1 == 'e' && c2 == 's') {
+                r->upstream->buffering = 1;
+            }
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_upstream_copy_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
@@ -2070,30 +2106,6 @@ ngx_http_upstream_copy_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
         ph = (ngx_table_elt_t **) ((char *) &r->headers_out + offset);
         *ph = ho;
     }
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_http_upstream_conditional_copy_header_line(ngx_http_request_t *r,
-    ngx_table_elt_t *h, ngx_uint_t offset)
-{
-    ngx_flag_t       *f;
-    ngx_table_elt_t  *ho;
-
-    f = (ngx_flag_t *) ((char *) r->upstream->conf + offset);
-
-    if (*f == 0) {
-        return NGX_OK;
-    }
-
-    ho = ngx_list_push(&r->headers_out.headers);
-    if (ho == NULL) {
-        return NGX_ERROR;
-    }
-
-    *ho = *h;
 
     return NGX_OK;
 }
@@ -2554,22 +2566,39 @@ ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf)
 {
     ngx_http_upstream_main_conf_t  *umcf = conf;
 
-    umcf->headers_in_hash.max_size = 100;
-    umcf->headers_in_hash.bucket_limit = 1;
-    umcf->headers_in_hash.bucket_size = sizeof(ngx_http_upstream_header_t);
-    umcf->headers_in_hash.name = "upstream_headers_in";
+    ngx_array_t                  headers_in;
+    ngx_hash_key_t              *hk;
+    ngx_hash_init_t              hash;
+    ngx_http_upstream_header_t  *header;
 
-    if (ngx_hash0_init(&umcf->headers_in_hash, cf->pool,
-                      ngx_http_upstream_headers_in, 0) != NGX_OK)
+    if (ngx_array_init(&headers_in, cf->temp_pool, 32, sizeof(ngx_hash_key_t))
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                   "http upstream headers_in hash size: %ui, "
-                   "max buckets per entry: %ui",
-                   umcf->headers_in_hash.hash_size,
-                   umcf->headers_in_hash.min_buckets);
+    for (header = ngx_http_upstream_headers_in; header->name.len; header++) {
+        hk = ngx_array_push(&headers_in);
+        if (hk == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        hk->key = header->name;
+        hk->key_hash = ngx_hash_key_lc(header->name.data, header->name.len);
+        hk->value = header;
+    }
+
+    hash.hash = &umcf->headers_in_hash;
+    hash.key = ngx_hash_key_lc;
+    hash.max_size = 512;
+    hash.bucket_size = ngx_cacheline_size;
+    hash.name = "upstream_headers_in_hash";
+    hash.pool = cf->pool;
+    hash.temp_pool = NULL;
+
+    if (ngx_hash_init(&hash, headers_in.elts, headers_in.nelts) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }

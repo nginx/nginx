@@ -10,6 +10,9 @@
 
 #define NGX_HTTP_MAX_REWRITE_CYCLES        10
 
+/* must be 2^n */
+#define NGX_HTTP_LC_HEADER_LEN             32
+
 
 #define NGX_HTTP_DISCARD_BUFFER_SIZE       4096
 #define NGX_HTTP_LINGERING_BUFFER_SIZE     4096
@@ -400,7 +403,6 @@ struct ngx_http_request_s {
 
     unsigned                          fast_subrequest:1;
 
-    unsigned                          low_case_exten:1;
     unsigned                          header_timeout_set:1;
 
     unsigned                          proxy:1;
@@ -463,7 +465,10 @@ struct ngx_http_request_s {
     u_char                           *header_name_end;
     u_char                           *header_start;
     u_char                           *header_end;
+
     ngx_uint_t                        header_hash;
+    ngx_uint_t                        lowcase_index;
+    u_char                            lowcase_header[NGX_HTTP_LC_HEADER_LEN];
 };
 
 

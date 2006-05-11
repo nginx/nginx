@@ -900,38 +900,73 @@ ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 char *
-ngx_conf_set_table_elt_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_conf_set_str_array_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    ngx_str_t         *value;
+    ngx_str_t         *value, *s;
     ngx_array_t      **a;
-    ngx_table_elt_t   *elt;
     ngx_conf_post_t   *post;
 
     a = (ngx_array_t **) (p + cmd->offset);
 
     if (*a == NULL) {
-        *a = ngx_array_create(cf->pool, 4, sizeof(ngx_table_elt_t));
+        *a = ngx_array_create(cf->pool, 4, sizeof(ngx_str_t));
         if (*a == NULL) {
             return NGX_CONF_ERROR;
         }
     }
 
-    elt = ngx_array_push(*a);
-    if (elt == NULL) {
+    s = ngx_array_push(*a);
+    if (s == NULL) {
         return NGX_CONF_ERROR;
     }
 
     value = cf->args->elts;
 
-    elt->hash = 0;
-    elt->key = value[1];
-    elt->value = value[2];
+    *s = value[1];
 
     if (cmd->post) {
         post = cmd->post;
-        return post->post_handler(cf, post, elt);
+        return post->post_handler(cf, post, s);
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
+ngx_conf_set_keyval_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_str_t         *value;
+    ngx_array_t      **a;
+    ngx_keyval_t      *kv;
+    ngx_conf_post_t   *post;
+
+    a = (ngx_array_t **) (p + cmd->offset);
+
+    if (*a == NULL) {
+        *a = ngx_array_create(cf->pool, 4, sizeof(ngx_keyval_t));
+        if (*a == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    kv = ngx_array_push(*a);
+    if (kv == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    kv->key = value[1];
+    kv->value = value[2];
+
+    if (cmd->post) {
+        post = cmd->post;
+        return post->post_handler(cf, post, kv);
     }
 
     return NGX_CONF_OK;

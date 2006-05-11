@@ -13,9 +13,15 @@
 
 
 typedef struct {
-    size_t    len;
-    u_char   *data;
+    size_t     len;
+    u_char    *data;
 } ngx_str_t;
+
+
+typedef struct {
+    ngx_str_t  key;
+    ngx_str_t  value;
+} ngx_keyval_t;
 
 
 #define ngx_string(str)  { sizeof(str) - 1, (u_char *) str }

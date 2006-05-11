@@ -94,6 +94,7 @@ typedef struct {
     ngx_uint_t        hash;
     ngx_str_t         key;
     ngx_str_t         value;
+    u_char           *lowcase_key;
 } ngx_table_elt_t;
 
 
@@ -106,18 +107,13 @@ ngx_int_t ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 ngx_int_t ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
     ngx_uint_t nelts);
 
-#define ngx_hash(key, c)   key * 31 + c
+#define ngx_hash(key, c)   ((ngx_uint_t) key * 31 + c)
 ngx_uint_t ngx_hash_key(u_char *data, size_t len);
 ngx_uint_t ngx_hash_key_lc(u_char *data, size_t len);
 
 ngx_int_t ngx_hash_keys_array_init(ngx_hash_keys_arrays_t *ha, ngx_uint_t type);
 ngx_int_t ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key,
     void *value, ngx_uint_t flags);
-
-
-#define ngx_hash0(key, c)   key + c
-ngx_int_t ngx_hash0_init(ngx_hash0_t *hash, ngx_pool_t *pool, void *names,
-    ngx_uint_t nelts);
 
 
 #endif /* _NGX_HASH_H_INCLUDED_ */

@@ -9,6 +9,8 @@
 #include <ngx_http.h>
 
 
+/* gcc, icc, msvc and others compile these switches as an jump table */
+
 ngx_int_t
 ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
@@ -42,8 +44,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
     for (p = b->pos; p < b->last; p++) {
         ch = *p;
-
-        /* gcc 2.95.2 and msvc 6.0 compile this switch as an jump table */
 
         switch (state) {
 
@@ -528,7 +528,7 @@ ngx_int_t
 ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
     u_char      c, ch, *p;
-    ngx_uint_t  hash;
+    ngx_uint_t  hash, i;
     enum {
         sw_start = 0,
         sw_name,
@@ -540,8 +540,19 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_header_almost_done
     } state;
 
+    static u_char  lowcase[] =
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0-\0\0" "0123456789\0\0\0\0\0\0"
+        "\0abcdefghijklmnopqrstuvwxyz\0\0\0\0\0"
+        "\0abcdefghijklmnopqrstuvwxyz\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+
     state = r->state;
     hash = r->header_hash;
+    i = r->lowcase_index;
 
     for (p = b->pos; p < b->last; p++) {
         ch = *p;
@@ -564,14 +575,12 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                 state = sw_name;
                 r->header_name_start = p;
 
-                c = (u_char) (ch | 0x20);
-                if (c >= 'a' && c <= 'z') {
-                    hash = c;
-                    break;
-                }
+                c = lowcase[ch];
 
-                if (ch >= '0' && ch <= '9') {
-                    hash = ch;
+                if (c) {
+                    hash = ngx_hash(0, c);
+                    r->lowcase_header[0] = c;
+                    i = 1;
                     break;
                 }
 
@@ -584,25 +593,18 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         /* header name */
         case sw_name:
-            c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'z') {
-                hash += c;
+            c = lowcase[ch];
+
+            if (c) {
+                hash = ngx_hash(hash, c);
+                r->lowcase_header[i++] = c;
+                i &= ~NGX_HTTP_LC_HEADER_LEN;
                 break;
             }
 
             if (ch == ':') {
                 r->header_name_end = p;
                 state = sw_space_before_value;
-                break;
-            }
-
-            if (ch == '-') {
-                hash += ch;
-                break;
-            }
-
-            if (ch >= '0' && ch <= '9') {
-                hash += ch;
                 break;
             }
 
@@ -726,6 +728,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
     b->pos = p;
     r->state = state;
     r->header_hash = hash;
+    r->lowcase_index = i;
 
     return NGX_AGAIN;
 
@@ -734,6 +737,7 @@ done:
     b->pos = p + 1;
     r->state = sw_start;
     r->header_hash = hash;
+    r->lowcase_index = i;
 
     return NGX_OK;
 

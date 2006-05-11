@@ -72,7 +72,7 @@ typedef struct {
 
     ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
 
-    ngx_hash0_t                headers_in_hash;
+    ngx_hash_t                 headers_in_hash;
 
     ngx_hash_t                 variables_hash;
 

@@ -41,7 +41,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_hash0_t                     headers_in_hash;
+    ngx_hash_t                      headers_in_hash;
 } ngx_http_upstream_main_conf_t;
 
 
@@ -77,19 +77,19 @@ typedef struct {
     ngx_flag_t                      redirect_errors;
     ngx_flag_t                      cyclic_temp_file;
 
-    ngx_flag_t                      pass_x_powered_by;
-    ngx_flag_t                      pass_server;
-    ngx_flag_t                      pass_date;
-    ngx_flag_t                      pass_x_accel_expires;
-
     ngx_path_t                     *temp_path;
+
+    ngx_hash_t                      hide_headers_hash;
+    ngx_array_t                    *hide_headers;
+    ngx_array_t                    *pass_headers;
 
     ngx_str_t                       schema;
     ngx_str_t                       uri;
     ngx_str_t                       location;
     ngx_str_t                       url;  /* used in proxy_rewrite_location */
 
-    ngx_uint_t                      redirect_404; /* unsigned redirect_404:1; */
+    unsigned                        redirect_404:1;
+    unsigned                        change_buffering:1;
 
 #if (NGX_HTTP_SSL)
     ngx_ssl_t                      *ssl;
@@ -190,6 +190,8 @@ struct ngx_http_upstream_s {
 
     unsigned                        cachable:1;
     unsigned                        accel:1;
+
+    unsigned                        buffering:1;
 
     unsigned                        request_sent:1;
     unsigned                        header_sent:1;

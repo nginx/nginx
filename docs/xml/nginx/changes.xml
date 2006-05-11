@@ -9,6 +9,52 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.46" date="11.05.2006">
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_hide_header, proxy_pass_header, fastcgi_hide_header
+и fastcgi_pass_header.
+</para>
+<para lang="en">
+the "proxy_hide_header", "proxy_pass_header", "fastcgi_hide_header",
+and "fastcgi_pass_header" directives.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директивы proxy_x_powered_by, fastcgi_x_powered_by и proxy_pass_server
+упразднены.
+</para>
+<para lang="en">
+the "proxy_pass_x_powered_by", "fastcgi_x_powered_by", and "proxy_pass_server"
+directives were canceled.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в режиме прокси поддерживается строка заголовка "X-Accel-Buffering"
+в ответе бэкенда.
+</para>
+<para lang="en">
+the "X-Accel-Buffering" response header line is supported in proxy mode.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибок и утечек памяти при переконфигурации в модуле ngx_http_perl_module.
+</para>
+<para lang="en">
+the reconfiguration bug and memory leaks in the ngx_http_perl_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.45" date="06.05.2006">
 
 <change type="feature">
@@ -777,7 +823,7 @@ only after a successful completion of a request.
 директива restrict_host_names упразднена.
 </para>
 <para lang="en">
-the "restrict_host_names" directive is canceled.
+the "restrict_host_names" directive was canceled.
 </para>
 </change>
 
@@ -1057,7 +1103,7 @@ the ngx_http_perl_module supports the $r->args and $r->unescape methods.
 метод $r->query_string в модуле ngx_http_perl_module упразднён.
 </para>
 <para lang="en">
-the method $r->query_string of ngx_http_perl_module is canceled.
+the method $r->query_string of ngx_http_perl_module was canceled.
 </para>
 </change>
 
@@ -2684,7 +2730,7 @@ Thanks to Alexandr Kukushkin.
 перенесена на глобальный уровень.
 </para>
 <para lang="en">
-the "ssl_engine" directive is canceled in the ngx_http_ssl_module
+the "ssl_engine" directive was canceled in the ngx_http_ssl_module
 and now is introduced at global level.
 </para>
 </change>
@@ -2934,7 +2980,7 @@ became shorter in the "ps" command.
 </para>
 <para lang="en">
 The changes in the ngx_http_charset_module:
-the "default_charset" directive is canceled;
+the "default_charset" directive was canceled;
 the "charset" directive sets the response charset;
 the "source_charset" directive sets the source charset only.
 </para>
@@ -3673,7 +3719,7 @@ proxy_set_header.
 </para>
 <para lang="en">
 the "proxy_set_header" directive.
-The "proxy_x_var" is canceled and must be replaced with the proxy_set_header
+The "proxy_x_var" was canceled and must be replaced with the proxy_set_header
 directive.
 </para>
 </change>

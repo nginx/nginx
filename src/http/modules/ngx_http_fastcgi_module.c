@@ -246,13 +246,6 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.redirect_errors),
       NULL },
 
-    { ngx_string("fastcgi_x_powered_by"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.pass_x_powered_by),
-      NULL },
-
     { ngx_string("fastcgi_read_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -318,9 +311,23 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
 
     { ngx_string("fastcgi_param"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
-      ngx_conf_set_table_elt_slot,
+      ngx_conf_set_keyval_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, params_source),
+      NULL },
+
+    { ngx_string("fastcgi_pass_header"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_str_array_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.pass_headers),
+      NULL },
+
+    { ngx_string("fastcgi_hide_header"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_str_array_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.hide_headers),
       NULL },
 
       ngx_null_command
@@ -358,6 +365,16 @@ ngx_module_t  ngx_http_fastcgi_module = {
 };
 
 
+static ngx_str_t  ngx_http_fastcgi_hide_headers[] = {
+    ngx_string("Status"),
+    ngx_string("X-Accel-Expires"),
+    ngx_string("X-Accel-Redirect"),
+    ngx_string("X-Accel-Limit-Rate"),
+    ngx_string("X-Accel-Buffer"),
+    ngx_null_string
+};
+
+
 static ngx_int_t
 ngx_http_fastcgi_handler(ngx_http_request_t *r)
 {
@@ -389,6 +406,8 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
     u->process_header = ngx_http_fastcgi_process_header;
     u->abort_request = ngx_http_fastcgi_abort_request;
     u->finalize_request = ngx_http_fastcgi_finalize_request;
+
+    u->buffering = 1;
 
     u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t));
     if (u->pipe == NULL) {
@@ -796,7 +815,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
     u_char                         *start, *last;
     ngx_str_t                      *status_line, line;
     ngx_int_t                       rc, status;
-    ngx_uint_t                      key;
+    ngx_uint_t                      i;
     ngx_table_elt_t                *h;
     ngx_http_upstream_t            *u;
     ngx_http_fastcgi_ctx_t         *f;
@@ -806,7 +825,6 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
     f = ngx_http_get_module_ctx(r, ngx_http_fastcgi_module);
 
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
-    hh = (ngx_http_upstream_header_t *) umcf->headers_in_hash.buckets;
 
     if (f == NULL) {
         f = ngx_pcalloc(r->pool, sizeof(ngx_http_fastcgi_ctx_t));
@@ -980,24 +998,32 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                 h->value.len = r->header_end - r->header_start;
 
                 h->key.data = ngx_palloc(r->pool,
-                                         h->key.len + 1 + h->value.len + 1);
+                               h->key.len + 1 + h->value.len + 1 + h->key.len);
                 if (h->key.data == NULL) {
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
 
                 h->value.data = h->key.data + h->key.len + 1;
+                h->lowcase_key = h->key.data + h->key.len + 1
+                                 + h->value.len + 1;
 
                 ngx_cpystrn(h->key.data, r->header_name_start, h->key.len + 1);
                 ngx_cpystrn(h->value.data, r->header_start, h->value.len + 1);
 
-                key = h->hash % umcf->headers_in_hash.hash_size;
+                if (h->key.len == r->lowcase_index) {
+                    ngx_memcpy(h->lowcase_key, r->lowcase_header, h->key.len);
 
-                if (hh[key].name.len == h->key.len
-                    && ngx_strcasecmp(hh[key].name.data, h->key.data) == 0)
-                {
-                    if (hh[key].handler(r, h, hh[key].offset) != NGX_OK) {
-                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                } else {
+                    for (i = 0; i < h->key.len; i++) {
+                        h->lowcase_key[i] = ngx_tolower(h->lowcase_key[i]);
                     }
+                }
+
+                hh = ngx_hash_find(&umcf->headers_in_hash, h->hash,
+                                   h->lowcase_key, h->key.len);
+
+                if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
 
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1474,9 +1500,11 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     conf->upstream.bufs.num = 0;
-     *     conf->upstream.path = NULL;
      *     conf->upstream.next_upstream = 0;
      *     conf->upstream.temp_path = NULL;
+     *     conf->upstream.hide_headers_hash = { NULL, 0 };
+     *     conf->upstream.hide_headers = NULL;
+     *     conf->upstream.pass_headers = NULL;
      *     conf->upstream.schema = { 0, NULL };
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
@@ -1510,12 +1538,6 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
     /* "fastcgi_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
 
-    conf->upstream.pass_x_powered_by = NGX_CONF_UNSET;
-
-    /* the hardcoded values */
-    conf->upstream.pass_server = 1;
-    conf->upstream.pass_date = 1;
-
     return conf;
 }
 
@@ -1529,8 +1551,12 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     u_char                       *p;
     size_t                        size;
     uintptr_t                    *code;
-    ngx_uint_t                    i;
-    ngx_table_elt_t              *src;
+    ngx_str_t                    *header;
+    ngx_uint_t                    i, j;
+    ngx_array_t                   hide_headers;
+    ngx_keyval_t                 *src;
+    ngx_hash_key_t               *hk;
+    ngx_hash_init_t               hash;
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
 
@@ -1682,11 +1708,110 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->upstream.redirect_errors,
                               prev->upstream.redirect_errors, 0);
 
-    ngx_conf_merge_value(conf->upstream.pass_x_powered_by,
-                              prev->upstream.pass_x_powered_by, 1);
-
 
     ngx_conf_merge_str_value(conf->index, prev->index, "");
+
+    if (conf->upstream.hide_headers == NULL
+        && conf->upstream.pass_headers == NULL)
+    {
+        conf->upstream.hide_headers = prev->upstream.hide_headers;
+        conf->upstream.pass_headers = prev->upstream.pass_headers;
+        conf->upstream.hide_headers_hash = prev->upstream.hide_headers_hash;
+
+        if (conf->upstream.hide_headers_hash.buckets) {
+            goto peers;
+        }
+
+    } else {
+        if (conf->upstream.hide_headers == NULL) {
+            conf->upstream.hide_headers = prev->upstream.hide_headers;
+        }
+
+        if (conf->upstream.pass_headers == NULL) {
+            conf->upstream.pass_headers = prev->upstream.pass_headers;
+        }
+    }
+
+    if (ngx_array_init(&hide_headers, cf->temp_pool, 4, sizeof(ngx_hash_key_t))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    for (header = ngx_http_fastcgi_hide_headers; header->len; header++) {
+        hk = ngx_array_push(&hide_headers);
+        if (hk == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        hk->key = *header;
+        hk->key_hash = ngx_hash_key_lc(header->data, header->len);
+        hk->value = (void *) 1;
+    }
+
+    if (conf->upstream.hide_headers) {
+
+        header = conf->upstream.hide_headers->elts;
+
+        for (i = 0; i < conf->upstream.hide_headers->nelts; i++) {
+
+            hk = hide_headers.elts;
+
+            for (j = 0; j < hide_headers.nelts; j++) {
+                if (ngx_strcasecmp(header[i].data, hk[j].key.data) == 0) {
+                    goto exist;
+                }
+            }
+
+            hk = ngx_array_push(&hide_headers);
+            if (hk == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            hk->key = header[i];
+            hk->key_hash = ngx_hash_key_lc(header[i].data, header[i].len);
+            hk->value = (void *) 1;
+
+        exist:
+
+            continue;
+        }
+    }
+
+    if (conf->upstream.pass_headers) {
+
+        hk = hide_headers.elts;
+        header = conf->upstream.pass_headers->elts;
+
+        for (i = 0; i < conf->upstream.pass_headers->nelts; i++) {
+
+            for (j = 0; j < hide_headers.nelts; j++) {
+
+                if (hk[j].key.data == NULL) {
+                    continue;
+                }
+
+                if (ngx_strcasecmp(header[i].data, hk[j].key.data) == 0) {
+                    hk[j].key.data = NULL;
+                    break;
+                }
+            }
+        }
+    }
+
+    hash.hash = &conf->upstream.hide_headers_hash;
+    hash.key = ngx_hash_key_lc;
+    hash.max_size = 512;
+    hash.bucket_size = ngx_cacheline_size;
+    hash.name = "fastcgi_hide_headers_hash";
+    hash.pool = cf->pool;
+    hash.temp_pool = NULL;
+
+    if (ngx_hash_init(&hash, hide_headers.elts, hide_headers.nelts) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+peers:
 
     if (conf->peers == NULL) {
         conf->peers = prev->peers;

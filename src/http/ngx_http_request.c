@@ -25,7 +25,8 @@ static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
-static void ngx_http_find_virtual_server(ngx_http_request_t *r);
+static void ngx_http_find_virtual_server(ngx_http_request_t *r,
+    ngx_http_virtual_names_t *vn, ngx_uint_t hash);
 
 static void ngx_http_request_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
@@ -739,8 +740,8 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 {
     ssize_t                     n;
     ngx_int_t                   rc, rv;
-    ngx_uint_t                  key;
     ngx_str_t                   header;
+    ngx_uint_t                  i;
     ngx_table_elt_t            *h;
     ngx_connection_t           *c;
     ngx_http_header_t          *hh;
@@ -763,7 +764,6 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-    hh = (ngx_http_header_t *) cmcf->headers_in_hash.buckets;
 
     rc = NGX_AGAIN;
 
@@ -841,14 +841,26 @@ ngx_http_process_request_headers(ngx_event_t *rev)
             h->value.data = r->header_start;
             h->value.data[h->value.len] = '\0';
 
-            key = h->hash % cmcf->headers_in_hash.hash_size;
+            h->lowcase_key = ngx_palloc(r->pool, h->key.len);
+            if (h->lowcase_key == NULL) {
+                ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
 
-            if (hh[key].name.len == h->key.len
-                && ngx_strcasecmp(hh[key].name.data, h->key.data) == 0)
-            {
-                if (hh[key].handler(r, h, hh[key].offset) != NGX_OK) {
-                    return;
+            if (h->key.len == r->lowcase_index) {
+                ngx_memcpy(h->lowcase_key, r->lowcase_header, h->key.len);
+
+            } else {
+                for (i = 0; i < h->key.len; i++) {
+                    h->lowcase_key[i] = ngx_tolower(h->lowcase_key[i]);
                 }
+            }
+
+            hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
+                               h->lowcase_key, h->key.len);
+
+            if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
+                return;
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1174,12 +1186,16 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 {
     size_t                    len;
     u_char                   *ua, *user_agent, ch;
+    ngx_uint_t                hash;
 #if (NGX_HTTP_SSL)
     long                      rc;
     ngx_http_ssl_srv_conf_t  *sscf;
 #endif
 
     if (r->headers_in.host) {
+
+        hash = 0;
+
         for (len = 0; len < r->headers_in.host->value.len; len++) {
             ch = r->headers_in.host->value.data[len];
 
@@ -1187,16 +1203,21 @@ ngx_http_process_request_header(ngx_http_request_t *r)
                 break;
             }
 
-            r->headers_in.host->value.data[len] = ngx_tolower(ch);
+            ch = ngx_tolower(ch);
+            r->headers_in.host->value.data[len] = ch;
+            hash = ngx_hash(hash, ch);
         }
 
-        if (r->headers_in.host->value.data[len - 1] == '.') {
+        if (len && r->headers_in.host->value.data[len - 1] == '.') {
             len--;
+            hash = ngx_hash_key(r->headers_in.host->value.data, len);
         }
 
         r->headers_in.host_name_len = len;
 
-        ngx_http_find_virtual_server(r);
+        if (r->virtual_names) {
+            ngx_http_find_virtual_server(r, r->virtual_names, hash);
+        }
 
     } else {
         if (r->http_version > NGX_HTTP_VERSION_10) {
@@ -1345,27 +1366,19 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
 
 static void
-ngx_http_find_virtual_server(ngx_http_request_t *r)
+ngx_http_find_virtual_server(ngx_http_request_t *r,
+    ngx_http_virtual_names_t *vn, ngx_uint_t hash)
 {
     size_t                     len;
     u_char                    *host;
-    ngx_http_virtual_names_t  *vn;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
-
-    vn = r->virtual_names;
-
-    if (vn == NULL) {
-        return;
-    }
 
     host = r->headers_in.host->value.data;
     len = r->headers_in.host_name_len;
 
-    /* STUB: ngx_hash_key() here is STUB */
-
     if (vn->hash.buckets) {
-        cscf = ngx_hash_find(&vn->hash, ngx_hash_key(host, len), host, len);
+        cscf = ngx_hash_find(&vn->hash, hash, host, len);
         if (cscf) {
             goto found;
         }

@@ -51,6 +51,8 @@ static char *ngx_http_perl_init_interpreter(ngx_conf_t *cf,
 static PerlInterpreter *
     ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
     ngx_log_t *log);
+static ngx_int_t ngx_http_perl_run_requires(ngx_array_t *requires,
+    ngx_log_t *log);
 static ngx_int_t ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
     SV *sub, ngx_str_t **args, ngx_str_t *handler, ngx_str_t *rv);
 static void ngx_http_perl_eval_anon_sub(pTHX_ ngx_str_t *handler, SV **sv);
@@ -67,7 +69,10 @@ static char *ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_perl_interp_max_unsupported(ngx_conf_t *cf, void *post,
     void *data);
+#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
 static void ngx_http_perl_cleanup_perl(void *data);
+#endif
+static void ngx_http_perl_cleanup_sv(void *data);
 
 
 static ngx_conf_post_handler_pt  ngx_http_perl_interp_max_p =
@@ -394,22 +399,6 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     dTHXa(ctx->perl);
 
-#if 0
-
-    ngx_http_perl_eval_anon_sub(aTHX_ handler, &sv);
-
-    if (sv == &PL_sv_undef) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "eval_pv(\"%V\") failed", handler);
-        return NGX_ERROR;
-    }
-
-    if (sv == NULL) {
-        sv = newSVpvn((char *) handler->data, handler->len);
-    }
-
-#endif
-
     sv = newSVpvn((char *) handler->data, handler->len);
 
     rc = ngx_http_perl_call_handler(aTHX_ r, sv, &params[NGX_HTTP_PERL_SSI_ARG],
@@ -470,12 +459,17 @@ ngx_http_perl_free_interpreter(ngx_http_perl_main_conf_t *pmcf,
 static char *
 ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 {
-    ngx_pool_cleanup_t         *cln;
+#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
+    ngx_pool_cleanup_t  *cln;
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
         return NGX_CONF_ERROR;
     }
+
+#else
+    static PerlInterpreter  *perl;
+#endif
 
 #ifdef NGX_PERL_MODULES
     if (pmcf->modules.data == NULL) {
@@ -489,6 +483,20 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
         }
     }
 
+#if !(NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
+
+    if (perl) {
+        if (ngx_http_perl_run_requires(&pmcf->requires, cf->log) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+
+        pmcf->perl = perl;
+
+        return NGX_CONF_OK;
+    }
+
+#endif
+
     PERL_SYS_INIT(&ngx_argc, &ngx_argv);
 
     pmcf->perl = ngx_http_perl_create_interpreter(pmcf, cf->log);
@@ -498,8 +506,16 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
         return NGX_CONF_ERROR;
     }
 
+#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
+
     cln->handler = ngx_http_perl_cleanup_perl;
     cln->data = pmcf->perl;
+
+#else
+
+    perl = pmcf->perl;
+
+#endif
 
     return NGX_CONF_OK;
 }
@@ -511,10 +527,6 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
 {
     int                n;
     char              *embedding[6];
-    char             **script;
-    STRLEN             len;
-    ngx_str_t          err;
-    ngx_uint_t         i;
     PerlInterpreter   *perl;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "create perl interpreter");
@@ -583,22 +595,8 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
         goto fail;
     }
 
-    script = pmcf->requires.elts;
-    for (i = 0; i < pmcf->requires.nelts; i++) {
-        require_pv(script[i]);
-
-        if (SvTRUE(ERRSV)) {
-
-            err.data = (u_char *) SvPV(ERRSV, len);
-            for (len--; err.data[len] == LF || err.data[len] == CR; len--) {
-                /* void */
-            }
-            err.len = len + 1;
-
-            ngx_log_error(NGX_LOG_EMERG, log, 0,
-                          "require_pv(\"%s\") failed: \"%V\"", script[i], &err);
-            goto fail;
-        }
+    if (ngx_http_perl_run_requires(&pmcf->requires, log) != NGX_OK) {
+        goto fail;
     }
 
     }
@@ -614,6 +612,38 @@ fail:
     perl_free(perl);
 
     return NULL;
+}
+
+
+static ngx_int_t
+ngx_http_perl_run_requires(ngx_array_t *requires, ngx_log_t *log)
+{
+    char       **script;
+    STRLEN       len;
+    ngx_str_t    err;
+    ngx_uint_t   i;
+
+    script = requires->elts;
+    for (i = 0; i < requires->nelts; i++) {
+
+        require_pv(script[i]);
+
+        if (SvTRUE(ERRSV)) {
+
+            err.data = (u_char *) SvPV(ERRSV, len);
+            for (len--; err.data[len] == LF || err.data[len] == CR; len--) {
+                /* void */
+            }
+            err.len = len + 1;
+
+            ngx_log_error(NGX_LOG_EMERG, log, 0,
+                          "require_pv(\"%s\") failed: \"%V\"", script[i], &err);
+
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
 }
 
 
@@ -740,11 +770,8 @@ ngx_http_perl_eval_anon_sub(pTHX_ ngx_str_t *handler, SV **sv)
         }
     }
 
-    if (ngx_strncmp(p, "sub ", 4) == 0
-        || ngx_strncmp(p, "use ", 4) == 0)
-    {
+    if (ngx_strncmp(p, "sub ", 4) == 0 || ngx_strncmp(p, "use ", 4) == 0) {
         *sv = eval_pv((char *) p, FALSE);
-
         return;
     }
 
@@ -805,16 +832,29 @@ ngx_http_perl_init_main_conf(ngx_conf_t *cf, void *conf)
 }
 
 
+#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
+
 static void
 ngx_http_perl_cleanup_perl(void *data)
 {
-    PerlInterpreter *perl = data;
+    PerlInterpreter  *perl = data;
 
     (void) perl_destruct(perl);
 
     perl_free(perl);
 
     PERL_SYS_TERM();
+}
+
+#endif
+
+
+static void
+ngx_http_perl_cleanup_sv(void *data)
+{
+    SV  *sv = data;
+
+    SvREFCNT_dec(sv);
 }
 
 
@@ -908,6 +948,7 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_perl_loc_conf_t *plcf = conf;
 
     ngx_str_t                  *value;
+    ngx_pool_cleanup_t         *cln;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_perl_main_conf_t  *pmcf;
 
@@ -925,6 +966,11 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_http_perl_init_interpreter(cf, pmcf) != NGX_CONF_OK) {
             return NGX_CONF_ERROR;
         }
+    }
+
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
+        return NGX_CONF_ERROR;
     }
 
     plcf->handler = value[1];
@@ -947,6 +993,9 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     }
 
+    cln->handler = ngx_http_perl_cleanup_sv;
+    cln->data = plcf->sub;
+
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_perl_handler;
 
@@ -959,6 +1008,7 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_int_t                   index;
     ngx_str_t                  *value;
+    ngx_pool_cleanup_t         *cln;
     ngx_http_variable_t        *v;
     ngx_http_perl_variable_t   *pv;
     ngx_http_perl_main_conf_t  *pmcf;
@@ -997,6 +1047,11 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
     pv->handler = value[2];
 
     {
@@ -1016,6 +1071,9 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     }
+
+    cln->handler = ngx_http_perl_cleanup_sv;
+    cln->data = pv->sub;
 
     v->get_handler = ngx_http_perl_variable;
     v->data = (uintptr_t) pv;

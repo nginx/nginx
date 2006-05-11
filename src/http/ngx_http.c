@@ -79,11 +79,13 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                   mi, m, s, l, p, a, i;
     ngx_uint_t                   last, bind_all, done;
     ngx_conf_t                   pcf;
-    ngx_array_t                  in_ports;
+    ngx_array_t                  headers_in, in_ports;
+    ngx_hash_key_t              *hk;
     ngx_hash_init_t              hash;
     ngx_listening_t             *ls;
     ngx_http_listen_t           *lscf;
     ngx_http_module_t           *module;
+    ngx_http_header_t           *header;
     ngx_http_in_port_t          *hip;
     ngx_http_handler_pt         *h;
     ngx_http_conf_ctx_t         *ctx;
@@ -373,21 +375,35 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cmcf->phases[NGX_HTTP_LOG_PHASE].type = NGX_OK;
 
 
-    cmcf->headers_in_hash.max_size = 200;
-    cmcf->headers_in_hash.bucket_limit = 1;
-    cmcf->headers_in_hash.bucket_size = sizeof(ngx_http_header_t);
-    cmcf->headers_in_hash.name = "http headers_in";
-
-    if (ngx_hash0_init(&cmcf->headers_in_hash, cf->pool, ngx_http_headers_in, 0)
+    if (ngx_array_init(&headers_in, cf->temp_pool, 32, sizeof(ngx_hash_key_t))
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                   "http headers_in hash size: %ui, max buckets per entry: %ui",
-                   cmcf->headers_in_hash.hash_size,
-                   cmcf->headers_in_hash.min_buckets);
+    for (header = ngx_http_headers_in; header->name.len; header++) {
+        hk = ngx_array_push(&headers_in);
+        if (hk == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        hk->key = header->name;
+        hk->key_hash = ngx_hash_key_lc(header->name.data, header->name.len);
+        hk->value = header;
+    }
+
+    hash.hash = &cmcf->headers_in_hash;
+    hash.key = ngx_hash_key_lc;
+    hash.max_size = 512;
+    hash.bucket_size = ngx_cacheline_size;
+    hash.name = "headers_in_hash";
+    hash.pool = cf->pool;
+    hash.temp_pool = NULL;
+
+    if (ngx_hash_init(&hash, headers_in.elts, headers_in.nelts) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
 
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_HTTP_MODULE) {

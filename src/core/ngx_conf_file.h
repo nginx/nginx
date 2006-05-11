@@ -323,8 +323,9 @@ void ngx_cdecl ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf,
 
 char *ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-char *ngx_conf_set_table_elt_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+char *ngx_conf_set_str_array_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+char *ngx_conf_set_keyval_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);

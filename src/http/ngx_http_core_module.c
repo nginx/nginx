@@ -921,42 +921,43 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 {
     u_char                     c, *p, *exten;
     ngx_str_t                 *type;
-    ngx_uint_t                 i;
+    ngx_uint_t                 i, hash;
     ngx_http_core_loc_conf_t  *clcf;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->exten.len) {
 
-        if (!r->low_case_exten) {
-            for (i = 0; i < r->exten.len; i++) {
-                c = r->exten.data[i];
-                if (c >= 'A' && c <= 'Z') {
-                    break;
-                }
-            }
+        hash = 0;
 
-            if (i < r->exten.len) {
+        for (i = 0; i < r->exten.len; i++) {
+            c = r->exten.data[i];
+
+            if (c >= 'A' && c <= 'Z') {
+
                 p = ngx_palloc(r->pool, r->exten.len);
                 if (p == NULL) {
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
 
+                hash = 0;
                 exten = p;
 
                 for (i = 0; i < r->exten.len; i++) {
-                    c = r->exten.data[i];
-                    *p++ = ngx_tolower(c);
+                    c = ngx_tolower(r->exten.data[i]);
+                    hash = ngx_hash(hash, c);
+                    *p++ = c;
                 }
 
                 r->exten.data = exten;
+
+                break;
             }
 
-            r->low_case_exten = 1;
+            hash = ngx_hash(hash, c);
         }
 
-        type = ngx_hash_find(&clcf->types_hash,
-                             ngx_hash_key(r->exten.data, r->exten.len),
+        type = ngx_hash_find(&clcf->types_hash, hash,
                              r->exten.data, r->exten.len);
 
         if (type) {
@@ -981,17 +982,9 @@ ngx_http_set_exten(ngx_http_request_t *r)
 
     for (i = r->uri.len - 1; i > 1; i--) {
         if (r->uri.data[i] == '.' && r->uri.data[i - 1] != '/') {
+
             r->exten.len = r->uri.len - i - 1;
-
-            if (r->exten.len > 0) {
-                r->exten.data = ngx_palloc(r->pool, r->exten.len + 1);
-                if (r->exten.data == NULL) {
-                    return NGX_ERROR;
-                }
-
-                ngx_cpystrn(r->exten.data, &r->uri.data[i + 1],
-                            r->exten.len + 1);
-            }
+            r->exten.data = &r->uri.data[i + 1];
 
             break;
 
@@ -999,8 +992,6 @@ ngx_http_set_exten(ngx_http_request_t *r)
             break;
         }
     }
-
-    r->low_case_exten = 0;
 
     return NGX_OK;
 }
