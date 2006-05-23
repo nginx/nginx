@@ -135,7 +135,7 @@ ngx_http_empty_gif_handler(ngx_http_request_t *r)
         }
     }
 
-    b = ngx_create_temp_buf(r->pool, sizeof(ngx_empty_gif));
+    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
     if (b == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -145,6 +145,7 @@ ngx_http_empty_gif_handler(ngx_http_request_t *r)
 
     b->pos = ngx_empty_gif;
     b->last = ngx_empty_gif + sizeof(ngx_empty_gif);
+    b->memory = 1;
     b->last_buf = 1;
 
     r->headers_out.status = NGX_HTTP_OK;

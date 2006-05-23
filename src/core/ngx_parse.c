@@ -50,10 +50,10 @@ ngx_parse_size(ngx_str_t *line)
 ngx_int_t
 ngx_parse_time(ngx_str_t *line, ngx_int_t sec)
 {
-    size_t      len;
-    u_char     *start, last;
-    ngx_int_t   value, total, scale;
-    ngx_uint_t  max, i;
+    size_t       len;
+    u_char      *start, last;
+    ngx_int_t    value, total, scale;
+    ngx_uint_t   max, i;
     enum {
         st_start = 0,
         st_year,

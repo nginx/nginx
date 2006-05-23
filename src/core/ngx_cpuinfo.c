@@ -31,16 +31,14 @@ ngx_cpuid(uint32_t i, uint32_t *buf)
     "    mov    %%ebx, %%esi;  "
 
     "    cpuid;                "
-    "    mov    %%eax, %0;     "
-    "    mov    %%ebx, %1;     "
-    "    mov    %%edx, %2;     "
-    "    mov    %%ecx, %3;     "
+    "    mov    %%eax, (%1);   "
+    "    mov    %%ebx, 4(%1);  "
+    "    mov    %%edx, 8(%1);  "
+    "    mov    %%ecx, 12(%1); "
 
     "    mov    %%esi, %%ebx;  "
 
-    : "=m" (buf[0]), "=m" (buf[1]), "=m" (buf[2]), "=m" (buf[3])
-    : "a" (i)
-    : "ecx", "edx", "esi" );
+    : : "a" (i), "D" (buf) : "ecx", "edx", "esi", "memory" );
 }
 
 

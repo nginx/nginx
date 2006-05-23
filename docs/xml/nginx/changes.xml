@@ -9,6 +9,30 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.47" date="23.05.2006">
+
+<change type="feature">
+<para lang="ru">
+директива upstream.
+</para>
+<para lang="en">
+the "upstream" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+символ "\" в парах "\"" и "\'" в SSI командах теперь всегда убирается.
+</para>
+<para lang="en">
+now the "\" escape symbol in the "\"" and "\'" pairs in the SSI command
+is always removed.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.46" date="11.05.2006">
 
 <change type="feature">
@@ -24,7 +48,7 @@ and "fastcgi_pass_header" directives.
 
 <change type="change">
 <para lang="ru">
-директивы proxy_x_powered_by, fastcgi_x_powered_by и proxy_pass_server
+директивы proxy_pass_x_powered_by, fastcgi_x_powered_by и proxy_pass_server
 упразднены.
 </para>
 <para lang="en">

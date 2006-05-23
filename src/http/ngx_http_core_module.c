@@ -106,7 +106,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
     { ngx_string("server"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_MULTI|NGX_CONF_NOARGS,
       ngx_http_core_server,
       0,
       0,
@@ -506,7 +506,6 @@ ngx_http_handler(ngx_http_request_t *r)
     r->valid_unparsed_uri = 1;
     r->valid_location = 1;
     r->uri_changed = 1;
-    r->uri_changes = NGX_HTTP_MAX_REWRITE_CYCLES + 1;
 
     r->phase = (r == r->main) ? NGX_HTTP_POST_READ_PHASE:
                                 NGX_HTTP_SERVER_REWRITE_PHASE;
@@ -547,7 +546,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
             if (r->uri_changes == 0) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "rewrite cycle");
+                              "rewrite or internal redirection cycle");
                 ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
             }
@@ -1263,6 +1262,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->discard_body = r->discard_body;
     sr->main_filter_need_in_memory = r->main_filter_need_in_memory;
 
+    sr->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
+
     ngx_http_handler(sr);
 
     if (!c->destroyed) {
@@ -1330,6 +1331,8 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 
     r->internal = 1;
     r->method = NGX_HTTP_GET;
+
+    r->uri_changes--;
 
     ngx_http_handler(r);
 
@@ -1794,7 +1797,7 @@ ngx_http_core_create_main_conf(ngx_conf_t *cf)
 
     if (ngx_array_init(&cmcf->servers, cf->pool, 4,
                        sizeof(ngx_http_core_srv_conf_t *))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }

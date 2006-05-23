@@ -14,41 +14,6 @@
 
 
 typedef struct {
-    struct sockaddr    *sockaddr;
-    socklen_t           socklen;
-
-    ngx_str_t           name;
-    char               *uri_separator;
-
-    ngx_uint_t          weight;
-
-    ngx_uint_t          fails;
-    time_t              accessed;
-
-    ngx_uint_t          max_fails;
-    time_t              fail_timeout;
-
-#if (NGX_SSL)
-    ngx_ssl_session_t  *ssl_session;
-#endif
-} ngx_peer_t;
-
-
-struct ngx_peers_s {
-    ngx_uint_t          current;
-    ngx_uint_t          weight;
-
-    ngx_uint_t          number;
-    ngx_uint_t          last_cached;
-
- /* ngx_mutex_t        *mutex; */
-    ngx_connection_t  **cached;
-
-    ngx_peer_t          peer[1];
-};
-
-
-typedef struct {
     ngx_peers_t        *peers;
     ngx_uint_t          cur_peer;
     ngx_uint_t          tries;

@@ -1224,38 +1224,14 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
         case ssi_quoted_symbol_state:
             state = ctx->saved_state;
 
-            if (ch == '\\') {
-                break;
-            }
-
-            if (ch == '"' && state == ssi_double_quoted_value_state) {
-                ctx->param->value.data[ctx->param->value.len - 1] = ch;
-                break;
-            }
-
-            if (ch == '\'' && state == ssi_quoted_value_state) {
-                ctx->param->value.data[ctx->param->value.len - 1] = ch;
-                break;
-            }
-
-            if (ctx->param->value.len == ctx->value_len) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "too long \"%V%c...\" value of \"%V\" "
-                              "parameter in \"%V\" SSI command",
-                              &ctx->param->value, ch, &ctx->param->key,
-                              &ctx->command);
-                state = ssi_error_state;
-                break;
-            }
-
             ctx->param->value.data[ctx->param->value.len++] = ch;
 
             break;
 
         case ssi_postparam_state:
 
-            if (ctx->param->value.len < ctx->value_len / 2) {
-                value = ngx_palloc(r->pool, ctx->param->value.len);
+            if (ctx->param->value.len + 1 < ctx->value_len / 2) {
+                value = ngx_palloc(r->pool, ctx->param->value.len + 1);
                 if (value == NULL) {
                     return NGX_ERROR;
                 }
@@ -1433,7 +1409,7 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     size_t                     *size, len, prefix, part_len;
     ngx_str_t                   var, *val;
     ngx_int_t                   key;
-    ngx_uint_t                  i, j, n, bracket;
+    ngx_uint_t                  i, j, n, bracket, quoted;
     ngx_array_t                 lengths, values;
     ngx_http_variable_value_t  *vv;
 
@@ -1567,18 +1543,28 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
         } else {
             part_data = &text->data[i];
+            quoted = 0;
 
             for (p = part_data; i < text->len; i++) {
                 ch = text->data[i];
 
-                if (ch == '$') {
-                    if (text->data[i - 1] != '\\') {
+                if (!quoted) {
+
+                    if (ch == '\\') {
+                        quoted = 1;
+                        continue;
+                    }
+
+                    if (ch == '$') {
                         break;
                     }
 
-                    *(p - 1) = ch;
+                } else {
+                    quoted = 0;
 
-                    continue;
+                    if (ch != '\\' && ch != '\'' && ch != '"' && ch != '$') {
+                        *p++ = '\\';
+                    }
                 }
 
                 *p++ = ch;
@@ -2016,7 +2002,7 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         flags = 0;
 
         if (p < last - 1 && p[0] == '\\' && p[1] == '/') {
-	    p++;
+            p++;
         }
     }
 

@@ -666,6 +666,8 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 c->write->handler = ngx_http_request_handler;
                 r->read_event_handler = ngx_http_block_read;
 
+                r->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
+
                 ngx_http_handler(r);
 
                 return;

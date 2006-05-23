@@ -85,8 +85,12 @@ static ngx_int_t ngx_http_upstream_status_variable(ngx_http_request_t *r,
 static ngx_int_t ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
+static char *ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
+static char *ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+
 static void *ngx_http_upstream_create_main_conf(ngx_conf_t *cf);
-static char *ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf);
+static char *ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf);
 
 #if (NGX_HTTP_SSL)
 static void ngx_http_upstream_ssl_init_connection(ngx_http_request_t *,
@@ -206,12 +210,32 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 };
 
 
-ngx_http_module_t  ngx_http_upstream_module_ctx = {
+static ngx_command_t  ngx_http_upstream_commands[] = {
+
+    { ngx_string("upstream"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE1,
+      ngx_http_upstream,
+      0,
+      0,
+      NULL },
+
+    { ngx_string("server"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+      ngx_http_upstream_server,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      0,
+      NULL },
+
+      ngx_null_command
+};
+
+
+static ngx_http_module_t  ngx_http_upstream_module_ctx = {
     ngx_http_upstream_add_variables,       /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     ngx_http_upstream_create_main_conf,    /* create main configuration */
-    ngx_http_core_init_main_conf,          /* init main configuration */
+    ngx_http_upstream_init_main_conf,      /* init main configuration */
 
     NULL,                                  /* create server configuration */
     NULL,                                  /* merge server configuration */
@@ -224,7 +248,7 @@ ngx_http_module_t  ngx_http_upstream_module_ctx = {
 ngx_module_t  ngx_http_upstream_module = {
     NGX_MODULE_V1,
     &ngx_http_upstream_module_ctx,         /* module context */
-    NULL,                                  /* module directives */
+    ngx_http_upstream_commands,            /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
@@ -867,6 +891,14 @@ ngx_http_upstream_send_request_handler(ngx_event_t *wev)
     }
 
 #endif
+
+    if (u->header_sent) {
+        wev->handler = ngx_http_upstream_dummy_handler;
+
+        (void) ngx_handle_write_event(wev, 0);
+
+        return;
+    }
 
     ngx_http_upstream_send_request(r, u);
 }
@@ -2547,6 +2579,232 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
 }
 
 
+static char *
+ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
+{
+    char                           *rv;
+    void                           *mconf;
+    ngx_str_t                      *value;
+    ngx_url_t                       u;
+    ngx_uint_t                      i, j, m, n;
+    ngx_conf_t                      pcf;
+    ngx_peers_t                   **peers;
+    ngx_http_module_t              *module;
+    ngx_http_conf_ctx_t            *ctx;
+    ngx_http_upstream_srv_conf_t   *uscf;
+
+    ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));
+    if (ctx == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(&u, sizeof(ngx_url_t));
+
+    value = cf->args->elts;
+    u.host = value[1];
+
+    uscf = ngx_http_upstream_add(cf, &u);
+    if (uscf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    /* the upstream{}'s srv_conf */
+
+    ctx->srv_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
+    if (ctx->srv_conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ctx->srv_conf[ngx_http_upstream_module.ctx_index] = uscf;
+
+
+    /* the upstream{}'s loc_conf */
+
+    ctx->loc_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
+    if (ctx->loc_conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    for (m = 0; ngx_modules[m]; m++) {
+        if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
+            continue;
+        }
+
+        module = ngx_modules[m]->ctx;
+
+        if (module->create_loc_conf) {
+            mconf = module->create_loc_conf(cf);
+            if (mconf == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            ctx->loc_conf[ngx_modules[m]->ctx_index] = mconf;
+        }
+    }
+
+
+    /* parse inside upstream{} */
+
+    pcf = *cf;
+    cf->ctx = ctx;
+    cf->cmd_type = NGX_HTTP_UPS_CONF;
+
+    rv = ngx_conf_parse(cf, NULL);
+
+    *cf = pcf;
+
+    if (rv != NGX_CONF_OK) {
+        return rv;
+    }
+
+    if (uscf->servers == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "no servers are inside upstream");
+        return NGX_CONF_ERROR;
+    }
+
+    peers = uscf->servers->elts;
+
+    if (uscf->servers->nelts == 1) {
+        uscf->peers = peers[0];
+    }
+
+    n = 0;
+
+    for (i = 0; i < uscf->servers->nelts; i++) {
+        n += peers[i]->number;
+    }
+
+    uscf->peers = ngx_pcalloc(cf->pool,
+                           sizeof(ngx_peers_t) + sizeof(ngx_peer_t) * (n - 1));
+    if (uscf->peers == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    uscf->peers->number = n;
+    uscf->peers->weight = 1;
+
+    n = 0;
+
+    for (i = 0; i < uscf->servers->nelts; i++) {
+        for (j = 0; j < peers[i]->number; j++) {
+            uscf->peers->peer[n++] = peers[i]->peer[j];
+        }
+    }
+
+    return rv;
+}
+
+
+static char *
+ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_upstream_srv_conf_t  *uscf = conf;
+
+    ngx_str_t                    *value;
+    ngx_url_t                     u;
+    ngx_peers_t                 **peers;
+
+    if (uscf->servers == NULL) {
+        uscf->servers = ngx_array_create(cf->pool, 4, sizeof(ngx_peers_t *));
+        if (uscf->servers == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    peers = ngx_array_push(uscf->servers);
+    if (peers == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    ngx_memzero(&u, sizeof(ngx_url_t));
+
+    u.url = value[1];
+    u.default_portn = 80;
+
+    if (ngx_parse_url(cf, &u) != NGX_OK) {
+        if (u.err) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "%s in upstream \"%V\"", u.err, &u.url);
+        }
+
+        return NGX_CONF_ERROR;
+    }
+
+    *peers = u.peers;
+
+    return NGX_CONF_OK;
+}
+
+
+ngx_http_upstream_srv_conf_t *
+ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u)
+{
+    ngx_uint_t                      i;
+    ngx_http_upstream_srv_conf_t   *uscf, **uscfp;
+    ngx_http_upstream_main_conf_t  *umcf;
+
+    if (u->upstream) {
+        if (ngx_parse_url(cf, u) != NGX_OK) {
+            if (u->err) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "%s in upstream \"%V\"", u->err, &u->url);
+            }
+
+            return NULL;
+        }
+
+        if (u->peers) {
+            uscf = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_srv_conf_t));
+            if (uscf == NULL) {
+                return NULL;
+            }
+
+            uscf->peers = u->peers;
+
+            return uscf;
+        }
+    }
+
+    umcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_upstream_module);
+
+    uscfp = umcf->upstreams.elts;
+
+    for (i = 0; i < umcf->upstreams.nelts; i++) {
+        if (uscfp[i]->host.len != u->host.len) {
+            continue;
+        }
+
+        if (ngx_strncasecmp(uscfp[i]->host.data, u->host.data, u->host.len)
+            == 0)
+        {
+            return uscfp[i];
+        }
+    }
+
+    uscf = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_srv_conf_t));
+    if (uscf == NULL) {
+        return NULL;
+    }
+
+    uscf->host = u->host;
+    uscf->file_name = cf->conf_file->file.name;
+    uscf->line = cf->conf_file->line;
+    uscf->port = u->default_portn;
+
+    uscfp = ngx_array_push(&umcf->upstreams);
+    if (uscfp == NULL) {
+        return NULL;
+    }
+
+    *uscfp = uscf;
+
+    return uscf;
+}
+
+
 static void *
 ngx_http_upstream_create_main_conf(ngx_conf_t *cf)
 {
@@ -2557,19 +2815,51 @@ ngx_http_upstream_create_main_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    if (ngx_array_init(&umcf->upstreams, cf->pool, 4,
+                       sizeof(ngx_http_upstream_srv_conf_t *))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     return umcf;
 }
 
 
 static char *
-ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf)
+ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf)
 {
     ngx_http_upstream_main_conf_t  *umcf = conf;
 
-    ngx_array_t                  headers_in;
-    ngx_hash_key_t              *hk;
-    ngx_hash_init_t              hash;
-    ngx_http_upstream_header_t  *header;
+    ngx_uint_t                      i;
+    ngx_array_t                     headers_in;
+    ngx_hash_key_t                 *hk;
+    ngx_hash_init_t                 hash;
+    ngx_http_upstream_header_t     *header;
+    ngx_http_upstream_srv_conf_t  **uscfp;
+
+    uscfp = umcf->upstreams.elts;
+
+    for (i = 0; i < umcf->upstreams.nelts; i++) {
+        if (uscfp[i]->peers) {
+            continue;
+        }
+
+        uscfp[i]->peers = ngx_inet_resolve_peer(cf, &uscfp[i]->host,
+                          uscfp[i]->port);
+
+        if (uscfp[i]->peers == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (uscfp[i]->peers == NGX_CONF_ERROR) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "upstream host \"%V\" is not found in %s:%ui",
+                          &uscfp[i]->host, uscfp[i]->file_name.data,
+                          uscfp[i]->line);
+            return NGX_CONF_ERROR;
+        }
+    }
 
     if (ngx_array_init(&headers_in, cf->temp_pool, 32, sizeof(ngx_hash_key_t))
         != NGX_OK)

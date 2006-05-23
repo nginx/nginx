@@ -42,7 +42,23 @@ typedef struct {
 
 typedef struct {
     ngx_hash_t                      headers_in_hash;
+    ngx_array_t                     upstreams;
+                                           /* ngx_http_upstream_srv_conf_t */
 } ngx_http_upstream_main_conf_t;
+
+
+typedef struct {
+    ngx_peers_t                    *peers;
+
+    ngx_array_t                    *servers;
+
+    ngx_str_t                       host;
+    ngx_str_t                       file_name;
+    ngx_uint_t                      line;
+    in_port_t                       port;
+
+    ngx_uint_t                      balanced;    /* unsigned  balanced:1; */
+} ngx_http_upstream_srv_conf_t;
 
 
 typedef struct {
@@ -199,6 +215,8 @@ struct ngx_http_upstream_s {
 
 
 void ngx_http_upstream_init(ngx_http_request_t *r);
+ngx_http_upstream_srv_conf_t *ngx_http_upstream_add(ngx_conf_t *cf,
+    ngx_url_t *u);
 
 
 extern ngx_module_t  ngx_http_upstream_module;

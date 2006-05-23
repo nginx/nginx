@@ -16,56 +16,56 @@ typedef ngx_int_t (*ngx_http_proxy_redirect_pt)(ngx_http_request_t *r,
     ngx_table_elt_t *h, size_t prefix, ngx_http_proxy_redirect_t *pr);
 
 struct ngx_http_proxy_redirect_s {
-    ngx_http_proxy_redirect_pt   handler;
-    ngx_str_t                    redirect;
+    ngx_http_proxy_redirect_pt     handler;
+    ngx_str_t                      redirect;
 
     union {
-        ngx_str_t                text;
+        ngx_str_t                  text;
 
         struct {
-            void                *lengths;
-            void                *values;
+            void                  *lengths;
+            void                  *values;
         } vars;
 
-        void                    *regex;
+        void                      *regex;
     } replacement;
 };
 
 
 typedef struct {
-    ngx_http_upstream_conf_t     upstream;
+    ngx_http_upstream_conf_t       upstream;
 
-    ngx_peers_t                 *peers;
+    ngx_http_upstream_srv_conf_t  *upstream_peers;
 
-    ngx_array_t                 *flushes;
-    ngx_array_t                 *body_set_len;
-    ngx_array_t                 *body_set;
-    ngx_array_t                 *headers_set_len;
-    ngx_array_t                 *headers_set;
-    ngx_hash_t                   headers_set_hash;
+    ngx_array_t                   *flushes;
+    ngx_array_t                   *body_set_len;
+    ngx_array_t                   *body_set;
+    ngx_array_t                   *headers_set_len;
+    ngx_array_t                   *headers_set;
+    ngx_hash_t                     headers_set_hash;
 
-    ngx_array_t                 *headers_source;
-    ngx_array_t                 *headers_names;
+    ngx_array_t                   *headers_source;
+    ngx_array_t                   *headers_names;
 
-    ngx_array_t                 *redirects;
+    ngx_array_t                   *redirects;
 
-    ngx_str_t                    body_source;
+    ngx_str_t                      body_source;
 
-    ngx_str_t                    method;
-    ngx_str_t                    host_header;
-    ngx_str_t                    port_text;
+    ngx_str_t                      method;
+    ngx_str_t                      host_header;
+    ngx_str_t                      port_text;
 
-    ngx_flag_t                   redirect;
+    ngx_flag_t                     redirect;
 } ngx_http_proxy_loc_conf_t;
 
 
 typedef struct {
-    ngx_uint_t                   status;
-    ngx_uint_t                   status_count;
-    u_char                      *status_start;
-    u_char                      *status_end;
+    ngx_uint_t                     status;
+    ngx_uint_t                     status_count;
+    u_char                        *status_start;
+    u_char                        *status_end;
 
-    size_t                       internal_body_length;
+    size_t                         internal_body_length;
 } ngx_http_proxy_ctx_t;
 
 
@@ -407,8 +407,8 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 
     u->peer.log = r->connection->log;
     u->peer.log_error = NGX_ERROR_ERR;
-    u->peer.peers = plcf->peers;
-    u->peer.tries = plcf->peers->number;
+    u->peer.peers = plcf->upstream_peers->peers;
+    u->peer.tries = plcf->upstream_peers->peers->number;
 #if (NGX_THREADS)
     u->peer.lock = &r->connection->lock;
 #endif
@@ -1640,11 +1640,13 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_sec_value(conf->upstream.fail_timeout,
                               prev->upstream.fail_timeout, 10);
 
-    if (conf->peers && conf->peers->number > 1) {
-        for (i = 0; i < conf->peers->number; i++) {
-            conf->peers->peer[i].weight = 1;
-            conf->peers->peer[i].max_fails = conf->upstream.max_fails;
-            conf->peers->peer[i].fail_timeout = conf->upstream.fail_timeout;
+    if (conf->upstream_peers && !conf->upstream_peers->balanced) {
+        for (i = 0; i < conf->upstream_peers->peers->number; i++) {
+            conf->upstream_peers->peers->peer[i].weight = 1;
+            conf->upstream_peers->peers->peer[i].max_fails =
+                                                   conf->upstream.max_fails;
+            conf->upstream_peers->peers->peer[i].fail_timeout =
+                                                   conf->upstream.fail_timeout;
         }
     }
 
@@ -1797,8 +1799,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 peers:
 
-    if (conf->peers == NULL) {
-        conf->peers = prev->peers;
+    if (conf->upstream_peers == NULL) {
+        conf->upstream_peers = prev->upstream_peers;
 
         conf->host_header = prev->host_header;
         conf->port_text = prev->port_text;
@@ -2106,13 +2108,10 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     size_t                       add;
     u_short                      port;
     ngx_str_t                   *value, *url;
-    ngx_inet_upstream_t          inet_upstream;
+    ngx_url_t                    u;
     ngx_http_core_loc_conf_t    *clcf;
 #if (NGX_HTTP_SSL)
     ngx_pool_cleanup_t          *cln;
-#endif
-#if (NGX_HAVE_UNIX_DOMAIN)
-    ngx_unix_domain_upstream_t   unix_upstream;
 #endif
 
     if (plcf->upstream.schema.len) {
@@ -2167,52 +2166,22 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_strncasecmp(url->data + add, "unix:", 5) == 0) {
+    ngx_memzero(&u, sizeof(ngx_url_t));
 
-#if (NGX_HAVE_UNIX_DOMAIN)
+    u.url.len = url->len - add;
+    u.url.data = url->data + add;
+    u.default_portn = port;
+    u.uri_part = 1;
+    u.upstream = 1;
 
-        ngx_memzero(&unix_upstream, sizeof(ngx_unix_domain_upstream_t));
-
-        unix_upstream.name = *url;
-        unix_upstream.url.len = url->len - add;
-        unix_upstream.url.data = url->data + add;
-        unix_upstream.uri_part = 1;
-
-        plcf->peers = ngx_unix_upstream_parse(cf, &unix_upstream);
-        if (plcf->peers == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        plcf->host_header.len = sizeof("localhost") - 1;
-        plcf->host_header.data = (u_char *) "localhost";
-        plcf->upstream.uri = unix_upstream.uri;
-
-#else
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the unix domain sockets are not supported "
-                           "on this platform");
+    plcf->upstream_peers = ngx_http_upstream_add(cf, &u);
+    if (plcf->upstream_peers == NULL) {
         return NGX_CONF_ERROR;
-
-#endif
-
-    } else {
-        ngx_memzero(&inet_upstream, sizeof(ngx_inet_upstream_t));
-
-        inet_upstream.name = *url;
-        inet_upstream.url.len = url->len - add;
-        inet_upstream.url.data = url->data + add;
-        inet_upstream.default_port_value = port;
-        inet_upstream.uri_part = 1;
-
-        plcf->peers = ngx_inet_upstream_parse(cf, &inet_upstream);
-        if (plcf->peers == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        plcf->host_header = inet_upstream.host_header;
-        plcf->port_text = inet_upstream.port_text;
-        plcf->upstream.uri = inet_upstream.uri;
     }
+
+    plcf->host_header = u.host_header;
+    plcf->port_text = u.port;
+    plcf->upstream.uri = u.uri;
 
     plcf->upstream.schema.len = add;
     plcf->upstream.schema.data = url->data;

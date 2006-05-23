@@ -8,7 +8,7 @@
 #define _NGX_HTTP_REQUEST_H_INCLUDED_
 
 
-#define NGX_HTTP_MAX_REWRITE_CYCLES        10
+#define NGX_HTTP_MAX_URI_CHANGES           10
 
 /* must be 2^n */
 #define NGX_HTTP_LC_HEADER_LEN             32

@@ -399,6 +399,24 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     dTHXa(ctx->perl);
 
+#if 0
+
+    /* the code is disabled to force the precompiled perl code using only */
+
+    ngx_http_perl_eval_anon_sub(aTHX_ handler, &sv);
+
+    if (sv == &PL_sv_undef) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "eval_pv(\"%V\") failed", handler);
+        return NGX_ERROR;
+    }
+
+    if (sv == NULL) {
+        sv = newSVpvn((char *) handler->data, handler->len);
+    }
+
+#endif
+
     sv = newSVpvn((char *) handler->data, handler->len);
 
     rc = ngx_http_perl_call_handler(aTHX_ r, sv, &params[NGX_HTTP_PERL_SSI_ARG],

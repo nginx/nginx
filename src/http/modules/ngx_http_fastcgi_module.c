@@ -11,16 +11,17 @@
 
 
 typedef struct {
-    ngx_http_upstream_conf_t   upstream;
+    ngx_http_upstream_conf_t       upstream;
 
-    ngx_peers_t               *peers;
+    ngx_http_upstream_srv_conf_t  *upstream_peers;
+    ngx_peers_t                   *peers0;
 
-    ngx_str_t                  index;
+    ngx_str_t                      index;
 
-    ngx_array_t               *flushes;
-    ngx_array_t               *params_len;
-    ngx_array_t               *params;
-    ngx_array_t               *params_source;
+    ngx_array_t                   *flushes;
+    ngx_array_t                   *params_len;
+    ngx_array_t                   *params;
+    ngx_array_t                   *params_source;
 } ngx_http_fastcgi_loc_conf_t;
 
 
@@ -39,14 +40,14 @@ typedef enum {
 
 
 typedef struct {
-    ngx_http_fastcgi_state_e   state;
-    u_char                    *pos;
-    u_char                    *last;
-    ngx_uint_t                 type;
-    size_t                     length;
-    size_t                     padding;
+    ngx_http_fastcgi_state_e       state;
+    u_char                        *pos;
+    u_char                        *last;
+    ngx_uint_t                     type;
+    size_t                         length;
+    size_t                         padding;
 
-    ngx_uint_t                 fastcgi_stdout;
+    ngx_uint_t                     fastcgi_stdout;
 } ngx_http_fastcgi_ctx_t;
 
 
@@ -391,8 +392,8 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
 
     u->peer.log = r->connection->log;
     u->peer.log_error = NGX_ERROR_ERR;
-    u->peer.peers = flcf->peers;
-    u->peer.tries = flcf->peers->number;
+    u->peer.peers = flcf->upstream_peers->peers;
+    u->peer.tries = flcf->upstream_peers->peers->number;
 #if (NGX_THREADS)
     u->peer.lock = &r->connection->lock;
 #endif
@@ -1687,11 +1688,13 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_sec_value(conf->upstream.fail_timeout,
                               prev->upstream.fail_timeout, 10);
 
-    if (conf->peers && conf->peers->number > 1) {
-        for (i = 0; i < conf->peers->number; i++) {
-            conf->peers->peer[i].weight = 1;
-            conf->peers->peer[i].max_fails = conf->upstream.max_fails;
-            conf->peers->peer[i].fail_timeout = conf->upstream.fail_timeout;
+    if (conf->upstream_peers && !conf->upstream_peers->balanced) {
+        for (i = 0; i < conf->upstream_peers->peers->number; i++) {
+            conf->upstream_peers->peers->peer[i].weight = 1;
+            conf->upstream_peers->peers->peer[i].max_fails =
+                                                   conf->upstream.max_fails;
+            conf->upstream_peers->peers->peer[i].fail_timeout =
+                                                   conf->upstream.fail_timeout;
         }
     }
 
@@ -1813,8 +1816,8 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 peers:
 
-    if (conf->peers == NULL) {
-        conf->peers = prev->peers;
+    if (conf->upstream_peers == NULL) {
+        conf->upstream_peers = prev->upstream_peers;
         conf->upstream.schema = prev->upstream.schema;
     }
 
@@ -1989,12 +1992,9 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_fastcgi_loc_conf_t *lcf = conf;
 
+    ngx_url_t                    u;
     ngx_str_t                   *value;
-    ngx_inet_upstream_t          inet_upstream;
     ngx_http_core_loc_conf_t    *clcf;
-#if (NGX_HAVE_UNIX_DOMAIN)
-    ngx_unix_domain_upstream_t   unix_upstream;
-#endif
 
     if (lcf->upstream.schema.len) {
         return "is duplicate";
@@ -2002,40 +2002,14 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (ngx_strncasecmp(value[1].data, "unix:", 5) == 0) {
+    ngx_memzero(&u, sizeof(ngx_url_t));
 
-#if (NGX_HAVE_UNIX_DOMAIN)
+    u.url = value[1];
+    u.upstream = 1;
 
-        ngx_memzero(&unix_upstream, sizeof(ngx_unix_domain_upstream_t));
-
-        unix_upstream.name = value[1];
-        unix_upstream.url = value[1];
-
-        lcf->peers = ngx_unix_upstream_parse(cf, &unix_upstream);
-        if (lcf->peers == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        lcf->peers->peer[0].uri_separator = "";
-
-#else
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the unix domain sockets are not supported "
-                           "on this platform");
+    lcf->upstream_peers = ngx_http_upstream_add(cf, &u);
+    if (lcf->upstream_peers == NULL) {
         return NGX_CONF_ERROR;
-
-#endif
-
-    } else {
-        ngx_memzero(&inet_upstream, sizeof(ngx_inet_upstream_t));
-
-        inet_upstream.name = value[1];
-        inet_upstream.url = value[1];
-
-        lcf->peers = ngx_inet_upstream_parse(cf, &inet_upstream);
-        if (lcf->peers == NULL) {
-            return NGX_CONF_ERROR;
-        }
     }
 
     lcf->upstream.schema.len = sizeof("fastcgi://") - 1;
