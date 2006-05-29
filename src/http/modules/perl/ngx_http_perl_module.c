@@ -34,6 +34,12 @@ typedef struct {
 } ngx_http_perl_variable_t;
 
 
+typedef struct {
+    SV                *sv;
+    PerlInterpreter   *perl;
+} ngx_http_perl_cleanup_t;
+
+
 #if (NGX_HTTP_SSI)
 static ngx_int_t ngx_http_perl_ssi(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ssi_ctx, ngx_str_t **params);
@@ -51,7 +57,7 @@ static char *ngx_http_perl_init_interpreter(ngx_conf_t *cf,
 static PerlInterpreter *
     ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
     ngx_log_t *log);
-static ngx_int_t ngx_http_perl_run_requires(ngx_array_t *requires,
+static ngx_int_t ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires,
     ngx_log_t *log);
 static ngx_int_t ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
     SV *sub, ngx_str_t **args, ngx_str_t *handler, ngx_str_t *rv);
@@ -478,7 +484,7 @@ static char *
 ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 {
 #if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
-    ngx_pool_cleanup_t  *cln;
+    ngx_pool_cleanup_t       *cln;
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
@@ -504,7 +510,9 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 #if !(NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
 
     if (perl) {
-        if (ngx_http_perl_run_requires(&pmcf->requires, cf->log) != NGX_OK) {
+        if (ngx_http_perl_run_requires(aTHX_ &pmcf->requires, cf->log)
+            != NGX_OK)
+        {
             return NGX_CONF_ERROR;
         }
 
@@ -613,7 +621,7 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
         goto fail;
     }
 
-    if (ngx_http_perl_run_requires(&pmcf->requires, log) != NGX_OK) {
+    if (ngx_http_perl_run_requires(aTHX_ &pmcf->requires, log) != NGX_OK) {
         goto fail;
     }
 
@@ -634,7 +642,7 @@ fail:
 
 
 static ngx_int_t
-ngx_http_perl_run_requires(ngx_array_t *requires, ngx_log_t *log)
+ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 {
     char       **script;
     STRLEN       len;
@@ -870,9 +878,11 @@ ngx_http_perl_cleanup_perl(void *data)
 static void
 ngx_http_perl_cleanup_sv(void *data)
 {
-    SV  *sv = data;
+    ngx_http_perl_cleanup_t  *cln = data;
 
-    SvREFCNT_dec(sv);
+    dTHXa(cln->perl);
+
+    SvREFCNT_dec(cln->sv);
 }
 
 
@@ -967,6 +977,7 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_str_t                  *value;
     ngx_pool_cleanup_t         *cln;
+    ngx_http_perl_cleanup_t    *pcln;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_perl_main_conf_t  *pmcf;
 
@@ -986,7 +997,7 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    cln = ngx_pool_cleanup_add(cf->pool, sizeof(ngx_http_perl_cleanup_t));
     if (cln == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -1012,7 +1023,9 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     cln->handler = ngx_http_perl_cleanup_sv;
-    cln->data = plcf->sub;
+    pcln = cln->data;
+    pcln->sv = plcf->sub;
+    pcln->perl = pmcf->perl;
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_perl_handler;
@@ -1028,6 +1041,7 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                  *value;
     ngx_pool_cleanup_t         *cln;
     ngx_http_variable_t        *v;
+    ngx_http_perl_cleanup_t    *pcln;
     ngx_http_perl_variable_t   *pv;
     ngx_http_perl_main_conf_t  *pmcf;
 
@@ -1065,7 +1079,7 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    cln = ngx_pool_cleanup_add(cf->pool, sizeof(ngx_http_perl_cleanup_t));
     if (cln == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -1091,7 +1105,9 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     cln->handler = ngx_http_perl_cleanup_sv;
-    cln->data = pv->sub;
+    pcln = cln->data;
+    pcln->sv = pv->sub;
+    pcln->perl = pmcf->perl;
 
     v->get_handler = ngx_http_perl_variable;
     v->data = (uintptr_t) pv;

@@ -9,6 +9,62 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.48" date="29.05.2006">
+
+<change type="change">
+<para lang="ru">
+теперь модуль ngx_http_charset_module работает для подзапросов,
+в ответах которых нет строки заголовка "Content-Type".
+</para>
+<para lang="en">
+now the ngx_http_charset_module works for subrequests,
+if the response has no "Content-Type" header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве proxy_pass не было URI,
+то директива "proxy_redirect  default" добавляла в переписанный
+редирект в начало лишний слэш.
+</para>
+<para lang="en">
+if the "proxy_pass" directive has no URI part,
+then the "proxy_redirect  default" directive add the unnecessary slash
+in start of the rewritten redirect.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+внутренний редирект всегда превращал любой HTTP-метод в GET,
+теперь это делается только для редиректов, выполняемых с помощью
+X-Accel-Redirect, и у которых метод не равен HEAD;
+ошибка появилась в 0.3.42.
+</para>
+<para lang="en">
+the internal redirect always transform client's HTTP method to GET,
+now the transformation is made for the "X-Accel-Redirect" redirects only
+and if the method is not HEAD;
+bug appeared in 0.3.42.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_perl_module не собирался, если перл был с поддержкой потоков;
+ошибка появилась в 0.3.46.
+</para>
+<para lang="en">
+the ngx_http_perl_module could not be built, if the perl was built
+with the threads support;
+bug appeared in 0.3.46.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.47" date="23.05.2006">
 
 <change type="feature">

@@ -49,7 +49,7 @@ case $CPU in
     ;;
 esac
 
-# __cdecl, use with OpenSSL
+# __cdecl, use with OpenSSL, md5 asm, and sha1 asm
 #CPU_OPT="$CPU_OPT -Gd"
 # __stdcall
 #CPU_OPT="$CPU_OPT -Gz"
@@ -62,7 +62,6 @@ CFLAGS="$CFLAGS $CPU_OPT"
 
 # warnings
 
-#CFLAGS="$CFLAGS -W3"
 CFLAGS="$CFLAGS -W4"
 
 # stop on warning

@@ -1470,7 +1470,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         || rc == NGX_HTTP_CREATED
         || rc == NGX_HTTP_NO_CONTENT)
     {
-
         if (rc == NGX_HTTP_CLOSE) {
             ngx_http_close_request(r, rc);
             return;

@@ -1160,6 +1160,10 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
             r->zero_in_uri = 1;
         }
 
+        if (r->method != NGX_HTTP_HEAD) {
+            r->method = NGX_HTTP_GET;
+        }
+
         ngx_http_internal_redirect(r, uri, &args);
         return;
     }

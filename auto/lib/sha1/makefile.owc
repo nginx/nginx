@@ -1,0 +1,9 @@
+
+# Copyright (C) Igor Sysoev
+
+
+CFLAGS = -zq -bt=nt -bm -ot -op -oi -oe -s $(CPU_OPT)
+
+sha1.lib:
+	wcl386 -c $(CFLAGS) -dL_ENDIAN sha1dgst.c
+	wlib -n sha1.lib sha1dgst.obj

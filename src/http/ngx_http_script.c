@@ -833,6 +833,10 @@ ngx_http_script_return_code(ngx_http_script_engine_t *e)
 
     e->status = code->status;
 
+    if (code->status == NGX_HTTP_NO_CONTENT) {
+        e->request->header_only = 1;
+    }
+
     e->ip += sizeof(ngx_http_script_return_code_t) - sizeof(uintptr_t);
 }
 

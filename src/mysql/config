@@ -1,0 +1,13 @@
+
+ngx_addon_name=ngx_mysql
+
+HTTP_MODULES="$HTTP_MODULES ngx_http_mysql_test_module"
+
+HTTP_INCS="$HTTP_INCS $ngx_addon_dir"
+HTTP_DEPS="$HTTP_DEPS $ngx_addon_dir/ngx_mysql.h"
+#CORE_LIBS="$CORE_LIBS -lmd"
+
+USE_SHA1=YES
+
+NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_mysql.c"
+NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_http_mysql_test.c"

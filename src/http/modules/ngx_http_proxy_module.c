@@ -1349,7 +1349,9 @@ ngx_http_proxy_rewrite_redirect_text(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     p = ngx_copy(p, h->value.data, prefix);
 
-    p = ngx_copy(p, pr->replacement.text.data, pr->replacement.text.len);
+    if (pr->replacement.text.len) {
+        p = ngx_copy(p, pr->replacement.text.data, pr->replacement.text.len);
+    }
 
     ngx_memcpy(p, h->value.data + prefix + pr->redirect.len,
                h->value.len - pr->redirect.len - prefix);
@@ -1694,7 +1696,14 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
             pr->handler = ngx_http_proxy_rewrite_redirect_text;
             pr->redirect = conf->upstream.url;
-            pr->replacement.text = conf->upstream.location;
+
+            if (conf->upstream.uri.len) {
+                pr->replacement.text = conf->upstream.location;
+
+            } else {
+                pr->replacement.text.len = 0;
+                pr->replacement.text.data = NULL;
+            }
         }
     }
 
@@ -2263,7 +2272,14 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         pr->handler = ngx_http_proxy_rewrite_redirect_text;
         pr->redirect = plcf->upstream.url;
-        pr->replacement.text = plcf->upstream.location;
+
+        if (plcf->upstream.uri.len) {
+            pr->replacement.text = plcf->upstream.location;
+
+        } else {
+            pr->replacement.text.len = 0;
+            pr->replacement.text.data = NULL;
+        }
 
         return NGX_CONF_OK;
     }

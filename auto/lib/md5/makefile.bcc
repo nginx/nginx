@@ -8,7 +8,7 @@ CFLAGS = -q -O2 -tWM $(CPU_OPT) -DL_ENDIAN
 
 md5.lib:
 	bcc32 -c $(CFLAGS) -DMD5_ASM md5_dgst.c
-	tlib md5.lib +md5_dgst.obj +asm/m-win32.obj
+	tlib md5.lib +md5_dgst.obj +"asm\m-win32.obj"
 
 !else
 

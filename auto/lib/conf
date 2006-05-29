@@ -23,6 +23,18 @@ if [ $USE_MD5 = YES ]; then
 
 fi
 
+if [ $USE_SHA1 = YES ]; then
+
+    if [ $OPENSSL != NONE -a $OPENSSL != NO ]; then
+        have=NGX_HAVE_OPENSSL_SHA1_H . auto/have
+        SHA1=YES
+
+    else
+        . auto/lib/sha1/conf
+    fi
+
+fi
+
 if [ $USE_ZLIB = YES ]; then
     . auto/lib/zlib/conf
 fi

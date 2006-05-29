@@ -1330,7 +1330,6 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_http_update_location_config(r);
 
     r->internal = 1;
-    r->method = NGX_HTTP_GET;
 
     r->uri_changes--;
 

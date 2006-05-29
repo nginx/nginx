@@ -1,0 +1,19 @@
+
+# Copyright (C) Igor Sysoev
+
+
+CFLAGS = -q -O2 -tWM $(CPU_OPT) -DL_ENDIAN
+
+!if "$(SHA1_ASM)" == "YES"
+
+sha1.lib:
+	bcc32 -c $(CFLAGS) -DSHA1_ASM sha1dgst.c
+	tlib sha1.lib +sha1dgst.obj +"asm\s-win32.obj"
+
+!else
+
+sha1.lib:
+	bcc32 -c $(CFLAGS) sha1dgst.c
+	tlib sha1.lib +sha1dgst.obj
+
+!endif

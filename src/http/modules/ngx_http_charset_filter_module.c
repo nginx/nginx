@@ -154,7 +154,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
     ngx_uint_t                     i;
     ngx_http_charset_t            *charsets;
     ngx_http_charset_ctx_t        *ctx;
-    ngx_http_charset_loc_conf_t   *lcf;
+    ngx_http_charset_loc_conf_t   *lcf, *mlcf;
     ngx_http_charset_main_conf_t  *mcf;
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_charset_filter_module);
@@ -162,9 +162,9 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
     ctx = ngx_http_get_module_ctx(r->main, ngx_http_charset_filter_module);
 
     if (ctx == NULL) {
-        lcf = ngx_http_get_module_loc_conf(r->main,
-                                           ngx_http_charset_filter_module);
-        charset = lcf->charset;
+        mlcf = ngx_http_get_module_loc_conf(r->main,
+                                            ngx_http_charset_filter_module);
+        charset = mlcf->charset;
 
         if (charset == NGX_HTTP_NO_CHARSET) {
             return ngx_http_next_header_filter(r);
@@ -174,18 +174,29 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
         charset = ctx->charset;
     }
 
-    if (r->headers_out.content_type.len == 0) {
-        return ngx_http_next_header_filter(r);
-    }
-
-    if (ngx_strncasecmp(r->headers_out.content_type.data, "text/", 5) != 0
-        && ngx_strncasecmp(r->headers_out.content_type.data,
-                           "application/x-javascript", 24) != 0)
-    {
-        return ngx_http_next_header_filter(r);
-    }
-
     charsets = mcf->charsets.elts;
+
+    if (r == r->main) {
+        if (r->headers_out.content_type.len == 0) {
+            return ngx_http_next_header_filter(r);
+        }
+
+        if (ngx_strncasecmp(r->headers_out.content_type.data, "text/", 5) != 0
+            && ngx_strncasecmp(r->headers_out.content_type.data,
+                               "application/x-javascript", 24) != 0)
+        {
+            return ngx_http_next_header_filter(r);
+        }
+
+    } else {
+        if (r->headers_out.content_type.len == 0) {
+            mlcf = ngx_http_get_module_loc_conf(r->main,
+                                                ngx_http_charset_filter_module);
+            source_charset = mlcf->source_charset;
+
+            goto found;
+        }
+    }
 
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
 
