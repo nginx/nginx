@@ -9,6 +9,32 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.49" date="31.05.2006">
+
+<change type="bugfix">
+<para lang="ru">
+в директиве set.
+</para>
+<para lang="en">
+in the "set" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при включении в ssi двух и более подзапросов, обрабатываемых через FastCGI,
+вместо вывода второго и остальных подзапросов в ответ включался вывод
+первого подзапроса.
+</para>
+<para lang="en">
+if two or more FastCGI subrequests was in SSI, then first subrequest output
+was included instead of second and following subrequests.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.48" date="29.05.2006">
 
 <change type="change">

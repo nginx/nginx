@@ -501,7 +501,7 @@ ngx_http_script_copy_capture_len_code(ngx_http_script_engine_t *e)
             && (e->request->quoted_uri || e->request->plus_in_uri))
         {
             return e->captures[code->n + 1] - e->captures[code->n]
-                   + ngx_escape_uri(NULL,
+                   + 2 * ngx_escape_uri(NULL,
                                 &e->line.data[e->captures[code->n]],
                                 e->captures[code->n + 1] - e->captures[code->n],
                                 NGX_ESCAPE_ARGS);
@@ -1016,9 +1016,11 @@ ngx_http_script_complex_value_code(ngx_http_script_engine_t *e)
     ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
 
     le.ip = code->lengths->elts;
+    le.line = e->line;
     le.request = e->request;
     le.captures = e->captures;
     le.ncaptures = e->ncaptures;
+    le.quote = e->quote;
 
     for (len = 0; *(uintptr_t *) le.ip; len += lcode(&le)) {
         lcode = *(ngx_http_script_len_code_pt *) le.ip;

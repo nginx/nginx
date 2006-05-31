@@ -1476,7 +1476,7 @@ ngx_http_fastcgi_add_variables(ngx_conf_t *cf)
     ngx_http_variable_t  *var;
 
     var = ngx_http_add_variable(cf, &ngx_http_fastcgi_script_name,
-                                NGX_HTTP_VAR_NOHASH);
+                                NGX_HTTP_VAR_NOHASH|NGX_HTTP_VAR_NOCACHABLE);
     if (var == NULL) {
         return NGX_ERROR;
     }
