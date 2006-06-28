@@ -16,16 +16,19 @@ typedef struct {
     ngx_array_t                *ops;        /* array of ngx_http_log_op_t */
 } ngx_http_log_fmt_t;
 
+
 typedef struct {
     ngx_array_t                 formats;    /* array of ngx_http_log_fmt_t */
     ngx_uint_t                  combined_used; /* unsigned  combined_used:1 */
 } ngx_http_log_main_conf_t;
+
 
 typedef struct {
     ngx_open_file_t            *file;
     time_t                      disk_full_time;
     ngx_array_t                *ops;        /* array of ngx_http_log_op_t */
 } ngx_http_log_t;
+
 
 typedef struct {
     ngx_array_t                *logs;       /* array of ngx_http_log_t */

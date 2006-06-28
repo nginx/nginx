@@ -9,6 +9,7 @@
 
 
 #define NGX_HTTP_MAX_URI_CHANGES           10
+#define NGX_HTTP_MAX_SUBREQUESTS           50
 
 /* must be 2^n */
 #define NGX_HTTP_LC_HEADER_LEN             32
@@ -228,10 +229,13 @@ typedef struct {
     ngx_table_elt_t                  *expires;
     ngx_table_elt_t                  *etag;
 
+    ngx_str_t                        *override_charset;
+
+    size_t                            content_type_len;
     ngx_str_t                         content_type;
     ngx_str_t                         charset;
-    ngx_array_t                       ranges;
 
+    ngx_array_t                       ranges;
     ngx_array_t                       cache_control;
 
     off_t                             content_length_n;
@@ -445,6 +449,8 @@ struct ngx_http_request_s {
     unsigned                          stat_reading:1;
     unsigned                          stat_writing:1;
 #endif
+
+    unsigned                          subrequests:8;
 
     /* used to parse HTTP headers */
     ngx_uint_t                        state;

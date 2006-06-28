@@ -30,6 +30,8 @@ install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}	\
 		|| mkdir -p '`dirname "$NGX_CONF_PATH"`'
 
 	cp conf/koi-win '`dirname "$NGX_CONF_PATH"`'
+	cp conf/koi-utf '`dirname "$NGX_CONF_PATH"`'
+	cp conf/win-utf '`dirname "$NGX_CONF_PATH"`'
 
 	test -f '`dirname "$NGX_CONF_PATH"`/mime.types' || \
 		cp conf/mime.types '`dirname "$NGX_CONF_PATH"`/mime.types'

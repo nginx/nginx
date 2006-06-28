@@ -788,7 +788,8 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 
     while (ctx->busy) {
 
-        b = ctx->busy->buf;
+        cl = ctx->busy;
+        b = cl->buf;
 
         if (ngx_buf_size(b) != 0) {
             break;
@@ -804,7 +805,6 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
             b->shadow->pos = b->shadow->last;
         }
 
-        cl = ctx->busy;
         ctx->busy = cl->next;
 
         if (ngx_buf_in_memory(b) || b->in_file) {
@@ -942,9 +942,7 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
         case ssi_sharp_state:
             switch (ch) {
             case '#':
-                if (ctx->copy_start) {
-                    ctx->saved = 0;
-                }
+                ctx->saved = 0;
                 looked = 0;
                 state = ssi_precommand_state;
                 break;
@@ -1417,11 +1415,11 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     if (n == 0) {
 
-        if (!(flags & NGX_HTTP_SSI_ADD_PREFIX)) {
-            return NGX_OK;
-        }
+        data = text->data;
+        p = data;
 
-        if (text->data[0] != '/') {
+        if ((flags & NGX_HTTP_SSI_ADD_PREFIX) && text->data[0] != '/') {
+
             for (prefix = r->uri.len; prefix; prefix--) {
                 if (r->uri.data[prefix - 1] == '/') {
                     break;
@@ -1437,12 +1435,34 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
                 }
 
                 p = ngx_copy(data, r->uri.data, prefix);
-                ngx_memcpy(p, text->data, text->len);
-
-                text->len = len;
-                text->data = data;
             }
         }
+
+        quoted = 0;
+
+        for (i = 0 ; i < text->len; i++) {
+            ch = text->data[i];
+
+            if (!quoted) {
+
+                if (ch == '\\') {
+                    quoted = 1;
+                    continue;
+                }
+
+            } else {
+                quoted = 0;
+
+                if (ch != '\\' && ch != '\'' && ch != '"' && ch != '$') {
+                    *p++ = '\\';
+                }
+            }
+
+            *p++ = ch;
+        }
+
+        text->len = p - data;
+        text->data = data;
 
         return NGX_OK;
     }
@@ -2140,6 +2160,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
 
         v->len = ngx_sprintf(v->data, "%T", tp->sec + (gmt ? 0 : tp->gmtoff))
                  - v->data;
+
         return NGX_OK;
     }
 

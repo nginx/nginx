@@ -54,7 +54,7 @@ case $ngx_size in
             ngx_max_value=2147483647
         fi
 
-        ngx_max_len='sizeof("-2147483648") - 1'
+        ngx_max_len='(sizeof("-2147483648") - 1)'
     ;;
 
     8)
@@ -64,7 +64,7 @@ case $ngx_size in
             ngx_max_value=9223372036854775807L
         fi
 
-        ngx_max_len='sizeof("-9223372036854775808") - 1'
+        ngx_max_len='(sizeof("-9223372036854775808") - 1)'
     ;;
 
     *)

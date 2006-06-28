@@ -750,16 +750,82 @@ ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
 }
 
 
+/*
+ * ngx_utf_decode() decodes two and more bytes UTF sequences only
+ * the return values:
+ *    0x80 - 0x10ffff         valid character
+ *    0x10ffff - 0xfffffffd   invalid sequence
+ *    0xfffffffe              incomplete sequence
+ *    0xffffffff              error
+ */
+
+uint32_t
+ngx_utf_decode(u_char **p, size_t n)
+{
+    size_t    len;
+    uint32_t  u, i, valid;
+
+    u = **p;
+
+    if (u > 0xf0) {
+
+        u &= 0x07;
+        valid = 0xffff;
+        len = 3;
+
+    } else if (u > 0xe0) {
+
+        u &= 0x0f;
+        valid = 0x7ff;
+        len = 2;
+
+    } else if (u > 0xc0) {
+
+        u &= 0x1f;
+        valid = 0x7f;
+        len = 1;
+
+    } else {
+        (*p)++;
+        return 0xffffffff;
+    }
+
+    if (n - 1 < len) {
+        return 0xfffffffe;
+    }
+
+    (*p)++;
+
+    while (len) {
+        i = *(*p)++;
+
+        if (i < 0x80) {
+            return 0xffffffff;
+        }
+
+        u = (u << 6) | (i & 0x3f);
+
+        len--;
+    }
+
+    if (u > valid) {
+        return u;
+    }
+
+    return 0xffffffff;
+}
+
+
 size_t
-ngx_utf_length(ngx_str_t *utf)
+ngx_utf_length(u_char *p, size_t n)
 {
     u_char      c;
     size_t      len;
     ngx_uint_t  i;
 
-    for (len = 0, i = 0; i < utf->len; len++, i++) {
+    for (len = 0, i = 0; i < n; len++, i++) {
 
-        c = utf->data[i];
+        c = p[i];
 
         if (c < 0x80) {
             continue;
@@ -775,7 +841,7 @@ ngx_utf_length(ngx_str_t *utf)
 
         /* invalid utf */
 
-        return utf->len;
+        return n;
     }
 
     return len;

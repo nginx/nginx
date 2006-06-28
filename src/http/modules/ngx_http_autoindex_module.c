@@ -319,7 +319,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                                            NGX_ESCAPE_HTML);
 
         if (r->utf8) {
-            entry->utf_len = ngx_utf_length(&entry->name);
+            entry->utf_len = ngx_utf_length(entry->name.data, entry->name.len);
         } else {
             entry->utf_len = len;
         }

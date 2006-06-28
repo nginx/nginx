@@ -9,6 +9,80 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.50" date="28.06.2006">
+
+<change type="change">
+<para lang="ru">
+директивы proxy_redirect_errors и fastcgi_redirect_errors
+переименованы соответственно в proxy_intercept_errors и
+fastcgi_intercept_errors.
+</para>
+<para lang="en">
+the "proxy_redirect_errors" and "fastcgi_redirect_errors" directives
+was renamed to the "proxy_intercept_errors" and
+"fastcgi_intercept_errors" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_charset_module поддерживает перекодирование из
+однобайтных кодировок в UTF-8 и обратно.
+</para>
+<para lang="en">
+the ngx_http_charset_module supports the recoding from the single byte
+encodings to the UTF-8 encoding and back.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в режиме прокси и FastCGI поддерживается строка заголовка "X-Accel-Charset"
+в ответе бэкенда.
+</para>
+<para lang="en">
+the "X-Accel-Charset" response header line is supported in proxy
+and FastCGI mode.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+символ "\" в парах "\"" и "\'" в SSI командах убирался только, если 
+также использовался символ "$".
+</para>
+<para lang="en">
+the "\" escape symbol in the "\"" and "\'" pairs in the SSI command
+was removed only if the command also has the "$" symbol.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при некоторых условиях в SSI после вставки могла быть добавлена
+строка "&lt;!--".
+</para>
+<para lang="en">
+the "&lt;!--" string might be added on some conditions
+in the SSI after inclusion.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в заголовке ответа была строка <nobr>"Content-Length: 0",</nobr>
+при использовании небуферизированного проксировании не закрывалось соединение
+с клиентом.
+</para>
+<para lang="en">
+if the "Content-Length: 0" header line was in response, then
+in nonbuffered proxying mode the client connection was not closed.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.49" date="31.05.2006">
 
 <change type="bugfix">
@@ -3211,8 +3285,8 @@ the "limit_rate" directive is supported in in proxy and FastCGI mode.
 в ответе бэкенда.
 </para>
 <para lang="en">
-the "X-Accel-Limit-Rate" response header line is supported in proxy and FastCGI
-mode.
+the "X-Accel-Limit-Rate" response header line is supported in proxy
+and FastCGI mode.
 </para>
 </change>
 

@@ -354,6 +354,9 @@ ngx_http_get_indexed_variable(ngx_http_request_t *r, ngx_uint_t index)
         return &r->variables[index];
     }
 
+    r->variables[index].valid = 0;
+    r->variables[index].not_found = 1;
+
     return NULL;
 }
 

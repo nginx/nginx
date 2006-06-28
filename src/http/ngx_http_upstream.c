@@ -49,6 +49,8 @@ static ngx_int_t ngx_http_upstream_process_limit_rate(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_buffering(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_process_charset(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_copy_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t
@@ -197,6 +199,10 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
     { ngx_string("X-Accel-Buffering"),
                  ngx_http_upstream_process_buffering, 0,
+                 ngx_http_upstream_ignore_header_line, 0, 0 },
+
+    { ngx_string("X-Accel-Charset"),
+                 ngx_http_upstream_process_charset, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
 
 #if (NGX_HTTP_GZIP)
@@ -1080,7 +1086,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 
 
     if (u->headers_in.status_n >= NGX_HTTP_BAD_REQUEST
-        && u->conf->redirect_errors
+        && u->conf->intercept_errors
         && r->err_ctx == NULL)
     {
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -1515,7 +1521,7 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    do_write = ev->write;
+    do_write = ev->write || u->length == 0;
 
     for ( ;; ) {
 
@@ -1559,6 +1565,7 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
         }
 
         if (size && u->peer.connection->read->ready) {
+
             n = u->peer.connection->recv(u->peer.connection, b->last, size);
 
             if (n == NGX_AGAIN) {
@@ -2126,6 +2133,16 @@ ngx_http_upstream_process_buffering(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
+ngx_http_upstream_process_charset(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    r->headers_out.override_charset = &h->value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_upstream_copy_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
@@ -2184,7 +2201,32 @@ static ngx_int_t
 ngx_http_upstream_copy_content_type(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
+    u_char  *p, *last;
+
+    r->headers_out.content_type_len = h->value.len;
     r->headers_out.content_type = h->value;
+
+    for (p = h->value.data; *p; p++) {
+
+        if (*p != ';') {
+            continue;
+        }
+
+        last = p;
+
+        while (*++p == ' ') { /* void */ }
+
+        if (ngx_strncasecmp(p, "charset=", 8) != 0) {
+            continue;
+        }
+
+        p += 8;
+
+        r->headers_out.content_type_len = last - h->value.data;
+
+        r->headers_out.charset.len = h->value.data + h->value.len - p;
+        r->headers_out.charset.data = p;
+    }
 
     return NGX_OK;
 }

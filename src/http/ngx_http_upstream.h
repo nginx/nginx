@@ -90,7 +90,7 @@ typedef struct {
     ngx_flag_t                      pass_request_body;
 
     ngx_flag_t                      ignore_client_abort;
-    ngx_flag_t                      redirect_errors;
+    ngx_flag_t                      intercept_errors;
     ngx_flag_t                      cyclic_temp_file;
 
     ngx_path_t                     *temp_path;

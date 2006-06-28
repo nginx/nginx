@@ -99,7 +99,6 @@ typedef struct {
 
     unsigned      uri_part:1;
     unsigned      port_only:1;
-    unsigned      virtual:1;
 } ngx_inet_upstream_t;
 
 

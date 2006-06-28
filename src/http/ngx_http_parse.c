@@ -337,12 +337,12 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->quoted_uri = 1;
                 state = sw_uri;
                 break;
-            case '+':
-                r->plus_in_uri = 1;
-                break;
             case '?':
                 r->args_start = p + 1;
                 state = sw_uri;
+                break;
+            case '+':
+                r->plus_in_uri = 1;
                 break;
             case '\0':
                 r->zero_in_uri = 1;
@@ -366,9 +366,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->uri_end = p;
                 r->http_minor = 9;
                 goto done;
-            case '+':
-                r->plus_in_uri = 1;
-                break;
             case '\0':
                 r->zero_in_uri = 1;
                 break;
@@ -828,6 +825,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 r->uri_ext = u + 1;
                 *u++ = ch;
                 break;
+            case '+':
+                r->plus_in_uri = 1;
             default:
                 *u++ = ch;
                 break;
@@ -853,6 +852,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
             case '?':
                 r->args_start = p;
                 goto done;
+            case '+':
+                r->plus_in_uri = 1;
             default:
                 state = sw_usual;
                 *u++ = ch;
@@ -881,6 +882,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
             case '?':
                 r->args_start = p;
                 goto done;
+            case '+':
+                r->plus_in_uri = 1;
             default:
                 state = sw_usual;
                 *u++ = ch;
@@ -917,6 +920,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 *u++ = ch;
                 break;
 #endif
+            case '+':
+                r->plus_in_uri = 1;
             default:
                 state = sw_usual;
                 *u++ = ch;
@@ -952,6 +957,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
             case '?':
                 r->args_start = p;
                 goto done;
+            case '+':
+                r->plus_in_uri = 1;
             default:
                 state = sw_usual;
                 *u++ = ch;
@@ -992,8 +999,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
 
                 if (ch == '\0') {
                     r->zero_in_uri = 1;
-                    *u++ = ch;
-                    ch = *p++;
                 }
 
                 state = quoted_state;
@@ -1003,10 +1008,15 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
             c = (u_char) (ch | 0x20);
             if (c >= 'a' && c <= 'f') {
                 ch = (u_char) ((decoded << 4) + c - 'a' + 10);
+
                 if (ch == '?') {
                     *u++ = ch;
                     ch = *p++;
+
+                } else if (ch == '+') {
+                    r->plus_in_uri = 1;
                 }
+
                 state = quoted_state;
                 break;
             }

@@ -594,10 +594,6 @@ ngx_http_userid_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ngx_http_userid_ctx_t   *ctx;
     ngx_http_userid_conf_t  *conf;
 
-    v->valid = 1;
-    v->no_cachable = 0;
-    v->not_found = 0;
-
     ctx = ngx_http_get_module_ctx(r, ngx_http_userid_filter_module);
 
     uid = (uint32_t *) ((char *) ctx + data);
@@ -614,6 +610,10 @@ ngx_http_userid_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     if (v->data == NULL) {
         return NGX_ERROR;
     }
+
+    v->valid = 1;
+    v->no_cachable = 0;
+    v->not_found = 0;
 
     ngx_sprintf(v->data, "%V=%08XD%08XD%08XD%08XD",
                 &conf->name, uid[0], uid[1], uid[2], uid[3]);

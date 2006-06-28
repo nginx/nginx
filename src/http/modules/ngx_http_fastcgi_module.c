@@ -156,6 +156,10 @@ static ngx_conf_deprecated_t  ngx_conf_deprecated_fastcgi_header_buffer_size = {
     ngx_conf_deprecated, "fastcgi_header_buffer_size", "fastcgi_buffer_size"
 };
 
+static ngx_conf_deprecated_t  ngx_conf_deprecated_fastcgi_redirect_errors = {
+    ngx_conf_deprecated, "fastcgi_redirect_errors", "fastcgi_intercept_errors"
+};
+
 
 static ngx_conf_bitmask_t  ngx_http_fastcgi_next_upstream_masks[] = {
     { ngx_string("error"), NGX_HTTP_UPSTREAM_FT_ERROR },
@@ -240,12 +244,19 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.pass_request_body),
       NULL },
 
+    { ngx_string("fastcgi_intercept_errors"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.intercept_errors),
+      NULL },
+
     { ngx_string("fastcgi_redirect_errors"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.redirect_errors),
-      NULL },
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.intercept_errors),
+      &ngx_conf_deprecated_fastcgi_redirect_errors },
 
     { ngx_string("fastcgi_read_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -1534,7 +1545,7 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.pass_request_headers = NGX_CONF_UNSET;
     conf->upstream.pass_request_body = NGX_CONF_UNSET;
 
-    conf->upstream.redirect_errors = NGX_CONF_UNSET;
+    conf->upstream.intercept_errors = NGX_CONF_UNSET;
 
     /* "fastcgi_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
@@ -1708,8 +1719,8 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->upstream.pass_request_body,
                               prev->upstream.pass_request_body, 1);
 
-    ngx_conf_merge_value(conf->upstream.redirect_errors,
-                              prev->upstream.redirect_errors, 0);
+    ngx_conf_merge_value(conf->upstream.intercept_errors,
+                              prev->upstream.intercept_errors, 0);
 
 
     ngx_conf_merge_str_value(conf->index, prev->index, "");

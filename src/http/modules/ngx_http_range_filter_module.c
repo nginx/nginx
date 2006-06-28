@@ -145,7 +145,6 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         || r->headers_in.range->value.len < 7
         || ngx_strncasecmp(r->headers_in.range->value.data, "bytes=", 6) != 0)
     {
-
         r->headers_out.accept_ranges = ngx_list_push(&r->headers_out.headers);
         if (r->headers_out.accept_ranges == NULL) {
             return NGX_ERROR;

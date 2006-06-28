@@ -247,7 +247,9 @@ ngx_http_header_filter(ngx_http_request_t *r)
         len += sizeof("Content-Type: ") - 1
                + r->headers_out.content_type.len + 2;
 
-        if (r->headers_out.charset.len) {
+        if (r->headers_out.content_type_len == r->headers_out.content_type.len
+            && r->headers_out.charset.len)
+        {
             len += sizeof("; charset=") - 1 + r->headers_out.charset.len;
         }
     }
@@ -380,7 +382,9 @@ ngx_http_header_filter(ngx_http_request_t *r)
         b->last = ngx_copy(b->last, r->headers_out.content_type.data,
                            r->headers_out.content_type.len);
 
-        if (r->headers_out.charset.len) {
+        if (r->headers_out.content_type_len == r->headers_out.content_type.len
+            && r->headers_out.charset.len)
+        {
             b->last = ngx_cpymem(b->last, "; charset=",
                                  sizeof("; charset=") - 1);
             b->last = ngx_copy(b->last, r->headers_out.charset.data,

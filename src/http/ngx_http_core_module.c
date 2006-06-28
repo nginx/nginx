@@ -519,6 +519,7 @@ static void
 ngx_http_core_run_phases(ngx_http_request_t *r)
 {
     ngx_int_t                   rc;
+    ngx_str_t                   path;
     ngx_http_handler_pt        *h;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_core_main_conf_t  *cmcf;
@@ -642,11 +643,10 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
     if (r->uri.data[r->uri.len - 1] == '/' && !r->zero_in_uri) {
 
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "directory index of \"%V%V\" is forbidden",
-                      &clcf->root, &r->uri);
+        if (ngx_http_map_uri_to_path(r, &path, 0) != NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "directory index of \"%V\" is forbidden", &path);
+        }
 
         ngx_http_finalize_request(r, NGX_HTTP_FORBIDDEN);
         return;
@@ -960,11 +960,14 @@ ngx_http_set_content_type(ngx_http_request_t *r)
                              r->exten.data, r->exten.len);
 
         if (type) {
+            r->headers_out.content_type_len = type->len;
             r->headers_out.content_type = *type;
+
             return NGX_OK;
         }
     }
 
+    r->headers_out.content_type_len = clcf->default_type.len;
     r->headers_out.content_type = clcf->default_type;
 
     return NGX_OK;
@@ -1155,6 +1158,14 @@ ngx_http_subrequest(ngx_http_request_t *r,
     ngx_http_request_t            *sr;
     ngx_http_core_srv_conf_t      *cscf;
     ngx_http_postponed_request_t  *pr, *p;
+
+    r->main->subrequests--;
+
+    if (r->main->subrequests == 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "subrequests cycle");
+        return NGX_ERROR;
+    }
 
     sr = ngx_pcalloc(r->pool, sizeof(ngx_http_request_t));
     if (sr == NULL) {

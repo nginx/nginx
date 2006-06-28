@@ -13,7 +13,7 @@ charset_map  koi8-r  windows-1251 {
     A4  BA ; # small Ukrainian ye
 
     A6  B3 ; # small Ukrainian i
-    A7  BF ; # small Ukrainian j
+    A7  BF ; # small Ukrainian yi
 
     AD  B4 ; # small Ukrainian soft g
     AE  A2 ; # small Byelorussian short u
@@ -24,9 +24,9 @@ charset_map  koi8-r  windows-1251 {
     B4  AA ; # capital Ukrainian YE
 
     B6  B2 ; # capital Ukrainian I
-    B7  AF ; # capital Ukrainian J
+    B7  AF ; # capital Ukrainian YI
 
-    B9  B9 ; # No
+    B9  B9 ; # numero sign
 
     BD  A5 ; # capital Ukrainian soft G
     BE  A1 ; # capital Byelorussian short U
