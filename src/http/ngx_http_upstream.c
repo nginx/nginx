@@ -1273,6 +1273,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
                 if (clf->fd == r->request_body->temp_file->file.fd) {
                     cl->handler(clf);
                     cl->handler = NULL;
+                    r->request_body->temp_file->file.fd = NGX_INVALID_FILE;
                     break;
                 }
             }

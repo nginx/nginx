@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.51" date="30.06.2006">
+
+<change type="bugfix">
+<para lang="ru">
+при некоторых условиях в SSI мог пропадать символы "&lt;";
+ошибка появилась в 0.3.50.
+</para>
+<para lang="en">
+the "&lt;" symbols might disappeared some conditions in the SSI;
+bug appeared in 0.3.50.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.50" date="28.06.2006">
 
 <change type="change">
@@ -48,7 +64,7 @@ and FastCGI mode.
 
 <change type="bugfix">
 <para lang="ru">
-символ "\" в парах "\"" и "\'" в SSI командах убирался только, если 
+символ "\" в парах "\"" и "\'" в SSI командах убирался, только если 
 также использовался символ "$".
 </para>
 <para lang="en">
@@ -71,7 +87,7 @@ in the SSI after inclusion.
 <change type="bugfix">
 <para lang="ru">
 если в заголовке ответа была строка <nobr>"Content-Length: 0",</nobr>
-при использовании небуферизированного проксировании не закрывалось соединение
+то при использовании небуферизированного проксировании не закрывалось соединение
 с клиентом.
 </para>
 <para lang="en">

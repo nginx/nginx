@@ -942,7 +942,9 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
         case ssi_sharp_state:
             switch (ch) {
             case '#':
-                ctx->saved = 0;
+                if (p - ctx->pos < 4) {
+                    ctx->saved = 0;
+                }
                 looked = 0;
                 state = ssi_precommand_state;
                 break;

@@ -217,7 +217,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
             if (charset == NGX_HTTP_NO_CHARSET) {
                 ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                               "unknown charset \"%V\" to override",
-                              &r->headers_out.override_charset);
+                              r->headers_out.override_charset);
 
                 return ngx_http_next_header_filter(r);
             }
