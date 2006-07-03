@@ -215,7 +215,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         if (to_send <= 0) {
             c->write->delayed = 1;
             ngx_add_timer(r->connection->write,
-                       (ngx_msec_t) (- to_send * 1000 / r->limit_rate));
+                       (ngx_msec_t) (- to_send * 1000 / r->limit_rate + 1));
 
             c->buffered |= NGX_HTTP_WRITE_BUFFERED;
 
@@ -245,7 +245,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         sent = c->sent - sent;
         c->write->delayed = 1;
         ngx_add_timer(r->connection->write,
-                      (ngx_msec_t) (sent * 1000 / r->limit_rate));
+                      (ngx_msec_t) (sent * 1000 / r->limit_rate + 1));
     }
 
     for (cl = r->out; cl && cl != chain; /* void */) {

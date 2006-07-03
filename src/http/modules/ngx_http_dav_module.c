@@ -254,6 +254,12 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     }
 
     if (ngx_is_dir(&fi)) {
+        if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                          ngx_delete_file_n " \"%s\" failed",
+                          temp->data);
+        }
+
         ngx_http_finalize_request(r, NGX_HTTP_CONFLICT);
         return;
     }
@@ -295,6 +301,12 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     }
 
 #endif
+
+    if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                      ngx_delete_file_n " \"%s\" failed",
+                      temp->data);
+    }
 
     ngx_http_finalize_request(r, ngx_http_dav_error(r, err, NGX_HTTP_CONFLICT,
                                                     ngx_rename_file_n,

@@ -9,6 +9,57 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.52" date="03.07.2006">
+
+<change type="change">
+<para lang="ru">
+восстановлено поведение модуля ngx_http_index_module для запросов "POST /":
+как в версии до 0.3.40, модуль теперь не выдаёт ошибку 405.
+</para>
+<para lang="en">
+the ngx_http_index_module behavior for the "POST /" requests is reverted
+to the 0.3.40 version state: the module now does not return the 405 error.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании ограничения скорости рабочий процесс мог зациклиться;
+ошибка появилась в 0.3.37.
+</para>
+<para lang="en">
+the worker process may got caught in an endless loop if the limit rate was used;
+bug appeared in 0.3.37.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_charset_module записывал в лог ошибку "unknown charset",
+даже если перекодировка не требовалась;
+ошибка появилась в 0.3.50.
+</para>
+<para lang="en">
+ngx_http_charset_module logged "unknown charset" alert, even if the recoding
+was not needed;
+bug appeared in 0.3.50.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в результате запроса PUT возвращался код 409, то временный файл
+не удалялся.
+</para>
+<para lang="en">
+if a code response of the PUT request was 409, then a temporary file
+was not removed.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.51" date="30.06.2006">
 
 <change type="bugfix">

@@ -215,7 +215,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
                                         r->headers_out.override_charset->data);
 
             if (charset == NGX_HTTP_NO_CHARSET) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "unknown charset \"%V\" to override",
                               r->headers_out.override_charset);
 
@@ -269,18 +269,8 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
 
             ctx->charset = charset;
 
-            if (charset == NGX_HTTP_NO_CHARSET) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                              "unknown charset \"%V\" of main request", mc);
-
-                return ngx_http_next_header_filter(r);
-            }
-        }
-
-        charset = ctx->charset;
-
-        if (charset == NGX_HTTP_NO_CHARSET) {
-            return ngx_http_next_header_filter(r);
+        } else {
+            charset = ctx->charset;
         }
     }
 
@@ -289,16 +279,41 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
     if (r->headers_out.charset.len == 0) {
         lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
 
-        return ngx_http_charset_set_charset(r, mcf->charsets.elts, charset,
-                                            lcf->source_charset);
+        if (charset != NGX_HTTP_NO_CHARSET) {
+            return ngx_http_charset_set_charset(r, mcf->charsets.elts, charset,
+                                                lcf->source_charset);
+        }
+
+        if (lcf->source_charset == NGX_CONF_UNSET) {
+            return ngx_http_next_header_filter(r);
+        }
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "no \"charset_map\" between the charsets "
+                      "\"%V\" and \"%V\"",
+                      &charsets[lcf->source_charset].name,
+                      &r->main->headers_out.charset);
+
+        return ngx_http_next_header_filter(r);
     }
 
     source_charset = ngx_http_charset_get_charset(charsets, n,
                                                   r->headers_out.charset.data);
 
-    if (source_charset == NGX_HTTP_NO_CHARSET) {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                      "unknown source charset \"%V\"", &r->headers_out.charset);
+    if (charset == NGX_HTTP_NO_CHARSET
+        || source_charset == NGX_HTTP_NO_CHARSET)
+    {
+        if (charset != source_charset
+            || ngx_strcasecmp(r->main->headers_out.charset.data,
+                              r->headers_out.charset.data)
+                != 0)
+        {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "no \"charset_map\" between the charsets "
+                          "\"%V\" and \"%V\"",
+                          &r->headers_out.charset,
+                          &r->main->headers_out.charset);
+        }
 
         return ngx_http_next_header_filter(r);
     }
@@ -307,7 +322,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
         && (charsets[source_charset].tables == NULL
             || charsets[source_charset].tables[charset] == NULL))
     {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "no \"charset_map\" between the charsets "
                       "\"%V\" and \"%V\"",
                       &charsets[source_charset].name, &charsets[charset].name);
