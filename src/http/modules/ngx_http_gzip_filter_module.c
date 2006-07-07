@@ -1087,7 +1087,7 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 4, ngx_pagesize);
 
-    ngx_conf_merge_unsigned_value(conf->http_version, prev->http_version,
+    ngx_conf_merge_uint_value(conf->http_version, prev->http_version,
                               NGX_HTTP_VERSION_11);
     ngx_conf_merge_bitmask_value(conf->proxied, prev->proxied,
                               (NGX_CONF_BITMASK_SET|NGX_HTTP_GZIP_PROXIED_OFF));

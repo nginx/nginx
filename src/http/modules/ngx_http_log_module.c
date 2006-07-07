@@ -478,7 +478,7 @@ static u_char *
 ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op)
 {
-    return ngx_sprintf(buf, "%z", r->request_length);
+    return ngx_sprintf(buf, "%O", r->request_length);
 }
 
 

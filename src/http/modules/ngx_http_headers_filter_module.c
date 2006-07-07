@@ -103,9 +103,12 @@ ngx_http_headers_filter(ngx_http_request_t *r)
     ngx_http_header_val_t    *h;
     ngx_http_headers_conf_t  *conf;
 
-    if ((r->headers_out.status != NGX_HTTP_OK
-         && r->headers_out.status != NGX_HTTP_NOT_MODIFIED)
-        || r != r->main)
+    if (r != r->main
+        || (r->headers_out.status != NGX_HTTP_OK
+            && r->headers_out.status != NGX_HTTP_NO_CONTENT
+            && r->headers_out.status != NGX_HTTP_MOVED_PERMANENTLY
+            && r->headers_out.status != NGX_HTTP_MOVED_TEMPORARILY
+            && r->headers_out.status != NGX_HTTP_NOT_MODIFIED))
     {
         return ngx_http_next_header_filter(r);
     }

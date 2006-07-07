@@ -116,6 +116,8 @@ typedef struct {
 
     ngx_flag_t                 optimize_server_names;
     ngx_flag_t                 ignore_invalid_headers;
+
+    ngx_uint_t                 wildcard;  /* unsigned  wildcard:1 */
 } ngx_http_core_srv_conf_t;
 
 
@@ -213,7 +215,8 @@ struct ngx_http_core_loc_conf_s {
     ngx_hash_t    types_hash;
     ngx_str_t     default_type;
 
-    size_t        client_max_body_size;    /* client_max_body_size */
+    off_t         client_max_body_size;    /* client_max_body_size */
+
     size_t        client_body_buffer_size; /* client_body_buffer_size */
     size_t        send_lowat;              /* send_lowat */
     size_t        postpone_output;         /* postpone_output */

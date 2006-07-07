@@ -1520,6 +1520,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     uintptr_t                    *code;
     ngx_str_t                    *header;
     ngx_uint_t                    i, j;
+    ngx_peer_t                   *peer;
     ngx_array_t                   hide_headers;
     ngx_keyval_t                 *src, *s, *h;
     ngx_hash_key_t               *hk;
@@ -1647,19 +1648,21 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                                |NGX_HTTP_UPSTREAM_FT_ERROR
                                |NGX_HTTP_UPSTREAM_FT_TIMEOUT));
 
-    ngx_conf_merge_unsigned_value(conf->upstream.max_fails,
+    ngx_conf_merge_uint_value(conf->upstream.max_fails,
                               prev->upstream.max_fails, 1);
 
     ngx_conf_merge_sec_value(conf->upstream.fail_timeout,
                               prev->upstream.fail_timeout, 10);
 
-    if (conf->upstream_peers && !conf->upstream_peers->balanced) {
+    if (conf->upstream_peers) {
+        peer = conf->upstream_peers->peers->peer;
         for (i = 0; i < conf->upstream_peers->peers->number; i++) {
-            conf->upstream_peers->peers->peer[i].weight = 1;
-            conf->upstream_peers->peers->peer[i].max_fails =
-                                                   conf->upstream.max_fails;
-            conf->upstream_peers->peers->peer[i].fail_timeout =
-                                                   conf->upstream.fail_timeout;
+            ngx_conf_init_uint_value(peer[i].weight, 1);
+            peer[i].current_weight = peer[i].weight;
+            ngx_conf_init_uint_value(peer[i].max_fails,
+                              conf->upstream.max_fails);
+            ngx_conf_init_value(peer[i].fail_timeout,
+                              conf->upstream.fail_timeout);
         }
     }
 

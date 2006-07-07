@@ -245,7 +245,7 @@ ngx_http_rewrite_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->log, prev->log, 0);
     ngx_conf_merge_value(conf->uninitialized_variable_warn,
                          prev->uninitialized_variable_warn, 1);
-    ngx_conf_merge_unsigned_value(conf->stack_size, prev->stack_size, 10);
+    ngx_conf_merge_uint_value(conf->stack_size, prev->stack_size, 10);
 
     if (conf->codes == NULL) {
         return NGX_CONF_OK;

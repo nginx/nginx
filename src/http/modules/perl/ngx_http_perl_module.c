@@ -833,9 +833,9 @@ ngx_http_perl_init_main_conf(ngx_conf_t *cf, void *conf)
     ngx_http_perl_main_conf_t *pmcf = conf;
 
 #if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
-    ngx_conf_init_unsigned_value(pmcf->interp_max, 10);
+    ngx_conf_init_uint_value(pmcf->interp_max, 10);
 #else
-    ngx_conf_init_unsigned_value(pmcf->interp_max, 1);
+    ngx_conf_init_uint_value(pmcf->interp_max, 1);
 #endif
 
     pmcf->free_perls = ngx_pcalloc(cf->pool,

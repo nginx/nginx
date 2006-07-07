@@ -236,8 +236,8 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
         conf = default;                                                      \
     }
 
-#define ngx_conf_init_unsigned_value(conf, default)                          \
-    if (conf == (unsigned) NGX_CONF_UNSET) {                                 \
+#define ngx_conf_init_uint_value(conf, default)                              \
+    if (conf == NGX_CONF_UNSET_UINT) {                                       \
         conf = default;                                                      \
     }
 
@@ -261,7 +261,7 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
         conf = (prev == NULL) ? default : prev;                              \
     }
 
-#define ngx_conf_merge_unsigned_value(conf, prev, default)                   \
+#define ngx_conf_merge_uint_value(conf, prev, default)                       \
     if (conf == NGX_CONF_UNSET_UINT) {                                       \
         conf = (prev == NGX_CONF_UNSET_UINT) ? default : prev;               \
     }
@@ -279,6 +279,11 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 #define ngx_conf_merge_size_value(conf, prev, default)                       \
     if (conf == NGX_CONF_UNSET_SIZE) {                                       \
         conf = (prev == NGX_CONF_UNSET_SIZE) ? default : prev;               \
+    }
+
+#define ngx_conf_merge_off_value(conf, prev, default)                        \
+    if (conf == NGX_CONF_UNSET) {                                            \
+        conf = (prev == NGX_CONF_UNSET) ? default : prev;                    \
     }
 
 #define ngx_conf_merge_str_value(conf, prev, default)                        \
@@ -328,6 +333,7 @@ char *ngx_conf_set_str_array_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 char *ngx_conf_set_keyval_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_off_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);

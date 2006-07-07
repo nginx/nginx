@@ -29,6 +29,7 @@ typedef struct {
     ngx_str_t           name;
     char               *uri_separator;
 
+    ngx_uint_t          current_weight;
     ngx_uint_t          weight;
 
     ngx_uint_t          fails;
@@ -45,7 +46,6 @@ typedef struct {
 
 struct ngx_peers_s {
     ngx_uint_t          current;
-    ngx_uint_t          weight;
 
     ngx_uint_t          number;
     ngx_uint_t          last_cached;

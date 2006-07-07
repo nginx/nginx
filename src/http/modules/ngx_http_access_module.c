@@ -92,6 +92,7 @@ ngx_http_access_handler(ngx_http_request_t *r)
     ngx_uint_t                   i;
     struct sockaddr_in          *sin;
     ngx_http_access_rule_t      *rule;
+    ngx_http_core_loc_conf_t    *clcf;
     ngx_http_access_loc_conf_t  *alcf;
 
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_access_module);
@@ -113,8 +114,12 @@ ngx_http_access_handler(ngx_http_request_t *r)
 
         if ((sin->sin_addr.s_addr & rule[i].mask) == rule[i].addr) {
             if (rule[i].deny) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "access forbidden by rule");
+                clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+                if (!clcf->satisfy_any) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "access forbidden by rule");
+                }
 
                 return NGX_HTTP_FORBIDDEN;
             }

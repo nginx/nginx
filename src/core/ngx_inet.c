@@ -479,7 +479,6 @@ ngx_inet_resolve_peer(ngx_conf_t *cf, ngx_str_t *name, in_port_t port)
         }
 
         peers->number = i;
-        peers->weight = 1;
 
         for (i = 0; h->h_addr_list[i] != NULL; i++) {
 
@@ -511,6 +510,10 @@ ngx_inet_resolve_peer(ngx_conf_t *cf, ngx_str_t *name, in_port_t port)
                                       - peers->peer[i].name.data;
 
             peers->peer[i].uri_separator = "";
+
+            peers->peer[i].weight = NGX_CONF_UNSET_UINT;
+            peers->peer[i].max_fails = NGX_CONF_UNSET_UINT;
+            peers->peer[i].fail_timeout = NGX_CONF_UNSET;
         }
 
     } else {
@@ -643,7 +646,6 @@ ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
         }
 
         peers->number = i;
-        peers->weight = 1;
 
         for (i = 0; h->h_addr_list[i] != NULL; i++) {
 
@@ -677,6 +679,10 @@ ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
             peers->peer[i].name.len = len + u->port_text.len;
 
             peers->peer[i].uri_separator = "";
+
+            peers->peer[i].weight = NGX_CONF_UNSET_UINT;
+            peers->peer[i].max_fails = NGX_CONF_UNSET_UINT;
+            peers->peer[i].fail_timeout = NGX_CONF_UNSET;
         }
 
     } else {

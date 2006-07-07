@@ -205,7 +205,7 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->imap_client_buffer_size,
                               (size_t) ngx_pagesize);
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
-    ngx_conf_merge_unsigned_value(conf->protocol, prev->protocol,
+    ngx_conf_merge_uint_value(conf->protocol, prev->protocol,
                               NGX_IMAP_IMAP_PROTOCOL);
     ngx_conf_merge_value(conf->so_keepalive, prev->so_keepalive, 0);
 

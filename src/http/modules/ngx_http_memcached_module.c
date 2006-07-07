@@ -560,7 +560,7 @@ ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                                |NGX_HTTP_UPSTREAM_FT_ERROR
                                |NGX_HTTP_UPSTREAM_FT_TIMEOUT));
 
-    ngx_conf_merge_unsigned_value(conf->upstream.max_fails,
+    ngx_conf_merge_uint_value(conf->upstream.max_fails,
                               prev->upstream.max_fails, 1);
 
     ngx_conf_merge_sec_value(conf->upstream.fail_timeout,

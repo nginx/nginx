@@ -23,17 +23,13 @@ static void ngx_imap_proxy_imap_handler(ngx_event_t *rev);
 static void ngx_imap_proxy_pop3_handler(ngx_event_t *rev);
 static void ngx_imap_proxy_dummy_handler(ngx_event_t *ev);
 static ngx_int_t ngx_imap_proxy_read_response(ngx_imap_session_t *s,
-    ngx_uint_t what);
+    ngx_uint_t state);
 static void ngx_imap_proxy_handler(ngx_event_t *ev);
 static void ngx_imap_proxy_internal_server_error(ngx_imap_session_t *s);
 static void ngx_imap_proxy_close_session(ngx_imap_session_t *s);
 static void *ngx_imap_proxy_create_conf(ngx_conf_t *cf);
 static char *ngx_imap_proxy_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
-
-
-#define NGX_IMAP_WAIT_OK      0
-#define NGX_IMAP_WAIT_NEXT    1
 
 
 static ngx_command_t  ngx_imap_proxy_commands[] = {
@@ -201,8 +197,7 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         }
     }
 
-    rc = ngx_imap_proxy_read_response(s, s->imap_state == ngx_imap_start ?
-                                      NGX_IMAP_WAIT_OK : NGX_IMAP_WAIT_NEXT);
+    rc = ngx_imap_proxy_read_response(s, s->imap_state);
 
     if (rc == NGX_AGAIN) {
         return;
@@ -274,6 +269,23 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
         s->imap_state = ngx_imap_passwd;
         break;
 
+    case ngx_imap_passwd:
+        s->connection->read->handler = ngx_imap_proxy_handler;
+        s->connection->write->handler = ngx_imap_proxy_handler;
+        rev->handler = ngx_imap_proxy_handler;
+        c->write->handler = ngx_imap_proxy_handler;
+
+        pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
+        ngx_add_timer(s->connection->read, pcf->timeout);
+        ngx_del_timer(c->read);
+
+        c->log->action = NULL;
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
+
+        ngx_imap_proxy_handler(s->connection->write);
+
+        return;
+
     default:
 #if (NGX_SUPPRESS_WARN)
         line.len = 0;
@@ -293,20 +305,6 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
 
     s->proxy->buffer->pos = s->proxy->buffer->start;
     s->proxy->buffer->last = s->proxy->buffer->start;
-
-    if (s->imap_state == ngx_imap_passwd) {
-        s->connection->read->handler = ngx_imap_proxy_handler;
-        s->connection->write->handler = ngx_imap_proxy_handler;
-        rev->handler = ngx_imap_proxy_handler;
-        c->write->handler = ngx_imap_proxy_handler;
-
-        pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
-        ngx_add_timer(s->connection->read, pcf->timeout);
-        ngx_del_timer(c->read);
-
-        c->log->action = NULL;
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
-    }
 }
 
 
@@ -344,7 +342,7 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         }
     }
 
-    rc = ngx_imap_proxy_read_response(s, NGX_IMAP_WAIT_OK);
+    rc = ngx_imap_proxy_read_response(s, 0);
 
     if (rc == NGX_AGAIN) {
         return;
@@ -395,6 +393,23 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
         s->imap_state = ngx_pop3_passwd;
         break;
 
+    case ngx_pop3_passwd:
+        s->connection->read->handler = ngx_imap_proxy_handler;
+        s->connection->write->handler = ngx_imap_proxy_handler;
+        rev->handler = ngx_imap_proxy_handler;
+        c->write->handler = ngx_imap_proxy_handler;
+
+        pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
+        ngx_add_timer(s->connection->read, pcf->timeout);
+        ngx_del_timer(c->read);
+
+        c->log->action = NULL;
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
+
+        ngx_imap_proxy_handler(s->connection->write);
+
+        return;
+
     default:
 #if (NGX_SUPPRESS_WARN)
         line.len = 0;
@@ -414,20 +429,6 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
 
     s->proxy->buffer->pos = s->proxy->buffer->start;
     s->proxy->buffer->last = s->proxy->buffer->start;
-
-    if (s->imap_state == ngx_pop3_passwd) {
-        s->connection->read->handler = ngx_imap_proxy_handler;
-        s->connection->write->handler = ngx_imap_proxy_handler;
-        rev->handler = ngx_imap_proxy_handler;
-        c->write->handler = ngx_imap_proxy_handler;
-
-        pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
-        ngx_add_timer(s->connection->read, pcf->timeout);
-        ngx_del_timer(c->read);
-
-        c->log->action = NULL;
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
-    }
 }
 
 
@@ -449,7 +450,7 @@ ngx_imap_proxy_dummy_handler(ngx_event_t *wev)
 
 
 static ngx_int_t
-ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
+ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t state)
 {
     u_char     *p;
     ssize_t     n;
@@ -496,15 +497,29 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t what)
         }
 
     } else {
-        if (what == NGX_IMAP_WAIT_OK) {
+        switch (state) {
+
+        case ngx_imap_start:
             if (p[0] == '*' && p[1] == ' ' && p[2] == 'O' && p[3] == 'K') {
                 return NGX_OK;
             }
+            break;
 
-        } else {
+        case ngx_imap_login:
+        case ngx_imap_user:
             if (p[0] == '+') {
                 return NGX_OK;
             }
+            break;
+
+        case ngx_imap_passwd:
+            if (ngx_strncmp(p, s->tag.data, s->tag.len) == 0) {
+                p += s->tag.len;
+                if (p[0] == 'O' && p[1] == 'K') {
+                    return NGX_OK;
+                }
+            }
+            break;
         }
     }
 

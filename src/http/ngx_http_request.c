@@ -1235,7 +1235,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
     if (r->headers_in.content_length) {
         r->headers_in.content_length_n =
-                            ngx_atosz(r->headers_in.content_length->value.data,
+                            ngx_atoof(r->headers_in.content_length->value.data,
                                       r->headers_in.content_length->value.len);
 
         if (r->headers_in.content_length_n == NGX_ERROR) {
@@ -1393,6 +1393,13 @@ ngx_http_find_virtual_server(ngx_http_request_t *r,
         if (cscf) {
             goto found;
         }
+    }
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    if (cscf->wildcard) {
+        r->server_name.len = len;
+        r->server_name.data = host;
     }
 
     return;

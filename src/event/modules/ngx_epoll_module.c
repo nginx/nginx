@@ -479,11 +479,13 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                            c->fd, revents);
         }
 
+#if 0
         if (revents & ~(EPOLLIN|EPOLLOUT|EPOLLERR|EPOLLHUP)) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "strange epoll_wait() events fd:%d ev:%04XD",
                           c->fd, revents);
         }
+#endif
 
         if ((revents & (EPOLLERR|EPOLLHUP))
              && (revents & (EPOLLIN|EPOLLOUT)) == 0)
@@ -564,7 +566,7 @@ ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_epoll_conf_t *epcf = conf;
 
-    ngx_conf_init_unsigned_value(epcf->events, 512);
+    ngx_conf_init_uint_value(epcf->events, 512);
 
     return NGX_CONF_OK;
 }

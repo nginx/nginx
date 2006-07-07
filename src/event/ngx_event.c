@@ -1205,10 +1205,10 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    ngx_conf_init_unsigned_value(ecf->connections, connections);
+    ngx_conf_init_uint_value(ecf->connections, connections);
     cycle->connection_n = ecf->connections;
 
-    ngx_conf_init_unsigned_value(ecf->use, module->ctx_index);
+    ngx_conf_init_uint_value(ecf->use, module->ctx_index);
 
     event_module = module->ctx;
     ngx_conf_init_ptr_value(ecf->name, event_module->name->data);

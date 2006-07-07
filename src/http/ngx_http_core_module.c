@@ -242,7 +242,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
     { ngx_string("client_max_body_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
+      ngx_conf_set_off_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, client_max_body_size),
       NULL },
@@ -634,6 +634,12 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
         }
 
         if (r->phase == NGX_HTTP_ACCESS_PHASE && r->access_code) {
+
+            if (r->access_code == NGX_HTTP_FORBIDDEN) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "access forbidden by rule");
+            }
+
             ngx_http_finalize_request(r, r->access_code);
             return;
         }
@@ -690,15 +696,15 @@ ngx_http_find_location_config(ngx_http_request_t *r)
     ngx_http_update_location_config(r);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http cl:%z max:%uz",
+                   "http cl:%O max:%O",
                    r->headers_in.content_length_n, clcf->client_max_body_size);
 
     if (r->headers_in.content_length_n != -1
         && clcf->client_max_body_size
-        && clcf->client_max_body_size < (size_t) r->headers_in.content_length_n)
+        && clcf->client_max_body_size < r->headers_in.content_length_n)
     {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "client intented to send too large body: %z bytes",
+                      "client intented to send too large body: %O bytes",
                       r->headers_in.content_length_n);
 
         return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
@@ -2015,7 +2021,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
      *     lcf->alias = 0;
      */
 
-    lcf->client_max_body_size = NGX_CONF_UNSET_SIZE;
+    lcf->client_max_body_size = NGX_CONF_UNSET;
     lcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
     lcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
     lcf->satisfy_any = NGX_CONF_UNSET;
@@ -2086,12 +2092,12 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->post_action = prev->post_action;
     }
 
-    ngx_conf_merge_unsigned_value(conf->types_hash_max_size,
-                                  prev->types_hash_max_size, 1024);
+    ngx_conf_merge_uint_value(conf->types_hash_max_size,
+                              prev->types_hash_max_size, 1024);
 
-    ngx_conf_merge_unsigned_value(conf->types_hash_bucket_size,
-                                  prev->types_hash_bucket_size,
-                                  ngx_cacheline_size);
+    ngx_conf_merge_uint_value(conf->types_hash_bucket_size,
+                              prev->types_hash_bucket_size,
+                              ngx_cacheline_size);
 
     conf->types_hash_bucket_size = ngx_align(conf->types_hash_bucket_size,
                                              ngx_cacheline_size);
@@ -2175,7 +2181,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->default_type,
                               prev->default_type, "text/plain");
 
-    ngx_conf_merge_size_value(conf->client_max_body_size,
+    ngx_conf_merge_off_value(conf->client_max_body_size,
                               prev->client_max_body_size, 1 * 1024 * 1024);
     ngx_conf_merge_size_value(conf->client_body_buffer_size,
                               prev->client_body_buffer_size,
@@ -2450,6 +2456,11 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (i = 1; i < cf->args->nelts; i++) {
 
         ch = value[i].data[0];
+
+        if (value[i].len == 1 && ch == '*') {
+            cscf->wildcard = 1;
+            continue;
+        }
 
         if (value[i].len == 0
             || (ch == '*' && (value[i].len < 3 || value[i].data[1] != '.'))

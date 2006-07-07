@@ -81,8 +81,6 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
                     pc->peers->current = 0;
                 }
 
-                pc->peers->weight = pc->peers->peer[pc->peers->current].weight;
-
                 pc->tries--;
 
                 if (pc->tries) {
@@ -92,16 +90,16 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
                 goto failed;
             }
 
-            pc->peers->weight--;
+            peer->current_weight--;
 
-            if (pc->peers->weight == 0) {
+            if (peer->current_weight == 0) {
+                peer->current_weight = peer->weight;
+
                 pc->peers->current++;
 
                 if (pc->peers->current >= pc->peers->number) {
                     pc->peers->current = 0;
                 }
-
-                pc->peers->weight = pc->peers->peer[pc->peers->current].weight;
             }
 
         } else {
@@ -130,6 +128,20 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
                 }
 
                 goto failed;
+            }
+
+            peer->current_weight--;
+
+            if (peer->current_weight == 0) {
+                peer->current_weight = peer->weight;
+
+                if (pc->cur_peer == pc->peers->current) {
+                    pc->peers->current++;
+
+                    if (pc->peers->current >= pc->peers->number) {
+                        pc->peers->current = 0;
+                    }
+                }
             }
         }
     }
@@ -358,15 +370,22 @@ failed:
 void
 ngx_event_connect_peer_failed(ngx_peer_connection_t *pc, ngx_uint_t down)
 {
-    time_t  now;
+    time_t       now;
+    ngx_peer_t  *peer;
 
     if (down) {
         now = ngx_time();
 
         /* ngx_lock_mutex(pc->peers->mutex); */
 
-        pc->peers->peer[pc->cur_peer].fails++;
-        pc->peers->peer[pc->cur_peer].accessed = now;
+        peer = &pc->peers->peer[pc->cur_peer];
+
+        peer->fails++;
+        peer->accessed = now;
+
+        if (peer->current_weight > 1) {
+            peer->current_weight /= 2;
+        }
 
         /* ngx_unlock_mutex(pc->peers->mutex); */
     }

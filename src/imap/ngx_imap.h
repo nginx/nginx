@@ -109,7 +109,7 @@ typedef enum {
     ngx_imap_start = 0,
     ngx_imap_login,
     ngx_imap_user,
-    ngx_imap_passwd,
+    ngx_imap_passwd
 } ngx_imap_state_e;
 
 

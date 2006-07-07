@@ -670,8 +670,8 @@ ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_userid_conf_t *prev = parent;
     ngx_http_userid_conf_t *conf = child;
 
-    ngx_conf_merge_unsigned_value(conf->enable, prev->enable,
-                                  NGX_HTTP_USERID_OFF);
+    ngx_conf_merge_uint_value(conf->enable, prev->enable,
+                              NGX_HTTP_USERID_OFF);
 
     ngx_conf_merge_str_value(conf->name, prev->name, "uid");
     ngx_conf_merge_str_value(conf->domain, prev->domain, "");

@@ -192,7 +192,7 @@ typedef struct {
     ngx_array_t                       cookies;
 
     size_t                            host_name_len;
-    ssize_t                           content_length_n;
+    off_t                             content_length_n;
     time_t                            keep_alive_n;
 
     unsigned                          connection_type:2;
@@ -250,7 +250,7 @@ typedef struct {
     ngx_temp_file_t                  *temp_file;
     ngx_chain_t                      *bufs;
     ngx_buf_t                        *buf;
-    size_t                            rest;
+    off_t                             rest;
     ngx_chain_t                      *to_write;
     ngx_http_client_body_handler_pt   post_handler;
 } ngx_http_request_body_t;
@@ -366,7 +366,7 @@ struct ngx_http_request_s {
     /* used to learn the Apache compatible response length without a header */
     size_t                            header_size;
 
-    size_t                            request_length;
+    off_t                             request_length;
 
     void                            **err_ctx;
     ngx_uint_t                        err_status;

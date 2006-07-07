@@ -226,7 +226,7 @@ static ngx_command_t  ngx_http_upstream_commands[] = {
       NULL },
 
     { ngx_string("server"),
-      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
       ngx_http_upstream_server,
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
@@ -2729,7 +2729,6 @@ ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     }
 
     uscf->peers->number = n;
-    uscf->peers->weight = 1;
 
     n = 0;
 
@@ -2750,6 +2749,8 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_str_t                    *value;
     ngx_url_t                     u;
+    ngx_int_t                     weight;
+    ngx_uint_t                    i;
     ngx_peers_t                 **peers;
 
     if (uscf->servers == NULL) {
@@ -2780,9 +2781,41 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    weight = 1;
+
+    if (cf->args->nelts == 3) {
+
+        value = &value[2];
+
+        if (ngx_strncmp(value->data, "weight=", 7) == 0) {
+
+            weight = ngx_atoi(&value->data[7], value->len - 7);
+
+            if (weight == NGX_ERROR || weight == 0) {
+                goto invalid;
+            }
+
+        } else {
+            goto invalid;
+        }
+    }
+
+    for (i = 0; i < u.peers->number; i++) {
+        u.peers->peer[i].weight = weight;
+        u.peers->peer[i].current_weight = weight;
+        u.peers->peer[i].max_fails = NGX_CONF_UNSET_UINT;
+        u.peers->peer[i].fail_timeout = NGX_CONF_UNSET;
+    }
+
     *peers = u.peers;
 
     return NGX_CONF_OK;
+
+invalid:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\"", value);
+
+    return NGX_CONF_ERROR;
 }
 
 
@@ -2893,8 +2926,7 @@ ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf)
         }
 
         uscfp[i]->peers = ngx_inet_resolve_peer(cf, &uscfp[i]->host,
-                          uscfp[i]->port);
-
+                                                uscfp[i]->port);
         if (uscfp[i]->peers == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -2907,6 +2939,7 @@ ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf)
             return NGX_CONF_ERROR;
         }
     }
+
 
     if (ngx_array_init(&headers_in, cf->temp_pool, 32, sizeof(ngx_hash_key_t))
         != NGX_OK)

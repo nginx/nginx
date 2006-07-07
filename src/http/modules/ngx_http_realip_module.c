@@ -243,7 +243,7 @@ ngx_http_realip_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->from = prev->from;
     }
 
-    ngx_conf_merge_unsigned_value(conf->xfwd, prev->xfwd, 0);
+    ngx_conf_merge_uint_value(conf->xfwd, prev->xfwd, 0);
 
     return NGX_CONF_OK;
 }

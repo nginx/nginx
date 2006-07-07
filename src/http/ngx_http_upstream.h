@@ -56,8 +56,6 @@ typedef struct {
     ngx_str_t                       file_name;
     ngx_uint_t                      line;
     in_port_t                       port;
-
-    ngx_uint_t                      balanced;    /* unsigned  balanced:1; */
 } ngx_http_upstream_srv_conf_t;
 
 

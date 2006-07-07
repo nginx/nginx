@@ -47,6 +47,51 @@ ngx_parse_size(ngx_str_t *line)
 }
 
 
+off_t
+ngx_parse_offset(ngx_str_t *line)
+{
+    u_char     last;
+    off_t      offset;
+    size_t     len;
+    ngx_int_t  scale;
+
+    len = line->len;
+    last = line->data[len - 1];
+
+    switch (last) {
+    case 'K':
+    case 'k':
+        len--;
+        scale = 1024;
+        break;
+
+    case 'M':
+    case 'm':
+        len--;
+        scale = 1024 * 1024;
+        break;
+
+    case 'G':
+    case 'g':
+        len--;
+        scale = 1024 * 1024 * 1024;
+        break;
+
+    default:
+        scale = 1;
+    }
+
+    offset = ngx_atoof(line->data, len);
+    if (offset == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    offset *= scale;
+
+    return offset;
+}
+
+
 ngx_int_t
 ngx_parse_time(ngx_str_t *line, ngx_int_t sec)
 {

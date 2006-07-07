@@ -30,7 +30,8 @@ ngx_int_t
 ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_http_client_body_handler_pt post_handler)
 {
-    ssize_t                    size, preread;
+    size_t                     preread;
+    ssize_t                    size;
     ngx_buf_t                 *b;
     ngx_chain_t               *cl, **next;
     ngx_http_request_body_t   *rb;
@@ -95,7 +96,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
             /* the whole request body was pre-read */
 
-            r->header_in->pos += r->headers_in.content_length_n;
+            r->header_in->pos += (size_t) r->headers_in.content_length_n;
             r->request_length += r->headers_in.content_length_n;
 
             if (r->request_body_in_file_only) {
@@ -143,8 +144,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     size = clcf->client_body_buffer_size;
     size += size >> 2;
 
-    if (rb->rest < (size_t) size) {
-        size = rb->rest;
+    if (rb->rest < size) {
+        size = (ssize_t) rb->rest;
 
         if (r->request_body_in_single_buf) {
             size += preread;
@@ -242,7 +243,7 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         size = rb->buf->end - rb->buf->last;
 
         if (size > rb->rest) {
-            size = rb->rest;
+            size = (size_t) rb->rest;
         }
 
         n = c->recv(c, rb->buf->last, size);
@@ -429,7 +430,7 @@ ngx_http_discard_body(ngx_http_request_t *r)
             r->headers_in.content_length_n -= size;
 
         } else {
-            r->header_in->pos += r->headers_in.content_length_n;
+            r->header_in->pos += (size_t) r->headers_in.content_length_n;
             r->headers_in.content_length_n = 0;
             return NGX_OK;
         }
@@ -468,7 +469,8 @@ ngx_http_read_discarded_body_handler(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_read_discarded_body(ngx_http_request_t *r)
 {
-    ssize_t  size, n;
+    size_t   size;
+    ssize_t  n;
     u_char   buffer[NGX_HTTP_DISCARD_BUFFER_SIZE];
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -478,12 +480,9 @@ ngx_http_read_discarded_body(ngx_http_request_t *r)
         return NGX_OK;
     }
 
-
-    size = r->headers_in.content_length_n;
-
-    if (size > NGX_HTTP_DISCARD_BUFFER_SIZE) {
-        size = NGX_HTTP_DISCARD_BUFFER_SIZE;
-    }
+    size = (r->headers_in.content_length_n > NGX_HTTP_DISCARD_BUFFER_SIZE) ?
+                NGX_HTTP_DISCARD_BUFFER_SIZE:
+                (size_t) r->headers_in.content_length_n;
 
     n = r->connection->recv(r->connection, buffer, size);
 

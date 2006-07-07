@@ -251,17 +251,20 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 
     } else {
         status = NGX_HTTP_NO_CONTENT;
-    }
 
-    if (ngx_is_dir(&fi)) {
-        if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          ngx_delete_file_n " \"%s\" failed",
-                          temp->data);
+        if (ngx_is_dir(&fi)) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_EISDIR,
+                          "\"%s\" could not be created", path.data);
+
+            if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                              ngx_delete_file_n " \"%s\" failed",
+                              temp->data);
+            }
+
+            ngx_http_finalize_request(r, NGX_HTTP_CONFLICT);
+            return;
         }
-
-        ngx_http_finalize_request(r, NGX_HTTP_CONFLICT);
-        return;
     }
 
     if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {

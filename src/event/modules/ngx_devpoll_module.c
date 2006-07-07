@@ -510,8 +510,8 @@ ngx_devpoll_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_devpoll_conf_t *dpcf = conf;
 
-    ngx_conf_init_unsigned_value(dpcf->changes, 32);
-    ngx_conf_init_unsigned_value(dpcf->events, 32);
+    ngx_conf_init_uint_value(dpcf->changes, 32);
+    ngx_conf_init_uint_value(dpcf->events, 32);
 
     return NGX_CONF_OK;
 }

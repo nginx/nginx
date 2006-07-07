@@ -9,6 +9,79 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.53" date="07.07.2006">
+
+<change type="change">
+<para lang="ru">
+директива add_header добавляет строки в ответы с кодом 204, 301 и 302.
+</para>
+<para lang="en">
+the "add_header" directive adds the string to 204, 301, and 302 responses.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server в блоке upstream поддерживает параметр weight.
+</para>
+<para lang="en">
+the "server" directive if the "upstream" context supports
+the "weight" parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server_name поддерживает маску "*".
+</para>
+<para lang="en">
+the "server_name" directive supports the "*" wildcard.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+nginx поддерживает тело запроса больше 2G.
+</para>
+<para lang="en">
+nginx supports the request body size more than 2G.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при использовании "satisfy_any on" клиент успешно проходил аутентификацию,
+в лог всё равно записалоcь сообщение "access forbidden by rule".
+</para>
+<para lang="en">
+if a client was successfully authorized using "satisfy_any on", then anyway
+the "access forbidden by rule" message was written in the log.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+метод PUT мог ошибочно не создать файл и вернуть код 409.
+</para>
+<para lang="en">
+the "PUT" method may erroneously not create a file and return the 409 code.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если во время аутентификации IMAP/POP3 бэкенд возвращал ошибку, nginx
+продолжал проксирование.
+</para>
+<para lang="en">
+if the IMAP/POP3 backend returned an error, then nginx continued proxying
+anyway.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.52" date="03.07.2006">
 
 <change type="change">
@@ -4510,8 +4583,8 @@ proxy_preserve_host устанавливает в качестве этого заголовка первое имя
 сервера из директивы server_name.
 </para>
 <para lang="en">
-if the request has no the "Host" header line, then the proxy_preserve_host
-directive set this header line to the first server name of the server_name
+if the request has no the "Host" header line, then the "proxy_preserve_host"
+directive set this header line to the first server name of the "server_name"
 directive.
 </para>
 </change>
@@ -5173,7 +5246,7 @@ the server_names_hash and server_names_hash_threshold directives.
 имена *.domain.tld в директиве server_name не работали.
 </para>
 <para lang="en">
-the *.domain.tld names in the server_name directive did not work.
+the *.domain.tld names in the "server_name" directive did not work.
 </para>
 </change>
 

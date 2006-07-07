@@ -1036,6 +1036,37 @@ ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 char *
+ngx_conf_set_off_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    off_t            *op;
+    ngx_str_t        *value;
+    ngx_conf_post_t  *post;
+
+
+    op = (off_t *) (p + cmd->offset);
+    if (*op != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    *op = ngx_parse_offset(&value[1]);
+    if (*op == (off_t) NGX_ERROR) {
+        return "invalid value";
+    }
+
+    if (cmd->post) {
+        post = cmd->post;
+        return post->post_handler(cf, post, op);
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
 ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
