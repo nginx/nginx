@@ -1035,22 +1035,30 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_DEBUG)
     ngx_event_conf_t  *ecf = conf;
 
-    in_addr_t       *addr;
-    ngx_str_t       *value;
-    struct hostent  *h;
+    ngx_event_debug_t  *dc;
+    ngx_str_t          *value;
+    struct hostent     *h;
+    ngx_inet_cidr_t     in_cidr;
 
     value = cf->args->elts;
 
     /* AF_INET only */
 
-    addr = ngx_array_push(&ecf->debug_connection);
-    if (addr == NULL) {
+    dc = ngx_array_push(&ecf->debug_connection);
+    if (dc == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    *addr = inet_addr((char *) value[1].data);
+    dc->addr = inet_addr((char *) value[1].data);
 
-    if (*addr != INADDR_NONE) {
+    if (dc->addr != INADDR_NONE) {
+        dc->mask = 0xffffffff;
+        return NGX_OK;
+    }
+
+    if (ngx_ptocidr(&value[1], &in_cidr) == NGX_OK) {
+        dc->mask = in_cidr.mask;
+        dc->addr = in_cidr.addr;
         return NGX_OK;
     }
 
@@ -1062,7 +1070,8 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    *addr = *(in_addr_t *)(h->h_addr_list[0]);
+    dc->mask = 0xffffffff;
+    dc->addr = *(in_addr_t *)(h->h_addr_list[0]);
 
 #else
 
@@ -1096,7 +1105,7 @@ ngx_event_create_conf(ngx_cycle_t *cycle)
 #if (NGX_DEBUG)
 
     if (ngx_array_init(&ecf->debug_connection, cycle->pool, 4,
-                       sizeof(in_addr_t)) == NGX_ERROR)
+                       sizeof(ngx_event_debug_t)) == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
     }

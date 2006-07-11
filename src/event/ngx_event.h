@@ -189,6 +189,12 @@ struct ngx_event_s {
 
 
 typedef struct {
+    in_addr_t  mask;
+    in_addr_t  addr;
+} ngx_event_debug_t;
+
+
+typedef struct {
     ngx_int_t  (*add)(ngx_event_t *ev, int event, u_int flags);
     ngx_int_t  (*del)(ngx_event_t *ev, int event, u_int flags);
 

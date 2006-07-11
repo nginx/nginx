@@ -150,10 +150,10 @@ do
 done
 
 ngx_all_objs=`echo $ngx_all_srcs \
-    | sed -e "s/\([^ ]*\.\)cpp/$NGX_OBJS\/\1$ngx_objext/g" \
-          -e "s/\([^ ]*\.\)cc/$NGX_OBJS\/\1$ngx_objext/g" \
-          -e "s/\([^ ]*\.\)c/$NGX_OBJS\/\1$ngx_objext/g" \
-          -e "s/\([^ ]*\.\)S/$NGX_OBJS\/\1$ngx_objext/g"`
+    | sed -e "s#\([^ ]*\.\)cpp#$NGX_OBJS\/\1$ngx_objext#g" \
+          -e "s#\([^ ]*\.\)cc#$NGX_OBJS\/\1$ngx_objext#g" \
+          -e "s#\([^ ]*\.\)c#$NGX_OBJS\/\1$ngx_objext#g" \
+          -e "s#\([^ ]*\.\)S#$NGX_OBJS\/\1$ngx_objext#g"`
 
 ngx_modules_c=`echo $NGX_MODULES_C | sed -e "s/\//$ngx_regex_dirsep/g"`
 
@@ -213,10 +213,10 @@ for ngx_src in $CORE_SRCS
 do
     ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
     ngx_obj=`echo $ngx_src \
-        | sed -e "s/^\(.*\.\)cpp$/$ngx_objs_dir\1$ngx_objext/g" \
-              -e "s/^\(.*\.\)cc$/$ngx_objs_dir\1$ngx_objext/g" \
-              -e "s/^\(.*\.\)c$/$ngx_objs_dir\1$ngx_objext/g" \
-              -e "s/^\(.*\.\)S$/$ngx_objs_dir\1$ngx_objext/g"`
+        | sed -e "s#^\(.*\.\)cpp\\$#$ngx_objs_dir\1$ngx_objext#g" \
+              -e "s#^\(.*\.\)cc\\$#$ngx_objs_dir\1$ngx_objext#g" \
+              -e "s#^\(.*\.\)c\\$#$ngx_objs_dir\1$ngx_objext#g" \
+              -e "s#^\(.*\.\)S\\$#$ngx_objs_dir\1$ngx_objext#g"`
 
     cat << END                                                >> $NGX_MAKEFILE
 
@@ -242,10 +242,10 @@ if [ $HTTP = YES ]; then
     do
         ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
         ngx_obj=`echo $ngx_src \
-            | sed -e "s/^\(.*\.\)cpp$/$ngx_objs_dir\1$ngx_objext/g" \
-                  -e "s/^\(.*\.\)cc$/$ngx_objs_dir\1$ngx_objext/g" \
-                  -e "s/^\(.*\.\)c$/$ngx_objs_dir\1$ngx_objext/g" \
-                  -e "s/^\(.*\.\)S$/$ngx_objs_dir\1$ngx_objext/g"`
+            | sed -e "s#^\(.*\.\)cpp\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)cc\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)c\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)S\\$#$ngx_objs_dir\1$ngx_objext#g"`
 
         cat << END                                            >> $NGX_MAKEFILE
 
@@ -272,10 +272,10 @@ if [ $IMAP = YES ]; then
     do
         ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
         ngx_obj=`echo $ngx_src \
-            | sed -e "s/^\(.*\.\)cpp$/$ngx_objs_dir\1$ngx_objext/g" \
-                  -e "s/^\(.*\.\)cc$/$ngx_objs_dir\1$ngx_objext/g" \
-                  -e "s/^\(.*\.\)c$/$ngx_objs_dir\1$ngx_objext/g" \
-                  -e "s/^\(.*\.\)S$/$ngx_objs_dir\1$ngx_objext/g"`
+            | sed -e "s#^\(.*\.\)cpp\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)cc\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)c\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)S\\$#$ngx_objs_dir\1$ngx_objext#g"`
 
         cat << END                                            >> $NGX_MAKEFILE
 
@@ -302,10 +302,10 @@ if test -n "$NGX_ADDON_SRCS"; then
             | sed -e "s/\//$ngx_regex_dirsep/g"`
 
         ngx_obj=`echo $ngx_obj \
-            | sed -e "s/^\(.*\.\)cpp$/$ngx_objs_dir\1$ngx_objext/g" \
-                  -e "s/^\(.*\.\)cc$/$ngx_objs_dir\1$ngx_objext/g" \
-                  -e "s/^\(.*\.\)c$/$ngx_objs_dir\1$ngx_objext/g" \
-                  -e "s/^\(.*\.\)S$/$ngx_objs_dir\1$ngx_objext/g"`
+            | sed -e "s#^\(.*\.\)cpp\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)cc\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)c\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)S\\$#$ngx_objs_dir\1$ngx_objext#g"`
 
         ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
 

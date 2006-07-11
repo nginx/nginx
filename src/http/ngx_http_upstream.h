@@ -16,14 +16,15 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_UPSTREAM_FT_ERROR           0x002
-#define NGX_HTTP_UPSTREAM_FT_TIMEOUT         0x004
-#define NGX_HTTP_UPSTREAM_FT_INVALID_HEADER  0x008
-#define NGX_HTTP_UPSTREAM_FT_HTTP_500        0x010
-#define NGX_HTTP_UPSTREAM_FT_HTTP_503        0x020
-#define NGX_HTTP_UPSTREAM_FT_HTTP_404        0x040
-#define NGX_HTTP_UPSTREAM_FT_BUSY_LOCK       0x080
-#define NGX_HTTP_UPSTREAM_FT_MAX_WAITING     0x100
+#define NGX_HTTP_UPSTREAM_FT_ERROR           0x00000002
+#define NGX_HTTP_UPSTREAM_FT_TIMEOUT         0x00000004
+#define NGX_HTTP_UPSTREAM_FT_INVALID_HEADER  0x00000008
+#define NGX_HTTP_UPSTREAM_FT_HTTP_500        0x00000010
+#define NGX_HTTP_UPSTREAM_FT_HTTP_503        0x00000020
+#define NGX_HTTP_UPSTREAM_FT_HTTP_404        0x00000040
+#define NGX_HTTP_UPSTREAM_FT_BUSY_LOCK       0x00000080
+#define NGX_HTTP_UPSTREAM_FT_MAX_WAITING     0x00000100
+#define NGX_HTTP_UPSTREAM_FT_OFF             0x80000000
 
 
 #define NGX_HTTP_UPSTREAM_INVALID_HEADER     40
@@ -192,8 +193,6 @@ struct ngx_http_upstream_s {
     ngx_msec_t                      timeout;
 
     ngx_str_t                       method;
-
-    ngx_http_log_handler_pt         saved_log_handler;
 
     ngx_http_upstream_state_t      *state;
     ngx_array_t                     states;  /* of ngx_http_upstream_state_t */

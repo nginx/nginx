@@ -43,8 +43,8 @@ static void ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error);
 static void ngx_http_close_connection(ngx_connection_t *c);
 
 static u_char *ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len);
-static u_char *ngx_http_log_error_handler(ngx_http_request_t *r, u_char *buf,
-    size_t len);
+static u_char *ngx_http_log_error_handler(ngx_http_request_t *r,
+    ngx_http_request_t *sr, u_char *buf, size_t len);
 
 #if (NGX_HTTP_SSL)
 static void ngx_http_ssl_handshake(ngx_event_t *rev);
@@ -162,6 +162,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 
     ctx->client = &c->addr_text;
     ctx->request = NULL;
+    ctx->current_request = NULL;
 
     c->log->connection = c->number;
     c->log->handler = ngx_http_log_error;
@@ -427,6 +428,7 @@ ngx_http_init_request(ngx_event_t *rev)
 
     ctx = c->log->data;
     ctx->request = r;
+    ctx->current_request = r;
     r->log_handler = ngx_http_log_error_handler;
 
 #if (NGX_STAT_STUB)
@@ -541,7 +543,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
     ngx_int_t            rc, rv;
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
-    ngx_http_log_ctx_t  *ctx;
 
     c = rev->data;
     r = c->data;
@@ -722,9 +723,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
             }
 
             if (rv == NGX_DECLINED) {
-                ctx = c->log->data;
-                ctx->request = r;
-
                 r->request_line.len = r->header_in->end - r->request_start;
                 r->request_line.data = r->request_start;
 
@@ -1428,9 +1426,13 @@ ngx_http_request_handler(ngx_event_t *ev)
 {
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
+    ngx_http_log_ctx_t  *ctx;
 
     c = ev->data;
     r = c->data;
+
+    ctx = c->log->data;
+    ctx->current_request = r;
 
     if (ev->write) {
         r->write_event_handler(r);
@@ -1445,6 +1447,7 @@ void
 ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
     ngx_http_request_t        *pr;
+    ngx_http_log_ctx_t        *ctx;
     ngx_http_core_loc_conf_t  *clcf;
 
     if (rc == NGX_DONE) {
@@ -1522,6 +1525,9 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         if (rc != NGX_AGAIN) {
             r->connection->data = pr;
         }
+
+        ctx = r->connection->log->data;
+        ctx->current_request = pr;
 
         if (pr->postponed) {
 
@@ -2364,7 +2370,7 @@ ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len)
     r = ctx->request;
 
     if (r) {
-        return r->log_handler(r, p, len);
+        return r->log_handler(r, ctx->current_request, p, len);
     }
 
     return p;
@@ -2372,9 +2378,12 @@ ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len)
 
 
 static u_char *
-ngx_http_log_error_handler(ngx_http_request_t *r, u_char *buf, size_t len)
+ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
+    u_char *buf, size_t len)
 {
-    u_char  *p;
+    u_char                 *p;
+    ngx_http_upstream_t    *u;
+    ngx_peer_connection_t  *peer;
 
     if (r->server_name.data) {
         p = ngx_snprintf(buf, len, ", server: %V", &r->server_name);
@@ -2404,6 +2413,26 @@ ngx_http_log_error_handler(ngx_http_request_t *r, u_char *buf, size_t len)
             len -= p - buf;
             buf = p;
         }
+    }
+
+    if (r != sr) {
+        p = ngx_snprintf(buf, len, ", subrequest: \"%V\"", &sr->uri);
+        len -= p - buf;
+        buf = p;
+    }
+
+    u = sr->upstream;
+
+    if (u) {
+        peer = &u->peer;
+
+        p = ngx_snprintf(buf, len, ", upstream: \"%V%V%s%V\"",
+                         &u->conf->schema,
+                         &peer->peers->peer[peer->cur_peer].name,
+                         peer->peers->peer[peer->cur_peer].uri_separator,
+                         &u->uri);
+        len -= p - buf;
+        buf = p;
     }
 
     return ngx_http_log_error_info(r, buf, len);

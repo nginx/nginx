@@ -198,9 +198,6 @@ ngx_event_accept(ngx_event_t *ev)
         wev->own_lock = &c->lock;
 #endif
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
-                       "accept: fd:%d c:%d", s, c->number);
-
         if (ls->addr_ntop) {
             c->addr_text.data = ngx_palloc(c->pool, ls->addr_text_max_len);
             if (c->addr_text.data == NULL) {
@@ -220,14 +217,14 @@ ngx_event_accept(ngx_event_t *ev)
 #if (NGX_DEBUG)
         {
 
-        uint32_t            *addr;
         in_addr_t            i;
+        ngx_event_debug_t   *dc;
         struct sockaddr_in  *sin;
 
         sin = (struct sockaddr_in *) sa;
-        addr = ecf->debug_connection.elts;
+        dc = ecf->debug_connection.elts;
         for (i = 0; i < ecf->debug_connection.nelts; i++) {
-            if (addr[i] == sin->sin_addr.s_addr) {
+            if ((sin->sin_addr.s_addr & dc[i].mask) == dc[i].addr) {
                 log->log_level = NGX_LOG_DEBUG_CONNECTION|NGX_LOG_DEBUG_ALL;
                 break;
             }
@@ -235,6 +232,9 @@ ngx_event_accept(ngx_event_t *ev)
 
         }
 #endif
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "*%d accept: %V fd:%d", c->number, &c->addr_text, s);
 
         if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
             if (ngx_add_conn(c) == NGX_ERROR) {

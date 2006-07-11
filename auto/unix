@@ -21,7 +21,14 @@ ngx_param=NGX_PTR_SIZE; ngx_value=$ngx_size; . auto/types/value
 
 # POSIX types
 
-NGX_INCLUDE_AUTO_CONFIG_H="#include \"../$NGX_AUTO_CONFIG_H\""
+case "$NGX_AUTO_CONFIG_H" in
+    /*)
+        NGX_INCLUDE_AUTO_CONFIG_H="#include \"$NGX_AUTO_CONFIG_H\""
+    ;;
+    *)
+        NGX_INCLUDE_AUTO_CONFIG_H="#include \"../$NGX_AUTO_CONFIG_H\""
+    ;;
+esac
 
 ngx_type="uint64_t"; ngx_types="u_int64_t"; . auto/types/typedef
 

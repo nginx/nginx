@@ -78,9 +78,6 @@ static size_t ngx_http_upstream_log_response_time_getlen(ngx_http_request_t *r,
 static u_char *ngx_http_upstream_log_response_time(ngx_http_request_t *r,
     u_char *buf, ngx_http_log_op_t *op);
 
-static u_char *ngx_http_upstream_log_error(ngx_http_request_t *r, u_char *buf,
-    size_t len);
-
 static ngx_int_t ngx_http_upstream_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_http_upstream_status_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -293,7 +290,6 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
 void
 ngx_http_upstream_init(ngx_http_request_t *r)
 {
-    ngx_time_t                *tp;
     ngx_connection_t          *c;
     ngx_http_cleanup_t        *cln;
     ngx_http_upstream_t       *u;
@@ -337,8 +333,6 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     }
 
     u->peer.log = r->connection->log;
-    u->saved_log_handler = r->log_handler;
-    r->log_handler = ngx_http_upstream_log_error;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -358,18 +352,6 @@ ngx_http_upstream_init(ngx_http_request_t *r)
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
-
-    u->state = ngx_array_push(&u->states);
-    if (u->state == NULL) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return;
-    }
-
-    ngx_memzero(u->state, sizeof(ngx_http_upstream_state_t));
-
-    tp = ngx_timeofday();
-
-    u->state->response_time = tp->sec * 1000 + tp->msec;
 
     cln = ngx_http_cleanup_add(r, 0);
     if (cln == NULL) {
@@ -528,11 +510,30 @@ static void
 ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t          rc;
+    ngx_time_t        *tp;
     ngx_connection_t  *c;
 
     r->connection->log->action = "connecting to upstream";
 
     r->connection->single_connection = 0;
+
+    if (u->state && u->state->response_time) {
+        tp = ngx_timeofday();
+        u->state->response_time = tp->sec * 1000 + tp->msec
+                                  - u->state->response_time;
+    }
+
+    u->state = ngx_array_push(&u->states);
+    if (u->state == NULL) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    ngx_memzero(u->state, sizeof(ngx_http_upstream_state_t));
+
+    tp = ngx_timeofday();
+    u->state->response_time = tp->sec * 1000 + tp->msec;
 
     rc = ngx_event_connect_peer(&u->peer);
 
@@ -760,15 +761,6 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
         u->buffer.last = u->buffer.start;
 
 #endif
-
-    /* add one more state */
-
-    u->state = ngx_array_push(&u->states);
-    if (u->state == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_memzero(u->state, sizeof(ngx_http_upstream_state_t));
 
     return NGX_OK;
 }
@@ -1988,8 +1980,6 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     }
 #endif
 
-    r->log_handler = u->saved_log_handler;
-
     if (rc == NGX_DECLINED) {
         return;
     }
@@ -2454,32 +2444,6 @@ ngx_http_upstream_log_response_time(ngx_http_request_t *r, u_char *buf,
         *buf++ = ',';
         *buf++ = ' ';
     }
-}
-
-
-static u_char *
-ngx_http_upstream_log_error(ngx_http_request_t *r, u_char *buf, size_t len)
-{
-    u_char                 *p;
-    ngx_http_upstream_t    *u;
-    ngx_peer_connection_t  *peer;
-
-    u = r->upstream;
-    peer = &u->peer;
-
-    p = ngx_snprintf(buf, len,
-                     ", server: %V, URL: \"%V\","
-                     " upstream: \"%V%V%s%V\"",
-                     &r->server_name,
-                     &r->unparsed_uri,
-                     &u->conf->schema,
-                     &peer->peers->peer[peer->cur_peer].name,
-                     peer->peers->peer[peer->cur_peer].uri_separator,
-                     &u->uri);
-    len -= p - buf;
-    buf = p;
-
-    return ngx_http_log_error_info(r, buf, len);
 }
 
 

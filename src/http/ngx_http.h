@@ -19,8 +19,8 @@ typedef struct ngx_http_log_ctx_s   ngx_http_log_ctx_t;
 
 typedef ngx_int_t (*ngx_http_header_handler_pt)(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
-typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r, u_char *buf,
-    size_t len);
+typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r,
+    ngx_http_request_t *sr, u_char *buf, size_t len);
 
 
 #if (NGX_HTTP_CACHE)
@@ -49,6 +49,7 @@ typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r, u_char *buf,
 struct ngx_http_log_ctx_s {
     ngx_str_t           *client;
     ngx_http_request_t  *request;
+    ngx_http_request_t  *current_request;
 };
 
 

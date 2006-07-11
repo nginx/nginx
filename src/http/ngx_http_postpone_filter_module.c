@@ -162,6 +162,7 @@ ngx_http_postpone_filter_output_postponed_request(ngx_http_request_t *r)
 {
     ngx_int_t                      rc;
     ngx_chain_t                   *out;
+    ngx_http_log_ctx_t            *ctx;
     ngx_http_postponed_request_t  *pr;
 
     for ( ;; ) {
@@ -176,6 +177,9 @@ ngx_http_postpone_filter_output_postponed_request(ngx_http_request_t *r)
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http postpone filter handle \"%V?%V\"",
                            &pr->request->uri, &pr->request->args);
+
+            ctx = r->connection->log->data;
+            ctx->current_request = pr->request;
 
             if (!pr->request->done) {
                 r->connection->data = pr->request;

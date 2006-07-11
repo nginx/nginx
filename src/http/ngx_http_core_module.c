@@ -1162,6 +1162,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 {
     ngx_connection_t              *c;
     ngx_http_request_t            *sr;
+    ngx_http_log_ctx_t            *ctx;
     ngx_http_core_srv_conf_t      *cscf;
     ngx_http_postponed_request_t  *pr, *p;
 
@@ -1272,6 +1273,9 @@ ngx_http_subrequest(ngx_http_request_t *r,
     } else {
         r->postponed = pr;
     }
+
+    ctx = c->log->data;
+    ctx->current_request = sr;
 
     sr->internal = 1;
     sr->fast_subrequest = 1;

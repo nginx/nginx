@@ -9,6 +9,73 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.54" date="11.07.2006">
+
+<change type="feature">
+<para lang="ru">
+nginx теперь записывает в лог информацию о подзапросах.
+</para>
+<para lang="en">
+nginx now logs the subrequest information to the error log.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_next_upstream, fastcgi_next_upstream и memcached_next_upstream
+поддерживают параметр off.
+</para>
+<para lang="en">
+the "proxy_next_upstream", "fastcgi_next_upstream",
+and "memcached_next_upstream" directives support the "off" parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива debug_connection поддерживает запись адресов в формате CIDR.
+</para>
+<para lang="en">
+the "debug_connection" directive supports the CIDR address form.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перекодировании ответа проксированного сервера или сервера FastCGI
+в UTF-8 или наоборот ответ мог передаваться не полностью.
+</para>
+<para lang="en">
+if a response of proxied server or FastCGI server was converted from UTF-8
+or back, then it may be transferred incomplete.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $upstream_response_time содержала время только первого
+обращения к бэкенду.
+</para>
+<para lang="en">
+the $upstream_response_time variable had the time of the first
+request to a backend only.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на платформе amd64;
+ошибка появилась в 0.3.53.
+</para>
+<para lang="en">
+nginx could not be built on amd64 platform;
+bug appeared in 0.3.53.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.53" date="07.07.2006">
 
 <change type="change">
@@ -55,7 +122,7 @@ nginx supports the request body size more than 2G.
 </para>
 <para lang="en">
 if a client was successfully authorized using "satisfy_any on", then anyway
-the "access forbidden by rule" message was written in the log.
+the message "access forbidden by rule" was written in the log.
 </para>
 </change>
 

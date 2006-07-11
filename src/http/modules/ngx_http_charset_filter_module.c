@@ -432,6 +432,17 @@ ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             b = cl->buf;
 
             if (ngx_buf_size(b) == 0) {
+
+                *ll = ngx_alloc_chain_link(r->pool);
+                if (*ll == NULL) {
+                    return NGX_ERROR;
+                }
+
+                (*ll)->buf = b;
+                (*ll)->next = NULL;
+
+                ll = &(*ll)->next;
+
                 continue;
             }
 

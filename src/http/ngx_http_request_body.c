@@ -92,7 +92,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         rb->bufs->buf = b;
         rb->bufs->next = NULL;
 
-        if (preread >= r->headers_in.content_length_n) {
+        if ((off_t) preread >= r->headers_in.content_length_n) {
 
             /* the whole request body was pre-read */
 
@@ -120,7 +120,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
         rb->rest = r->headers_in.content_length_n - preread;
 
-        if (rb->rest <= (size_t) (b->end - b->last)) {
+        if (rb->rest <= (off_t) (b->end - b->last)) {
 
             /* the whole request body may be placed in r->header_in */
 
@@ -242,7 +242,7 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 
         size = rb->buf->end - rb->buf->last;
 
-        if (size > rb->rest) {
+        if ((off_t) size > rb->rest) {
             size = (size_t) rb->rest;
         }
 
