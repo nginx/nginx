@@ -170,7 +170,7 @@ static ngx_http_ssi_param_t  ngx_http_perl_ssi_params[] = {
 };
 
 static ngx_http_ssi_command_t  ngx_http_perl_ssi_command = {
-    ngx_string("perl"), ngx_http_perl_ssi, ngx_http_perl_ssi_params, 0, 1
+    ngx_string("perl"), ngx_http_perl_ssi, ngx_http_perl_ssi_params, 0, 0, 1
 };
 
 #endif

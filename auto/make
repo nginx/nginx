@@ -175,8 +175,10 @@ ngx_objs=`echo $ngx_all_objs $ngx_modules_obj \
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_long_regex_cont\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
 
-ngx_libs=${CORE_LIBS:+`echo $NGX_LD_OPT $CORE_LIBS \
-    | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`}
+if test -n "$NGX_LD_OPT$CORE_LIBS"; then
+    ngx_libs=`echo $NGX_LD_OPT $CORE_LIBS \
+        | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`
+fi
 
 ngx_link=${CORE_LINK:+`echo $CORE_LINK \
     | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`}

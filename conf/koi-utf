@@ -1,4 +1,10 @@
 
+# This map is not a full koi8-r <> utf8 map: it does not contain
+# box-drawing and some other characters.  Besides this map contains
+# several koi8-u and Byelorussian letters which are not in koi8-r.
+# If you need a full and standard map, use contrib/unicode2nginx/koi-utf
+# map instead.
+
 charset_map  koi8-r  utf-8 {
 
     80  E282AC ; # euro

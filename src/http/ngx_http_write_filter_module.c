@@ -13,7 +13,7 @@
 static ngx_int_t ngx_http_write_filter_init(ngx_cycle_t *cycle);
 
 
-ngx_http_module_t  ngx_http_write_filter_module_ctx = {
+static ngx_http_module_t  ngx_http_write_filter_module_ctx = {
     NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
@@ -69,7 +69,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (cl = r->out; cl; cl = cl->next) {
         ll = &cl->next;
 
-        ngx_log_debug7(NGX_LOG_DEBUG_EVENT, r->connection->log, 0,
+        ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "write old buf t:%d f:%d %p, pos %p, size: %z "
                        "file: %O, size: %z",
                        cl->buf->temporary, cl->buf->in_file,
@@ -80,7 +80,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 #if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                           "zero size buf in writer "
                           "t:%d r:%d f:%d %p %p-%p %p %O-%O",
                           cl->buf->temporary,
@@ -121,7 +121,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         *ll = cl;
         ll = &cl->next;
 
-        ngx_log_debug7(NGX_LOG_DEBUG_EVENT, r->connection->log, 0,
+        ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "write new buf t:%d f:%d %p, pos %p, size: %z "
                        "file: %O, size: %z",
                        cl->buf->temporary, cl->buf->in_file,
@@ -132,7 +132,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 #if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                           "zero size buf in writer "
                           "t:%d r:%d f:%d %p %p-%p %p %O-%O",
                           cl->buf->temporary,
@@ -201,7 +201,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return NGX_OK;
         }
 
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                       "the http output chain is empty");
 
         ngx_debug_point();
@@ -214,8 +214,8 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         if (to_send <= 0) {
             c->write->delayed = 1;
-            ngx_add_timer(r->connection->write,
-                       (ngx_msec_t) (- to_send * 1000 / r->limit_rate + 1));
+            ngx_add_timer(c->write,
+                          (ngx_msec_t) (- to_send * 1000 / r->limit_rate + 1));
 
             c->buffered |= NGX_HTTP_WRITE_BUFFERED;
 
@@ -244,8 +244,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (to_send) {
         sent = c->sent - sent;
         c->write->delayed = 1;
-        ngx_add_timer(r->connection->write,
-                      (ngx_msec_t) (sent * 1000 / r->limit_rate + 1));
+        ngx_add_timer(c->write, (ngx_msec_t) (sent * 1000 / r->limit_rate + 1));
     }
 
     for (cl = r->out; cl && cl != chain; /* void */) {

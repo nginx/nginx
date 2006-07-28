@@ -199,13 +199,16 @@ header_in(r, key)
     CODE:
 
     dXSTARG;
-    ngx_http_request_t  *r;
-    SV                  *key;
-    u_char              *p;
-    STRLEN               len;
-    ngx_uint_t           i;
-    ngx_list_part_t     *part;
-    ngx_table_elt_t     *header;
+    ngx_http_request_t         *r;
+    SV                         *key;
+    u_char                     *p, *lowcase_key, *cookie;
+    STRLEN                      len;
+    ssize_t                     size;
+    ngx_uint_t                  i, n, hash;
+    ngx_list_part_t            *part;
+    ngx_table_elt_t            *h, **ph;
+    ngx_http_header_t          *hh;
+    ngx_http_core_main_conf_t  *cmcf;
 
     ngx_http_perl_set_request(r);
 
@@ -217,8 +220,85 @@ header_in(r, key)
 
     p = (u_char *) SvPV(key, len);
 
+    /* look up hashed headers */
+
+    lowcase_key = ngx_palloc(r->pool, len);
+    if (lowcase_key == NULL) {
+        XSRETURN_UNDEF;
+    }
+
+    hash = 0;
+    for (i = 0; i < len; i++) {
+        lowcase_key[i] = ngx_tolower(p[i]);
+        hash = ngx_hash(hash, lowcase_key[i]);
+    }
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    hh = ngx_hash_find(&cmcf->headers_in_hash, hash, lowcase_key, len);
+
+    if (hh) {
+        if (hh->offset) {
+
+            ph = (ngx_table_elt_t **) ((char *) &r->headers_in + hh->offset);
+
+            if (*ph) {
+                ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len, 0);
+
+                goto done;
+            }
+
+            XSRETURN_UNDEF;
+        }
+
+        /* Cookie */
+
+        n = r->headers_in.cookies.nelts;
+
+        if (n == 0) {
+            XSRETURN_UNDEF;
+        }
+
+        ph = r->headers_in.cookies.elts;
+
+        if (n == 1) {
+            ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len, 0);
+
+            goto done;
+        }
+
+        size = - (ssize_t) (sizeof("; ") - 1);
+
+        for (i = 0; i < n; i++) {
+            size += ph[i]->value.len + sizeof("; ") - 1;
+        }
+
+        cookie = ngx_palloc(r->pool, size);
+        if (cookie == NULL) {
+            XSRETURN_UNDEF;
+        }
+
+        p = cookie;
+
+        for (i = 0; /* void */ ; i++) {
+            p = ngx_copy(p, ph[i]->value.data, ph[i]->value.len);
+
+            if (i == n - 1) {
+                break;
+            }
+
+            *p++ = ';'; *p++ = ' ';
+        }
+
+        ngx_http_perl_set_targ(cookie, size, 0);
+
+        goto done;
+    }
+
+    /* iterate over all headers */
+
     part = &r->headers_in.headers.part;
-    header = part->elts;
+    h = part->elts;
 
     for (i = 0; /* void */ ; i++) {
 
@@ -228,17 +308,17 @@ header_in(r, key)
             }
 
             part = part->next;
-            header = part->elts;
+            h = part->elts;
             i = 0;
         }
 
-        if (len != header[i].key.len
-            || ngx_strcasecmp(p, header[i].key.data) != 0)
+        if (len != h[i].key.len
+            || ngx_strcasecmp(p, h[i].key.data) != 0)
         {
             continue;
         }
 
-        ngx_http_perl_set_targ(header[i].value.data, header[i].value.len, 0);
+        ngx_http_perl_set_targ(h[i].value.data, h[i].value.len, 0);
 
         goto done;
     }

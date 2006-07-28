@@ -137,14 +137,14 @@ static ngx_command_t  ngx_event_core_commands[] = {
       NULL },
 
     { ngx_string("multi_accept"),
-      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      NGX_EVENT_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_event_conf_t, multi_accept),
       NULL },
 
     { ngx_string("accept_mutex"),
-      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      NGX_EVENT_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_event_conf_t, accept_mutex),

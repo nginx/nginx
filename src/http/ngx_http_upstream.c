@@ -1394,6 +1394,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (u->cachable) {
         p->temp_file->persistent = 1;
     } else {
+        p->temp_file->log_level = NGX_LOG_WARN;
         p->temp_file->warn = "an upstream response is buffered "
                              "to a temporary file";
     }

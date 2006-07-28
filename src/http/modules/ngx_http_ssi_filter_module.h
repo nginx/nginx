@@ -56,9 +56,11 @@ typedef struct {
 
     size_t                    value_len;
 
-    ngx_array_t               variables;
+    ngx_array_t              *variables;
+    ngx_array_t              *blocks;
 
     unsigned                  conditional:2;
+    unsigned                  block:1;
     unsigned                  output:1;
     unsigned                  output_chosen:1;
     unsigned                  wait:1;
@@ -88,6 +90,7 @@ typedef struct {
     ngx_http_ssi_param_t     *params;
 
     unsigned                  conditional:2;
+    unsigned                  block:1;
     unsigned                  flush:1;
 } ngx_http_ssi_command_t;
 

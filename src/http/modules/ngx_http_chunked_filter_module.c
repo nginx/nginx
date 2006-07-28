@@ -95,8 +95,11 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         size += ngx_buf_size(cl->buf);
 
-        if (cl->buf->flush || ngx_buf_in_memory(cl->buf) || cl->buf->in_file) {
-
+        if (cl->buf->flush
+            || cl->buf->sync
+            || ngx_buf_in_memory(cl->buf)
+            || cl->buf->in_file)
+        {
             tl = ngx_alloc_chain_link(r->pool);
             if (tl == NULL) {
                 return NGX_ERROR;

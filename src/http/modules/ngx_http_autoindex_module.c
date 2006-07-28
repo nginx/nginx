@@ -81,7 +81,7 @@ static ngx_command_t  ngx_http_autoindex_commands[] = {
 };
 
 
-ngx_http_module_t  ngx_http_autoindex_module_ctx = {
+static ngx_http_module_t  ngx_http_autoindex_module_ctx = {
     NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
 

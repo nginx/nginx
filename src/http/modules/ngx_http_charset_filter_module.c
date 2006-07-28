@@ -1325,6 +1325,9 @@ ngx_http_add_charset(ngx_array_t *charsets, ngx_str_t *name)
 
     if (ngx_strcasecmp(name->data, "utf-8") == 0) {
         c->utf8 = 1;
+
+    } else {
+        c->utf8 = 0;
     }
 
     return i;

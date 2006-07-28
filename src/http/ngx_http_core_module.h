@@ -267,7 +267,7 @@ u_char *ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *name,
 ngx_int_t ngx_http_auth_basic_user(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_subrequest(ngx_http_request_t *r,
-    ngx_str_t *uri, ngx_str_t *args, ngx_uint_t flags);
+    ngx_str_t *uri, ngx_str_t *args, ngx_chain_t *out, ngx_uint_t flags);
 ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args);
 
@@ -283,7 +283,6 @@ ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 
 
-extern ngx_http_module_t  ngx_http_core_module_ctx;
 extern ngx_module_t  ngx_http_core_module;
 
 extern ngx_uint_t ngx_http_max_module;

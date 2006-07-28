@@ -969,6 +969,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
 #endif
 
         case sw_quoted:
+            r->quoted_uri = 1;
+
             if (ch >= '0' && ch <= '9') {
                 decoded = (u_char) (ch - '0');
                 state = sw_quoted_second;

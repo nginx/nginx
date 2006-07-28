@@ -40,7 +40,7 @@ static ngx_command_t  ngx_iocp_commands[] = {
      NULL},
 
     {ngx_string("acceptex_read"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
+     NGX_EVENT_CONF|NGX_CONF_FLAG,
      ngx_conf_set_flag_slot,
      0,
      offsetof(ngx_iocp_conf_t, acceptex_read),

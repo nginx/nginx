@@ -426,7 +426,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
 };
 
 
-ngx_http_module_t  ngx_http_core_module_ctx = {
+static ngx_http_module_t  ngx_http_core_module_ctx = {
     ngx_http_core_preconfiguration,        /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
@@ -1071,13 +1071,19 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         last = ngx_copy(path->data, clcf->root.data, clcf->root.len);
 
     } else {
-        last = ngx_http_script_run(r, path, clcf->root_lengths->elts, reserved,
-                                   clcf->root_values->elts);
-        if (last == NULL) {
+        if (ngx_http_script_run(r, path, clcf->root_lengths->elts, reserved,
+                               clcf->root_values->elts)
+            == NULL)
+        {
+            return NULL;
+        }
+
+        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, path) == NGX_ERROR) {
             return NULL;
         }
 
         r->root_length = path->len - reserved;
+        last = path->data + r->root_length;
     }
 
     last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
@@ -1158,7 +1164,7 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
 
 ngx_int_t
 ngx_http_subrequest(ngx_http_request_t *r,
-    ngx_str_t *uri, ngx_str_t *args, ngx_uint_t flags)
+    ngx_str_t *uri, ngx_str_t *args, ngx_chain_t *out, ngx_uint_t flags)
 {
     ngx_connection_t              *c;
     ngx_http_request_t            *sr;
@@ -1239,6 +1245,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
+    sr->out = out;
     sr->main = r->main;
     sr->parent = r;
     sr->read_event_handler = ngx_http_request_empty_handler;
@@ -2527,8 +2534,10 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         lcf->root.len--;
     }
 
-    if (ngx_conf_full_name(cf->cycle, &lcf->root) == NGX_ERROR) {
-        return NGX_CONF_ERROR;
+    if (lcf->root.data[0] != '$') {
+        if (ngx_conf_full_name(cf->cycle, &lcf->root) == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
     }
 
     n = ngx_http_script_variables_count(&lcf->root);

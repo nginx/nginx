@@ -160,7 +160,7 @@ static ngx_command_t  ngx_http_userid_commands[] = {
 };
 
 
-ngx_http_module_t  ngx_http_userid_filter_module_ctx = {
+static ngx_http_module_t  ngx_http_userid_filter_module_ctx = {
     ngx_http_userid_add_variables,         /* preconfiguration */
     NULL,                                  /* postconfiguration */
 

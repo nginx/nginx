@@ -74,7 +74,7 @@ static u_char  ngx_empty_gif[] = {
 };
 
 
-ngx_http_module_t  ngx_http_empty_gif_module_ctx = {
+static ngx_http_module_t  ngx_http_empty_gif_module_ctx = {
     NULL,                          /* preconfiguration */
     NULL,                          /* postconfiguration */
 

@@ -853,7 +853,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
             } else {
                 for (i = 0; i < h->key.len; i++) {
-                    h->lowcase_key[i] = ngx_tolower(h->lowcase_key[i]);
+                    h->lowcase_key[i] = ngx_tolower(h->key.data[i]);
                 }
             }
 
@@ -1458,6 +1458,28 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http finalize request: %d, \"%V?%V\"",
                    rc, &r->uri, &r->args);
+
+    if (r != r->main
+        && rc != NGX_ERROR
+        && !r->connection->error
+        && !r->request_output
+        && r->out)
+    {
+        if (!r->header_sent) {
+            rc = ngx_http_set_content_type(r);
+
+            if (rc == NGX_OK) {
+                rc = ngx_http_send_header(r);
+
+                if (rc != NGX_ERROR) {
+                    rc = ngx_http_output_filter(r, r->out);
+                }
+            }
+
+        } else {
+            rc = ngx_http_output_filter(r, r->out);
+        }
+    }
 
     if (rc == NGX_ERROR
         || rc == NGX_HTTP_REQUEST_TIME_OUT
@@ -2434,15 +2456,6 @@ ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
         len -= p - buf;
         buf = p;
     }
-
-    return ngx_http_log_error_info(r, buf, len);
-}
-
-
-u_char *
-ngx_http_log_error_info(ngx_http_request_t *r, u_char *buf, size_t len)
-{
-    u_char  *p;
 
     if (r->headers_in.host) {
         p = ngx_snprintf(buf, len, ", host: \"%V\"",

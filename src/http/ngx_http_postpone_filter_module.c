@@ -127,7 +127,6 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
         || (r->connection->buffered
             & (NGX_HTTP_LOWLEVEL_BUFFERED|NGX_LOWLEVEL_BUFFERED)))
     {
-
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http postpone filter out \"%V?%V\"", &r->uri, &r->args);
 

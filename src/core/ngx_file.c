@@ -25,11 +25,8 @@ ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
             return rc;
         }
 
-        if (tf->log_level == NGX_LOG_NOTICE) {
-            ngx_log_error(NGX_LOG_NOTICE, tf->file.log, 0, tf->warn);
-
-        } else if (tf->log_level == NGX_LOG_WARN) {
-            ngx_log_error(NGX_LOG_WARN, tf->file.log, 0, "%s %V",
+        if (tf->log_level) {
+            ngx_log_error(tf->log_level, tf->file.log, 0, "%s %V",
                           tf->warn, &tf->file.name);
         }
     }

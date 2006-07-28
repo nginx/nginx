@@ -9,6 +9,96 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.55" date="28.07.2006">
+
+<change type="feature">
+<para lang="ru">
+параметр stub в команде SSI include.
+</para>
+<para lang="en">
+the "stub" parameter in the "include" SSI command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+команда SSI block.
+</para>
+<para lang="en">
+the "block" SSI command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+скрипт unicode2nginx добавлен в contrib.
+</para>
+<para lang="en">
+the unicode2nginx script was added to contrib.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если root был задан только переменной, то корень задавался
+относительно префикса сервера.
+</para>
+<para lang="en">
+if a "root" was specified by variable only, then the root was relative
+to a server prefix.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в запросе был "//" или "/.", и после этого закодированные
+символы в виде "%XX", то проксируемый запрос передавался незакодированным.
+</para>
+<para lang="en">
+if the request contained "//" or "/./" and escaped symbols after them,
+then the proxied request was sent unescaped.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+метод $r->headers_in("Cookie") модуля ngx_http_perl_module теперь возвращает
+все строки "Cookie" в заголовке запроса.
+</para>
+<para lang="en">
+the $r->headers_in("Cookie") of the ngx_http_perl_module now returns
+all "Cookie" header lines.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+происходил segmentation fault, если использовался
+<nobr>"client_body_in_file_only on"</nobr>
+и делался переход к следующему бэкенду.
+</para>
+<para lang="en">
+a segmentation fault occurred if <nobr>"client_body_in_file_only on"</nobr>
+was used and nginx was switches to a next upstream.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при некоторых условиях во время переконфигурации коды символов в
+внутри директивы charset_map могли считаться неверными;
+ошибка появилась в 0.3.50.
+</para>
+<para lang="en">
+on some condition while reconfiguration character codes
+inside the "charset_map" may be treated invalid;
+bug appeared in 0.3.50.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.54" date="11.07.2006">
 
 <change type="feature">
@@ -501,10 +591,10 @@ backend only instead of being distributed among the rest.
 
 <change type="feature">
 <para lang="ru">
-параметр wait в команде SSI inlcude.
+параметр wait в команде SSI include.
 </para>
 <para lang="en">
-the "wait" parameter in the SSI "include" command.
+the "wait" parameter in the "include" SSI command.
 </para>
 </change>
 

@@ -92,6 +92,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         rb->bufs->buf = b;
         rb->bufs->next = NULL;
 
+        rb->buf = b;
+
         if ((off_t) preread >= r->headers_in.content_length_n) {
 
             /* the whole request body was pre-read */
@@ -123,8 +125,6 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         if (rb->rest <= (off_t) (b->end - b->last)) {
 
             /* the whole request body may be placed in r->header_in */
-
-            rb->buf = b;
 
             r->read_event_handler = ngx_http_read_client_request_body_handler;
 

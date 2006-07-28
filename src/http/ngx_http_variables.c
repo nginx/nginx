@@ -523,15 +523,17 @@ static ngx_int_t
 ngx_http_variable_headers(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
-    size_t             len;
+    ssize_t            len;
     u_char            *p;
-    ngx_uint_t         i;
+    ngx_uint_t         i, n;
     ngx_array_t       *a;
     ngx_table_elt_t  **h;
 
     a = (ngx_array_t *) ((char *) r + data);
 
-    if (a->nelts == 0) {
+    n = a->nelts;
+
+    if (n == 0) {
         v->not_found = 1;
         return NGX_OK;
     }
@@ -542,16 +544,16 @@ ngx_http_variable_headers(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     h = a->elts;
 
-    if (a->nelts == 1) {
+    if (n == 1) {
         v->len = (*h)->value.len;
         v->data = (*h)->value.data;
 
         return NGX_OK;
     }
 
-    len = (size_t) - (ssize_t) (sizeof("; ") - 1);
+    len = - (ssize_t) (sizeof("; ") - 1);
 
-    for (i = 0; i < a->nelts; i++) {
+    for (i = 0; i < n; i++) {
         len += h[i]->value.len + sizeof("; ") - 1;
     }
 
@@ -566,7 +568,7 @@ ngx_http_variable_headers(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     for (i = 0; /* void */ ; i++) {
         p = ngx_copy(p, h[i]->value.data, h[i]->value.len);
 
-        if (i == a->nelts - 1) {
+        if (i == n - 1) {
             break;
         }
 

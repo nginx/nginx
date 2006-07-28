@@ -104,6 +104,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->output_filter = (ngx_output_chain_filter_pt) ngx_http_next_filter;
         ctx->filter_ctx = r;
 
+        r->request_output = 1;
     }
 
     rc = ngx_output_chain(ctx, in);

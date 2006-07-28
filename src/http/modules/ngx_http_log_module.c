@@ -142,7 +142,7 @@ static ngx_command_t  ngx_http_log_commands[] = {
 };
 
 
-ngx_http_module_t  ngx_http_log_module_ctx = {
+static ngx_http_module_t  ngx_http_log_module_ctx = {
     ngx_http_log_set_formats,              /* preconfiguration */
     ngx_http_log_init,                     /* postconfiguration */
 

@@ -84,9 +84,6 @@ void ngx_http_request_empty_handler(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_send_special(ngx_http_request_t *r, ngx_uint_t flags);
 
-u_char * ngx_http_log_error_info(ngx_http_request_t *r, u_char *buf,
-    size_t len);
-
 
 ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_http_client_body_handler_pt post_handler);
