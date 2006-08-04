@@ -9,6 +9,41 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.56" date="04.08.2006">
+
+<change type="feature">
+<para lang="ru">
+директива dav_access.
+</para>
+<para lang="en">
+the "dav_access" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива if поддерживает операторы "-d", "!-d", "-e", "!-e", "-x" и "!-x".
+</para>
+<para lang="en">
+the "if" directive supports the "-d", "!-d", "-e", "!-e", "-x", and "!-x"
+operators.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при записи в access_log некоторых передаваемых клиенту строк заголовков
+происходил segmentation fault, если запрос возвращал редирект.
+</para>
+<para lang="en">
+a segmentation fault occurred if an request returned an redirect and
+some sent to client header lines were logged in the access log.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.55" date="28.07.2006">
 
 <change type="feature">
@@ -85,7 +120,7 @@ was used and nginx was switches to a next upstream.
 
 <change type="bugfix">
 <para lang="ru">
-при некоторых условиях во время переконфигурации коды символов в
+при некоторых условиях во время переконфигурации коды символов
 внутри директивы charset_map могли считаться неверными;
 ошибка появилась в 0.3.50.
 </para>

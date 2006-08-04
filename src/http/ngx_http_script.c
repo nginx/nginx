@@ -961,8 +961,13 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
 
         switch (code->op) {
         case ngx_http_script_file_plain:
+        case ngx_http_script_file_dir:
+        case ngx_http_script_file_exists:
+        case ngx_http_script_file_exec:
              goto false;
         case ngx_http_script_file_not_plain:
+        case ngx_http_script_file_not_dir:
+        case ngx_http_script_file_not_exec:
              goto true;
         }
 
@@ -981,6 +986,54 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
             goto false;
         }
         goto true;
+
+    case ngx_http_script_file_dir:
+        if (ngx_is_dir(&fi)) {
+             goto true;
+        }
+        goto false;
+
+    case ngx_http_script_file_not_dir:
+        if (ngx_is_dir(&fi)) {
+            goto false;
+        }
+        goto true;
+
+    case ngx_http_script_file_exists:
+        if (ngx_is_file(&fi) || ngx_is_dir(&fi) || ngx_is_link(&fi)) {
+             goto true;
+        }
+        goto false;
+
+    case ngx_http_script_file_not_exists:
+        if (ngx_is_file(&fi) || ngx_is_dir(&fi) || ngx_is_link(&fi)) {
+            goto false;
+        }
+        goto true;
+
+#if (NGX_WIN32)
+
+    case ngx_http_script_file_exec:
+        goto false;
+
+    case ngx_http_script_file_not_exec:
+        goto true;
+
+#else
+
+    case ngx_http_script_file_exec:
+        if (ngx_is_exec(&fi)) {
+             goto true;
+        }
+        goto false;
+
+    case ngx_http_script_file_not_exec:
+        if (ngx_is_exec(&fi)) {
+            goto false;
+        }
+        goto true;
+
+#endif
     }
 
 false:

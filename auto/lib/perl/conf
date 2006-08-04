@@ -20,6 +20,8 @@ if test -n "$NGX_PERL_VER"; then
     fi
 
     CFLAGS="$CFLAGS `$NGX_PERL -MExtUtils::Embed -e ccopts`"
+    # gcc 4.1/4.2
+    CFLAGS=`echo $CFLAGS | sed -e 's/-Wunused-value/-Wno-unused-value/'`
     ngx_perl_ldopts=`$NGX_PERL -MExtUtils::Embed -e ldopts`
 
     if $NGX_PERL -V:usemultiplicity | grep define > /dev/null; then

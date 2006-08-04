@@ -140,7 +140,13 @@ typedef struct {
 
 typedef enum {
     ngx_http_script_file_plain = 0,
-    ngx_http_script_file_not_plain
+    ngx_http_script_file_not_plain,
+    ngx_http_script_file_dir,
+    ngx_http_script_file_not_dir,
+    ngx_http_script_file_exists,
+    ngx_http_script_file_not_exists,
+    ngx_http_script_file_exec,
+    ngx_http_script_file_not_exec
 } ngx_http_script_file_op_e;
 
 

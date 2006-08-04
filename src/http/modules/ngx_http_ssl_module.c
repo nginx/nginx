@@ -17,6 +17,7 @@ typedef u_char *(*ngx_ssl_variable_handler_pt)(ngx_connection_t *);
 #define NGX_DEFLAUT_CIPHERS  "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
 
 
+static int ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static ngx_int_t ngx_http_ssl_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_ssl_client_s_dn(ngx_http_request_t *r,
@@ -384,7 +385,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->verify) {
-        SSL_CTX_set_verify(conf->ssl.ctx, NGX_SSL_VERIFY, NULL);
+        SSL_CTX_set_verify(conf->ssl.ctx, NGX_SSL_VERIFY,
+                           ngx_http_ssl_verify_callback);
 
         SSL_CTX_set_verify_depth(conf->ssl.ctx, conf->verify_depth);
 
@@ -419,6 +421,13 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     SSL_CTX_set_timeout(conf->ssl.ctx, conf->session_timeout);
 
     return NGX_CONF_OK;
+}
+
+
+static int
+ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
+{
+    return 1;
 }
 
 

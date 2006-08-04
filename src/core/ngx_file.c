@@ -166,7 +166,7 @@ ngx_create_path(ngx_file_t *file, ngx_path_t *path)
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, file->log, 0,
                        "temp file: \"%s\"", file->name.data);
 
-        if (ngx_create_dir(file->name.data) == NGX_FILE_ERROR) {
+        if (ngx_create_dir(file->name.data, 0700) == NGX_FILE_ERROR) {
             err = ngx_errno;
             if (err != NGX_EEXIST) {
                 ngx_log_error(NGX_LOG_CRIT, file->log, err,
@@ -184,7 +184,7 @@ ngx_create_path(ngx_file_t *file, ngx_path_t *path)
 
 
 ngx_err_t
-ngx_create_full_path(u_char *dir)
+ngx_create_full_path(u_char *dir, ngx_uint_t access)
 {
     u_char     *p, ch;
     ngx_err_t   err;
@@ -198,7 +198,7 @@ ngx_create_full_path(u_char *dir)
 
         *p = '\0';
 
-        if (ngx_create_dir(dir) == NGX_FILE_ERROR) {
+        if (ngx_create_dir(dir, access) == NGX_FILE_ERROR) {
             err = ngx_errno;
             if (err != NGX_EEXIST) {
                 return err;
@@ -370,7 +370,7 @@ ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
     path = cycle->pathes.elts;
     for (i = 0; i < cycle->pathes.nelts; i++) {
 
-        if (ngx_create_dir(path[i]->name.data) == NGX_FILE_ERROR) {
+        if (ngx_create_dir(path[i]->name.data, 0700) == NGX_FILE_ERROR) {
             err = ngx_errno;
             if (err != NGX_EEXIST) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, err,

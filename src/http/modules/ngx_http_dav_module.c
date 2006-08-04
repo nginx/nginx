@@ -14,6 +14,7 @@
 typedef struct {
     ngx_uint_t  methods;
     ngx_flag_t  create_full_put_path;
+    ngx_uint_t  access;
 } ngx_http_dav_loc_conf_t;
 
 
@@ -22,6 +23,8 @@ static void ngx_http_dav_put_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_dav_error(ngx_http_request_t *, ngx_err_t err,
     ngx_int_t not_found, char *failed, u_char *path);
 static ngx_int_t ngx_http_dav_location(ngx_http_request_t *r, u_char *path);
+static char *ngx_http_dav_access(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static void *ngx_http_dav_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_dav_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
@@ -51,6 +54,13 @@ static ngx_command_t  ngx_http_dav_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_dav_loc_conf_t, create_full_put_path),
+      NULL },
+
+    { ngx_string("dav_access"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
+      ngx_http_dav_access,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
       NULL },
 
       ngx_null_command
@@ -214,7 +224,7 @@ ngx_http_dav_handler(ngx_http_request_t *r)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http mkcol path: \"%s\"", path.data);
 
-        if (ngx_create_dir(path.data) != NGX_FILE_ERROR) {
+        if (ngx_create_dir(path.data, dlcf->access) != NGX_FILE_ERROR) {
             if (ngx_http_dav_location(r, path.data) != NGX_OK) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
@@ -233,6 +243,8 @@ ngx_http_dav_handler(ngx_http_request_t *r)
 static void
 ngx_http_dav_put_handler(ngx_http_request_t *r)
 {
+    char                     *failed;
+    u_char                   *name;
     ngx_err_t                 err;
     ngx_str_t                *temp, path;
     ngx_uint_t                status;
@@ -267,6 +279,25 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
         }
     }
 
+    dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
+
+#if !(NGX_WIN32)
+
+    if (ngx_change_file_access(temp->data, dlcf->access & ~0111)
+        == NGX_FILE_ERROR)
+    {
+        err = ngx_errno;
+        failed = ngx_change_file_access_n;
+        name = temp->data;
+
+        goto failed;
+    }
+
+#endif
+
+    failed = ngx_rename_file_n;
+    name = path.data;
+
     if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
         goto ok;
     }
@@ -275,10 +306,8 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 
     if (err == NGX_ENOENT) {
 
-        dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
-
         if (dlcf->create_full_put_path) {
-            err = ngx_create_full_path(path.data);
+            err = ngx_create_full_path(path.data, dlcf->access);
 
             if (err == 0) {
                 if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
@@ -303,6 +332,11 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
         err = ngx_errno;
     }
 
+
+#else
+
+failed:
+
 #endif
 
     if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
@@ -311,9 +345,9 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
                       temp->data);
     }
 
-    ngx_http_finalize_request(r, ngx_http_dav_error(r, err, NGX_HTTP_CONFLICT,
-                                                    ngx_rename_file_n,
-                                                    path.data));
+    ngx_http_finalize_request(r,
+                  ngx_http_dav_error(r, err, NGX_HTTP_CONFLICT, failed, name));
+
     return;
 
 ok:
@@ -407,6 +441,66 @@ ngx_http_dav_location(ngx_http_request_t *r, u_char *path)
 }
 
 
+static char *
+ngx_http_dav_access(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_dav_loc_conf_t *lcf = conf;
+
+    u_char      *p;
+    ngx_str_t   *value;
+    ngx_uint_t   i, right, shift;
+
+    if (lcf->access != NGX_CONF_UNSET_UINT) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    lcf->access = 0700;
+
+    for (i = 1; i < 3; i++) {
+
+        p = value[i].data;
+
+        if (ngx_strncmp(p, "user:", sizeof("user:") - 1) == 0) {
+            shift = 6;
+            p += sizeof("user:") - 1;
+
+        } else if (ngx_strncmp(p, "group:", sizeof("group:") - 1) == 0) {
+            shift = 3;
+            p += sizeof("group:") - 1;
+
+        } else if (ngx_strncmp(p, "all:", sizeof("all:") - 1) == 0) {
+            shift = 0;
+            p += sizeof("all:") - 1;
+
+        } else {
+            goto invalid;
+        }
+
+        if (ngx_strcmp(p, "rw") == 0) {
+            right = 7;
+
+        } else if (ngx_strcmp(p, "r") == 0) {
+            right = 5;
+
+        } else {
+            goto invalid;
+        }
+
+        lcf->access += right << shift;
+    }
+
+    return NGX_CONF_OK;
+
+invalid:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "invalid value \"%V\"", &value[i]);
+    return NGX_CONF_ERROR;
+}
+
+
 static void *
 ngx_http_dav_create_loc_conf(ngx_conf_t *cf)
 {
@@ -424,6 +518,7 @@ ngx_http_dav_create_loc_conf(ngx_conf_t *cf)
      */
 
     conf->create_full_put_path = NGX_CONF_UNSET;
+    conf->access = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
@@ -440,6 +535,8 @@ ngx_http_dav_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->create_full_put_path, prev->create_full_put_path,
                          0);
+
+    ngx_conf_merge_uint_value(conf->access, prev->access, 0600);
 
     return NGX_CONF_OK;
 }

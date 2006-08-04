@@ -61,6 +61,10 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 #define ngx_rename_file_n        "rename"
 
 
+#define ngx_change_file_access(n, a) chmod((const char *) n, a)
+#define ngx_change_file_access_n "chmod"
+
+
 #define ngx_file_info(file, sb)  stat((const char *) file, sb)
 #define ngx_file_info_n          "stat()"
 
@@ -69,6 +73,8 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 
 #define ngx_is_dir(sb)           (S_ISDIR((sb)->st_mode))
 #define ngx_is_file(sb)          (S_ISREG((sb)->st_mode))
+#define ngx_is_link(sb)          (S_ISLNK((sb)->st_mode))
+#define ngx_is_exec(sb)          ((sb)->st_mode & S_IXUSR)
 #define ngx_file_size(sb)        (sb)->st_size
 #define ngx_file_mtime(sb)       (sb)->st_mtime
 #define ngx_file_uniq(sb)        (sb)->st_ino
@@ -95,7 +101,7 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_read_dir_n           "readdir()"
 
 
-#define ngx_create_dir(name)     mkdir((const char *) name, 0700)
+#define ngx_create_dir(name, access) mkdir((const char *) name, access)
 #define ngx_create_dir_n         "mkdir()"
 
 

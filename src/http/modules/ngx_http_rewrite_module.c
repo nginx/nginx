@@ -817,9 +817,39 @@ ngx_http_rewrite_if_condition(ngx_conf_t *cf, ngx_http_rewrite_loc_conf_t *lcf)
             return NGX_CONF_OK;
         }
 
+        if (p[1] == 'd') {
+            fop->op = ngx_http_script_file_dir;
+            return NGX_CONF_OK;
+        }
+
+        if (p[1] == 'e') {
+            fop->op = ngx_http_script_file_exists;
+            return NGX_CONF_OK;
+        }
+
+        if (p[1] == 'x') {
+            fop->op = ngx_http_script_file_exec;
+            return NGX_CONF_OK;
+        }
+
         if (p[0] == '!') {
             if (p[2] == 'f') {
                 fop->op = ngx_http_script_file_not_plain;
+                return NGX_CONF_OK;
+            }
+
+            if (p[2] == 'd') {
+                fop->op = ngx_http_script_file_not_dir;
+                return NGX_CONF_OK;
+            }
+
+            if (p[2] == 'e') {
+                fop->op = ngx_http_script_file_not_exists;
+                return NGX_CONF_OK;
+            }
+
+            if (p[2] == 'x') {
+                fop->op = ngx_http_script_file_not_exec;
                 return NGX_CONF_OK;
             }
         }

@@ -90,6 +90,7 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 
 #define ngx_is_dir(fi)      ((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #define ngx_is_file(fi)     !((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+#define ngx_is_link(fi)     0
 
 
 #define ngx_file_size(fi)                                                    \
@@ -127,7 +128,7 @@ ngx_int_t ngx_read_dir(ngx_dir_t *dir);
 #define ngx_close_dir_n             "FindClose()"
 
 
-#define ngx_create_dir(name)        CreateDirectory((const char *) name, NULL)
+#define ngx_create_dir(name, access) CreateDirectory((const char *) name, NULL)
 #define ngx_create_dir_n            "CreateDirectory()"
 
 
