@@ -137,7 +137,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       offsetof(ngx_http_request_t, request_line), 0, 0 },
 
     { ngx_string("document_root"), NULL,
-      ngx_http_variable_document_root, 0, 0, 0 },
+      ngx_http_variable_document_root, 0, NGX_HTTP_VAR_NOCACHABLE, 0 },
 
     { ngx_string("query_string"), NULL, ngx_http_variable_request,
       offsetof(ngx_http_request_t, args),
@@ -775,15 +775,36 @@ static ngx_int_t
 ngx_http_variable_document_root(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
+    ngx_str_t                  path;
     ngx_http_core_loc_conf_t  *clcf;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    v->len = clcf->root.len;
-    v->valid = 1;
-    v->no_cachable = 0;
-    v->not_found = 0;
-    v->data = clcf->root.data;
+    if (clcf->root_lengths == NULL) {
+        v->len = clcf->root.len;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = clcf->root.data;
+
+    } else {
+        if (ngx_http_script_run(r, &path, clcf->root_lengths->elts, 0,
+                                clcf->root_values->elts)
+            == NULL)
+        {
+            return NGX_ERROR;
+        }
+
+        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, &path) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        v->len = path.len;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = path.data;
+    }
 
     return NGX_OK;
 }

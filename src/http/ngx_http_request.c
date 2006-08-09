@@ -1344,7 +1344,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
             if (rc != X509_V_OK) {
                 ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client SSL certificate verify error: (%l:%s) ",
+                              "client SSL certificate verify error: (%l:%s)",
                               rc, X509_verify_cert_error_string(rc));
                 ngx_http_finalize_request(r, NGX_HTTPS_CERT_ERROR);
                 return NGX_ERROR;

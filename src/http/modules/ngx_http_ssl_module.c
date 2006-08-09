@@ -9,7 +9,8 @@
 #include <ngx_http.h>
 
 
-typedef u_char *(*ngx_ssl_variable_handler_pt)(ngx_connection_t *);
+typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
+    ngx_pool_t *pool, ngx_str_t *s);
 
 
 #define NGX_DEFLAUT_CERTIFICATE      "cert.pem"
@@ -17,12 +18,9 @@ typedef u_char *(*ngx_ssl_variable_handler_pt)(ngx_connection_t *);
 #define NGX_DEFLAUT_CIPHERS  "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
 
 
-static int ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
+static ngx_int_t ngx_http_ssl_static_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_ssl_variable(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data);
-static ngx_int_t ngx_http_ssl_client_s_dn(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data);
-static ngx_int_t ngx_http_ssl_client_i_dn(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
 static ngx_int_t ngx_http_ssl_add_variables(ngx_conf_t *cf);
@@ -161,17 +159,20 @@ ngx_module_t  ngx_http_ssl_module = {
 
 static ngx_http_variable_t  ngx_http_ssl_vars[] = {
 
-    { ngx_string("ssl_protocol"), NULL, ngx_http_ssl_variable,
+    { ngx_string("ssl_protocol"), NULL, ngx_http_ssl_static_variable,
       (uintptr_t) ngx_ssl_get_protocol, NGX_HTTP_VAR_CHANGABLE, 0 },
 
-    { ngx_string("ssl_cipher"), NULL, ngx_http_ssl_variable,
+    { ngx_string("ssl_cipher"), NULL, ngx_http_ssl_static_variable,
       (uintptr_t) ngx_ssl_get_cipher_name, NGX_HTTP_VAR_CHANGABLE, 0 },
 
-    { ngx_string("ssl_client_s_dn"), NULL, ngx_http_ssl_client_s_dn,
-      0, NGX_HTTP_VAR_CHANGABLE, 0 },
+    { ngx_string("ssl_client_s_dn"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_subject_dn, NGX_HTTP_VAR_CHANGABLE, 0 },
 
-    { ngx_string("ssl_client_i_dn"), NULL, ngx_http_ssl_client_i_dn,
-      0, NGX_HTTP_VAR_CHANGABLE, 0 },
+    { ngx_string("ssl_client_i_dn"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_issuer_dn, NGX_HTTP_VAR_CHANGABLE, 0 },
+
+    { ngx_string("ssl_client_serial"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_serial_number, NGX_HTTP_VAR_CHANGABLE, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -181,25 +182,23 @@ static u_char ngx_http_session_id_ctx[] = "HTTP";
 
 
 static ngx_int_t
-ngx_http_ssl_variable(ngx_http_request_t *r,
+ngx_http_ssl_static_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_ssl_variable_handler_pt handler = (ngx_ssl_variable_handler_pt) data;
+    ngx_ssl_variable_handler_pt  handler = (ngx_ssl_variable_handler_pt) data;
 
-    size_t   len;
-    u_char  *name;
+    size_t  len;
 
     if (r->connection->ssl) {
 
-        name = handler(r->connection);
+        (void) handler(r->connection, NULL, (ngx_str_t *) v);
 
-        for (len = 0; name[len]; len++) { /* void */ }
+        for (len = 0; v->data[len]; len++) { /* void */ }
 
         v->len = len;
         v->valid = 1;
         v->no_cachable = 0;
         v->not_found = 0;
-        v->data = name;
 
         return NGX_OK;
     }
@@ -211,39 +210,13 @@ ngx_http_ssl_variable(ngx_http_request_t *r,
 
 
 static ngx_int_t
-ngx_http_ssl_client_s_dn(ngx_http_request_t *r, ngx_http_variable_value_t *v,
+ngx_http_ssl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
+    ngx_ssl_variable_handler_pt  handler = (ngx_ssl_variable_handler_pt) data;
+
     if (r->connection->ssl) {
-        if (ngx_ssl_get_subject_dn(r->connection, r->pool, (ngx_str_t *) v)
-            != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
-
-        if (v->len) {
-            v->valid = 1;
-            v->no_cachable = 0;
-            v->not_found = 0;
-
-            return NGX_OK;
-        }
-    }
-
-    v->not_found = 1;
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_http_ssl_client_i_dn(ngx_http_request_t *r, ngx_http_variable_value_t *v,
-    uintptr_t data)
-{
-    if (r->connection->ssl) {
-        if (ngx_ssl_get_issuer_dn(r->connection, r->pool, (ngx_str_t *) v)
-            != NGX_OK)
-        {
+        if (handler(r->connection, r->pool, (ngx_str_t *) v) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -385,18 +358,11 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->verify) {
-        SSL_CTX_set_verify(conf->ssl.ctx, NGX_SSL_VERIFY,
-                           ngx_http_ssl_verify_callback);
-
-        SSL_CTX_set_verify_depth(conf->ssl.ctx, conf->verify_depth);
-
-        if (conf->client_certificate.len) {
-            if (ngx_ssl_client_certificate(cf, &conf->ssl,
-                                           &conf->client_certificate)
-                != NGX_OK)
-            {
-                return NGX_CONF_ERROR;
-            }
+        if (ngx_ssl_client_certificate(cf, &conf->ssl,
+                                 &conf->client_certificate, conf->verify_depth)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
         }
     }
 
@@ -421,13 +387,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     SSL_CTX_set_timeout(conf->ssl.ctx, conf->session_timeout);
 
     return NGX_CONF_OK;
-}
-
-
-static int
-ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
-{
-    return 1;
 }
 
 

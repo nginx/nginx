@@ -960,13 +960,16 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
         }
 
         switch (code->op) {
+
         case ngx_http_script_file_plain:
         case ngx_http_script_file_dir:
         case ngx_http_script_file_exists:
         case ngx_http_script_file_exec:
              goto false;
+
         case ngx_http_script_file_not_plain:
         case ngx_http_script_file_not_dir:
+        case ngx_http_script_file_not_exists:
         case ngx_http_script_file_not_exec:
              goto true;
         }

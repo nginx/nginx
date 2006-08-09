@@ -14,6 +14,7 @@ typedef struct {
 } ngx_openssl_conf_t;
 
 
+static int ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static void ngx_ssl_handshake_handler(ngx_event_t *ev);
 static ngx_int_t ngx_ssl_handle_recv(ngx_connection_t *c, int n);
 static void ngx_ssl_write_handler(ngx_event_t *wev);
@@ -83,6 +84,9 @@ static long  ngx_ssl_protocols[] = {
 };
 
 
+int  ngx_connection_index;
+
+
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
@@ -92,6 +96,13 @@ ngx_ssl_init(ngx_log_t *log)
 #if (NGX_SSL_ENGINE)
     ENGINE_load_builtin_engines();
 #endif
+
+    ngx_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+
+    if (ngx_connection_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "SSL_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
 }
@@ -177,8 +188,19 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 
 
 ngx_int_t
-ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert)
+ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
+    ngx_int_t depth)
 {
+    STACK_OF(X509_NAME)  *list;
+
+    SSL_CTX_set_verify(ssl->ctx, SSL_VERIFY_PEER, ngx_http_ssl_verify_callback);
+
+    SSL_CTX_set_verify_depth(ssl->ctx, depth);
+
+    if (cert->len == 0) {
+        return NGX_OK;
+    }
+
     if (ngx_conf_full_name(cf->cycle, cert) == NGX_ERROR) {
         return NGX_ERROR;
     }
@@ -192,21 +214,77 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert)
         return NGX_ERROR;
     }
 
+    list = SSL_load_client_CA_file((char *) cert->data);
+
+    if (list == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_load_client_CA_file(\"%s\") failed", cert->data);
+        return NGX_ERROR;
+    }
+
+    /*
+     * before 0.9.7h and 0.9.8 SSL_load_client_CA_file()
+     * always leaved an error in the error queue
+     */
+
+    ERR_clear_error();
+
+    SSL_CTX_set_client_CA_list(ssl->ctx, list);
+
     return NGX_OK;
+}
+
+
+static int
+ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
+{
+    char              *subject, *issuer;
+    int                err, depth;
+    X509              *cert;
+    X509_NAME         *name;
+    ngx_connection_t  *c;
+    ngx_ssl_conn_t    *ssl_conn;
+
+    ssl_conn = X509_STORE_CTX_get_ex_data(x509_store,
+                                          SSL_get_ex_data_X509_STORE_CTX_idx());
+
+    c = ngx_ssl_get_connection(ssl_conn);
+
+    cert = X509_STORE_CTX_get_current_cert(x509_store);
+    err = X509_STORE_CTX_get_error(x509_store);
+    depth = X509_STORE_CTX_get_error_depth(x509_store);
+
+    name = X509_get_subject_name(cert);
+    subject = name ? X509_NAME_oneline(name, NULL, 0) : "(none)";
+
+    name = X509_get_issuer_name(cert);
+    issuer = name ? X509_NAME_oneline(name, NULL, 0) : "(none)";
+
+    ngx_log_debug5(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "verify:%d, error:%d, depth:%d, "
+                   "subject:\"%s\",issuer: \"%s\"",
+                   ok, err, depth, subject, issuer);
+
+    return 1;
 }
 
 
 ngx_int_t
 ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl)
 {
+    RSA  *key;
+
     if (SSL_CTX_need_tmp_RSA(ssl->ctx) == 0) {
         return NGX_OK;
     }
 
-    ssl->rsa512_key = RSA_generate_key(512, RSA_F4, NULL, NULL);
+    key = RSA_generate_key(512, RSA_F4, NULL, NULL);
 
-    if (ssl->rsa512_key) {
-        SSL_CTX_set_tmp_rsa(ssl->ctx, ssl->rsa512_key);
+    if (key) {
+        SSL_CTX_set_tmp_rsa(ssl->ctx, key);
+
+        RSA_free(key);
+
         return NGX_OK;
     }
 
@@ -252,6 +330,11 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
 
     } else {
         SSL_set_accept_state(sc->connection);
+    }
+
+    if (SSL_set_ex_data(sc->connection, ngx_connection_index, c) == 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "SSL_set_ex_data() failed");
+        return NGX_ERROR;
     }
 
     c->ssl = sc;
@@ -1022,25 +1105,23 @@ ngx_ssl_cleanup_ctx(void *data)
 {
     ngx_ssl_t  *ssl = data;
 
-    if (ssl->rsa512_key) {
-        RSA_free(ssl->rsa512_key);
-    }
-
     SSL_CTX_free(ssl->ctx);
 }
 
 
-u_char *
-ngx_ssl_get_protocol(ngx_connection_t *c)
+ngx_int_t
+ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
-    return (u_char *) SSL_get_version(c->ssl->connection);
+    s->data = (u_char *) SSL_get_version(c->ssl->connection);
+    return NGX_OK;
 }
 
 
-u_char *
-ngx_ssl_get_cipher_name(ngx_connection_t *c)
+ngx_int_t
+ngx_ssl_get_cipher_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
-    return (u_char *) SSL_get_cipher_name(c->ssl->connection);
+    s->data = (u_char *) SSL_get_cipher_name(c->ssl->connection);
+    return NGX_OK;
 }
 
 
@@ -1055,13 +1136,11 @@ ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     s->len = 0;
 
     cert = SSL_get_peer_certificate(c->ssl->connection);
-
     if (cert == NULL) {
         return NGX_OK;
     }
 
     name = X509_get_subject_name(cert);
-
     if (name == NULL) {
         return NGX_ERROR;
     }
@@ -1096,13 +1175,11 @@ ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     s->len = 0;
 
     cert = SSL_get_peer_certificate(c->ssl->connection);
-
     if (cert == NULL) {
         return NGX_OK;
     }
 
     name = X509_get_issuer_name(cert);
-
     if (name == NULL) {
         return NGX_ERROR;
     }
@@ -1121,6 +1198,42 @@ ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     ngx_memcpy(s->data, p, len);
 
     OPENSSL_free(p);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    size_t   len;
+    X509    *cert;
+    BIO     *bio;
+
+    s->len = 0;
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+    if (cert == NULL) {
+        return NGX_OK;
+    }
+
+    bio = BIO_new(BIO_s_mem());
+    if (bio == NULL) {
+        return NGX_ERROR;
+    }
+
+    i2a_ASN1_INTEGER(bio, X509_get_serialNumber(cert));
+    len = BIO_pending(bio);
+
+    s->len = len;
+    s->data = ngx_palloc(pool, len);
+    if (s->data == NULL) {
+        BIO_free(bio);
+        return NGX_ERROR;
+    }
+
+    BIO_read(bio, s->data, len);
+    BIO_free(bio);
 
     return NGX_OK;
 }

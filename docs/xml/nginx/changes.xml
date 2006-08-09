@@ -9,6 +9,52 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.57" date="09.08.2006">
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_client_serial.
+</para>
+<para lang="en">
+the $ssl_client_serial variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в операторе "!-e" в директиве if.<br/>
+Спасибо Андриану Буданцову.
+</para>
+<para lang="en">
+in the "!-e" operator of the "if" directive.<br/>
+Thanks to Andrian Budanstov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при проверке клиентского сертификата nginx не передавал клиенту
+информацию о требуемых сертификатах.
+</para>
+<para lang="en">
+while a client certificate verification nginx did not send to a client
+the required certificates information.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $document_root не поддерживала переменные в директиве root.
+</para>
+<para lang="en">
+the $document_root variable did not support the variables in the "root"
+directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.56" date="04.08.2006">
 
 <change type="feature">

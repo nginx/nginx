@@ -22,15 +22,18 @@
 #define NGX_SSL_NAME     "OpenSSL"
 
 
+#define ngx_ssl_session_t       SSL_SESSION
+#define ngx_ssl_conn_t          SSL
+
+
 typedef struct {
     SSL_CTX                    *ctx;
-    RSA                        *rsa512_key;
     ngx_log_t                  *log;
 } ngx_ssl_t;
 
 
 typedef struct {
-    SSL                        *connection;
+    ngx_ssl_conn_t             *connection;
 
     ngx_int_t                   last;
     ngx_buf_t                  *buf;
@@ -47,9 +50,6 @@ typedef struct {
 } ngx_ssl_connection_t;
 
 
-#define ngx_ssl_session_t       SSL_SESSION
-
-
 #define NGX_SSL_SSLv2    2
 #define NGX_SSL_SSLv3    4
 #define NGX_SSL_TLSv1    8
@@ -61,15 +61,12 @@ typedef struct {
 #define NGX_SSL_BUFSIZE  16384
 
 
-#define NGX_SSL_VERIFY   SSL_VERIFY_PEER
-
-
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
 ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols);
 ngx_int_t ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_str_t *cert, ngx_str_t *key);
 ngx_int_t ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
-    ngx_str_t *cert);
+    ngx_str_t *cert, ngx_int_t depth);
 ngx_int_t ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl);
 ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
     ngx_uint_t flags);
@@ -77,14 +74,20 @@ ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
 ngx_int_t ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session);
 #define ngx_ssl_get_session(c)      SSL_get1_session(c->ssl->connection)
 #define ngx_ssl_free_session        SSL_SESSION_free
+#define ngx_ssl_get_connection(sc)  SSL_get_ex_data(sc, ngx_connection_index)
 
 
-u_char *ngx_ssl_get_protocol(ngx_connection_t *c);
-u_char *ngx_ssl_get_cipher_name(ngx_connection_t *c);
+ngx_int_t ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_cipher_name(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
 ngx_int_t ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
+ngx_int_t ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+
 
 
 
@@ -98,6 +101,9 @@ ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c);
 void ngx_cdecl ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     char *fmt, ...);
 void ngx_ssl_cleanup_ctx(void *data);
+
+
+extern int  ngx_connection_index;
 
 
 #endif /* _NGX_EVENT_OPENSSL_H_INCLUDED_ */

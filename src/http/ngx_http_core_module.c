@@ -1072,7 +1072,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
     } else {
         if (ngx_http_script_run(r, path, clcf->root_lengths->elts, reserved,
-                               clcf->root_values->elts)
+                                clcf->root_values->elts)
             == NULL)
         {
             return NULL;
