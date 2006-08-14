@@ -2056,7 +2056,7 @@ ngx_http_fastcgi_lowat_check(ngx_conf_t *cf, void *post, void *data)
 #if (NGX_FREEBSD)
     ssize_t *np = data;
 
-    if (*np >= ngx_freebsd_net_inet_tcp_sendspace) {
+    if ((u_long) *np >= ngx_freebsd_net_inet_tcp_sendspace) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"fastcgi_send_lowat\" must be less than %d "
                            "(sysctl net.inet.tcp.sendspace)",

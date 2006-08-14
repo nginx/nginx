@@ -295,8 +295,9 @@ ngx_int_t
 ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 {
     ngx_int_t                  rc;
-    ngx_uint_t                 i, err, msie_padding;
     ngx_buf_t                 *b;
+    ngx_str_t                 *uri;
+    ngx_uint_t                 i, err, msie_padding;
     ngx_chain_t               *out, *cl;
     ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
@@ -349,9 +350,20 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 
                 r->method = NGX_HTTP_GET;
 
-                if (err_page[i].uri.data[0] == '/') {
-                    return ngx_http_internal_redirect(r, &err_page[i].uri,
-                                                      NULL);
+                uri = &err_page[i].uri;
+
+                if (err_page[i].uri_lengths) {
+                    if (ngx_http_script_run(r, uri,
+                                            err_page[i].uri_lengths->elts, 0,
+                                            err_page[i].uri_values->elts)
+                        == NULL)
+                    {
+                        return NGX_ERROR;
+                    }
+                }
+
+                if (uri->data[0] == '/') {
+                    return ngx_http_internal_redirect(r, uri, NULL);
                 }
 
                 r->headers_out.location =
@@ -364,10 +376,10 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
                     r->headers_out.location->hash = 1;
                     r->headers_out.location->key.len = sizeof("Location") - 1;
                     r->headers_out.location->key.data = (u_char *) "Location";
-                    r->headers_out.location->value = err_page[i].uri;
+                    r->headers_out.location->value = *uri;
 
                 } else {
-                    error = NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    return NGX_ERROR;
                 }
             }
         }

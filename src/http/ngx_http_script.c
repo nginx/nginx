@@ -792,6 +792,10 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
 
     } else {
         e->buf.len = e->pos - e->buf.data;
+
+        if (!code->add_args) {
+            r->args.len = 0;
+        }
     }
 
     if (e->log) {

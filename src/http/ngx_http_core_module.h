@@ -171,9 +171,11 @@ typedef struct {
 
 
 typedef struct {
-    ngx_int_t     status;
-    ngx_int_t     overwrite;
-    ngx_str_t     uri;
+    ngx_int_t                  status;
+    ngx_int_t                  overwrite;
+    ngx_str_t                  uri;
+    ngx_array_t               *uri_lengths;
+    ngx_array_t               *uri_values;
 } ngx_http_err_page_t;
 
 

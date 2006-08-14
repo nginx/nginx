@@ -700,6 +700,7 @@ ngx_http_find_location_config(ngx_http_request_t *r)
                    r->headers_in.content_length_n, clcf->client_max_body_size);
 
     if (r->headers_in.content_length_n != -1
+        && !r->discard_body
         && clcf->client_max_body_size
         && clcf->client_max_body_size < r->headers_in.content_length_n)
     {
@@ -928,6 +929,10 @@ ngx_http_set_content_type(ngx_http_request_t *r)
     ngx_str_t                 *type;
     ngx_uint_t                 i, hash;
     ngx_http_core_loc_conf_t  *clcf;
+
+    if (r->headers_out.content_type.len) {
+        return NGX_OK;
+    }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -2688,10 +2693,12 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
-    ngx_int_t             overwrite;
-    ngx_uint_t            i, n;
-    ngx_str_t            *value;
-    ngx_http_err_page_t  *err;
+    ngx_int_t                   overwrite;
+    ngx_str_t                  *value, uri;
+    ngx_uint_t                  i, n, nvar;
+    ngx_array_t                *uri_lengths, *uri_values;
+    ngx_http_err_page_t        *err;
+    ngx_http_script_compile_t   sc;
 
     if (lcf->error_pages == NULL) {
         lcf->error_pages = ngx_array_create(cf->pool, 4,
@@ -2732,6 +2739,28 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         n = 1;
     }
 
+    uri = value[cf->args->nelts - 1];
+    uri_lengths = NULL;
+    uri_values = NULL;
+
+    nvar = ngx_http_script_variables_count(&uri);
+
+    if (nvar) {
+        ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+
+        sc.cf = cf;
+        sc.source = &uri;
+        sc.lengths = &uri_lengths;
+        sc.values = &uri_values;
+        sc.variables = nvar;
+        sc.complete_lengths = 1;
+        sc.complete_values = 1;
+
+        if (ngx_http_script_compile(&sc) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
     for (i = 1; i < cf->args->nelts - n; i++) {
         err = ngx_array_push(lcf->error_pages);
         if (err == NULL) {
@@ -2755,7 +2784,9 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         err->overwrite = (overwrite >= 0) ? overwrite : err->status;
 
-        err->uri = value[cf->args->nelts - 1];
+        err->uri = uri;
+        err->uri_lengths = uri_lengths;
+        err->uri_values = uri_values;
     }
 
     return NGX_CONF_OK;
@@ -2838,7 +2869,7 @@ ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data)
 #if (NGX_FREEBSD)
     ssize_t *np = data;
 
-    if (*np >= ngx_freebsd_net_inet_tcp_sendspace) {
+    if ((u_long) *np >= ngx_freebsd_net_inet_tcp_sendspace) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"send_lowat\" must be less than %d "
                            "(sysctl net.inet.tcp.sendspace)",

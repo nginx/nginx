@@ -116,10 +116,8 @@ send_http_header(r, ...)
         }
 
     } else {
-        if (r->headers_out.content_type.len == 0) {
-            if (ngx_http_set_content_type(r) != NGX_OK) {
-                XSRETURN_EMPTY;
-            }
+        if (ngx_http_set_content_type(r) != NGX_OK) {
+            XSRETURN_EMPTY;
         }
     }
 

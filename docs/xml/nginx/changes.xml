@@ -9,6 +9,69 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.58" date="14.08.2006">
+
+<change type="feature">
+<para lang="ru">
+директива error_page поддерживает переменные.
+</para>
+<para lang="en">
+the "error_page" directive supports the variables.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь на Linux используется интерфейс procfs вместо sysctl.
+</para>
+<para lang="en">
+now the procfs interface instead of sysctl is used on Linux.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при использовании "X-Accel-Redirect" строка "Content-Type" наследуется
+из первоначального ответа.
+</para>
+<para lang="en">
+now the "Content-Type" header line is inherited from first response
+when the "X-Accel-Redirect" was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива error_page не перенаправляла ошибку 413.
+</para>
+<para lang="en">
+the "error_page" directive did not redirect the 413 error.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+завершающий "?" не удалял старые аргументы, если в переписанном URI
+не было новых аргументов.
+</para>
+<para lang="en">
+the trailing "?" did not remove old arguments if no new arguments
+were added to a rewritten URI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не запускался на 64-битной FreeBSD 7.0-CURRENT.
+</para>
+<para lang="en">
+nginx could not run on 64-bit FreeBSD 7.0-CURRENT.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.57" date="09.08.2006">
 
 <change type="feature">

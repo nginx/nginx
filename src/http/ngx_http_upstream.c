@@ -110,7 +110,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
     { ngx_string("Content-Type"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, content_type),
-                 ngx_http_upstream_copy_content_type, 0, 0 },
+                 ngx_http_upstream_copy_content_type, 0, 1 },
 
     { ngx_string("Content-Length"),
                  ngx_http_upstream_process_header_line,

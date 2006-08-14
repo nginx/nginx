@@ -226,13 +226,6 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "perl handler");
 
-    /* mod_perl's content handler assumes that content type was already set */
-
-    if (ngx_http_set_content_type(r) != NGX_OK) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return;
-    }
-
     ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
 
     if (ctx == NULL) {

@@ -9,18 +9,18 @@
 
 
 /* FreeBSD 3.0 at least */
-char ngx_freebsd_kern_ostype[16];
-char ngx_freebsd_kern_osrelease[128];
-int ngx_freebsd_kern_osreldate;
-int ngx_freebsd_hw_ncpu;
-int ngx_freebsd_net_inet_tcp_sendspace;
-int ngx_freebsd_kern_ipc_somaxconn;
+char    ngx_freebsd_kern_ostype[16];
+char    ngx_freebsd_kern_osrelease[128];
+int     ngx_freebsd_kern_osreldate;
+int     ngx_freebsd_hw_ncpu;
+int     ngx_freebsd_kern_ipc_somaxconn;
+u_long  ngx_freebsd_net_inet_tcp_sendspace;
 
 /* FreeBSD 4.9 */
-int ngx_freebsd_machdep_hlt_logical_cpus;
+int     ngx_freebsd_machdep_hlt_logical_cpus;
 
 /* FreeBSD 5.0 */
-int ngx_freebsd_kern_ipc_zero_copy_send;
+int     ngx_freebsd_kern_ipc_zero_copy_send;
 
 
 ngx_uint_t ngx_freebsd_sendfile_nbytes_bug;
@@ -43,7 +43,7 @@ static ngx_os_io_t ngx_freebsd_io = {
 
 typedef struct {
     char        *name;
-    int         *value;
+    void        *value;
     size_t       size;
     ngx_uint_t   exists;
 } sysctl_t;
@@ -52,23 +52,23 @@ typedef struct {
 sysctl_t sysctls[] = {
     { "hw.ncpu",
       &ngx_freebsd_hw_ncpu,
-      sizeof(int), 0 },
+      sizeof(ngx_freebsd_hw_ncpu), 0 },
 
     { "machdep.hlt_logical_cpus",
       &ngx_freebsd_machdep_hlt_logical_cpus,
-      sizeof(int), 0 },
+      sizeof(ngx_freebsd_machdep_hlt_logical_cpus), 0 },
 
     { "net.inet.tcp.sendspace",
       &ngx_freebsd_net_inet_tcp_sendspace,
-      sizeof(int), 0 },
+      sizeof(ngx_freebsd_net_inet_tcp_sendspace), 0 },
 
     { "kern.ipc.somaxconn",
       &ngx_freebsd_kern_ipc_somaxconn,
-      sizeof(int), 0 },
+      sizeof(ngx_freebsd_kern_ipc_somaxconn), 0 },
 
     { "kern.ipc.zero_copy.send",
       &ngx_freebsd_kern_ipc_zero_copy_send,
-      sizeof(int), 0 },
+      sizeof(ngx_freebsd_kern_ipc_zero_copy_send), 0 },
 
     { NULL, NULL, 0, 0 }
 };
@@ -177,11 +177,10 @@ ngx_os_specific_init(ngx_log_t *log)
 
 
     for (i = 0; sysctls[i].name; i++) {
-        *sysctls[i].value = 0;
         size = sysctls[i].size;
 
         if (sysctlbyname(sysctls[i].name, sysctls[i].value, &size, NULL, 0)
-                                                                          == 0)
+            == 0)
         {
             sysctls[i].exists = 1;
             continue;
@@ -193,12 +192,6 @@ ngx_os_specific_init(ngx_log_t *log)
             continue;
         }
 
-#if 0
-        if (sysctls[i].value == &ngx_freebsd_machdep_hlt_logical_cpus) {
-            continue;
-        }
-#endif
-
         ngx_log_error(NGX_LOG_ALERT, log, err,
                       "sysctlbyname(%s) failed", sysctls[i].name);
         return NGX_ERROR;
@@ -206,15 +199,12 @@ ngx_os_specific_init(ngx_log_t *log)
 
     if (ngx_freebsd_machdep_hlt_logical_cpus) {
         ngx_ncpu = ngx_freebsd_hw_ncpu / 2;
+
     } else {
         ngx_ncpu = ngx_freebsd_hw_ncpu;
     }
 
-    if (version < 600008) {
-        somaxconn = 32767;
-    } else {
-        somaxconn = 65535;
-    }
+    somaxconn = version < 600008 ? 32676 : 65535;
 
     if (ngx_freebsd_kern_ipc_somaxconn > somaxconn) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
@@ -234,6 +224,7 @@ ngx_os_specific_init(ngx_log_t *log)
 void
 ngx_os_specific_status(ngx_log_t *log)
 {
+    u_long      value;
     ngx_uint_t  i;
 
     ngx_log_error(NGX_LOG_NOTICE, log, 0, "OS: %s %s",
@@ -251,8 +242,15 @@ ngx_os_specific_status(ngx_log_t *log)
 
     for (i = 0; sysctls[i].name; i++) {
         if (sysctls[i].exists) {
-            ngx_log_error(NGX_LOG_NOTICE, log, 0, "%s: %d",
-                          sysctls[i].name, *sysctls[i].value);
+            if (sysctls[i].size == sizeof(long)) {
+                value = *(long *) sysctls[i].value;
+
+            } else {
+                value = *(int *) sysctls[i].value;
+            }
+
+            ngx_log_error(NGX_LOG_NOTICE, log, 0, "%s: %l",
+                          sysctls[i].name, value);
         }
     }
 }

@@ -405,7 +405,7 @@ ngx_http_discard_body(ngx_http_request_t *r)
     ssize_t       size;
     ngx_event_t  *rev;
 
-    if (r != r->main) {
+    if (r != r->main || r->discard_body) {
         return NGX_OK;
     }
 
