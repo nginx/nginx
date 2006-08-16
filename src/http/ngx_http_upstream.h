@@ -103,7 +103,7 @@ typedef struct {
     ngx_str_t                       location;
     ngx_str_t                       url;  /* used in proxy_rewrite_location */
 
-    unsigned                        redirect_404:1;
+    unsigned                        intercept_404:1;
     unsigned                        change_buffering:1;
 
 #if (NGX_HTTP_SSL)

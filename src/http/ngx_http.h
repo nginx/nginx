@@ -53,12 +53,8 @@ struct ngx_http_log_ctx_s {
 };
 
 
-#define ngx_http_get_module_ctx(r, module)     (r)->ctx[module.ctx_index]
-#define ngx_http_get_module_err_ctx(r, module)                                \
-    ((r)->err_ctx ? (r)->err_ctx[module.ctx_index] : (r)->ctx[module.ctx_index])
-
-#define ngx_http_set_ctx(r, c, module)         r->ctx[module.ctx_index] = c;
-#define ngx_http_delete_ctx(r, module)         r->ctx[module.ctx_index] = NULL;
+#define ngx_http_get_module_ctx(r, module)  (r)->ctx[module.ctx_index]
+#define ngx_http_set_ctx(r, c, module)      r->ctx[module.ctx_index] = c;
 
 
 void ngx_http_init_connection(ngx_connection_t *c);

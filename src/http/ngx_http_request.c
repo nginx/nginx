@@ -424,6 +424,9 @@ ngx_http_init_request(ngx_event_t *rev)
     r->headers_out.content_length_n = -1;
     r->headers_out.last_modified_time = -1;
 
+    r->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
+    r->subrequests = NGX_HTTP_MAX_SUBREQUESTS + 1;
+
     r->http_state = NGX_HTTP_READING_REQUEST_STATE;
 
     ctx = c->log->data;
@@ -666,9 +669,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 rev->handler = ngx_http_request_handler;
                 c->write->handler = ngx_http_request_handler;
                 r->read_event_handler = ngx_http_block_read;
-
-                r->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
-                r->subrequests = NGX_HTTP_MAX_SUBREQUESTS + 1;
 
                 ngx_http_handler(r);
 

@@ -57,7 +57,7 @@ static ngx_command_t  ngx_http_dav_commands[] = {
       NULL },
 
     { ngx_string("dav_access"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
       ngx_http_dav_access,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,

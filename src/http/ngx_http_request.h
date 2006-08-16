@@ -368,7 +368,6 @@ struct ngx_http_request_s {
 
     off_t                             request_length;
 
-    void                            **err_ctx;
     ngx_uint_t                        err_status;
 
     ngx_http_connection_t            *http_connection;

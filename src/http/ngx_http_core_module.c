@@ -464,7 +464,7 @@ ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->unexpected_eof = 0;
 
-    if (r->err_ctx == NULL) {
+    if (!r->internal) {
         switch (r->headers_in.connection_type) {
         case 0:
             if (r->http_version > NGX_HTTP_VERSION_10) {
@@ -1341,21 +1341,8 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (r->err_ctx) {
-
-        /* allocate the new module's contexts */
-
-        r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
-        if (r->ctx == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-    } else {
-
-        /* clear the modules contexts */
-
-        ngx_memzero(r->ctx, sizeof(void *) * ngx_http_max_module);
-    }
+    /* clear the modules contexts */
+    ngx_memzero(r->ctx, sizeof(void *) * ngx_http_max_module);
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
     r->loc_conf = cscf->ctx->loc_conf;

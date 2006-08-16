@@ -1093,17 +1093,15 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
             return;
         }
 
-        if (u->conf->redirect_404) {
-            rc = (r->err_ctx == NULL) ? 404 : 204;
-            ngx_http_upstream_finalize_request(r, u, rc);
+        if (u->conf->intercept_404) {
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_NOT_FOUND);
             return;
         }
     }
 
 
     if (u->headers_in.status_n >= NGX_HTTP_BAD_REQUEST
-        && u->conf->intercept_errors
-        && r->err_ctx == NULL)
+        && u->conf->intercept_errors)
     {
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 

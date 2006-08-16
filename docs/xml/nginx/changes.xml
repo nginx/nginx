@@ -9,6 +9,42 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.59" date="16.08.2006">
+
+<change type="feature">
+<para lang="ru">
+теперь можно делать несколько перенаправлений через директиву error_page.
+</para>
+<para lang="en">
+now is possible to do several redirection using the "error_page" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива dav_access не поддерживала три параметра.
+</para>
+<para lang="en">
+the "dav_access" directive did not support three parameters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива error_page не изменяла строку "Content-Type"
+после перенаправления с помощью "X-Accel-Redirect";
+ошибка появилась в 0.3.58.
+</para>
+<para lang="en">
+the "error_page" directive did not changes the "Content-Type" header line
+after the "X-Accel-Redirect" was used;
+bug appeared in 0.3.58.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.58" date="14.08.2006">
 
 <change type="feature">
