@@ -9,6 +9,23 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.3.60" date="18.08.2006">
+
+<change type="bugfix">
+<para lang="ru">
+во время перенаправления ошибки рабочий процесс мог зациклиться;
+ошибка появилась в 0.3.59.
+</para>
+<para lang="en">
+a worker process may got caught in an endless loop
+while an error redirection;
+bug appeared in 0.3.59.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.3.59" date="16.08.2006">
 
 <change type="feature">

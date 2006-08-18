@@ -507,7 +507,7 @@ ngx_http_handler(ngx_http_request_t *r)
     r->valid_location = 1;
     r->uri_changed = 1;
 
-    r->phase = (r == r->main) ? NGX_HTTP_POST_READ_PHASE:
+    r->phase = (!r->internal) ? NGX_HTTP_POST_READ_PHASE:
                                 NGX_HTTP_SERVER_REWRITE_PHASE;
     r->phase_handler = 0;
 
@@ -1324,6 +1324,15 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 {
     ngx_http_core_srv_conf_t  *cscf;
 
+    r->uri_changes--;
+
+    if (r->uri_changes == 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "rewrite or internal redirection cycle");
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_DONE;
+    }
+
     r->uri = *uri;
 
     if (args) {
@@ -1338,7 +1347,8 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
                    "internal redirect: \"%V?%V\"", uri, &r->args);
 
     if (ngx_http_set_exten(r) != NGX_OK) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_DONE;
     }
 
     /* clear the modules contexts */
@@ -1350,8 +1360,6 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_http_update_location_config(r);
 
     r->internal = 1;
-
-    r->uri_changes--;
 
     ngx_http_handler(r);
 

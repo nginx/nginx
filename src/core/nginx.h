@@ -8,7 +8,7 @@
 #define _NGINX_H_INCLUDED_
 
 
-#define NGINX_VER          "nginx/0.3.59"
+#define NGINX_VER          "nginx/0.3.60"
 
 #define NGINX_VAR          "NGINX"
 #define NGX_OLDPID_EXT     ".oldbin"

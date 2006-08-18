@@ -312,6 +312,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
     }
 
     r->headers_out.status = error;
+    r->err_status = error;
 
     if (r->keepalive != 0) {
         switch (error) {
@@ -340,7 +341,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    if (clcf->error_pages) {
+    if (r->uri_changes && clcf->error_pages) {
 
         err_page = clcf->error_pages->elts;
 
