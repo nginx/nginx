@@ -241,7 +241,9 @@ struct ngx_http_core_loc_conf_s {
     ngx_flag_t    reset_timedout_connection; /* reset_timedout_connection */
     ngx_flag_t    port_in_redirect;        /* port_in_redirect */
     ngx_flag_t    msie_padding;            /* msie_padding */
+    ngx_flag_t    msie_refresh;            /* msie_refresh */
     ngx_flag_t    log_not_found;           /* log_not_found */
+    ngx_flag_t    recursive_error_pages;   /* recursive_error_pages */
 
     ngx_array_t  *error_pages;             /* error_page */
 

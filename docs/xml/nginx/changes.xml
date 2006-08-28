@@ -8,6 +8,59 @@
 <title lang="ru">Изменения в nginx</title>
 <title lang="en">nginx changelog</title>
 
+<!--
+
+<changes ver="0.4.0" date="19.08.2006">
+
+<change>
+<para lang="ru">
+Изменение во внутреннем API: инициализация модулей HTTP перенесена из фазы
+init module в фазу HTTP postconfiguration.
+</para>
+<para lang="en">
+Change in internal API: the HTTP modules initialization was moved
+from the init module phase to the HTTP postconfiguration phase.
+</para>
+</change>
+
+</changes>
+
+-->
+
+
+<changes ver="0.3.61" date="28.08.2006">
+
+<change type="feature">
+<para lang="ru">
+директива msie_refresh.
+</para>
+<para lang="en">
+the "msie_refresh" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива recursive_error_pages.
+</para>
+<para lang="en">
+the "recursive_error_pages" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива rewrite возвращала неправильный редирект, если редирект
+включал в себя выделенные закодированные символы из оригинального URI.
+</para>
+<para lang="en">
+the "rewrite" directive returned incorrect redirect, if the redirect
+had the captured escaped symbols from original URI.
+</para>
+</change>
+
+</changes>
+
 
 <changes ver="0.3.60" date="18.08.2006">
 

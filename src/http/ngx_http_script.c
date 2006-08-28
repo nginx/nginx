@@ -687,9 +687,11 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
 
         le.ip = code->lengths->elts;
+        le.line = e->line;
         le.request = r;
         le.captures = e->captures;
         le.ncaptures = e->ncaptures;
+        le.quote = code->redirect;
 
         len = 1;  /* reserve 1 byte for possible "?" */
 

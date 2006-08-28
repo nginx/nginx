@@ -434,6 +434,7 @@ struct ngx_http_request_s {
     unsigned                          lingering_close:1;
     unsigned                          discard_body:1;
     unsigned                          internal:1;
+    unsigned                          error_page:1;
     unsigned                          post_action:1;
     unsigned                          request_complete:1;
     unsigned                          request_output:1;

@@ -381,11 +381,25 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, msie_padding),
       NULL },
 
+    { ngx_string("msie_refresh"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, msie_refresh),
+      NULL },
+
     { ngx_string("log_not_found"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, log_not_found),
+      NULL },
+
+    { ngx_string("recursive_error_pages"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, recursive_error_pages),
       NULL },
 
     { ngx_string("error_page"),
@@ -547,7 +561,8 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
             if (r->uri_changes == 0) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "rewrite or internal redirection cycle");
+                              "rewrite or internal redirection cycle "
+                              "while processing \"%V\"", &r->uri);
                 ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
             }
@@ -1181,7 +1196,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     if (r->main->subrequests == 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "subrequests cycle");
+                      "subrequests cycle while processing \"%V\"", uri);
         return NGX_ERROR;
     }
 
@@ -1328,7 +1343,9 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 
     if (r->uri_changes == 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "rewrite or internal redirection cycle");
+                      "rewrite or internal redirection cycle "
+                      "while internal redirect to \"%V\"", uri);
+
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_DONE;
     }
@@ -2052,7 +2069,9 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->reset_timedout_connection = NGX_CONF_UNSET;
     lcf->port_in_redirect = NGX_CONF_UNSET;
     lcf->msie_padding = NGX_CONF_UNSET;
+    lcf->msie_refresh = NGX_CONF_UNSET;
     lcf->log_not_found = NGX_CONF_UNSET;
+    lcf->recursive_error_pages = NGX_CONF_UNSET;
     lcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
     lcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
@@ -2206,7 +2225,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->client_body_in_file_only, 0);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
-    ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 0);
+    ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 1);
 
     ngx_conf_merge_msec_value(conf->send_timeout, prev->send_timeout, 60000);
     ngx_conf_merge_size_value(conf->send_lowat, prev->send_lowat, 0);
@@ -2231,7 +2250,10 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->reset_timedout_connection, 0);
     ngx_conf_merge_value(conf->port_in_redirect, prev->port_in_redirect, 1);
     ngx_conf_merge_value(conf->msie_padding, prev->msie_padding, 1);
+    ngx_conf_merge_value(conf->msie_refresh, prev->msie_refresh, 0);
     ngx_conf_merge_value(conf->log_not_found, prev->log_not_found, 1);
+    ngx_conf_merge_value(conf->recursive_error_pages,
+                              prev->recursive_error_pages, 0);
 
     if (conf->open_files == NULL) {
         conf->open_files = prev->open_files;
