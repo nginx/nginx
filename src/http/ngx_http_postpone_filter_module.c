@@ -11,12 +11,12 @@
 
 static ngx_int_t
     ngx_http_postpone_filter_output_postponed_request(ngx_http_request_t *r);
-static ngx_int_t ngx_http_postpone_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_postpone_filter_init(ngx_conf_t *cf);
 
 
 static ngx_http_module_t  ngx_http_postpone_filter_module_ctx = {
     NULL,                                  /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_postpone_filter_init,         /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -35,7 +35,7 @@ ngx_module_t  ngx_http_postpone_filter_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_postpone_filter_init,         /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -219,7 +219,7 @@ ngx_http_postpone_filter_output_postponed_request(ngx_http_request_t *r)
 
 
 static ngx_int_t
-ngx_http_postpone_filter_init(ngx_cycle_t *cycle)
+ngx_http_postpone_filter_init(ngx_conf_t *cf)
 {
     ngx_http_next_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_postpone_filter;

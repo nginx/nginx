@@ -28,7 +28,7 @@ static char *ngx_http_dav_access(ngx_conf_t *cf, ngx_command_t *cmd,
 static void *ngx_http_dav_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_dav_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
-static ngx_int_t ngx_http_dav_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_dav_init(ngx_conf_t *cf);
 
 
 static ngx_conf_bitmask_t  ngx_http_dav_methods_mask[] = {
@@ -69,7 +69,7 @@ static ngx_command_t  ngx_http_dav_commands[] = {
 
 static ngx_http_module_t  ngx_http_dav_module_ctx = {
     NULL,                                  /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_dav_init,                     /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -88,7 +88,7 @@ ngx_module_t  ngx_http_dav_module = {
     ngx_http_dav_commands,                 /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_dav_init,                     /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -245,6 +245,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 {
     char                     *failed;
     u_char                   *name;
+    time_t                    date;
     ngx_err_t                 err;
     ngx_str_t                *temp, path;
     ngx_uint_t                status;
@@ -295,6 +296,24 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 
 #endif
 
+    if (r->headers_in.date) {
+        date = ngx_http_parse_time(r->headers_in.date->value.data,
+                                   r->headers_in.date->value.len);
+
+        if (date != NGX_ERROR) {
+            if (ngx_set_file_time(temp->data,
+                                  r->request_body->temp_file->file.fd, date)
+                != NGX_OK)
+            {
+                err = ngx_errno;
+                failed = ngx_set_file_time_n;
+                name = temp->data;
+
+                goto failed;
+            }
+        }
+    }
+
     failed = ngx_rename_file_n;
     name = path.data;
 
@@ -332,12 +351,9 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
         err = ngx_errno;
     }
 
-
-#else
+#endif
 
 failed:
-
-#endif
 
     if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
@@ -543,12 +559,12 @@ ngx_http_dav_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_dav_init(ngx_cycle_t *cycle)
+ngx_http_dav_init(ngx_conf_t *cf)
 {
     ngx_http_handler_pt        *h;
     ngx_http_core_main_conf_t  *cmcf;
 
-    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
     if (h == NULL) {

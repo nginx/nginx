@@ -102,8 +102,6 @@ static char *ngx_http_set_charset_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static ngx_int_t ngx_http_add_charset(ngx_array_t *charsets, ngx_str_t *name);
 
-static ngx_int_t ngx_http_charset_filter_init(ngx_cycle_t *cycle);
-
 static void *ngx_http_charset_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_charset_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_charset_merge_loc_conf(ngx_conf_t *cf,
@@ -169,7 +167,7 @@ ngx_module_t  ngx_http_charset_filter_module = {
     ngx_http_charset_filter_commands,      /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_charset_filter_init,          /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -1334,19 +1332,6 @@ ngx_http_add_charset(ngx_array_t *charsets, ngx_str_t *name)
 }
 
 
-static ngx_int_t
-ngx_http_charset_filter_init(ngx_cycle_t *cycle)
-{
-    ngx_http_next_header_filter = ngx_http_top_header_filter;
-    ngx_http_top_header_filter = ngx_http_charset_header_filter;
-
-    ngx_http_next_body_filter = ngx_http_top_body_filter;
-    ngx_http_top_body_filter = ngx_http_charset_body_filter;
-
-    return NGX_OK;
-}
-
-
 static void *
 ngx_http_charset_create_main_conf(ngx_conf_t *cf)
 {
@@ -1515,6 +1500,12 @@ ngx_http_charset_postconfiguration(ngx_conf_t *cf)
         src[tables[t].dst] = tables[t].src2dst;
         dst[tables[t].src] = tables[t].dst2src;
     }
+
+    ngx_http_next_header_filter = ngx_http_top_header_filter;
+    ngx_http_top_header_filter = ngx_http_charset_header_filter;
+
+    ngx_http_next_body_filter = ngx_http_top_body_filter;
+    ngx_http_top_body_filter = ngx_http_charset_body_filter;
 
     return NGX_OK;
 }

@@ -8,9 +8,8 @@
 <title lang="ru">Изменения в nginx</title>
 <title lang="en">nginx changelog</title>
 
-<!--
 
-<changes ver="0.4.0" date="19.08.2006">
+<changes ver="0.4.0" date="30.08.2006">
 
 <change>
 <para lang="ru">
@@ -23,12 +22,72 @@ from the init module phase to the HTTP postconfiguration phase.
 </para>
 </change>
 
-</changes>
+<change type="change">
+<para lang="ru">
+теперь тело запроса в модуле ngx_http_perl_module не считывается
+заранее: нужно явно инициировать чтение с помощью метода $r->has_request_body.
+</para>
+<para lang="en">
+now the request body is not read beforehand for the ngx_http_perl_module:
+it's required to start the reading using the $r->has_request_body method.
+</para>
+</change>
 
--->
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module поддерживает код возврата DECLINED.
+</para>
+<para lang="en">
+the ngx_http_perl_module supports the DECLINED return code.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_dav_module поддерживает входящую строку заголовка "Date"
+для метода PUT.
+</para>
+<para lang="en">
+the ngx_http_dav_module supports the incoming "Date" header line
+for the PUT method.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssi работает внутри блока if.
+</para>
+<para lang="en">
+the "ssi" directive is available inside the "if" block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+происходил segmentation fault, если в директиве index использовалась
+переменные и при этом первое имя индексного файла было без переменных;
+ошибка появилась в 0.1.29.
+</para>
+<para lang="en">
+a segmentation fault occurred if there was an "index" directive with
+variables and the first index name was without variables;
+bug appeared in 0.1.29.
+</para>
+</change>
+
+</changes>
 
 
 <changes ver="0.3.61" date="28.08.2006">
+
+<change type="change">
+<para lang="ru">
+директива tcp_nodelay теперь по умолчанию включена.
+</para>
+<para lang="en">
+now the "tcp_nodelay" directive is turned on by default.
+</para>
+</change>
 
 <change type="feature">
 <para lang="ru">

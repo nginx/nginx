@@ -140,6 +140,9 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 
     { ngx_string("Destination"), offsetof(ngx_http_headers_in_t, destination),
                  ngx_http_process_header_line },
+
+    { ngx_string("Date"), offsetof(ngx_http_headers_in_t, date),
+                 ngx_http_process_header_line },
 #endif
 
     { ngx_string("Cookie"), 0, ngx_http_process_cookie },
@@ -933,9 +936,11 @@ ngx_http_read_request_header(ngx_http_request_t *r)
 {
     ssize_t                    n;
     ngx_event_t               *rev;
+    ngx_connection_t          *c;
     ngx_http_core_srv_conf_t  *cscf;
 
-    rev = r->connection->read;
+    c = r->connection;
+    rev = c->read;
 
     n = r->header_in->last - r->header_in->pos;
 
@@ -944,8 +949,8 @@ ngx_http_read_request_header(ngx_http_request_t *r)
     }
 
     if (rev->ready) {
-        n = r->connection->recv(r->connection, r->header_in->last,
-                                r->header_in->end - r->header_in->last);
+        n = c->recv(c, r->header_in->last,
+                    r->header_in->end - r->header_in->last);
     } else {
         n = NGX_AGAIN;
     }
@@ -966,11 +971,14 @@ ngx_http_read_request_header(ngx_http_request_t *r)
     }
 
     if (n == 0) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client closed prematurely connection");
     }
 
     if (n == 0 || n == NGX_ERROR) {
+        c->error = rev->error;
+        c->log->action = "sending response to client";
+
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
@@ -1155,8 +1163,9 @@ ngx_http_process_unique_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                  "client sent duplicate header line: \"%V: %V\"",
-                  &h->key, &h->value);
+                  "client sent duplicate header line: \"%V: %V\", "
+                  "previous value: \"%V: %V\"",
+                  &h->key, &h->value, &(*ph)->key, &(*ph)->value);
 
     ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
 
@@ -1459,6 +1468,13 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http finalize request: %d, \"%V?%V\"",
                    rc, &r->uri, &r->args);
+
+    if (rc == NGX_DECLINED) {
+        r->content_handler = NULL;
+        r->write_event_handler = ngx_http_core_run_phases;
+        ngx_http_core_run_phases(r);
+        return;
+    }
 
     if (r != r->main
         && rc != NGX_ERROR

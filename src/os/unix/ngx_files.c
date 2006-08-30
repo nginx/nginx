@@ -221,6 +221,24 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 
 
 ngx_int_t
+ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s)
+{
+    struct timeval  tv[2];
+
+    tv[0].tv_sec = s;
+    tv[0].tv_usec = 0;
+    tv[1].tv_sec = s;
+    tv[1].tv_usec = 0;
+
+    if (utimes((char *) name, tv) != -1) {
+        return NGX_OK;
+    }
+
+    return NGX_ERROR;
+}
+
+
+ngx_int_t
 ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
     dir->dir = opendir((const char *) name->data);

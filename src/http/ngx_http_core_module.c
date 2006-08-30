@@ -23,7 +23,6 @@ typedef struct {
 #define NGX_HTTP_LOCATION_REGEX           4
 
 
-static void ngx_http_core_run_phases(ngx_http_request_t *r);
 static ngx_int_t ngx_http_core_find_location(ngx_http_request_t *r,
     ngx_array_t *locations, size_t len);
 
@@ -474,6 +473,8 @@ ngx_module_t  ngx_http_core_module = {
 void
 ngx_http_handler(ngx_http_request_t *r)
 {
+    ngx_http_core_main_conf_t  *cmcf;
+
     r->connection->log->action = NULL;
 
     r->connection->unexpected_eof = 0;
@@ -500,8 +501,8 @@ ngx_http_handler(ngx_http_request_t *r)
         if (r->keepalive && r->headers_in.msie && r->method == NGX_HTTP_POST) {
 
             /*
-             * MSIE may wait for some time if the response for
-             * the POST request is sent over the keepalive connection
+             * MSIE may wait for some time if an response for
+             * a POST request was sent over a keepalive connection
              */
 
             r->keepalive = 0;
@@ -515,172 +516,84 @@ ngx_http_handler(ngx_http_request_t *r)
         }
     }
 
-    r->write_event_handler = ngx_http_core_run_phases;
-
     r->valid_unparsed_uri = 1;
     r->valid_location = 1;
-    r->uri_changed = 1;
 
-    r->phase = (!r->internal) ? NGX_HTTP_POST_READ_PHASE:
-                                NGX_HTTP_SERVER_REWRITE_PHASE;
-    r->phase_handler = 0;
+    if (!r->internal) {
+        r->phase_handler = 0;
 
+    } else {
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+        r->phase_handler = cmcf->phase_engine.server_rewrite_index;
+    }
+
+    r->write_event_handler = ngx_http_core_run_phases;
     ngx_http_core_run_phases(r);
 }
 
 
-static void
+void
 ngx_http_core_run_phases(ngx_http_request_t *r)
 {
     ngx_int_t                   rc;
-    ngx_str_t                   path;
-    ngx_http_handler_pt        *h;
-    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_phase_handler_t   *ph;
     ngx_http_core_main_conf_t  *cmcf;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http phase handler");
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
-    for (/* void */; r->phase < NGX_HTTP_LOG_PHASE; r->phase++) {
+    ph = cmcf->phase_engine.handlers;
 
-        if (r->phase == NGX_HTTP_REWRITE_PHASE + 1 && r->uri_changed) {
+    while (ph[r->phase_handler].checker) {
 
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "uri changes: %d", r->uri_changes);
+        rc = ph[r->phase_handler].checker(r, &ph[r->phase_handler]);
 
-            /*
-             * gcc before 3.3 compiles the broken code for
-             *     if (r->uri_changes-- == 0)
-             * if the r->uri_changes is defined as
-             *     unsigned  uri_changes:4
-             */
-
-            r->uri_changes--;
-
-            if (r->uri_changes == 0) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "rewrite or internal redirection cycle "
-                              "while processing \"%V\"", &r->uri);
-                ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                return;
-            }
-
-            r->phase = NGX_HTTP_FIND_CONFIG_PHASE;
-        }
-
-        if (r->phase == NGX_HTTP_ACCESS_PHASE && r != r->main) {
-            continue;
-        }
-
-        if (r->phase == NGX_HTTP_CONTENT_PHASE && r->content_handler) {
-            r->write_event_handler = ngx_http_request_empty_handler;
-            ngx_http_finalize_request(r, r->content_handler(r));
-            return;
-        }
-
-        h = cmcf->phases[r->phase].handlers.elts;
-        for (r->phase_handler = cmcf->phases[r->phase].handlers.nelts - 1;
-             r->phase_handler >= 0;
-             r->phase_handler--)
-        {
-            rc = h[r->phase_handler](r);
-
-            if (rc == NGX_DONE) {
-
-                /*
-                 * we should never use r here because
-                 * it may point to already freed data
-                 */
-
-                return;
-            }
-
-            if (rc == NGX_DECLINED) {
-                continue;
-            }
-
-            if (r->phase == NGX_HTTP_ACCESS_PHASE) {
-                clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-                if (clcf->satisfy_any) {
-
-                    if (rc == NGX_OK) {
-                        r->access_code = 0;
-
-                        if (r->headers_out.www_authenticate) {
-                            r->headers_out.www_authenticate->hash = 0;
-                        }
-
-                        break;
-                    }
-
-                    if (rc == NGX_HTTP_FORBIDDEN || rc == NGX_HTTP_UNAUTHORIZED)
-                    {
-                        r->access_code = rc;
-
-                        continue;
-                    }
-                }
-            }
-
-            if (rc >= NGX_HTTP_SPECIAL_RESPONSE
-                || rc == NGX_HTTP_NO_CONTENT
-                || rc == NGX_ERROR)
-            {
-                ngx_http_finalize_request(r, rc);
-                return;
-            }
-
-            if (r->phase == NGX_HTTP_CONTENT_PHASE) {
-                ngx_http_finalize_request(r, rc);
-                return;
-            }
-
-            if (rc == NGX_AGAIN) {
-                return;
-            }
-
-            if (rc == NGX_OK && cmcf->phases[r->phase].type == NGX_OK) {
-                break;
-            }
-
-        }
-
-        if (r->phase == NGX_HTTP_ACCESS_PHASE && r->access_code) {
-
-            if (r->access_code == NGX_HTTP_FORBIDDEN) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "access forbidden by rule");
-            }
-
-            ngx_http_finalize_request(r, r->access_code);
+        if (rc == NGX_OK) {
             return;
         }
     }
-
-    /* no content handler was found */
-
-    if (r->uri.data[r->uri.len - 1] == '/' && !r->zero_in_uri) {
-
-        if (ngx_http_map_uri_to_path(r, &path, 0) != NULL) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "directory index of \"%V\" is forbidden", &path);
-        }
-
-        ngx_http_finalize_request(r, NGX_HTTP_FORBIDDEN);
-        return;
-    }
-
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no handler found");
-
-    ngx_http_finalize_request(r, NGX_HTTP_NOT_FOUND);
 }
 
 
 ngx_int_t
-ngx_http_find_location_config(ngx_http_request_t *r)
+ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
+{
+    ngx_int_t  rc;
+
+    /*
+     * generic phase checker,
+     * used by the post read, server rewrite, rewrite, and pre-access phases
+     */
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "generic phase: %ui", r->phase_handler);
+
+    rc = ph->handler(r);
+
+    if (rc == NGX_OK) {
+        r->phase_handler = ph->next;
+        return NGX_AGAIN;
+    }
+
+    if (rc == NGX_DECLINED) {
+        r->phase_handler++;
+        return NGX_AGAIN;
+    }
+
+    if (rc == NGX_AGAIN || rc == NGX_DONE) {
+        return NGX_OK;
+    }
+
+    /* rc == NGX_ERROR || rc == NGX_HTTP_...  */
+
+    ngx_http_finalize_request(r, rc);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_core_find_config_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph)
 {
     ngx_int_t                  rc;
     ngx_http_core_loc_conf_t  *clcf;
@@ -694,13 +607,15 @@ ngx_http_find_location_config(ngx_http_request_t *r)
     rc = ngx_http_core_find_location(r, &cscf->locations, 0);
 
     if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
-        return rc;
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_OK;
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (!r->internal && clcf->internal) {
-        return NGX_HTTP_NOT_FOUND;
+        ngx_http_finalize_request(r, NGX_HTTP_NOT_FOUND);
+        return NGX_OK;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -723,14 +638,16 @@ ngx_http_find_location_config(ngx_http_request_t *r)
                       "client intented to send too large body: %O bytes",
                       r->headers_in.content_length_n);
 
-        return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
+        ngx_http_finalize_request(r, NGX_HTTP_REQUEST_ENTITY_TOO_LARGE);
+        return NGX_OK;
     }
 
 
     if (rc == NGX_HTTP_LOCATION_AUTO_REDIRECT) {
         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
         if (r->headers_out.location == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_OK;
         }
 
         /*
@@ -740,9 +657,190 @@ ngx_http_find_location_config(ngx_http_request_t *r)
 
         r->headers_out.location->value = clcf->name;
 
-        return NGX_HTTP_MOVED_PERMANENTLY;
+        ngx_http_finalize_request(r, NGX_HTTP_MOVED_PERMANENTLY);
+        return NGX_OK;
     }
 
+    r->phase_handler++;
+    return NGX_AGAIN;
+}
+
+
+ngx_int_t
+ngx_http_core_post_rewrite_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph)
+{
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "post rewrite phase: %ui", r->phase_handler);
+
+    if (!r->uri_changed) {
+        r->phase_handler++;
+        return NGX_AGAIN;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "uri changes: %d", r->uri_changes);
+
+    /*
+     * gcc before 3.3 compiles the broken code for
+     *     if (r->uri_changes-- == 0)
+     * if the r->uri_changes is defined as
+     *     unsigned  uri_changes:4
+     */
+
+    r->uri_changes--;
+
+    if (r->uri_changes == 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "rewrite or internal redirection cycle "
+                      "while processing \"%V\"", &r->uri);
+
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_OK;
+    }
+
+    r->phase_handler = ph->next;
+
+    return NGX_AGAIN;
+}
+
+
+ngx_int_t
+ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
+{
+    ngx_int_t                  rc;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    if (r != r->main) {
+        r->phase_handler = ph->next;
+        return NGX_AGAIN;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "access phase: %ui", r->phase_handler);
+
+    rc = ph->handler(r);
+
+    if (rc == NGX_DECLINED) {
+        r->phase_handler++;
+        return NGX_AGAIN;
+    }
+
+    if (rc == NGX_AGAIN || rc == NGX_DONE) {
+        return NGX_OK;
+    }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->satisfy_any == 0) {
+
+        if (rc == NGX_OK) {
+            r->phase_handler++;
+            return NGX_AGAIN;
+        }
+
+    } else {
+        if (rc == NGX_OK) {
+            r->access_code = 0;
+
+            if (r->headers_out.www_authenticate) {
+                r->headers_out.www_authenticate->hash = 0;
+            }
+
+            r->phase_handler = ph->next;
+            return NGX_AGAIN;
+        }
+
+        if (rc == NGX_HTTP_FORBIDDEN || rc == NGX_HTTP_UNAUTHORIZED) {
+            r->access_code = rc;
+
+            r->phase_handler++;
+            return NGX_AGAIN;
+        }
+    }
+
+    /* rc == NGX_ERROR || rc == NGX_HTTP_...  */
+
+    ngx_http_finalize_request(r, rc);
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_core_post_access_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph)
+{
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "post access phase: %ui", r->phase_handler);
+
+    if (r->access_code) {
+
+        if (r->access_code == NGX_HTTP_FORBIDDEN) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "access forbidden by rule");
+        }
+
+        ngx_http_finalize_request(r, r->access_code);
+        return NGX_OK;
+    }
+
+    r->phase_handler++;
+    return NGX_AGAIN;
+}
+
+
+ngx_int_t
+ngx_http_core_content_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph)
+{
+    ngx_int_t  rc;
+    ngx_str_t  path;
+
+    if (r->content_handler) {
+        r->write_event_handler = ngx_http_request_empty_handler;
+        ngx_http_finalize_request(r, r->content_handler(r));
+        return NGX_OK;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "content phase: %ui", r->phase_handler);
+
+    rc = ph->handler(r);
+
+    if (rc == NGX_DONE) {
+        return NGX_OK;
+    }
+
+    if (rc != NGX_DECLINED) {
+        ngx_http_finalize_request(r, rc);
+        return NGX_OK;
+    }
+
+    /* rc == NGX_DECLINED */
+
+    ph++;
+
+    if (ph->checker) {
+        r->phase_handler++;
+        return NGX_AGAIN;
+    }
+
+    /* no content handler was found */
+
+    if (r->uri.data[r->uri.len - 1] == '/' && !r->zero_in_uri) {
+
+        if (ngx_http_map_uri_to_path(r, &path, 0) != NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "directory index of \"%V\" is forbidden", &path);
+        }
+
+        ngx_http_finalize_request(r, NGX_HTTP_FORBIDDEN);
+        return NGX_OK;
+    }
+
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no handler found");
+
+    ngx_http_finalize_request(r, NGX_HTTP_NOT_FOUND);
     return NGX_OK;
 }
 
@@ -1916,7 +2014,7 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_array_init(&cscf->server_names, cf->pool, 4,
+    if (ngx_array_init(&cscf->server_names, cf->temp_pool, 4,
                        sizeof(ngx_http_server_name_t))
         == NGX_ERROR)
     {

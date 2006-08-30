@@ -17,7 +17,7 @@ typedef struct {
 static void *ngx_http_copy_filter_create_conf(ngx_conf_t *cf);
 static char *ngx_http_copy_filter_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
-static ngx_int_t ngx_http_copy_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_copy_filter_init(ngx_conf_t *cf);
 
 
 static ngx_command_t  ngx_http_copy_filter_commands[] = {
@@ -35,7 +35,7 @@ static ngx_command_t  ngx_http_copy_filter_commands[] = {
 
 static ngx_http_module_t  ngx_http_copy_filter_module_ctx = {
     NULL,                                  /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_copy_filter_init,             /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -54,7 +54,7 @@ ngx_module_t  ngx_http_copy_filter_module = {
     ngx_http_copy_filter_commands,         /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_copy_filter_init,             /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -149,7 +149,7 @@ ngx_http_copy_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_copy_filter_init(ngx_cycle_t *cycle)
+ngx_http_copy_filter_init(ngx_conf_t *cf)
 {
     ngx_http_next_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_copy_filter;

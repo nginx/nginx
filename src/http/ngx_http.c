@@ -75,8 +75,9 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                        *rv;
     u_char                       ch;
-    ngx_int_t                    rc;
-    ngx_uint_t                   mi, m, s, l, p, a, i;
+    ngx_int_t                    rc, j;
+    ngx_uint_t                   mi, m, s, l, p, a, i, n;
+    ngx_uint_t                   find_config_index, use_rewrite, use_access;
     ngx_uint_t                   last, bind_all, done;
     ngx_conf_t                   pcf;
     ngx_array_t                  headers_in, in_ports;
@@ -93,9 +94,11 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_conf_in_addr_t     *in_addr;
     ngx_hash_keys_arrays_t       ha;
     ngx_http_server_name_t      *name;
+    ngx_http_phase_handler_t    *ph;
     ngx_http_virtual_names_t    *vn;
     ngx_http_core_srv_conf_t   **cscfp, *cscf;
     ngx_http_core_loc_conf_t    *clcf;
+    ngx_http_phase_handler_pt    checker;
     ngx_http_core_main_conf_t   *cmcf;
 #if (NGX_WIN32)
     ngx_iocp_conf_t             *iocpcf;
@@ -293,8 +296,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    cmcf->phases[NGX_HTTP_POST_READ_PHASE].type = NGX_OK;
-
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_SERVER_REWRITE_PHASE].handlers,
                        cf->pool, 1, sizeof(ngx_http_handler_pt))
@@ -302,27 +303,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     {
         return NGX_CONF_ERROR;
     }
-
-    cmcf->phases[NGX_HTTP_SERVER_REWRITE_PHASE].type = NGX_OK;
-
-
-    /* the special find config phase for a single handler */
-
-    if (ngx_array_init(&cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt))
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-    cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].type = NGX_OK;
-
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_FIND_CONFIG_PHASE].handlers);
-    if (h == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    *h = ngx_http_find_location_config;
 
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
@@ -332,8 +312,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    cmcf->phases[NGX_HTTP_REWRITE_PHASE].type = NGX_OK;
-
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_PREACCESS_PHASE].handlers,
                        cf->pool, 1, sizeof(ngx_http_handler_pt))
@@ -341,8 +319,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     {
         return NGX_CONF_ERROR;
     }
-
-    cmcf->phases[NGX_HTTP_PREACCESS_PHASE].type = NGX_OK;
 
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
@@ -352,8 +328,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    cmcf->phases[NGX_HTTP_ACCESS_PHASE].type = NGX_DECLINED;
-
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,
                        cf->pool, 4, sizeof(ngx_http_handler_pt))
@@ -362,8 +336,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    cmcf->phases[NGX_HTTP_CONTENT_PHASE].type = NGX_OK;
-
 
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers,
                        cf->pool, 1, sizeof(ngx_http_handler_pt))
@@ -371,8 +343,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     {
         return NGX_CONF_ERROR;
     }
-
-    cmcf->phases[NGX_HTTP_LOG_PHASE].type = NGX_OK;
 
 
     if (ngx_array_init(&headers_in, cf->temp_pool, 32, sizeof(ngx_hash_key_t))
@@ -430,6 +400,91 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
      */
 
     *cf = pcf;
+
+
+    cmcf->phase_engine.server_rewrite_index = (ngx_uint_t) -1;
+    find_config_index = 0;
+    use_rewrite = cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers.nelts ? 1 : 0;
+    use_access = cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers.nelts ? 1 : 0;
+
+    n = use_rewrite + use_access + 1; /* find config phase */
+
+    for (i = 0; i < NGX_HTTP_LOG_PHASE; i++) {
+        n += cmcf->phases[i].handlers.nelts;
+    }
+
+    ph = ngx_pcalloc(cf->pool,
+                     n * sizeof(ngx_http_phase_handler_t) + sizeof(void *));
+    if (ph == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    cmcf->phase_engine.handlers = ph;
+    n = 0;
+
+    for (i = 0; i < NGX_HTTP_LOG_PHASE; i++) {
+        h = cmcf->phases[i].handlers.elts;
+
+        switch (i) {
+
+        case NGX_HTTP_SERVER_REWRITE_PHASE:
+            if (cmcf->phase_engine.server_rewrite_index == (ngx_uint_t) -1) {
+                cmcf->phase_engine.server_rewrite_index = n;
+            }
+            checker = ngx_http_core_generic_phase;
+
+            break;
+
+        case NGX_HTTP_FIND_CONFIG_PHASE:
+            find_config_index = n;
+
+            ph->checker = ngx_http_core_find_config_phase;
+            n++;
+            ph++;
+
+            continue;
+
+        case NGX_HTTP_POST_REWRITE_PHASE:
+            if (use_rewrite) {
+                ph->checker = ngx_http_core_post_rewrite_phase;
+                ph->next = find_config_index;
+                n++;
+                ph++;
+            }
+
+            continue;
+
+        case NGX_HTTP_ACCESS_PHASE:
+            checker = ngx_http_core_access_phase;
+            n++;
+            break;
+
+        case NGX_HTTP_POST_ACCESS_PHASE:
+            if (use_access) {
+                ph->checker = ngx_http_core_post_access_phase;
+                ph->next = n;
+                ph++;
+            }
+
+            continue;
+
+        case NGX_HTTP_CONTENT_PHASE:
+            checker = ngx_http_core_content_phase;
+            break;
+
+        default:
+            checker = ngx_http_core_generic_phase;
+        }
+
+        n += cmcf->phases[i].handlers.nelts;
+
+        for (j = cmcf->phases[i].handlers.nelts - 1; j >=0; j--) {
+            ph->checker = checker;
+            ph->handler = h[j];
+            ph->next = n;
+            ph++;
+        }
+    }
 
 
     /*
@@ -936,7 +991,6 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_conf_in_addr_t *in_addr,
         if (name == NULL) {
             return NGX_ERROR;
         }
-        server_names = cscf->server_names.elts;
 
         *name = server_names[i];
     }

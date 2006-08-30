@@ -24,9 +24,8 @@ $NGX_OBJS/src/http/modules/perl/Makefile:				\
 	cp -p src/http/modules/perl/Makefile.PL $NGX_OBJS/src/http/modules/perl/
 
 	cd $NGX_OBJS/src/http/modules/perl				\
-		&& NGX_PERL_CFLAGS="$NGX_PERL_CFLAGS $NGX_CC_OPT"	\
+		&& NGX_PM_CFLAGS="\$(NGX_PM_CFLAGS) -g $NGX_CC_OPT"	\
 			NGX_PCRE=$PCRE					\
-			NGX_ZLIB=$ZLIB					\
 			NGX_OBJS=$NGX_OBJS				\
 		$NGX_PERL Makefile.PL					\
 			LIB=$NGX_PERL_MODULES

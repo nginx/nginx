@@ -83,7 +83,7 @@ static ngx_int_t ngx_http_gzip_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_http_gzip_ratio_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
-static ngx_int_t ngx_http_gzip_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_gzip_filter_init(ngx_conf_t *cf);
 static void *ngx_http_gzip_create_conf(ngx_conf_t *cf);
 static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
@@ -201,7 +201,7 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
 
 static ngx_http_module_t  ngx_http_gzip_filter_module_ctx = {
     ngx_http_gzip_add_variables,           /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_gzip_filter_init,             /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -220,7 +220,7 @@ ngx_module_t  ngx_http_gzip_filter_module = {
     ngx_http_gzip_filter_commands,         /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_gzip_filter_init,             /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -1030,19 +1030,6 @@ ngx_http_gzip_ratio_variable(ngx_http_request_t *r,
 }
 
 
-static ngx_int_t
-ngx_http_gzip_filter_init(ngx_cycle_t *cycle)
-{
-    ngx_http_next_header_filter = ngx_http_top_header_filter;
-    ngx_http_top_header_filter = ngx_http_gzip_header_filter;
-
-    ngx_http_next_body_filter = ngx_http_top_body_filter;
-    ngx_http_top_body_filter = ngx_http_gzip_body_filter;
-
-    return NGX_OK;
-}
-
-
 static void *
 ngx_http_gzip_create_conf(ngx_conf_t *cf)
 {
@@ -1120,6 +1107,19 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_gzip_filter_init(ngx_conf_t *cf)
+{
+    ngx_http_next_header_filter = ngx_http_top_header_filter;
+    ngx_http_top_header_filter = ngx_http_gzip_header_filter;
+
+    ngx_http_next_body_filter = ngx_http_top_body_filter;
+    ngx_http_top_body_filter = ngx_http_gzip_body_filter;
+
+    return NGX_OK;
 }
 
 

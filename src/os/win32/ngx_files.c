@@ -261,6 +261,27 @@ ngx_file_info(char *file, ngx_file_info_t *sb)
 
 
 ngx_int_t
+ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s)
+{
+    uint64_t  intervals;
+    FILETIME  ft;
+
+    /* 116444736000000000 is commented in src/os/win32/ngx_time.c */
+
+    intervals = s * 10000000 + 116444736000000000;
+
+    ft.dwLowDateTime = (DWORD) intervals;
+    ft.dwHighDateTime = (DWORD) (intervals >> 32);
+
+    if (SetFileTime(fd, NULL, NULL, &ft) != 0) {
+        return NGX_OK;
+    }
+
+    return NGX_ERROR;
+}
+
+
+ngx_int_t
 ngx_file_info(u_char *file, ngx_file_info_t *sb)
 {
     /* Win95 */
@@ -301,11 +322,11 @@ ngx_read_dir(ngx_dir_t *dir)
         return NGX_OK;
     }
 
-    if (FindNextFile(dir->dir, &dir->fd) == 0) {
-        return NGX_ERROR;
+    if (FindNextFile(dir->dir, &dir->fd) != 0) {
+        return NGX_OK;
     }
 
-    return NGX_OK;
+    return NGX_ERROR;
 }
 
 

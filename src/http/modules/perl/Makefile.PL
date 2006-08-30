@@ -12,7 +12,7 @@ WriteMakefile(
     ABSTRACT_FROM     => 'nginx.pm',     # retrieve abstract from module
     AUTHOR            => 'Igor Sysoev',
 
-    CCFLAGS           => "$ENV{NGX_PERL_CFLAGS}",
+    CCFLAGS           => "$ENV{NGX_PM_CFLAGS}",
     OPTIMIZE          => '-O',
 
     INC               => "-I ../../../../../src/core " .
@@ -22,8 +22,9 @@ WriteMakefile(
                          "-I ../../../../../src/http/modules " .
                          "-I ../../../../../src/http/modules/perl " .
                          "-I ../../../../../$ENV{NGX_OBJS} " .
-                         "-I ../../../../../$ENV{NGX_PCRE} " .
-                         "-I ../../../../../$ENV{NGX_ZLIB} ",
+                         ($ENV{NGX_PCRE} =~ /^(YES|NO)/ ? "" :
+                             ($ENV{NGX_PCRE} =~ m#^/# ? "-I $ENV{NGX_PCRE} " :
+                                  "-I ../../../../../$ENV{NGX_PCRE} ")),
 
     depend => {
         'nginx.c'     =>

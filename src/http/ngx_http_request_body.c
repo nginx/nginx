@@ -417,11 +417,11 @@ ngx_http_discard_body(ngx_http_request_t *r)
         ngx_del_timer(rev);
     }
 
+    r->discard_body = 1;
+
     if (r->headers_in.content_length_n <= 0) {
         return NGX_OK;
     }
-
-    r->discard_body = 1;
 
     size = r->header_in->last - r->header_in->pos;
 

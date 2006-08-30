@@ -58,11 +58,15 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 
 
 #define ngx_rename_file(o, n)    rename((const char *) o, (const char *) n)
-#define ngx_rename_file_n        "rename"
+#define ngx_rename_file_n        "rename()"
 
 
 #define ngx_change_file_access(n, a) chmod((const char *) n, a)
-#define ngx_change_file_access_n "chmod"
+#define ngx_change_file_access_n "chmod()"
+
+
+ngx_int_t ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s);
+#define ngx_set_file_time_n      "utimes()"
 
 
 #define ngx_file_info(file, sb)  stat((const char *) file, sb)

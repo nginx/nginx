@@ -329,6 +329,42 @@ header_in(r, key)
 
 
 void
+has_request_body(r, next)
+    CODE:
+
+    dXSTARG;
+    ngx_http_request_t   *r;
+    SV                   *next;
+    ngx_http_perl_ctx_t  *ctx;
+
+    ngx_http_perl_set_request(r);
+
+    if (r->headers_in.content_length_n <= 0) {
+        XSRETURN_UNDEF;
+    }
+
+    next = ST(1);
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
+    ctx->next = next;
+
+    r->request_body_in_single_buf = 1;
+    r->request_body_in_persistent_file = 1;
+    r->request_body_delete_incomplete_file = 1;
+
+    if (r->request_body_in_file_only) {
+        r->request_body_file_log_level = 0;
+    }
+
+    ngx_http_read_client_request_body(r, ngx_http_perl_handle_request);
+
+    sv_upgrade(TARG, SVt_IV);
+    sv_setiv(TARG, 1);
+
+    ST(0) = TARG;
+
+
+void
 request_body(r)
     CODE:
 

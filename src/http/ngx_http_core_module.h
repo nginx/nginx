@@ -49,28 +49,48 @@ typedef enum {
     NGX_HTTP_POST_READ_PHASE = 0,
 
     NGX_HTTP_SERVER_REWRITE_PHASE,
+
     NGX_HTTP_FIND_CONFIG_PHASE,
     NGX_HTTP_REWRITE_PHASE,
+    NGX_HTTP_POST_REWRITE_PHASE,
 
     NGX_HTTP_PREACCESS_PHASE,
 
     NGX_HTTP_ACCESS_PHASE,
+    NGX_HTTP_POST_ACCESS_PHASE,
+
     NGX_HTTP_CONTENT_PHASE,
 
     NGX_HTTP_LOG_PHASE
 } ngx_http_phases;
 
+typedef struct ngx_http_phase_handler_s  ngx_http_phase_handler_t;
+
+typedef ngx_int_t (*ngx_http_phase_handler_pt)(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph);
+
+struct ngx_http_phase_handler_s {
+    ngx_http_phase_handler_pt  checker;
+    ngx_http_handler_pt        handler;
+    ngx_uint_t                 next;
+};
+
+
+typedef struct {
+    ngx_http_phase_handler_t  *handlers;
+    ngx_uint_t                 server_rewrite_index;
+} ngx_http_phase_engine_t;
+
 
 typedef struct {
     ngx_array_t                handlers;
-    ngx_int_t                  type;                /* NGX_OK, NGX_DECLINED */
 } ngx_http_phase_t;
 
 
 typedef struct {
     ngx_array_t                servers;         /* ngx_http_core_srv_conf_t */
 
-    ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
+    ngx_http_phase_engine_t    phase_engine;
 
     ngx_hash_t                 headers_in_hash;
 
@@ -85,6 +105,8 @@ typedef struct {
     ngx_uint_t                 variables_hash_bucket_size;
 
     ngx_hash_keys_arrays_t    *variables_keys;
+
+    ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
 } ngx_http_core_main_conf_t;
 
 
@@ -262,7 +284,19 @@ struct ngx_http_core_loc_conf_s {
 };
 
 
-ngx_int_t ngx_http_find_location_config(ngx_http_request_t *r);
+void ngx_http_core_run_phases(ngx_http_request_t *r);
+ngx_int_t ngx_http_core_generic_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph);
+ngx_int_t ngx_http_core_find_config_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph);
+ngx_int_t ngx_http_core_post_rewrite_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph);
+ngx_int_t ngx_http_core_access_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph);
+ngx_int_t ngx_http_core_post_access_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph);
+ngx_int_t ngx_http_core_content_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph);
 
 ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
 ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);

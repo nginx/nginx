@@ -1,0 +1,24 @@
+/* XPM */
+static char * nginx_xpm[] = {
+"16 16 2 2",
+/* colors */
+"   c none",
+"GG c #008000",
+/* pixels */
+"                                ",
+"        GGGGGGGGGGGGGGGG        ",
+"        GGGGGGGGGGGGGGGG        ",
+"      GGGGGGGGGGGGGGGGGGGG      ",
+"      GGGGGG        GGGGGG      ",
+"    GGGGGG            GGGGGG    ",
+"    GGGGGG                      ",
+"  GGGGGG      GGGGGGGGGGGGGGGG  ",
+"  GGGGGG    GGGGGGGGGGGGGGGGGG  ",
+"    GGGGGG    GGGGGGGGGGGGGG    ",
+"    GGGGGG            GGGGGG    ",
+"      GGGGGG        GGGGGG      ",
+"      GGGGGGGGGGGGGGGGGGGG      ",
+"        GGGGGGGGGGGGGGGG        ",
+"        GGGGGGGGGGGGGGGG        ",
+"                                "
+}; 

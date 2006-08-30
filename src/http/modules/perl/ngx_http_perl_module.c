@@ -45,7 +45,6 @@ static ngx_int_t ngx_http_perl_ssi(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ssi_ctx, ngx_str_t **params);
 #endif
 
-static void ngx_http_perl_handle_request(ngx_http_request_t *r);
 static ngx_int_t
     ngx_http_perl_get_interpreter(ngx_http_perl_main_conf_t *pmcf,
     PerlInterpreter **perl, ngx_log_t *log);
@@ -176,6 +175,9 @@ static ngx_http_ssi_command_t  ngx_http_perl_ssi_command = {
 #endif
 
 
+static ngx_str_t  ngx_null_name = ngx_null_string;
+
+
 static HV  *nginx_stash;
 
 static void
@@ -190,13 +192,16 @@ ngx_http_perl_xs_init(pTHX)
 static ngx_int_t
 ngx_http_perl_handler(ngx_http_request_t *r)
 {
-    ngx_int_t  rc;
-
     /* TODO: Win32 */
     if (r->zero_in_uri) {
         return NGX_HTTP_NOT_FOUND;
     }
 
+    ngx_http_perl_handle_request(r);
+
+    return NGX_DONE;
+
+#if 0
     r->request_body_in_single_buf = 1;
     r->request_body_in_persistent_file = 1;
     r->request_body_delete_incomplete_file = 1;
@@ -212,14 +217,16 @@ ngx_http_perl_handler(ngx_http_request_t *r)
     }
 
     return NGX_DONE;
+#endif
 }
 
 
-static void
+void
 ngx_http_perl_handle_request(ngx_http_request_t *r)
 {
+    SV                         *sub;
     ngx_int_t                   rc;
-    ngx_str_t                   uri, args;
+    ngx_str_t                   uri, args, *handler;
     ngx_http_perl_ctx_t        *ctx;
     ngx_http_perl_loc_conf_t   *plcf;
     ngx_http_perl_main_conf_t  *pmcf;
@@ -231,7 +238,7 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     if (ctx == NULL) {
         ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_perl_ctx_t));
         if (ctx == NULL) {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            ngx_http_finalize_request(r, NGX_ERROR);
 	    return;
         }
 
@@ -251,10 +258,18 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
 
     dTHXa(ctx->perl);
 
-    plcf = ngx_http_get_module_loc_conf(r, ngx_http_perl_module);
+    if (ctx->next == NULL) {
+        plcf = ngx_http_get_module_loc_conf(r, ngx_http_perl_module);
+        sub = plcf->sub;
+        handler = &plcf->handler;
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, plcf->sub, NULL,
-                                    &plcf->handler, NULL);
+    } else {
+        sub = ctx->next;
+        handler = &ngx_null_name;
+        ctx->next = NULL;
+    }
+
+    rc = ngx_http_perl_call_handler(aTHX_ r, sub, NULL, handler, NULL);
 
     }
 
@@ -278,6 +293,10 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
 
+    if (ctx->done || ctx->next) {
+        return;
+    }
+
     if (uri.len) {
         ngx_http_internal_redirect(r, &uri, &args);
         return;
@@ -285,6 +304,7 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
 
     if (rc == NGX_OK || rc == NGX_HTTP_OK) {
         ngx_http_send_special(r, NGX_HTTP_LAST);
+        ctx->done = 1;
     }
 
     ngx_http_finalize_request(r, rc);
@@ -666,14 +686,6 @@ ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 }
 
 
-#if (__INTEL_COMPILER)
-/*
- * disable 'declaration hides parameter "my_perl"' warning for ENTER and LEAVE
- */
-#pragma warning(disable:1599)
-#endif
-
-
 static ngx_int_t
 ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, SV *sub,
     ngx_str_t **args, ngx_str_t *handler, ngx_str_t *rv)
@@ -771,11 +783,6 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, SV *sub,
 
     return (ngx_int_t) status;
 }
-
-
-#if (__INTEL_COMPILER)
-#pragma warning(default:1599)
-#endif
 
 
 static void

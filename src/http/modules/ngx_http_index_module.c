@@ -40,7 +40,7 @@ static ngx_int_t ngx_http_index_test_dir(ngx_http_request_t *r,
 static ngx_int_t ngx_http_index_error(ngx_http_request_t *r,
     ngx_http_index_ctx_t *ctx, ngx_err_t err);
 
-static ngx_int_t ngx_http_index_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_index_init(ngx_conf_t *cf);
 static void *ngx_http_index_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_index_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
@@ -74,7 +74,7 @@ static ngx_command_t  ngx_http_index_commands[] = {
 
 static ngx_http_module_t  ngx_http_index_module_ctx = {
     NULL,                                  /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_index_init,                   /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -93,7 +93,7 @@ ngx_module_t  ngx_http_index_module = {
     ngx_http_index_commands,               /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_index_init,                   /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -198,7 +198,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             len += 16;
         }
 
-        if (len > ctx->path.len) {
+        if (len > (size_t) (ctx->path.data + ctx->path.len - ctx->index.data)) {
 
             last = ngx_http_map_uri_to_path(r, &ctx->path, len);
             if (last == NULL) {
@@ -378,7 +378,7 @@ ngx_http_index_create_loc_conf(ngx_conf_t *cf)
     }
 
     conf->indices = NULL;
-    conf->max_index_len = 1;
+    conf->max_index_len = 0;
 
     return conf;
 }
@@ -422,6 +422,25 @@ ngx_http_index_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 }
 
 
+static ngx_int_t
+ngx_http_index_init(ngx_conf_t *cf)
+{
+    ngx_http_handler_pt        *h;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    *h = ngx_http_index_handler;
+
+    return NGX_OK;
+}
+
+
 /* TODO: warn about duplicate indices */
 
 static char *
@@ -429,8 +448,8 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_index_loc_conf_t *ilcf = conf;
 
-    ngx_uint_t                  i, n;
     ngx_str_t                  *value;
+    ngx_uint_t                  i, n;
     ngx_http_index_t           *index;
     ngx_http_script_compile_t   sc;
 
@@ -471,9 +490,7 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         n = ngx_http_script_variables_count(&value[i]);
 
         if (n == 0) {
-            if (ilcf->max_index_len != 0
-                && ilcf->max_index_len < index->name.len)
-            {
+            if (ilcf->max_index_len < index->name.len) {
                 ilcf->max_index_len = index->name.len;
             }
 
@@ -496,28 +513,7 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_http_script_compile(&sc) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
-
-        ilcf->max_index_len = 0;
     }
 
     return NGX_CONF_OK;
-}
-
-
-static ngx_int_t
-ngx_http_index_init(ngx_cycle_t *cycle)
-{
-    ngx_http_handler_pt        *h;
-    ngx_http_core_main_conf_t  *cmcf;
-
-    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
-
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
-    if (h == NULL) {
-        return NGX_ERROR;
-    }
-
-    *h = ngx_http_index_handler;
-
-    return NGX_OK;
 }

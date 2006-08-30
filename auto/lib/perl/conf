@@ -19,9 +19,16 @@ if test -n "$NGX_PERL_VER"; then
         exit 1;
     fi
 
-    CFLAGS="$CFLAGS `$NGX_PERL -MExtUtils::Embed -e ccopts`"
-    # gcc 4.1/4.2
-    CFLAGS=`echo $CFLAGS | sed -e 's/-Wunused-value/-Wno-unused-value/'`
+    NGX_PERL_CFLAGS="$CFLAGS `$NGX_PERL -MExtUtils::Embed -e ccopts`"
+    NGX_PM_CFLAGS=`$NGX_PERL -MExtUtils::Embed -e ccopts`
+
+    # gcc 4.1/4.2 warn about unused values in pTHX_
+    NGX_PERL_CFLAGS=`echo $NGX_PERL_CFLAGS \
+                     | sed -e 's/-Wunused-value/-Wno-unused-value/'`
+    # icc8 warns 'declaration hides parameter "my_perl"' in ENTER and LEAVE
+    NGX_PERL_CFLAGS=`echo $NGX_PERL_CFLAGS \
+                     | sed -e 's/-wd171/-wd171 -wd1599/'`
+
     ngx_perl_ldopts=`$NGX_PERL -MExtUtils::Embed -e ldopts`
 
     if $NGX_PERL -V:usemultiplicity | grep define > /dev/null; then

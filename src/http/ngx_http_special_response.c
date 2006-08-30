@@ -307,7 +307,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
     ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_str_t                 *uri, *location;
-    ngx_uint_t                 i, err, msie_padding;
+    ngx_uint_t                 i, n, err, msie_padding;
     ngx_chain_t               *out, *cl;
     ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
@@ -375,7 +375,22 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
                     {
                         return NGX_ERROR;
                     }
+
+                    if (r->zero_in_uri) {
+                        for (n = 0; n < uri->len; n++) {
+                            if (uri->data[n] == '\0') {
+                                goto zero;
+                            }
+                        }
+
+                        r->zero_in_uri = 0;
+                    }
+
+                } else {
+                    r->zero_in_uri = 0;
                 }
+
+            zero:
 
                 if (uri->data[0] == '/') {
                     return ngx_http_internal_redirect(r, uri, NULL);

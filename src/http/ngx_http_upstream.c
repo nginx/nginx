@@ -1134,10 +1134,10 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
         }
     }
 
+    umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+
     if (r->upstream->headers_in.x_accel_redirect) {
         ngx_http_upstream_finalize_request(r, u, NGX_DECLINED);
-
-        umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 
         part = &r->upstream->headers_in.headers.part;
         h = part->elts;
@@ -1187,29 +1187,6 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
         ngx_http_internal_redirect(r, uri, &args);
         return;
     }
-
-    ngx_http_upstream_send_response(r, u);
-}
-
-
-static void
-ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
-{
-    int                             tcp_nodelay;
-    ssize_t                         size;
-    ngx_int_t                       rc;
-    ngx_uint_t                      i;
-    ngx_list_part_t                *part;
-    ngx_table_elt_t                *h;
-    ngx_event_pipe_t               *p;
-    ngx_connection_t               *c;
-    ngx_pool_cleanup_t             *cl;
-    ngx_pool_cleanup_file_t        *clf;
-    ngx_http_core_loc_conf_t       *clcf;
-    ngx_http_upstream_header_t     *hh;
-    ngx_http_upstream_main_conf_t  *umcf;
-
-    umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 
     part = &r->upstream->headers_in.headers.part;
     h = part->elts;
@@ -1269,6 +1246,22 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     } else {
         u->length = NGX_MAX_SIZE_T_VALUE;
     }
+
+    ngx_http_upstream_send_response(r, u);
+}
+
+
+static void
+ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
+{
+    int                        tcp_nodelay;
+    ssize_t                    size;
+    ngx_int_t                  rc;
+    ngx_event_pipe_t          *p;
+    ngx_connection_t          *c;
+    ngx_pool_cleanup_t        *cl;
+    ngx_pool_cleanup_file_t   *clf;
+    ngx_http_core_loc_conf_t  *clcf;
 
     rc = ngx_http_send_header(r);
 

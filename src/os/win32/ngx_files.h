@@ -80,12 +80,17 @@ ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to,
     ngx_pool_t *pool);
 
 
+
+ngx_int_t ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s);
+#define ngx_set_file_time_n         "SetFileTime()"
+
+
 ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 #define ngx_file_info_n             "GetFileAttributesEx()"
 
 
 #define ngx_fd_info(fd, fi)         GetFileInformationByHandle(fd, fi)
-#define ngx_fd_info_n               "GetFileInformationByHandle"
+#define ngx_fd_info_n               "GetFileInformationByHandle()"
 
 
 #define ngx_is_dir(fi)      ((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)

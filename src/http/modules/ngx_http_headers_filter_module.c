@@ -28,10 +28,10 @@ typedef struct {
 #define NGX_HTTP_EXPIRES_EPOCH   -2147483645
 
 
-static ngx_int_t ngx_http_headers_filter_init(ngx_cycle_t *cycle);
 static void *ngx_http_headers_create_conf(ngx_conf_t *cf);
 static char *ngx_http_headers_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
+static ngx_int_t ngx_http_headers_filter_init(ngx_conf_t *cf);
 static char *ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -62,7 +62,7 @@ static ngx_command_t  ngx_http_headers_filter_commands[] = {
 
 static ngx_http_module_t  ngx_http_headers_filter_module_ctx = {
     NULL,                                  /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_headers_filter_init,          /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -81,7 +81,7 @@ ngx_module_t  ngx_http_headers_filter_module = {
     ngx_http_headers_filter_commands,      /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_headers_filter_init,          /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -274,16 +274,6 @@ ngx_http_headers_filter(ngx_http_request_t *r)
 }
 
 
-static ngx_int_t
-ngx_http_headers_filter_init(ngx_cycle_t *cycle)
-{
-    ngx_http_next_header_filter = ngx_http_top_header_filter;
-    ngx_http_top_header_filter = ngx_http_headers_filter;
-
-    return NGX_OK;
-}
-
-
 static void *
 ngx_http_headers_create_conf(ngx_conf_t *cf)
 {
@@ -328,6 +318,16 @@ ngx_http_headers_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_headers_filter_init(ngx_conf_t *cf)
+{
+    ngx_http_next_header_filter = ngx_http_top_header_filter;
+    ngx_http_top_header_filter = ngx_http_headers_filter;
+
+    return NGX_OK;
 }
 
 

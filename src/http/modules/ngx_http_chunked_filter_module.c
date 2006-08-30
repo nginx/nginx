@@ -9,12 +9,12 @@
 #include <ngx_http.h>
 
 
-static ngx_int_t ngx_http_chunked_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_chunked_filter_init(ngx_conf_t *cf);
 
 
 static ngx_http_module_t  ngx_http_chunked_filter_module_ctx = {
     NULL,                                  /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_chunked_filter_init,          /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -33,7 +33,7 @@ ngx_module_t  ngx_http_chunked_filter_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_chunked_filter_init,          /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -183,7 +183,7 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 
 static ngx_int_t
-ngx_http_chunked_filter_init(ngx_cycle_t *cycle)
+ngx_http_chunked_filter_init(ngx_conf_t *cf)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_chunked_header_filter;

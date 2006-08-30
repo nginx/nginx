@@ -184,6 +184,7 @@ typedef struct {
 #if (NGX_HTTP_DAV)
     ngx_table_elt_t                  *depth;
     ngx_table_elt_t                  *destination;
+    ngx_table_elt_t                  *date;
 #endif
 
     ngx_str_t                         user;
@@ -352,7 +353,6 @@ struct ngx_http_request_s {
     ngx_str_t                         server_name;
     ngx_http_virtual_names_t         *virtual_names;
 
-    ngx_uint_t                        phase;
     ngx_int_t                         phase_handler;
     ngx_http_handler_pt               content_handler;
     ngx_uint_t                        access_code;

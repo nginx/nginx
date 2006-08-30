@@ -91,6 +91,8 @@ CFLAGS="$CFLAGS -wd269"
 CFLAGS="$CFLAGS -wd810"
 # parameter was never referenced
 CFLAGS="$CFLAGS -wd869"
+# attribute "unused" is only allowed in a function definition, warning on pTHX_
+CFLAGS="$CFLAGS -wd1301"
 
 # STUB
 # enumerated type mixed with another type

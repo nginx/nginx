@@ -24,6 +24,9 @@ typedef struct {
     ngx_str_t                 filename;
     ngx_str_t                 redirect_uri;
     ngx_str_t                 redirect_args;
+    SV                       *next;
+
+    ngx_uint_t                done;   /* unsigned  done:1; */
 
 #if (NGX_HTTP_SSI)
     ngx_http_ssi_ctx_t       *ssi;
@@ -45,6 +48,9 @@ extern ngx_module_t  ngx_http_perl_module;
 
 
 extern void  boot_DynaLoader(pTHX_ CV* cv);
+
+
+void ngx_http_perl_handle_request(ngx_http_request_t *r);
 
 
 #endif /* _NGX_HTTP_PERL_MODULE_H_INCLUDED_ */

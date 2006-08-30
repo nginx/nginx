@@ -10,13 +10,13 @@
 #include <nginx.h>
 
 
-static ngx_int_t ngx_http_header_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_header_filter_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r);
 
 
 static ngx_http_module_t  ngx_http_header_filter_module_ctx = {
     NULL,                                  /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_header_filter_init,           /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -35,7 +35,7 @@ ngx_module_t  ngx_http_header_filter_module = {
     NULL,                                  /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_header_filter_init,           /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -152,8 +152,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
 {
     u_char                    *p;
     size_t                     len;
-    ngx_uint_t                 status, i;
     ngx_buf_t                 *b;
+    ngx_uint_t                 status, i;
     ngx_chain_t                out;
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
@@ -533,7 +533,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
 
 static ngx_int_t
-ngx_http_header_filter_init(ngx_cycle_t *cycle)
+ngx_http_header_filter_init(ngx_conf_t *cf)
 {
     ngx_http_top_header_filter = ngx_http_header_filter;
 

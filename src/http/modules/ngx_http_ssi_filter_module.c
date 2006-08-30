@@ -106,13 +106,14 @@ static char *ngx_http_ssi_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_http_ssi_create_conf(ngx_conf_t *cf);
 static char *ngx_http_ssi_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
-static ngx_int_t ngx_http_ssi_filter_init(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_ssi_filter_init(ngx_conf_t *cf);
 
 
 static ngx_command_t  ngx_http_ssi_filter_commands[] = {
 
     { ngx_string("ssi"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_ssi_loc_conf_t, enable),
@@ -160,7 +161,7 @@ static ngx_command_t  ngx_http_ssi_filter_commands[] = {
 
 static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
     ngx_http_ssi_preconfiguration,         /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_ssi_filter_init,              /* postconfiguration */
 
     ngx_http_ssi_create_main_conf,         /* create main configuration */
     ngx_http_ssi_init_main_conf,           /* init main configuration */
@@ -179,7 +180,7 @@ ngx_module_t  ngx_http_ssi_filter_module = {
     ngx_http_ssi_filter_commands,          /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
-    ngx_http_ssi_filter_init,              /* init module */
+    NULL,                                  /* init module */
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -2654,7 +2655,7 @@ ngx_http_ssi_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_ssi_filter_init(ngx_cycle_t *cycle)
+ngx_http_ssi_filter_init(ngx_conf_t *cf)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_ssi_header_filter;
