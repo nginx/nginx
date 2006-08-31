@@ -17,7 +17,7 @@ time_t ngx_http_parse_time(u_char *value, size_t len)
     int      day, month, year, hour, min, sec;
     enum {
         no = 0,
-        rfc822,   /* Tue 10 Nov 2002 23:50:13    */
+        rfc822,   /* Tue, 10 Nov 2002 23:50:13   */
         rfc850,   /* Tuesday, 10-Dec-02 23:50:13 */
         isoc      /* Tue Dec 10 23:50:13 2002    */
     } fmt;
