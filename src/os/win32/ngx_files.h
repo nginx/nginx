@@ -42,6 +42,7 @@
 #define NGX_FILE_CREATE_OR_OPEN     OPEN_ALWAYS
 #define NGX_FILE_OPEN               OPEN_EXISTING
 #define NGX_FILE_APPEND             0
+#define NGX_FILE_NOATIME            0
 
 
 ngx_int_t ngx_file_append_mode(ngx_fd_t fd);

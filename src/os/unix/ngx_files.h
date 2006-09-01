@@ -28,6 +28,11 @@
 #define NGX_FILE_TRUNCATE        O_TRUNC
 #define NGX_FILE_APPEND          O_APPEND
 
+#ifdef O_NOATIME
+#define NGX_FILE_NOATIME         O_NOATIME
+#else
+#define NGX_FILE_NOATIME         0
+#endif
 
 #define ngx_close_file           close
 #define ngx_close_file_n         "close()"
