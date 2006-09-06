@@ -14,7 +14,7 @@ ngx_spacer='
 
 # __FreeBSD_version and sysctl kern.osreldate are the best ways
 # to determine whether some capability exists and is safe to use.
-# __FreeBSD_version is used for the testing of the build enviroment.
+# __FreeBSD_version is used for the testing of the build environment.
 # sysctl kern.osreldate is used for the testing of the kernel capabilities.
 
 version=`grep "#define __FreeBSD_version" /usr/include/osreldate.h \
