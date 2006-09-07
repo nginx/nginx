@@ -16,8 +16,14 @@
  * parameter is int32_t, and use sendfile() for the file parts below 2G only,
  * see src/os/unix/ngx_linux_config.h
  *
- * Linux 2.4.21 has a new sendfile64() syscall #239.
+ * Linux 2.4.21 has the new sendfile64() syscall #239.
+ *
+ * On Linux up to 2.6.16 sendfile() does not allow to pass the count parameter
+ * more than 2G-1 bytes even on 64-bit platforms: it returns EINVAL,
+ * so we limit it to 2G-1 bytes.
  */
+
+#define NGX_SENDFILE_LIMIT  2147483647L
 
 
 #if (IOV_MAX > 64)
@@ -54,10 +60,10 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     }
 
 
-    /* the maximum limit size is the maximum size_t value - the page size */
+    /* the maximum limit size is 2G-1 - the page size */
 
-    if (limit == 0 || limit > NGX_MAX_SIZE_T_VALUE - ngx_pagesize) {
-        limit = NGX_MAX_SIZE_T_VALUE - ngx_pagesize;
+    if (limit == 0 || limit > NGX_SENDFILE_LIMIT - ngx_pagesize) {
+        limit = NGX_SENDFILE_LIMIT - ngx_pagesize;
     }
 
 
