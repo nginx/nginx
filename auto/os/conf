@@ -6,7 +6,7 @@ echo "checking for $NGX_SYSTEM specific features"
 
 case "$NGX_PLATFORM" in
 
-    FreeBSD:* | DragonFly:*)
+    FreeBSD:*)
         . auto/os/freebsd
     ;;
 
@@ -20,6 +20,20 @@ case "$NGX_PLATFORM" in
 
     win32)
         . auto/os/win32
+    ;;
+
+    DragonFly:*)
+        have=NGX_FREEBSD . auto/have_headers
+        CORE_INCS="$UNIX_INCS"
+        CORE_DEPS="$UNIX_DEPS $FREEBSD_DEPS"
+        CORE_SRCS="$UNIX_SRCS $FREEBSD_SRCS"
+
+        echo " + sendfile() found"
+        have=NGX_HAVE_SENDFILE . auto/have
+        CORE_SRCS="$CORE_SRCS $FREEBSD_SENDFILE_SRCS"
+
+        ngx_spacer='
+'
     ;;
 
     Darwin:*)
