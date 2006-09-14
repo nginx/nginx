@@ -9,6 +9,42 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.1" date="14.09.2006">
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с DragonFlyBSD.<br/>
+Спасибо Павлу Назарову.
+</para>
+<para lang="en">
+the DragonFlyBSD compatibility.<br/>
+Thanks to Pavel Nazarov.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+обход ошибки в sendfile() в 64-битном Linux при передаче файлов больше 2G.
+</para>
+<para lang="en">
+of bug in 64-bit Linux sendfile(), when file is more than 2G.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь на Linux nginx для статических запросов использует флаг O_NOATIME.<br/>
+Спасибо Yusuf Goolamabbas.
+</para>
+<para lang="en">
+now on Linux nginx uses O_NOATIME flag for static requests.<br/>
+Thanks to Yusuf Goolamabbas.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.0" date="30.08.2006">
 
 <change>
