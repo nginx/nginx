@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.2" date="14.09.2006">
+
+<change type="bugfix">
+<para lang="ru">
+убрана поддержка флага O_NOATIME на Linux;
+ошибка появилась в 0.4.1.
+</para>
+<para lang="en">
+the O_NOATIME flag support on Linux was canceled;
+bug appeared in 0.4.1.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.1" date="14.09.2006">
 
 <change type="bugfix">
