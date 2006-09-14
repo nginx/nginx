@@ -125,8 +125,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    fd = ngx_open_file(path.data, NGX_FILE_RDONLY|NGX_FILE_NOATIME,
-                       NGX_FILE_OPEN);
+    fd = ngx_open_file(path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
 
     if (fd == NGX_INVALID_FILE) {
         err = ngx_errno;
