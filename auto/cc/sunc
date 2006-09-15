@@ -15,6 +15,9 @@ have=NGX_COMPILER value="\"Sun C $NGX_SUNC_VER\"" . auto/define
 case "$NGX_PLATFORM" in
 
     *:i86pc)
+        # disable [ PAUSE ] hwcap for Sun Studio 11
+        CORE_LINK="$CORE_LINK -Msrc/os/unix/ngx_sunpro_x86.map"
+
         NGX_AUX=" src/os/unix/ngx_sunpro_x86.il"
     ;;
 
