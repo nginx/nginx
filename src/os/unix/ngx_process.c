@@ -338,7 +338,7 @@ ngx_signal_handler(int signo)
                 /*
                  * Ignore the signal in the new binary if its parent is
                  * not the init process, i.e. the old binary's process
-                 * is still running.  Or ingore the signal in the old binary's
+                 * is still running.  Or ignore the signal in the old binary's
                  * process if the new binary's process is already running.
                  */
 
