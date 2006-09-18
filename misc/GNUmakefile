@@ -34,6 +34,8 @@ release:
 	rm -r $(TEMP)/$(NGINX)/docs
 	rm -r $(TEMP)/$(NGINX)/misc
 
+	tar -c -z -f $(NGINX).tar.gz --directory $(TEMP) $(NGINX)
+
 
 snapshot:
 	rm -rf $(TEMP)
