@@ -68,6 +68,7 @@ HTTP_FASTCGI=YES
 HTTP_PERL=NO
 HTTP_MEMCACHED=YES
 HTTP_EMPTY_GIF=YES
+HTTP_BROWSER=YES
 
 # STUB
 HTTP_STUB_STATUS=NO
@@ -165,6 +166,7 @@ do
         --without-http_fastcgi_module)   HTTP_FASTCGI=NO            ;;
         --without-http_memcached_module) HTTP_MEMCACHED=NO          ;;
         --without-http_empty_gif_module) HTTP_EMPTY_GIF=NO          ;;
+        --without-http_browser_module)   HTTP_BROWSER=NO            ;;
 
         --with-http_perl_module)         HTTP_PERL=YES              ;;
         --with-perl_modules_path=*)      NGX_PERL_MODULES="$value"  ;;

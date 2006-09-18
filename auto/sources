@@ -386,6 +386,10 @@ HTTP_EMPTY_GIF_MODULE=ngx_http_empty_gif_module
 HTTP_EMPTY_GIF_SRCS=src/http/modules/ngx_http_empty_gif_module.c
 
 
+HTTP_BROWSER_MODULE=ngx_http_browser_module
+HTTP_BROWSER_SRCS=src/http/modules/ngx_http_browser_module.c
+
+
 IMAP_INCS="src/imap"
 
 IMAP_DEPS="src/imap/ngx_imap.h"
