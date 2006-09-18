@@ -507,9 +507,6 @@ found:
 
     version += ver * scale;
 
-    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
-                       "browser version \"%V\", %ui", &value[2], version);
-
     browser->version = version;
 
     return NGX_CONF_OK;
