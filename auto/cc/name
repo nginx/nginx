@@ -8,7 +8,7 @@ echo $ngx_n "checking for C compiler ...$ngx_c"
 if [ "$CC" = cl ]; then
     if `$NGX_WINE $CC -v 2>&1 \
         | grep '^Microsoft (R) 32-bit C/C++ Optimizing Compiler Version 13' \
-          2>&1 >/dev/null`; then
+        >/dev/null 2>&1`; then
 
         NGX_CC_NAME=msvc7
         echo " Microsoft Visual C++ 7 compiler"
@@ -29,27 +29,27 @@ if [ "$CC" = bcc32 ]; then
     echo " Borland C++ compiler"
 
 else
-if `$CC -v 2>&1 | grep 'gcc version' 2>&1 >/dev/null`; then
+if `$CC -v 2>&1 | grep 'gcc version' >/dev/null 2>&1`; then
     NGX_CC_NAME=gcc
     echo " GNU C compiler"
 
 else
-if `$CC -V 2>&1 | grep '^Intel(R) C' 2>&1 >/dev/null`; then
+if `$CC -V 2>&1 | grep '^Intel(R) C' >/dev/null 2>&1`; then
     NGX_CC_NAME=icc
     echo " Intel C++ compiler"
 
 else
-if `$CC -V 2>&1 | grep 'Sun C' 2>&1 >/dev/null`; then
+if `$CC -V 2>&1 | grep 'Sun C' >/dev/null 2>&1`; then
     NGX_CC_NAME=sunc
     echo " Sun C compiler"
 
 else
-if `$CC -V 2>&1 | grep '^Compaq C' 2>&1 >/dev/null`; then
+if `$CC -V 2>&1 | grep '^Compaq C' >/dev/null 2>&1`; then
     NGX_CC_NAME=ccc
     echo " Compaq C compiler"
 
 else
-if `$CC -V 2>&1 | grep '^aCC: ' 2>&1 >/dev/null`; then
+if `$CC -V 2>&1 | grep '^aCC: ' >/dev/null 2>&1`; then
     NGX_CC_NAME=acc
     echo " HP aC++ compiler"
 

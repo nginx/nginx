@@ -26,7 +26,7 @@ ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
 eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
 
 if [ -x $NGX_AUTOTEST ]; then
-    if $NGX_AUTOTEST 2>&1 > /dev/null; then
+    if $NGX_AUTOTEST >/dev/null 2>&1; then
         echo " little endianess"
         have=NGX_HAVE_LITTLE_ENDIAN . auto/have
     else
