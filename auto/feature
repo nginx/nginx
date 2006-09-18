@@ -43,7 +43,8 @@ if [ -x $NGX_AUTOTEST ]; then
     case "$ngx_feature_run" in
 
         yes)
-            if $NGX_AUTOTEST 2>&1 > /dev/null; then
+            # /bin/sh is used to intercept "Killed" or "Abort trap" messages
+            if /bin/sh $NGX_AUTOTEST > /dev/null 2>&1; then
                 echo " found"
                 ngx_found=yes
 
@@ -57,7 +58,8 @@ if [ -x $NGX_AUTOTEST ]; then
         ;;
 
         bug)
-            if $NGX_AUTOTEST 2>&1 > /dev/null; then
+            # /bin/sh is used to intercept "Killed" or "Abort trap" messages
+            if /bin/sh $NGX_AUTOTEST > /dev/null 2>&1; then
                 echo " not found"
 
             else
