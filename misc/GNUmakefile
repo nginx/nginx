@@ -34,6 +34,37 @@ release:
 	rm -r $(TEMP)/$(NGINX)/docs
 	rm -r $(TEMP)/$(NGINX)/misc
 
+
+snapshot:
+	rm -rf $(TEMP)
+
+	mkdir -p $(TEMP)
+	svn export . $(TEMP)/$(NGINX)
+
+	mv $(TEMP)/$(NGINX)/auto/configure $(TEMP)/$(NGINX)
+
+	# delete incomplete sources
+	rm $(TEMP)/$(NGINX)/src/event/ngx_event_acceptex.c
+	rm $(TEMP)/$(NGINX)/src/event/ngx_event_connectex.c
+	rm $(TEMP)/$(NGINX)/src/event/modules/ngx_iocp_module.*
+	rm -r $(TEMP)/$(NGINX)/src/os/win32
+
+	rm $(TEMP)/$(NGINX)/src/core/ngx_slab.*
+	rm $(TEMP)/$(NGINX)/src/core/ngx_resolver.*
+
+	rm -r $(TEMP)/$(NGINX)/src/mysql
+
+	rm $(TEMP)/$(NGINX)/src/http/modules/ngx_http_status_module.c
+
+	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)
+	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)
+	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
+
+	$(MAKE) -f docs/GNUmakefile changes
+
+	rm -r $(TEMP)/$(NGINX)/docs
+	rm -r $(TEMP)/$(NGINX)/misc
+
 	tar -c -z -f $(NGINX).tar.gz --directory $(TEMP) $(NGINX)
 
 
