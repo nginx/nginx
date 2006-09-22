@@ -155,8 +155,6 @@ ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
         ev->index = e->index;
     }
 
-    ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
-
     return NGX_OK;
 }
 
