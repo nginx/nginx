@@ -843,7 +843,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             continue;
         }
 
-        if (ctx->buf->last_buf || ctx->buf->recycled) {
+        if (ctx->buf->last_buf || ngx_buf_in_memory(ctx->buf)) {
             if (b == NULL) {
                 if (ctx->free) {
                     cl = ctx->free;
