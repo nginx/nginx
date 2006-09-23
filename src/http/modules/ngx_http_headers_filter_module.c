@@ -207,7 +207,6 @@ ngx_http_headers_filter(ngx_http_request_t *r)
                     cc->value.len = ngx_sprintf(cc->value.data, "max-age=%T",
                                                 conf->expires)
                                     - cc->value.data;
-
                 }
             }
         }
