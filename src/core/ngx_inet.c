@@ -239,6 +239,7 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
 #if (NGX_HAVE_UNIX_DOMAIN)
 
         u->type = NGX_PARSE_URL_UNIX;
+        u->uri = u->url;
 
         p += 5;
         len -= 5;
