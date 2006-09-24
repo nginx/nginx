@@ -239,10 +239,12 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
 #if (NGX_HAVE_UNIX_DOMAIN)
 
         u->type = NGX_PARSE_URL_UNIX;
-        u->uri = u->url;
 
         p += 5;
         len -= 5;
+
+        u->uri.len = len;
+        u->uri.data = p;
 
         if (u->uri_part) {
             for (i = 0; i < len; i++) {
@@ -285,7 +287,8 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
 
         u->peers->peer[0].sockaddr = (struct sockaddr *) saun;
         u->peers->peer[0].socklen = sizeof(struct sockaddr_un);
-        u->peers->peer[0].name = u->url;
+        u->peers->peer[0].name.len = len + 5;
+        u->peers->peer[0].name.data = u->url.data;
         u->peers->peer[0].uri_separator = ":";
 
         u->host_header.len = sizeof("localhost") - 1;
