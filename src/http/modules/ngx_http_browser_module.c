@@ -244,7 +244,7 @@ ngx_http_browser_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         name += browsers[i].add;
 
         if (name >= last) {
-            *v = ngx_http_variable_null_value;
+            continue;
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
