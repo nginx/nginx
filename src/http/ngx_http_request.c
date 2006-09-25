@@ -979,7 +979,7 @@ ngx_http_read_request_header(ngx_http_request_t *r)
         c->error = rev->error;
         c->log->action = "sending response to client";
 
-        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        ngx_http_finalize_request(r, NGX_HTTP_CLIENT_CLOSED_REQUEST);
         return NGX_ERROR;
     }
 

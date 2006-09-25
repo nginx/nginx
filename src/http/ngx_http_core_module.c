@@ -514,18 +514,19 @@ ngx_http_handler(ngx_http_request_t *r)
         } else {
             r->lingering_close = 0;
         }
-    }
 
-    r->valid_unparsed_uri = 1;
-    r->valid_location = 1;
-
-    if (!r->internal) {
         r->phase_handler = 0;
 
     } else {
         cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
         r->phase_handler = cmcf->phase_engine.server_rewrite_index;
     }
+
+    if (r->unparsed_uri.len) {
+        r->valid_unparsed_uri = 1;
+    }
+
+    r->valid_location = 1;
 
     r->write_event_handler = ngx_http_core_run_phases;
     ngx_http_core_run_phases(r);

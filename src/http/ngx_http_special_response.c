@@ -299,6 +299,9 @@ static ngx_str_t error_pages[] = {
 };
 
 
+static ngx_str_t  ngx_http_get_name = { 3, "GET " };
+
+
 ngx_int_t
 ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 {
@@ -364,6 +367,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
                 r->err_status = err_page[i].overwrite;
 
                 r->method = NGX_HTTP_GET;
+                r->method_name = ngx_http_get_name;
 
                 uri = &err_page[i].uri;
 
