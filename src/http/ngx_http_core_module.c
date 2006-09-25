@@ -2884,7 +2884,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         err->status = ngx_atoi(value[i].data, value[i].len);
 
-        if (err->status == NGX_ERROR) {
+        if (err->status == NGX_ERROR || err->status == 499) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid value \"%V\"", &value[i]);
             return NGX_CONF_ERROR;
