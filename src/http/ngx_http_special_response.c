@@ -299,7 +299,7 @@ static ngx_str_t error_pages[] = {
 };
 
 
-static ngx_str_t  ngx_http_get_name = { 3, "GET " };
+static ngx_str_t  ngx_http_get_name = { 3, (u_char *) "GET " };
 
 
 ngx_int_t
