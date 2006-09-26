@@ -56,6 +56,8 @@ ngx_event_accept(ngx_event_t *ev)
             err = ngx_socket_errno;
 
             if (err == NGX_EAGAIN) {
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, err,
+                               "accept() not ready");
                 return;
             }
 
@@ -264,7 +266,10 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "accept mutex locked");
 
-        if (ngx_accept_mutex_held && !(ngx_event_flags & NGX_USE_RTSIG_EVENT)) {
+        if (ngx_accept_mutex_held
+            && ngx_accept_events == 0
+            && !(ngx_event_flags & NGX_USE_RTSIG_EVENT))
+        {
             return NGX_OK;
         }
 
@@ -273,10 +278,14 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
+        ngx_accept_events = 0;
         ngx_accept_mutex_held = 1;
 
         return NGX_OK;
     }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "accept mutex lock failed: %ui", ngx_accept_mutex_held);
 
     if (ngx_accept_mutex_held) {
         if (ngx_disable_accept_events(cycle) == NGX_ERROR) {

@@ -31,6 +31,14 @@ if [ $NGX_TEST_BUILD_DEVPOLL = YES ]; then
     CORE_SRCS="$CORE_SRCS $DEVPOLL_SRCS"
 fi
 
+
+if [ $NGX_TEST_BUILD_EVENTPORT = YES ]; then
+    have=NGX_HAVE_EVENTPORT . auto/have
+    have=NGX_TEST_BUILD_EVENTPORT . auto/have
+    EVENT_MODULES="$EVENT_MODULES $EVENTPORT_MODULE"
+    CORE_SRCS="$CORE_SRCS $EVENTPORT_SRCS"
+fi
+
 if [ $NGX_TEST_BUILD_EPOLL = YES ]; then
     have=NGX_HAVE_EPOLL . auto/have
     have=NGX_TEST_BUILD_EPOLL . auto/have

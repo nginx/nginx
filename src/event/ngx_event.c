@@ -13,6 +13,7 @@
 
 
 extern ngx_module_t ngx_kqueue_module;
+extern ngx_module_t ngx_eventport_module;
 extern ngx_module_t ngx_devpoll_module;
 extern ngx_module_t ngx_epoll_module;
 extern ngx_module_t ngx_rtsig_module;
@@ -49,6 +50,7 @@ ngx_atomic_t         *ngx_connection_counter = &connection_counter;
 ngx_atomic_t         *ngx_accept_mutex_ptr;
 ngx_shmtx_t           ngx_accept_mutex;
 ngx_uint_t            ngx_use_accept_mutex;
+ngx_uint_t            ngx_accept_events;
 ngx_uint_t            ngx_accept_mutex_held;
 ngx_msec_t            ngx_accept_mutex_delay;
 ngx_int_t             ngx_accept_disabled;
@@ -314,19 +316,25 @@ ngx_handle_read_event(ngx_event_t *rev, u_int flags)
             return NGX_OK;
         }
 
-    } else if (ngx_event_flags & NGX_USE_ONESHOT_EVENT) {
+    } else if (ngx_event_flags & NGX_USE_EVENTPORT_EVENT) {
 
         /* event ports */
 
-        if (!rev->active) {
-            if (ngx_add_event(rev, NGX_READ_EVENT, NGX_ONESHOT_EVENT)
-                == NGX_ERROR)
-            {
+        if (!rev->active && !rev->ready) {
+            if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
                 return NGX_ERROR;
             }
+
+            return NGX_OK;
         }
 
-        return NGX_OK;
+        if (rev->oneshot && !rev->ready) {
+            if (ngx_del_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
     }
 
     /* aio, iocp, rtsig */
@@ -341,7 +349,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
     ngx_connection_t  *c;
 
     if (lowat) {
-        c = (ngx_connection_t *) wev->data;
+        c = wev->data;
 
         if (ngx_send_lowat(c, lowat) == NGX_ERROR) {
             return NGX_ERROR;
@@ -387,19 +395,25 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
             return NGX_OK;
         }
 
-    } else if (ngx_event_flags & NGX_USE_ONESHOT_EVENT) {
+    } else if (ngx_event_flags & NGX_USE_EVENTPORT_EVENT) {
 
         /* event ports */
 
-        if (!wev->active) {
-            if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_ONESHOT_EVENT)
-                == NGX_ERROR)
-            {
+        if (!wev->active && !wev->ready) {
+            if (ngx_add_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
                 return NGX_ERROR;
             }
+
+            return NGX_OK;
         }
 
-        return NGX_OK;
+        if (wev->oneshot && wev->ready) {
+            if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
     }
 
     /* aio, iocp, rtsig */
@@ -1198,7 +1212,7 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
                 event_module = ngx_modules[i]->ctx;
 
                 if (ngx_strcmp(event_module->name->data, event_core_name.data)
-                                                                          == 0)
+                    == 0)
                 {
                     continue;
                 }

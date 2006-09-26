@@ -74,6 +74,11 @@
 #endif
 
 
+#if (NGX_HAVE_EVENTPORT)
+#include <port.h>
+#endif
+
+
 #ifndef NGX_HAVE_INHERITED_NONBLOCK
 #define NGX_HAVE_INHERITED_NONBLOCK  1
 #endif

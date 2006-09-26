@@ -95,6 +95,9 @@ KQUEUE_SRCS=src/event/modules/ngx_kqueue_module.c
 DEVPOLL_MODULE=ngx_devpoll_module
 DEVPOLL_SRCS=src/event/modules/ngx_devpoll_module.c
 
+EVENTPORT_MODULE=ngx_eventport_module
+EVENTPORT_SRCS=src/event/modules/ngx_eventport_module.c
+
 EPOLL_MODULE=ngx_epoll_module
 EPOLL_SRCS=src/event/modules/ngx_epoll_module.c
 

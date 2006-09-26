@@ -23,6 +23,7 @@ NGX_LD_OPT=
 CPU=NO
 
 NGX_TEST_BUILD_DEVPOLL=NO
+NGX_TEST_BUILD_EVENTPORT=NO
 NGX_TEST_BUILD_EPOLL=NO
 NGX_TEST_BUILD_RTSIG=NO
 NGX_TEST_BUILD_SOLARIS_SENDFILEV=NO
@@ -207,6 +208,7 @@ do
         --with-zlib-asm=*)               ZLIB_ASM="$value"          ;;
 
         --test-build-devpoll)            NGX_TEST_BUILD_DEVPOLL=YES ;;
+        --test-build-eventport)          NGX_TEST_BUILD_EVENTPORT=YES ;;
         --test-build-epoll)              NGX_TEST_BUILD_EPOLL=YES   ;;
         --test-build-rtsig)              NGX_TEST_BUILD_RTSIG=YES   ;;
         --test-build-solaris-sendfilev)  NGX_TEST_BUILD_SOLARIS_SENDFILEV=YES ;;

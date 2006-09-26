@@ -41,8 +41,6 @@ struct ngx_event_s {
 
     unsigned         accept:1;
 
-    unsigned         oneshot:1;
-
     /* used to detect the stale events in kqueue, rt signals and epoll */
     unsigned         instance:1;
 
@@ -56,6 +54,8 @@ struct ngx_event_s {
 
     /* the ready event; in aio mode 0 means that no operation can be posted */
     unsigned         ready:1;
+
+    unsigned         oneshot:1;
 
     /* aio operation is complete */
     unsigned         complete:1;
@@ -224,7 +224,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * The event filter is deleted after a notification without an additional
- * syscall: kqueue, epoll, Solaris 10's event ports.
+ * syscall: kqueue, epoll.
  */
 #define NGX_USE_ONESHOT_EVENT    0x00000002
 
@@ -286,14 +286,17 @@ extern ngx_event_actions_t   ngx_event_actions;
  */
 #define NGX_USE_TIMER_EVENT      0x00000800
 
+/*
+ * All event filters on file descriptor are deleted after a notification:
+ * Solaris 10's event ports.
+ */
+#define NGX_USE_EVENTPORT_EVENT    0x00001000
+
 
 
 /*
  * The event filter is deleted before the closing file.
- * Has no meaning for select, poll, epoll.
- *
- * kqueue:     kqueue deletes event filters for file that closed
- *             so we need only to delete filters in user-level batch array
+ * Has no meaning for select, poll, kqueue, epoll.
  * /dev/poll:  we need to flush POLLREMOVE event before closing file
  */
 
@@ -335,7 +338,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_DISABLE_EVENT  EV_DISABLE
 
 
-#elif (NGX_HAVE_DEVPOLL)
+#elif (NGX_HAVE_DEVPOLL || NGX_HAVE_EVENTPORT)
 
 #define NGX_READ_EVENT     POLLIN
 #define NGX_WRITE_EVENT    POLLOUT
@@ -446,6 +449,7 @@ extern ngx_atomic_t          *ngx_connection_counter;
 extern ngx_atomic_t          *ngx_accept_mutex_ptr;
 extern ngx_shmtx_t            ngx_accept_mutex;
 extern ngx_uint_t             ngx_use_accept_mutex;
+extern ngx_uint_t             ngx_accept_events;
 extern ngx_uint_t             ngx_accept_mutex_held;
 extern ngx_msec_t             ngx_accept_mutex_delay;
 extern ngx_int_t              ngx_accept_disabled;

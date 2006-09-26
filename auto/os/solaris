@@ -39,3 +39,17 @@ if [ $ngx_found = yes ]; then
     CORE_SRCS="$CORE_SRCS $SOLARIS_SENDFILEV_SRCS"
     CORE_LIBS="$CORE_LIBS -lsendfile"
 fi
+
+
+ngx_feature="event ports"
+ngx_feature_name="NGX_HAVE_EVENTPORT"
+ngx_feature_run=no
+ngx_feature_incs="#include <port.h>"
+ngx_feature_libs=
+ngx_feature_test="int n = port_create()"
+. auto/feature
+
+if [ $ngx_found = yes ]; then
+    CORE_SRCS="$CORE_SRCS $EVENTPORT_SRCS"
+    EVENT_MODULES="$EVENT_MODULES $EVENTPORT_MODULE"
+fi
