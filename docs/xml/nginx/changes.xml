@@ -9,6 +9,81 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.3" date="26.09.2006">
+
+<change type="change">
+<para lang="ru">
+ошибку 499 теперь нельзя перенаправить с помощью директивы error_page.
+</para>
+<para lang="en">
+now the 499 error could not be redirected using an "error_page" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка Solaris 10 event ports.
+</para>
+<para lang="en">
+the Solaris 10 event ports support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_browser_module.
+</para>
+<para lang="en">
+the ngx_http_browser_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении ошибки 400 проксированному серверу
+помощью директивы error_page мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault may occur while redirecting the 400 error
+to the proxied server using an "proxy_pass" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+происходил segmentation fault, если в директиве proxy_pass использовался
+unix domain сокет;
+ошибка появилась в 0.3.47.
+</para>
+<para lang="en">
+a segmentation fault occurred if an unix domain socket was used in
+an "proxy_pass" directive;
+bug appeared in 0.3.47.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSI не работал с ответами memcached и небуферизированными проксированными
+ответами.
+</para>
+<para lang="en">
+SSI did work with memcached and nonbuffered responses.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+обход ошибки PAUSE hardware capability в Sun Studio.
+</para>
+<para lang="en">
+of the Sun Studio PAUSE hardware capability bug.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.2" date="14.09.2006">
 
 <change type="bugfix">
