@@ -260,12 +260,14 @@ cat << END
   --without-http_auth_basic_module   disable ngx_http_auth_basic_module
   --without-http_autoindex_module    disable ngx_http_autoindex_module
   --without-http_geo_module          disable ngx_http_geo_module
+  --without-http_map_module          disable ngx_http_map_module
   --without-http_referer_module      disable ngx_http_referer_module
   --without-http_rewrite_module      disable ngx_http_rewrite_module
   --without-http_proxy_module        disable ngx_http_proxy_module
   --without-http_fastcgi_module      disable ngx_http_fastcgi_module
   --without-http_memcached_module    disable ngx_http_memcached_module
   --without-http_empty_gif_module    disable ngx_http_empty_gif_module
+  --without-http_browser_module      disable ngx_http_browser_module
 
   --with-http_perl_module            enable ngx_http_perl_module
   --with-perl_modules_path=PATH      set path to the perl modules
@@ -281,6 +283,7 @@ cat << END
   --without-http                     disable HTTP server
 
   --with-imap                        enable IMAP4/POP3 proxy module
+  --with-imap_ssl_module             enable ngx_imap_ssl_module
 
   --with-cc=PATH                     set path to C compiler
   --with-cpp=PATH                    set path to C preprocessor
