@@ -1397,8 +1397,11 @@ ngx_http_proxy_rewrite_redirect_vars(ngx_http_request_t *r, ngx_table_elt_t *h,
     e.ip = pr->replacement.vars.lengths;
     e.request = r;
 
-    for (len = prefix; *(uintptr_t *) e.ip; len += lcode(&e)) {
+    len = prefix + h->value.len - pr->redirect.len;
+
+    while (*(uintptr_t *) e.ip) {
         lcode = *(ngx_http_script_len_code_pt *) e.ip;
+        len += lcode(&e);
     }
 
     data = ngx_palloc(r->pool, len);
@@ -1417,6 +1420,9 @@ ngx_http_proxy_rewrite_redirect_vars(ngx_http_request_t *r, ngx_table_elt_t *h,
         code = *(ngx_http_script_code_pt *) e.ip;
         code(&e);
     }
+
+    ngx_memcpy(e.pos, h->value.data + prefix + pr->redirect.len,
+               h->value.len - pr->redirect.len - prefix);
 
     h->value.len = len;
     h->value.data = data;
