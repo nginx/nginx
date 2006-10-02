@@ -26,6 +26,7 @@ typedef struct {
 #define NGX_HTTP_EXPIRES_UNSET   -2147483647
 #define NGX_HTTP_EXPIRES_OFF     -2147483646
 #define NGX_HTTP_EXPIRES_EPOCH   -2147483645
+#define NGX_HTTP_EXPIRES_MAX     -2147483644
 
 
 static void *ngx_http_headers_create_conf(ngx_conf_t *cf);
@@ -176,6 +177,13 @@ ngx_http_headers_filter(ngx_http_request_t *r)
 
             cc->value.len = sizeof("no-cache") - 1;
             cc->value.data = (u_char *) "no-cache";
+
+        } else if (conf->expires == NGX_HTTP_EXPIRES_MAX) {
+            expires->value.data = (u_char *) "Thu, 31 Dec 2037 23:55:55 GMT";
+
+            /* 10 years */
+            cc->value.len = sizeof("max-age=315360000") - 1;
+            cc->value.data = (u_char *) "max-age=315360000";
 
         } else {
             expires->value.data = ngx_palloc(r->pool, len);
@@ -346,6 +354,11 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_strcmp(value[1].data, "epoch") == 0) {
         hcf->expires = NGX_HTTP_EXPIRES_EPOCH;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "max") == 0) {
+        hcf->expires = NGX_HTTP_EXPIRES_MAX;
         return NGX_CONF_OK;
     }
 
