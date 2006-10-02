@@ -256,7 +256,7 @@ ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 ngx_int_t
 ngx_open_glob(ngx_glob_t *gl)
 {
-    if (glob((char *) gl->pattern, 0, NULL, &gl->pglob) == 0) {
+    if (glob((char *) gl->pattern, GLOB_NOSORT, NULL, &gl->pglob) == 0) {
         return NGX_OK;
     }
 
@@ -267,7 +267,7 @@ ngx_open_glob(ngx_glob_t *gl)
 ngx_int_t
 ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
 {
-    if (gl->n < gl->pglob.gl_pathc) {
+    if (gl->n < (size_t) gl->pglob.gl_pathc) {
 
         name->len = (size_t) ngx_strlen(gl->pglob.gl_pathv[gl->n]);
         name->data = (u_char *) gl->pglob.gl_pathv[gl->n];

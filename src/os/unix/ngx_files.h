@@ -131,7 +131,7 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 
 
 typedef struct {
-    int         n;
+    size_t      n;
     glob_t      pglob;
     u_char     *pattern;
     ngx_log_t  *log;
