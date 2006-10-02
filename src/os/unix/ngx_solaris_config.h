@@ -25,6 +25,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <dirent.h>
+#include <glob.h>
 
 #include <sys/filio.h>          /* FIONBIO */
 #include <sys/uio.h>

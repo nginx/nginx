@@ -141,8 +141,8 @@ ngx_int_t ngx_read_dir(ngx_dir_t *dir);
 #define ngx_delete_dir_n            "RemoveDirectory()"
 
 
-#define ngx_de_name(dir)            ((u_char *) (dir)->fd.cFileName)
-#define ngx_de_namelen(dir)         ngx_strlen((dir)->fd.cFileName)
+#define ngx_de_name(dir)            ((u_char *) (dir)->finddata.cFileName)
+#define ngx_de_namelen(dir)         ngx_strlen((dir)->finddata.cFileName)
 
 ngx_int_t ngx_de_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_info_n               "dummy()"
@@ -151,21 +151,35 @@ ngx_int_t ngx_de_link_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_link_info_n          "dummy()"
 
 #define ngx_de_is_dir(dir)                                                    \
-    ((dir)->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    ((dir)->finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #define ngx_de_is_file(dir)                                                   \
-    !((dir)->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    !((dir)->finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #define ngx_de_is_link(dir)         0
 #define ngx_de_size(dir)                                                      \
-    (((off_t) (dir)->fd.nFileSizeHigh << 32) | (dir)->fd.nFileSizeLow)
+  (((off_t) (dir)->finddata.nFileSizeHigh << 32) | (dir)->finddata.nFileSizeLow)
 
 /* 116444736000000000 is commented in src/os/win32/ngx_time.c */
 
 #define ngx_de_mtime(dir)                                                     \
     (time_t) (((((unsigned __int64)                                           \
-                           (dir)->fd.ftLastWriteTime.dwHighDateTime << 32)    \
-                            | (dir)->fd.ftLastWriteTime.dwLowDateTime)        \
+                     (dir)->finddata.ftLastWriteTime.dwHighDateTime << 32)    \
+                      | (dir)->finddata.ftLastWriteTime.dwLowDateTime)        \
                                           - 116444736000000000) / 10000000)
 
+typedef struct {
+    HANDLE            dir;
+    WIN32_FIND_DATA   finddata;
+    ngx_int_t         ready;
+    u_char           *pattern;
+    ngx_log_t        *log;
+} ngx_glob_t;
+
+
+ngx_int_t ngx_open_glob(ngx_glob_t *gl);
+#define ngx_open_glob_n          "FindFirstFile()"
+
+ngx_int_t ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name);
+void ngx_close_glob(ngx_glob_t *gl);
 
 
 ssize_t ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset);

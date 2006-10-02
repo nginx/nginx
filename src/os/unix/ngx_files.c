@@ -253,6 +253,40 @@ ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 }
 
 
+ngx_int_t
+ngx_open_glob(ngx_glob_t *gl)
+{
+    if (glob((char *) gl->pattern, 0, NULL, &gl->pglob) == 0) {
+        return NGX_OK;
+    }
+
+    return NGX_ERROR;
+}
+
+
+ngx_int_t
+ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
+{
+    if (gl->n < gl->pglob.gl_pathc) {
+
+        name->len = (size_t) ngx_strlen(gl->pglob.gl_pathv[gl->n]);
+        name->data = (u_char *) gl->pglob.gl_pathv[gl->n];
+        gl->n++;
+
+        return NGX_OK;
+    }
+
+    return NGX_DONE;
+}
+
+
+void
+ngx_close_glob(ngx_glob_t *gl)
+{
+    globfree(&gl->pglob);
+}
+
+
 ngx_err_t
 ngx_trylock_fd(ngx_fd_t fd)
 {

@@ -301,7 +301,7 @@ ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
     ngx_cpystrn(name->data + name->len, NGX_DIR_MASK, NGX_DIR_MASK_LEN + 1);
 
-    dir->dir = FindFirstFile((const char *) name->data, &dir->fd);
+    dir->dir = FindFirstFile((const char *) name->data, &dir->finddata);
 
     if (dir->dir == INVALID_HANDLE_VALUE) {
         return NGX_ERROR;
@@ -322,11 +322,69 @@ ngx_read_dir(ngx_dir_t *dir)
         return NGX_OK;
     }
 
-    if (FindNextFile(dir->dir, &dir->fd) != 0) {
+    if (FindNextFile(dir->dir, &dir->finddata) != 0) {
         return NGX_OK;
     }
 
     return NGX_ERROR;
+}
+
+
+ngx_int_t
+ngx_open_glob(ngx_glob_t *gl)
+{
+    gl->dir = FindFirstFile((const char *) gl->pattern, &gl->finddata);
+
+    if (gl->dir == INVALID_HANDLE_VALUE) {
+        return NGX_ERROR;
+    }
+
+    gl->ready = 1;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
+{
+    ngx_err_t  err;
+
+    if (gl->ready) {
+        name->len = ngx_strlen(gl->finddata.cFileName);
+        name->data = (u_char *) gl->finddata.cFileName;
+
+        gl->ready = 0;
+        return NGX_OK;
+    }
+
+    if (FindNextFile(gl->dir, &gl->finddata) != 0) {
+        name->len = ngx_strlen(gl->finddata.cFileName);
+        name->data = (u_char *) gl->finddata.cFileName;
+
+        return NGX_OK;
+    }
+
+    err = ngx_errno;
+
+    if (err == NGX_ENOMOREFILES) {
+        return NGX_DONE;
+    }
+
+    ngx_log_error(NGX_LOG_ALERT, gl->log, err,
+                  "FindNextFile(%s) failed", gl->pattern);
+
+    return NGX_ERROR;
+}
+
+
+void
+ngx_close_glob(ngx_glob_t *gl)
+{
+    if (FindClose(gl->dir) != 0) {
+        ngx_log_error(NGX_LOG_ALERT, gl->log, ngx_errno,
+                      "FindClose(%s) failed", gl->pattern);
+    }
 }
 
 

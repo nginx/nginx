@@ -650,18 +650,52 @@ ngx_conf_read_token(ngx_conf_t *cf)
 static char *
 ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_str_t  *value, file;
+    char        *rv;
+    ngx_int_t    n;
+    ngx_str_t   *value, file;
+    ngx_glob_t   gl;
 
     value = cf->args->elts;
     file = value[1];
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
     if (ngx_conf_full_name(cf->cycle, &file) == NGX_ERROR) {
         return NGX_CONF_ERROR;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
+    ngx_memzero(&gl, sizeof(ngx_glob_t));
 
-    return ngx_conf_parse(cf, &file);
+    gl.pattern = file.data;
+    gl.log = cf->log;
+
+    if (ngx_open_glob(&gl) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                           ngx_open_glob_n " \"%s\" failed", file.data);
+        return NGX_CONF_ERROR;
+    }
+
+    rv = NGX_CONF_OK;
+
+    for ( ;; ) {
+        n = ngx_read_glob(&gl, &file);
+
+        if (n != NGX_OK) {
+            break;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
+
+        rv = ngx_conf_parse(cf, &file);
+
+        if (rv != NGX_CONF_OK) {
+            break;
+        }
+    }
+
+    ngx_close_glob(&gl);
+
+    return rv;
 }
 
 

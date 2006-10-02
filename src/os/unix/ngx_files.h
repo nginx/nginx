@@ -130,6 +130,20 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_de_mtime(dir)        (dir)->info.st_mtime
 
 
+typedef struct {
+    int         n;
+    glob_t      pglob;
+    u_char     *pattern;
+    ngx_log_t  *log;
+} ngx_glob_t;
+
+
+ngx_int_t ngx_open_glob(ngx_glob_t *gl);
+#define ngx_open_glob_n          "glob()"
+ngx_int_t ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name);
+void ngx_close_glob(ngx_glob_t *gl);
+
+
 ngx_err_t ngx_trylock_fd(ngx_fd_t fd);
 ngx_err_t ngx_lock_fd(ngx_fd_t fd);
 ngx_err_t ngx_unlock_fd(ngx_fd_t fd);

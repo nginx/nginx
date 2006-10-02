@@ -37,6 +37,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <dirent.h>
+#include <glob.h>
 
 #if (NGX_HAVE_SYS_FILIO_H)
 #include <sys/filio.h>          /* FIONBIO */

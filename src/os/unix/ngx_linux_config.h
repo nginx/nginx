@@ -27,6 +27,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <dirent.h>
+#include <glob.h>
 
 #include <sys/uio.h>
 #include <sys/stat.h>
