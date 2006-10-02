@@ -9,6 +9,72 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.4" date="02.10.2006">
+
+<change type="feature">
+<para lang="ru">
+переменная scheme.
+</para>
+<para lang="en">
+the "scheme" variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива expires поддерживает параметр max.
+</para>
+<para lang="en">
+the "expires" directive supports the "max" parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива include поддерживает маску "*".<br/>
+Спасибо Jonathan Dance.
+</para>
+<para lang="en">
+the "include" directive supports the "*" mask.<br/>
+Thanks to Jonathan Dance.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива return всегда изменяла код ответа, перенаправленного
+директивой error_page.
+</para>
+<para lang="en">
+the "return" directive always overrode the "error_page" response code
+redirected by the "error_page" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+происходил segmentation fault, если в методе PUT передавалось
+тело нулевой длины.
+</para>
+<para lang="en">
+a segmentation fault occurred if zero-length body was in PUT method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменных в директиве proxy_redirect редирект
+изменялся неверно.
+</para>
+<para lang="en">
+the redirect was changed incorrectly if the variables were used
+in the "proxy_redirect" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.3" date="26.09.2006">
 
 <change type="change">

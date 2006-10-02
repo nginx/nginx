@@ -786,7 +786,7 @@ ngx_http_variable_scheme(ngx_http_request_t *r,
         v->valid = 1;
         v->no_cachable = 0;
         v->not_found = 0;
-        v->data = "https";
+        v->data = (u_char *) "https";
 
         return NGX_OK;
     }
@@ -797,7 +797,7 @@ ngx_http_variable_scheme(ngx_http_request_t *r,
     v->valid = 1;
     v->no_cachable = 0;
     v->not_found = 0;
-    v->data = "http";
+    v->data = (u_char *) "http";
 
     return NGX_OK;
 }
