@@ -205,7 +205,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.module_type = NGX_CORE_MODULE;
     conf.cmd_type = NGX_MAIN_CONF;
 
-#if 1
+#if 0
     log->log_level = NGX_LOG_DEBUG_ALL;
 #endif
 
