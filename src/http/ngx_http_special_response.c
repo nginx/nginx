@@ -455,25 +455,32 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 
     msie_padding = 0;
 
-    if (error_pages[err].len) {
-        r->headers_out.content_length_n = error_pages[err].len
-                                          + sizeof(error_tail) - 1;
+    if (!r->zero_body) {
+        if (error_pages[err].len) {
+            r->headers_out.content_length_n = error_pages[err].len
+                                              + sizeof(error_tail) - 1;
 
-        if (clcf->msie_padding
-            && r->headers_in.msie
-            && r->http_version >= NGX_HTTP_VERSION_10
-            && error >= NGX_HTTP_BAD_REQUEST
-            && error != NGX_HTTP_REQUEST_URI_TOO_LARGE)
-        {
-            r->headers_out.content_length_n += sizeof(ngx_http_msie_stub) - 1;
-            msie_padding = 1;
+            if (clcf->msie_padding
+                && r->headers_in.msie
+                && r->http_version >= NGX_HTTP_VERSION_10
+                && error >= NGX_HTTP_BAD_REQUEST
+                && error != NGX_HTTP_REQUEST_URI_TOO_LARGE)
+            {
+                r->headers_out.content_length_n +=
+                                                sizeof(ngx_http_msie_stub) - 1;
+                msie_padding = 1;
+            }
+
+            r->headers_out.content_type.len = sizeof("text/html") - 1;
+            r->headers_out.content_type.data = (u_char *) "text/html";
+
+        } else {
+            r->headers_out.content_length_n = -1;
         }
 
-        r->headers_out.content_type.len = sizeof("text/html") - 1;
-        r->headers_out.content_type.data = (u_char *) "text/html";
-
     } else {
-        r->headers_out.content_length_n = -1;
+        r->headers_out.content_length_n = 0;
+        err = 0;
     }
 
     if (r->headers_out.content_length) {
