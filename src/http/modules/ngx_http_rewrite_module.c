@@ -178,6 +178,10 @@ ngx_http_rewrite_handler(ngx_http_request_t *r)
         code(e);
     }
 
+    if (e->status == NGX_DECLINED) {
+        return NGX_DECLINED;
+    }
+
     if (r->err_status == 0) {
         return e->status;
     }
