@@ -14,6 +14,8 @@ $NGX_OBJS/src/http/modules/perl/blib/arch/auto/nginx/nginx.so:		\
 
 	cd $NGX_OBJS/src/http/modules/perl && make
 
+	rm -rf $NGX_OBJS/install_perl
+
 
 $NGX_OBJS/src/http/modules/perl/Makefile:				\
 		src/http/modules/perl/Makefile.PL			\
@@ -29,6 +31,5 @@ $NGX_OBJS/src/http/modules/perl/Makefile:				\
 			NGX_OBJS=$NGX_OBJS				\
 		$NGX_PERL Makefile.PL					\
 			LIB=$NGX_PERL_MODULES
-
 
 END
