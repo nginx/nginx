@@ -439,10 +439,9 @@ header_out(r, key, value)
 
     if (header->key.len == sizeof("Content-Length") - 1
         && ngx_strncasecmp(header->key.data, "Content-Length",
-                           sizeof("Content-Length") - 1) == 0
-        && SvIOK(value))
+                           sizeof("Content-Length") - 1) == 0)
     {
-        r->headers_out.content_length_n = (ssize_t) SvIV(value);;
+        r->headers_out.content_length_n = (off_t) SvIV(value);
         r->headers_out.content_length = header;
     }
 
