@@ -13,9 +13,9 @@ echo " + Sun C version: $NGX_SUNC_VER"
 have=NGX_COMPILER value="\"Sun C $NGX_SUNC_VER\"" . auto/define
 
 
-case "$NGX_PLATFORM" in
+case "$NGX_MACHINE" in
 
-    *:i86pc)
+    i86pc)
         ngx_feature="PAUSE hardware capability bug"
         ngx_feature_name=
         ngx_feature_run=bug
@@ -33,7 +33,7 @@ case "$NGX_PLATFORM" in
         NGX_AUX=" src/os/unix/ngx_sunpro_x86.il"
     ;;
 
-    *:sun4u)
+    sun4u | sun4v)
         # "-xarch=v9" enables the "casa" assembler instruction
         CFLAGS="$CFLAGS -xarch=v9"
         CORE_LINK="$CORE_LINK -xarch=v9"
