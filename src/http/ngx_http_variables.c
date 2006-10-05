@@ -640,7 +640,7 @@ ngx_http_variable_unknown_header(ngx_http_variable_value_t *v, ngx_str_t *var,
             }
         }
 
-        if (n + prefix == var->len) {
+        if (n + prefix == var->len && n == header[i].key.len) {
             v->len = header[i].value.len;
             v->valid = 1;
             v->no_cachable = 0;
