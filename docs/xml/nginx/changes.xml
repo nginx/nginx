@@ -9,6 +9,46 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.6" date="06.10.2006">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не запускался на 64-битных платформах, отличной от amd64, sparc64 и ppc64.
+</para>
+<para lang="en">
+nginx did not run on 64-bit platforms except amd64, sparc64, and ppc64.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при запросе версии HTTP/1.1 nginx передавал ответ chunk'ами,
+если длина ответа в методе $r->headers_out("Content-Length", ...)
+была задана текстовой строкой.
+</para>
+<para lang="en">
+nginx sent the chunked response for HTTP/1.1 request,<br/>
+if its length was set by text string in
+the $r->headers_out("Content-Length", ...) method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после перенаправления ошибки с помощью директивы error_page любая директива
+модуля ngx_http_rewrite_module возвращала эту ошибку;
+ошибка появилась в 0.4.4.
+</para>
+<para lang="en">
+after redirecting error by an "error_page" directive
+any ngx_http_rewrite_module directive returned this error code;
+bug appeared in 0.4.4.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.5" date="02.10.2006">
 
 <change type="bugfix">
