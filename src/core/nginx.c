@@ -352,7 +352,8 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
                   "using inherited sockets from \"%s\"", inherited);
 
     if (ngx_array_init(&cycle->listening, cycle->pool, 10,
-                                         sizeof(ngx_listening_t)) == NGX_ERROR)
+                       sizeof(ngx_listening_t))
+        == NGX_ERROR)
     {
         return NGX_ERROR;
     }
