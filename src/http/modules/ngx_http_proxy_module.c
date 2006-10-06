@@ -1823,7 +1823,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     hash.hash = &conf->upstream.hide_headers_hash;
     hash.key = ngx_hash_key_lc;
     hash.max_size = 512;
-    hash.bucket_size = ngx_cacheline_size;
+    hash.bucket_size = 64;
     hash.name = "proxy_hide_headers_hash";
     hash.pool = cf->pool;
     hash.temp_pool = NULL;
