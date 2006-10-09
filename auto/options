@@ -70,6 +70,7 @@ HTTP_PERL=NO
 HTTP_MEMCACHED=YES
 HTTP_EMPTY_GIF=YES
 HTTP_BROWSER=YES
+HTTP_FLV=NO
 
 # STUB
 HTTP_STUB_STATUS=NO
@@ -150,6 +151,7 @@ do
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
         --with-http_addition_module)     HTTP_ADDITION=YES          ;;
         --with-http_dav_module)          HTTP_DAV=YES               ;;
+        --with-http_flv_module)          HTTP_FLV=YES               ;;
 
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
@@ -251,6 +253,7 @@ cat << END
   --with-http_realip_module          enable ngx_http_realip_module
   --with-http_addition_module        enable ngx_http_addition_module
   --with-http_dav_module             enable ngx_http_dav_module
+  --with-http_flv_module             enable ngx_http_flv_module
 
   --without-http_charset_module      disable ngx_http_charset_module
   --without-http_gzip_module         disable ngx_http_gzip_module
