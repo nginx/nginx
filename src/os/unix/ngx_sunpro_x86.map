@@ -1,2 +1,2 @@
 # disable { PAUSE ] hwcap for Sun Studio 11
-hwcap_1 = OVERRIDE; 
+hwcap_1 = OVERRIDE;

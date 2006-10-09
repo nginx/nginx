@@ -498,7 +498,7 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
             wev->active = 0;
 
             if (revents & POLLIN) {
-    
+
                 if ((flags & NGX_POST_THREAD_EVENTS) && !rev->accept) {
                     rev->posted_ready = 1;
 

@@ -183,7 +183,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     log->action = "sending flv to client";
 
     cln->handler = ngx_pool_cleanup_file;
-    clnf = cln->data; 
+    clnf = cln->data;
 
     clnf->fd = fd;
     clnf->name = path.data;
@@ -194,7 +194,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     r->headers_out.last_modified_time = ngx_file_mtime(&fi);
 
     if (ngx_http_set_content_type(r) != NGX_OK) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR; 
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));

@@ -9,6 +9,38 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.7" date="10.10.2006">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_flv_module.
+</para>
+<para lang="en">
+the ngx_http_flv_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_charset_module поддерживает переменные.
+</para>
+<para lang="en">
+the ngx_http_charset_module supports the variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не запускался на 64-битных платформах, отличной от amd64, sparc64 и ppc64.
+</para>
+<para lang="en">
+nginx did not run on 64-bit platforms except amd64, sparc64, and ppc64.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.6" date="06.10.2006">
 
 <change type="bugfix">

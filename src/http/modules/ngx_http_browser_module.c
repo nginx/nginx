@@ -61,7 +61,7 @@ static ngx_int_t ngx_http_browser_variable(ngx_http_request_t *r,
 
 static ngx_uint_t ngx_http_browser(ngx_http_request_t *r,
     ngx_http_browser_conf_t *cf);
- 
+
 static ngx_int_t ngx_http_browser_add_variable(ngx_conf_t *cf);
 static void *ngx_http_browser_create_conf(ngx_conf_t *cf);
 static char *ngx_http_browser_merge_conf(ngx_conf_t *cf, void *parent,
