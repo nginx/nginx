@@ -2941,7 +2941,7 @@ ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf)
     hash.hash = &umcf->headers_in_hash;
     hash.key = ngx_hash_key_lc;
     hash.max_size = 512;
-    hash.bucket_size = 64;
+    hash.bucket_size = ngx_align(64, ngx_cacheline_size);
     hash.name = "upstream_headers_in_hash";
     hash.pool = cf->pool;
     hash.temp_pool = NULL;

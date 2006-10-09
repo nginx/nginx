@@ -365,7 +365,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     hash.hash = &cmcf->headers_in_hash;
     hash.key = ngx_hash_key_lc;
     hash.max_size = 512;
-    hash.bucket_size = 64;
+    hash.bucket_size = ngx_align(64, ngx_cacheline_size);
     hash.name = "headers_in_hash";
     hash.pool = cf->pool;
     hash.temp_pool = NULL;
