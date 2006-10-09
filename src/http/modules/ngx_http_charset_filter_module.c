@@ -10,6 +10,7 @@
 
 
 #define NGX_HTTP_NO_CHARSET    -2
+#define NGX_HTTP_CHARSET_VAR   0x10000
 
 /* 1 byte length and up to 3 bytes for the UTF-8 encoding of the UCS-2 */
 #define NGX_UTF_LEN             4
@@ -79,7 +80,7 @@ typedef struct {
 
 
 static ngx_int_t ngx_http_charset_get_charset(ngx_http_charset_t *charsets,
-    ngx_uint_t n, u_char *charset);
+    ngx_uint_t n, ngx_str_t *charset);
 static ngx_int_t ngx_http_charset_set_charset(ngx_http_request_t *r,
     ngx_http_charset_t *charsets, ngx_int_t charset, ngx_int_t source_charset);
 static ngx_uint_t ngx_http_charset_recode(ngx_buf_t *b, u_char *table);
@@ -190,6 +191,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
     ngx_uint_t                     n;
     ngx_http_charset_t            *charsets;
     ngx_http_charset_ctx_t        *ctx;
+    ngx_http_variable_value_t     *vv;
     ngx_http_charset_loc_conf_t   *lcf, *mlcf;
     ngx_http_charset_main_conf_t  *mcf;
 
@@ -210,7 +212,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
             && r->headers_out.override_charset->len)
         {
             charset = ngx_http_charset_get_charset(charsets, n,
-                                        r->headers_out.override_charset->data);
+                                              r->headers_out.override_charset);
 
             if (charset == NGX_HTTP_NO_CHARSET) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -243,6 +245,14 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
                     return ngx_http_next_header_filter(r);
                 }
             }
+
+            if (charset >= NGX_HTTP_CHARSET_VAR) {
+                vv = ngx_http_get_indexed_variable(r,
+                                               charset - NGX_HTTP_CHARSET_VAR);
+
+                charset = ngx_http_charset_get_charset(charsets, n,
+                                                       (ngx_str_t *) vv);
+            }
         }
 
     } else {
@@ -263,7 +273,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
 
             ngx_http_set_ctx(r->main, ctx, ngx_http_charset_filter_module);
 
-            charset = ngx_http_charset_get_charset(charsets, n, mc->data);
+            charset = ngx_http_charset_get_charset(charsets, n, mc);
 
             ctx->charset = charset;
 
@@ -277,23 +287,33 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
     if (r->headers_out.charset.len == 0) {
         lcf = ngx_http_get_module_loc_conf(r, ngx_http_charset_filter_module);
 
-        if (charset != NGX_HTTP_NO_CHARSET) {
-            return ngx_http_charset_set_charset(r, mcf->charsets.elts, charset,
-                                                lcf->source_charset);
+        source_charset = lcf->source_charset;
+
+        if (source_charset >= NGX_HTTP_CHARSET_VAR) {
+            vv = ngx_http_get_indexed_variable(r,
+                                        source_charset - NGX_HTTP_CHARSET_VAR);
+
+            source_charset = ngx_http_charset_get_charset(charsets, n,
+                                                          (ngx_str_t *) vv);
         }
 
-        if (lcf->source_charset == NGX_CONF_UNSET) {
+        if (charset != NGX_HTTP_NO_CHARSET) {
+            return ngx_http_charset_set_charset(r, mcf->charsets.elts, charset,
+                                                source_charset);
+        }
+
+        if (source_charset == NGX_CONF_UNSET) {
             return ngx_http_next_header_filter(r);
         }
 
-        from = &charsets[lcf->source_charset].name;
+        from = &charsets[source_charset].name;
         to = &r->main->headers_out.charset;
 
         goto no_charset_map;
     }
 
     source_charset = ngx_http_charset_get_charset(charsets, n,
-                                                  r->headers_out.charset.data);
+                                                  &r->headers_out.charset);
 
     if (charset == NGX_HTTP_NO_CHARSET
         || source_charset == NGX_HTTP_NO_CHARSET)
@@ -341,12 +361,19 @@ no_charset_map:
 
 static ngx_int_t
 ngx_http_charset_get_charset(ngx_http_charset_t *charsets, ngx_uint_t n,
-    u_char *charset)
+    ngx_str_t *charset)
 {
+    size_t      len;
     ngx_uint_t  i;
 
+    len = charset->len & 0xffff;
+
     for (i = 0; i < n; i++) {
-        if (ngx_strcasecmp(charsets[i].name.data, charset) == 0) {
+        if (charsets[i].name.len != len) {
+            continue;
+        }
+
+        if (ngx_strncasecmp(charsets[i].name.data, charset->data, len) == 0) {
             return i;
         }
     }
@@ -1261,7 +1288,7 @@ ngx_http_set_charset_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     char  *p = conf;
 
     ngx_int_t                     *cp;
-    ngx_str_t                     *value;
+    ngx_str_t                     *value, var;
     ngx_http_charset_main_conf_t  *mcf;
 
     cp = (ngx_int_t *) (p + cmd->offset);
@@ -1276,6 +1303,22 @@ ngx_http_set_charset_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         && ngx_strcmp(value[1].data, "off") == 0)
     {
         *cp = NGX_HTTP_NO_CHARSET;
+        return NGX_CONF_OK;
+    }
+
+
+    if (value[1].data[0] == '$') {
+        var.len = value[1].len - 1;
+        var.data = value[1].data + 1;
+
+        *cp = ngx_http_get_variable_index(cf, &var);
+
+        if (*cp == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
+
+        *cp += NGX_HTTP_CHARSET_VAR;
+
         return NGX_CONF_OK;
     }
 
