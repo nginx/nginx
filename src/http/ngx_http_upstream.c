@@ -1520,6 +1520,9 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
         } else {
             ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
         }
+
+        ngx_http_upstream_finalize_request(r, u, 0);
+        return;
     }
 
     r = c->data;
