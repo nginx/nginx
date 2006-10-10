@@ -22,16 +22,47 @@ the ngx_http_flv_module.
 
 <change type="feature">
 <para lang="ru">
-модуль ngx_http_charset_module поддерживает переменные.
+переменная $request_body_file.
 </para>
 <para lang="en">
-the ngx_http_charset_module supports the variables.
+the $request_body_file variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы charset и source_charset поддерживают переменные.
+</para>
+<para lang="en">
+the "charset" and "source_charset" directives support the variables.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не запускался на 64-битных платформах, отличной от amd64, sparc64 и ppc64.
+если до команды SSI include с параметром wait выполнялась ещё
+одна команда SSI include, то параметр wait мог не работать.
+</para>
+<para lang="en">
+if before an "include" SSI command with an "wait" parameter were
+yet another "include" SSI command, then the "wait" parameter might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы "proxy_buffering off" или при работе
+с memcached соединения могли не закрываться по таймауту.
+</para>
+<para lang="en">
+if the "proxy_buffering off" directive was used or while working with
+memcached the connections might not be closed on timeout.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не запускался на 64-битных платформах, отличных от amd64, sparc64 и ppc64.
 </para>
 <para lang="en">
 nginx did not run on 64-bit platforms except amd64, sparc64, and ppc64.
@@ -45,7 +76,7 @@ nginx did not run on 64-bit platforms except amd64, sparc64, and ppc64.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не запускался на 64-битных платформах, отличной от amd64, sparc64 и ppc64.
+nginx не запускался на 64-битных платформах, отличных от amd64, sparc64 и ppc64.
 </para>
 <para lang="en">
 nginx did not run on 64-bit platforms except amd64, sparc64, and ppc64.
