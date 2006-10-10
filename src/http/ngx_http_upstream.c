@@ -1500,6 +1500,8 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
     ngx_http_core_loc_conf_t  *clcf;
 
     c = ev->data;
+    r = c->data;
+    u = r->upstream;
 
     if (ev->write) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -1525,8 +1527,6 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
         return;
     }
 
-    r = c->data;
-    u = r->upstream;
     client = r->connection;
 
     b = &u->buffer;
