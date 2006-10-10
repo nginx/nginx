@@ -124,6 +124,7 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_int_t                  rc;
     ngx_uint_t                 last;
     ngx_chain_t               *cl;
+    ngx_http_request_t        *sr;
     ngx_http_addition_ctx_t   *ctx;
     ngx_http_addition_conf_t  *conf;
 
@@ -143,7 +144,7 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->before_body_sent = 1;
 
         if (conf->before_body.len) {
-            if (ngx_http_subrequest(r, &conf->before_body, NULL, NULL, 0)
+            if (ngx_http_subrequest(r, &conf->before_body, NULL, &sr, NULL, 0)
                 == NGX_ERROR)
             {
                 return NGX_ERROR;
@@ -167,7 +168,9 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return rc;
     }
 
-    if (ngx_http_subrequest(r, &conf->after_body, NULL, NULL, 0) == NGX_ERROR) {
+    if (ngx_http_subrequest(r, &conf->after_body, NULL, &sr, NULL, 0)
+        == NGX_ERROR)
+    {
         return NGX_ERROR;
     }
 

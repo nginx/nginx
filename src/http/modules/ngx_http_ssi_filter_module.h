@@ -63,8 +63,8 @@ typedef struct {
     unsigned                  block:1;
     unsigned                  output:1;
     unsigned                  output_chosen:1;
-    unsigned                  wait:1;
 
+    ngx_http_request_t       *wait;
     void                     *value_buf;
     ngx_str_t                 timefmt;
     ngx_str_t                 errmsg;

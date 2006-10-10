@@ -417,10 +417,11 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return NGX_AGAIN;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http ssi filter \"%V\" continue", &r->uri);
-
-        ctx->wait = 0;
+        if (ctx->wait == r) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http ssi filter \"%V\" continue", &r->uri);
+            ctx->wait = NULL;
+        }
     }
 
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
@@ -1814,6 +1815,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_buf_t             *b;
     ngx_uint_t             flags, i;
     ngx_chain_t           *out, *cl, *tl, **ll;
+    ngx_http_request_t    *sr;
     ngx_http_ssi_ctx_t    *mctx;
     ngx_http_ssi_block_t  *bl;
 
@@ -1936,7 +1938,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         }
     }
 
-    rc = ngx_http_subrequest(r, uri, &args, out, flags);
+    rc = ngx_http_subrequest(r, uri, &args, &sr, out, flags);
 
     if (rc == NGX_ERROR) {
         return NGX_HTTP_SSI_ERROR;
@@ -1947,7 +1949,13 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     }
 
     if (rc == NGX_AGAIN) {
-        ctx->wait = 1;
+        if (ctx->wait == NULL) {
+            ctx->wait = sr;
+
+        } else {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "only one subrequest may be waited at the same time");
+        }
     }
 
     return rc;

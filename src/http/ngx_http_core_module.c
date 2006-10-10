@@ -1283,7 +1283,8 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
 
 ngx_int_t
 ngx_http_subrequest(ngx_http_request_t *r,
-    ngx_str_t *uri, ngx_str_t *args, ngx_chain_t *out, ngx_uint_t flags)
+    ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **psr,
+    ngx_chain_t *out, ngx_uint_t flags)
 {
     ngx_connection_t              *c;
     ngx_http_request_t            *sr;
@@ -1416,6 +1417,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
     if (!c->destroyed) {
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http subrequest done \"%V?%V\"", uri, &sr->args);
+
+        *psr = sr;
 
         if (sr->fast_subrequest) {
             sr->fast_subrequest = 0;

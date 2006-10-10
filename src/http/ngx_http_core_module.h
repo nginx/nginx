@@ -305,7 +305,8 @@ u_char *ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *name,
 ngx_int_t ngx_http_auth_basic_user(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_subrequest(ngx_http_request_t *r,
-    ngx_str_t *uri, ngx_str_t *args, ngx_chain_t *out, ngx_uint_t flags);
+    ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **sr,
+    ngx_chain_t *out, ngx_uint_t flags);
 ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args);
 
