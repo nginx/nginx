@@ -1137,6 +1137,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 
     if (r->upstream->headers_in.x_accel_redirect) {
+
         ngx_http_upstream_finalize_request(r, u, NGX_DECLINED);
 
         part = &r->upstream->headers_in.headers.part;
@@ -1159,8 +1160,8 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 
             if (hh && hh->redirect) {
                 if (hh->copy_handler(r, &h[i], hh->conf) != NGX_OK) {
-                    ngx_http_upstream_finalize_request(r, u,
-                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+                    ngx_http_finalize_request(r, 
+                                              NGX_HTTP_INTERNAL_SERVER_ERROR);
                     return;
                 }
             }
@@ -1172,7 +1173,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
         flags = 0;
 
         if (ngx_http_parse_unsafe_uri(r, uri, &args, &flags) != NGX_OK) {
-            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_NOT_FOUND);
+            ngx_http_finalize_request(r, NGX_HTTP_NOT_FOUND);
             return;
         }
 
