@@ -50,6 +50,8 @@ static ngx_int_t ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_completion(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_body_file(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 
 static ngx_int_t ngx_http_variable_sent_content_type(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -168,6 +170,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("request_completion"), NULL,
       ngx_http_variable_request_completion,
+      0, 0, 0 },
+
+    { ngx_string("request_body_file"), NULL,
+      ngx_http_variable_request_body_file,
       0, 0, 0 },
 
     { ngx_string("sent_http_content_type"), NULL,
@@ -1129,6 +1135,30 @@ ngx_http_variable_request_completion(ngx_http_request_t *r,
     v->no_cachable = 0;
     v->not_found = 0;
     v->data = (u_char *) "";
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_request_body_file(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    if (r->request_body == NULL || r->request_body->temp_file == NULL) {
+        v->len = 0;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = (u_char *) "";
+
+        return NGX_OK;
+    }
+
+    v->len = r->request_body->temp_file->file.name.len;
+    v->valid = 1;
+    v->no_cachable = 0;
+    v->not_found = 0;
+    v->data = r->request_body->temp_file->file.name.data;
 
     return NGX_OK;
 }
