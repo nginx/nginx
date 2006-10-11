@@ -1145,11 +1145,7 @@ ngx_http_variable_request_body_file(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
     if (r->request_body == NULL || r->request_body->temp_file == NULL) {
-        v->len = 0;
-        v->valid = 1;
-        v->no_cachable = 0;
-        v->not_found = 0;
-        v->data = (u_char *) "";
+        v->not_found = 1;
 
         return NGX_OK;
     }
