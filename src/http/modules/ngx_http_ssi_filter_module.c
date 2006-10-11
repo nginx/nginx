@@ -411,17 +411,16 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (ctx->wait) {
-        if (r->connection->data != r) {
+        if (ctx->wait != r) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http ssi filter \"%V\" wait", &r->uri);
             return NGX_AGAIN;
         }
 
-        if (ctx->wait == r) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http ssi filter \"%V\" continue", &r->uri);
-            ctx->wait = NULL;
-        }
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http ssi filter \"%V\" continue", &r->uri);
+
+        ctx->wait = NULL;
     }
 
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
