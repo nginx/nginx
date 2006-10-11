@@ -30,9 +30,10 @@ typedef struct {
 } ngx_list_t;
 
 
-static ngx_inline
-ngx_int_t ngx_list_init(ngx_list_t *list, ngx_pool_t *pool, ngx_uint_t n,
-    size_t size)
+ngx_list_t *ngx_list_create(ngx_pool_t *pool, ngx_uint_t n, size_t size);
+
+static ngx_inline ngx_int_t
+ngx_list_init(ngx_list_t *list, ngx_pool_t *pool, ngx_uint_t n, size_t size)
 {
     list->part.elts = ngx_palloc(pool, n * size);
     if (list->part.elts == NULL) {
