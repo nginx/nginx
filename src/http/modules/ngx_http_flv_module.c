@@ -64,7 +64,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     off_t                      start, len;
     ngx_fd_t                   fd;
     ngx_int_t                  rc;
-    ngx_uint_t                 level;
+    ngx_uint_t                 level, i;
     ngx_str_t                  path;
     ngx_err_t                  err;
     ngx_log_t                 *log;
@@ -163,6 +163,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
 
     start = 0;
     len = ngx_file_size(&fi);
+    i = 1;
 
     if (r->args.len) {
         p = (u_char *) ngx_strstr(r->args.data, "start=");
@@ -176,7 +177,10 @@ ngx_http_flv_handler(ngx_http_request_t *r)
                 start = 0;
             }
 
-            len -= start;
+            if (start) {
+                len = sizeof(ngx_flv_header) - 1 + len - start;
+                i = 0;
+            }
         }
     }
 
@@ -190,24 +194,26 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     clnf->log = r->pool->log;
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = sizeof(ngx_flv_header) - 1 + len;
+    r->headers_out.content_length_n = len;
     r->headers_out.last_modified_time = ngx_file_mtime(&fi);
 
     if (ngx_http_set_content_type(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
-    if (b == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    if (i == 0) {
+        b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+        if (b == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        b->pos = ngx_flv_header;
+        b->last = ngx_flv_header + sizeof(ngx_flv_header) - 1;
+        b->memory = 1;
+
+        out[0].buf = b;
+        out[0].next = &out[1];
     }
-
-    b->pos = ngx_flv_header;
-    b->last = ngx_flv_header + sizeof(ngx_flv_header) - 1;
-    b->memory = 1;
-
-    out[0].buf = b;
-    out[0].next = &out[1];
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
     if (b == NULL) {
@@ -239,7 +245,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     out[1].buf = b;
     out[1].next = NULL;
 
-    return ngx_http_output_filter(r, out);
+    return ngx_http_output_filter(r, &out[i]);
 }
 
 
