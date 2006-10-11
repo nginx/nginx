@@ -9,6 +9,33 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.8" date="11.10.2006">
+
+<change type="bugfix">
+<para lang="ru">
+если до команды SSI include с параметром wait выполнялась ещё
+одна команда SSI include, то параметр wait мог не работать.
+</para>
+<para lang="en">
+if an "include" SSI command were before another "include" SSI command
+with an "wait" parameter, then the "wait" parameter might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_flv_module добавлял FLV-заголовок для полных ответов.<br/>
+Спасибо Алексею Ковырину.
+</para>
+<para lang="en">
+the ngx_http_flv_module added the FLV header to the full responses.<br/>
+Thanks to Alexey Kovyrin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.7" date="10.10.2006">
 
 <change type="feature">
@@ -44,8 +71,8 @@ the "charset" and "source_charset" directives support the variables.
 одна команда SSI include, то параметр wait мог не работать.
 </para>
 <para lang="en">
-if before an "include" SSI command with an "wait" parameter were
-yet another "include" SSI command, then the "wait" parameter might not work.
+if an "include" SSI command were before another "include" SSI command
+with an "wait" parameter, then the "wait" parameter might not work.
 </para>
 </change>
 
