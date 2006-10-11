@@ -383,6 +383,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_chain_t               *cl, **ll;
     ngx_table_elt_t           *param;
     ngx_connection_t          *c;
+    ngx_http_request_t        *pr;
     ngx_http_ssi_ctx_t        *ctx, *mctx;
     ngx_http_ssi_block_t      *bl;
     ngx_http_ssi_param_t      *prm;
@@ -411,16 +412,34 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (ctx->wait) {
-        if (ctx->wait != r) {
+        if (r->connection->data != r) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http ssi filter \"%V\" wait", &r->uri);
             return NGX_AGAIN;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http ssi filter \"%V\" continue", &r->uri);
+        for (pr = ctx->wait->parent; pr; pr = pr->parent) {
+            if (pr == r) {
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                               "http ssi filter \"%V\" flush", &r->uri);
 
-        ctx->wait = NULL;
+                rc = ngx_http_next_body_filter(r, NULL);
+
+                if (ctx->wait->done) {
+                    ctx->wait = NULL;
+                }
+
+                if (rc == NGX_ERROR || rc == NGX_AGAIN) {
+                    return rc;
+                }
+            }
+        }
+
+        if (ctx->wait == r) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http ssi filter \"%V\" continue", &r->uri);
+            ctx->wait = NULL;
+        }
     }
 
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
