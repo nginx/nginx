@@ -565,7 +565,9 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
     ngx_log_t *log)
 {
     int                n;
-    char              *embedding[6];
+    STRLEN             len;
+    SV                *sv;
+    char              *ver, *embedding[6];
     PerlInterpreter   *perl;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "create perl interpreter");
@@ -631,6 +633,16 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
 
     if (n != 0) {
         ngx_log_error(NGX_LOG_ALERT, log, 0, "perl_parse() failed: %d", n);
+        goto fail;
+    }
+
+    sv = get_sv("nginx::VERSION", FALSE);
+    ver = SvPV(sv, len);
+
+    if (ngx_strcmp(ver, NGINX_VERSION) != 0) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      "version " NGINX_VERSION " of nginx.pm is required, "
+                      "but %s was found", ver);
         goto fail;
     }
 
