@@ -794,6 +794,7 @@ ngx_int_t
 ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph)
 {
+    size_t     root;
     ngx_int_t  rc;
     ngx_str_t  path;
 
@@ -830,7 +831,7 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
 
     if (r->uri.data[r->uri.len - 1] == '/' && !r->zero_in_uri) {
 
-        if (ngx_http_map_uri_to_path(r, &path, 0) != NULL) {
+        if (ngx_http_map_uri_to_path(r, &path, &root, 0) != NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "directory index of \"%V\" is forbidden", &path);
         }
@@ -1157,7 +1158,7 @@ ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 u_char *
 ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
-    size_t reserved)
+    size_t *root_length, size_t reserved)
 {
     u_char                    *last;
     size_t                     alias;
@@ -1178,7 +1179,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
     if (clcf->root_lengths == NULL) {
 
-        r->root_length = clcf->root.len;
+        *root_length = clcf->root.len;
 
         path->len = clcf->root.len + reserved;
 
@@ -1201,8 +1202,8 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
             return NULL;
         }
 
-        r->root_length = path->len - reserved;
-        last = path->data + r->root_length;
+        *root_length = path->len - reserved;
+        last = path->data + *root_length;
     }
 
     last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);

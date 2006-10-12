@@ -28,6 +28,8 @@ typedef struct {
     ngx_str_t                path;
     ngx_str_t                index;
 
+    size_t                   root;
+
     ngx_uint_t               tested;     /* unsigned  tested:1 */
 } ngx_http_index_ctx_t;
 
@@ -200,7 +202,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
 
         if (len > (size_t) (ctx->path.data + ctx->path.len - ctx->index.data)) {
 
-            last = ngx_http_map_uri_to_path(r, &ctx->path, len);
+            last = ngx_http_map_uri_to_path(r, &ctx->path, &ctx->root, len);
             if (last == NULL) {
                 return NGX_ERROR;
             }
@@ -291,7 +293,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
         uri.len = r->uri.len + ctx->index.len - 1;
 
         if (!clcf->alias) {
-            uri.data = ctx->path.data + r->root_length;
+            uri.data = ctx->path.data + ctx->root;
 
         } else {
             uri.data = ngx_palloc(r->pool, uri.len);

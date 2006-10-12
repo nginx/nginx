@@ -73,6 +73,7 @@ static ngx_int_t
 ngx_http_static_handler(ngx_http_request_t *r)
 {
     u_char                    *last, *location;
+    size_t                     root;
     ngx_fd_t                   fd;
     ngx_int_t                  rc;
     ngx_uint_t                 level;
@@ -112,7 +113,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
      * so we do not need to reserve memory for '/' for possible redirect
      */
 
-    last = ngx_http_map_uri_to_path(r, &path, 0);
+    last = ngx_http_map_uri_to_path(r, &path, &root, 0);
     if (last == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }

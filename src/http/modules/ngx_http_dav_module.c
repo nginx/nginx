@@ -102,6 +102,7 @@ static ngx_int_t
 ngx_http_dav_handler(ngx_http_request_t *r)
 {
     char                     *failed;
+    size_t                    root;
     ngx_int_t                 rc;
     ngx_str_t                 path;
     ngx_file_info_t           fi;
@@ -152,7 +153,7 @@ ngx_http_dav_handler(ngx_http_request_t *r)
             return rc;
         }
 
-        ngx_http_map_uri_to_path(r, &path, 0);
+        ngx_http_map_uri_to_path(r, &path, &root, 0);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http delete filename: \"%s\"", path.data);
@@ -219,7 +220,7 @@ ngx_http_dav_handler(ngx_http_request_t *r)
             return rc;
         }
 
-        ngx_http_map_uri_to_path(r, &path, 0);
+        ngx_http_map_uri_to_path(r, &path, &root, 0);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http mkcol path: \"%s\"", path.data);
@@ -245,6 +246,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 {
     char                     *failed;
     u_char                   *name;
+    size_t                    root;
     time_t                    date;
     ngx_err_t                 err;
     ngx_str_t                *temp, path;
@@ -252,7 +254,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     ngx_file_info_t           fi;
     ngx_http_dav_loc_conf_t  *dlcf;
 
-    ngx_http_map_uri_to_path(r, &path, 0);
+    ngx_http_map_uri_to_path(r, &path, &root, 0);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http put filename: \"%s\"", path.data);

@@ -852,9 +852,10 @@ static ngx_int_t
 ngx_http_variable_request_filename(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
+    size_t     root;
     ngx_str_t  path;
 
-    if (ngx_http_map_uri_to_path(r, &path, 0) == NULL) {
+    if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
         return NGX_ERROR;
     }
 

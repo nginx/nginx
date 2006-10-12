@@ -135,7 +135,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 {
     u_char                         *last, *filename, scale;
     off_t                           length;
-    size_t                          len, copy, allocated;
+    size_t                          len, copy, allocated, root;
     ngx_tm_t                        tm;
     ngx_err_t                       err;
     ngx_buf_t                      *b;
@@ -174,7 +174,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     /* NGX_DIR_MASK_LEN is lesser than NGX_HTTP_AUTOINDEX_PREALLOCATE */
 
-    last = ngx_http_map_uri_to_path(r, &path, NGX_HTTP_AUTOINDEX_PREALLOCATE);
+    last = ngx_http_map_uri_to_path(r, &path, &root,
+                                    NGX_HTTP_AUTOINDEX_PREALLOCATE);
     if (last == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
