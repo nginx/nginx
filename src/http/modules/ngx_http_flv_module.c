@@ -62,6 +62,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
 {
     u_char                    *p;
     off_t                      start, len;
+    size_t                     root;
     ngx_fd_t                   fd;
     ngx_int_t                  rc;
     ngx_uint_t                 level, i;
@@ -94,7 +95,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    if (ngx_http_map_uri_to_path(r, &path, 0) == NULL) {
+    if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 

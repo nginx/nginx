@@ -453,6 +453,7 @@ filename(r)
     CODE:
 
     dXSTARG;
+    size_t                root;
     ngx_http_request_t   *r;
     ngx_http_perl_ctx_t  *ctx;
 
@@ -463,7 +464,7 @@ filename(r)
         goto done;
     }
 
-    if (ngx_http_map_uri_to_path(r, &ctx->filename, 0) == NULL) {
+    if (ngx_http_map_uri_to_path(r, &ctx->filename, &root, 0) == NULL) {
         XSRETURN_UNDEF;
     }
 
