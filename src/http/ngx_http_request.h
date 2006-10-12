@@ -330,8 +330,6 @@ struct ngx_http_request_s {
 
     ngx_uint_t                        method;
     ngx_uint_t                        http_version;
-    ngx_uint_t                        http_major;
-    ngx_uint_t                        http_minor;
 
     ngx_str_t                         request_line;
     ngx_str_t                         uri;
@@ -456,6 +454,7 @@ struct ngx_http_request_s {
     unsigned                          subrequests:8;
 
     /* used to parse HTTP headers */
+
     ngx_uint_t                        state;
     u_char                           *uri_start;
     u_char                           *uri_end;
@@ -474,6 +473,9 @@ struct ngx_http_request_s {
     u_char                           *header_name_end;
     u_char                           *header_start;
     u_char                           *header_end;
+
+    unsigned                          http_minor:16;
+    unsigned                          http_major:16;
 
     ngx_uint_t                        header_hash;
     ngx_uint_t                        lowcase_index;
