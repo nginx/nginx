@@ -9,6 +9,29 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.9" date="13.10.2006">
+
+<change type="feature">
+<para lang="ru">
+параметр set в команде SSI include.
+</para>
+<para lang="en">
+the "set" parameter in the "include" SSI command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module теперь проверяет версию модуля nginx.pm.
+</para>
+<para lang="en">
+the ngx_http_perl_module now tests the nginx.pm module version.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.8" date="11.10.2006">
 
 <change type="bugfix">
