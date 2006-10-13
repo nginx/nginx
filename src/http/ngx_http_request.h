@@ -47,7 +47,9 @@
 
 #define NGX_HTTP_PARSE_INVALID_HEADER      13
 
+
 #define NGX_HTTP_ZERO_IN_URI               1
+#define NGX_HTTP_SUBREQUEST_IN_MEMORY      2
 
 
 #define NGX_HTTP_OK                        200
@@ -287,6 +289,15 @@ struct ngx_http_cleanup_s {
 };
 
 
+typedef ngx_int_t (*ngx_http_post_subrequest_pt)(ngx_http_request_t *r,
+    void *data, ngx_int_t rc);
+
+typedef struct {
+    ngx_http_post_subrequest_pt       handler;
+    void                             *data;
+} ngx_http_post_subrequest_t;
+
+
 typedef struct ngx_http_postponed_request_s  ngx_http_postponed_request_t;
 
 struct ngx_http_postponed_request_s {
@@ -344,6 +355,7 @@ struct ngx_http_request_s {
     ngx_http_request_t               *main;
     ngx_http_request_t               *parent;
     ngx_http_postponed_request_t     *postponed;
+    ngx_http_post_subrequest_t       *post_subrequest;
 
     uint32_t                          in_addr;
     ngx_uint_t                        port;
@@ -401,6 +413,7 @@ struct ngx_http_request_s {
     unsigned                          request_body_file_log_level:3;
 
     unsigned                          fast_subrequest:1;
+    unsigned                          subrequest_in_memory:1;
 
     unsigned                          header_timeout_set:1;
 

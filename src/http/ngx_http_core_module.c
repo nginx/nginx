@@ -1285,7 +1285,7 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
 ngx_int_t
 ngx_http_subrequest(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **psr,
-    ngx_chain_t *out, ngx_uint_t flags)
+    ngx_http_post_subrequest_t *ps, ngx_uint_t flags)
 {
     ngx_connection_t              *c;
     ngx_http_request_t            *sr;
@@ -1353,9 +1353,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http subrequest \"%V?%V\"", uri, &sr->args);
 
-    if (flags & NGX_HTTP_ZERO_IN_URI) {
-        sr->zero_in_uri = 1;
-    }
+    sr->zero_in_uri = (flags & NGX_HTTP_ZERO_IN_URI) != 0;
+    sr->subrequest_in_memory = (flags & NGX_HTTP_SUBREQUEST_IN_MEMORY) != 0;
 
     sr->unparsed_uri = r->unparsed_uri;
     sr->method_name = r->method_name;
@@ -1365,9 +1364,9 @@ ngx_http_subrequest(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    sr->out = out;
     sr->main = r->main;
     sr->parent = r;
+    sr->post_subrequest = ps;
     sr->read_event_handler = ngx_http_request_empty_handler;
     sr->write_event_handler = ngx_http_request_empty_handler;
 
@@ -1431,7 +1430,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
         return NGX_AGAIN;
     }
 
-    return NGX_OK;
+    return NGX_DONE;
 }
 
 

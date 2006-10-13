@@ -56,7 +56,7 @@ typedef struct {
 
     size_t                    value_len;
 
-    ngx_array_t              *variables;
+    ngx_list_t               *variables;
     ngx_array_t              *blocks;
 
     unsigned                  conditional:2;

@@ -1476,26 +1476,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r != r->main
-        && rc != NGX_ERROR
-        && !r->connection->error
-        && !r->request_output
-        && r->out)
-    {
-        if (!r->header_sent) {
-            rc = ngx_http_set_content_type(r);
-
-            if (rc == NGX_OK) {
-                rc = ngx_http_send_header(r);
-
-                if (rc != NGX_ERROR) {
-                    rc = ngx_http_output_filter(r, r->out);
-                }
-            }
-
-        } else {
-            rc = ngx_http_output_filter(r, r->out);
-        }
+    if (r != r->main && r->post_subrequest) {
+        rc = r->post_subrequest->handler(r, r->post_subrequest->data, rc);
     }
 
     if (rc == NGX_ERROR

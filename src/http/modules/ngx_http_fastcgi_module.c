@@ -395,6 +395,13 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
     ngx_http_upstream_t          *u;
     ngx_http_fastcgi_loc_conf_t  *flcf;
 
+    if (r->subrequest_in_memory) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "ngx_http_fastcgi_module does not support "
+                      "subrequest in memeory");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
     flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
 
     u = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_t));
