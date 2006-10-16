@@ -1843,7 +1843,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t                   *uri, *file, *wait, *set, *stub, args;
     ngx_buf_t                   *b;
     ngx_uint_t                   flags, i;
-    ngx_chain_t                 *cl, *tl, **ll;
+    ngx_chain_t                 *cl, *tl, **ll, *out;
     ngx_http_request_t          *sr;
     ngx_http_ssi_var_t          *var;
     ngx_http_ssi_ctx_t          *mctx;
@@ -1947,7 +1947,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
         if (bl[i].count++) {
 
-            ll = (ngx_chain_t **) &psr->data;
+            ll = &out;
 
             for (tl = bl[i].bufs; tl; tl = tl->next) {
 
@@ -1978,6 +1978,8 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
                 cl->next = NULL;
                 ll = &cl->next;
             }
+
+            psr->data = out;
 
         } else {
             psr->data = bl[i].bufs;
