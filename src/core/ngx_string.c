@@ -593,7 +593,7 @@ ngx_atotm(u_char *line, size_t n)
 ngx_int_t
 ngx_hextoi(u_char *line, size_t n)
 {
-    u_char     ch;
+    u_char     c, ch;
     ngx_int_t  value;
 
     if (n == 0) {
@@ -608,13 +608,10 @@ ngx_hextoi(u_char *line, size_t n)
             continue;
         }
 
-        if (ch >= 'A' && ch <= 'F') {
-            value = value * 16 + (ch - 'A' + 10);
-            continue;
-        }
+        c = (u_char) (ch | 0x20);
 
-        if (ch >= 'a' && ch <= 'f') {
-            value = value * 16 + (ch - 'a' + 10);
+        if (c >= 'a' && c <= 'f') {
+            value = value * 16 + (c - 'a' + 10);
             continue;
         }
 
