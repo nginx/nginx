@@ -94,35 +94,39 @@ typedef long  time_t;
 #include <ngx_auto_config.h>
 
 
-#define ngx_inline        __inline
-#define ngx_cdecl         __cdecl
+#define ngx_inline          __inline
+#define ngx_cdecl           __cdecl
 
 
 #ifdef _MSC_VER
-typedef unsigned __int32  uint32_t;
-typedef __int32           int32_t;
-#define ngx_libc_cdecl    __cdecl
+typedef unsigned __int32    uint32_t;
+typedef __int32             int32_t;
+typedef unsigned __int16    uint16_t;
+#define ngx_libc_cdecl      __cdecl
 
-#elif defined __WATCOMC__
-typedef unsigned int      uint32_t;
-typedef int               int32_t;
+#elif defined __BORLANDC__
+typedef unsigned __int32    uint32_t;
+typedef __int32             int32_t;
+typedef unsigned __int16    uint16_t;
+#define ngx_libc_cdecl      __cdecl
+
+#else /* __WATCOMC__ */
+typedef unsigned int        uint32_t;
+typedef int                 int32_t;
+typedef unsigned short int  uint16_t;
 #define ngx_libc_cdecl
 
-#else /* __BORLANDC__ */
-typedef unsigned int      uint32_t;
-typedef int               int32_t;
-#define ngx_libc_cdecl    __cdecl
 #endif
 
-typedef __int64           int64_t;
-typedef unsigned __int64  uint64_t;
-typedef u_int             uintptr_t;
+typedef __int64             int64_t;
+typedef unsigned __int64    uint64_t;
+typedef u_int               uintptr_t;
 
-typedef int               ssize_t;
-typedef __int64           off_t;
-typedef uint32_t          in_addr_t;
-typedef u_short           in_port_t;
-typedef int               sig_atomic_t;
+typedef int                 ssize_t;
+typedef __int64             off_t;
+typedef uint32_t            in_addr_t;
+typedef u_short             in_port_t;
+typedef int                 sig_atomic_t;
 
 
 #define NGX_PTR_SIZE            4
