@@ -214,7 +214,11 @@ ngx_http_flv_handler(ngx_http_request_t *r)
 
         out[0].buf = b;
         out[0].next = &out[1];
+
+    } else {
+        r->allow_ranges = 1; 
     }
+
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
     if (b == NULL) {
