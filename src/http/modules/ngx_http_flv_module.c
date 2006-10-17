@@ -216,7 +216,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
         out[0].next = &out[1];
 
     } else {
-        r->allow_ranges = 1; 
+        r->allow_ranges = 1;
     }
 
 

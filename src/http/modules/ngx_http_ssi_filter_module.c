@@ -1554,7 +1554,7 @@ ngx_http_ssi_get_variable(ngx_http_request_t *r, ngx_str_t *name,
             if (part->next == NULL) {
                 break;
             }
-  
+
             part = part->next;
             var = part->elts;
             i = 0;

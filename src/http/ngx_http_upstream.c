@@ -1167,7 +1167,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 
             if (hh && hh->redirect) {
                 if (hh->copy_handler(r, &h[i], hh->conf) != NGX_OK) {
-                    ngx_http_finalize_request(r, 
+                    ngx_http_finalize_request(r,
                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
                     return;
                 }
