@@ -9,7 +9,7 @@
 
 
 /*
- * The code and lookup table is based on the algorithm
+ * The code and lookup table are based on the algorithm
  * described at http://www.w3.org/TR/PNG/
  */
 
