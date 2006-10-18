@@ -57,6 +57,7 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_file.h>
 #include <ngx_files.h>
 #include <ngx_crc.h>
+#include <ngx_crc32.h>
 #if (NGX_PCRE)
 #include <ngx_regex.h>
 #endif
