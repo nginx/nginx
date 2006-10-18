@@ -348,10 +348,12 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
                 if (r->in_addr == 0) {
                     slen = sizeof(struct sockaddr_in);
                     if (getsockname(r->connection->fd,
-                                    (struct sockaddr *) &sin, &slen) == -1)
+                                    (struct sockaddr *) &sin, &slen)
+                        == -1)
                     {
-                        ngx_log_error(NGX_LOG_CRIT, r->connection->log,
-                                      ngx_socket_errno, "getsockname() failed");
+                        ngx_connection_error(r->connection, ngx_socket_errno,
+                                             "getsockname() failed");
+                        return NGX_ERROR;
                     }
 
                     r->in_addr = sin.sin_addr.s_addr;

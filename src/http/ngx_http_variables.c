@@ -749,8 +749,7 @@ ngx_http_variable_server_addr(ngx_http_request_t *r,
     if (r->in_addr == 0) {
         len = sizeof(struct sockaddr_in);
         if (getsockname(c->fd, (struct sockaddr *) &sin, &len) == -1) {
-            ngx_log_error(NGX_LOG_CRIT, c->log,
-                          ngx_socket_errno, "getsockname() failed");
+            ngx_connection_error(c, ngx_socket_errno, "getsockname() failed");
             return NGX_ERROR;
         }
 
