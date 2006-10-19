@@ -9,13 +9,28 @@
 
 
 /*
- * The code and lookup table are based on the algorithm
+ * The code and lookup tables are based on the algorithm
  * described at http://www.w3.org/TR/PNG/
+ *
+ * The 256 element lookup table takes 1024 bytes, and it may be completely
+ * cached after processing about 30-60 bytes.  So for short messages
+ * we use the 16 element lookup table that takes only 64 bytes and align it
+ * to CPU cache line size.  Of course, the small table adds code inside
+ * CRC32 cycle, but cache misses overhead is bigger than overhead of
+ * the additional code.  For example, ngx_crc32_short() of 16 byte message
+ * takes half as much CPU clocks than ngx_crc32_long().
  */
 
 
-uint32_t  ngx_crc32_table[] = {
+static uint32_t  ngx_crc32_table16[] = {
+    0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
+    0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
+    0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
+    0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
+};
 
+
+uint32_t  ngx_crc32_table256[] = {
     0x00000000, 0x77073096, 0xee0e612c, 0x990951ba,
     0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
     0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
@@ -81,3 +96,33 @@ uint32_t  ngx_crc32_table[] = {
     0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94,
     0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
 };
+
+
+uint32_t *ngx_crc32_table_short = ngx_crc32_table16;
+
+
+ngx_int_t
+ngx_crc32_init(ngx_pool_t *pool)
+{
+    void  *p;
+
+    if (((uintptr_t) ngx_crc32_table_short
+          & ~((uintptr_t) ngx_cacheline_size - 1))
+        == (uintptr_t) ngx_crc32_table_short)
+    {
+        return NGX_OK;
+    }
+
+    p = ngx_palloc(pool, 16 * sizeof(uint32_t) + ngx_cacheline_size);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = ngx_align_ptr(p, ngx_cacheline_size);
+
+    ngx_memcpy(p, ngx_crc32_table16, 16 * sizeof(uint32_t));
+
+    ngx_crc32_table_short = p;
+
+    return NGX_OK;
+}
