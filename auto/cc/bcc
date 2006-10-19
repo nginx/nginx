@@ -39,10 +39,10 @@ CFLAGS="$CFLAGS -q"
 
 
 # precompiled headers
-CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.csm"
-NGX_PCH="$NGX_OBJS/ngx_config.csm"
-NGX_BUILD_PCH="-H=$NGX_OBJS/ngx_config.csm"
-NGX_USE_PCH="-Hu -H=$NGX_OBJS/ngx_config.csm"
+#CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.csm"
+#NGX_PCH="$NGX_OBJS/ngx_config.csm"
+#NGX_BUILD_PCH="-H=$NGX_OBJS/ngx_config.csm"
+#NGX_USE_PCH="-Hu -H=$NGX_OBJS/ngx_config.csm"
 
 
 # Win32 GUI mode application
