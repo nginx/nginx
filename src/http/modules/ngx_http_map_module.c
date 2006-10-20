@@ -115,6 +115,11 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     vv = ngx_http_get_flushed_variable(r, map->index);
 
+    if (vv == NULL || vv->not_found) {
+        *v = *map->default_value;
+        return NGX_OK;
+    }
+
     len = vv->len;
 
     if (len && map->hostnames && vv->data[len - 1] == '.') {

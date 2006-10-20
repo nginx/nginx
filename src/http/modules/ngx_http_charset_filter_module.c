@@ -250,6 +250,10 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
                 vv = ngx_http_get_indexed_variable(r,
                                                charset - NGX_HTTP_CHARSET_VAR);
 
+                if (vv == NULL || vv->not_found) {
+                    return NGX_ERROR;
+                }
+
                 charset = ngx_http_charset_get_charset(charsets, n,
                                                        (ngx_str_t *) vv);
             }
@@ -292,6 +296,10 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
         if (source_charset >= NGX_HTTP_CHARSET_VAR) {
             vv = ngx_http_get_indexed_variable(r,
                                         source_charset - NGX_HTTP_CHARSET_VAR);
+
+            if (vv == NULL || vv->not_found) {
+                return NGX_ERROR;
+            }
 
             source_charset = ngx_http_charset_get_charset(charsets, n,
                                                           (ngx_str_t *) vv);
