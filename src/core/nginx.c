@@ -256,10 +256,6 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    if (ngx_crc32_init(init_cycle.pool) != NGX_OK) {
-        return 1;
-    }
-
     environ = &ngx_null_environ;
 
     ngx_max_module = 0;
@@ -286,6 +282,10 @@ main(int argc, char *const *argv)
     }
 
     ngx_os_status(cycle->log);
+
+    if (ngx_crc32_init(cycle->pool) != NGX_OK) {
+        return 1;
+    }
 
     ngx_cycle = cycle;
 
