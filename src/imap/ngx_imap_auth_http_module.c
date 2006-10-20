@@ -250,6 +250,12 @@ ngx_imap_auth_http_write_handler(ngx_event_t *wev)
                 ngx_del_timer(wev);
             }
 
+            if (ngx_handle_write_event(wev, 0) == NGX_ERROR) {
+                ngx_close_connection(ctx->peer.connection);
+                ngx_destroy_pool(ctx->pool);
+                ngx_imap_session_internal_server_error(s);
+            }
+
             return;
         }
     }
