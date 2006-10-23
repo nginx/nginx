@@ -45,6 +45,13 @@ static ngx_str_t  ngx_imap_default_capabilities[] = {
 };
 
 
+static ngx_conf_bitmask_t  ngx_imap_auth_methods[] = {
+    { ngx_string("plain"), NGX_IMAP_AUTH_PLAIN_ENABLED },
+    { ngx_string("apop"), NGX_IMAP_AUTH_APOP_ENABLED },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_command_t  ngx_imap_core_commands[] = {
 
     { ngx_string("server"),
@@ -102,6 +109,20 @@ static ngx_command_t  ngx_imap_core_commands[] = {
       NGX_IMAP_SRV_CONF_OFFSET,
       offsetof(ngx_imap_core_srv_conf_t, imap_capabilities),
       NULL },
+
+    { ngx_string("server_name"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_core_srv_conf_t, server_name),
+      NULL },
+
+    { ngx_string("auth"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_1MORE,
+      ngx_conf_set_bitmask_slot,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_core_srv_conf_t, auth_methods),
+      &ngx_imap_auth_methods },
 
       ngx_null_command
 };
@@ -208,6 +229,30 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->protocol, prev->protocol,
                               NGX_IMAP_IMAP_PROTOCOL);
     ngx_conf_merge_value(conf->so_keepalive, prev->so_keepalive, 0);
+
+
+    ngx_conf_merge_bitmask_value(conf->auth_methods, prev->auth_methods,
+                           (NGX_CONF_BITMASK_SET|NGX_IMAP_AUTH_PLAIN_ENABLED));
+
+
+    ngx_conf_merge_str_value(conf->server_name, prev->server_name, "");
+
+    if (conf->server_name.len == 0) {
+        conf->server_name.data = ngx_palloc(cf->pool, NGX_MAXHOSTNAMELEN);
+        if (conf->server_name.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (gethostname((char *) conf->server_name.data, NGX_MAXHOSTNAMELEN)
+            == -1)
+        {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                               "gethostname() failed");
+            return NGX_CONF_ERROR;
+        }
+
+        conf->server_name.len = ngx_strlen(conf->server_name.data);
+    }
 
 
     if (conf->pop3_capabilities.nelts == 0) {

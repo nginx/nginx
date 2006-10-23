@@ -9,7 +9,7 @@
 
 
 static ngx_atomic_uint_t  ngx_temp_number;
-static ngx_atomic_uint_t  ngx_random;
+static ngx_atomic_uint_t  ngx_random_number;
 
 
 ssize_t
@@ -216,7 +216,7 @@ void
 ngx_init_temp_number(void)
 {
     ngx_temp_number = 0;
-    ngx_random = 123456;
+    ngx_random_number = 123456;
 }
 
 
@@ -224,7 +224,7 @@ ngx_atomic_uint_t
 ngx_next_temp_number(ngx_uint_t collision)
 {
     if (collision) {
-        ngx_temp_number += ngx_random;
+        ngx_temp_number += ngx_random_number;
     }
 
     return ngx_temp_number++;

@@ -171,4 +171,7 @@ typedef int                 sig_atomic_t;
 #endif
 
 
+#define ngx_random               rand
+
+
 #endif /* _NGX_WIN32_CONFIG_H_INCLUDED_ */

@@ -49,6 +49,8 @@
 #define ngx_signal_helper(n)     SIG##n
 #define ngx_signal_value(n)      ngx_signal_helper(n)
 
+#define ngx_random               random
+
 /* TODO: #ifndef */
 #define NGX_SHUTDOWN_SIGNAL      QUIT
 #define NGX_TERMINATE_SIGNAL     TERM

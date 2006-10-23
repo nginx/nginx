@@ -429,6 +429,10 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
                     {
                         s->command = NGX_POP3_PASS;
 
+                    } else if (c0 == 'A' && c1 == 'P' && c2 == 'O' && c3 == 'P')
+                    {
+                        s->command = NGX_POP3_APOP;
+
                     } else if (c0 == 'Q' && c1 == 'U' && c2 == 'I' && c3 == 'T')
                     {
                         s->command = NGX_POP3_QUIT;
@@ -496,12 +500,20 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
         case sw_argument:
             switch (ch) {
 
-         /*
-          * the space should be considered part of the at username
-          * or password, but not of argument in other commands
-          *
-          * case ' ':
-          */
+            case ' ':
+
+                /*
+                 * the space should be considered as part of the at username
+                 * or password, but not of argument in other commands
+                 */
+
+                if (s->command == NGX_POP3_USER
+                    || s->command == NGX_POP3_PASS)
+                {
+                    break;
+                }
+
+                /* fall through */
 
             case CR:
             case LF:

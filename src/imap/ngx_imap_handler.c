@@ -233,6 +233,7 @@ ngx_imap_ssl_handshake_handler(ngx_connection_t *c)
 static void
 ngx_imap_init_session(ngx_connection_t *c)
 {
+    u_char                    *p;
     ngx_imap_session_t        *s;
     ngx_imap_core_srv_conf_t  *cscf;
 
@@ -252,6 +253,35 @@ ngx_imap_init_session(ngx_connection_t *c)
     }
 
     s->out = greetings[s->protocol];
+
+    if ((cscf->auth_methods & NGX_IMAP_AUTH_APOP_ENABLED)
+        && s->protocol == NGX_IMAP_POP3_PROTOCOL)
+    {
+        s->salt.data = ngx_palloc(c->pool,
+                                 sizeof(" <18446744073709551616.@>" CRLF) - 1
+                                 + NGX_TIME_T_LEN
+                                 + cscf->server_name.len);
+        if (s->salt.data == NULL) {
+            ngx_imap_session_internal_server_error(s);
+            return;
+        }
+
+        s->salt.len = ngx_sprintf(s->salt.data, "<%ul.%T@%V>" CRLF,
+                                  ngx_random(), ngx_time(), &cscf->server_name)
+                     - s->salt.data;
+
+        s->out.data = ngx_palloc(c->pool, greetings[0].len + 1 + s->salt.len);
+        if (s->out.data == NULL) {
+            ngx_imap_session_internal_server_error(s);
+            return;
+        }
+
+        p = ngx_cpymem(s->out.data, greetings[0].data, greetings[0].len - 2);
+        *p++ = ' ';
+        p = ngx_cpymem(p, s->salt.data, s->salt.len);
+
+        s->out.len = p - s->out.data;
+    }
 
     ngx_add_timer(c->read, cscf->timeout);
 
@@ -726,6 +756,56 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                 text = cscf->pop3_capability.data;
                 break;
 
+            case NGX_POP3_APOP:
+                cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
+
+                if ((cscf->auth_methods & NGX_IMAP_AUTH_APOP_ENABLED)
+                    && s->args.nelts == 2)
+                {
+                    arg = s->args.elts;
+
+                    s->login.len = arg[0].len;
+                    s->login.data = ngx_palloc(c->pool, s->login.len);
+                    if (s->login.data == NULL) {
+                        ngx_imap_session_internal_server_error(s);
+                        return;
+                    }
+
+                    ngx_memcpy(s->login.data, arg[0].data, s->login.len);
+
+                    s->passwd.len = arg[1].len;
+                    s->passwd.data = ngx_palloc(c->pool, s->passwd.len);
+                    if (s->passwd.data == NULL) {
+                        ngx_imap_session_internal_server_error(s);
+                        return;
+                    }
+
+                    ngx_memcpy(s->passwd.data, arg[1].data, s->passwd.len);
+
+                    ngx_log_debug2(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                                   "pop3 apop: \"%V\" \"%V\"",
+                                   &s->login, &s->passwd);
+
+                    s->auth_method = NGX_IMAP_AUTH_APOP;
+
+                    s->args.nelts = 0;
+                    s->buffer->pos = s->buffer->start;
+                    s->buffer->last = s->buffer->start;
+
+                    if (rev->timer_set) {
+                        ngx_del_timer(rev);
+                    }
+
+                    ngx_imap_auth_http_init(s);
+
+                    return;
+
+                } else {
+                    rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                }
+
+                break;
+
             case NGX_POP3_QUIT:
                 s->quit = 1;
                 break;
@@ -763,8 +843,6 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
             case NGX_POP3_PASS:
                 if (s->args.nelts == 1) {
-                    /* STUB */ s->imap_state = ngx_pop3_start;
-
                     arg = s->args.elts;
                     s->passwd.len = arg[0].len;
                     s->passwd.data = ngx_palloc(c->pool, s->passwd.len);

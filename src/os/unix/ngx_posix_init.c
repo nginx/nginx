@@ -61,6 +61,8 @@ ngx_os_init(ngx_log_t *log)
     ngx_inherited_nonblocking = 0;
 #endif
 
+    srandom(ngx_time());
+
     return NGX_OK;
 }
 

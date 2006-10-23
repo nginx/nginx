@@ -131,7 +131,10 @@ ngx_module_t  ngx_imap_auth_http_module = {
 };
 
 
-static char *ngx_imap_auth_http_protocol[] = { "pop3", "imap" };
+static char       *ngx_imap_auth_http_protocol[] = { "pop3", "imap" };
+static ngx_str_t   ngx_imap_auth_http_method[] = {
+    ngx_string("plain"), ngx_string("apop")
+};
 
 
 void
@@ -558,6 +561,25 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                 continue;
             }
 
+            if (len == sizeof("Auth-Pass") - 1
+                && ngx_strncasecmp(ctx->header_name_start, "Auth-Pass",
+                                   sizeof("Auth-Pass") - 1) == 0)
+            {
+                s->passwd.len = ctx->header_end - ctx->header_start;
+
+                s->passwd.data = ngx_palloc(s->connection->pool, s->passwd.len);
+                if (s->passwd.data == NULL) {
+                    ngx_close_connection(ctx->peer.connection);
+                    ngx_destroy_pool(ctx->pool);
+                    ngx_imap_session_internal_server_error(s);
+                    return;
+                }
+
+                ngx_memcpy(s->passwd.data, ctx->header_start, s->passwd.len);
+
+                continue;
+            }
+
             if (len == sizeof("Auth-Wait") - 1
                 && ngx_strncasecmp(ctx->header_name_start, "Auth-Wait",
                                    sizeof("Auth-Wait") - 1) == 0)
@@ -608,6 +630,15 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
             if (ctx->addr.len == 0 || ctx->port.len == 0) {
                 ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                               "auth http server %V did not send server or port",
+                              &ctx->peer.peers->peer[0].name);
+                ngx_destroy_pool(ctx->pool);
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            if (s->passwd.data == NULL) {
+                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                              "auth http server %V did not send password",
                               &ctx->peer.peers->peer[0].name);
                 ngx_destroy_pool(ctx->pool);
                 ngx_imap_session_internal_server_error(s);
@@ -730,6 +761,8 @@ ngx_imap_auth_sleep_handler(ngx_event_t *rev)
             s->imap_state = ngx_imap_start;
             s->connection->read->handler = ngx_imap_auth_state;
         }
+
+        s->auth_method = NGX_IMAP_AUTH_PLAIN;
 
         c->log->action = "in auth state";
 
@@ -1007,6 +1040,7 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
           + sizeof("Auth-Method: plain" CRLF) - 1
           + sizeof("Auth-User: ") - 1 + login.len + sizeof(CRLF) - 1
           + sizeof("Auth-Pass: ") - 1 + passwd.len + sizeof(CRLF) - 1
+          + sizeof("Auth-Salt: ") - 1 + s->salt.len
           + sizeof("Auth-Protocol: imap" CRLF) - 1
           + sizeof("Auth-Login-Attempt: ") - 1 + NGX_INT_T_LEN
                 + sizeof(CRLF) - 1
@@ -1029,8 +1063,12 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
                          ahcf->host_header.len);
     *b->last++ = CR; *b->last++ = LF;
 
-    b->last = ngx_cpymem(b->last, "Auth-Method: plain" CRLF,
-                         sizeof("Auth-Method: plain" CRLF) - 1);
+    b->last = ngx_cpymem(b->last, "Auth-Method: ",
+                         sizeof("Auth-Method: ") - 1);
+    b->last = ngx_cpymem(b->last,
+                         ngx_imap_auth_http_method[s->auth_method].data,
+                         ngx_imap_auth_http_method[s->auth_method].len);
+    *b->last++ = CR; *b->last++ = LF;
 
     b->last = ngx_cpymem(b->last, "Auth-User: ", sizeof("Auth-User: ") - 1);
     b->last = ngx_copy(b->last, login.data, login.len);
@@ -1039,6 +1077,13 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
     b->last = ngx_cpymem(b->last, "Auth-Pass: ", sizeof("Auth-Pass: ") - 1);
     b->last = ngx_copy(b->last, passwd.data, passwd.len);
     *b->last++ = CR; *b->last++ = LF;
+
+    if (s->salt.len) {
+        b->last = ngx_cpymem(b->last, "Auth-Salt: ", sizeof("Auth-Salt: ") - 1);
+        b->last = ngx_copy(b->last, s->salt.data, s->salt.len);
+
+        s->passwd.data = NULL;
+    }
 
     b->last = ngx_cpymem(b->last, "Auth-Protocol: ",
                          sizeof("Auth-Protocol: ") - 1);
