@@ -9,6 +9,64 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.10" date="23.10.2006">
+
+<change type="feature">
+<para lang="ru">
+IMAP/POP3 прокси поддерживает APOP.
+</para>
+<para lang="en">
+the IMAP/POP3 proxy supports the APOP command.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании методов select, poll и /dev/poll во время ожидания
+ответа от сервера аутентификации IMAP/POP3 прокси нагружал процессор.
+</para>
+<para lang="en">
+if the select, poll or /dev/poll methods were used, then while
+waiting authentication server response the IMAP/POP3 proxy hogged CPU.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменной $server_addr в директиве map мог
+произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur if the $server_addr variable was used
+in the "map" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_flv_module не поддерживал byte ranges для полных ответов;
+ошибка появилась в 0.4.7.
+</para>
+<para lang="en">
+the ngx_http_flv_module did not support the byte ranges for full responses;
+bug appeared in 0.4.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Debian amd64;
+ошибка появилась в 0.4.9.
+</para>
+<para lang="en">
+nginx could not be built on Debian amd64;
+bug appeared in 0.4.9.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.9" date="13.10.2006">
 
 <change type="feature">
@@ -1016,7 +1074,7 @@ and FastCGI mode.
 
 <change type="bugfix">
 <para lang="ru">
-символ "\" в парах "\"" и "\'" в SSI командах убирался, только если 
+символ "\" в парах "\"" и "\'" в SSI командах убирался, только если
 также использовался символ "$".
 </para>
 <para lang="en">
@@ -2171,7 +2229,7 @@ to a client.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании большого количества лог-файлов происходила утечка памяти. 
+при использовании большого количества лог-файлов происходила утечка памяти.
 </para>
 <para lang="en">
 the memory leaks were occurring if many log files were used.
@@ -4160,7 +4218,7 @@ bug appeared in 0.1.38.
 
 <change type="workaround">
 <para lang="ru">
-обработка ошибки инициализации в crypt_r() в Linux glibc. 
+обработка ошибки инициализации в crypt_r() в Linux glibc.
 </para>
 <para lang="en">
 the Linux glibc crypt_r() initialization bug.
@@ -5104,7 +5162,7 @@ nginx could not be built on MacOS X.
 при проксировании больших файлов nginx сильно нагружал процессор.
 </para>
 <para lang="en">
-nginx hogs CPU while proxing the huge files.
+nginx hogs CPU while proxying the huge files.
 </para>
 </change>
 
@@ -5463,7 +5521,7 @@ of the response header if the no response was transferred to a client.
 </para>
 <para lang="en">
 the ngx_http_stub_status_module showed incorrect handled connections
-statistics if the proxing or FastCGI server were used.
+statistics if the proxying or FastCGI server were used.
 </para>
 </change>
 
@@ -5774,7 +5832,7 @@ the system error message was not logged on Linux.
 <change type="bugfix">
 <para lang="ru">
 если ответ передавался chunk'ами, то при запросе HEAD выдавался
-завершающий chunk. 
+завершающий chunk.
 </para>
 <para lang="en">
 if the response were transferred by chunks, then on the HEAD request
@@ -6676,7 +6734,7 @@ the setproctitle() emulation for Linux and Solaris.
 ошибка при переписывании заголовка "Location" при проксировании.
 </para>
 <para lang="en">
-the "Location" header rewrite bug fixed while the proxing.
+the "Location" header rewrite bug fixed while the proxying.
 </para>
 </change>
 
@@ -6704,7 +6762,7 @@ the /dev/poll module bugs fixed.
 </para>
 <para lang="en">
 the responses were corrupted when the temporary files were used
-while the proxing.
+while the proxying.
 </para>
 </change>
 
