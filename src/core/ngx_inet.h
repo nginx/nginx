@@ -89,36 +89,12 @@ typedef struct {
 } ngx_url_t;
 
 
-typedef struct {
-    ngx_str_t           name;           /* "schema:host:port/uri" */
-    ngx_str_t           url;            /* "host:port/uri" */
-    ngx_str_t           host;
-    ngx_str_t           uri;
-    ngx_str_t           host_header;    /* "host:port" */
-    ngx_str_t           port_text;      /* "port" */
-
-    in_port_t           port;
-
-    in_port_t           default_port_value;
-
-    unsigned            default_port:1;
-    unsigned            wildcard:1;
-
-    unsigned            uri_part:1;
-    unsigned            port_only:1;
-} ngx_inet_upstream_t;
-
-
-size_t ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text,
-    size_t len);
+size_t ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text, size_t len);
 size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
-
 ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr);
-
-ngx_peers_t *ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u);
+ngx_int_t ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u);
 ngx_peers_t *ngx_inet_resolve_peer(ngx_conf_t *cf, ngx_str_t *name,
     in_port_t port);
-ngx_int_t ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u);
 
 
 #endif /* _NGX_INET_H_INCLUDED_ */
