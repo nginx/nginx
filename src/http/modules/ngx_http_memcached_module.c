@@ -590,7 +590,7 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_memcached_loc_conf_t *lcf = conf;
 
     ngx_str_t                 *value;
-    ngx_inet_upstream_t        inet_upstream;
+    ngx_url_t                  u;
     ngx_http_core_loc_conf_t  *clcf;
 
     if (lcf->upstream.schema.len) {
@@ -599,16 +599,19 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    ngx_memzero(&inet_upstream, sizeof(ngx_inet_upstream_t));
+    ngx_memzero(&u, sizeof(ngx_url_t));
 
-    inet_upstream.name = value[1];
-    inet_upstream.url = value[1];
-
-    lcf->peers = ngx_inet_upstream_parse(cf, &inet_upstream);
-    if (lcf->peers == NULL) {
-        return NGX_CONF_ERROR;
+    u.url = value[1];
+    u.uri_part = 1;
+    
+    if (ngx_parse_url(cf, &u) != NGX_OK) {
+        if (u.err) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "%s in \"%V\"", u.err, &u.url);
+        }
     }
 
+    lcf->peers = u.peers;
     lcf->upstream.schema.len = sizeof("memcached://") - 1;
     lcf->upstream.schema.data = (u_char *) "memcached://";
 
