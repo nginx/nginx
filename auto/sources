@@ -120,7 +120,6 @@ AIO_SRCS="src/event/modules/ngx_aio_module.c \
 UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"
 
 UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
-            src/core/ngx_unix_domain.h \
             src/os/unix/ngx_time.h \
             src/os/unix/ngx_types.h \
             src/os/unix/ngx_errno.h \
@@ -149,7 +148,6 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
 
 
 UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
-            src/core/ngx_unix_domain.c \
             src/os/unix/ngx_time.c \
             src/os/unix/ngx_errno.c \
             src/os/unix/ngx_alloc.c \
