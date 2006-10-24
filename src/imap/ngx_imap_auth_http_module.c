@@ -1247,61 +1247,29 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_imap_auth_http_conf_t *ahcf = conf;
 
-    ngx_str_t                   *value, *url;
-    ngx_inet_upstream_t          inet_upstream;
-#if (NGX_HAVE_UNIX_DOMAIN)
-    ngx_unix_domain_upstream_t   unix_upstream;
-#endif
+    ngx_str_t  *value;
+    ngx_url_t   u;
 
     value = cf->args->elts;
 
-    url = &value[1];
+    ngx_memzero(&u, sizeof(ngx_url_t));
 
-    if (ngx_strncasecmp(url->data, "unix:", 5) == 0) {
+    u.url = value[1];
+    u.default_portn = 80;
+    u.uri_part = 1;
 
-#if (NGX_HAVE_UNIX_DOMAIN)
-
-        ngx_memzero(&unix_upstream, sizeof(ngx_unix_domain_upstream_t));
-
-        unix_upstream.name = *url;
-        unix_upstream.url = *url;
-        unix_upstream.uri_part = 1;
-
-        ahcf->peers = ngx_unix_upstream_parse(cf, &unix_upstream);
-        if (ahcf->peers == NULL) {
-            return NGX_CONF_ERROR;
+    if (ngx_parse_url(cf, &u) != NGX_OK) {
+        if (u.err) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "%s in auth_http \"%V\"", u.err, &u.url);
         }
-
-        ahcf->host_header.len = sizeof("localhost") - 1;
-        ahcf->host_header.data = (u_char *) "localhost";
-        ahcf->uri = unix_upstream.uri;
-
-#else
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the unix domain sockets are not supported "
-                           "on this platform");
-        return NGX_CONF_ERROR;
-
-#endif
-
-    } else {
-        ngx_memzero(&inet_upstream, sizeof(ngx_inet_upstream_t));
-
-        inet_upstream.name = *url;
-        inet_upstream.url = *url;
-        inet_upstream.default_port_value = 80;
-        inet_upstream.uri_part = 1;
-
-        ahcf->peers = ngx_inet_upstream_parse(cf, &inet_upstream);
-        if (ahcf->peers == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        ahcf->peers->number = 1;
-
-        ahcf->host_header = inet_upstream.host_header;
-        ahcf->uri = inet_upstream.uri;
     }
+
+    ahcf->peers = u.peers;
+    ahcf->peers->number = 1;
+
+    ahcf->host_header = u.host_header;
+    ahcf->uri = u.uri;
 
     if (ahcf->uri.len == 0) {
         ahcf->uri.len = sizeof("/") - 1;
