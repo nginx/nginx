@@ -133,7 +133,9 @@ ngx_module_t  ngx_imap_auth_http_module = {
 
 static char       *ngx_imap_auth_http_protocol[] = { "pop3", "imap" };
 static ngx_str_t   ngx_imap_auth_http_method[] = {
-    ngx_string("plain"), ngx_string("apop")
+    ngx_string("plain"),
+    ngx_string("apop"),
+    ngx_string("cram-md5")
 };
 
 
@@ -1078,7 +1080,7 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
     b->last = ngx_copy(b->last, passwd.data, passwd.len);
     *b->last++ = CR; *b->last++ = LF;
 
-    if (s->salt.len) {
+    if (s->auth_method != NGX_IMAP_AUTH_PLAIN && s->salt.len) {
         b->last = ngx_cpymem(b->last, "Auth-Salt: ", sizeof("Auth-Salt: ") - 1);
         b->last = ngx_copy(b->last, s->salt.data, s->salt.len);
 

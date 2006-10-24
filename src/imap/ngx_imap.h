@@ -83,6 +83,8 @@ typedef struct {
 
     ngx_str_t               pop3_capability;
     ngx_str_t               pop3_starttls_capability;
+    ngx_str_t               pop3_auth_capability;
+
     ngx_str_t               imap_capability;
     ngx_str_t               imap_starttls_capability;
     ngx_str_t               imap_starttls_only_capability;
@@ -120,7 +122,11 @@ typedef enum {
 typedef enum {
     ngx_pop3_start = 0,
     ngx_pop3_user,
-    ngx_pop3_passwd
+    ngx_pop3_passwd,
+    ngx_pop3_auth_login_username,
+    ngx_pop3_auth_login_password,
+    ngx_pop3_auth_plain,
+    ngx_pop3_auth_cram_md5
 } ngx_po3_state_e;
 
 
@@ -153,7 +159,7 @@ typedef struct {
     unsigned                backslash:1;
     unsigned                no_sync_literal:1;
     unsigned                starttls:1;
-    unsigned                auth_method:1;
+    unsigned                auth_method:2;
 
     ngx_str_t               login;
     ngx_str_t               passwd;
@@ -192,13 +198,14 @@ typedef struct {
 #define NGX_POP3_NOOP        5
 #define NGX_POP3_STLS        6
 #define NGX_POP3_APOP        7
-#define NGX_POP3_STAT        8
-#define NGX_POP3_LIST        9
-#define NGX_POP3_RETR        10
-#define NGX_POP3_DELE        11
-#define NGX_POP3_RSET        12
-#define NGX_POP3_TOP         13
-#define NGX_POP3_UIDL        14
+#define NGX_POP3_AUTH        8
+#define NGX_POP3_STAT        9
+#define NGX_POP3_LIST        10
+#define NGX_POP3_RETR        11
+#define NGX_POP3_DELE        12
+#define NGX_POP3_RSET        13
+#define NGX_POP3_TOP         14
+#define NGX_POP3_UIDL        15
 
 
 #define NGX_IMAP_LOGIN       1
@@ -210,12 +217,14 @@ typedef struct {
 #define NGX_IMAP_NEXT        6
 
 
-#define NGX_IMAP_AUTH_PLAIN  0
-#define NGX_IMAP_AUTH_APOP   1
+#define NGX_IMAP_AUTH_PLAIN     0
+#define NGX_IMAP_AUTH_APOP      1
+#define NGX_IMAP_AUTH_CRAM_MD5  2
 
 
-#define NGX_IMAP_AUTH_PLAIN_ENABLED  0x0002
-#define NGX_IMAP_AUTH_APOP_ENABLED   0x0004
+#define NGX_IMAP_AUTH_PLAIN_ENABLED     0x0002
+#define NGX_IMAP_AUTH_APOP_ENABLED      0x0004
+#define NGX_IMAP_AUTH_CRAM_MD5_ENABLED  0x0008
 
 
 #define NGX_IMAP_PARSE_INVALID_COMMAND  20

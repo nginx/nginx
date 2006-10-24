@@ -32,6 +32,9 @@ static ngx_str_t  internal_server_errors[] = {
 };
 
 static u_char  pop3_ok[] = "+OK" CRLF;
+static u_char  pop3_next[] = "+ " CRLF;
+static u_char  pop3_username[] = "+ VXNlcm5hbWU6" CRLF;
+static u_char  pop3_password[] = "+ UGFzc3dvcmQ6" CRLF;
 static u_char  pop3_invalid_command[] = "-ERR invalid command" CRLF;
 
 static u_char  imap_star[] = "* ";
@@ -547,11 +550,9 @@ ngx_imap_auth_state(ngx_event_t *rev)
                 ngx_imap_auth_http_init(s);
 
                 return;
-
-            } else {
-                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
             }
 
+            rc = NGX_IMAP_PARSE_INVALID_COMMAND;
             break;
 
         case NGX_IMAP_CAPABILITY:
@@ -666,10 +667,10 @@ ngx_imap_auth_state(ngx_event_t *rev)
 void
 ngx_pop3_auth_state(ngx_event_t *rev)
 {
-    u_char                    *text;
+    u_char                    *text, *p, *last;
     ssize_t                    size;
     ngx_int_t                  rc;
-    ngx_str_t                 *arg;
+    ngx_str_t                 *arg, salt, plain;
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
     ngx_imap_core_srv_conf_t  *cscf;
@@ -730,10 +731,10 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                     ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
                                    "pop3 login: \"%V\"", &s->login);
 
-                } else {
-                    rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                    break;
                 }
 
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                 break;
 
             case NGX_POP3_CAPA:
@@ -799,11 +800,78 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                     ngx_imap_auth_http_init(s);
 
                     return;
-
-                } else {
-                    rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                 }
 
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
+
+            case NGX_POP3_AUTH:
+                cscf = ngx_imap_get_module_srv_conf(s, ngx_imap_core_module);
+
+                if (s->args.nelts == 0) {
+                    size = cscf->pop3_auth_capability.len;
+                    text = cscf->pop3_auth_capability.data;
+                    break;
+                }
+
+                if (s->args.nelts != 1) {
+                    rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                    break;
+                }
+
+                arg = s->args.elts;
+
+                s->args.nelts = 0;
+                s->buffer->pos = s->buffer->start;
+                s->buffer->last = s->buffer->start;
+                s->arg_start = s->buffer->start;
+
+                if (arg[0].len == 5) {
+
+                    if (ngx_strncasecmp(arg[0].data, "LOGIN", 5) == 0) {
+                        s->imap_state = ngx_pop3_auth_login_username;
+
+                        size = sizeof(pop3_username) - 1;
+                        text = pop3_username;
+
+                        break;
+
+                    } else if (ngx_strncasecmp(arg[0].data, "PLAIN", 5) == 0) {
+                        s->imap_state = ngx_pop3_auth_plain;
+
+                        size = sizeof(pop3_next) - 1;
+                        text = pop3_next;
+
+                        break;
+                    }
+
+                } else if (arg[0].len == 8
+                           && ngx_strncasecmp(arg[0].data, "CRAM-MD5", 8) == 0)
+                {
+                    s->imap_state = ngx_pop3_auth_cram_md5;
+
+                    text = ngx_palloc(c->pool,
+                                 sizeof("+ " CRLF) - 1
+                                 + ngx_base64_encoded_length(s->salt.len));
+                    if (text == NULL) {
+                        ngx_imap_session_internal_server_error(s);
+                        return;
+                    }
+
+                    text[0] = '+'; text[1]= ' ';
+                    salt.data = &text[2];
+                    s->salt.len -= 2;
+
+                    ngx_encode_base64(&salt, &s->salt);
+
+                    s->salt.len += 2;
+                    size = 2 + salt.len;
+                    text[size++] = CR; text[size++] = LF;
+
+                    break;
+                }
+
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                 break;
 
             case NGX_POP3_QUIT:
@@ -869,11 +937,9 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                     ngx_imap_auth_http_init(s);
 
                     return;
-
-                } else {
-                    rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                 }
 
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                 break;
 
             case NGX_POP3_CAPA:
@@ -900,6 +966,189 @@ ngx_pop3_auth_state(ngx_event_t *rev)
         /* suppress warinings */
         case ngx_pop3_passwd:
             break;
+
+        case ngx_pop3_auth_login_username:
+            arg = s->args.elts;
+            s->imap_state = ngx_pop3_auth_login_password;
+
+            s->args.nelts = 0;
+            s->buffer->pos = s->buffer->start;
+            s->buffer->last = s->buffer->start;
+            s->arg_start = s->buffer->start;
+
+            ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                           "pop3 auth login username: \"%V\"", &arg[0]);
+
+            s->login.data = ngx_palloc(c->pool,
+                                       ngx_base64_decoded_length(arg[0].len));
+            if (s->login.data == NULL){
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            if (ngx_decode_base64(&s->login, &arg[0]) != NGX_OK) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid base64 encoding "
+                              "in AUTH LOGIN command");
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                           "pop3 auth login username: \"%V\"", &s->login);
+
+            size = sizeof(pop3_password) - 1;
+            text = pop3_password;
+
+            break;
+
+        case ngx_pop3_auth_login_password:
+            arg = s->args.elts;
+
+#if (NGX_DEBUG_IMAP_PASSWD)
+            ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                           "pop3 auth login password: \"%V\"", &arg[0]);
+#endif
+
+            s->passwd.data = ngx_palloc(c->pool,
+                                        ngx_base64_decoded_length(arg[0].len));
+            if (s->passwd.data == NULL){
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            if (ngx_decode_base64(&s->passwd, &arg[0]) != NGX_OK) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid base64 encoding "
+                              "in AUTH LOGIN command");
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+#if (NGX_DEBUG_IMAP_PASSWD)
+            ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                           "pop3 auth login password: \"%V\"", &s->passwd);
+#endif
+
+            s->args.nelts = 0;
+            s->buffer->pos = s->buffer->start;
+            s->buffer->last = s->buffer->start;
+
+            if (rev->timer_set) {
+                ngx_del_timer(rev);
+            }
+
+            ngx_imap_auth_http_init(s);
+
+            return;
+
+        case ngx_pop3_auth_plain:
+            arg = s->args.elts;
+
+#if (NGX_DEBUG_IMAP_PASSWD)
+            ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                           "pop3 auth plain: \"%V\"", &arg[0]);
+#endif
+
+            plain.data = ngx_palloc(c->pool,
+                                    ngx_base64_decoded_length(arg[0].len));
+            if (plain.data == NULL){
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            if (ngx_decode_base64(&plain, &arg[0]) != NGX_OK) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid base64 encoding "
+                              "in AUTH PLAIN command");
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            p = plain.data;
+            last = p + plain.len;
+
+            while (p < last && *p++) { /* void */ }
+
+            s->login.data = p;
+
+            while (p < last && *p) { p++; }
+
+            s->login.len = p++ - s->login.data;
+            s->passwd.data = p;
+
+            while (p < last && *p) { p++; }
+
+            s->passwd.len = p - s->passwd.data;
+
+#if (NGX_DEBUG_IMAP_PASSWD)
+            ngx_log_debug2(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                           "pop3 auth plain: \"%V\" \"%V\"",
+                           &s->login, &s->passwd);
+#endif
+
+            s->args.nelts = 0;
+            s->buffer->pos = s->buffer->start;
+            s->buffer->last = s->buffer->start;
+
+            if (rev->timer_set) {
+                ngx_del_timer(rev);
+            }
+
+            ngx_imap_auth_http_init(s);
+
+            return;
+
+        case ngx_pop3_auth_cram_md5:
+            arg = s->args.elts;
+
+            ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                           "pop3 auth cram-md5: \"%V\"", &arg[0]);
+
+            s->login.data = ngx_palloc(c->pool,
+                                       ngx_base64_decoded_length(arg[0].len));
+            if (s->login.data == NULL){
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            if (ngx_decode_base64(&s->login, &arg[0]) != NGX_OK) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid base64 encoding "
+                              "in AUTH LOGIN command");
+                ngx_imap_session_internal_server_error(s);
+                return;
+            }
+
+            p = s->login.data;
+            last = p + s->login.len;
+
+            while (p < last) {
+                if (*p++ == ' ') {
+                    s->login.len = p - s->login.data - 1;
+                    s->passwd.len = last - p;
+                    s->passwd.data = p;
+                    break;
+                }
+            }
+
+            ngx_log_debug2(NGX_LOG_DEBUG_IMAP, c->log, 0,
+                           "pop3 auth cram-md5: \"%V\" \"%V\"",
+                           &s->login, &s->passwd);
+
+            s->auth_method = NGX_IMAP_AUTH_CRAM_MD5;
+
+            s->args.nelts = 0;
+            s->buffer->pos = s->buffer->start;
+            s->buffer->last = s->buffer->start;
+
+            if (rev->timer_set) {
+                ngx_del_timer(rev);
+            }
+
+            ngx_imap_auth_http_init(s);
+
+            return;
         }
     }
 

@@ -48,8 +48,25 @@ static ngx_str_t  ngx_imap_default_capabilities[] = {
 static ngx_conf_bitmask_t  ngx_imap_auth_methods[] = {
     { ngx_string("plain"), NGX_IMAP_AUTH_PLAIN_ENABLED },
     { ngx_string("apop"), NGX_IMAP_AUTH_APOP_ENABLED },
+    { ngx_string("cram-md5"), NGX_IMAP_AUTH_CRAM_MD5_ENABLED },
     { ngx_null_string, 0 }
 };
+
+
+static ngx_str_t  ngx_pop3_auth_plain_capability =
+    ngx_string("+OK methods supported:" CRLF
+               "LOGIN" CRLF
+               "PLAIN" CRLF
+               "." CRLF);
+
+
+static ngx_str_t  ngx_pop3_auth_cram_md5_capability =
+    ngx_string("+OK methods supported:" CRLF
+               "LOGIN" CRLF
+               "PLAIN" CRLF
+               "CRAM-MD5" CRLF
+               "." CRLF);
+
 
 
 static ngx_command_t  ngx_imap_core_commands[] = {
@@ -279,6 +296,13 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         size += c[i].len + sizeof(CRLF) - 1;
     }
 
+    if (conf->auth_methods & NGX_IMAP_AUTH_CRAM_MD5_ENABLED) {
+        size += sizeof("SASL LOGIN PLAIN CRAM-MD5" CRLF) - 1;
+
+    } else {
+        size += sizeof("SASL LOGIN PLAIN" CRLF) - 1;
+    }
+
     p = ngx_palloc(cf->pool, size);
     if (p == NULL) {
         return NGX_CONF_ERROR;
@@ -293,6 +317,15 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     for (i = 0; i < conf->pop3_capabilities.nelts; i++) {
         p = ngx_cpymem(p, c[i].data, c[i].len);
         *p++ = CR; *p++ = LF;
+    }
+
+    if (conf->auth_methods & NGX_IMAP_AUTH_CRAM_MD5_ENABLED) {
+        p = ngx_cpymem(p, "SASL LOGIN PLAIN CRAM-MD5" CRLF,
+                       sizeof("SASL LOGIN PLAIN CRAM-MD5" CRLF) - 1);
+
+    } else {
+        p = ngx_cpymem(p, "SASL LOGIN PLAIN" CRLF,
+                       sizeof("SASL LOGIN PLAIN" CRLF) - 1);
     }
 
     *p++ = '.'; *p++ = CR; *p = LF;
@@ -313,6 +346,14 @@ ngx_imap_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     p = ngx_cpymem(p, "STLS" CRLF, sizeof("STLS" CRLF) - 1);
     *p++ = '.'; *p++ = CR; *p = LF;
+
+
+    if (conf->auth_methods & NGX_IMAP_AUTH_CRAM_MD5_ENABLED) {
+        conf->pop3_auth_capability = ngx_pop3_auth_cram_md5_capability;
+
+    } else {
+        conf->pop3_auth_capability = ngx_pop3_auth_plain_capability;
+    }
 
 
     if (conf->imap_capabilities.nelts == 0) {

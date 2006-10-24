@@ -441,6 +441,10 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
                     {
                         s->command = NGX_POP3_CAPA;
 
+                    } else if (c0 == 'A' && c1 == 'U' && c2 == 'T' && c3 == 'H')
+                    {
+                        s->command = NGX_POP3_AUTH;
+
                     } else if (c0 == 'N' && c1 == 'O' && c2 == 'O' && c3 == 'P')
                     {
                         s->command = NGX_POP3_NOOP;
@@ -571,8 +575,7 @@ done:
         s->arg_start = NULL;
     }
 
-    s->state = sw_start;
-
+    s->state = (s->command != NGX_POP3_AUTH) ? sw_start : sw_argument;
     return NGX_OK;
 
 invalid:
