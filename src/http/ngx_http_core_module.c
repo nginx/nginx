@@ -2371,12 +2371,10 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_srv_conf_t *scf = conf;
 
-    char                 *err;
-    ngx_str_t            *value, size;
-    ngx_uint_t            n;
-    struct hostent       *h;
-    ngx_http_listen_t    *ls;
-    ngx_inet_upstream_t   inet_upstream;
+    ngx_str_t          *value, size;
+    ngx_url_t           u;
+    ngx_uint_t          n;
+    ngx_http_listen_t  *ls;
 
     /*
      * TODO: check duplicate 'listen' directives,
@@ -2385,17 +2383,19 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    ngx_memzero(&inet_upstream, sizeof(ngx_inet_upstream_t));
+    ngx_memzero(&u, sizeof(ngx_url_t));
 
-    inet_upstream.url = value[1];
-    inet_upstream.port_only = 1;
+    u.url = value[1];
+    u.listen = 1;
+    u.default_portn = 80;
 
-    err = ngx_inet_parse_host_port(&inet_upstream);
+    if (ngx_parse_url(cf, &u) != NGX_OK) {
+        if (u.err) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "%s in \"%V\" of the \"listen\" directive",
+                               u.err, &u.url);
+        }
 
-    if (err) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "%s in \"%V\" of the \"listen\" directive",
-                           err, &inet_upstream.url);
         return NGX_CONF_ERROR;
     }
 
@@ -2407,40 +2407,13 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(ls, sizeof(ngx_http_listen_t));
 
     ls->family = AF_INET;
-    ls->port = (in_port_t) (inet_upstream.default_port ?
-                            80 : inet_upstream.port);
+    ls->addr = u.addr.in_addr;
+    ls->port = u.portn;
     ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
     ls->conf.backlog = -1;
     ls->conf.rcvbuf = -1;
     ls->conf.sndbuf = -1;
-
-    if (inet_upstream.host.len == 1 && inet_upstream.host.data[0] == '*') {
-        inet_upstream.host.len = 0;
-    }
-
-    if (inet_upstream.host.len) {
-        inet_upstream.host.data[inet_upstream.host.len] = '\0';
-
-        ls->addr = inet_addr((const char *) inet_upstream.host.data);
-
-        if (ls->addr == INADDR_NONE) {
-            h = gethostbyname((const char *) inet_upstream.host.data);
-
-            if (h == NULL || h->h_addr_list[0] == NULL) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "can not resolve host \"%s\" "
-                                   "in the \"listen\" directive",
-                                   inet_upstream.host.data);
-                return NGX_CONF_ERROR;
-            }
-
-            ls->addr = *(in_addr_t *)(h->h_addr_list[0]);
-        }
-
-    } else {
-        ls->addr = INADDR_ANY;
-    }
 
     n = ngx_inet_ntop(AF_INET, &ls->addr, ls->conf.addr, INET_ADDRSTRLEN + 6);
     ngx_sprintf(&ls->conf.addr[n], ":%ui", ls->port);

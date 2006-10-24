@@ -10,6 +10,9 @@
 #include <ngx_event_connect.h>
 
 
+static char *ngx_inet_parse_host_port(ngx_inet_upstream_t *u);
+
+
 /*
  * ngx_sock_ntop() and ngx_inet_ntop() may be implemented as
  * "ngx_sprintf(text, "%ud.%ud.%ud.%ud", p[0], p[1], p[2], p[3])", however,
@@ -223,10 +226,11 @@ ngx_ptocidr(ngx_str_t *text, void *cidr)
 ngx_int_t
 ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
 {
-    u_char              *p;
+    u_char              *p, *host;
     size_t               len;
     ngx_int_t            port;
     ngx_uint_t           i;
+    struct hostent      *h;
 #if (NGX_HAVE_UNIX_DOMAIN)
     struct sockaddr_un  *saun;
 #endif
@@ -390,6 +394,47 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
 port:
 
     if (u->listen) {
+        if (u->portn == 0) {
+            if (u->default_portn == 0) {
+                u->err = "no port";
+                return NGX_ERROR;
+            }
+
+            u->portn = u->default_portn;
+        }
+
+        if (u->host.len == 1 && u->host.data[0] == '*') {
+            u->host.len = 0;
+        }
+
+        /* AF_INET only */
+
+        if (u->host.len) {
+
+           host = ngx_palloc(cf->temp_pool, u->host.len + 1);
+           if (host == NULL) {
+               return NGX_ERROR;
+           }
+
+           (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
+
+            u->addr.in_addr = inet_addr((const char *) host);
+
+            if (u->addr.in_addr == INADDR_NONE) {
+                h = gethostbyname((const char *) host);
+
+                if (h == NULL || h->h_addr_list[0] == NULL) {
+                    u->err = "host not found";
+                    return NGX_ERROR;
+                }
+
+                u->addr.in_addr = *(in_addr_t *)(h->h_addr_list[0]);
+            }
+
+        } else {
+            u->addr.in_addr = INADDR_ANY;
+        }
+
         return NGX_OK;
     }
 
@@ -737,7 +782,7 @@ ngx_inet_upstream_parse(ngx_conf_t *cf, ngx_inet_upstream_t *u)
 }
 
 
-char *
+static char *
 ngx_inet_parse_host_port(ngx_inet_upstream_t *u)
 {
     size_t      i;
