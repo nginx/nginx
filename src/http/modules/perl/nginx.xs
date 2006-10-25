@@ -719,6 +719,19 @@ internal_redirect(r, uri)
 
 
 void
+allow_ranges(r)
+    CODE:
+
+    ngx_http_request_t  *r;
+
+    ngx_http_perl_set_request(r);
+
+    r->allow_ranges = 1;
+
+    XSRETURN_EMPTY;
+
+
+void
 unescape(r, text, type = 0)
     CODE:
 
