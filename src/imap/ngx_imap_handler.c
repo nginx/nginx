@@ -1063,7 +1063,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
             if (p == last) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client sent invalid login/password "
+                              "client sent invalid login "
                               "in AUTH PLAIN command");
                 rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                 break;
@@ -1075,7 +1075,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
             if (p == last) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client sent invalid login/password "
+                              "client sent invalid password "
                               "in AUTH PLAIN command");
                 rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                 break;
