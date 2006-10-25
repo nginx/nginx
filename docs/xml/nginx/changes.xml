@@ -9,6 +9,42 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.11" date="25.10.2006">
+
+<change type="feature">
+<para lang="ru">
+POP3 прокси поддерживает AUTH LOIGN PLAIN и CRAM-MD5.
+</para>
+<para lang="en">
+the POP3 proxy supports the AUTH LOGIN PLAIN and CRAM-MD5.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module поддерживает метод $r->allow_ranges.
+</para>
+<para lang="en">
+the ngx_http_perl_module supports the $r->allow_ranges method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при включённой поддержке команды APOP в POP3 прокси могли
+не работать команды USER/PASS;
+ошибка появилась в 0.4.10.
+</para>
+<para lang="en">
+if the APOP was enabledi in the POP3 proxy, then the USER/PASS commands
+might not work;
+bug appeared in 0.4.10.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.10" date="23.10.2006">
 
 <change type="feature">
