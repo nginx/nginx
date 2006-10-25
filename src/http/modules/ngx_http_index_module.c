@@ -315,10 +315,14 @@ ngx_http_index_handler(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_index_ctx_t *ctx)
 {
+    u_char           c;
+    ngx_uint_t       i;
     ngx_err_t        err;
     ngx_file_info_t  fi;
 
-    *(ctx->index.data - 1) = '\0';
+    c = *(ctx->index.data - 1);
+    i = (c == '/') ? 1 : 0;
+    *(ctx->index.data - i) = '\0';
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http index check dir: \"%s\"", ctx->path.data);
@@ -328,7 +332,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_index_ctx_t *ctx)
         err = ngx_errno;
 
         if (err == NGX_ENOENT) {
-            *(ctx->index.data - 1) = '/';
+            *(ctx->index.data - i) = c;
             return ngx_http_index_error(r, ctx, err);
         }
 
@@ -338,7 +342,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_index_ctx_t *ctx)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    *(ctx->index.data - 1) = '/';
+    *(ctx->index.data - i) = c;
 
     if (ngx_is_dir(&fi)) {
         return NGX_OK;
