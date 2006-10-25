@@ -811,6 +811,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                 if (s->args.nelts == 0) {
                     size = cscf->pop3_auth_capability.len;
                     text = cscf->pop3_auth_capability.data;
+                    s->state = 0;
                     break;
                 }
 
@@ -820,11 +821,6 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                 }
 
                 arg = s->args.elts;
-
-                s->args.nelts = 0;
-                s->buffer->pos = s->buffer->start;
-                s->buffer->last = s->buffer->start;
-                s->arg_start = s->buffer->start;
 
                 if (arg[0].len == 5) {
 
@@ -971,11 +967,6 @@ ngx_pop3_auth_state(ngx_event_t *rev)
             arg = s->args.elts;
             s->imap_state = ngx_pop3_auth_login_password;
 
-            s->args.nelts = 0;
-            s->buffer->pos = s->buffer->start;
-            s->buffer->last = s->buffer->start;
-            s->arg_start = s->buffer->start;
-
             ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
                            "pop3 auth login username: \"%V\"", &arg[0]);
 
@@ -990,8 +981,8 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client sent invalid base64 encoding "
                               "in AUTH LOGIN command");
-                ngx_imap_session_internal_server_error(s);
-                return;
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
             }
 
             ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
@@ -1021,8 +1012,8 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client sent invalid base64 encoding "
                               "in AUTH LOGIN command");
-                ngx_imap_session_internal_server_error(s);
-                return;
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
             }
 
 #if (NGX_DEBUG_IMAP_PASSWD)
@@ -1061,8 +1052,8 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client sent invalid base64 encoding "
                               "in AUTH PLAIN command");
-                ngx_imap_session_internal_server_error(s);
-                return;
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
             }
 
             p = plain.data;
@@ -1070,16 +1061,30 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
             while (p < last && *p++) { /* void */ }
 
+            if (p == last) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid login/password "
+                              "in AUTH PLAIN command");
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
+            }
+
             s->login.data = p;
 
             while (p < last && *p) { p++; }
 
+            if (p == last) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid login/password "
+                              "in AUTH PLAIN command");
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
+            }
+
             s->login.len = p++ - s->login.data;
+
+            s->passwd.len = last - p;
             s->passwd.data = p;
-
-            while (p < last && *p) { p++; }
-
-            s->passwd.len = p - s->passwd.data;
 
 #if (NGX_DEBUG_IMAP_PASSWD)
             ngx_log_debug2(NGX_LOG_DEBUG_IMAP, c->log, 0,
@@ -1115,9 +1120,9 @@ ngx_pop3_auth_state(ngx_event_t *rev)
             if (ngx_decode_base64(&s->login, &arg[0]) != NGX_OK) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client sent invalid base64 encoding "
-                              "in AUTH LOGIN command");
-                ngx_imap_session_internal_server_error(s);
-                return;
+                              "in AUTH CRAM-MD5 command");
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
             }
 
             p = s->login.data;
@@ -1130,6 +1135,14 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                     s->passwd.data = p;
                     break;
                 }
+            }
+
+            if (s->passwd.len != 32) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid CRAM-MD5 hash "
+                              "in AUTH CRAM-MD5 command");
+                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                break;
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_IMAP, c->log, 0,
@@ -1153,6 +1166,8 @@ ngx_pop3_auth_state(ngx_event_t *rev)
     }
 
     if (rc == NGX_IMAP_PARSE_INVALID_COMMAND) {
+        s->imap_state = ngx_pop3_start;
+        s->state = 0;
         text = pop3_invalid_command;
         size = sizeof(pop3_invalid_command) - 1;
     }
@@ -1160,6 +1175,10 @@ ngx_pop3_auth_state(ngx_event_t *rev)
     s->args.nelts = 0;
     s->buffer->pos = s->buffer->start;
     s->buffer->last = s->buffer->start;
+
+    if (s->state) {
+        s->arg_start = s->buffer->start;
+    }
 
     s->out.data = text;
     s->out.len = size;

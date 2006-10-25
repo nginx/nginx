@@ -581,6 +581,7 @@ done:
 invalid:
 
     s->state = sw_start;
+    s->arg_start = NULL;
 
     return NGX_IMAP_PARSE_INVALID_COMMAND;
 }
