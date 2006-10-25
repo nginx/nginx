@@ -2105,32 +2105,6 @@ peers:
         return NGX_CONF_ERROR;
     }
 
-
-#if 0
-    conf->headers_set_hash = ngx_pcalloc(cf->pool, sizeof(ngx_hash0_t));
-    if (conf->headers_set_hash == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    conf->headers_set_hash->max_size = 100;
-    conf->headers_set_hash->bucket_limit = 1;
-    conf->headers_set_hash->bucket_size = sizeof(ngx_str_t);
-    conf->headers_set_hash->name = "proxy_headers";
-
-    if (ngx_hash0_init(conf->headers_set_hash, cf->pool,
-                       conf->headers_names->elts, conf->headers_names->nelts)
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                   "proxy_headers hash size: %ui, "
-                   "max buckets per entry: %ui",
-                   conf->headers_set_hash->hash_size,
-                   conf->headers_set_hash->min_buckets);
-#endif
-
     return NGX_CONF_OK;
 }
 
