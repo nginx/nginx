@@ -1184,11 +1184,11 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
             continue;
         }
 
-        if (len > 2 && (ch == '/'
+        if ((ch == '/'
 #if (NGX_WIN32)
-                        || ch == '\\'
+             || ch == '\\'
 #endif
-            ))
+            ) && len > 2)
         {
             /* detect "/../" */
 
