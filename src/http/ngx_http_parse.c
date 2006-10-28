@@ -9,6 +9,24 @@
 #include <ngx_http.h>
 
 
+static uint32_t   usual[] =
+    { 0xffffdbfe, /* 1111 1111 1111 1111  1101 1011 1111 1110 */
+
+                  /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+      0x7fff37d6, /* 0111 1111 1111 1111  0011 0111 1101 0110 */
+
+                  /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+      0xefffffff, /* 1110 1111 1111 1111  1111 1111 1111 1111 */
+
+                  /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+      0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+
+      0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+      0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+      0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+      0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */ };
+
+
 /* gcc, icc, msvc and others compile these switches as an jump table */
 
 ngx_int_t
@@ -225,13 +243,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         /* check "/.", "//", "%", and "\" (Win32) in URI */
         case sw_after_slash_in_uri:
 
-            c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'z') {
-                state = sw_check_uri;
-                break;
-            }
-
-            if (ch >= '0' && ch <= '9') {
+            if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
                 state = sw_check_uri;
                 break;
             }
@@ -291,12 +303,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         /* check "/", "%" and "\" (Win32) in URI */
         case sw_check_uri:
 
-            c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'z') {
-                break;
-            }
-
-            if (ch >= '0' && ch <= '9') {
+            if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
                 break;
             }
 
@@ -350,6 +357,11 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         /* URI */
         case sw_uri:
+
+            if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
+                break;
+            }
+
             switch (ch) {
             case ' ':
                 r->uri_end = p;
@@ -793,6 +805,13 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
         switch (state) {
 
         case sw_usual:
+
+            if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
+                *u++ = ch;
+                ch = *p++;
+                break;
+            }
+
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
@@ -836,10 +855,19 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 *u++ = ch;
                 break;
             }
+
             ch = *p++;
             break;
 
         case sw_slash:
+
+            if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
+                state = sw_usual;
+                *u++ = ch;
+                ch = *p++;
+                break;
+            }
+
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
@@ -866,10 +894,19 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 *u++ = ch;
                 break;
             }
+
             ch = *p++;
             break;
 
         case sw_dot:
+
+            if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
+                state = sw_usual;
+                *u++ = ch;
+                ch = *p++;
+                break;
+            }
+
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
@@ -898,10 +935,19 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 *u++ = ch;
                 break;
             }
+
             ch = *p++;
             break;
 
         case sw_dot_dot:
+
+            if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
+                state = sw_usual;
+                *u++ = ch;
+                ch = *p++;
+                break;
+            }
+
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
@@ -938,11 +984,20 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 *u++ = ch;
                 break;
             }
+
             ch = *p++;
             break;
 
 #if (NGX_WIN32)
         case sw_dot_dot_dot:
+
+            if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
+                state = sw_usual;
+                *u++ = ch;
+                ch = *p++;
+                break;
+            }
+
             switch(ch) {
             case '\\':
             case '/':
@@ -977,6 +1032,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 *u++ = ch;
                 break;
             }
+
             ch = *p++;
             break;
 #endif
@@ -1111,6 +1167,10 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
 
         ch = *p++;
 
+        if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
+            continue;
+        }
+
         if (ch == '?') {
             args->len = len - 1;
             args->data = p;
@@ -1124,17 +1184,12 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
             continue;
         }
 
-        if (ch != '/'
+        if (len > 2 && (ch == '/'
 #if (NGX_WIN32)
-            && ch != '\\'
+                        || ch == '\\'
 #endif
-            )
+            ))
         {
-            continue;
-        }
-
-        if (len > 2) {
-
             /* detect "/../" */
 
             if (p[0] == '.' && p[1] == '.' && p[2] == '/') {
