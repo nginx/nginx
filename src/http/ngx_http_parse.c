@@ -18,7 +18,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
     enum {
         sw_start = 0,
         sw_method,
-        sw_space_after_method,
         sw_spaces_before_uri,
         sw_schema,
         sw_schema_slash,
@@ -116,17 +115,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 return NGX_HTTP_PARSE_INVALID_METHOD;
             }
 
-            break;
-
-        /* single space after method */
-        case sw_space_after_method:
-            switch (ch) {
-            case ' ':
-                state = sw_spaces_before_uri;
-                break;
-            default:
-                return NGX_HTTP_PARSE_INVALID_METHOD;
-            }
             break;
 
         /* space* before URI */
