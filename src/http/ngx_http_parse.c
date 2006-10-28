@@ -282,6 +282,10 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->args_start = p + 1;
                 state = sw_uri;
                 break;
+            case '#':
+                r->complex_uri = 1;
+                state = sw_uri;
+                break;
             case '+':
                 r->plus_in_uri = 1;
                 break;
@@ -341,6 +345,10 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->args_start = p + 1;
                 state = sw_uri;
                 break;
+            case '#':
+                r->complex_uri = 1;
+                state = sw_uri;
+                break;
             case '+':
                 r->plus_in_uri = 1;
                 break;
@@ -366,6 +374,9 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->uri_end = p;
                 r->http_minor = 9;
                 goto done;
+            case '#':
+                r->complex_uri = 1;
+                break;
             case '\0':
                 r->zero_in_uri = 1;
                 break;
@@ -822,6 +833,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 break;
             case '?':
                 r->args_start = p;
+                goto args;
+            case '#':
                 goto done;
             case '.':
                 r->uri_ext = u + 1;
@@ -853,6 +866,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 break;
             case '?':
                 r->args_start = p;
+                goto args;
+            case '#':
                 goto done;
             case '+':
                 r->plus_in_uri = 1;
@@ -883,6 +898,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 break;
             case '?':
                 r->args_start = p;
+                goto args;
+            case '#':
                 goto done;
             case '+':
                 r->plus_in_uri = 1;
@@ -915,6 +932,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 break;
             case '?':
                 r->args_start = p;
+                goto args;
+            case '#':
                 goto done;
 #if (NGX_WIN32)
             case '.':
@@ -958,6 +977,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                 break;
             case '?':
                 r->args_start = p;
+                goto args;
+            case '#':
                 goto done;
             case '+':
                 r->plus_in_uri = 1;
@@ -1001,7 +1022,11 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
                     break;
                 }
 
-                if (ch == '\0') {
+                if (ch == '#') {
+                    *u++ = ch;
+                    ch = *p++;
+
+                } else if (ch == '\0') {
                     r->zero_in_uri = 1;
                 }
 
@@ -1030,6 +1055,31 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
     }
 
 done:
+
+    r->uri.len = u - r->uri.data;
+
+    if (r->uri_ext) {
+        r->exten.len = u - r->uri_ext;
+        r->exten.data = r->uri_ext;
+    }
+
+    r->uri_ext = NULL;
+
+    return NGX_OK;
+
+args:
+
+    while (p < r->uri_end) {
+        if (*p++ != '#') {
+            continue;
+        }
+
+        r->args.len = p - 1 - r->args_start;
+        r->args.data = r->args_start;
+        r->args_start = NULL;
+
+        break;
+    }
 
     r->uri.len = u - r->uri.data;
 
