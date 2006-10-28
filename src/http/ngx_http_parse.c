@@ -1032,7 +1032,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
 done:
 
     r->uri.len = u - r->uri.data;
-    r->uri.data[r->uri.len] = '\0';
 
     if (r->uri_ext) {
         r->exten.len = u - r->uri_ext;
