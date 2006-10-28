@@ -29,13 +29,13 @@ struct ngx_rbtree_node_s {
 
 typedef struct ngx_rbtree_s  ngx_rbtree_t;
 
-typedef void (*ngx_rbtree_insert_pt) (ngx_rbtree_node_t *root,
+typedef ngx_rbtree_node_t *(*ngx_rbtree_insert_pt) (ngx_rbtree_node_t *root,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
 struct ngx_rbtree_s {
     ngx_rbtree_node_t     *root;
     ngx_rbtree_node_t     *sentinel;
-    ngx_rbtree_insert_pt   insert;
+ /* ngx_rbtree_insert_pt   insert; */
 };
 
 
@@ -43,8 +43,6 @@ void ngx_rbtree_insert(ngx_thread_volatile ngx_rbtree_t *tree,
     ngx_rbtree_node_t *node);
 void ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
     ngx_rbtree_node_t *node);
-void ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *root,
-    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
 
 static ngx_inline ngx_rbtree_node_t *
