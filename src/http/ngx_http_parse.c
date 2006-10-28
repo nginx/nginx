@@ -120,6 +120,12 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         /* space* before URI */
         case sw_spaces_before_uri:
 
+            if (ch == '/' ){
+                r->uri_start = p;
+                state = sw_after_slash_in_uri;
+                break;
+            }
+
             c = (u_char) (ch | 0x20);
             if (c >= 'a' && c <= 'z') {
                 r->schema_start = p;
@@ -128,10 +134,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
 
             switch (ch) {
-            case '/':
-                r->uri_start = p;
-                state = sw_after_slash_in_uri;
-                break;
             case ' ':
                 break;
             default:
