@@ -1736,7 +1736,7 @@ ngx_http_writer(ngx_http_request_t *r)
             ngx_http_close_request(r, 0);
         }
 
-        if (r == r->main) {
+        if (r == r->main || r->buffered) {
             return;
         }
 

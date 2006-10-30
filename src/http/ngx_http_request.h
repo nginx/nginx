@@ -111,11 +111,11 @@
 #define NGX_HTTP_INSUFFICIENT_STORAGE      507
 
 
-#define NGX_HTTP_LOWLEVEL_BUFFERED         0x000000f0
-#define NGX_HTTP_WRITE_BUFFERED            0x00000010
-#define NGX_HTTP_GZIP_BUFFERED             0x00000020
-#define NGX_HTTP_SSI_BUFFERED              0x00000100
-#define NGX_HTTP_COPY_BUFFERED             0x00000200
+#define NGX_HTTP_LOWLEVEL_BUFFERED         0xf0
+#define NGX_HTTP_WRITE_BUFFERED            0x10
+#define NGX_HTTP_GZIP_BUFFERED             0x20
+#define NGX_HTTP_SSI_BUFFERED              0x01
+#define NGX_HTTP_COPY_BUFFERED             0x02
 
 
 typedef enum {
@@ -451,6 +451,8 @@ struct ngx_http_request_s {
     unsigned                          header_sent:1;
     unsigned                          done:1;
     unsigned                          utf8:1;
+
+    unsigned                          buffered:4;
 
     unsigned                          main_filter_need_in_memory:1;
     unsigned                          filter_need_in_memory:1;

@@ -973,6 +973,13 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
         }
     }
 
+    if (ctx->in || ctx->buf) {
+        r->buffered |= NGX_HTTP_SSI_BUFFERED;
+
+    } else {
+        r->buffered &= ~NGX_HTTP_SSI_BUFFERED;
+    }
+
     return rc;
 }
 
