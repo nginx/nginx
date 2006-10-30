@@ -16,7 +16,11 @@ static uint32_t   usual[] = {
     0x7fff37d6, /* 0111 1111 1111 1111  0011 0111 1101 0110 */
 
                 /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+#if (NGX_WIN32)
     0xefffffff, /* 1110 1111 1111 1111  1111 1111 1111 1111 */
+#else
+    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+#endif
 
                 /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
     0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
