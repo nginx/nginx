@@ -763,3 +763,86 @@ unescape(r, text, type = 0)
     ngx_http_perl_set_targ(p, dst - p, 1);
 
     ST(0) = TARG;
+
+
+void
+variable(r, name, value = NULL)
+    CODE:
+
+    dXSTARG;
+    ngx_http_request_t         *r;
+    SV                         *name, *value;
+    u_char                     *p, *lowcase;
+    STRLEN                      len;
+    ngx_str_t                   var, val;
+    ngx_uint_t                  i, hash;
+    ngx_http_variable_value_t  *vv;
+
+    ngx_http_perl_set_request(r);
+
+    name = ST(1);
+
+    if (SvROK(name) && SvTYPE(SvRV(name)) == SVt_PV) {
+        name = SvRV(name);
+    }
+
+    if (items == 2) {
+        value = NULL;
+
+    } else {
+        value = ST(2);
+
+        if (SvROK(value) && SvTYPE(SvRV(value)) == SVt_PV) {
+            value = SvRV(value);
+        }
+
+        if (ngx_http_perl_sv2str(aTHX_ r, &val, value) != NGX_OK) {
+            XSRETURN_UNDEF;
+        }
+    }
+
+    p = (u_char *) SvPV(name, len);
+
+    lowcase = ngx_palloc(r->pool, len);
+    if (lowcase == NULL) {
+        XSRETURN_UNDEF;
+    }
+
+    hash = 0;
+    for (i = 0; i < len; i++) {
+        lowcase[i] = ngx_tolower(p[i]);
+        hash = ngx_hash(hash, lowcase[i]);
+    }
+
+    var.len = len;
+    var.data = lowcase;
+
+    vv = ngx_http_get_variable(r, &var, hash, 1);
+    if (vv == NULL) {
+        XSRETURN_UNDEF;
+    }
+
+    if (vv->not_found) {
+        if (value == NULL) {
+            XSRETURN_UNDEF;
+        }
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "variable \"%V\" not found", &var);
+
+        XSRETURN_UNDEF;
+    }
+
+    if (value) {
+        vv->len = val.len;
+        vv->valid = 1;
+        vv->no_cachable = 0;
+        vv->not_found = 0;
+        vv->data = val.data;
+
+        XSRETURN_UNDEF;
+    }
+
+    ngx_http_perl_set_targ(vv->data, vv->len, 0);
+
+    ST(0) = TARG;
