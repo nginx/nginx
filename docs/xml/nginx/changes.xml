@@ -9,6 +9,40 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.12" date="31.10.2006">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module поддерживает метод $r->variable.
+</para>
+<para lang="en">
+the ngx_http_perl_module supports the $r->variable method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при включении в ответ большого статического файла с помощью SSI
+ответ мог передаваться не полностью.
+</para>
+<para lang="en">
+if a big static file was included using SSI in a response,
+then the response may be transferred incomplete.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не убирал "#fragment" в URI.
+</para>
+<para lang="en">
+nginx did not omit the "#fragment" part in URI.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.11" date="25.10.2006">
 
 <change type="feature">
