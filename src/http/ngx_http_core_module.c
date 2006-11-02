@@ -1417,6 +1417,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http subrequest done \"%V?%V\"", uri, &sr->args);
 
+        r->main->subrequests++;
+
         *psr = sr;
 
         if (sr->fast_subrequest) {
