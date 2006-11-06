@@ -511,6 +511,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                 cl = p->out;
 
                 if (cl->buf->recycled
+                    && cl->buf->last_shadow
                     && bsize + cl->buf->last - cl->buf->pos > p->busy_size)
                 {
                     flush = 1;
@@ -525,6 +526,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                 cl = p->in;
 
                 if (cl->buf->recycled
+                    && cl->buf->last_shadow
                     && bsize + cl->buf->last - cl->buf->pos > p->busy_size)
                 {
                     flush = 1;
