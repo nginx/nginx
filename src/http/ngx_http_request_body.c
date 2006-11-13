@@ -265,66 +265,72 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
                    "http read client request body");
 
     for ( ;; ) {
-        if (rb->buf->last == rb->buf->end) {
+        for ( ;; ) {
+            if (rb->buf->last == rb->buf->end) {
 
-            if (ngx_http_write_request_body(r, rb->to_write) != NGX_OK) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                if (ngx_http_write_request_body(r, rb->to_write) != NGX_OK) {
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+
+                rb->to_write = rb->bufs->next ? rb->bufs->next : rb->bufs;
+                rb->buf->last = rb->buf->start;
             }
 
-            rb->to_write = rb->bufs->next ? rb->bufs->next : rb->bufs;
-            rb->buf->last = rb->buf->start;
+            size = rb->buf->end - rb->buf->last;
+
+            if ((off_t) size > rb->rest) {
+                size = (size_t) rb->rest;
+            }
+
+            n = c->recv(c, rb->buf->last, size);
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http client request body recv %z", n);
+
+            if (n == NGX_AGAIN) {
+                break;
+            }
+
+            if (n == 0) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client closed prematurely connection");
+            }
+
+            if (n == 0 || n == NGX_ERROR) {
+                c->error = 1;
+                return NGX_HTTP_BAD_REQUEST;
+            }
+
+            rb->buf->last += n;
+            rb->rest -= n;
+            r->request_length += n;
+
+            if (rb->rest == 0) {
+                break;
+            }
+
+            if (rb->buf->last < rb->buf->end) {
+                break;
+            }
         }
-
-        size = rb->buf->end - rb->buf->last;
-
-        if ((off_t) size > rb->rest) {
-            size = (size_t) rb->rest;
-        }
-
-        n = c->recv(c, rb->buf->last, size);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http client request body recv %z", n);
-
-        if (n == NGX_AGAIN) {
-            break;
-        }
-
-        if (n == 0) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "client closed prematurely connection");
-        }
-
-        if (n == 0 || n == NGX_ERROR) {
-            c->error = 1;
-            return NGX_HTTP_BAD_REQUEST;
-        }
-
-        rb->buf->last += n;
-        rb->rest -= n;
-        r->request_length += n;
+                       "http client request body rest %uz", rb->rest);
 
         if (rb->rest == 0) {
             break;
         }
 
-        if (rb->buf->last < rb->buf->end) {
-            break;
+        if (!c->read->ready) {
+            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            ngx_add_timer(c->read, clcf->client_body_timeout);
+
+            if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            return NGX_AGAIN;
         }
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http client request body rest %uz", rb->rest);
-
-    if (rb->rest) {
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_add_timer(c->read, clcf->client_body_timeout);
-
-        if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        return NGX_AGAIN;
     }
 
     if (c->read->timer_set) {
