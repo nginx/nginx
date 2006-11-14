@@ -135,7 +135,7 @@ static ngx_conf_bitmask_t  ngx_http_proxy_next_upstream_masks[] = {
 static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_pass"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_HTTP_LMT_CONF|NGX_CONF_TAKE1,
       ngx_http_proxy_pass,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -2207,8 +2207,9 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (plcf->upstream.uri.len) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"proxy_pass\" may not have URI part in "
-                               "location given by regular expression or "
-                               "inside the \"if\" statement");
+                               "location given by regular expression, "
+                               "or inside the \"if\" statement, "
+                               "or inside the \"limit_except\" block");
             return NGX_CONF_ERROR;
         }
 
