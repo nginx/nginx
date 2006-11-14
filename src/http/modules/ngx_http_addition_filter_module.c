@@ -152,6 +152,11 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
+    if (conf->after_body.len == 0) {
+        ngx_http_set_ctx(r, NULL, ngx_http_addition_filter_module);
+        return ngx_http_next_body_filter(r, in);
+    }
+
     last = 0;
 
     for (cl = in; cl; cl = cl->next) {
