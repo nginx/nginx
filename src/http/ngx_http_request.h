@@ -30,6 +30,13 @@
 #define NGX_HTTP_PUT                       0x0010
 #define NGX_HTTP_DELETE                    0x0020
 #define NGX_HTTP_MKCOL                     0x0040
+#define NGX_HTTP_COPY                      0x0080
+#define NGX_HTTP_MOVE                      0x0100
+#define NGX_HTTP_OPTIONS                   0x0200
+#define NGX_HTTP_PROPFIND                  0x0400
+#define NGX_HTTP_PROPPATCH                 0x0800
+#define NGX_HTTP_LOCK                      0x1000
+#define NGX_HTTP_UNLOCK                    0x2000
 
 #define NGX_HTTP_CONNECTION_CLOSE          1
 #define NGX_HTTP_CONNECTION_KEEP_ALIVE     2

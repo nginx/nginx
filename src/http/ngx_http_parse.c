@@ -94,23 +94,49 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 case 3:
                     if (m[0] == 'G' && m[1] == 'E' && m[2] == 'T') {
                         r->method = NGX_HTTP_GET;
-
-                    } else if (m[0] == 'P' && m[1] == 'U' && m[2] == 'T') {
-                        r->method = NGX_HTTP_PUT;
+                        break;
                     }
+
+                    if (m[0] == 'P' && m[1] == 'U' && m[2] == 'T') {
+                        r->method = NGX_HTTP_PUT;
+                        break;
+                    }
+
                     break;
 
                 case 4:
-                    if (m[0] == 'P' && m[1] == 'O'
-                        && m[2] == 'S' && m[3] == 'T')
-                    {
-                        r->method = NGX_HTTP_POST;
+                    if (m[1] == 'O') {
 
-                    } else if (m[0] == 'H' && m[1] == 'E'
-                               && m[2] == 'A' && m[3] == 'D')
-                    {
-                        r->method = NGX_HTTP_HEAD;
+                        if (m[0] == 'P' && m[2] == 'S' && m[3] == 'T') {
+                            r->method = NGX_HTTP_POST;
+                            break;
+                        }
+
+                        if (m[0] == 'C' && m[2] == 'P' && m[3] == 'Y') {
+                            r->method = NGX_HTTP_COPY;
+                            break;
+                        }
+
+                        if (m[0] == 'M' && m[2] == 'V' && m[3] == 'E') {
+                            r->method = NGX_HTTP_MOVE;
+                            break;
+                        }
+
+                        if (m[0] == 'L' && m[2] == 'C' && m[3] == 'K') {
+                            r->method = NGX_HTTP_LOCK;
+                            break;
+                        }
+
+                    } else {
+
+                        if (m[0] == 'H' && m[1] == 'E'
+                            && m[2] == 'A' && m[3] == 'D')
+                        {
+                            r->method = NGX_HTTP_HEAD;
+                            break;
+                        }
                     }
+
                     break;
 
                 case 5:
@@ -119,6 +145,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     {
                         r->method = NGX_HTTP_MKCOL;
                     }
+
                     break;
 
                 case 6:
@@ -126,7 +153,46 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                         && m[3] == 'E' && m[4] == 'T' && m[5] == 'E')
                     {
                         r->method = NGX_HTTP_DELETE;
+                        break;
                     }
+
+                    if (m[0] == 'U' && m[1] == 'N' && m[2] == 'L'
+                        && m[3] == 'O' && m[4] == 'C' && m[5] == 'K')
+                    {
+                        r->method = NGX_HTTP_UNLOCK;
+                        break;
+                    }
+
+                    break;
+
+                case 7:
+                    if (m[0] == 'O' && m[1] == 'P'
+                        && m[2] == 'T' && m[3] == 'I'
+                        && m[4] == 'O' && m[5] == 'N' && m[6] == 'S')
+                    {
+                        r->method = NGX_HTTP_OPTIONS;
+                    }
+
+                    break;
+
+                case 8:
+                    if (m[0] == 'P' && m[1] == 'R'
+                        && m[2] == 'O' && m[3] == 'P' && m[4] == 'F'
+                        && m[5] == 'I' && m[6] == 'N' && m[7] == 'D')
+                    {
+                        r->method = NGX_HTTP_PROPFIND;
+                    }
+
+                    break;
+
+                case 9:
+                    if (m[0] == 'P' && m[1] == 'R' && m[2] == 'O'
+                        && m[3] == 'P' && m[4] == 'P' && m[5] == 'A'
+                        && m[6] == 'T' && m[7] == 'C' && m[8] == 'H')
+                    {
+                        r->method = NGX_HTTP_PROPPATCH;
+                    }
+
                     break;
                 }
 
