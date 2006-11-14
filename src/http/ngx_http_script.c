@@ -423,10 +423,8 @@ ngx_http_script_copy_code(ngx_http_script_engine_t *e)
     e->ip += sizeof(ngx_http_script_copy_code_t)
           + ((code->len + sizeof(uintptr_t) - 1) & ~(sizeof(uintptr_t) - 1));
 
-    if (e->log) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
-                       "http script copy: \"%V\"", &e->buf);
-    }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script copy: \"%V\"", &e->buf);
 }
 
 
@@ -477,11 +475,9 @@ ngx_http_script_copy_var_code(ngx_http_script_engine_t *e)
         if (value && !value->not_found) {
             e->pos = ngx_copy(e->pos, value->data, value->len);
 
-            if (e->log) {
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP,
-                               e->request->connection->log, 0,
-                               "http script var: \"%V\"", &e->buf);
-            }
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP,
+                           e->request->connection->log, 0,
+                           "http script var: \"%V\"", &e->buf);
         }
     }
 }
