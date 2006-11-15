@@ -9,6 +9,93 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.4.13" date="15.11.2006">
+
+<change type="feature">
+<para lang="ru">
+директиву proxy_pass можно использовать внутри блока limit_expect.
+</para>
+<para lang="en">
+the "proxy_pass" directive may be used inside the "limit_expect" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива limit_expect поддерживает все WebDAV методы.
+</para>
+<para lang="en">
+the "limit_expect" directive supports all WebDAV methods.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы add_before_body без директивы add_after_body
+ответ передавался не полностью.
+</para>
+<para lang="en">
+if the "add_before_body" directive was used without
+the "add_after_body" directive, then an response did not transferred complete.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+большое тело запроса не принималось, если использовались метод epoll
+и deferred accept().
+</para>
+<para lang="en">
+a large request body did not receive if the epoll method
+and the deferred accept() were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+для ответов модуля ngx_http_autoindex_module не выставлялась кодировка;
+ошибка появилась в 0.3.50.
+</para>
+<para lang="en">
+a charset could not be set for ngx_http_autoindex_module responses;
+bug appeared in 0.3.50.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки "[alert] zero size buf" при работе с FastCGI-сервером;
+</para>
+<para lang="en">
+the "[alert] zero size buf" error when FastCGI server was used;
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр конфигурации --group= игнорировался.<br/>
+Спасибо Thomas Moschny.
+</para>
+<para lang="en">
+the --group= configuration parameter was ignored.<br/>
+Thanks to Thomas Moschny.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+50-й подзапрос в SSI ответе не работал;
+ошибка появилась в 0.3.50.
+</para>
+<para lang="en">
+the 50th subrequest in SSI response did not work;
+bug appeared in 0.3.50.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.12" date="31.10.2006">
 
 <change type="feature">
@@ -70,7 +157,7 @@ the ngx_http_perl_module supports the $r->allow_ranges method.
 ошибка появилась в 0.4.10.
 </para>
 <para lang="en">
-if the APOP was enabledi in the POP3 proxy, then the USER/PASS commands
+if the APOP was enabled in the POP3 proxy, then the USER/PASS commands
 might not work;
 bug appeared in 0.4.10.
 </para>
@@ -83,10 +170,10 @@ bug appeared in 0.4.10.
 
 <change type="feature">
 <para lang="ru">
-IMAP/POP3 прокси поддерживает APOP.
+POP3 прокси поддерживает APOP.
 </para>
 <para lang="en">
-the IMAP/POP3 proxy supports the APOP command.
+the POP3 proxy supports the APOP command.
 </para>
 </change>
 
