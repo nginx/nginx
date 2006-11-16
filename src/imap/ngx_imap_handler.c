@@ -1024,6 +1024,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
             s->args.nelts = 0;
             s->buffer->pos = s->buffer->start;
             s->buffer->last = s->buffer->start;
+            s->state = 0;
 
             if (rev->timer_set) {
                 ngx_del_timer(rev);
@@ -1095,6 +1096,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
             s->args.nelts = 0;
             s->buffer->pos = s->buffer->start;
             s->buffer->last = s->buffer->start;
+            s->state = 0;
 
             if (rev->timer_set) {
                 ngx_del_timer(rev);
@@ -1154,6 +1156,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
             s->args.nelts = 0;
             s->buffer->pos = s->buffer->start;
             s->buffer->last = s->buffer->start;
+            s->state = 0;
 
             if (rev->timer_set) {
                 ngx_del_timer(rev);
