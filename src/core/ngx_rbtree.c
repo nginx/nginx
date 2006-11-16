@@ -47,52 +47,9 @@ ngx_rbtree_insert(ngx_thread_volatile ngx_rbtree_t *tree,
         return;
     }
 
-    /*
-     * The rbtree is currently used by event timers only.  Timer values
-     * 1) are spread in small range, usually several minutes,
-     * 2) and overflow each 49 days, if milliseconds are stored in 32 bits.
-     * The below comparison takes into account that overflow.
-     *
-     * If there will be a necessity to use the rbtree for values with
-     * other comparison rules, then a whole "for ( ;; )" loop should
-     * be made as tree->insert() function.
-     */
-
-    temp = *root;
-
-    for ( ;; ) {
-
-        /*  node->key < temp->key */
-
-        if ((ngx_rbtree_key_int_t) node->key - (ngx_rbtree_key_int_t) temp->key
-            < 0)
-        {
-            if (temp->left == sentinel) {
-                temp->left = node;
-                break;
-            }
-
-            temp = temp->left;
-            continue;
-        }
-
-        if (temp->right == sentinel) {
-            temp->right = node;
-            break;
-        }
-
-        temp = temp->right;
-        continue;
-    }
-
-    node->parent = temp;
-    node->left = sentinel;
-    node->right = sentinel;
-
+    tree->insert(*root, node, sentinel);
 
     /* re-balance tree */
-
-    ngx_rbt_red(node);
 
     while (node != *root && ngx_rbt_is_red(node->parent)) {
 
@@ -136,7 +93,6 @@ ngx_rbtree_insert(ngx_thread_volatile ngx_rbtree_t *tree,
                 ngx_rbtree_left_rotate(root, sentinel, node->parent->parent);
             }
         }
-
     }
 
     ngx_rbt_black(*root);
@@ -144,10 +100,53 @@ ngx_rbtree_insert(ngx_thread_volatile ngx_rbtree_t *tree,
 
 
 void
+ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
+    ngx_rbtree_node_t *sentinel)
+{
+    for ( ;; ) {
+
+        /*
+         * Timer values
+         * 1) are spread in small range, usually several minutes,
+         * 2) and overflow each 49 days, if milliseconds are stored in 32 bits.
+         * The comparison takes into account that overflow.
+         */
+
+        if ((ngx_rbtree_key_int_t) node->key - (ngx_rbtree_key_int_t) temp->key
+            < 0)
+        {
+            /*  node->key < temp->key */
+
+            if (temp->left == sentinel) {
+                temp->left = node;
+                break;
+            }
+
+            temp = temp->left;
+
+        } else {
+
+            if (temp->right == sentinel) {
+                temp->right = node;
+                break;
+            }
+
+            temp = temp->right;
+        }
+    }
+
+    node->parent = temp;
+    node->left = sentinel;
+    node->right = sentinel;
+    ngx_rbt_red(node);
+}
+
+
+void
 ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
     ngx_rbtree_node_t *node)
 {
-    ngx_int_t            red;
+    ngx_uint_t           red;
     ngx_rbtree_node_t  **root, *sentinel, *subst, *temp, *w;
 
     /* a binary tree delete */
