@@ -147,7 +147,7 @@ void
 ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
     ngx_rbtree_node_t *node)
 {
-    ngx_int_t            is_red;
+    ngx_int_t            red;
     ngx_rbtree_node_t  **root, *sentinel, *subst, *temp, *w;
 
     /* a binary tree delete */
@@ -186,7 +186,7 @@ ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
         return;
     }
 
-    is_red = ngx_rbt_is_red(subst);
+    red = ngx_rbt_is_red(subst);
 
     if (subst == subst->parent->left) {
         subst->parent->left = temp;
@@ -239,7 +239,7 @@ ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
         node->key = 0;
     }
 
-    if (is_red) {
+    if (red) {
         return;
     }
 
