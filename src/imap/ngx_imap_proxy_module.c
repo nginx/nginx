@@ -13,6 +13,7 @@
 
 typedef struct {
     ngx_flag_t  enable;
+    ngx_flag_t  pass_error_message;
     size_t      buffer_size;
     ngx_msec_t  timeout;
 } ngx_imap_proxy_conf_t;
@@ -25,6 +26,7 @@ static void ngx_imap_proxy_dummy_handler(ngx_event_t *ev);
 static ngx_int_t ngx_imap_proxy_read_response(ngx_imap_session_t *s,
     ngx_uint_t state);
 static void ngx_imap_proxy_handler(ngx_event_t *ev);
+static void ngx_imap_proxy_upstream_error(ngx_imap_session_t *s);
 static void ngx_imap_proxy_internal_server_error(ngx_imap_session_t *s);
 static void ngx_imap_proxy_close_session(ngx_imap_session_t *s);
 static void *ngx_imap_proxy_create_conf(ngx_conf_t *cf);
@@ -53,6 +55,13 @@ static ngx_command_t  ngx_imap_proxy_commands[] = {
       ngx_conf_set_msec_slot,
       NGX_IMAP_SRV_CONF_OFFSET,
       offsetof(ngx_imap_proxy_conf_t, timeout),
+      NULL },
+
+    { ngx_string("proxy_pass_error_message"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      offsetof(ngx_imap_proxy_conf_t, pass_error_message),
       NULL },
 
       ngx_null_command
@@ -204,7 +213,7 @@ ngx_imap_proxy_imap_handler(ngx_event_t *rev)
     }
 
     if (rc == NGX_ERROR) {
-        ngx_imap_proxy_internal_server_error(s);
+        ngx_imap_proxy_upstream_error(s);
         return;
     }
 
@@ -349,7 +358,7 @@ ngx_imap_proxy_pop3_handler(ngx_event_t *rev)
     }
 
     if (rc == NGX_ERROR) {
-        ngx_imap_proxy_internal_server_error(s);
+        ngx_imap_proxy_upstream_error(s);
         return;
     }
 
@@ -452,9 +461,10 @@ ngx_imap_proxy_dummy_handler(ngx_event_t *wev)
 static ngx_int_t
 ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t state)
 {
-    u_char     *p;
-    ssize_t     n;
-    ngx_buf_t  *b;
+    u_char                 *p;
+    ssize_t                 n;
+    ngx_buf_t              *b;
+    ngx_imap_proxy_conf_t  *pcf;
 
     s->connection->log->action = "reading response from upstream";
 
@@ -523,9 +533,23 @@ ngx_imap_proxy_read_response(ngx_imap_session_t *s, ngx_uint_t state)
         }
     }
 
-    *(b->last - 2) = '\0';
-    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
-                  "upstream sent invalid response: \"%s\"", p);
+    pcf = ngx_imap_get_module_srv_conf(s, ngx_imap_proxy_module);
+
+    if (pcf->pass_error_message == 0) {
+        *(b->last - 2) = '\0';
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                      "upstream sent invalid response: \"%s\"", p);
+        return NGX_ERROR;
+    }
+
+    s->out.len = b->last - p - 2;
+    s->out.data = p;
+
+    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
+                  "upstream sent invalid response: \"%V\"", &s->out);
+
+    s->out.len = b->last - b->pos;
+    s->out.data = b->pos;
 
     return NGX_ERROR;
 }
@@ -698,6 +722,27 @@ ngx_imap_proxy_handler(ngx_event_t *ev)
 
 
 static void
+ngx_imap_proxy_upstream_error(ngx_imap_session_t *s)
+{
+    if (s->proxy->upstream.connection) {
+        ngx_log_debug1(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
+                       "close imap proxy connection: %d",
+                       s->proxy->upstream.connection->fd);
+
+        ngx_close_connection(s->proxy->upstream.connection);
+    }
+
+    if (s->out.len == 0) {
+        ngx_imap_session_internal_server_error(s);
+        return;
+    }
+
+    s->quit = 1;
+    ngx_imap_send(s->connection->write);
+}
+
+
+static void
 ngx_imap_proxy_internal_server_error(ngx_imap_session_t *s)
 {
     if (s->proxy->upstream.connection) {
@@ -738,6 +783,7 @@ ngx_imap_proxy_create_conf(ngx_conf_t *cf)
     }
 
     pcf->enable = NGX_CONF_UNSET;
+    pcf->pass_error_message = NGX_CONF_UNSET;
     pcf->buffer_size = NGX_CONF_UNSET_SIZE;
     pcf->timeout = NGX_CONF_UNSET_MSEC;
 
@@ -752,6 +798,7 @@ ngx_imap_proxy_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_imap_proxy_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->pass_error_message, prev->pass_error_message, 0);
     ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
                               (size_t) ngx_pagesize);
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 24 * 60 * 60000);
