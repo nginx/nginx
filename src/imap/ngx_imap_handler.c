@@ -12,6 +12,7 @@
 
 static void ngx_imap_init_session(ngx_connection_t *c);
 static void ngx_imap_init_protocol(ngx_event_t *rev);
+static void ngx_imap_do_auth(ngx_imap_session_t *s);
 static ngx_int_t ngx_imap_read_command(ngx_imap_session_t *s);
 static u_char *ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
@@ -537,18 +538,7 @@ ngx_imap_auth_state(ngx_event_t *rev)
                                "imap login:\"%V\"", &s->login);
 #endif
 
-                s->args.nelts = 0;
-                s->buffer->pos = s->buffer->start;
-                s->buffer->last = s->buffer->start;
-
-                if (rev->timer_set) {
-                    ngx_del_timer(rev);
-                }
-
-                s->login_attempt++;
-
-                ngx_imap_auth_http_init(s);
-
+                ngx_imap_do_auth(s);
                 return;
             }
 
@@ -789,16 +779,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
                     s->auth_method = NGX_IMAP_AUTH_APOP;
 
-                    s->args.nelts = 0;
-                    s->buffer->pos = s->buffer->start;
-                    s->buffer->last = s->buffer->start;
-
-                    if (rev->timer_set) {
-                        ngx_del_timer(rev);
-                    }
-
-                    ngx_imap_auth_http_init(s);
-
+                    ngx_imap_do_auth(s);
                     return;
                 }
 
@@ -922,16 +903,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                                    "pop3 passwd: \"%V\"", &s->passwd);
 #endif
 
-                    s->args.nelts = 0;
-                    s->buffer->pos = s->buffer->start;
-                    s->buffer->last = s->buffer->start;
-
-                    if (rev->timer_set) {
-                        ngx_del_timer(rev);
-                    }
-
-                    ngx_imap_auth_http_init(s);
-
+                    ngx_imap_do_auth(s);
                     return;
                 }
 
@@ -1021,17 +993,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                            "pop3 auth login password: \"%V\"", &s->passwd);
 #endif
 
-            s->args.nelts = 0;
-            s->buffer->pos = s->buffer->start;
-            s->buffer->last = s->buffer->start;
-            s->state = 0;
-
-            if (rev->timer_set) {
-                ngx_del_timer(rev);
-            }
-
-            ngx_imap_auth_http_init(s);
-
+            ngx_imap_do_auth(s);
             return;
 
         case ngx_pop3_auth_plain:
@@ -1093,17 +1055,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                            &s->login, &s->passwd);
 #endif
 
-            s->args.nelts = 0;
-            s->buffer->pos = s->buffer->start;
-            s->buffer->last = s->buffer->start;
-            s->state = 0;
-
-            if (rev->timer_set) {
-                ngx_del_timer(rev);
-            }
-
-            ngx_imap_auth_http_init(s);
-
+            ngx_imap_do_auth(s);
             return;
 
         case ngx_pop3_auth_cram_md5:
@@ -1153,17 +1105,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
             s->auth_method = NGX_IMAP_AUTH_CRAM_MD5;
 
-            s->args.nelts = 0;
-            s->buffer->pos = s->buffer->start;
-            s->buffer->last = s->buffer->start;
-            s->state = 0;
-
-            if (rev->timer_set) {
-                ngx_del_timer(rev);
-            }
-
-            ngx_imap_auth_http_init(s);
-
+            ngx_imap_do_auth(s);
             return;
         }
     }
@@ -1187,6 +1129,24 @@ ngx_pop3_auth_state(ngx_event_t *rev)
     s->out.len = size;
 
     ngx_imap_send(c->write);
+}
+
+
+static void
+ngx_imap_do_auth(ngx_imap_session_t *s)
+{
+    s->args.nelts = 0;
+    s->buffer->pos = s->buffer->start;
+    s->buffer->last = s->buffer->start;
+    s->state = 0;
+
+    if (s->connection->read->timer_set) {
+	ngx_del_timer(s->connection->read);
+    }
+
+    s->login_attempt++;
+
+    ngx_imap_auth_http_init(s);
 }
 
 
