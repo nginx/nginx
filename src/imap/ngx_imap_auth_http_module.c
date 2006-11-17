@@ -1039,7 +1039,9 @@ ngx_imap_auth_http_create_request(ngx_imap_session_t *s, ngx_pool_t *pool,
 
     len = sizeof("GET ") - 1 + ahcf->uri.len + sizeof(" HTTP/1.0" CRLF) - 1
           + sizeof("Host: ") - 1 + ahcf->host_header.len + sizeof(CRLF) - 1
-          + sizeof("Auth-Method: plain" CRLF) - 1
+          + sizeof("Auth-Method: ") - 1
+                + ngx_imap_auth_http_method[s->auth_method].len
+                + sizeof(CRLF) - 1
           + sizeof("Auth-User: ") - 1 + login.len + sizeof(CRLF) - 1
           + sizeof("Auth-Pass: ") - 1 + passwd.len + sizeof(CRLF) - 1
           + sizeof("Auth-Salt: ") - 1 + s->salt.len
