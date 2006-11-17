@@ -489,10 +489,10 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                 ctx->errmsg.data = ctx->header_start;
 
                 if (s->protocol == NGX_IMAP_POP3_PROTOCOL) {
-                    size = sizeof("-ERR") - 1 + len + sizeof(CRLF) - 1;
+                    size = sizeof("-ERR ") - 1 + len + sizeof(CRLF) - 1;
 
                 } else {
-                    size = s->tag.len + sizeof("NO") - 1 + len
+                    size = s->tag.len + sizeof("NO ") - 1 + len
                            + sizeof(CRLF) - 1;
                 }
 
