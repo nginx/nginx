@@ -295,6 +295,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
         p->read_length += n;
         cl = chain;
+        p->free_raw_bufs = NULL;
 
         while (cl && n > 0) {
 
@@ -322,7 +323,14 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             }
         }
 
-        p->free_raw_bufs = cl;
+        if (cl) {
+            while (cl->next) {
+                cl = cl->next;
+            }
+
+            cl->next = p->free_raw_bufs;
+            p->free_raw_bufs = cl;
+        }
     }
 
 #if (NGX_DEBUG)
