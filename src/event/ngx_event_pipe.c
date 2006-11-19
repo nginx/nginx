@@ -324,11 +324,9 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         }
 
         if (cl) {
-            while (cl->next) {
-                cl = cl->next;
-            }
+            for (ln = cl; ln->next; ln = ln->next) { /* void */ }
 
-            cl->next = p->free_raw_bufs;
+            ln->next = p->free_raw_bufs;
             p->free_raw_bufs = cl;
         }
     }
