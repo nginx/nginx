@@ -43,12 +43,15 @@ ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void               *rv;
+    u_char             *lock_file;
     ngx_uint_t          i, n;
     ngx_log_t          *log;
     ngx_conf_t          conf;
     ngx_pool_t         *pool;
     ngx_cycle_t        *cycle, **old;
-    ngx_list_part_t    *part;
+    ngx_shm_zone_t     *shm, *oshm;
+    ngx_slab_pool_t    *shpool;
+    ngx_list_part_t    *part, *opart;
     ngx_open_file_t    *file;
     ngx_listening_t    *ls, *nls;
     ngx_core_conf_t    *ccf;
@@ -120,6 +123,25 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
+    if (old_cycle->shared_memory.part.nelts) {
+        n = old_cycle->shared_memory.part.nelts;
+        for (part = old_cycle->shared_memory.part.next; part; part = part->next)
+        {
+            n += part->nelts;
+        }
+
+    } else {
+        n = 1;
+    }
+
+    if (ngx_list_init(&cycle->shared_memory, pool, n, sizeof(ngx_shm_zone_t))
+        == NGX_ERROR)
+    {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
+
     cycle->new_log = ngx_log_create_errlog(cycle, NULL);
     if (cycle->new_log == NULL) {
         ngx_destroy_pool(pool);
@@ -181,21 +203,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         ngx_destroy_pool(pool);
         return NULL;
     }
-
-
-#if 0
-    cycle->shm.size = /* STUB */ ngx_pagesize;
-    cycle->shm.log = log;
-
-    if (ngx_shm_alloc(&cycle->shm) != NGX_OK) {
-        ngx_destroy_pool(conf.temp_pool);
-        ngx_destroy_pool(pool);
-        return NULL;
-    }
-
-    cycle->shm_last = cycle->shm.addr;
-    cycle->shm_end = cycle->shm.addr + cycle->shm.size;
-#endif
 
 
     conf.ctx = cycle->conf_ctx;
@@ -274,7 +281,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 #endif
 
 
-    if (ngx_test_lockfile(ccf->lock_file.data, log) != NGX_OK) {
+    if (ngx_test_lockfile(cycle->lock_file.data, log) != NGX_OK) {
         goto failed;
     }
 
@@ -340,6 +347,94 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     if (cycle->log->log_level == 0) {
         cycle->log->log_level = NGX_LOG_ERR;
+    }
+
+
+    /* create shared memory */
+
+    part = &cycle->shared_memory.part;
+    shm = part->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            shm = part->elts;
+            i = 0;
+        }
+
+        shm[i].shm.log = cycle->log;
+
+        opart = &old_cycle->shared_memory.part;
+        oshm = opart->elts;
+
+        for (n = 0; /* void */ ; n++) {
+
+            if (n >= opart->nelts) {
+                if (opart->next == NULL) {
+                    break;
+                }
+                opart = opart->next;
+                oshm = opart->elts;
+                n = 0;
+            }
+
+            if (ngx_strcmp(shm[i].name.data, oshm[n].name.data) != 0) {
+                continue;
+            }
+
+            if (shm[i].shm.size == oshm[n].shm.size) {
+                shm[i].shm.addr = oshm[n].shm.addr;
+                goto found;
+            }
+
+            ngx_shm_free(&oshm[n].shm);
+
+            break;
+        }
+
+        if (ngx_shm_alloc(&shm[i].shm) != NGX_OK) {
+            goto failed;
+        }
+
+        shpool = (ngx_slab_pool_t *) shm[i].shm.addr;
+
+        shpool->end = shm[i].shm.addr + shm[i].shm.size;
+        shpool->min_shift = 3;
+
+#if (NGX_HAVE_ATOMIC_OPS)
+
+        lock_file = NULL;
+
+#else
+
+        lock_file = ngx_palloc(cycle->pool,
+                               cycle->lock_file.len + shm[i].name.len);
+
+        if (lock_file == NULL) {
+            goto failed;
+        }
+
+        (void) ngx_cpystrn(ngx_cpymem(lock_file, cycle->lock_file.data,
+                                      cycle->lock_file.len),
+                           shm[i].name.data, shm[i].name.len + 1);
+
+#endif
+
+        if (ngx_shmtx_create(&shpool->mutex, (void *) &shpool->lock, lock_file)
+            != NGX_OK)
+        {
+            goto failed;
+        }
+
+        ngx_slab_init(shpool);
+
+    found:
+
+        continue;
     }
 
 
@@ -521,12 +616,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     if (ngx_process == NGX_PROCESS_MASTER || ngx_is_init_cycle(old_cycle)) {
 
-        if (old_cycle->shm.addr) {
-            ngx_shm_free(&old_cycle->shm);
-        }
-
         ngx_destroy_pool(old_cycle->pool);
-
         cycle->old_cycle = NULL;
 
         return cycle;
@@ -630,10 +720,6 @@ failed:
 static void
 ngx_destroy_cycle_pools(ngx_conf_t *conf)
 {
-    if (conf->cycle->shm.addr) {
-        ngx_shm_free(&conf->cycle->shm);
-    }
-
     ngx_destroy_pool(conf->temp_pool);
     ngx_destroy_pool(conf->pool);
 }

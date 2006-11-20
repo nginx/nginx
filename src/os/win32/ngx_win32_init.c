@@ -53,6 +53,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     DWORD        bytes;
     SOCKET       s;
     WSADATA      wsd;
+    ngx_uint_t   n;
     SYSTEM_INFO  si;
 
     /* get Windows version */
@@ -100,6 +101,8 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     ngx_pagesize = si.dwPageSize;
     ngx_ncpu = si.dwNumberOfProcessors;
     ngx_cacheline_size = NGX_CPU_CACHE_LINE;
+
+    for (n = ngx_pagesize; n >>= 1; ngx_pagesize_shift++) { /* void */ }
 
 
     /* init Winsock */

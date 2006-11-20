@@ -21,6 +21,12 @@
 #define NGX_DEBUG_POINTS_ABORT  2
 
 
+typedef struct {
+    ngx_shm_t                 shm;
+    ngx_str_t                 name;
+} ngx_shm_zone_t;
+
+
 struct ngx_cycle_s {
     void                  ****conf_ctx;
     ngx_pool_t               *pool;
@@ -32,13 +38,10 @@ struct ngx_cycle_s {
     ngx_connection_t         *free_connections;
     ngx_uint_t                free_connection_n;
 
-    ngx_shm_t                 shm;
-    u_char                   *shm_last;
-    u_char                   *shm_end;
-
     ngx_array_t               listening;
     ngx_array_t               pathes;
     ngx_list_t                open_files;
+    ngx_list_t                shared_memory;
 
     ngx_uint_t                connection_n;
     ngx_uint_t                files_n;
@@ -51,6 +54,7 @@ struct ngx_cycle_s {
 
     ngx_str_t                 conf_file;
     ngx_str_t                 root;
+    ngx_str_t                 lock_file;
 };
 
 

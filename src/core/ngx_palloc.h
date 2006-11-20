@@ -71,10 +71,6 @@ void *ngx_palloc(ngx_pool_t *pool, size_t size);
 void *ngx_pcalloc(ngx_pool_t *pool, size_t size);
 ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p);
 
-void *ngx_shalloc(size_t size);
-void *ngx_shcalloc(size_t size);
-void ngx_shfree(void *p);
-
 
 ngx_pool_cleanup_t *ngx_pool_cleanup_add(ngx_pool_t *p, size_t size);
 void ngx_pool_cleanup_file(void *data);

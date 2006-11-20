@@ -621,6 +621,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_core_conf_t  *ccf = conf;
 
 #if !(NGX_WIN32)
+    ngx_str_t         lock_file;
     struct passwd    *pwd;
     struct group     *grp;
 #endif
@@ -697,6 +698,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_memcpy(ngx_cpymem(ccf->oldpid.data, ccf->pid.data, ccf->pid.len),
                NGX_OLDPID_EXT, sizeof(NGX_OLDPID_EXT));
 
+
     if (ccf->lock_file.len == 0) {
         ccf->lock_file.len = sizeof(NGX_LOCK_PATH) - 1;
         ccf->lock_file.data = (u_char *) NGX_LOCK_PATH;
@@ -704,6 +706,40 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
     if (ngx_conf_full_name(cycle, &ccf->lock_file) == NGX_ERROR) {
         return NGX_CONF_ERROR;
+    }
+
+    lock_file = cycle->old_cycle->lock_file;
+
+    if (lock_file.len) {
+        lock_file.len--;
+
+        if (ccf->lock_file.len != lock_file.len
+            || ngx_strncmp(ccf->lock_file.data, lock_file.data, lock_file.len)
+               != 0)
+        {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "\"lock_file\" could not be changed, ignored");
+        }
+
+        cycle->lock_file.len = lock_file.len + 1;
+        lock_file.len += sizeof(".accept");
+
+        cycle->lock_file.data = ngx_pstrdup(cycle->pool, &lock_file);
+        if (cycle->lock_file.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+    } else {
+        cycle->lock_file.len = ccf->lock_file.len + 1;
+        cycle->lock_file.data = ngx_palloc(cycle->pool,
+                                      ccf->lock_file.len + sizeof(".accept"));
+        if (cycle->lock_file.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memcpy(ngx_cpymem(cycle->lock_file.data, ccf->lock_file.data,
+                              ccf->lock_file.len),
+                   ".accept", sizeof(".accept"));
     }
 
 #endif

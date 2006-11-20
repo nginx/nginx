@@ -18,13 +18,11 @@ typedef struct {
 #else
     ngx_fd_t       fd;
     u_char        *name;
-    ngx_log_t     *log;
 #endif
 } ngx_shmtx_t;
 
 
-ngx_int_t ngx_shmtx_create(ngx_shmtx_t *mtx, void *addr, u_char *name,
-    ngx_log_t *log);
+ngx_int_t ngx_shmtx_create(ngx_shmtx_t *mtx, void *addr, u_char *name);
 
 
 #if (NGX_HAVE_ATOMIC_OPS)
@@ -63,9 +61,7 @@ ngx_shmtx_trylock(ngx_shmtx_t *mtx)
         return 0;
     }
 
-    ngx_log_error(NGX_LOG_ALERT, mtx->log, err, ngx_trylock_fd_n " failed");
-
-    ngx_abort();
+    ngx_log_abort(err, ngx_trylock_fd_n " failed");
 }
 
 
@@ -80,9 +76,7 @@ ngx_shmtx_lock(ngx_shmtx_t *mtx)
         return;
     }
 
-    ngx_log_error(NGX_LOG_ALERT, mtx->log, err, ngx_lock_fd_n " failed");
-
-    ngx_abort();
+    ngx_log_abort(err, ngx_lock_fd_n " failed");
 }
 
 
@@ -97,9 +91,7 @@ ngx_shmtx_unlock(ngx_shmtx_t *mtx)
         return;
     }
 
-    ngx_log_error(NGX_LOG_ALERT, mtx->log, err, ngx_unlock_fd_n " failed");
-
-    ngx_abort();
+    ngx_log_abort(err, ngx_unlock_fd_n " failed");
 }
 
 
