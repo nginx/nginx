@@ -182,7 +182,10 @@ ngx_imap_auth_http_init(ngx_imap_session_t *s)
     rc = ngx_event_connect_peer(&ctx->peer);
 
     if (rc == NGX_ERROR || rc == NGX_BUSY || rc == NGX_DECLINED) {
-        ngx_close_connection(ctx->peer.connection);
+        if (ctx->peer.connection) {
+            ngx_close_connection(ctx->peer.connection);
+        }
+
         ngx_destroy_pool(ctx->pool);
         ngx_imap_session_internal_server_error(s);
         return;
