@@ -1385,8 +1385,15 @@ ngx_http_find_virtual_server(ngx_http_request_t *r,
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
 
-    host = r->headers_in.host->value.data;
-    len = r->headers_in.host_name_len;
+    host = r->host_start;
+
+    if (host == NULL) {
+        host = r->headers_in.host->value.data;
+        len = r->headers_in.host_name_len;
+
+    } else {
+        len = r->host_end - host;
+    }
 
     if (vn->hash.buckets) {
         cscf = ngx_hash_find(&vn->hash, hash, host, len);

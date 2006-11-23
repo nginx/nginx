@@ -260,7 +260,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_schema_slash_slash:
             switch (ch) {
             case '/':
-                r->host_start = p;
+                r->host_start = p + 1;
                 state = sw_host;
                 break;
             default:

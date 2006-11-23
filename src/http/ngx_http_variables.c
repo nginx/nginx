@@ -667,13 +667,20 @@ static ngx_int_t
 ngx_http_variable_host(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
-    if (r->headers_in.host) {
-        v->len = r->headers_in.host_name_len;
-        v->data = r->headers_in.host->value.data;
+    if (r->host_start == NULL) {
+
+        if (r->headers_in.host) {
+            v->len = r->headers_in.host_name_len;
+            v->data = r->headers_in.host->value.data;
+
+        } else {
+            v->len = r->server_name.len;
+            v->data = r->server_name.data;
+        }
 
     } else {
-        v->len = r->server_name.len;
-        v->data = r->server_name.data;
+        v->len = r->host_end - r->host_start;
+        v->data = r->host_start;
     }
 
     v->valid = 1;
