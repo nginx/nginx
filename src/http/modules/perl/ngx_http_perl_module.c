@@ -300,6 +300,7 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ngx_http_perl_variable_t *pv = (ngx_http_perl_variable_t *) data;
 
     ngx_int_t                   rc;
+    ngx_uint_t                  recursive;
     ngx_str_t                   value;
     ngx_http_perl_ctx_t        *ctx;
     ngx_http_perl_main_conf_t  *pmcf;
@@ -316,14 +317,21 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         }
 
         ngx_http_set_ctx(r, ctx, ngx_http_perl_module);
-    }
 
-    pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
+        pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
 
-    rc = ngx_http_perl_get_interpreter(pmcf, &ctx->perl, r->connection->log);
+        rc = ngx_http_perl_get_interpreter(pmcf, &ctx->perl,
+                                           r->connection->log);
 
-    if (rc != NGX_OK) {
-        return rc;
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        recursive = 0;
+
+    } else {
+        pmcf = NULL;
+        recursive = 1;
     }
 
     value.data = NULL;
@@ -337,7 +345,9 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     }
 
-    ngx_http_perl_free_interpreter(pmcf, ctx->perl);
+    if (recursive == 0) {
+        ngx_http_perl_free_interpreter(pmcf, ctx->perl);
+    }
 
     if (value.data) {
         v->len = value.len;
