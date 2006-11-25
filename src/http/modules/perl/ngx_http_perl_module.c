@@ -363,6 +363,9 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
 
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "perl variable done");
+
     return rc;
 }
 
@@ -442,6 +445,8 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
     ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
     ctx->ssi = NULL;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "perl ssi done");
 
     return rc;
 }
