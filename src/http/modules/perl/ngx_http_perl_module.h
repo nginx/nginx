@@ -48,7 +48,7 @@ extern ngx_module_t  ngx_http_perl_module;
 #endif
 
 
-extern void  boot_DynaLoader(pTHX_ CV* cv);
+extern void boot_DynaLoader(pTHX_ CV* cv);
 
 
 void ngx_http_perl_handle_request(ngx_http_request_t *r);
