@@ -12,6 +12,7 @@
 
 typedef struct {
     PerlInterpreter   *perl;
+    HV                *nginx;
     ngx_str_t          modules;
     ngx_array_t        requires;
 } ngx_http_perl_main_conf_t;
@@ -48,7 +49,7 @@ static PerlInterpreter *
 static ngx_int_t ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires,
     ngx_log_t *log);
 static ngx_int_t ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
-    SV *sub, ngx_str_t **args, ngx_str_t *handler, ngx_str_t *rv);
+    HV *nginx, SV *sub, ngx_str_t **args, ngx_str_t *handler, ngx_str_t *rv);
 static void ngx_http_perl_eval_anon_sub(pTHX_ ngx_str_t *handler, SV **sv);
 
 static ngx_int_t ngx_http_perl_preconfiguration(ngx_conf_t *cf);
@@ -209,6 +210,7 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     {
 
     dTHXa(pmcf->perl);
+    PERL_SET_CONTEXT(pmcf->perl);
 
     if (ctx->next == NULL) {
         plcf = ngx_http_get_module_loc_conf(r, ngx_http_perl_module);
@@ -221,7 +223,8 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
         ctx->next = NULL;
     }
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, sub, NULL, handler, NULL);
+    rc = ngx_http_perl_call_handler(aTHX_ r, pmcf->nginx, sub, NULL, handler,
+                                    NULL);
 
     }
 
@@ -293,8 +296,9 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     {
 
     dTHXa(pmcf->perl);
+    PERL_SET_CONTEXT(pmcf->perl);
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, pv->sub, NULL,
+    rc = ngx_http_perl_call_handler(aTHX_ r, pmcf->nginx, pv->sub, NULL,
                                     &pv->handler, &value);
 
     }
@@ -356,6 +360,7 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
     {
 
     dTHXa(pmcf->perl);
+    PERL_SET_CONTEXT(pmcf->perl);
 
 #if 0
 
@@ -377,7 +382,8 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     sv = newSVpvn((char *) handler->data, handler->len);
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, sv, &params[NGX_HTTP_PERL_SSI_ARG],
+    rc = ngx_http_perl_call_handler(aTHX_ r, pmcf->nginx, sv,
+                                    &params[NGX_HTTP_PERL_SSI_ARG],
                                     handler, NULL);
 
     SvREFCNT_dec(sv);
@@ -448,6 +454,8 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
         return NGX_CONF_ERROR;
     }
 
+    pmcf->nginx = nginx_stash;
+
 #if (NGX_HAVE_PERL_MULTIPLICITY)
 
     cln->handler = ngx_http_perl_cleanup_perl;
@@ -481,11 +489,12 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
         return NULL;
     }
 
-    perl_construct(perl);
-
     {
 
     dTHXa(perl);
+    PERL_SET_CONTEXT(perl);
+
+    perl_construct(perl);
 
 #ifdef PERL_EXIT_DESTRUCT_END
     PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
@@ -574,7 +583,7 @@ ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 
 
 static ngx_int_t
-ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, SV *sub,
+ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
     ngx_str_t **args, ngx_str_t *handler, ngx_str_t *rv)
 {
     SV          *sv;
@@ -593,7 +602,7 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, SV *sub,
 
     PUSHMARK(sp);
 
-    sv = sv_2mortal(sv_bless(newRV_noinc(newSViv(PTR2IV(r))), nginx_stash));
+    sv = sv_2mortal(sv_bless(newRV_noinc(newSViv(PTR2IV(r))), nginx));
     XPUSHs(sv);
 
     if (args) {
@@ -734,6 +743,8 @@ ngx_http_perl_cleanup_perl(void *data)
 {
     PerlInterpreter  *perl = data;
 
+    PERL_SET_CONTEXT(perl);
+
     (void) perl_destruct(perl);
 
     perl_free(perl);
@@ -750,6 +761,7 @@ ngx_http_perl_cleanup_sv(void *data)
     ngx_http_perl_cleanup_t  *cln = data;
 
     dTHXa(cln->perl);
+    PERL_SET_CONTEXT(cln->perl);
 
     SvREFCNT_dec(cln->sv);
 }
@@ -876,6 +888,7 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     {
 
     dTHXa(pmcf->perl);
+    PERL_SET_CONTEXT(pmcf->perl);
 
     ngx_http_perl_eval_anon_sub(aTHX_ &value[1], &plcf->sub);
 
@@ -958,6 +971,7 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     {
 
     dTHXa(pmcf->perl);
+    PERL_SET_CONTEXT(pmcf->perl);
 
     ngx_http_perl_eval_anon_sub(aTHX_ &value[2], &pv->sub);
 
