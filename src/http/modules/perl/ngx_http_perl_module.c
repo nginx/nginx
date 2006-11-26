@@ -694,6 +694,9 @@ ngx_http_perl_eval_anon_sub(pTHX_ ngx_str_t *handler, SV **sv)
 
     if (ngx_strncmp(p, "sub ", 4) == 0 || ngx_strncmp(p, "use ", 4) == 0) {
         *sv = eval_pv((char *) p, FALSE);
+
+        /* eval_pv() does not set ERRSV on failure */
+
         return;
     }
 
