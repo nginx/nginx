@@ -11,11 +11,6 @@
 
 
 typedef struct {
-    PerlInterpreter  **free_perls;
-    ngx_uint_t         interp;
-    ngx_uint_t         nalloc;
-    ngx_uint_t         interp_max;
-
     PerlInterpreter   *perl;
     ngx_str_t          modules;
     ngx_array_t        requires;
@@ -45,12 +40,6 @@ static ngx_int_t ngx_http_perl_ssi(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ssi_ctx, ngx_str_t **params);
 #endif
 
-static ngx_int_t
-    ngx_http_perl_get_interpreter(ngx_http_perl_main_conf_t *pmcf,
-    PerlInterpreter **perl, ngx_log_t *log);
-static ngx_inline void
-    ngx_http_perl_free_interpreter(ngx_http_perl_main_conf_t *pmcf,
-    PerlInterpreter *perl);
 static char *ngx_http_perl_init_interpreter(ngx_conf_t *cf,
     ngx_http_perl_main_conf_t *pmcf);
 static PerlInterpreter *
@@ -72,16 +61,11 @@ static char *ngx_http_perl_require(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_perl_interp_max_unsupported(ngx_conf_t *cf, void *post,
-    void *data);
-#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
-static void ngx_http_perl_cleanup_perl(void *data);
-#endif
 static void ngx_http_perl_cleanup_sv(void *data);
 
-
-static ngx_conf_post_handler_pt  ngx_http_perl_interp_max_p =
-    ngx_http_perl_interp_max_unsupported;
+#if (NGX_HAVE_PERL_MULTIPLICITY)
+static void ngx_http_perl_cleanup_perl(void *data);
+#endif
 
 
 static ngx_command_t  ngx_http_perl_commands[] = {
@@ -99,13 +83,6 @@ static ngx_command_t  ngx_http_perl_commands[] = {
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
-
-    { ngx_string("perl_interp_max"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_HTTP_MAIN_CONF_OFFSET,
-      offsetof(ngx_http_perl_main_conf_t, interp_max),
-      &ngx_http_perl_interp_max_p },
 
     { ngx_string("perl"),
       NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -229,16 +206,9 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
 
     pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
 
-    rc = ngx_http_perl_get_interpreter(pmcf, &ctx->perl, r->connection->log);
-
-    if (rc != NGX_OK) {
-        ngx_http_finalize_request(r, rc);
-        return;
-    }
-
     {
 
-    dTHXa(ctx->perl);
+    dTHXa(pmcf->perl);
 
     if (ctx->next == NULL) {
         plcf = ngx_http_get_module_loc_conf(r, ngx_http_perl_module);
@@ -254,8 +224,6 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     rc = ngx_http_perl_call_handler(aTHX_ r, sub, NULL, handler, NULL);
 
     }
-
-    ngx_http_perl_free_interpreter(pmcf, ctx->perl);
 
     if (rc > 600) {
         rc = NGX_OK;
@@ -300,7 +268,6 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ngx_http_perl_variable_t *pv = (ngx_http_perl_variable_t *) data;
 
     ngx_int_t                   rc;
-    ngx_uint_t                  recursive;
     ngx_str_t                   value;
     ngx_http_perl_ctx_t        *ctx;
     ngx_http_perl_main_conf_t  *pmcf;
@@ -317,36 +284,19 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         }
 
         ngx_http_set_ctx(r, ctx, ngx_http_perl_module);
-
-        pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
-
-        rc = ngx_http_perl_get_interpreter(pmcf, &ctx->perl,
-                                           r->connection->log);
-
-        if (rc != NGX_OK) {
-            return rc;
-        }
-
-        recursive = 0;
-
-    } else {
-        pmcf = NULL;
-        recursive = 1;
     }
+
+    pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
 
     value.data = NULL;
 
     {
 
-    dTHXa(ctx->perl);
+    dTHXa(pmcf->perl);
 
     rc = ngx_http_perl_call_handler(aTHX_ r, pv->sub, NULL,
                                     &pv->handler, &value);
 
-    }
-
-    if (recursive == 0) {
-        ngx_http_perl_free_interpreter(pmcf, ctx->perl);
     }
 
     if (value.data) {
@@ -385,8 +335,6 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "perl ssi handler");
 
-    pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
-
     ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
 
     if (ctx == NULL) {
@@ -398,11 +346,7 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
         ngx_http_set_ctx(r, ctx, ngx_http_perl_module);
     }
 
-    rc = ngx_http_perl_get_interpreter(pmcf, &ctx->perl, r->connection->log);
-
-    if (rc != NGX_OK) {
-        return rc;
-    }
+    pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
 
     ctx->ssi = ssi_ctx;
 
@@ -411,7 +355,7 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     {
 
-    dTHXa(ctx->perl);
+    dTHXa(pmcf->perl);
 
 #if 0
 
@@ -440,8 +384,6 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     }
 
-    ngx_http_perl_free_interpreter(pmcf, ctx->perl);
-
     ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
     ctx->ssi = NULL;
@@ -454,46 +396,10 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 #endif
 
 
-static ngx_int_t
-ngx_http_perl_get_interpreter(ngx_http_perl_main_conf_t *pmcf,
-    PerlInterpreter **perl, ngx_log_t *log)
-{
-    if (pmcf->interp) {
-        pmcf->interp--;
-
-        *perl = pmcf->free_perls[pmcf->interp];
-
-        return NGX_OK;
-    }
-
-    if (pmcf->nalloc < pmcf->interp_max) {
-        *perl = ngx_http_perl_create_interpreter(pmcf, log);
-
-        if (*perl) {
-            return NGX_OK;
-        }
-
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    ngx_log_error(NGX_LOG_ALERT, log, 0, "no free perl interpreter");
-
-    return NGX_HTTP_SERVICE_UNAVAILABLE;
-}
-
-
-static ngx_inline void
-ngx_http_perl_free_interpreter(ngx_http_perl_main_conf_t *pmcf,
-    PerlInterpreter *perl)
-{
-    pmcf->free_perls[pmcf->interp++] = perl;
-}
-
-
 static char *
 ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 {
-#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
+#if (NGX_HAVE_PERL_MULTIPLICITY)
     ngx_pool_cleanup_t       *cln;
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
@@ -517,7 +423,7 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
         }
     }
 
-#if !(NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
+#if !(NGX_HAVE_PERL_MULTIPLICITY)
 
     if (perl) {
         if (ngx_http_perl_run_requires(aTHX_ &pmcf->requires, cf->log)
@@ -542,7 +448,7 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
         return NGX_CONF_ERROR;
     }
 
-#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
+#if (NGX_HAVE_PERL_MULTIPLICITY)
 
     cln->handler = ngx_http_perl_cleanup_perl;
     cln->data = pmcf->perl;
@@ -568,32 +474,6 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
     PerlInterpreter   *perl;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "create perl interpreter");
-
-#if (NGX_HAVE_PERL_CLONE)
-
-    if (pmcf->perl) {
-
-        perl = perl_clone(pmcf->perl, CLONEf_KEEP_PTR_TABLE);
-        if (perl == NULL) {
-            ngx_log_error(NGX_LOG_ALERT, log, 0, "perl_clone() failed");
-            return NULL;
-        }
-
-        {
-
-        dTHXa(perl);
-
-        ptr_table_free(PL_ptr_table);
-        PL_ptr_table = NULL;
-
-        }
-
-        pmcf->nalloc++;
-
-        return perl;
-    }
-
-#endif
 
     perl = perl_alloc();
     if (perl == NULL) {
@@ -648,8 +528,6 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
     }
 
     }
-
-    pmcf->nalloc++;
 
     return perl;
 
@@ -824,8 +702,6 @@ ngx_http_perl_create_main_conf(ngx_conf_t *cf)
         return NGX_CONF_ERROR;
     }
 
-    pmcf->interp_max = NGX_CONF_UNSET_UINT;
-
     if (ngx_array_init(&pmcf->requires, cf->pool, 1, sizeof(u_char *))
         != NGX_OK)
     {
@@ -841,33 +717,17 @@ ngx_http_perl_init_main_conf(ngx_conf_t *cf, void *conf)
 {
     ngx_http_perl_main_conf_t *pmcf = conf;
 
-#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
-    ngx_conf_init_uint_value(pmcf->interp_max, 10);
-#else
-    ngx_conf_init_uint_value(pmcf->interp_max, 1);
-#endif
-
-    pmcf->free_perls = ngx_pcalloc(cf->pool,
-                                  pmcf->interp_max * sizeof(PerlInterpreter *));
-    if (pmcf->free_perls == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
     if (pmcf->perl == NULL) {
         if (ngx_http_perl_init_interpreter(cf, pmcf) != NGX_CONF_OK) {
             return NGX_CONF_ERROR;
         }
     }
 
-#if !(NGX_HAVE_PERL_CLONE)
-    ngx_http_perl_free_interpreter(pmcf, pmcf->perl);
-#endif
-
     return NGX_CONF_OK;
 }
 
 
-#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
+#if (NGX_HAVE_PERL_MULTIPLICITY)
 
 static void
 ngx_http_perl_cleanup_perl(void *data)
@@ -1122,20 +982,4 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     v->data = (uintptr_t) pv;
 
     return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_http_perl_interp_max_unsupported(ngx_conf_t *cf, void *post, void *data)
-{
-#if (NGX_HAVE_PERL_CLONE || NGX_HAVE_PERL_MULTIPLICITY)
-
-    return NGX_CONF_OK;
-
-#else
-
-    return "to use perl_interp_max you have to build perl with "
-           "-Dusemultiplicity or -Dusethreads options";
-
-#endif
 }

@@ -36,11 +36,7 @@ if test -n "$NGX_PERL_VER"; then
         echo " + perl interpreter multiplicity found"
     fi
 
-    if $NGX_PERL -V:useithreads | grep define > /dev/null; then
-        have=NGX_HAVE_PERL_CLONE . auto/have
-        echo " + perl_clone() found"
-
-    else
+    if $NGX_PERL -V:useithreads | grep undef > /dev/null; then
         # FreeBSD port wants to link with -pthread non-threaded perl
         ngx_perl_ldopts=`echo $ngx_perl_ldopts | sed 's/ -pthread//'`
     fi
