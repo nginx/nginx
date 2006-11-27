@@ -9,23 +9,119 @@
 <title lang="en">nginx changelog</title>
 
 
-<changes ver="0.4.13" date="15.11.2006">
+<changes ver="0.4.14" date="27.11.2006">
 
 <change type="feature">
 <para lang="ru">
-директиву proxy_pass можно использовать внутри блока limit_expect.
+директива proxy_pass_error_message в IMAP/POP3 прокси.
 </para>
 <para lang="en">
-the "proxy_pass" directive may be used inside the "limit_expect" block.
+the "proxy_pass_error_message" directive in IMAP/POP3 proxy.
 </para>
 </change>
 
 <change type="feature">
 <para lang="ru">
-директива limit_expect поддерживает все WebDAV методы.
+теперь configure определяет библиотеку PCRE на FreeBSD, Linux и NetBSD.
 </para>
 <para lang="en">
-the "limit_expect" directive supports all WebDAV methods.
+now configure detects system PCRE library on FreeBSD, Linux, and NetBSD.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ngx_http_perl_module не работал с перлом, собранным с поддержкой потоков;
+ошибка появилась в 0.3.38.
+</para>
+<para lang="en">
+ngx_http_perl_module did not work with perl built with the threads support;
+bug appeared in 0.3.38.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ngx_http_perl_module не работал корректно, если перл вызывался рекурсивно.
+</para>
+<para lang="en">
+ngx_http_perl_module did not work if perl was called recursively.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx игнорировал имя сервера в строке запроса.
+</para>
+<para lang="en">
+nginx ignored a host name in an request line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если FastCGI сервер передавал много в stderr,
+то рабочий процесс мог зациклиться.
+</para>
+<para lang="en">
+a worker process may got caught in an endless loop,
+if a FastCGI server sent too many data to the stderr.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при изменении системного времени переменная $upstream_response_time
+могла быть отрицательной.
+</para>
+<para lang="en">
+the $upstream_response_time variable may be negative if the system time
+was changed backward.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании POP3 серверу аутентификации IMAP/POP3 прокси
+не передавался параметр Auth-Login-Attempt.
+</para>
+<para lang="en">
+the "Auth-Login-Attempt" parameter was not sent to
+IMAP/POP3 proxy authentication server when POP3 was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при ошибке соединения с сервером аутентификации IMAP/POP3 прокси
+мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur if connect to IMAP/POP3 proxy
+authentication server failed.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.4.13" date="15.11.2006">
+
+<change type="feature">
+<para lang="ru">
+директиву proxy_pass можно использовать внутри блока limit_except.
+</para>
+<para lang="en">
+the "proxy_pass" directive may be used inside the "limit_except" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива limit_except поддерживает все WebDAV методы.
+</para>
+<para lang="en">
+the "limit_except" directive supports all WebDAV methods.
 </para>
 </change>
 
