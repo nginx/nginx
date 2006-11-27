@@ -47,6 +47,7 @@ else
             ngx_feature_name="NGX_OPENSSL"
             ngx_feature_run=no
             ngx_feature_incs="#include <openssl/ssl.h>"
+            ngx_feature_path=
             ngx_feature_libs="-lssl -lcrypto"
             ngx_feature_test="SSL_library_init()"
             . auto/feature

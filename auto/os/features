@@ -30,6 +30,7 @@ ngx_feature="poll()"
 ngx_feature_name=
 ngx_feature_run=no
 ngx_feature_incs="#include <poll.h>"
+ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="int  n, dp; struct pollfd  pl;
                   dp = 0;
@@ -48,6 +49,7 @@ ngx_feature="/dev/poll"
 ngx_feature_name="NGX_HAVE_DEVPOLL"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/devpoll.h>"
+ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="int  n, dp; struct dvpoll  dvp;
                   dp = 0;
@@ -69,6 +71,7 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
     ngx_feature_name="NGX_HAVE_KQUEUE"
     ngx_feature_run=no
     ngx_feature_incs="#include <sys/event.h>"
+    ngx_feature_path=
     ngx_feature_libs=
     ngx_feature_test="int kq; kq = kqueue()"
     . auto/feature
@@ -84,6 +87,7 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
         ngx_feature_name="NGX_HAVE_LOWAT_EVENT"
         ngx_feature_run=no
         ngx_feature_incs="#include <sys/event.h>"
+        ngx_feature_path=
         ngx_feature_libs=
         ngx_feature_test="struct kevent  kev;
                           kev.fflags = NOTE_LOWAT;"
@@ -95,6 +99,7 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
         ngx_feature_run=yes
         ngx_feature_incs="#include <sys/event.h>
 #include <sys/time.h>"
+        ngx_feature_path=
         ngx_feature_libs=
         ngx_feature_test="int      kq;
                   struct kevent    kev;
@@ -126,6 +131,7 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
             ngx_feature_run=bug
             ngx_feature_incs="#include <sys/event.h>
 #include <sys/time.h>"
+            ngx_feature_path=
             ngx_feature_libs=
             ngx_feature_test="int  kq;
                   struct kevent    kev;
@@ -174,6 +180,7 @@ ngx_feature="crypt()"
 ngx_feature_name=
 ngx_feature_run=no
 ngx_feature_incs=
+ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="crypt(\"test\", \"salt\");"
 . auto/feature
@@ -182,6 +189,10 @@ ngx_feature_test="crypt(\"test\", \"salt\");"
 if [ $ngx_found = no ]; then
 
     ngx_feature="crypt() in libcrypt"
+    ngx_feature_name=
+    ngx_feature_run=no
+    ngx_feature_incs=
+    ngx_feature_path=
     ngx_feature_libs=-lcrypt
     . auto/feature
 

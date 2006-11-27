@@ -53,6 +53,7 @@ else
         ngx_feature_name=
         ngx_feature_run=no
         ngx_feature_incs="#include <md5.h>"
+        ngx_feature_path=
         ngx_feature_libs="-lmd5"
         ngx_feature_test="MD5_CTX md5; MD5Init(&md5)"
         . auto/feature
@@ -70,6 +71,7 @@ else
             ngx_feature_name=
             ngx_feature_run=no
             ngx_feature_incs="#include <md5.h>"
+            ngx_feature_path=
             ngx_feature_libs="-lmd"
             ngx_feature_test="MD5_CTX md5; MD5Init(&md5)"
             . auto/feature
@@ -85,15 +87,16 @@ else
         else
             if [ $MD5 = NO ]; then
 
-               # OpenSSL crypto library
+                # OpenSSL crypto library
 
-               ngx_feature="OpenSSL md5 crypto library"
-               ngx_feature_name="NGX_OPENSSL_MD5"
-               ngx_feature_run=no
-               ngx_feature_incs="#include <openssl/md5.h>"
-               ngx_feature_libs="-lcrypto"
-               ngx_feature_test="MD5_CTX md5; MD5_Init(&md5)"
-               . auto/feature
+                ngx_feature="OpenSSL md5 crypto library"
+                ngx_feature_name="NGX_OPENSSL_MD5"
+                ngx_feature_run=no
+                ngx_feature_incs="#include <openssl/md5.h>"
+                ngx_feature_path=
+                ngx_feature_libs="-lcrypto"
+                ngx_feature_test="MD5_CTX md5; MD5_Init(&md5)"
+                . auto/feature
             fi
         fi
 

@@ -64,13 +64,11 @@ else
     if [ "$NGX_PLATFORM" != win32 ]; then
         PCRE=NO
 
-        # FreeBSD PCRE port requires --with-cc-opt="-I /usr/local/include"
-        #                            --with-ld-opt="-L /usr/local/lib"
-
         ngx_feature="PCRE library"
         ngx_feature_name="NGX_PCRE"
         ngx_feature_run=no
         ngx_feature_incs="#include <pcre.h>"
+        ngx_feature_path=
         ngx_feature_libs="-lpcre"
         ngx_feature_test="pcre *re; re = pcre_compile(NULL, 0, NULL, 0, NULL)"
         . auto/feature
@@ -81,6 +79,73 @@ else
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             PCRE=YES
             ngx_found=no
+
+        else
+            # FreeBSD port
+
+            ngx_feature="PCRE library in /usr/local/"
+            ngx_feature_name="NGX_PCRE"
+            ngx_feature_run=no
+            ngx_feature_incs="#include <pcre.h>"
+            ngx_feature_path="/usr/local/include"
+            ngx_feature_libs="-L /usr/local/lib -lpcre"
+            ngx_feature_test="pcre *re;
+                              re = pcre_compile(NULL, 0, NULL, 0, NULL)"
+            . auto/feature
         fi
+
+        if [ $ngx_found = yes ]; then
+            CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
+            CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
+            CORE_INCS="$CORE_INCS $ngx_feature_path"
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+            PCRE=YES
+            ngx_found=no
+
+        else
+            # Linux package
+
+            ngx_feature="PCRE library in /usr/include/pcre/"
+            ngx_feature_name="NGX_PCRE"
+            ngx_feature_run=no
+            ngx_feature_incs="#include <pcre.h>"
+            ngx_feature_path="/usr/include/pcre"
+            ngx_feature_libs="-lpcre"
+            ngx_feature_test="pcre *re;
+                              re = pcre_compile(NULL, 0, NULL, 0, NULL)"
+            . auto/feature
+        fi
+
+        if [ $ngx_found = yes ]; then
+            CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
+            CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
+            CORE_INCS="$CORE_INCS $ngx_feature_path"
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+            PCRE=YES
+            ngx_found=no
+
+        else
+            # NetBSD port
+
+            ngx_feature="PCRE library in /usr/pkg/"
+            ngx_feature_name="NGX_PCRE"
+            ngx_feature_run=no
+            ngx_feature_incs="#include <pcre.h>"
+            ngx_feature_path="/usr/pkg/include"
+            ngx_feature_libs="-L /usr/pkg/lib -lpcre"
+            ngx_feature_test="pcre *re;
+                              re = pcre_compile(NULL, 0, NULL, 0, NULL)"
+            . auto/feature
+        fi
+
+        if [ $ngx_found = yes ]; then
+            CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
+            CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
+            CORE_INCS="$CORE_INCS $ngx_feature_path"
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+            PCRE=YES
+            ngx_found=no
+        fi
+
     fi
 fi

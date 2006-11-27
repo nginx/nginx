@@ -40,6 +40,7 @@ ngx_feature="epoll"
 ngx_feature_name="NGX_HAVE_EPOLL"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/epoll.h>"
+ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="int efd = 0, fd = 1, n;
                   struct epoll_event ee;
@@ -65,6 +66,7 @@ ngx_feature_name="NGX_HAVE_SENDFILE"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/sendfile.h>
 #include <errno.h>"
+ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="int s = 0, fd = 1;
                   ssize_t n; off_t off = 0;
@@ -85,6 +87,7 @@ ngx_feature_name="NGX_HAVE_SENDFILE64"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/sendfile.h>
 #include <errno.h>"
+ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="int s = 0, fd = 1;
                   ssize_t n; off_t off = 0;
@@ -101,6 +104,7 @@ ngx_feature="prctl(PR_SET_DUMPABLE)"
 ngx_feature_name="NGX_HAVE_PR_SET_DUMPABLE"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/prctl.h>"
+ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) return 1"
 . auto/feature
@@ -112,6 +116,7 @@ ngx_feature="sched_setaffinity()"
 ngx_feature_name="NGX_HAVE_SCHED_SETAFFINITY"
 ngx_feature_run=no
 ngx_feature_incs="#include <sched.h>"
+ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="long mask = 0;
                   sched_setaffinity(0, 32, (cpu_set_t *) &mask)"

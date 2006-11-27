@@ -18,6 +18,10 @@ if test -n "$ngx_feature_name"; then
                    | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
 fi
 
+if test -n "$ngx_feature_path"; then
+    ngx_feature_inc_path="-I $ngx_feature_path"
+fi
+
 cat << END > $NGX_AUTOTEST.c
 
 #include <sys/types.h>
@@ -32,8 +36,10 @@ int main() {
 END
 
 
-ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
+ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS $ngx_feature_inc_path \
           -o $NGX_AUTOTEST $NGX_AUTOTEST.c $NGX_LD_OPT $ngx_feature_libs"
+
+ngx_feature_inc_path=
 
 eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
 

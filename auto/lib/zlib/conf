@@ -47,6 +47,7 @@ else
         ngx_feature_name=
         ngx_feature_run=no
         ngx_feature_incs="#include <zlib.h>"
+        ngx_feature_path=
         ngx_feature_libs="-lz"
         ngx_feature_test="z_stream z; deflate(&z, Z_NO_FLUSH)"
         . auto/feature

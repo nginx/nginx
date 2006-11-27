@@ -43,6 +43,7 @@ else
         ngx_feature_name=
         ngx_feature_run=no
         ngx_feature_incs="#include <sha.h>"
+        ngx_feature_path=
         ngx_feature_libs="-lmd"
         ngx_feature_test="SHA_CTX sha1; SHA1_Init(&sha1)"
         . auto/feature
@@ -57,15 +58,16 @@ else
         else
             if [ $SHA1 = NO ]; then
 
-               # OpenSSL crypto library
+                # OpenSSL crypto library
 
-               ngx_feature="OpenSSL sha1 crypto library"
-               ngx_feature_name=
-               ngx_feature_run=no
-               ngx_feature_incs="#include <openssl/sha.h>"
-               ngx_feature_libs="-lcrypto"
-               ngx_feature_test="SHA_CTX sha1; SHA1_Init(&sha1)"
-               . auto/feature
+                ngx_feature="OpenSSL sha1 crypto library"
+                ngx_feature_name=
+                ngx_feature_run=no
+                ngx_feature_incs="#include <openssl/sha.h>"
+                ngx_feature_path=
+                ngx_feature_libs="-lcrypto"
+                ngx_feature_test="SHA_CTX sha1; SHA1_Init(&sha1)"
+                . auto/feature
             fi
         fi
 
