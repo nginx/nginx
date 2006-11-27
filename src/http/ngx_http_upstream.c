@@ -70,15 +70,6 @@ static ngx_int_t ngx_http_upstream_copy_content_encoding(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 #endif
 
-static size_t ngx_http_upstream_log_status_getlen(ngx_http_request_t *r,
-    uintptr_t data);
-static u_char *ngx_http_upstream_log_status(ngx_http_request_t *r,
-    u_char *buf, ngx_http_log_op_t *op);
-static size_t ngx_http_upstream_log_response_time_getlen(ngx_http_request_t *r,
-    uintptr_t data);
-static u_char *ngx_http_upstream_log_response_time(ngx_http_request_t *r,
-    u_char *buf, ngx_http_log_op_t *op);
-
 static ngx_int_t ngx_http_upstream_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_http_upstream_status_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -262,17 +253,6 @@ ngx_module_t  ngx_http_upstream_module = {
     NULL,                                  /* exit process */
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
-};
-
-
-static ngx_http_log_op_name_t  ngx_http_upstream_log_fmt_ops[] = {
-    { ngx_string("upstream_status"), 0, NULL,
-                                    ngx_http_upstream_log_status_getlen,
-                                    ngx_http_upstream_log_status },
-    { ngx_string("upstream_response_time"), 0, NULL,
-                                    ngx_http_upstream_log_response_time_getlen,
-                                    ngx_http_upstream_log_response_time },
-    { ngx_null_string, 0, NULL, NULL, NULL }
 };
 
 
@@ -2481,108 +2461,10 @@ ngx_http_upstream_copy_content_encoding(ngx_http_request_t *r,
 #endif
 
 
-static size_t
-ngx_http_upstream_log_status_getlen(ngx_http_request_t *r, uintptr_t data)
-{
-    if (r->upstream) {
-        return r->upstream->states.nelts * (3 + 2);
-    }
-
-    return 1;
-}
-
-
-static u_char *
-ngx_http_upstream_log_status(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op)
-{
-    ngx_uint_t                  i;
-    ngx_http_upstream_t        *u;
-    ngx_http_upstream_state_t  *state;
-
-    u = r->upstream;
-
-    if (u == NULL || u->states.nelts == 0) {
-        *buf = '-';
-        return buf + 1;
-    }
-
-    i = 0;
-    state = u->states.elts;
-
-    for ( ;; ) {
-        if (state[i].status == 0) {
-            *buf++ = '-';
-
-        } else {
-            buf = ngx_sprintf(buf, "%ui", state[i].status);
-        }
-
-        if (++i == u->states.nelts) {
-            return buf;
-        }
-
-        *buf++ = ',';
-        *buf++ = ' ';
-    }
-}
-
-
-static size_t
-ngx_http_upstream_log_response_time_getlen(ngx_http_request_t *r,
-    uintptr_t data)
-{
-    if (r->upstream) {
-        return r->upstream->states.nelts * (NGX_TIME_T_LEN + 4 + 2);
-    }
-
-    return 1;
-}
-
-
-static u_char *
-ngx_http_upstream_log_response_time(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op)
-{
-    ngx_uint_t                  i;
-    ngx_http_upstream_t        *u;
-    ngx_http_upstream_state_t  *state;
-
-    u = r->upstream;
-
-    if (u == NULL || u->states.nelts == 0) {
-        *buf = '-';
-        return buf + 1;
-    }
-
-    i = 0;
-    state = u->states.elts;
-
-    for ( ;; ) {
-        if (state[i].status == 0) {
-            *buf++ = '-';
-
-        } else {
-            buf = ngx_sprintf(buf, "%d.%03d",
-                               state[i].response_time / 1000,
-                               state[i].response_time % 1000);
-        }
-
-        if (++i == u->states.nelts) {
-            return buf;
-        }
-
-        *buf++ = ',';
-        *buf++ = ' ';
-    }
-}
-
-
 static ngx_int_t
 ngx_http_upstream_add_variables(ngx_conf_t *cf)
 {
-    ngx_http_variable_t     *var, *v;
-    ngx_http_log_op_name_t  *op;
+    ngx_http_variable_t  *var, *v;
 
     for (v = ngx_http_upstream_vars; v->name.len; v++) {
         var = ngx_http_add_variable(cf, &v->name, v->flags);
@@ -2593,17 +2475,6 @@ ngx_http_upstream_add_variables(ngx_conf_t *cf)
         var->get_handler = v->get_handler;
         var->data = v->data;
     }
-
-    for (op = ngx_http_upstream_log_fmt_ops; op->name.len; op++) { /* void */ }
-    op->run = NULL;
-
-    for (op = ngx_http_log_fmt_ops; op->run; op++) {
-        if (op->name.len == 0) {
-            op = (ngx_http_log_op_name_t *) op->run;
-        }
-    }
-
-    op->run = (ngx_http_log_op_run_pt) ngx_http_upstream_log_fmt_ops;
 
     return NGX_OK;
 }

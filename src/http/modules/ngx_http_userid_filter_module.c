@@ -46,15 +46,6 @@ static void ngx_http_userid_get_uid(ngx_http_request_t *r,
 static ngx_int_t ngx_http_userid_set_uid(ngx_http_request_t *r,
     ngx_http_userid_ctx_t *ctx, ngx_http_userid_conf_t *conf);
 
-static size_t ngx_http_userid_log_uid_got_getlen(ngx_http_request_t *r,
-    uintptr_t data);
-static u_char *ngx_http_userid_log_uid_got(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op);
-static size_t ngx_http_userid_log_uid_set_getlen(ngx_http_request_t *r,
-    uintptr_t data);
-static u_char *ngx_http_userid_log_uid_set(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op);
-
 static ngx_int_t ngx_http_userid_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_http_userid_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -188,17 +179,6 @@ ngx_module_t  ngx_http_userid_filter_module = {
     NULL,                                  /* exit process */
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
-};
-
-
-static ngx_http_log_op_name_t ngx_http_userid_log_fmt_ops[] = {
-    { ngx_string("uid_got"), 0, NULL,
-                                ngx_http_userid_log_uid_got_getlen,
-                                ngx_http_userid_log_uid_got },
-    { ngx_string("uid_set"), 0, NULL,
-                                ngx_http_userid_log_uid_set_getlen,
-                                ngx_http_userid_log_uid_set },
-    { ngx_null_string, 0, NULL, NULL, NULL }
 };
 
 
@@ -462,99 +442,10 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
 }
 
 
-static size_t
-ngx_http_userid_log_uid_got_getlen(ngx_http_request_t *r, uintptr_t data)
-{
-    ngx_http_userid_ctx_t   *ctx;
-    ngx_http_userid_conf_t  *conf;
-
-    ctx = ngx_http_get_module_ctx(r, ngx_http_userid_filter_module);
-
-    if (ctx == NULL || ctx->uid_got[3] == 0) {
-        return 1;
-    }
-
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_userid_filter_module);
-
-    return conf->name.len + 1 + 32;
-}
-
-
-static u_char *
-ngx_http_userid_log_uid_got(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op)
-{
-    ngx_http_userid_ctx_t   *ctx;
-    ngx_http_userid_conf_t  *conf;
-
-    ctx = ngx_http_get_module_ctx(r, ngx_http_userid_filter_module);
-
-    if (ctx == NULL || ctx->uid_got[3] == 0) {
-        *buf = '-';
-        return buf + 1;
-    }
-
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_userid_filter_module);
-
-    buf = ngx_copy(buf, conf->name.data, conf->name.len);
-
-    *buf++ = '=';
-
-    return ngx_sprintf(buf, "%08XD%08XD%08XD%08XD",
-                       ctx->uid_got[0], ctx->uid_got[1],
-                       ctx->uid_got[2], ctx->uid_got[3]);
-}
-
-
-static size_t
-ngx_http_userid_log_uid_set_getlen(ngx_http_request_t *r, uintptr_t data)
-{
-    ngx_http_userid_ctx_t   *ctx;
-    ngx_http_userid_conf_t  *conf;
-
-    ctx = ngx_http_get_module_ctx(r, ngx_http_userid_filter_module);
-
-    if (ctx == NULL || ctx->uid_set[3] == 0) {
-        return 1;
-    }
-
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_userid_filter_module);
-
-    return conf->name.len + 1 + 32;
-}
-
-
-static u_char *
-ngx_http_userid_log_uid_set(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op)
-{
-    ngx_http_userid_ctx_t   *ctx;
-    ngx_http_userid_conf_t  *conf;
-
-    ctx = ngx_http_get_module_ctx(r, ngx_http_userid_filter_module);
-
-    if (ctx == NULL || ctx->uid_set[3] == 0) {
-        *buf = '-';
-        return buf + 1;
-    }
-
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_userid_filter_module);
-
-    buf = ngx_copy(buf, conf->name.data, conf->name.len);
-
-    *buf++ = '=';
-
-    return ngx_sprintf(buf, "%08XD%08XD%08XD%08XD",
-                       ctx->uid_set[0], ctx->uid_set[1],
-                       ctx->uid_set[2], ctx->uid_set[3]);
-}
-
-
 static ngx_int_t
 ngx_http_userid_add_variables(ngx_conf_t *cf)
 {
-    ngx_http_variable_t     *var;
-    ngx_http_log_op_name_t  *op;
+    ngx_http_variable_t  *var;
 
     var = ngx_http_add_variable(cf, &ngx_http_userid_got, NGX_HTTP_VAR_NOHASH);
     if (var == NULL) {
@@ -571,18 +462,6 @@ ngx_http_userid_add_variables(ngx_conf_t *cf)
 
     var->get_handler = ngx_http_userid_variable;
     var->data = offsetof(ngx_http_userid_ctx_t, uid_set);
-
-
-    for (op = ngx_http_userid_log_fmt_ops; op->name.len; op++) { /* void */ }
-    op->run = NULL;
-
-    for (op = ngx_http_log_fmt_ops; op->run; op++) {
-        if (op->name.len == 0) {
-            op = (ngx_http_log_op_name_t *) op->run;
-        }
-    }
-
-    op->run = (ngx_http_log_op_run_pt) ngx_http_userid_log_fmt_ops;
 
     return NGX_OK;
 }
