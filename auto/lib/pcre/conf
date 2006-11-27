@@ -105,15 +105,18 @@ else
         else
             # Linux package
 
-            ngx_feature="PCRE library in /usr/include/pcre/"
-            ngx_feature_name="NGX_PCRE"
-            ngx_feature_run=no
-            ngx_feature_incs="#include <pcre.h>"
-            ngx_feature_path="/usr/include/pcre"
-            ngx_feature_libs="-lpcre"
-            ngx_feature_test="pcre *re;
-                              re = pcre_compile(NULL, 0, NULL, 0, NULL)"
-            . auto/feature
+            if [ $PCRE = NO ]; then
+
+                ngx_feature="PCRE library in /usr/include/pcre/"
+                ngx_feature_name="NGX_PCRE"
+                ngx_feature_run=no
+                ngx_feature_incs="#include <pcre.h>"
+                ngx_feature_path="/usr/include/pcre"
+                ngx_feature_libs="-lpcre"
+                ngx_feature_test="pcre *re;
+                                  re = pcre_compile(NULL, 0, NULL, 0, NULL)"
+                . auto/feature
+            fi
         fi
 
         if [ $ngx_found = yes ]; then
@@ -127,15 +130,18 @@ else
         else
             # NetBSD port
 
-            ngx_feature="PCRE library in /usr/pkg/"
-            ngx_feature_name="NGX_PCRE"
-            ngx_feature_run=no
-            ngx_feature_incs="#include <pcre.h>"
-            ngx_feature_path="/usr/pkg/include"
-            ngx_feature_libs="-L /usr/pkg/lib -lpcre"
-            ngx_feature_test="pcre *re;
-                              re = pcre_compile(NULL, 0, NULL, 0, NULL)"
-            . auto/feature
+            if [ $PCRE = NO ]; then
+
+                ngx_feature="PCRE library in /usr/pkg/"
+                ngx_feature_name="NGX_PCRE"
+                ngx_feature_run=no
+                ngx_feature_incs="#include <pcre.h>"
+                ngx_feature_path="/usr/pkg/include"
+                ngx_feature_libs="-L /usr/pkg/lib -lpcre"
+                ngx_feature_test="pcre *re;
+                                  re = pcre_compile(NULL, 0, NULL, 0, NULL)"
+                . auto/feature
+            fi
         fi
 
         if [ $ngx_found = yes ]; then
