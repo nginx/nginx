@@ -149,8 +149,8 @@ void *
 ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
 {
     size_t            s;
-    uintptr_t         p, mask, *bitmap;
-    ngx_uint_t        i, n, m, slot, shift, map;
+    uintptr_t         p, n, m, mask, *bitmap;
+    ngx_uint_t        i, slot, shift, map;
     ngx_slab_page_t  *page, *prev, *slots;
 
     ngx_shmtx_lock(&pool->mutex);
@@ -287,7 +287,7 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
             do {
                 if ((page->slab & NGX_SLAB_MAP_MASK) != mask) {
 
-                    for (m = 1 << NGX_SLAB_MAP_SHIFT, i = 0;
+                    for (m = (uintptr_t) 1 << NGX_SLAB_MAP_SHIFT, i = 0;
                          m & mask;
                          m <<= 1, i++)
                     {
@@ -369,7 +369,7 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
 
         } else { /* size < ngx_pagesize */
 
-            page->slab = (1 << NGX_SLAB_MAP_SHIFT) | shift;
+            page->slab = ((uintptr_t) 1 << NGX_SLAB_MAP_SHIFT) | shift;
             page->next = &slots[slot];
             page->prev = (uintptr_t) &slots[slot] | NGX_SLAB_BIG;
 
