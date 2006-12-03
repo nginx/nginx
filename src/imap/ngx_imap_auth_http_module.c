@@ -488,6 +488,16 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                     continue;
                 }
 
+                if (len == 4
+                    && ctx->header_start[0] == 'W'
+                    && ctx->header_start[1] == 'A'
+                    && ctx->header_start[2] == 'I'
+                    && ctx->header_start[3] == 'T')
+                {
+                    s->auth_wait = 1;
+                    continue;
+                }
+
                 ctx->errmsg.len = len;
                 ctx->errmsg.data = ctx->header_start;
 
@@ -632,6 +642,23 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
                 return;
             }
 
+            if (s->auth_wait) {
+                timer = ctx->sleep;
+
+                ngx_destroy_pool(ctx->pool);
+
+                if (timer == 0) {
+                    ngx_imap_auth_http_init(s);
+                    return;
+                }
+
+                ngx_add_timer(s->connection->read, timer * 1000);
+
+                s->connection->read->handler = ngx_imap_auth_sleep_handler;
+
+                return;
+            }
+
             if (ctx->addr.len == 0 || ctx->port.len == 0) {
                 ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                               "auth http server %V did not send server or port",
@@ -757,6 +784,12 @@ ngx_imap_auth_sleep_handler(ngx_event_t *rev)
     if (rev->timedout) {
 
         rev->timedout = 0;
+
+        if (s->auth_wait) {
+            s->auth_wait = 0;
+            ngx_imap_auth_http_init(s);
+            return;
+        }
 
         if (s->protocol == NGX_IMAP_POP3_PROTOCOL) {
             s->imap_state = ngx_pop3_start;

@@ -160,6 +160,7 @@ typedef struct {
     unsigned                no_sync_literal:1;
     unsigned                starttls:1;
     unsigned                auth_method:2;
+    unsigned                auth_wait:1;
 
     ngx_str_t               login;
     ngx_str_t               passwd;
