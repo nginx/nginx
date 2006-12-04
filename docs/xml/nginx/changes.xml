@@ -9,6 +9,78 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.0" date="04.12.2006">
+
+<change type="change">
+<para lang="ru">
+параметры в виде "%name" в директиве log_format больше не поддерживаются.
+</para>
+<para lang="en">
+the parameters in the "%name" form in the "log_format" directive
+are not supported anymore.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директивы proxy_upstream_max_fails, proxy_upstream_fail_timeout,
+fastcgi_upstream_max_fails, и fastcgi_upstream_fail_timeout,
+memcached_upstream_max_fails и memcached_upstream_fail_timeout
+больше не поддерживаются.
+</para>
+<para lang="en">
+the "proxy_upstream_max_fails", "proxy_upstream_fail_timeout",
+"fastcgi_upstream_max_fails", "fastcgi_upstream_fail_timeout",
+"memcached_upstream_max_fails", and "memcached_upstream_fail_timeout"
+directives are not supported anymore.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server в блоке upstream поддерживает параметры
+max_fails, fail_timeout и down.
+</para>
+<para lang="en">
+the "server" directive in the "upstream" context supports
+the "max_fails", "fail_timeout", and "down" parameters.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ip_hash в блоке upstream.
+</para>
+<para lang="en">
+the "ip_hash" directive inside the "upstream" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+статус WAIT в строке "Auth-Status" в заголовка ответа сервера аутентификации
+IMAP/POP3 прокси.
+</para>
+<para lang="en">
+the WAIT status in the "Auth-Status" header line of the IMAP/POP3 proxy
+authentication server response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на 64-битных платформах;
+ошибка появилась в 0.4.14.
+</para>
+<para lang="en">
+nginx could not be built on 64-bit platforms;
+bug appeared in 0.4.14.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.4.14" date="27.11.2006">
 
 <change type="feature">
@@ -1164,7 +1236,7 @@ the "add_header" directive adds the string to 204, 301, and 302 responses.
 директива server в блоке upstream поддерживает параметр weight.
 </para>
 <para lang="en">
-the "server" directive if the "upstream" context supports
+the "server" directive in the "upstream" context supports
 the "weight" parameter.
 </para>
 </change>
