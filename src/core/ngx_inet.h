@@ -12,80 +12,51 @@
 #include <ngx_core.h>
 
 
-#define NGX_PARSE_URL_INET   1
-#define NGX_PARSE_URL_UNIX   2
-
-
 typedef struct {
-    in_addr_t           addr;
-    in_addr_t           mask;
+    in_addr_t         addr;
+    in_addr_t         mask;
 } ngx_inet_cidr_t;
 
 
-typedef struct {
-    struct sockaddr    *sockaddr;
-    socklen_t           socklen;
-
-    ngx_str_t           name;
-    char               *uri_separator;
-
-    ngx_uint_t          current_weight;
-    ngx_uint_t          weight;
-
-    ngx_uint_t          fails;
-    time_t              accessed;
-
-    ngx_uint_t          max_fails;
-    time_t              fail_timeout;
-
-#if (NGX_SSL)
-    ngx_ssl_session_t  *ssl_session;
-#endif
-} ngx_peer_t;
-
-
-struct ngx_peers_s {
-    ngx_uint_t          current;
-
-    ngx_uint_t          number;
-    ngx_uint_t          last_cached;
-
- /* ngx_mutex_t        *mutex; */
-    ngx_connection_t  **cached;
-
-    ngx_peer_t          peer[1];
-};
-
-
 typedef union {
-    in_addr_t           in_addr;
+    in_addr_t         in_addr;
 } ngx_url_addr_t;
 
 
 typedef struct {
-    ngx_int_t           type;
+    struct sockaddr  *sockaddr;
+    socklen_t         socklen;
+    ngx_str_t         name;
+} ngx_peer_addr_t;
 
-    ngx_peers_t        *peers;
 
-    ngx_str_t           url;
-    ngx_str_t           host;
-    ngx_str_t           host_header;
-    ngx_str_t           port;
-    ngx_str_t           uri;
+typedef struct {
+    ngx_int_t         type;
 
-    in_port_t           portn;
-    in_port_t           default_portn;
+    ngx_str_t         url;
+    ngx_str_t         host;
+    ngx_str_t         host_header;
+    ngx_str_t         port;
+    ngx_str_t         uri;
 
-    unsigned            listen:1;
-    unsigned            uri_part:1;
-    unsigned            upstream:1;
+    in_port_t         portn;
+    in_port_t         default_portn;
 
-    unsigned            default_port:1;
-    unsigned            wildcard:1;
+    unsigned          listen:1;
+    unsigned          uri_part:1;
+    unsigned          upstream:1;
+    unsigned          no_resolve:1;
+    unsigned          one_addr:1;
 
-    ngx_url_addr_t      addr;
+    unsigned          wildcard:1;
+    unsigned          no_port:1;
 
-    char               *err;
+    ngx_url_addr_t    addr;
+
+    ngx_peer_addr_t  *addrs;
+    ngx_uint_t        naddrs;
+
+    char             *err;
 } ngx_url_t;
 
 
@@ -93,8 +64,8 @@ size_t ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text, size_t len);
 size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
 ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr);
 ngx_int_t ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u);
-ngx_peers_t *ngx_inet_resolve_peer(ngx_conf_t *cf, ngx_str_t *name,
-    in_port_t port);
+ngx_int_t ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u);
+
 
 
 #endif /* _NGX_INET_H_INCLUDED_ */

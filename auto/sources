@@ -270,6 +270,7 @@ HTTP_DEPS="src/http/ngx_http.h \
            src/http/ngx_http_variables.h \
            src/http/ngx_http_script.h \
            src/http/ngx_http_upstream.h \
+           src/http/ngx_http_upstream_round_robin.h \
            src/http/ngx_http_busy_lock.h"
 
 HTTP_SRCS="src/http/ngx_http.c \
@@ -285,6 +286,7 @@ HTTP_SRCS="src/http/ngx_http.c \
            src/http/ngx_http_variables.c \
            src/http/ngx_http_script.c \
            src/http/ngx_http_upstream.c \
+           src/http/ngx_http_upstream_round_robin.c \
            src/http/ngx_http_parse_time.c \
            src/http/modules/ngx_http_static_module.c \
            src/http/modules/ngx_http_index_module.c \
@@ -396,6 +398,10 @@ HTTP_BROWSER_SRCS=src/http/modules/ngx_http_browser_module.c
 
 HTTP_FLV_MODULE=ngx_http_flv_module
 HTTP_FLV_SRCS=src/http/modules/ngx_http_flv_module.c
+
+
+HTTP_UPSTREAM_IP_HASH_MODULE=ngx_http_upstream_ip_hash_module
+HTTP_UPSTREAM_IP_HASH_SRCS=src/http/modules/ngx_http_upstream_ip_hash_module.c
 
 
 IMAP_INCS="src/imap"

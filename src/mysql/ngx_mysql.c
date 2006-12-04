@@ -150,8 +150,7 @@ ngx_mysql_read_server_greeting(ngx_event_t *rev)
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_ERR, rev->log, NGX_ETIMEDOUT,
-                      "mysql server %V timed out",
-                      &m->peer.peers->peer[0].name);
+                      "mysql server %V timed out", m->peer.name);
 
         ngx_mysql_close(m, NGX_ERROR);
         return;
@@ -183,7 +182,7 @@ ngx_mysql_read_server_greeting(ngx_event_t *rev)
     if (ngx_m24toh(gr1->pktlen) > n - 4) {
         ngx_log_error(NGX_LOG_ERR, rev->log, 0,
                       "mysql server %V sent incomplete greeting packet",
-                      &m->peer.peers->peer[0].name);
+                      m->peer.name);
 
         ngx_mysql_close(m, NGX_ERROR);
         return;
@@ -192,7 +191,7 @@ ngx_mysql_read_server_greeting(ngx_event_t *rev)
     if (gr1->protocol < 10) {
         ngx_log_error(NGX_LOG_ERR, rev->log, 0,
                       "mysql server %V sent unsupported protocol version %ud",
-                      &m->peer.peers->peer[0].name, gr1->protocol);
+                      m->peer.name, gr1->protocol);
 
         ngx_mysql_close(m, NGX_ERROR);
         return;
@@ -273,7 +272,7 @@ ngx_mysql_read_server_greeting(ngx_event_t *rev)
     if (n < (ssize_t) len) {
         ngx_log_error(NGX_LOG_ERR, rev->log, 0,
                       "the incomplete packet was sent to mysql server %V",
-                      &m->peer.peers->peer[0].name);
+                      m->peer.name);
 
         ngx_mysql_close(m, NGX_ERROR);
         return;
@@ -329,7 +328,7 @@ ngx_mysql_read_auth_result(ngx_event_t *rev)
     if (len > n - 4) {
         ngx_log_error(NGX_LOG_ERR, rev->log, 0,
                       "mysql server %V sent incomplete response packet",
-                      &m->peer.peers->peer[0].name);
+                      m->peer.name);
 
         ngx_mysql_close(m, NGX_ERROR);
         return;
@@ -353,7 +352,7 @@ ngx_mysql_read_auth_result(ngx_event_t *rev)
 
     ngx_log_error(NGX_LOG_ERR, rev->log, 0,
                   "mysql server %V sent error (%ud): \"%V\"",
-                  &m->peer.peers->peer[0].name, ngx_m16toh(epkt->code), &msg);
+                  m->peer.name, ngx_m16toh(epkt->code), &msg);
 
     ngx_mysql_close(m, NGX_ERROR);
 }
@@ -376,7 +375,7 @@ ngx_mysql_query(ngx_mysql_t *m)
     if (n < (ssize_t) m->query.len) {
         ngx_log_error(NGX_LOG_ERR, m->peer.log, 0,
                       "the incomplete packet was sent to mysql server %V",
-                      &m->peer.peers->peer[0].name);
+                      m->peer.name);
 
         ngx_mysql_close(m, NGX_ERROR);
         return NGX_OK;
@@ -427,7 +426,7 @@ ngx_mysql_read_query_result(ngx_event_t *rev)
     if (len > n - 4) {
         ngx_log_error(NGX_LOG_ERR, rev->log, 0,
                       "mysql server %V sent incomplete response packet",
-                      &m->peer.peers->peer[0].name);
+                      m->peer.name);
 
         ngx_mysql_close(m, NGX_ERROR);
         return;
@@ -451,7 +450,7 @@ ngx_mysql_read_query_result(ngx_event_t *rev)
 
     ngx_log_error(NGX_LOG_ERR, rev->log, 0,
                   "mysql server %V sent error (%ud): \"%V\"",
-                  &m->peer.peers->peer[0].name, ngx_m16toh(epkt->code), &msg);
+                  m->peer.name, ngx_m16toh(epkt->code), &msg);
 
     ngx_mysql_close(m, NGX_ERROR);
 }

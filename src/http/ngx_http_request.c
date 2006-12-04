@@ -2409,9 +2409,9 @@ static u_char *
 ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
     u_char *buf, size_t len)
 {
-    u_char                 *p;
-    ngx_http_upstream_t    *u;
-    ngx_peer_connection_t  *peer;
+    char                 *uri_separator;
+    u_char               *p;
+    ngx_http_upstream_t  *u;
 
     if (r->server_name.data) {
         p = ngx_snprintf(buf, len, ", server: %V", &r->server_name);
@@ -2451,14 +2451,19 @@ ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
 
     u = sr->upstream;
 
-    if (u) {
-        peer = &u->peer;
+    if (u && u->peer.name) {
+
+        uri_separator = "";
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+        if (u->peer.sockaddr && u->peer.sockaddr->sa_family == AF_UNIX) {
+            uri_separator = ":";
+        }
+#endif
 
         p = ngx_snprintf(buf, len, ", upstream: \"%V%V%s%V\"",
-                         &u->conf->schema,
-                         &peer->peers->peer[peer->cur_peer].name,
-                         peer->peers->peer[peer->cur_peer].uri_separator,
-                         &u->uri);
+                         &u->conf->schema, u->peer.name,
+                         uri_separator, &u->uri);
         len -= p - buf;
         buf = p;
     }

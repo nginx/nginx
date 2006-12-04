@@ -14,145 +14,21 @@ ngx_int_t
 ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     int                rc;
-    ngx_uint_t         level, i;
     u_int              event;
-    time_t             now;
     ngx_err_t          err;
-    ngx_peer_t        *peer;
+    ngx_uint_t         level;
     ngx_socket_t       s;
     ngx_event_t       *rev, *wev;
     ngx_connection_t  *c;
 
-    now = ngx_time();
-
-    /* ngx_lock_mutex(pc->peers->mutex); */
-
-    if (pc->peers->last_cached) {
-
-        /* cached connection */
-
-        c = pc->peers->cached[pc->peers->last_cached];
-        pc->peers->last_cached--;
-
-        /* ngx_unlock_mutex(pc->peers->mutex); */
-
-#if (NGX_THREADS)
-        c->read->lock = c->read->own_lock;
-        c->write->lock = c->write->own_lock;
-#endif
-
-        pc->connection = c;
-        pc->cached = 1;
-
-        return NGX_OK;
+    rc = pc->get(pc, pc->data);
+    if (rc != NGX_OK) {
+        return rc;
     }
 
-    pc->cached = 0;
-    pc->connection = NULL;
+    s = ngx_socket(pc->sockaddr->sa_family, SOCK_STREAM, 0);
 
-    if (pc->peers->number == 1) {
-        peer = &pc->peers->peer[0];
-
-    } else {
-
-        /* there are several peers */
-
-        if (pc->tries == pc->peers->number) {
-
-            /* it's a first try - get a current peer */
-
-            for ( ;; ) {
-                pc->cur_peer = pc->peers->current;
-
-                peer = &pc->peers->peer[pc->cur_peer];
-
-                if (peer->max_fails == 0 || peer->fails <= peer->max_fails) {
-                    break;
-                }
-
-                if (now - peer->accessed > peer->fail_timeout) {
-                    peer->fails = 0;
-                    break;
-                }
-
-                pc->peers->current++;
-
-                if (pc->peers->current >= pc->peers->number) {
-                    pc->peers->current = 0;
-                }
-
-                pc->tries--;
-
-                if (pc->tries) {
-                    continue;
-                }
-
-                goto failed;
-            }
-
-            peer->current_weight--;
-
-            if (peer->current_weight == 0) {
-                peer->current_weight = peer->weight;
-
-                pc->peers->current++;
-
-                if (pc->peers->current >= pc->peers->number) {
-                    pc->peers->current = 0;
-                }
-            }
-
-        } else {
-            for ( ;; ) {
-                peer = &pc->peers->peer[pc->cur_peer];
-
-                if (peer->max_fails == 0 || peer->fails <= peer->max_fails) {
-                    break;
-                }
-
-                if (now - peer->accessed > peer->fail_timeout) {
-                    peer->fails = 0;
-                    break;
-                }
-
-                pc->cur_peer++;
-
-                if (pc->cur_peer >= pc->peers->number) {
-                    pc->cur_peer = 0;
-                }
-
-                pc->tries--;
-
-                if (pc->tries) {
-                    continue;
-                }
-
-                goto failed;
-            }
-
-            peer->current_weight--;
-
-            if (peer->current_weight == 0) {
-                peer->current_weight = peer->weight;
-
-                if (pc->cur_peer == pc->peers->current) {
-                    pc->peers->current++;
-
-                    if (pc->peers->current >= pc->peers->number) {
-                        pc->peers->current = 0;
-                    }
-                }
-            }
-        }
-    }
-
-    /* ngx_unlock_mutex(pc->peers->mutex); */
-
-
-    s = ngx_socket(peer->sockaddr->sa_family, SOCK_STREAM, 0);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, 0,
-                   "socket %d", s);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, 0, "socket %d", s);
 
     if (s == -1) {
         ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
@@ -211,7 +87,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     c->log_error = pc->log_error;
 
-    if (peer->sockaddr->sa_family != AF_INET) {
+    if (pc->sockaddr->sa_family != AF_INET) {
         c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
         c->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
 
@@ -254,9 +130,9 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     }
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pc->log, 0,
-                   "connect to %V, fd:%d #%d", &peer->name, s, c->number);
+                   "connect to %V, fd:%d #%d", pc->name, s, c->number);
 
-    rc = connect(s, peer->sockaddr, peer->socklen);
+    rc = connect(s, pc->sockaddr, pc->socklen);
 
     if (rc == -1) {
         err = ngx_socket_errno;
@@ -272,7 +148,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
             }
 
             ngx_log_error(level, c->log, err, "connect() to %V failed",
-                          &peer->name);
+                          pc->name);
 
             return NGX_DECLINED;
         }
@@ -352,51 +228,11 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     wev->ready = 1;
 
     return NGX_OK;
-
-failed:
-
-    /* all peers failed, mark them as live for quick recovery */
-
-    for (i = 0; i < pc->peers->number; i++) {
-        pc->peers->peer[i].fails = 0;
-    }
-
-    /* ngx_unlock_mutex(pc->peers->mutex); */
-
-    return NGX_BUSY;
 }
 
 
-void
-ngx_event_connect_peer_failed(ngx_peer_connection_t *pc, ngx_uint_t down)
+ngx_int_t
+ngx_event_get_peer(ngx_peer_connection_t *pc, void *data)
 {
-    time_t       now;
-    ngx_peer_t  *peer;
-
-    if (down) {
-        now = ngx_time();
-
-        /* ngx_lock_mutex(pc->peers->mutex); */
-
-        peer = &pc->peers->peer[pc->cur_peer];
-
-        peer->fails++;
-        peer->accessed = now;
-
-        if (peer->current_weight > 1) {
-            peer->current_weight /= 2;
-        }
-
-        /* ngx_unlock_mutex(pc->peers->mutex); */
-    }
-
-    pc->cur_peer++;
-
-    if (pc->cur_peer >= pc->peers->number) {
-        pc->cur_peer = 0;
-    }
-
-    if (pc->tries) {
-        pc->tries--;
-    }
+    return NGX_OK;
 }

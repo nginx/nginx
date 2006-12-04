@@ -71,6 +71,7 @@ HTTP_MEMCACHED=YES
 HTTP_EMPTY_GIF=YES
 HTTP_BROWSER=YES
 HTTP_FLV=NO
+HTTP_UPSTREAM_IP_HASH=YES
 
 # STUB
 HTTP_STUB_STATUS=NO
@@ -170,6 +171,7 @@ do
         --without-http_memcached_module) HTTP_MEMCACHED=NO          ;;
         --without-http_empty_gif_module) HTTP_EMPTY_GIF=NO          ;;
         --without-http_browser_module)   HTTP_BROWSER=NO            ;;
+        --without-http_upstream_ip_hash_module) HTTP_UPSTREAM_IP_HASH=NO ;;
 
         --with-http_perl_module)         HTTP_PERL=YES              ;;
         --with-perl_modules_path=*)      NGX_PERL_MODULES="$value"  ;;
@@ -271,6 +273,8 @@ cat << END
   --without-http_memcached_module    disable ngx_http_memcached_module
   --without-http_empty_gif_module    disable ngx_http_empty_gif_module
   --without-http_browser_module      disable ngx_http_browser_module
+  --without-http_upstream_ip_hash_module
+                                     disable ngx_http_upstream_ip_hash_module
 
   --with-http_perl_module            enable ngx_http_perl_module
   --with-perl_modules_path=PATH      set path to the perl modules

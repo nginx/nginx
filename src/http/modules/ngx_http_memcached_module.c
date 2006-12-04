@@ -12,7 +12,6 @@
 
 typedef struct {
     ngx_http_upstream_conf_t   upstream;
-    ngx_peers_t               *peers;
 } ngx_http_memcached_loc_conf_t;
 
 
@@ -38,6 +37,11 @@ static char *ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf,
 
 static char *ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+
+static char *ngx_http_memcached_upstream_max_fails_unsupported(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
+static char *ngx_http_memcached_upstream_fail_timeout_unsupported(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 
 static ngx_conf_bitmask_t  ngx_http_memcached_next_upstream_masks[] = {
@@ -96,16 +100,16 @@ static ngx_command_t  ngx_http_memcached_commands[] = {
 
     { ngx_string("memcached_upstream_max_fails"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_memcached_loc_conf_t, upstream.max_fails),
+      ngx_http_memcached_upstream_max_fails_unsupported,
+      0,
+      0,
       NULL },
 
     { ngx_string("memcached_upstream_fail_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_sec_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_memcached_loc_conf_t, upstream.fail_timeout),
+      ngx_http_memcached_upstream_fail_timeout_unsupported,
+      0,
+      0,
       NULL },
 
       ngx_null_command
@@ -178,8 +182,6 @@ ngx_http_memcached_handler(ngx_http_request_t *r)
 
     u->peer.log = r->connection->log;
     u->peer.log_error = NGX_ERROR_ERR;
-    u->peer.peers = mlcf->peers;
-    u->peer.tries = mlcf->peers->number;
 #if (NGX_THREADS)
     u->peer.lock = &r->connection->lock;
 #endif
@@ -511,13 +513,8 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
 
     conf->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
 
-    conf->upstream.max_fails = NGX_CONF_UNSET_UINT;
-    conf->upstream.fail_timeout = NGX_CONF_UNSET;
-
-    /* "fastcgi_cyclic_temp_file" is disabled */
-    conf->upstream.cyclic_temp_file = 0;
-
     /* the hardcoded values */
+    conf->upstream.cyclic_temp_file = 0;
     conf->upstream.buffering = 0;
     conf->upstream.ignore_client_abort = 0;
     conf->upstream.send_lowat = 0;
@@ -539,8 +536,6 @@ ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_memcached_loc_conf_t *prev = parent;
     ngx_http_memcached_loc_conf_t *conf = child;
-
-    ngx_uint_t  i;
 
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout,
                               prev->upstream.connect_timeout, 60000);
@@ -566,20 +561,6 @@ ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                                        |NGX_HTTP_UPSTREAM_FT_OFF;
     }
 
-    ngx_conf_merge_uint_value(conf->upstream.max_fails,
-                              prev->upstream.max_fails, 1);
-
-    ngx_conf_merge_sec_value(conf->upstream.fail_timeout,
-                              prev->upstream.fail_timeout, 10);
-
-    if (conf->peers && conf->peers->number > 1) {
-        for (i = 0; i < conf->peers->number; i++) {
-            conf->peers->peer[i].weight = 1;
-            conf->peers->peer[i].max_fails = conf->upstream.max_fails;
-            conf->peers->peer[i].fail_timeout = conf->upstream.fail_timeout;
-        }
-    }
-
     return NGX_CONF_OK;
 }
 
@@ -602,16 +583,14 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(&u, sizeof(ngx_url_t));
 
     u.url = value[1];
-    u.uri_part = 1;
+    u.no_resolve = 1;
+    /* u.uri_part = 1;  may be used as namespace */
 
-    if (ngx_parse_url(cf, &u) != NGX_OK) {
-        if (u.err) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "%s in \"%V\"", u.err, &u.url);
-        }
+    lcf->upstream.upstream = ngx_http_upstream_add(cf, &u, 0);
+    if (lcf->upstream.upstream == NULL) {
+        return NGX_CONF_ERROR;
     }
 
-    lcf->peers = u.peers;
     lcf->upstream.schema.len = sizeof("memcached://") - 1;
     lcf->upstream.schema.data = (u_char *) "memcached://";
 
@@ -626,4 +605,30 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_memcached_upstream_max_fails_unsupported(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf)
+{
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+         "\"memcached_upstream_max_fails\" is not supported, "
+         "use the \"max_fails\" parameter of the \"server\" directive ",
+         "inside the \"upstream\" block");
+
+    return NGX_CONF_ERROR;
+}
+
+
+static char *
+ngx_http_memcached_upstream_fail_timeout_unsupported(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf)
+{
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+         "\"memcached_upstream_fail_timeout\" is not supported, "
+         "use the \"fail_timeout\" parameter of the \"server\" directive ",
+         "inside the \"upstream\" block");
+
+    return NGX_CONF_ERROR;
 }

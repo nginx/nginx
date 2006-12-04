@@ -35,8 +35,6 @@ struct ngx_http_proxy_redirect_s {
 typedef struct {
     ngx_http_upstream_conf_t       upstream;
 
-    ngx_http_upstream_srv_conf_t  *upstream_peers;
-
     ngx_array_t                   *flushes;
     ngx_array_t                   *body_set_len;
     ngx_array_t                   *body_set;
@@ -106,6 +104,11 @@ static char *ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data);
+
+static char *ngx_http_proxy_upstream_max_fails_unsupported(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
+static char *ngx_http_proxy_upstream_fail_timeout_unsupported(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 
 static ngx_conf_post_t  ngx_http_proxy_lowat_post =
@@ -297,16 +300,16 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_upstream_max_fails"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_proxy_loc_conf_t, upstream.max_fails),
+      ngx_http_proxy_upstream_max_fails_unsupported,
+      0,
+      0,
       NULL },
 
     { ngx_string("proxy_upstream_fail_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_sec_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_proxy_loc_conf_t, upstream.fail_timeout),
+      ngx_http_proxy_upstream_fail_timeout_unsupported,
+      0,
+      0,
       NULL },
 
     { ngx_string("proxy_pass_header"),
@@ -419,8 +422,6 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 
     u->peer.log = r->connection->log;
     u->peer.log_error = NGX_ERROR_ERR;
-    u->peer.peers = plcf->upstream_peers->peers;
-    u->peer.tries = plcf->upstream_peers->peers->number;
 #if (NGX_THREADS)
     u->peer.lock = &r->connection->lock;
 #endif
@@ -1498,9 +1499,6 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE;
     conf->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
 
-    conf->upstream.max_fails = NGX_CONF_UNSET_UINT;
-    conf->upstream.fail_timeout = NGX_CONF_UNSET;
-
     conf->upstream.pass_request_headers = NGX_CONF_UNSET;
     conf->upstream.pass_request_body = NGX_CONF_UNSET;
 
@@ -1527,7 +1525,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     uintptr_t                    *code;
     ngx_str_t                    *header;
     ngx_uint_t                    i, j;
-    ngx_peer_t                   *peer;
     ngx_array_t                   hide_headers;
     ngx_keyval_t                 *src, *s, *h;
     ngx_hash_key_t               *hk;
@@ -1658,24 +1655,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->upstream.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) {
         conf->upstream.next_upstream = NGX_CONF_BITMASK_SET
                                        |NGX_HTTP_UPSTREAM_FT_OFF;
-    }
-
-    ngx_conf_merge_uint_value(conf->upstream.max_fails,
-                              prev->upstream.max_fails, 1);
-
-    ngx_conf_merge_sec_value(conf->upstream.fail_timeout,
-                              prev->upstream.fail_timeout, 10);
-
-    if (conf->upstream_peers) {
-        peer = conf->upstream_peers->peers->peer;
-        for (i = 0; i < conf->upstream_peers->peers->number; i++) {
-            ngx_conf_init_uint_value(peer[i].weight, 1);
-            peer[i].current_weight = peer[i].weight;
-            ngx_conf_init_uint_value(peer[i].max_fails,
-                              conf->upstream.max_fails);
-            ngx_conf_init_value(peer[i].fail_timeout,
-                              conf->upstream.fail_timeout);
-        }
     }
 
     ngx_conf_merge_path_value(conf->upstream.temp_path,
@@ -1834,8 +1813,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 peers:
 
-    if (conf->upstream_peers == NULL) {
-        conf->upstream_peers = prev->upstream_peers;
+    if (conf->upstream.upstream == NULL) {
+        conf->upstream.upstream = prev->upstream.upstream;
 
         conf->host_header = prev->host_header;
         conf->port_text = prev->port_text;
@@ -2180,11 +2159,11 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     u.url.len = url->len - add;
     u.url.data = url->data + add;
     u.default_portn = port;
+    u.no_resolve = 1;
     u.uri_part = 1;
-    u.upstream = 1;
 
-    plcf->upstream_peers = ngx_http_upstream_add(cf, &u);
-    if (plcf->upstream_peers == NULL) {
+    plcf->upstream.upstream = ngx_http_upstream_add(cf, &u, 0);
+    if (plcf->upstream.upstream == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -2344,4 +2323,30 @@ ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data)
 #endif
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_proxy_upstream_max_fails_unsupported(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf)
+{
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+         "\"proxy_upstream_max_fails\" is not supported, "
+         "use the \"max_fails\" parameter of the \"server\" directive ",
+         "inside the \"upstream\" block");
+
+    return NGX_CONF_ERROR;
+}
+
+
+static char *
+ngx_http_proxy_upstream_fail_timeout_unsupported(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf)
+{
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+         "\"proxy_upstream_fail_timeout\" is not supported, "
+         "use the \"fail_timeout\" parameter of the \"server\" directive ",
+         "inside the \"upstream\" block");
+
+    return NGX_CONF_ERROR;
 }

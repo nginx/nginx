@@ -94,7 +94,7 @@ ngx_module_t  ngx_imap_proxy_module = {
 
 
 void
-ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peers_t *peers)
+ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peer_addr_t *peer)
 {
     int                        keepalive;
     ngx_int_t                  rc;
@@ -125,7 +125,10 @@ ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peers_t *peers)
 
     s->proxy = p;
 
-    p->upstream.peers = peers;
+    p->upstream.sockaddr = peer->sockaddr;
+    p->upstream.socklen = peer->socklen;
+    p->upstream.name = &peer->name;
+    p->upstream.get = ngx_event_get_peer;
     p->upstream.log = s->connection->log;
     p->upstream.log_error = NGX_ERROR_ERR;
 

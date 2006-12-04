@@ -6,8 +6,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_event.h>
-#include <ngx_event_connect.h>
 
 
 /*
@@ -239,8 +237,6 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
 
 #if (NGX_HAVE_UNIX_DOMAIN)
 
-        u->type = NGX_PARSE_URL_UNIX;
-
         p += 5;
         len -= 5;
 
@@ -271,8 +267,8 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
             return NGX_ERROR;
         }
 
-        u->peers = ngx_pcalloc(cf->pool, sizeof(ngx_peers_t));
-        if (u->peers == NULL) {
+        u->addrs = ngx_pcalloc(cf->pool, sizeof(ngx_peer_addr_t));
+        if (u->addrs == NULL) {
             return NGX_ERROR;
         }
 
@@ -281,16 +277,15 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
             return NGX_ERROR;
         }
 
-        u->peers->number = 1;
+        u->naddrs = 1;
 
         saun->sun_family = AF_UNIX;
         (void) ngx_cpystrn((u_char *) saun->sun_path, p, len + 1);
 
-        u->peers->peer[0].sockaddr = (struct sockaddr *) saun;
-        u->peers->peer[0].socklen = sizeof(struct sockaddr_un);
-        u->peers->peer[0].name.len = len + 5;
-        u->peers->peer[0].name.data = u->url.data;
-        u->peers->peer[0].uri_separator = ":";
+        u->addrs[0].sockaddr = (struct sockaddr *) saun;
+        u->addrs[0].socklen = sizeof(struct sockaddr_un);
+        u->addrs[0].name.len = len + 5;
+        u->addrs[0].name.data = u->url.data;
 
         u->host_header.len = sizeof("localhost") - 1;
         u->host_header.data = (u_char *) "localhost";
@@ -310,8 +305,6 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
         return NGX_ERROR;
     }
 
-    u->type = NGX_PARSE_URL_INET;
-
     u->host.data = p;
     u->host_header.len = len;
     u->host_header.data = p;
@@ -323,7 +316,7 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
             u->host.len = i;
 
             if (!u->uri_part) {
-                u->port.len = &p[len] - u->port.data;
+                u->port.len = len - (i + 1);
                 break;
             }
         }
@@ -338,8 +331,8 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
             }
 
             if (u->port.data == NULL) {
-                u->default_port = 1;
-                goto port;
+                u->no_port = 1;
+                goto no_port;
             }
 
             u->port.len = &p[i] - u->port.data;
@@ -375,10 +368,10 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
         port = ngx_atoi(p, len);
 
         if (port == NGX_ERROR) {
-            u->default_port = 1;
             u->host.len = len;
+            u->no_port = 1;
 
-            goto port;
+            goto no_port;
         }
 
         u->port.len = len;
@@ -388,9 +381,10 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
 
     u->portn = (in_port_t) port;
 
-port:
+no_port:
 
     if (u->listen) {
+
         if (u->portn == 0) {
             if (u->default_portn == 0) {
                 u->err = "no port";
@@ -435,13 +429,9 @@ port:
         return NGX_OK;
     }
 
-    if (u->default_port) {
+    if (u->no_port) {
 
-        if (u->upstream) {
-            return NGX_OK;
-        }
-
-        if (u->default_portn == 0) {
+        if (u->default_portn == 0 && !u->upstream) {
             u->err = "no port";
             return NGX_ERROR;
         }
@@ -455,12 +445,8 @@ port:
 
         u->port.len = ngx_sprintf(u->port.data, "%d", u->portn) - u->port.data;
 
-    } else if (u->portn) {
-        if (u->portn == u->default_portn) {
-            u->default_port = 1;
-        }
+    } else if (u->portn == 0) {
 
-    } else {
         u->err = "no port";
         return NGX_ERROR;
     }
@@ -470,14 +456,11 @@ port:
         return NGX_ERROR;
     }
 
-    u->peers = ngx_inet_resolve_peer(cf, &u->host, u->portn);
-
-    if (u->peers == NULL) {
-        return NGX_ERROR;
+    if (u->no_resolve) {
+        return NGX_OK;
     }
 
-    if (u->peers == NGX_CONF_ERROR) {
-        u->err = "host not found";
+    if (ngx_inet_resolve_host(cf, u) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -485,23 +468,22 @@ port:
 }
 
 
-ngx_peers_t *
-ngx_inet_resolve_peer(ngx_conf_t *cf, ngx_str_t *name, in_port_t port)
+ngx_int_t
+ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u)
 {
     u_char              *host;
     size_t               len;
     in_addr_t            in_addr;
     ngx_uint_t           i;
-    ngx_peers_t         *peers;
     struct hostent      *h;
     struct sockaddr_in  *sin;
 
-    host = ngx_palloc(cf->temp_pool, name->len + 1);
+    host = ngx_palloc(cf->temp_pool, u->host.len + 1);
     if (host == NULL) {
-        return NULL;
+        return NGX_ERROR;
     }
 
-    (void) ngx_cpystrn(host, name->data, name->len + 1);
+    (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
 
     /* AF_INET only */
 
@@ -511,92 +493,88 @@ ngx_inet_resolve_peer(ngx_conf_t *cf, ngx_str_t *name, in_port_t port)
         h = gethostbyname((char *) host);
 
         if (h == NULL || h->h_addr_list[0] == NULL) {
-            return NGX_CONF_ERROR;
+            u->err = "host not found";
+            return NGX_ERROR;
         }
 
-        for (i = 0; h->h_addr_list[i] != NULL; i++) { /* void */ }
+        if (u->one_addr == 0) {
+            for (i = 0; h->h_addr_list[i] != NULL; i++) { /* void */ }
+
+        } else {
+            i = 1;
+        }
 
         /* MP: ngx_shared_palloc() */
 
-        peers = ngx_pcalloc(cf->pool,
-                            sizeof(ngx_peers_t) + sizeof(ngx_peer_t) * (i - 1));
-        if (peers == NULL) {
-            return NULL;
+        u->addrs = ngx_pcalloc(cf->pool, i * sizeof(ngx_peer_addr_t));
+        if (u->addrs == NULL) {
+            return NGX_ERROR;
         }
 
-        peers->number = i;
+        u->naddrs = i;
 
         for (i = 0; h->h_addr_list[i] != NULL; i++) {
 
             sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
             if (sin == NULL) {
-                return NULL;
+                return NGX_ERROR;
             }
 
             sin->sin_family = AF_INET;
-            sin->sin_port = htons(port);
+            sin->sin_port = htons(u->portn);
             sin->sin_addr.s_addr = *(in_addr_t *) (h->h_addr_list[i]);
 
-            peers->peer[i].sockaddr = (struct sockaddr *) sin;
-            peers->peer[i].socklen = sizeof(struct sockaddr_in);
+            u->addrs[i].sockaddr = (struct sockaddr *) sin;
+            u->addrs[i].socklen = sizeof(struct sockaddr_in);
 
             len = INET_ADDRSTRLEN - 1 + 1 + sizeof(":65536") - 1;
 
-            peers->peer[i].name.data = ngx_palloc(cf->pool, len);
-            if (peers->peer[i].name.data == NULL) {
-                return NULL;
+            u->addrs[i].name.data = ngx_palloc(cf->pool, len);
+            if (u->addrs[i].name.data == NULL) {
+                return NGX_ERROR;
             }
 
             len = ngx_sock_ntop(AF_INET, (struct sockaddr *) sin,
-                                peers->peer[i].name.data, len);
+                                u->addrs[i].name.data, len);
 
-            peers->peer[i].name.len =
-                                    ngx_sprintf(&peers->peer[i].name.data[len],
-                                                ":%d", port)
-                                      - peers->peer[i].name.data;
-
-            peers->peer[i].uri_separator = "";
-
-            peers->peer[i].weight = NGX_CONF_UNSET_UINT;
-            peers->peer[i].max_fails = NGX_CONF_UNSET_UINT;
-            peers->peer[i].fail_timeout = NGX_CONF_UNSET;
+            u->addrs[i].name.len = ngx_sprintf(&u->addrs[i].name.data[len],
+                                               ":%d", u->portn)
+                                      - u->addrs[i].name.data;
         }
 
     } else {
 
         /* MP: ngx_shared_palloc() */
 
-        peers = ngx_pcalloc(cf->pool, sizeof(ngx_peers_t));
-        if (peers == NULL) {
-            return NULL;
+        u->addrs = ngx_pcalloc(cf->pool, sizeof(ngx_peer_addr_t));
+        if (u->addrs == NULL) {
+            return NGX_ERROR;
         }
 
         sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
         if (sin == NULL) {
-            return NULL;
+            return NGX_ERROR;
         }
 
-        peers->number = 1;
+        u->naddrs = 1;
 
         sin->sin_family = AF_INET;
-        sin->sin_port = htons(port);
+        sin->sin_port = htons(u->portn);
         sin->sin_addr.s_addr = in_addr;
 
-        peers->peer[0].sockaddr = (struct sockaddr *) sin;
-        peers->peer[0].socklen = sizeof(struct sockaddr_in);
+        u->addrs[0].sockaddr = (struct sockaddr *) sin;
+        u->addrs[0].socklen = sizeof(struct sockaddr_in);
 
-        peers->peer[0].name.data = ngx_palloc(cf->pool,
-                                              name->len + sizeof(":65536") - 1);
-        if (peers->peer[0].name.data == NULL) {
-            return NULL;
+        u->addrs[0].name.data = ngx_palloc(cf->pool,
+                                           u->host.len + sizeof(":65536") - 1);
+        if (u->addrs[0].name.data == NULL) {
+            return NGX_ERROR;
         }
 
-        peers->peer[0].name.len = ngx_sprintf(peers->peer[0].name.data, "%V:%d",
-                                              name, port)
-                                  - peers->peer[0].name.data;
-
-        peers->peer[0].uri_separator = "";
+        u->addrs[0].name.len = ngx_sprintf(u->addrs[0].name.data, "%V:%d",
+                                           &u->host, u->portn)
+                                  - u->addrs[0].name.data;
     }
 
-    return peers;
+    return NGX_OK;
 }

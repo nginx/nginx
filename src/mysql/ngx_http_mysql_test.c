@@ -10,7 +10,8 @@
 
 
 typedef struct {
-    ngx_peers_t  *peers;
+    ngx_peer_addr_t  *peers;
+    ngx_uint_t        npeers;
 } ngx_http_mysql_test_conf_t;
 
 
@@ -94,10 +95,15 @@ ngx_http_mysql_test_handler(ngx_http_request_t *r)
     m->passwd = &ngx_mysql_passwd;
     m->database = &ngx_mysql_database;
 
+    /* STUB */
+    m->peer.sockaddr = mtcf->peers[0].sockaddr;
+    m->peer.socklen = mtcf->peers[0].socklen;
+    m->peer.name = &mtcf->peers[0].name;
+    m->peer.tries = mtcf->npeers;
+    m->peer.get = ngx_event_get_peer;
+    /**/
     m->peer.log = r->connection->log;
     m->peer.log_error = NGX_ERROR_ERR;
-    m->peer.peers = mtcf->peers;
-    m->peer.tries = mtcf->peers->number;
 
     rc = ngx_mysql_connect(m);
 
@@ -190,7 +196,8 @@ ngx_http_mysql_test(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    mtcf->peers = u.peers;
+    mtcf->peers = u.addrs;
+    mtcf->npeers = u.naddrs;
 
     return NGX_CONF_OK;
 }

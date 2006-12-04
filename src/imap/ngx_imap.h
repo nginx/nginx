@@ -266,7 +266,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s);
 
 
 /* STUB */
-void ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peers_t *peers);
+void ngx_imap_proxy_init(ngx_imap_session_t *s, ngx_peer_addr_t *peer);
 void ngx_imap_auth_http_init(ngx_imap_session_t *s);
 /**/
 

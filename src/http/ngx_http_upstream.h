@@ -44,23 +44,61 @@ typedef struct {
 typedef struct {
     ngx_hash_t                      headers_in_hash;
     ngx_array_t                     upstreams;
-                                           /* ngx_http_upstream_srv_conf_t */
+                                             /* ngx_http_upstream_srv_conf_t */
 } ngx_http_upstream_main_conf_t;
+
+typedef struct ngx_http_upstream_srv_conf_s  ngx_http_upstream_srv_conf_t;
+
+typedef ngx_int_t (*ngx_http_upstream_init_pt)(ngx_conf_t *cf,
+    ngx_http_upstream_srv_conf_t *us);
+typedef ngx_int_t (*ngx_http_upstream_init_peer_pt)(ngx_http_request_t *r,
+    ngx_http_upstream_srv_conf_t *us);
 
 
 typedef struct {
-    ngx_peers_t                    *peers;
+    ngx_http_upstream_init_pt       init_upstream;
+    ngx_http_upstream_init_peer_pt  init;
+    void                           *data;
+} ngx_http_upstream_peer_t;
 
-    ngx_array_t                    *servers;
 
+typedef struct {
+    ngx_peer_addr_t                *addrs;
+    ngx_uint_t                      naddrs;
+    ngx_uint_t                      weight;
+    ngx_uint_t                      max_fails;
+    time_t                          fail_timeout;
+
+    unsigned                        down:1;
+    unsigned                        backup:1;
+} ngx_http_upstream_server_t;
+
+
+#define NGX_HTTP_UPSTREAM_CREATE        0x0001
+#define NGX_HTTP_UPSTREAM_WEIGHT        0x0002
+#define NGX_HTTP_UPSTREAM_MAX_FAILS     0x0004
+#define NGX_HTTP_UPSTREAM_FAIL_TIMEOUT  0x0008
+#define NGX_HTTP_UPSTREAM_DOWN          0x0010
+#define NGX_HTTP_UPSTREAM_BACKUP        0x0020
+
+
+struct ngx_http_upstream_srv_conf_s {
+    ngx_http_upstream_peer_t        peer;
+    void                          **srv_conf;
+
+    ngx_array_t                    *servers;   /* ngx_http_upstream_server_t */
+
+    ngx_uint_t                      flags;
     ngx_str_t                       host;
     ngx_str_t                       file_name;
     ngx_uint_t                      line;
     in_port_t                       port;
-} ngx_http_upstream_srv_conf_t;
+};
 
 
 typedef struct {
+    ngx_http_upstream_srv_conf_t   *upstream;
+
     ngx_msec_t                      connect_timeout;
     ngx_msec_t                      send_timeout;
     ngx_msec_t                      read_timeout;
@@ -78,9 +116,6 @@ typedef struct {
     size_t                          temp_file_write_size_conf;
 
     ngx_uint_t                      next_upstream;
-    ngx_uint_t                      max_fails;
-
-    time_t                          fail_timeout;
 
     ngx_bufs_t                      bufs;
 
@@ -213,7 +248,11 @@ struct ngx_http_upstream_s {
 
 void ngx_http_upstream_init(ngx_http_request_t *r);
 ngx_http_upstream_srv_conf_t *ngx_http_upstream_add(ngx_conf_t *cf,
-    ngx_url_t *u);
+    ngx_url_t *u, ngx_uint_t flags);
+
+
+#define ngx_http_conf_upstream_srv_conf(uscf, module)                         \
+    uscf->srv_conf[module.ctx_index]
 
 
 extern ngx_module_t  ngx_http_upstream_module;
