@@ -502,7 +502,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     if (u->state && u->state->response_time) {
         tp = ngx_timeofday();
-        ms = tp->sec * 1000 + tp->msec - u->state->response_time;
+        ms = (ngx_msec_t) tp->sec * 1000 + tp->msec - u->state->response_time;
         u->state->response_time = (ms >= 0) ? ms : 0;
     }
 
@@ -516,7 +516,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_memzero(u->state, sizeof(ngx_http_upstream_state_t));
 
     tp = ngx_timeofday();
-    u->state->response_time = tp->sec * 1000 + tp->msec;
+    u->state->response_time = (ngx_msec_t) tp->sec * 1000 + tp->msec;
 
     rc = ngx_event_connect_peer(&u->peer);
 
@@ -2053,7 +2053,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     if (u->state->response_time) {
         tp = ngx_timeofday();
-        ms = tp->sec * 1000 + tp->msec - u->state->response_time;
+        ms = (ngx_msec_t) tp->sec * 1000 + tp->msec - u->state->response_time;
         u->state->response_time = (ms >= 0) ? ms : 0;
     }
 
