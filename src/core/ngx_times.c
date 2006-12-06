@@ -70,12 +70,6 @@ ngx_time_update(time_t sec, ngx_uint_t msec)
         return;
     }
 
-    if (slot == NGX_TIME_SLOTS) {
-        slot = 0;
-    } else {
-        slot++;
-    }
-
     if (sec == 0) {
         ngx_gettimeofday(&tv);
 
@@ -87,14 +81,22 @@ ngx_time_update(time_t sec, ngx_uint_t msec)
 
     tp = &cached_time[slot];
 
-    tp->msec = msec;
-
     if (tp->sec == sec) {
+        tp->msec = msec;
         ngx_unlock(&ngx_time_lock);
         return;
     }
 
+    if (slot == NGX_TIME_SLOTS) {
+        slot = 0;
+    } else {
+        slot++;
+    }
+
+    tp = &cached_time[slot];
+
     tp->sec = sec;
+    tp->msec = msec;
 
     ngx_gmtime(sec, &gmt);
 
