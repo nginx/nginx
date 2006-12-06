@@ -287,6 +287,9 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
         u->addrs[0].name.len = len + 5;
         u->addrs[0].name.data = u->url.data;
 
+        u->host.len = len;
+        u->host.data = p;
+
         u->host_header.len = sizeof("localhost") - 1;
         u->host_header.data = (u_char *) "localhost";
 
