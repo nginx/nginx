@@ -154,6 +154,8 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
     offset = 0;
 
     for ( ;; ) {
+        i = left;
+
         n = ngx_read_file(&file, buf + left, NGX_HTTP_AUTH_BUF_SIZE - left,
                           offset);
 
@@ -227,6 +229,18 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
     }
 
     ngx_http_auth_basic_close(&file);
+
+    if (state == sw_passwd) {
+        pwd.len = i - passwd;
+        pwd.data = ngx_palloc(r->pool, pwd.len + 1);
+        if (pwd.data == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        ngx_cpystrn(pwd.data, &buf[passwd], pwd.len + 1);
+
+        return ngx_http_auth_basic_crypt_handler(r, NULL, &pwd, &alcf->realm);
+    }
 
     return ngx_http_auth_basic_set_realm(r, &alcf->realm);
 }
