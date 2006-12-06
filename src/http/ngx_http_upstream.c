@@ -493,17 +493,16 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t          rc;
     ngx_time_t        *tp;
-    ngx_msec_int_t     ms;
     ngx_connection_t  *c;
 
     r->connection->log->action = "connecting to upstream";
 
     r->connection->single_connection = 0;
 
-    if (u->state && u->state->response_time) {
+    if (u->state && u->state->response_sec) {
         tp = ngx_timeofday();
-        ms = (ngx_msec_t) tp->sec * 1000 + tp->msec - u->state->response_time;
-        u->state->response_time = (ms >= 0) ? ms : 0;
+        u->state->response_sec = tp->sec - u->state->response_sec;
+        u->state->response_msec = tp->msec - u->state->response_msec;
     }
 
     u->state = ngx_array_push(&u->states);
@@ -516,7 +515,8 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_memzero(u->state, sizeof(ngx_http_upstream_state_t));
 
     tp = ngx_timeofday();
-    u->state->response_time = (ngx_msec_t) tp->sec * 1000 + tp->msec;
+    u->state->response_sec = tp->sec;
+    u->state->response_msec = tp->msec;
 
     rc = ngx_event_connect_peer(&u->peer);
 
@@ -2043,18 +2043,17 @@ static void
 ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {
-    ngx_time_t      *tp;
-    ngx_msec_int_t   ms;
+    ngx_time_t  *tp;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
 
     *u->cleanup = NULL;
 
-    if (u->state->response_time) {
+    if (u->state->response_sec) {
         tp = ngx_timeofday();
-        ms = (ngx_msec_t) tp->sec * 1000 + tp->msec - u->state->response_time;
-        u->state->response_time = (ms >= 0) ? ms : 0;
+        u->state->response_sec = tp->sec - u->state->response_sec;
+        u->state->response_msec = tp->msec - u->state->response_msec;
     }
 
     u->finalize_request(r, rc);
@@ -2531,6 +2530,7 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
     u_char                     *p;
     size_t                      len;
     ngx_uint_t                  i;
+    ngx_msec_int_t              ms;
     ngx_http_upstream_t        *u;
     ngx_http_upstream_state_t  *state;
 
@@ -2562,9 +2562,9 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
             *p++ = '-';
 
         } else {
-            p = ngx_sprintf(p, "%d.%03d",
-                            state[i].response_time / 1000,
-                            state[i].response_time % 1000);
+            ms = state[i].response_sec * 1000 + state[i].response_msec;
+            ms = (ms >= 0) ? ms : 0;
+            p = ngx_sprintf(p, "%d.%03d", ms / 1000, ms % 1000);
         }
 
         if (++i == u->states.nelts) {

@@ -35,7 +35,8 @@ typedef struct {
     ngx_uint_t                      bl_state;
 
     ngx_uint_t                      status;
-    ngx_msec_t                      response_time;
+    time_t                          response_sec;
+    ngx_uint_t                      response_msec;
 
     ngx_str_t                      *peer;
 } ngx_http_upstream_state_t;
