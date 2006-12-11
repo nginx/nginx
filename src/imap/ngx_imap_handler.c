@@ -12,6 +12,8 @@
 
 static void ngx_imap_init_session(ngx_connection_t *c);
 static void ngx_imap_init_protocol(ngx_event_t *rev);
+static ngx_int_t ngx_imap_decode_auth_plain(ngx_imap_session_t *s,
+    ngx_str_t *encoded);
 static void ngx_imap_do_auth(ngx_imap_session_t *s);
 static ngx_int_t ngx_imap_read_command(ngx_imap_session_t *s);
 static u_char *ngx_imap_log_error(ngx_log_t *log, u_char *buf, size_t len);
@@ -660,7 +662,7 @@ ngx_pop3_auth_state(ngx_event_t *rev)
     u_char                    *text, *p, *last;
     ssize_t                    size;
     ngx_int_t                  rc;
-    ngx_str_t                 *arg, salt, plain;
+    ngx_str_t                 *arg, salt;
     ngx_connection_t          *c;
     ngx_imap_session_t        *s;
     ngx_imap_core_srv_conf_t  *cscf;
@@ -796,16 +798,17 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                     break;
                 }
 
-                if (s->args.nelts != 1) {
-                    rc = NGX_IMAP_PARSE_INVALID_COMMAND;
-                    break;
-                }
-
                 arg = s->args.elts;
 
                 if (arg[0].len == 5) {
 
                     if (ngx_strncasecmp(arg[0].data, "LOGIN", 5) == 0) {
+
+                        if (s->args.nelts != 1) {
+                            rc = NGX_IMAP_PARSE_INVALID_COMMAND;
+                            break;
+                        }
+
                         s->imap_state = ngx_pop3_auth_login_username;
 
                         size = sizeof(pop3_username) - 1;
@@ -814,11 +817,41 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                         break;
 
                     } else if (ngx_strncasecmp(arg[0].data, "PLAIN", 5) == 0) {
-                        s->imap_state = ngx_pop3_auth_plain;
 
-                        size = sizeof(pop3_next) - 1;
-                        text = pop3_next;
+                        if (s->args.nelts == 1) {
+                            s->imap_state = ngx_pop3_auth_plain;
 
+                            size = sizeof(pop3_next) - 1;
+                            text = pop3_next;
+
+                            break;
+                        }
+
+                        if (s->args.nelts == 2) {
+
+                            /*
+                             * workaround for Eudora for Mac: it sends
+                             *    AUTH PLAIN [base64 encoded]
+                             */
+
+                            rc = ngx_imap_decode_auth_plain(s, &arg[1]);
+
+                            if (rc == NGX_OK) {
+                                ngx_imap_do_auth(s);
+                                return;
+                            }
+
+                            if (rc == NGX_ERROR) {
+                                ngx_imap_session_internal_server_error(s);
+                                return;
+                            }
+
+                            /* rc == NGX_IMAP_PARSE_INVALID_COMMAND */
+
+                            break;
+                        }
+
+                        rc = NGX_IMAP_PARSE_INVALID_COMMAND;
                         break;
                     }
 
@@ -999,64 +1032,21 @@ ngx_pop3_auth_state(ngx_event_t *rev)
         case ngx_pop3_auth_plain:
             arg = s->args.elts;
 
-#if (NGX_DEBUG_IMAP_PASSWD)
-            ngx_log_debug1(NGX_LOG_DEBUG_IMAP, c->log, 0,
-                           "pop3 auth plain: \"%V\"", &arg[0]);
-#endif
+            rc = ngx_imap_decode_auth_plain(s, &arg[0]);
 
-            plain.data = ngx_palloc(c->pool,
-                                    ngx_base64_decoded_length(arg[0].len));
-            if (plain.data == NULL){
+            if (rc == NGX_OK) {
+                ngx_imap_do_auth(s);
+                return;
+            }
+
+            if (rc == NGX_ERROR) {
                 ngx_imap_session_internal_server_error(s);
                 return;
             }
 
-            if (ngx_decode_base64(&plain, &arg[0]) != NGX_OK) {
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client sent invalid base64 encoding "
-                              "in AUTH PLAIN command");
-                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
-                break;
-            }
+            /* rc == NGX_IMAP_PARSE_INVALID_COMMAND */
 
-            p = plain.data;
-            last = p + plain.len;
-
-            while (p < last && *p++) { /* void */ }
-
-            if (p == last) {
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client sent invalid login "
-                              "in AUTH PLAIN command");
-                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
-                break;
-            }
-
-            s->login.data = p;
-
-            while (p < last && *p) { p++; }
-
-            if (p == last) {
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client sent invalid password "
-                              "in AUTH PLAIN command");
-                rc = NGX_IMAP_PARSE_INVALID_COMMAND;
-                break;
-            }
-
-            s->login.len = p++ - s->login.data;
-
-            s->passwd.len = last - p;
-            s->passwd.data = p;
-
-#if (NGX_DEBUG_IMAP_PASSWD)
-            ngx_log_debug2(NGX_LOG_DEBUG_IMAP, c->log, 0,
-                           "pop3 auth plain: \"%V\" \"%V\"",
-                           &s->login, &s->passwd);
-#endif
-
-            ngx_imap_do_auth(s);
-            return;
+            break;
 
         case ngx_pop3_auth_cram_md5:
             arg = s->args.elts;
@@ -1129,6 +1119,66 @@ ngx_pop3_auth_state(ngx_event_t *rev)
     s->out.len = size;
 
     ngx_imap_send(c->write);
+}
+
+
+static ngx_int_t
+ngx_imap_decode_auth_plain(ngx_imap_session_t *s, ngx_str_t *encoded)
+{
+    u_char     *p, *last;
+    ngx_str_t   plain;
+
+#if (NGX_DEBUG_IMAP_PASSWD)
+    ngx_log_debug1(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
+                   "pop3 auth plain: \"%V\"", encoded);
+#endif
+
+    plain.data = ngx_palloc(s->connection->pool,
+                            ngx_base64_decoded_length(encoded->len));
+    if (plain.data == NULL){
+        return NGX_ERROR;
+    }
+
+    if (ngx_decode_base64(&plain, encoded) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
+                      "client sent invalid base64 encoding "
+                      "in AUTH PLAIN command");
+        return NGX_IMAP_PARSE_INVALID_COMMAND;
+    }
+
+    p = plain.data;
+    last = p + plain.len;
+
+    while (p < last && *p++) { /* void */ }
+
+    if (p == last) {
+        ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
+                      "client sent invalid login in AUTH PLAIN command");
+        return NGX_IMAP_PARSE_INVALID_COMMAND;
+    }
+
+    s->login.data = p;
+
+    while (p < last && *p) { p++; }
+
+    if (p == last) {
+        ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
+                      "client sent invalid password in AUTH PLAIN command");
+        return NGX_IMAP_PARSE_INVALID_COMMAND;
+    }
+
+    s->login.len = p++ - s->login.data;
+
+    s->passwd.len = last - p;
+    s->passwd.data = p;
+
+#if (NGX_DEBUG_IMAP_PASSWD)
+    ngx_log_debug2(NGX_LOG_DEBUG_IMAP, s->connection->log, 0,
+                   "pop3 auth plain: \"%V\" \"%V\"",
+                   &s->login, &s->passwd);
+#endif
+
+    return NGX_OK;
 }
 
 
