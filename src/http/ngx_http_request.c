@@ -2247,6 +2247,8 @@ ngx_http_post_action(ngx_http_request_t *r)
     r->header_only = 1;
     r->post_action = 1;
 
+    r->read_event_handler = ngx_http_block_read;
+
     ngx_http_internal_redirect(r, &clcf->post_action, NULL);
 
     return NGX_OK;
