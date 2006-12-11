@@ -583,6 +583,7 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(&u, sizeof(ngx_url_t));
 
     u.url = value[1];
+    u.upstream = 1;
     u.no_resolve = 1;
     /* u.uri_part = 1;  may be used as namespace */
 

@@ -69,10 +69,17 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     if (ngx_inet_resolve_host(cf, &u) != NGX_OK) {
         if (u.err) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "%s in upstream host \"%V\" is not found in %s:%ui",
+                          "%s in upstream \"%V\" in %s:%ui",
                           u.err, &us->host, us->file_name.data, us->line);
         }
 
+        return NGX_ERROR;
+    }
+
+    if (us->port == 0) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no port in upstream \"%V\" in %s:%ui",
+                      &us->host, us->file_name.data, us->line);
         return NGX_ERROR;
     }
 

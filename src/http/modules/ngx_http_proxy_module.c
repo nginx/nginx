@@ -2159,6 +2159,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     u.url.len = url->len - add;
     u.url.data = url->data + add;
     u.default_portn = port;
+    u.upstream = 1;
     u.no_resolve = 1;
     u.uri_part = 1;
 
