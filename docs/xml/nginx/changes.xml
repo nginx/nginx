@@ -82,7 +82,7 @@ ngx_http_auth_basic_module игнорировал пользователя, если он был указан
 </para>
 <para lang="en">
 ngx_http_auth_basic_module ignored the user if it was in the last line in
-the password file and there was no the carriadge return, the line feed,
+the password file and there was no the carriage return, the line feed,
 or the ":" symbol after the password.
 </para>
 </change>
