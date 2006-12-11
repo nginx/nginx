@@ -17,7 +17,7 @@ our @EXPORT = qw(
     HTTP_SERVER_ERROR
 );
 
-our $VERSION = '0.5.1';
+our $VERSION = '0.5.2';
 
 require XSLoader;
 XSLoader::load('nginx', $VERSION);
