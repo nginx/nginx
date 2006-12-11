@@ -9,6 +9,98 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.1" date="11.12.2006">
+
+<change type="bugfix">
+<para lang="ru">
+директива post_action могла не работать после неудачного завершения запроса.
+</para>
+<para lang="en">
+the "post_action" directive might not run after a unsuccessful completion
+of a request.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+обход ошибки в Eudora для Mac;
+ошибка появилась в 0.4.11.<br/>
+Спасибо Bron Gondwana.
+</para>
+<para lang="en">
+for Eudora for Mac;
+bug appeared in 0.4.11.<br/>
+Thanks to Bron Gondwana.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при указании в директиве fastcgi_pass имени описанного upstream'а выдавалось
+сообщение "no port in upstream";
+ошибка появилась в 0.5.0.
+</para>
+<para lang="en">
+if the "upstream" name was used in the "fastcgi_pass", then the message
+"no port in upstream" was issued;
+bug appeared in 0.5.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директивах proxy_pass и fastcgi_pass использовались одинаковых имена
+серверов, но с разными портами, то эти директивы использовали первый
+описанный порт;
+ошибка появилась в 0.5.0.
+</para>
+<para lang="en">
+if the "proxy_pass" and "fastcgi_pass" directives used the same servers but
+different ports, then these directives uses the first described port;
+bug appeared in 0.5.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директивах proxy_pass и fastcgi_pass использовались unix domain сокеты,
+то эти директивы использовали первый описанный сокет;
+ошибка появилась в 0.5.0.
+</para>
+<para lang="en">
+if the "proxy_pass" and "fastcgi_pass" directives used the unix domain sockets,
+then these directives used first described socket;
+bug appeared in 0.5.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ngx_http_auth_basic_module игнорировал пользователя, если он был указан
+в последней строке файла паролей и после пароля не было перевода строки,
+возврата каретки или символа ":".
+</para>
+<para lang="en">
+ngx_http_auth_basic_module ignored the user if it was in the last line in
+the password file and there was no the carriadge return, the line feed,
+or the ":" symbol after the password.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $upstream_response_time могла быть равна "0.000", хотя время
+обработки было больше 1 миллисекунды.
+</para>
+<para lang="en">
+the $upstream_response_time variable might be equal to "0.000", although
+response time was more than 1 millisecond.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.0" date="04.12.2006">
 
 <change type="change">
