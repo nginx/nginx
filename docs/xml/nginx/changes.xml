@@ -9,6 +9,24 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.2" date="11.12.2006">
+
+<change type="bugfix">
+<para lang="ru">
+если в директивах proxy_pass использовалось имя, указанное в upstream,
+то nginx пытался найти IP-адрес этого имени;
+ошибка появилась в 0.5.1.
+</para>
+<para lang="en">
+if the "proxy_pass" directive used the name of the "upstream" block,
+then nginx tried to resolve the name;
+bug appeared in 0.5.1.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.1" date="11.12.2006">
 
 <change type="bugfix">
