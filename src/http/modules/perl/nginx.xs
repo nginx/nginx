@@ -846,3 +846,37 @@ variable(r, name, value = NULL)
     ngx_http_perl_set_targ(vv->data, vv->len, 0);
 
     ST(0) = TARG;
+
+
+void
+log_error(r, err, msg)
+    CODE:
+
+    ngx_http_request_t  *r;
+    SV                  *err, *msg;
+    u_char              *p;
+    STRLEN               len;
+    ngx_err_t            e;
+
+    ngx_http_perl_set_request(r);
+
+    err = ST(1);
+
+    if (SvROK(err) && SvTYPE(SvRV(err)) == SVt_PV) {
+        err = SvRV(err);
+    }
+
+    e = SvIV(err);
+
+    msg = ST(2);
+
+    if (SvROK(msg) && SvTYPE(SvRV(msg)) == SVt_PV) {
+        msg = SvRV(msg);
+    }
+
+    p = (u_char *) SvPV(msg, len);
+
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, e,
+                  "perl: %s", p);
+
+    XSRETURN_EMPTY;
