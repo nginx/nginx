@@ -334,7 +334,6 @@ has_request_body(r, next)
 
     dXSTARG;
     ngx_http_request_t   *r;
-    SV                   *next;
     ngx_http_perl_ctx_t  *ctx;
 
     ngx_http_perl_set_request(r);
@@ -343,10 +342,8 @@ has_request_body(r, next)
         XSRETURN_UNDEF;
     }
 
-    next = ST(1);
-
     ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
-    ctx->next = next;
+    ctx->next = SvRV(ST(1));
 
     r->request_body_in_single_buf = 1;
     r->request_body_in_persistent_file = 1;
