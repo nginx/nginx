@@ -29,10 +29,19 @@ typedef struct {
 
     ngx_uint_t                done;   /* unsigned  done:1; */
 
+    ngx_array_t              *variables;  /* array of ngx_http_perl_var_t */
+
 #if (NGX_HTTP_SSI)
     ngx_http_ssi_ctx_t       *ssi;
 #endif
 } ngx_http_perl_ctx_t;
+
+
+typedef struct {
+    ngx_uint_t    hash;
+    ngx_str_t     name;
+    ngx_str_t     value;
+} ngx_http_perl_var_t;
 
 
 extern ngx_module_t  ngx_http_perl_module;

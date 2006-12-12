@@ -773,6 +773,8 @@ variable(r, name, value = NULL)
     STRLEN                      len;
     ngx_str_t                   var, val;
     ngx_uint_t                  i, hash;
+    ngx_http_perl_var_t        *v;
+    ngx_http_perl_ctx_t        *ctx;
     ngx_http_variable_value_t  *vv;
 
     ngx_http_perl_set_request(r);
@@ -814,13 +816,69 @@ variable(r, name, value = NULL)
     var.len = len;
     var.data = lowcase;
 
+    #if (NGX_LOG_DEBUG)
+
+    if (value) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "perl variable: \"%V\"=\"%V\"", &var, &val);
+    } else {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "perl variable: \"%V\"", &var);
+    }
+
+    #endif
+
     vv = ngx_http_get_variable(r, &var, hash, 1);
     if (vv == NULL) {
         XSRETURN_UNDEF;
     }
 
     if (vv->not_found) {
-        if (value == NULL) {
+
+        ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
+
+        if (ctx->variables) {
+
+            v = ctx->variables->elts;
+            for (i = 0; i < ctx->variables->nelts; i++) {
+
+                if (hash != v[i].hash
+                    || len != v[i].name.len
+                    || ngx_strncmp(lowcase, v[i].name.data, len) != 0)
+                {
+                    continue;
+                }
+
+                if (value) {
+                    v[i].value = val;
+                    XSRETURN_UNDEF;
+                }
+
+                ngx_http_perl_set_targ(v[i].value.data, v[i].value.len, 0);
+
+                goto done;
+            }
+        }
+
+        if (value) {
+            if (ctx->variables == NULL) {
+                ctx->variables = ngx_array_create(r->pool, 1,
+                                                  sizeof(ngx_http_perl_var_t));
+                if (ctx->variables == NULL) {
+                    XSRETURN_UNDEF;
+                }
+            }
+
+            v = ngx_array_push(ctx->variables);
+            if (v == NULL) {
+                XSRETURN_UNDEF;
+            }
+
+            v->hash = hash;
+            v->name.len = len;
+            v->name.data = lowcase;
+            v->value = val;
+
             XSRETURN_UNDEF;
         }
 
@@ -841,6 +899,8 @@ variable(r, name, value = NULL)
     }
 
     ngx_http_perl_set_targ(vv->data, vv->len, 0);
+
+    done:
 
     ST(0) = TARG;
 
