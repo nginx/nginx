@@ -62,7 +62,6 @@ static char *ngx_http_perl_require(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static void ngx_http_perl_cleanup_sv(void *data);
 
 #if (NGX_HAVE_PERL_MULTIPLICITY)
 static void ngx_http_perl_cleanup_perl(void *data);
@@ -758,18 +757,6 @@ ngx_http_perl_cleanup_perl(void *data)
 #endif
 
 
-static void
-ngx_http_perl_cleanup_sv(void *data)
-{
-    ngx_http_perl_cleanup_t  *cln = data;
-
-    dTHXa(cln->perl);
-    PERL_SET_CONTEXT(cln->perl);
-
-    SvREFCNT_dec(cln->sv);
-}
-
-
 static ngx_int_t
 ngx_http_perl_preconfiguration(ngx_conf_t *cf)
 {
@@ -860,8 +847,6 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_perl_loc_conf_t *plcf = conf;
 
     ngx_str_t                  *value;
-    ngx_pool_cleanup_t         *cln;
-    ngx_http_perl_cleanup_t    *pcln;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_perl_main_conf_t  *pmcf;
 
@@ -879,11 +864,6 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_http_perl_init_interpreter(cf, pmcf) != NGX_CONF_OK) {
             return NGX_CONF_ERROR;
         }
-    }
-
-    cln = ngx_pool_cleanup_add(cf->pool, sizeof(ngx_http_perl_cleanup_t));
-    if (cln == NULL) {
-        return NGX_CONF_ERROR;
     }
 
     plcf->handler = value[1];
@@ -907,11 +887,6 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     }
 
-    cln->handler = ngx_http_perl_cleanup_sv;
-    pcln = cln->data;
-    pcln->sv = plcf->sub;
-    pcln->perl = pmcf->perl;
-
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_perl_handler;
 
@@ -924,9 +899,7 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_int_t                   index;
     ngx_str_t                  *value;
-    ngx_pool_cleanup_t         *cln;
     ngx_http_variable_t        *v;
-    ngx_http_perl_cleanup_t    *pcln;
     ngx_http_perl_variable_t   *pv;
     ngx_http_perl_main_conf_t  *pmcf;
 
@@ -964,11 +937,6 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    cln = ngx_pool_cleanup_add(cf->pool, sizeof(ngx_http_perl_cleanup_t));
-    if (cln == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
     pv->handler = value[2];
 
     {
@@ -989,11 +957,6 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     }
-
-    cln->handler = ngx_http_perl_cleanup_sv;
-    pcln = cln->data;
-    pcln->sv = pv->sub;
-    pcln->perl = pmcf->perl;
 
     v->get_handler = ngx_http_perl_variable;
     v->data = (uintptr_t) pv;
