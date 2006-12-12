@@ -546,6 +546,8 @@ ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                 return NGX_CONF_ERROR;
             }
 
+            log->disk_full_time = 0;
+
             lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
             fmt = lmcf->formats.elts;
 
