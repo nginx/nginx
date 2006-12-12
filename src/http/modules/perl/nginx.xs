@@ -873,7 +873,6 @@ log_error(r, err, msg)
 
     p = (u_char *) SvPV(msg, len);
 
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, e,
-                  "perl: %s", p);
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, e, "perl: %s", p);
 
     XSRETURN_EMPTY;
