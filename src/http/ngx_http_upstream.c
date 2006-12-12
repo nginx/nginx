@@ -2598,7 +2598,6 @@ ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
     value = cf->args->elts;
     u.host = value[1];
-    u.upstream = 1;
     u.no_resolve = 1;
 
     uscf = ngx_http_upstream_add(cf, &u, NGX_HTTP_UPSTREAM_CREATE
@@ -2722,7 +2721,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(&u, sizeof(ngx_url_t));
 
     u.url = value[1];
-    u.default_portn = 80;
+    u.default_port = 80;
 
     if (ngx_parse_url(cf, &u) != NGX_OK) {
         if (u.err) {
@@ -2843,8 +2842,8 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
     uscfp = umcf->upstreams.elts;
 
     for (i = 0; i < umcf->upstreams.nelts; i++) {
-        if ((uscfp[i]->port && uscfp[i]->port != u->portn)
-            || uscfp[i]->host.len != u->host.len
+
+        if (uscfp[i]->host.len != u->host.len
             || ngx_strncasecmp(uscfp[i]->host.data, u->host.data, u->host.len)
                != 0)
         {
@@ -2859,10 +2858,23 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
             return NULL;
         }
 
-        if (uscfp[i]->port == 0 && u->portn && !u->no_port) {
+        if ((uscfp[i]->flags & NGX_HTTP_UPSTREAM_CREATE) && u->port) {
             ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                               "upstream \"%V\" port %d is ignored",
-                               &u->host, u->portn);
+                               "upstream \"%V\" may not have port %d",
+                               &u->host, u->port);
+            return NULL;
+        }
+
+        if ((flags & NGX_HTTP_UPSTREAM_CREATE) && uscfp[i]->port) {
+            ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+                          "upstream \"%V\" may not have port %d in %s:%ui",
+                          &u->host, uscfp[i]->port,
+                          uscfp[i]->file_name.data, uscfp[i]->line);
+            return NULL;
+        }
+
+        if (uscfp[i]->port != u->port) {
+            continue;
         }
 
         return uscfp[i];
@@ -2877,7 +2889,8 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
     uscf->host = u->host;
     uscf->file_name = cf->conf_file->file.name;
     uscf->line = cf->conf_file->line;
-    uscf->port = u->portn;
+    uscf->port = u->port;
+    uscf->default_port = u->default_port;
 
     if (u->naddrs == 1) {
         uscf->servers = ngx_array_create(cf->pool, 1,

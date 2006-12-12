@@ -51,7 +51,7 @@ typedef struct {
 
     ngx_str_t                      method;
     ngx_str_t                      host_header;
-    ngx_str_t                      port_text;
+    ngx_str_t                      port;
 
     ngx_flag_t                     redirect;
 } ngx_http_proxy_loc_conf_t;
@@ -1232,11 +1232,11 @@ ngx_http_proxy_port_variable(ngx_http_request_t *r,
 
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
-    v->len = plcf->port_text.len;
+    v->len = plcf->port.len;
     v->valid = 1;
     v->no_cachable = 0;
     v->not_found = 0;
-    v->data = plcf->port_text.data;
+    v->data = plcf->port.data;
 
     return NGX_OK;
 }
@@ -1817,7 +1817,7 @@ peers:
         conf->upstream.upstream = prev->upstream.upstream;
 
         conf->host_header = prev->host_header;
-        conf->port_text = prev->port_text;
+        conf->port = prev->port;
         conf->upstream.schema = prev->upstream.schema;
     }
 
@@ -2093,6 +2093,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_proxy_loc_conf_t *plcf = conf;
 
+    u_char                      *p;
     size_t                       add;
     u_short                      port;
     ngx_str_t                   *value, *url;
@@ -2158,18 +2159,49 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     u.url.len = url->len - add;
     u.url.data = url->data + add;
-    u.default_portn = port;
-    u.upstream = 1;
-    u.no_resolve = 1;
+    u.default_port = port;
     u.uri_part = 1;
+    u.no_resolve = 1;
 
     plcf->upstream.upstream = ngx_http_upstream_add(cf, &u, 0);
     if (plcf->upstream.upstream == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    plcf->host_header = u.host_header;
-    plcf->port_text = u.port;
+    if (!u.unix_socket) {
+        if (u.no_port || u.port == port) {
+            plcf->host_header = u.host;
+
+            if (port == 80) {
+                plcf->port.len = sizeof("80") - 1;
+                plcf->port.data = (u_char *) "80";
+            } else {
+                plcf->port.len = sizeof("443") - 1;
+                plcf->port.data = (u_char *) "443";
+            }
+
+        } else {
+            p = ngx_palloc(cf->pool, u.host.len + sizeof(":65536") - 1);
+            if (p == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            plcf->host_header.len = ngx_sprintf(p, "%V:%d", &u.host, u.port)
+                                        - p;
+            plcf->host_header.data = p;
+
+            plcf->port.len = plcf->host_header.len -  u.host.len - 1;
+            plcf->port.data = p + u.host.len + 1;
+        }
+
+
+    } else {
+        plcf->host_header.len = sizeof("localhost") - 1;
+        plcf->host_header.data = (u_char *) "localhost";
+        plcf->port.len = 0;
+        plcf->port.data = (u_char *) "";
+    }
+
     plcf->upstream.uri = u.uri;
 
     plcf->upstream.schema.len = add;

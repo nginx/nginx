@@ -2390,7 +2390,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     u.url = value[1];
     u.listen = 1;
-    u.default_portn = 80;
+    u.default_port = 80;
 
     if (ngx_parse_url(cf, &u) != NGX_OK) {
         if (u.err) {
@@ -2411,7 +2411,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ls->family = AF_INET;
     ls->addr = u.addr.in_addr;
-    ls->port = u.portn;
+    ls->port = u.port;
     ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
     ls->conf.backlog = -1;

@@ -541,7 +541,7 @@ ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 0; i < cmcf->listen.nelts; i++) {
 
-        if (imls[i].addr != u.addr.in_addr || imls[i].port != u.portn) {
+        if (imls[i].addr != u.addr.in_addr || imls[i].port != u.port) {
             continue;
         }
 
@@ -558,7 +558,7 @@ ngx_imap_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(imls, sizeof(ngx_imap_listen_t));
 
     imls->addr = u.addr.in_addr;
-    imls->port = u.portn;
+    imls->port = u.port;
     imls->family = AF_INET;
     imls->ctx = cf->ctx;
 

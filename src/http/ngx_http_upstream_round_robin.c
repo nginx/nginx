@@ -61,10 +61,17 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
     /* an upstream implicitly defined by proxy_pass, etc. */
 
+    if (us->port == 0 && us->default_port == 0) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no port in upstream \"%V\" in %s:%ui",
+                      &us->host, us->file_name.data, us->line);
+        return NGX_ERROR;
+    }
+
     ngx_memzero(&u, sizeof(ngx_url_t));
 
     u.host = us->host;
-    u.portn = us->port;
+    u.port = us->port ? us->port : us->default_port;
 
     if (ngx_inet_resolve_host(cf, &u) != NGX_OK) {
         if (u.err) {
@@ -73,13 +80,6 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                           u.err, &us->host, us->file_name.data, us->line);
         }
 
-        return NGX_ERROR;
-    }
-
-    if (us->port == 0) {
-        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                      "no port in upstream \"%V\" in %s:%ui",
-                      &us->host, us->file_name.data, us->line);
         return NGX_ERROR;
     }
 

@@ -1291,7 +1291,7 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(&u, sizeof(ngx_url_t));
 
     u.url = value[1];
-    u.default_portn = 80;
+    u.default_port = 80;
     u.uri_part = 1;
     u.one_addr = 1;
 
@@ -1304,7 +1304,7 @@ ngx_imap_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ahcf->peer = u.addrs;
 
-    ahcf->host_header = u.host_header;
+    ahcf->host_header = u.host;
     ahcf->uri = u.uri;
 
     if (ahcf->uri.len == 0) {

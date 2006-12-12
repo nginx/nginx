@@ -35,21 +35,19 @@ typedef struct {
 
     ngx_str_t         url;
     ngx_str_t         host;
-    ngx_str_t         host_header;
-    ngx_str_t         port;
     ngx_str_t         uri;
 
-    in_port_t         portn;
-    in_port_t         default_portn;
+    in_port_t         port;
+    in_port_t         default_port;
 
     unsigned          listen:1;
     unsigned          uri_part:1;
-    unsigned          upstream:1;
     unsigned          no_resolve:1;
     unsigned          one_addr:1;
 
     unsigned          wildcard:1;
     unsigned          no_port:1;
+    unsigned          unix_socket:1;
 
     ngx_url_addr_t    addr;
 

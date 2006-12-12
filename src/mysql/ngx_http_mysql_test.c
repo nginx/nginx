@@ -185,7 +185,7 @@ ngx_http_mysql_test(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(&u, sizeof(ngx_url_t));
 
     u.url = value[1];
-    u.default_portn = 3306;
+    u.default_port = 3306;
 
     if (ngx_parse_url(cf, &u) != NGX_OK) {
         if (u.err) {
