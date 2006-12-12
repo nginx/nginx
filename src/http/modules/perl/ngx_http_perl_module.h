@@ -23,7 +23,9 @@ typedef struct {
     ngx_str_t                 filename;
     ngx_str_t                 redirect_uri;
     ngx_str_t                 redirect_args;
+
     SV                       *next;
+    int                       sleep;
 
     ngx_uint_t                done;   /* unsigned  done:1; */
 

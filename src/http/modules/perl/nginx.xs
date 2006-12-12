@@ -846,6 +846,27 @@ variable(r, name, value = NULL)
 
 
 void
+sleep(r, sleep, next)
+    CODE:
+
+    dXSTARG;
+    ngx_http_request_t   *r;
+    ngx_http_perl_ctx_t  *ctx;
+
+    ngx_http_perl_set_request(r);
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
+
+    ctx->sleep = SvIV(ST(1));
+    ctx->next = SvRV(ST(2));
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "perl sleep: %d", ctx->sleep);
+
+    XSRETURN_EMPTY;
+
+
+void
 log_error(r, err, msg)
     CODE:
 

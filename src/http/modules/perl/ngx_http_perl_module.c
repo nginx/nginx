@@ -41,6 +41,7 @@ static ngx_int_t ngx_http_perl_ssi(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ssi_ctx, ngx_str_t **params);
 #endif
 
+static void ngx_http_perl_sleep_handler(ngx_http_request_t *r);
 static char *ngx_http_perl_init_interpreter(ngx_conf_t *cf,
     ngx_http_perl_main_conf_t *pmcf);
 static PerlInterpreter *
@@ -245,6 +246,12 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
 
+    if (ctx->sleep) {
+        ngx_add_timer(r->connection->write, (ngx_msec_t) ctx->sleep);
+        r->write_event_handler = ngx_http_perl_sleep_handler;
+        ctx->sleep = 0;
+    }
+
     if (ctx->done || ctx->next) {
         return;
     }
@@ -260,6 +267,16 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     }
 
     ngx_http_finalize_request(r, rc);
+}
+
+
+static void
+ngx_http_perl_sleep_handler(ngx_http_request_t *r)
+{
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "perl sleep handler");
+
+    ngx_http_perl_handle_request(r);
 }
 
 
