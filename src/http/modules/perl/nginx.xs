@@ -94,6 +94,22 @@ MODULE = nginx    PACKAGE = nginx
 
 
 void
+status(r, code)
+    CODE:
+
+    ngx_http_request_t  *r;
+
+    ngx_http_perl_set_request(r);
+
+    r->headers_out.status = SvIV(ST(1));
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "perl status: %d", r->headers_out.status);
+
+    XSRETURN_UNDEF;
+
+
+void
 send_http_header(r, ...)
     CODE:
 
