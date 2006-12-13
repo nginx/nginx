@@ -273,10 +273,22 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
 static void
 ngx_http_perl_sleep_handler(ngx_http_request_t *r)
 {
+    ngx_event_t  *wev;
+
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "perl sleep handler");
 
-    ngx_http_perl_handle_request(r);
+    wev = r->connection->write;
+
+    if (wev->timedout) {
+        wev->timedout = 0;
+        ngx_http_perl_handle_request(r);
+        return;
+    }
+
+    if (ngx_handle_write_event(wev, 0) == NGX_ERROR) {
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    }
 }
 
 
