@@ -9,6 +9,41 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.3" date="13.12.2006">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module поддерживает методы $r->status, $r->log_error
+и $r->sleep.
+</para>
+<para lang="en">
+the ngx_http_perl_module supports the $r->status, $r->log_error,
+and $r->sleep methods.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+метод $r->variable поддерживает переменные, неописанные в конфигурации nginx'а.
+</para>
+<para lang="en">
+the $r->variable method supports variables that do not exist in nginx
+configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+метод $r->has_request_body не работал.
+</para>
+<para lang="en">
+the $r->has_request_body method did work.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.2" date="11.12.2006">
 
 <change type="bugfix">
