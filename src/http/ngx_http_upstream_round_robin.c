@@ -71,7 +71,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_memzero(&u, sizeof(ngx_url_t));
 
     u.host = us->host;
-    u.port = us->port ? us->port : us->default_port;
+    u.port = (in_port_t) (us->port ? us->port : us->default_port);
 
     if (ngx_inet_resolve_host(cf, &u) != NGX_OK) {
         if (u.err) {
