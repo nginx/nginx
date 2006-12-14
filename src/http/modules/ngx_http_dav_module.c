@@ -476,7 +476,7 @@ ngx_http_dav_access(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     lcf->access = 0700;
 
-    for (i = 1; i < 3; i++) {
+    for (i = 1; i < cf->args->nelts; i++) {
 
         p = value[i].data;
 
