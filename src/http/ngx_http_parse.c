@@ -290,6 +290,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 state = sw_after_slash_in_uri;
                 break;
             default:
+                r->host_end = p;
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
