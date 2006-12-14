@@ -9,6 +9,54 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.4" date="15.12.2006">
+
+<change type="feature">
+<para lang="ru">
+директиву perl можно использовать внутри блока limit_except.
+</para>
+<para lang="en">
+the "perl" directive may be used inside the "limit_except" block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_dav_module требовал строку "Date" в заголовке запроса
+для метода DELETE.
+</para>
+<para lang="en">
+the ngx_http_dav_module required the "Date" request header line
+for the DELETE method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании одного параметра в директиве dav_access nginx мог
+сообщить об ошибке в конфигурации.
+</para>
+<para lang="en">
+if one only parameter was used in the "dav_access" directive, then
+nginx might report about configuration error.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменной $host мог произойти
+мог произойти segmentation fault;
+ошибка появилась в 0.4.14.
+</para>
+<para lang="en">
+a segmentation fault might occur if the $host variable was used;
+bug appeared in 0.4.14.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.3" date="13.12.2006">
 
 <change type="feature">
