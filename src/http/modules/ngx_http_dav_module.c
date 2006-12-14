@@ -106,6 +106,7 @@ ngx_http_dav_handler(ngx_http_request_t *r)
     ngx_int_t                 rc;
     ngx_str_t                 path;
     ngx_file_info_t           fi;
+    ngx_table_elt_t          *depth;
     ngx_http_dav_loc_conf_t  *dlcf;
 
     /* TODO: Win32 */
@@ -162,11 +163,15 @@ ngx_http_dav_handler(ngx_http_request_t *r)
 
             if (ngx_is_dir(&fi)) {
 
-                if (r->uri.data[r->uri.len - 1] != '/'
-                    || r->headers_in.depth == NULL
-                    || r->headers_in.depth->value.len != sizeof("infinity") - 1
-                    || ngx_strcmp(r->headers_in.depth->value.data, "infinity")
-                       != 0)
+                if (r->uri.data[r->uri.len - 1] != '/') {
+                    return NGX_HTTP_BAD_REQUEST;
+                }
+
+                depth = r->headers_in.depth;
+
+                if (depth
+                    && (depth->value.len != sizeof("infinity") - 1
+                        || ngx_strcmp(depth->value.data, "infinity") != 0))
                 {
                     return NGX_HTTP_BAD_REQUEST;
                 }
@@ -183,9 +188,11 @@ ngx_http_dav_handler(ngx_http_request_t *r)
                     return NGX_HTTP_BAD_REQUEST;
                 }
 
-                if (r->headers_in.depth
-                    && r->headers_in.depth->value.len == 1
-                    && r->headers_in.depth->value.data[0] == '1')
+                depth = r->headers_in.depth;
+
+                if (depth
+                    && depth->value.len == 1
+                    && depth->value.data[0] == '1')
                 {
                     return NGX_HTTP_BAD_REQUEST;
                 }
