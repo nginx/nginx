@@ -44,8 +44,7 @@ nginx might report about configuration error.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании переменной $host мог произойти
-мог произойти segmentation fault;
+при использовании переменной $host мог произойти segmentation fault;
 ошибка появилась в 0.4.14.
 </para>
 <para lang="en">
