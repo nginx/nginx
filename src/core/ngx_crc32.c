@@ -102,7 +102,7 @@ uint32_t *ngx_crc32_table_short = ngx_crc32_table16;
 
 
 ngx_int_t
-ngx_crc32_init(ngx_pool_t *pool)
+ngx_crc32_init(void)
 {
     void  *p;
 
@@ -113,7 +113,7 @@ ngx_crc32_init(ngx_pool_t *pool)
         return NGX_OK;
     }
 
-    p = ngx_palloc(pool, 16 * sizeof(uint32_t) + ngx_cacheline_size);
+    p = ngx_alloc(16 * sizeof(uint32_t) + ngx_cacheline_size, ngx_cycle->log);
     if (p == NULL) {
         return NGX_ERROR;
     }

@@ -49,7 +49,7 @@ ngx_crc32_long(u_char *p, size_t len)
 }
 
 
-ngx_int_t ngx_crc32_init(ngx_pool_t *pool);
+ngx_int_t ngx_crc32_init(void);
 
 
 #endif /* _NGX_CRC32_H_INCLUDED_ */

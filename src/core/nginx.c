@@ -252,6 +252,12 @@ main(int argc, char *const *argv)
         return 1;
     }
 
+    /* ngx_crc32_init() requires ngx_cacheline_size set in ngx_os_init() */
+
+    if (ngx_crc32_init() != NGX_OK) {
+        return 1;
+    }
+
     if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;
     }
@@ -282,10 +288,6 @@ main(int argc, char *const *argv)
     }
 
     ngx_os_status(cycle->log);
-
-    if (ngx_crc32_init(cycle->pool) != NGX_OK) {
-        return 1;
-    }
 
     ngx_cycle = cycle;
 
