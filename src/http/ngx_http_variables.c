@@ -678,9 +678,13 @@ ngx_http_variable_host(ngx_http_request_t *r, ngx_http_variable_value_t *v,
             v->data = r->server_name.data;
         }
 
-    } else {
+    } else if (r->host_end) {
         v->len = r->host_end - r->host_start;
         v->data = r->host_start;
+
+    } else {
+        v->not_found = 1;
+        return NGX_OK;
     }
 
     v->valid = 1;

@@ -1104,7 +1104,9 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
         if (r->host_start) {
             r->host_start = new + (r->host_start - old);
-            r->host_end = new + (r->host_end - old);
+            if (r->host_end) {
+                r->host_end = new + (r->host_end - old);
+            }
         }
 
         if (r->port_start) {
