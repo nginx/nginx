@@ -85,14 +85,17 @@ void *
 ngx_palloc(ngx_pool_t *pool, size_t size)
 {
     u_char            *m;
-    ngx_pool_t        *p, *n;
+    ngx_pool_t        *p, *n, *current;
     ngx_pool_large_t  *large;
 
     if (size <= (size_t) NGX_MAX_ALLOC_FROM_POOL
         && size <= (size_t) (pool->end - (u_char *) pool)
                    - (size_t) ngx_align_ptr(sizeof(ngx_pool_t), NGX_ALIGNMENT))
     {
-        for (p = pool->current; /* void */ ; p = p->next) {
+        p = pool->current;
+        current = p;
+
+        for ( ;; ) {
 
             if (size < sizeof(int) || (size & 1)) {
                 m = p->last;
@@ -108,12 +111,15 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
             }
 
             if ((size_t) (p->end - m) < NGX_ALIGNMENT) {
-                pool->current = p->next;
+                current = p->next;
             }
 
             if (p->next == NULL) {
                 break;
             }
+
+            p = p->next;
+            pool->current = current;
         }
 
         /* allocate a new pool block */
@@ -123,9 +129,7 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
             return NULL;
         }
 
-        if (pool->current == NULL) {
-            pool->current = n;
-        }
+        pool->current = current ? current : n;
 
         p->next = n;
         m = ngx_align_ptr(n->last, NGX_ALIGNMENT);
