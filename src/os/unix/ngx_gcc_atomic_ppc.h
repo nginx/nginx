@@ -67,6 +67,13 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
     return res;
 }
 
+
+#if (NGX_SMP)
+#define ngx_memory_barrier()   __asm__ volatile ("lwsync\n" ::: "memory")
+#else
+#define ngx_memory_barrier()   __asm__ volatile ("" ::: "memory")
+#endif
+
 #else
 
 static ngx_inline ngx_atomic_uint_t
@@ -117,13 +124,14 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
     return res;
 }
 
-#endif
-
 
 #if (NGX_SMP)
 #define ngx_memory_barrier()   __asm__ volatile ("sync\n" ::: "memory")
 #else
 #define ngx_memory_barrier()   __asm__ volatile ("" ::: "memory")
 #endif
+
+#endif
+
 
 #define ngx_cpu_pause()
