@@ -19,7 +19,7 @@
 
 #define NGX_TIME_SLOTS   64
 
-static ngx_uint_t        slot = NGX_TIME_SLOTS;
+static ngx_uint_t        slot;
 static ngx_atomic_t      ngx_time_lock;
 
 volatile ngx_msec_t      ngx_current_msec;
