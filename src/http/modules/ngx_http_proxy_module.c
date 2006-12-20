@@ -847,7 +847,7 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http proxy status %ui \"%V\"",
-                   u->headers_in.status, &u->headers_in.status_line);
+                   u->headers_in.status_n, &u->headers_in.status_line);
 
     u->process_header = ngx_http_proxy_process_header;
 
