@@ -28,15 +28,16 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
     __asm__ volatile (
 
     "    li      %0, 0       \n" /* preset "0" to "res"                      */
+    "1:                      \n"
     "    ldarx   %1, 0, %2   \n" /* load from [lock] into "temp"             */
                                  /*   and store reservation                  */
     "    cmpd    %1, %3      \n" /* compare "temp" and "old"                 */
-    "    bne-    1f          \n" /* not equal                                */
+    "    bne-    2f          \n" /* not equal                                */
     "    stdcx.  %4, 0, %2   \n" /* store "set" into [lock] if reservation   */
                                  /*   is not cleared                         */
-    "    bne-    1f          \n" /* the reservation was cleared              */
+    "    bne-    1b          \n" /* the reservation was cleared              */
     "    li      %0, 1       \n" /* set "1" to "res"                         */
-    "1:                      \n"
+    "2:                      \n"
 
     : "=&b" (res), "=&b" (temp)
     : "b" (lock), "b" (old), "b" (set)
@@ -85,15 +86,16 @@ ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
     __asm__ volatile (
 
     "    li      %0, 0       \n" /* preset "0" to "res"                      */
+    "1:                      \n"
     "    lwarx   %1, 0, %2   \n" /* load from [lock] into "temp"             */
                                  /*   and store reservation                  */
     "    cmpw    %1, %3      \n" /* compare "temp" and "old"                 */
-    "    bne-    1f          \n" /* not equal                                */
+    "    bne-    2f          \n" /* not equal                                */
     "    stwcx.  %4, 0, %2   \n" /* store "set" into [lock] if reservation   */
                                  /*   is not cleared                         */
-    "    bne-    1f          \n" /* the reservation was cleared              */
+    "    bne-    1b          \n" /* the reservation was cleared              */
     "    li      %0, 1       \n" /* set "1" to "res"                         */
-    "1:                      \n"
+    "2:                      \n"
 
     : "=&b" (res), "=&b" (temp)
     : "b" (lock), "b" (old), "b" (set)
