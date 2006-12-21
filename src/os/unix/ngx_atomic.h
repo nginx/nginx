@@ -12,6 +12,62 @@
 #include <ngx_core.h>
 
 
+#if (NGX_DARWIN)
+
+/*
+ * use MacOSX atomic(3) and barrier(3) operations
+ * optimized at run time for UP and SMP
+ */
+
+#include <libkern/OSAtomic.h>
+
+/* "bool" conflicts with perl's CORE/handy.h
+ * "true" and "false" conflict with nginx, and of course we can rename them,
+ * but we need to undef "bool" anyway
+ */
+#undef bool
+#undef true
+#undef false
+
+
+#define NGX_HAVE_ATOMIC_OPS  1
+
+#if (NGX_PTR_SIZE == 8)
+
+typedef int64_t                     ngx_atomic_int_t;
+typedef uint64_t                    ngx_atomic_uint_t;
+#define NGX_ATOMIC_T_LEN            sizeof("-9223372036854775808") - 1
+
+#define ngx_atomic_cmp_set(lock, old, new)                                    \
+    OSAtomicCompareAndSwap64Barrier(old, new, (int64_t *) lock)
+
+#define ngx_atomic_fetch_add(value, add)                                      \
+    (OSAtomicAdd64(add, (int64_t *) value) - add)
+
+#else
+
+typedef int32_t                     ngx_atomic_int_t;
+typedef uint32_t                    ngx_atomic_uint_t;
+#define NGX_ATOMIC_T_LEN            sizeof("-2147483648") - 1
+
+#define ngx_atomic_cmp_set(lock, old, new)                                    \
+    OSAtomicCompareAndSwap32Barrier(old, new, (int32_t *) lock)
+
+#define ngx_atomic_fetch_add(value, add)                                      \
+    (OSAtomicAdd32(add, (int32_t *) value) - add)
+
+#endif
+
+#define ngx_memory_barrier()        OSMemoryBarrier()
+
+#define ngx_cpu_pause()
+
+typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
+
+
+#else /* !(NGX_DARWIN) */
+
+
 #if ( __i386__ || __i386 )
 
 typedef int32_t                     ngx_atomic_int_t;
@@ -141,6 +197,8 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 
 #endif
 
+#endif
+
 
 #if !(NGX_HAVE_ATOMIC_OPS)
 
@@ -180,6 +238,7 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
 #define ngx_cpu_pause()
 
 #endif
+
 
 void ngx_spinlock(ngx_atomic_t *lock, ngx_atomic_int_t value, ngx_uint_t spin);
 
