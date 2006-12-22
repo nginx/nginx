@@ -387,7 +387,10 @@ request_body(r)
 
     ngx_http_perl_set_request(r);
 
-    if (r->request_body->temp_file || r->request_body->bufs == NULL) {
+    if (r->request_body == NULL
+        || r->request_body->temp_file
+        || r->request_body->bufs == NULL)
+    {
         XSRETURN_UNDEF;
     }
 
@@ -411,7 +414,7 @@ request_body_file(r)
 
     ngx_http_perl_set_request(r);
 
-    if (r->request_body->temp_file == NULL) {
+    if (r->request_body == NULL || r->request_body->temp_file == NULL) {
         XSRETURN_UNDEF;
     }
 
