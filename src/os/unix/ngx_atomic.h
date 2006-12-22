@@ -12,11 +12,11 @@
 #include <ngx_core.h>
 
 
-#if (NGX_DARWIN)
+#if (NGX_DARWIN_ATOMIC)
 
 /*
- * use MacOSX atomic(3) and barrier(3) operations
- * optimized at run time for UP and SMP
+ * use Darwin 8 atomic(3) and barrier(3) operations
+ * optimized at run-time for UP and SMP
  */
 
 #include <libkern/OSAtomic.h>
