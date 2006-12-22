@@ -759,7 +759,7 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
     size_t            len;
     ngx_uint_t        trunc;
     ngx_file_t        file;
-    u_char            pid[NGX_INT64_LEN];
+    u_char            pid[NGX_INT64_LEN + 2];
 
     ngx_memzero(&file, sizeof(ngx_file_t));
 
@@ -778,7 +778,7 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
     }
 
     if (!ngx_test_config) {
-        len = ngx_sprintf(pid, "%P%N", ngx_pid) - pid;
+        len = ngx_snprintf(pid, NGX_INT64_LEN + 2, "%P%N", ngx_pid) - pid;
 
         if (ngx_write_file(&file, pid, len, 0) == NGX_ERROR) {
             return NGX_ERROR;
