@@ -176,6 +176,7 @@ ngx_module_t  ngx_core_module = {
 ngx_uint_t  ngx_max_module;
 
 static ngx_uint_t  ngx_show_version;
+static ngx_uint_t  ngx_show_configure;
 
 static char  *ngx_null_environ = NULL;
 
@@ -235,10 +236,21 @@ main(int argc, char *const *argv)
         ngx_write_fd(ngx_stderr_fileno, "nginx version: " NGINX_VER CRLF,
                      sizeof("nginx version: " NGINX_VER CRLF) - 1);
 
+#ifndef __WATCOMC__
+
+        if (ngx_show_configure) {
 #ifdef NGX_COMPILER
-        ngx_write_fd(ngx_stderr_fileno, "built by " NGX_COMPILER CRLF,
-                     sizeof("built by " NGX_COMPILER CRLF) - 1);
+            ngx_write_fd(ngx_stderr_fileno, "built by " NGX_COMPILER CRLF,
+                         sizeof("built by " NGX_COMPILER CRLF) - 1);
 #endif
+
+            ngx_write_fd(ngx_stderr_fileno,
+                         "configure arguments " NGX_CONFIGURE CRLF,
+                         sizeof("configure arguments " NGX_CONFIGURE CRLF) - 1);
+        }
+
+#endif
+
         if (!ngx_test_config) {
             return 0;
         }
@@ -496,6 +508,11 @@ ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
 
         case 'v':
             ngx_show_version = 1;
+            break;
+
+        case 'V':
+            ngx_show_version = 1;
+            ngx_show_configure = 1;
             break;
 
         case 't':

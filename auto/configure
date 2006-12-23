@@ -3,6 +3,8 @@
 # Copyright (C) Igor Sysoev
 
 
+NGX_CONFIGURE=`echo $@ | sed 's/"/\\\\"/g'`
+
 . auto/options
 . auto/init
 . auto/sources
@@ -10,8 +12,9 @@
 test -d $NGX_OBJS || mkdir $NGX_OBJS
 
 echo > $NGX_AUTO_HEADERS_H
-echo > $NGX_AUTO_CONFIG_H
 echo > $NGX_AUTOCONF_ERR
+
+echo "#define NGX_CONFIGURE \"$NGX_CONFIGURE\"" > $NGX_AUTO_CONFIG_H
 
 
 if [ $NGX_DEBUG = YES ]; then
