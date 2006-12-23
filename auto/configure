@@ -35,14 +35,15 @@ if test -z "$NGX_PLATFORM"; then
 
 else
     echo "building for $NGX_PLATFORM"
+    NGX_SYSTEM=$NGX_PLATFORM
 fi
 
+. auto/cc/conf
 
 if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/headers
 fi
 
-. auto/cc/conf
 . auto/os/conf
 
 if [ "$NGX_PLATFORM" != win32 ]; then

@@ -41,7 +41,7 @@ ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS $ngx_feature_inc_path \
 
 ngx_feature_inc_path=
 
-eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
+eval "/bin/sh -c \"$ngx_test\" >> $NGX_AUTOCONF_ERR 2>&1"
 
 
 if [ -x $NGX_AUTOTEST ]; then
