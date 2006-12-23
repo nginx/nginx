@@ -444,10 +444,14 @@ ngx_process_get_status(void)
                 return;
             }
 
-#if (NGX_SOLARIS)
+#if (NGX_SOLARIS || NGX_FREEBSD)
 
             /*
              * Solaris always calls the signal handler for each exited process
+             * despite waitpid() may be already called for this process.
+             *
+             * When several processes exit at the same time FreeBSD may
+             * erroneously call the signal handler for exited process
              * despite waitpid() may be already called for this process
              */
 
