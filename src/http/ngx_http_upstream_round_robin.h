@@ -53,7 +53,7 @@ typedef struct {
 typedef struct {
     ngx_http_upstream_rr_peers_t   *peers;
     ngx_uint_t                      current;
-    uintptr_t                      *tried; 
+    uintptr_t                      *tried;
     uintptr_t                       data;
 } ngx_http_upstream_rr_peer_data_t;
 
