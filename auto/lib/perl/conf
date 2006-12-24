@@ -47,6 +47,7 @@ if test -n "$NGX_PERL_VER"; then
     if test -n "$NGX_PERL_MODULES"; then
         have=NGX_PERL_MODULES value="(u_char *) \"$NGX_PERL_MODULES\""
         . auto/define
+        NGX_PERL_MODULES_MAN=$NGX_PERL_MODULES/man3
     fi
 
 else

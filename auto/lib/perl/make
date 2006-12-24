@@ -31,6 +31,6 @@ $NGX_OBJS/src/http/modules/perl/Makefile:				\
 			NGX_OBJS=$NGX_OBJS				\
 		$NGX_PERL Makefile.PL					\
 			LIB=$NGX_PERL_MODULES				\
-			INSTALLSITEMAN3DIR=$NGX_PERL_MODULES/man3
+			INSTALLSITEMAN3DIR=$NGX_PERL_MODULES_MAN
 
 END
