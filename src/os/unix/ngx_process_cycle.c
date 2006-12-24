@@ -787,7 +787,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
             }
         }
 
-        if (ccf->rlimit_core != NGX_CONF_UNSET) {
+        if (ccf->rlimit_core != NGX_CONF_UNSET_SIZE) {
             rlmt.rlim_cur = (rlim_t) ccf->rlimit_core;
             rlmt.rlim_max = (rlim_t) ccf->rlimit_core;
 

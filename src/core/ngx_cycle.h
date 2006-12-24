@@ -68,8 +68,8 @@ typedef struct {
      ngx_int_t                debug_points;
 
      ngx_int_t                rlimit_nofile;
-     ngx_int_t                rlimit_core;
      ngx_int_t                rlimit_sigpending;
+     size_t                   rlimit_core;
 
      int                      priority;
 
