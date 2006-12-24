@@ -9,6 +9,67 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.5" date="24.12.2006">
+
+<change type="change">
+<para lang="ru">
+ключ -v больше не выводит информацию о компиляторе.
+</para>
+<para lang="en">
+the -v switch does not show compiler information any more.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ключ -V.
+</para>
+<para lang="en">
+the -V switch.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива worker_rlimit_core поддерживает указание размера в K, M и G.
+</para>
+<para lang="en">
+the "worker_rlimit_core" directive supports size in K, M, and G.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль nginx.pm теперь может устанавливаться непривилегированным пользователем.
+</para>
+<para lang="en">
+the nginx.pm module now could be installed by an unprivileged user.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании методов $r->request_body или $r->request_body_file мог
+произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur if the $r->request_body or
+$r->request_body_file methods were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибок, специфичных для платформы ppc.
+</para>
+<para lang="en">
+the ppc platform specific bugs.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.4" date="15.12.2006">
 
 <change type="feature">
