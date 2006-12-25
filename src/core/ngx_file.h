@@ -56,6 +56,24 @@ typedef struct {
 } ngx_temp_file_t;
 
 
+typedef struct ngx_tree_ctx_s  ngx_tree_ctx_t;
+
+typedef ngx_int_t (*ngx_tree_init_handler_pt) (ngx_tree_ctx_t *ctx,
+    ngx_tree_ctx_t *prev);
+typedef ngx_int_t (*ngx_tree_handler_pt) (ngx_tree_ctx_t *ctx, ngx_str_t *name);
+
+struct ngx_tree_ctx_s {
+    ngx_tree_init_handler_pt   init_handler;
+    ngx_tree_handler_pt        file_handler;
+    ngx_tree_handler_pt        pre_tree_handler;
+    ngx_tree_handler_pt        post_tree_handler;
+    ngx_tree_handler_pt        spec_handler;
+    void                      *data;
+    size_t                     size;
+    ngx_log_t                 *log;
+};
+
+
 ssize_t ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain);
 ngx_int_t ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
     ngx_pool_t *pool, ngx_uint_t persistent,ngx_uint_t mode);
@@ -64,6 +82,7 @@ ngx_int_t ngx_create_path(ngx_file_t *file, ngx_path_t *path);
 ngx_err_t ngx_create_full_path(u_char *dir, ngx_uint_t access);
 ngx_int_t ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot);
 ngx_int_t ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user);
+ngx_int_t ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree);
 
 void ngx_init_temp_number(void);
 ngx_atomic_uint_t ngx_next_temp_number(ngx_uint_t collision);

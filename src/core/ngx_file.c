@@ -418,3 +418,168 @@ ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
 
     return NGX_OK;
 }
+
+
+ngx_int_t
+ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
+{
+    void       *data, *prev;
+    u_char     *p, *name;
+    size_t      len;
+    ngx_int_t   rc;
+    ngx_err_t   err;
+    ngx_str_t   file, buf; 
+    ngx_dir_t   dir;
+
+    buf.len = 0;
+    buf.data = NULL;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                   "walk tree \"%V\"", tree);
+
+    if (ngx_open_dir(tree, &dir) == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
+                      ngx_open_dir_n " \"%s\" failed", tree->data);
+        return NGX_ERROR;
+    }
+
+    prev = ctx->data;
+
+    if (ctx->size) {
+        data = ngx_alloc(ctx->size, ctx->log);
+        if (data == NULL) {
+            goto failed;
+        }
+
+        if (ctx->init_handler(data, prev) == NGX_ABORT) {
+            goto failed;
+        }
+
+        ctx->data = data;
+    }
+
+    for ( ;; ) {
+
+        ngx_set_errno(0);
+
+        if (ngx_read_dir(&dir) == NGX_ERROR) {
+            err = ngx_errno;
+
+            if (err == NGX_ENOMOREFILES) {
+                rc = NGX_OK;
+
+            } else {
+                ngx_log_error(NGX_LOG_CRIT, ctx->log, err,
+                              ngx_read_dir_n " \"%s\" failed", tree->data);
+                rc = NGX_ERROR;
+            }
+
+            goto done;
+        }
+
+        len = ngx_de_namelen(&dir);
+        name = ngx_de_name(&dir);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                      "tree name %uz:\"%s\"", len, name);
+
+        if (len == 1 && name[0] == '.') {
+            continue;
+        }
+
+        if (len == 2 && name[0] == '.' && name[1] == '.') {
+            continue;
+        }
+
+        file.len = tree->len + 1 + len;
+
+        if (file.len + NGX_DIR_MASK_LEN > buf.len) {
+
+            if (buf.len) {
+                ngx_free(buf.data);
+            }
+
+            buf.len = tree->len + 1 + len + NGX_DIR_MASK_LEN;
+
+            buf.data = ngx_alloc(buf.len + 1, ctx->log);
+            if (buf.data == NULL) {
+                goto failed;
+            }
+        }
+
+        p = ngx_cpymem(buf.data, tree->data, tree->len);
+        *p++ = '/';
+        ngx_memcpy(p, name, len + 1);
+
+        file.data = buf.data;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                       "tree path \"%s\"", file.data);
+
+        if (!dir.valid_info) {
+            if (ngx_de_info(file.data, &dir) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
+                              ngx_de_info_n " \"%s\" failed", file.data);
+                continue;
+            }
+        }
+
+        if (ngx_de_is_file(&dir)) {
+
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                           "tree file \"%s\"", file.data);
+
+            if (ctx->file_handler(ctx, &file) == NGX_ABORT) {
+                goto failed;
+            }
+
+        } else if (ngx_de_is_dir(&dir)) {
+
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                           "tree enter dir \"%s\"", file.data);
+
+            if (ctx->pre_tree_handler(ctx, &file) == NGX_ABORT) {
+                goto failed;
+            }
+
+            if (ngx_walk_tree(ctx, &file) == NGX_ABORT) {
+                goto failed;
+            }
+
+            if (ctx->post_tree_handler(ctx, &file) == NGX_ABORT) {
+                goto failed;
+            }
+
+        } else {
+
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
+                           "tree special \"%s\"", file.data);
+
+            if (ctx->spec_handler(ctx, &file) == NGX_ABORT) {
+                goto failed;
+            }
+        }
+    }
+
+failed:
+
+    rc = NGX_ABORT;
+
+done:
+
+    if (buf.len) {
+        ngx_free(buf.data);
+    }
+
+    if (ctx->data) {
+        ngx_free(ctx->data);
+        ctx->data = prev;
+    }
+
+    if (ngx_close_dir(&dir) == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
+                      ngx_close_dir_n " \"%s\" failed", tree->data);
+    }
+
+    return rc;
+}
