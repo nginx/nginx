@@ -13,7 +13,7 @@ static ngx_int_t ngx_linux_procfs(char *name, char *buf, size_t len,
 
 
 char  ngx_linux_kern_ostype[50];
-char  ngx_linux_kern_osrelease[20];
+char  ngx_linux_kern_osrelease[50];
 
 int   ngx_linux_rtsig_max;
 
