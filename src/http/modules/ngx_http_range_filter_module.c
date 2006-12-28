@@ -160,7 +160,8 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
     }
 
     if (ngx_array_init(&r->headers_out.ranges, r->pool, 2,
-                                        sizeof(ngx_http_range_t)) == NGX_ERROR)
+                       sizeof(ngx_http_range_t))
+        == NGX_ERROR)
     {
         return NGX_ERROR;
     }
