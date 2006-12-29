@@ -215,13 +215,6 @@ typedef struct {
 
 
 typedef struct {
-    off_t                             start;
-    off_t                             end;
-    ngx_str_t                         content_range;
-} ngx_http_range_t;
-
-
-typedef struct {
     ngx_list_t                        headers;
 
     ngx_uint_t                        status;
@@ -245,7 +238,6 @@ typedef struct {
     ngx_str_t                         content_type;
     ngx_str_t                         charset;
 
-    ngx_array_t                       ranges;
     ngx_array_t                       cache_control;
 
     off_t                             content_length_n;
