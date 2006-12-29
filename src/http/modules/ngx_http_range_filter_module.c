@@ -471,7 +471,10 @@ ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *ctx;
 
-    if (in == NULL || r->headers_out.ranges.nelts == 0) {
+    if (in == NULL
+        || r->headers_out.ranges.nelts == 0
+        || ngx_buf_special(in->buf))
+    {
         return ngx_http_next_body_filter(r, in);
     }
 
