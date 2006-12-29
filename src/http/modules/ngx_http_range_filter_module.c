@@ -45,6 +45,7 @@
 
 
 typedef struct {
+    off_t      offset;
     ngx_str_t  boundary_header;
 } ngx_http_range_filter_ctx_t;
 
@@ -305,6 +306,15 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         return rc;
     }
 
+
+    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_range_filter_ctx_t));
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_http_set_ctx(r, ctx, ngx_http_range_body_filter_module);
+
+
     r->headers_out.status = NGX_HTTP_PARTIAL_CONTENT;
 
     if (r->headers_out.ranges.nelts == 1) {
@@ -346,14 +356,6 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
 
 
     /* TODO: what if no content_type ?? */
-
-    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_range_filter_ctx_t));
-    if (ctx == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_http_set_ctx(r, ctx, ngx_http_range_body_filter_module);
-
 
     len = sizeof(CRLF "--") - 1 + NGX_ATOMIC_T_LEN
           + sizeof(CRLF "Content-Type: ") - 1
@@ -456,59 +458,73 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
 }
 
 
-/*
- * TODO:
- *     buffer or buffers is in memory
- *     range or ranges are overlapped in buffers
- */
-
 static ngx_int_t
 ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    ngx_uint_t                    i;
+    off_t                         start, last;
     ngx_buf_t                    *b, *buf;
+    ngx_uint_t                    i;
     ngx_chain_t                  *out, *hcl, *rcl, *dcl, **ll;
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *ctx;
 
-    if (in == NULL
-        || r->headers_out.ranges.nelts == 0
-        || ngx_buf_special(in->buf))
-    {
+    if (in == NULL || r->headers_out.ranges.nelts == 0) {
         return ngx_http_next_body_filter(r, in);
     }
 
-    range = r->headers_out.ranges.elts;
     buf = in->buf;
 
-    if (!buf->in_file) {
-        goto in_memory;
+    if (ngx_buf_special(in->buf)) {
+        return ngx_http_next_body_filter(r, in);
     }
 
+    ctx = ngx_http_get_module_ctx(r, ngx_http_range_body_filter_module);
+    if (ctx->offset) {
+        goto overlapped;
+    }
+
+    range = r->headers_out.ranges.elts;
+
     if (!buf->last_buf) {
+
+        if (buf->in_file) {
+            start = buf->file_pos + ctx->offset;
+            last = buf->file_last + ctx->offset;
+
+        } else {
+            start = buf->pos - buf->start + ctx->offset;
+            last = buf->last - buf->start + ctx->offset;
+        }
+
         for (i = 0; i < r->headers_out.ranges.nelts; i++) {
-            if (buf->file_pos > range[i].start
-                || buf->file_last < range[i].end)
-            {
+            if (start > range[i].start || last < range[i].end) {
                  goto overlapped;
             }
         }
     }
 
     /*
-     * the optimized version for the static files only
-     * that are passed in the single file buffer
+     * the optimized version for the responses
+     * that are passed in the single buffer
      */
+
+    ctx->offset = ngx_buf_size(buf);
 
     if (r->headers_out.ranges.nelts == 1) {
 
-        buf->file_pos = range->start;
-        buf->file_last = range->end;
+        if (buf->in_file) {
+            buf->file_pos = range->start;
+            buf->file_last = range->end;
+        }
+
+        if (ngx_buf_in_memory(buf)) {
+            buf->pos = buf->start + (size_t) range->start;
+            buf->last = buf->start + (size_t) range->end;
+        }
 
         return ngx_http_next_body_filter(r, in);
     }
 
-    ctx = ngx_http_get_module_ctx(r, ngx_http_range_body_filter_module);
     ll = &out;
 
     for (i = 0; i < r->headers_out.ranges.nelts; i++) {
@@ -564,10 +580,21 @@ ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return NGX_ERROR;
         }
 
-        b->in_file = 1;
-        b->file_pos = range[i].start;
-        b->file_last = range[i].end;
+        b->in_file = buf->in_file;
+        b->temporary = buf->temporary;
+        b->memory = buf->memory;
+        b->mmap = buf->mmap;
         b->file = buf->file;
+
+        if (buf->in_file) {
+            buf->file_pos = range[i].start;
+            buf->file_last = range[i].end;
+        }
+
+        if (ngx_buf_in_memory(buf)) {
+            buf->pos = buf->start + (size_t) range[i].start;
+            buf->last = buf->start + (size_t) range[i].end;
+        }
 
         dcl = ngx_alloc_chain_link(r->pool);
         if (dcl == NULL) {
@@ -614,12 +641,10 @@ ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     return ngx_http_next_body_filter(r, out);
 
-in_memory:
-
 overlapped:
 
     ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                  "range in memory buffer or in overlapped buffers");
+                  "range in overlapped buffers");
 
     return NGX_ERROR;
 }
