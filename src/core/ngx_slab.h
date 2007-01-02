@@ -39,7 +39,9 @@ typedef struct {
 
 void ngx_slab_init(ngx_slab_pool_t *pool);
 void *ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size);
+void *ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size);
 void ngx_slab_free(ngx_slab_pool_t *pool, void *p);
+void ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p);
 
 
 #endif /* _NGX_SLAB_H_INCLUDED_ */

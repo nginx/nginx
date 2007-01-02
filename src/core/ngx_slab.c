@@ -148,14 +148,31 @@ ngx_slab_init(ngx_slab_pool_t *pool)
 void *
 ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
 {
+    void  *p;
+
+    ngx_shmtx_lock(&pool->mutex);
+
+    p = ngx_slab_alloc_locked(pool, size);
+
+    ngx_shmtx_unlock(&pool->mutex);
+
+    return p;
+}
+
+
+void *
+ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
+{
     size_t            s;
     uintptr_t         p, n, m, mask, *bitmap;
     ngx_uint_t        i, slot, shift, map;
     ngx_slab_page_t  *page, *prev, *slots;
 
-    ngx_shmtx_lock(&pool->mutex);
-
     if (size >= ngx_slab_max_size) {
+
+        ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0,
+                      "slab alloc: %uz", size);
+
         page = ngx_slab_alloc_pages(pool, (size + ngx_pagesize - 1)
                                           >> ngx_pagesize_shift);
         if (page) {
@@ -186,14 +203,9 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
     slots = (ngx_slab_page_t *) ((u_char *) pool + sizeof(ngx_slab_pool_t));
     page = slots[slot].next;
 
-#if 0
-    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0,
-                   "slab alloc: page %p next: %p", page, page->next);
-#endif
-
     if (page->next != page) {
 
-        if (size < ngx_slab_exact_size) {
+        if (shift < ngx_slab_exact_shift) {
 
             do {
                 p = (page - pool->pages) << ngx_pagesize_shift;
@@ -212,7 +224,9 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
                             }
 
                             bitmap[n] |= m;
-                            i <<= shift;
+
+                            i = ((n * sizeof(uintptr_t) * 8) << shift)
+                                + (i << shift);
 
                             if (bitmap[n] == NGX_SLAB_BUSY) {
                                 for (n = n + 1; n < map; n++) {
@@ -243,7 +257,7 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
 
             } while (page);
 
-        } else if (size == ngx_slab_exact_size) {
+        } else if (shift == ngx_slab_exact_shift) {
 
             do {
                 if (page->slab != NGX_SLAB_BUSY) {
@@ -277,7 +291,7 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
 
             } while (page);
 
-        } else { /* size < ngx_pagesize */
+        } else { /* shift > ngx_slab_exact_shift */
 
             n = ngx_pagesize_shift - (page->slab & NGX_SLAB_SHIFT_MASK);
             n = 1 << n;
@@ -324,7 +338,7 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
     page = ngx_slab_alloc_pages(pool, 1);
 
     if (page) {
-        if (size < ngx_slab_exact_size) {
+        if (shift < ngx_slab_exact_shift) {
             p = (page - pool->pages) << ngx_pagesize_shift;
             bitmap = (uintptr_t *) (pool->start + p);
 
@@ -354,7 +368,7 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
 
             goto done;
 
-        } else if (size == ngx_slab_exact_size) {
+        } else if (shift == ngx_slab_exact_shift) {
 
             page->slab = 1;
             page->next = &slots[slot];
@@ -367,7 +381,7 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
 
             goto done;
 
-        } else { /* size < ngx_pagesize */
+        } else { /* shift > ngx_slab_exact_shift */
 
             page->slab = ((uintptr_t) 1 << NGX_SLAB_MAP_SHIFT) | shift;
             page->next = &slots[slot];
@@ -386,8 +400,6 @@ ngx_slab_alloc(ngx_slab_pool_t *pool, size_t size)
 
 done:
 
-    ngx_shmtx_unlock(&pool->mutex);
-
     ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0, "slab alloc: %p", p);
 
     return (void *) p;
@@ -397,14 +409,23 @@ done:
 void
 ngx_slab_free(ngx_slab_pool_t *pool, void *p)
 {
+    ngx_shmtx_lock(&pool->mutex);
+
+    ngx_slab_free_locked(pool, p);
+
+    ngx_shmtx_unlock(&pool->mutex);
+}
+
+
+void
+ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
+{
     size_t            size;
     uintptr_t         slab, *bitmap;
     ngx_uint_t        n, m, type, slot, shift, map;
     ngx_slab_page_t  *slots, *page;
 
     ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0, "slab free: %p", p);
-
-    ngx_shmtx_lock(&pool->mutex);
 
     if ((u_char *) p < pool->start || (u_char *) p > pool->end) {
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
@@ -584,8 +605,6 @@ done:
 
     ngx_slab_junk(p, size);
 
-    ngx_shmtx_unlock(&pool->mutex);
-
     return;
 
 wrong_chunk:
@@ -601,8 +620,6 @@ chunk_already_free:
                       "ngx_slab_free(): chunk is already free");
 
 fail:
-
-    ngx_shmtx_unlock(&pool->mutex);
 
     return;
 }
@@ -658,6 +675,7 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
 
     ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, NGX_ENOMEM,
                       "ngx_slab_alloc(): failed");
+
     return NULL;
 }
 
@@ -674,12 +692,16 @@ ngx_slab_free_pages(ngx_slab_pool_t *pool, ngx_slab_page_t *page,
         ngx_memzero(&page[1], pages * sizeof(ngx_slab_page_t));
     }
 
-    prev = (ngx_slab_page_t *) (page->prev & ~NGX_SLAB_PAGE_MASK);
-    prev->next = page->next;
+    if (page->next) {
+        prev = (ngx_slab_page_t *) (page->prev & ~NGX_SLAB_PAGE_MASK);
+        prev->next = page->next;
+        page->next->prev = page->prev;
+    }
 
+    page->prev = (uintptr_t) &pool->free;
     page->next = pool->free.next;
-    pool->free.next = page;
 
-    page->prev = page->next->prev;
     page->next->prev = (uintptr_t) page;
+
+    pool->free.next = page;
 }
