@@ -84,7 +84,8 @@ static long  ngx_ssl_protocols[] = {
 };
 
 
-int  ngx_connection_index;
+int  ngx_ssl_connection_index;
+int  ngx_ssl_server_conf_index;
 
 
 ngx_int_t
@@ -101,10 +102,18 @@ ngx_ssl_init(ngx_log_t *log)
     ENGINE_load_builtin_engines();
 #endif
 
-    ngx_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+    ngx_ssl_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
-    if (ngx_connection_index == -1) {
+    if (ngx_ssl_connection_index == -1) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0, "SSL_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
+
+    ngx_ssl_server_conf_index = SSL_CTX_get_ex_new_index(0, NULL, NULL, NULL,
+                                                         NULL);
+    if (ngx_ssl_server_conf_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0,
+                      "SSL_CTX_get_ex_new_index() failed");
         return NGX_ERROR;
     }
 
@@ -113,12 +122,18 @@ ngx_ssl_init(ngx_log_t *log)
 
 
 ngx_int_t
-ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols)
+ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
 {
     ssl->ctx = SSL_CTX_new(SSLv23_method());
 
     if (ssl->ctx == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "SSL_CTX_new() failed");
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_server_conf_index, data) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set_ex_data() failed");
         return NGX_ERROR;
     }
 
@@ -336,7 +351,7 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
         SSL_set_accept_state(sc->connection);
     }
 
-    if (SSL_set_ex_data(sc->connection, ngx_connection_index, c) == 0) {
+    if (SSL_set_ex_data(sc->connection, ngx_ssl_connection_index, c) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "SSL_set_ex_data() failed");
         return NGX_ERROR;
     }

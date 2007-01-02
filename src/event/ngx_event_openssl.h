@@ -63,7 +63,7 @@ typedef struct {
 
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
-ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols);
+ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data);
 ngx_int_t ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_str_t *cert, ngx_str_t *key);
 ngx_int_t ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
@@ -75,7 +75,10 @@ ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
 ngx_int_t ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session);
 #define ngx_ssl_get_session(c)      SSL_get1_session(c->ssl->connection)
 #define ngx_ssl_free_session        SSL_SESSION_free
-#define ngx_ssl_get_connection(sc)  SSL_get_ex_data(sc, ngx_connection_index)
+#define ngx_ssl_get_connection(ssl_conn)                                      \
+    SSL_get_ex_data(ssl_conn, ngx_ssl_connection_index)
+#define ngx_ssl_get_server_conf(ssl_ctx)                                      \
+    SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_server_conf_index)
 
 
 ngx_int_t ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool,
@@ -104,7 +107,8 @@ void ngx_cdecl ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 void ngx_ssl_cleanup_ctx(void *data);
 
 
-extern int  ngx_connection_index;
+extern int  ngx_ssl_connection_index;
+extern int  ngx_ssl_server_conf_index;
 
 
 #endif /* _NGX_EVENT_OPENSSL_H_INCLUDED_ */

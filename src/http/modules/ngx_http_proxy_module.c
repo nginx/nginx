@@ -2130,7 +2130,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         plcf->upstream.ssl->log = cf->log;
 
         if (ngx_ssl_create(plcf->upstream.ssl,
-                           NGX_SSL_SSLv2|NGX_SSL_SSLv3|NGX_SSL_TLSv1)
+                           NGX_SSL_SSLv2|NGX_SSL_SSLv3|NGX_SSL_TLSv1, NULL)
             != NGX_OK)
         {
             return NGX_CONF_ERROR;
