@@ -90,6 +90,10 @@ int  ngx_connection_index;
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x00907000
+    OPENSSL_config(NULL);
+#endif
+
     SSL_library_init();
     SSL_load_error_strings();
 
