@@ -171,7 +171,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
     if (size >= ngx_slab_max_size) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0,
-                      "slab alloc: %uz", size);
+                       "slab alloc: %uz", size);
 
         page = ngx_slab_alloc_pages(pool, (size + ngx_pagesize - 1)
                                           >> ngx_pagesize_shift);
