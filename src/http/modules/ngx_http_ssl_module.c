@@ -257,35 +257,34 @@ ngx_http_ssl_add_variables(ngx_conf_t *cf)
 static void *
 ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
 {
-    ngx_http_ssl_srv_conf_t  *scf;
+    ngx_http_ssl_srv_conf_t  *sscf;
 
-    scf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_srv_conf_t));
-    if (scf == NULL) {
+    sscf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_srv_conf_t));
+    if (sscf == NULL) {
         return NGX_CONF_ERROR;
     }
 
     /*
      * set by ngx_pcalloc():
      *
-     *     scf->protocols = 0;
-
-     *     scf->certificate.len = 0;
-     *     scf->certificate.data = NULL;
-     *     scf->certificate_key.len = 0;
-     *     scf->certificate_key.data = NULL;
-     *     scf->client_certificate.len = 0;
-     *     scf->client_certificate.data = NULL;
-     *     scf->ciphers.len = 0;
-     *     scf->ciphers.data = NULL;
+     *     sscf->protocols = 0;
+     *     sscf->certificate.len = 0;
+     *     sscf->certificate.data = NULL;
+     *     sscf->certificate_key.len = 0;
+     *     sscf->certificate_key.data = NULL;
+     *     sscf->client_certificate.len = 0;
+     *     sscf->client_certificate.data = NULL;
+     *     sscf->ciphers.len = 0;
+     *     sscf->ciphers.data = NULL;
      */
 
-    scf->enable = NGX_CONF_UNSET;
-    scf->session_timeout = NGX_CONF_UNSET;
-    scf->verify = NGX_CONF_UNSET;
-    scf->verify_depth = NGX_CONF_UNSET;
-    scf->prefer_server_ciphers = NGX_CONF_UNSET;
+    sscf->enable = NGX_CONF_UNSET;
+    sscf->session_timeout = NGX_CONF_UNSET;
+    sscf->verify = NGX_CONF_UNSET;
+    sscf->verify_depth = NGX_CONF_UNSET;
+    sscf->prefer_server_ciphers = NGX_CONF_UNSET;
 
-    return scf;
+    return sscf;
 }
 
 
