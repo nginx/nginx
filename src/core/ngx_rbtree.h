@@ -50,6 +50,11 @@ void ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *root,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
 
+/* a sentinel must be black */
+
+#define ngx_rbtree_sentinel_init(node)   node->color = 0
+
+
 static ngx_inline ngx_rbtree_node_t *
 ngx_rbtree_min(ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
 {
