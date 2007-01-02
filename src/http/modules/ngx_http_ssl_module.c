@@ -343,7 +343,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->data = &conf->ssl;
 
     if (ngx_ssl_certificate(cf, &conf->ssl, &conf->certificate,
-                            &conf->certificate_key) != NGX_OK)
+                            &conf->certificate_key)
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -359,7 +360,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->verify) {
         if (ngx_ssl_client_certificate(cf, &conf->ssl,
-                                 &conf->client_certificate, conf->verify_depth)
+                                       &conf->client_certificate,
+                                       conf->verify_depth)
             != NGX_OK)
         {
             return NGX_CONF_ERROR;
