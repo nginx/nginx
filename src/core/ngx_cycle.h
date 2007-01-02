@@ -21,10 +21,17 @@
 #define NGX_DEBUG_POINTS_ABORT  2
 
 
-typedef struct {
+typedef struct ngx_shm_zone_s  ngx_shm_zone_t;
+
+typedef ngx_int_t (*ngx_shm_zone_init_pt) (ngx_shm_zone_t *zone);
+
+struct ngx_shm_zone_s {
+    void                     *data;
     ngx_shm_t                 shm;
+    ngx_shm_zone_init_pt      init;
     ngx_str_t                 name;
-} ngx_shm_zone_t;
+    void                     *tag;
+};
 
 
 struct ngx_cycle_s {
@@ -108,6 +115,8 @@ void ngx_delete_pidfile(ngx_cycle_t *cycle);
 void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user);
 ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
 u_long ngx_get_cpu_affinity(ngx_uint_t n);
+ngx_shm_zone_t *ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name,
+    size_t size, void *tag);
 
 
 extern volatile ngx_cycle_t  *ngx_cycle;
