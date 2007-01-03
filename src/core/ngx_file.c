@@ -428,7 +428,7 @@ ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
     size_t      len;
     ngx_int_t   rc;
     ngx_err_t   err;
-    ngx_str_t   file, buf; 
+    ngx_str_t   file, buf;
     ngx_dir_t   dir;
 
     buf.len = 0;
