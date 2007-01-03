@@ -16,6 +16,8 @@
 
 static void *ngx_imap_ssl_create_conf(ngx_conf_t *cf);
 static char *ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child);
+static char *ngx_imap_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 #if !defined (SSL_OP_CIPHER_SERVER_PREFERENCE)
 
@@ -99,6 +101,13 @@ static ngx_command_t  ngx_imap_ssl_commands[] = {
       ngx_imap_ssl_nosupported, 0, 0, ngx_imap_ssl_openssl097 },
 #endif
 
+    { ngx_string("ssl_session_cache"),
+      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE12,
+      ngx_imap_ssl_session_cache,
+      NGX_IMAP_SRV_CONF_OFFSET,
+      0,
+      NULL },
+
     { ngx_string("ssl_session_timeout"),
       NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_sec_slot,
@@ -135,7 +144,7 @@ ngx_module_t  ngx_imap_ssl_module = {
 };
 
 
-static u_char ngx_imap_session_id_ctx[] = "IMAP";
+static ngx_str_t ngx_imap_ssl_sess_id_ctx = ngx_string("IMAP");
 
 
 static void *
@@ -152,19 +161,20 @@ ngx_imap_ssl_create_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     scf->protocols = 0;
-     *
      *     scf->certificate.len = 0;
      *     scf->certificate.data = NULL;
      *     scf->certificate_key.len = 0;
      *     scf->certificate_key.data = NULL;
      *     scf->ciphers.len = 0;
      *     scf->ciphers.data = NULL;
+     *     scf->shm_zone = NULL;
      */
 
     scf->enable = NGX_CONF_UNSET;
     scf->starttls = NGX_CONF_UNSET;
-    scf->session_timeout = NGX_CONF_UNSET;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
+    scf->builtin_session_cache = NGX_CONF_UNSET;
+    scf->session_timeout = NGX_CONF_UNSET;
 
     return scf;
 }
@@ -248,14 +258,123 @@ ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    SSL_CTX_set_session_cache_mode(conf->ssl.ctx, SSL_SESS_CACHE_SERVER);
+    ngx_conf_merge_value(conf->builtin_session_cache,
+                         prev->builtin_session_cache,
+                         NGX_SSL_DFLT_BUILTIN_SCACHE);
 
-    SSL_CTX_set_session_id_context(conf->ssl.ctx, ngx_imap_session_id_ctx,
-                                   sizeof(ngx_imap_session_id_ctx) - 1);
+    if (conf->shm_zone == NULL) {
+        conf->shm_zone = prev->shm_zone;
+    }
 
-    SSL_CTX_set_timeout(conf->ssl.ctx, conf->session_timeout);
+    if (ngx_ssl_session_cache(&conf->ssl, &ngx_imap_ssl_sess_id_ctx,
+                              conf->builtin_session_cache,
+                              conf->shm_zone, conf->session_timeout)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_imap_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_imap_ssl_conf_t  *scf = conf;
+
+    size_t       len;
+    ngx_str_t   *value, name, size;
+    ngx_int_t    n;
+    ngx_uint_t   i, j;
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strcmp(value[i].data, "builtin") == 0) {
+            scf->builtin_session_cache = NGX_SSL_DFLT_BUILTIN_SCACHE;
+            continue;
+        }
+
+        if (value[i].len > sizeof("builtin:") - 1
+            && ngx_strncmp(value[i].data, "builtin:", sizeof("builtin:") - 1)
+               == 0)
+        {
+            n = ngx_atoi(value[i].data + sizeof("builtin:") - 1,
+                         value[i].len - (sizeof("builtin:") - 1));
+
+            if (n == NGX_ERROR) {
+                goto invalid;
+            }
+
+            scf->builtin_session_cache = n;
+
+            continue;
+        }
+
+        if (value[i].len > sizeof("shared:") - 1
+            && ngx_strncmp(value[i].data, "shared:", sizeof("shared:") - 1)
+               == 0)
+        {
+            len = 0;
+
+            for (j = sizeof("shared:") - 1; j < value[i].len; j++) {
+                if (value[i].data[j] == ':') {
+                    break;
+                }
+
+                len++;
+            }
+
+            if (len == 0) {
+                goto invalid;
+            }
+
+            name.len = len;
+            name.data = value[i].data + sizeof("shared:") - 1;
+
+            size.len = value[i].len - j - 1;
+            size.data = name.data + len + 1;
+
+            n = ngx_parse_size(&size);
+
+            if (n == NGX_ERROR) {
+                goto invalid;
+            }
+
+            if (n < (ngx_int_t) (8 * ngx_pagesize)) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "session cache \"%V\" is too small",
+                                   &value[i]);
+
+                return NGX_CONF_ERROR;
+            }
+
+            scf->shm_zone = ngx_shared_memory_add(cf, &name, n,
+                                                   &ngx_imap_ssl_module);
+            if (scf->shm_zone == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        goto invalid;
+    }
+
+    if (scf->shm_zone && scf->builtin_session_cache == NGX_CONF_UNSET) {
+        scf->builtin_session_cache = NGX_SSL_NO_BUILTIN_SCACHE;
+    }
+
+    return NGX_CONF_OK;
+
+invalid:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "invalid session cache \"%V\"", &value[i]);
+
+    return NGX_CONF_ERROR;
 }
 
 
