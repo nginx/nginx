@@ -13,33 +13,6 @@
 #include <ngx_http.h>
 
 
-typedef struct ngx_http_ssl_cached_sess_s  ngx_http_ssl_cached_sess_t;
-
-
-typedef struct {
-    ngx_rbtree_node_t               node;
-    u_char                         *id;
-    size_t                          len;
-    ngx_http_ssl_cached_sess_t     *session;
-} ngx_http_ssl_sess_id_t;
-
-
-struct ngx_http_ssl_cached_sess_s {
-    ngx_http_ssl_cached_sess_t     *prev;
-    ngx_http_ssl_cached_sess_t     *next;
-    time_t                          expire;
-    ngx_http_ssl_sess_id_t         *sess_id;
-    u_char                          asn1[1];
-};
-
-
-typedef struct {
-    ngx_rbtree_t                   *session_rbtree;
-    ngx_http_ssl_cached_sess_t      session_cache_head;
-    ngx_http_ssl_cached_sess_t      session_cache_tail;
-} ngx_http_ssl_sesssion_cache_t;
-
-
 typedef struct {
     ngx_flag_t                      enable;
 

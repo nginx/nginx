@@ -51,6 +51,41 @@ typedef struct {
 } ngx_ssl_connection_t;
 
 
+#define NGX_SSL_DFLT_BUILTIN_SCACHE  -2
+#define NGX_SSL_NO_BUILTIN_SCACHE    -3
+
+
+typedef struct ngx_ssl_cached_sess_s  ngx_ssl_cached_sess_t;
+
+
+#define NGX_SSL_MAX_SESSION_SIZE (4096 - offsetof(ngx_ssl_cached_sess_t, asn1))
+
+
+typedef struct {
+    ngx_rbtree_node_t           node;
+    u_char                     *id;
+    size_t                      len;
+    ngx_ssl_cached_sess_t      *session;
+} ngx_ssl_sess_id_t;
+
+
+struct ngx_ssl_cached_sess_s {
+    ngx_ssl_cached_sess_t      *prev;
+    ngx_ssl_cached_sess_t      *next;
+    time_t                      expire;
+    ngx_ssl_sess_id_t          *sess_id;
+    u_char                      asn1[1];
+};
+
+
+typedef struct {
+    ngx_rbtree_t               *session_rbtree;
+    ngx_ssl_cached_sess_t       session_cache_head;
+    ngx_ssl_cached_sess_t       session_cache_tail;
+} ngx_ssl_session_cache_t;
+
+
+
 #define NGX_SSL_SSLv2    2
 #define NGX_SSL_SSLv3    4
 #define NGX_SSL_TLSv1    8
@@ -69,6 +104,8 @@ ngx_int_t ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
 ngx_int_t ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_str_t *cert, ngx_int_t depth);
 ngx_int_t ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl);
+ngx_int_t ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
+    ssize_t builtin_session_cache, ngx_shm_zone_t *shm_zone, time_t timeout);
 ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
     ngx_uint_t flags);
 
@@ -93,8 +130,6 @@ ngx_int_t ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 
 
-
-
 ngx_int_t ngx_ssl_handshake(ngx_connection_t *c);
 ssize_t ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size);
 ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size);
@@ -109,6 +144,7 @@ void ngx_ssl_cleanup_ctx(void *data);
 
 extern int  ngx_ssl_connection_index;
 extern int  ngx_ssl_server_conf_index;
+extern int  ngx_ssl_session_cache_index;
 
 
 #endif /* _NGX_EVENT_OPENSSL_H_INCLUDED_ */

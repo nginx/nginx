@@ -22,6 +22,16 @@ static void ngx_ssl_read_handler(ngx_event_t *rev);
 static void ngx_ssl_shutdown_handler(ngx_event_t *ev);
 static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
     ngx_err_t err, char *text);
+
+static ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone);
+static int ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn,
+    ngx_ssl_session_t *sess);
+static ngx_ssl_session_t *ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
+    u_char *id, int len, int *copy);
+static void ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess);
+static void ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
+    ngx_slab_pool_t *shpool, ngx_uint_t n);
+
 static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
 static char *ngx_openssl_init_conf(ngx_cycle_t *cycle, void *conf);
 static void ngx_openssl_exit(ngx_cycle_t *cycle);
@@ -86,6 +96,7 @@ static long  ngx_ssl_protocols[] = {
 
 int  ngx_ssl_connection_index;
 int  ngx_ssl_server_conf_index;
+int  ngx_ssl_session_cache_index;
 
 
 ngx_int_t
@@ -112,6 +123,14 @@ ngx_ssl_init(ngx_log_t *log)
     ngx_ssl_server_conf_index = SSL_CTX_get_ex_new_index(0, NULL, NULL, NULL,
                                                          NULL);
     if (ngx_ssl_server_conf_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0,
+                      "SSL_CTX_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
+
+    ngx_ssl_session_cache_index = SSL_CTX_get_ex_new_index(0, NULL, NULL, NULL,
+                                                           NULL);
+    if (ngx_ssl_session_cache_index == -1) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0,
                       "SSL_CTX_get_ex_new_index() failed");
         return NGX_ERROR;
@@ -279,7 +298,7 @@ ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
     name = X509_get_issuer_name(cert);
     issuer = name ? X509_NAME_oneline(name, NULL, 0) : "(none)";
 
-    ngx_log_debug5(NGX_LOG_DEBUG_HTTP, c->log, 0,
+    ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "verify:%d, error:%d, depth:%d, "
                    "subject:\"%s\",issuer: \"%s\"",
                    ok, err, depth, subject, issuer);
@@ -1033,7 +1052,7 @@ ngx_ssl_shutdown_handler(ngx_event_t *ev)
         c->timedout = 1;
     }
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "SSL shutdown handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "SSL shutdown handler");
 
     if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
         return;
@@ -1116,6 +1135,428 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
     }
 
     ngx_log_error(level, log, err, "%s)", errstr);
+}
+
+
+ngx_int_t
+ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
+    ssize_t builtin_session_cache, ngx_shm_zone_t *shm_zone, time_t timeout)
+{
+    long  cache_mode;
+
+    cache_mode = SSL_SESS_CACHE_SERVER;
+
+    if (shm_zone && builtin_session_cache == NGX_SSL_NO_BUILTIN_SCACHE) {
+        cache_mode |= SSL_SESS_CACHE_NO_INTERNAL;
+    }
+
+    SSL_CTX_set_session_cache_mode(ssl->ctx, cache_mode);
+
+    SSL_CTX_set_session_id_context(ssl->ctx, sess_ctx->data, sess_ctx->len);
+
+    if (builtin_session_cache != NGX_SSL_NO_BUILTIN_SCACHE) {
+
+        if (builtin_session_cache != NGX_SSL_DFLT_BUILTIN_SCACHE) {
+            SSL_CTX_sess_set_cache_size(ssl->ctx, builtin_session_cache);
+        }
+
+        SSL_CTX_set_timeout(ssl->ctx, timeout);
+    }
+
+    if (shm_zone) {
+        shm_zone->init = ngx_ssl_session_cache_init;
+
+        SSL_CTX_sess_set_new_cb(ssl->ctx, ngx_ssl_new_session);
+        SSL_CTX_sess_set_get_cb(ssl->ctx, ngx_ssl_get_cached_session);
+        SSL_CTX_sess_set_remove_cb(ssl->ctx, ngx_ssl_remove_session);
+
+        if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_session_cache_index, shm_zone)
+            == 0)
+        {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "SSL_CTX_set_ex_data() failed");
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone)
+{
+    ngx_slab_pool_t          *shpool;
+    ngx_rbtree_node_t        *sentinel;
+    ngx_ssl_session_cache_t  *cache;
+
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+
+    cache = ngx_slab_alloc(shpool, sizeof(ngx_ssl_session_cache_t));
+    if (cache == NULL) {
+        return NGX_ERROR;
+    }
+
+    cache->session_cache_head.prev = NULL;
+    cache->session_cache_head.next = &cache->session_cache_tail;
+
+    cache->session_cache_tail.prev = &cache->session_cache_head;
+    cache->session_cache_tail.next = NULL;
+
+    cache->session_rbtree = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_t));
+    if (cache->session_rbtree == NULL) {
+        return NGX_ERROR;
+    }
+
+    sentinel = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_node_t));
+    if (sentinel == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_rbtree_sentinel_init(sentinel);
+
+    cache->session_rbtree->root = sentinel;
+    cache->session_rbtree->sentinel = sentinel;
+    cache->session_rbtree->insert = ngx_rbtree_insert_value;
+
+    shm_zone->data = cache;
+
+    return NGX_OK;
+}
+
+
+/*
+ * OpenSSL's i2d_SSL_SESSION() and d2i_SSL_SESSION are slow,
+ * so they are outside the code locked by shared pool mutex
+ */
+
+static int
+ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
+{
+    int                       len;
+    u_char                   *p, *id;
+    uint32_t                  hash;
+    SSL_CTX                  *ssl_ctx;
+    ngx_time_t               *tp;
+    ngx_shm_zone_t           *shm_zone;
+    ngx_connection_t         *c;
+    ngx_slab_pool_t          *shpool;
+    ngx_ssl_sess_id_t        *sess_id;
+    ngx_ssl_cached_sess_t    *cached_sess;
+    ngx_ssl_session_cache_t  *cache;
+    u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
+
+    len = i2d_SSL_SESSION(sess, NULL);
+
+    /* do not cache too big session */
+
+    if (len > (int) NGX_SSL_MAX_SESSION_SIZE) {
+        return 0;
+    }
+
+    p = buf;
+    i2d_SSL_SESSION(sess, &p);
+
+    c = ngx_ssl_get_connection(ssl_conn);
+
+    ssl_ctx = SSL_get_SSL_CTX(ssl_conn);
+    shm_zone = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_session_cache_index);
+
+    cache = shm_zone->data;
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+
+    ngx_shmtx_lock(&shpool->mutex);
+
+    /* drop one or two expired sessions */
+    ngx_ssl_expire_sessions(cache, shpool, 1);
+
+    cached_sess = ngx_slab_alloc_locked(shpool,
+                                  offsetof(ngx_ssl_cached_sess_t, asn1) + len);
+
+    if (cached_sess == NULL) {
+
+        /* drop the oldest non-expired session and try once more */
+
+        ngx_ssl_expire_sessions(cache, shpool, 0);
+
+        cached_sess = ngx_slab_alloc_locked(shpool,
+                                  offsetof(ngx_ssl_cached_sess_t, asn1) + len);
+
+        if (cached_sess == NULL) {
+            id = NULL;
+            goto failed;
+        }
+    }
+
+    id = ngx_slab_alloc_locked(shpool, sess->session_id_length);
+    if (id == NULL) {
+        goto failed;
+    }
+
+    sess_id = ngx_slab_alloc_locked(shpool, sizeof(ngx_ssl_sess_id_t));
+    if (sess_id == NULL) {
+        goto failed;
+    }
+
+    ngx_memcpy(&cached_sess->asn1[0], buf, len);
+
+    ngx_memcpy(id, sess->session_id, sess->session_id_length);
+
+    hash = ngx_crc32_short(sess->session_id, sess->session_id_length);
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "http ssl new session: %08XD:%d:%d",
+                   hash, sess->session_id_length, len);
+
+    sess_id->node.key = hash;
+    sess_id->node.data = (u_char) sess->session_id_length;
+    sess_id->id = id;
+    sess_id->len = len;
+    sess_id->session = cached_sess;
+
+    tp = ngx_timeofday();
+
+    cached_sess->expire = tp->sec + SSL_CTX_get_timeout(ssl_ctx);
+    cached_sess->sess_id = sess_id;
+
+    cached_sess->next = cache->session_cache_head.next;
+    cached_sess->next->prev = cached_sess;
+    cached_sess->prev = &cache->session_cache_head;
+    cache->session_cache_head.next = cached_sess;
+
+    ngx_rbtree_insert(cache->session_rbtree, &sess_id->node);
+
+    ngx_shmtx_unlock(&shpool->mutex);
+
+    return 0;
+
+failed:
+
+    if (cached_sess) {
+        ngx_slab_free_locked(shpool, cached_sess);
+    }
+
+    if (id) {
+        ngx_slab_free_locked(shpool, id);
+    }
+
+    ngx_shmtx_unlock(&shpool->mutex);
+
+    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                  "could not add new SSL session to the session cache");
+
+    return 0;
+}
+
+
+static ngx_ssl_session_t *
+ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
+    int *copy)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x00908000
+    const
+#endif
+    u_char                   *p;
+    uint32_t                  hash;
+    ngx_time_t               *tp;
+    ngx_shm_zone_t           *shm_zone;
+    ngx_slab_pool_t          *shpool;
+    ngx_connection_t         *c;
+    ngx_rbtree_node_t        *node, *sentinel;
+    ngx_ssl_session_t        *sess;
+    ngx_ssl_sess_id_t        *sess_id;
+    ngx_ssl_cached_sess_t    *cached_sess;
+    ngx_ssl_session_cache_t  *cache;
+    u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
+
+    c = ngx_ssl_get_connection(ssl_conn);
+
+    hash = ngx_crc32_short(id, len);
+    *copy = 0;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "http ssl get session: %08XD:%d", hash, len);
+
+    shm_zone = SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl_conn),
+                                   ngx_ssl_session_cache_index);
+
+    cache = shm_zone->data;
+
+    if (cache->session_rbtree == NULL) {
+        return NULL;
+    }
+
+    sess = NULL;
+
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+
+    ngx_shmtx_lock(&shpool->mutex);
+
+    node = cache->session_rbtree->root;
+    sentinel = cache->session_rbtree->sentinel;
+
+    while (node != sentinel) {
+
+        if (hash < node->key) {
+            node = node->left;
+            continue;
+        }
+
+        if (hash > node->key) {
+            node = node->right;
+            continue;
+        }
+
+        if (hash == node->key && (u_char) len == node->data) {
+            sess_id = (ngx_ssl_sess_id_t *) node;
+
+            if (ngx_strncmp(id, sess_id->id, len) == 0) {
+
+                cached_sess = sess_id->session;
+
+                tp = ngx_timeofday();
+
+                if (cached_sess->expire > tp->sec) {
+                    ngx_memcpy(buf, &cached_sess->asn1[0], sess_id->len);
+
+                    ngx_shmtx_unlock(&shpool->mutex);
+
+                    p = buf;
+                    sess = d2i_SSL_SESSION(NULL, &p, sess_id->len);
+
+                    return sess;
+                }
+
+                cached_sess->next->prev = cached_sess->prev;
+                cached_sess->prev->next = cached_sess->next;
+
+                ngx_rbtree_delete(cache->session_rbtree, node);
+
+                ngx_slab_free_locked(shpool, cached_sess);
+                ngx_slab_free_locked(shpool, sess_id->id);
+                ngx_slab_free_locked(shpool, sess_id);
+
+                sess = NULL;
+
+                break;
+            }
+        }
+
+        node = node->right;
+    }
+
+    ngx_shmtx_unlock(&shpool->mutex);
+
+    return sess;
+}
+
+
+static void
+ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
+{
+    u_char                   *id, len;
+    uint32_t                  hash;
+    ngx_shm_zone_t           *shm_zone;
+    ngx_slab_pool_t          *shpool;
+    ngx_rbtree_node_t        *node, *sentinel;
+    ngx_ssl_sess_id_t        *sess_id;
+    ngx_ssl_cached_sess_t    *cached_sess;
+    ngx_ssl_session_cache_t  *cache;
+
+    shm_zone = SSL_CTX_get_ex_data(ssl, ngx_ssl_session_cache_index);
+
+    cache = shm_zone->data;
+
+    id = sess->session_id;
+    len = (u_char) sess->session_id_length;
+
+    hash = ngx_crc32_short(id, (size_t) len);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
+                   "http ssl remove session: %08XD:%d", hash, len);
+
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+
+    ngx_shmtx_lock(&shpool->mutex);
+
+    node = cache->session_rbtree->root;
+    sentinel = cache->session_rbtree->sentinel;
+
+    while (node != sentinel) {
+
+        if (hash < node->key) {
+            node = node->left;
+            continue;
+        }
+
+        if (hash > node->key) {
+            node = node->right;
+            continue;
+        }
+
+        if (hash == node->key && len == node->data) {
+            sess_id = (ngx_ssl_sess_id_t *) node;
+
+            if (ngx_strncmp(id, sess_id->id, (size_t) len) == 0) {
+
+                cached_sess = sess_id->session;
+
+                cached_sess->next->prev = cached_sess->prev;
+                cached_sess->prev->next = cached_sess->next;
+
+                ngx_rbtree_delete(cache->session_rbtree, node);
+
+                ngx_slab_free_locked(shpool, cached_sess);
+                ngx_slab_free_locked(shpool, sess_id->id);
+                ngx_slab_free_locked(shpool, sess_id);
+
+                break;
+            }
+        }
+
+        node = node->right;
+    }
+
+    ngx_shmtx_unlock(&shpool->mutex);
+}
+
+
+static void
+ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
+    ngx_slab_pool_t *shpool, ngx_uint_t n)
+{
+    ngx_time_t                  *tp;
+    ngx_ssl_sess_id_t      *sess_id;
+    ngx_ssl_cached_sess_t  *sess;
+
+    tp = ngx_timeofday();
+
+    while (n < 3) {
+
+        sess = cache->session_cache_tail.prev;
+
+        if (sess == &cache->session_cache_head) {
+            return;
+        }
+
+        if (n++ != 0 && sess->expire > tp->sec) {
+            break;
+        }
+
+        sess->next->prev = sess->prev;
+        sess->prev->next = sess->next;
+
+        sess_id = sess->sess_id;
+
+        ngx_rbtree_delete(cache->session_rbtree, &sess_id->node);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
+                       "expire session: %08Xi", sess_id->node.key);
+
+        ngx_slab_free_locked(shpool, sess);
+        ngx_slab_free_locked(shpool, sess_id->id);
+        ngx_slab_free_locked(shpool, sess_id);
+    }
 }
 
 
