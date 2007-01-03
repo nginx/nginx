@@ -1031,14 +1031,16 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
         if (size && size != shm_zone[i].shm.size) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "the size %uz of shared memory zone \"%V\" "
-                               "conflicts with already declared size %uz");
+                               "conflicts with already declared size %uz",
+                               size, &shm_zone[i].name, shm_zone[i].shm.size);
             return NULL;
         }
 
         if (tag != shm_zone[i].tag) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "the shared memory zone \"%V\" is "
-                               "already declared for a different use");
+                               "already declared for a different use",
+                               &shm_zone[i].name);
             return NULL;
         }
 
