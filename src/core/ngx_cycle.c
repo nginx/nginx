@@ -366,6 +366,13 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             i = 0;
         }
 
+        if (shm_zone[i].shm.size == 0) {
+            ngx_log_error(NGX_LOG_EMERG, log, 0,
+                          "zero size shared memory zone \"%V\"",
+                          &shm_zone[i].name);
+            goto failed;
+        }
+
         shm_zone[i].shm.log = cycle->log;
 
         opart = &old_cycle->shared_memory.part;
