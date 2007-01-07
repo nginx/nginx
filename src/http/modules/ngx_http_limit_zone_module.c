@@ -10,7 +10,8 @@
 
 
 typedef struct {
-    u_short             len;
+    u_char              color;
+    u_char              len;
     u_short             conn;
     u_char              data[1];
 } ngx_http_limit_zone_node_t;
@@ -148,12 +149,12 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         }
 
         if (hash == node->key ){
-            lz = (ngx_http_limit_zone_node_t *) &node->data;
+            lz = (ngx_http_limit_zone_node_t *) &node->color;
 
             if (len == (size_t) lz->len
                 && ngx_strncmp(lz->data, vv->data, len) == 0)
             {
-                if (lz->conn < (u_short) lzcf->conn) {
+                if ((ngx_uint_t) lz->conn < lzcf->conn) {
                     lz->conn++;
                     goto done;
                 }
@@ -165,7 +166,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         }
     }
 
-    n = offsetof(ngx_rbtree_node_t, data)
+    n = offsetof(ngx_rbtree_node_t, color)
         + offsetof(ngx_http_limit_zone_node_t, data)
         + len;
 
@@ -175,10 +176,10 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         return NGX_HTTP_SERVICE_UNAVAILABLE;
     }
 
-    lz = (ngx_http_limit_zone_node_t *) &node->data;
+    lz = (ngx_http_limit_zone_node_t *) &node->color;
 
     node->key = hash;
-    lz->len = (u_short) len;
+    lz->len = (u_char) len;
     lz->conn = 1;
     ngx_memcpy(lz->data, vv->data, len);
 
@@ -214,7 +215,7 @@ ngx_http_limit_zone_cleanup(void *data)
     rbtree = lzcln->shm_zone->data;
     shpool = (ngx_slab_pool_t *) lzcln->shm_zone->shm.addr;
     node = lzcln->node;
-    lz = (ngx_http_limit_zone_node_t *) &node->data;
+    lz = (ngx_http_limit_zone_node_t *) &node->color;
 
     ngx_shmtx_lock(&shpool->mutex);
 
