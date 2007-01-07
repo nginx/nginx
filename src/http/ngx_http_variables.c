@@ -115,6 +115,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("host"), NULL, ngx_http_variable_host, 0, 0, 0 },
 
+    { ngx_string("binary_remote_addr"), NULL,
+      ngx_http_variable_remote_addr, 1, 0, 0 },
+
     { ngx_string("remote_addr"), NULL, ngx_http_variable_remote_addr, 0, 0, 0 },
 
     { ngx_string("remote_port"), NULL, ngx_http_variable_remote_port, 0, 0, 0 },
@@ -699,11 +702,27 @@ static ngx_int_t
 ngx_http_variable_remote_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    v->len = r->connection->addr_text.len;
-    v->valid = 1;
-    v->no_cachable = 0;
-    v->not_found = 0;
-    v->data = r->connection->addr_text.data;
+    struct sockaddr_in  *sin;
+
+    if (data == 0) {
+        v->len = r->connection->addr_text.len;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = r->connection->addr_text.data;
+
+    } else {
+
+        /* AF_INET only */
+
+        sin = (struct sockaddr_in *) r->connection->sockaddr;
+
+        v->len = sizeof(in_addr_t);
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = (u_char *) &sin->sin_addr.s_addr;
+    }
 
     return NGX_OK;
 }
