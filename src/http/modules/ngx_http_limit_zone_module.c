@@ -24,8 +24,14 @@ typedef struct {
 
 
 typedef struct {
-    ngx_shm_zone_t     *shm_zone;
+    ngx_rbtree_t       *rbtree;
     ngx_int_t           index;
+    ngx_str_t           var;
+} ngx_http_limit_zone_ctx_t;
+
+
+typedef struct {
+    ngx_shm_zone_t     *shm_zone;
     ngx_uint_t          conn;
 } ngx_http_limit_zone_conf_t;
 
@@ -45,14 +51,14 @@ static ngx_int_t ngx_http_limit_zone_init(ngx_conf_t *cf);
 static ngx_command_t  ngx_http_limit_zone_commands[] = {
 
     { ngx_string("limit_zone"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE2,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE3,
       ngx_http_limit_zone,
       0,
       0,
       NULL },
 
     { ngx_string("limit_conn"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE3,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
       ngx_http_limit_conn,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -98,11 +104,11 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
 {
     size_t                          len, n;
     uint32_t                        hash;
-    ngx_rbtree_t                   *rbtree;
     ngx_slab_pool_t                *shpool;
     ngx_rbtree_node_t              *node, *sentinel;
     ngx_pool_cleanup_t             *cln;
     ngx_http_variable_value_t      *vv;
+    ngx_http_limit_zone_ctx_t      *ctx;
     ngx_http_limit_zone_node_t     *lz;
     ngx_http_limit_zone_conf_t     *lzcf;
     ngx_http_limit_zone_cleanup_t  *lzcln;
@@ -117,7 +123,9 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    vv = ngx_http_get_indexed_variable(r, lzcf->index);
+    ctx = lzcf->shm_zone->data;
+
+    vv = ngx_http_get_indexed_variable(r, ctx->index);
 
     if (vv == NULL || vv->not_found) {
         return NGX_DECLINED;
@@ -134,13 +142,12 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    rbtree = lzcf->shm_zone->data;
     shpool = (ngx_slab_pool_t *) lzcf->shm_zone->shm.addr;
 
     ngx_shmtx_lock(&shpool->mutex);
 
-    node = rbtree->root;
-    sentinel = rbtree->sentinel;
+    node = ctx->rbtree->root;
+    sentinel = ctx->rbtree->sentinel;
 
     while (node != sentinel) {
 
@@ -189,7 +196,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
     lz->conn = 1;
     ngx_memcpy(lz->data, vv->data, len);
 
-    ngx_rbtree_insert(rbtree, node);
+    ngx_rbtree_insert(ctx->rbtree, node);
 
 done:
 
@@ -213,12 +220,12 @@ ngx_http_limit_zone_cleanup(void *data)
 {
     ngx_http_limit_zone_cleanup_t  *lzcln = data;
 
-    ngx_rbtree_t                *rbtree;
     ngx_slab_pool_t             *shpool;
     ngx_rbtree_node_t           *node;
+    ngx_http_limit_zone_ctx_t   *ctx;
     ngx_http_limit_zone_node_t  *lz;
 
-    rbtree = lzcln->shm_zone->data;
+    ctx = lzcln->shm_zone->data;
     shpool = (ngx_slab_pool_t *) lzcln->shm_zone->shm.addr;
     node = lzcln->node;
     lz = (ngx_http_limit_zone_node_t *) &node->color;
@@ -231,7 +238,7 @@ ngx_http_limit_zone_cleanup(void *data)
     lz->conn--;
 
     if (lz->conn == 0) {
-        ngx_rbtree_delete(rbtree, node);
+        ngx_rbtree_delete(ctx->rbtree, node);
         ngx_slab_free_locked(shpool, node);
     }
 
@@ -242,14 +249,15 @@ ngx_http_limit_zone_cleanup(void *data)
 static ngx_int_t
 ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone)
 {
-    ngx_rbtree_t       *rbtree;
-    ngx_slab_pool_t    *shpool;
-    ngx_rbtree_node_t  *sentinel;
+    ngx_slab_pool_t            *shpool;
+    ngx_rbtree_node_t          *sentinel;
+    ngx_http_limit_zone_ctx_t  *ctx;
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+    ctx = shm_zone->data;
 
-    rbtree = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_t));
-    if (rbtree == NULL) {
+    ctx->rbtree = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_t));
+    if (ctx->rbtree == NULL) {
         return NGX_ERROR;
     }
 
@@ -260,11 +268,9 @@ ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone)
 
     ngx_rbtree_sentinel_init(sentinel);
 
-    rbtree->root = sentinel;
-    rbtree->sentinel = sentinel;
-    rbtree->insert = ngx_rbtree_insert_value;
-
-    shm_zone->data = rbtree;
+    ctx->rbtree->root = sentinel;
+    ctx->rbtree->sentinel = sentinel;
+    ctx->rbtree->insert = ngx_rbtree_insert_value;
 
     return NGX_OK;
 }
@@ -284,7 +290,6 @@ ngx_http_limit_zone_create_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     conf->shm_zone = NULL;
-     *     conf->index = 0;
      *     conf->conn = 0;
      */
 
@@ -309,17 +314,39 @@ ngx_http_limit_zone_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 static char *
 ngx_http_limit_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ssize_t          n;
-    ngx_str_t       *value;
-    ngx_shm_zone_t  *shm_zone;
+    ssize_t                     n;
+    ngx_str_t                  *value;
+    ngx_shm_zone_t             *shm_zone;
+    ngx_http_limit_zone_ctx_t  *ctx;
 
     value = cf->args->elts;
 
-    n = ngx_parse_size(&value[2]);
+    if (value[2].data[0] != '$') {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid variable name \"%V\"", &value[2]);
+        return NGX_CONF_ERROR;
+    }
+
+    value[2].len--;
+    value[2].data++;
+
+    ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_limit_zone_ctx_t));
+    if (ctx == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ctx->index = ngx_http_get_variable_index(cf, &value[2]);
+    if (ctx->index == NGX_ERROR) {
+        return NGX_CONF_ERROR;
+    }
+
+    ctx->var = value[2];
+
+    n = ngx_parse_size(&value[3]);
 
     if (n == NGX_ERROR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid size of limit_zone \"%V\"", &value[2]);
+                           "invalid size of limit_zone \"%V\"", &value[3]);
         return NGX_CONF_ERROR;
     }
 
@@ -336,7 +363,17 @@ ngx_http_limit_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    if (shm_zone->data) {
+        ctx = shm_zone->data;
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                        "limit_zone \"%V\" is already bound to variable \"%V\"",
+                        &value[1], &ctx->var);
+        return NGX_CONF_ERROR;
+    }
+
     shm_zone->init = ngx_http_limit_zone_init_zone;
+    shm_zone->data = ctx;
 
     return NGX_CONF_OK;
 }
@@ -352,30 +389,16 @@ ngx_http_limit_conn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    n = ngx_atoi(value[1].data, value[1].len);
-    if (n <= 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid number of connections");
-        return NGX_CONF_ERROR;
-    }
-
-    if (value[2].data[0] != '$') {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid variable name \"%V\"", &value[2]);
-        return NGX_CONF_ERROR;
-    }
-
-    value[2].len--;
-    value[2].data++;
-
-    lzcf->index = ngx_http_get_variable_index(cf, &value[2]);
-    if (lzcf->index == NGX_ERROR) {
-        return NGX_CONF_ERROR;
-    }
-
-    lzcf->shm_zone = ngx_shared_memory_add(cf, &value[3], 0,
+    lzcf->shm_zone = ngx_shared_memory_add(cf, &value[1], 0,
                                            &ngx_http_limit_zone_module);
     if (lzcf->shm_zone == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    n = ngx_atoi(value[2].data, value[2].len);
+    if (n <= 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid number of connections \"%V\"", &value[2]);
         return NGX_CONF_ERROR;
     }
 
