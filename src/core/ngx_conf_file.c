@@ -150,9 +150,9 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         if (rc == NGX_CONF_FILE_DONE && block) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                         "unexpected end of file in %s:%ui, expecting \"}\"",
-                         cf->conf_file->file.name.data,
-                         cf->conf_file->line);
+                          "unexpected end of file in %s:%ui, expecting \"}\"",
+                          cf->conf_file->file.name.data,
+                          cf->conf_file->line);
             rc = NGX_ERROR;
             break;
         }
@@ -179,9 +179,9 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
             }
 
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                         "%s in %s:%ui",
-                         rv, cf->conf_file->file.name.data,
-                         cf->conf_file->line);
+                          "%s in %s:%ui",
+                          rv, cf->conf_file->file.name.data,
+                          cf->conf_file->line);
             rc = NGX_ERROR;
             break;
         }
