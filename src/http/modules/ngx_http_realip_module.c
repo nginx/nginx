@@ -103,18 +103,18 @@ ngx_http_realip_handler(ngx_http_request_t *r)
     ngx_http_realip_loc_conf_t  *rlcf;
 
     if (r->realip_set) {
-        return NGX_OK;
+        return NGX_DECLINED;
     }
 
     rlcf = ngx_http_get_module_loc_conf(r, ngx_http_realip_module);
 
     if (rlcf->from == NULL) {
-        return NGX_OK;
+        return NGX_DECLINED;
     }
 
     if (rlcf->xfwd == 0) {
         if (r->headers_in.x_real_ip == NULL) {
-            return NGX_OK;
+            return NGX_DECLINED;
         }
 
         len = r->headers_in.x_real_ip->value.len;
@@ -122,7 +122,7 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 
     } else {
         if (r->headers_in.x_forwarded_for == NULL) {
-            return NGX_OK;
+            return NGX_DECLINED;
         }
 
         len = r->headers_in.x_forwarded_for->value.len;
@@ -158,11 +158,11 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 
             r->realip_set = 1;
 
-            return NGX_OK;
+            return NGX_DECLINED;
         }
     }
 
-    return NGX_OK;
+    return NGX_DECLINED;
 }
 
 
