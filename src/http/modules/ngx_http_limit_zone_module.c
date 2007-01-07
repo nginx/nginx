@@ -107,6 +107,10 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
     ngx_http_limit_zone_conf_t     *lzcf;
     ngx_http_limit_zone_cleanup_t  *lzcln;
 
+    if (r->limit_zone_set) {
+        return NGX_DECLINED;
+    }
+
     lzcf = ngx_http_get_module_loc_conf(r, ngx_http_limit_zone_module);
 
     if (lzcf->shm_zone == NULL) {
@@ -118,6 +122,8 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
     if (vv == NULL || vv->not_found) {
         return NGX_DECLINED;
     }
+
+    r->limit_zone_set = 1;
 
     len = vv->len;
 

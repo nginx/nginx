@@ -430,6 +430,12 @@ struct ngx_http_request_s {
 
 #endif
 
+    /*
+     * instead of using the request context data in ngx_http_limit_zone_module
+     * we use the single bit in the request structure
+     */
+    unsigned                          limit_zone_set:1;
+
 #if 0
     unsigned                          cachable:1;
 #endif
