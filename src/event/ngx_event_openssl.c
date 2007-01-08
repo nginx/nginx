@@ -1353,7 +1353,7 @@ static ngx_ssl_session_t *
 ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
     int *copy)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x00908000
+#if OPENSSL_VERSION_NUMBER >= 0x0090707fL
     const
 #endif
     u_char                   *p;
