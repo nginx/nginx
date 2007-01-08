@@ -977,7 +977,7 @@ ngx_http_read_request_header(ngx_http_request_t *r)
 
     if (n == 0 || n == NGX_ERROR) {
         c->error = 1;
-        c->log->action = "sending response to client";
+        c->log->action = "reading client request headers";
 
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
