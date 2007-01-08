@@ -1491,7 +1491,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
     if (rc == NGX_ERROR
         || rc == NGX_HTTP_REQUEST_TIME_OUT
-        || rc == NGX_HTTP_CLIENT_CLOSED_REQUEST
         || r->connection->error)
     {
         if (rc == NGX_HTTP_CLIENT_CLOSED_REQUEST
