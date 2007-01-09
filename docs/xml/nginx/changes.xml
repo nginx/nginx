@@ -9,6 +9,68 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.6" date="09.01.2007">
+
+<change type="change">
+<para lang="ru">
+теперь модуль ngx_http_index_module игнорирует все методы,
+кроме GET, HEAD и POST.
+</para>
+<para lang="en">
+now the ngx_http_index_module ignores all methods except the GET, HEAD, and
+POST methods.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_limit_zone_module.
+</para>
+<para lang="en">
+the ngx_http_limit_zone_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $binary_remote_addr.
+</para>
+<para lang="en">
+the $binary_remote_addr variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_session_cache модулей ngx_http_ssl_module и ngx_imap_ssl_module.
+</para>
+<para lang="en">
+the "ssl_session_cache" directives
+of the ngx_http_ssl_module and ngx_imap_ssl_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+метод DELETE поддерживает рекурсивное удаление.
+</para>
+<para lang="en">
+the DELETE method supports recursive removal.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании $r->sendfile() byte-ranges передавались неверно.
+</para>
+<para lang="en">
+the byte-ranges were transferred incorrectly if the $r->sendfile() was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.5" date="24.12.2006">
 
 <change type="change">
