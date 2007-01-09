@@ -594,7 +594,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     /* close and delete stuff that lefts from an old cycle */
 
-    /* close the unneeded listening sockets */
+    /* close the unnecessary listening sockets */
 
     ls = old_cycle->listening.elts;
     for (i = 0; i < old_cycle->listening.nelts; i++) {
@@ -610,7 +610,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    /* close the unneeded open files */
+    /* close the unnecessary open files */
 
     part = &old_cycle->open_files.part;
     file = part->elts;
