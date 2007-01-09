@@ -594,6 +594,56 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     /* close and delete stuff that lefts from an old cycle */
 
+    /* free the unnecessary shared memory */
+
+    opart = &old_cycle->shared_memory.part;
+    oshm_zone = opart->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= opart->nelts) {
+            if (opart->next == NULL) {
+                goto old_shm_zone_done;
+            }
+            opart = opart->next;
+            oshm_zone = opart->elts;
+            i = 0;
+        }
+
+        part = &cycle->shared_memory.part;
+        shm_zone = part->elts;
+
+        for (n = 0; /* void */ ; n++) {
+
+            if (n >= part->nelts) {
+                if (part->next == NULL) {
+                    break;
+                }
+                part = part->next;
+                shm_zone = part->elts;
+                n = 0;
+            }
+
+            if (oshm_zone[i].name.len == shm_zone[n].name.len
+                && ngx_strncmp(oshm_zone[i].name.data,
+                               shm_zone[n].name.data,
+                               oshm_zone[i].name.len)
+                == 0)
+            {
+                goto live_shm_zone;
+            }
+        }
+
+        ngx_shm_free(&oshm_zone[i].shm);
+
+    live_shm_zone:
+
+        continue;
+    }
+
+old_shm_zone_done:
+
+
     /* close the unnecessary listening sockets */
 
     ls = old_cycle->listening.elts;
