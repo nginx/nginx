@@ -402,6 +402,13 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
             if (shm_zone[i].shm.size == oshm_zone[n].shm.size) {
                 shm_zone[i].shm.addr = oshm_zone[n].shm.addr;
+
+                if (shm_zone[i].init(&shm_zone[i], oshm_zone[n].data)
+                    != NGX_OK)
+                {
+                    goto failed;
+                }
+
                 goto found;
             }
 
@@ -446,7 +453,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         ngx_slab_init(shpool);
 
-        if (shm_zone[i].init(&shm_zone[i]) != NGX_OK) {
+        if (shm_zone[i].init(&shm_zone[i], NULL) != NGX_OK) {
             goto failed;
         }
 

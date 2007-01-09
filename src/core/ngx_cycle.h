@@ -23,7 +23,7 @@
 
 typedef struct ngx_shm_zone_s  ngx_shm_zone_t;
 
-typedef ngx_int_t (*ngx_shm_zone_init_pt) (ngx_shm_zone_t *zone);
+typedef ngx_int_t (*ngx_shm_zone_init_pt) (ngx_shm_zone_t *zone, void *data);
 
 struct ngx_shm_zone_s {
     void                     *data;

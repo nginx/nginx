@@ -23,7 +23,8 @@ static void ngx_ssl_shutdown_handler(ngx_event_t *ev);
 static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
     ngx_err_t err, char *text);
 
-static ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone);
+static ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone,
+    void *data);
 static int ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn,
     ngx_ssl_session_t *sess);
 static ngx_ssl_session_t *ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
@@ -1184,11 +1185,16 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
 
 
 static ngx_int_t
-ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone)
+ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 {
     ngx_slab_pool_t          *shpool;
     ngx_rbtree_node_t        *sentinel;
     ngx_ssl_session_cache_t  *cache;
+
+    if (data) {
+        shm_zone->data = data;
+        return NGX_OK;
+    }
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 

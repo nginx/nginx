@@ -247,14 +247,31 @@ ngx_http_limit_zone_cleanup(void *data)
 
 
 static ngx_int_t
-ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone)
+ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 {
+    ngx_http_limit_zone_ctx_t  *octx = data;
+
     ngx_slab_pool_t            *shpool;
     ngx_rbtree_node_t          *sentinel;
     ngx_http_limit_zone_ctx_t  *ctx;
 
-    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
     ctx = shm_zone->data;
+
+    if (octx) {
+        if (ngx_strcmp(ctx->var.data, octx->var.data) != 0) {
+            ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
+                          "limit_zone \"%V\" use the \"%V\" variable "
+                          "while previously it used the \"%V\" variable",
+                          &shm_zone->name, &ctx->var, &octx->var);
+            return NGX_ERROR;
+        }
+
+        ctx->rbtree = octx->rbtree;
+
+        return NGX_OK;
+    }
+
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
     ctx->rbtree = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_t));
     if (ctx->rbtree == NULL) {
