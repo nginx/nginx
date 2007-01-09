@@ -409,7 +409,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                     goto failed;
                 }
 
-                goto found;
+                goto shm_zone_found;
             }
 
             ngx_shm_free(&oshm_zone[n].shm);
@@ -457,7 +457,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             goto failed;
         }
 
-    found:
+    shm_zone_found:
 
         continue;
     }
