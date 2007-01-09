@@ -113,7 +113,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
     ngx_http_limit_zone_conf_t     *lzcf;
     ngx_http_limit_zone_cleanup_t  *lzcln;
 
-    if (r->limit_zone_set) {
+    if (r->main->limit_zone_set) {
         return NGX_DECLINED;
     }
 
