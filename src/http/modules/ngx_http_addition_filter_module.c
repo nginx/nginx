@@ -87,7 +87,10 @@ ngx_http_addition_header_filter(ngx_http_request_t *r)
     ngx_http_addition_ctx_t   *ctx;
     ngx_http_addition_conf_t  *conf;
 
-    if (r->headers_out.status != NGX_HTTP_OK || r != r->main) {
+    if (r->headers_out.status != NGX_HTTP_OK
+        || r != r->main
+        || r->headers_out.content_type.data == NULL)
+    {
         return ngx_http_next_header_filter(r);
     }
 
