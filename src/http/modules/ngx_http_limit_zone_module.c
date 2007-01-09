@@ -131,7 +131,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    r->limit_zone_set = 1;
+    r->main->limit_zone_set = 1;
 
     len = vv->len;
 
