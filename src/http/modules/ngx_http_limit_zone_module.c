@@ -260,7 +260,7 @@ ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     if (octx) {
         if (ngx_strcmp(ctx->var.data, octx->var.data) != 0) {
             ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
-                          "limit_zone \"%V\" use the \"%V\" variable "
+                          "limit_zone \"%V\" uses the \"%V\" variable "
                           "while previously it used the \"%V\" variable",
                           &shm_zone->name, &ctx->var, &octx->var);
             return NGX_ERROR;
