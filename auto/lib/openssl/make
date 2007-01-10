@@ -8,9 +8,10 @@ else
     NGX_OPENSSL_CONFIG="./config"
 fi
 
-if test -n "$USE_THREADS"; then
-    NGX_OPENSSL_CONFIG="$NGX_OPENSSL_CONFIG threads"
-fi
+case $USE_THREADS in
+    NO) NGX_OPENSSL_CONFIG="$NGX_OPENSSL_CONFIG no-threads" ;;
+    *)  NGX_OPENSSL_CONFIG="$NGX_OPENSSL_CONFIG threads" ;;
+esac
 
 case "$NGX_PLATFORM" in
     *)
