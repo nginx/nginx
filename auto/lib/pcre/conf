@@ -25,14 +25,24 @@ if [ $PCRE != NONE ]; then
 
             echo $ngx_n "checking for PCRE library ...$ngx_c"
 
-            ngx_pcre_ver=`grep PCRE_MAJOR= $PCRE/configure.in \
-                          | sed -e 's/^.*=\(.*\)$/\1/'`
+            if [ -e $PCRE/pcre.h ]; then
+                ngx_pcre_ver=`grep PCRE_MAJOR $PCRE/pcre.h \
+                              | sed -e 's/^.*PCRE_MAJOR.* \(.*\)$/\1/'`
+
+            else
+                ngx_pcre_ver=`grep PCRE_MAJOR= $PCRE/configure.in \
+                              | sed -e 's/^.*=\(.*\)$/\1/'`
+            fi
 
             echo " $ngx_pcre_ver major version found"
 
             # to allow -ipo optimization we link with the *.o but not library
 
             case "$ngx_pcre_ver" in
+                4|5)
+                    CORE_LIBS="$CORE_LIBS $PCRE/pcre.o"
+                ;;
+
                 6)
                     CORE_LIBS="$CORE_LIBS $PCRE/pcre_chartables.o"
                     CORE_LIBS="$CORE_LIBS $PCRE/pcre_compile.o"
@@ -44,8 +54,16 @@ if [ $PCRE != NONE ]; then
                 ;;
 
                 *)
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre.o"
+                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_chartables.o"
+                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_compile.o"
+                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_exec.o"
+                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_fullinfo.o"
+                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_globals.o"
+                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_tables.o"
+                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_try_flipped.o"
+                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_newline.o"
                 ;;
+
             esac
         ;;
 
