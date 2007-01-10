@@ -6,6 +6,7 @@ types {
     image/gif                             gif;
     image/jpeg                            jpeg jpg;
     application/x-javascript              js;
+    application/atom+xml                  atom;
 
     text/mathml                           mml;
     text/plain                            txt;
