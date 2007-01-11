@@ -131,9 +131,21 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    r->main->limit_zone_set = 1;
-
     len = vv->len;
+
+    if (len == 0) {
+        return NGX_DECLINED;
+    }
+
+    if (len > 255) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "the value of the \"%V\" variable "
+                      "is more than 255 bytes: \"%V\"",
+                      &ctx->var, vv);
+        return NGX_DECLINED;
+    }
+
+    r->main->limit_zone_set = 1;
 
     hash = ngx_crc32_short(vv->data, len);
 
@@ -416,6 +428,12 @@ ngx_http_limit_conn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (n <= 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid number of connections \"%V\"", &value[2]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (n > 65535) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "connection limit must be less 65536");
         return NGX_CONF_ERROR;
     }
 
