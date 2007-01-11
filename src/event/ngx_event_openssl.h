@@ -55,33 +55,25 @@ typedef struct {
 #define NGX_SSL_NO_BUILTIN_SCACHE    -3
 
 
-typedef struct ngx_ssl_cached_sess_s  ngx_ssl_cached_sess_t;
+#define NGX_SSL_MAX_SESSION_SIZE (4096)
 
+typedef struct ngx_ssl_sess_id_s  ngx_ssl_sess_id_t;
 
-#define NGX_SSL_MAX_SESSION_SIZE (4096 - offsetof(ngx_ssl_cached_sess_t, asn1))
-
-
-typedef struct {
+struct ngx_ssl_sess_id_s {
     ngx_rbtree_node_t           node;
     u_char                     *id;
     size_t                      len;
-    ngx_ssl_cached_sess_t      *session;
-} ngx_ssl_sess_id_t;
-
-
-struct ngx_ssl_cached_sess_s {
-    ngx_ssl_cached_sess_t      *prev;
-    ngx_ssl_cached_sess_t      *next;
+    u_char                     *session;
+    ngx_ssl_sess_id_t          *prev;
+    ngx_ssl_sess_id_t          *next;
     time_t                      expire;
-    ngx_ssl_sess_id_t          *sess_id;
-    u_char                      asn1[1];
 };
 
 
 typedef struct {
     ngx_rbtree_t               *session_rbtree;
-    ngx_ssl_cached_sess_t       session_cache_head;
-    ngx_ssl_cached_sess_t       session_cache_tail;
+    ngx_ssl_sess_id_t           session_cache_head;
+    ngx_ssl_sess_id_t           session_cache_tail;
 } ngx_ssl_session_cache_t;
 
 
