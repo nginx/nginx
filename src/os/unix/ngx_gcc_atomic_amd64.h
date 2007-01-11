@@ -68,7 +68,7 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
          NGX_SMP_LOCK
     "    xaddq  %0, %1;   "
 
-    : "+q" (add) : "m" (*value) : "cc", "memory");
+    : "+r" (add) : "m" (*value) : "cc", "memory");
 
     return add;
 }
