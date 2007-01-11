@@ -147,7 +147,7 @@ fi
 # warnings
 
 # -W requires at least -O
-CFLAGS="$CFLAGS ${NGX_GCC_OPT:-O} -W"
+CFLAGS="$CFLAGS ${NGX_GCC_OPT:--O} -W"
 
 CFLAGS="$CFLAGS -Wall -Wpointer-arith"
 #CFLAGS="$CFLAGS -Wconversion"
