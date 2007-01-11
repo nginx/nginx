@@ -24,8 +24,11 @@
  *
  *
  * The "r" is any register, %rax (%r0) - %r16.
- * The "=a" and "a" are the %rax register.  Although we can return result
- * in any register, we use %rax because it is used in cmpxchgq anyway.
+ * The "=a" and "a" are the %rax register.
+ * Although we can return result in any register, we use "a" because it is
+ * used in cmpxchgq anyway.  The result is actually in %al but not in $rax,
+ * however as the code is inlined gcc can test %al as well as %rax.
+ *
  * The "cc" means that flags were changed.
  */
 
@@ -33,14 +36,13 @@ static ngx_inline ngx_atomic_uint_t
 ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
     ngx_atomic_uint_t set)
 {
-    ngx_atomic_uint_t  res;
+    u_char  res;
 
     __asm__ volatile (
 
          NGX_SMP_LOCK
     "    cmpxchgq  %3, %1;   "
-    "    setz      %b0;      "
-    "    movzbq    %b0, %0;  "
+    "    sete      %0;       "
 
     : "=a" (res) : "m" (*lock), "a" (old), "r" (set) : "cc", "memory");
 
