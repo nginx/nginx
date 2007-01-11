@@ -421,8 +421,8 @@ void
 ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
 {
     size_t            size;
-    uintptr_t         slab, *bitmap;
-    ngx_uint_t        n, m, type, slot, shift, map;
+    uintptr_t         slab, m, *bitmap;
+    ngx_uint_t        n, type, slot, shift, map;
     ngx_slab_page_t  *slots, *page;
 
     ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0, "slab free: %p", p);
