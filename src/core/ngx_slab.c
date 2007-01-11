@@ -128,7 +128,7 @@ ngx_slab_init(ngx_slab_pool_t *pool)
     pool->pages->prev = (uintptr_t) &pool->free;
 
     pool->start = (u_char *)
-                      ngx_align((uintptr_t) p + pages * sizeof(ngx_slab_page_t),
+                  ngx_align_ptr((uintptr_t) p + pages * sizeof(ngx_slab_page_t),
                                  ngx_pagesize);
 
     m = pages - (pool->end - pool->start) / ngx_pagesize;
@@ -295,7 +295,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
             n = ngx_pagesize_shift - (page->slab & NGX_SLAB_SHIFT_MASK);
             n = 1 << n;
-            n = (1 << n) - 1;
+            n = ((uintptr_t) 1 << n) - 1;
             mask = n << NGX_SLAB_MAP_SHIFT;
 
             do {
@@ -450,7 +450,7 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
         }
 
         n = ((uintptr_t) p & (ngx_pagesize - 1)) >> shift;
-        m = 1 << (n & (sizeof(uintptr_t) * 8 - 1));
+        m = (uintptr_t) 1 << (n & (sizeof(uintptr_t) * 8 - 1));
         n /= (sizeof(uintptr_t) * 8);
         bitmap = (uintptr_t *) ((uintptr_t) p & ~(ngx_pagesize - 1));
 
@@ -476,7 +476,7 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
                 n = 1;
             }
 
-            if (bitmap[0] & ~((1 << n) - 1)) {
+            if (bitmap[0] & ~(((uintptr_t) 1 << n) - 1)) {
                 goto done;
             }
 
@@ -497,7 +497,8 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
 
     case NGX_SLAB_EXACT:
 
-        m = 1 << (((uintptr_t) p & (ngx_pagesize - 1)) >> ngx_slab_exact_shift);
+        m = (uintptr_t) 1 <<
+                (((uintptr_t) p & (ngx_pagesize - 1)) >> ngx_slab_exact_shift);
         size = ngx_slab_exact_size;
 
         if ((uintptr_t) p & (size - 1)) {
@@ -539,8 +540,8 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
             goto wrong_chunk;
         }
 
-        m = 1 << ((((uintptr_t) p & (ngx_pagesize - 1)) >> shift)
-                     + NGX_SLAB_MAP_SHIFT);
+        m = (uintptr_t) 1 << ((((uintptr_t) p & (ngx_pagesize - 1)) >> shift)
+                              + NGX_SLAB_MAP_SHIFT);
 
         if (slab & m) {
 
