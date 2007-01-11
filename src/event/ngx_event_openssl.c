@@ -1413,43 +1413,52 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
             continue;
         }
 
-        if (hash == node->key && (u_char) len == node->data) {
-            sess_id = (ngx_ssl_sess_id_t *) node;
+        /* hash == node->key */
 
-            if (ngx_strncmp(id, sess_id->id, len) == 0) {
+        do {
+            if ((u_char) len == node->data) {
+                sess_id = (ngx_ssl_sess_id_t *) node;
 
-                cached_sess = sess_id->session;
+                if (ngx_strncmp(id, sess_id->id, len) == 0) {
 
-                tp = ngx_timeofday();
+                    cached_sess = sess_id->session;
 
-                if (cached_sess->expire > tp->sec) {
-                    ngx_memcpy(buf, &cached_sess->asn1[0], sess_id->len);
+                    tp = ngx_timeofday();
 
-                    ngx_shmtx_unlock(&shpool->mutex);
+                    if (cached_sess->expire > tp->sec) {
+                        ngx_memcpy(buf, &cached_sess->asn1[0], sess_id->len);
 
-                    p = buf;
-                    sess = d2i_SSL_SESSION(NULL, &p, sess_id->len);
+                        ngx_shmtx_unlock(&shpool->mutex);
 
-                    return sess;
+                        p = buf;
+                        sess = d2i_SSL_SESSION(NULL, &p, sess_id->len);
+
+                        return sess;
+                    }
+
+                    cached_sess->next->prev = cached_sess->prev;
+                    cached_sess->prev->next = cached_sess->next;
+
+                    ngx_rbtree_delete(cache->session_rbtree, node);
+
+                    ngx_slab_free_locked(shpool, cached_sess);
+                    ngx_slab_free_locked(shpool, sess_id->id);
+                    ngx_slab_free_locked(shpool, sess_id);
+
+                    sess = NULL;
+
+                    goto done;
                 }
-
-                cached_sess->next->prev = cached_sess->prev;
-                cached_sess->prev->next = cached_sess->next;
-
-                ngx_rbtree_delete(cache->session_rbtree, node);
-
-                ngx_slab_free_locked(shpool, cached_sess);
-                ngx_slab_free_locked(shpool, sess_id->id);
-                ngx_slab_free_locked(shpool, sess_id);
-
-                sess = NULL;
-
-                break;
             }
-        }
 
-        node = node->right;
+            node = node->right;
+
+        } while (node != sentinel && hash == node->key);
+
+        break;
     }
+
+done:
 
     ngx_shmtx_unlock(&shpool->mutex);
 
@@ -1500,28 +1509,37 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
             continue;
         }
 
-        if (hash == node->key && len == node->data) {
-            sess_id = (ngx_ssl_sess_id_t *) node;
+        /* hash == node->key */
 
-            if (ngx_strncmp(id, sess_id->id, (size_t) len) == 0) {
+        do {
+            if ((u_char) len == node->data) {
+		sess_id = (ngx_ssl_sess_id_t *) node;
 
-                cached_sess = sess_id->session;
+		if (ngx_strncmp(id, sess_id->id, (size_t) len) == 0) {
 
-                cached_sess->next->prev = cached_sess->prev;
-                cached_sess->prev->next = cached_sess->next;
+		    cached_sess = sess_id->session;
 
-                ngx_rbtree_delete(cache->session_rbtree, node);
+		    cached_sess->next->prev = cached_sess->prev;
+		    cached_sess->prev->next = cached_sess->next;
 
-                ngx_slab_free_locked(shpool, cached_sess);
-                ngx_slab_free_locked(shpool, sess_id->id);
-                ngx_slab_free_locked(shpool, sess_id);
+		    ngx_rbtree_delete(cache->session_rbtree, node);
 
-                break;
-            }
-        }
+		    ngx_slab_free_locked(shpool, cached_sess);
+		    ngx_slab_free_locked(shpool, sess_id->id);
+		    ngx_slab_free_locked(shpool, sess_id);
 
-        node = node->right;
+		    goto done;
+		}
+	    }
+
+	    node = node->right;
+
+        } while (node != sentinel && hash == node->key);
+
+        break;
     }
+
+done:
 
     ngx_shmtx_unlock(&shpool->mutex);
 }
