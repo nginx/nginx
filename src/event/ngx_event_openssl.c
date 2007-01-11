@@ -1236,9 +1236,13 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
  * between 1 and 32 bytes for SSLv3/TLSv1, typically 32 bytes.
  * It seems that the typical length of the external ASN1 representation
  * of a session is 118 or 119 bytes for SSLv3/TSLv1.
- * Thus we allocate separatly an rbtree node, a session id, and an ASN1
- * representation and on 32-bit platforms they take accordingly 64, 32, and
- * 128 bytes.
+ *
+ * Thus on 32-bit platforms we allocate separately an rbtree node,
+ * a session id, and an ASN1 representation, they take accordingly
+ * 64, 32, and 128 bytes.
+ *
+ * On 64-bit platforms we allocate separately an rbtree node + session_id,
+ * and an ASN1 representation, they take accordingly 128 and 128 bytes.
  *
  * OpenSSL's i2d_SSL_SESSION() and d2i_SSL_SESSION are slow,
  * so they are outside the code locked by shared pool mutex
@@ -1294,20 +1298,28 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
         cached_sess = ngx_slab_alloc_locked(shpool, len);
 
         if (cached_sess == NULL) {
-            id = NULL;
+            sess_id = NULL;
             goto failed;
         }
-    }
-
-    id = ngx_slab_alloc_locked(shpool, sess->session_id_length);
-    if (id == NULL) {
-        goto failed;
     }
 
     sess_id = ngx_slab_alloc_locked(shpool, sizeof(ngx_ssl_sess_id_t));
     if (sess_id == NULL) {
         goto failed;
     }
+
+#if (NGX_PTR_SIZE == 8)
+
+    id = sess_id->sess_id;
+
+#else
+
+    id = ngx_slab_alloc_locked(shpool, sess->session_id_length);
+    if (id == NULL) {
+        goto failed;
+    }
+
+#endif
 
     ngx_memcpy(cached_sess, buf, len);
 
@@ -1346,8 +1358,8 @@ failed:
         ngx_slab_free_locked(shpool, cached_sess);
     }
 
-    if (id) {
-        ngx_slab_free_locked(shpool, id);
+    if (sess_id) {
+        ngx_slab_free_locked(shpool, sess_id);
     }
 
     ngx_shmtx_unlock(&shpool->mutex);
@@ -1443,7 +1455,9 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
                     ngx_rbtree_delete(cache->session_rbtree, node);
 
                     ngx_slab_free_locked(shpool, sess_id->session);
+#if (NGX_PTR_SIZE == 4)
                     ngx_slab_free_locked(shpool, sess_id->id);
+#endif
                     ngx_slab_free_locked(shpool, sess_id);
 
                     sess = NULL;
@@ -1523,7 +1537,9 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
 		    ngx_rbtree_delete(cache->session_rbtree, node);
 
 		    ngx_slab_free_locked(shpool, sess_id->session);
+#if (NGX_PTR_SIZE == 4)
 		    ngx_slab_free_locked(shpool, sess_id->id);
+#endif
 		    ngx_slab_free_locked(shpool, sess_id);
 
 		    goto done;
@@ -1573,7 +1589,9 @@ ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
                        "expire session: %08Xi", sess_id->node.key);
 
         ngx_slab_free_locked(shpool, sess_id->session);
+#if (NGX_PTR_SIZE == 4)
         ngx_slab_free_locked(shpool, sess_id->id);
+#endif
         ngx_slab_free_locked(shpool, sess_id);
     }
 }

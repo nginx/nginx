@@ -67,6 +67,10 @@ struct ngx_ssl_sess_id_s {
     ngx_ssl_sess_id_t          *prev;
     ngx_ssl_sess_id_t          *next;
     time_t                      expire;
+#if (NGX_PTR_SIZE == 8)
+    void                       *stub;
+    u_char                      sess_id[32];
+#endif
 };
 
 
