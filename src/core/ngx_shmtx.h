@@ -30,11 +30,7 @@ ngx_int_t ngx_shmtx_create(ngx_shmtx_t *mtx, void *addr, u_char *name);
 static ngx_inline ngx_uint_t
 ngx_shmtx_trylock(ngx_shmtx_t *mtx)
 {
-    if (*mtx->lock == 0 && ngx_atomic_cmp_set(mtx->lock, 0, ngx_pid)) {
-        return 1;
-    }
-
-    return 0;
+    return (*mtx->lock == 0 && ngx_atomic_cmp_set(mtx->lock, 0, ngx_pid));
 }
 
 #define ngx_shmtx_lock(mtx)   ngx_spinlock((mtx)->lock, ngx_pid, 1024)
