@@ -173,7 +173,9 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
             continue;
         }
 
-        if (hash == node->key ){
+        /* hash == node->key */
+
+        do {
             lz = (ngx_http_limit_zone_node_t *) &node->color;
 
             if (len == (size_t) lz->len
@@ -188,7 +190,12 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
 
                 return NGX_HTTP_SERVICE_UNAVAILABLE;
             }
-        }
+
+            node = node->right;
+
+        } while (node != sentinel && hash == node->key);
+
+        break;
     }
 
     n = offsetof(ngx_rbtree_node_t, color)
