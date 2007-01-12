@@ -17,6 +17,11 @@ ngx_mutex_t  *ngx_event_timer_mutex;
 ngx_thread_volatile ngx_rbtree_t  ngx_event_timer_rbtree;
 static ngx_rbtree_node_t          ngx_event_timer_sentinel;
 
+/*
+ * the event timer rbtree may contain the duplicate keys, however,
+ * it should not be a problem, because we use the rbtree to find
+ * a minimum timer value only
+ */
 
 ngx_int_t
 ngx_event_timer_init(ngx_log_t *log)
