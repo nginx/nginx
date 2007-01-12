@@ -104,6 +104,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
 {
     size_t                          len, n;
     uint32_t                        hash;
+    ngx_int_t                       rc;
     ngx_slab_pool_t                *shpool;
     ngx_rbtree_node_t              *node, *sentinel;
     ngx_pool_cleanup_t             *cln;
@@ -178,9 +179,9 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         do {
             lz = (ngx_http_limit_zone_node_t *) &node->color;
 
-            if (len == (size_t) lz->len
-                && ngx_strncmp(lz->data, vv->data, len) == 0)
-            {
+            rc = ngx_strn2cmp(lz->data, vv->data, (size_t) lz->len, len);
+
+            if (rc == 0) {
                 if ((ngx_uint_t) lz->conn < lzcf->conn) {
                     lz->conn++;
                     goto done;
@@ -191,7 +192,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
                 return NGX_HTTP_SERVICE_UNAVAILABLE;
             }
 
-            node = node->right;
+            node = (rc < 0) ? node->left : node->right;
 
         } while (node != sentinel && hash == node->key);
 
@@ -231,6 +232,65 @@ done:
     lzcln->node = node;
 
     return NGX_DECLINED;
+}
+
+
+static void
+ngx_http_limit_zone_rbtree_insert_value(ngx_rbtree_node_t *temp,
+    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
+{
+    ngx_http_limit_zone_node_t  *lzn, *lznt;
+
+    for ( ;; ) {
+
+        if (node->key < temp->key) {
+
+            if (temp->left == sentinel) {
+                temp->left = node;
+                break;
+            }
+
+            temp = temp->left;
+
+        } else if (node->key > temp->key) {
+
+            if (temp->right == sentinel) {
+                temp->right = node;
+                break;
+            }
+
+            temp = temp->right;
+
+        } else { /* node->key == temp->key */
+
+            lzn = (ngx_http_limit_zone_node_t *) &node->color;
+            lznt = (ngx_http_limit_zone_node_t *) &temp->color;
+
+            if (ngx_strn2cmp(lzn->data, lznt->data, lzn->len, lznt->len) < 0) {
+
+                if (temp->left == sentinel) {
+                    temp->left = node;
+                    break;
+                }
+
+                temp = temp->left;
+
+            } else {
+
+                if (temp->right == sentinel) {
+                    temp->right = node;
+                    break;
+                }
+
+                temp = temp->right;
+            }
+        }
+    }
+
+    node->parent = temp;
+    node->left = sentinel;
+    node->right = sentinel;
+    ngx_rbt_red(node);
 }
 
 
@@ -306,7 +366,7 @@ ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     ctx->rbtree->root = sentinel;
     ctx->rbtree->sentinel = sentinel;
-    ctx->rbtree->insert = ngx_rbtree_insert_value;
+    ctx->rbtree->insert = ngx_http_limit_zone_rbtree_insert_value;
 
     return NGX_OK;
 }
