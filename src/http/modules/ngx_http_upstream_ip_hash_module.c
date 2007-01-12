@@ -171,14 +171,14 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
 
             if (!peer->down) {
 
-		if (peer->max_fails == 0 || peer->fails < peer->max_fails) {
-		    break;
-		}
+                if (peer->max_fails == 0 || peer->fails < peer->max_fails) {
+                    break;
+                }
 
-		if (now - peer->accessed > peer->fail_timeout) {
-		    peer->fails = 0;
-		    break;
-		}
+                if (now - peer->accessed > peer->fail_timeout) {
+                    peer->fails = 0;
+                    break;
+                }
 
             } else {
                 iphp->rrp.tried[n] |= m;

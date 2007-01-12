@@ -2381,7 +2381,7 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         noregex = 0;
         flags = NGX_HTTP_SSI_ADD_ZERO;
         last--;
-	p++;
+        p++;
 
     } else {
         noregex = 1;

@@ -199,7 +199,7 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
         ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_perl_ctx_t));
         if (ctx == NULL) {
             ngx_http_finalize_request(r, NGX_ERROR);
-	    return;
+            return;
         }
 
         ngx_http_set_ctx(r, ctx, ngx_http_perl_module);

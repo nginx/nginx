@@ -1527,26 +1527,26 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
 
         do {
             if ((u_char) len == node->data) {
-		sess_id = (ngx_ssl_sess_id_t *) node;
+                sess_id = (ngx_ssl_sess_id_t *) node;
 
-		if (ngx_strncmp(id, sess_id->id, (size_t) len) == 0) {
+                if (ngx_strncmp(id, sess_id->id, (size_t) len) == 0) {
 
-		    sess_id->next->prev = sess_id->prev;
-		    sess_id->prev->next = sess_id->next;
+                    sess_id->next->prev = sess_id->prev;
+                    sess_id->prev->next = sess_id->next;
 
-		    ngx_rbtree_delete(cache->session_rbtree, node);
+                    ngx_rbtree_delete(cache->session_rbtree, node);
 
-		    ngx_slab_free_locked(shpool, sess_id->session);
+                    ngx_slab_free_locked(shpool, sess_id->session);
 #if (NGX_PTR_SIZE == 4)
-		    ngx_slab_free_locked(shpool, sess_id->id);
+                    ngx_slab_free_locked(shpool, sess_id->id);
 #endif
-		    ngx_slab_free_locked(shpool, sess_id);
+                    ngx_slab_free_locked(shpool, sess_id);
 
-		    goto done;
-		}
-	    }
+                    goto done;
+                }
+            }
 
-	    node = node->right;
+            node = node->right;
 
         } while (node != sentinel && hash == node->key);
 

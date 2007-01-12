@@ -1191,7 +1191,7 @@ ngx_imap_do_auth(ngx_imap_session_t *s)
     s->state = 0;
 
     if (s->connection->read->timer_set) {
-	ngx_del_timer(s->connection->read);
+        ngx_del_timer(s->connection->read);
     }
 
     s->login_attempt++;
