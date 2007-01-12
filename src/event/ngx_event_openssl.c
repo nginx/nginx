@@ -1436,7 +1436,7 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
         do {
             sess_id = (ngx_ssl_sess_id_t *) node;
 
-            rc = ngx_strn2cmp(id, sess_id->id,
+            rc = ngx_memn2cmp(id, sess_id->id,
                               (size_t) len, (size_t) node->data);
             if (rc == 0) {
 
@@ -1533,7 +1533,7 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
         do {
             sess_id = (ngx_ssl_sess_id_t *) node;
 
-            rc = ngx_strn2cmp(id, sess_id->id, len, (size_t) node->data);
+            rc = ngx_memn2cmp(id, sess_id->id, len, (size_t) node->data);
 
             if (rc == 0) {
                 sess_id->next->prev = sess_id->prev;
@@ -1632,7 +1632,7 @@ ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
             sess_id = (ngx_ssl_sess_id_t *) node;
             sess_id_temp = (ngx_ssl_sess_id_t *) temp;
 
-            if (ngx_strn2cmp(sess_id->id, sess_id_temp->id,
+            if (ngx_memn2cmp(sess_id->id, sess_id_temp->id,
                              (size_t) node->data, (size_t) temp->data)
                 < 0)
             {

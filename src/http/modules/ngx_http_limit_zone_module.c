@@ -179,7 +179,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         do {
             lz = (ngx_http_limit_zone_node_t *) &node->color;
 
-            rc = ngx_strn2cmp(lz->data, vv->data, (size_t) lz->len, len);
+            rc = ngx_memn2cmp(lz->data, vv->data, (size_t) lz->len, len);
 
             if (rc == 0) {
                 if ((ngx_uint_t) lz->conn < lzcf->conn) {
@@ -266,7 +266,7 @@ ngx_http_limit_zone_rbtree_insert_value(ngx_rbtree_node_t *temp,
             lzn = (ngx_http_limit_zone_node_t *) &node->color;
             lznt = (ngx_http_limit_zone_node_t *) &temp->color;
 
-            if (ngx_strn2cmp(lzn->data, lznt->data, lzn->len, lznt->len) < 0) {
+            if (ngx_memn2cmp(lzn->data, lznt->data, lzn->len, lznt->len) < 0) {
 
                 if (temp->left == sentinel) {
                     temp->left = node;

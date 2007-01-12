@@ -487,7 +487,7 @@ ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)
 
 
 ngx_int_t
-ngx_strn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2)
+ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2)
 {
     size_t     n;
     ngx_int_t  m, z;
@@ -501,7 +501,7 @@ ngx_strn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2)
         z = 1;
     }
 
-    m = ngx_strncmp(s1, s2, n);
+    m = ngx_memcmp(s1, s2, n);
 
     if (m || n1 == n2) {
         return m;

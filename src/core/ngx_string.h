@@ -130,7 +130,7 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args);
 
 ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n);
 ngx_int_t ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n);
-ngx_int_t ngx_strn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2);
+ngx_int_t ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2);
 
 ngx_int_t ngx_atoi(u_char *line, size_t n);
 ssize_t ngx_atosz(u_char *line, size_t n);
