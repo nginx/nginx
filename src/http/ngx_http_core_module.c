@@ -935,7 +935,8 @@ ngx_http_core_find_location(ngx_http_request_t *r,
         if (clcfp[i]->auto_redirect
             && r->uri.len == clcfp[i]->name.len - 1
             && ngx_strncmp(r->uri.data, clcfp[i]->name.data,
-                                                  clcfp[i]->name.len - 1) == 0)
+                           clcfp[i]->name.len - 1)
+                == 0)
         {
             /* the locations are lexicographically sorted */
 
