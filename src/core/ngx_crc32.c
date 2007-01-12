@@ -13,11 +13,11 @@
  * described at http://www.w3.org/TR/PNG/
  *
  * The 256 element lookup table takes 1024 bytes, and it may be completely
- * cached after processing about 30-60 bytes.  So for short messages
+ * cached after processing about 30-60 bytes of data.  So for short data
  * we use the 16 element lookup table that takes only 64 bytes and align it
  * to CPU cache line size.  Of course, the small table adds code inside
- * CRC32 cycle, but cache misses overhead is bigger than overhead of
- * the additional code.  For example, ngx_crc32_short() of 16 byte message
+ * CRC32 loop, but the cache misses overhead is bigger than overhead of
+ * the additional code.  For example, ngx_crc32_short() of 16 bytes of data
  * takes half as much CPU clocks than ngx_crc32_long().
  */
 
