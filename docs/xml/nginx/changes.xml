@@ -9,6 +9,73 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.7" date="15.01.2007">
+
+<change type="feature">
+<para lang="ru">
+оптимизация использования памяти в ssl_session_cache.
+</para>
+<para lang="en">
+the ssl_session_cache storage optimization.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправление ошибок в директивах ssl_session_cache и limit_zone.
+</para>
+<para lang="en">
+Bugfixes in the "ssl_session_cache" and "limit_zone" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на старте или во время переконфигурации происходил segmentation fault,
+если директивы ssl_session_cache или limit_zone использовались
+на 64-битных платформах.
+</para>
+<para lang="en">
+the segmentation fault was occurred on start or while reconfiguration
+if the "ssl_session_cache" or "limit_zone" directives were used
+on 64-bit platforms.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директив add_before_body или add_after_body происходил
+segmentation fault, если в заголовке ответа нет строки "Content-Type".
+</para>
+<para lang="en">
+a segmentation fault occurred if the "add_before_body" or "add_after_body"
+directives were used and there was no "Content-Type" header line in response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+библиотека OpenSSL всегда собирался с поддержкой потоков.<br/>
+Спасибо Дену Иванову.
+</para>
+<para lang="en">
+the OpenSSL library was always built with the threads support.<br/>
+Thanks to Den Ivanov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость библиотеки PCRE-6.5+ и компилятора icc.
+</para>
+<para lang="en">
+the PCRE-6.5+ library and the icc compiler compatibility.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.6" date="09.01.2007">
 
 <change type="change">
