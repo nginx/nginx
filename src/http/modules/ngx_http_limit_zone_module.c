@@ -179,7 +179,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
         do {
             lz = (ngx_http_limit_zone_node_t *) &node->color;
 
-            rc = ngx_memn2cmp(lz->data, vv->data, (size_t) lz->len, len);
+            rc = ngx_memn2cmp(vv->data, lz->data, len, (size_t) lz->len);
 
             if (rc == 0) {
                 if ((ngx_uint_t) lz->conn < lzcf->conn) {
