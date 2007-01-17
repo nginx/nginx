@@ -420,7 +420,7 @@ static ngx_int_t
 ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 {
     size_t             bsize;
-    ngx_uint_t         flush;
+    ngx_uint_t         flush, prev_last_shadow;
     ngx_chain_t       *out, **ll, *cl;
     ngx_connection_t  *downstream;
 
@@ -511,6 +511,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         out = NULL;
         ll = NULL;
         flush = 0;
+        prev_last_shadow = 1;
 
         for ( ;; ) {
             if (p->out) {
@@ -520,9 +521,15 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                     && cl->buf->last_shadow
                     && bsize + cl->buf->last - cl->buf->pos > p->busy_size)
                 {
+                    if (!prev_last_shadow) {
+                        p->in = p->in->next;
+                    }
+
                     flush = 1;
                     break;
                 }
+
+                prev_last_shadow = cl->buf->last_shadow;
 
                 p->out = p->out->next;
 
@@ -541,9 +548,15 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                     && cl->buf->last_shadow
                     && bsize + cl->buf->last - cl->buf->pos > p->busy_size)
                 {
+                    if (!prev_last_shadow) {
+                        p->in = p->in->next;
+                    }
+
                     flush = 1;
                     break;
                 }
+
+                prev_last_shadow = cl->buf->last_shadow;
 
                 p->in = p->in->next;
 
