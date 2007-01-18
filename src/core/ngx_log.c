@@ -279,7 +279,7 @@ ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
 
                 if (log->log_level != 0) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "invalid log level \"%s\"",
+                                       "duplicate log level \"%s\"",
                                        value[i].data);
                     return NGX_CONF_ERROR;
                 }
