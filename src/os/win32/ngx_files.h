@@ -27,6 +27,9 @@
 #define NGX_FILE_ERROR              0
 
 
+/*
+ * FILE_FLAG_BACKUP_SEMANTICS allows to obtain a handle to a directory
+ */
 
 #define ngx_open_file(name, mode, create, access)                            \
     CreateFile((const char *) name, mode,                                    \
