@@ -1620,7 +1620,7 @@ ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
 
         } else if (node->key > temp->key) {
 
-            if (temp->right == sentinel) { 
+            if (temp->right == sentinel) {
                 temp->right = node;
                 break;
             }
@@ -1642,9 +1642,9 @@ ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
                 }
 
                 temp = temp->left;
-    
+
             } else {
-    
+
                 if (temp->right == sentinel) {
                     temp->right = node;
                     break;
@@ -1659,7 +1659,7 @@ ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
     node->left = sentinel;
     node->right = sentinel;
     ngx_rbt_red(node);
-}   
+}
 
 
 void
