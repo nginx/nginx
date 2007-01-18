@@ -38,6 +38,7 @@
 #define ngx_open_file_n             "CreateFile()"
 
 #define NGX_FILE_RDONLY             GENERIC_READ
+#define NGX_FILE_WRONLY             GENERIC_WRITE
 #define NGX_FILE_RDWR               GENERIC_READ|GENERIC_WRITE
 #define NGX_FILE_CREATE_OR_OPEN     OPEN_ALWAYS
 #define NGX_FILE_OPEN               OPEN_EXISTING
