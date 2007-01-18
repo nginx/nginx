@@ -87,7 +87,7 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_string("409 Conflict"),
     ngx_string("410 Gone"),
     ngx_string("411 Length Required"),
-    ngx_null_string,  /* "412 Precondition Failed" */
+    ngx_string("412 Precondition Failed"),
     ngx_string("413 Request Entity Too Large"),
     ngx_null_string,  /* "414 Request-URI Too Large", but we never send it
                        * because we treat such requests as the HTTP/0.9

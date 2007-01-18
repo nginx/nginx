@@ -139,6 +139,14 @@ static char error_411_page[] =
 ;
 
 
+static char error_412_page[] =
+"<html>" CRLF
+"<head><title>412 Precondition Failed</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>412 Precondition Failed</h1></center>" CRLF
+;
+
+
 static char error_413_page[] =
 "<html>" CRLF
 "<head><title>413 Request Entity Too Large</title></head>" CRLF
@@ -274,7 +282,7 @@ static ngx_str_t error_pages[] = {
     ngx_string(error_409_page),
     ngx_string(error_410_page),
     ngx_string(error_411_page),
-    ngx_null_string,             /* 412 */
+    ngx_string(error_412_page),
     ngx_string(error_413_page),
     ngx_string(error_414_page),
     ngx_string(error_415_page),
