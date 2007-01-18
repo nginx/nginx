@@ -445,8 +445,8 @@ ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
 
     prev = ctx->data;
 
-    if (ctx->size) {
-        data = ngx_alloc(ctx->size, ctx->log);
+    if (ctx->alloc) {
+        data = ngx_alloc(ctx->alloc, ctx->log);
         if (data == NULL) {
             goto failed;
         }
@@ -529,6 +529,10 @@ ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
             ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
                            "tree file \"%s\"", file.data);
 
+            ctx->size = ngx_de_size(&dir);
+            ctx->access = ngx_de_access(&dir);
+            ctx->mtime = ngx_de_mtime(&dir);
+
             if (ctx->file_handler(ctx, &file) == NGX_ABORT) {
                 goto failed;
             }
@@ -538,6 +542,9 @@ ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
             ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
                            "tree enter dir \"%s\"", file.data);
 
+            ctx->access = ngx_de_access(&dir);
+            ctx->mtime = ngx_de_mtime(&dir);
+
             if (ctx->pre_tree_handler(ctx, &file) == NGX_ABORT) {
                 goto failed;
             }
@@ -545,6 +552,9 @@ ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
             if (ngx_walk_tree(ctx, &file) == NGX_ABORT) {
                 goto failed;
             }
+
+            ctx->access = ngx_de_access(&dir);
+            ctx->mtime = ngx_de_mtime(&dir);
 
             if (ctx->post_tree_handler(ctx, &file) == NGX_ABORT) {
                 goto failed;
@@ -571,7 +581,7 @@ done:
         ngx_free(buf.data);
     }
 
-    if (ctx->data) {
+    if (ctx->alloc) {
         ngx_free(ctx->data);
         ctx->data = prev;
     }

@@ -19,8 +19,7 @@ typedef struct {
 
 
 static ngx_int_t ngx_http_dav_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_dav_no_init(ngx_tree_ctx_t *ctx,
-    ngx_tree_ctx_t *prev);
+static ngx_int_t ngx_http_dav_no_init(void *ctx, void *prev);
 static ngx_int_t ngx_http_dav_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 static ngx_int_t ngx_http_dav_delete_dir(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 static ngx_int_t ngx_http_dav_delete_file(ngx_tree_ctx_t *ctx, ngx_str_t *path);
@@ -190,7 +189,7 @@ ngx_http_dav_handler(ngx_http_request_t *r)
                 tree.post_tree_handler = ngx_http_dav_delete_dir;
                 tree.spec_handler = ngx_http_dav_delete_file;
                 tree.data = NULL;
-                tree.size = 0;
+                tree.alloc = 0;
                 tree.log = r->connection->log;
 
                 if (ngx_walk_tree(&tree, &path) == NGX_OK) {
@@ -270,7 +269,7 @@ ngx_http_dav_handler(ngx_http_request_t *r)
 
 
 static ngx_int_t
-ngx_http_dav_no_init(ngx_tree_ctx_t *ctx, ngx_tree_ctx_t *prev)
+ngx_http_dav_no_init(void *ctx, void *prev)
 {
     return NGX_OK;
 }

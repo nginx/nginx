@@ -58,18 +58,23 @@ typedef struct {
 
 typedef struct ngx_tree_ctx_s  ngx_tree_ctx_t;
 
-typedef ngx_int_t (*ngx_tree_init_handler_pt) (ngx_tree_ctx_t *ctx,
-    ngx_tree_ctx_t *prev);
+typedef ngx_int_t (*ngx_tree_init_handler_pt) (void *ctx, void *prev);
 typedef ngx_int_t (*ngx_tree_handler_pt) (ngx_tree_ctx_t *ctx, ngx_str_t *name);
 
 struct ngx_tree_ctx_s {
+    off_t                      size;
+    ngx_uint_t                 access;
+    time_t                     mtime;
+
     ngx_tree_init_handler_pt   init_handler;
     ngx_tree_handler_pt        file_handler;
     ngx_tree_handler_pt        pre_tree_handler;
     ngx_tree_handler_pt        post_tree_handler;
     ngx_tree_handler_pt        spec_handler;
+
     void                      *data;
-    size_t                     size;
+    size_t                     alloc;
+
     ngx_log_t                 *log;
 };
 
