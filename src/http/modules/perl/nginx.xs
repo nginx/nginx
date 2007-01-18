@@ -632,7 +632,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
         XSRETURN_EMPTY;
     }
 
-    fd = ngx_open_file((u_char *) filename, NGX_FILE_RDONLY, NGX_FILE_OPEN);
+    fd = ngx_open_file((u_char *) filename, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
 
     if (fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
