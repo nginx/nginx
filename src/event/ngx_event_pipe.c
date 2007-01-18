@@ -551,7 +551,6 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                         } else {
                             out = cl;
                         }
-                        ll = &cl->next;
                     }
 
                     flush = 1;
