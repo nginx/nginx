@@ -194,6 +194,7 @@ typedef struct {
 #if (NGX_HTTP_DAV)
     ngx_table_elt_t                  *depth;
     ngx_table_elt_t                  *destination;
+    ngx_table_elt_t                  *overwrite;
     ngx_table_elt_t                  *date;
 #endif
 

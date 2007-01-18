@@ -141,6 +141,9 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("Destination"), offsetof(ngx_http_headers_in_t, destination),
                  ngx_http_process_header_line },
 
+    { ngx_string("Overwrite"), offsetof(ngx_http_headers_in_t, overwrite),
+                 ngx_http_process_header_line },
+
     { ngx_string("Date"), offsetof(ngx_http_headers_in_t, date),
                  ngx_http_process_header_line },
 #endif
