@@ -28,9 +28,9 @@
 
 
 
-#define ngx_open_file(name, access, create)                                 \
-    CreateFile((const char *) name, access,                                 \
-               FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,          \
+#define ngx_open_file(name, access, create)                                  \
+    CreateFile((const char *) name, access,                                  \
+               FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,           \
                NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL)
 /*
                NULL, OPEN_EXISTING, 0, NULL)
@@ -48,14 +48,14 @@ ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_file_append_mode_n      "SetFilePointer()"
 
 
-#define ngx_open_tempfile(name, persistent, access)                         \
-    CreateFile((const char *) name,                                         \
-               GENERIC_READ|GENERIC_WRITE,                                  \
-               FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,          \
-               NULL,                                                        \
-               CREATE_NEW,                                                  \
-               persistent ? 0:                                              \
-                   FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE,      \
+#define ngx_open_tempfile(name, persistent, access)                          \
+    CreateFile((const char *) name,                                          \
+               GENERIC_READ|GENERIC_WRITE,                                   \
+               FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,           \
+               NULL,                                                         \
+               CREATE_NEW,                                                   \
+               persistent ? 0:                                               \
+                   FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE,       \
                NULL);
 
 #define ngx_open_tempfile_n         "CreateFile()"
@@ -150,20 +150,20 @@ ngx_int_t ngx_de_info(u_char *name, ngx_dir_t *dir);
 ngx_int_t ngx_de_link_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_link_info_n          "dummy()"
 
-#define ngx_de_is_dir(dir)                                                    \
+#define ngx_de_is_dir(dir)                                                   \
     ((dir)->finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-#define ngx_de_is_file(dir)                                                   \
+#define ngx_de_is_file(dir)                                                  \
     !((dir)->finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #define ngx_de_is_link(dir)         0
-#define ngx_de_size(dir)                                                      \
+#define ngx_de_size(dir)                                                     \
   (((off_t) (dir)->finddata.nFileSizeHigh << 32) | (dir)->finddata.nFileSizeLow)
 
 /* 116444736000000000 is commented in src/os/win32/ngx_time.c */
 
-#define ngx_de_mtime(dir)                                                     \
-    (time_t) (((((unsigned __int64)                                           \
-                     (dir)->finddata.ftLastWriteTime.dwHighDateTime << 32)    \
-                      | (dir)->finddata.ftLastWriteTime.dwLowDateTime)        \
+#define ngx_de_mtime(dir)                                                    \
+    (time_t) (((((unsigned __int64)                                          \
+                     (dir)->finddata.ftLastWriteTime.dwHighDateTime << 32)   \
+                      | (dir)->finddata.ftLastWriteTime.dwLowDateTime)       \
                                           - 116444736000000000) / 10000000)
 
 typedef struct {
