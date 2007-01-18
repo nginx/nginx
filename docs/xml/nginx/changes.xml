@@ -55,7 +55,7 @@ directives were used and there was no "Content-Type" header line in response.
 
 <change type="bugfix">
 <para lang="ru">
-библиотека OpenSSL всегда собирался с поддержкой потоков.<br/>
+библиотека OpenSSL всегда собиралась с поддержкой потоков.<br/>
 Спасибо Дену Иванову.
 </para>
 <para lang="en">
