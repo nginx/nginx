@@ -55,7 +55,12 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
     off_t offset, ngx_pool_t *pool);
 
 
+#define ngx_read_fd              read
+#define ngx_read_fd_n            "read()"
+
 #define ngx_write_fd             write
+#define ngx_write_fd_n           "write()"
+
 #define ngx_linefeed(p)          *p++ = LF;
 #define NGX_LINEFEED_SIZE        1
 

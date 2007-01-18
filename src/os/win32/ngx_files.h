@@ -68,7 +68,12 @@ ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_close_file_n            "CloseHandle()"
 
 
+#define ngx_read_fd(fd, buf, size)  ReadFile(fd, buf, size, NULL, NULL)
+#define ngx_read_fd_n               "ReadFile()"
+
 #define ngx_write_fd(fd, buf, size) WriteFile(fd, buf, size, NULL, NULL)
+#define ngx_write_fd_n              "WriteFile()"
+
 #define ngx_linefeed(p)             *p++ = CR; *p++ = LF;
 #define NGX_LINEFEED_SIZE           2
 
