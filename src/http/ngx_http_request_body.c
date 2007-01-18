@@ -74,13 +74,13 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
             tf->persistent = r->request_body_in_persistent_file;
 
             if (r->request_body_file_group_access) {
-                tf->mode = 0660;
+                tf->access = 0660;
             }
 
             rb->temp_file = tf;
 
             if (ngx_create_temp_file(&tf->file, tf->path, tf->pool,
-                                     tf->persistent, tf->mode)
+                                     tf->persistent, tf->access)
                 != NGX_OK)
             {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -400,7 +400,7 @@ ngx_http_write_request_body(ngx_http_request_t *r, ngx_chain_t *body)
         tf->persistent = r->request_body_in_persistent_file;
 
         if (r->request_body_file_group_access) {
-            tf->mode = 0660;
+            tf->access = 0660;
         }
 
         rb->temp_file = tf;

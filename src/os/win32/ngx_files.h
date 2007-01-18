@@ -48,7 +48,7 @@ ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
 #define ngx_file_append_mode_n      "SetFilePointer()"
 
 
-#define ngx_open_tempfile(name, persistent, mode)                           \
+#define ngx_open_tempfile(name, persistent, access)                         \
     CreateFile((const char *) name,                                         \
                GENERIC_READ|GENERIC_WRITE,                                  \
                FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,          \

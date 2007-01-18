@@ -38,7 +38,7 @@
 
 
 ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent,
-    ngx_uint_t mode);
+    ngx_uint_t access);
 #define ngx_open_tempfile_n      "open()"
 
 

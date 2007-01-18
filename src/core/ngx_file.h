@@ -49,7 +49,7 @@ typedef struct {
     ngx_pool_t         *pool;
     char               *warn;
 
-    ngx_uint_t          mode;
+    ngx_uint_t          access;
 
     unsigned            log_level:8;
     unsigned            persistent:1;
@@ -76,7 +76,7 @@ struct ngx_tree_ctx_s {
 
 ssize_t ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain);
 ngx_int_t ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
-    ngx_pool_t *pool, ngx_uint_t persistent,ngx_uint_t mode);
+    ngx_pool_t *pool, ngx_uint_t persistent,ngx_uint_t access);
 void ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path);
 ngx_int_t ngx_create_path(ngx_file_t *file, ngx_path_t *path);
 ngx_err_t ngx_create_full_path(u_char *dir, ngx_uint_t access);
