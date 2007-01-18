@@ -81,6 +81,7 @@ ngx_int_t ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s);
 #define ngx_is_file(sb)          (S_ISREG((sb)->st_mode))
 #define ngx_is_link(sb)          (S_ISLNK((sb)->st_mode))
 #define ngx_is_exec(sb)          ((sb)->st_mode & S_IXUSR)
+#define ngx_file_access(sb)      ((sb)->st_mode & 0777)
 #define ngx_file_size(sb)        (sb)->st_size
 #define ngx_file_mtime(sb)       (sb)->st_mtime
 #define ngx_file_uniq(sb)        (sb)->st_ino
@@ -128,6 +129,7 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_de_is_dir(dir)       (S_ISDIR((dir)->info.st_mode))
 #define ngx_de_is_file(dir)      (S_ISREG((dir)->info.st_mode))
 #define ngx_de_is_link(dir)      (S_ISLNK((dir)->info.st_mode))
+#define ngx_de_access(dir)       (((dir)->info.st_mode) & 0777)
 #define ngx_de_size(dir)         (dir)->info.st_size
 #define ngx_de_mtime(dir)        (dir)->info.st_mtime
 

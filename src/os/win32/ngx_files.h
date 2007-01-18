@@ -99,6 +99,7 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 #define ngx_is_file(fi)     !((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #define ngx_is_link(fi)     0
 
+#define ngx_file_access(fi) 0
 
 #define ngx_file_size(fi)                                                    \
     (((off_t) (fi)->nFileSizeHigh << 32) | (fi)->nFileSizeLow)
@@ -157,6 +158,7 @@ ngx_int_t ngx_de_link_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_is_file(dir)                                                  \
     !((dir)->finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 #define ngx_de_is_link(dir)         0
+#define ngx_de_access(dir)          0
 #define ngx_de_size(dir)                                                     \
   (((off_t) (dir)->finddata.nFileSizeHigh << 32) | (dir)->finddata.nFileSizeLow)
 
