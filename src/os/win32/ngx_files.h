@@ -32,9 +32,6 @@
     CreateFile((const char *) name, mode,                                    \
                FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,           \
                NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL)
-/*
-               NULL, OPEN_EXISTING, 0, NULL)
-*/
 #define ngx_open_file_n             "CreateFile()"
 
 #define NGX_FILE_RDONLY             GENERIC_READ
