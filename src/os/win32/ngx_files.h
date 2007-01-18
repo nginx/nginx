@@ -28,8 +28,8 @@
 
 
 
-#define ngx_open_file(name, access, create)                                  \
-    CreateFile((const char *) name, access,                                  \
+#define ngx_open_file(name, mode, create, access)                            \
+    CreateFile((const char *) name, mode,                                    \
                FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,           \
                NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL)
 /*
@@ -42,6 +42,8 @@
 #define NGX_FILE_CREATE_OR_OPEN     OPEN_ALWAYS
 #define NGX_FILE_OPEN               OPEN_EXISTING
 #define NGX_FILE_APPEND             0
+
+#define NGX_FILE_DEFAULT_ACCESS     0
 
 
 ngx_int_t ngx_file_append_mode(ngx_fd_t fd);

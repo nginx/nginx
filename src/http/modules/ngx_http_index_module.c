@@ -245,7 +245,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        fd = ngx_open_file(ctx->path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
+        fd = ngx_open_file(ctx->path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
 
         if (fd == (ngx_fd_t) NGX_AGAIN) {
             ctx->current = i;

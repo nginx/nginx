@@ -312,7 +312,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
         file[i].fd = ngx_open_file(file[i].name.data, NGX_FILE_RDWR,
-                                   NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+                                   NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND,
+                                   NGX_FILE_DEFAULT_ACCESS);
 
         ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
                        "log: %p %d \"%s\"",
@@ -849,7 +850,8 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
     trunc = ngx_test_config ? 0 : NGX_FILE_TRUNCATE;
 
     file.fd = ngx_open_file(file.name.data, NGX_FILE_RDWR,
-                            NGX_FILE_CREATE_OR_OPEN|trunc);
+                            NGX_FILE_CREATE_OR_OPEN|trunc,
+                            NGX_FILE_DEFAULT_ACCESS);
 
     if (file.fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
@@ -959,7 +961,8 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
         }
 
         fd = ngx_open_file(file[i].name.data, NGX_FILE_RDWR,
-                           NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+                           NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND,
+                           NGX_FILE_DEFAULT_ACCESS);
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "reopen file \"%s\", old:%d new:%d",

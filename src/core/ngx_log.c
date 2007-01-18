@@ -209,7 +209,7 @@ ngx_log_init(void)
     ngx_stderr_fileno = GetStdHandle(STD_ERROR_HANDLE);
 
     ngx_stderr.fd = ngx_open_file(NGX_ERROR_LOG_PATH, NGX_FILE_RDWR,
-                                  NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
+                                  NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND, 0);
 
     if (ngx_stderr.fd == NGX_INVALID_FILE) {
         ngx_message_box("nginx", MB_OK, ngx_errno,

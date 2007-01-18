@@ -17,8 +17,8 @@
 
 
 
-#define ngx_open_file(name, access, create)                                 \
-    open((const char *) name, access|create, 0644)
+#define ngx_open_file(name, mode, create, access)                            \
+    open((const char *) name, mode|create, access)
 #define ngx_open_file_n          "open()"
 
 #define NGX_FILE_RDONLY          O_RDONLY
@@ -27,6 +27,8 @@
 #define NGX_FILE_OPEN            0
 #define NGX_FILE_TRUNCATE        O_TRUNC
 #define NGX_FILE_APPEND          O_APPEND
+
+#define NGX_FILE_DEFAULT_ACCESS  0644
 
 
 #define ngx_close_file           close

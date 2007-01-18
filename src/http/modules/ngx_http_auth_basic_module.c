@@ -133,7 +133,7 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    fd = ngx_open_file(alcf->user_file.data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
+    fd = ngx_open_file(alcf->user_file.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
 
     if (fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
