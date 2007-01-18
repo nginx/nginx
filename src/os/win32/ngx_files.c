@@ -215,8 +215,7 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
     }
 
     if (DeleteFile((const char *) name) == 0) {
-        ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno,
-                      "DeleteFile() failed");
+        ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno, "DeleteFile() failed");
     }
 
     if (rc == NGX_ERROR) {
