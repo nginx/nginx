@@ -1765,20 +1765,77 @@ ngx_http_writer(ngx_http_request_t *r)
 static void
 ngx_http_block_read(ngx_http_request_t *r)
 {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http read blocked");
+    int                n;
+    char               buf[1];
+    ngx_err_t          err;
+    ngx_event_t       *rev;
+    ngx_connection_t  *c;
+
+    c = r->connection;
+    rev = c->read;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http read blocked");
+
+#if (NGX_HAVE_KQUEUE)
+
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
+
+        if (!rev->pending_eof) {
+            return;
+        }
+
+        rev->eof = 1;
+        c->error = 1;
+        err = rev->kq_errno;
+
+        goto closed;
+    }
+
+#endif
+
+    n = recv(c->fd, buf, 1, MSG_PEEK);
+
+    if (n == 0) {
+        rev->eof = 1;
+        c->error = 1;
+        err = 0;
+
+        goto closed;
+
+    } else if (n == -1) {
+        err = ngx_socket_errno;
+
+        if (err != NGX_EAGAIN) {
+            rev->eof = 1;
+            c->error = 1;
+
+            goto closed;
+        }
+    }
 
     /* aio does not call this handler */
 
-    if ((ngx_event_flags & NGX_USE_LEVEL_EVENT)
-        && r->connection->read->active)
-    {
-        if (ngx_del_event(r->connection->read, NGX_READ_EVENT, 0)
-            == NGX_ERROR)
-        {
+    if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && rev->active) {
+
+        if (ngx_del_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
             ngx_http_close_request(r, 0);
         }
     }
+
+    return;
+
+closed:
+
+    if (err) {
+        rev->error = 1;
+    }
+
+    ngx_log_error(NGX_LOG_INFO, c->log, err,
+                  "client closed prematurely connection");
+
+    ngx_http_close_request(r, 0);
+
+    return;
 }
 
 
