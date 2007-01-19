@@ -243,8 +243,8 @@ time_t ngx_http_parse_time(u_char *value, size_t len)
      */
 
     if (--month <= 0) {
-       month += 12;
-       year -= 1;
+        month += 12;
+        year -= 1;
     }
 
     /* Gauss's formula for Grigorian days from 1 March 1 BC */
@@ -255,7 +255,7 @@ time_t ngx_http_parse_time(u_char *value, size_t len)
 
             /*
              * 719527 days were between March 1, 1 BC and March 1, 1970,
-             * 31 and 28 days in January and February 1970
+             * 31 and 28 days were in January and February 1970
              */
 
             - 719527 + 31 + 28) * 86400 + hour * 3600 + min * 60 + sec;
