@@ -9,6 +9,83 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.8" date="19.01.2007">
+
+<change type="bugfix">
+<para lang="ru">
+если использовалась директива <nobr>"client_body_in_file_only on"</nobr>
+и тело запроса было небольшое, то мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur if
+<nobr>"client_body_in_file_only on"</nobr> was used
+and a request body was small.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+происходил segmentation fault, если использовались директивы
+<nobr>"client_body_in_file_only on"</nobr>
+и <nobr>"proxy_pass_request_body off"</nobr>
+или <nobr>"fastcgi_pass_request_body off"</nobr>,
+и делался переход к следующему бэкенду.
+</para>
+<para lang="en">
+a segmentation fault occurred if <nobr>"client_body_in_file_only on"</nobr>
+and <nobr>"proxy_pass_request_body off"</nobr>
+or <nobr>"fastcgi_pass_request_body off"</nobr>
+directives were used, and nginx switched to a next upstream.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при использовании директивы "proxy_buffering off" соединение с клиентом
+было неактивно, то оно закрывалось по таймуту, заданному директивой
+send_timeout;
+ошибка появилась в 0.4.7.
+</para>
+<para lang="en">
+if the "proxy_buffering off" directive was used and a client connection
+was non-active, then the connection was closed after send timeout;
+bug appeared in 0.4.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при использовании метода epoll клиент закрывал преждевременно
+соединение со своей стороны, то nginx закрывал это соединение только
+по истечении таймаута на передачу.
+</para>
+<para lang="en">
+if the "epoll" method was used and a client closed a connection prematurely,
+then nginx closed the connection after a send timeout only.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки "[alert] zero size buf" при работе с FastCGI-сервером.
+</para>
+<para lang="en">
+the "[alert] zero size buf" error when FastCGI server was used.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправление ошибок в директиве limit_zone.
+</para>
+<para lang="en">
+Bugfixes in the "limit_zone" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.7" date="15.01.2007">
 
 <change type="feature">
@@ -274,7 +351,7 @@ configuration.
 метод $r->has_request_body не работал.
 </para>
 <para lang="en">
-the $r->has_request_body method did work.
+the $r->has_request_body method did not work.
 </para>
 </change>
 
@@ -1515,7 +1592,7 @@ all "Cookie" header lines.
 </para>
 <para lang="en">
 a segmentation fault occurred if <nobr>"client_body_in_file_only on"</nobr>
-was used and nginx was switches to a next upstream.
+was used and nginx switched to a next upstream.
 </para>
 </change>
 
