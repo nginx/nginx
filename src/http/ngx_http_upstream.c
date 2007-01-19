@@ -1700,7 +1700,7 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
         }
     }
 
-    if (downstream->write->active) {
+    if (downstream->write->active && !downstream->write->ready) {
         ngx_add_timer(downstream->write, clcf->send_timeout);
 
     } else if (downstream->write->timer_set) {
@@ -1712,7 +1712,7 @@ ngx_http_upstream_process_non_buffered_body(ngx_event_t *ev)
         return;
     }
 
-    if (upstream->read->active) {
+    if (upstream->read->active && !upstream->read->ready) {
         ngx_add_timer(upstream->read, u->conf->read_timeout);
 
     } else if (upstream->read->timer_set) {
