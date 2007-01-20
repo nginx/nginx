@@ -757,14 +757,19 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 static void
 ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
 {
-    sigset_t           set;
-    ngx_int_t          n;
-    ngx_uint_t         i;
-    struct rlimit      rlmt;
-    ngx_core_conf_t   *ccf;
-    ngx_listening_t   *ls;
+    sigset_t          set;
+    ngx_int_t         n;
+    ngx_uint_t        i;
+    struct rlimit     rlmt;
+    ngx_core_conf_t  *ccf;
+    ngx_listening_t  *ls;
 
     ngx_process = NGX_PROCESS_WORKER;
+
+    if (ngx_set_environment(cycle, NULL) == NULL) {
+        /* fatal */
+        exit(2);
+    }
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 

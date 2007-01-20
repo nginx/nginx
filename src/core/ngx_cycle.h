@@ -93,6 +93,9 @@ typedef struct {
      ngx_str_t                pid;
      ngx_str_t                oldpid;
 
+     ngx_array_t              env;
+     char                   **environment;
+
 #if (NGX_THREADS)
      ngx_int_t                worker_threads;
      size_t                   thread_stack_size;
@@ -113,6 +116,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
 ngx_int_t ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log);
 void ngx_delete_pidfile(ngx_cycle_t *cycle);
 void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user);
+char **ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last);
 ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv);
 u_long ngx_get_cpu_affinity(ngx_uint_t n);
 ngx_shm_zone_t *ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name,

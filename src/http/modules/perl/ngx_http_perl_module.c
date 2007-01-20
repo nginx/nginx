@@ -44,9 +44,8 @@ static ngx_int_t ngx_http_perl_ssi(ngx_http_request_t *r,
 static void ngx_http_perl_sleep_handler(ngx_http_request_t *r);
 static char *ngx_http_perl_init_interpreter(ngx_conf_t *cf,
     ngx_http_perl_main_conf_t *pmcf);
-static PerlInterpreter *
-    ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
-    ngx_log_t *log);
+static PerlInterpreter *ngx_http_perl_create_interpreter(ngx_conf_t *cf,
+    ngx_http_perl_main_conf_t *pmcf);
 static ngx_int_t ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires,
     ngx_log_t *log);
 static ngx_int_t ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
@@ -475,7 +474,7 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 
     PERL_SYS_INIT(&ngx_argc, &ngx_argv);
 
-    pmcf->perl = ngx_http_perl_create_interpreter(pmcf, cf->log);
+    pmcf->perl = ngx_http_perl_create_interpreter(cf, pmcf);
 
     if (pmcf->perl == NULL) {
         PERL_SYS_TERM();
@@ -500,8 +499,8 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 
 
 static PerlInterpreter *
-ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
-    ngx_log_t *log)
+ngx_http_perl_create_interpreter(ngx_conf_t *cf,
+    ngx_http_perl_main_conf_t *pmcf)
 {
     int                n;
     STRLEN             len;
@@ -509,11 +508,15 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
     char              *ver, *embedding[6];
     PerlInterpreter   *perl;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "create perl interpreter");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cf->log, 0, "create perl interpreter");
+
+    if (ngx_set_environment(cf->cycle, NULL) == NULL) {
+        return NULL;
+    }
 
     perl = perl_alloc();
     if (perl == NULL) {
-        ngx_log_error(NGX_LOG_ALERT, log, 0, "perl_alloc() failed");
+        ngx_log_error(NGX_LOG_ALERT, cf->log, 0, "perl_alloc() failed");
         return NULL;
     }
 
@@ -546,7 +549,7 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
     n = perl_parse(perl, ngx_http_perl_xs_init, n, embedding, NULL);
 
     if (n != 0) {
-        ngx_log_error(NGX_LOG_ALERT, log, 0, "perl_parse() failed: %d", n);
+        ngx_log_error(NGX_LOG_ALERT, cf->log, 0, "perl_parse() failed: %d", n);
         goto fail;
     }
 
@@ -554,13 +557,13 @@ ngx_http_perl_create_interpreter(ngx_http_perl_main_conf_t *pmcf,
     ver = SvPV(sv, len);
 
     if (ngx_strcmp(ver, NGINX_VERSION) != 0) {
-        ngx_log_error(NGX_LOG_ALERT, log, 0,
+        ngx_log_error(NGX_LOG_ALERT, cf->log, 0,
                       "version " NGINX_VERSION " of nginx.pm is required, "
                       "but %s was found", ver);
         goto fail;
     }
 
-    if (ngx_http_perl_run_requires(aTHX_ &pmcf->requires, log) != NGX_OK) {
+    if (ngx_http_perl_run_requires(aTHX_ &pmcf->requires, cf->log) != NGX_OK) {
         goto fail;
     }
 
