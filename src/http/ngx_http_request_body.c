@@ -32,6 +32,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 {
     size_t                     preread;
     ssize_t                    size;
+    ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_chain_t               *cl, **next;
     ngx_temp_file_t           *tf;
@@ -167,7 +168,14 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
             r->read_event_handler = ngx_http_read_client_request_body_handler;
 
-            return ngx_http_do_read_client_request_body(r);
+            rc = ngx_http_do_read_client_request_body(r);
+
+            if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+                ngx_http_finalize_request_body(r, rc);
+                return NGX_DONE;
+            }
+
+            return rc;
         }
 
         next = &rb->bufs->next;
@@ -227,7 +235,14 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     r->read_event_handler = ngx_http_read_client_request_body_handler;
 
-    return ngx_http_do_read_client_request_body(r);
+    rc = ngx_http_do_read_client_request_body(r);
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        ngx_http_finalize_request_body(r, rc);
+        return NGX_DONE;
+    }
+
+    return rc;
 }
 
 
