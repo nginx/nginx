@@ -23,6 +23,11 @@ typedef struct {
 #define NGX_HTTP_LOCATION_REGEX           4
 
 
+#define NGX_HTTP_REQUEST_BODY_FILE_OFF    0
+#define NGX_HTTP_REQUEST_BODY_FILE_ON     1
+#define NGX_HTTP_REQUEST_BODY_FILE_ANY    2
+
+
 static ngx_int_t ngx_http_core_find_location(ngx_http_request_t *r,
     ngx_array_t *locations, size_t len);
 
@@ -71,6 +76,14 @@ static ngx_conf_post_t  ngx_http_core_lowat_post =
 
 static ngx_conf_deprecated_t  ngx_conf_deprecated_optimize_host_names = {
     ngx_conf_deprecated, "optimize_host_names", "optimize_server_names"
+};
+
+
+static ngx_conf_enum_t  ngx_http_core_request_body_in_file[] = {
+    { ngx_string("off"), NGX_HTTP_REQUEST_BODY_FILE_OFF },
+    { ngx_string("on"), NGX_HTTP_REQUEST_BODY_FILE_ON },
+    { ngx_string("any"), NGX_HTTP_REQUEST_BODY_FILE_ANY },
+    { ngx_null_string, 0 }
 };
 
 
@@ -269,10 +282,10 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
     { ngx_string("client_body_in_file_only"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
+      ngx_conf_set_enum_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, client_body_in_file_only),
-      NULL },
+      &ngx_http_core_request_body_in_file },
 
     { ngx_string("sendfile"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
@@ -878,6 +891,10 @@ ngx_http_update_location_config(ngx_http_request_t *r)
         r->request_body_in_file_only = 1;
         r->request_body_in_persistent_file = 1;
         r->request_body_file_log_level = NGX_LOG_NOTICE;
+
+        if (clcf->client_body_in_file_only == NGX_HTTP_REQUEST_BODY_FILE_ON) {
+            r->request_body_delete_incomplete_file = 1;
+        }
 
     } else {
         r->request_body_file_log_level = NGX_LOG_WARN;
