@@ -155,7 +155,7 @@ ngx_module_t  ngx_http_log_module = {
 };
 
 
-static ngx_str_t  http_access_log = ngx_string(NGX_HTTP_LOG_PATH);
+static ngx_str_t  ngx_http_access_log = ngx_string(NGX_HTTP_LOG_PATH);
 
 
 static ngx_str_t  ngx_http_combined_fmt =
@@ -554,48 +554,40 @@ ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_log_fmt_t        *fmt;
     ngx_http_log_main_conf_t  *lmcf;
 
-    if (conf->logs == NULL) {
-
-        if (conf->off) {
-            return NGX_CONF_OK;
-        }
-
-        if (prev->logs) {
-            conf->logs = prev->logs;
-
-        } else {
-
-            if (prev->off) {
-                conf->off = prev->off;
-                return NGX_CONF_OK;
-            }
-
-            conf->logs = ngx_array_create(cf->pool, 2, sizeof(ngx_http_log_t));
-            if (conf->logs == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            log = ngx_array_push(conf->logs);
-            if (log == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            log->file = ngx_conf_open_file(cf->cycle, &http_access_log);
-            if (log->file == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            log->disk_full_time = 0;
-            log->error_log_time = 0;
-
-            lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
-            fmt = lmcf->formats.elts;
-
-            /* the default "combined" format */
-            log->ops = fmt[0].ops;
-            lmcf->combined_used = 1;
-        }
+    if (conf->logs || conf->off) {
+        return NGX_CONF_OK;
     }
+
+    *conf = *prev;
+
+    if (conf->logs || conf->off) {
+        return NGX_CONF_OK;
+    }
+
+    conf->logs = ngx_array_create(cf->pool, 2, sizeof(ngx_http_log_t));
+    if (conf->logs == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    log = ngx_array_push(conf->logs);
+    if (log == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    log->file = ngx_conf_open_file(cf->cycle, &ngx_http_access_log);
+    if (log->file == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    log->disk_full_time = 0;
+    log->error_log_time = 0;
+
+    lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
+    fmt = lmcf->formats.elts;
+
+    /* the default "combined" format */
+    log->ops = fmt[0].ops;
+    lmcf->combined_used = 1;
 
     return NGX_CONF_OK;
 }
