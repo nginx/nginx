@@ -12,6 +12,7 @@
 
 typedef struct {
     ngx_http_upstream_conf_t   upstream;
+    ngx_int_t                  index;
 } ngx_http_memcached_loc_conf_t;
 
 
@@ -147,6 +148,9 @@ ngx_module_t  ngx_http_memcached_module = {
 };
 
 
+static ngx_str_t  ngx_http_memcached_key = ngx_string("memcached_key");
+
+
 #define NGX_HTTP_MEMCACHED_END   (sizeof(ngx_http_memcached_end) - 1)
 static u_char  ngx_http_memcached_end[] = CRLF "END" CRLF;
 
@@ -221,14 +225,26 @@ ngx_http_memcached_handler(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_memcached_create_request(ngx_http_request_t *r)
 {
-    size_t                     len;
-    ngx_buf_t                 *b;
-    ngx_chain_t               *cl;
-    ngx_http_memcached_ctx_t  *ctx;
+    size_t                          len;
+    ngx_buf_t                      *b;
+    ngx_chain_t                    *cl;
+    ngx_http_memcached_ctx_t       *ctx;
+    ngx_http_variable_value_t      *vv;
+    ngx_http_memcached_loc_conf_t  *mlcf;
 
-    len = sizeof("get ") - 1 + r->uri.len + sizeof(" " CRLF) - 1;
-    if (r->args.len) {
-        len += 1 + r->args.len;
+    mlcf = ngx_http_get_module_loc_conf(r, ngx_http_memcached_module);
+
+    vv = ngx_http_get_indexed_variable(r, mlcf->index);
+
+    if (vv == NULL || vv->not_found || vv->len == 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "the \"$memcached_key\" variable is not set");
+        return NGX_ERROR;
+    }
+
+    len = sizeof("get ") - 1 + vv->len + sizeof(" " CRLF) - 1;
+    if (vv->len) {
+        len += 1 + vv->len;
     }
 
     b = ngx_create_temp_buf(r->pool, len);
@@ -252,12 +268,7 @@ ngx_http_memcached_create_request(ngx_http_request_t *r)
 
     ctx->key.data = b->last;
 
-    b->last = ngx_copy(b->last, r->uri.data, r->uri.len);
-
-    if (r->args.len) {
-        *b->last++ = '?';
-        b->last = ngx_copy(b->last, r->args.data, r->args.len);
-    }
+    b->last = ngx_copy(b->last, vv->data, vv->len);
 
     ctx->key.len = b->last - ctx->key.data;
 
@@ -504,7 +515,7 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
      *
-     *     conf->peers = NULL;
+     *     conf->index = 0;
      */
 
     conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
@@ -602,6 +613,12 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;
+    }
+
+    lcf->index = ngx_http_get_variable_index(cf, &ngx_http_memcached_key);
+
+    if (lcf->index == NGX_ERROR) {
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;
