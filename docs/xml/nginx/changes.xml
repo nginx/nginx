@@ -9,6 +9,37 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.10" date="26.01.2007">
+
+<change type="bugfix">
+<para lang="ru">
+во время обновления исполняемого файла новый процесс не наследовал
+слушающие сокеты;
+ошибка появилась в 0.5.9.
+</para>
+<para lang="en">
+while online executable file upgrade the new master process did not
+inherit the listening sockets;
+bug appeared in 0.5.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при сборке с оптимизацией -O2 в рабочем процессе мог произойти
+segmentation fault;
+ошибка появилась в 0.5.1.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if nginx was built with -O2 optimization;
+bug appeared in 0.5.1.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.9" date="25.01.2007">
 
 <change type="change">
