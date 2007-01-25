@@ -135,7 +135,7 @@ ngx_http_dav_handler(ngx_http_request_t *r)
 
         r->request_body_in_file_only = 1;
         r->request_body_in_persistent_file = 1;
-        r->request_body_delete_incomplete_file = 1;
+        r->request_body_in_clean_file = 1;
         r->request_body_file_group_access = 1;
         r->request_body_file_log_level = 0;
 

@@ -363,7 +363,7 @@ has_request_body(r, next)
 
     r->request_body_in_single_buf = 1;
     r->request_body_in_persistent_file = 1;
-    r->request_body_delete_incomplete_file = 1;
+    r->request_body_in_clean_file = 1;
 
     if (r->request_body_in_file_only) {
         r->request_body_file_log_level = 0;

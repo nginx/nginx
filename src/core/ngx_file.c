@@ -19,7 +19,7 @@ ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
 
     if (tf->file.fd == NGX_INVALID_FILE) {
         rc = ngx_create_temp_file(&tf->file, tf->path, tf->pool,
-                                  tf->persistent, tf->access);
+                                  tf->persistent, tf->clean, tf->access);
 
         if (rc == NGX_ERROR || rc == NGX_AGAIN) {
             return rc;
@@ -37,7 +37,7 @@ ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
 
 ngx_int_t
 ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
-    ngx_uint_t persistent, ngx_uint_t access)
+    ngx_uint_t persistent, ngx_uint_t clean, ngx_uint_t access)
 {
     ngx_err_t                 err;
     ngx_atomic_uint_t         n;
@@ -79,7 +79,7 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
 
         if (file->fd != NGX_INVALID_FILE) {
 
-            cln->handler = ngx_pool_cleanup_file;
+            cln->handler = clean ? ngx_pool_delete_file : ngx_pool_cleanup_file;
             clnf = cln->data;
 
             clnf->fd = file->fd;

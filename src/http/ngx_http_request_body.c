@@ -14,7 +14,6 @@ static void ngx_http_read_client_request_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_write_request_body(ngx_http_request_t *r,
     ngx_chain_t *body);
-static void ngx_http_finalize_request_body(ngx_http_request_t *r, ngx_int_t rc);
 static void ngx_http_read_discarded_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_read_discarded_body(ngx_http_request_t *r);
 
@@ -32,7 +31,6 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 {
     size_t                     preread;
     ssize_t                    size;
-    ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_chain_t               *cl, **next;
     ngx_temp_file_t           *tf;
@@ -73,6 +71,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
             tf->warn = "a client request body is buffered to a temporary file";
             tf->log_level = r->request_body_file_log_level;
             tf->persistent = r->request_body_in_persistent_file;
+            tf->clean = r->request_body_in_clean_file;
 
             if (r->request_body_file_group_access) {
                 tf->access = 0660;
@@ -81,7 +80,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
             rb->temp_file = tf;
 
             if (ngx_create_temp_file(&tf->file, tf->path, tf->pool,
-                                     tf->persistent, tf->access)
+                                     tf->persistent, tf->clean, tf->access)
                 != NGX_OK)
             {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -168,14 +167,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
             r->read_event_handler = ngx_http_read_client_request_body_handler;
 
-            rc = ngx_http_do_read_client_request_body(r);
-
-            if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-                ngx_http_finalize_request_body(r, rc);
-                return NGX_DONE;
-            }
-
-            return rc;
+            return ngx_http_do_read_client_request_body(r);
         }
 
         next = &rb->bufs->next;
@@ -235,14 +227,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     r->read_event_handler = ngx_http_read_client_request_body_handler;
 
-    rc = ngx_http_do_read_client_request_body(r);
-
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-        ngx_http_finalize_request_body(r, rc);
-        return NGX_DONE;
-    }
-
-    return rc;
+    return ngx_http_do_read_client_request_body(r);
 }
 
 
@@ -253,14 +238,14 @@ ngx_http_read_client_request_body_handler(ngx_http_request_t *r)
 
     if (r->connection->read->timedout) {
         r->connection->timedout = 1;
-        ngx_http_finalize_request_body(r, NGX_HTTP_REQUEST_TIME_OUT);
+        ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
         return;
     }
 
     rc = ngx_http_do_read_client_request_body(r);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-        ngx_http_finalize_request_body(r, rc);
+        ngx_http_finalize_request(r, rc);
     }
 }
 
@@ -415,6 +400,7 @@ ngx_http_write_request_body(ngx_http_request_t *r, ngx_chain_t *body)
         tf->warn = "a client request body is buffered to a temporary file";
         tf->log_level = r->request_body_file_log_level;
         tf->persistent = r->request_body_in_persistent_file;
+        tf->clean = r->request_body_in_clean_file;
 
         if (r->request_body_file_group_access) {
             tf->access = 0660;
@@ -434,26 +420,6 @@ ngx_http_write_request_body(ngx_http_request_t *r, ngx_chain_t *body)
     rb->temp_file->offset += n;
 
     return NGX_OK;
-}
-
-
-static void
-ngx_http_finalize_request_body(ngx_http_request_t *r, ngx_int_t rc)
-{
-    if (r->request_body->temp_file
-        && r->request_body_in_persistent_file
-        && r->request_body_delete_incomplete_file)
-    {
-        if (ngx_delete_file(r->request_body->temp_file->file.name.data)
-            == NGX_FILE_ERROR)
-        {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          ngx_delete_file_n " \"%s\" failed",
-                          r->request_body->temp_file->file.name.data);
-        }
-    }
-
-    ngx_http_finalize_request(r, rc);
 }
 
 

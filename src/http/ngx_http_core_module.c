@@ -25,7 +25,7 @@ typedef struct {
 
 #define NGX_HTTP_REQUEST_BODY_FILE_OFF    0
 #define NGX_HTTP_REQUEST_BODY_FILE_ON     1
-#define NGX_HTTP_REQUEST_BODY_FILE_ANY    2
+#define NGX_HTTP_REQUEST_BODY_FILE_CLEAN  2
 
 
 static ngx_int_t ngx_http_core_find_location(ngx_http_request_t *r,
@@ -82,7 +82,7 @@ static ngx_conf_deprecated_t  ngx_conf_deprecated_optimize_host_names = {
 static ngx_conf_enum_t  ngx_http_core_request_body_in_file[] = {
     { ngx_string("off"), NGX_HTTP_REQUEST_BODY_FILE_OFF },
     { ngx_string("on"), NGX_HTTP_REQUEST_BODY_FILE_ON },
-    { ngx_string("any"), NGX_HTTP_REQUEST_BODY_FILE_ANY },
+    { ngx_string("clean"), NGX_HTTP_REQUEST_BODY_FILE_CLEAN },
     { ngx_null_string, 0 }
 };
 
@@ -890,11 +890,9 @@ ngx_http_update_location_config(ngx_http_request_t *r)
     if (clcf->client_body_in_file_only) {
         r->request_body_in_file_only = 1;
         r->request_body_in_persistent_file = 1;
+        r->request_body_in_clean_file =
+            clcf->client_body_in_file_only == NGX_HTTP_REQUEST_BODY_FILE_CLEAN;
         r->request_body_file_log_level = NGX_LOG_NOTICE;
-
-        if (clcf->client_body_in_file_only == NGX_HTTP_REQUEST_BODY_FILE_ON) {
-            r->request_body_delete_incomplete_file = 1;
-        }
 
     } else {
         r->request_body_file_log_level = NGX_LOG_WARN;

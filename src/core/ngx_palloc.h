@@ -60,7 +60,6 @@ typedef struct {
 } ngx_pool_cleanup_file_t;
 
 
-
 void *ngx_alloc(size_t size, ngx_log_t *log);
 void *ngx_calloc(size_t size, ngx_log_t *log);
 
@@ -74,6 +73,7 @@ ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p);
 
 ngx_pool_cleanup_t *ngx_pool_cleanup_add(ngx_pool_t *p, size_t size);
 void ngx_pool_cleanup_file(void *data);
+void ngx_pool_delete_file(void *data);
 
 
 #endif /* _NGX_PALLOC_H_INCLUDED_ */
