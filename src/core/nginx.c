@@ -423,15 +423,8 @@ ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    if (last) {
-        n = *last;
-
-    } else {
-        if (ccf->environment) {
-            return ccf->environment;
-        }
-
-        n = 0;
+    if (last == NULL && ccf->environment) {
+        return ccf->environment;
     }
 
     var = ccf->env.elts;
@@ -453,6 +446,8 @@ ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last)
 
 tz_found:
 
+    n = 0;
+
     for (i = 0; i < ccf->env.nelts; i++) {
 
         if (var[i].data[var[i].len] == '=') {
@@ -472,8 +467,8 @@ tz_found:
     }
 
     if (last) {
+        env = ngx_alloc((*last + n + 1) * sizeof(char *), cycle->log);
         *last = n;
-        env = ngx_alloc((n + 1) * sizeof(char *), cycle->log);
 
     } else {
         env = ngx_palloc(cycle->pool, (n + 1) * sizeof(char *));
