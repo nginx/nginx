@@ -9,6 +9,78 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.9" date="25.01.2007">
+
+<change type="change">
+<para lang="ru">
+модуль ngx_http_memcached_module теперь в качестве ключа использует
+значение переменной $memcached_key.
+</para>
+<para lang="en">
+now the ngx_http_memcached_module uses the $memcached_key variable value
+as a key.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $memcached_key.
+</para>
+<para lang="en">
+the $memcached_key variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр clean в директиве client_body_in_file_only.
+</para>
+<para lang="en">
+the "clean" parameter in the "client_body_in_file_only" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива env.
+</para>
+<para lang="en">
+the "env" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива sendfile работает внутри блока if.
+</para>
+<para lang="en">
+the "sendfile" directive is available inside the "if" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при ошибке записи в access_log nginx записывает сообщение в error_log,
+но не чаще одного раза в минуту.
+</para>
+<para lang="en">
+now on failure of the writing to access nginx logs a message to error_log,
+but not more often than once a minute.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "access_log off" не всегда запрещала запись в лог.
+</para>
+<para lang="en">
+the "access_log off" directive did not always turn off the logging.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.8" date="19.01.2007">
 
 <change type="bugfix">
@@ -42,7 +114,7 @@ directives were used, and nginx switched to a next upstream.
 <change type="bugfix">
 <para lang="ru">
 если при использовании директивы "proxy_buffering off" соединение с клиентом
-было неактивно, то оно закрывалось по таймуту, заданному директивой
+было неактивно, то оно закрывалось по таймауту, заданному директивой
 send_timeout;
 ошибка появилась в 0.4.7.
 </para>
@@ -2380,7 +2452,7 @@ the "client_body_in_file_only" directive.
 Спасибо Антону Южанинову и Максиму Дунину.
 </para>
 <para lang="en">
-no on disk overflow nginx tries to write access logs once a second only.<br/>
+now on disk overflow nginx tries to write access logs once a second only.<br/>
 Thanks to Anton Yuzhaninov and Maxim Dounin.
 </para>
 </change>
@@ -2680,7 +2752,7 @@ MacOSX.<br/>
 </para>
 <para lang="en">
 for MacOSX 64-bit kernel kqueue millisecond timeout bug.<br/>
-Thanks Andrei Nigmatulin.
+Thanks to Andrei Nigmatulin.
 </para>
 </change>
 
