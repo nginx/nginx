@@ -101,7 +101,7 @@ ngx_time_update(time_t sec, ngx_uint_t msec)
     ngx_gmtime(sec, &gmt);
 
 
-    p0 = cached_http_time[slot];
+    p0 = &cached_http_time[slot][0];
 
     (void) ngx_sprintf(p0, "%s, %02d %s %4d %02d:%02d:%02d GMT",
                        week[gmt.ngx_tm_wday], gmt.ngx_tm_mday,
@@ -126,7 +126,7 @@ ngx_time_update(time_t sec, ngx_uint_t msec)
 #endif
 
 
-    p1 = cached_err_log_time[slot];
+    p1 = &cached_err_log_time[slot][0];
 
     (void) ngx_sprintf(p1, "%4d/%02d/%02d %02d:%02d:%02d",
                        tm.ngx_tm_year, tm.ngx_tm_mon,
@@ -134,7 +134,7 @@ ngx_time_update(time_t sec, ngx_uint_t msec)
                        tm.ngx_tm_min, tm.ngx_tm_sec);
 
 
-    p2 = cached_http_log_time[slot];
+    p2 = &cached_http_log_time[slot][0];
 
     (void) ngx_sprintf(p2, "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
                        tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
