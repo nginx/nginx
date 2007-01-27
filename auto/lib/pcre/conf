@@ -169,6 +169,31 @@ else
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             PCRE=YES
             ngx_found=no
+
+        else
+            # MacPorts
+
+            if [ $PCRE = NO ]; then
+
+                ngx_feature="PCRE library in /opt/local/"
+                ngx_feature_name="NGX_PCRE"
+                ngx_feature_run=no
+                ngx_feature_incs="#include <pcre.h>"
+                ngx_feature_path="/opt/local/include"
+                ngx_feature_libs="-L/opt/local/lib -lpcre"
+                ngx_feature_test="pcre *re;
+                                  re = pcre_compile(NULL, 0, NULL, 0, NULL)"
+                . auto/feature
+            fi
+        fi
+
+        if [ $ngx_found = yes ]; then
+            CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
+            CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
+            CORE_INCS="$CORE_INCS $ngx_feature_path"
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+            PCRE=YES
+            ngx_found=no
         fi
 
     fi
