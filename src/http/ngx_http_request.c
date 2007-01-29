@@ -1496,10 +1496,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         || rc == NGX_HTTP_REQUEST_TIME_OUT
         || r->connection->error)
     {
-        if (rc == NGX_HTTP_CLIENT_CLOSED_REQUEST
-            && r->headers_out.status == 0)
-        {
-            r->headers_out.status = NGX_HTTP_CLIENT_CLOSED_REQUEST;
+        if (rc > 0 && r->headers_out.status == 0) {
+            r->headers_out.status = rc;
         }
 
         if (ngx_http_post_action(r) == NGX_OK) {
