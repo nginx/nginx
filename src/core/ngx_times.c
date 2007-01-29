@@ -87,7 +87,7 @@ ngx_time_update(time_t sec, ngx_uint_t msec)
         return;
     }
 
-    if (slot == NGX_TIME_SLOTS) {
+    if (slot == NGX_TIME_SLOTS - 1) {
         slot = 0;
     } else {
         slot++;
