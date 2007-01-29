@@ -252,7 +252,9 @@ ngx_http_dav_handler(ngx_http_request_t *r)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http mkcol path: \"%s\"", path.data);
 
-        if (ngx_create_dir(path.data, dlcf->access) != NGX_FILE_ERROR) {
+        if (ngx_create_dir(path.data, ngx_dir_access(dlcf->access))
+            != NGX_FILE_ERROR)
+        {
             if (ngx_http_dav_location(r, path.data) != NGX_OK) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
@@ -351,7 +353,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 
 #if !(NGX_WIN32)
 
-    if (ngx_change_file_access(temp->data, dlcf->access & ~0111)
+    if (ngx_change_file_access(temp->data, dlcf->access)
         == NGX_FILE_ERROR)
     {
         err = ngx_errno;
@@ -393,7 +395,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     if (err == NGX_ENOENT) {
 
         if (dlcf->create_full_put_path) {
-            err = ngx_create_full_path(path.data, dlcf->access);
+            err = ngx_create_full_path(path.data, ngx_dir_access(dlcf->access));
 
             if (err == 0) {
                 if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
@@ -539,7 +541,7 @@ ngx_http_dav_access(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    lcf->access = 0700;
+    lcf->access = 0600;
 
     for (i = 1; i < cf->args->nelts; i++) {
 
@@ -562,16 +564,16 @@ ngx_http_dav_access(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (ngx_strcmp(p, "rw") == 0) {
-            right = 7;
+            right = 6;
 
         } else if (ngx_strcmp(p, "r") == 0) {
-            right = 5;
+            right = 4;
 
         } else {
             goto invalid;
         }
 
-        lcf->access += right << shift;
+        lcf->access |= right << shift;
     }
 
     return NGX_CONF_OK;
