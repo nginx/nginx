@@ -39,8 +39,8 @@ ngx_int_t
 ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
     ngx_uint_t persistent, ngx_uint_t clean, ngx_uint_t access)
 {
+    uint32_t                  n;
     ngx_err_t                 err;
-    ngx_atomic_uint_t         n;
     ngx_pool_cleanup_t       *cln;
     ngx_pool_cleanup_file_t  *clnf;
 
@@ -59,11 +59,11 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
 
     ngx_memcpy(file->name.data, path->name.data, path->name.len);
 
-    n = ngx_next_temp_number(0);
+    n = (uint32_t) ngx_next_temp_number(0);
 
     for ( ;; ) {
         (void) ngx_sprintf(file->name.data + path->name.len + 1 + path->len,
-                           "%0muA%Z", n);
+                           "%010uD%Z", n);
 
         ngx_create_hashed_filename(file, path);
 
@@ -92,7 +92,7 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
         err = ngx_errno;
 
         if (err == NGX_EEXIST) {
-            n = ngx_next_temp_number(1);
+            n = (uint32_t) ngx_next_temp_number(1);
             continue;
         }
 
