@@ -44,7 +44,7 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
     ngx_pool_cleanup_t       *cln;
     ngx_pool_cleanup_file_t  *clnf;
 
-    file->name.len = path->name.len + 1 + path->len + NGX_ATOMIC_T_LEN;
+    file->name.len = path->name.len + 1 + path->len + 10;
 
     file->name.data = ngx_palloc(pool, file->name.len + 1);
     if (file->name.data == NULL) {
