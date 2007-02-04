@@ -596,13 +596,13 @@ ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         b->file = buf->file;
 
         if (buf->in_file) {
-            buf->file_pos = range[i].start;
-            buf->file_last = range[i].end;
+            b->file_pos = range[i].start;
+            b->file_last = range[i].end;
         }
 
         if (ngx_buf_in_memory(buf)) {
-            buf->pos = buf->start + (size_t) range[i].start;
-            buf->last = buf->start + (size_t) range[i].end;
+            b->pos = buf->start + (size_t) range[i].start;
+            b->last = buf->start + (size_t) range[i].end;
         }
 
         dcl = ngx_alloc_chain_link(r->pool);
