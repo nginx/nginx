@@ -9,6 +9,67 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.11" date="05.02.2007">
+
+<change type="feature">
+<para lang="ru">
+теперь configure определяет библиотеку PCRE в MacPorts.<br/>
+Спасибо Chris McGrath.
+</para>
+<para lang="en">
+now configure detects system PCRE library in MacPorts.<br/>
+Thanks to Chris McGrath.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответ был неверным, если запрашивалось несколько диапазонов;
+ошибка появилась в 0.5.6.
+</para>
+<para lang="en">
+the response was incorrect if several ranges were requested;
+bug appeared in 0.5.6.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива create_full_put_path не могла создавать промежуточные каталоги,
+если не была установлена директива dav_access.<br/>
+Спасибо Evan Miller.
+</para>
+<para lang="en">
+the "create_full_put_path" directive could not create the intermediate
+directories if no "dav_access" directive was set.<br/>
+Thanks to Evan Miller.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+вместо кодов ошибок "400" и "408" в access_log мог записываться код "0".
+</para>
+<para lang="en">
+the "0" response code might be logged in the access_log instead of
+the "400" and "408" error codes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при сборке с оптимизацией -O2 в рабочем процессе мог произойти
+segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if nginx was built with -O2 optimization.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.10" date="26.01.2007">
 
 <change type="bugfix">
