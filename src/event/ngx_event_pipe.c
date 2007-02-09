@@ -419,6 +419,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 static ngx_int_t
 ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 {
+    u_char            *prev;
     size_t             bsize;
     ngx_uint_t         flush, prev_last_shadow;
     ngx_chain_t       *out, **ll, *cl;
@@ -497,11 +498,17 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
         /* bsize is the size of the busy recycled bufs */
 
+        prev = NULL;
         bsize = 0;
 
         for (cl = p->busy; cl; cl = cl->next) {
+            if (prev == cl->buf->start) {
+                continue;
+            }
+
             if (cl->buf->recycled) {
                 bsize += cl->buf->end - cl->buf->start;
+                prev = cl->buf->start;
             }
         }
 
@@ -509,8 +516,14 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                        "pipe write busy: %uz", bsize);
 
         out = NULL;
-        ll = NULL;
+
+        if (bsize >= (size_t) p->busy_size) {
+            flush = 1;
+            goto flush;
+        }
+
         flush = 0;
+        ll = NULL;
         prev_last_shadow = 1;
 
         for ( ;; ) {
@@ -578,6 +591,8 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             }
             ll = &cl->next;
         }
+
+    flush:
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
                        "pipe write: out:%p, f:%d", out, flush);
