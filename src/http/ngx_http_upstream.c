@@ -1784,6 +1784,7 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
 {
     ngx_event_pipe_t     *p;
     ngx_connection_t     *c, *downstream;
+    ngx_http_log_ctx_t   *ctx;
     ngx_http_request_t   *r;
     ngx_http_upstream_t  *u;
 
@@ -1801,6 +1802,9 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http upstream process upstream");
         c->log->action = "reading upstream";
+
+        ctx = c->log->data;
+        ctx->current_request = r;
     }
 
     p = u->pipe;
