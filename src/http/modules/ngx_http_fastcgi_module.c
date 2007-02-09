@@ -1969,27 +1969,38 @@ ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
     u_char                       *p;
     ngx_http_fastcgi_loc_conf_t  *flcf;
 
-    v->valid = 1;
-    v->no_cachable = 0;
-    v->not_found = 0;
+    if (r->uri.len) {
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
 
-    flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
+        flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
 
-    if (r->uri.data[r->uri.len - 1] != '/') {
-        v->len = r->uri.len;
-        v->data = r->uri.data;
+        if (r->uri.data[r->uri.len - 1] != '/') {
+            v->len = r->uri.len;
+            v->data = r->uri.data;
+            return NGX_OK;
+        }
+
+        v->len = r->uri.len + flcf->index.len;
+
+        v->data = ngx_palloc(r->pool, v->len);
+        if (v->data == NULL) {
+            return NGX_ERROR;
+        }
+
+        p = ngx_copy(v->data, r->uri.data, r->uri.len);
+        ngx_memcpy(p, flcf->index.data, flcf->index.len);
+
+    } else {
+        v->len = 0;
+        v->valid = 1;
+        v->no_cachable = 0;
+        v->not_found = 0;
+        v->data = NULL;
+
         return NGX_OK;
     }
-
-    v->len = r->uri.len + flcf->index.len;
-
-    v->data = ngx_palloc(r->pool, v->len);
-    if (v->data == NULL) {
-        return NGX_ERROR;
-    }
-
-    p = ngx_copy(v->data, r->uri.data, r->uri.len);
-    ngx_memcpy(p, flcf->index.data, flcf->index.len);
 
     return NGX_OK;
 }
