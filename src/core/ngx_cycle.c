@@ -901,7 +901,8 @@ ngx_test_lockfile(u_char *file, ngx_log_t *log)
 #if !(NGX_HAVE_ATOMIC_OPS)
     ngx_fd_t  fd;
 
-    fd = ngx_open_file(file, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN);
+    fd = ngx_open_file(file, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
+                       NGX_FILE_DEFAULT_ACCESS);
 
     if (fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,

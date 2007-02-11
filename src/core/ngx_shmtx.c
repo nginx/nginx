@@ -35,7 +35,8 @@ ngx_shmtx_create(ngx_shmtx_t *mtx, void *addr, u_char *name)
         ngx_shmtx_destory(mtx);
     }
 
-    mtx->fd = ngx_open_file(name, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN);
+    mtx->fd = ngx_open_file(name, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
+                            NGX_FILE_DEFAULT_ACCESS);
 
     if (mtx->fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, ngx_errno,
