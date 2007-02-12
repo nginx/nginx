@@ -502,11 +502,12 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         bsize = 0;
 
         for (cl = p->busy; cl; cl = cl->next) {
-            if (prev == cl->buf->start) {
-                continue;
-            }
 
             if (cl->buf->recycled) {
+                if (prev == cl->buf->start) {
+                    continue;
+                }
+
                 bsize += cl->buf->end - cl->buf->start;
                 prev = cl->buf->start;
             }
