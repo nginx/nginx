@@ -9,6 +9,55 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.12" date="12.02.2007">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ошибка появилась в 0.5.8.
+</para>
+<para lang="en">
+nginx could not be built on platforms different from i386, amd64, sparc и ppc;
+bug appeared in 0.5.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании временных файлов в время работы с FastCGI-сервером
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.5.8.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if the temporarily files were used while working with FastCGI server;
+bug appeared in 0.5.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если переменная $fastcgi_script_name записывалась в лог,
+то в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if the $fastcgi_script_name variable was logged.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ngx_http_perl_module не собирался на Solaris.
+</para>
+<para lang="en">
+ngx_http_perl_module could not be built on Solaris.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.11" date="05.02.2007">
 
 <change type="feature">
