@@ -8,7 +8,9 @@
 #define _NGX_SOLARIS_CONFIG_H_INCLUDED_
 
 
+#ifndef _REENTRANT
 #define _REENTRANT
+#endif
 
 #define _FILE_OFFSET_BITS  64   /* must be before <sys/types.h> */
 
