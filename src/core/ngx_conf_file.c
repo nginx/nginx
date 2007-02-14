@@ -883,10 +883,10 @@ ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (ngx_strcasecmp(value[1].data, "on") == 0) {
+    if (ngx_strcasecmp(value[1].data, (u_char *) "on") == 0) {
         *fp = 1;
 
-    } else if (ngx_strcasecmp(value[1].data, "off") == 0) {
+    } else if (ngx_strcasecmp(value[1].data, (u_char *) "off") == 0) {
         *fp = 0;
 
     } else {

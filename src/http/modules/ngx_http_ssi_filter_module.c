@@ -1890,10 +1890,13 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
             return NGX_HTTP_SSI_ERROR;
         }
 
-        if (wait->len == 2 && ngx_strncasecmp(wait->data, "no", 2) == 0) {
+        if (wait->len == 2
+            && ngx_strncasecmp(wait->data, (u_char *) "no", 2) == 0)
+        {
             wait = NULL;
 
-        } else if (wait->len != 3 || ngx_strncasecmp(wait->data, "yes", 3) != 0)
+        } else if (wait->len != 3
+                   || ngx_strncasecmp(wait->data, (u_char *) "yes", 3) != 0)
         {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "invalid value \"%V\" in the \"wait\" parameter",

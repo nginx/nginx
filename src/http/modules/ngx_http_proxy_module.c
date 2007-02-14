@@ -2111,11 +2111,11 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     url = &value[1];
 
-    if (ngx_strncasecmp(url->data, "http://", 7) == 0) {
+    if (ngx_strncasecmp(url->data, (u_char *) "http://", 7) == 0) {
         add = 7;
         port = 80;
 
-    } else if (ngx_strncasecmp(url->data, "https://", 8) == 0) {
+    } else if (ngx_strncasecmp(url->data, (u_char *) "https://", 8) == 0) {
 
 #if (NGX_HTTP_SSL)
 

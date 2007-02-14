@@ -428,6 +428,68 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
 }
 
 
+/*
+ * We use ngx_strcasecmp()/ngx_strncasecmp() for 7-bit ASCII string only,
+ * and implement our own ngx_strcasecmp()/ngx_strncasecmp()
+ * to avoid libc locale overhead.  Besides, we use the ngx_uint_t's
+ * instead of the u_char's, because they are slightly faster.
+ */
+
+ngx_int_t
+ngx_strcasecmp(u_char *s1, u_char *s2)
+{
+    ngx_uint_t  c1, c2;
+
+    for ( ;; ) {
+        c1 = (ngx_uint_t) *s1++;
+        c2 = (ngx_uint_t) *s2++;
+
+        c1  = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
+        c2  = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
+
+        if (c1 == c2) {
+
+            if (c1) {
+                continue;
+            }
+
+            return 0;
+        }
+
+        return c1 - c2;
+    }
+}
+
+
+ngx_int_t
+ngx_strncasecmp(u_char *s1, u_char *s2, size_t n)
+{
+    ngx_uint_t  c1, c2;
+
+    while (n) {
+        c1 = (ngx_uint_t) *s1++;
+        c2 = (ngx_uint_t) *s2++;
+
+        c1  = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
+        c2  = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
+
+        if (c1 == c2) {
+
+            if (c1) {
+                n--;
+                continue;
+            }
+
+            return 0;
+        }
+
+        return c1 - c2;
+    }
+
+    return 0;
+}
+
+
 ngx_int_t
 ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
 {

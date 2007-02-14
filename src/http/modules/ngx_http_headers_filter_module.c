@@ -411,7 +411,7 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (ngx_strcasecmp(value[1].data, "cache-control") == 0) {
+    if (ngx_strcasecmp(value[1].data, (u_char *) "cache-control") == 0) {
         hcf->cache_control = value[2];
         return NGX_CONF_OK;
     }

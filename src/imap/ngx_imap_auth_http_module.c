@@ -477,8 +477,10 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
             len = ctx->header_name_end - ctx->header_name_start;
 
             if (len == sizeof("Auth-Status") - 1
-                && ngx_strncasecmp(ctx->header_name_start, "Auth-Status",
-                                   sizeof("Auth-Status") - 1) == 0)
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Auth-Status",
+                                   sizeof("Auth-Status") - 1)
+                   == 0)
             {
                 len = ctx->header_end - ctx->header_start;
 
@@ -539,8 +541,10 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
             }
 
             if (len == sizeof("Auth-Server") - 1
-                && ngx_strncasecmp(ctx->header_name_start, "Auth-Server",
-                                   sizeof("Auth-Server") - 1) == 0)
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Auth-Server",
+                                   sizeof("Auth-Server") - 1)
+                    == 0)
             {
                 ctx->addr.len = ctx->header_end - ctx->header_start;
                 ctx->addr.data = ctx->header_start;
@@ -549,8 +553,10 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
             }
 
             if (len == sizeof("Auth-Port") - 1
-                && ngx_strncasecmp(ctx->header_name_start, "Auth-Port",
-                                   sizeof("Auth-Port") - 1) == 0)
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Auth-Port",
+                                   sizeof("Auth-Port") - 1)
+                   == 0)
             {
                 ctx->port.len = ctx->header_end - ctx->header_start;
                 ctx->port.data = ctx->header_start;
@@ -559,8 +565,10 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
             }
 
             if (len == sizeof("Auth-User") - 1
-                && ngx_strncasecmp(ctx->header_name_start, "Auth-User",
-                                   sizeof("Auth-User") - 1) == 0)
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Auth-User",
+                                   sizeof("Auth-User") - 1)
+                   == 0)
             {
                 s->login.len = ctx->header_end - ctx->header_start;
 
@@ -578,8 +586,10 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
             }
 
             if (len == sizeof("Auth-Pass") - 1
-                && ngx_strncasecmp(ctx->header_name_start, "Auth-Pass",
-                                   sizeof("Auth-Pass") - 1) == 0)
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Auth-Pass",
+                                   sizeof("Auth-Pass") - 1)
+                   == 0)
             {
                 s->passwd.len = ctx->header_end - ctx->header_start;
 
@@ -597,8 +607,10 @@ ngx_imap_auth_http_process_headers(ngx_imap_session_t *s,
             }
 
             if (len == sizeof("Auth-Wait") - 1
-                && ngx_strncasecmp(ctx->header_name_start, "Auth-Wait",
-                                   sizeof("Auth-Wait") - 1) == 0)
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Auth-Wait",
+                                   sizeof("Auth-Wait") - 1)
+                   == 0)
             {
                 n = ngx_atoi(ctx->header_start,
                              ctx->header_end - ctx->header_start);

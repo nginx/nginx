@@ -802,7 +802,9 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
                 if (arg[0].len == 5) {
 
-                    if (ngx_strncasecmp(arg[0].data, "LOGIN", 5) == 0) {
+                    if (ngx_strncasecmp(arg[0].data, (u_char *) "LOGIN", 5)
+                        == 0)
+                    {
 
                         if (s->args.nelts != 1) {
                             rc = NGX_IMAP_PARSE_INVALID_COMMAND;
@@ -816,7 +818,10 @@ ngx_pop3_auth_state(ngx_event_t *rev)
 
                         break;
 
-                    } else if (ngx_strncasecmp(arg[0].data, "PLAIN", 5) == 0) {
+                    } else if (ngx_strncasecmp(arg[0].data, (u_char *) "PLAIN",
+                                               5)
+                               == 0)
+                    {
 
                         if (s->args.nelts == 1) {
                             s->imap_state = ngx_pop3_auth_plain;
@@ -856,7 +861,9 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                     }
 
                 } else if (arg[0].len == 8
-                           && ngx_strncasecmp(arg[0].data, "CRAM-MD5", 8) == 0)
+                           && ngx_strncasecmp(arg[0].data,
+                                              (u_char *) "CRAM-MD5", 8)
+                              == 0)
                 {
                     s->imap_state = ngx_pop3_auth_cram_md5;
 

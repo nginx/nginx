@@ -2313,7 +2313,7 @@ ngx_http_upstream_copy_content_type(ngx_http_request_t *r, ngx_table_elt_t *h,
 
         while (*++p == ' ') { /* void */ }
 
-        if (ngx_strncasecmp(p, "charset=", 8) != 0) {
+        if (ngx_strncasecmp(p, (u_char *) "charset=", 8) != 0) {
             continue;
         }
 

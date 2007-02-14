@@ -1285,14 +1285,16 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
     if (r->headers_in.connection) {
         if (r->headers_in.connection->value.len == 5
-            && ngx_strcasecmp(r->headers_in.connection->value.data, "close")
+            && ngx_strcasecmp(r->headers_in.connection->value.data,
+                              (u_char *) "close")
                == 0)
         {
             r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
 
         } else if (r->headers_in.connection->value.len == 10
                    && ngx_strcasecmp(r->headers_in.connection->value.data,
-                                     "keep-alive") == 0)
+                                     (u_char *) "keep-alive")
+                      == 0)
         {
             r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
 

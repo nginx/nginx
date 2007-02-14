@@ -239,8 +239,10 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
             } else {
                 ct = r->headers_out.content_type.data;
 
-                if (ngx_strncasecmp(ct, "text/", 5) != 0
-                    && ngx_strncasecmp(ct, "application/x-javascript", 24) != 0)
+                if (ngx_strncasecmp(ct, (u_char *) "text/", 5) != 0
+                    && ngx_strncasecmp(ct,
+                                      (u_char *) "application/x-javascript", 24)
+                       != 0)
                 {
                     return ngx_http_next_header_filter(r);
                 }
@@ -1118,7 +1120,7 @@ ngx_http_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     table->src = src;
     table->dst = dst;
 
-    if (ngx_strcasecmp(value[2].data, "utf-8") == 0) {
+    if (ngx_strcasecmp(value[2].data, (u_char *) "utf-8") == 0) {
         table->src2dst = ngx_pcalloc(cf->pool, 256 * NGX_UTF_LEN);
         if (table->src2dst == NULL) {
             return NGX_CONF_ERROR;
@@ -1372,7 +1374,7 @@ ngx_http_add_charset(ngx_array_t *charsets, ngx_str_t *name)
     c->name = *name;
     c->length = 0;
 
-    if (ngx_strcasecmp(name->data, "utf-8") == 0) {
+    if (ngx_strcasecmp(name->data, (u_char *) "utf-8") == 0) {
         c->utf8 = 1;
 
     } else {

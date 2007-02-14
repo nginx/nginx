@@ -12,7 +12,7 @@
 
 
 typedef struct {
-    char      *name;
+    u_char    *name;
     uint32_t   method;
 } ngx_http_method_name_t;
 
@@ -1247,7 +1247,9 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
     encoded = r->headers_in.authorization->value;
 
     if (encoded.len < sizeof("Basic ") - 1
-        || ngx_strncasecmp(encoded.data, "Basic ", sizeof("Basic ") - 1) != 0)
+        || ngx_strncasecmp(encoded.data, (u_char *) "Basic ",
+                           sizeof("Basic ") - 1)
+           != 0)
     {
         r->headers_in.user.data = (u_char *) "";
         return NGX_DECLINED;
@@ -2681,19 +2683,19 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static ngx_http_method_name_t  ngx_methods_names[] = {
-   { "GET",       (uint32_t) ~NGX_HTTP_GET },
-   { "HEAD",      (uint32_t) ~NGX_HTTP_HEAD },
-   { "POST",      (uint32_t) ~NGX_HTTP_POST },
-   { "PUT",       (uint32_t) ~NGX_HTTP_PUT },
-   { "DELETE",    (uint32_t) ~NGX_HTTP_DELETE },
-   { "MKCOL",     (uint32_t) ~NGX_HTTP_MKCOL },
-   { "COPY",      (uint32_t) ~NGX_HTTP_COPY },
-   { "MOVE",      (uint32_t) ~NGX_HTTP_MOVE },
-   { "OPTIONS",   (uint32_t) ~NGX_HTTP_OPTIONS },
-   { "PROPFIND" , (uint32_t) ~NGX_HTTP_PROPFIND },
-   { "PROPPATCH", (uint32_t) ~NGX_HTTP_PROPPATCH },
-   { "LOCK",      (uint32_t) ~NGX_HTTP_LOCK },
-   { "UNLOCK",    (uint32_t) ~NGX_HTTP_UNLOCK },
+   { (u_char *) "GET",       (uint32_t) ~NGX_HTTP_GET },
+   { (u_char *) "HEAD",      (uint32_t) ~NGX_HTTP_HEAD },
+   { (u_char *) "POST",      (uint32_t) ~NGX_HTTP_POST },
+   { (u_char *) "PUT",       (uint32_t) ~NGX_HTTP_PUT },
+   { (u_char *) "DELETE",    (uint32_t) ~NGX_HTTP_DELETE },
+   { (u_char *) "MKCOL",     (uint32_t) ~NGX_HTTP_MKCOL },
+   { (u_char *) "COPY",      (uint32_t) ~NGX_HTTP_COPY },
+   { (u_char *) "MOVE",      (uint32_t) ~NGX_HTTP_MOVE },
+   { (u_char *) "OPTIONS",   (uint32_t) ~NGX_HTTP_OPTIONS },
+   { (u_char *) "PROPFIND" , (uint32_t) ~NGX_HTTP_PROPFIND },
+   { (u_char *) "PROPPATCH", (uint32_t) ~NGX_HTTP_PROPPATCH },
+   { (u_char *) "LOCK",      (uint32_t) ~NGX_HTTP_LOCK },
+   { (u_char *) "UNLOCK",    (uint32_t) ~NGX_HTTP_UNLOCK },
    { NULL, 0 }
 };
 

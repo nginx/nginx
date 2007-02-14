@@ -233,7 +233,7 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
     len = u->url.len;
     p = u->url.data;
 
-    if (ngx_strncasecmp(p, "unix:", 5) == 0) {
+    if (ngx_strncasecmp(p, (u_char *) "unix:", 5) == 0) {
 
 #if (NGX_HAVE_UNIX_DOMAIN)
 

@@ -106,7 +106,7 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ref = r->headers_in.referer->value.data;
 
     if (len < sizeof("http://i.ru") - 1
-        || (ngx_strncasecmp(ref, "http://", 7) != 0))
+        || (ngx_strncasecmp(ref, (u_char *) "http://", 7) != 0))
     {
         if (rlcf->blocked_referer) {
             goto valid;
