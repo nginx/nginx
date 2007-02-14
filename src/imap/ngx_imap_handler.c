@@ -1212,6 +1212,7 @@ ngx_imap_read_command(ngx_imap_session_t *s)
 {
     ssize_t    n;
     ngx_int_t  rc;
+    ngx_str_t  l;
 
     n = s->connection->recv(s->connection, s->buffer->last,
                             s->buffer->end - s->buffer->last);
@@ -1240,10 +1241,22 @@ ngx_imap_read_command(ngx_imap_session_t *s)
         rc = ngx_imap_parse_command(s);
     }
 
-    if (rc == NGX_AGAIN
-        || rc == NGX_IMAP_NEXT
-        || rc == NGX_IMAP_PARSE_INVALID_COMMAND)
-    {
+    if (rc == NGX_AGAIN) {
+
+        if (s->buffer->last < s->buffer->end) {
+            return rc;
+        }
+
+        l.len = s->buffer->last - s->buffer->start;
+        l.data = s->buffer->start;
+
+        ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
+                      "client sent too long command \"%V\"", &l);
+
+        return NGX_IMAP_PARSE_INVALID_COMMAND;
+    }
+
+    if (rc == NGX_IMAP_NEXT || rc == NGX_IMAP_PARSE_INVALID_COMMAND) {
         return rc;
     }
 
