@@ -58,6 +58,8 @@ ngx_shmtx_trylock(ngx_shmtx_t *mtx)
     }
 
     ngx_log_abort(err, ngx_trylock_fd_n " failed");
+
+    return 0;
 }
 
 
