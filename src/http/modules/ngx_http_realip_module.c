@@ -97,6 +97,7 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 {
     u_char                      *ip, *p;
     size_t                       len;
+    in_addr_t                    addr;
     ngx_uint_t                   i;
     struct sockaddr_in          *sin;
     ngx_http_realip_from_t      *from;
@@ -128,15 +129,18 @@ ngx_http_realip_handler(ngx_http_request_t *r)
         len = r->headers_in.x_forwarded_for->value.len;
         ip = r->headers_in.x_forwarded_for->value.data;
 
-        for (p = ip + len; p > ip; p--) {
+        for (p = ip + len - 1; p > ip; p--) {
             if (*p == ' ' || *p == ',') {
-               p++;
-               len -= p - ip;
-               ip = p;
-               break;
+                p++;
+                len -= p - ip;
+                ip = p;
+                break;
             }
         }
     }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "realip: \"%s\"", ip);
 
     /* AF_INET only */
 
@@ -151,12 +155,18 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 
         if ((sin->sin_addr.s_addr & from[i].mask) == from[i].addr) {
 
+            r->realip_set = 1;
+
+            addr = inet_addr((char *) ip);
+
+            if (addr == INADDR_NONE) {
+                return NGX_DECLINED;
+            }
+
+            sin->sin_addr.s_addr = addr;
+
             r->connection->addr_text.len = len;
             r->connection->addr_text.data = ip;
-
-            sin->sin_addr.s_addr = inet_addr((char *) ip);
-
-            r->realip_set = 1;
 
             return NGX_DECLINED;
         }
