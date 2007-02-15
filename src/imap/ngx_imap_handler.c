@@ -1253,6 +1253,8 @@ ngx_imap_read_command(ngx_imap_session_t *s)
         ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
                       "client sent too long command \"%V\"", &l);
 
+        s->quit = 1;
+
         return NGX_IMAP_PARSE_INVALID_COMMAND;
     }
 
