@@ -317,7 +317,7 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http client request body rest %uz", rb->rest);
+                       "http client request body rest %O", rb->rest);
 
         if (rb->rest == 0) {
             break;
