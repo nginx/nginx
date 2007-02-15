@@ -101,7 +101,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       offsetof(ngx_http_request_t, headers_in.via), 0, 0 },
 #endif
 
-#if (NGX_HTTP_PROXY)
+#if (NGX_HTTP_PROXY || NGX_HTTP_REALIP)
     { ngx_string("http_x_forwarded_for"), NULL, ngx_http_variable_header,
       offsetof(ngx_http_request_t, headers_in.x_forwarded_for), 0, 0 },
 #endif
