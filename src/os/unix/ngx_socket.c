@@ -25,7 +25,7 @@
 int
 ngx_nonblocking(ngx_socket_t s)
 {
-    u_long  nb;
+    int  nb;
 
     nb = 1;
 
@@ -36,7 +36,7 @@ ngx_nonblocking(ngx_socket_t s)
 int
 ngx_blocking(ngx_socket_t s)
 {
-    u_long  nb;
+    int  nb;
 
     nb = 0;
 
