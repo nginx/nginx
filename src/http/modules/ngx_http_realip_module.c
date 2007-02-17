@@ -163,10 +163,17 @@ ngx_http_realip_handler(ngx_http_request_t *r)
                 return NGX_DECLINED;
             }
 
+            p = ngx_palloc(r->connection->pool, len);
+            if (p == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            ngx_memcpy(p, ip, len);
+
             sin->sin_addr.s_addr = addr;
 
             r->connection->addr_text.len = len;
-            r->connection->addr_text.data = ip;
+            r->connection->addr_text.data = p;
 
             return NGX_DECLINED;
         }
