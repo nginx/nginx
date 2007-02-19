@@ -9,6 +9,76 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.13" date="19.02.2007">
+
+<change type="feature">
+<para lang="ru">
+методы COPY и MOVE.
+</para>
+<para lang="en">
+the COPY and MOVE methods.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_realip_module устанавливал мусор для запросов,
+переданных по keep-alive соединению.
+</para>
+<para lang="en">
+the ngx_http_realip_module set garbage for requests passed via
+keep-alive connection.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не работал на 64-битном big-endian Linux.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+nginx did not work on big-endian 64-bit Linux.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при получении слишком длинной команды IMAP/POP3-прокси теперь сразу
+закрывает соединение, а не по таймауту.
+</para>
+<para lang="en">
+now when IMAP/POP3 proxy receives too long command it closes the connection
+right away, but not after timeout.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при использовании метода epoll клиент закрывал преждевременно
+соединение со своей стороны, то nginx закрывал это соединение только
+по истечении таймаута на передачу.
+</para>
+<para lang="en">
+if the "epoll" method was used and a client closed a connection prematurely,
+then nginx closed the connection after a send timeout only.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ошибка появилась в 0.5.8.
+</para>
+<para lang="en">
+nginx could not be built on platforms different from i386, amd64, sparc и ppc;
+bug appeared in 0.5.8.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.12" date="12.02.2007">
 
 <change type="bugfix">
