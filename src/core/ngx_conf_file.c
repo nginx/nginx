@@ -141,14 +141,13 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
          */
 
         if (rc == NGX_ERROR) {
-            break;
+            goto done;
         }
 
         if (rc == NGX_CONF_BLOCK_DONE) {
             if (!block) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "unexpected \"}\"");
-                rc = NGX_ERROR;
-                break;
+                goto failed;
             }
 
             block = 0;
@@ -159,12 +158,11 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                           "unexpected end of file in %s:%ui, expecting \"}\"",
                           cf->conf_file->file.name.data,
                           cf->conf_file->line);
-            rc = NGX_ERROR;
-            break;
+            goto failed;
         }
 
         if (rc != NGX_OK && rc != NGX_CONF_BLOCK_START) {
-            break;
+            goto done;
         }
 
         if (cf->handler) {
@@ -180,26 +178,30 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
             }
 
             if (rv == NGX_CONF_ERROR) {
-                rc = NGX_ERROR;
-                break;
+                goto failed;
             }
 
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "%s in %s:%ui",
                           rv, cf->conf_file->file.name.data,
                           cf->conf_file->line);
-            rc = NGX_ERROR;
-            break;
+
+            goto failed;
         }
 
 
         rc = ngx_conf_handler(cf, rc);
 
         if (rc == NGX_ERROR) {
-            break;
+            goto failed;
         }
     }
 
+failed:
+
+    rc = NGX_ERROR;
+
+done:
 
     if (filename) {
         ngx_free(cf->conf_file->buffer->start);
