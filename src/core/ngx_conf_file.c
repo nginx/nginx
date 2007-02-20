@@ -145,6 +145,12 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         }
 
         if (rc == NGX_CONF_BLOCK_DONE) {
+            if (!block) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "unexpected \"}\"");
+                rc = NGX_ERROR;
+                break;
+            }
+
             block = 0;
         }
 
