@@ -154,10 +154,8 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         }
 
         if (rc == NGX_CONF_FILE_DONE && block) {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "unexpected end of file in %s:%ui, expecting \"}\"",
-                          cf->conf_file->file.name.data,
-                          cf->conf_file->line);
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "unexpected end of file, expecting \"}\"");
             goto failed;
         }
 
@@ -181,10 +179,7 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                 goto failed;
             }
 
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "%s in %s:%ui",
-                          rv, cf->conf_file->file.name.data,
-                          cf->conf_file->line);
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, rv);
 
             goto failed;
         }
@@ -275,20 +270,16 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
             }
 
             if (!(cmd->type & NGX_CONF_BLOCK) && last != NGX_OK) {
-                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                              "directive \"%s\" in %s:%ui "
-                              "is not terminated by \";\"",
-                              name->data, cf->conf_file->file.name.data,
-                              cf->conf_file->line);
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                  "directive \"%s\" is not terminated by \";\"",
+                                  name->data);
                 return NGX_ERROR;
             }
 
             if ((cmd->type & NGX_CONF_BLOCK) && last != NGX_CONF_BLOCK_START) {
-                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                              "directive \"%s\" in %s:%ui "
-                              "has not the opening \"{\"",
-                              name->data, cf->conf_file->file.name.data,
-                              cf->conf_file->line);
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "directive \"%s\" has no opening \"{\"",
+                                   name->data);
                 return NGX_ERROR;
             }
 
@@ -352,40 +343,31 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
                 return NGX_ERROR;
             }
 
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "the \"%s\" directive %s in %s:%ui",
-                          name->data, rv, cf->conf_file->file.name.data,
-                          cf->conf_file->line);
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the \"%s\" directive %s", name->data, rv);
 
             return NGX_ERROR;
         }
     }
 
     if (multi == 0) {
-        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                      "unknown directive \"%s\" in %s:%ui",
-                      name->data, cf->conf_file->file.name.data,
-                      cf->conf_file->line);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "unknown directive \"%s\"", name->data);
 
         return NGX_ERROR;
     }
 
 not_allowed:
 
-    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                  "directive \"%s\" in %s:%ui "
-                  "is not allowed here",
-                  name->data, cf->conf_file->file.name.data,
-                  cf->conf_file->line);
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "directive \"%s\" is not allowed here", name->data);
     return NGX_ERROR;
 
 invalid:
 
-    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                  "invalid number arguments in "
-                  "directive \"%s\" in %s:%ui",
-                  name->data, cf->conf_file->file.name.data,
-                  cf->conf_file->line);
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "invalid number arguments in directive \"%s\"",
+                       name->data);
 
     return NGX_ERROR;
 }
@@ -420,11 +402,9 @@ ngx_conf_read_token(ngx_conf_t *cf)
                                  >= ngx_file_size(&cf->conf_file->file.info))
             {
                 if (cf->args->nelts > 0) {
-                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                  "unexpected end of file in %s:%ui, "
-                                  "expecting \";\" or \"}\"",
-                                  cf->conf_file->file.name.data,
-                                  cf->conf_file->line);
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                  "unexpected end of file, "
+                                  "expecting \";\" or \"}\"");
                     return NGX_ERROR;
                 }
 
@@ -488,11 +468,8 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 need_space = 0;
 
             } else {
-                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                               "unexpected \"%c\" in %s:%ui",
-                               ch, cf->conf_file->file.name.data,
-                               cf->conf_file->line);
-
+                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                    "unexpected \"%c\"", ch);
                  return NGX_ERROR;
             }
         }
@@ -509,10 +486,8 @@ ngx_conf_read_token(ngx_conf_t *cf)
             case ';':
             case '{':
                 if (cf->args->nelts == 0) {
-                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                  "unexpected \"%c\" in %s:%ui",
-                                  ch, cf->conf_file->file.name.data,
-                                  cf->conf_file->line);
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "unexpected \"%c\"", ch);
                     return NGX_ERROR;
                 }
 
@@ -524,10 +499,8 @@ ngx_conf_read_token(ngx_conf_t *cf)
 
             case '}':
                 if (cf->args->nelts != 0) {
-                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                                  "unexpected \"}\" in %s:%ui",
-                                  cf->conf_file->file.name.data,
-                                  cf->conf_file->line);
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "unexpected \"}\"");
                     return NGX_ERROR;
                 }
 
