@@ -9,6 +9,21 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.14" date="23.02.2007">
+
+<change type="bugfix">
+<para lang="ru">
+nginx игнорировал лишние закрывающие скобки "}" в конце
+конфигурационноого файла.
+</para>
+<para lang="en">
+nginx ignored superfluous closing "}" in the end of configuration file.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.13" date="19.02.2007">
 
 <change type="feature">
