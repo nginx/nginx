@@ -179,10 +179,9 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
                     peer->fails = 0;
                     break;
                 }
-
-            } else {
-                iphp->rrp.tried[n] |= m;
             }
+
+            iphp->rrp.tried[n] |= m;
 
             /* ngx_unlock_mutex(iphp->rrp.peers->mutex); */
 
