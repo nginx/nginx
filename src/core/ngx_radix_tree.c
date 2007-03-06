@@ -88,7 +88,7 @@ ngx_radix_tree_create(ngx_pool_t *pool, ngx_int_t preallocate)
 
         do {
             if (ngx_radix32tree_insert(tree, key, mask, NGX_RADIX_NO_VALUE)
-                                                                     != NGX_OK)
+                != NGX_OK)
             {
                 return NULL;
             }
