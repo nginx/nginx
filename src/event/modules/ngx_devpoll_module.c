@@ -416,7 +416,7 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                        event_list[i].fd, event_list[i].events, revents);
 
         if (revents & (POLLERR|POLLHUP|POLLNVAL)) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                           "ioctl(DP_POLL) error fd:%d ev:%04Xd rev:%04Xd",
                           event_list[i].fd, event_list[i].events, revents);
         }

@@ -467,9 +467,9 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                            event_list[i].portev_object, revents);
 
             if (revents & (POLLERR|POLLHUP|POLLNVAL)) {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                              "port_getn() error fd:%d ev:%04Xd",
-                              event_list[i].portev_object, revents);
+                ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                               "port_getn() error fd:%d ev:%04Xd",
+                               event_list[i].portev_object, revents);
             }
 
             if (revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL)) {
