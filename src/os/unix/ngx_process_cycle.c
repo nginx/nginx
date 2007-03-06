@@ -454,7 +454,8 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 
         if (ch.command) {
             if (ngx_write_channel(ngx_processes[i].channel[0],
-                           &ch, sizeof(ngx_channel_t), cycle->log) == NGX_OK)
+                                  &ch, sizeof(ngx_channel_t), cycle->log)
+                == NGX_OK)
             {
                 if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
                     ngx_processes[i].exiting = 1;
