@@ -679,8 +679,8 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ngx_threads_n) {
-        if (ngx_init_threads(ngx_threads_n,
-                                   ccf->thread_stack_size, cycle) == NGX_ERROR)
+        if (ngx_init_threads(ngx_threads_n, ccf->thread_stack_size, cycle)
+            == NGX_ERROR)
         {
             /* fatal */
             exit(2);
@@ -705,7 +705,8 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
             if (ngx_create_thread((ngx_tid_t *) &ngx_threads[n].tid,
                                   ngx_worker_thread_cycle,
-                                  (void *) &ngx_threads[n], cycle->log) != 0)
+                                  (void *) &ngx_threads[n], cycle->log)
+                != 0)
             {
                 /* fatal */
                 exit(2);
@@ -929,7 +930,8 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
 #endif
 
     if (ngx_add_channel_event(cycle, ngx_channel, NGX_READ_EVENT,
-                              ngx_channel_handler) == NGX_ERROR)
+                              ngx_channel_handler)
+        == NGX_ERROR)
     {
         /* fatal */
         exit(2);
