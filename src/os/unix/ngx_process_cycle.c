@@ -1027,6 +1027,12 @@ ngx_channel_handler(ngx_event_t *ev)
         return;
     }
 
+    if (ngx_event_flags & NGX_USE_EVENTPORT_EVENT) {
+        if (ngx_add_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+            return;
+        }
+    }
+
     if (n == NGX_AGAIN) {
         return;
     }
