@@ -2032,6 +2032,8 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
     r->http_state = NGX_HTTP_KEEPALIVE_STATE;
 #endif
 
+    c->idle = 1;
+
     if (rev->ready) {
         ngx_http_keepalive_handler(rev);
     }
@@ -2050,7 +2052,7 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http keepalive handler");
 
-    if (rev->timedout) {
+    if (rev->timedout || c->close) {
         ngx_http_close_connection(c);
         return;
     }
@@ -2138,6 +2140,8 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 
     c->log->handler = ngx_http_log_error;
     c->log->action = "reading client request line";
+
+    c->idle = 0;
 
     ngx_http_init_request(rev);
 }

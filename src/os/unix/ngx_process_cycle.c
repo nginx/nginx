@@ -664,6 +664,8 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
 static void
 ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
+    ngx_uint_t         i;
+    ngx_connection_t  *c;
 #if (NGX_THREADS)
     ngx_int_t          n;
     ngx_err_t          err;
@@ -717,12 +719,27 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 #endif
 
     for ( ;; ) {
-        if (ngx_exiting
-            && ngx_event_timer_rbtree.root == ngx_event_timer_rbtree.sentinel)
-        {
-            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
 
-            ngx_worker_process_exit(cycle);
+        if (ngx_exiting) {
+
+            c = cycle->connections;
+
+            for (i = 0; i < cycle->connection_n; i++) {
+
+                /* THREAD: lock */
+
+                if (c[i].fd != -1 && c[i].idle) {
+                    c[i].close = 1;
+                    c[i].read->handler(c[i].read);
+                }
+            }
+
+            if (ngx_event_timer_rbtree.root == ngx_event_timer_rbtree.sentinel)
+            {
+                ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
+
+                ngx_worker_process_exit(cycle);
+            }
         }
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");

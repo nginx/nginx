@@ -143,6 +143,9 @@ struct ngx_connection_s {
     unsigned            error:1;
     unsigned            destroyed:1;
 
+    unsigned            idle:1;
+    unsigned            close:1;
+
     unsigned            sendfile:1;
     unsigned            sndlowat:1;
     unsigned            tcp_nodelay:2;   /* ngx_connection_tcp_nodelay_e */
