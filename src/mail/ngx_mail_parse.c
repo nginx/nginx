@@ -7,10 +7,207 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <ngx_imap.h>
+#include <ngx_mail.h>
 
 
-ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
+ngx_int_t ngx_pop3_parse_command(ngx_mail_session_t *s)
+{
+    u_char      ch, *p, *c, c0, c1, c2, c3;
+    ngx_str_t  *arg;
+    enum {
+        sw_start = 0,
+        sw_spaces_before_argument,
+        sw_argument,
+        sw_almost_done
+    } state;
+
+    state = s->state;
+
+    for (p = s->buffer->pos; p < s->buffer->last; p++) {
+        ch = *p;
+
+        switch (state) {
+
+        /* POP3 command */
+        case sw_start:
+            if (ch == ' ' || ch == CR || ch == LF) {
+                c = s->buffer->start;
+
+                if (p - c == 4) {
+
+                    c0 = ngx_toupper(c[0]);
+                    c1 = ngx_toupper(c[1]);
+                    c2 = ngx_toupper(c[2]);
+                    c3 = ngx_toupper(c[3]);
+
+                    if (c0 == 'U' && c1 == 'S' && c2 == 'E' && c3 == 'R')
+                    {
+                        s->command = NGX_POP3_USER;
+
+                    } else if (c0 == 'P' && c1 == 'A' && c2 == 'S' && c3 == 'S')
+                    {
+                        s->command = NGX_POP3_PASS;
+
+                    } else if (c0 == 'A' && c1 == 'P' && c2 == 'O' && c3 == 'P')
+                    {
+                        s->command = NGX_POP3_APOP;
+
+                    } else if (c0 == 'Q' && c1 == 'U' && c2 == 'I' && c3 == 'T')
+                    {
+                        s->command = NGX_POP3_QUIT;
+
+                    } else if (c0 == 'C' && c1 == 'A' && c2 == 'P' && c3 == 'A')
+                    {
+                        s->command = NGX_POP3_CAPA;
+
+                    } else if (c0 == 'A' && c1 == 'U' && c2 == 'T' && c3 == 'H')
+                    {
+                        s->command = NGX_POP3_AUTH;
+
+                    } else if (c0 == 'N' && c1 == 'O' && c2 == 'O' && c3 == 'P')
+                    {
+                        s->command = NGX_POP3_NOOP;
+#if (NGX_MAIL_SSL)
+                    } else if (c0 == 'S' && c1 == 'T' && c2 == 'L' && c3 == 'S')
+                    {
+                        s->command = NGX_POP3_STLS;
+#endif
+                    } else {
+                        goto invalid;
+                    }
+
+                } else {
+                    goto invalid;
+                }
+
+                switch (ch) {
+                case ' ':
+                    state = sw_spaces_before_argument;
+                    break;
+                case CR:
+                    state = sw_almost_done;
+                    break;
+                case LF:
+                    goto done;
+                }
+                break;
+            }
+
+            if ((ch < 'A' || ch > 'Z') && (ch < 'a' || ch > 'z')) {
+                goto invalid;
+            }
+
+            break;
+
+        case sw_spaces_before_argument:
+            switch (ch) {
+            case ' ':
+                break;
+            case CR:
+                state = sw_almost_done;
+                s->arg_end = p;
+                break;
+            case LF:
+                s->arg_end = p;
+                goto done;
+            default:
+                if (s->args.nelts <= 2) {
+                    state = sw_argument;
+                    s->arg_start = p;
+                    break;
+                }
+                goto invalid;
+            }
+            break;
+
+        case sw_argument:
+            switch (ch) {
+
+            case ' ':
+
+                /*
+                 * the space should be considered as part of the at username
+                 * or password, but not of argument in other commands
+                 */
+
+                if (s->command == NGX_POP3_USER
+                    || s->command == NGX_POP3_PASS)
+                {
+                    break;
+                }
+
+                /* fall through */
+
+            case CR:
+            case LF:
+                arg = ngx_array_push(&s->args);
+                if (arg == NULL) {
+                    return NGX_ERROR;
+                }
+                arg->len = p - s->arg_start;
+                arg->data = s->arg_start;
+                s->arg_start = NULL;
+
+                switch (ch) {
+                case ' ':
+                    state = sw_spaces_before_argument;
+                    break;
+                case CR:
+                    state = sw_almost_done;
+                    break;
+                case LF:
+                    goto done;
+                }
+                break;
+
+            default:
+                break;
+            }
+            break;
+
+        case sw_almost_done:
+            switch (ch) {
+            case LF:
+                goto done;
+            default:
+                goto invalid;
+            }
+        }
+    }
+
+    s->buffer->pos = p;
+    s->state = state;
+
+    return NGX_AGAIN;
+
+done:
+
+    s->buffer->pos = p + 1;
+
+    if (s->arg_start) {
+        arg = ngx_array_push(&s->args);
+        if (arg == NULL) {
+            return NGX_ERROR;
+        }
+        arg->len = s->arg_end - s->arg_start;
+        arg->data = s->arg_start;
+        s->arg_start = NULL;
+    }
+
+    s->state = (s->command != NGX_POP3_AUTH) ? sw_start : sw_argument;
+
+    return NGX_OK;
+
+invalid:
+
+    s->state = sw_start;
+    s->arg_start = NULL;
+
+    return NGX_MAIL_PARSE_INVALID_COMMAND;
+}
+
+
+ngx_int_t ngx_imap_parse_command(ngx_mail_session_t *s)
 {
     u_char      ch, *p, *c;
     ngx_str_t  *arg;
@@ -46,10 +243,10 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
                 break;
             case CR:
                 s->state = sw_start;
-                return NGX_IMAP_PARSE_INVALID_COMMAND;
+                return NGX_MAIL_PARSE_INVALID_COMMAND;
             case LF:
                 s->state = sw_start;
-                return NGX_IMAP_PARSE_INVALID_COMMAND;
+                return NGX_MAIL_PARSE_INVALID_COMMAND;
             }
             break;
 
@@ -59,10 +256,10 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
                 break;
             case CR:
                 s->state = sw_start;
-                return NGX_IMAP_PARSE_INVALID_COMMAND;
+                return NGX_MAIL_PARSE_INVALID_COMMAND;
             case LF:
                 s->state = sw_start;
-                return NGX_IMAP_PARSE_INVALID_COMMAND;
+                return NGX_MAIL_PARSE_INVALID_COMMAND;
             default:
                 s->cmd_start = p;
                 state = sw_command;
@@ -119,7 +316,7 @@ ngx_int_t ngx_imap_parse_command(ngx_imap_session_t *s)
                     }
                     break;
 
-#if (NGX_IMAP_SSL)
+#if (NGX_MAIL_SSL)
                 case 8:
                     if ((c[0] == 'S'|| c[0] == 's')
                         && (c[1] == 'T'|| c[1] == 't')
@@ -387,11 +584,11 @@ invalid:
     s->no_sync_literal = 0;
     s->literal_len = 0;
 
-    return NGX_IMAP_PARSE_INVALID_COMMAND;
+    return NGX_MAIL_PARSE_INVALID_COMMAND;
 }
 
 
-ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
+ngx_int_t ngx_smtp_parse_command(ngx_mail_session_t *s)
 {
     u_char      ch, *p, *c, c0, c1, c2, c3;
     ngx_str_t  *arg;
@@ -409,7 +606,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
 
         switch (state) {
 
-        /* POP3 command */
+        /* SMTP command */
         case sw_start:
             if (ch == ' ' || ch == CR || ch == LF) {
                 c = s->buffer->start;
@@ -421,38 +618,34 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
                     c2 = ngx_toupper(c[2]);
                     c3 = ngx_toupper(c[3]);
 
-                    if (c0 == 'U' && c1 == 'S' && c2 == 'E' && c3 == 'R')
+                    if (c0 == 'H' && c1 == 'E' && c2 == 'L' && c3 == 'O')
                     {
-                        s->command = NGX_POP3_USER;
+                        s->command = NGX_SMTP_HELO;
 
-                    } else if (c0 == 'P' && c1 == 'A' && c2 == 'S' && c3 == 'S')
+                    } else if (c0 == 'E' && c1 == 'H' && c2 == 'L' && c3 == 'O')
                     {
-                        s->command = NGX_POP3_PASS;
-
-                    } else if (c0 == 'A' && c1 == 'P' && c2 == 'O' && c3 == 'P')
-                    {
-                        s->command = NGX_POP3_APOP;
+                        s->command = NGX_SMTP_EHLO;
 
                     } else if (c0 == 'Q' && c1 == 'U' && c2 == 'I' && c3 == 'T')
                     {
-                        s->command = NGX_POP3_QUIT;
-
-                    } else if (c0 == 'C' && c1 == 'A' && c2 == 'P' && c3 == 'A')
-                    {
-                        s->command = NGX_POP3_CAPA;
+                        s->command = NGX_SMTP_QUIT;
 
                     } else if (c0 == 'A' && c1 == 'U' && c2 == 'T' && c3 == 'H')
                     {
-                        s->command = NGX_POP3_AUTH;
+                        s->command = NGX_SMTP_AUTH;
 
                     } else if (c0 == 'N' && c1 == 'O' && c2 == 'O' && c3 == 'P')
                     {
-                        s->command = NGX_POP3_NOOP;
-#if (NGX_IMAP_SSL)
-                    } else if (c0 == 'S' && c1 == 'T' && c2 == 'L' && c3 == 'S')
+                        s->command = NGX_SMTP_NOOP;
+
+                    } else if (c0 == 'M' && c1 == 'A' && c2 == 'I' && c3 == 'L')
                     {
-                        s->command = NGX_POP3_STLS;
-#endif
+                        s->command = NGX_SMTP_MAIL;
+
+                    } else if (c0 == 'R' && c1 == 'S' && c2 == 'E' && c3 == 'T')
+                    {
+                        s->command = NGX_SMTP_RSET;
+
                     } else {
                         goto invalid;
                     }
@@ -503,22 +696,7 @@ ngx_int_t ngx_pop3_parse_command(ngx_imap_session_t *s)
 
         case sw_argument:
             switch (ch) {
-
             case ' ':
-
-                /*
-                 * the space should be considered as part of the at username
-                 * or password, but not of argument in other commands
-                 */
-
-                if (s->command == NGX_POP3_USER
-                    || s->command == NGX_POP3_PASS)
-                {
-                    break;
-                }
-
-                /* fall through */
-
             case CR:
             case LF:
                 arg = ngx_array_push(&s->args);
@@ -575,7 +753,8 @@ done:
         s->arg_start = NULL;
     }
 
-    s->state = (s->command != NGX_POP3_AUTH) ? sw_start : sw_argument;
+    s->state = (s->command != NGX_SMTP_AUTH) ? sw_start : sw_argument;
+
     return NGX_OK;
 
 invalid:
@@ -583,5 +762,5 @@ invalid:
     s->state = sw_start;
     s->arg_start = NULL;
 
-    return NGX_IMAP_PARSE_INVALID_COMMAND;
+    return NGX_MAIL_PARSE_INVALID_COMMAND;
 }

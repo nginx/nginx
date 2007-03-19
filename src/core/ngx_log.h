@@ -27,7 +27,7 @@
 #define NGX_LOG_DEBUG_MUTEX       0x040
 #define NGX_LOG_DEBUG_EVENT       0x080
 #define NGX_LOG_DEBUG_HTTP        0x100
-#define NGX_LOG_DEBUG_IMAP        0x200
+#define NGX_LOG_DEBUG_MAIL        0x200
 #define NGX_LOG_DEBUG_MYSQL       0x400
 
 /*
@@ -36,7 +36,7 @@
  */
 
 #define NGX_LOG_DEBUG_FIRST       NGX_LOG_DEBUG_CORE
-#define NGX_LOG_DEBUG_LAST        NGX_LOG_DEBUG_IMAP
+#define NGX_LOG_DEBUG_LAST        NGX_LOG_DEBUG_MYSQL
 #define NGX_LOG_DEBUG_CONNECTION  0x80000000
 #define NGX_LOG_DEBUG_ALL         0x7ffffff0
 

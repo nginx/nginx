@@ -7,22 +7,29 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <ngx_imap.h>
+#include <ngx_mail.h>
 
 
-static char *ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static int ngx_libc_cdecl ngx_imap_cmp_conf_in_addrs(const void *one,
+static char *ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static int ngx_libc_cdecl ngx_mail_cmp_conf_in_addrs(const void *one,
     const void *two);
 
 
-ngx_uint_t  ngx_imap_max_module;
+ngx_uint_t  ngx_mail_max_module;
 
 
-static ngx_command_t  ngx_imap_commands[] = {
+static ngx_command_t  ngx_mail_commands[] = {
+
+    { ngx_string("mail"),
+      NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+      ngx_mail_block,
+      0,
+      0,
+      NULL },
 
     { ngx_string("imap"),
       NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
-      ngx_imap_block,
+      ngx_mail_block,
       0,
       0,
       NULL },
@@ -31,17 +38,17 @@ static ngx_command_t  ngx_imap_commands[] = {
 };
 
 
-static ngx_core_module_t  ngx_imap_module_ctx = {
-    ngx_string("imap"),
+static ngx_core_module_t  ngx_mail_module_ctx = {
+    ngx_string("mail"),
     NULL,
     NULL
 };
 
 
-ngx_module_t  ngx_imap_module = {
+ngx_module_t  ngx_mail_module = {
     NGX_MODULE_V1,
-    &ngx_imap_module_ctx,                  /* module context */
-    ngx_imap_commands,                     /* module directives */
+    &ngx_mail_module_ctx,                  /* module context */
+    ngx_mail_commands,                     /* module directives */
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
@@ -55,7 +62,7 @@ ngx_module_t  ngx_imap_module = {
 
 
 static char *
-ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                        *rv;
     u_char                      *text;
@@ -64,51 +71,57 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_conf_t                   pcf;
     ngx_array_t                  in_ports;
     ngx_listening_t             *ls;
-    ngx_imap_listen_t           *imls;
-    ngx_imap_module_t           *module;
-    ngx_imap_in_port_t          *imip;
-    ngx_imap_conf_ctx_t         *ctx;
-    ngx_imap_conf_in_port_t     *in_port;
-    ngx_imap_conf_in_addr_t     *in_addr;
-    ngx_imap_core_srv_conf_t   **cscfp;
-    ngx_imap_core_main_conf_t   *cmcf;
+    ngx_mail_listen_t           *imls;
+    ngx_mail_module_t           *module;
+    ngx_mail_in_port_t          *imip;
+    ngx_mail_conf_ctx_t         *ctx;
+    ngx_mail_conf_in_port_t     *in_port;
+    ngx_mail_conf_in_addr_t     *in_addr;
+    ngx_mail_core_srv_conf_t   **cscfp;
+    ngx_mail_core_main_conf_t   *cmcf;
 
-    /* the main imap context */
+    if (cmd->name.data[0] == 'i') {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "the \"imap\" directive is deprecated, "
+                           "use the \"mail\" directive instead");
+    }
 
-    ctx = ngx_pcalloc(cf->pool, sizeof(ngx_imap_conf_ctx_t));
+    /* the main mail context */
+
+    ctx = ngx_pcalloc(cf->pool, sizeof(ngx_mail_conf_ctx_t));
     if (ctx == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    *(ngx_imap_conf_ctx_t **) conf = ctx;
+    *(ngx_mail_conf_ctx_t **) conf = ctx;
 
     /* count the number of the http modules and set up their indices */
 
-    ngx_imap_max_module = 0;
+    ngx_mail_max_module = 0;
     for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_IMAP_MODULE) {
+        if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
             continue;
         }
 
-        ngx_modules[m]->ctx_index = ngx_imap_max_module++;
+        ngx_modules[m]->ctx_index = ngx_mail_max_module++;
     }
 
 
-    /* the imap main_conf context, it is the same in the all imap contexts */
+    /* the mail main_conf context, it is the same in the all mail contexts */
 
     ctx->main_conf = ngx_pcalloc(cf->pool,
-                                 sizeof(void *) * ngx_imap_max_module);
+                                 sizeof(void *) * ngx_mail_max_module);
     if (ctx->main_conf == NULL) {
         return NGX_CONF_ERROR;
     }
 
 
     /*
-     * the imap null srv_conf context, it is used to merge
+     * the mail null srv_conf context, it is used to merge
      * the server{}s' srv_conf's
      */
 
-    ctx->srv_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_imap_max_module);
+    ctx->srv_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_mail_max_module);
     if (ctx->srv_conf == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -116,11 +129,11 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /*
      * create the main_conf's, the null srv_conf's, and the null loc_conf's
-     * of the all imap modules
+     * of the all mail modules
      */
 
     for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_IMAP_MODULE) {
+        if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
             continue;
         }
 
@@ -143,13 +156,13 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
 
-    /* parse inside the imap{} block */
+    /* parse inside the mail{} block */
 
     pcf = *cf;
     cf->ctx = ctx;
 
-    cf->module_type = NGX_IMAP_MODULE;
-    cf->cmd_type = NGX_IMAP_MAIN_CONF;
+    cf->module_type = NGX_MAIL_MODULE;
+    cf->cmd_type = NGX_MAIL_MAIN_CONF;
     rv = ngx_conf_parse(cf, NULL);
 
     if (rv != NGX_CONF_OK) {
@@ -158,20 +171,20 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
 
-    /* init imap{} main_conf's, merge the server{}s' srv_conf's */
+    /* init mail{} main_conf's, merge the server{}s' srv_conf's */
 
-    cmcf = ctx->main_conf[ngx_imap_core_module.ctx_index];
+    cmcf = ctx->main_conf[ngx_mail_core_module.ctx_index];
     cscfp = cmcf->servers.elts;
 
     for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_IMAP_MODULE) {
+        if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
             continue;
         }
 
         module = ngx_modules[m]->ctx;
         mi = ngx_modules[m]->ctx_index;
 
-        /* init imap{} main_conf's */
+        /* init mail{} main_conf's */
 
         if (module->init_main_conf) {
             rv = module->init_main_conf(cf, ctx->main_conf[mi]);
@@ -197,13 +210,13 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    /* imap{}'s cf->ctx was needed while the configuration merging */
+    /* mail{}'s cf->ctx was needed while the configuration merging */
 
     *cf = pcf;
 
 
     if (ngx_array_init(&in_ports, cf->temp_pool, 4,
-                       sizeof(ngx_imap_conf_in_port_t))
+                       sizeof(ngx_mail_conf_in_port_t))
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
@@ -231,7 +244,7 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         in_port->port = imls[l].port;
 
         if (ngx_array_init(&in_port->addrs, cf->temp_pool, 2,
-                           sizeof(ngx_imap_conf_in_addr_t))
+                           sizeof(ngx_mail_conf_in_addr_t))
             != NGX_OK)
         {
             return NGX_CONF_ERROR;
@@ -257,7 +270,7 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (p = 0; p < in_ports.nelts; p++) {
 
         ngx_qsort(in_port[p].addrs.elts, (size_t) in_port[p].addrs.nelts,
-                  sizeof(ngx_imap_conf_in_addr_t), ngx_imap_cmp_conf_in_addrs);
+                  sizeof(ngx_mail_conf_in_addr_t), ngx_mail_cmp_conf_in_addrs);
 
         in_addr = in_port[p].addrs.elts;
         last = in_port[p].addrs.nelts;
@@ -293,7 +306,7 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->sndbuf = -1;
 
             ls->addr_ntop = 1;
-            ls->handler = ngx_imap_init_connection;
+            ls->handler = ngx_mail_init_connection;
             ls->pool_size = 256;
 
             /* STUB */
@@ -302,7 +315,7 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->log.handler = ngx_accept_log_error;
             /**/
 
-            imip = ngx_palloc(cf->pool, sizeof(ngx_imap_in_port_t));
+            imip = ngx_palloc(cf->pool, sizeof(ngx_mail_in_port_t));
             if (imip == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -334,7 +347,7 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
 
             imip->addrs = ngx_pcalloc(cf->pool,
-                                    imip->naddrs * sizeof(ngx_imap_in_addr_t));
+                                    imip->naddrs * sizeof(ngx_mail_in_addr_t));
             if (imip->addrs == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -375,12 +388,12 @@ ngx_imap_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static int ngx_libc_cdecl
-ngx_imap_cmp_conf_in_addrs(const void *one, const void *two)
+ngx_mail_cmp_conf_in_addrs(const void *one, const void *two)
 {
-    ngx_imap_conf_in_addr_t  *first, *second;
+    ngx_mail_conf_in_addr_t  *first, *second;
 
-    first = (ngx_imap_conf_in_addr_t *) one;
-    second = (ngx_imap_conf_in_addr_t *) two;
+    first = (ngx_mail_conf_in_addr_t *) one;
+    second = (ngx_mail_conf_in_addr_t *) two;
 
     if (first->addr == INADDR_ANY) {
         /* the INADDR_ANY must be the last resort, shift it to the end */

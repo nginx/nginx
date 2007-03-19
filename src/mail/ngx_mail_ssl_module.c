@@ -6,7 +6,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_imap.h>
+#include <ngx_mail.h>
 
 
 #define NGX_DEFLAUT_CERTIFICATE      "cert.pem"
@@ -14,31 +14,31 @@
 #define NGX_DEFLAUT_CIPHERS  "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
 
 
-static void *ngx_imap_ssl_create_conf(ngx_conf_t *cf);
-static char *ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child);
-static char *ngx_imap_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
+static void *ngx_mail_ssl_create_conf(ngx_conf_t *cf);
+static char *ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child);
+static char *ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 #if !defined (SSL_OP_CIPHER_SERVER_PREFERENCE)
 
-static char *ngx_imap_ssl_nosupported(ngx_conf_t *cf, ngx_command_t *cmd,
+static char *ngx_mail_ssl_nosupported(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
-static char  ngx_imap_ssl_openssl097[] = "OpenSSL 0.9.7 and higher";
+static char  ngx_mail_ssl_openssl097[] = "OpenSSL 0.9.7 and higher";
 
 #endif
 
 
 static ngx_conf_enum_t  ngx_http_starttls_state[] = {
-    { ngx_string("off"), NGX_IMAP_STARTTLS_OFF },
-    { ngx_string("on"), NGX_IMAP_STARTTLS_ON },
-    { ngx_string("only"), NGX_IMAP_STARTTLS_ONLY },
+    { ngx_string("off"), NGX_MAIL_STARTTLS_OFF },
+    { ngx_string("on"), NGX_MAIL_STARTTLS_ON },
+    { ngx_string("only"), NGX_MAIL_STARTTLS_ONLY },
     { ngx_null_string, 0 }
 };
 
 
 
-static ngx_conf_bitmask_t  ngx_imap_ssl_protocols[] = {
+static ngx_conf_bitmask_t  ngx_mail_ssl_protocols[] = {
     { ngx_string("SSLv2"), NGX_SSL_SSLv2 },
     { ngx_string("SSLv3"), NGX_SSL_SSLv3 },
     { ngx_string("TLSv1"), NGX_SSL_TLSv1 },
@@ -46,93 +46,93 @@ static ngx_conf_bitmask_t  ngx_imap_ssl_protocols[] = {
 };
 
 
-static ngx_command_t  ngx_imap_ssl_commands[] = {
+static ngx_command_t  ngx_mail_ssl_commands[] = {
 
     { ngx_string("ssl"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_FLAG,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
-      NGX_IMAP_SRV_CONF_OFFSET,
-      offsetof(ngx_imap_ssl_conf_t, enable),
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, enable),
       NULL },
 
     { ngx_string("starttls"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
-      NGX_IMAP_SRV_CONF_OFFSET,
-      offsetof(ngx_imap_ssl_conf_t, starttls),
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, starttls),
       ngx_http_starttls_state },
 
     { ngx_string("ssl_certificate"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
-      NGX_IMAP_SRV_CONF_OFFSET,
-      offsetof(ngx_imap_ssl_conf_t, certificate),
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, certificate),
       NULL },
 
     { ngx_string("ssl_certificate_key"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
-      NGX_IMAP_SRV_CONF_OFFSET,
-      offsetof(ngx_imap_ssl_conf_t, certificate_key),
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, certificate_key),
       NULL },
 
     { ngx_string("ssl_protocols"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_1MORE,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
-      NGX_IMAP_SRV_CONF_OFFSET,
-      offsetof(ngx_imap_ssl_conf_t, protocols),
-      &ngx_imap_ssl_protocols },
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, protocols),
+      &ngx_mail_ssl_protocols },
 
     { ngx_string("ssl_ciphers"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
-      NGX_IMAP_SRV_CONF_OFFSET,
-      offsetof(ngx_imap_ssl_conf_t, ciphers),
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, ciphers),
       NULL },
 
     { ngx_string("ssl_prefer_server_ciphers"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_FLAG,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
       ngx_conf_set_flag_slot,
-      NGX_IMAP_SRV_CONF_OFFSET,
-      offsetof(ngx_imap_ssl_conf_t, prefer_server_ciphers),
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, prefer_server_ciphers),
       NULL },
 #else
-      ngx_imap_ssl_nosupported, 0, 0, ngx_imap_ssl_openssl097 },
+      ngx_mail_ssl_nosupported, 0, 0, ngx_mail_ssl_openssl097 },
 #endif
 
     { ngx_string("ssl_session_cache"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE12,
-      ngx_imap_ssl_session_cache,
-      NGX_IMAP_SRV_CONF_OFFSET,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE12,
+      ngx_mail_ssl_session_cache,
+      NGX_MAIL_SRV_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("ssl_session_timeout"),
-      NGX_IMAP_MAIN_CONF|NGX_IMAP_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_sec_slot,
-      NGX_IMAP_SRV_CONF_OFFSET,
-      offsetof(ngx_imap_ssl_conf_t, session_timeout),
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, session_timeout),
       NULL },
 
       ngx_null_command
 };
 
 
-static ngx_imap_module_t  ngx_imap_ssl_module_ctx = {
+static ngx_mail_module_t  ngx_mail_ssl_module_ctx = {
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 
-    ngx_imap_ssl_create_conf,              /* create server configuration */
-    ngx_imap_ssl_merge_conf                /* merge server configuration */
+    ngx_mail_ssl_create_conf,              /* create server configuration */
+    ngx_mail_ssl_merge_conf                /* merge server configuration */
 };
 
 
-ngx_module_t  ngx_imap_ssl_module = {
+ngx_module_t  ngx_mail_ssl_module = {
     NGX_MODULE_V1,
-    &ngx_imap_ssl_module_ctx,              /* module context */
-    ngx_imap_ssl_commands,                 /* module directives */
-    NGX_IMAP_MODULE,                       /* module type */
+    &ngx_mail_ssl_module_ctx,              /* module context */
+    ngx_mail_ssl_commands,                 /* module directives */
+    NGX_MAIL_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
     NULL,                                  /* init process */
@@ -144,15 +144,15 @@ ngx_module_t  ngx_imap_ssl_module = {
 };
 
 
-static ngx_str_t ngx_imap_ssl_sess_id_ctx = ngx_string("IMAP");
+static ngx_str_t ngx_mail_ssl_sess_id_ctx = ngx_string("MAIL");
 
 
 static void *
-ngx_imap_ssl_create_conf(ngx_conf_t *cf)
+ngx_mail_ssl_create_conf(ngx_conf_t *cf)
 {
-    ngx_imap_ssl_conf_t  *scf;
+    ngx_mail_ssl_conf_t  *scf;
 
-    scf = ngx_pcalloc(cf->pool, sizeof(ngx_imap_ssl_conf_t));
+    scf = ngx_pcalloc(cf->pool, sizeof(ngx_mail_ssl_conf_t));
     if (scf == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -181,17 +181,17 @@ ngx_imap_ssl_create_conf(ngx_conf_t *cf)
 
 
 static char *
-ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 {
-    ngx_imap_ssl_conf_t *prev = parent;
-    ngx_imap_ssl_conf_t *conf = child;
+    ngx_mail_ssl_conf_t *prev = parent;
+    ngx_mail_ssl_conf_t *conf = child;
 
     ngx_pool_cleanup_t  *cln;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
-    ngx_conf_merge_value(conf->starttls, prev->starttls, NGX_IMAP_STARTTLS_OFF);
+    ngx_conf_merge_value(conf->starttls, prev->starttls, NGX_MAIL_STARTTLS_OFF);
 
-    if (conf->enable == 0 && conf->starttls == NGX_IMAP_STARTTLS_OFF) {
+    if (conf->enable == 0 && conf->starttls == NGX_MAIL_STARTTLS_OFF) {
         return NGX_CONF_OK;
     }
 
@@ -266,7 +266,7 @@ ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->shm_zone = prev->shm_zone;
     }
 
-    if (ngx_ssl_session_cache(&conf->ssl, &ngx_imap_ssl_sess_id_ctx,
+    if (ngx_ssl_session_cache(&conf->ssl, &ngx_mail_ssl_sess_id_ctx,
                               conf->builtin_session_cache,
                               conf->shm_zone, conf->session_timeout)
         != NGX_OK)
@@ -279,9 +279,9 @@ ngx_imap_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static char *
-ngx_imap_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_imap_ssl_conf_t  *scf = conf;
+    ngx_mail_ssl_conf_t  *scf = conf;
 
     size_t       len;
     ngx_str_t   *value, name, size;
@@ -352,7 +352,7 @@ ngx_imap_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
 
             scf->shm_zone = ngx_shared_memory_add(cf, &name, n,
-                                                   &ngx_imap_ssl_module);
+                                                   &ngx_mail_ssl_module);
             if (scf->shm_zone == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -381,7 +381,7 @@ invalid:
 #if !defined (SSL_OP_CIPHER_SERVER_PREFERENCE)
 
 static char *
-ngx_imap_ssl_nosupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_mail_ssl_nosupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                        "\"%V\" directive is available only in %s,",

@@ -408,23 +408,23 @@ HTTP_UPSTREAM_IP_HASH_MODULE=ngx_http_upstream_ip_hash_module
 HTTP_UPSTREAM_IP_HASH_SRCS=src/http/modules/ngx_http_upstream_ip_hash_module.c
 
 
-IMAP_INCS="src/imap"
+MAIL_INCS="src/mail"
 
-IMAP_DEPS="src/imap/ngx_imap.h"
+MAIL_DEPS="src/mail/ngx_mail.h"
 
-IMAP_MODULES="ngx_imap_module ngx_imap_core_module"
+MAIL_MODULES="ngx_mail_module ngx_mail_core_module"
 
-IMAP_SRCS="src/imap/ngx_imap.c \
-           src/imap/ngx_imap_core_module.c \
-           src/imap/ngx_imap_handler.c \
-           src/imap/ngx_imap_parse.c"
+MAIL_SRCS="src/mail/ngx_mail.c \
+           src/mail/ngx_mail_core_module.c \
+           src/mail/ngx_mail_handler.c \
+           src/mail/ngx_mail_parse.c"
 
-IMAP_SSL_MODULE="ngx_imap_ssl_module"
-IMAP_SSL_DEPS="src/imap/ngx_imap_ssl_module.h"
-IMAP_SSL_SRCS="src/imap/ngx_imap_ssl_module.c"
+MAIL_SSL_MODULE="ngx_mail_ssl_module"
+MAIL_SSL_DEPS="src/mail/ngx_mail_ssl_module.h"
+MAIL_SSL_SRCS="src/mail/ngx_mail_ssl_module.c"
 
-IMAP_AUTH_HTTP_MODULE="ngx_imap_auth_http_module"
-IMAP_AUTH_HTTP_SRCS="src/imap/ngx_imap_auth_http_module.c"
+MAIL_AUTH_HTTP_MODULE="ngx_mail_auth_http_module"
+MAIL_AUTH_HTTP_SRCS="src/mail/ngx_mail_auth_http_module.c"
 
-IMAP_PROXY_MODULE="ngx_imap_proxy_module"
-IMAP_PROXY_SRCS="src/imap/ngx_imap_proxy_module.c"
+MAIL_PROXY_MODULE="ngx_mail_proxy_module"
+MAIL_PROXY_SRCS="src/mail/ngx_mail_proxy_module.c"

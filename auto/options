@@ -77,8 +77,8 @@ HTTP_UPSTREAM_IP_HASH=YES
 # STUB
 HTTP_STUB_STATUS=NO
 
-IMAP=NO
-IMAP_SSL=NO
+MAIL=NO
+MAIL_SSL=NO
 
 NGX_ADDONS=
 
@@ -182,8 +182,11 @@ do
         # STUB
         --with-http_stub_status_module)  HTTP_STUB_STATUS=YES       ;;
 
-        --with-imap)                     IMAP=YES                   ;;
-        --with-imap_ssl_module)          IMAP_SSL=YES               ;;
+        --with-mail)                     MAIL=YES                   ;;
+        --with-mail_ssl_module)          MAIL_SSL=YES               ;;
+        # STUB
+        --with-imap)                     MAIL=YES                   ;;
+        --with-imap_ssl_module)          MAIL_SSL=YES               ;;
 
         --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
 
@@ -292,8 +295,8 @@ cat << END
 
   --without-http                     disable HTTP server
 
-  --with-imap                        enable IMAP4/POP3 proxy module
-  --with-imap_ssl_module             enable ngx_imap_ssl_module
+  --with-mail                        enable IMAP4/POP3/SMTP proxy module
+  --with-mail_ssl_module             enable ngx_mail_ssl_module
 
   --with-cc=PATH                     set path to C compiler
   --with-cpp=PATH                    set path to C preprocessor

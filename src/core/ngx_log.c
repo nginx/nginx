@@ -58,7 +58,7 @@ static const char *err_levels[] = {
 
 static const char *debug_levels[] = {
     "debug_core", "debug_alloc", "debug_mutex", "debug_event",
-    "debug_http", "debug_imap"
+    "debug_http", "debug_mail", "debug_mysql"
 };
 
 

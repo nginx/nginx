@@ -302,10 +302,10 @@ if test -n "$NGX_ADDONS"; then
 fi
 
 
-if [ $IMAP_SSL = YES ]; then
-    IMAP_DEPS="$IMAP_DEPS $IMAP_SSL_DEPS"
-    IMAP_SRCS="$IMAP_SRCS $IMAP_SSL_SRCS"
-    have=NGX_IMAP_SSL . auto/have
+if [ $MAIL_SSL = YES ]; then
+    MAIL_DEPS="$MAIL_DEPS $MAIL_SSL_DEPS"
+    MAIL_SRCS="$MAIL_SRCS $MAIL_SSL_SRCS"
+    have=NGX_MAIL_SSL . auto/have
     USE_OPENSSL=YES
 fi
 
@@ -331,18 +331,18 @@ if [ $HTTP = YES ]; then
 fi
 
 
-if [ $IMAP = YES ]; then
-    modules="$modules $IMAP_MODULES"
+if [ $MAIL = YES ]; then
+    modules="$modules $MAIL_MODULES"
 
-    if [ $IMAP_SSL = YES ]; then
-        modules="$modules $IMAP_SSL_MODULE"
+    if [ $MAIL_SSL = YES ]; then
+        modules="$modules $MAIL_SSL_MODULE"
     fi
 
-    modules="$modules $IMAP_AUTH_HTTP_MODULE"
-    IMAP_SRCS="$IMAP_SRCS $IMAP_AUTH_HTTP_SRCS"
+    modules="$modules $MAIL_AUTH_HTTP_MODULE"
+    MAIL_SRCS="$MAIL_SRCS $MAIL_AUTH_HTTP_SRCS"
 
-    modules="$modules $IMAP_PROXY_MODULE"
-    IMAP_SRCS="$IMAP_SRCS $IMAP_PROXY_SRCS"
+    modules="$modules $MAIL_PROXY_MODULE"
+    MAIL_SRCS="$MAIL_SRCS $MAIL_PROXY_SRCS"
 fi
 
 

@@ -6,7 +6,7 @@ mkdir -p $NGX_OBJS/src/core $NGX_OBJS/src/event $NGX_OBJS/src/event/modules \
          $NGX_OBJS/src/os/unix $NGX_OBJS/src/os/win32 \
          $NGX_OBJS/src/http $NGX_OBJS/src/http/modules \
 	 $NGX_OBJS/src/http/modules/perl \
-         $NGX_OBJS/src/imap
+         $NGX_OBJS/src/mail
 
 
 ngx_objs_dir=$NGX_OBJS$ngx_regex_dirsep
@@ -41,7 +41,7 @@ fi
 
 # ALL_INCS, required by the addons and by OpenWatcom C precompiled headers
 
-ngx_incs=`echo $CORE_INCS $NGX_OBJS $HTTP_INCS $IMAP_INCS\
+ngx_incs=`echo $CORE_INCS $NGX_OBJS $HTTP_INCS $MAIL_INCS\
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
 
@@ -101,26 +101,26 @@ END
 fi
 
 
-# the imap dependences and include pathes
+# the mail dependences and include pathes
 
-if [ $IMAP = YES ]; then
+if [ $MAIL = YES ]; then
 
-    ngx_all_srcs="$ngx_all_srcs $IMAP_SRCS"
+    ngx_all_srcs="$ngx_all_srcs $MAIL_SRCS"
 
-    ngx_deps=`echo $IMAP_DEPS \
+    ngx_deps=`echo $MAIL_DEPS \
         | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
               -e "s/\//$ngx_regex_dirsep/g"`
 
-    ngx_incs=`echo $IMAP_INCS \
+    ngx_incs=`echo $MAIL_INCS \
         | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
               -e "s/\//$ngx_regex_dirsep/g"`
 
     cat << END                                                >> $NGX_MAKEFILE
 
-IMAP_DEPS = $ngx_deps
+MAIL_DEPS = $ngx_deps
 
 
-IMAP_INCS = $ngx_include_opt$ngx_incs
+MAIL_INCS = $ngx_include_opt$ngx_incs
 
 END
 
@@ -279,17 +279,17 @@ END
 fi
 
 
-# the imap sources
+# the mail sources
 
-if [ $IMAP = YES ]; then
+if [ $MAIL = YES ]; then
 
     if test -n "$NGX_PCH"; then
         ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) $ngx_use_pch \$(ALL_INCS)"
     else
-        ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) \$(CORE_INCS) \$(IMAP_INCS)"
+        ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) \$(CORE_INCS) \$(MAIL_INCS)"
     fi
 
-    for ngx_src in $IMAP_SRCS
+    for ngx_src in $MAIL_SRCS
     do
         ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
         ngx_obj=`echo $ngx_src \
@@ -300,7 +300,7 @@ if [ $IMAP = YES ]; then
 
         cat << END                                            >> $NGX_MAKEFILE
 
-$ngx_obj:	\$(CORE_DEPS) \$(IMAP_DEPS)$ngx_cont$ngx_src
+$ngx_obj:	\$(CORE_DEPS) \$(MAIL_DEPS)$ngx_cont$ngx_src
 	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
