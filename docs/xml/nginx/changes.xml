@@ -24,6 +24,17 @@ Thanks to Anton Yuzhaninov and Maxim Dounin.
 </para>
 </change>
 
+<change type="feature">
+<para lang="ru">
+теперь keep-alive соединения закрываются сразу же по получении сигнала
+переконфигурации.
+</para>
+<para lang="en">
+now the keep-alive connections are closed just after receiving
+the reconfiguration signal.
+</para>
+</change>
+
 <change type="change">
 <para lang="ru">
 директивы imap и auth переименованы соответственно в mail и pop3_auth.
