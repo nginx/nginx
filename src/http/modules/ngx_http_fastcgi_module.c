@@ -723,7 +723,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                     b->file_pos = file_pos;
                     file_pos += 32 * 1024;
 
-                    if (file_pos > body->buf->file_last) {
+                    if (file_pos >= body->buf->file_last) {
                         file_pos = body->buf->file_last;
                         next = 1;
                     }
@@ -735,7 +735,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                     b->pos = pos;
                     pos += 32 * 1024;
 
-                    if (pos > body->buf->last) {
+                    if (pos >= body->buf->last) {
                         pos = body->buf->last;
                         next = 1;
                     }
