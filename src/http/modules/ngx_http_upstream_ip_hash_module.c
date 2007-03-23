@@ -93,6 +93,7 @@ static ngx_int_t
 ngx_http_upstream_init_ip_hash_peer(ngx_http_request_t *r,
     ngx_http_upstream_srv_conf_t *us)
 {
+    u_char                                 *p;
     struct sockaddr_in                     *sin;
     ngx_http_upstream_ip_hash_peer_data_t  *iphp;
 
@@ -111,9 +112,10 @@ ngx_http_upstream_init_ip_hash_peer(ngx_http_request_t *r,
 
     /* AF_INET only */
     sin = (struct sockaddr_in *) r->connection->sockaddr;
-    iphp->addr[0] = (u_char) ((sin->sin_addr.s_addr >> 24) & 0xff);
-    iphp->addr[1] = (u_char) ((sin->sin_addr.s_addr >> 16) & 0xff);
-    iphp->addr[2] = (u_char) ((sin->sin_addr.s_addr >> 8) & 0xff);
+    p = (u_char *) &sin->sin_addr.s_addr;
+    iphp->addr[0] = p[0];
+    iphp->addr[1] = p[1];
+    iphp->addr[2] = p[2];
 
     iphp->hash = 89;
     iphp->tries = 0;
