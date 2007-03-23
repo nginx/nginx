@@ -2326,6 +2326,8 @@ ngx_http_upstream_copy_content_type(ngx_http_request_t *r, ngx_table_elt_t *h,
 
         r->headers_out.charset.len = h->value.data + h->value.len - p;
         r->headers_out.charset.data = p;
+
+        return NGX_OK;
     }
 
     return NGX_OK;
