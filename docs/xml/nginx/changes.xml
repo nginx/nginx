@@ -9,6 +9,60 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.16" date="26.03.2007">
+
+<change type="bugfix">
+<para lang="ru">
+в качестве ключа для хэша в директиве ip_hash не использовалась сеть
+класса С.<br/>
+Спасибо Павлу Ярковому.
+</para>
+<para lang="en">
+the C-class network was not used as hash key in the "ip_hash" directive.<br/>
+Thanks to Pavel Yarkovoy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в строке "Content-Type" в заголовке ответа бэкенда был указан charset
+и строка завершалась символом ";",
+то в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.3.50.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if a charset was set in the "Content-Type" header line and the line
+has trailing ";";
+bug appeared in 0.3.50.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки "[alert] zero size buf" при работе с FastCGI-сервером, если
+тело запроса, записанное во временный файл, было кратно 32K.
+</para>
+<para lang="en">
+the "[alert] zero size buf" error when FastCGI server was used and
+an request body written in a temporary file was multiple of 32K.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris без параметра --with-debug;
+ошибка появилась в 0.5.15.
+</para>
+<para lang="en">
+nginx could not be built on Solaris without the --with-debug option;
+bug appeared in 0.5.15.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.15" date="19.03.2007">
 
 <change type="feature">
