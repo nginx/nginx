@@ -379,7 +379,7 @@ ngx_http_get_indexed_variable(ngx_http_request_t *r, ngx_uint_t index)
 ngx_http_variable_value_t *
 ngx_http_get_flushed_variable(ngx_http_request_t *r, ngx_uint_t index)
 {
-    ngx_http_variable_value_t   *v;
+    ngx_http_variable_value_t  *v;
 
     v = &r->variables[index];
 
