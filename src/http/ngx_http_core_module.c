@@ -1898,16 +1898,29 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
-    ngx_str_t       *value, *content_type, *old;
+    ngx_str_t       *value, *content_type, *old, file;
     ngx_uint_t       i, n;
     ngx_hash_key_t  *type;
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[0].data, "include") == 0) {
+        file = value[1];
+
+        if (ngx_conf_full_name(cf->cycle, &file) == NGX_ERROR){
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
+
+        return ngx_conf_parse(cf, &file);
+    }
 
     content_type = ngx_palloc(cf->pool, sizeof(ngx_str_t));
     if (content_type == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    value = cf->args->elts;
     *content_type = value[0];
 
     for (i = 1; i < cf->args->nelts; i++) {
