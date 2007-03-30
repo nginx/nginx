@@ -146,6 +146,12 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                         r->method = NGX_HTTP_MKCOL;
                     }
 
+                    if (m[0] == 'T' && m[1] == 'R'
+                        && m[2] == 'A' && m[3] == 'C' && m[4] == 'E')
+                    {
+                        r->method = NGX_HTTP_TRACE;
+                    }
+
                     break;
 
                 case 6:
