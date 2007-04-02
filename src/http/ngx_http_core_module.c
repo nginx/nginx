@@ -2659,8 +2659,8 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (ngx_strstr(value[1].data, "$document_root") != 0
-        || ngx_strstr(value[1].data, "${document_root}") != 0)
+    if (ngx_strstr(value[1].data, "$document_root")
+        || ngx_strstr(value[1].data, "${document_root}"))
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "the $document_root variable may not be used "
