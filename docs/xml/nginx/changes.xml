@@ -9,6 +9,60 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.17" date="02.04.2007">
+
+<change type="change">
+<para lang="ru">
+теперь nginx для метода TRACE всегда возвращает код 405.
+</para>
+<para lang="en">
+now nginx always returns the 405 status for the TRACE method.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь nginx поддерживает директиву include внутри блока types.
+</para>
+<para lang="en">
+now nginx supports the "include" directive inside the "types" block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+использование переменной $document_root в директиве root и alias
+запрещено: оно вызывало рекурсивное переполнение стека.
+</para>
+<para lang="en">
+the $document_root variable usage in the "root" and "alias" directives
+is disabled: this caused recursive stack overflow.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в использовании протокола HTTPS в директиве proxy_pass.
+</para>
+<para lang="en">
+in the HTTPS protocol in the "proxy_pass" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в некоторых случаях некэшируемые переменные (такие, как $uri)
+возвращали старое закэшированное значение.
+</para>
+<para lang="en">
+in some cases non-cachable variables (such as $uri variable)
+returned old cached value.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.16" date="26.03.2007">
 
 <change type="bugfix">
@@ -3150,7 +3204,7 @@ bug appeared in 0.3.18.
 запросы с телом, записанным во временный файл.
 </para>
 <para lang="en">
-if the HTTP protocol was used in the "proxy_pass" directive and
+if the HTTPS protocol was used in the "proxy_pass" directive and
 the request body was in temporarily file then the request was not transferred.
 </para>
 </change>
@@ -3384,7 +3438,7 @@ directive.
 запросы с телом.
 </para>
 <para lang="en">
-if the HTTP protocol was used in the "proxy_pass" directive then
+if the HTTPS protocol was used in the "proxy_pass" directive then
 the requests with the body was not transferred.
 </para>
 </change>
@@ -3766,7 +3820,7 @@ bug appeared in 0.2.4.
 в использовании протокола HTTPS в директиве proxy_pass.
 </para>
 <para lang="en">
-in the HTTP protocol in the "proxy_pass" directive.
+in the HTTPS protocol in the "proxy_pass" directive.
 </para>
 </change>
 
@@ -3776,7 +3830,7 @@ in the HTTP protocol in the "proxy_pass" directive.
 использовался порт 80.
 </para>
 <para lang="en">
-when the HTTP protocol was used in the "proxy_pass" directive the port 80
+when the HTTPS protocol was used in the "proxy_pass" directive the port 80
 was used by default.
 </para>
 </change>
