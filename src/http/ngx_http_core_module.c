@@ -2614,6 +2614,12 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
+        if (ngx_strchr(value[i].data, '/')) {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                               "server name \"%V\" has strange symbols",
+                               &value[i]);
+        }
+
         sn = ngx_array_push(&cscf->server_names);
         if (sn == NULL) {
             return NGX_CONF_ERROR;

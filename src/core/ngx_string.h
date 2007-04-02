@@ -40,6 +40,7 @@ typedef struct {
 
 
 #define ngx_strstr(s1, s2)  strstr((const char *) s1, (const char *) s2)
+#define ngx_strchr(s1, c)   strchr((const char *) s1, (int) c)
 #define ngx_strlen(s)       strlen((const char *) s)
 
 
