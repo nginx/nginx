@@ -302,7 +302,7 @@ ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log, u_char *buf,
             log->disk_full_time = now;
         }
 
-        if (now - log->error_log_time > 60) {
+        if (now - log->error_log_time > 59) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, err,
                           ngx_write_fd_n " to \"%V\" failed",
                           &log->file->name);
@@ -313,7 +313,7 @@ ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log, u_char *buf,
         return;
     }
 
-    if (now - log->error_log_time > 60) {
+    if (now - log->error_log_time > 59) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                       ngx_write_fd_n " to \"%V\" was incomplete: %z of %uz",
                       &log->file->name, n, len);
