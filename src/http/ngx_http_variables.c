@@ -23,8 +23,6 @@ static ngx_int_t ngx_http_variable_unknown_header_in(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_unknown_header_out(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
-static ngx_int_t ngx_http_variable_unknown_header(ngx_http_variable_value_t *v,
-    ngx_str_t *var, ngx_list_part_t *part, size_t prefix);
 
 static ngx_int_t ngx_http_variable_host(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -451,6 +449,17 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key,
         return NULL;
     }
 
+    if (ngx_strncmp(name->data, "upstream_http_", 10) == 0) {
+
+        if (ngx_http_upstream_header_variable(r, vv, (uintptr_t) name)
+            == NGX_OK)
+        {
+            return vv;
+        }
+
+        return NULL;
+    }
+
     vv->not_found = 1;
 
     if (nowarn == 0) {
@@ -614,7 +623,7 @@ ngx_http_variable_unknown_header_out(ngx_http_request_t *r,
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_http_variable_unknown_header(ngx_http_variable_value_t *v, ngx_str_t *var,
     ngx_list_part_t *part, size_t prefix)
 {
@@ -1287,6 +1296,13 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
 
         if (ngx_strncmp(v[i].name.data, "sent_http_", 10) == 0) {
             v[i].get_handler = ngx_http_variable_unknown_header_out;
+            v[i].data = (uintptr_t) &v[i].name;
+
+            continue;
+        }
+
+        if (ngx_strncmp(v[i].name.data, "upstream_http_", 14) == 0) {
+            v[i].get_handler = ngx_http_upstream_header_variable;
             v[i].data = (uintptr_t) &v[i].name;
 
             continue;
