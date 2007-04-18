@@ -702,20 +702,20 @@ ngx_mail_proxy_read_response(ngx_mail_session_t *s, ngx_uint_t state)
 
         case ngx_smtp_helo:
         case ngx_smtp_noxclient:
-	    if (p[0] == '2' && p[1] == '5' && p[2] == '0') {
-		return NGX_OK;
-	    }
-	    break;
+            if (p[0] == '2' && p[1] == '5' && p[2] == '0') {
+                return NGX_OK;
+            }
+            break;
 
         case ngx_smtp_start:
         case ngx_smtp_xclient:
-	    if (p[0] == '2' && p[1] == '2' && p[2] == '0') {
-		return NGX_OK;
-	    }
-	    break;
+            if (p[0] == '2' && p[1] == '2' && p[2] == '0') {
+                return NGX_OK;
+            }
+            break;
         }
 
-	break;
+        break;
     }
 
     pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);

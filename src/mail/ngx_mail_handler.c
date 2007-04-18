@@ -297,19 +297,19 @@ ngx_mail_init_session(ngx_connection_t *c)
                      - s->salt.data;
 
         if (s->protocol == NGX_MAIL_POP3_PROTOCOL) {
-	    s->out.data = ngx_palloc(c->pool,
+            s->out.data = ngx_palloc(c->pool,
                                      greetings[0].len + 1 + s->salt.len);
-	    if (s->out.data == NULL) {
-		ngx_mail_session_internal_server_error(s);
-		return;
-	    }
+            if (s->out.data == NULL) {
+                ngx_mail_session_internal_server_error(s);
+                return;
+            }
 
-	    p = ngx_cpymem(s->out.data,
+            p = ngx_cpymem(s->out.data,
                            greetings[0].data, greetings[0].len - 2);
-	    *p++ = ' ';
-	    p = ngx_cpymem(p, s->salt.data, s->salt.len);
+            *p++ = ' ';
+            p = ngx_cpymem(p, s->salt.data, s->salt.len);
 
-	    s->out.len = p - s->out.data;
+            s->out.len = p - s->out.data;
         }
     }
 
@@ -1408,31 +1408,31 @@ ngx_smtp_auth_state(ngx_event_t *rev)
             case NGX_SMTP_MAIL:
 
                 if (s->connection->log->log_level >= NGX_LOG_INFO) {
-		    l.len = s->buffer->last - s->buffer->start;
-		    l.data = s->buffer->start;
+                    l.len = s->buffer->last - s->buffer->start;
+                    l.data = s->buffer->start;
 
-		    for (i = 0; i < l.len; i++) {
-			ch = l.data[i];
+                    for (i = 0; i < l.len; i++) {
+                        ch = l.data[i];
 
-			if (ch != CR && ch != LF) {
-			    continue;
-			}
+                        if (ch != CR && ch != LF) {
+                            continue;
+                        }
 
-			l.data[i] = ' ';
-		    }
+                        l.data[i] = ' ';
+                    }
 
-		    while (i) {
-			if (l.data[i - 1] != ' ') {
-			    break;
-			}
+                    while (i) {
+                        if (l.data[i - 1] != ' ') {
+                            break;
+                        }
 
-			i--;
-		    }
+                        i--;
+                    }
 
-		    l.len = i;
+                    l.len = i;
 
-		    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
-				  "client was rejected: \"%V\"", &l);
+                    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
+                                  "client was rejected: \"%V\"", &l);
                 }
 
                 text = smtp_auth_required;

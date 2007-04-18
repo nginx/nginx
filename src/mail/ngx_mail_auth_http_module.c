@@ -686,19 +686,19 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                     ctx->err.len = ctx->errcode.len + ctx->errmsg.len
                                    + sizeof(" " CRLF) - 1;
 
-		    p = ngx_palloc(s->connection->pool, ctx->err.len);
-		    if (p == NULL) {
-			ngx_close_connection(ctx->peer.connection);
-			ngx_destroy_pool(ctx->pool);
-			ngx_mail_session_internal_server_error(s);
-			return;
-		    }
+                    p = ngx_palloc(s->connection->pool, ctx->err.len);
+                    if (p == NULL) {
+                        ngx_close_connection(ctx->peer.connection);
+                        ngx_destroy_pool(ctx->pool);
+                        ngx_mail_session_internal_server_error(s);
+                        return;
+                    }
 
-		    ctx->err.data = p;
+                    ctx->err.data = p;
 
-		    p = ngx_cpymem(p, ctx->errcode.data, ctx->errcode.len);
+                    p = ngx_cpymem(p, ctx->errcode.data, ctx->errcode.len);
                     *p++ = ' ';
-		    p = ngx_cpymem(p, ctx->errmsg.data, ctx->errmsg.len);
+                    p = ngx_cpymem(p, ctx->errmsg.data, ctx->errmsg.len);
                     *p++ = CR; *p = LF;
                 }
 

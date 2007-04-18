@@ -767,7 +767,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
                    "http upstream send request");
 
     if (!u->request_sent && ngx_http_upstream_test_connect(c) != NGX_OK) {
-	ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+        ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
         return;
     }
 
@@ -914,7 +914,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
     }
 
     if (!u->request_sent && ngx_http_upstream_test_connect(c) != NGX_OK) {
-	ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+        ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
         return;
     }
 
@@ -1259,33 +1259,33 @@ ngx_http_upstream_test_connect(ngx_connection_t *c)
 #if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT)  {
-	if (c->write->pending_eof) {
-	    (void) ngx_connection_error(c, c->write->kq_errno,
-			            "kevent() reported that connect() failed");
-	    return NGX_ERROR;
-	}
+        if (c->write->pending_eof) {
+            (void) ngx_connection_error(c, c->write->kq_errno,
+                                    "kevent() reported that connect() failed");
+            return NGX_ERROR;
+        }
 
     } else
 #endif
     {
-	err = 0;
-	len = sizeof(int);
+        err = 0;
+        len = sizeof(int);
 
-	/*
-	 * BSDs and Linux return 0 and set a pending error in err
-	 * Solaris returns -1 and sets errno
-	 */
+        /*
+         * BSDs and Linux return 0 and set a pending error in err
+         * Solaris returns -1 and sets errno
+         */
 
-	if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
-	    == -1)
-	{
-	    err = ngx_errno;
-	}
+        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
+            == -1)
+        {
+            err = ngx_errno;
+        }
 
-	if (err) {
-	    (void) ngx_connection_error(c, err, "connect() failed");
-	    return NGX_ERROR;
-	}
+        if (err) {
+            (void) ngx_connection_error(c, err, "connect() failed");
+            return NGX_ERROR;
+        }
     }
 
     return NGX_OK;
