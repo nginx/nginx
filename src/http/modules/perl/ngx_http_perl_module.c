@@ -466,6 +466,7 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
         }
 
         pmcf->perl = perl;
+        pmcf->nginx = nginx_stash;
 
         return NGX_CONF_OK;
     }
