@@ -53,14 +53,16 @@ END
     *)
         cat << END                                            >> $NGX_MAKEFILE
 
-$PCRE/pcre.h:	$NGX_MAKEFILE
+$PCRE/pcre.h:	$PCRE/Makefile
+
+$PCRE/Makefile:	$NGX_MAKEFILE
 	cd $PCRE \\
 	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi \\
 	&& CC="\$(CC)" CFLAGS="$PCRE_OPT" \\
 	./configure --disable-shared
 
 
-$PCRE/.libs/libpcre.a:	$PCRE/pcre.h
+$PCRE/.libs/libpcre.a:	$PCRE/Makefile
 	cd $PCRE \\
 	&& \$(MAKE) libpcre.la
 
