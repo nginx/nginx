@@ -54,11 +54,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_list_part_t    *part, *opart;
     ngx_open_file_t    *file;
     ngx_listening_t    *ls, *nls;
-    ngx_core_conf_t    *ccf;
+    ngx_core_conf_t    *ccf, *old_ccf;
     ngx_core_module_t  *module;
-#if !(WIN32)
-    ngx_core_conf_t    *old_ccf;
-#endif
 
     log = old_cycle->log;
 
@@ -746,6 +743,14 @@ old_shm_zone_done:
 
 
 failed:
+
+    if (!ngx_is_init_cycle(old_cycle)) {
+        old_ccf = (ngx_core_conf_t *) ngx_get_conf(old_cycle->conf_ctx,
+                                                   ngx_core_module);
+        if (old_ccf->environment) {
+            environ = old_ccf->environment;
+        }
+    }
 
     /* rollback the new cycle configuration */
 

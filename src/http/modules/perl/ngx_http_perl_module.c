@@ -459,6 +459,11 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 #if !(NGX_HAVE_PERL_MULTIPLICITY)
 
     if (perl) {
+
+        if (ngx_set_environment(cf->cycle, NULL) == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
         if (ngx_http_perl_run_requires(aTHX_ &pmcf->requires, cf->log)
             != NGX_OK)
         {
