@@ -232,7 +232,6 @@ struct ngx_http_upstream_s {
     ngx_str_t                       method;
 
     ngx_http_upstream_state_t      *state;
-    ngx_array_t                     states;  /* of ngx_http_upstream_state_t */
 
     ngx_str_t                       uri;
 

@@ -328,12 +328,25 @@ ngx_http_upstream_init(ngx_http_request_t *r)
 
     u->writer.pool = r->pool;
 
-    if (ngx_array_init(&u->states, r->pool, 1,
-                       sizeof(ngx_http_upstream_state_t))
-        != NGX_OK)
-    {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return;
+    if (r->upstream_states == NULL) {
+
+        r->upstream_states = ngx_array_create(r->pool, 1,
+                                            sizeof(ngx_http_upstream_state_t));
+        if (r->upstream_states == NULL) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+    } else {
+
+        u->state = ngx_array_push(r->upstream_states);
+        if (u->state == NULL) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        ngx_memzero(u->state, sizeof(ngx_http_upstream_state_t));
     }
 
     cln = ngx_http_cleanup_add(r, 0);
@@ -509,7 +522,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
         u->state->response_msec = tp->msec - u->state->response_msec;
     }
 
-    u->state = ngx_array_push(&u->states);
+    u->state = ngx_array_push(r->upstream_states);
     if (u->state == NULL) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -2502,21 +2515,18 @@ ngx_http_upstream_status_variable(ngx_http_request_t *r,
     u_char                     *p;
     size_t                      len;
     ngx_uint_t                  i;
-    ngx_http_upstream_t        *u;
     ngx_http_upstream_state_t  *state;
 
     v->valid = 1;
     v->no_cachable = 0;
     v->not_found = 0;
 
-    u = r->upstream;
-
-    if (u == NULL || u->states.nelts == 0) {
+    if (r->upstream_states == NULL || r->upstream_states->nelts == 0) {
         v->not_found = 1;
         return NGX_OK;
     }
 
-    len = u->states.nelts * (3 + 2);
+    len = r->upstream_states->nelts * (3 + 2);
 
     p = ngx_palloc(r->pool, len);
     if (p == NULL) {
@@ -2526,22 +2536,35 @@ ngx_http_upstream_status_variable(ngx_http_request_t *r,
     v->data = p;
 
     i = 0;
-    state = u->states.elts;
+    state = r->upstream_states->elts;
 
     for ( ;; ) {
-        if (state[i].status == 0) {
-            *p++ = '-';
+        if (state[i].status) {
+            p = ngx_sprintf(p, "%ui", state[i].status);
 
         } else {
-            p = ngx_sprintf(p, "%ui", state[i].status);
+            *p++ = '-';
         }
 
-        if (++i == u->states.nelts) {
+        if (++i == r->upstream_states->nelts) {
             break;
         }
 
-        *p++ = ',';
-        *p++ = ' ';
+        if (state[i].peer) {
+            *p++ = ',';
+            *p++ = ' ';
+
+        } else {
+            *p++ = ' ';
+            *p++ = ':';
+            *p++ = ' ';
+
+            if (++i == r->upstream_states->nelts) {
+                break;
+            }
+
+            continue;
+        }
     }
 
     v->len = p - v->data;
@@ -2558,21 +2581,18 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
     size_t                      len;
     ngx_uint_t                  i;
     ngx_msec_int_t              ms;
-    ngx_http_upstream_t        *u;
     ngx_http_upstream_state_t  *state;
 
     v->valid = 1;
     v->no_cachable = 0;
     v->not_found = 0;
 
-    u = r->upstream;
-
-    if (u == NULL || u->states.nelts == 0) {
+    if (r->upstream_states == NULL || r->upstream_states->nelts == 0) {
         v->not_found = 1;
         return NGX_OK;
     }
 
-    len = u->states.nelts * (NGX_TIME_T_LEN + 4 + 2);
+    len = r->upstream_states->nelts * (NGX_TIME_T_LEN + 4 + 2);
 
     p = ngx_palloc(r->pool, len);
     if (p == NULL) {
@@ -2582,24 +2602,37 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
     v->data = p;
 
     i = 0;
-    state = u->states.elts;
+    state = r->upstream_states->elts;
 
     for ( ;; ) {
-        if (state[i].status == 0) {
-            *p++ = '-';
-
-        } else {
+        if (state[i].status) {
             ms = state[i].response_sec * 1000 + state[i].response_msec;
             ms = (ms >= 0) ? ms : 0;
             p = ngx_sprintf(p, "%d.%03d", ms / 1000, ms % 1000);
+
+        } else {
+            *p++ = '-';
         }
 
-        if (++i == u->states.nelts) {
+        if (++i == r->upstream_states->nelts) {
             break;
         }
 
-        *p++ = ',';
-        *p++ = ' ';
+        if (state[i].peer) {
+            *p++ = ',';
+            *p++ = ' ';
+
+        } else {
+            *p++ = ' ';
+            *p++ = ':';
+            *p++ = ' ';
+
+            if (++i == r->upstream_states->nelts) {
+                break;
+            }
+
+            continue;
+        }
     }
 
     v->len = p - v->data;
