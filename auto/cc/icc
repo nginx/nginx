@@ -26,6 +26,11 @@ case "$NGX_ICC_VER" in
         IPO="-ipo"
     ;;
 
+    # 8.1.38 under FreeBSD can not link -ipo
+    8.1)
+        IPO="-ip"
+    ;;
+
     *)
         IPO="-ipo -ipo_obj"
     ;;
