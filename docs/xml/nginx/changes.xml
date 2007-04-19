@@ -9,6 +9,70 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.18" date="19.04.2007">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_sub_filter_module.
+</para>
+<para lang="en">
+the ngx_http_sub_filter_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные "$upstream_http_...".
+</para>
+<para lang="en">
+the "$upstream_http_..." variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь переменные $upstream_status и $upstream_response_time
+содержат данные о всех обращениях к апстримам, сделанным до X-Accel-Redirect.
+</para>
+<para lang="en">
+now the $upstream_status and $upstream_response_time variables
+keep data about all upstreams before X-Accel-Redirect.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx был собран с модулем ngx_http_perl_module и perl
+не поддерживал multiplicity, то после первой переконфигурации
+и после получения любого сигнала
+в основном процессе происходил segmentation fault;
+ошибка появилась в 0.5.9.
+</para>
+<para lang="en">
+a segmentation fault occurred in master process
+after first reconfiguration and receiving any signal
+if nginx was built with ngx_http_perl_module and perl
+did not support multiplicity;
+bug appeared in 0.5.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если perl не поддерживал multiplicity, то после переконфигурации
+перловый код не работал;
+ошибка появилась в 0.3.38.
+</para>
+<para lang="en">
+if perl did not support multiplicity, then after reconfiguration
+perl code did not work;
+bug appeared in 0.3.38.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.17" date="02.04.2007">
 
 <change type="change">
