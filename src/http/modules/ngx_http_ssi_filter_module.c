@@ -107,8 +107,8 @@ static char *ngx_http_ssi_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_ssi_preconfiguration(ngx_conf_t *cf);
 static void *ngx_http_ssi_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_ssi_init_main_conf(ngx_conf_t *cf, void *conf);
-static void *ngx_http_ssi_create_conf(ngx_conf_t *cf);
-static char *ngx_http_ssi_merge_conf(ngx_conf_t *cf,
+static void *ngx_http_ssi_create_loc_conf(ngx_conf_t *cf);
+static char *ngx_http_ssi_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
 static ngx_int_t ngx_http_ssi_filter_init(ngx_conf_t *cf);
 
@@ -173,8 +173,8 @@ static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
     NULL,                                  /* create server configuration */
     NULL,                                  /* merge server configuration */
 
-    ngx_http_ssi_create_conf,              /* create location configuration */
-    ngx_http_ssi_merge_conf                /* merge location configuration */
+    ngx_http_ssi_create_loc_conf,          /* create location configuration */
+    ngx_http_ssi_merge_loc_conf            /* merge location configuration */
 };
 
 
@@ -2746,7 +2746,7 @@ ngx_http_ssi_init_main_conf(ngx_conf_t *cf, void *conf)
 
 
 static void *
-ngx_http_ssi_create_conf(ngx_conf_t *cf)
+ngx_http_ssi_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_ssi_loc_conf_t  *slcf;
 
@@ -2773,7 +2773,7 @@ ngx_http_ssi_create_conf(ngx_conf_t *cf)
 
 
 static char *
-ngx_http_ssi_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+ngx_http_ssi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_ssi_loc_conf_t *prev = parent;
     ngx_http_ssi_loc_conf_t *conf = child;
