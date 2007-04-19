@@ -585,7 +585,7 @@ destination_done:
     if (depth != 0 && depth != NGX_HTTP_DAV_INFINITY_DEPTH) {
         return NGX_HTTP_BAD_REQUEST;
     }
- 
+
     over = r->headers_in.overwrite;
 
     if (over) {
@@ -1003,7 +1003,7 @@ static ngx_int_t
 ngx_http_dav_depth(ngx_http_request_t *r, ngx_int_t dflt)
 {
     ngx_table_elt_t  *depth;
- 
+
     depth = r->headers_in.depth;
 
     if (depth == NULL) {

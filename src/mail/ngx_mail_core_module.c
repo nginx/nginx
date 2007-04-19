@@ -63,7 +63,7 @@ static ngx_conf_bitmask_t  ngx_smtp_auth_methods[] = {
 
 
 static ngx_str_t  ngx_smtp_auth_methods_names[] = {
-    ngx_string("PLAIN"), 
+    ngx_string("PLAIN"),
     ngx_string("LOGIN"),
     ngx_null_string,  /* APOP */
     ngx_string("CRAM-MD5")
