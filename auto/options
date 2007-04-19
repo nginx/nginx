@@ -53,6 +53,7 @@ HTTP_SSL=NO
 HTTP_SSI=YES
 HTTP_POSTPONE=NO
 HTTP_REALIP=NO
+HTTP_SUB=NO
 HTTP_ADDITION=NO
 HTTP_DAV=NO
 HTTP_ACCESS=YES
@@ -152,6 +153,7 @@ do
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
         --with-http_addition_module)     HTTP_ADDITION=YES          ;;
+        --with-http_sub_module)          HTTP_SUB=YES               ;;
         --with-http_dav_module)          HTTP_DAV=YES               ;;
         --with-http_flv_module)          HTTP_FLV=YES               ;;
 
@@ -259,6 +261,7 @@ cat << END
   --with-http_ssl_module             enable ngx_http_ssl_module
   --with-http_realip_module          enable ngx_http_realip_module
   --with-http_addition_module        enable ngx_http_addition_module
+  --with-http_sub_module             enable ngx_http_sub_module
   --with-http_dav_module             enable ngx_http_dav_module
   --with-http_flv_module             enable ngx_http_flv_module
 

@@ -317,6 +317,10 @@ HTTP_SSI_DEPS=src/http/modules/ngx_http_ssi_filter_module.h
 HTTP_SSI_SRCS=src/http/modules/ngx_http_ssi_filter_module.c
 
 
+HTTP_SUB_FILTER_MODULE=ngx_http_sub_filter_module
+HTTP_SUB_SRCS=src/http/modules/ngx_http_sub_filter_module.c
+
+
 HTTP_USERID_FILTER_MODULE=ngx_http_userid_filter_module
 HTTP_USERID_SRCS=src/http/modules/ngx_http_userid_filter_module.c
 

@@ -124,7 +124,8 @@
 #define NGX_HTTP_WRITE_BUFFERED            0x10
 #define NGX_HTTP_GZIP_BUFFERED             0x20
 #define NGX_HTTP_SSI_BUFFERED              0x01
-#define NGX_HTTP_COPY_BUFFERED             0x02
+#define NGX_HTTP_SUB_BUFFERED              0x02
+#define NGX_HTTP_COPY_BUFFERED             0x04
 
 
 typedef enum {
