@@ -1304,6 +1304,7 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
         if (ngx_strncmp(v[i].name.data, "upstream_http_", 14) == 0) {
             v[i].get_handler = ngx_http_upstream_header_variable;
             v[i].data = (uintptr_t) &v[i].name;
+            v[i].flags = NGX_HTTP_VAR_NOCACHABLE;
 
             continue;
         }
