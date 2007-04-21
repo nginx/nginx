@@ -212,6 +212,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 static void
 ngx_http_init_request(ngx_event_t *rev)
 {
+    ngx_time_t                 *tp;
     socklen_t                   len;
     ngx_uint_t                  i;
     struct sockaddr_in          sin;
@@ -421,7 +422,9 @@ ngx_http_init_request(ngx_event_t *rev)
 
     r->main = r;
 
-    r->start_time = ngx_time();
+    tp = ngx_timeofday();
+    r->start_sec = tp->sec;
+    r->start_msec = tp->msec;
 
     r->method = NGX_HTTP_UNKNOWN;
 

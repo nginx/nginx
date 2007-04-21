@@ -170,7 +170,8 @@ static ngx_http_log_var_t  ngx_http_log_vars[] = {
     { ngx_string("time_local"), sizeof("28/Sep/1970:12:00:00 +0600") - 1,
                           ngx_http_log_time },
     { ngx_string("msec"), NGX_TIME_T_LEN + 4, ngx_http_log_msec },
-    { ngx_string("request_time"), NGX_TIME_T_LEN, ngx_http_log_request_time },
+    { ngx_string("request_time"), NGX_TIME_T_LEN + 4,
+                          ngx_http_log_request_time },
     { ngx_string("status"), 3, ngx_http_log_status },
     { ngx_string("bytes_sent"), NGX_OFF_T_LEN, ngx_http_log_bytes_sent },
     { ngx_string("body_bytes_sent"), NGX_OFF_T_LEN,
@@ -394,11 +395,15 @@ static u_char *
 ngx_http_log_request_time(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op)
 {
-    time_t  elapsed;
+    ngx_time_t      *tp;
+    ngx_msec_int_t   ms;
 
-    elapsed = ngx_time() - r->start_time;
+    tp = ngx_timeofday();
 
-    return ngx_sprintf(buf, "%T", elapsed);
+    ms = (tp->sec - r->start_sec) * 1000 + (tp->msec - r->start_msec);
+    ms = (ms >= 0) ? ms : 0;
+
+    return ngx_sprintf(buf, "%T.%03M", ms / 1000, ms % 1000);
 }
 
 

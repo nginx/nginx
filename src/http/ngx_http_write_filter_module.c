@@ -210,7 +210,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (r->limit_rate) {
-        to_send = r->limit_rate * (ngx_time() - r->start_time + 1) - c->sent;
+        to_send = r->limit_rate * (ngx_time() - r->start_sec + 1) - c->sent;
 
         if (to_send <= 0) {
             c->write->delayed = 1;

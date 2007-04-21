@@ -1353,8 +1353,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     sr->headers_in = r->headers_in;
 
-    sr->start_time = ngx_time();
-
     ngx_http_clear_content_length(sr);
     ngx_http_clear_accept_ranges(sr);
     ngx_http_clear_last_modified(sr);
