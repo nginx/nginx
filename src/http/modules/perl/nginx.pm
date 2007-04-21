@@ -92,6 +92,13 @@ use constant HTTP_GATEWAY_TIME_OUT          => 504;
 use constant HTTP_INSUFFICIENT_STORAGE      => 507;
 
 
+sub rflush {
+    my $r = shift;
+
+    $r->flush;
+}
+
+
 1;
 __END__
 

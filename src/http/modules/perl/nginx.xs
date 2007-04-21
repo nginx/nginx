@@ -681,7 +681,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
 
 
 void
-rflush(r)
+flush(r)
     CODE:
 
     ngx_http_request_t  *r;
@@ -696,7 +696,7 @@ rflush(r)
 
     b->flush = 1;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "$r->rflush");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "$r->flush");
 
     (void) ngx_http_perl_output(r, b);
 
