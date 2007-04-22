@@ -54,6 +54,9 @@ typedef struct {
     ngx_str_t                      port;
 
     ngx_flag_t                     redirect;
+
+    ngx_uint_t                     headers_hash_max_size;
+    ngx_uint_t                     headers_hash_bucket_size;
 } ngx_http_proxy_loc_conf_t;
 
 
@@ -205,6 +208,20 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_conf_set_keyval_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, headers_source),
+      NULL },
+
+    { ngx_string("proxy_headers_hash_max_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, headers_hash_max_size),
+      NULL },
+
+    { ngx_string("proxy_headers_hash_bucket_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, headers_hash_bucket_size),
       NULL },
 
     { ngx_string("proxy_set_body"),
@@ -1510,6 +1527,9 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->redirect = NGX_CONF_UNSET;
     conf->upstream.change_buffering = 1;
 
+    conf->headers_hash_max_size = NGX_CONF_UNSET_UINT;
+    conf->headers_hash_bucket_size = NGX_CONF_UNSET_UINT;
+
     return conf;
 }
 
@@ -1712,6 +1732,15 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
+    ngx_conf_merge_uint_value(conf->headers_hash_max_size,
+                              prev->headers_hash_max_size, 512);
+
+    ngx_conf_merge_uint_value(conf->headers_hash_bucket_size,
+                              prev->headers_hash_bucket_size, 64);
+
+    conf->headers_hash_bucket_size = ngx_align(conf->headers_hash_bucket_size,
+                                               ngx_cacheline_size);
+
     if (conf->upstream.hide_headers == NULL
         && conf->upstream.pass_headers == NULL)
     {
@@ -1801,9 +1830,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     hash.hash = &conf->upstream.hide_headers_hash;
     hash.key = ngx_hash_key_lc;
-    hash.max_size = 512;
-    hash.bucket_size = ngx_align(64, ngx_cacheline_size);
-    hash.name = "proxy_hide_headers_hash";
+    hash.max_size = conf->headers_hash_max_size;
+    hash.bucket_size = conf->headers_hash_bucket_size;
+    hash.name = "proxy_headers_hash";
     hash.pool = cf->pool;
     hash.temp_pool = NULL;
 
@@ -2071,9 +2100,9 @@ peers:
 
     hash.hash = &conf->headers_set_hash;
     hash.key = ngx_hash_key_lc;
-    hash.max_size = 512;
-    hash.bucket_size = ngx_cacheline_size;
-    hash.name = "proxy_set_header_hash";
+    hash.max_size = conf->headers_hash_max_size;
+    hash.bucket_size = conf->headers_hash_bucket_size;
+    hash.name = "proxy_headers_hash";
     hash.pool = cf->pool;
     hash.temp_pool = NULL;
 
