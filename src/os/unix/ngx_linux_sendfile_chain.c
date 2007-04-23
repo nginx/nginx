@@ -223,7 +223,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                     size = limit - send;
 
                     aligned = (cl->buf->file_pos + size + ngx_pagesize - 1)
-                                                      & ~(ngx_pagesize - 1);
+                               & ~((off_t) ngx_pagesize - 1);
 
                     if (aligned <= cl->buf->file_last) {
                         size = aligned - cl->buf->file_pos;
