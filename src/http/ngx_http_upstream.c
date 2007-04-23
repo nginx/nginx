@@ -72,6 +72,8 @@ static ngx_int_t ngx_http_upstream_copy_content_encoding(ngx_http_request_t *r,
 #endif
 
 static ngx_int_t ngx_http_upstream_add_variables(ngx_conf_t *cf);
+static ngx_int_t ngx_http_upstream_addr_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_upstream_status_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
@@ -256,6 +258,9 @@ ngx_module_t  ngx_http_upstream_module = {
 
 
 static ngx_http_variable_t  ngx_http_upstream_vars[] = {
+
+    { ngx_string("upstream_addr"), NULL,
+      ngx_http_upstream_addr_variable, 0, NGX_HTTP_VAR_NOHASH, 0 },
 
     { ngx_string("upstream_status"), NULL,
       ngx_http_upstream_status_variable, 0, NGX_HTTP_VAR_NOHASH, 0 },
@@ -2503,6 +2508,77 @@ ngx_http_upstream_add_variables(ngx_conf_t *cf)
         var->get_handler = v->get_handler;
         var->data = v->data;
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_addr_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char                     *p;
+    size_t                      len;
+    ngx_uint_t                  i;
+    ngx_http_upstream_state_t  *state;
+
+    v->valid = 1;
+    v->no_cachable = 0;
+    v->not_found = 0;
+
+    if (r->upstream_states == NULL || r->upstream_states->nelts == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    len = 0;
+    state = r->upstream_states->elts;
+
+    for (i = 0; i < r->upstream_states->nelts; i++) {
+        if (state[i].peer) {
+            len += state[i].peer->len + 2;
+
+        } else {
+            len += 3;
+        }
+    }
+
+    p = ngx_palloc(r->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->data = p;
+
+    i = 0;
+
+    for ( ;; ) {
+        if (state[i].peer) {
+            p = ngx_cpymem(p, state[i].peer->data, state[i].peer->len);
+        }
+
+        if (++i == r->upstream_states->nelts) {
+            break;
+        }
+
+        if (state[i].peer) {
+            *p++ = ',';
+            *p++ = ' ';
+
+        } else {
+            *p++ = ' ';
+            *p++ = ':';
+            *p++ = ' ';
+
+            if (++i == r->upstream_states->nelts) {
+                break;
+            }
+
+            continue;
+        }
+    }
+
+    v->len = p - v->data;
 
     return NGX_OK;
 }
