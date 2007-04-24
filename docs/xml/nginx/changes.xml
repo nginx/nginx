@@ -9,6 +9,72 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.19" date="24.04.2007">
+
+<change type="change">
+<para lang="ru">
+значение переменной $request_time теперь записывается с точностью
+до миллисекунд.
+</para>
+<para lang="en">
+now the $request_time variable has millisecond precision.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+метод $r->rflush в модуле ngx_http_perl_module переименован в $r->flush.
+</para>
+<para lang="en">
+the method $r->rflush of ngx_http_perl_module was renamed to the $r->flush.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $upstream_addr.
+</para>
+<para lang="en">
+the $upstream_addr variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_headers_hash_max_size и proxy_headers_hash_bucket_size.<br/>
+Спасибо Володымыру Костырко.
+</para>
+<para lang="en">
+the "proxy_headers_hash_max_size" and "proxy_headers_hash_bucket_size"
+directives.<br/>
+Thanks to Volodymyr Kostyrko.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании sendfile и limit_rate на 64-битных платформах
+нельзя было передавать файлы больше 2G.
+</para>
+<para lang="en">
+the files more than 2G could not be transferred using sendfile and limit_rate
+on 64-bit platforms.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании sendfile на 64-битном Linux нельзя было передавать файлы
+больше 2G.
+</para>
+<para lang="en">
+the files more than 2G could not be transferred using sendfile on 64-bit Linux.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.18" date="19.04.2007">
 
 <change type="feature">
