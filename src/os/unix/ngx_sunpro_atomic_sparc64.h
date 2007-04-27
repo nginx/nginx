@@ -24,7 +24,7 @@ static ngx_inline ngx_atomic_uint_t
 ngx_atomic_cmp_set(ngx_atomic_t *lock, ngx_atomic_uint_t old,
     ngx_atomic_uint_t set)
 {
-    NGX_CASA(set, old, lock);
+    set = NGX_CASA(set, old, lock);
 
     return (set == old);
 }
@@ -41,7 +41,7 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
 
         res = old + add;
 
-        NGX_CASA(res, old, value);
+        res = NGX_CASA(res, old, value);
 
         if (res == old) {
             return res;
