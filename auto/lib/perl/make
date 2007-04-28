@@ -9,7 +9,6 @@ $NGX_OBJS/src/http/modules/perl/blib/arch/auto/nginx/nginx.so:		\
 		src/http/modules/perl/nginx.xs				\
 		src/http/modules/perl/ngx_http_perl_module.h		\
 		$NGX_OBJS/src/http/modules/perl/Makefile
-
 	cp -p src/http/modules/perl/nginx.* $NGX_OBJS/src/http/modules/perl/
 
 	cd $NGX_OBJS/src/http/modules/perl && make
@@ -20,7 +19,6 @@ $NGX_OBJS/src/http/modules/perl/blib/arch/auto/nginx/nginx.so:		\
 $NGX_OBJS/src/http/modules/perl/Makefile:				\
 		src/http/modules/perl/Makefile.PL			\
 		src/http/modules/perl/nginx.pm
-
 	cp -p src/http/modules/perl/nginx.* $NGX_OBJS/src/http/modules/perl/
 	cp -p src/http/modules/perl/typemap $NGX_OBJS/src/http/modules/perl/
 	cp -p src/http/modules/perl/Makefile.PL $NGX_OBJS/src/http/modules/perl/
