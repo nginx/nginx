@@ -1269,12 +1269,13 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
 
         for (n = 0; n < cmcf->variables_keys->keys.nelts; n++) {
 
-            if (v[i].name.len == key[n].key.len
+            av = key[n].value;
+
+            if (av->get_handler
+                && v[i].name.len == key[n].key.len
                 && ngx_strncmp(v[i].name.data, key[n].key.data, v[i].name.len)
                    == 0)
             {
-                av = key[n].value;
-
                 v[i].get_handler = av->get_handler;
                 v[i].data = av->data;
 
