@@ -45,7 +45,13 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 #define ngx_memory_barrier()
 
 
-#ifdef __BORLANDC__
+#if defined( __BORLANDC__ ) || ( __WATCOMC__ < 1230 )
+
+/*
+ * Borland C++ 5.5 (tasm32) and Open Watcom C prior to 1.3
+ * do not understand the "pause" instruction
+ */
+
 #define ngx_cpu_pause()
 #else
 #define ngx_cpu_pause()       __asm { pause }
