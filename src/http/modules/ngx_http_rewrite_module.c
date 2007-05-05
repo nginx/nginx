@@ -936,9 +936,9 @@ ngx_http_rewrite_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (v->get_handler == NULL
-        && ngx_strncasecmp(value[1].data, "http_", 5) != 0
-        && ngx_strncasecmp(value[1].data, "sent_http_", 10) != 0
-        && ngx_strncasecmp(value[1].data, "upstream_http_", 14) != 0)
+        && ngx_strncasecmp(value[1].data, (u_char *) "http_", 5) != 0
+        && ngx_strncasecmp(value[1].data, (u_char *) "sent_http_", 10) != 0
+        && ngx_strncasecmp(value[1].data, (u_char *) "upstream_http_", 14) != 0)
     {
         v->get_handler = ngx_http_rewrite_var;
         v->data = index;
