@@ -636,7 +636,8 @@ ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
-    b->last = ngx_cpymem(b->pos, ctx->boundary_header.data, 4 + 10);
+    b->last = ngx_cpymem(b->pos, ctx->boundary_header.data,
+                         sizeof(CRLF "--") - 1 + NGX_ATOMIC_T_LEN);
     *b->last++ = '-'; *b->last++ = '-';
     *b->last++ = CR; *b->last++ = LF;
 
