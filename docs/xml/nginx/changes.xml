@@ -9,6 +9,75 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.20" date="07.05.2007">
+
+<change type="feature">
+<para lang="ru">
+директива sendfile_max_chunk.
+</para>
+<para lang="en">
+the "sendfile_max_chunk" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные "$http_...", "$sent_http_..." и "$upstream_http_..."
+можно менять директивой set.
+</para>
+<para lang="en">
+the "$http_...", "$sent_http_...", and "$upstream_http_..." variables
+may be changed using the "set" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании SSI-команды 'if expr="$var = /"'
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if the SSI command 'if expr="$var = /"' was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+завершающая строка multipart range ответа передавалась неверно.<br/>
+Спасибо Evan Miller.
+</para>
+<para lang="en">
+trailing boundary of multipart range response was transferred incorrectly.<br/>
+Thanks to Evan Miller.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не работал на Solaris/sparc64, если был собран Sun Studio.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+nginx did not work on Solaris/sparc64 if it was built by Sun Studio.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_perl_module не собирался make в Solaris.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+the ngx_http_perl_module could not built by Solaris make.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.19" date="24.04.2007">
 
 <change type="change">
