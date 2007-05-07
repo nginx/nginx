@@ -222,6 +222,9 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return NGX_AGAIN;
         }
 
+    } else if (clcf->sendfile_max_chunk) {
+        limit = clcf->sendfile_max_chunk;
+
     } else {
         limit = 0;
     }
@@ -241,10 +244,14 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
-    if (limit) {
+    if (r->limit_rate) {
         sent = c->sent - sent;
         c->write->delayed = 1;
         ngx_add_timer(c->write, (ngx_msec_t) (sent * 1000 / r->limit_rate + 1));
+
+    } else if (c->write->ready && clcf->sendfile_max_chunk) {
+        c->write->delayed = 1;
+        ngx_add_timer(c->write, 1);
     }
 
     for (cl = r->out; cl && cl != chain; /* void */) {

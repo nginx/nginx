@@ -295,6 +295,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, sendfile),
       NULL },
 
+    { ngx_string("sendfile_max_chunk"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, sendfile_max_chunk),
+      NULL },
+
     { ngx_string("tcp_nopush"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -2191,6 +2198,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->internal = NGX_CONF_UNSET;
     lcf->client_body_in_file_only = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
+    lcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
     lcf->tcp_nopush = NGX_CONF_UNSET;
     lcf->tcp_nodelay = NGX_CONF_UNSET;
     lcf->send_timeout = NGX_CONF_UNSET_MSEC;
@@ -2359,6 +2367,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->client_body_in_file_only,
                               prev->client_body_in_file_only, 0);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
+    ngx_conf_merge_size_value(conf->sendfile_max_chunk,
+                              prev->sendfile_max_chunk, 0);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
     ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 1);
 
