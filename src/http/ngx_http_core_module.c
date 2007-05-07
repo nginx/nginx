@@ -70,9 +70,13 @@ static char *ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 static char *ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data);
+static char *ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data);
 
 static ngx_conf_post_t  ngx_http_core_lowat_post =
     { ngx_http_core_lowat_check };
+
+static ngx_conf_post_handler_pt  ngx_http_core_pool_size_p =
+    ngx_http_core_pool_size;
 
 static ngx_conf_deprecated_t  ngx_conf_deprecated_optimize_host_names = {
     ngx_conf_deprecated, "optimize_host_names", "optimize_server_names"
@@ -129,14 +133,14 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_core_srv_conf_t, connection_pool_size),
-      NULL },
+      &ngx_http_core_pool_size_p },
 
     { ngx_string("request_pool_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_core_srv_conf_t, request_pool_size),
-      NULL },
+      &ngx_http_core_pool_size_p },
 
     { ngx_string("client_header_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -3049,6 +3053,22 @@ ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data)
     *np = 0;
 
 #endif
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp < NGX_MIN_POOL_SIZE) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "pool must be no less than %uz", NGX_MIN_POOL_SIZE);
+
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }

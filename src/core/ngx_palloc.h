@@ -19,7 +19,9 @@
  */
 #define NGX_MAX_ALLOC_FROM_POOL  (ngx_pagesize - 1)
 
-#define NGX_DEFAULT_POOL_SIZE   (16 * 1024)
+#define NGX_DEFAULT_POOL_SIZE    (16 * 1024)
+#define NGX_MIN_POOL_SIZE                                                     \
+    (sizeof(ngx_pool_t) + 2 * sizeof(ngx_pool_large_t))
 
 
 typedef void (*ngx_pool_cleanup_pt)(void *data);
