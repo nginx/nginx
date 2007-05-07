@@ -32,6 +32,71 @@ static uint32_t  usual[] = {
 };
 
 
+#if (NGX_HAVE_LITTLE_ENDIAN && NGX_HAVE_NONALIGNED)
+
+#define ngx_str3_cmp(m, c0, c1, c2, c3)                                       \
+    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)
+
+#define ngx_str3Ocmp(m, c0, c1, c2, c3)                                       \
+    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)
+
+#define ngx_str4cmp(m, c0, c1, c2, c3)                                        \
+    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)
+
+#define ngx_str5cmp(m, c0, c1, c2, c3, c4)                                    \
+    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
+        && m[4] == c4
+
+#define ngx_str6cmp(m, c0, c1, c2, c3, c4, c5)                                \
+    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
+        && (((uint32_t *) m)[1] & 0xffff) == ((c5 << 8) | c4)
+
+#define ngx_str7_cmp(m, c0, c1, c2, c3, c4, c5, c6, c7)                       \
+    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
+        && ((uint32_t *) m)[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)
+
+#define ngx_str8cmp(m, c0, c1, c2, c3, c4, c5, c6, c7)                        \
+    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
+        && ((uint32_t *) m)[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)
+
+#define ngx_str9cmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8)                    \
+    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
+        && ((uint32_t *) m)[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)  \
+        && m[8] == c8
+
+#else /* !(NGX_HAVE_LITTLE_ENDIAN && NGX_HAVE_NONALIGNED) */
+
+#define ngx_str3_cmp(m, c0, c1, c2, c3)                                       \
+    m[0] == c0 && m[1] == c1 && m[2] == c2
+
+#define ngx_str3Ocmp(m, c0, c1, c2, c3)                                       \
+    m[0] == c0 && m[2] == c2 && m[3] == c3
+
+#define ngx_str4cmp(m, c0, c1, c2, c3)                                        \
+    m[0] == c0 && m[1] == c1 && m[2] == c2 && m[3] == c3
+
+#define ngx_str5cmp(m, c0, c1, c2, c3, c4)                                    \
+    m[0] == c0 && m[1] == c1 && m[2] == c2 && m[3] == c3 && m[4] == c4
+
+#define ngx_str6cmp(m, c0, c1, c2, c3, c4, c5)                                \
+    m[0] == c0 && m[1] == c1 && m[2] == c2 && m[3] == c3                      \
+        && m[4] == c4 && m[5] == c5
+
+#define ngx_str7_cmp(m, c0, c1, c2, c3, c4, c5, c6, c7)                       \
+    m[0] == c0 && m[1] == c1 && m[2] == c2 && m[3] == c3                      \
+        && m[4] == c4 && m[5] == c5 && m[6] == c6
+
+#define ngx_str8cmp(m, c0, c1, c2, c3, c4, c5, c6, c7)                        \
+    m[0] == c0 && m[1] == c1 && m[2] == c2 && m[3] == c3                      \
+        && m[4] == c4 && m[5] == c5 && m[6] == c6 && m[7] == c7
+
+#define ngx_str9cmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8)                    \
+    m[0] == c0 && m[1] == c1 && m[2] == c2 && m[3] == c3                      \
+        && m[4] == c4 && m[5] == c5 && m[6] == c6 && m[7] == c7 && m[8] == c8
+
+#endif
+
+
 /* gcc, icc, msvc and others compile these switches as an jump table */
 
 ngx_int_t
@@ -92,12 +157,12 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 switch (p - m) {
 
                 case 3:
-                    if (m[0] == 'G' && m[1] == 'E' && m[2] == 'T') {
+                    if (ngx_str3_cmp(m, 'G', 'E', 'T', ' ')) {
                         r->method = NGX_HTTP_GET;
                         break;
                     }
 
-                    if (m[0] == 'P' && m[1] == 'U' && m[2] == 'T') {
+                    if (ngx_str3_cmp(m, 'P', 'U', 'T', ' ')) {
                         r->method = NGX_HTTP_PUT;
                         break;
                     }
@@ -107,31 +172,29 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 case 4:
                     if (m[1] == 'O') {
 
-                        if (m[0] == 'P' && m[2] == 'S' && m[3] == 'T') {
+                        if (ngx_str3Ocmp(m, 'P', 'O', 'S', 'T')) {
                             r->method = NGX_HTTP_POST;
                             break;
                         }
 
-                        if (m[0] == 'C' && m[2] == 'P' && m[3] == 'Y') {
+                        if (ngx_str3Ocmp(m, 'C', 'O', 'P', 'Y')) {
                             r->method = NGX_HTTP_COPY;
                             break;
                         }
 
-                        if (m[0] == 'M' && m[2] == 'V' && m[3] == 'E') {
+                        if (ngx_str3Ocmp(m, 'M', 'O', 'V', 'E')) {
                             r->method = NGX_HTTP_MOVE;
                             break;
                         }
 
-                        if (m[0] == 'L' && m[2] == 'C' && m[3] == 'K') {
+                        if (ngx_str3Ocmp(m, 'L', 'O', 'C', 'K')) {
                             r->method = NGX_HTTP_LOCK;
                             break;
                         }
 
                     } else {
 
-                        if (m[0] == 'H' && m[1] == 'E'
-                            && m[2] == 'A' && m[3] == 'D')
-                        {
+                        if (ngx_str4cmp(m, 'H', 'E', 'A', 'D')) {
                             r->method = NGX_HTTP_HEAD;
                             break;
                         }
@@ -140,31 +203,23 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     break;
 
                 case 5:
-                    if (m[0] == 'M' && m[1] == 'K'
-                        && m[2] == 'C' && m[3] == 'O' && m[4] == 'L')
-                    {
+                    if (ngx_str5cmp(m, 'M', 'K', 'C', 'O', 'L')) {
                         r->method = NGX_HTTP_MKCOL;
                     }
 
-                    if (m[0] == 'T' && m[1] == 'R'
-                        && m[2] == 'A' && m[3] == 'C' && m[4] == 'E')
-                    {
+                    if (ngx_str5cmp(m, 'T', 'R', 'A', 'C', 'E')) {
                         r->method = NGX_HTTP_TRACE;
                     }
 
                     break;
 
                 case 6:
-                    if (m[0] == 'D' && m[1] == 'E' && m[2] == 'L'
-                        && m[3] == 'E' && m[4] == 'T' && m[5] == 'E')
-                    {
+                    if (ngx_str6cmp(m, 'D', 'E', 'L', 'E', 'T', 'E')) {
                         r->method = NGX_HTTP_DELETE;
                         break;
                     }
 
-                    if (m[0] == 'U' && m[1] == 'N' && m[2] == 'L'
-                        && m[3] == 'O' && m[4] == 'C' && m[5] == 'K')
-                    {
+                    if (ngx_str6cmp(m, 'U', 'N', 'L', 'O', 'C', 'K')) {
                         r->method = NGX_HTTP_UNLOCK;
                         break;
                     }
@@ -172,9 +227,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     break;
 
                 case 7:
-                    if (m[0] == 'O' && m[1] == 'P'
-                        && m[2] == 'T' && m[3] == 'I'
-                        && m[4] == 'O' && m[5] == 'N' && m[6] == 'S')
+                    if (ngx_str7_cmp(m, 'O', 'P', 'T', 'I', 'O', 'N', 'S', ' '))
                     {
                         r->method = NGX_HTTP_OPTIONS;
                     }
@@ -182,9 +235,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     break;
 
                 case 8:
-                    if (m[0] == 'P' && m[1] == 'R'
-                        && m[2] == 'O' && m[3] == 'P' && m[4] == 'F'
-                        && m[5] == 'I' && m[6] == 'N' && m[7] == 'D')
+                    if (ngx_str8cmp(m, 'P', 'R', 'O', 'P', 'F', 'I', 'N', 'D'))
                     {
                         r->method = NGX_HTTP_PROPFIND;
                     }
@@ -192,9 +243,8 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     break;
 
                 case 9:
-                    if (m[0] == 'P' && m[1] == 'R' && m[2] == 'O'
-                        && m[3] == 'P' && m[4] == 'P' && m[5] == 'A'
-                        && m[6] == 'T' && m[7] == 'C' && m[8] == 'H')
+                    if (ngx_str9cmp(m,
+                            'P', 'R', 'O', 'P', 'P', 'A', 'T', 'C', 'H'))
                     {
                         r->method = NGX_HTTP_PROPPATCH;
                     }
