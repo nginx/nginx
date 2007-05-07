@@ -72,7 +72,7 @@ static char *ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data);
 
 static ngx_conf_post_t  ngx_http_core_lowat_post =
-                                                 { ngx_http_core_lowat_check };
+    { ngx_http_core_lowat_check };
 
 static ngx_conf_deprecated_t  ngx_conf_deprecated_optimize_host_names = {
     ngx_conf_deprecated, "optimize_host_names", "optimize_server_names"
