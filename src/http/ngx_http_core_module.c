@@ -1774,10 +1774,10 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 #if (NGX_PCRE)
         if (clcf->regex == NULL
             && ngx_strncmp(clcf->name.data, pclcf->name.data, pclcf->name.len)
-                                                                         != 0)
+               != 0)
 #else
         if (ngx_strncmp(clcf->name.data, pclcf->name.data, pclcf->name.len)
-                                                                         != 0)
+            != 0)
 #endif
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
