@@ -215,7 +215,7 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
                 rrp->current = rrp->peers->current;
 
                 n = rrp->current / (8 * sizeof(uintptr_t));
-                m = 1 << rrp->current % (8 * sizeof(uintptr_t));
+                m = (uintptr_t) 1 << rrp->current % (8 * sizeof(uintptr_t));
 
                 if (!(rrp->tried[n] & m)) {
                     peer = &rrp->peers->peer[rrp->current];
@@ -268,7 +268,7 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
         } else {
             for ( ;; ) {
                 n = rrp->current / (8 * sizeof(uintptr_t));
-                m = 1 << rrp->current % (8 * sizeof(uintptr_t));
+                m = (uintptr_t) 1 << rrp->current % (8 * sizeof(uintptr_t));
 
                 if (!(rrp->tried[n] & m)) {
 
