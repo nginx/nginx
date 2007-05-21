@@ -150,6 +150,8 @@ uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
 void ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type);
 
 
+void ngx_sort(void *base, size_t n, size_t size,
+    int (*cmp)(const void *, const void *));
 #define ngx_qsort            qsort
 
 

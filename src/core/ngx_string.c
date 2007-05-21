@@ -1202,6 +1202,33 @@ done:
 }
 
 
+/* ngx_sort() is implemented as insertion sort because we need stable sort */
+
+void
+ngx_sort(void *base, size_t n, size_t size,
+    int (*cmp)(const void *, const void *))
+{
+    u_char  *p1, *p2;
+    u_char   buf[256];
+
+    for (p1 = (u_char *) base + size;
+         p1 < (u_char *) base + n * size;
+         p1 += size)
+    {
+        ngx_memcpy(buf, p1, size);
+
+        for (p2 = p1;
+             p2 > (u_char *) base && cmp(p2 - size, buf) > 0;
+             p2 -= size)
+        {
+            ngx_memcpy(p2, p2 - size, size);
+        }
+
+        ngx_memcpy(p2, buf, size);
+    }
+}
+
+
 #if (NGX_MEMCPY_LIMIT)
 
 void *
