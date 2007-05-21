@@ -45,8 +45,7 @@ static char *ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd,
     void *dummy);
 static char *ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd,
     void *dummy);
-static int ngx_libc_cdecl ngx_http_core_cmp_locations(const void *first,
-    const void *second);
+static int ngx_http_core_cmp_locations(const void *first, const void *second);
 
 static char *ngx_http_core_types(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -1642,8 +1641,8 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return rv;
     }
 
-    ngx_qsort(cscf->locations.elts, (size_t) cscf->locations.nelts,
-              sizeof(ngx_http_core_loc_conf_t *), ngx_http_core_cmp_locations);
+    ngx_sort(cscf->locations.elts, (size_t) cscf->locations.nelts,
+             sizeof(ngx_http_core_loc_conf_t *), ngx_http_core_cmp_locations);
 
     return rv;
 }
@@ -1814,14 +1813,14 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return rv;
     }
 
-    ngx_qsort(clcf->locations.elts, (size_t) clcf->locations.nelts,
-              sizeof(ngx_http_core_loc_conf_t *), ngx_http_core_cmp_locations);
+    ngx_sort(clcf->locations.elts, (size_t) clcf->locations.nelts,
+             sizeof(ngx_http_core_loc_conf_t *), ngx_http_core_cmp_locations);
 
     return rv;
 }
 
 
-static int ngx_libc_cdecl
+static int
 ngx_http_core_cmp_locations(const void *one, const void *two)
 {
     ngx_int_t                  rc;

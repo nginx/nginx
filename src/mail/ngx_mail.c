@@ -11,8 +11,7 @@
 
 
 static char *ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static int ngx_libc_cdecl ngx_mail_cmp_conf_in_addrs(const void *one,
-    const void *two);
+static int ngx_mail_cmp_conf_in_addrs(const void *one, const void *two);
 
 
 ngx_uint_t  ngx_mail_max_module;
@@ -269,8 +268,8 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     in_port = in_ports.elts;
     for (p = 0; p < in_ports.nelts; p++) {
 
-        ngx_qsort(in_port[p].addrs.elts, (size_t) in_port[p].addrs.nelts,
-                  sizeof(ngx_mail_conf_in_addr_t), ngx_mail_cmp_conf_in_addrs);
+        ngx_sort(in_port[p].addrs.elts, (size_t) in_port[p].addrs.nelts,
+                 sizeof(ngx_mail_conf_in_addr_t), ngx_mail_cmp_conf_in_addrs);
 
         in_addr = in_port[p].addrs.elts;
         last = in_port[p].addrs.nelts;
@@ -387,7 +386,7 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-static int ngx_libc_cdecl
+static int
 ngx_mail_cmp_conf_in_addrs(const void *one, const void *two)
 {
     ngx_mail_conf_in_addr_t  *first, *second;

@@ -19,8 +19,7 @@ static ngx_int_t ngx_http_add_names(ngx_conf_t *cf,
 static char *ngx_http_merge_locations(ngx_conf_t *cf,
     ngx_array_t *locations, void **loc_conf, ngx_http_module_t *module,
     ngx_uint_t ctx_index);
-static int ngx_libc_cdecl ngx_http_cmp_conf_in_addrs(const void *one,
-    const void *two);
+static int ngx_http_cmp_conf_in_addrs(const void *one, const void *two);
 static int ngx_libc_cdecl ngx_http_cmp_dns_wildcards(const void *one,
     const void *two);
 
@@ -599,8 +598,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     in_port = in_ports.elts;
     for (p = 0; p < in_ports.nelts; p++) {
 
-        ngx_qsort(in_port[p].addrs.elts, (size_t) in_port[p].addrs.nelts,
-                  sizeof(ngx_http_conf_in_addr_t), ngx_http_cmp_conf_in_addrs);
+        ngx_sort(in_port[p].addrs.elts, (size_t) in_port[p].addrs.nelts,
+                 sizeof(ngx_http_conf_in_addr_t), ngx_http_cmp_conf_in_addrs);
 
         /*
          * check whether all name-based servers have the same configuraiton
@@ -1027,7 +1026,7 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_array_t *locations,
 }
 
 
-static int ngx_libc_cdecl
+static int
 ngx_http_cmp_conf_in_addrs(const void *one, const void *two)
 {
     ngx_http_conf_in_addr_t  *first, *second;
