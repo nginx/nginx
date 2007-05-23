@@ -748,7 +748,6 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     if (!c->ssl->buffer
         || (in && in->next == NULL && !(c->buffered & NGX_SSL_BUFFERED)))
     {
-
         /*
          * we avoid a buffer copy if
          *     we do not need to buffer the output
