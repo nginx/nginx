@@ -473,7 +473,7 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
         size += ngx_buf_size(cl->buf);
     }
 
-    if (size == 0) {
+    if (size == 0 && !ctx->connection->buffered) {
         return NGX_OK;
     }
 
@@ -489,6 +489,9 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
 
     if (ctx->out == NULL) {
         ctx->last = &ctx->out;
+    }
+
+    if (!ctx->connection->buffered) {
         return NGX_OK;
     }
 
