@@ -9,6 +9,57 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.21" date="28.05.2007">
+
+<change type="bugfix">
+<para lang="ru">
+если внутри сервера описано больше примерно десяти location'ов,
+то location'ы, заданные с помощью регулярного выражения,
+могут выполняться не в том, порядке, в каком они описаны.
+</para>
+<para lang="en">
+if server has more than about ten locations, then regex locations
+may be choosen not in that order as they were specified.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на 64-битной платформе рабочий процесс мог зациклиться, если 33-тий
+по счёту или последующий бэкенд упал.<br/>
+Спасибо Антону Поварову.
+</para>
+<para lang="en">
+a worker process may got caught in an endless loop on 64-bit platform,
+if the 33-rd or next in succession backend has failed.<br/>
+Thanks to Anton Povarov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании библиотеки PCRE на Solaris/sparc64
+мог произойти bus error.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+a bus error might occur on Solaris/sparc64 if the PCRE library was used.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в использовании протокола HTTPS в директиве proxy_pass.
+</para>
+<para lang="en">
+in the HTTPS protocol in the "proxy_pass" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.20" date="07.05.2007">
 
 <change type="feature">
