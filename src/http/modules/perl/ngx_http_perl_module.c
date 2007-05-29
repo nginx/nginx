@@ -67,6 +67,8 @@ static char *ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void ngx_http_perl_cleanup_perl(void *data);
 #endif
 
+static void ngx_http_perl_exit(ngx_cycle_t *cycle);
+
 
 static ngx_command_t  ngx_http_perl_commands[] = {
 
@@ -128,7 +130,7 @@ ngx_module_t  ngx_http_perl_module = {
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
     NULL,                                  /* exit process */
-    NULL,                                  /* exit master */
+    ngx_http_perl_exit,                    /* exit master */
     NGX_MODULE_V1_PADDING
 };
 
@@ -478,12 +480,13 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 
 #endif
 
-    PERL_SYS_INIT(&ngx_argc, &ngx_argv);
+    if (nginx_stash == NULL) {
+        PERL_SYS_INIT(&ngx_argc, &ngx_argv);
+    }
 
     pmcf->perl = ngx_http_perl_create_interpreter(cf, pmcf);
 
     if (pmcf->perl == NULL) {
-        PERL_SYS_TERM();
         return NGX_CONF_ERROR;
     }
 
@@ -788,8 +791,6 @@ ngx_http_perl_cleanup_perl(void *data)
     (void) perl_destruct(perl);
 
     perl_free(perl);
-
-    PERL_SYS_TERM();
 }
 
 #endif
@@ -1000,4 +1001,11 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     v->data = (uintptr_t) pv;
 
     return NGX_CONF_OK;
+}
+
+
+static void
+ngx_http_perl_exit(ngx_cycle_t *cycle)
+{
+    PERL_SYS_TERM();
 }
