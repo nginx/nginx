@@ -489,10 +489,10 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
 
     if (ctx->out == NULL) {
         ctx->last = &ctx->out;
-    }
 
-    if (!ctx->connection->buffered) {
-        return NGX_OK;
+        if (!ctx->connection->buffered) {
+            return NGX_OK;
+        }
     }
 
     return NGX_AGAIN;
