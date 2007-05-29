@@ -345,6 +345,19 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+
+    if (SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
+                                               ngx_http_ssl_servername)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
+                      "SSL_CTX_set_tlsext_servername_callback() failed");
+        return NGX_CONF_ERROR;
+    }
+
+#endif
+
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
         return NGX_CONF_ERROR;

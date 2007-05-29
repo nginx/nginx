@@ -25,8 +25,8 @@ static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
-static void ngx_http_find_virtual_server(ngx_http_request_t *r,
-    ngx_http_virtual_names_t *vn, ngx_uint_t hash);
+static void ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host,
+    size_t len, ngx_uint_t hash);
 
 static void ngx_http_request_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
@@ -544,6 +544,54 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
     return;
 }
 
+#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+
+int
+ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
+{
+    u_char                   *p;
+    ngx_uint_t                hash;
+    const char               *servername;
+    ngx_connection_t         *c;
+    ngx_http_request_t       *r;
+    ngx_http_ssl_srv_conf_t  *sscf;
+
+    servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
+
+    if (servername == NULL) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    c = ngx_ssl_get_connection(ssl_conn);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "SSL server name: \"%s\"", servername);
+
+    r = c->data;
+
+    if (r->virtual_names == NULL) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    /* it seems browsers send low case server name */
+
+    hash = 0;
+
+    for (p = (u_char *) servername; *p; p++) {
+        hash = ngx_hash(hash, *p);
+    }
+
+    ngx_http_find_virtual_server(r, (u_char *) servername,
+                                 p - (u_char *) servername, hash);
+
+    sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
+
+    SSL_set_SSL_CTX(ssl_conn, sscf->ssl.ctx);
+
+    return SSL_TLSEXT_ERR_OK;
+}
+
+#endif
 
 #endif
 
@@ -1203,7 +1251,7 @@ static ngx_int_t
 ngx_http_process_request_header(ngx_http_request_t *r)
 {
     size_t                    len;
-    u_char                   *ua, *user_agent, ch;
+    u_char                   *host, *ua, *user_agent, ch;
     ngx_uint_t                hash;
 #if (NGX_HTTP_SSL)
     long                      rc;
@@ -1234,7 +1282,18 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         r->headers_in.host_name_len = len;
 
         if (r->virtual_names) {
-            ngx_http_find_virtual_server(r, r->virtual_names, hash);
+
+            host = r->host_start;
+
+            if (host == NULL) {
+                host = r->headers_in.host->value.data;
+                len = r->headers_in.host_name_len;
+
+            } else {
+                len = r->host_end - host;
+            }
+
+            ngx_http_find_virtual_server(r, host, len, hash);
         }
 
     } else {
@@ -1394,23 +1453,14 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
 
 static void
-ngx_http_find_virtual_server(ngx_http_request_t *r,
-    ngx_http_virtual_names_t *vn, ngx_uint_t hash)
+ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len,
+    ngx_uint_t hash)
 {
-    size_t                     len;
-    u_char                    *host;
+    ngx_http_virtual_names_t  *vn;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
 
-    host = r->host_start;
-
-    if (host == NULL) {
-        host = r->headers_in.host->value.data;
-        len = r->headers_in.host_name_len;
-
-    } else {
-        len = r->host_end - host;
-    }
+    vn = r->virtual_names;
 
     if (vn->hash.buckets) {
         cscf = ngx_hash_find(&vn->hash, hash, host, len);
