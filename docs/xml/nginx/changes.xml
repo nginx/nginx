@@ -9,17 +9,33 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.22" date="29.05.2007">
+
+<change type="bugfix">
+<para lang="ru">
+большое тело запроса могло не передаваться бэкенду;
+ошибка появилась в 0.5.21.
+</para>
+<para lang="en">
+the big request body might not be passed to backend;
+bug appeared in 0.5.21.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.21" date="28.05.2007">
 
 <change type="bugfix">
 <para lang="ru">
 если внутри сервера описано больше примерно десяти location'ов,
 то location'ы, заданные с помощью регулярного выражения,
-могут выполняться не в том, порядке, в каком они описаны.
+могли выполняться не в том, порядке, в каком они описаны.
 </para>
 <para lang="en">
 if server has more than about ten locations, then regex locations
-may be choosen not in that order as they were specified.
+might be choosen not in that order as they were specified.
 </para>
 </change>
 
