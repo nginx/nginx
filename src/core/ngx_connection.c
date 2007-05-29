@@ -404,9 +404,8 @@ ngx_configure_listening_socket(ngx_cycle_t *cycle)
         if (ls[i].listen) {
             if (listen(ls[i].fd, ls[i].backlog) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
-                              "changing the listen() backlog to %d "
-                              "for %V failed, ignored",
-                              ls[i].backlog, &ls[i].addr_text);
+                              "listen() to %V, backlog %d failed, ignored",
+                              &ls[i].addr_text, ls[i].backlog);
             }
         }
 
