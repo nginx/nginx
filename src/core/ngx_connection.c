@@ -270,10 +270,11 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                               "setsockopt(SO_REUSEADDR) %V failed",
                               &ls[i].addr_text);
 
-                if (ngx_close_socket(s) == -1)
+                if (ngx_close_socket(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_close_socket_n " %V failed",
                                   &ls[i].addr_text);
+                }
 
                 return NGX_ERROR;
             }
@@ -286,10 +287,11 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                                   ngx_nonblocking_n " %V failed",
                                   &ls[i].addr_text);
 
-                    if (ngx_close_socket(s) == -1)
+                    if (ngx_close_socket(s) == -1) {
                         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                       ngx_close_socket_n " %V failed",
                                       &ls[i].addr_text);
+                    }
 
                     return NGX_ERROR;
                 }
@@ -308,10 +310,11 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 ngx_log_error(NGX_LOG_EMERG, log, err,
                               "bind() to %V failed", &ls[i].addr_text);
 
-                if (ngx_close_socket(s) == -1)
+                if (ngx_close_socket(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_close_socket_n " %V failed",
                                   &ls[i].addr_text);
+                }
 
                 if (err != NGX_EADDRINUSE) {
                     return NGX_ERROR;
