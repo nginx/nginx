@@ -419,6 +419,9 @@ ngx_configure_listening_socket(ngx_cycle_t *cycle)
 #endif
 
         if (ls[i].listen) {
+
+            /* change backlog via listen() */
+
             if (listen(ls[i].fd, ls[i].backlog) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                               "listen() to %V, backlog %d failed, ignored",
