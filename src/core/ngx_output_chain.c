@@ -444,8 +444,9 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
 
         size += ngx_buf_size(in->buf);
 
-        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
-                       "chain writer buf size: %uO", ngx_buf_size(in->buf));
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
+                       "chain writer buf fl:%d s:%uO",
+                       in->buf->flush, ngx_buf_size(in->buf));
 
         cl = ngx_alloc_chain_link(ctx->pool);
         if (cl == NULL) {
