@@ -9,6 +9,64 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.23" date="04.06.2007">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_ssl_module поддерживает расширение TLS Server Name Indication.
+</para>
+<para lang="en">
+the ngx_http_ssl_module supports Server Name Indication TLS extension.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива fastcgi_catch_stderr.<br/>
+Спасибо Николаю Гречуху, проект OWOX.
+</para>
+<para lang="en">
+the "fastcgi_catch_stderr" directive.<br/>
+Thanks to Nick S. Grechukh, OWOX project.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на Линуксе в основном процессе происходил segmentation fault,
+если два виртуальных сервера должны bind()ится к пересекающимся портам.
+</para>
+<para lang="en">
+a segmentation fault occurred in master process if
+two virtual servers should bind() to the overlapping ports.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx был собран с модулем ngx_http_perl_module и perl
+поддерживал потоки, то во время второй переконфигурации
+выдавались ошибки "panic: MUTEX_LOCK" и "perl_parse() failed".
+</para>
+<para lang="en">
+if nginx was built with ngx_http_perl_module and perl supported threads,
+then during second reconfiguration the error messages
+"panic: MUTEX_LOCK" and "perl_parse() failed" were issued.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в использовании протокола HTTPS в директиве proxy_pass.
+</para>
+<para lang="en">
+in the HTTPS protocol in the "proxy_pass" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.22" date="29.05.2007">
 
 <change type="bugfix">
@@ -17,7 +75,7 @@
 ошибка появилась в 0.5.21.
 </para>
 <para lang="en">
-the big request body might not be passed to backend;
+a big request body might not be passed to backend;
 bug appeared in 0.5.21.
 </para>
 </change>
