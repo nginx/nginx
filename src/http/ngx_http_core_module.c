@@ -2674,6 +2674,18 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+#if (NGX_PCRE)
+
+    if (lcf->regex && alias) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the \"alias\" directive may not be used "
+                           "inside location given by regular expression");
+
+        return NGX_CONF_ERROR;
+    }
+
+#endif
+
     value = cf->args->elts;
 
     if (ngx_strstr(value[1].data, "$document_root")
