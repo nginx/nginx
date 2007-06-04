@@ -25,6 +25,7 @@ static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
+static void ngx_http_process_request(ngx_http_request_t *r);
 static void ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host,
     size_t len, ngx_uint_t hash);
 
@@ -711,24 +712,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
                            "http exten: \"%V\"", &r->exten);
 
             if (r->http_version < NGX_HTTP_VERSION_10) {
-
-                if (rev->timer_set) {
-                    ngx_del_timer(rev);
-                }
-
-#if (NGX_STAT_STUB)
-                ngx_atomic_fetch_add(ngx_stat_reading, -1);
-                r->stat_reading = 0;
-                ngx_atomic_fetch_add(ngx_stat_writing, 1);
-                r->stat_writing = 1;
-#endif
-
-                rev->handler = ngx_http_request_handler;
-                c->write->handler = ngx_http_request_handler;
-                r->read_event_handler = ngx_http_block_read;
-
-                ngx_http_handler(r);
-
+                ngx_http_process_request(r);
                 return;
             }
 
@@ -945,22 +929,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 return;
             }
 
-            if (rev->timer_set) {
-                ngx_del_timer(rev);
-            }
-
-#if (NGX_STAT_STUB)
-            ngx_atomic_fetch_add(ngx_stat_reading, -1);
-            r->stat_reading = 0;
-            ngx_atomic_fetch_add(ngx_stat_writing, 1);
-            r->stat_writing = 1;
-#endif
-
-            rev->handler = ngx_http_request_handler;
-            c->write->handler = ngx_http_request_handler;
-            r->read_event_handler = ngx_http_block_read;
-
-            ngx_http_handler(r);
+            ngx_http_process_request(r);
 
             return;
         }
@@ -1250,13 +1219,9 @@ ngx_http_process_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
 static ngx_int_t
 ngx_http_process_request_header(ngx_http_request_t *r)
 {
-    size_t                    len;
-    u_char                   *host, *ua, *user_agent, ch;
-    ngx_uint_t                hash;
-#if (NGX_HTTP_SSL)
-    long                      rc;
-    ngx_http_ssl_srv_conf_t  *sscf;
-#endif
+    size_t       len;
+    u_char      *host, *ua, *user_agent, ch;
+    ngx_uint_t   hash;
 
     if (r->headers_in.host) {
 
@@ -1419,36 +1384,68 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         }
     }
 
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_process_request(ngx_http_request_t *r)
+{
+    ngx_connection_t         *c;
+#if (NGX_HTTP_SSL)
+    long                      rc;
+    ngx_http_ssl_srv_conf_t  *sscf;
+#endif
+
+    c = r->connection;
+
 #if (NGX_HTTP_SSL)
 
-    if (r->connection->ssl) {
+    if (c->ssl) {
         sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
 
         if (sscf->verify) {
-            rc = SSL_get_verify_result(r->connection->ssl->connection);
+            rc = SSL_get_verify_result(c->ssl->connection);
 
             if (rc != X509_V_OK) {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client SSL certificate verify error: (%l:%s)",
                               rc, X509_verify_cert_error_string(rc));
                 ngx_http_finalize_request(r, NGX_HTTPS_CERT_ERROR);
-                return NGX_ERROR;
+                return;
             }
 
-            if (SSL_get_peer_certificate(r->connection->ssl->connection)
+            if (SSL_get_peer_certificate(c->ssl->connection)
                 == NULL)
             {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client sent no required SSL certificate");
                 ngx_http_finalize_request(r, NGX_HTTPS_NO_CERT);
-                return NGX_ERROR;
+                return;
             }
         }
     }
 
 #endif
 
-    return NGX_OK;
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
+
+#if (NGX_STAT_STUB)
+    ngx_atomic_fetch_add(ngx_stat_reading, -1);
+    r->stat_reading = 0;
+    ngx_atomic_fetch_add(ngx_stat_writing, 1);
+    r->stat_writing = 1;
+#endif
+
+    c->read->handler = ngx_http_request_handler;
+    c->write->handler = ngx_http_request_handler;
+    r->read_event_handler = ngx_http_block_read;
+
+    ngx_http_handler(r);
+
+    return;
 }
 
 
