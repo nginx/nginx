@@ -19,6 +19,7 @@ typedef struct {
     ngx_array_t                   *params_len;
     ngx_array_t                   *params;
     ngx_array_t                   *params_source;
+    ngx_array_t                   *catch_stderr;
 } ngx_http_fastcgi_loc_conf_t;
 
 
@@ -343,6 +344,13 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       ngx_conf_set_str_array_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.hide_headers),
+      NULL },
+
+    { ngx_string("fastcgi_catch_stderr"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_str_array_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fastcgi_loc_conf_t, catch_stderr),
       NULL },
 
       ngx_null_command
@@ -833,13 +841,14 @@ static ngx_int_t
 ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 {
     u_char                         *start, *last;
-    ngx_str_t                      *status_line, line;
+    ngx_str_t                      *status_line, line, *pattern;
     ngx_int_t                       rc, status;
     ngx_uint_t                      i;
     ngx_table_elt_t                *h;
     ngx_http_upstream_t            *u;
     ngx_http_fastcgi_ctx_t         *f;
     ngx_http_upstream_header_t     *hh;
+    ngx_http_fastcgi_loc_conf_t    *flcf;
     ngx_http_upstream_main_conf_t  *umcf;
 
     f = ngx_http_get_module_ctx(r, ngx_http_fastcgi_module);
@@ -947,6 +956,20 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "FastCGI sent in stderr: \"%V\"", &line);
+
+                flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
+
+                if (flcf->catch_stderr) {
+                    pattern = flcf->catch_stderr->elts;
+
+                    line.data[line.len - 1] = '\0';
+
+                    for (i = 0; i < flcf->catch_stderr->nelts; i++) {
+                        if (ngx_strstr(line.data, pattern[i].data)) {
+                            return NGX_HTTP_BAD_GATEWAY;
+                        }
+                    }
+                }
 
                 if (u->buffer.pos == u->buffer.last) {
 
@@ -1528,6 +1551,7 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.hide_headers_hash = { NULL, 0 };
      *     conf->upstream.hide_headers = NULL;
      *     conf->upstream.pass_headers = NULL;
+     *     conf->upstream.catch_stderr = NULL;
      *     conf->upstream.schema = { 0, NULL };
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
@@ -1718,6 +1742,8 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->upstream.intercept_errors,
                               prev->upstream.intercept_errors, 0);
+
+    ngx_conf_merge_ptr_value(conf->catch_stderr, prev->catch_stderr, NULL);
 
 
     ngx_conf_merge_str_value(conf->index, prev->index, "");
