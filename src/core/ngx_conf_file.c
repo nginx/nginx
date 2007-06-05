@@ -344,7 +344,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
             }
 
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "the \"%s\" directive %s", name->data, rv);
+                               "\"%s\" directive %s", name->data, rv);
 
             return NGX_ERROR;
         }
@@ -360,13 +360,13 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 not_allowed:
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "directive \"%s\" is not allowed here", name->data);
+                       "\"%s\" directive is not allowed here", name->data);
     return NGX_ERROR;
 
 invalid:
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "invalid number arguments in directive \"%s\"",
+                       "invalid number arguments in \"%s\" directive",
                        name->data);
 
     return NGX_ERROR;
