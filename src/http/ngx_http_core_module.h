@@ -117,6 +117,9 @@ typedef struct {
      */
     ngx_array_t                locations;
 
+    unsigned                   regex_start:16;
+    unsigned                   wildcard:1;
+
     /* array of the ngx_http_listen_t, "listen" directive */
     ngx_array_t                listen;
 
@@ -138,8 +141,6 @@ typedef struct {
 
     ngx_flag_t                 optimize_server_names;
     ngx_flag_t                 ignore_invalid_headers;
-
-    ngx_uint_t                 wildcard;  /* unsigned  wildcard:1 */
 } ngx_http_core_srv_conf_t;
 
 
@@ -209,6 +210,8 @@ struct ngx_http_core_loc_conf_s {
 #if (NGX_PCRE)
     ngx_regex_t  *regex;
 #endif
+
+    unsigned      regex_start:16;
 
     unsigned      noname:1;   /* "if () {}" block */
 

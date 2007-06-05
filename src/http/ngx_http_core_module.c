@@ -29,7 +29,7 @@ typedef struct {
 
 
 static ngx_int_t ngx_http_core_find_location(ngx_http_request_t *r,
-    ngx_array_t *locations, size_t len);
+    ngx_array_t *locations, ngx_uint_t regex_start, size_t len);
 
 static ngx_int_t ngx_http_core_preconfiguration(ngx_conf_t *cf);
 static void *ngx_http_core_create_main_conf(ngx_conf_t *cf);
@@ -629,7 +629,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
-    rc = ngx_http_core_find_location(r, &cscf->locations, 0);
+    rc = ngx_http_core_find_location(r, &cscf->locations, cscf->regex_start, 0);
 
     if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -930,7 +930,7 @@ ngx_http_update_location_config(ngx_http_request_t *r)
 
 static ngx_int_t
 ngx_http_core_find_location(ngx_http_request_t *r,
-    ngx_array_t *locations, size_t len)
+    ngx_array_t *locations, ngx_uint_t regex_start, size_t len)
 {
     ngx_int_t                  n, rc;
     ngx_uint_t                 i, found, noregex;
@@ -1009,7 +1009,8 @@ ngx_http_core_find_location(ngx_http_request_t *r,
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
         if (clcf->locations.nelts) {
-            rc = ngx_http_core_find_location(r, &clcf->locations, len);
+            rc = ngx_http_core_find_location(r, &clcf->locations,
+                                             clcf->regex_start, len);
 
             if (rc != NGX_OK) {
                 return rc;
@@ -1025,11 +1026,7 @@ ngx_http_core_find_location(ngx_http_request_t *r,
 
     /* regex matches */
 
-    for (/* void */; i < locations->nelts; i++) {
-
-        if (!clcfp[i]->regex) {
-            continue;
-        }
+    for (i = regex_start; i < locations->nelts; i++) {
 
         if (clcfp[i]->noname) {
             break;
@@ -1553,14 +1550,15 @@ ngx_http_cleanup_add(ngx_http_request_t *r, size_t size)
 static char *
 ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
-    char                       *rv;
-    void                       *mconf;
-    ngx_uint_t                  m;
-    ngx_conf_t                  pcf;
-    ngx_http_module_t          *module;
-    ngx_http_conf_ctx_t        *ctx, *http_ctx;
-    ngx_http_core_srv_conf_t   *cscf, **cscfp;
-    ngx_http_core_main_conf_t  *cmcf;
+    char                        *rv;
+    void                        *mconf;
+    ngx_uint_t                   i, m;
+    ngx_conf_t                   pcf;
+    ngx_http_module_t           *module;
+    ngx_http_conf_ctx_t         *ctx, *http_ctx;
+    ngx_http_core_srv_conf_t    *cscf, **cscfp;
+    ngx_http_core_loc_conf_t   **clcfp;
+    ngx_http_core_main_conf_t   *cmcf;
 
     ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));
     if (ctx == NULL) {
@@ -1644,6 +1642,16 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     ngx_sort(cscf->locations.elts, (size_t) cscf->locations.nelts,
              sizeof(ngx_http_core_loc_conf_t *), ngx_http_core_cmp_locations);
 
+    cscf->regex_start = cscf->locations.nelts;
+    clcfp = cscf->locations.elts;
+
+    for (i = 0; i < cscf->locations.nelts; i++) {
+        if (clcfp[i]->regex) {
+            cscf->regex_start = i;
+            break;
+        }
+    }
+
     return rv;
 }
 
@@ -1652,7 +1660,7 @@ static char *
 ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
     char                      *rv;
-    ngx_int_t                  m;
+    ngx_uint_t                 i, m;
     ngx_str_t                 *value;
     ngx_conf_t                 save;
     ngx_http_module_t         *module;
@@ -1815,6 +1823,16 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
     ngx_sort(clcf->locations.elts, (size_t) clcf->locations.nelts,
              sizeof(ngx_http_core_loc_conf_t *), ngx_http_core_cmp_locations);
+
+    clcf->regex_start = clcf->locations.nelts;
+    clcfp = clcf->locations.elts;
+
+    for (i = 0; i < clcf->locations.nelts; i++) {
+        if (clcfp[i]->regex) {
+            clcf->regex_start = i;
+            break;
+        }
+    }
 
     return rv;
 }
