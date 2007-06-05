@@ -1015,7 +1015,11 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_array_t *locations,
             return rv;
         }
 
-        rv = ngx_http_merge_locations(cf, &clcfp[i]->locations,
+        if (clcfp[i]->locations == NULL) {
+            continue;
+        }
+
+        rv = ngx_http_merge_locations(cf, clcfp[i]->locations,
                                       clcfp[i]->loc_conf, module, ctx_index);
         if (rv != NGX_CONF_OK) {
             return rv;

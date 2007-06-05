@@ -222,7 +222,7 @@ struct ngx_http_core_loc_conf_s {
     unsigned      alias:1;
 
     /* array of inclusive ngx_http_core_loc_conf_t */
-    ngx_array_t   locations;
+    ngx_array_t  *locations;
 
     /* pointer to the modules' loc_conf */
     void        **loc_conf ;

@@ -1008,8 +1008,8 @@ ngx_http_core_find_location(ngx_http_request_t *r,
     if (found) {
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-        if (clcf->locations.nelts) {
-            rc = ngx_http_core_find_location(r, &clcf->locations,
+        if (clcf->locations) {
+            rc = ngx_http_core_find_location(r, clcf->locations,
                                              clcf->regex_start, len);
 
             if (rc != NGX_OK) {
@@ -1793,15 +1793,15 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
             return NGX_CONF_ERROR;
         }
 
-        if (pclcf->locations.elts == NULL) {
-            if (ngx_array_init(&pclcf->locations, cf->pool, 4, sizeof(void *))
-                != NGX_OK)
-            {
+        if (pclcf->locations == NULL) {
+            pclcf->locations = ngx_array_create(cf->pool, 2, sizeof(void *));
+
+            if (pclcf->locations == NULL) {
                 return NGX_CONF_ERROR;
             }
         }
 
-        clcfp = ngx_array_push(&pclcf->locations);
+        clcfp = ngx_array_push(pclcf->locations);
         if (clcfp == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -1821,13 +1821,17 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return rv;
     }
 
-    ngx_sort(clcf->locations.elts, (size_t) clcf->locations.nelts,
+    if (clcf->locations == NULL) {
+        return rv;
+    }
+
+    ngx_sort(clcf->locations->elts, (size_t) clcf->locations->nelts,
              sizeof(ngx_http_core_loc_conf_t *), ngx_http_core_cmp_locations);
 
-    clcf->regex_start = clcf->locations.nelts;
-    clcfp = clcf->locations.elts;
+    clcf->regex_start = clcf->locations->nelts;
+    clcfp = clcf->locations->elts;
 
-    for (i = 0; i < clcf->locations.nelts; i++) {
+    for (i = 0; i < clcf->locations->nelts; i++) {
         if (clcfp[i]->regex) {
             clcf->regex_start = i;
             break;
@@ -2855,15 +2859,14 @@ ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     lcf->name = clcf->name;
     lcf->noname = 1;
 
-    if (clcf->locations.elts == NULL) {
-        if (ngx_array_init(&clcf->locations, cf->pool, 4, sizeof(void *))
-            == NGX_ERROR)
-        {
+    if (clcf->locations == NULL) {
+        clcf->locations = ngx_array_create(cf->pool, 2, sizeof(void *));
+        if (clcf->locations == NULL) {
             return NGX_CONF_ERROR;
         }
     }
 
-    clcfp = ngx_array_push(&clcf->locations);
+    clcfp = ngx_array_push(clcf->locations);
     if (clcfp == NULL) {
         return NGX_CONF_ERROR;
     }

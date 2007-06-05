@@ -567,15 +567,14 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf->name = pclcf->name;
     clcf->noname = 1;
 
-    if (pclcf->locations.elts == NULL) {
-        if (ngx_array_init(&pclcf->locations, cf->pool, 4, sizeof(void *))
-            == NGX_ERROR)
-        {
+    if (pclcf->locations == NULL) {
+        pclcf->locations = ngx_array_create(cf->pool, 2, sizeof(void *));
+        if (pclcf->locations == NULL) {
             return NGX_CONF_ERROR;
         }
     }
 
-    clcfp = ngx_array_push(&pclcf->locations);
+    clcfp = ngx_array_push(pclcf->locations);
     if (clcfp == NULL) {
         return NGX_CONF_ERROR;
     }
