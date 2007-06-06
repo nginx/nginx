@@ -79,18 +79,6 @@ typedef struct {
 
 
 typedef struct {
-    void            **buckets;
-    ngx_uint_t        hash_size;
-
-    ngx_uint_t        max_size;
-    ngx_uint_t        bucket_limit;
-    size_t            bucket_size;
-    char             *name;
-    ngx_uint_t        min_buckets;
-} ngx_hash0_t;
-
-
-typedef struct {
     ngx_uint_t        hash;
     ngx_str_t         key;
     ngx_str_t         value;
