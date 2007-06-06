@@ -9,6 +9,33 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.24" date="06.06.2007">
+
+<change type="security">
+<para lang="ru">
+директива ssl_verify_client не работала, если запрос выполнялся
+по протоколу HTTP/0.9.
+</para>
+<para lang="en">
+the "ssl_verify_client" directive did not work if request was made
+using HTTP/0.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании сжатия часть ответа могла передаваться несжатой;
+ошибка появилась в 0.5.23.
+</para>
+<para lang="en">
+a part of response body may be passed uncompressed if gzip was used;
+bug appeared in 0.5.23.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.23" date="04.06.2007">
 
 <change type="feature">
