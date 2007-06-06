@@ -418,7 +418,7 @@ ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src, ngx_uint_t sendfile)
 
         src->file_pos += n;
 
-        if (src->pos == src->last) {
+        if (src->file_pos == src->file_last) {
             dst->flush = src->flush;
             dst->last_buf = src->last_buf;
         }
