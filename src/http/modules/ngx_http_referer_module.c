@@ -352,7 +352,7 @@ ngx_http_valid_referers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        p = (u_char *) ngx_strstr(value[i].data, "/");
+        p = (u_char *) ngx_strchr(value[i].data, '/');
 
         if (p) {
             uri.len = (value[i].data + value[i].len) - p;
