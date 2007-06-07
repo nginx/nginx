@@ -595,7 +595,6 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     u.url = value[1];
     u.no_resolve = 1;
-    /* u.uri_part = 1;  may be used as namespace */
 
     lcf->upstream.upstream = ngx_http_upstream_add(cf, &u, 0);
     if (lcf->upstream.upstream == NULL) {
