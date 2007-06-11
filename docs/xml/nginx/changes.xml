@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.25" date="11.06.2007">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с параметром --without-http_rewrite_module;
+ошибка появилась в 0.5.24.
+</para>
+<para lang="en">
+nginx could not be built with the --without-http_rewrite_module parameter;
+bug appeared in 0.5.24.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.24" date="06.06.2007">
 
 <change type="security">
@@ -28,7 +44,7 @@ using HTTP/0.9.
 ошибка появилась в 0.5.23.
 </para>
 <para lang="en">
-a part of response body may be passed uncompressed if gzip was used;
+a part of response body might be passed uncompressed if gzip was used;
 bug appeared in 0.5.23.
 </para>
 </change>
