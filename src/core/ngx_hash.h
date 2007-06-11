@@ -42,6 +42,13 @@ typedef ngx_uint_t (*ngx_hash_key_pt) (u_char *data, size_t len);
 
 
 typedef struct {
+    ngx_hash_t            hash;
+    ngx_hash_wildcard_t  *wc_head;
+    ngx_hash_wildcard_t  *wc_tail;
+} ngx_hash_combined_t;
+
+
+typedef struct {
     ngx_hash_t       *hash;
     ngx_hash_key_pt   key;
 
@@ -73,8 +80,11 @@ typedef struct {
     ngx_array_t       keys;
     ngx_array_t      *keys_hash;
 
-    ngx_array_t       dns_wildcards;
-    ngx_array_t      *dns_wildcards_hash;
+    ngx_array_t       dns_wc_head;
+    ngx_array_t      *dns_wc_head_hash;
+
+    ngx_array_t       dns_wc_tail;
+    ngx_array_t      *dns_wc_tail_hash;
 } ngx_hash_keys_arrays_t;
 
 
@@ -87,8 +97,10 @@ typedef struct {
 
 
 void *ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len);
-void *ngx_hash_find_wildcard(ngx_hash_wildcard_t *hwc, u_char *name,
-    size_t len);
+void *ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len);
+void *ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len);
+void *ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key,
+    u_char *name, size_t len);
 
 ngx_int_t ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
     ngx_uint_t nelts);

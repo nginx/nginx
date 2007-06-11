@@ -26,8 +26,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_hash_t                  hash;
-    ngx_hash_wildcard_t        *dns_wildcards;
+    ngx_hash_combined_t         hash;
     ngx_int_t                   index;
     ngx_http_variable_value_t  *default_value;
     ngx_uint_t                  hostnames;      /* unsigned  hostnames:1 */
@@ -142,28 +141,13 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         key = ngx_hash(key, name[i]);
     }
 
-    value = NULL;
-
-    if (map->hash.buckets) {
-        value = ngx_hash_find(&map->hash, key, name, len);
-    }
+    value = ngx_hash_find_combined(&map->hash, key, name, len);
 
     if (value) {
         *v = *value;
 
     } else {
-        if (map->dns_wildcards && map->dns_wildcards->hash.buckets) {
-            value = ngx_hash_find_wildcard(map->dns_wildcards, name, len);
-            if (value) {
-                *v = *value;
-
-            } else {
-                *v = *map->default_value;
-            }
-
-        } else {
-            *v = *map->default_value;
-        }
+        *v = *map->default_value;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -282,6 +266,9 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return rv;
     }
 
+    map->default_value = ctx.default_value ? ctx.default_value:
+                                             &ngx_http_variable_null_value;
+
     hash.key = ngx_hash_key_lc;
     hash.max_size = mcf->hash_max_size;
     hash.bucket_size = mcf->hash_bucket_size;
@@ -289,7 +276,7 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     hash.pool = cf->pool;
 
     if (ctx.keys.keys.nelts) {
-        hash.hash = &map->hash;
+        hash.hash = &map->hash.hash;
         hash.temp_pool = NULL;
 
         if (ngx_hash_init(&hash, ctx.keys.keys.elts, ctx.keys.keys.nelts)
@@ -300,27 +287,44 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    map->default_value = ctx.default_value ? ctx.default_value:
-                                             &ngx_http_variable_null_value;
+    if (ctx.keys.dns_wc_head.nelts) {
 
-    if (ctx.keys.dns_wildcards.nelts) {
-
-        ngx_qsort(ctx.keys.dns_wildcards.elts,
-                  (size_t) ctx.keys.dns_wildcards.nelts,
+        ngx_qsort(ctx.keys.dns_wc_head.elts,
+                  (size_t) ctx.keys.dns_wc_head.nelts,
                   sizeof(ngx_hash_key_t), ngx_http_map_cmp_dns_wildcards);
 
         hash.hash = NULL;
         hash.temp_pool = pool;
 
-        if (ngx_hash_wildcard_init(&hash, ctx.keys.dns_wildcards.elts,
-                                   ctx.keys.dns_wildcards.nelts)
+        if (ngx_hash_wildcard_init(&hash, ctx.keys.dns_wc_head.elts,
+                                   ctx.keys.dns_wc_head.nelts)
             != NGX_OK)
         {
             ngx_destroy_pool(pool);
             return NGX_CONF_ERROR;
         }
 
-        map->dns_wildcards = (ngx_hash_wildcard_t *) hash.hash;
+        map->hash.wc_head = (ngx_hash_wildcard_t *) hash.hash;
+    }
+
+    if (ctx.keys.dns_wc_tail.nelts) {
+
+        ngx_qsort(ctx.keys.dns_wc_tail.elts,
+                  (size_t) ctx.keys.dns_wc_tail.nelts,
+                  sizeof(ngx_hash_key_t), ngx_http_map_cmp_dns_wildcards);
+
+        hash.hash = NULL;
+        hash.temp_pool = pool;
+
+        if (ngx_hash_wildcard_init(&hash, ctx.keys.dns_wc_tail.elts,
+                                   ctx.keys.dns_wc_tail.nelts)
+            != NGX_OK)
+        {
+            ngx_destroy_pool(pool);
+            return NGX_CONF_ERROR;
+        }
+
+        map->hash.wc_tail = (ngx_hash_wildcard_t *) hash.hash;
     }
 
     ngx_destroy_pool(pool);
@@ -344,10 +348,9 @@ ngx_http_map_cmp_dns_wildcards(const void *one, const void *two)
 static char *
 ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
-    u_char                      ch;
     ngx_int_t                   rc;
     ngx_str_t                  *value, file;
-    ngx_uint_t                  i, key, flags;
+    ngx_uint_t                  i, key;
     ngx_http_map_conf_ctx_t    *ctx;
     ngx_http_variable_value_t  *var, **vp;
 
@@ -439,48 +442,34 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
 found:
 
-    ch = value[0].data[0];
+    if (ngx_strcmp(value[0].data, "default") == 0) {
 
-    if ((ch != '*' && ch != '.') || ctx->hostnames == 0) {
-
-        if (ngx_strcmp(value[0].data, "default") == 0) {
-
-            if (ctx->default_value) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "duplicate default map parameter");
-                return NGX_CONF_ERROR;
-            }
-
-            ctx->default_value = var;
-
-            return NGX_CONF_OK;
-        }
-
-        if (value[0].len && ch == '!') {
-            value[0].len--;
-            value[0].data++;
-        }
-
-        flags = 0;
-
-    } else {
-
-        if ((ch == '*' && (value[0].len < 3 || value[0].data[1] != '.'))
-            || (ch == '.' && value[0].len < 2))
-        {
+        if (ctx->default_value) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid DNS wildcard \"%V\"", &value[0]);
-
+                               "duplicate default map parameter");
             return NGX_CONF_ERROR;
         }
 
-        flags = NGX_HASH_WILDCARD_KEY;
+        ctx->default_value = var;
+
+        return NGX_CONF_OK;
     }
 
-    rc = ngx_hash_add_key(&ctx->keys, &value[0], var, flags);
+    if (value[0].len && value[0].data[0] == '!') {
+        value[0].len--;
+        value[0].data++;
+    }
+
+    rc = ngx_hash_add_key(&ctx->keys, &value[0], var,
+                          (ctx->hostnames) ? NGX_HASH_WILDCARD_KEY : 0);
 
     if (rc == NGX_OK) {
         return NGX_CONF_OK;
+    }
+
+    if (rc == NGX_DECLINED) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid hostname or wildcard \"%V\"", &value[0]);
     }
 
     if (rc == NGX_BUSY) {

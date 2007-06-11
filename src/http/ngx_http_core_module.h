@@ -173,7 +173,8 @@ typedef struct {
     in_addr_t                  addr;
 
     ngx_hash_t                 hash;
-    ngx_hash_wildcard_t       *dns_wildcards;
+    ngx_hash_wildcard_t       *wc_head;
+    ngx_hash_wildcard_t       *wc_tail;
 
     ngx_array_t                names;      /* array of ngx_http_server_name_t */
 
