@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.0" date="14.06.2007">
+
+<change type="feature">
+<para lang="ru">
+директивы "server_name", "map", and "valid_referers" поддерживают
+маски вида "www.example.*".
+</para>
+<para lang="en">
+the "server_name", "map", and "valid_referers" directives supports
+the "www.example.*" wildcards.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.25" date="11.06.2007">
 
 <change type="bugfix">
