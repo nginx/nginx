@@ -67,6 +67,7 @@ static char *ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void ngx_http_perl_cleanup_perl(void *data);
 #endif
 
+static ngx_int_t ngx_http_perl_init_worker(ngx_cycle_t *cycle);
 static void ngx_http_perl_exit(ngx_cycle_t *cycle);
 
 
@@ -126,7 +127,7 @@ ngx_module_t  ngx_http_perl_module = {
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL,                                  /* init process */
+    ngx_http_perl_init_worker,             /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
     NULL,                                  /* exit process */
@@ -1003,6 +1004,16 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+
+static ngx_int_t
+ngx_http_perl_init_worker(ngx_cycle_t *cycle)
+{
+    /* set worker's $$ */
+
+    sv_setiv(GvSV(gv_fetchpv("$", TRUE, SVt_PV)), (I32) ngx_pid);
+
+    return NGX_OK;
+}
 
 static void
 ngx_http_perl_exit(ngx_cycle_t *cycle)
