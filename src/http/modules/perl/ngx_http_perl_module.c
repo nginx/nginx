@@ -1008,9 +1008,20 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static ngx_int_t
 ngx_http_perl_init_worker(ngx_cycle_t *cycle)
 {
+    ngx_http_perl_main_conf_t  *pmcf;
+
+    pmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_perl_module);
+
+    {
+
+    dTHXa(pmcf->perl);
+    PERL_SET_CONTEXT(pmcf->perl);
+
     /* set worker's $$ */
 
     sv_setiv(GvSV(gv_fetchpv("$", TRUE, SVt_PV)), (I32) ngx_pid);
+
+    }
 
     return NGX_OK;
 }
