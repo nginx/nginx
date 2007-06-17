@@ -2157,8 +2157,17 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     r->connection->log->action = "sending to client";
 
-    if (rc == 0 && r == r->main && !r->post_action) {
-        rc = ngx_http_send_special(r, NGX_HTTP_LAST);
+    if (rc == 0) {
+        if (r == r->main) {
+            if (!r->post_action) {
+                rc = ngx_http_send_special(r, NGX_HTTP_LAST);
+            }
+
+        } else {
+            if (r->out) {
+                rc = NGX_AGAIN;
+            }
+        }
     }
 
     ngx_http_finalize_request(r, rc);
