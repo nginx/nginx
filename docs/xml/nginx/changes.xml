@@ -9,6 +9,52 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.1" date="17.06.2007">
+
+<change type="bugfix">
+<para lang="ru">
+в парсинге SSI.
+</para>
+<para lang="en">
+in SSI parsing.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании удалённого подзапроса в SSI последующий
+подзапрос локального файла мог отдаваться клиенту в неверном порядке.
+</para>
+<para lang="en">
+if remote SSI subrequest was used, then posterior local file subrequest
+might transferred to client in wrong order.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+большие включения в SSI, сохранённые во временные файлы,
+передавались не полностью.
+</para>
+<para lang="en">
+large SSI inclusions buffered in temporary files were truncated.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+значение perl'овой переменной $$ модуля ngx_http_perl_module было равно
+номеру главного процесса.
+</para>
+<para lang="en">
+the perl $$ variable value in ngx_http_perl_module was equal to the master
+process identification number.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.0" date="14.06.2007">
 
 <change type="feature">
