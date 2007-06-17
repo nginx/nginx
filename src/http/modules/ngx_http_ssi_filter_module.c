@@ -1020,6 +1020,7 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 ch = *p;
             }
 
+            ctx->state = state;
             ctx->pos = p;
             ctx->looked = looked;
             ctx->copy_end = p;
