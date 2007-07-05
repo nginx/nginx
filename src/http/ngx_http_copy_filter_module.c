@@ -117,6 +117,10 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
             r->buffered |= NGX_HTTP_COPY_BUFFERED;
         }
 
+        if (r != r->main) {
+            r->out = ctx->in;
+        }
+
 #if (NGX_DEBUG)
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
