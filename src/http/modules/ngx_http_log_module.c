@@ -423,6 +423,11 @@ ngx_http_log_bytes_sent(ngx_http_request_t *r, u_char *buf,
 }
 
 
+/*
+ * although there is a real $body_bytes_sent variable,
+ * this log operation code function is more optimized for logging
+ */
+
 static u_char *
 ngx_http_log_body_bytes_sent(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op)
