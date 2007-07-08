@@ -1144,16 +1144,16 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
             return NGX_OK;
         }
 
-        if (rc == NGX_OK && u->buffer.pos == u->buffer.last) {
+        if (rc == NGX_OK) {
             return NGX_AGAIN;
         }
 
-        if (rc == NGX_AGAIN) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                          "upstream split a header line in FastCGI records");
+        /* rc == NGX_AGAIN */
 
-            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-        }
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "upstream split a header line in FastCGI records");
+
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }
 }
 
