@@ -1144,7 +1144,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
             return NGX_OK;
         }
 
-        if (u->buffer.pos == u->buffer.last) {
+        if (rc == NGX_OK && u->buffer.pos == u->buffer.last) {
             return NGX_AGAIN;
         }
 
