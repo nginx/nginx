@@ -9,6 +9,32 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.27" date="09.07.2007">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании удалённого подзапроса в SSI последующий
+подзапрос локального файла мог отдаваться клиенту в неверном порядке.
+</para>
+<para lang="en">
+if remote SSI subrequest was used, then posterior local file subrequest
+might transferred to client in wrong order.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+большие включения в SSI, сохранённые во временные файлы,
+передавались не полностью.
+</para>
+<para lang="en">
+large SSI inclusions buffered in temporary files were truncated.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.26" date="17.06.2007">
 
 <change type="bugfix">
