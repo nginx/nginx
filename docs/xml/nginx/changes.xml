@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.2" date="09.07.2007">
+
+<change type="bugfix">
+<para lang="ru">
+если заголовок ответа был разделён в FastCGI-записях, то nginx передавал
+клиенту мусор в таких заголовках.
+</para>
+<para lang="en">
+if the FastCGI header was split in records,
+then nginx passed garbage in the header to a client.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.1" date="17.06.2007">
 
 <change type="bugfix">
