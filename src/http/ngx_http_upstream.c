@@ -657,7 +657,7 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
     c->sendfile = 0;
     u->output.sendfile = 0;
 
-    if (ngx_ssl_set_session(c, u->peer.ssl_session) != NGX_OK) {
+    if (u->peer.set_session(&u->peer, u->peer.data) != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
