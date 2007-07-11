@@ -796,6 +796,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
     if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) {
 
+        ngx_set_errno(0);
         pwd = getpwnam(NGX_USER);
         if (pwd == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
@@ -806,6 +807,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         ccf->username = NGX_USER;
         ccf->user = pwd->pw_uid;
 
+        ngx_set_errno(0);
         grp = getgrnam(NGX_GROUP);
         if (grp == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
@@ -920,6 +922,7 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ccf->username = (char *) value[1].data;
 
+    ngx_set_errno(0);
     pwd = getpwnam((const char *) value[1].data);
     if (pwd == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
@@ -931,6 +934,7 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     group = (char *) ((cf->args->nelts == 2) ? value[1].data : value[2].data);
 
+    ngx_set_errno(0);
     grp = getgrnam(group);
     if (grp == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
