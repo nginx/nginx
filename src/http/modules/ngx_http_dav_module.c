@@ -239,9 +239,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 
 #if !(NGX_WIN32)
 
-    if (ngx_change_file_access(temp->data, dlcf->access)
-        == NGX_FILE_ERROR)
-    {
+    if (ngx_change_file_access(temp->data, dlcf->access) == NGX_FILE_ERROR) {
         err = ngx_errno;
         not_found = NGX_HTTP_INTERNAL_SERVER_ERROR;
         failed = ngx_change_file_access_n;
