@@ -154,6 +154,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       0,
       NULL },
 
+    { ngx_string("proxy_store"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
+      ngx_conf_set_access_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.store),
+      NULL },
+
     { ngx_string("proxy_buffering"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -1502,6 +1509,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->rewrite_locations = NULL;
      */
 
+    conf->upstream.store = NGX_CONF_UNSET_UINT;
     conf->upstream.buffering = NGX_CONF_UNSET;
     conf->upstream.ignore_client_abort = NGX_CONF_UNSET;
 
@@ -1552,6 +1560,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_proxy_redirect_t    *pr;
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
+
+    ngx_conf_merge_uint_value(conf->upstream.store,
+                              prev->upstream.store, 0);
 
     ngx_conf_merge_value(conf->upstream.buffering,
                               prev->upstream.buffering, 1);

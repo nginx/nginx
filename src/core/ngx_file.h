@@ -95,6 +95,7 @@ void ngx_init_temp_number(void);
 ngx_atomic_uint_t ngx_next_temp_number(ngx_uint_t collision);
 
 char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 #define ngx_conf_merge_path_value(curr, prev, path, l1, l2, l3, clean, cf)    \
