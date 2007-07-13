@@ -372,7 +372,7 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     cln->data = r;
     u->cleanup = &cln->handler;
 
-    u->store = (u->conf->store != 0);
+    u->store = (u->conf->store || u->conf->store_lengths);
 
     ngx_http_upstream_connect(r, u);
 }
@@ -2029,7 +2029,9 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
 #if !(NGX_WIN32)
 
-    if (ngx_change_file_access(temp->data, u->conf->store) == NGX_FILE_ERROR) {
+    if (ngx_change_file_access(temp->data, u->conf->store_access)
+        == NGX_FILE_ERROR)
+    {
         err = ngx_errno;
         failed = ngx_change_file_access_n;
         name = temp->data;
@@ -2052,13 +2054,24 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
                 err = ngx_errno;
                 failed = ngx_set_file_time_n;
                 name = temp->data;
-    
+
                 goto failed;
             }
         }
     }
 
-    ngx_http_map_uri_to_path(r, &path, &root, 0);
+    if (u->conf->store_lengths == NULL) {
+
+        ngx_http_map_uri_to_path(r, &path, &root, 0);
+
+    } else {
+        if (ngx_http_script_run(r, &path, u->conf->store_lengths->elts, 0,
+                                u->conf->store_values->elts)
+            == NULL)
+        {
+            return;
+        }
+    }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "upstream stores \"%s\" to \"%s\"", temp->data, path.data);
@@ -2074,8 +2087,8 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     if (err == NGX_ENOENT) {
 
-        err = ngx_create_full_path(path.data, ngx_dir_access(u->conf->store));
-
+        err = ngx_create_full_path(path.data,
+                                   ngx_dir_access(u->conf->store_access));
         if (err == 0) {
             if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
                 return;

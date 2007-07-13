@@ -303,11 +303,11 @@ ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t   i, right, shift, *access;
 
     access = (ngx_uint_t *) (confp + cmd->offset);
-    
+
     if (*access != NGX_CONF_UNSET_UINT) {
         return "is duplicate";
     }
-    
+
     value = cf->args->elts;
 
     *access = 0600;
@@ -328,10 +328,6 @@ ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             shift = 0;
             p += sizeof("all:") - 1;
 
-        } else if (ngx_strncmp(p, "off", sizeof("off") - 1) == 0) {
-            *access = 0;
-            return NGX_CONF_OK;
-
         } else {
             goto invalid;
         }
@@ -348,7 +344,7 @@ ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         *access |= right << shift;
     }
-    
+
     return NGX_CONF_OK;
 
 invalid:
