@@ -57,8 +57,6 @@ static ngx_int_t ngx_http_dav_depth(ngx_http_request_t *r, ngx_int_t dflt);
 static ngx_int_t ngx_http_dav_error(ngx_log_t *log, ngx_err_t err,
     ngx_int_t not_found, char *failed, u_char *path);
 static ngx_int_t ngx_http_dav_location(ngx_http_request_t *r, u_char *path);
-static char *ngx_http_dav_access(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
 static void *ngx_http_dav_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_dav_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
@@ -94,9 +92,9 @@ static ngx_command_t  ngx_http_dav_commands[] = {
 
     { ngx_string("dav_access"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
-      ngx_http_dav_access,
+      ngx_conf_set_access_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      0,
+      offsetof(ngx_http_dav_loc_conf_t, access),
       NULL },
 
       ngx_null_command
@@ -1103,66 +1101,6 @@ ngx_http_dav_location(ngx_http_request_t *r, u_char *path)
     r->headers_out.location->value.data = location;
 
     return NGX_OK;
-}
-
-
-static char *
-ngx_http_dav_access(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_http_dav_loc_conf_t *lcf = conf;
-
-    u_char      *p;
-    ngx_str_t   *value;
-    ngx_uint_t   i, right, shift;
-
-    if (lcf->access != NGX_CONF_UNSET_UINT) {
-        return "is duplicate";
-    }
-
-    value = cf->args->elts;
-
-    lcf->access = 0600;
-
-    for (i = 1; i < cf->args->nelts; i++) {
-
-        p = value[i].data;
-
-        if (ngx_strncmp(p, "user:", sizeof("user:") - 1) == 0) {
-            shift = 6;
-            p += sizeof("user:") - 1;
-
-        } else if (ngx_strncmp(p, "group:", sizeof("group:") - 1) == 0) {
-            shift = 3;
-            p += sizeof("group:") - 1;
-
-        } else if (ngx_strncmp(p, "all:", sizeof("all:") - 1) == 0) {
-            shift = 0;
-            p += sizeof("all:") - 1;
-
-        } else {
-            goto invalid;
-        }
-
-        if (ngx_strcmp(p, "rw") == 0) {
-            right = 6;
-
-        } else if (ngx_strcmp(p, "r") == 0) {
-            right = 4;
-
-        } else {
-            goto invalid;
-        }
-
-        lcf->access |= right << shift;
-    }
-
-    return NGX_CONF_OK;
-
-invalid:
-
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "invalid value \"%V\"", &value[i]);
-    return NGX_CONF_ERROR;
 }
 
 
