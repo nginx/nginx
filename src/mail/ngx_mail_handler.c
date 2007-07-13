@@ -708,7 +708,10 @@ ngx_pop3_auth_state(ngx_event_t *rev)
                                               (u_char *) "CRAM-MD5", 8)
                               == 0)
                 {
-                    if (s->args.nelts != 1) {
+                    if (!(cscf->pop3_auth_methods
+                          & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)
+                        || s->args.nelts != 1)
+                    {
                         rc = NGX_MAIL_PARSE_INVALID_COMMAND;
                         break;
                     }
@@ -1368,7 +1371,13 @@ ngx_smtp_auth_state(ngx_event_t *rev)
                                               (u_char *) "CRAM-MD5", 8)
                               == 0)
                 {
-                    if (s->args.nelts != 1) {
+                    cscf = ngx_mail_get_module_srv_conf(s,
+                                                        ngx_mail_core_module);
+
+                    if (!(cscf->smtp_auth_methods
+                          & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)
+                        || s->args.nelts != 1)
+                    {
                         rc = NGX_MAIL_PARSE_INVALID_COMMAND;
                         break;
                     }
