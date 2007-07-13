@@ -1169,6 +1169,7 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
                 + sizeof(CRLF) - 1
           + sizeof("Client-IP: ") - 1 + s->connection->addr_text.len
                 + sizeof(CRLF) - 1
+          + ahcf->header.len
           + sizeof(CRLF) - 1;
 
     b = ngx_create_temp_buf(pool, len);
