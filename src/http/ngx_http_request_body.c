@@ -88,6 +88,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         }
 
         post_handler(r);
+
         return NGX_OK;
     }
 
