@@ -25,11 +25,11 @@ if [ $PCRE != NONE ]; then
 
             echo $ngx_n "checking for PCRE library ...$ngx_c"
 
-            if [ -e $PCRE/pcre.h ]; then
+            if [ -f $PCRE/pcre.h ]; then
                 ngx_pcre_ver=`grep PCRE_MAJOR $PCRE/pcre.h \
                               | sed -e 's/^.*PCRE_MAJOR.* \(.*\)$/\1/'`
 
-            else if [ -e $PCRE/configure.in.h ]; then
+            else if [ -f $PCRE/configure.in.h ]; then
                 ngx_pcre_ver=`grep PCRE_MAJOR= $PCRE/configure.in \
                               | sed -e 's/^.*=\(.*\)$/\1/'`
 
