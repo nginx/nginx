@@ -136,7 +136,7 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add);
 #endif
 
 
-#elif ( __sparc__ || __sparcv9 )
+#elif ( __sparc__ || __sparc || __sparcv9 )
 
 #if (NGX_PTR_SIZE == 8)
 

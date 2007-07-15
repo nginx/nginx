@@ -35,9 +35,6 @@ case "$NGX_MACHINE" in
     ;;
 
     sun4u | sun4v)
-        # "-xarch=v9" enables the "casa" assembler instruction
-        CPU_OPT="-xarch=v9"
-        CORE_LINK="$CORE_LINK -xarch=v9"
         NGX_AUX=" src/os/unix/ngx_sunpro_sparc64.il"
     ;;
 
@@ -79,6 +76,22 @@ case $CPU in
         CPU_OPT="-xchip=opteron"
         #CPU_OPT="$CPU_OPT -xarch=sse2"
         CPU_OPT="$CPU_OPT -xcache=64/64/2:1024/64/16"
+    ;;
+
+    sparc32)
+        # build 32-bit UltraSparc binary
+        CPU_OPT="-m32"
+        CORE_LINK="$CORE_LINK -m32"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS -m32"
+        NGX_CPU_CACHE_LINE=64
+    ;;
+
+    sparc64)
+        # build 64-bit UltraSparc binary
+        CPU_OPT="-m64"
+        CORE_LINK="$CORE_LINK -m64"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS -m64"
+        NGX_CPU_CACHE_LINE=64
     ;;
 
     amd64)
