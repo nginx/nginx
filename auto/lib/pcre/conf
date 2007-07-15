@@ -29,9 +29,14 @@ if [ $PCRE != NONE ]; then
                 ngx_pcre_ver=`grep PCRE_MAJOR $PCRE/pcre.h \
                               | sed -e 's/^.*PCRE_MAJOR.* \(.*\)$/\1/'`
 
-            else
+            else if [ -e $PCRE/configure.in.h ]; then
                 ngx_pcre_ver=`grep PCRE_MAJOR= $PCRE/configure.in \
                               | sed -e 's/^.*=\(.*\)$/\1/'`
+
+            else
+                ngx_pcre_ver=`grep pcre_major, $PCRE/configure.ac \
+                              | sed -e 's/^.*pcre_major,.*\[\(.*\)\].*$/\1/'`
+            fi
             fi
 
             echo " $ngx_pcre_ver major version found"
