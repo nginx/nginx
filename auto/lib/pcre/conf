@@ -17,7 +17,7 @@ if [ $PCRE != NONE ]; then
             CORE_LIBS="$CORE_LIBS $PCRE/pcre.lib"
         ;;
 
-        icc* | sunc )
+        icc* )
             have=NGX_PCRE . auto/have
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
 

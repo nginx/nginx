@@ -36,7 +36,7 @@ case "$NGX_MACHINE" in
 
     sun4u | sun4v)
         # "-xarch=v9" enables the "casa" assembler instruction
-        CFLAGS="$CFLAGS -xarch=v9"
+        CPU_OPT="-xarch=v9"
         CORE_LINK="$CORE_LINK -xarch=v9"
         NGX_AUX=" src/os/unix/ngx_sunpro_sparc64.il"
     ;;
