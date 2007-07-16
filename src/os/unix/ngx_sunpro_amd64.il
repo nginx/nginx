@@ -28,3 +28,10 @@
         lock
         xaddq     %rax, (%rdi)
         .end
+
+
+/ ngx_cpu_pause()
+
+       .inline ngx_cpu_pause,0
+       pause
+       .end
