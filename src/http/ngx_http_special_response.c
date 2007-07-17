@@ -315,6 +315,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 {
     u_char                    *p;
     size_t                     msie_refresh;
+    uintptr_t                  escape;
     ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_str_t                 *uri, *location;
@@ -496,17 +497,19 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         r->headers_out.content_length = NULL;
     }
 
-    msie_refresh = 0;
-    location = NULL;
-
     if (clcf->msie_refresh
         && r->headers_in.msie
         && (error == NGX_HTTP_MOVED_PERMANENTLY
             || error == NGX_HTTP_MOVED_TEMPORARILY))
     {
+
         location = &r->headers_out.location->value;
+
+        escape = 2 * ngx_escape_uri(NULL, location->data, location->len,
+                                    NGX_ESCAPE_REFRESH);
+
         msie_refresh = sizeof(ngx_http_msie_refresh_head) - 1
-                       + location->len
+                       + escape + location->len
                        + sizeof(ngx_http_msie_refresh_tail) - 1;
 
         r->err_status = NGX_HTTP_OK;
@@ -514,6 +517,11 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         r->headers_out.content_length_n = msie_refresh;
         r->headers_out.location->hash = 0;
         r->headers_out.location = NULL;
+
+    } else {
+        location = NULL;
+        escape = 0;
+        msie_refresh = 0;
     }
 
     ngx_http_clear_accept_ranges(r);
@@ -595,7 +603,13 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         p = ngx_cpymem(b->pos, ngx_http_msie_refresh_head,
                        sizeof(ngx_http_msie_refresh_head) - 1);
 
-        p = ngx_cpymem(p, location->data, location->len);
+        if (escape == 0) {
+            p = ngx_cpymem(p, location->data, location->len);
+
+        } else {
+            p = (u_char *) ngx_escape_uri(p, location->data, location->len,
+                                          NGX_ESCAPE_REFRESH);
+        }
 
         b->last = ngx_cpymem(p, ngx_http_msie_refresh_tail,
                              sizeof(ngx_http_msie_refresh_tail) - 1);

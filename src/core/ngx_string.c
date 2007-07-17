@@ -1039,18 +1039,30 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
     };
 
+                    /* " ", """, "'", %00-%1F, %7F-%FF */
 
-    switch (type) {
-    case NGX_ESCAPE_HTML:
-        escape = html;
-        break;
-    case NGX_ESCAPE_ARGS:
-        escape = args;
-        break;
-    default:
-        escape = uri;
-        break;
-    }
+    static uint32_t   refresh[] = {
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+
+                    /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+        0x00000085, /* 0000 0000 0000 0000  0000 0000 1000 0101 */
+
+                    /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+        0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+
+                    /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+        0x80000000, /* 1000 0000 0000 0000  0000 0000 0000 0000 */
+
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+        0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    };
+
+    static uint32_t  *map[] = { uri, args, html, refresh };
+
+
+    escape = map[type];
 
     if (dst == NULL) {
 

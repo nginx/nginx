@@ -142,6 +142,7 @@ u_char *ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n);
 #define NGX_ESCAPE_URI       0
 #define NGX_ESCAPE_ARGS      1
 #define NGX_ESCAPE_HTML      2
+#define NGX_ESCAPE_REFRESH   3
 
 #define NGX_UNESCAPE_URI     1
 
