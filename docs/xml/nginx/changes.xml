@@ -9,6 +9,55 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.28" date="17.06.2007">
+
+<change type="security">
+<para lang="ru">
+при использовании директивы msie_refresh был возможен XSS.
+</para>
+<para lang="en">
+the "msie_refresh" directive allowed XSS.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы auth_http_header
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if the "auth_http_header" directive was used.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если использовался метод аутентификации CRAM-MD5, но он не был разрешён,
+то в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process
+if the CRAM-MD5 authentication method was used, but it was not enabled.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался метод eventport.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if the eventport method was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.27" date="09.07.2007">
 
 <change type="bugfix">
@@ -694,7 +743,7 @@ nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.5.8.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc и ppc;
+nginx could not be built on platforms different from i386, amd64, sparc and ppc;
 bug appeared in 0.5.8.
 </para>
 </change>
