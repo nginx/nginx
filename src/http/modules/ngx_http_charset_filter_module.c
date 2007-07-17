@@ -187,7 +187,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
 {
     u_char                        *ct;
     ngx_int_t                      charset, source_charset;
-    ngx_str_t                     *mc, *from, *to;
+    ngx_str_t                     *mc, *from, *to, s;
     ngx_uint_t                     n;
     ngx_http_charset_t            *charsets;
     ngx_http_charset_ctx_t        *ctx;
@@ -256,8 +256,10 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
                     return NGX_ERROR;
                 }
 
-                charset = ngx_http_charset_get_charset(charsets, n,
-                                                       (ngx_str_t *) vv);
+                s.len = vv->len;
+                s.data = vv->data;
+
+                charset = ngx_http_charset_get_charset(charsets, n, &s);
             }
         }
 
@@ -303,8 +305,10 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
-            source_charset = ngx_http_charset_get_charset(charsets, n,
-                                                          (ngx_str_t *) vv);
+            s.len = vv->len;
+            s.data = vv->data;
+
+            source_charset = ngx_http_charset_get_charset(charsets, n, &s);
         }
 
         if (charset != NGX_HTTP_NO_CHARSET) {
@@ -373,17 +377,16 @@ static ngx_int_t
 ngx_http_charset_get_charset(ngx_http_charset_t *charsets, ngx_uint_t n,
     ngx_str_t *charset)
 {
-    size_t      len;
     ngx_uint_t  i;
 
-    len = charset->len & 0xffff;
-
     for (i = 0; i < n; i++) {
-        if (charsets[i].name.len != len) {
+        if (charsets[i].name.len != charset->len) {
             continue;
         }
 
-        if (ngx_strncasecmp(charsets[i].name.data, charset->data, len) == 0) {
+        if (ngx_strncasecmp(charsets[i].name.data, charset->data, charset->len)
+            == 0)
+        {
             return i;
         }
     }

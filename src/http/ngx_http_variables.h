@@ -14,15 +14,7 @@
 #include <ngx_http.h>
 
 
-typedef struct {
-    unsigned                     len:29;
-
-    unsigned                     valid:1;
-    unsigned                     no_cachable:1;
-    unsigned                     not_found:1;
-
-    u_char                      *data;
-} ngx_http_variable_value_t;
+typedef ngx_variable_value_t  ngx_http_variable_value_t;
 
 #define ngx_http_variable(v)     { sizeof(v) - 1, 1, 0, 0, (u_char *) v }
 
