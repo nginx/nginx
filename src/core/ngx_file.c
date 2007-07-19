@@ -518,6 +518,9 @@ ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
         }
 
         ctx->data = data;
+
+    } else {
+        data = NULL;
     }
 
     for ( ;; ) {
@@ -643,8 +646,8 @@ done:
         ngx_free(buf.data);
     }
 
-    if (ctx->alloc) {
-        ngx_free(ctx->data);
+    if (data) {
+        ngx_free(data);
         ctx->data = prev;
     }
 
