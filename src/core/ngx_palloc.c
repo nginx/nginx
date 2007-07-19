@@ -163,6 +163,7 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
 
     large = ngx_palloc(pool, sizeof(ngx_pool_large_t));
     if (large == NULL) {
+        ngx_free(p);
         return NULL;
     }
 
