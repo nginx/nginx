@@ -438,6 +438,9 @@ ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last)
     }
 
     var = ngx_array_push(&ccf->env);
+    if (var == NULL) {
+        return NULL;
+    }
 
     var->len = 2;
     var->data = (u_char *) "TZ";
