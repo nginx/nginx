@@ -439,6 +439,8 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 if (rc == NGX_ERROR || rc == NGX_AGAIN) {
                     return rc;
                 }
+
+                break;
             }
         }
 
