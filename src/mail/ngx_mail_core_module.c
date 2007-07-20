@@ -54,11 +54,27 @@ static ngx_conf_bitmask_t  ngx_pop3_auth_methods[] = {
 };
 
 
+static ngx_conf_bitmask_t  ngx_imap_auth_methods[] = {
+    { ngx_string("plain"), NGX_MAIL_AUTH_PLAIN_ENABLED },
+    { ngx_string("login"), NGX_MAIL_AUTH_LOGIN_ENABLED },
+    { ngx_string("cram-md5"), NGX_MAIL_AUTH_CRAM_MD5_ENABLED },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_conf_bitmask_t  ngx_smtp_auth_methods[] = {
     { ngx_string("plain"), NGX_MAIL_AUTH_PLAIN_ENABLED },
     { ngx_string("login"), NGX_MAIL_AUTH_LOGIN_ENABLED },
     { ngx_string("cram-md5"), NGX_MAIL_AUTH_CRAM_MD5_ENABLED },
     { ngx_null_string, 0 }
+};
+
+
+static ngx_str_t  ngx_imap_auth_methods_names[] = {
+    ngx_string("AUTH=PLAIN"),
+    ngx_string("AUTH=LOGIN"),
+    ngx_null_string,  /* APOP */
+    ngx_string("AUTH=CRAM-MD5")
 };
 
 
@@ -171,6 +187,13 @@ static ngx_command_t  ngx_mail_core_commands[] = {
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_core_srv_conf_t, pop3_auth_methods),
       &ngx_pop3_auth_methods },
+
+    { ngx_string("imap_auth"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_1MORE,
+      ngx_conf_set_bitmask_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_core_srv_conf_t, imap_auth_methods),
+      &ngx_imap_auth_methods },
 
     { ngx_string("smtp_auth"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_1MORE,
@@ -294,6 +317,11 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_bitmask_value(conf->pop3_auth_methods,
                                  prev->pop3_auth_methods,
+                                 (NGX_CONF_BITMASK_SET
+                                  |NGX_MAIL_AUTH_PLAIN_ENABLED));
+
+    ngx_conf_merge_bitmask_value(conf->imap_auth_methods,
+                                 prev->imap_auth_methods,
                                  (NGX_CONF_BITMASK_SET
                                   |NGX_MAIL_AUTH_PLAIN_ENABLED));
 
@@ -463,6 +491,15 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         size += 1 + c[i].len;
     }
 
+    for (m = NGX_MAIL_AUTH_PLAIN_ENABLED, i = 0;
+         m <= NGX_MAIL_AUTH_CRAM_MD5_ENABLED;
+         m <<= 1, i++)
+    {
+        if (m & conf->imap_auth_methods) {
+            size += 1 + ngx_imap_auth_methods_names[i].len;
+        }
+    }
+
     p = ngx_palloc(cf->pool, size);
     if (p == NULL) {
         return NGX_CONF_ERROR;
@@ -476,6 +513,19 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     for (i = 0; i < conf->imap_capabilities.nelts; i++) {
         *p++ = ' ';
         p = ngx_cpymem(p, c[i].data, c[i].len);
+    }
+
+    auth = p;
+
+    for (m = NGX_MAIL_AUTH_PLAIN_ENABLED, i = 0;
+         m <= NGX_MAIL_AUTH_CRAM_MD5_ENABLED;
+         m <<= 1, i++)
+    {
+        if (m & conf->imap_auth_methods) {
+            *p++ = ' ';
+            p = ngx_cpymem(p, ngx_imap_auth_methods_names[i].data,
+                           ngx_imap_auth_methods_names[i].len);
+        }
     }
 
     *p++ = CR; *p = LF;
@@ -497,7 +547,8 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     *p++ = CR; *p = LF;
 
 
-    size += sizeof(" LOGINDISABLED") - 1;
+    size = (auth - conf->imap_capability.data) + sizeof(CRLF) - 1
+            + sizeof(" STARTTLS LOGINDISABLED") - 1;
 
     p = ngx_palloc(cf->pool, size);
     if (p == NULL) {
@@ -507,9 +558,10 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     conf->imap_starttls_only_capability.len = size;
     conf->imap_starttls_only_capability.data = p;
 
-    p = ngx_cpymem(p, conf->imap_starttls_capability.data,
-                   conf->imap_starttls_capability.len - (sizeof(CRLF) - 1));
-    p = ngx_cpymem(p, " LOGINDISABLED", sizeof(" LOGINDISABLED") - 1);
+    p = ngx_cpymem(p, conf->imap_capability.data,
+                   auth - conf->imap_capability.data);
+    p = ngx_cpymem(p, " STARTTLS LOGINDISABLED",
+                   sizeof(" STARTTLS LOGINDISABLED") - 1);
     *p++ = CR; *p = LF;
 
 

@@ -354,6 +354,27 @@ ngx_int_t ngx_imap_parse_command(ngx_mail_session_t *s)
                     }
                     break;
 
+                case 12:
+                    if ((c[0] == 'A'|| c[0] == 'a')
+                        && (c[1] == 'U'|| c[1] == 'u')
+                        && (c[2] == 'T'|| c[2] == 't')
+                        && (c[3] == 'H'|| c[3] == 'h')
+                        && (c[4] == 'E'|| c[4] == 'e')
+                        && (c[5] == 'N'|| c[5] == 'n')
+                        && (c[6] == 'T'|| c[6] == 't')
+                        && (c[7] == 'I'|| c[7] == 'i')
+                        && (c[8] == 'C'|| c[8] == 'c')
+                        && (c[9] == 'A'|| c[9] == 'a')
+                        && (c[10] == 'T'|| c[10] == 't')
+                        && (c[11] == 'E'|| c[11] == 'e'))
+                    {
+                        s->command = NGX_IMAP_AUTHENTICATE;
+
+                    } else {
+                        goto invalid;
+                    }
+                    break;
+
                 default:
                     goto invalid;
                 }
@@ -573,7 +594,7 @@ done:
         s->literal_len = 0;
     }
 
-    s->state = sw_start;
+    s->state = (s->command != NGX_IMAP_AUTHENTICATE) ? sw_start : sw_argument;
 
     return NGX_OK;
 

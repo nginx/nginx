@@ -280,6 +280,9 @@ ngx_mail_init_session(ngx_connection_t *c)
          && (cscf->pop3_auth_methods
              & (NGX_MAIL_AUTH_APOP_ENABLED|NGX_MAIL_AUTH_CRAM_MD5_ENABLED)))
 
+        || (s->protocol == NGX_MAIL_IMAP_PROTOCOL
+           && (cscf->imap_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED))
+
         || (s->protocol == NGX_MAIL_SMTP_PROTOCOL
            && (cscf->smtp_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)))
     {
@@ -985,7 +988,7 @@ ngx_imap_auth_state(ngx_event_t *rev)
 {
     u_char                    *p, *last, *text, *dst, *src, *end;
     ssize_t                    text_len, last_len;
-    ngx_str_t                 *arg;
+    ngx_str_t                 *arg, salt;
     ngx_int_t                  rc;
     ngx_uint_t                 tag, i;
     ngx_connection_t          *c;
@@ -1055,113 +1058,342 @@ ngx_imap_auth_state(ngx_event_t *rev)
             s->backslash = 0;
         }
 
-        switch (s->command) {
+        switch (s->mail_state) {
 
-        case NGX_IMAP_LOGIN:
+        case ngx_imap_start:
+
+            switch (s->command) {
+
+            case NGX_IMAP_LOGIN:
 
 #if (NGX_MAIL_SSL)
 
-            if (c->ssl == NULL) {
-                sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
+                if (c->ssl == NULL) {
+                    sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
-                if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
+                    if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
+                        rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                        break;
+                    }
+                }
+#endif
+
+                arg = s->args.elts;
+
+                if (s->args.nelts == 2 && arg[0].len) {
+
+                    s->login.len = arg[0].len;
+                    s->login.data = ngx_palloc(c->pool, s->login.len);
+                    if (s->login.data == NULL) {
+                        ngx_mail_session_internal_server_error(s);
+                        return;
+                    }
+
+                    ngx_memcpy(s->login.data, arg[0].data, s->login.len);
+
+                    s->passwd.len = arg[1].len;
+                    s->passwd.data = ngx_palloc(c->pool, s->passwd.len);
+                    if (s->passwd.data == NULL) {
+                        ngx_mail_session_internal_server_error(s);
+                        return;
+                    }
+
+                    ngx_memcpy(s->passwd.data, arg[1].data, s->passwd.len);
+
+#if (NGX_DEBUG_MAIL_PASSWD)
+                    ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                                   "imap login:\"%V\" passwd:\"%V\"",
+                                   &s->login, &s->passwd);
+#else
+                    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                                   "imap login:\"%V\"", &s->login);
+#endif
+
+                    ngx_mail_do_auth(s);
+                    return;
+                }
+
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                break;
+
+            case NGX_IMAP_AUTHENTICATE:
+
+#if (NGX_MAIL_SSL)
+
+                if (c->ssl == NULL) {
+                    sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
+
+                    if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
+                        rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                        break;
+                    }
+                }
+#endif
+
+                if (s->args.nelts != 1) {
                     rc = NGX_MAIL_PARSE_INVALID_COMMAND;
                     break;
                 }
-            }
+
+                arg = s->args.elts;
+
+                if (arg[0].len == 5) {
+
+                    if (ngx_strncasecmp(arg[0].data, (u_char *) "LOGIN", 5)
+                        == 0)
+                    {
+
+                        s->mail_state = ngx_imap_auth_login_username;
+
+                        last_len = sizeof(pop3_username) - 1;
+                        last = pop3_username;
+                        tag = 0;
+
+                        break;
+
+                    } else if (ngx_strncasecmp(arg[0].data, (u_char *) "PLAIN",
+                                               5)
+                               == 0)
+                    {
+
+                        s->mail_state = ngx_imap_auth_plain;
+
+                        last_len = sizeof(pop3_next) - 1;
+                        last = pop3_next;
+                        tag = 0;
+
+                        break;
+                    }
+
+                } else if (arg[0].len == 8
+                           && ngx_strncasecmp(arg[0].data,
+                                              (u_char *) "CRAM-MD5", 8)
+                              == 0)
+                {
+                    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+                    if (!(cscf->imap_auth_methods
+                          & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)
+                        || s->args.nelts != 1)
+                    {
+                        rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                        break;
+                    }
+
+                    s->mail_state = ngx_imap_auth_cram_md5;
+
+                    last = ngx_palloc(c->pool,
+                                      sizeof("+ " CRLF) - 1
+                                      + ngx_base64_encoded_length(s->salt.len));
+                    if (last == NULL) {
+                        ngx_mail_session_internal_server_error(s);
+                        return;
+                    }
+
+                    last[0] = '+'; last[1]= ' ';
+                    salt.data = &last[2];
+                    s->salt.len -= 2;
+
+                    ngx_encode_base64(&salt, &s->salt);
+
+                    s->salt.len += 2;
+                    last_len = 2 + salt.len;
+                    last[last_len++] = CR; last[last_len++] = LF;
+                    tag = 0;
+
+                    break;
+                }
+
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                break;
+
+            case NGX_IMAP_CAPABILITY:
+                cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+#if (NGX_MAIL_SSL)
+
+                if (c->ssl == NULL) {
+                    sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
+
+                    if (sslcf->starttls == NGX_MAIL_STARTTLS_ON) {
+                        text_len = cscf->imap_starttls_capability.len;
+                        text = cscf->imap_starttls_capability.data;
+                        break;
+                    }
+
+                    if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
+                        text_len = cscf->imap_starttls_only_capability.len;
+                        text = cscf->imap_starttls_only_capability.data;
+                        break;
+                    }
+                }
 #endif
 
+                text_len = cscf->imap_capability.len;
+                text = cscf->imap_capability.data;
+                break;
+
+            case NGX_IMAP_LOGOUT:
+                s->quit = 1;
+                text = imap_bye;
+                text_len = sizeof(imap_bye) - 1;
+                break;
+
+            case NGX_IMAP_NOOP:
+                break;
+
+#if (NGX_MAIL_SSL)
+
+            case NGX_IMAP_STARTTLS:
+                if (c->ssl == NULL) {
+                    sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
+                    if (sslcf->starttls) {
+                        c->read->handler = ngx_mail_starttls_handler;
+                        break;
+                    }
+                }
+
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                break;
+#endif
+
+            default:
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                break;
+            }
+
+            break;
+
+        case ngx_imap_auth_login_username:
+            arg = s->args.elts;
+            s->mail_state = ngx_imap_auth_login_password;
+
+            ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                           "imap auth login username: \"%V\"", &arg[0]);
+
+            s->login.data = ngx_palloc(c->pool,
+                                       ngx_base64_decoded_length(arg[0].len));
+            if (s->login.data == NULL){
+                ngx_mail_session_internal_server_error(s);
+                return;
+            }
+
+            if (ngx_decode_base64(&s->login, &arg[0]) != NGX_OK) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid base64 encoding "
+                              "in AUTH LOGIN command");
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                break;
+            }
+
+            ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                           "imap auth login username: \"%V\"", &s->login);
+
+            last_len = sizeof(pop3_password) - 1;
+            last = pop3_password;
+            tag = 0;
+
+            break;
+
+        case ngx_imap_auth_login_password:
             arg = s->args.elts;
 
-            if (s->args.nelts == 2 && arg[0].len) {
-
-                s->login.len = arg[0].len;
-                s->login.data = ngx_palloc(c->pool, s->login.len);
-                if (s->login.data == NULL) {
-                    ngx_mail_session_internal_server_error(s);
-                    return;
-                }
-
-                ngx_memcpy(s->login.data, arg[0].data, s->login.len);
-
-                s->passwd.len = arg[1].len;
-                s->passwd.data = ngx_palloc(c->pool, s->passwd.len);
-                if (s->passwd.data == NULL) {
-                    ngx_mail_session_internal_server_error(s);
-                    return;
-                }
-
-                ngx_memcpy(s->passwd.data, arg[1].data, s->passwd.len);
-
 #if (NGX_DEBUG_MAIL_PASSWD)
-                ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
-                               "imap login:\"%V\" passwd:\"%V\"",
-                               &s->login, &s->passwd);
-#else
-                ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
-                               "imap login:\"%V\"", &s->login);
+            ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                           "imap auth login password: \"%V\"", &arg[0]);
 #endif
 
+            s->passwd.data = ngx_palloc(c->pool,
+                                        ngx_base64_decoded_length(arg[0].len));
+            if (s->passwd.data == NULL){
+                ngx_mail_session_internal_server_error(s);
+                return;
+            }
+
+            if (ngx_decode_base64(&s->passwd, &arg[0]) != NGX_OK) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid base64 encoding "
+                              "in AUTH LOGIN command");
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                break;
+            }
+
+#if (NGX_DEBUG_MAIL_PASSWD)
+            ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                           "imap auth login password: \"%V\"", &s->passwd);
+#endif
+
+            ngx_mail_do_auth(s);
+            return;
+
+        case ngx_imap_auth_plain:
+            arg = s->args.elts;
+
+            rc = ngx_mail_decode_auth_plain(s, &arg[0]);
+
+            if (rc == NGX_OK) {
                 ngx_mail_do_auth(s);
                 return;
             }
 
-            rc = NGX_MAIL_PARSE_INVALID_COMMAND;
-            break;
-
-        case NGX_IMAP_CAPABILITY:
-            cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
-
-#if (NGX_MAIL_SSL)
-
-            if (c->ssl == NULL) {
-                sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
-
-                if (sslcf->starttls == NGX_MAIL_STARTTLS_ON) {
-                    text_len = cscf->imap_starttls_capability.len;
-                    text = cscf->imap_starttls_capability.data;
-                    break;
-                }
-
-                if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
-                    text_len = cscf->imap_starttls_only_capability.len;
-                    text = cscf->imap_starttls_only_capability.data;
-                    break;
-                }
+            if (rc == NGX_ERROR) {
+                ngx_mail_session_internal_server_error(s);
+                return;
             }
-#endif
 
-            text_len = cscf->imap_capability.len;
-            text = cscf->imap_capability.data;
+            /* rc == NGX_MAIL_PARSE_INVALID_COMMAND */
+
             break;
 
-        case NGX_IMAP_LOGOUT:
-            s->quit = 1;
-            text = imap_bye;
-            text_len = sizeof(imap_bye) - 1;
-            break;
+        case ngx_imap_auth_cram_md5:
+            arg = s->args.elts;
 
-        case NGX_IMAP_NOOP:
-            break;
+            ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                           "imap auth cram-md5: \"%V\"", &arg[0]);
 
-#if (NGX_MAIL_SSL)
+            s->login.data = ngx_palloc(c->pool,
+                                       ngx_base64_decoded_length(arg[0].len));
+            if (s->login.data == NULL){
+                ngx_mail_session_internal_server_error(s);
+                return;
+            }
 
-        case NGX_IMAP_STARTTLS:
-            if (c->ssl == NULL) {
-                sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
-                if (sslcf->starttls) {
-                    c->read->handler = ngx_mail_starttls_handler;
+            if (ngx_decode_base64(&s->login, &arg[0]) != NGX_OK) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid base64 encoding "
+                              "in AUTH CRAM-MD5 command");
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                break;
+            }
+
+            p = s->login.data;
+            last = p + s->login.len;
+
+            while (p < last) {
+                if (*p++ == ' ') {
+                    s->login.len = p - s->login.data - 1;
+                    s->passwd.len = last - p;
+                    s->passwd.data = p;
                     break;
                 }
             }
 
-            rc = NGX_MAIL_PARSE_INVALID_COMMAND;
-            break;
-#endif
+            if (s->passwd.len != 32) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid CRAM-MD5 hash "
+                              "in AUTH CRAM-MD5 command");
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                break;
+            }
 
-        default:
-            rc = NGX_MAIL_PARSE_INVALID_COMMAND;
-            break;
+            ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                           "imap auth cram-md5: \"%V\" \"%V\"",
+                           &s->login, &s->passwd);
+
+            s->auth_method = NGX_MAIL_AUTH_CRAM_MD5;
+
+            ngx_mail_do_auth(s);
+            return;
         }
 
     } else if (rc == NGX_IMAP_NEXT) {
@@ -1171,6 +1403,8 @@ ngx_imap_auth_state(ngx_event_t *rev)
     }
 
     if (rc == NGX_MAIL_PARSE_INVALID_COMMAND) {
+        s->mail_state = ngx_imap_start;
+        s->state = 0;
         last = imap_invalid_command;
         last_len = sizeof(imap_invalid_command) - 1;
     }
@@ -1209,9 +1443,18 @@ ngx_imap_auth_state(ngx_event_t *rev)
 
     if (rc != NGX_IMAP_NEXT) {
         s->args.nelts = 0;
-        s->buffer->pos = s->buffer->start;
-        s->buffer->last = s->buffer->start;
-        s->tag.len = 0;
+
+        if (s->state) {
+            /* preserve tag */
+            s->arg_start = s->buffer->start + s->tag.len;
+            s->buffer->pos = s->arg_start;
+            s->buffer->last = s->arg_start;
+
+        } else {
+            s->buffer->pos = s->buffer->start;
+            s->buffer->last = s->buffer->start;
+            s->tag.len = 0;
+        }
     }
 
     ngx_mail_send(c->write);
