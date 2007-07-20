@@ -92,6 +92,8 @@ typedef struct {
     ngx_str_t               imap_starttls_only_capability;
 
     ngx_str_t               smtp_capability;
+    ngx_str_t               smtp_starttls_capability;
+    ngx_str_t               smtp_starttls_only_capability;
 
     ngx_str_t               server_name;
     ngx_str_t               smtp_server_name;
@@ -247,6 +249,12 @@ typedef struct {
 #define NGX_SMTP_NOOP        5
 #define NGX_SMTP_MAIL        6
 #define NGX_SMTP_RSET        7
+#define NGX_SMTP_RCPT        8
+#define NGX_SMTP_DATA        9
+#define NGX_SMTP_VRFY        10
+#define NGX_SMTP_EXPN        11
+#define NGX_SMTP_HELP        12
+#define NGX_SMTP_STARTTLS    13
 
 
 #define NGX_MAIL_AUTH_PLAIN     0
@@ -285,6 +293,8 @@ typedef struct {
 
 #define ngx_mail_conf_get_module_main_conf(cf, module)                       \
     ((ngx_mail_conf_ctx_t *) cf->ctx)->main_conf[module.ctx_index]
+#define ngx_mail_conf_get_module_srv_conf(cf, module)                        \
+    ((ngx_mail_conf_ctx_t *) cf->ctx)->srv_conf[module.ctx_index]
 
 
 void ngx_mail_init_connection(ngx_connection_t *c);
