@@ -74,6 +74,7 @@ esac
 
 IPO=-xipo
 CFLAGS="$CFLAGS -fast $IPO"
+CORE_LINK="$CORE_LINK -fast $IPO"
 
 
 case $CPU in
@@ -128,7 +129,7 @@ case $CPU in
         # build 64-bit amd64 binary
         CPU_OPT="$ngx_amd64"
         CORE_LINK="$CORE_LINK $ngx_amd64"
-        CC_AUX_FLAGS="$CC_AUX_FLAGS $ngx_amd4"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS $ngx_amd64"
         NGX_AUX=" src/os/unix/ngx_sunpro_amd64.il"
         NGX_CPU_CACHE_LINE=64
     ;;
