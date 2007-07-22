@@ -38,6 +38,12 @@ typedef enum {
 
 
 typedef struct {
+    u_char                        *start;
+    u_char                        *end;
+} ngx_http_fastcgi_split_part_t;
+
+
+typedef struct {
     ngx_http_fastcgi_state_e       state;
     u_char                        *pos;
     u_char                        *last;
@@ -45,7 +51,9 @@ typedef struct {
     size_t                         length;
     size_t                         padding;
 
-    ngx_uint_t                     fastcgi_stdout;
+    ngx_uint_t                     fastcgi_stdout; /* unsigned :1 */
+
+    ngx_array_t                   *split_parts;
 } ngx_http_fastcgi_ctx_t;
 
 
@@ -840,15 +848,18 @@ ngx_http_fastcgi_reinit_request(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 {
-    u_char                         *start, *last;
+    u_char                         *p, *start, *last, *part_start;
+    size_t                          size;
     ngx_str_t                      *status_line, line, *pattern;
     ngx_int_t                       rc, status;
+    ngx_buf_t                       buf;
     ngx_uint_t                      i;
     ngx_table_elt_t                *h;
     ngx_http_upstream_t            *u;
     ngx_http_fastcgi_ctx_t         *f;
     ngx_http_upstream_header_t     *hh;
     ngx_http_fastcgi_loc_conf_t    *flcf;
+    ngx_http_fastcgi_split_part_t  *part;
     ngx_http_upstream_main_conf_t  *umcf;
 
     f = ngx_http_get_module_ctx(r, ngx_http_fastcgi_module);
@@ -1017,6 +1028,8 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
         for ( ;; ) {
 
+            part_start = u->buffer.pos;
+
             rc = ngx_http_parse_header_line(r, &u->buffer);
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1035,23 +1048,71 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
 
-                h->hash = r->header_hash;
+                if (f->split_parts && f->split_parts->nelts) {
 
-                h->key.len = r->header_name_end - r->header_name_start;
-                h->value.len = r->header_end - r->header_start;
+                    part = f->split_parts->elts;
+                    size = u->buffer.pos - part_start;
 
-                h->key.data = ngx_palloc(r->pool,
-                               h->key.len + 1 + h->value.len + 1 + h->key.len);
-                if (h->key.data == NULL) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    for (i = 0; i < f->split_parts->nelts; i++) {
+                        size += part[i].end - part[i].start;
+                    }
+
+                    p = ngx_palloc(r->pool, size);
+                    if (p == NULL) {
+                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    }
+
+                    buf.pos = p;
+
+                    for (i = 0; i < f->split_parts->nelts; i++) {
+                        p = ngx_cpymem(p, part[i].start,
+                                       part[i].end - part[i].start);
+                    }
+
+                    p = ngx_cpymem(p, part_start, u->buffer.pos - part_start);
+
+                    buf.last = p;
+
+                    f->split_parts->nelts = 0;
+
+                    rc = ngx_http_parse_header_line(r, &buf);
+
+                    h->key.len = r->header_name_end - r->header_name_start;
+                    h->key.data = r->header_name_start;
+                    h->key.data[h->key.len] = '\0';
+
+                    h->value.len = r->header_end - r->header_start;
+                    h->value.data = r->header_start;
+                    h->value.data[h->value.len] = '\0';
+
+                    h->lowcase_key = ngx_palloc(r->pool, h->key.len);
+                    if (h->lowcase_key == NULL) {
+                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    }
+
+                } else {
+
+                    h->key.len = r->header_name_end - r->header_name_start;
+                    h->value.len = r->header_end - r->header_start;
+
+                    h->key.data = ngx_palloc(r->pool,
+                                             h->key.len + 1 + h->value.len + 1
+                                             + h->key.len);
+                    if (h->key.data == NULL) {
+                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    }
+
+                    h->value.data = h->key.data + h->key.len + 1;
+                    h->lowcase_key = h->key.data + h->key.len + 1
+                                     + h->value.len + 1;
+
+                    ngx_cpystrn(h->key.data, r->header_name_start,
+                                h->key.len + 1);
+                    ngx_cpystrn(h->value.data, r->header_start,
+                                h->value.len + 1);
                 }
 
-                h->value.data = h->key.data + h->key.len + 1;
-                h->lowcase_key = h->key.data + h->key.len + 1
-                                 + h->value.len + 1;
-
-                ngx_cpystrn(h->key.data, r->header_name_start, h->key.len + 1);
-                ngx_cpystrn(h->value.data, r->header_start, h->value.len + 1);
+                h->hash = r->header_hash;
 
                 if (h->key.len == r->lowcase_index) {
                     ngx_memcpy(h->lowcase_key, r->lowcase_header, h->key.len);
@@ -1123,7 +1184,6 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                           "upstream sent invalid header");
 
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-
         }
 
         if (last) {
@@ -1150,10 +1210,23 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
         /* rc == NGX_AGAIN */
 
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                      "upstream split a header line in FastCGI records");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "upstream split a header line in FastCGI records");
 
-        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        if (f->split_parts == NULL) {
+            f->split_parts = ngx_array_create(r->pool, 1,
+                                        sizeof(ngx_http_fastcgi_split_part_t));
+            if (f->split_parts == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+        }
+
+        part = ngx_array_push(f->split_parts);
+
+        part->start = part_start;
+        part->end = u->buffer.last;
+
+        return NGX_AGAIN;
     }
 }
 
