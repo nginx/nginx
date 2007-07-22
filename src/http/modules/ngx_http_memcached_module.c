@@ -243,9 +243,6 @@ ngx_http_memcached_create_request(ngx_http_request_t *r)
     }
 
     len = sizeof("get ") - 1 + vv->len + sizeof(CRLF) - 1;
-    if (vv->len) {
-        len += 1 + vv->len;
-    }
 
     b = ngx_create_temp_buf(r->pool, len);
     if (b == NULL) {
