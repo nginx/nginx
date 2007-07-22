@@ -8,6 +8,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_http.h>
+#include <nginx.h>
 
 
 static ngx_int_t ngx_http_variable_request(ngx_http_request_t *r,
@@ -66,6 +67,8 @@ static ngx_int_t ngx_http_variable_sent_keep_alive(ngx_http_request_t *r,
 static ngx_int_t ngx_http_variable_sent_transfer_encoding(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
+static ngx_int_t ngx_http_variable_nginx_version(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 
 /*
  * TODO:
@@ -204,6 +207,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       ngx_http_variable_request,
       offsetof(ngx_http_request_t, limit_rate),
       NGX_HTTP_VAR_CHANGABLE|NGX_HTTP_VAR_NOCACHABLE, 0 },
+
+    { ngx_string("nginx_version"), NULL, ngx_http_variable_nginx_version,
+      0, 0, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -1200,6 +1206,20 @@ ngx_http_variable_request_body_file(ngx_http_request_t *r,
     v->no_cachable = 0;
     v->not_found = 0;
     v->data = r->request_body->temp_file->file.name.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_nginx_version(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    v->len = sizeof(NGINX_VERSION) - 1;
+    v->valid = 1;
+    v->no_cachable = 0;
+    v->not_found = 0;
+    v->data = (u_char *) NGINX_VERSION;
 
     return NGX_OK;
 }
