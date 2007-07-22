@@ -501,7 +501,7 @@ ngx_http_variable_request_set_size(ngx_http_request_t *r,
     ssize_t    s, *sp;
     ngx_str_t  val;
 
-    val.len = v->len & 0xffff;
+    val.len = v->len;
     val.data = v->data;
 
     s = ngx_parse_size(&val);

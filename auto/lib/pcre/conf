@@ -17,7 +17,7 @@ if [ $PCRE != NONE ]; then
             CORE_LIBS="$CORE_LIBS $PCRE/pcre.lib"
         ;;
 
-        icc* | sunc )
+        icc* )
             have=NGX_PCRE . auto/have
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
 
@@ -25,13 +25,18 @@ if [ $PCRE != NONE ]; then
 
             echo $ngx_n "checking for PCRE library ...$ngx_c"
 
-            if [ -e $PCRE/pcre.h ]; then
+            if [ -f $PCRE/pcre.h ]; then
                 ngx_pcre_ver=`grep PCRE_MAJOR $PCRE/pcre.h \
                               | sed -e 's/^.*PCRE_MAJOR.* \(.*\)$/\1/'`
 
-            else
+            else if [ -f $PCRE/configure.in ]; then
                 ngx_pcre_ver=`grep PCRE_MAJOR= $PCRE/configure.in \
                               | sed -e 's/^.*=\(.*\)$/\1/'`
+
+            else
+                ngx_pcre_ver=`grep pcre_major, $PCRE/configure.ac \
+                              | sed -e 's/^.*pcre_major,.*\[\(.*\)\].*$/\1/'`
+            fi
             fi
 
             echo " $ngx_pcre_ver major version found"

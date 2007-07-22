@@ -197,11 +197,14 @@ ngx_http_ssl_static_variable(ngx_http_request_t *r,
 {
     ngx_ssl_variable_handler_pt  handler = (ngx_ssl_variable_handler_pt) data;
 
-    size_t  len;
+    size_t     len;
+    ngx_str_t  s;
 
     if (r->connection->ssl) {
 
-        (void) handler(r->connection, NULL, (ngx_str_t *) v);
+        (void) handler(r->connection, NULL, &s);
+
+        v->data = s.data;
 
         for (len = 0; v->data[len]; len++) { /* void */ }
 
@@ -225,10 +228,16 @@ ngx_http_ssl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 {
     ngx_ssl_variable_handler_pt  handler = (ngx_ssl_variable_handler_pt) data;
 
+    ngx_str_t  s;
+
     if (r->connection->ssl) {
-        if (handler(r->connection, r->pool, (ngx_str_t *) v) != NGX_OK) {
+
+        if (handler(r->connection, r->pool, &s) != NGX_OK) {
             return NGX_ERROR;
         }
+
+        v->len = s.len;
+        v->data = s.data;
 
         if (v->len) {
             v->valid = 1;

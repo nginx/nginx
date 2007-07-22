@@ -2,8 +2,10 @@
 # Copyright (C) Igor Sysoev
 
 
-# Sun C 5.7 Patch 117837-04 2005/05/11
-# Sun C 5.8 2005/10/13
+# Sun C 5.7 Patch 117837-04 2005/05/11    Sun Studio 10
+# Sun C 5.8 2005/10/13                    Sun Studio 11
+# Sun C 5.9 SunOS_i386 2007/05/03         Sun Studio 12
+# Sun C 5.9 SunOS_sparc 2007/05/03
 
 NGX_SUNC_VER=`$CC -V 2>&1 | grep 'Sun C' 2>&1 \
                           | sed -e 's/^.* Sun C \(.*\)/\1/'`
@@ -12,6 +14,33 @@ echo " + Sun C version: $NGX_SUNC_VER"
 
 have=NGX_COMPILER value="\"Sun C $NGX_SUNC_VER\"" . auto/define
 
+
+cat << END > $NGX_AUTOTEST.c
+
+int main() { printf("%d", __SUNPRO_C); }
+
+END
+
+eval "$CC -o $NGX_AUTOTEST $NGX_AUTOTEST.c >> $NGX_ERR 2>&1"
+
+if [ -x $NGX_AUTOTEST ]; then
+    ngx_sunc_ver=`$NGX_AUTOTEST`
+fi
+
+rm $NGX_AUTOTEST*
+
+# 1424 == 0x590, Sun Studio 12
+
+if [ "$ngx_sunc_ver" -ge 1424 ]; then
+    ngx_sparc32="-m32"
+    ngx_sparc64="-m64"
+    ngx_amd64="-m64"
+
+else
+    ngx_sparc32="-xarch=v8plus"
+    ngx_sparc64="-xarch=v9"
+    ngx_amd64="-amd64"
+fi
 
 case "$NGX_MACHINE" in
 
@@ -35,9 +64,6 @@ case "$NGX_MACHINE" in
     ;;
 
     sun4u | sun4v)
-        # "-xarch=v9" enables the "casa" assembler instruction
-        CFLAGS="$CFLAGS -xarch=v9"
-        CORE_LINK="$CORE_LINK -xarch=v9"
         NGX_AUX=" src/os/unix/ngx_sunpro_sparc64.il"
     ;;
 
@@ -46,7 +72,9 @@ esac
 
 # optimizations
 
-CFLAGS="$CFLAGS -fast"
+IPO=-xipo
+CFLAGS="$CFLAGS -fast $IPO"
+CORE_LINK="$CORE_LINK -fast $IPO"
 
 
 case $CPU in
@@ -81,11 +109,29 @@ case $CPU in
         CPU_OPT="$CPU_OPT -xcache=64/64/2:1024/64/16"
     ;;
 
+    sparc32)
+        # build 32-bit UltraSparc binary
+        CPU_OPT="$ngx_sparc32"
+        CORE_LINK="$CORE_LINK $ngx_sparc32"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS $ngx_sparc32"
+        NGX_CPU_CACHE_LINE=64
+    ;;
+
+    sparc64)
+        # build 64-bit UltraSparc binary
+        CPU_OPT="$ngx_sparc64"
+        CORE_LINK="$CORE_LINK $ngx_sparc64"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS $ngx_sparc64"
+        NGX_CPU_CACHE_LINE=64
+    ;;
+
     amd64)
         # build 64-bit amd64 binary
-        CPU_OPT="-xarch=amd64"
-        CORE_LINK="$CORE_LINK -xarch=amd64"
+        CPU_OPT="$ngx_amd64"
+        CORE_LINK="$CORE_LINK $ngx_amd64"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS $ngx_amd64"
         NGX_AUX=" src/os/unix/ngx_sunpro_amd64.il"
+        NGX_CPU_CACHE_LINE=64
     ;;
 
 esac
@@ -95,15 +141,15 @@ CFLAGS="$CFLAGS $CPU_OPT"
 
 
 if [ ".$PCRE_OPT" = "." ]; then
-    PCRE_OPT="-fast $CPU_OPT"
+    PCRE_OPT="-fast $IPO $CPU_OPT"
 fi
 
 if [ ".$MD5_OPT" = "." ]; then
-    MD5_OPT="-fast $CPU_OPT"
+    MD5_OPT="-fast $IPO $CPU_OPT"
 fi
 
 if [ ".$ZLIB_OPT" = "." ]; then
-    ZLIB_OPT="-fast $CPU_OPT"
+    ZLIB_OPT="-fast $IPO $CPU_OPT"
 fi
 
 

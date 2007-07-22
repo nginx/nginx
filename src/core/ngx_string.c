@@ -105,21 +105,21 @@ ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
 u_char *
 ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
 {
-    u_char         *p, zero, *last, temp[NGX_INT64_LEN + 1];
+    u_char                *p, zero, *last, temp[NGX_INT64_LEN + 1];
                                     /*
                                      * really we need temp[NGX_INT64_LEN] only,
                                      * but icc issues the warning
                                      */
-    int             d;
-    size_t          len;
-    uint32_t        ui32;
-    int64_t         i64;
-    uint64_t        ui64;
-    ngx_msec_t      ms;
-    ngx_str_t      *s;
-    ngx_uint_t      width, sign, hexadecimal, max_width;
-    static u_char   hex[] = "0123456789abcdef";
-    static u_char   HEX[] = "0123456789ABCDEF";
+    int                    d;
+    size_t                 len;
+    uint32_t               ui32;
+    int64_t                i64;
+    uint64_t               ui64;
+    ngx_msec_t             ms;
+    ngx_uint_t             width, sign, hexadecimal, max_width;
+    ngx_variable_value_t  *v;
+    static u_char          hex[] = "0123456789abcdef";
+    static u_char          HEX[] = "0123456789ABCDEF";
 
     if (max == 0) {
         return buf;
@@ -188,12 +188,12 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
             switch (*fmt) {
 
             case 'V':
-                s = va_arg(args, ngx_str_t *);
+                v = va_arg(args, ngx_variable_value_t *);
 
-                len = s->len & 0xffff;
+                len = v->len;
                 len = (buf + len < last) ? len : (size_t) (last - buf);
 
-                buf = ngx_cpymem(buf, s->data, len);
+                buf = ngx_cpymem(buf, v->data, len);
                 fmt++;
 
                 continue;
