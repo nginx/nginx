@@ -9,14 +9,85 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.5" date="23.07.2007">
+
+<change type="feature">
+<para lang="ru">
+переменная $nginx_version.<br/>
+Спасибо Николаю Гречуху.
+</para>
+<para lang="en">
+$nginx_version variable.<br/>
+Thanks to Nick S. Grechukh.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+почтовый прокси-сервер поддерживает AUTHENTICATE в режиме IMAP.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the mail proxy supports AUTHENTICATE in IMAP mode.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+почтовый прокси-сервер поддерживает STARTTLS в режиме SMTP.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the mail proxy supports STARTTLS in SMTP mode.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx экранирует пробел в переменной $memcached_key.
+</para>
+<para lang="en">
+now nginx escapes space in $memcached_key variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx неправильно собирался Sun Studio на Solaris/amd64.<br/>
+Спасибо Jiang Hong.
+</para>
+<para lang="en">
+nginx was incorrectly built by Sun Studio on Solaris/amd64.<br/>
+Thanks to Jiang Hong.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+незначительных потенциальных ошибок.<br/>
+Спасибо Coverity's Scan.
+</para>
+<para lang="en">
+of minor potential bugs.<br/>
+Thanks to Coverity's Scan.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.4" date="17.07.2007">
 
 <change type="security">
 <para lang="ru">
-при использовании директивы msie_refresh был возможен XSS.
+при использовании директивы msie_refresh был возможен XSS.<br/>
+Спасибо Максиму Богуку.
 </para>
 <para lang="en">
-the "msie_refresh" directive allowed XSS.
+the "msie_refresh" directive allowed XSS.<br/>
+Thanks to Maxim Boguk.
 </para>
 </change>
 
