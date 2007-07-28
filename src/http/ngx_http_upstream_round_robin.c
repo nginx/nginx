@@ -9,6 +9,10 @@
 #include <ngx_http.h>
 
 
+static ngx_uint_t
+ngx_http_upstream_get_peer(ngx_http_upstream_rr_peers_t *peers);
+
+
 ngx_int_t
 ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_http_upstream_srv_conf_t *us)
@@ -215,7 +219,12 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
             /* it's a first try - get a current peer */
 
             for ( ;; ) {
-                rrp->current = rrp->peers->current;
+                rrp->current = ngx_http_upstream_get_peer(rrp->peers);
+
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+                               "get rr peer, current: %ui %i",
+                               rrp->current,
+                               rrp->peers->peer[rrp->current].current_weight);
 
                 n = rrp->current / (8 * sizeof(uintptr_t));
                 m = (uintptr_t) 1 << rrp->current % (8 * sizeof(uintptr_t));
@@ -236,17 +245,13 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
                             break;
                         }
 
+                        peer->current_weight = 0;
+
                     } else {
                         rrp->tried[n] |= m;
                     }
 
                     pc->tries--;
-                }
-
-                rrp->peers->current++;
-
-                if (rrp->peers->current >= rrp->peers->number) {
-                    rrp->peers->current = 0;
                 }
 
                 if (pc->tries) {
@@ -257,16 +262,6 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
             }
 
             peer->current_weight--;
-
-            if (peer->current_weight == 0) {
-                peer->current_weight = peer->weight;
-
-                rrp->peers->current++;
-
-                if (rrp->peers->current >= rrp->peers->number) {
-                    rrp->peers->current = 0;
-                }
-            }
 
         } else {
             for ( ;; ) {
@@ -290,6 +285,8 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
                             break;
                         }
 
+                        peer->current_weight = 0;
+
                     } else {
                         rrp->tried[n] |= m;
                     }
@@ -311,18 +308,6 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
             }
 
             peer->current_weight--;
-
-            if (peer->current_weight == 0) {
-                peer->current_weight = peer->weight;
-
-                if (rrp->current == rrp->peers->current) {
-                    rrp->peers->current++;
-
-                    if (rrp->peers->current >= rrp->peers->number) {
-                        rrp->peers->current = 0;
-                    }
-                }
-            }
         }
 
         rrp->tried[n] |= m;
@@ -349,6 +334,61 @@ failed:
     pc->name = rrp->peers->name;
 
     return NGX_BUSY;
+}
+
+
+static ngx_uint_t
+ngx_http_upstream_get_peer(ngx_http_upstream_rr_peers_t *peers)
+{
+    ngx_uint_t                    i, n;
+    ngx_http_upstream_rr_peer_t  *peer;
+
+    peer = &peers->peer[0];
+
+    for ( ;; ) {
+
+        for (i = 0; i < peers->number; i++) {
+
+            if (peer[i].current_weight <= 0) {
+                continue;
+            }
+
+            n = i;
+
+            while (i < peers->number - 1) {
+
+                i++;
+
+                if (peer[i].current_weight <= 0) {
+                    continue;
+                }
+
+                if (peer[n].current_weight * 1000 / peer[i].current_weight
+                    >= peer[n].weight * 1000 / peer[i].weight)
+                {
+                    return n;
+                }
+
+                n = i;
+            }
+
+            if (peer[i].current_weight > 0) {
+                n = i;
+            }
+
+            return n;
+        }
+
+        for (i = 0; i < peers->number; i++) {
+            if (peer[i].fails == 0) {
+                peer[i].current_weight += peer[i].weight;
+
+            } else {
+                /* 1 allows to go to quick recovery when all peers failed */
+                peer[i].current_weight = 1;
+            }
+        }
+    }
 }
 
 
@@ -385,8 +425,14 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
         peer->fails++;
         peer->accessed = now;
 
-        if (peer->current_weight > 1) {
-            peer->current_weight /= 2;
+        peer->current_weight -= peer->weight / peer->max_fails;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+                       "free rr peer failed: %ui %i",
+                       rrp->current, peer->current_weight);
+
+        if (peer->current_weight < 0) {
+            peer->current_weight = 0;
         }
 
         /* ngx_unlock_mutex(rrp->peers->mutex); */

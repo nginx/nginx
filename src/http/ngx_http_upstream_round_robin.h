@@ -18,8 +18,8 @@ typedef struct {
     socklen_t                       socklen;
     ngx_str_t                       name;
 
-    ngx_uint_t                      current_weight;
-    ngx_uint_t                      weight;
+    ngx_int_t                       current_weight;
+    ngx_int_t                       weight;
 
     ngx_uint_t                      fails;
     time_t                          accessed;
@@ -29,15 +29,13 @@ typedef struct {
 
     ngx_uint_t                      down;          /* unsigned  down:1; */
 
-#if (NGX_SSL)
+#if (NGX_HTTP_SSL)
     ngx_ssl_session_t              *ssl_session;   /* local to a process */
 #endif
 } ngx_http_upstream_rr_peer_t;
 
 
 typedef struct {
-    ngx_uint_t                      current;
-
     ngx_uint_t                      number;
     ngx_uint_t                      last_cached;
 
