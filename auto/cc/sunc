@@ -39,7 +39,7 @@ if [ "$ngx_sunc_ver" -ge 1424 ]; then
 else
     ngx_sparc32="-xarch=v8plus"
     ngx_sparc64="-xarch=v9"
-    ngx_amd64="-amd64"
+    ngx_amd64="-xarch=amd64"
 fi
 
 case "$NGX_MACHINE" in
