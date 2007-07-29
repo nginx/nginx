@@ -13,6 +13,8 @@
 
 static ngx_int_t ngx_http_variable_request(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static void ngx_http_variable_request_set(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static void ngx_http_variable_request_set_size(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_header(ngx_http_request_t *r,
@@ -155,9 +157,11 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       offsetof(ngx_http_request_t, args),
       NGX_HTTP_VAR_NOCACHABLE, 0 },
 
-    { ngx_string("args"), NULL, ngx_http_variable_request,
+    { ngx_string("args"),
+      ngx_http_variable_request_set,
+      ngx_http_variable_request,
       offsetof(ngx_http_request_t, args),
-      NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_CHANGABLE|NGX_HTTP_VAR_NOCACHABLE, 0 },
 
     { ngx_string("request_filename"), NULL,
       ngx_http_variable_request_filename, 0,
@@ -497,6 +501,19 @@ ngx_http_variable_request(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     }
 
     return NGX_OK;
+}
+
+
+static void
+ngx_http_variable_request_set(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_str_t  *s;
+
+    s = (ngx_str_t *) ((char *) r + data);
+
+    s->len = v->len;
+    s->data = v->data;
 }
 
 
