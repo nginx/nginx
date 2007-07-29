@@ -866,9 +866,11 @@ ngx_mail_proxy_handler(ngx_event_t *ev)
 
     c->log->action = "proxying";
 
-    if ((s->connection->read->eof || s->proxy->upstream.connection->read->eof)
-        && s->buffer->pos == s->buffer->last
-        && s->proxy->buffer->pos == s->proxy->buffer->last)
+    if ((s->connection->read->eof && s->buffer->pos == s->buffer->last)
+        || (s->proxy->upstream.connection->read->eof
+            && s->proxy->buffer->pos == s->proxy->buffer->last)
+        || (s->connection->read->eof
+            && s->proxy->upstream.connection->read->eof))
     {
         action = c->log->action;
         c->log->action = NULL;
