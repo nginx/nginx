@@ -352,7 +352,7 @@ ngx_http_auth_basic_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->user_file.data) {
-        if (ngx_conf_full_name(cf->cycle, &conf->user_file) != NGX_OK) {
+        if (ngx_conf_full_name(cf->cycle, &conf->user_file, 1) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
 

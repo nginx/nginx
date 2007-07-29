@@ -26,19 +26,22 @@ install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}	\
 	test ! -f '$NGX_SBIN_PATH' || mv '$NGX_SBIN_PATH' '$NGX_SBIN_PATH.old'
 	cp $NGX_OBJS/nginx '$NGX_SBIN_PATH'
 
-	test -d '`dirname "$NGX_CONF_PATH"`' \
-		|| mkdir -p '`dirname "$NGX_CONF_PATH"`'
+	test -d '$NGX_CONF_PREFIX' || mkdir -p '$NGX_CONF_PREFIX'
 
-	cp conf/koi-win '`dirname "$NGX_CONF_PATH"`'
-	cp conf/koi-utf '`dirname "$NGX_CONF_PATH"`'
-	cp conf/win-utf '`dirname "$NGX_CONF_PATH"`'
+	cp conf/koi-win '$NGX_CONF_PREFIX'
+	cp conf/koi-utf '$NGX_CONF_PREFIX'
+	cp conf/win-utf '$NGX_CONF_PREFIX'
 
-	test -f '`dirname "$NGX_CONF_PATH"`/mime.types' || \
-		cp conf/mime.types '`dirname "$NGX_CONF_PATH"`/mime.types'
-	cp conf/mime.types '`dirname "$NGX_CONF_PATH"`/mime.types.default'
+	test -f '$NGX_CONF_PREFIX/mime.types' \
+		|| cp conf/mime.types '$NGX_CONF_PREFIX'
+	cp conf/mime.types '$NGX_CONF_PATH/mime.types.default'
 
-	test -f '$NGX_CONF_PATH' || cp conf/nginx.conf '$NGX_CONF_PATH'
-	cp conf/nginx.conf '`dirname "$NGX_CONF_PATH"`/nginx.conf.default'
+	test -f '$NGX_CONF_PREFIX/fastcgi_params' \
+		|| cp conf/fastcgi_params '$NGX_CONF_PREFIX'
+	cp conf/fastcgi_params '$NGX_CONF_PATH/fastcgi_params.default'
+
+	test -f '$NGX_CONF_PATH' || cp conf/nginx.conf '$NGX_CONF_PREFIX'
+	cp conf/nginx.conf '$NGX_CONF_PREFIX/nginx.conf.default'
 
 	test -d '`dirname "$NGX_PID_PATH"`' \
 		|| mkdir -p '`dirname "$NGX_PID_PATH"`'

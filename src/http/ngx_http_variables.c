@@ -926,7 +926,9 @@ ngx_http_variable_document_root(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, &path) == NGX_ERROR) {
+        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, &path, 0)
+            == NGX_ERROR)
+        {
             return NGX_ERROR;
         }
 

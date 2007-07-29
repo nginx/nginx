@@ -641,7 +641,7 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
-    if (ngx_conf_full_name(cf->cycle, &file) == NGX_ERROR) {
+    if (ngx_conf_full_name(cf->cycle, &file, 1) == NGX_ERROR) {
         return NGX_CONF_ERROR;
     }
 
@@ -681,9 +681,10 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 ngx_int_t
-ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
+ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name, ngx_uint_t conf_prefix)
 {
-    u_char     *p;
+    size_t      len;
+    u_char     *p, *prefix;
     ngx_str_t   old;
 
     if (name->data[0] == '/') {
@@ -704,14 +705,22 @@ ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
 
     old = *name;
 
-    name->len = cycle->root.len + old.len;
+    if (conf_prefix) {
+        len = sizeof(NGX_CONF_PREFIX) - 1;
+        prefix = (u_char *) NGX_CONF_PREFIX;
 
+    } else {
+        len = cycle->root.len;
+        prefix = cycle->root.data;
+    }
+
+    name->len = len + old.len;
     name->data = ngx_palloc(cycle->pool, name->len + 1);
     if (name->data == NULL) {
         return  NGX_ERROR;
     }
 
-    p = ngx_cpymem(name->data, cycle->root.data, cycle->root.len),
+    p = ngx_cpymem(name->data, prefix, len);
     ngx_cpystrn(p, old.data, old.len + 1);
 
     return NGX_OK;
@@ -734,7 +743,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
     if (name) {
         full = *name;
 
-        if (ngx_conf_full_name(cycle, &full) == NGX_ERROR) {
+        if (ngx_conf_full_name(cycle, &full, 0) == NGX_ERROR) {
             return NULL;
         }
 

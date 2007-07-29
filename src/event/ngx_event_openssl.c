@@ -198,7 +198,7 @@ ngx_int_t
 ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     ngx_str_t *key)
 {
-    if (ngx_conf_full_name(cf->cycle, cert) == NGX_ERROR) {
+    if (ngx_conf_full_name(cf->cycle, cert, 1) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -211,7 +211,7 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_ERROR;
     }
 
-    if (ngx_conf_full_name(cf->cycle, key) == NGX_ERROR) {
+    if (ngx_conf_full_name(cf->cycle, key, 1) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -242,7 +242,7 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_OK;
     }
 
-    if (ngx_conf_full_name(cf->cycle, cert) == NGX_ERROR) {
+    if (ngx_conf_full_name(cf->cycle, cert, 1) == NGX_ERROR) {
         return NGX_ERROR;
     }
 

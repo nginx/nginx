@@ -67,6 +67,7 @@ fi
 
 have=NGX_PREFIX value="\"$NGX_PREFIX/\"" . auto/define
 have=NGX_SBIN_PATH value="\"$NGX_SBIN_PATH\"" . auto/define
+have=NGX_CONF_PREFIX value="\"$NGX_CONF_PREFIX/\"" . auto/define
 have=NGX_CONF_PATH value="\"$NGX_CONF_PATH\"" . auto/define
 have=NGX_PID_PATH value="\"$NGX_PID_PATH\"" . auto/define
 have=NGX_LOCK_PATH value="\"$NGX_LOCK_PATH\"" . auto/define

@@ -1223,7 +1223,8 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
             return NULL;
         }
 
-        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, path) == NGX_ERROR) {
+        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, path, 0)== NGX_ERROR)
+        {
             return NULL;
         }
 
@@ -1947,7 +1948,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     if (ngx_strcmp(value[0].data, "include") == 0) {
         file = value[1];
 
-        if (ngx_conf_full_name(cf->cycle, &file) == NGX_ERROR){
+        if (ngx_conf_full_name(cf->cycle, &file, 1) == NGX_ERROR){
             return NGX_CONF_ERROR;
         }
 
@@ -2290,7 +2291,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
             conf->root.len = sizeof("html") - 1;
             conf->root.data = (u_char *) "html";
 
-            if (ngx_conf_full_name(cf->cycle, &conf->root) == NGX_ERROR) {
+            if (ngx_conf_full_name(cf->cycle, &conf->root, 0) == NGX_ERROR) {
                 return NGX_CONF_ERROR;
             }
         }
@@ -2739,7 +2740,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (lcf->root.data[0] != '$') {
-        if (ngx_conf_full_name(cf->cycle, &lcf->root) == NGX_ERROR) {
+        if (ngx_conf_full_name(cf->cycle, &lcf->root, 0) == NGX_ERROR) {
             return NGX_CONF_ERROR;
         }
     }

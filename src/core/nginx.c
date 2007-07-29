@@ -656,7 +656,7 @@ ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
         cycle->conf_file.data = (u_char *) NGX_CONF_PATH;
     }
 
-    if (ngx_conf_full_name(cycle, &cycle->conf_file) == NGX_ERROR) {
+    if (ngx_conf_full_name(cycle, &cycle->conf_file, 1) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -826,7 +826,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         ccf->pid.data = (u_char *) NGX_PID_PATH;
     }
 
-    if (ngx_conf_full_name(cycle, &ccf->pid) == NGX_ERROR) {
+    if (ngx_conf_full_name(cycle, &ccf->pid, 0) == NGX_ERROR) {
         return NGX_CONF_ERROR;
     }
 
@@ -846,7 +846,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         ccf->lock_file.data = (u_char *) NGX_LOCK_PATH;
     }
 
-    if (ngx_conf_full_name(cycle, &ccf->lock_file) == NGX_ERROR) {
+    if (ngx_conf_full_name(cycle, &ccf->lock_file, 0) == NGX_ERROR) {
         return NGX_CONF_ERROR;
     }
 

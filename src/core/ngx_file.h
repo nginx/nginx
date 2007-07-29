@@ -109,7 +109,7 @@ char *ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
             curr->name.len = sizeof(path) - 1;                                \
             curr->name.data = (u_char *) path;                                \
                                                                               \
-            if (ngx_conf_full_name(cf->cycle, &curr->name) == NGX_ERROR) {    \
+            if (ngx_conf_full_name(cf->cycle, &curr->name, 0) == NGX_ERROR) { \
                 return NGX_CONF_ERROR;                                        \
             }                                                                 \
                                                                               \
