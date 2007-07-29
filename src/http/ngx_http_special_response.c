@@ -409,6 +409,10 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
                     return ngx_http_internal_redirect(r, uri, NULL);
                 }
 
+                if (uri->data[0] == '@') {
+                    return ngx_http_named_location(r, uri);
+                }
+
                 r->headers_out.location =
                                         ngx_list_push(&r->headers_out.headers);
 
