@@ -67,7 +67,7 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     /* the maximum limit size is the maximum size_t value - the page size */
 
-    if (limit == 0 || limit > NGX_MAX_SIZE_T_VALUE - ngx_pagesize) {
+    if (limit == 0 || limit > (off_t) (NGX_MAX_SIZE_T_VALUE - ngx_pagesize)) {
         limit = NGX_MAX_SIZE_T_VALUE - ngx_pagesize;
     }
 

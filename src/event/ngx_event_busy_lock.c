@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 
 
-static int ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
+static ngx_int_t ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
     ngx_event_busy_lock_ctx_t *ctx);
 static void ngx_event_busy_lock_handler(ngx_event_t *ev);
 static void ngx_event_busy_lock_posted_handler(ngx_event_t *ev);

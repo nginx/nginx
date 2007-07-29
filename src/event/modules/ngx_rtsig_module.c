@@ -29,10 +29,10 @@ int ngx_linux_rtsig_max;
 
 
 typedef struct {
-    int        signo;
-    ngx_int_t  overflow_events;
-    ngx_int_t  overflow_test;
-    ngx_int_t  overflow_threshold;
+    ngx_uint_t  signo;
+    ngx_uint_t  overflow_events;
+    ngx_uint_t  overflow_test;
+    ngx_uint_t  overflow_threshold;
 } ngx_rtsig_conf_t;
 
 
@@ -41,7 +41,8 @@ extern ngx_event_module_t  ngx_poll_module_ctx;
 static ngx_int_t ngx_rtsig_init(ngx_cycle_t *cycle, ngx_msec_t timer);
 static void ngx_rtsig_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_rtsig_add_connection(ngx_connection_t *c);
-static ngx_int_t ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags);
+static ngx_int_t ngx_rtsig_del_connection(ngx_connection_t *c,
+    ngx_uint_t flags);
 static ngx_int_t ngx_rtsig_process_events(ngx_cycle_t *cycle,
     ngx_msec_t timer, ngx_uint_t flags);
 static ngx_int_t ngx_rtsig_process_overflow(ngx_cycle_t *cycle,
@@ -143,8 +144,8 @@ ngx_rtsig_init(ngx_cycle_t *cycle, ngx_msec_t timer)
     rtscf = ngx_event_get_conf(cycle->conf_ctx, ngx_rtsig_module);
 
     sigemptyset(&set);
-    sigaddset(&set, rtscf->signo);
-    sigaddset(&set, rtscf->signo + 1);
+    sigaddset(&set, (int) rtscf->signo);
+    sigaddset(&set, (int) rtscf->signo + 1);
     sigaddset(&set, SIGIO);
     sigaddset(&set, SIGALRM);
 
@@ -188,7 +189,7 @@ ngx_rtsig_done(ngx_cycle_t *cycle)
 static ngx_int_t
 ngx_rtsig_add_connection(ngx_connection_t *c)
 {
-    int                signo;
+    ngx_uint_t         signo;
     ngx_rtsig_conf_t  *rtscf;
 
     if (c->read->accept && c->read->disabled) {
@@ -211,7 +212,7 @@ ngx_rtsig_add_connection(ngx_connection_t *c)
     signo = rtscf->signo + c->read->instance;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "rtsig add connection: fd:%d signo:%d", c->fd, signo);
+                   "rtsig add connection: fd:%d signo:%ui", c->fd, signo);
 
     if (fcntl(c->fd, F_SETFL, O_RDWR|O_NONBLOCK|O_ASYNC) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -219,7 +220,7 @@ ngx_rtsig_add_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    if (fcntl(c->fd, F_SETSIG, signo) == -1) {
+    if (fcntl(c->fd, F_SETSIG, (int) signo) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
                       "fcntl(F_SETSIG) failed");
         return NGX_ERROR;
@@ -247,7 +248,7 @@ ngx_rtsig_add_connection(ngx_connection_t *c)
 
 
 static ngx_int_t
-ngx_rtsig_del_connection(ngx_connection_t *c, u_int flags)
+ngx_rtsig_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 {
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "rtsig del connection: fd:%d", c->fd);
@@ -348,7 +349,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
     rtscf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_rtsig_module);
 
-    if (signo == rtscf->signo || signo == rtscf->signo + 1) {
+    if (signo == (int) rtscf->signo || signo == (int) rtscf->signo + 1) {
 
         if (overflow && (ngx_uint_t) si.si_fd > overflow_current) {
             return NGX_OK;
@@ -363,7 +364,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             return NGX_OK;
         }
 
-        instance = signo - rtscf->signo;
+        instance = signo - (int) rtscf->signo;
 
         rev = c->read;
 
@@ -459,8 +460,8 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle, ngx_msec_t timer,
 {
     int                name[2], rtsig_max, rtsig_nr, events, ready;
     size_t             len;
-    ngx_int_t          tested, n, i;
     ngx_err_t          err;
+    ngx_uint_t         tested, n, i;
     ngx_event_t       *rev, *wev, **queue;
     ngx_connection_t  *c;
     ngx_rtsig_conf_t  *rtscf;
@@ -638,7 +639,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle, ngx_msec_t timer,
                  *    "/proc/sys/kernel/rtsig-max" / "rtsig_overflow_threshold"
                  */
 
-                if (rtsig_max / rtscf->overflow_threshold < rtsig_nr) {
+                if (rtsig_max / (int) rtscf->overflow_threshold < rtsig_nr) {
                     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                    "rtsig queue state: %d/%d",
                                    rtsig_nr, rtsig_max);
@@ -703,19 +704,18 @@ ngx_rtsig_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_rtsig_conf_t  *rtscf = conf;
 
     /* LinuxThreads use the first 3 RT signals */
-    ngx_conf_init_value(rtscf->signo, SIGRTMIN + 10);
+    ngx_conf_init_uint_value(rtscf->signo, SIGRTMIN + 10);
 
-    ngx_conf_init_value(rtscf->overflow_events, 16);
-    ngx_conf_init_value(rtscf->overflow_test, 32);
-    ngx_conf_init_value(rtscf->overflow_threshold, 10);
+    ngx_conf_init_uint_value(rtscf->overflow_events, 16);
+    ngx_conf_init_uint_value(rtscf->overflow_test, 32);
+    ngx_conf_init_uint_value(rtscf->overflow_threshold, 10);
 
     return NGX_CONF_OK;
 }
 
 
 static char *
-ngx_check_ngx_overflow_threshold_bounds(ngx_conf_t *cf,
-                                                     void *post, void *data)
+ngx_check_ngx_overflow_threshold_bounds(ngx_conf_t *cf, void *post, void *data)
 {
     if (ngx_linux_rtsig_max) {
         return ngx_conf_check_num_bounds(cf, post, data);

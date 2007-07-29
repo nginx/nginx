@@ -70,30 +70,19 @@
 
 #endif
 
+typedef intptr_t        ngx_int_t;
+typedef uintptr_t       ngx_uint_t;
+typedef intptr_t        ngx_flag_t;
 
-
-/* TODO: platform specific: array[NGX_INVALID_ARRAY_INDEX] must cause SIGSEGV */
-#define NGX_INVALID_ARRAY_INDEX 0x80000000
-
-
-#if 1
-/* STUB: autoconf */
-typedef int             ngx_int_t;
-typedef u_int           ngx_uint_t;
-typedef int             ngx_flag_t;
-#define NGX_INT_T_LEN   sizeof("-2147483648") - 1
-
-#else
-
-typedef long            ngx_int_t;
-typedef u_long          ngx_uint_t;
-typedef long            ngx_flag_t;
-#define NGX_INT_T_LEN   sizeof("-9223372036854775808") - 1
-
-#endif
 
 #define NGX_INT32_LEN   sizeof("-2147483648") - 1
 #define NGX_INT64_LEN   sizeof("-9223372036854775808") - 1
+
+#if (NGX_PTR_SIZE == 4)
+#define NGX_INT_T_LEN   NGX_INT32_LEN
+#else
+#define NGX_INT_T_LEN   NGX_INT64_LEN
+#endif
 
 
 #ifndef NGX_ALIGNMENT
@@ -106,6 +95,10 @@ typedef long            ngx_flag_t;
 
 
 #define ngx_abort       abort
+
+
+/* TODO: platform specific: array[NGX_INVALID_ARRAY_INDEX] must cause SIGSEGV */
+#define NGX_INVALID_ARRAY_INDEX 0x80000000
 
 
 /* TODO: auto_conf: ngx_inline   inline __inline __inline__ */

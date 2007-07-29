@@ -276,7 +276,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 
 
 ngx_int_t
-ngx_handle_read_event(ngx_event_t *rev, u_int flags)
+ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
 {
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 

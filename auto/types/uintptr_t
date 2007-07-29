@@ -36,5 +36,6 @@ if [ $found = no ]; then
     found="uint`expr 8 \* $ngx_ptr_size`_t"
     echo ", $found used"
 
-    echo "typedef $found  uintptr_t;"   >> $NGX_AUTO_CONFIG_H
+    echo "typedef $found  uintptr_t;"                   >> $NGX_AUTO_CONFIG_H
+    echo "typedef $found  intptr_t;" | sed -e 's/u//g'  >> $NGX_AUTO_CONFIG_H
 fi

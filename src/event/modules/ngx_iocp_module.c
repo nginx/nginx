@@ -13,8 +13,9 @@
 static ngx_int_t ngx_iocp_init(ngx_cycle_t *cycle, ngx_msec_t timer);
 static ngx_thread_value_t __stdcall ngx_iocp_timer(void *data);
 static void ngx_iocp_done(ngx_cycle_t *cycle);
-static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key);
-static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, u_int flags);
+static ngx_int_t ngx_iocp_add_event(ngx_event_t *ev, ngx_int_t event,
+    ngx_uint_t key);
+static ngx_int_t ngx_iocp_del_connection(ngx_connection_t *c, ngx_uint_t flags);
 static ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags);
 static void *ngx_iocp_create_conf(ngx_cycle_t *cycle);
@@ -186,7 +187,7 @@ ngx_iocp_done(ngx_cycle_t *cycle)
 
 
 static ngx_int_t
-ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
+ngx_iocp_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t key)
 {
     ngx_connection_t  *c;
 
@@ -196,7 +197,7 @@ ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
     c->write->active = 1;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "iocp add: fd:%d k:%d ov:%p", c->fd, key, &ev->ovlp);
+                   "iocp add: fd:%d k:%ui ov:%p", c->fd, key, &ev->ovlp);
 
     if (CreateIoCompletionPort((HANDLE) c->fd, iocp, key, 0) == NULL) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -209,7 +210,7 @@ ngx_iocp_add_event(ngx_event_t *ev, int event, u_int key)
 
 
 static ngx_int_t
-ngx_iocp_del_connection(ngx_connection_t *c, u_int flags)
+ngx_iocp_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 {
 #if 0
     if (flags & NGX_CLOSE_EVENT) {
