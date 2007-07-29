@@ -150,12 +150,13 @@ size_t ngx_utf_length(u_char *p, size_t n);
 u_char *ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n);
 
 
-#define NGX_ESCAPE_URI       0
-#define NGX_ESCAPE_ARGS      1
-#define NGX_ESCAPE_HTML      2
-#define NGX_ESCAPE_REFRESH   3
+#define NGX_ESCAPE_URI        0
+#define NGX_ESCAPE_ARGS       1
+#define NGX_ESCAPE_HTML       2
+#define NGX_ESCAPE_REFRESH    3
+#define NGX_ESCAPE_MEMCACHED  4
 
-#define NGX_UNESCAPE_URI     1
+#define NGX_UNESCAPE_URI      1
 
 uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
     ngx_uint_t type);
@@ -164,11 +165,11 @@ void ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type);
 
 void ngx_sort(void *base, size_t n, size_t size,
     int (*cmp)(const void *, const void *));
-#define ngx_qsort            qsort
+#define ngx_qsort             qsort
 
 
-#define ngx_value_helper(n)  #n
-#define ngx_value(n)         ngx_value_helper(n)
+#define ngx_value_helper(n)   #n
+#define ngx_value(n)          ngx_value_helper(n)
 
 
 #endif /* _NGX_STRING_H_INCLUDED_ */

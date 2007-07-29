@@ -226,6 +226,7 @@ static ngx_int_t
 ngx_http_memcached_create_request(ngx_http_request_t *r)
 {
     size_t                          len;
+    uintptr_t                       escape;
     ngx_buf_t                      *b;
     ngx_chain_t                    *cl;
     ngx_http_memcached_ctx_t       *ctx;
@@ -242,10 +243,9 @@ ngx_http_memcached_create_request(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    len = sizeof("get ") - 1 + vv->len + sizeof(CRLF) - 1;
-    if (vv->len) {
-        len += 1 + vv->len;
-    }
+    escape = 2 * ngx_escape_uri(NULL, vv->data, vv->len, NGX_ESCAPE_MEMCACHED);
+
+    len = sizeof("get ") - 1 + vv->len + escape + sizeof(CRLF) - 1;
 
     b = ngx_create_temp_buf(r->pool, len);
     if (b == NULL) {
@@ -268,7 +268,13 @@ ngx_http_memcached_create_request(ngx_http_request_t *r)
 
     ctx->key.data = b->last;
 
-    b->last = ngx_copy(b->last, vv->data, vv->len);
+    if (escape == 0) {
+        b->last = ngx_copy(b->last, vv->data, vv->len);
+
+    } else {
+        b->last = (u_char *) ngx_escape_uri(b->last, vv->data, vv->len,
+                                            NGX_ESCAPE_MEMCACHED);
+    }
 
     ctx->key.len = b->last - ctx->key.data;
 
