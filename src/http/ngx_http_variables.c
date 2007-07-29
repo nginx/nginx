@@ -41,6 +41,8 @@ static ngx_int_t ngx_http_variable_server_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_scheme(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_is_args(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_document_root(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_filename(ngx_http_request_t *r,
@@ -162,6 +164,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       ngx_http_variable_request,
       offsetof(ngx_http_request_t, args),
       NGX_HTTP_VAR_CHANGABLE|NGX_HTTP_VAR_NOCACHABLE, 0 },
+
+    { ngx_string("is_args"), NULL, ngx_http_variable_is_args,
+      0, NGX_HTTP_VAR_NOCACHABLE, 0 },
 
     { ngx_string("request_filename"), NULL,
       ngx_http_variable_request_filename, 0,
@@ -871,6 +876,27 @@ ngx_http_variable_scheme(ngx_http_request_t *r,
     v->no_cachable = 0;
     v->not_found = 0;
     v->data = (u_char *) "http";
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_is_args(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    v->valid = 1;
+    v->no_cachable = 0;
+    v->not_found = 0;
+
+    if (r->args.len == 0) {
+        v->len = 0;
+        v->data = NULL;
+        return NGX_OK;
+    }
+
+    v->len = 1;
+    v->data = (u_char *) "?";
 
     return NGX_OK;
 }
