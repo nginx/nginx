@@ -30,7 +30,7 @@ typedef struct {
     ngx_uint_t                      down;          /* unsigned  down:1; */
 
 #if (NGX_SSL)
-    ngx_ssl_session_t              *ssl_session;
+    ngx_ssl_session_t              *ssl_session;   /* local to a process */
 #endif
 } ngx_http_upstream_rr_peer_t;
 
@@ -68,7 +68,10 @@ void ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc,
     void *data, ngx_uint_t state);
 
 #if (NGX_HTTP_SSL)
-void ngx_http_upstream_save_round_robin_peer(ngx_peer_connection_t *pc,
+ngx_int_t
+    ngx_http_upstream_set_round_robin_peer_session(ngx_peer_connection_t *pc,
+    void *data);
+void ngx_http_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
     void *data);
 #endif
 
