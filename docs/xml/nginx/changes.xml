@@ -9,6 +9,82 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.30" date="30.07.2007">
+
+<change type="feature">
+<para lang="ru">
+переменную $args можно устанавливать с помощью set.
+</para>
+<para lang="en">
+the $args variable can be set with the "set" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $is_args.
+</para>
+<para lang="en">
+the $is_args variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если клиент в почтовом прокси-сервере закрывал соединение,
+то nginx мог не закрывать соединение с бэкендом.
+</para>
+<para lang="en">
+if a client has closed connection to mail proxy
+ then nginx might not close connection to backend.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx экранирует пробел в переменной $memcached_key.
+</para>
+<para lang="en">
+now nginx escapes space in $memcached_key variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании протокола HTTPS в директиве proxy_pass
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process when
+the HTTPS protocol was used in the "proxy_pass" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+значение perl'овой переменной $$ модуля ngx_http_perl_module было равно
+номеру главного процесса.
+</para>
+<para lang="en">
+the perl $$ variable value in ngx_http_perl_module was equal to the master
+process identification number.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris/amd64 Sun Studio 11 и более ранними версиями;
+ошибка появилась в 0.5.29.
+</para>
+<para lang="en">
+fix building on Solaris/amd64 by Sun Studio 11 and early versions;
+bug appeared in 0.5.29.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.29" date="23.07.2007">
 
 <change type="feature">
