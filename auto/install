@@ -34,11 +34,11 @@ install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}	\
 
 	test -f '$NGX_CONF_PREFIX/mime.types' \
 		|| cp conf/mime.types '$NGX_CONF_PREFIX'
-	cp conf/mime.types '$NGX_CONF_PATH/mime.types.default'
+	cp conf/mime.types '$NGX_CONF_PREFIX/mime.types.default'
 
 	test -f '$NGX_CONF_PREFIX/fastcgi_params' \
 		|| cp conf/fastcgi_params '$NGX_CONF_PREFIX'
-	cp conf/fastcgi_params '$NGX_CONF_PATH/fastcgi_params.default'
+	cp conf/fastcgi_params '$NGX_CONF_PREFIX/fastcgi_params.default'
 
 	test -f '$NGX_CONF_PATH' || cp conf/nginx.conf '$NGX_CONF_PREFIX'
 	cp conf/nginx.conf '$NGX_CONF_PREFIX/nginx.conf.default'
