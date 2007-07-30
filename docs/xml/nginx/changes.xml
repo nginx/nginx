@@ -9,6 +9,89 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.6" date="30.07.2007">
+
+<change type="feature">
+<para lang="ru">
+параметр --sysconfdir=PATH в configure.
+</para>
+<para lang="en">
+the --sysconfdir=PATH option in configure.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+именованные location'ы.
+</para>
+<para lang="en">
+named locations.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменную $args можно устанавливать с помощью set.
+</para>
+<para lang="en">
+the $args variable can be set with the "set" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $is_args.
+</para>
+<para lang="en">
+the $is_args variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+равномерное распределение запросов к апстримам с большими весами.
+</para>
+<para lang="en">
+fair big weight upstream balancer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если клиент в почтовом прокси-сервере закрывал соединение,
+то nginx мог не закрывать соединение с бэкендом.
+</para>
+<para lang="en">
+if a client has closed connection to mail proxy
+ then nginx might not close connection to backend.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании одного хоста в качестве бэкендов для протоколов HTTP и HTTPS
+без явного указания портов, nginx использовал только один порт&mdash;80 или 443.
+</para>
+<para lang="en">
+if the same host without specified port was used as backend for HTTP and HTTPS,
+then nginx used only one port&mdash;80 or 443.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris/amd64 Sun Studio 11 и более ранними версиями;
+ошибка появилась в 0.6.4.
+</para>
+<para lang="en">
+fix building on Solaris/amd64 by Sun Studio 11 and early versions;
+bug appeared in 0.6.4.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.5" date="23.07.2007">
 
 <change type="feature">
