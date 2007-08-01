@@ -33,7 +33,6 @@ struct ngx_http_header_val_s {
 
 typedef struct {
     time_t                   expires;
-    ngx_str_t                cache_control;
     ngx_array_t             *headers;
 } ngx_http_headers_conf_t;
 
@@ -44,7 +43,7 @@ typedef struct {
 #define NGX_HTTP_EXPIRES_MAX     -2147483644
 
 
-static ngx_int_t ngx_http_add_header(ngx_http_request_t *r,
+static ngx_int_t ngx_http_add_cache_control(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
 static ngx_int_t ngx_http_set_last_modified(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
@@ -60,6 +59,8 @@ static char *ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd,
 
 
 static ngx_http_set_header_t  ngx_http_set_headers[] = {
+
+    { ngx_string("Cache-Control"), 0, ngx_http_add_cache_control },
 
     { ngx_string("Last-Modified"),
                  offsetof(ngx_http_headers_out_t, last_modified),
@@ -251,38 +252,6 @@ ngx_http_headers_filter(ngx_http_request_t *r)
         }
     }
 
-    if (conf->cache_control.len) {
-
-        ccp = r->headers_out.cache_control.elts;
-
-        if (ccp == NULL) {
-
-            if (ngx_array_init(&r->headers_out.cache_control, r->pool,
-                               1, sizeof(ngx_table_elt_t *))
-                != NGX_OK)
-            {
-                return NGX_ERROR;
-            }
-        }
-
-        ccp = ngx_array_push(&r->headers_out.cache_control);
-        if (ccp == NULL) {
-            return NGX_ERROR;
-        }
-
-        cc = ngx_list_push(&r->headers_out.headers);
-        if (cc == NULL) {
-            return NGX_ERROR;
-        }
-
-        cc->hash = 1;
-        cc->key.len = sizeof("Cache-Control") - 1;
-        cc->key.data = (u_char *) "Cache-Control";
-        cc->value = conf->cache_control;
-
-        *ccp = cc;
-    }
-
     if (conf->headers) {
         h = conf->headers->elts;
         for (i = 0; i < conf->headers->nelts; i++) {
@@ -323,6 +292,45 @@ ngx_http_add_header(ngx_http_request_t *r, ngx_http_header_val_t *hv,
     h->hash = hv->value.hash;
     h->key = hv->value.key;
     h->value = *value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_add_cache_control(ngx_http_request_t *r, ngx_http_header_val_t *hv,
+    ngx_str_t *value)
+{
+    ngx_table_elt_t  *cc, **ccp;
+
+    ccp = r->headers_out.cache_control.elts;
+
+    if (ccp == NULL) {
+
+        if (ngx_array_init(&r->headers_out.cache_control, r->pool,
+                           1, sizeof(ngx_table_elt_t *))
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+    }
+
+    ccp = ngx_array_push(&r->headers_out.cache_control);
+    if (ccp == NULL) {
+        return NGX_ERROR;
+    }
+
+    cc = ngx_list_push(&r->headers_out.headers);
+    if (cc == NULL) {
+        return NGX_ERROR;
+    }
+
+    cc->hash = 1;
+    cc->key.len = sizeof("Cache-Control") - 1;
+    cc->key.data = (u_char *) "Cache-Control";
+    cc->value = *value;
+
+    *ccp = cc;
 
     return NGX_OK;
 }
@@ -394,10 +402,6 @@ ngx_http_headers_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->expires == NGX_HTTP_EXPIRES_UNSET) {
         conf->expires = (prev->expires == NGX_HTTP_EXPIRES_UNSET) ?
                             NGX_HTTP_EXPIRES_OFF : prev->expires;
-    }
-
-    if (conf->cache_control.data == NULL) {
-        conf->cache_control = prev->cache_control;
     }
 
     if (conf->headers == NULL) {
@@ -492,11 +496,6 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_script_compile_t   sc;
 
     value = cf->args->elts;
-
-    if (ngx_strcasecmp(value[1].data, (u_char *) "cache-control") == 0) {
-        hcf->cache_control = value[2];
-        return NGX_CONF_OK;
-    }
 
     if (hcf->headers == NULL) {
         hcf->headers = ngx_array_create(cf->pool, 1,
