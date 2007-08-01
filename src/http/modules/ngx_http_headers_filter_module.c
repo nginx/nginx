@@ -9,17 +9,32 @@
 #include <ngx_http.h>
 
 
-typedef struct {
-    ngx_table_elt_t   value;
-    ngx_array_t      *lengths;
-    ngx_array_t      *values;
-} ngx_http_header_val_t;
+typedef struct ngx_http_header_val_s  ngx_http_header_val_t;
+
+typedef ngx_int_t (*ngx_http_set_header_pt)(ngx_http_request_t *r,
+    ngx_http_header_val_t *hv, ngx_str_t *value);
 
 
 typedef struct {
-    time_t            expires;
-    ngx_str_t         cache_control;
-    ngx_array_t      *headers;
+    ngx_str_t                name;
+    ngx_uint_t               offset;
+    ngx_http_set_header_pt   handler;
+} ngx_http_set_header_t;
+
+
+struct ngx_http_header_val_s {
+    ngx_table_elt_t          value;
+    ngx_uint_t               offset;
+    ngx_http_set_header_pt   handler;
+    ngx_array_t             *lengths;
+    ngx_array_t             *values;
+};
+
+
+typedef struct {
+    time_t                   expires;
+    ngx_str_t                cache_control;
+    ngx_array_t             *headers;
 } ngx_http_headers_conf_t;
 
 
@@ -29,6 +44,11 @@ typedef struct {
 #define NGX_HTTP_EXPIRES_MAX     -2147483644
 
 
+static ngx_int_t ngx_http_add_header(ngx_http_request_t *r,
+    ngx_http_header_val_t *hv, ngx_str_t *value);
+static ngx_int_t ngx_http_set_last_modified(ngx_http_request_t *r,
+    ngx_http_header_val_t *hv, ngx_str_t *value);
+
 static void *ngx_http_headers_create_conf(ngx_conf_t *cf);
 static char *ngx_http_headers_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
@@ -37,6 +57,16 @@ static char *ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+
+
+static ngx_http_set_header_t  ngx_http_set_headers[] = {
+
+    { ngx_string("Last-Modified"),
+                 offsetof(ngx_http_headers_out_t, last_modified),
+                 ngx_http_set_last_modified },
+
+    { ngx_null_string, 0, NULL }
+};
 
 
 static ngx_command_t  ngx_http_headers_filter_commands[] = {
@@ -99,8 +129,9 @@ static ngx_int_t
 ngx_http_headers_filter(ngx_http_request_t *r)
 {
     size_t                    len;
+    ngx_str_t                 value; 
     ngx_uint_t                i;
-    ngx_table_elt_t          *expires, *cc, **ccp, *out;
+    ngx_table_elt_t          *expires, *cc, **ccp;
     ngx_http_header_val_t    *h;
     ngx_http_headers_conf_t  *conf;
 
@@ -255,29 +286,78 @@ ngx_http_headers_filter(ngx_http_request_t *r)
     if (conf->headers) {
         h = conf->headers->elts;
         for (i = 0; i < conf->headers->nelts; i++) {
-            out = ngx_list_push(&r->headers_out.headers);
-            if (out == NULL) {
-                return NGX_ERROR;
-            }
-
-            out->hash = h[i].value.hash;
-            out->key = h[i].value.key;
 
             if (h[i].lengths == NULL) {
-                out->value = h[i].value.value;
-                continue;
+                value = h[i].value.value;
+
+            } else {
+                if (ngx_http_script_run(r, &value, h[i].lengths->elts, 0,
+                                        h[i].values->elts)
+                    == NULL)
+                {
+                    return NGX_ERROR;
+                }
             }
 
-            if (ngx_http_script_run(r, &out->value, h[i].lengths->elts, 0,
-                                    h[i].values->elts)
-                == NULL)
-            {
+            if (h[i].handler(r, &h[i], &value) != NGX_OK) {
                 return NGX_ERROR;
             }
         }
     }
 
     return ngx_http_next_header_filter(r);
+}
+
+
+static ngx_int_t
+ngx_http_add_header(ngx_http_request_t *r, ngx_http_header_val_t *hv,
+    ngx_str_t *value)
+{
+    ngx_table_elt_t  *h;
+
+    h = ngx_list_push(&r->headers_out.headers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    h->hash = hv->value.hash;
+    h->key = hv->value.key;
+    h->value = *value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
+    ngx_str_t *value)
+{
+    ngx_table_elt_t  *h, **old;
+
+    if (hv->offset) {
+	old = (ngx_table_elt_t **) ((char *) &r->headers_out + hv->offset);
+
+    } else {
+	old = NULL;
+    }
+
+    if (old == NULL || *old == NULL) {
+        h = ngx_list_push(&r->headers_out.headers);
+        if (h == NULL) {
+            return NGX_ERROR;
+        }
+
+    } else {
+        h = *old;
+    }
+
+    h->hash = hv->value.hash;
+    h->key = hv->value.key;
+    h->value = *value;
+
+    r->headers_out.last_modified_time = -1;
+
+    return NGX_OK;
 }
 
 
@@ -406,7 +486,9 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_int_t                   n;
     ngx_str_t                  *value;
+    ngx_uint_t                  i;
     ngx_http_header_val_t      *h;
+    ngx_http_set_header_t      *sh;
     ngx_http_script_compile_t   sc;
 
     value = cf->args->elts;
@@ -432,8 +514,21 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     h->value.hash = 1;
     h->value.key = value[1];
     h->value.value = value[2];
+    h->offset = 0;
+    h->handler = ngx_http_add_header;
     h->lengths = NULL;
     h->values = NULL;
+
+    sh = ngx_http_set_headers;
+    for (i = 0; sh[i].name.len; i++) {
+        if (ngx_strcasecmp(value[1].data, sh[i].name.data) != 0) {
+            continue;
+        }
+
+        h->offset = sh[i].offset;
+        h->handler = sh[i].handler;
+        break;
+    }
 
     n = ngx_http_script_variables_count(&value[2]);
 
