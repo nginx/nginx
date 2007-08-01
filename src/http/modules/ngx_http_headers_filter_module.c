@@ -129,7 +129,7 @@ static ngx_int_t
 ngx_http_headers_filter(ngx_http_request_t *r)
 {
     size_t                    len;
-    ngx_str_t                 value; 
+    ngx_str_t                 value;
     ngx_uint_t                i;
     ngx_table_elt_t          *expires, *cc, **ccp;
     ngx_http_header_val_t    *h;
@@ -335,10 +335,10 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
     ngx_table_elt_t  *h, **old;
 
     if (hv->offset) {
-	old = (ngx_table_elt_t **) ((char *) &r->headers_out + hv->offset);
+        old = (ngx_table_elt_t **) ((char *) &r->headers_out + hv->offset);
 
     } else {
-	old = NULL;
+        old = NULL;
     }
 
     if (old == NULL || *old == NULL) {
@@ -393,7 +393,7 @@ ngx_http_headers_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->expires == NGX_HTTP_EXPIRES_UNSET) {
         conf->expires = (prev->expires == NGX_HTTP_EXPIRES_UNSET) ?
-                                          NGX_HTTP_EXPIRES_OFF : prev->expires;
+                            NGX_HTTP_EXPIRES_OFF : prev->expires;
     }
 
     if (conf->cache_control.data == NULL) {
