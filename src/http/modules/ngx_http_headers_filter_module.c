@@ -43,6 +43,8 @@ typedef struct {
 #define NGX_HTTP_EXPIRES_MAX     -2147483644
 
 
+static ngx_int_t ngx_http_set_expires(ngx_http_request_t *r,
+    ngx_http_headers_conf_t *conf);
 static ngx_int_t ngx_http_add_cache_control(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
 static ngx_int_t ngx_http_set_last_modified(ngx_http_request_t *r,
@@ -129,14 +131,15 @@ static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_int_t
 ngx_http_headers_filter(ngx_http_request_t *r)
 {
-    size_t                    len;
     ngx_str_t                 value;
     ngx_uint_t                i;
-    ngx_table_elt_t          *expires, *cc, **ccp;
     ngx_http_header_val_t    *h;
     ngx_http_headers_conf_t  *conf;
 
-    if (r != r->main
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_headers_filter_module);
+
+    if ((conf->expires == NGX_HTTP_EXPIRES_OFF && conf->headers == NULL)
+        || r != r->main
         || (r->headers_out.status != NGX_HTTP_OK
             && r->headers_out.status != NGX_HTTP_NO_CONTENT
             && r->headers_out.status != NGX_HTTP_MOVED_PERMANENTLY
@@ -146,109 +149,9 @@ ngx_http_headers_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_headers_filter_module);
-
     if (conf->expires != NGX_HTTP_EXPIRES_OFF) {
-
-        expires = r->headers_out.expires;
-
-        if (expires == NULL) {
-
-            expires = ngx_list_push(&r->headers_out.headers);
-            if (expires == NULL) {
-                return NGX_ERROR;
-            }
-
-            r->headers_out.expires = expires;
-
-            expires->hash = 1;
-            expires->key.len = sizeof("Expires") - 1;
-            expires->key.data = (u_char *) "Expires";
-        }
-
-        len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT");
-        expires->value.len = len - 1;
-
-        ccp = r->headers_out.cache_control.elts;
-
-        if (ccp == NULL) {
-
-            if (ngx_array_init(&r->headers_out.cache_control, r->pool,
-                               1, sizeof(ngx_table_elt_t *))
-                != NGX_OK)
-            {
-                return NGX_ERROR;
-            }
-
-            ccp = ngx_array_push(&r->headers_out.cache_control);
-            if (ccp == NULL) {
-                return NGX_ERROR;
-            }
-
-            cc = ngx_list_push(&r->headers_out.headers);
-            if (cc == NULL) {
-                return NGX_ERROR;
-            }
-
-            cc->hash = 1;
-            cc->key.len = sizeof("Cache-Control") - 1;
-            cc->key.data = (u_char *) "Cache-Control";
-
-            *ccp = cc;
-
-        } else {
-            for (i = 1; i < r->headers_out.cache_control.nelts; i++) {
-                ccp[i]->hash = 0;
-            }
-
-            cc = ccp[0];
-        }
-
-        if (conf->expires == NGX_HTTP_EXPIRES_EPOCH) {
-            expires->value.data = (u_char *) "Thu, 01 Jan 1970 00:00:01 GMT";
-
-            cc->value.len = sizeof("no-cache") - 1;
-            cc->value.data = (u_char *) "no-cache";
-
-        } else if (conf->expires == NGX_HTTP_EXPIRES_MAX) {
-            expires->value.data = (u_char *) "Thu, 31 Dec 2037 23:55:55 GMT";
-
-            /* 10 years */
-            cc->value.len = sizeof("max-age=315360000") - 1;
-            cc->value.data = (u_char *) "max-age=315360000";
-
-        } else {
-            expires->value.data = ngx_palloc(r->pool, len);
-            if (expires->value.data == NULL) {
-                return NGX_ERROR;
-            }
-
-            if (conf->expires == 0) {
-                ngx_memcpy(expires->value.data, ngx_cached_http_time.data,
-                           ngx_cached_http_time.len + 1);
-
-                cc->value.len = sizeof("max-age=0") - 1;
-                cc->value.data = (u_char *) "max-age=0";
-
-            } else {
-                ngx_http_time(expires->value.data, ngx_time() + conf->expires);
-
-                if (conf->expires < 0) {
-                    cc->value.len = sizeof("no-cache") - 1;
-                    cc->value.data = (u_char *) "no-cache";
-
-                } else {
-                    cc->value.data = ngx_palloc(r->pool, sizeof("max-age=")
-                                                         + NGX_TIME_T_LEN + 1);
-                    if (cc->value.data == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    cc->value.len = ngx_sprintf(cc->value.data, "max-age=%T",
-                                                conf->expires)
-                                    - cc->value.data;
-                }
-            }
+        if (ngx_http_set_expires(r, conf) != NGX_OK) {
+            return NGX_ERROR;
         }
     }
 
@@ -275,6 +178,123 @@ ngx_http_headers_filter(ngx_http_request_t *r)
     }
 
     return ngx_http_next_header_filter(r);
+}
+
+
+static ngx_int_t
+ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
+{
+    size_t            len;
+    ngx_uint_t        i;
+    ngx_table_elt_t  *expires, *cc, **ccp;
+
+    expires = r->headers_out.expires;
+
+    if (expires == NULL) {
+
+        expires = ngx_list_push(&r->headers_out.headers);
+        if (expires == NULL) {
+            return NGX_ERROR;
+        }
+
+        r->headers_out.expires = expires;
+
+        expires->hash = 1;
+        expires->key.len = sizeof("Expires") - 1;
+        expires->key.data = (u_char *) "Expires";
+    }
+
+    len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT");
+    expires->value.len = len - 1;
+
+    ccp = r->headers_out.cache_control.elts;
+
+    if (ccp == NULL) {
+
+        if (ngx_array_init(&r->headers_out.cache_control, r->pool,
+                           1, sizeof(ngx_table_elt_t *))
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        ccp = ngx_array_push(&r->headers_out.cache_control);
+        if (ccp == NULL) {
+            return NGX_ERROR;
+        }
+
+        cc = ngx_list_push(&r->headers_out.headers);
+        if (cc == NULL) {
+            return NGX_ERROR;
+        }
+
+        cc->hash = 1;
+        cc->key.len = sizeof("Cache-Control") - 1;
+        cc->key.data = (u_char *) "Cache-Control";
+
+        *ccp = cc;
+
+    } else {
+        for (i = 1; i < r->headers_out.cache_control.nelts; i++) {
+            ccp[i]->hash = 0;
+        }
+
+        cc = ccp[0];
+    }
+
+    if (conf->expires == NGX_HTTP_EXPIRES_EPOCH) {
+        expires->value.data = (u_char *) "Thu, 01 Jan 1970 00:00:01 GMT";
+
+        cc->value.len = sizeof("no-cache") - 1;
+        cc->value.data = (u_char *) "no-cache";
+
+        return NGX_OK;
+    }
+
+    if (conf->expires == NGX_HTTP_EXPIRES_MAX) {
+        expires->value.data = (u_char *) "Thu, 31 Dec 2037 23:55:55 GMT";
+
+        /* 10 years */
+        cc->value.len = sizeof("max-age=315360000") - 1;
+        cc->value.data = (u_char *) "max-age=315360000";
+
+        return NGX_OK;
+    }
+
+    expires->value.data = ngx_palloc(r->pool, len);
+    if (expires->value.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (conf->expires == 0) {
+        ngx_memcpy(expires->value.data, ngx_cached_http_time.data,
+                   ngx_cached_http_time.len + 1);
+
+        cc->value.len = sizeof("max-age=0") - 1;
+        cc->value.data = (u_char *) "max-age=0";
+
+        return NGX_OK;
+    }
+
+    ngx_http_time(expires->value.data, ngx_time() + conf->expires);
+
+    if (conf->expires < 0) {
+        cc->value.len = sizeof("no-cache") - 1;
+        cc->value.data = (u_char *) "no-cache";
+
+        return NGX_OK;
+    }
+
+    cc->value.data = ngx_palloc(r->pool,
+                                sizeof("max-age=") + NGX_TIME_T_LEN + 1);
+    if (cc->value.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    cc->value.len = ngx_sprintf(cc->value.data, "max-age=%T", conf->expires)
+                    - cc->value.data;
+
+    return NGX_OK;
 }
 
 
@@ -382,8 +402,6 @@ ngx_http_headers_create_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
-     *     conf->cache_control.len = 0;
-     *     conf->cache_control.data = NULL;
      *     conf->headers = NULL;
      */
 
