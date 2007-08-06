@@ -33,8 +33,7 @@ static void ngx_http_request_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
 static void ngx_http_writer(ngx_http_request_t *r);
 
-static void ngx_http_block_read(ngx_http_request_t *r);
-static void ngx_http_test_read(ngx_http_request_t *r);
+static void ngx_http_test_reading(ngx_http_request_t *r);
 static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
@@ -1442,7 +1441,7 @@ ngx_http_process_request(ngx_http_request_t *r)
 
     c->read->handler = ngx_http_request_handler;
     c->write->handler = ngx_http_request_handler;
-    r->read_event_handler = ngx_http_block_read;
+    r->read_event_handler = ngx_http_block_reading;
 
     ngx_http_handler(r);
 
@@ -1702,7 +1701,7 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
-    r->read_event_handler = ngx_http_test_read;
+    r->read_event_handler = ngx_http_test_reading;
     r->write_event_handler = ngx_http_writer;
 
     wev = r->connection->write;
@@ -1812,11 +1811,11 @@ ngx_http_writer(ngx_http_request_t *r)
 }
 
 
-static void
-ngx_http_block_read(ngx_http_request_t *r)
+void
+ngx_http_block_reading(ngx_http_request_t *r)
 {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http read blocked");
+                   "http reading blocked");
 
     /* aio does not call this handler */
 
@@ -1833,7 +1832,7 @@ ngx_http_block_read(ngx_http_request_t *r)
 
 
 static void
-ngx_http_test_read(ngx_http_request_t *r)
+ngx_http_test_reading(ngx_http_request_t *r)
 {
     int                n;
     char               buf[1];
@@ -1844,7 +1843,7 @@ ngx_http_test_read(ngx_http_request_t *r)
     c = r->connection;
     rev = c->read;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http test read");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http test reading");
 
 #if (NGX_HAVE_KQUEUE)
 
@@ -2381,7 +2380,7 @@ ngx_http_post_action(ngx_http_request_t *r)
     r->header_only = 1;
     r->post_action = 1;
 
-    r->read_event_handler = ngx_http_block_read;
+    r->read_event_handler = ngx_http_block_reading;
 
     ngx_http_internal_redirect(r, &clcf->post_action, NULL);
 
