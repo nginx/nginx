@@ -69,7 +69,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
         return NGX_HTTP_NOT_ALLOWED;
     }
 
-    rc = ngx_http_discard_body(r);
+    rc = ngx_http_discard_request_body(r);
 
     if (rc != NGX_OK && rc != NGX_AGAIN) {
         return rc;

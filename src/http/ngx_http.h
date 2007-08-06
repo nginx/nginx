@@ -98,7 +98,7 @@ size_t ngx_http_get_time(char *buf, time_t t);
 
 
 
-ngx_int_t ngx_http_discard_body(ngx_http_request_t *r);
+ngx_int_t ngx_http_discard_request_body(ngx_http_request_t *r);
 void ngx_http_block_reading(ngx_http_request_t *r);
 
 

@@ -14,8 +14,8 @@ static void ngx_http_read_client_request_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_write_request_body(ngx_http_request_t *r,
     ngx_chain_t *body);
-static void ngx_http_read_discarded_body_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_read_discarded_body(ngx_http_request_t *r);
+static void ngx_http_read_discarded_request_body_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_read_discarded_request_body(ngx_http_request_t *r);
 
 
 /*
@@ -425,7 +425,7 @@ ngx_http_write_request_body(ngx_http_request_t *r, ngx_chain_t *body)
 
 
 ngx_int_t
-ngx_http_discard_body(ngx_http_request_t *r)
+ngx_http_discard_request_body(ngx_http_request_t *r)
 {
     ssize_t       size;
     ngx_event_t  *rev;
@@ -461,22 +461,22 @@ ngx_http_discard_body(ngx_http_request_t *r)
         }
     }
 
-    r->read_event_handler = ngx_http_read_discarded_body_handler;
+    r->read_event_handler = ngx_http_read_discarded_request_body_handler;
 
     if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    return ngx_http_read_discarded_body(r);
+    return ngx_http_read_discarded_request_body(r);
 }
 
 
 static void
-ngx_http_read_discarded_body_handler(ngx_http_request_t *r)
+ngx_http_read_discarded_request_body_handler(ngx_http_request_t *r)
 {
     ngx_int_t  rc;
 
-    rc = ngx_http_read_discarded_body(r);
+    rc = ngx_http_read_discarded_request_body(r);
 
     if (rc == NGX_AGAIN) {
         if (ngx_handle_read_event(r->connection->read, 0) == NGX_ERROR) {
@@ -492,7 +492,7 @@ ngx_http_read_discarded_body_handler(ngx_http_request_t *r)
 
 
 static ngx_int_t
-ngx_http_read_discarded_body(ngx_http_request_t *r)
+ngx_http_read_discarded_request_body(ngx_http_request_t *r)
 {
     size_t   size;
     ssize_t  n;
