@@ -503,6 +503,7 @@ ngx_http_read_discarded_body(ngx_http_request_t *r)
 
     do {
         if (r->headers_in.content_length_n == 0) {
+            r->read_event_handler = ngx_http_block_reading;
             return NGX_OK;
         }
 
