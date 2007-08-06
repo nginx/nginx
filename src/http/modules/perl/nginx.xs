@@ -425,6 +425,17 @@ request_body_file(r)
 
 
 void
+discard_request_body(r)
+    CODE:
+
+    ngx_http_request_t  *r;
+
+    ngx_http_perl_set_request(r);
+
+    ngx_http_discard_request_body(r);
+
+
+void
 header_out(r, key, value)
     CODE:
 
