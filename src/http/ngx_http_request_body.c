@@ -501,33 +501,36 @@ ngx_http_read_discarded_body(ngx_http_request_t *r)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http read discarded body");
 
-    if (r->headers_in.content_length_n == 0) {
-        return NGX_OK;
-    }
+    do {
+        if (r->headers_in.content_length_n == 0) {
+            return NGX_OK;
+        }
 
-    size = (r->headers_in.content_length_n > NGX_HTTP_DISCARD_BUFFER_SIZE) ?
-                NGX_HTTP_DISCARD_BUFFER_SIZE:
-                (size_t) r->headers_in.content_length_n;
+        size = (r->headers_in.content_length_n > NGX_HTTP_DISCARD_BUFFER_SIZE) ?
+                   NGX_HTTP_DISCARD_BUFFER_SIZE:
+                   (size_t) r->headers_in.content_length_n;
 
-    n = r->connection->recv(r->connection, buffer, size);
+        n = r->connection->recv(r->connection, buffer, size);
 
-    if (n == NGX_ERROR) {
+        if (n == NGX_ERROR) {
 
-        r->connection->error = 1;
+            r->connection->error = 1;
 
-        /*
-         * if a client request body is discarded then we already set
-         * some HTTP response code for client and we can ignore the error
-         */
+            /*
+             * if a client request body is discarded then we already set
+             * some HTTP response code for client and we can ignore the error
+             */
 
-        return NGX_OK;
-    }
+            return NGX_OK;
+        }
 
-    if (n == NGX_AGAIN) {
-        return NGX_AGAIN;
-    }
+        if (n == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
 
-    r->headers_in.content_length_n -= n;
+        r->headers_in.content_length_n -= n;
+
+    } while (r->connection->read->ready);
 
     return NGX_OK;
 }
