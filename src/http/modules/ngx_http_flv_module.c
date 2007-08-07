@@ -91,7 +91,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
 
     rc = ngx_http_discard_request_body(r);
 
-    if (rc != NGX_OK && rc != NGX_AGAIN) {
+    if (rc != NGX_OK) {
         return rc;
     }
 

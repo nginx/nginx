@@ -355,7 +355,7 @@ ngx_http_dav_delete_handler(ngx_http_request_t *r)
 
     rc = ngx_http_discard_request_body(r);
 
-    if (rc != NGX_OK && rc != NGX_AGAIN) {
+    if (rc != NGX_OK) {
         return rc;
     }
 
@@ -471,7 +471,7 @@ ngx_http_dav_mkcol_handler(ngx_http_request_t *r, ngx_http_dav_loc_conf_t *dlcf)
 
     rc = ngx_http_discard_request_body(r);
 
-    if (rc != NGX_OK && rc != NGX_AGAIN) {
+    if (rc != NGX_OK) {
         return rc;
     }
 
@@ -613,7 +613,7 @@ overwrite_done:
 
     rc = ngx_http_discard_request_body(r);
 
-    if (rc != NGX_OK && rc != NGX_AGAIN) {
+    if (rc != NGX_OK) {
         return rc;
     }
 
