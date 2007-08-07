@@ -1921,7 +1921,15 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
     c = r->connection;
     rev = c->read;
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "set http keepalive handler");
+
+    if (r->discard_body) {
+        r->lingering_time = ngx_time() + (time_t) (clcf->lingering_time / 1000);
+        ngx_add_timer(rev, clcf->lingering_timeout);
+        return;
+    }
 
     c->log->action = "closing request";
 
@@ -1965,8 +1973,6 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
             hc->nbusy = 1;
         }
     }
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     ngx_http_request_done(r, 0);
 

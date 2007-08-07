@@ -442,11 +442,11 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         ngx_del_timer(rev);
     }
 
-    r->discard_body = 1;
-
     if (r->headers_in.content_length_n <= 0) {
         return NGX_OK;
     }
+
+    r->discard_body = 1;
 
     size = r->header_in->last - r->header_in->pos;
 
@@ -467,26 +467,75 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    return ngx_http_read_discarded_request_body(r);
+    (void) ngx_http_read_discarded_request_body(r);
+
+    return NGX_OK;
 }
 
 
 static void
 ngx_http_read_discarded_request_body_handler(ngx_http_request_t *r)
 {
-    ngx_int_t  rc;
+    ngx_int_t                  rc;
+    ngx_msec_t                 timer;
+    ngx_event_t               *rev;
+    ngx_connection_t          *c;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    c = r->connection;
+    rev = c->read;
+
+    if (rev->timedout) {
+        c->timedout = 1;
+        c->error = 1;
+        ngx_http_finalize_request(r, 0);
+        return;
+    }
+
+    if (r->lingering_time) {
+        timer = r->lingering_time - ngx_time();
+
+        if (timer <= 0) {
+            r->discard_body = 0;
+            ngx_http_finalize_request(r, 0);
+            return;
+        }
+
+    } else {
+        timer = 0;
+    }
 
     rc = ngx_http_read_discarded_request_body(r);
 
-    if (rc == NGX_AGAIN) {
-        if (ngx_handle_read_event(r->connection->read, 0) == NGX_ERROR) {
-            ngx_http_finalize_request(r, rc);
-            return;
+    if (rc == NGX_OK) {
+
+        r->discard_body = 0;
+
+        if (r->done) {
+            ngx_http_finalize_request(r, 0);
         }
+
+        return;
     }
 
-    if (rc != NGX_OK) {
+    /* rc == NGX_AGAIN */
+
+    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
         ngx_http_finalize_request(r, rc);
+        return;
+    }
+
+    if (timer) {
+
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        timer *= 1000;
+
+        if (timer > clcf->lingering_timeout) {
+            timer = clcf->lingering_timeout;
+        }
+
+        ngx_add_timer(rev, timer);
     }
 }
 
@@ -514,14 +563,7 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
         n = r->connection->recv(r->connection, buffer, size);
 
         if (n == NGX_ERROR) {
-
             r->connection->error = 1;
-
-            /*
-             * if a client request body is discarded then we already set
-             * some HTTP response code for client and we can ignore the error
-             */
-
             return NGX_OK;
         }
 
@@ -533,5 +575,5 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
 
     } while (r->connection->read->ready);
 
-    return NGX_OK;
+    return NGX_AGAIN;
 }
