@@ -35,7 +35,10 @@ typedef struct {
 } ngx_http_upstream_rr_peer_t;
 
 
-typedef struct {
+typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
+
+struct ngx_http_upstream_rr_peers_s {
+    ngx_uint_t                      single;        /* unsigned  single:1; */
     ngx_uint_t                      number;
     ngx_uint_t                      last_cached;
 
@@ -44,8 +47,10 @@ typedef struct {
 
     ngx_str_t                      *name;
 
+    ngx_http_upstream_rr_peers_t   *next;
+
     ngx_http_upstream_rr_peer_t     peer[1];
-} ngx_http_upstream_rr_peers_t;
+};
 
 
 typedef struct {

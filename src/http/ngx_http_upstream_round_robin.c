@@ -20,15 +20,20 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_url_t                      u;
     ngx_uint_t                     i, j, n;
     ngx_http_upstream_server_t    *server;
-    ngx_http_upstream_rr_peers_t  *peers;
+    ngx_http_upstream_rr_peers_t  *peers, *backup;
 
     us->peer.init = ngx_http_upstream_init_round_robin_peer;
 
     if (us->servers) {
-        n = 0;
         server = us->servers->elts;
 
+        n = 0;
+
         for (i = 0; i < us->servers->nelts; i++) {
+            if (server[i].backup) {
+                continue;
+            }
+
             n += server[i].naddrs;
         }
 
@@ -38,6 +43,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
             return NGX_ERROR;
         }
 
+        peers->single = (n == 1);
         peers->number = n;
         peers->name = &us->host;
 
@@ -45,6 +51,10 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
         for (i = 0; i < us->servers->nelts; i++) {
             for (j = 0; j < server[i].naddrs; j++) {
+                if (server[i].backup) {
+                    continue;
+                }
+
                 peers->peer[n].sockaddr = server[i].addrs[j].sockaddr;
                 peers->peer[n].socklen = server[i].addrs[j].socklen;
                 peers->peer[n].name = server[i].addrs[j].name;
@@ -58,6 +68,55 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         }
 
         us->peer.data = peers;
+
+        /* backup servers */
+
+        n = 0;
+
+        for (i = 0; i < us->servers->nelts; i++) {
+            if (!server[i].backup) {
+                continue;
+            }
+
+            n += server[i].naddrs;
+        }
+
+        if (n == 0) {
+            return NGX_OK;
+        }
+
+        backup = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_rr_peers_t)
+                              + sizeof(ngx_http_upstream_rr_peer_t) * (n - 1));
+        if (backup == NULL) {
+            return NGX_ERROR;
+        }
+
+        peers->single = 0;
+        backup->single = 0;
+        backup->number = n;
+        backup->name = &us->host;
+
+        n = 0;
+
+        for (i = 0; i < us->servers->nelts; i++) {
+            for (j = 0; j < server[i].naddrs; j++) {
+                if (!server[i].backup) {
+                    continue;
+                }
+
+                backup->peer[n].sockaddr = server[i].addrs[j].sockaddr;
+                backup->peer[n].socklen = server[i].addrs[j].socklen;
+                backup->peer[n].name = server[i].addrs[j].name;
+                backup->peer[n].weight = server[i].weight;
+                backup->peer[n].current_weight = server[i].weight;
+                backup->peer[n].max_fails = server[i].max_fails;
+                backup->peer[n].fail_timeout = server[i].fail_timeout;
+                backup->peer[n].down = server[i].down;
+                n++;
+            }
+        }
+
+        peers->next = backup;
 
         return NGX_OK;
     }
@@ -95,6 +154,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         return NGX_ERROR;
     }
 
+    peers->single = (n == 1);
     peers->number = n;
     peers->name = &us->host;
 
@@ -112,6 +172,8 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     }
 
     us->peer.data = peers;
+
+    /* implicitly defined upstream has no backup servers */
 
     return NGX_OK;
 }
@@ -171,11 +233,13 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 {
     ngx_http_upstream_rr_peer_data_t  *rrp = data;
 
-    time_t                        now;
-    uintptr_t                     m;
-    ngx_uint_t                    i, n;
-    ngx_connection_t             *c;
-    ngx_http_upstream_rr_peer_t  *peer;
+    time_t                         now;
+    uintptr_t                      m;
+    ngx_int_t                      rc;
+    ngx_uint_t                     i, n;
+    ngx_connection_t              *c;
+    ngx_http_upstream_rr_peer_t   *peer;
+    ngx_http_upstream_rr_peers_t  *peers;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "get rr peer, try: %ui", pc->tries);
@@ -207,7 +271,7 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
     pc->cached = 0;
     pc->connection = NULL;
 
-    if (rrp->peers->number == 1) {
+    if (rrp->peers->single) {
         peer = &rrp->peers->peer[0];
 
     } else {
@@ -319,19 +383,53 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 
     /* ngx_unlock_mutex(rrp->peers->mutex); */
 
+    if (pc->tries == 1 && rrp->peers->next) {
+        pc->tries += rrp->peers->next->number;
+
+        n = rrp->peers->next->number / (8 * sizeof(uintptr_t)) + 1;
+        for (i = 0; i < n; n++) {
+             rrp->tried[i] = 0;
+        }
+    }
+
     return NGX_OK;
 
 failed:
 
-    /* all peers failed, mark them as live for quick recovery */
+    peers = rrp->peers;
 
-    for (i = 0; i < rrp->peers->number; i++) {
-        rrp->peers->peer[i].fails = 0;
+    if (peers->next) {
+
+        /* ngx_unlock_mutex(peers->mutex); */
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "backup servers");
+
+        rrp->peers = peers->next;
+        pc->tries = rrp->peers->number;
+
+        n = rrp->peers->number / (8 * sizeof(uintptr_t)) + 1;
+        for (i = 0; i < n; n++) {
+             rrp->tried[i] = 0;
+        }
+
+        rc = ngx_http_upstream_get_round_robin_peer(pc, rrp);
+
+        if (rc != NGX_BUSY) {
+            return rc;
+        }
+
+        /* ngx_lock_mutex(peers->mutex); */
     }
 
-    /* ngx_unlock_mutex(rrp->peers->mutex); */
+    /* all peers failed, mark them as live for quick recovery */
 
-    pc->name = rrp->peers->name;
+    for (i = 0; i < peers->number; i++) {
+        peers->peer[i].fails = 0;
+    }
+
+    /* ngx_unlock_mutex(peers->mutex); */
+
+    pc->name = peers->name;
 
     return NGX_BUSY;
 }
@@ -410,7 +508,7 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
 
     /* TODO: NGX_PEER_KEEPALIVE */
 
-    if (rrp->peers->number == 1) {
+    if (rrp->peers->single) {
         pc->tries = 0;
         return;
     }
