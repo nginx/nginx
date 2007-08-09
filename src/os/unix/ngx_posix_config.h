@@ -88,6 +88,9 @@
 #endif
 
 
+#define NGX_LISTEN_BACKLOG  511
+
+
 #if (__FreeBSD__) && (__FreeBSD_version < 400017)
 
 #include <sys/param.h>          /* ALIGN() */

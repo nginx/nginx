@@ -78,6 +78,9 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
+#define NGX_LISTEN_BACKLOG        511
+
+
 #if defined TCP_DEFER_ACCEPT && !defined NGX_HAVE_DEFERRED_ACCEPT
 #define NGX_HAVE_DEFERRED_ACCEPT  1
 #endif

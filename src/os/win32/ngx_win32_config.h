@@ -149,6 +149,9 @@ typedef int                 sig_atomic_t;
 #define NGX_WIN_NT        200000
 
 
+#define NGX_LISTEN_BACKLOG           511
+
+
 #ifndef NGX_HAVE_INHERITED_NONBLOCK
 #define NGX_HAVE_INHERITED_NONBLOCK  1
 #endif

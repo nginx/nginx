@@ -123,7 +123,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
                                           ntohs(sin->sin_port))
                               - ls[i].addr_text.data;
 
-        ls[i].backlog = -1;
+        ls[i].backlog = NGX_LISTEN_BACKLOG;
 
         olen = sizeof(int);
 
