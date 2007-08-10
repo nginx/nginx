@@ -212,10 +212,18 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         cidrin.mask = 0;
 
     } else {
-        if (ngx_ptocidr(&value[0], &cidrin) == NGX_ERROR) {
+        rc = ngx_ptocidr(&value[0], &cidrin);
+
+        if (rc == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid parameter \"%V\"", &value[0]);
             return NGX_CONF_ERROR;
+        }
+
+        if (rc == NGX_DONE) {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                               "low address bits of %V are meaningless",
+                               &value[0]);
         }
 
         cidrin.addr = ntohl(cidrin.addr);

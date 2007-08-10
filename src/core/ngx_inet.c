@@ -214,7 +214,13 @@ ngx_ptocidr(ngx_str_t *text, void *cidr)
 
     in_cidr->mask = htonl((ngx_uint_t) (0 - (1 << (32 - m))));
 
-    return NGX_OK;
+    if (in_cidr->addr == (in_cidr->addr & in_cidr->mask)) {
+        return NGX_OK;
+    }
+
+    in_cidr->addr &= in_cidr->mask;
+
+    return NGX_DONE;
 }
 
 
