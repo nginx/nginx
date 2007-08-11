@@ -155,3 +155,6 @@ fi
 
 # stop on warning
 CFLAGS="$CFLAGS -errwarn=%all"
+
+# debug
+CFLAGS="$CFLAGS -g"
