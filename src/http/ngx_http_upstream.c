@@ -33,6 +33,8 @@ static ngx_int_t ngx_http_upstream_non_buffered_filter(void *data,
     ssize_t bytes);
 static void ngx_http_upstream_process_downstream(ngx_http_request_t *r);
 static void ngx_http_upstream_process_body(ngx_event_t *ev);
+static void ngx_http_upstream_store(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
 static void ngx_http_upstream_dummy_handler(ngx_event_t *wev);
 static void ngx_http_upstream_next(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_uint_t ft_type);
@@ -115,6 +117,12 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  offsetof(ngx_http_upstream_headers_in_t, date),
                  ngx_http_upstream_copy_header_line,
                  offsetof(ngx_http_headers_out_t, date), 0 },
+
+    { ngx_string("Last-Modified"),
+                 ngx_http_upstream_process_header_line,
+                 offsetof(ngx_http_upstream_headers_in_t, last_modified),
+                 ngx_http_upstream_copy_header_line,
+                 offsetof(ngx_http_headers_out_t, last_modified), 0 },
 
     { ngx_string("Server"),
                  ngx_http_upstream_process_header_line,
@@ -364,6 +372,8 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     cln->data = r;
     u->cleanup = &cln->handler;
 
+    u->store = (u->conf->store || u->conf->store_lengths);
+
     ngx_http_upstream_connect(r, u);
 }
 
@@ -424,7 +434,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
             ev->error = 1;
         }
 
-        if (!u->cachable && u->peer.connection) {
+        if (!u->cachable && !u->store && u->peer.connection) {
             ngx_log_error(NGX_LOG_INFO, ev->log, ev->kq_errno,
                           "kevent() reported that client closed prematurely "
                           "connection, so upstream connection is closed too");
@@ -490,7 +500,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ev->eof = 1;
     c->error = 1;
 
-    if (!u->cachable && u->peer.connection) {
+    if (!u->cachable && !u->store && u->peer.connection) {
         ngx_log_error(NGX_LOG_INFO, ev->log, err,
                       "client closed prematurely connection, "
                       "so upstream connection is closed too");
@@ -1523,7 +1533,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->pool = r->pool;
     p->log = c->log;
 
-    p->cachable = u->cachable;
+    p->cachable = u->cachable || u->store;
 
     p->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t));
     if (p->temp_file == NULL) {
@@ -1536,8 +1546,9 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->temp_file->path = u->conf->temp_path;
     p->temp_file->pool = r->pool;
 
-    if (u->cachable) {
+    if (u->cachable || u->store) {
         p->temp_file->persistent = 1;
+
     } else {
         p->temp_file->log_level = NGX_LOG_WARN;
         p->temp_file->warn = "an upstream response is buffered "
@@ -1552,6 +1563,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         ngx_http_upstream_finalize_request(r, u, 0);
         return;
     }
+
     p->preread_bufs->buf = &u->buffer;
     p->preread_bufs->next = NULL;
     u->buffer.recycled = 1;
@@ -1559,11 +1571,13 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->preread_size = u->buffer.last - u->buffer.pos;
 
     if (u->cachable) {
+
         p->buf_to_file = ngx_calloc_buf(r->pool);
         if (p->buf_to_file == NULL) {
             ngx_http_upstream_finalize_request(r, u, 0);
             return;
         }
+
         p->buf_to_file->pos = u->buffer.start;
         p->buf_to_file->last = u->buffer.pos;
         p->buf_to_file->temporary = 1;
@@ -1910,6 +1924,27 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
 
     if (u->peer.connection) {
 
+        if (u->store) {
+
+            if (p->upstream_eof && u->headers_in.status_n == NGX_HTTP_OK) {
+
+                ngx_http_upstream_store(r, u);
+
+            } else if ((p->upstream_error
+                        || (p->upstream_eof
+                            && u->headers_in.status_n != NGX_HTTP_OK))
+                       && u->pipe->temp_file->file.fd != NGX_INVALID_FILE)
+            {
+                if (ngx_delete_file(u->pipe->temp_file->file.name.data)
+                    == NGX_FILE_ERROR)
+                {
+                    ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                                  ngx_delete_file_n " \"%s\" failed",
+                                  u->pipe->temp_file->file.name.data);
+                }
+            }
+        }
+
 #if (NGX_HTTP_FILE_CACHE)
 
         if (p->upstream_done && u->cachable) {
@@ -1951,6 +1986,143 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
             ngx_http_upstream_finalize_request(r, u, 0);
         }
     }
+}
+
+
+static void
+ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
+{
+    char             *failed;
+    u_char           *name;
+    size_t            root;
+    time_t            lm;
+    ngx_err_t         err;
+    ngx_str_t        *temp, path, *last_modified;
+    ngx_temp_file_t  *tf;
+
+    if (u->pipe->temp_file->file.fd == NGX_INVALID_FILE) {
+
+        /* create file for empty 200 response */
+
+        tf = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t));
+        if (tf == NULL) {
+            return;
+        }
+
+        tf->file.fd = NGX_INVALID_FILE;
+        tf->file.log = r->connection->log;
+        tf->path = u->conf->temp_path;
+        tf->pool = r->pool;
+        tf->persistent = 1;
+
+        if (ngx_create_temp_file(&tf->file, tf->path, tf->pool,
+                                 tf->persistent, tf->clean, tf->access)
+            != NGX_OK)
+        {
+            return;
+        }
+
+        u->pipe->temp_file = tf;
+    }
+
+    temp = &u->pipe->temp_file->file.name;
+
+#if !(NGX_WIN32)
+
+    if (ngx_change_file_access(temp->data, u->conf->store_access)
+        == NGX_FILE_ERROR)
+    {
+        err = ngx_errno;
+        failed = ngx_change_file_access_n;
+        name = temp->data;
+
+        goto failed;
+    }
+
+#endif
+
+    if (r->upstream->headers_in.last_modified) {
+
+        last_modified = &r->upstream->headers_in.last_modified->value;
+
+        lm = ngx_http_parse_time(last_modified->data, last_modified->len);
+
+        if (lm != NGX_ERROR) {
+            if (ngx_set_file_time(temp->data, u->pipe->temp_file->file.fd, lm)
+                != NGX_OK)
+            {
+                err = ngx_errno;
+                failed = ngx_set_file_time_n;
+                name = temp->data;
+
+                goto failed;
+            }
+        }
+    }
+
+    if (u->conf->store_lengths == NULL) {
+
+        ngx_http_map_uri_to_path(r, &path, &root, 0);
+
+    } else {
+        if (ngx_http_script_run(r, &path, u->conf->store_lengths->elts, 0,
+                                u->conf->store_values->elts)
+            == NULL)
+        {
+            return;
+        }
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "upstream stores \"%s\" to \"%s\"", temp->data, path.data);
+
+    failed = ngx_rename_file_n;
+    name = path.data;
+
+    if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
+        return;
+    }
+
+    err = ngx_errno;
+
+    if (err == NGX_ENOENT) {
+
+        err = ngx_create_full_path(path.data,
+                                   ngx_dir_access(u->conf->store_access));
+        if (err == 0) {
+            if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
+                return;
+            }
+
+            err = ngx_errno;
+        }
+    }
+
+#if (NGX_WIN32)
+
+    if (err == NGX_EEXIST) {
+        if (ngx_win32_rename_file(temp, &path, r->pool) != NGX_ERROR) {
+
+            if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
+                return;
+            }
+        }
+
+        err = ngx_errno;
+    }
+
+#endif
+
+failed:
+
+    if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                      ngx_delete_file_n " \"%s\" failed",
+                      temp->data);
+    }
+
+    ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
+                  "%s \"%s\" failed", failed, name);
 }
 
 

@@ -293,6 +293,68 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+char *
+ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *confp = conf;
+
+    u_char      *p;
+    ngx_str_t   *value;
+    ngx_uint_t   i, right, shift, *access;
+
+    access = (ngx_uint_t *) (confp + cmd->offset);
+
+    if (*access != NGX_CONF_UNSET_UINT) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    *access = 0600;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        p = value[i].data;
+
+        if (ngx_strncmp(p, "user:", sizeof("user:") - 1) == 0) {
+            shift = 6;
+            p += sizeof("user:") - 1;
+
+        } else if (ngx_strncmp(p, "group:", sizeof("group:") - 1) == 0) {
+            shift = 3;
+            p += sizeof("group:") - 1;
+
+        } else if (ngx_strncmp(p, "all:", sizeof("all:") - 1) == 0) {
+            shift = 0;
+            p += sizeof("all:") - 1;
+
+        } else {
+            goto invalid;
+        }
+
+        if (ngx_strcmp(p, "rw") == 0) {
+            right = 6;
+
+        } else if (ngx_strcmp(p, "r") == 0) {
+            right = 4;
+
+        } else {
+            goto invalid;
+        }
+
+        *access |= right << shift;
+    }
+
+    return NGX_CONF_OK;
+
+invalid:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid value \"%V\"", &value[i]);
+
+    return NGX_CONF_ERROR;
+}
+
+
 ngx_int_t
 ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
 {

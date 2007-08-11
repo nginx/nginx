@@ -124,6 +124,8 @@ static ngx_int_t ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
 
 static char *ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_fastcgi_store(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_fastcgi_lowat_check(ngx_conf_t *cf, void *post,
     void *data);
 
@@ -198,6 +200,20 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, index),
+      NULL },
+
+    { ngx_string("fastcgi_store"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_fastcgi_store,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("fastcgi_store_access"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
+      ngx_conf_set_access_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.store_access),
       NULL },
 
     { ngx_string("fastcgi_ignore_client_abort"),
@@ -1628,11 +1644,15 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.schema = { 0, NULL };
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
+     *     conf->upstream.store_lengths = NULL;
+     *     conf->upstream.store_values = NULL;
      *
      *     conf->index.len = 0;
      *     conf->index.data = NULL;
      */
 
+    conf->upstream.store = NGX_CONF_UNSET;
+    conf->upstream.store_access = NGX_CONF_UNSET_UINT;
     conf->upstream.buffering = NGX_CONF_UNSET;
     conf->upstream.ignore_client_abort = NGX_CONF_UNSET;
 
@@ -1676,6 +1696,19 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_hash_init_t               hash;
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
+
+    if (conf->upstream.store != 0) {
+        ngx_conf_merge_value(conf->upstream.store,
+                                  prev->upstream.store, 0);
+
+        if (conf->upstream.store_lengths == NULL) {
+            conf->upstream.store_lengths = prev->upstream.store_lengths;
+            conf->upstream.store_values = prev->upstream.store_values;
+        }
+    }
+
+    ngx_conf_merge_uint_value(conf->upstream.store_access,
+                              prev->upstream.store_access, 0600);
 
     ngx_conf_merge_value(conf->upstream.buffering,
                               prev->upstream.buffering, 1);
@@ -2141,6 +2174,52 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_fastcgi_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_fastcgi_loc_conf_t *flcf = conf;
+
+    ngx_str_t                  *value;
+    ngx_http_script_compile_t   sc;
+
+    if (flcf->upstream.store != NGX_CONF_UNSET || flcf->upstream.store_lengths)
+    {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "on") == 0) {
+        flcf->upstream.store = 1;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        flcf->upstream.store = 0;
+        return NGX_CONF_OK;
+    }
+
+    /* include the terminating '\0' into script */
+    value[1].len++;
+
+    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+
+    sc.cf = cf;
+    sc.source = &value[1];
+    sc.lengths = &flcf->upstream.store_lengths;
+    sc.values = &flcf->upstream.store_values;
+    sc.variables = ngx_http_script_variables_count(&value[1]);;
+    sc.complete_lengths = 1;
+    sc.complete_values = 1;
+
+    if (ngx_http_script_compile(&sc) != NGX_OK) {
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;

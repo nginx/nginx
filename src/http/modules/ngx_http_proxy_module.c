@@ -105,6 +105,8 @@ static char *ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_proxy_store(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data);
 
@@ -152,6 +154,20 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_http_proxy_redirect,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("proxy_store"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_proxy_store,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("proxy_store_access"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
+      ngx_conf_set_access_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.store_access),
       NULL },
 
     { ngx_string("proxy_buffering"),
@@ -1490,6 +1506,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.schema = { 0, NULL };
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
+     *     conf->upstream.store_lengths = NULL;
+     *     conf->upstream.store_values = NULL;
      *
      *     conf->method = NULL;
      *     conf->headers_source = NULL;
@@ -1502,6 +1520,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->rewrite_locations = NULL;
      */
 
+    conf->upstream.store = NGX_CONF_UNSET;
+    conf->upstream.store_access = NGX_CONF_UNSET_UINT;
     conf->upstream.buffering = NGX_CONF_UNSET;
     conf->upstream.ignore_client_abort = NGX_CONF_UNSET;
 
@@ -1552,6 +1572,19 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_proxy_redirect_t    *pr;
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
+
+    if (conf->upstream.store != 0) {
+        ngx_conf_merge_value(conf->upstream.store,
+                                  prev->upstream.store, 0);
+
+        if (conf->upstream.store_lengths == NULL) {
+            conf->upstream.store_lengths = prev->upstream.store_lengths;
+            conf->upstream.store_values = prev->upstream.store_values;
+        }
+    }
+
+    ngx_conf_merge_uint_value(conf->upstream.store_access,
+                              prev->upstream.store_access, 0600);
 
     ngx_conf_merge_value(conf->upstream.buffering,
                               prev->upstream.buffering, 1);
@@ -2354,6 +2387,52 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     pr->redirect = value[1];
     pr->replacement.vars.lengths = vars_lengths->elts;
     pr->replacement.vars.values = vars_values->elts;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_proxy_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_proxy_loc_conf_t *plcf = conf;
+
+    ngx_str_t                  *value;
+    ngx_http_script_compile_t   sc;
+
+    if (plcf->upstream.store != NGX_CONF_UNSET || plcf->upstream.store_lengths)
+    {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "on") == 0) {
+        plcf->upstream.store = 1;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        plcf->upstream.store = 0;
+        return NGX_CONF_OK;
+    }
+
+    /* include the terminating '\0' into script */
+    value[1].len++;
+
+    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+
+    sc.cf = cf;
+    sc.source = &value[1];
+    sc.lengths = &plcf->upstream.store_lengths;
+    sc.values = &plcf->upstream.store_values;
+    sc.variables = ngx_http_script_variables_count(&value[1]);;
+    sc.complete_lengths = 1;
+    sc.complete_values = 1;
+
+    if (ngx_http_script_compile(&sc) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }

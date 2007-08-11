@@ -118,6 +118,7 @@ typedef struct {
     size_t                          temp_file_write_size_conf;
 
     ngx_uint_t                      next_upstream;
+    ngx_uint_t                      store_access;
 
     ngx_bufs_t                      bufs;
 
@@ -140,6 +141,10 @@ typedef struct {
     ngx_str_t                       location;
     ngx_str_t                       url;  /* used in proxy_rewrite_location */
 
+    ngx_array_t                    *store_lengths;
+    ngx_array_t                    *store_values;
+
+    signed                          store:2;
     unsigned                        intercept_404:1;
     unsigned                        change_buffering:1;
 
@@ -237,6 +242,7 @@ struct ngx_http_upstream_s {
 
     ngx_http_cleanup_pt            *cleanup;
 
+    unsigned                        store:1;
     unsigned                        cachable:1;
     unsigned                        accel:1;
 
