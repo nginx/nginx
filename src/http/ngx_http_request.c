@@ -1453,17 +1453,55 @@ static void
 ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len,
     ngx_uint_t hash)
 {
-    ngx_http_virtual_names_t  *vn;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
+#if (NGX_PCRE)
+    ngx_int_t                  n;
+    ngx_uint_t                 i;
+    ngx_str_t                  name;
+    ngx_http_server_name_t    *sn;
+#endif
 
-    vn = r->virtual_names;
-
-    cscf = ngx_hash_find_combined(vn, hash, host, len);
+    cscf = ngx_hash_find_combined(&r->virtual_names->names, hash, host, len);
 
     if (cscf) {
         goto found;
     }
+
+#if (NGX_PCRE)
+
+    if (r->virtual_names->nregex) {
+
+        name.len = len;
+        name.data = host;
+
+        sn = r->virtual_names->regex;
+
+        for (i = 0; i < r->virtual_names->nregex; i++) {
+
+            n = ngx_regex_exec(sn[i].regex, &name, NULL, 0);
+
+            if (n == NGX_REGEX_NO_MATCHED) {
+                continue;
+            }
+
+            if (n < 0) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              ngx_regex_exec_n
+                              " failed: %d on \"%V\" using \"%V\"",
+                              n, &name, &sn[i].name);
+                return;
+            }
+
+            /* match */
+
+            cscf = sn[i].core_srv_conf;
+
+            goto found;
+        }
+    }
+
+#endif
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 

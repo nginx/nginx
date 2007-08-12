@@ -151,8 +151,10 @@ typedef struct {
 
 typedef struct {
     in_addr_t                  addr;
+
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
+
     ngx_http_virtual_names_t  *virtual_names;
 } ngx_http_in_addr_t;
 
@@ -180,6 +182,12 @@ typedef struct {
 
     ngx_array_t                names;      /* array of ngx_http_server_name_t */
 
+#if (NGX_PCRE)
+    ngx_uint_t                 nregex;
+    ngx_http_server_name_t    *regex;
+
+#endif
+
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
 
@@ -190,10 +198,13 @@ typedef struct {
 } ngx_http_conf_in_addr_t;
 
 
-typedef struct {
-    ngx_str_t                  name;
+struct ngx_http_server_name_s {
+#if (NGX_PCRE)
+    ngx_regex_t               *regex;
+#endif
     ngx_http_core_srv_conf_t  *core_srv_conf; /* virtual name server conf */
-} ngx_http_server_name_t;
+    ngx_str_t                  name;
+};
 
 
 typedef struct {
