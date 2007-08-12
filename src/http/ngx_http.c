@@ -932,7 +932,8 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_conf_in_port_t *in_port,
 
     if (in_port->addrs.elts == NULL) {
         if (ngx_array_init(&in_port->addrs, cf->temp_pool, 4,
-                           sizeof(ngx_http_conf_in_addr_t)) != NGX_OK)
+                           sizeof(ngx_http_conf_in_addr_t))
+            != NGX_OK)
         {
             return NGX_ERROR;
         }
@@ -981,7 +982,8 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_conf_in_addr_t *in_addr,
 
     if (in_addr->names.elts == NULL) {
         if (ngx_array_init(&in_addr->names, cf->temp_pool, 4,
-                           sizeof(ngx_http_server_name_t)) != NGX_OK)
+                           sizeof(ngx_http_server_name_t))
+            != NGX_OK)
         {
             return NGX_ERROR;
         }
