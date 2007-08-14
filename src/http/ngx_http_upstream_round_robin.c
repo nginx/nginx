@@ -408,7 +408,7 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
         pc->tries += rrp->peers->next->number;
 
         n = rrp->peers->next->number / (8 * sizeof(uintptr_t)) + 1;
-        for (i = 0; i < n; n++) {
+        for (i = 0; i < n; i++) {
              rrp->tried[i] = 0;
         }
     }
@@ -429,7 +429,7 @@ failed:
         pc->tries = rrp->peers->number;
 
         n = rrp->peers->number / (8 * sizeof(uintptr_t)) + 1;
-        for (i = 0; i < n; n++) {
+        for (i = 0; i < n; i++) {
              rrp->tried[i] = 0;
         }
 
