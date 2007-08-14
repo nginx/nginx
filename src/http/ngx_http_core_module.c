@@ -933,14 +933,19 @@ ngx_http_core_find_location(ngx_http_request_t *r,
     ngx_array_t *locations, ngx_uint_t regex_start, size_t len)
 {
     ngx_int_t                  n, rc;
-    ngx_uint_t                 i, found, noregex;
+    ngx_uint_t                 i, found;
     ngx_http_core_loc_conf_t  *clcf, **clcfp;
+#if (NGX_PCRE)
+    ngx_uint_t                 noregex;
+#endif
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "find location for \"%V\"", &r->uri);
 
     found = 0;
+#if (NGX_PCRE)
     noregex = 0;
+#endif
 
     clcfp = locations->elts;
     for (i = 0; i < locations->nelts; i++) {
@@ -998,9 +1003,12 @@ ngx_http_core_find_location(ngx_http_request_t *r,
                 break;
             }
 
-            r->loc_conf = clcfp[i]->loc_conf;
-            noregex = clcfp[i]->noregex;
             found = 1;
+
+            r->loc_conf = clcfp[i]->loc_conf;
+#if (NGX_PCRE)
+            noregex = clcfp[i]->noregex;
+#endif
         }
     }
 
