@@ -1388,6 +1388,8 @@ ngx_mail_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "%s in auth_http \"%V\"", u.err, &u.url);
         }
+
+        return NGX_CONF_ERROR;
     }
 
     ahcf->peer = u.addrs;
