@@ -124,7 +124,6 @@ do
 
         --prefix=*)                      NGX_PREFIX="$value"        ;;
         --sbin-path=*)                   NGX_SBIN_PATH="$value"     ;;
-        --sysconfdir=*)                  NGX_CONF_PREFIX="$value"   ;;
         --conf-path=*)                   NGX_CONF_PATH="$value"     ;;
         --error-log-path=*)              NGX_ERROR_LOG_PATH="$value";;
         --pid-path=*)                    NGX_PID_PATH="$value"      ;;
@@ -242,7 +241,6 @@ cat << END
 
   --prefix=PATH                      set the installation prefix
   --sbin-path=PATH                   set path to the nginx binary file
-  --sysconfdir=PATH                  set the configuration prefix
   --conf-path=PATH                   set path to the nginx.conf file
   --error-log-path=PATH              set path to the error log
   --pid-path=PATH                    set path to nginx.pid file
@@ -363,7 +361,6 @@ fi
 
 
 NGX_PREFIX=${NGX_PREFIX:-/usr/local/nginx}
-NGX_CONF_PREFIX=${NGX_CONF_PREFIX:-$NGX_PREFIX}
 
 
 case ".$NGX_SBIN_PATH" in
@@ -385,13 +382,16 @@ case ".$NGX_CONF_PATH" in
     ;;
 
     .)
-        NGX_CONF_PATH=$NGX_CONF_PREFIX/conf/nginx.conf
+        NGX_CONF_PATH=$NGX_PREFIX/conf/nginx.conf
     ;;
 
     *)
-        NGX_CONF_PATH=$NGX_CONF_PREFIX/$NGX_CONF_PATH
+        NGX_CONF_PATH=$NGX_PREFIX/$NGX_CONF_PATH
     ;;
 esac
+
+
+NGX_CONF_PREFIX=`dirname $NGX_CONF_PATH`
 
 
 case ".$NGX_PID_PATH" in
