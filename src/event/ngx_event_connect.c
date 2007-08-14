@@ -85,6 +85,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     c->recv_chain = ngx_recv_chain;
     c->send_chain = ngx_send_chain;
 
+    c->sendfile = 1;
+
     c->log_error = pc->log_error;
 
     if (pc->sockaddr->sa_family != AF_INET) {

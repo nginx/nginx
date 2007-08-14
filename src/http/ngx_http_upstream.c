@@ -583,7 +583,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     c->write->handler = ngx_http_upstream_send_request_handler;
     c->read->handler = ngx_http_upstream_process_header;
 
-    c->sendfile = r->connection->sendfile;
+    c->sendfile &= r->connection->sendfile;
 
     c->pool = r->pool;
     c->read->log = c->write->log = c->log = r->connection->log;
