@@ -2275,13 +2275,17 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     plcf->upstream.location = clcf->name;
 
+    if (clcf->named
 #if (NGX_PCRE)
-
-    if (clcf->regex || clcf->noname) {
+        || clcf->regex
+#endif
+        || clcf->noname)
+    {
         if (plcf->upstream.uri.len) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"proxy_pass\" may not have URI part in "
                                "location given by regular expression, "
+                               "or inside named location, "
                                "or inside the \"if\" statement, "
                                "or inside the \"limit_except\" block");
             return NGX_CONF_ERROR;
@@ -2289,8 +2293,6 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         plcf->upstream.location.len = 0;
     }
-
-#endif
 
     plcf->upstream.url = *url;
 

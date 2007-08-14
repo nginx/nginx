@@ -402,6 +402,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     cmcf->phase_engine.server_rewrite_index = (ngx_uint_t) -1;
+    cmcf->phase_engine.location_rewrite_index = (ngx_uint_t) -1;
     find_config_index = 0;
     use_rewrite = cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers.nelts ? 1 : 0;
     use_access = cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers.nelts ? 1 : 0;
@@ -442,6 +443,14 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ph++;
 
             continue;
+
+        case NGX_HTTP_REWRITE_PHASE:
+            if (cmcf->phase_engine.location_rewrite_index == (ngx_uint_t) -1) {
+                cmcf->phase_engine.location_rewrite_index = n;
+            }
+            checker = ngx_http_core_generic_phase;
+
+            break;
 
         case NGX_HTTP_POST_REWRITE_PHASE:
             if (use_rewrite) {

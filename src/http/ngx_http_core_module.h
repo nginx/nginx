@@ -79,6 +79,7 @@ struct ngx_http_phase_handler_s {
 typedef struct {
     ngx_http_phase_handler_t  *handlers;
     ngx_uint_t                 server_rewrite_index;
+    ngx_uint_t                 location_rewrite_index;
 } ngx_http_phase_engine_t;
 
 
@@ -117,7 +118,8 @@ typedef struct {
      */
     ngx_array_t                locations;
 
-    unsigned                   regex_start:16;
+    unsigned                   regex_start:15;
+    unsigned                   named_start:15;
     unsigned                   wildcard:1;
 
     /* array of the ngx_http_listen_t, "listen" directive */
@@ -211,9 +213,10 @@ struct ngx_http_core_loc_conf_s {
     ngx_regex_t  *regex;
 #endif
 
-    unsigned      regex_start:16;
+    unsigned      regex_start:15;
 
-    unsigned      noname:1;   /* "if () {}" block */
+    unsigned      noname:1;   /* "if () {}" block or limit_except */
+    unsigned      named:1;
 
     unsigned      exact_match:1;
     unsigned      noregex:1;
@@ -313,6 +316,8 @@ ngx_int_t ngx_http_subrequest(ngx_http_request_t *r,
     ngx_http_post_subrequest_t *psr, ngx_uint_t flags);
 ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args);
+ngx_int_t ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name);
+
 
 ngx_http_cleanup_t *ngx_http_cleanup_add(ngx_http_request_t *r, size_t size);
 
