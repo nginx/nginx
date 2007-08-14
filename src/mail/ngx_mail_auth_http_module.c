@@ -21,6 +21,9 @@ typedef struct {
     ngx_str_t                       header;
 
     ngx_array_t                    *headers;
+
+    u_char                         *file;
+    ngx_uint_t                      line;
 } ngx_mail_auth_http_conf_t;
 
 
@@ -1311,6 +1314,9 @@ ngx_mail_auth_http_create_conf(ngx_conf_t *cf)
 
     ahcf->timeout = NGX_CONF_UNSET_MSEC;
 
+    ahcf->file = cf->conf_file->file.name.data;
+    ahcf->line = cf->conf_file->line;
+
     return ahcf;
 }
 
@@ -1330,6 +1336,14 @@ ngx_mail_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->peer = prev->peer;
         conf->host_header = prev->host_header;
         conf->uri = prev->uri;
+
+        if (conf->peer == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no \"http_auth\" is defined for server in %s:%ui",
+                          conf->file, conf->line);
+
+            return NGX_CONF_ERROR;
+        }
     }
 
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
