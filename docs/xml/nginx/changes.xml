@@ -9,6 +9,38 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.31" date="15.08.2007">
+
+<change type="feature">
+<para lang="ru">
+именованные location'ы.
+</para>
+<para lang="en">
+named locations.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_store и fastcgi_store.
+</para>
+<para lang="en">
+the "proxy_store" and "fastcgi_store" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_store_access и fastcgi_store_access.
+</para>
+<para lang="en">
+the "proxy_store_access" and "fastcgi_store_access" directives.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.30" date="30.07.2007">
 
 <change type="feature">
