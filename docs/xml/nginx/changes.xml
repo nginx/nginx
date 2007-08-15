@@ -9,6 +9,146 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.7" date="15.08.2007">
+
+<change type="change">
+<para lang="ru">
+теперь пути, указанные в директивах include, auth_basic_user_file,
+perl_modules, ssl_certificate, ssl_certificate_key и
+ssl_client_certificate, определяются относительно каталогу конфигурационного
+файла nginx.conf, а не относительно префиксу.
+</para>
+<para lang="en">
+now the paths specified in the "include", "auth_basic_user_file",
+"perl_modules", "ssl_certificate", "ssl_certificate_key", and
+"ssl_client_certificate" directives are relative to directory of
+nginx configuration file nginx.conf, but no to nginx prefix directory.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+параметр --sysconfdir=PATH в configure упразднён.
+</para>
+<para lang="en">
+the --sysconfdir=PATH option in configure was canceled.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+для обновления на лету версий 0.1.x создан специальный сценарий
+<nobr>make upgrade1.</nobr>
+</para>
+<para lang="en">
+the special make target "upgrade1" was defined for online upgrade of
+0.1.x versions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы server_name и valid_referers поддерживают регулярные выражения.
+</para>
+<para lang="en">
+the "server_name" and "valid_referers" directives support regular expressions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server в блоке upstream поддерживает параметр backup.
+</para>
+<para lang="en">
+the "server" directive in the "upstream" context supports
+the "backup" parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module поддерживает метод $r->discard_request_body.
+</para>
+<para lang="en">
+the ngx_http_perl_module supports the $r->discard_request_body.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива "add_header Last-Modified ..." меняет строку "Last-Modified"
+в заголовке ответа.
+</para>
+<para lang="en">
+the "add_header Last-Modified ..." directive changes the "Last-Modified"
+response header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если на запрос с телом возвращался ответ с кодом HTTP отличным от 200,
+и после этого запроса соединение переходило в состояние keep-alive,
+то на следующий запрос nginx возвращал 400.
+</para>
+<para lang="en">
+if an response different than 200 was returned to an request with body
+and connection went to the keep-alive state after the request, then
+nginx returned 400 for the next request.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве auth_http был задан неправильный адрес, то
+в рабочем процессе происходил segmentation fault.<br/>
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process
+if invalid address was set in the "auth_http" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь по умолчанию nginx использует значение 511 для listen backlog
+на всех платформах, кроме FreeBSD.<br/>
+Спасибо Jiang Hong.
+</para>
+<para lang="en">
+now nginx uses default listen backlog value 511 on all platforms
+except FreeBSD.<br/>
+Thanks to Jiang Hong.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочий процесс мог зациклиться, если server в блоке upstream был помечен
+как down;
+ошибка появилась в 0.6.6.
+</para>
+<para lang="en">
+a worker process may got caught in an endless loop, if an "server" inside
+"upstream" block was marked as "down";
+bug appeared in 0.6.6.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+sendfilev() в Solaris теперь не используется при передаче тела запроса
+FastCGI-серверу через unix domain сокет.
+</para>
+<para lang="en">
+now Solaris sendfilev() is not used to transfer the client request body
+to FastCGI-server via the unix domain socket.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.6" date="30.07.2007">
 
 <change type="feature">
