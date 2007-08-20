@@ -9,20 +9,80 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.8" date="20.08.2007">
+
+<change type="change">
+<para lang="ru">
+теперь nginx пытается установить директивы worker_priority,
+worker_rlimit_nofile, worker_rlimit_core, worker_rlimit_sigpending
+без привилегий root'а.
+</para>
+<para lang="en">
+now nginx tries to set the "worker_priority", "worker_rlimit_nofile",
+"worker_rlimit_core", and "worker_rlimit_sigpending" without super-user
+privileges.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx экранирует символы пробела и "%" при передаче запроса
+серверу аутентификации почтового прокси-сервера.
+</para>
+<para lang="en">
+now nginx escapes space and "%" in request to a mail proxy authentication
+server.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx экранирует символ "%" в переменной $memcached_key.
+</para>
+<para lang="en">
+now nginx escapes "%" in $memcached_key variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при указании относительного пути к конфигурационному файлу в качестве
+параметра ключа -c nginx определял путь относительно конфигурационного префикса;
+ошибка появилась в 0.6.6.
+</para>
+<para lang="en">
+nginx used path relative to configuration prefix for non-absolute
+configuration file path specified in the "-c" key;
+bug appeared in 0.6.6.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не работал на FreeBSD/sparc64.
+</para>
+<para lang="en">
+nginx did not work on FreeBSD/sparc64.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.7" date="15.08.2007">
 
 <change type="change">
 <para lang="ru">
 теперь пути, указанные в директивах include, auth_basic_user_file,
 perl_modules, ssl_certificate, ssl_certificate_key и
-ssl_client_certificate, определяются относительно каталогу конфигурационного
-файла nginx.conf, а не относительно префиксу.
+ssl_client_certificate, определяются относительно каталога конфигурационного
+файла nginx.conf, а не относительно префикса.
 </para>
 <para lang="en">
 now the paths specified in the "include", "auth_basic_user_file",
 "perl_modules", "ssl_certificate", "ssl_certificate_key", and
 "ssl_client_certificate" directives are relative to directory of
-nginx configuration file nginx.conf, but no to nginx prefix directory.
+nginx configuration file nginx.conf, but not to nginx prefix directory.
 </para>
 </change>
 
@@ -499,7 +559,7 @@ process identification number.
 маски вида "www.example.*".
 </para>
 <para lang="en">
-the "server_name", "map", and "valid_referers" directives supports
+the "server_name", "map", and "valid_referers" directives support
 the "www.example.*" wildcards.
 </para>
 </change>
