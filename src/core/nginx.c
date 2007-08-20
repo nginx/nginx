@@ -656,10 +656,6 @@ ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
         cycle->conf_file.data = (u_char *) NGX_CONF_PATH;
     }
 
-    if (ngx_conf_full_name(cycle, &cycle->conf_file, 1) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
     return NGX_OK;
 }
 
