@@ -141,7 +141,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
     if (len > 255) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "the value of the \"%V\" variable "
-                      "is more than 255 bytes: \"%V\"",
+                      "is more than 255 bytes: \"%v\"",
                       &ctx->var, vv);
         return NGX_DECLINED;
     }

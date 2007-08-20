@@ -59,8 +59,9 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *    %P                        ngx_pid_t
  *    %M                        ngx_msec_t
  *    %r                        rlim_t
- *    %p                        pointer
- *    %V                        pointer to ngx_str_t
+ *    %p                        void *
+ *    %V                        ngx_str_t *
+ *    %v                        ngx_variable_value_t *
  *    %s                        null-terminated string
  *    %Z                        '\0'
  *    %N                        '\n'
@@ -117,7 +118,8 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
     uint64_t               ui64;
     ngx_msec_t             ms;
     ngx_uint_t             width, sign, hexadecimal, max_width;
-    ngx_variable_value_t  *v;
+    ngx_str_t             *v;
+    ngx_variable_value_t  *vv;
     static u_char          hex[] = "0123456789abcdef";
     static u_char          HEX[] = "0123456789ABCDEF";
 
@@ -188,12 +190,23 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
             switch (*fmt) {
 
             case 'V':
-                v = va_arg(args, ngx_variable_value_t *);
+                v = va_arg(args, ngx_str_t *);
 
                 len = v->len;
                 len = (buf + len < last) ? len : (size_t) (last - buf);
 
                 buf = ngx_cpymem(buf, v->data, len);
+                fmt++;
+
+                continue;
+
+            case 'v':
+                vv = va_arg(args, ngx_variable_value_t *);
+
+                len = vv->len;
+                len = (buf + len < last) ? len : (size_t) (last - buf);
+
+                buf = ngx_cpymem(buf, vv->data, len);
                 fmt++;
 
                 continue;

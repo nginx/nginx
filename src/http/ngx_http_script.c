@@ -1191,7 +1191,7 @@ ngx_http_script_var_code(ngx_http_script_engine_t *e)
 
     if (value && !value->not_found) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
-                       "http script var: \"%V\"", value);
+                       "http script var: \"%v\"", value);
 
         *e->sp = *value;
         e->sp++;
