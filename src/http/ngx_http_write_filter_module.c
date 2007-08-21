@@ -251,7 +251,8 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     } else if (c->write->ready
                && clcf->sendfile_max_chunk
-               && c->sent - sent >= clcf->sendfile_max_chunk - 2 * ngx_pagesize)
+               && (size_t) (c->sent - sent)
+                                >= clcf->sendfile_max_chunk - 2 * ngx_pagesize)
     {
         c->write->delayed = 1;
         ngx_add_timer(c->write, 1);
