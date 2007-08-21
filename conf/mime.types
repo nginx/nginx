@@ -20,6 +20,7 @@ types {
     image/x-icon                          ico;
     image/x-jng                           jng;
     image/x-ms-bmp                        bmp;
+    image/svg+xml                         svg;
 
     application/java-archive              jar war ear;
     application/mac-binhex40              hqx;
