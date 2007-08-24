@@ -140,7 +140,7 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
 
     /* TODO: cached */
 
-    if (iphp->tries > 20 || iphp->rrp.peers->number == 1) {
+    if (iphp->tries > 20 || iphp->rrp.peers->single) {
         return iphp->get_rr_peer(pc, &iphp->rrp);
     }
 
