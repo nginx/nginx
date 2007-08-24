@@ -889,9 +889,14 @@ wildcard:
 
         /* convert "www.example.*" to "www.example\0" */
 
-        p = key->data;
-        key->data[last] = '\0';
         last++;
+
+        p = ngx_palloc(ha->temp_pool, last);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_cpystrn(p, key->data, last - 1);
 
         hwc = &ha->dns_wc_tail;
         keys = &ha->dns_wc_tail_hash[k];
