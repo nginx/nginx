@@ -160,7 +160,7 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
         p = hash % iphp->rrp.peers->number;
 
         n = p / (8 * sizeof(uintptr_t));
-        m = 1 << p % (8 * sizeof(uintptr_t));
+        m = (uintptr_t) 1 << p % (8 * sizeof(uintptr_t));
 
         if (!(iphp->rrp.tried[n] & m)) {
 
