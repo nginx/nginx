@@ -303,6 +303,8 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 
             /* it's a first try - get a current peer */
 
+            i = pc->tries;
+
             for ( ;; ) {
                 rrp->current = ngx_http_upstream_get_peer(rrp->peers);
 
@@ -339,16 +341,24 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
                     pc->tries--;
                 }
 
-                if (pc->tries) {
-                    continue;
+                if (pc->tries == 0) {
+                    goto failed;
                 }
 
-                goto failed;
+                if (--i == 0) {
+                    ngx_log_error(NGX_LOG_ALERT, pc->log, 0,
+                                  "round robin upstream stuck on %ui tries",
+                                  pc->tries);
+                    goto failed;
+                }
             }
 
             peer->current_weight--;
 
         } else {
+
+            i = pc->tries;
+
             for ( ;; ) {
                 n = rrp->current / (8 * sizeof(uintptr_t));
                 m = (uintptr_t) 1 << rrp->current % (8 * sizeof(uintptr_t));
@@ -385,11 +395,16 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
                     rrp->current = 0;
                 }
 
-                if (pc->tries) {
-                    continue;
+                if (pc->tries == 0) {
+                    goto failed;
                 }
 
-                goto failed;
+                if (--i == 0) {
+                    ngx_log_error(NGX_LOG_ALERT, pc->log, 0,
+                                  "round robin upstream stuck on %ui tries",
+                                  pc->tries);
+                    goto failed;
+                }
             }
 
             peer->current_weight--;
