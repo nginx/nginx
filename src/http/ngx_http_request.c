@@ -1712,6 +1712,11 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
+    if (r->connection->read->eof) {
+        ngx_http_close_request(r, 0);
+        return;
+    }
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (!ngx_terminate
