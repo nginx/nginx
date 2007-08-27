@@ -1556,6 +1556,7 @@ ngx_http_request_handler(ngx_event_t *ev)
 void
 ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
+    ngx_connection_t          *c;
     ngx_http_request_t        *pr;
     ngx_http_log_ctx_t        *ctx;
     ngx_http_core_loc_conf_t  *clcf;
@@ -1565,7 +1566,9 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    c = r->connection;
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http finalize request: %d, \"%V?%V\"",
                    rc, &r->uri, &r->args);
 
@@ -1580,10 +1583,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         rc = r->post_subrequest->handler(r, r->post_subrequest->data, rc);
     }
 
-    if (rc == NGX_ERROR
-        || rc == NGX_HTTP_REQUEST_TIME_OUT
-        || r->connection->error)
-    {
+    if (rc == NGX_ERROR || rc == NGX_HTTP_REQUEST_TIME_OUT || c->error) {
         if (rc > 0 && r->headers_out.status == 0) {
             r->headers_out.status = rc;
         }
@@ -1606,12 +1606,12 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         }
 
         if (r == r->main) {
-            if (r->connection->read->timer_set) {
-                ngx_del_timer(r->connection->read);
+            if (c->read->timer_set) {
+                ngx_del_timer(c->read);
             }
 
-            if (r->connection->write->timer_set) {
-                ngx_del_timer(r->connection->write);
+            if (c->write->timer_set) {
+                ngx_del_timer(c->write);
             }
         }
 
@@ -1627,8 +1627,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
     r->done = 1;
 
-    if (r != r->connection->data) {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    if (r != c->data) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http finalize non-active request: \"%V?%V\"",
                        &r->uri, &r->args);
         return;
@@ -1638,19 +1638,19 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
         pr = r->parent;
 
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http parent request: \"%V?%V\"", &pr->uri, &pr->args);
 
         if (rc != NGX_AGAIN) {
-            r->connection->data = pr;
+            c->data = pr;
         }
 
-        ctx = r->connection->log->data;
+        ctx = c->log->data;
         ctx->current_request = pr;
 
         if (pr->postponed) {
 
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http request: \"%V?%V\" has postponed",
                            &pr->uri, &pr->args);
 
@@ -1664,14 +1664,14 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                     r->fast_subrequest = 0;
                 }
 
-                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http fast subrequest: \"%V?%V\" done",
                            &r->uri, &r->args);
                 return;
             }
 
             if (rc != NGX_AGAIN) {
-                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                                "http wake parent request: \"%V?%V\"",
                                &pr->uri, &pr->args);
 
@@ -1686,7 +1686,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r->connection->buffered) {
+    if (c->buffered) {
         (void) ngx_http_set_write_handler(r);
         return;
     }
@@ -1699,20 +1699,20 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r->connection->read->timer_set) {
-        ngx_del_timer(r->connection->read);
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
     }
 
-    if (r->connection->write->timer_set) {
-        r->connection->write->delayed = 0;
-        ngx_del_timer(r->connection->write);
+    if (c->write->timer_set) {
+        c->write->delayed = 0;
+        ngx_del_timer(c->write);
     }
 
-    if (r->connection->destroyed) {
+    if (c->destroyed) {
         return;
     }
 
-    if (r->connection->read->eof) {
+    if (c->read->eof) {
         ngx_http_close_request(r, 0);
         return;
     }
