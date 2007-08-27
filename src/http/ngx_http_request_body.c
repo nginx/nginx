@@ -571,6 +571,10 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
             return NGX_AGAIN;
         }
 
+        if (n == 0) {
+            return NGX_OK;
+        }
+
         r->headers_in.content_length_n -= n;
 
     } while (r->connection->read->ready);
