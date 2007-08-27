@@ -593,10 +593,13 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
     int  n, bytes;
 
     if (c->ssl->last == NGX_ERROR) {
+        c->read->error = 1;
         return NGX_ERROR;
     }
 
     if (c->ssl->last == NGX_DONE) {
+        c->read->ready = 0;
+        c->read->eof = 1;
         return 0;
     }
 
@@ -619,26 +622,38 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 
         c->ssl->last = ngx_ssl_handle_recv(c, n);
 
-        if (c->ssl->last != NGX_OK) {
+        if (c->ssl->last == NGX_OK) {
 
-            if (bytes) {
+            size -= n;
+
+            if (size == 0) {
                 return bytes;
             }
 
-            if (c->ssl->last == NGX_DONE) {
-                return 0;
-            }
+            buf += n;
 
-            return c->ssl->last;
+            continue;
         }
 
-        size -= n;
-
-        if (size == 0) {
+        if (bytes) {
             return bytes;
         }
 
-        buf += n;
+        switch (c->ssl->last) {
+
+        case NGX_DONE:
+            c->read->ready = 0;
+            c->read->eof = 1;
+            return 0;
+
+        case NGX_ERROR:
+            c->read->error = 1;
+
+            /* fall thruogh */
+
+        case NGX_AGAIN:
+            return c->ssl->last;
+        }
     }
 }
 
@@ -703,8 +718,6 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
 
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
-    c->read->ready = 0;
-    c->read->eof = 1;
 
     if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -712,7 +725,6 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
         return NGX_DONE;
     }
 
-    c->read->error = 1;
     ngx_ssl_connection_error(c, sslerr, err, "SSL_read() failed");
 
     return NGX_ERROR;
