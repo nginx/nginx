@@ -703,6 +703,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
 
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
+    c->read->ready = 0;
     c->read->eof = 1;
 
     if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
