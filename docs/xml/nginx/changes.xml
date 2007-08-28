@@ -9,6 +9,54 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.9" date="28.08.2007">
+
+<change type="bugfix">
+<para lang="ru">
+рабочий процесс мог зациклиться при использовании протокола HTTPS;
+ошибка появилась в 0.6.7.
+</para>
+<para lang="en">
+a worker process may got caught in an endless loop,
+if the HTTPS protocol was used;
+bug appeared in 0.6.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если сервер слушал на двух адресах или портах, то nginx не запускался
+при использовании wildcard в конце имени сервера.
+</para>
+<para lang="en">
+if server listened on two addresses or ports and trailing wildcard was used,
+then nginx did not run.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива ip_hash могла неверно помечать сервера как нерабочие.
+</para>
+<para lang="en">
+the "ip_hash" directive might incorrectly mark servers as down.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на amd64;
+ошибка появилась в 0.6.8.
+</para>
+<para lang="en">
+nginx could not be built on amd64;
+bug appeared in 0.6.8.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.8" date="20.08.2007">
 
 <change type="change">
