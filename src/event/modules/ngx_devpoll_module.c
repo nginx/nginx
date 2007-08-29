@@ -264,7 +264,7 @@ ngx_devpoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
         return NGX_OK;
     }
 
-    /* restore the paired event if it exists */
+    /* restore the pair event if it exists */
 
     if (event == POLLIN) {
         e = c->write;
