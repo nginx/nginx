@@ -255,6 +255,12 @@ ngx_devpoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     ev->active = 0;
 
     if (flags & NGX_CLOSE_EVENT) {
+        e = (event == POLLIN) ? c->write : c->read;
+
+        if (e) {
+            e->active = 0;
+        }
+
         return NGX_OK;
     }
 
