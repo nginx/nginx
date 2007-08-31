@@ -366,7 +366,7 @@ not_allowed:
 invalid:
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "invalid number arguments in \"%s\" directive",
+                       "invalid number of arguments in \"%s\" directive",
                        name->data);
 
     return NGX_ERROR;
