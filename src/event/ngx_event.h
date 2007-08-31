@@ -290,7 +290,7 @@ extern ngx_event_actions_t   ngx_event_actions;
  * All event filters on file descriptor are deleted after a notification:
  * Solaris 10's event ports.
  */
-#define NGX_USE_EVENTPORT_EVENT    0x00001000
+#define NGX_USE_EVENTPORT_EVENT  0x00001000
 
 
 
