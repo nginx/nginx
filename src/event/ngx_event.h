@@ -282,7 +282,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * The event module handles periodic or absolute timer event by itself:
- * kqueue in FreeBSD 4.4 and NetBSD 2.0, Solaris 10's event ports.
+ * kqueue in FreeBSD 4.4, NetBSD 2.0, and MacOSX 10.4, Solaris 10's event ports.
  */
 #define NGX_USE_TIMER_EVENT      0x00000800
 
