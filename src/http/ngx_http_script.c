@@ -952,8 +952,10 @@ ngx_http_script_not_equal_code(ngx_http_script_engine_t *e)
 void
 ngx_http_script_file_code(ngx_http_script_engine_t *e)
 {
-    ngx_err_t                     err;
-    ngx_file_info_t               fi;
+    ngx_str_t                     path;
+    ngx_http_request_t           *r;
+    ngx_open_file_info_t          of;
+    ngx_http_core_loc_conf_t     *clcf;
     ngx_http_variable_value_t    *value;
     ngx_http_script_file_code_t  *code;
 
@@ -962,14 +964,25 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     code = (ngx_http_script_file_code_t *) e->ip;
     e->ip += sizeof(ngx_http_script_file_code_t);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
-                   "http script file op %p", code->op);
+    path.len = value->len - 1;
+    path.data = value->data;
 
-    if (ngx_file_info(value->data, &fi) == -1) {
-        err = ngx_errno;
+    r = e->request;
 
-        if (err != NGX_ENOENT && err != NGX_ENOTDIR) {
-            ngx_log_error(NGX_LOG_CRIT, e->request->connection->log, err,
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http script file op %p \"%V\"", code->op, &path);
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    of.test_dir = 0;
+    of.retest = clcf->open_file_cache_retest;
+    of.errors = clcf->open_file_cache_errors;
+
+    if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
+        == NGX_ERROR)
+    {
+        if (of.err != NGX_ENOENT && of.err != NGX_ENOTDIR) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, of.err,
                           ngx_file_info_n " \"%s\" failed", value->data);
         }
 
@@ -993,69 +1006,57 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
 
     switch (code->op) {
     case ngx_http_script_file_plain:
-        if (ngx_is_file(&fi)) {
+        if (of.is_file) {
              goto true;
         }
         goto false;
 
     case ngx_http_script_file_not_plain:
-        if (ngx_is_file(&fi)) {
+        if (of.is_file) {
             goto false;
         }
         goto true;
 
     case ngx_http_script_file_dir:
-        if (ngx_is_dir(&fi)) {
+        if (of.is_dir) {
              goto true;
         }
         goto false;
 
     case ngx_http_script_file_not_dir:
-        if (ngx_is_dir(&fi)) {
+        if (of.is_dir) {
             goto false;
         }
         goto true;
 
     case ngx_http_script_file_exists:
-        if (ngx_is_file(&fi) || ngx_is_dir(&fi) || ngx_is_link(&fi)) {
+        if (of.is_file || of.is_dir || of.is_link) {
              goto true;
         }
         goto false;
 
     case ngx_http_script_file_not_exists:
-        if (ngx_is_file(&fi) || ngx_is_dir(&fi) || ngx_is_link(&fi)) {
+        if (of.is_file || of.is_dir || of.is_link) {
             goto false;
         }
         goto true;
 
-#if (NGX_WIN32)
-
     case ngx_http_script_file_exec:
-        goto false;
-
-    case ngx_http_script_file_not_exec:
-        goto true;
-
-#else
-
-    case ngx_http_script_file_exec:
-        if (ngx_is_exec(&fi)) {
+        if (of.is_exec) {
              goto true;
         }
         goto false;
 
     case ngx_http_script_file_not_exec:
-        if (ngx_is_exec(&fi)) {
+        if (of.is_exec) {
             goto false;
         }
         goto true;
-
-#endif
     }
 
 false:
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http script file op false");
 
     *value = ngx_http_variable_null_value;

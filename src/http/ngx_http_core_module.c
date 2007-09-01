@@ -61,6 +61,8 @@ static char *ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -448,16 +450,26 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
-#if (NGX_HTTP_CACHE)
-
     { ngx_string("open_file_cache"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE4,
-      ngx_http_set_cache_slot,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
+      ngx_http_core_open_file_cache,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, open_files),
+      offsetof(ngx_http_core_loc_conf_t, open_file_cache),
       NULL },
 
-#endif
+    { ngx_string("open_file_cache_retest"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_sec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, open_file_cache_retest),
+      NULL },
+
+    { ngx_string("open_file_cache_errors"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, open_file_cache_errors),
+      NULL },
 
       ngx_null_command
 };
@@ -2360,6 +2372,9 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->recursive_error_pages = NGX_CONF_UNSET;
     lcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
     lcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
+    lcf->open_file_cache = NGX_CONF_UNSET_PTR;
+    lcf->open_file_cache_retest = NGX_CONF_UNSET;
+    lcf->open_file_cache_errors = NGX_CONF_UNSET;
 
     return lcf;
 }
@@ -2543,9 +2558,14 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->recursive_error_pages,
                               prev->recursive_error_pages, 0);
 
-    if (conf->open_files == NULL) {
-        conf->open_files = prev->open_files;
-    }
+    ngx_conf_merge_ptr_value(conf->open_file_cache,
+                             prev->open_file_cache, NULL);
+
+    ngx_conf_merge_sec_value(conf->open_file_cache_retest,
+                             prev->open_file_cache_retest, 60);
+
+    ngx_conf_merge_sec_value(conf->open_file_cache_errors,
+                             prev->open_file_cache_errors, 0);
 
     return NGX_CONF_OK;
 }
@@ -3158,6 +3178,82 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *lcf = conf;
+
+    time_t       inactive;
+    ngx_str_t   *value, s;
+    ngx_int_t    max;
+    ngx_uint_t   i;
+
+    if (lcf->open_file_cache != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    max = 0;
+    inactive = 60;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strncmp(value[i].data, "max=", 4) == 0) {
+
+            max = ngx_atoi(value[i].data + 4, value[i].len - 4);
+            if (max == NGX_ERROR) {
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "inactive=", 9) == 0) {
+
+            s.len = value[i].len - 9;
+            s.data = value[i].data + 9;
+
+            inactive = ngx_parse_time(&s, 1);
+            if (inactive < 0) {
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strcmp(value[i].data, "off") == 0) {
+
+            lcf->open_file_cache = NULL;
+
+            continue;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid \"open_file_cache\" parameter \"%V\"",
+                           &value[i]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (lcf->open_file_cache == NULL) {
+        return NGX_CONF_OK;
+    }
+
+    if (max == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"open_file_cache\" must have \"max\" parameter");
+        return NGX_CONF_ERROR;
+    }
+
+    lcf->open_file_cache = ngx_open_file_cache_init(cf->pool, max, inactive);
+    if (lcf->open_file_cache) {
+        return NGX_CONF_OK;
+    }
+
+    return NGX_CONF_ERROR;
 }
 
 

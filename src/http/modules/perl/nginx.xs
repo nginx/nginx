@@ -605,15 +605,15 @@ void
 sendfile(r, filename, offset = -1, bytes = 0)
     CODE:
 
-    ngx_http_request_t       *r;
-    char                     *filename;
-    int                       offset;
-    size_t                    bytes;
-    ngx_fd_t                  fd;
-    ngx_buf_t                *b;
-    ngx_file_info_t           fi;
-    ngx_pool_cleanup_t       *cln;
-    ngx_pool_cleanup_file_t  *clnf;
+    ngx_http_request_t        *r;
+    char                      *filename;
+    int                        offset;
+    size_t                     bytes;
+    ngx_int_t                  rc;
+    ngx_str_t                  path;
+    ngx_buf_t                 *b;
+    ngx_open_file_info_t       of;
+    ngx_http_core_loc_conf_t  *clcf;
 
     ngx_http_perl_set_request(r);
 
@@ -636,14 +636,29 @@ sendfile(r, filename, offset = -1, bytes = 0)
         XSRETURN_EMPTY;
     }
 
-    cln = ngx_pool_cleanup_add(r->pool, sizeof(ngx_pool_cleanup_file_t));
-    if (cln == NULL) {
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    
+    of.test_dir = 0;
+    of.retest = clcf->open_file_cache_retest; 
+    of.errors = clcf->open_file_cache_errors; 
+
+    path.len = ngx_strlen(filename);
+
+    path.data = ngx_pcalloc(r->pool, path.len + 1);
+    if (path.data == NULL) {
         XSRETURN_EMPTY;
     }
 
-    fd = ngx_open_file((u_char *) filename, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+    (void) ngx_cpystrn(path.data, filename, path.len + 1);
+ 
+    rc = ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool);
 
-    if (fd == NGX_INVALID_FILE) {
+    if (rc == NGX_ERROR) {
+
+        if (of.err == 0) {
+            XSRETURN_EMPTY;
+        }
+
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       ngx_open_file_n " \"%s\" failed", filename);
         XSRETURN_EMPTY;
@@ -654,34 +669,15 @@ sendfile(r, filename, offset = -1, bytes = 0)
     }
 
     if (bytes == 0) {
-        if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          ngx_fd_info_n " \"%s\" failed", filename);
-
-            if (ngx_close_file(fd) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                              ngx_close_file_n " \"%s\" failed", filename);
-            }
-
-            XSRETURN_EMPTY;
-        }
-
-        bytes = ngx_file_size(&fi) - offset;
+        bytes = of.size - offset;
     }
-
-    cln->handler = ngx_pool_cleanup_file;
-    clnf = cln->data;
-
-    clnf->fd = fd;
-    clnf->name = (u_char *) "";
-    clnf->log = r->pool->log;
 
     b->in_file = 1;
 
     b->file_pos = offset;
     b->file_last = offset + bytes;
 
-    b->file->fd = fd;
+    b->file->fd = of.fd;
     b->file->log = r->connection->log;
 
     (void) ngx_http_perl_output(r, b);

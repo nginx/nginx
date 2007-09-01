@@ -290,7 +290,9 @@ struct ngx_http_core_loc_conf_s {
 
     ngx_path_t   *client_body_temp_path;   /* client_body_temp_path */
 
-    ngx_http_cache_hash_t  *open_files;
+    ngx_open_file_cache_t  *open_file_cache;
+    time_t        open_file_cache_retest;
+    ngx_flag_t    open_file_cache_errors;
 
     ngx_log_t    *err_log;
 
