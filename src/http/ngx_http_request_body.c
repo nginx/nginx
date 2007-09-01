@@ -521,6 +521,7 @@ ngx_http_read_discarded_request_body_handler(ngx_http_request_t *r)
     /* rc == NGX_AGAIN */
 
     if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+        c->error = 1;
         ngx_http_finalize_request(r, rc);
         return;
     }
