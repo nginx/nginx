@@ -29,6 +29,7 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_connection.h \
            src/core/ngx_cycle.h \
            src/core/ngx_conf_file.h \
+           src/core/ngx_open_file_cache.h \
            src/core/ngx_garbage_collector.h"
 
 
@@ -55,6 +56,7 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_spinlock.c \
            src/core/ngx_cpuinfo.c \
            src/core/ngx_conf_file.c \
+           src/core/ngx_open_file_cache.c \
            src/core/ngx_garbage_collector.c"
 
 
