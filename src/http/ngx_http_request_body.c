@@ -446,8 +446,6 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         return NGX_OK;
     }
 
-    r->discard_body = 1;
-
     size = r->header_in->last - r->header_in->pos;
 
     if (size) {
@@ -460,6 +458,8 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
             return NGX_OK;
         }
     }
+
+    r->discard_body = 1;
 
     r->read_event_handler = ngx_http_read_discarded_request_body_handler;
 
