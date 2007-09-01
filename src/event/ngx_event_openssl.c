@@ -1588,7 +1588,7 @@ ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
         }
 
         if (n++ != 0 && sess_id->expire > tp->sec) {
-            break;
+            return;
         }
 
         sess_id->next->prev = sess_id->prev;
