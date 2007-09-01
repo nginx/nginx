@@ -303,8 +303,12 @@ extern ngx_event_actions_t   ngx_event_actions;
  * /dev/poll:                        we need to flush POLLREMOVE event
  *                                   before closing file.
  */
-
 #define NGX_CLOSE_EVENT    1
+
+/*
+ * disable temporarily event filter, this may avoid locks
+ * in kernel malloc()/free(): kqueue.
+ */
 #define NGX_DISABLE_EVENT  2
 
 
