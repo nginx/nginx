@@ -41,7 +41,7 @@ struct ngx_event_s {
 
     unsigned         accept:1;
 
-    /* used to detect the stale events in kqueue, rt signals and epoll */
+    /* used to detect the stale events in kqueue, rtsig, and epoll */
     unsigned         instance:1;
 
     /*
@@ -247,8 +247,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_USE_LOWAT_EVENT      0x00000010
 
 /*
- * The event filter requires to do i/o operation until EAGAIN:
- * epoll, rt signals.
+ * The event filter requires to do i/o operation until EAGAIN: epoll, rtsig.
  */
 #define NGX_USE_GREEDY_EVENT     0x00000020
 
@@ -258,7 +257,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_USE_EPOLL_EVENT      0x00000040
 
 /*
- * No need to add or delete the event filters: rt signals.
+ * No need to add or delete the event filters: rtsig.
  */
 #define NGX_USE_RTSIG_EVENT      0x00000080
 
@@ -276,7 +275,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * The event filter has no opaque data and requires file descriptors table:
- * poll, /dev/poll, rt signals.
+ * poll, /dev/poll, rtsig.
  */
 #define NGX_USE_FD_EVENT         0x00000400
 
@@ -295,9 +294,14 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 
 /*
- * The event filter is deleted before the closing file.
- * Has no meaning for select, poll, kqueue, epoll.
- * /dev/poll:  we need to flush POLLREMOVE event before closing file
+ * The event filter is deleted just before the closing file.
+ * Has no meaning for select and poll.
+ * kqueue, epoll, rtsig, eventport:  allows to avoid explicit delete,
+ *                                   because filter automatically is deleted
+ *                                   on file close,
+ *
+ * /dev/poll:                        we need to flush POLLREMOVE event
+ *                                   before closing file.
  */
 
 #define NGX_CLOSE_EVENT    1
