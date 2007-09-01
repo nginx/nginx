@@ -291,6 +291,10 @@ extern ngx_event_actions_t   ngx_event_actions;
  */
 #define NGX_USE_EVENTPORT_EVENT  0x00001000
 
+/*
+ * The event filter support vnode notifications: kqueue.
+ */
+#define NGX_USE_VNODE_EVENT      0x00002000
 
 
 /*
@@ -311,6 +315,11 @@ extern ngx_event_actions_t   ngx_event_actions;
  */
 #define NGX_DISABLE_EVENT  2
 
+/*
+ * event must be passed to kernel right now, do not wait until batch processing.
+ */
+#define NGX_FLUSH_EVENT    4
+
 
 /* these flags have a meaning only for kqueue */
 #define NGX_LOWAT_EVENT    0
@@ -326,17 +335,20 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_VNODE_EVENT    EVFILT_VNODE
 
 /*
- * NGX_CLOSE_EVENT and NGX_LOWAT_EVENT are the module flags and they would
- * not go into a kernel so we need to choose the value that would not interfere
- * with any existent and future kqueue flags.  kqueue has such values -
- * EV_FLAG1, EV_EOF and EV_ERROR.  They are reserved and cleared on a kernel
- * entrance.
+ * NGX_CLOSE_EVENT, NGX_LOWAT_EVENT, and NGX_FLUSH_EVENT are the module flags
+ * and they must not go into a kernel so we need to choose the value
+ * that must not interfere with any existent and future kqueue flags.
+ * kqueue has such values - EV_FLAG1, EV_EOF, and EV_ERROR:
+ * they are reserved and cleared on a kernel entrance.
  */
 #undef  NGX_CLOSE_EVENT
 #define NGX_CLOSE_EVENT    EV_EOF
 
 #undef  NGX_LOWAT_EVENT
 #define NGX_LOWAT_EVENT    EV_FLAG1
+
+#undef  NGX_FLUSH_EVENT
+#define NGX_FLUSH_EVENT    EV_ERROR
 
 #define NGX_LEVEL_EVENT    0
 #define NGX_ONESHOT_EVENT  EV_ONESHOT

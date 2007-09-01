@@ -200,7 +200,9 @@ ngx_kqueue_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         }
     }
 
-    ngx_event_flags = 0;
+    ngx_event_flags = NGX_USE_ONESHOT_EVENT
+                      |NGX_USE_KQUEUE_EVENT
+                      |NGX_USE_VNODE_EVENT;
 
 #if (NGX_HAVE_TIMER_EVENT)
 
@@ -225,8 +227,6 @@ ngx_kqueue_init(ngx_cycle_t *cycle, ngx_msec_t timer)
     }
 
 #endif
-
-    ngx_event_flags |= NGX_USE_ONESHOT_EVENT|NGX_USE_KQUEUE_EVENT;
 
 #if (NGX_HAVE_CLEAR_EVENT)
     ngx_event_flags |= NGX_USE_CLEAR_EVENT;
@@ -389,10 +389,12 @@ ngx_kqueue_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
     if (flags & NGX_DISABLE_EVENT) {
         ev->disabled = 1;
+
+    } else {
+        flags |= EV_DELETE;
     }
 
-    rc = ngx_kqueue_set_event(ev, event,
-                           flags & NGX_DISABLE_EVENT ? EV_DISABLE : EV_DELETE);
+    rc = ngx_kqueue_set_event(ev, event, flags);
 
     ngx_mutex_unlock(list_mutex);
 
@@ -465,6 +467,22 @@ ngx_kqueue_set_event(ngx_event_t *ev, ngx_int_t filter, ngx_uint_t flags)
 
     ev->index = nchanges;
     nchanges++;
+
+    if (flags & NGX_FLUSH_EVENT) {
+        ts.tv_sec = 0;
+        ts.tv_nsec = 0;
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "kevent flush");
+
+        if (kevent(ngx_kqueue, change_list, (int) nchanges, NULL, 0, &ts)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, "kevent() failed");
+            return NGX_ERROR;
+        }
+
+        nchanges = 0;
+    }
 
     return NGX_OK;
 }
