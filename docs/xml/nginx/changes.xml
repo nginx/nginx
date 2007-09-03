@@ -9,6 +9,54 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.10" date="03.09.2007">
+
+<change type="feature">
+<para lang="ru">
+директивы open_file_cache, open_file_cache_retest и open_file_cache_errors.
+</para>
+<para lang="en">
+the "open_file_cache", "open_file_cache_retest", and "open_file_cache_errors"
+directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечка сокетов;
+ошибка появилась в 0.6.7.
+</para>
+<para lang="en">
+socket leak;
+bug appeared in 0.6.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+В строку заголовка ответа "Content-Type", указанную в методе
+$r->send_http_header(), не добавлялась кодировка, указанная в директиве charset.
+</para>
+<para lang="en">
+a charset set by the "charset" directive was not appended
+to the "Content-Type" header set by $r->send_http_header().
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании метода /dev/poll
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if /dev/poll method was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.9" date="28.08.2007">
 
 <change type="bugfix">
@@ -209,7 +257,7 @@ nginx returned 400 for the next request.
 <change type="bugfix">
 <para lang="ru">
 если в директиве auth_http был задан неправильный адрес, то
-в рабочем процессе происходил segmentation fault.<br/>
+в рабочем процессе происходил segmentation fault.
 </para>
 <para lang="en">
 a segmentation fault occurred in worker process
