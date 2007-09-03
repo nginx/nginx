@@ -353,8 +353,8 @@ create:
 
 update:
 
-    if ((ngx_event_flags & NGX_USE_VNODE_EVENT)
-        && of->events
+    if (of->events
+        && (ngx_event_flags & NGX_USE_VNODE_EVENT)
         && of->fd != NGX_INVALID_FILE)
     {
         file->event = ngx_calloc(sizeof(ngx_event_t), pool->log);
