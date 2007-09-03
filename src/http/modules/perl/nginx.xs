@@ -641,6 +641,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
     of.test_dir = 0;
     of.retest = clcf->open_file_cache_retest; 
     of.errors = clcf->open_file_cache_errors; 
+    of.events = clcf->open_file_cache_events; 
 
     path.len = ngx_strlen(filename);
 

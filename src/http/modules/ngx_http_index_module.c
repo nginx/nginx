@@ -236,6 +236,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
         of.test_dir = 0;
         of.retest = clcf->open_file_cache_retest;
         of.errors = clcf->open_file_cache_errors;
+        of.events = clcf->open_file_cache_events;
 
         rc = ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool);
 

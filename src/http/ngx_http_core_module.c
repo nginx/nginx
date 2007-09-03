@@ -471,6 +471,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, open_file_cache_errors),
       NULL },
 
+    { ngx_string("open_file_cache_events"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, open_file_cache_events),
+      NULL },
+
       ngx_null_command
 };
 
@@ -2375,6 +2382,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->open_file_cache = NGX_CONF_UNSET_PTR;
     lcf->open_file_cache_retest = NGX_CONF_UNSET;
     lcf->open_file_cache_errors = NGX_CONF_UNSET;
+    lcf->open_file_cache_events = NGX_CONF_UNSET;
 
     return lcf;
 }
@@ -2566,6 +2574,9 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_sec_value(conf->open_file_cache_errors,
                              prev->open_file_cache_errors, 0);
+
+    ngx_conf_merge_sec_value(conf->open_file_cache_events,
+                             prev->open_file_cache_events, 0);
 
     return NGX_CONF_OK;
 }

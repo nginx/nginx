@@ -23,6 +23,7 @@ typedef struct {
 
     unsigned                 test_dir:1;
     unsigned                 errors:1;
+    unsigned                 events:1;
 
     unsigned                 is_dir:1;
     unsigned                 is_file:1;
