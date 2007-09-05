@@ -515,7 +515,7 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peers_t *peers)
 
         for (i = 0; i < peers->number; i++) {
             if (peer[i].fails == 0) {
-                peer[i].current_weight = peer[i].weight;
+                peer[i].current_weight += peer[i].weight;
 
             } else {
                 /* 1 allows to go to quick recovery when all peers failed */
