@@ -498,7 +498,7 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peers_t *peers)
                 }
 
                 if (peer[n].current_weight * 1000 / peer[i].current_weight
-                    >= peer[n].weight * 1000 / peer[i].weight)
+                    > peer[n].weight * 1000 / peer[i].weight)
                 {
                     return n;
                 }
