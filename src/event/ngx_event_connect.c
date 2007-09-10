@@ -14,7 +14,7 @@ ngx_int_t
 ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     int                rc;
-    u_int              event;
+    ngx_int_t          event;
     ngx_err_t          err;
     ngx_uint_t         level;
     ngx_socket_t       s;
