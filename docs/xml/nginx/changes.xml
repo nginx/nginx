@@ -9,6 +9,54 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.11" date="11.09.2007">
+
+<change type="bugfix">
+<para lang="ru">
+счётчик активных соединений всегда рос при использовании почтового
+прокси-сервера.
+</para>
+<para lang="en">
+active connection counter always increased if mail proxy was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если бэкенд возвращал только заголовок ответа при не буферизированном
+проксировании, то nginx закрывал соединение с бэкендом по таймауту.
+</para>
+<para lang="en">
+if backend returned response header only using non-buffered proxy,
+then nginx closed backend connection on timeout.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал несколько строк "Connection" в заголовке запроса.
+</para>
+<para lang="en">
+nginx did not support several "Connection" request header lines.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в сервере апстрима был задан max_fails, то после первой же неудачной
+попытки вес сервера навсегда становился равным одному;
+ошибка появилась в 0.6.6.
+</para>
+<para lang="en">
+if the "max_fails" was set for upstream server, then after first
+failure server weight was always one;
+bug appeared in 0.6.6.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.10" date="03.09.2007">
 
 <change type="feature">
