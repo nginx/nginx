@@ -128,11 +128,7 @@ ngx_http_empty_gif_handler(ngx_http_request_t *r)
     if (r->method == NGX_HTTP_HEAD) {
         r->headers_out.status = NGX_HTTP_OK;
 
-        rc = ngx_http_send_header(r);
-
-        if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-            return rc;
-        }
+        return ngx_http_send_header(r);
     }
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
