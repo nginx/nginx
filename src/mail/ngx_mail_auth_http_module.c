@@ -252,7 +252,7 @@ ngx_mail_auth_http_write_handler(ngx_event_t *wev)
     if (wev->timedout) {
         ngx_log_error(NGX_LOG_ERR, wev->log, NGX_ETIMEDOUT,
                       "auth http server %V timed out", ctx->peer.name);
-        ngx_close_connection(ctx->peer.connection);
+        ngx_close_connection(c);
         ngx_destroy_pool(ctx->pool);
         ngx_mail_session_internal_server_error(s);
         return;
@@ -263,7 +263,7 @@ ngx_mail_auth_http_write_handler(ngx_event_t *wev)
     n = ngx_send(c, ctx->request->pos, size);
 
     if (n == NGX_ERROR) {
-        ngx_close_connection(ctx->peer.connection);
+        ngx_close_connection(c);
         ngx_destroy_pool(ctx->pool);
         ngx_mail_session_internal_server_error(s);
         return;
@@ -280,7 +280,7 @@ ngx_mail_auth_http_write_handler(ngx_event_t *wev)
             }
 
             if (ngx_handle_write_event(wev, 0) == NGX_ERROR) {
-                ngx_close_connection(ctx->peer.connection);
+                ngx_close_connection(c);
                 ngx_destroy_pool(ctx->pool);
                 ngx_mail_session_internal_server_error(s);
             }
@@ -315,7 +315,7 @@ ngx_mail_auth_http_read_handler(ngx_event_t *rev)
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_ERR, rev->log, NGX_ETIMEDOUT,
                       "auth http server %V timed out", ctx->peer.name);
-        ngx_close_connection(ctx->peer.connection);
+        ngx_close_connection(c);
         ngx_destroy_pool(ctx->pool);
         ngx_mail_session_internal_server_error(s);
         return;
@@ -324,7 +324,7 @@ ngx_mail_auth_http_read_handler(ngx_event_t *rev)
     if (ctx->response == NULL) {
         ctx->response = ngx_create_temp_buf(ctx->pool, 1024);
         if (ctx->response == NULL) {
-            ngx_close_connection(ctx->peer.connection);
+            ngx_close_connection(c);
             ngx_destroy_pool(ctx->pool);
             ngx_mail_session_internal_server_error(s);
             return;
@@ -346,7 +346,7 @@ ngx_mail_auth_http_read_handler(ngx_event_t *rev)
         return;
     }
 
-    ngx_close_connection(ctx->peer.connection);
+    ngx_close_connection(c);
     ngx_destroy_pool(ctx->pool);
     ngx_mail_session_internal_server_error(s);
 }
