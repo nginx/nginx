@@ -92,14 +92,14 @@ ngx_mail_imap_init_protocol(ngx_event_t *rev)
     }
 
     s->mail_state = ngx_imap_start;
-    c->read->handler = ngx_imap_auth_state;
+    c->read->handler = ngx_mail_imap_auth_state;
 
-    ngx_imap_auth_state(rev);
+    ngx_mail_imap_auth_state(rev);
 }
 
 
 void
-ngx_imap_auth_state(ngx_event_t *rev)
+ngx_mail_imap_auth_state(ngx_event_t *rev)
 {
     u_char              *p, *dst, *src, *end;
     ngx_str_t           *arg;

@@ -145,6 +145,19 @@ static ngx_str_t   ngx_mail_auth_http_method[] = {
 
 static ngx_str_t   ngx_mail_smtp_errcode = ngx_string("535 5.7.0");
 
+static ngx_uint_t  ngx_mail_start_states[] = {
+   ngx_pop3_start,
+   ngx_imap_start,
+   ngx_smtp_start
+};
+
+static ngx_mail_auth_state_pt  ngx_mail_auth_states[] = {
+   ngx_mail_pop3_auth_state,
+   ngx_mail_imap_auth_state,
+   ngx_mail_smtp_auth_state
+};
+
+
 void
 ngx_mail_auth_http_init(ngx_mail_session_t *s)
 {
@@ -868,29 +881,14 @@ ngx_mail_auth_sleep_handler(ngx_event_t *rev)
             return;
         }
 
-        switch (s->protocol) {
-
-        case NGX_MAIL_POP3_PROTOCOL:
-            s->mail_state = ngx_pop3_start;
-            s->connection->read->handler = ngx_pop3_auth_state;
-            break;
-
-        case NGX_MAIL_IMAP_PROTOCOL:
-            s->mail_state = ngx_imap_start;
-            s->connection->read->handler = ngx_imap_auth_state;
-            break;
-
-        default: /* NGX_MAIL_SMTP_PROTOCOL */
-            s->mail_state = ngx_smtp_start;
-            s->connection->read->handler = ngx_smtp_auth_state;
-            break;
-        }
+        s->mail_state = ngx_mail_start_states[s->protocol];
+        rev->handler = ngx_mail_auth_states[s->protocol];
 
         s->auth_method = NGX_MAIL_AUTH_PLAIN;
 
         c->log->action = "in auth state";
 
-        ngx_mail_send(s->connection->write);
+        ngx_mail_send(c->write);
 
         if (c->destroyed) {
             return;
@@ -901,12 +899,12 @@ ngx_mail_auth_sleep_handler(ngx_event_t *rev)
         ngx_add_timer(rev, cscf->timeout);
 
         if (rev->ready) {
-            s->connection->read->handler(rev);
+            rev->handler(rev);
             return;
         }
 
         if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
-            ngx_mail_close_connection(s->connection);
+            ngx_mail_close_connection(c);
         }
 
         return;
@@ -914,7 +912,7 @@ ngx_mail_auth_sleep_handler(ngx_event_t *rev)
 
     if (rev->active) {
         if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
-            ngx_mail_close_connection(s->connection);
+            ngx_mail_close_connection(c);
         }
     }
 }

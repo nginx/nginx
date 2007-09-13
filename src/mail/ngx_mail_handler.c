@@ -32,10 +32,10 @@ static ngx_mail_init_protocol_pt  ngx_mail_init_protocols[] = {
 };
 
 
-static ngx_mail_parse_pt  ngx_mail_parse[] = {
-   ngx_pop3_parse_command,
-   ngx_imap_parse_command,
-   ngx_smtp_parse_command
+static ngx_mail_parse_command_pt  ngx_mail_parse_commands[] = {
+   ngx_mail_pop3_parse_command,
+   ngx_mail_imap_parse_command,
+   ngx_mail_smtp_parse_command
 };
 
 
@@ -546,7 +546,7 @@ ngx_mail_read_command(ngx_mail_session_t *s)
         return NGX_AGAIN;
     }
 
-    rc = ngx_mail_parse[s->protocol](s);
+    rc = ngx_mail_parse_commands[s->protocol](s);
 
     if (rc == NGX_AGAIN) {
 

@@ -84,14 +84,14 @@ ngx_mail_smtp_init_protocol(ngx_event_t *rev)
     }
 
     s->mail_state = ngx_smtp_start;
-    c->read->handler = ngx_smtp_auth_state;
+    c->read->handler = ngx_mail_smtp_auth_state;
 
-    ngx_smtp_auth_state(rev);
+    ngx_mail_smtp_auth_state(rev);
 }
 
 
 void
-ngx_smtp_auth_state(ngx_event_t *rev)
+ngx_mail_smtp_auth_state(ngx_event_t *rev)
 {
     ngx_int_t            rc;
     ngx_connection_t    *c;

@@ -10,7 +10,8 @@
 #include <ngx_mail.h>
 
 
-ngx_int_t ngx_pop3_parse_command(ngx_mail_session_t *s)
+ngx_int_t
+ngx_mail_pop3_parse_command(ngx_mail_session_t *s)
 {
     u_char      ch, *p, *c, c0, c1, c2, c3;
     ngx_str_t  *arg;
@@ -207,7 +208,8 @@ invalid:
 }
 
 
-ngx_int_t ngx_imap_parse_command(ngx_mail_session_t *s)
+ngx_int_t
+ngx_mail_imap_parse_command(ngx_mail_session_t *s)
 {
     u_char      ch, *p, *c;
     ngx_str_t  *arg;
@@ -613,7 +615,8 @@ invalid:
 }
 
 
-ngx_int_t ngx_smtp_parse_command(ngx_mail_session_t *s)
+ngx_int_t
+ngx_mail_smtp_parse_command(ngx_mail_session_t *s)
 {
     u_char      ch, *p, *c, c0, c1, c2, c3;
     ngx_str_t  *arg;

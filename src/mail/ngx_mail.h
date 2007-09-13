@@ -307,7 +307,8 @@ typedef struct {
 typedef void (*ngx_mail_init_session_pt)(ngx_mail_session_t *s,
     ngx_connection_t *c);
 typedef void (*ngx_mail_init_protocol_pt)(ngx_event_t *rev);
-typedef ngx_int_t (*ngx_mail_parse_pt)(ngx_mail_session_t *s);
+typedef void (*ngx_mail_auth_state_pt)(ngx_event_t *rev);
+typedef ngx_int_t (*ngx_mail_parse_command_pt)(ngx_mail_session_t *s);
 
 
 #if (NGX_MAIL_SSL)
@@ -317,9 +318,9 @@ void ngx_mail_starttls_handler(ngx_event_t *rev);
 
 void ngx_mail_init_connection(ngx_connection_t *c);
 
-void ngx_pop3_auth_state(ngx_event_t *rev);
-void ngx_imap_auth_state(ngx_event_t *rev);
-void ngx_smtp_auth_state(ngx_event_t *rev);
+void ngx_mail_pop3_auth_state(ngx_event_t *rev);
+void ngx_mail_imap_auth_state(ngx_event_t *rev);
+void ngx_mail_smtp_auth_state(ngx_event_t *rev);
 
 ngx_int_t ngx_mail_salt(ngx_mail_session_t *s, ngx_connection_t *c,
     ngx_mail_core_srv_conf_t *cscf);
@@ -347,9 +348,9 @@ void ngx_mail_pop3_init_protocol(ngx_event_t *rev);
 void ngx_mail_imap_init_protocol(ngx_event_t *rev);
 void ngx_mail_smtp_init_protocol(ngx_event_t *rev);
 
-ngx_int_t ngx_pop3_parse_command(ngx_mail_session_t *s);
-ngx_int_t ngx_imap_parse_command(ngx_mail_session_t *s);
-ngx_int_t ngx_smtp_parse_command(ngx_mail_session_t *s);
+ngx_int_t ngx_mail_pop3_parse_command(ngx_mail_session_t *s);
+ngx_int_t ngx_mail_imap_parse_command(ngx_mail_session_t *s);
+ngx_int_t ngx_mail_smtp_parse_command(ngx_mail_session_t *s);
 
 
 /* STUB */
