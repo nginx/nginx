@@ -285,6 +285,29 @@ ngx_mail_salt(ngx_mail_session_t *s, ngx_connection_t *c,
 }
 
 
+#if (NGX_MAIL_SSL)
+
+ngx_int_t
+ngx_mail_starttls_only(ngx_mail_session_t *s, ngx_connection_t *c)
+{
+    ngx_mail_ssl_conf_t  *sslcf;
+
+    if (c->ssl) {
+        return 0;
+    }
+
+    sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
+
+    if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
+        return 1;
+    }
+
+    return 0;
+}
+
+#endif
+
+
 ngx_int_t
 ngx_mail_auth_plain(ngx_mail_session_t *s, ngx_connection_t *c, ngx_uint_t n)
 {
@@ -401,6 +424,35 @@ ngx_mail_auth_login_password(ngx_mail_session_t *s, ngx_connection_t *c)
 #endif
 
     return NGX_DONE;
+}
+
+
+ngx_int_t
+ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s, ngx_connection_t *c,
+    char *prefix, size_t len)
+{
+    u_char      *p;
+    ngx_str_t    salt;
+    ngx_uint_t   n;
+
+    p = ngx_palloc(c->pool, len + ngx_base64_encoded_length(s->salt.len) + 2);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    salt.data = ngx_cpymem(p, prefix, len);
+    s->salt.len -= 2;
+
+    ngx_encode_base64(&salt, &s->salt);
+
+    s->salt.len += 2;
+    n = len + salt.len;
+    p[n++] = CR; p[n++] = LF;
+
+    s->out.len = n;
+    s->out.data = p;
+
+    return NGX_OK;
 }
 
 

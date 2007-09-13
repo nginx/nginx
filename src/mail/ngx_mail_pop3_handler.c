@@ -275,17 +275,11 @@ static ngx_int_t
 ngx_mail_pop3_user(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_str_t            *arg;
+
 #if (NGX_MAIL_SSL)
-    ngx_mail_ssl_conf_t  *sslcf;
-
-    if (c->ssl == NULL) {
-        sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
-
-        if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
-            return NGX_MAIL_PARSE_INVALID_COMMAND;
-        }
+    if (ngx_mail_starttls_only(s, c)) {
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
-
 #endif
 
     if (s->args.nelts != 1) {
@@ -395,17 +389,11 @@ ngx_mail_pop3_apop(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_str_t                 *arg;
     ngx_mail_core_srv_conf_t  *cscf;
+
 #if (NGX_MAIL_SSL)
-    ngx_mail_ssl_conf_t       *sslcf;
-
-    if (c->ssl == NULL) {
-        sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
-
-        if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
-            return NGX_MAIL_PARSE_INVALID_COMMAND;
-        }
+    if (ngx_mail_starttls_only(s, c)) {
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
-
 #endif
 
     if (s->args.nelts != 2) {
@@ -448,21 +436,13 @@ ngx_mail_pop3_apop(ngx_mail_session_t *s, ngx_connection_t *c)
 static ngx_int_t
 ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 {
-    size_t                     n;
-    u_char                    *p;
-    ngx_str_t                 *arg, salt;
+    ngx_int_t                  rc;
     ngx_mail_core_srv_conf_t  *cscf;
+
 #if (NGX_MAIL_SSL)
-    ngx_mail_ssl_conf_t       *sslcf;
-
-    if (c->ssl == NULL) {
-        sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
-
-        if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
-            return NGX_MAIL_PARSE_INVALID_COMMAND;
-        }
+    if (ngx_mail_starttls_only(s, c)) {
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
-
 #endif
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
@@ -474,80 +454,39 @@ ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_OK;
     }
 
-    arg = s->args.elts;
+    rc = ngx_mail_auth_parse(s, c);
 
-    if (arg[0].len == 5) {
+    switch (rc) {
 
-        if (ngx_strncasecmp(arg[0].data, (u_char *) "LOGIN", 5) == 0) {
+    case NGX_MAIL_AUTH_LOGIN:
 
-            if (s->args.nelts != 1) {
-                return NGX_MAIL_PARSE_INVALID_COMMAND;
-            }
+        s->out.len = sizeof(pop3_username) - 1;
+        s->out.data = pop3_username;
+        s->mail_state = ngx_pop3_auth_login_username;
 
-            s->out.len = sizeof(pop3_username) - 1;
-            s->out.data = pop3_username;
-            s->mail_state = ngx_pop3_auth_login_username;
+        return NGX_OK;
 
-            return NGX_OK;
+    case NGX_MAIL_AUTH_PLAIN:
 
-        } else if (ngx_strncasecmp(arg[0].data, (u_char *) "PLAIN", 5) == 0) {
+        s->out.len = sizeof(pop3_next) - 1;
+        s->out.data = pop3_next;
+        s->mail_state = ngx_pop3_auth_plain;
 
-            if (s->args.nelts == 1) {
+        return NGX_OK;
 
-                s->out.len = sizeof(pop3_next) - 1;
-                s->out.data = pop3_next;
-                s->mail_state = ngx_pop3_auth_plain;
-
-                return NGX_OK;
-            }
-
-            if (s->args.nelts == 2) {
-
-                /*
-                 * workaround for Eudora for Mac: it sends
-                 *    AUTH PLAIN [base64 encoded]
-                 */
-
-                return ngx_mail_auth_plain(s, c, 1);
-            }
-
-            return NGX_MAIL_PARSE_INVALID_COMMAND;
-        }
-
-    } else if (arg[0].len == 8
-               && ngx_strncasecmp(arg[0].data, (u_char *) "CRAM-MD5", 8) == 0)
-    {
-        if (s->args.nelts != 1) {
-            return NGX_MAIL_PARSE_INVALID_COMMAND;
-        }
+    case NGX_MAIL_AUTH_CRAM_MD5:
 
         if (!(cscf->pop3_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
             return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
 
-        p = ngx_palloc(c->pool,
-                       sizeof("+ " CRLF) - 1
-                       + ngx_base64_encoded_length(s->salt.len));
-        if (p == NULL) {
-            return NGX_ERROR;
+        if (ngx_mail_auth_cram_md5_salt(s, c, "+ ", 2) == NGX_OK) {
+            s->mail_state = ngx_pop3_auth_cram_md5;
+            return NGX_OK;
         }
 
-        p[0] = '+'; p[1]= ' ';
-        salt.data = &p[2];
-        s->salt.len -= 2;
-
-        ngx_encode_base64(&salt, &s->salt);
-
-        s->salt.len += 2;
-        n = 2 + salt.len;
-        p[n++] = CR; p[n++] = LF;
-
-        s->out.len = n;
-        s->out.data = p;
-        s->mail_state = ngx_pop3_auth_cram_md5;
-
-        return NGX_OK;
+        return NGX_ERROR;
     }
 
-    return NGX_MAIL_PARSE_INVALID_COMMAND;
+    return rc;
 }

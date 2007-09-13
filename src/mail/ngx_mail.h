@@ -313,6 +313,7 @@ typedef ngx_int_t (*ngx_mail_parse_command_pt)(ngx_mail_session_t *s);
 
 #if (NGX_MAIL_SSL)
 void ngx_mail_starttls_handler(ngx_event_t *rev);
+ngx_int_t ngx_mail_starttls_only(ngx_mail_session_t *s, ngx_connection_t *c);
 #endif
 
 
@@ -330,6 +331,8 @@ ngx_int_t ngx_mail_auth_login_username(ngx_mail_session_t *s,
     ngx_connection_t *c);
 ngx_int_t ngx_mail_auth_login_password(ngx_mail_session_t *s,
     ngx_connection_t *c);
+ngx_int_t ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s,
+    ngx_connection_t *c, char *prefix, size_t len);
 ngx_int_t ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c);
 
 void ngx_mail_send(ngx_event_t *wev);
@@ -351,6 +354,7 @@ void ngx_mail_smtp_init_protocol(ngx_event_t *rev);
 ngx_int_t ngx_mail_pop3_parse_command(ngx_mail_session_t *s);
 ngx_int_t ngx_mail_imap_parse_command(ngx_mail_session_t *s);
 ngx_int_t ngx_mail_smtp_parse_command(ngx_mail_session_t *s);
+ngx_int_t ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c);
 
 
 /* STUB */

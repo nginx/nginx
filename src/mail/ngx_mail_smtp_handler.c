@@ -284,21 +284,13 @@ ngx_mail_smtp_helo(ngx_mail_session_t *s, ngx_connection_t *c)
 static ngx_int_t
 ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 {
-    u_char                    *p;
-    ngx_str_t                 *arg, salt;
-    ngx_uint_t                 n;
+    ngx_int_t                  rc;
     ngx_mail_core_srv_conf_t  *cscf;
+
 #if (NGX_MAIL_SSL)
-    ngx_mail_ssl_conf_t       *sslcf;
-
-    if (c->ssl == NULL) {
-        sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
-
-        if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
-            return NGX_MAIL_PARSE_INVALID_COMMAND;
-        }
+    if (ngx_mail_starttls_only(s, c)) {
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
-
 #endif
 
     if (s->args.nelts == 0) {
@@ -308,41 +300,27 @@ ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_OK;
     }
 
-    if (s->args.nelts != 1) {
-        return NGX_MAIL_PARSE_INVALID_COMMAND;
-    }
+    rc = ngx_mail_auth_parse(s, c);
 
-    arg = s->args.elts;
+    switch (rc) {
 
-    if (arg[0].len == 5) {
+    case NGX_MAIL_AUTH_LOGIN:
 
-        if (ngx_strncasecmp(arg[0].data, (u_char *) "LOGIN", 5) == 0) {
+        s->out.len = sizeof(smtp_username) - 1;
+        s->out.data = smtp_username;
+        s->mail_state = ngx_smtp_auth_login_username;
 
-            if (s->args.nelts != 1) {
-                return NGX_MAIL_PARSE_INVALID_COMMAND;
-            }
+        return NGX_OK;
 
-            s->out.len = sizeof(smtp_username) - 1;
-            s->out.data = smtp_username;
-            s->mail_state = ngx_smtp_auth_login_username;
+    case NGX_MAIL_AUTH_PLAIN:
 
-            return NGX_OK;
+        s->out.len = sizeof(smtp_next) - 1;
+        s->out.data = smtp_next;
+        s->mail_state = ngx_smtp_auth_plain;
 
-        } else if (ngx_strncasecmp(arg[0].data, (u_char *) "PLAIN", 5) == 0) {
+        return NGX_OK;
 
-            s->out.len = sizeof(smtp_next) - 1;
-            s->out.data = smtp_next;
-            s->mail_state = ngx_smtp_auth_plain;
-
-            return NGX_OK;
-        }
-
-    } else if (arg[0].len == 8
-               && ngx_strncasecmp(arg[0].data, (u_char *) "CRAM-MD5", 8) == 0)
-    {
-        if (s->args.nelts != 1) {
-            return NGX_MAIL_PARSE_INVALID_COMMAND;
-        }
+    case NGX_MAIL_AUTH_CRAM_MD5:
 
         cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
@@ -350,31 +328,15 @@ ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c)
             return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
 
-        p = ngx_palloc(c->pool,
-                       sizeof("334 " CRLF) - 1
-                       + ngx_base64_encoded_length(s->salt.len));
-        if (p == NULL) {
-            return NGX_ERROR;
+        if (ngx_mail_auth_cram_md5_salt(s, c, "334 ", 4) == NGX_OK) {
+            s->mail_state = ngx_smtp_auth_cram_md5;
+            return NGX_OK;
         }
 
-        p[0] = '3'; p[1]= '3'; p[2] = '4'; p[3]= ' ';
-        salt.data = &p[4];
-        s->salt.len -= 2;
-
-        ngx_encode_base64(&salt, &s->salt);
-
-        s->salt.len += 2;
-        n = 4 + salt.len;
-        p[n++] = CR; p[n++] = LF;
-
-        s->out.len = n;
-        s->out.data = p;
-        s->mail_state = ngx_smtp_auth_cram_md5;
-
-        return NGX_OK;
+        return NGX_ERROR;
     }
 
-    return NGX_MAIL_PARSE_INVALID_COMMAND;
+    return rc;
 }
 
 
