@@ -423,6 +423,9 @@ MAIL_MODULES="ngx_mail_module ngx_mail_core_module"
 MAIL_SRCS="src/mail/ngx_mail.c \
            src/mail/ngx_mail_core_module.c \
            src/mail/ngx_mail_handler.c \
+           src/mail/ngx_mail_pop3_handler.c \
+           src/mail/ngx_mail_imap_handler.c \
+           src/mail/ngx_mail_smtp_handler.c \
            src/mail/ngx_mail_parse.c"
 
 MAIL_SSL_MODULE="ngx_mail_ssl_module"
