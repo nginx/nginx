@@ -38,13 +38,6 @@ ngx_mail_imap_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
-    if (cscf->imap_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED) {
-        if (ngx_mail_salt(s, c, cscf) != NGX_OK) {
-            ngx_mail_session_internal_server_error(s);
-            return;
-        }
-    }
-
     s->out.len = sizeof(imap_greeting) - 1;
     s->out.data = imap_greeting;
 
@@ -389,6 +382,12 @@ ngx_mail_imap_authenticate(ngx_mail_session_t *s, ngx_connection_t *c)
 
         if (!(cscf->imap_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
             return NGX_MAIL_PARSE_INVALID_COMMAND;
+        }
+
+        if (s->salt.data == NULL) {
+            if (ngx_mail_salt(s, c, cscf) != NGX_OK) {
+                return NGX_ERROR;
+            }
         }
 
         if (ngx_mail_auth_cram_md5_salt(s, c, "+ ", 2) == NGX_OK) {

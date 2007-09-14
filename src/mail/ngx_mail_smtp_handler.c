@@ -46,13 +46,6 @@ ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
-    if (cscf->smtp_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED) {
-        if (ngx_mail_salt(s, c, cscf) != NGX_OK) {
-            ngx_mail_session_internal_server_error(s);
-            return;
-        }
-    }
-
     timeout = cscf->smtp_greeting_delay ? cscf->smtp_greeting_delay:
                                           cscf->timeout;
     ngx_add_timer(c->read, timeout); 
@@ -420,6 +413,12 @@ ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 
         if (!(cscf->smtp_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
             return NGX_MAIL_PARSE_INVALID_COMMAND;
+        }
+
+        if (s->salt.data == NULL) {
+            if (ngx_mail_salt(s, c, cscf) != NGX_OK) {
+                return NGX_ERROR;
+            }
         }
 
         if (ngx_mail_auth_cram_md5_salt(s, c, "334 ", 4) == NGX_OK) {
