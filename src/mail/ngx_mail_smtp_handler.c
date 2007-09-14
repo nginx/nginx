@@ -90,6 +90,8 @@ ngx_mail_smtp_invalid_pipelining(ngx_event_t *rev)
 
         ngx_log_debug0(NGX_LOG_DEBUG_MAIL, c->log, 0, "delay greeting");
 
+        rev->timedout = 0;
+
         cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
         c->read->handler = ngx_mail_smtp_init_protocol;
