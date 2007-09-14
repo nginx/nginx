@@ -11,6 +11,8 @@
 
 
 static void ngx_mail_smtp_invalid_pipelining(ngx_event_t *rev);
+static ngx_int_t ngx_mail_smtp_create_buffer(ngx_mail_session_t *s,
+    ngx_connection_t *c);
 
 static ngx_int_t ngx_mail_smtp_helo(ngx_mail_session_t *s, ngx_connection_t *c);
 static ngx_int_t ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c);
@@ -46,21 +48,6 @@ ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 
     if (cscf->smtp_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED) {
         if (ngx_mail_salt(s, c, cscf) != NGX_OK) {
-            ngx_mail_session_internal_server_error(s);
-            return;
-        }
-    }
-
-    if (s->buffer == NULL) {
-        if (ngx_array_init(&s->args, c->pool, 2, sizeof(ngx_str_t))
-            == NGX_ERROR)
-        {
-            ngx_mail_session_internal_server_error(s);
-            return;
-        }
-
-        s->buffer = ngx_create_temp_buf(c->pool, cscf->smtp_client_buffer_size);
-        if (s->buffer == NULL) {
             ngx_mail_session_internal_server_error(s);
             return;
         }
@@ -120,6 +107,12 @@ ngx_mail_smtp_invalid_pipelining(ngx_event_t *rev)
 
         ngx_log_debug0(NGX_LOG_DEBUG_MAIL, c->log, 0, "invalid pipelining");
 
+        if (s->buffer == NULL) {
+            if (ngx_mail_smtp_create_buffer(s, c) != NGX_OK) {
+                return;
+            }
+        }
+
         if (ngx_mail_smtp_discard_command(s, c,
                                 "client was rejected before greeting: \"%V\"")
             != NGX_OK)
@@ -154,10 +147,38 @@ ngx_mail_smtp_init_protocol(ngx_event_t *rev)
 
     s = c->data;
 
+    if (s->buffer == NULL) {
+        if (ngx_mail_smtp_create_buffer(s, c) != NGX_OK) {
+            return;
+        }
+    }
+
     s->mail_state = ngx_smtp_start;
     c->read->handler = ngx_mail_smtp_auth_state;
 
     ngx_mail_smtp_auth_state(rev);
+}
+
+
+static ngx_int_t
+ngx_mail_smtp_create_buffer(ngx_mail_session_t *s, ngx_connection_t *c)
+{
+    ngx_mail_core_srv_conf_t  *cscf;
+
+    if (ngx_array_init(&s->args, c->pool, 2, sizeof(ngx_str_t)) == NGX_ERROR) {
+        ngx_mail_session_internal_server_error(s);
+        return NGX_ERROR;
+    }
+
+    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    s->buffer = ngx_create_temp_buf(c->pool, cscf->smtp_client_buffer_size);
+    if (s->buffer == NULL) {
+        ngx_mail_session_internal_server_error(s);
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
