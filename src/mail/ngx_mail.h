@@ -75,8 +75,10 @@ typedef struct {
 
 typedef struct {
     ngx_msec_t              timeout;
+    ngx_msec_t              smtp_greeting_delay;
 
     size_t                  imap_client_buffer_size;
+    size_t                  smtp_client_buffer_size;
 
     ngx_uint_t              protocol;
 

@@ -132,6 +132,20 @@ static ngx_command_t  ngx_mail_core_commands[] = {
       offsetof(ngx_mail_core_srv_conf_t, imap_client_buffer_size),
       NULL },
 
+    { ngx_string("smtp_client_buffer"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_core_srv_conf_t, smtp_client_buffer_size),
+      NULL },
+
+    { ngx_string("smtp_greeting_delay"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_core_srv_conf_t, smtp_greeting_delay),
+      NULL },
+
     { ngx_string("so_keepalive"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -269,8 +283,10 @@ ngx_mail_core_create_srv_conf(ngx_conf_t *cf)
     }
 
     cscf->imap_client_buffer_size = NGX_CONF_UNSET_SIZE;
+    cscf->smtp_client_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->protocol = NGX_CONF_UNSET_UINT;
     cscf->timeout = NGX_CONF_UNSET_MSEC;
+    cscf->smtp_greeting_delay = NGX_CONF_UNSET_MSEC;
     cscf->so_keepalive = NGX_CONF_UNSET;
 
     if (ngx_array_init(&cscf->pop3_capabilities, cf->pool, 4, sizeof(ngx_str_t))
@@ -309,27 +325,33 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->imap_client_buffer_size,
                               prev->imap_client_buffer_size,
                               (size_t) ngx_pagesize);
+    ngx_conf_merge_size_value(conf->smtp_client_buffer_size,
+                              prev->smtp_client_buffer_size,
+                              (size_t) ngx_pagesize);
+
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
+    ngx_conf_merge_msec_value(conf->smtp_greeting_delay,
+                              prev->smtp_greeting_delay, 0);
+
     ngx_conf_merge_uint_value(conf->protocol, prev->protocol,
                               NGX_MAIL_IMAP_PROTOCOL);
     ngx_conf_merge_value(conf->so_keepalive, prev->so_keepalive, 0);
 
-
     ngx_conf_merge_bitmask_value(conf->pop3_auth_methods,
-                                 prev->pop3_auth_methods,
-                                 (NGX_CONF_BITMASK_SET
-                                  |NGX_MAIL_AUTH_PLAIN_ENABLED));
+                              prev->pop3_auth_methods,
+                              (NGX_CONF_BITMASK_SET
+                               |NGX_MAIL_AUTH_PLAIN_ENABLED));
 
     ngx_conf_merge_bitmask_value(conf->imap_auth_methods,
-                                 prev->imap_auth_methods,
-                                 (NGX_CONF_BITMASK_SET
-                                  |NGX_MAIL_AUTH_PLAIN_ENABLED));
+                              prev->imap_auth_methods,
+                              (NGX_CONF_BITMASK_SET
+                               |NGX_MAIL_AUTH_PLAIN_ENABLED));
 
     ngx_conf_merge_bitmask_value(conf->smtp_auth_methods,
-                                 prev->smtp_auth_methods,
-                                 (NGX_CONF_BITMASK_SET
-                                  |NGX_MAIL_AUTH_PLAIN_ENABLED
-                                  |NGX_MAIL_AUTH_LOGIN_ENABLED));
+                              prev->smtp_auth_methods,
+                              (NGX_CONF_BITMASK_SET
+                               |NGX_MAIL_AUTH_PLAIN_ENABLED
+                               |NGX_MAIL_AUTH_LOGIN_ENABLED));
 
 
     ngx_conf_merge_str_value(conf->server_name, prev->server_name, "");
