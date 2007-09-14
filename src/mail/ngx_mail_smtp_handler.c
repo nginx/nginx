@@ -41,9 +41,15 @@ ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
         }
     }
 
+    s->out = cscf->smtp_greeting;
+
     c->read->handler = ngx_mail_smtp_init_protocol;
 
-    s->out = cscf->smtp_greeting;
+    ngx_add_timer(c->read, cscf->timeout); 
+
+    if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+        ngx_mail_close_connection(c);
+    }
 
     ngx_mail_send(c->write);
 }

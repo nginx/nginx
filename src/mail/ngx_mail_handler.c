@@ -253,12 +253,6 @@ ngx_mail_init_session(ngx_connection_t *c)
         return;
     }
 
-    ngx_add_timer(c->read, cscf->timeout);
-
-    if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
-        ngx_mail_close_connection(c);
-    }
-
     c->write->handler = ngx_mail_send;
 
     ngx_mail_init_sessions[s->protocol](s, c);
