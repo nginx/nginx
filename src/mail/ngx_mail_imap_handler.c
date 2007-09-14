@@ -134,7 +134,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
 
     s->blocked = 0;
 
-    rc = ngx_mail_read_command(s);
+    rc = ngx_mail_read_command(s, c);
 
     if (rc == NGX_AGAIN || rc == NGX_ERROR) {
         return;
@@ -242,7 +242,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
     switch (rc) {
 
     case NGX_DONE:
-        ngx_mail_auth(s);
+        ngx_mail_auth(s, c);
         return;
 
     case NGX_ERROR:

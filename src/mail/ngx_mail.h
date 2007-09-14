@@ -338,8 +338,8 @@ ngx_int_t ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s,
 ngx_int_t ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c);
 
 void ngx_mail_send(ngx_event_t *wev);
-ngx_int_t ngx_mail_read_command(ngx_mail_session_t *s);
-void ngx_mail_auth(ngx_mail_session_t *s);
+ngx_int_t ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c);
+void ngx_mail_auth(ngx_mail_session_t *s, ngx_connection_t *c);
 void ngx_mail_close_connection(ngx_connection_t *c);
 void ngx_mail_session_internal_server_error(ngx_mail_session_t *s);
 u_char *ngx_mail_log_error(ngx_log_t *log, u_char *buf, size_t len);

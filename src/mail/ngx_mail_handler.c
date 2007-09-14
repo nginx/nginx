@@ -565,17 +565,16 @@ ngx_mail_send(ngx_event_t *wev)
 
 
 ngx_int_t
-ngx_mail_read_command(ngx_mail_session_t *s)
+ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ssize_t    n;
     ngx_int_t  rc;
     ngx_str_t  l;
 
-    n = s->connection->recv(s->connection, s->buffer->last,
-                            s->buffer->end - s->buffer->last);
+    n = c->recv(c, s->buffer->last, s->buffer->end - s->buffer->last);
 
     if (n == NGX_ERROR || n == 0) {
-        ngx_mail_close_connection(s->connection);
+        ngx_mail_close_connection(c);
         return NGX_ERROR;
     }
 
@@ -584,7 +583,7 @@ ngx_mail_read_command(ngx_mail_session_t *s)
     }
 
     if (n == NGX_AGAIN) {
-        if (ngx_handle_read_event(s->connection->read, 0) == NGX_ERROR) {
+        if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
             ngx_mail_session_internal_server_error(s);
             return NGX_ERROR;
         }
@@ -603,7 +602,7 @@ ngx_mail_read_command(ngx_mail_session_t *s)
         l.len = s->buffer->last - s->buffer->start;
         l.data = s->buffer->start;
 
-        ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client sent too long command \"%V\"", &l);
 
         s->quit = 1;
@@ -616,7 +615,7 @@ ngx_mail_read_command(ngx_mail_session_t *s)
     }
 
     if (rc == NGX_ERROR) {
-        ngx_mail_close_connection(s->connection);
+        ngx_mail_close_connection(c);
         return NGX_ERROR;
     }
 
@@ -625,15 +624,15 @@ ngx_mail_read_command(ngx_mail_session_t *s)
 
 
 void
-ngx_mail_auth(ngx_mail_session_t *s)
+ngx_mail_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     s->args.nelts = 0;
     s->buffer->pos = s->buffer->start;
     s->buffer->last = s->buffer->start;
     s->state = 0;
 
-    if (s->connection->read->timer_set) {
-        ngx_del_timer(s->connection->read);
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
     }
 
     s->login_attempt++;
