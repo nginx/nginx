@@ -43,7 +43,7 @@ ngx_mail_imap_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 
     c->read->handler = ngx_mail_imap_init_protocol;
 
-    ngx_add_timer(c->read, cscf->timeout); 
+    ngx_add_timer(c->read, cscf->timeout);
 
     if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
         ngx_mail_close_connection(c);

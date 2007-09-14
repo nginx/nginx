@@ -48,7 +48,7 @@ ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 
     timeout = cscf->smtp_greeting_delay ? cscf->smtp_greeting_delay:
                                           cscf->timeout;
-    ngx_add_timer(c->read, timeout); 
+    ngx_add_timer(c->read, timeout);
 
     if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
         ngx_mail_close_connection(c);
@@ -89,7 +89,7 @@ ngx_mail_smtp_invalid_pipelining(ngx_event_t *rev)
 
         c->read->handler = ngx_mail_smtp_init_protocol;
 
-        ngx_add_timer(c->read, cscf->timeout); 
+        ngx_add_timer(c->read, cscf->timeout);
 
         if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
             ngx_mail_close_connection(c);
@@ -288,7 +288,7 @@ ngx_mail_smtp_auth_state(ngx_event_t *rev)
 
     case NGX_MAIL_PARSE_INVALID_COMMAND:
         s->mail_state = ngx_smtp_start;
-        s->state = 0; 
+        s->state = 0;
 
         s->out.len = sizeof(smtp_invalid_command) - 1;
         s->out.data = smtp_invalid_command;
@@ -490,7 +490,7 @@ ngx_mail_smtp_discard_command(ngx_mail_session_t *s, ngx_connection_t *c,
     if (n > 0) {
         s->buffer->last += n;
     }
-    
+
     if (n == NGX_AGAIN) {
         if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
             ngx_mail_session_internal_server_error(s);
