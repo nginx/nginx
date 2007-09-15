@@ -1135,7 +1135,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                 } else {
                     for (i = 0; i < h->key.len; i++) {
-                        h->lowcase_key[i] = ngx_tolower(h->lowcase_key[i]);
+                        h->lowcase_key[i] = ngx_tolower(h->key.data[i]);
                     }
                 }
 
