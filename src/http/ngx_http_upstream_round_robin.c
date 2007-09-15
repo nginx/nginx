@@ -136,7 +136,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     if (us->port == 0 && us->default_port == 0) {
         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                       "no port in upstream \"%V\" in %s:%ui",
-                      &us->host, us->file_name.data, us->line);
+                      &us->host, us->file_name, us->line);
         return NGX_ERROR;
     }
 
@@ -149,7 +149,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         if (u.err) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "%s in upstream \"%V\" in %s:%ui",
-                          u.err, &us->host, us->file_name.data, us->line);
+                          u.err, &us->host, us->file_name, us->line);
         }
 
         return NGX_ERROR;
