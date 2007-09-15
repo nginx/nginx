@@ -18,34 +18,6 @@ static void ngx_mail_ssl_handshake_handler(ngx_connection_t *c);
 #endif
 
 
-static ngx_mail_init_session_pt  ngx_mail_init_sessions[] = {
-   ngx_mail_pop3_init_session,
-   ngx_mail_imap_init_session,
-   ngx_mail_smtp_init_session
-};
-
-
-static ngx_mail_init_protocol_pt  ngx_mail_init_protocols[] = {
-   ngx_mail_pop3_init_protocol,
-   ngx_mail_imap_init_protocol,
-   ngx_mail_smtp_init_protocol
-};
-
-
-static ngx_mail_parse_command_pt  ngx_mail_parse_commands[] = {
-   ngx_mail_pop3_parse_command,
-   ngx_mail_imap_parse_command,
-   ngx_mail_smtp_parse_command
-};
-
-
-static ngx_str_t  internal_server_errors[] = {
-   ngx_string("-ERR internal server error" CRLF),
-   ngx_string("* BAD internal server error" CRLF),
-   ngx_string("451 4.3.2 Internal server error" CRLF),
-};
-
-
 void
 ngx_mail_init_connection(ngx_connection_t *c)
 {
@@ -210,17 +182,20 @@ ngx_mail_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
 static void
 ngx_mail_ssl_handshake_handler(ngx_connection_t *c)
 {
-    ngx_mail_session_t  *s;
+    ngx_mail_session_t        *s;
+    ngx_mail_core_srv_conf_t  *cscf;
 
     if (c->ssl->handshaked) {
 
         s = c->data;
 
         if (s->starttls) {
-            c->read->handler = ngx_mail_init_protocols[s->protocol];
+            cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+            c->read->handler = cscf->protocol->init_protocol;
             c->write->handler = ngx_mail_send;
 
-            ngx_mail_init_protocols[s->protocol](c->read);
+            cscf->protocol->init_protocol(c->read);
 
             return;
         }
@@ -245,7 +220,7 @@ ngx_mail_init_session(ngx_connection_t *c)
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
-    s->protocol = cscf->protocol;
+    s->protocol = cscf->protocol->type;
 
     s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_mail_max_module);
     if (s->ctx == NULL) {
@@ -255,7 +230,7 @@ ngx_mail_init_session(ngx_connection_t *c)
 
     c->write->handler = ngx_mail_send;
 
-    ngx_mail_init_sessions[s->protocol](s, c);
+    cscf->protocol->init_session(s, c);
 }
 
 
@@ -567,9 +542,10 @@ ngx_mail_send(ngx_event_t *wev)
 ngx_int_t
 ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c)
 {
-    ssize_t    n;
-    ngx_int_t  rc;
-    ngx_str_t  l;
+    ssize_t                    n;
+    ngx_int_t                  rc;
+    ngx_str_t                  l;
+    ngx_mail_core_srv_conf_t  *cscf;
 
     n = c->recv(c, s->buffer->last, s->buffer->end - s->buffer->last);
 
@@ -591,7 +567,9 @@ ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_AGAIN;
     }
 
-    rc = ngx_mail_parse_commands[s->protocol](s);
+    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    rc = cscf->protocol->parse_command(s);
 
     if (rc == NGX_AGAIN) {
 
@@ -644,7 +622,11 @@ ngx_mail_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 void
 ngx_mail_session_internal_server_error(ngx_mail_session_t *s)
 {
-    s->out = internal_server_errors[s->protocol];
+    ngx_mail_core_srv_conf_t  *cscf;
+
+    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    s->out = cscf->protocol->internal_server_error;
     s->quit = 1;
 
     ngx_mail_send(s->connection->write);

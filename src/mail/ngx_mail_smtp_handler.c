@@ -8,6 +8,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_mail.h>
+#include <ngx_mail_smtp_module.h>
 
 
 static void ngx_mail_smtp_invalid_pipelining(ngx_event_t *rev);
@@ -43,25 +44,26 @@ ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_msec_t                 timeout;
     ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_smtp_srv_conf_t  *sscf;
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+    sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);
 
-    timeout = cscf->smtp_greeting_delay ? cscf->smtp_greeting_delay:
-                                          cscf->timeout;
+    timeout = sscf->greeting_delay ? sscf->greeting_delay : cscf->timeout;
     ngx_add_timer(c->read, timeout);
 
     if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
         ngx_mail_close_connection(c);
     }
 
-    if (cscf->smtp_greeting_delay) {
+    if (sscf->greeting_delay) {
          c->read->handler = ngx_mail_smtp_invalid_pipelining;
          return;
     }
 
     c->read->handler = ngx_mail_smtp_init_protocol;
 
-    s->out = cscf->smtp_greeting;
+    s->out = sscf->greeting;
 
     ngx_mail_send(c->write);
 }
@@ -73,6 +75,7 @@ ngx_mail_smtp_invalid_pipelining(ngx_event_t *rev)
     ngx_connection_t          *c;
     ngx_mail_session_t        *s;
     ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_smtp_srv_conf_t  *sscf;
 
     c = rev->data;
     s = c->data;
@@ -96,7 +99,9 @@ ngx_mail_smtp_invalid_pipelining(ngx_event_t *rev)
             return;
         }
 
-        s->out = cscf->smtp_greeting;
+        sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);
+
+        s->out = sscf->greeting;
 
     } else {
 
@@ -158,16 +163,16 @@ ngx_mail_smtp_init_protocol(ngx_event_t *rev)
 static ngx_int_t
 ngx_mail_smtp_create_buffer(ngx_mail_session_t *s, ngx_connection_t *c)
 {
-    ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_smtp_srv_conf_t  *sscf;
 
     if (ngx_array_init(&s->args, c->pool, 2, sizeof(ngx_str_t)) == NGX_ERROR) {
         ngx_mail_session_internal_server_error(s);
         return NGX_ERROR;
     }
 
-    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+    sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);
 
-    s->buffer = ngx_create_temp_buf(c->pool, cscf->smtp_client_buffer_size);
+    s->buffer = ngx_create_temp_buf(c->pool, sscf->client_buffer_size);
     if (s->buffer == NULL) {
         ngx_mail_session_internal_server_error(s);
         return NGX_ERROR;
@@ -313,12 +318,10 @@ static ngx_int_t
 ngx_mail_smtp_helo(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_str_t                 *arg;
-    ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_smtp_srv_conf_t  *sscf;
 #if (NGX_MAIL_SSL)
     ngx_mail_ssl_conf_t       *sslcf;
 #endif
-
-    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
     if (s->args.nelts != 1) {
         s->out.len = sizeof(smtp_invalid_argument) - 1;
@@ -338,8 +341,10 @@ ngx_mail_smtp_helo(ngx_mail_session_t *s, ngx_connection_t *c)
 
     ngx_memcpy(s->smtp_helo.data, arg[0].data, arg[0].len);
 
+    sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);
+
     if (s->command == NGX_SMTP_HELO) {
-        s->out = cscf->smtp_server_name;
+        s->out = sscf->server_name;
 
     } else {
         s->esmtp = 1;
@@ -350,18 +355,18 @@ ngx_mail_smtp_helo(ngx_mail_session_t *s, ngx_connection_t *c)
             sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
             if (sslcf->starttls == NGX_MAIL_STARTTLS_ON) {
-                s->out = cscf->smtp_starttls_capability;
+                s->out = sscf->starttls_capability;
                 return NGX_OK;
             }
 
             if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
-                s->out = cscf->smtp_starttls_only_capability;
+                s->out = sscf->starttls_only_capability;
                 return NGX_OK;
             }
         }
 #endif
 
-        s->out = cscf->smtp_capability;
+        s->out = sscf->capability;
     }
 
     return NGX_OK;
@@ -373,6 +378,7 @@ ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_int_t                  rc;
     ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_smtp_srv_conf_t  *sscf;
 
 #if (NGX_MAIL_SSL)
     if (ngx_mail_starttls_only(s, c)) {
@@ -409,13 +415,15 @@ ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 
     case NGX_MAIL_AUTH_CRAM_MD5:
 
-        cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+        sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);
 
-        if (!(cscf->smtp_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
+        if (!(sscf->auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
             return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
 
         if (s->salt.data == NULL) {
+            cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
             if (ngx_mail_salt(s, c, cscf) != NGX_OK) {
                 return NGX_ERROR;
             }

@@ -78,6 +78,8 @@ static ngx_command_t  ngx_mail_proxy_commands[] = {
 
 
 static ngx_mail_module_t  ngx_mail_proxy_module_ctx = {
+    NULL,                                  /* protocol */
+
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 

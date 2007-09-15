@@ -8,6 +8,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_mail.h>
+#include <ngx_mail_imap_module.h>
 
 
 static ngx_int_t ngx_mail_imap_login(ngx_mail_session_t *s,
@@ -58,7 +59,7 @@ ngx_mail_imap_init_protocol(ngx_event_t *rev)
 {
     ngx_connection_t          *c;
     ngx_mail_session_t        *s;
-    ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_imap_srv_conf_t  *iscf;
 
     c = rev->data;
 
@@ -81,9 +82,9 @@ ngx_mail_imap_init_protocol(ngx_event_t *rev)
             return;
         }
 
-        cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+        iscf = ngx_mail_get_module_srv_conf(s, ngx_mail_imap_module);
 
-        s->buffer = ngx_create_temp_buf(c->pool, cscf->imap_client_buffer_size);
+        s->buffer = ngx_create_temp_buf(c->pool, iscf->client_buffer_size);
         if (s->buffer == NULL) {
             ngx_mail_session_internal_server_error(s);
             return;
@@ -349,6 +350,7 @@ ngx_mail_imap_authenticate(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_int_t                  rc;
     ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_imap_srv_conf_t  *iscf;
 
 #if (NGX_MAIL_SSL)
     if (ngx_mail_starttls_only(s, c)) {
@@ -378,13 +380,15 @@ ngx_mail_imap_authenticate(ngx_mail_session_t *s, ngx_connection_t *c)
 
     case NGX_MAIL_AUTH_CRAM_MD5:
 
-        cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+        iscf = ngx_mail_get_module_srv_conf(s, ngx_mail_imap_module);
 
-        if (!(cscf->imap_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
+        if (!(iscf->auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
             return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
 
         if (s->salt.data == NULL) {
+            cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
             if (ngx_mail_salt(s, c, cscf) != NGX_OK) {
                 return NGX_ERROR;
             }
@@ -405,12 +409,12 @@ ngx_mail_imap_authenticate(ngx_mail_session_t *s, ngx_connection_t *c)
 static ngx_int_t
 ngx_mail_imap_capability(ngx_mail_session_t *s, ngx_connection_t *c)
 {
-    ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_imap_srv_conf_t  *iscf;
 #if (NGX_MAIL_SSL)
     ngx_mail_ssl_conf_t       *sslcf;
 #endif
 
-    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+    iscf = ngx_mail_get_module_srv_conf(s, ngx_mail_imap_module);
 
 #if (NGX_MAIL_SSL)
 
@@ -418,18 +422,18 @@ ngx_mail_imap_capability(ngx_mail_session_t *s, ngx_connection_t *c)
         sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
         if (sslcf->starttls == NGX_MAIL_STARTTLS_ON) {
-            s->text = cscf->imap_starttls_capability;
+            s->text = iscf->starttls_capability;
             return NGX_OK;
         }
 
         if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
-            s->text = cscf->imap_starttls_only_capability;
+            s->text = iscf->starttls_only_capability;
             return NGX_OK;
         }
     }
 #endif
 
-    s->text = cscf->imap_capability;
+    s->text = iscf->capability;
 
     return NGX_OK;
 }

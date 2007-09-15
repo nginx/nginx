@@ -8,6 +8,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_mail.h>
+#include <ngx_mail_pop3_module.h>
 
 
 static ngx_int_t ngx_mail_pop3_user(ngx_mail_session_t *s, ngx_connection_t *c);
@@ -32,10 +33,12 @@ ngx_mail_pop3_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     u_char                    *p;
     ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_pop3_srv_conf_t  *pscf;
 
+    pscf = ngx_mail_get_module_srv_conf(s, ngx_mail_pop3_module);
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
-    if (cscf->pop3_auth_methods
+    if (pscf->auth_methods
         & (NGX_MAIL_AUTH_APOP_ENABLED|NGX_MAIL_AUTH_CRAM_MD5_ENABLED))
     {
         if (ngx_mail_salt(s, c, cscf) != NGX_OK) {
@@ -340,12 +343,12 @@ ngx_mail_pop3_pass(ngx_mail_session_t *s, ngx_connection_t *c)
 static ngx_int_t
 ngx_mail_pop3_capa(ngx_mail_session_t *s, ngx_connection_t *c, ngx_int_t stls)
 {
-    ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_pop3_srv_conf_t  *pscf;
 #if (NGX_MAIL_SSL)
     ngx_mail_ssl_conf_t       *sslcf;
 #endif
 
-    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+    pscf = ngx_mail_get_module_srv_conf(s, ngx_mail_pop3_module);
 
 #if (NGX_MAIL_SSL)
 
@@ -353,19 +356,19 @@ ngx_mail_pop3_capa(ngx_mail_session_t *s, ngx_connection_t *c, ngx_int_t stls)
         sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
         if (sslcf->starttls == NGX_MAIL_STARTTLS_ON) {
-            s->out = cscf->pop3_starttls_capability;
+            s->out = pscf->starttls_capability;
             return NGX_OK;
         }
 
         if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
-            s->out = cscf->pop3_starttls_only_capability;
+            s->out = pscf->starttls_only_capability;
             return NGX_OK;
         }
     }
 
 #endif
 
-    s->out = cscf->pop3_capability;
+    s->out = pscf->capability;
     return NGX_OK;
 }
 
@@ -394,7 +397,7 @@ static ngx_int_t
 ngx_mail_pop3_apop(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_str_t                 *arg;
-    ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_pop3_srv_conf_t  *pscf;
 
 #if (NGX_MAIL_SSL)
     if (ngx_mail_starttls_only(s, c)) {
@@ -406,9 +409,9 @@ ngx_mail_pop3_apop(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
 
-    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+    pscf = ngx_mail_get_module_srv_conf(s, ngx_mail_pop3_module);
 
-    if (!(cscf->pop3_auth_methods & NGX_MAIL_AUTH_APOP_ENABLED)) {
+    if (!(pscf->auth_methods & NGX_MAIL_AUTH_APOP_ENABLED)) {
         return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
 
@@ -443,7 +446,7 @@ static ngx_int_t
 ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_int_t                  rc;
-    ngx_mail_core_srv_conf_t  *cscf;
+    ngx_mail_pop3_srv_conf_t  *pscf;
 
 #if (NGX_MAIL_SSL)
     if (ngx_mail_starttls_only(s, c)) {
@@ -451,10 +454,10 @@ ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
     }
 #endif
 
-    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+    pscf = ngx_mail_get_module_srv_conf(s, ngx_mail_pop3_module);
 
     if (s->args.nelts == 0) {
-        s->out = cscf->pop3_auth_capability;
+        s->out = pscf->auth_capability;
         s->state = 0;
 
         return NGX_OK;
@@ -482,7 +485,7 @@ ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 
     case NGX_MAIL_AUTH_CRAM_MD5:
 
-        if (!(cscf->pop3_auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
+        if (!(pscf->auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
             return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
 
