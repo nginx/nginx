@@ -77,7 +77,6 @@ if [ $PCRE != NONE ]; then
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
             LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre.a"
             CORE_LIBS="$CORE_LIBS $PCRE/.libs/libpcre.a"
-            #CORE_LIBS="$CORE_LIBS -L $PCRE/.libs -lpcre"
         ;;
 
     esac
@@ -111,7 +110,13 @@ else
             ngx_feature_run=no
             ngx_feature_incs="#include <pcre.h>"
             ngx_feature_path="/usr/local/include"
-            ngx_feature_libs="-L /usr/local/lib -lpcre"
+
+            if [ $NGX_RPATH = YES ]; then
+                ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lpcre"
+            else
+                ngx_feature_libs="-L/usr/local/lib -lpcre"
+            fi
+
             ngx_feature_test="pcre *re;
                               re = pcre_compile(NULL, 0, NULL, 0, NULL)"
             . auto/feature
@@ -160,7 +165,13 @@ else
                 ngx_feature_run=no
                 ngx_feature_incs="#include <pcre.h>"
                 ngx_feature_path="/usr/pkg/include"
-                ngx_feature_libs="-L /usr/pkg/lib -lpcre"
+
+                if [ $NGX_RPATH = YES ]; then
+                    ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lpcre"
+                else
+                    ngx_feature_libs="-L/usr/pkg/lib -lpcre"
+                fi
+
                 ngx_feature_test="pcre *re;
                                   re = pcre_compile(NULL, 0, NULL, 0, NULL)"
                 . auto/feature
@@ -185,7 +196,13 @@ else
                 ngx_feature_run=no
                 ngx_feature_incs="#include <pcre.h>"
                 ngx_feature_path="/opt/local/include"
-                ngx_feature_libs="-L/opt/local/lib -lpcre"
+
+                if [ $NGX_RPATH = YES ]; then
+                    ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lpcre"
+                else
+                    ngx_feature_libs="-L/opt/local/lib -lpcre"
+                fi
+
                 ngx_feature_test="pcre *re;
                                   re = pcre_compile(NULL, 0, NULL, 0, NULL)"
                 . auto/feature
