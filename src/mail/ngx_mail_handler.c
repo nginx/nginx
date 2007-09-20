@@ -691,7 +691,9 @@ ngx_mail_log_error(ngx_log_t *log, u_char *buf, size_t len)
         return p;
     }
 
-    p = ngx_snprintf(buf, len, ", server: %V", s->addr_text);
+    p = ngx_snprintf(buf, len, "%s, server: %V",
+                     s->starttls ? " using starttls" : "",
+                     s->addr_text);
     len -= p - buf;
     buf = p;
 
