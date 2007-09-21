@@ -295,7 +295,7 @@ ngx_mail_auth_plain(ngx_mail_session_t *s, ngx_connection_t *c, ngx_uint_t n)
         return NGX_ERROR;
     }
 
-    if (ngx_decode_base64(&plain, &arg[0]) != NGX_OK) {
+    if (ngx_decode_base64(&plain, &arg[n]) != NGX_OK) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
             "client sent invalid base64 encoding in AUTH PLAIN command");
         return NGX_MAIL_PARSE_INVALID_COMMAND;
