@@ -896,7 +896,7 @@ wildcard:
             return NGX_ERROR;
         }
 
-        ngx_cpystrn(p, key->data, last - 1);
+        ngx_cpystrn(p, key->data, last);
 
         hwc = &ha->dns_wc_tail;
         keys = &ha->dns_wc_tail_hash[k];
