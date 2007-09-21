@@ -9,6 +9,76 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.12" date="21.09.2007">
+
+<change type="change">
+<para lang="ru">
+почтовый прокси-сервер разделён на три модуля: pop3, imap и smtp.
+</para>
+<para lang="en">
+mail proxy was split on three modules: pop3, imap and smtp.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры конфигурации --without-mail_pop3_module,
+--without-mail_imap_module и --without-mail_smtp_module.
+</para>
+<para lang="en">
+the --without-mail_pop3_module, --without-mail_imap_module,
+and --without-mail_smtp_module configuration parameters.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы smtp_greeting_delay и smtp_client_buffer модуля ngx_mail_smtp_module.
+</para>
+<para lang="en">
+the "smtp_greeting_delay" and "smtp_client_buffer" directives
+of the ngx_mail_smtp_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+wildcard в конце имени сервера не работали;
+ошибка появилась в 0.6.9.
+</para>
+<para lang="en">
+the trailing wildcards did not work;
+bug appeared in 0.6.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании разделяемой библиотеки PCRE,
+расположенной в нестандартном месте, nginx не запускался на Solaris.
+</para>
+<para lang="en">
+nginx could not start on Solaris if the shared PCRE library located
+in non-standard place was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_hide_header и fastcgi_hide_header не скрывали
+строки заголовка ответа с именем больше 32 символов.<br/>
+Спасибо Manlio Perillo.
+</para>
+<para lang="en">
+the "proxy_hide_header" and "fastcgi_hide_header" directives did not
+hide response header lines whose name was longer than 32 characters.<br/>
+Thanks to Manlio Perillo.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.11" date="11.09.2007">
 
 <change type="bugfix">
@@ -23,7 +93,7 @@ active connection counter always increased if mail proxy was used.
 
 <change type="bugfix">
 <para lang="ru">
-если бэкенд возвращал только заголовок ответа при не буферизированном
+если бэкенд возвращал только заголовок ответа при небуферизированном
 проксировании, то nginx закрывал соединение с бэкендом по таймауту.
 </para>
 <para lang="en">
