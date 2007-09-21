@@ -539,15 +539,7 @@ ngx_mail_smtp_log_rejected_command(ngx_mail_session_t *s, ngx_connection_t *c,
             continue;
         }
 
-        cmd.data[i] = ' ';
-    }
-
-    while (i) {
-        if (cmd.data[i - 1] != ' ') {
-            break;
-        }
-
-        i--;
+        cmd.data[i] = '_';
     }
 
     cmd.len = i;
