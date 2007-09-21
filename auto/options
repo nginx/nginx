@@ -308,8 +308,11 @@ cat << END
 
   --without-http                     disable HTTP server
 
-  --with-mail                        enable IMAP4/POP3/SMTP proxy module
+  --with-mail                        enable POP3/IMAP4/SMTP proxy module
   --with-mail_ssl_module             enable ngx_mail_ssl_module
+  --without-mail_pop3_module         disable ngx_mail_pop3_module
+  --without-mail_imap_module         disable ngx_mail_imap_module
+  --without-mail_smtp_module         disable ngx_mail_smtp_module
 
   --add-module=PATH                  enable an external module
 
