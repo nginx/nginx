@@ -278,7 +278,7 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_mail_core_srv_conf_t *prev = parent;
     ngx_mail_core_srv_conf_t *conf = child;
 
-    u_char      *p;
+    u_char      *p, *auth;
     size_t       size, stls_only_size;
     ngx_str_t   *c, *d;
     ngx_uint_t   i, m;
@@ -582,6 +582,8 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         *p++ = CR; *p++ = LF;
     }
 
+    auth = p;
+
     *p++ = '2'; *p++ = '5'; *p++ = '0'; *p++ = ' ';
     *p++ = 'A'; *p++ = 'U'; *p++ = 'T'; *p++ = 'H';
 
@@ -597,6 +599,42 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     *p++ = CR; *p = LF;
+
+    size += sizeof("250 STARTTLS" CRLF) - 1;
+
+    p = ngx_palloc(cf->pool, size);
+    if (p == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    conf->smtp_starttls_capability.len = size;
+    conf->smtp_starttls_capability.data = p;
+
+    p = ngx_cpymem(p, conf->smtp_capability.data,
+                   conf->smtp_capability.len);
+
+    p = ngx_cpymem(p, "250 STARTTLS" CRLF, sizeof("250 STARTTLS" CRLF) - 1);
+    *p++ = CR; *p = LF;
+
+    p = conf->smtp_starttls_capability.data
+        + (auth - conf->smtp_capability.data) + 3;
+    *p = '-';
+
+    size = (auth - conf->smtp_capability.data)
+            + sizeof("250 STARTTLS" CRLF) - 1;
+
+    p = ngx_palloc(cf->pool, size);
+    if (p == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    conf->smtp_starttls_only_capability.len = size;
+    conf->smtp_starttls_only_capability.data = p;
+
+    p = ngx_cpymem(p, conf->smtp_capability.data,
+                   auth - conf->smtp_capability.data);
+
+    ngx_memcpy(p, "250 STARTTLS" CRLF, sizeof("250 STARTTLS" CRLF) - 1);
 
     return NGX_CONF_OK;
 }

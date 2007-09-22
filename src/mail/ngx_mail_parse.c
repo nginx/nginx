@@ -646,10 +646,43 @@ ngx_int_t ngx_smtp_parse_command(ngx_mail_session_t *s)
                     {
                         s->command = NGX_SMTP_RSET;
 
+                    } else if (c0 == 'R' && c1 == 'C' && c2 == 'P' && c3 == 'T')
+                    {
+                        s->command = NGX_SMTP_RCPT;
+
+                    } else if (c0 == 'V' && c1 == 'R' && c2 == 'F' && c3 == 'Y')
+                    {
+                        s->command = NGX_SMTP_VRFY;
+
+                    } else if (c0 == 'E' && c1 == 'X' && c2 == 'P' && c3 == 'N')
+                    {
+                        s->command = NGX_SMTP_EXPN;
+
+                    } else if (c0 == 'H' && c1 == 'E' && c2 == 'L' && c3 == 'P')
+                    {
+                        s->command = NGX_SMTP_HELP;
+
                     } else {
                         goto invalid;
                     }
+#if (NGX_MAIL_SSL)
+                } else if (p - c == 8) {
 
+                    if ((c[0] == 'S'|| c[0] == 's')
+                        && (c[1] == 'T'|| c[1] == 't')
+                        && (c[2] == 'A'|| c[2] == 'a')
+                        && (c[3] == 'R'|| c[3] == 'r')
+                        && (c[4] == 'T'|| c[4] == 't')
+                        && (c[5] == 'T'|| c[5] == 't')
+                        && (c[6] == 'L'|| c[6] == 'l')
+                        && (c[7] == 'S'|| c[7] == 's'))
+                    {
+                        s->command = NGX_SMTP_STARTTLS;
+
+                    } else {
+                        goto invalid;
+                    }
+#endif
                 } else {
                     goto invalid;
                 }

@@ -1229,6 +1229,9 @@ ngx_smtp_auth_state(ngx_event_t *rev)
     ngx_connection_t          *c;
     ngx_mail_session_t        *s;
     ngx_mail_core_srv_conf_t  *cscf;
+#if (NGX_MAIL_SSL)
+    ngx_mail_ssl_conf_t       *sslcf;
+#endif
 
     c = rev->data;
     s = c->data;
@@ -1295,6 +1298,26 @@ ngx_smtp_auth_state(ngx_event_t *rev)
 
                 } else {
                     s->esmtp = 1;
+
+#if (NGX_MAIL_SSL)
+
+                    if (c->ssl == NULL) {
+                        sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
+
+                        if (sslcf->starttls == NGX_MAIL_STARTTLS_ON) {
+                            size = cscf->smtp_starttls_capability.len;
+                            text = cscf->smtp_starttls_capability.data;
+                            break;
+                        }
+
+                        if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
+                            size = cscf->smtp_starttls_only_capability.len;
+                            text = cscf->smtp_starttls_only_capability.data;
+                            break;
+                        }
+                    }
+#endif
+
                     size = cscf->smtp_capability.len;
                     text = cscf->smtp_capability.data;
                 }
@@ -1302,6 +1325,18 @@ ngx_smtp_auth_state(ngx_event_t *rev)
                 break;
 
             case NGX_SMTP_AUTH:
+
+#if (NGX_MAIL_SSL)
+
+                if (c->ssl == NULL) {
+                    sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
+
+                    if (sslcf->starttls == NGX_MAIL_STARTTLS_ONLY) {
+                        rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                        break;
+                    }
+                }
+#endif
 
                 if (s->args.nelts == 0) {
                     text = smtp_invalid_argument;
@@ -1452,6 +1487,38 @@ ngx_smtp_auth_state(ngx_event_t *rev)
             case NGX_SMTP_RSET:
                 text = smtp_ok;
                 size = sizeof(smtp_ok) - 1;
+                break;
+
+#if (NGX_MAIL_SSL)
+
+            case NGX_SMTP_STARTTLS:
+                if (c->ssl == NULL) {
+                    sslcf = ngx_mail_get_module_srv_conf(s,
+                                                         ngx_mail_ssl_module);
+                    if (sslcf->starttls) {
+                        c->read->handler = ngx_mail_starttls_handler;
+
+                        /*
+                         * RFC3207 requires us to discard any knowledge
+                         * obtained from client before STARTTLS.
+                         */
+
+                        s->smtp_helo.len = 0;
+                        s->smtp_helo.data = NULL;
+
+                        text = smtp_ok;
+                        size = sizeof(smtp_ok) - 1;
+
+                        break;
+                    }
+                }
+
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
+                break;
+#endif
+
+            default:
+                rc = NGX_MAIL_PARSE_INVALID_COMMAND;
                 break;
             }
 
