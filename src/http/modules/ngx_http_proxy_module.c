@@ -2237,6 +2237,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             if (port == 80) {
                 plcf->port.len = sizeof("80") - 1;
                 plcf->port.data = (u_char *) "80";
+
             } else {
                 plcf->port.len = sizeof("443") - 1;
                 plcf->port.data = (u_char *) "443";

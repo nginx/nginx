@@ -3209,6 +3209,12 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
             continue;
         }
 
+        if (uscfp[i]->default_port && u->default_port
+            && uscfp[i]->default_port != u->default_port)
+        {
+            continue;
+        }
+
         return uscfp[i];
     }
 
