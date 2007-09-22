@@ -100,6 +100,7 @@ typedef struct {
     ngx_str_t               smtp_greeting;
 
     ngx_uint_t              pop3_auth_methods;
+    ngx_uint_t              imap_auth_methods;
     ngx_uint_t              smtp_auth_methods;
 
     ngx_array_t             pop3_capabilities;
@@ -134,6 +135,10 @@ typedef enum {
 
 typedef enum {
     ngx_imap_start = 0,
+    ngx_imap_auth_login_username,
+    ngx_imap_auth_login_password,
+    ngx_imap_auth_plain,
+    ngx_imap_auth_cram_md5,
     ngx_imap_login,
     ngx_imap_user,
     ngx_imap_passwd
@@ -216,45 +221,47 @@ typedef struct {
 } ngx_mail_log_ctx_t;
 
 
-#define NGX_POP3_USER        1
-#define NGX_POP3_PASS        2
-#define NGX_POP3_CAPA        3
-#define NGX_POP3_QUIT        4
-#define NGX_POP3_NOOP        5
-#define NGX_POP3_STLS        6
-#define NGX_POP3_APOP        7
-#define NGX_POP3_AUTH        8
-#define NGX_POP3_STAT        9
-#define NGX_POP3_LIST        10
-#define NGX_POP3_RETR        11
-#define NGX_POP3_DELE        12
-#define NGX_POP3_RSET        13
-#define NGX_POP3_TOP         14
-#define NGX_POP3_UIDL        15
+#define NGX_POP3_USER          1
+#define NGX_POP3_PASS          2
+#define NGX_POP3_CAPA          3
+#define NGX_POP3_QUIT          4
+#define NGX_POP3_NOOP          5
+#define NGX_POP3_STLS          6
+#define NGX_POP3_APOP          7
+#define NGX_POP3_AUTH          8
+#define NGX_POP3_STAT          9
+#define NGX_POP3_LIST          10
+#define NGX_POP3_RETR          11
+#define NGX_POP3_DELE          12
+#define NGX_POP3_RSET          13
+#define NGX_POP3_TOP           14
+#define NGX_POP3_UIDL          15
 
 
-#define NGX_IMAP_LOGIN       1
-#define NGX_IMAP_LOGOUT      2
-#define NGX_IMAP_CAPABILITY  3
-#define NGX_IMAP_NOOP        4
-#define NGX_IMAP_STARTTLS    5
+#define NGX_IMAP_LOGIN         1
+#define NGX_IMAP_LOGOUT        2
+#define NGX_IMAP_CAPABILITY    3
+#define NGX_IMAP_NOOP          4
+#define NGX_IMAP_STARTTLS      5
 
-#define NGX_IMAP_NEXT        6
+#define NGX_IMAP_NEXT          6
+
+#define NGX_IMAP_AUTHENTICATE  7
 
 
-#define NGX_SMTP_HELO        1
-#define NGX_SMTP_EHLO        2
-#define NGX_SMTP_AUTH        3
-#define NGX_SMTP_QUIT        4
-#define NGX_SMTP_NOOP        5
-#define NGX_SMTP_MAIL        6
-#define NGX_SMTP_RSET        7
-#define NGX_SMTP_RCPT        8
-#define NGX_SMTP_DATA        9
-#define NGX_SMTP_VRFY        10
-#define NGX_SMTP_EXPN        11
-#define NGX_SMTP_HELP        12
-#define NGX_SMTP_STARTTLS    13
+#define NGX_SMTP_HELO          1
+#define NGX_SMTP_EHLO          2
+#define NGX_SMTP_AUTH          3
+#define NGX_SMTP_QUIT          4
+#define NGX_SMTP_NOOP          5
+#define NGX_SMTP_MAIL          6
+#define NGX_SMTP_RSET          7
+#define NGX_SMTP_RCPT          8
+#define NGX_SMTP_DATA          9
+#define NGX_SMTP_VRFY          10
+#define NGX_SMTP_EXPN          11
+#define NGX_SMTP_HELP          12
+#define NGX_SMTP_STARTTLS      13
 
 
 #define NGX_MAIL_AUTH_PLAIN     0
