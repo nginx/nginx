@@ -620,6 +620,8 @@ ngx_int_t
 ngx_http_core_find_config_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph)
 {
+    u_char                    *p;
+    size_t                     len;
     ngx_int_t                  rc;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
@@ -680,7 +682,25 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
          * r->headers_out.location->key fields
          */
 
-        r->headers_out.location->value = clcf->name;
+        if (r->args.len == 0) {
+            r->headers_out.location->value = clcf->name;
+
+        } else {
+            len = clcf->name.len + 1 + r->args.len;
+            p = ngx_palloc(r->pool, len);
+
+            if (p == NULL) {
+                ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return NGX_OK;
+            }
+
+            r->headers_out.location->value.len = len;
+            r->headers_out.location->value.data = p;
+
+            p = ngx_cpymem(p, clcf->name.data, clcf->name.len);
+            *p++ = '?';
+            ngx_memcpy(p, r->args.data, r->args.len);
+        }
 
         ngx_http_finalize_request(r, NGX_HTTP_MOVED_PERMANENTLY);
         return NGX_OK;
