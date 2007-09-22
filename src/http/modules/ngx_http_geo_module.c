@@ -86,7 +86,7 @@ ngx_http_geo_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     *v = *vv;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http geo: %V %V", &r->connection->addr_text, v);
+                   "http geo: %V %v", &r->connection->addr_text, v);
 
     return NGX_OK;
 }
@@ -100,8 +100,8 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_conf_t                save;
     ngx_pool_t               *pool;
     ngx_radix_tree_t         *tree;
+    ngx_http_variable_t      *var;
     ngx_http_geo_conf_ctx_t   ctx;
-    ngx_http_variable_t  *var;
 
     value = cf->args->elts;
 
@@ -285,9 +285,8 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
                     ngx_radix32tree_find(ctx->tree, cidrin.addr & cidrin.mask);
 
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "duplicate parameter \"%V\", value: \"%V\", "
-                           "old value: \"%V\"",
-                           &value[0], var, old);
+                "duplicate parameter \"%V\", value: \"%v\", old value: \"%v\"",
+                &value[0], var, old);
 
         rc = ngx_radix32tree_delete(ctx->tree, cidrin.addr, cidrin.mask);
 
