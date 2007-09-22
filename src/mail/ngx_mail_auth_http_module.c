@@ -1251,18 +1251,10 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
 static ngx_int_t
 ngx_mail_auth_http_escape(ngx_pool_t *pool, ngx_str_t *text, ngx_str_t *escaped)
 {
-    u_char      ch, *p;
-    ngx_uint_t  i, n;
+    u_char     *p;
+    uintptr_t   n;
 
-    n = 0;
-
-    for (i = 0; i < text->len; i++) {
-        ch = text->data[i];
-
-        if (ch == CR || ch == LF) {
-            n++;
-        }
-    }
+    n = ngx_escape_uri(NULL, text->data, text->len, NGX_ESCAPE_MAIL_AUTH);
 
     if (n == 0) {
         *escaped = *text;
@@ -1276,27 +1268,9 @@ ngx_mail_auth_http_escape(ngx_pool_t *pool, ngx_str_t *text, ngx_str_t *escaped)
         return NGX_ERROR;
     }
 
+    (void) ngx_escape_uri(p, text->data, text->len, NGX_ESCAPE_MAIL_AUTH);
+
     escaped->data = p;
-
-    for (i = 0; i < text->len; i++) {
-        ch = text->data[i];
-
-        if (ch == CR) {
-            *p++ = '%';
-            *p++ = '0';
-            *p++ = 'D';
-            continue;
-        }
-
-        if (ch == LF) {
-            *p++ = '%';
-            *p++ = '0';
-            *p++ = 'A';
-            continue;
-        }
-
-        *p++ = ch;
-    }
 
     return NGX_OK;
 }

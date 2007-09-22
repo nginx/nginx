@@ -1019,7 +1019,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
     };
 
-                    /* " ", """, "%", "'", %00-%1F, %7F-%FF */
+                    /* " ", "#", """, "%", "'", %00-%1F, %7F-%FF */
 
     static uint32_t   html[] = {
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
@@ -1039,13 +1039,13 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
     };
 
-                    /* " ", """, "'", %00-%1F, %7F-%FF */
+                    /* " ", """, "%", "'", %00-%1F, %7F-%FF */
 
     static uint32_t   refresh[] = {
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
 
                     /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
-        0x00000085, /* 0000 0000 0000 0000  0000 0000 1000 0101 */
+        0x000000a5, /* 0000 0000 0000 0000  0000 0000 1010 0101 */
 
                     /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
         0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
@@ -1059,13 +1059,13 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
     };
 
-                    /* " ", %00-%1F */
+                    /* " ", "%", %00-%1F */
 
     static uint32_t   memcached[] = {
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
 
                     /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
-        0x00000001, /* 0000 0000 0000 0000  0000 0000 0000 0001 */
+        0x00000021, /* 0000 0000 0000 0000  0000 0000 0010 0001 */
 
                     /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
         0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
@@ -1079,7 +1079,10 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
     };
 
-    static uint32_t  *map[] = { uri, args, html, refresh, memcached };
+                    /* mail_auth is the same as memcached */
+
+    static uint32_t  *map[] =
+        { uri, args, html, refresh, memcached, memcached };
 
 
     escape = map[type];

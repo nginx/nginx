@@ -434,6 +434,10 @@ ngx_int_t ngx_imap_parse_command(ngx_mail_session_t *s)
             break;
 
         case sw_argument:
+            if (ch == ' ' && s->quoted) {
+                break;
+            }
+
             switch (ch) {
             case '"':
                 if (!s->quoted) {
