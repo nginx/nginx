@@ -34,6 +34,7 @@ static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
 static void ngx_http_writer(ngx_http_request_t *r);
 
 static void ngx_http_block_read(ngx_http_request_t *r);
+static void ngx_http_test_read(ngx_http_request_t *r);
 static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
@@ -1710,7 +1711,7 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
-    r->read_event_handler = ngx_http_block_read;
+    r->read_event_handler = ngx_http_test_read;
     r->write_event_handler = ngx_http_writer;
 
     wev = r->connection->write;
@@ -1823,6 +1824,26 @@ ngx_http_writer(ngx_http_request_t *r)
 static void
 ngx_http_block_read(ngx_http_request_t *r)
 {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http read blocked");
+
+    /* aio does not call this handler */
+
+    if ((ngx_event_flags & NGX_USE_LEVEL_EVENT)
+        && r->connection->read->active)
+    {
+        if (ngx_del_event(r->connection->read, NGX_READ_EVENT, 0)
+            == NGX_ERROR)
+        {
+            ngx_http_close_request(r, 0);
+        }
+    }
+}
+
+
+static void
+ngx_http_test_read(ngx_http_request_t *r)
+{
     int                n;
     char               buf[1];
     ngx_err_t          err;
@@ -1832,7 +1853,7 @@ ngx_http_block_read(ngx_http_request_t *r)
     c = r->connection;
     rev = c->read;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http read blocked");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http test read");
 
 #if (NGX_HAVE_KQUEUE)
 
