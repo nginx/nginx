@@ -55,15 +55,24 @@ clean:
 upgrade:
 	$NGX_SBIN_PATH -t
 
-	# upgrade compatibility from 0.1.x to 0.2.x
+	kill -USR2 \`cat $NGX_PID_PATH\`
+	sleep 1
+	test -f $NGX_PID_PATH.oldbin
+
+	kill -QUIT \`cat $NGX_PID_PATH.oldbin\`
+
+upgrade1:
+	# upgrade 0.1.x to 0.2+
+
+	$NGX_SBIN_PATH -t
+
 	cp $NGX_PID_PATH $NGX_PID_PATH.oldbin
 
 	kill -USR2 \`cat $NGX_PID_PATH\`
 	sleep 1
 	test -f $NGX_PID_PATH.oldbin
 
-	# upgrade compatibility from 0.1.x to 0.2.x
 	cp $NGX_PID_PATH $NGX_PID_PATH.newbin
 
-	kill -WINCH \`cat $NGX_PID_PATH.oldbin\`
+	kill -QUIT \`cat $NGX_PID_PATH.oldbin\`
 END
