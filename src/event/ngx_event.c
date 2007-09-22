@@ -1038,8 +1038,9 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_DEBUG)
     ngx_event_conf_t  *ecf = conf;
 
-    ngx_event_debug_t  *dc;
+    ngx_int_t           rc;
     ngx_str_t          *value;
+    ngx_event_debug_t  *dc;
     struct hostent     *h;
     ngx_inet_cidr_t     in_cidr;
 
@@ -1056,13 +1057,21 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (dc->addr != INADDR_NONE) {
         dc->mask = 0xffffffff;
-        return NGX_OK;
+        return NGX_CONF_OK;
     }
 
-    if (ngx_ptocidr(&value[1], &in_cidr) == NGX_OK) {
+    rc = ngx_ptocidr(&value[1], &in_cidr);
+
+    if (rc == NGX_DONE) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "low address bits of %V are meaningless", &value[1]);
+        rc = NGX_OK;
+    }
+
+    if (rc == NGX_OK) {
         dc->mask = in_cidr.mask;
         dc->addr = in_cidr.addr;
-        return NGX_OK;
+        return NGX_CONF_OK;
     }
 
     h = gethostbyname((char *) value[1].data);
@@ -1084,7 +1093,7 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #endif
 
-    return NGX_OK;
+    return NGX_CONF_OK;
 }
 
 

@@ -137,6 +137,7 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_access_loc_conf_t *alcf = conf;
 
+    ngx_int_t                rc;
     ngx_str_t               *value;
     ngx_inet_cidr_t          in_cidr;
     ngx_http_access_rule_t  *rule;
@@ -173,10 +174,17 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    if (ngx_ptocidr(&value[1], &in_cidr) == NGX_ERROR) {
+    rc = ngx_ptocidr(&value[1], &in_cidr);
+
+    if (rc == NGX_ERROR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\"",
                            &value[1]);
         return NGX_CONF_ERROR;
+    }
+
+    if (rc == NGX_DONE) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "low address bits of %V are meaningless", &value[1]);
     }
 
     rule->mask = in_cidr.mask;
