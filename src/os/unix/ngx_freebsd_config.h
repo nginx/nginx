@@ -77,6 +77,9 @@
 #endif
 
 
+#define NGX_LISTEN_BACKLOG        -1
+
+
 #if (defined SO_ACCEPTFILTER && !defined NGX_HAVE_DEFERRED_ACCEPT)
 #define NGX_HAVE_DEFERRED_ACCEPT  1
 #endif

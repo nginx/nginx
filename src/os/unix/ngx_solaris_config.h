@@ -82,6 +82,9 @@
 #endif
 
 
+#define NGX_LISTEN_BACKLOG           511
+
+
 #ifndef NGX_HAVE_INHERITED_NONBLOCK
 #define NGX_HAVE_INHERITED_NONBLOCK  1
 #endif

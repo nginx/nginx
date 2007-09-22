@@ -2226,7 +2226,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 #endif
         ls->family = AF_INET;
 
-        ls->conf.backlog = -1;
+        ls->conf.backlog = NGX_LISTEN_BACKLOG;
         ls->conf.rcvbuf = -1;
         ls->conf.sndbuf = -1;
     }
@@ -2577,7 +2577,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->port = u.port;
     ls->file_name = cf->conf_file->file.name;
     ls->line = cf->conf_file->line;
-    ls->conf.backlog = -1;
+    ls->conf.backlog = NGX_LISTEN_BACKLOG;
     ls->conf.rcvbuf = -1;
     ls->conf.sndbuf = -1;
 

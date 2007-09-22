@@ -300,7 +300,7 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
 
-            ls->backlog = -1;
+            ls->backlog = NGX_LISTEN_BACKLOG;
             ls->rcvbuf = -1;
             ls->sndbuf = -1;
 
