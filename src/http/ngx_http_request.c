@@ -837,7 +837,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
                                   "client sent too long header line: \"%V\"",
                                   &header);
-                    ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
+                    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
                     return;
                 }
             }
@@ -949,7 +949,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client sent invalid header line: \"%V\\r...\"",
                       &header);
-        ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return;
     }
 }
