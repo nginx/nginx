@@ -1288,6 +1288,7 @@ ngx_http_upstream_test_connect(ngx_connection_t *c)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT)  {
         if (c->write->pending_eof) {
+            c->log->action = "connecting to upstream";
             (void) ngx_connection_error(c, c->write->kq_errno,
                                     "kevent() reported that connect() failed");
             return NGX_ERROR;
@@ -1311,6 +1312,7 @@ ngx_http_upstream_test_connect(ngx_connection_t *c)
         }
 
         if (err) {
+            c->log->action = "connecting to upstream";
             (void) ngx_connection_error(c, err, "connect() failed");
             return NGX_ERROR;
         }
