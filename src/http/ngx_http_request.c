@@ -76,7 +76,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 
     { ngx_string("If-Modified-Since"),
                  offsetof(ngx_http_headers_in_t, if_modified_since),
-                 ngx_http_process_header_line },
+                 ngx_http_process_unique_header_line },
 
     { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent),
                  ngx_http_process_header_line },
