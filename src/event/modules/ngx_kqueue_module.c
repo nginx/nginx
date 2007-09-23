@@ -404,7 +404,7 @@ ngx_kqueue_set_event(ngx_event_t *ev, int filter, u_int flags)
 
     c = ev->data;
 
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "kevent set event: %d: ft:%d fl:%04Xd",
                    c->fd, filter, flags);
 
