@@ -62,6 +62,11 @@ u_long         cpu_affinity;
 static u_char  master_process[] = "master process";
 
 
+static ngx_cycle_t      ngx_exit_cycle;
+static ngx_log_t        ngx_exit_log;
+static ngx_open_file_t  ngx_exit_log_file;
+
+
 void
 ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
@@ -649,13 +654,21 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
     }
 
     /*
-     * we do not destroy cycle->pool here because a signal handler
-     * that uses cycle->log can be called at this point
+     * Copy ngx_cycle->log related data to the special static exit cycle,
+     * log, and log file structures enough to allow a signal handler to log.
+     * The handler may be called when standard ngx_cycle->log allocated from
+     * ngx_cycle->pool is already destroyed.
      */
 
-#if 0
+    ngx_exit_log_file.fd = ngx_cycle->log->file->fd;
+
+    ngx_exit_log = *ngx_cycle->log;
+    ngx_exit_log.file = &ngx_exit_log_file;
+
+    ngx_exit_cycle.log = &ngx_exit_log;
+    ngx_cycle = &ngx_exit_cycle;
+
     ngx_destroy_pool(cycle->pool);
-#endif
 
     exit(0);
 }
@@ -996,13 +1009,23 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
     }
 
     /*
-     * we do not destroy cycle->pool here because a signal handler
-     * that uses cycle->log can be called at this point
+     * Copy ngx_cycle->log related data to the special static exit cycle,
+     * log, and log file structures enough to allow a signal handler to log.
+     * The handler may be called when standard ngx_cycle->log allocated from
+     * ngx_cycle->pool is already destroyed.
      */
 
-#if 0
+    ngx_exit_log_file.fd = ngx_cycle->log->file->fd;
+
+    ngx_exit_log = *ngx_cycle->log;
+    ngx_exit_log.file = &ngx_exit_log_file;
+
+    ngx_exit_cycle.log = &ngx_exit_log;
+    ngx_cycle = &ngx_exit_cycle;
+
     ngx_destroy_pool(cycle->pool);
-#endif
+
+    ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0, "exit");
 
     exit(0);
 }
