@@ -38,8 +38,8 @@ typedef struct {
     in_port_t                  port;
     int                        family;
 
-    ngx_str_t                  file_name;
-    ngx_int_t                  line;
+    u_char                    *file_name;
+    ngx_uint_t                 line;
 
     ngx_http_listen_conf_t     conf;
 } ngx_http_listen_t;

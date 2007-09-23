@@ -91,7 +91,7 @@ struct ngx_http_upstream_srv_conf_s {
 
     ngx_uint_t                      flags;
     ngx_str_t                       host;
-    ngx_str_t                       file_name;
+    u_char                         *file_name;
     ngx_uint_t                      line;
     in_port_t                       port;
     in_port_t                       default_port;

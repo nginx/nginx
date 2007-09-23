@@ -2595,7 +2595,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->family = AF_INET;
     ls->addr = u.addr.in_addr;
     ls->port = u.port;
-    ls->file_name = cf->conf_file->file.name;
+    ls->file_name = cf->conf_file->file.name.data;
     ls->line = cf->conf_file->line;
     ls->conf.backlog = NGX_LISTEN_BACKLOG;
     ls->conf.rcvbuf = -1;

@@ -551,8 +551,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                         if (in_addr[a].default_server) {
                             ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-                                        "the duplicate default server in %V:%d",
-                                        &lscf[l].file_name, lscf[l].line);
+                                      "the duplicate default server in %s:%ui",
+                                       &lscf[l].file_name, lscf[l].line);
 
                             return NGX_CONF_ERROR;
                         }
