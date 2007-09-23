@@ -1640,7 +1640,6 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.hide_headers_hash = { NULL, 0 };
      *     conf->upstream.hide_headers = NULL;
      *     conf->upstream.pass_headers = NULL;
-     *     conf->upstream.catch_stderr = NULL;
      *     conf->upstream.schema = { 0, NULL };
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
@@ -1674,6 +1673,8 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
 
     /* "fastcgi_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
+
+    conf->catch_stderr = NGX_CONF_UNSET_PTR;
 
     return conf;
 }
