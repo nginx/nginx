@@ -15,6 +15,7 @@
 
 #define POLLREMOVE   0x0800
 #define DP_POLL      0xD001
+#define DP_ISPOLLED  0xD002
 
 struct dvpoll {
     struct pollfd  *dp_fds;
@@ -252,10 +253,16 @@ ngx_devpoll_del_event(ngx_event_t *ev, int event, u_int flags)
     ev->active = 0;
 
     if (flags & NGX_CLOSE_EVENT) {
+        e = (event == POLLIN) ? c->write : c->read;
+
+        if (e) {
+            e->active = 0;
+        }
+
         return NGX_OK;
     }
 
-    /* restore the paired event if it exists */
+    /* restore the pair event if it exists */
 
     if (event == POLLIN) {
         e = c->write;
@@ -327,13 +334,15 @@ ngx_int_t
 ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags)
 {
-    int                 events, revents;
+    int                 events, revents, rc;
     size_t              n;
+    ngx_fd_t            fd;
     ngx_err_t           err;
     ngx_int_t           i;
     ngx_uint_t          level;
     ngx_event_t        *rev, *wev, **queue;
     ngx_connection_t   *c;
+    struct pollfd       pfd;
     struct dvpoll       dvp;
 
     /* NGX_TIMER_INFINITE == INFTIM */
@@ -398,34 +407,77 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_mutex_lock(ngx_posted_events_mutex);
 
     for (i = 0; i < events; i++) {
-        c = ngx_cycle->files[event_list[i].fd];
 
-        if (c->fd == -1) {
-            if (c->read->closed) {
-                continue;
+        fd = event_list[i].fd;
+        revents = event_list[i].revents;
+
+        c = ngx_cycle->files[fd];
+
+        if (c == NULL || c->fd == -1) {
+
+            pfd.fd = fd;
+            pfd.events = 0;
+            pfd.revents = 0;
+
+            rc = ioctl(dp, DP_ISPOLLED, &pfd);
+
+            switch (rc) {
+
+            case -1:
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                    "ioctl(DP_ISPOLLED) failed for socket %d, event",
+                    fd, revents);
+                break;
+
+            case 0:
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                    "phantom event %04Xd for closed and removed socket %d",
+                    revents, fd);
+                break;
+
+            default:
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                    "unexpected event %04Xd for closed and removed socket %d, ",
+                    "ioctl(DP_ISPOLLED) returned rc:%d, fd:%d, event %04Xd",
+                    revents, fd, rc, pfd.fd, pfd.revents);
+
+                pfd.fd = fd;
+                pfd.events = POLLREMOVE;
+                pfd.revents = 0;
+
+                if (write(dp, &pfd, sizeof(struct pollfd))
+                    != (ssize_t) sizeof(struct pollfd))
+                {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                                  "write(/dev/poll) for %d failed, fd");
+                }
+
+                if (close(fd) == -1) {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                                  "close(%d) failed", fd);
+                }
+
+                break;
             }
 
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "unexpected event");
             continue;
         }
 
-        revents = event_list[i].revents;
-
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "devpoll: fd:%d, ev:%04Xd, rev:%04Xd",
-                       event_list[i].fd, event_list[i].events, revents);
+                       fd, event_list[i].events, revents);
 
         if (revents & (POLLERR|POLLHUP|POLLNVAL)) {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                           "ioctl(DP_POLL) error fd:%d ev:%04Xd rev:%04Xd",
-                          event_list[i].fd, event_list[i].events, revents);
+                          fd, event_list[i].events, revents);
         }
 
         if (revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL)) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "strange ioctl(DP_POLL) events "
                           "fd:%d ev:%04Xd rev:%04Xd",
-                          event_list[i].fd, event_list[i].events, revents);
+                          fd, event_list[i].events, revents);
         }
 
         if ((revents & (POLLERR|POLLHUP|POLLNVAL))
