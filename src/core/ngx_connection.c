@@ -735,7 +735,7 @@ ngx_close_connection(ngx_connection_t *c)
         /* we use ngx_cycle->log because c->log was in c->pool */
 
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
-                      ngx_close_socket_n " failed");
+                      ngx_close_socket_n " %d failed", fd);
     }
 }
 
