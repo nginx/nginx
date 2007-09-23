@@ -553,7 +553,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     } else {
         unparsed_uri = 0;
-        if (r->quoted_uri) {
+        if (r->quoted_uri || r->internal) {
             escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
                                         r->uri.len - loc_len, NGX_ESCAPE_URI);
         }
