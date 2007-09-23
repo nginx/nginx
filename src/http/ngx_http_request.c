@@ -21,6 +21,8 @@ static ngx_int_t ngx_http_process_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_unique_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_process_connection(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
@@ -72,7 +74,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
                  ngx_http_process_unique_header_line },
 
     { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection),
-                 ngx_http_process_unique_header_line },
+                 ngx_http_process_connection },
 
     { ngx_string("If-Modified-Since"),
                  offsetof(ngx_http_headers_in_t, if_modified_since),
@@ -1200,6 +1202,21 @@ ngx_http_process_unique_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
+ngx_http_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    if (ngx_strstr(h->value.data, "close")) {
+        r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
+
+    } else if (ngx_strstr(h->value.data, "keep-alive")) {
+        r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_process_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
@@ -1318,26 +1335,11 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (r->headers_in.connection) {
-        if (r->headers_in.connection->value.len == 5
-            && ngx_strcasecmp(r->headers_in.connection->value.data,
-                              (u_char *) "close")
-               == 0)
-        {
-            r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
-
-        } else if (r->headers_in.connection->value.len == 10
-                   && ngx_strcasecmp(r->headers_in.connection->value.data,
-                                     (u_char *) "keep-alive")
-                      == 0)
-        {
-            r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
-
-            if (r->headers_in.keep_alive) {
-                r->headers_in.keep_alive_n =
-                                ngx_atotm(r->headers_in.keep_alive->value.data,
-                                          r->headers_in.keep_alive->value.len);
-            }
+    if (r->headers_in.connection_type == NGX_HTTP_CONNECTION_KEEP_ALIVE) {
+        if (r->headers_in.keep_alive) {
+            r->headers_in.keep_alive_n =
+                            ngx_atotm(r->headers_in.keep_alive->value.data,
+                                      r->headers_in.keep_alive->value.len);
         }
     }
 
