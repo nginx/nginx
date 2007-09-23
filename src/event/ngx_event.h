@@ -41,7 +41,7 @@ struct ngx_event_s {
 
     unsigned         accept:1;
 
-    /* used to detect the stale events in kqueue, rt signals and epoll */
+    /* used to detect the stale events in kqueue, rtsig, and epoll */
     unsigned         instance:1;
 
     /*
@@ -247,8 +247,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_USE_LOWAT_EVENT      0x00000010
 
 /*
- * The event filter requires to do i/o operation until EAGAIN:
- * epoll, rt signals.
+ * The event filter requires to do i/o operation until EAGAIN: epoll, rtsig.
  */
 #define NGX_USE_GREEDY_EVENT     0x00000020
 
@@ -258,7 +257,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_USE_EPOLL_EVENT      0x00000040
 
 /*
- * No need to add or delete the event filters: rt signals.
+ * No need to add or delete the event filters: rtsig.
  */
 #define NGX_USE_RTSIG_EVENT      0x00000080
 
@@ -276,13 +275,13 @@ extern ngx_event_actions_t   ngx_event_actions;
 
 /*
  * The event filter has no opaque data and requires file descriptors table:
- * poll, /dev/poll, rt signals.
+ * poll, /dev/poll, rtsig.
  */
 #define NGX_USE_FD_EVENT         0x00000400
 
 /*
  * The event module handles periodic or absolute timer event by itself:
- * kqueue in FreeBSD 4.4 and NetBSD 2.0, Solaris 10's event ports.
+ * kqueue in FreeBSD 4.4, NetBSD 2.0, and MacOSX 10.4, Solaris 10's event ports.
  */
 #define NGX_USE_TIMER_EVENT      0x00000800
 
@@ -290,17 +289,26 @@ extern ngx_event_actions_t   ngx_event_actions;
  * All event filters on file descriptor are deleted after a notification:
  * Solaris 10's event ports.
  */
-#define NGX_USE_EVENTPORT_EVENT    0x00001000
+#define NGX_USE_EVENTPORT_EVENT  0x00001000
 
 
 
 /*
- * The event filter is deleted before the closing file.
- * Has no meaning for select, poll, kqueue, epoll.
- * /dev/poll:  we need to flush POLLREMOVE event before closing file
+ * The event filter is deleted just before the closing file.
+ * Has no meaning for select and poll.
+ * kqueue, epoll, rtsig, eventport:  allows to avoid explicit delete,
+ *                                   because filter automatically is deleted
+ *                                   on file close,
+ *
+ * /dev/poll:                        we need to flush POLLREMOVE event
+ *                                   before closing file.
  */
-
 #define NGX_CLOSE_EVENT    1
+
+/*
+ * disable temporarily event filter, this may avoid locks
+ * in kernel malloc()/free(): kqueue.
+ */
 #define NGX_DISABLE_EVENT  2
 
 
