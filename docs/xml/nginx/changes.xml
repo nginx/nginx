@@ -9,6 +9,23 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.13" date="24.09.2007">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не закрывал файл каталога для запроса HEAD,
+если использовался autoindex<br/>
+Спасибо Arkadiusz Patyk.
+</para>
+<para lang="en">
+nginx did not close directory file on HEAD request if autoindex was used.<br/>
+Thanks to Arkadiusz Patyk.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.12" date="21.09.2007">
 
 <change type="change">
