@@ -9,6 +9,232 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.32" date="24.09.2007">
+
+<change type="change">
+<para lang="ru">
+теперь nginx пытается установить директивы worker_priority,
+worker_rlimit_nofile, worker_rlimit_core, worker_rlimit_sigpending
+без привилегий root'а.
+</para>
+<para lang="en">
+now nginx tries to set the "worker_priority", "worker_rlimit_nofile",
+"worker_rlimit_core", and "worker_rlimit_sigpending" without super-user
+privileges.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx экранирует символы пробела и "%" при передаче запроса
+серверу аутентификации почтового прокси-сервера.
+</para>
+<para lang="en">
+now nginx escapes space and "%" in request to a mail proxy authentication
+server.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx экранирует символ "%" в переменной $memcached_key.
+</para>
+<para lang="en">
+now nginx escapes "%" in $memcached_key variable.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+для обновления на лету версий 0.1.x создан специальный сценарий
+<nobr>make upgrade1.</nobr>
+</para>
+<para lang="en">
+the special make target "upgrade1" was defined for online upgrade of
+0.1.x versions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива "add_header Last-Modified ..." меняет строку "Last-Modified"
+в заголовке ответа.
+</para>
+<para lang="en">
+the "add_header Last-Modified ..." directive changes the "Last-Modified"
+response header line.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+почтовый прокси-сервер поддерживает AUTHENTICATE в режиме IMAP.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the mail proxy supports AUTHENTICATE in IMAP mode.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+почтовый прокси-сервер поддерживает STARTTLS в режиме SMTP.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the mail proxy supports STARTTLS in SMTP mode.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не закрывал файл каталога для запроса HEAD,
+если использовался autoindex<br/>
+Спасибо Arkadiusz Patyk.
+</para>
+<para lang="en">
+nginx did not close directory file on HEAD request if autoindex was used.<br/>
+Thanks to Arkadiusz Patyk.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_hide_header и fastcgi_hide_header не скрывали
+строки заголовка ответа с именем больше 32 символов.<br/>
+Спасибо Manlio Perillo.
+</para>
+<para lang="en">
+the "proxy_hide_header" and "fastcgi_hide_header" directives did not
+hide response header lines whose name was longer than 32 characters.<br/>
+Thanks to Manlio Perillo.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+счётчик активных соединений всегда рос при использовании почтового
+прокси-сервера.
+</para>
+<para lang="en">
+active connection counter always increased if mail proxy was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если бэкенд возвращал только заголовок ответа при небуферизированном
+проксировании, то nginx закрывал соединение с бэкендом по таймауту.
+</para>
+<para lang="en">
+if backend returned response header only using non-buffered proxy,
+then nginx closed backend connection on timeout.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал несколько строк "Connection" в заголовке запроса.
+</para>
+<para lang="en">
+nginx did not support several "Connection" request header lines.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+В строку заголовка ответа "Content-Type", указанную в методе
+$r->send_http_header(), не добавлялась кодировка, указанная в директиве charset.
+</para>
+<para lang="en">
+a charset set by the "charset" directive was not appended
+to the "Content-Type" header set by $r->send_http_header().
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании метода /dev/poll
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if /dev/poll method was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не работал на FreeBSD/sparc64.
+</para>
+<para lang="en">
+nginx did not work on FreeBSD/sparc64.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве auth_http был задан неправильный адрес, то
+в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process
+if invalid address was set in the "auth_http" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь по умолчанию nginx использует значение 511 для listen backlog
+на всех платформах, кроме FreeBSD.<br/>
+Спасибо Jiang Hong.
+</para>
+<para lang="en">
+now nginx uses default listen backlog value 511 on all platforms
+except FreeBSD.<br/>
+Thanks to Jiang Hong.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+sendfilev() в Solaris теперь не используется при передаче тела запроса
+FastCGI-серверу через unix domain сокет.
+</para>
+<para lang="en">
+now Solaris sendfilev() is not used to transfer the client request body
+to FastCGI-server via the unix domain socket.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании одного хоста в качестве бэкендов для протоколов HTTP и HTTPS
+без явного указания портов, nginx использовал только один порт&mdash;80 или 443.
+</para>
+<para lang="en">
+if the same host without specified port was used as backend for HTTP and HTTPS,
+then nginx used only one port&mdash;80 or 443.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_ignore_client_abort и fastcgi_ignore_client_abort не работали;
+ошибка появилась в 0.5.13.
+</para>
+<para lang="en">
+the "proxy_ignore_client_abort" and "fastcgi_ignore_client_abort" directives
+did not work;
+bug appeared in 0.5.13.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.31" date="15.08.2007">
 
 <change type="feature">
