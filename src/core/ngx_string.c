@@ -442,7 +442,7 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
 
 
 /*
- * We use ngx_strcasecmp()/ngx_strncasecmp() for 7-bit ASCII string only,
+ * We use ngx_strcasecmp()/ngx_strncasecmp() for 7-bit ASCII strings only,
  * and implement our own ngx_strcasecmp()/ngx_strncasecmp()
  * to avoid libc locale overhead.  Besides, we use the ngx_uint_t's
  * instead of the u_char's, because they are slightly faster.
