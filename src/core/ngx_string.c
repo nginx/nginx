@@ -1299,6 +1299,67 @@ done:
 }
 
 
+uintptr_t
+ngx_escape_html(u_char *dst, u_char *src, size_t size)
+{
+    u_char      ch;
+    ngx_uint_t  i, len;
+
+    if (dst == NULL) {
+
+        len = 0;
+
+        for (i = 0; i < size; i++) {
+            switch (*src++) {
+
+            case '<':
+                len += sizeof("&lt;") - 2;
+                break; 
+
+            case '>':
+                len += sizeof("&gt;") - 2;
+                break; 
+
+            case '&':
+                len += sizeof("&amp;") - 2;
+                break; 
+
+            default:
+                break;
+            }
+        }
+
+        return (uintptr_t) len;
+    }
+
+    for (i = 0; i < size; i++) {
+        ch = *src++;
+
+        switch (ch) {
+
+        case '<':
+            *dst++ = '&'; *dst++ = 'l'; *dst++ = 't'; *dst++ = ';';
+            break;
+
+        case '>':
+            *dst++ = '&'; *dst++ = 'g'; *dst++ = 't'; *dst++ = ';';
+            break;
+
+        case '&':
+            *dst++ = '&'; *dst++ = 'a'; *dst++ = 'm'; *dst++ = 'p';
+            *dst++ = ';';
+            break;
+
+        default:
+            *dst++ = ch;
+            break;
+        }
+    }
+
+    return (uintptr_t) dst;
+}
+
+
 /* ngx_sort() is implemented as insertion sort because we need stable sort */
 
 void
