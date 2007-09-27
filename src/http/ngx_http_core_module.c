@@ -896,7 +896,7 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
 
         if (ngx_http_map_uri_to_path(r, &path, &root, 0) != NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "directory index of \"%V\" is forbidden", &path);
+                          "directory index of \"%s\" is forbidden", path.data);
         }
 
         ngx_http_finalize_request(r, NGX_HTTP_FORBIDDEN);
