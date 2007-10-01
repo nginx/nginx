@@ -369,9 +369,14 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 }
             }
 
-            b->memory = 1;
-            b->pos = ctx->sub.data;
-            b->last = ctx->sub.data + ctx->sub.len;
+            if (ctx->sub.len) {
+                b->memory = 1;
+                b->pos = ctx->sub.data;
+                b->last = ctx->sub.data + ctx->sub.len;
+
+            } else {
+                b->sync = 1;
+            }
 
             cl->buf = b;
             cl->next = NULL;
