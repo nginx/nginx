@@ -126,6 +126,8 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args);
 ngx_int_t ngx_strcasecmp(u_char *s1, u_char *s2);
 ngx_int_t ngx_strncasecmp(u_char *s1, u_char *s2, size_t n);
 
+u_char *ngx_strnstr(u_char *s1, char *s2, size_t n);
+
 u_char *ngx_strstrn(u_char *s1, char *s2, size_t n);
 u_char *ngx_strcasestrn(u_char *s1, char *s2, size_t n);
 
