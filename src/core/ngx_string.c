@@ -503,6 +503,12 @@ ngx_strncasecmp(u_char *s1, u_char *s2, size_t n)
 }
 
 
+/*
+ * ngx_strstrn() and ngx_strcasestrn() are intended to search for static
+ * substring with known length in null-terminated string. The argument n
+ * must be length of the second substring - 1.
+ */
+
 u_char *
 ngx_strstrn(u_char *s1, char *s2, size_t n)
 {
