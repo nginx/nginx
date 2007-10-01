@@ -2636,7 +2636,7 @@ ngx_http_upstream_rewrite_refresh(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     if (r->upstream->rewrite_redirect) {
 
-        p = ngx_strcasestrn(ho->value.data, "url=", 3);
+        p = ngx_strcasestrn(ho->value.data, "url=", 4 - 1);
 
         if (p) {
             rc = r->upstream->rewrite_redirect(r, ho, p + 4 - ho->value.data);
