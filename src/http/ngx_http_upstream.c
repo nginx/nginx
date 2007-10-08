@@ -980,8 +980,7 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
 #endif
     }
 
-    n = u->peer.connection->recv(u->peer.connection, u->buffer.last,
-                                 u->buffer.end - u->buffer.last);
+    n = c->recv(c, u->buffer.last, u->buffer.end - u->buffer.last);
 
     if (n == NGX_AGAIN) {
 #if 0
