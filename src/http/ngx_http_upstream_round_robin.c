@@ -145,7 +145,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     u.host = us->host;
     u.port = (in_port_t) (us->port ? us->port : us->default_port);
 
-    if (ngx_inet_resolve_host(cf, &u) != NGX_OK) {
+    if (ngx_inet_resolve_host(cf->pool, &u) != NGX_OK) {
         if (u.err) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "%s in upstream \"%V\" in %s:%ui",

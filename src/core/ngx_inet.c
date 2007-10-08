@@ -225,7 +225,7 @@ ngx_ptocidr(ngx_str_t *text, void *cidr)
 
 
 ngx_int_t
-ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
+ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u)
 {
     u_char              *p, *host, *port_start;
     size_t               len, port_len;
@@ -273,12 +273,12 @@ ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u)
             return NGX_ERROR;
         }
 
-        u->addrs = ngx_pcalloc(cf->pool, sizeof(ngx_peer_addr_t));
+        u->addrs = ngx_pcalloc(pool, sizeof(ngx_peer_addr_t));
         if (u->addrs == NULL) {
             return NGX_ERROR;
         }
 
-        saun = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_un));
+        saun = ngx_pcalloc(pool, sizeof(struct sockaddr_un));
         if (saun == NULL) {
             return NGX_ERROR;
         }
@@ -408,12 +408,12 @@ no_port:
 
         if (u->host.len) {
 
-           host = ngx_palloc(cf->temp_pool, u->host.len + 1);
-           if (host == NULL) {
-               return NGX_ERROR;
-           }
+            host = ngx_alloc(u->host.len + 1, pool->log);
+            if (host == NULL) {
+                return NGX_ERROR;
+            }
 
-           (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
+            (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
 
             u->addr.in_addr = inet_addr((const char *) host);
 
@@ -421,12 +421,15 @@ no_port:
                 h = gethostbyname((const char *) host);
 
                 if (h == NULL || h->h_addr_list[0] == NULL) {
+                    ngx_free(host);
                     u->err = "host not found";
                     return NGX_ERROR;
                 }
 
                 u->addr.in_addr = *(in_addr_t *) (h->h_addr_list[0]);
             }
+
+            ngx_free(host);
 
         } else {
             u->addr.in_addr = INADDR_ANY;
@@ -453,7 +456,7 @@ no_port:
         return NGX_ERROR;
     }
 
-    if (ngx_inet_resolve_host(cf, u) != NGX_OK) {
+    if (ngx_inet_resolve_host(pool, u) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -462,7 +465,7 @@ no_port:
 
 
 ngx_int_t
-ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u)
+ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
 {
     u_char              *p, *host;
     size_t               len;
@@ -471,7 +474,7 @@ ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u)
     struct hostent      *h;
     struct sockaddr_in  *sin;
 
-    host = ngx_palloc(cf->temp_pool, u->host.len + 1);
+    host = ngx_alloc(u->host.len + 1, pool->log);
     if (host == NULL) {
         return NGX_ERROR;
     }
@@ -484,6 +487,8 @@ ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u)
 
     if (in_addr == INADDR_NONE) {
         h = gethostbyname((char *) host);
+
+        ngx_free(host);
 
         if (h == NULL || h->h_addr_list[0] == NULL) {
             u->err = "host not found";
@@ -499,7 +504,7 @@ ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u)
 
         /* MP: ngx_shared_palloc() */
 
-        u->addrs = ngx_pcalloc(cf->pool, i * sizeof(ngx_peer_addr_t));
+        u->addrs = ngx_pcalloc(pool, i * sizeof(ngx_peer_addr_t));
         if (u->addrs == NULL) {
             return NGX_ERROR;
         }
@@ -508,7 +513,7 @@ ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u)
 
         for (i = 0; h->h_addr_list[i] != NULL; i++) {
 
-            sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
+            sin = ngx_pcalloc(pool, sizeof(struct sockaddr_in));
             if (sin == NULL) {
                 return NGX_ERROR;
             }
@@ -522,7 +527,7 @@ ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u)
 
             len = INET_ADDRSTRLEN - 1 + 1 + sizeof(":65536") - 1;
 
-            p = ngx_palloc(cf->pool, len);
+            p = ngx_palloc(pool, len);
             if (p == NULL) {
                 return NGX_ERROR;
             }
@@ -535,14 +540,16 @@ ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u)
 
     } else {
 
+        ngx_free(host);
+
         /* MP: ngx_shared_palloc() */
 
-        u->addrs = ngx_pcalloc(cf->pool, sizeof(ngx_peer_addr_t));
+        u->addrs = ngx_pcalloc(pool, sizeof(ngx_peer_addr_t));
         if (u->addrs == NULL) {
             return NGX_ERROR;
         }
 
-        sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
+        sin = ngx_pcalloc(pool, sizeof(struct sockaddr_in));
         if (sin == NULL) {
             return NGX_ERROR;
         }
@@ -556,7 +563,7 @@ ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u)
         u->addrs[0].sockaddr = (struct sockaddr *) sin;
         u->addrs[0].socklen = sizeof(struct sockaddr_in);
 
-        p = ngx_palloc(cf->pool, u->host.len + sizeof(":65536") - 1);
+        p = ngx_palloc(pool, u->host.len + sizeof(":65536") - 1);
         if (p == NULL) {
             return NGX_ERROR;
         }
