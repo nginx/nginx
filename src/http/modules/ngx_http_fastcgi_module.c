@@ -2215,7 +2215,7 @@ ngx_http_fastcgi_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     sc.source = &value[1];
     sc.lengths = &flcf->upstream.store_lengths;
     sc.values = &flcf->upstream.store_values;
-    sc.variables = ngx_http_script_variables_count(&value[1]);;
+    sc.variables = ngx_http_script_variables_count(&value[1]);
     sc.complete_lengths = 1;
     sc.complete_values = 1;
 

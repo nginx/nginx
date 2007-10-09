@@ -117,7 +117,7 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         cf->conf_file->file.name.len = filename->len;
         cf->conf_file->file.name.data = filename->data;
         cf->conf_file->file.offset = 0;
-        cf->conf_file->file.log = cf->log;;
+        cf->conf_file->file.log = cf->log;
         cf->conf_file->line = 1;
 
         block = 0;
