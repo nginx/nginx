@@ -1127,7 +1127,7 @@ ngx_http_script_value_code(ngx_http_script_engine_t *e)
     e->sp->data = (u_char *) code->text_data;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
-                   "http script value: \"%V\"", e->sp);
+                   "http script value: \"%v\"", e->sp);
 
     e->sp++;
 }
