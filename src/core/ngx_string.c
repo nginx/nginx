@@ -1354,15 +1354,15 @@ ngx_escape_html(u_char *dst, u_char *src, size_t size)
 
             case '<':
                 len += sizeof("&lt;") - 2;
-                break; 
+                break;
 
             case '>':
                 len += sizeof("&gt;") - 2;
-                break; 
+                break;
 
             case '&':
                 len += sizeof("&amp;") - 2;
-                break; 
+                break;
 
             default:
                 break;

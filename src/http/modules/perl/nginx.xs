@@ -637,11 +637,11 @@ sendfile(r, filename, offset = -1, bytes = 0)
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-    
+
     of.test_dir = 0;
-    of.retest = clcf->open_file_cache_retest; 
-    of.errors = clcf->open_file_cache_errors; 
-    of.events = clcf->open_file_cache_events; 
+    of.retest = clcf->open_file_cache_retest;
+    of.errors = clcf->open_file_cache_errors;
+    of.events = clcf->open_file_cache_events;
 
     path.len = ngx_strlen(filename);
 
@@ -651,7 +651,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
     }
 
     (void) ngx_cpystrn(path.data, filename, path.len + 1);
- 
+
     rc = ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool);
 
     if (rc == NGX_ERROR) {
