@@ -2648,8 +2648,9 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
-    if (ctx->timefmt.len == sizeof("%s") - 1
-        && ctx->timefmt.data[0] == '%' && ctx->timefmt.data[1] == 's')
+    if (ctx == NULL
+        || (ctx->timefmt.len == sizeof("%s") - 1
+            && ctx->timefmt.data[0] == '%' && ctx->timefmt.data[1] == 's'))
     {
         v->data = ngx_palloc(r->pool, NGX_TIME_T_LEN);
         if (v->data == NULL) {
