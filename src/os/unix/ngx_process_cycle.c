@@ -14,7 +14,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
     ngx_int_t type);
 static void ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type);
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo);
-static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle);
+static ngx_uint_t ngx_reap_children(ngx_cycle_t *cycle);
 static void ngx_master_process_exit(ngx_cycle_t *cycle);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static void ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority);
@@ -157,9 +157,9 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_reap) {
             ngx_reap = 0;
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "reap childs");
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "reap children");
 
-            live = ngx_reap_childs(cycle);
+            live = ngx_reap_children(cycle);
         }
 
         if (!live && (ngx_terminate || ngx_quit)) {
@@ -496,7 +496,7 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 
 
 static ngx_uint_t
-ngx_reap_childs(ngx_cycle_t *cycle)
+ngx_reap_children(ngx_cycle_t *cycle)
 {
     ngx_int_t         i, n;
     ngx_uint_t        live;

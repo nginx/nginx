@@ -17,7 +17,7 @@
 typedef struct {
     u_char             *md5_mask;
     char               *md5;
-    int                 cachable;
+    int                 cacheable;
 
     int                 busy;
     int                 max_busy;
@@ -41,8 +41,8 @@ typedef struct {
 
 
 int ngx_http_busy_lock(ngx_http_busy_lock_t *bl, ngx_http_busy_lock_ctx_t *bc);
-int ngx_http_busy_lock_cachable(ngx_http_busy_lock_t *bl,
-                                ngx_http_busy_lock_ctx_t *bc, int lock);
+int ngx_http_busy_lock_cacheable(ngx_http_busy_lock_t *bl,
+                                 ngx_http_busy_lock_ctx_t *bc, int lock);
 void ngx_http_busy_unlock(ngx_http_busy_lock_t *bl,
                           ngx_http_busy_lock_ctx_t *bc);
 

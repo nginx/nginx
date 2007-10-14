@@ -505,7 +505,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     if (flcf->params_len) {
         ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
 
-        ngx_http_script_flush_no_cachable_variables(r, flcf->flushes);
+        ngx_http_script_flush_no_cacheable_variables(r, flcf->flushes);
         le.flushed = 1;
 
         le.ip = flcf->params_len->elts;
@@ -1186,8 +1186,8 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                 u->state->status = u->headers_in.status_n;
 #if 0
-                if (u->cachable) {
-                    u->cachable = ngx_http_upstream_is_cachable(r);
+                if (u->cacheable) {
+                    u->cacheable = ngx_http_upstream_is_cacheable(r);
                 }
 #endif
 
@@ -1610,7 +1610,7 @@ ngx_http_fastcgi_add_variables(ngx_conf_t *cf)
     ngx_http_variable_t  *var;
 
     var = ngx_http_add_variable(cf, &ngx_http_fastcgi_script_name,
-                                NGX_HTTP_VAR_NOHASH|NGX_HTTP_VAR_NOCACHABLE);
+                                NGX_HTTP_VAR_NOHASH|NGX_HTTP_VAR_NOCACHEABLE);
     if (var == NULL) {
         return NGX_ERROR;
     }
@@ -2104,7 +2104,7 @@ ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
 
     if (r->uri.len) {
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
 
         flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
@@ -2128,7 +2128,7 @@ ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
     } else {
         v->len = 0;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = NULL;
 

@@ -9,7 +9,7 @@
 #include <ngx_event.h>
 
 
-static ngx_int_t ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
+static ngx_int_t ngx_event_busy_lock_look_cacheable(ngx_event_busy_lock_t *bl,
     ngx_event_busy_lock_ctx_t *ctx);
 static void ngx_event_busy_lock_handler(ngx_event_t *ev);
 static void ngx_event_busy_lock_posted_handler(ngx_event_t *ev);
@@ -65,14 +65,14 @@ ngx_event_busy_lock(ngx_event_busy_lock_t *bl, ngx_event_busy_lock_ctx_t *ctx)
 
 
 ngx_int_t
-ngx_event_busy_lock_cachable(ngx_event_busy_lock_t *bl,
+ngx_event_busy_lock_cacheable(ngx_event_busy_lock_t *bl,
     ngx_event_busy_lock_ctx_t *ctx)
 {
     ngx_int_t  rc;
 
     ngx_mutex_lock(bl->mutex);
 
-    rc = ngx_event_busy_lock_look_cachable(bl, ctx);
+    rc = ngx_event_busy_lock_look_cacheable(bl, ctx);
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ctx->event->log, 0,
                    "event busy lock: %d w:%d mw:%d",
@@ -201,14 +201,14 @@ ngx_event_busy_lock_cancel(ngx_event_busy_lock_t *bl,
 
 
 static ngx_int_t
-ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
+ngx_event_busy_lock_look_cacheable(ngx_event_busy_lock_t *bl,
     ngx_event_busy_lock_ctx_t *ctx)
 {
     ngx_int_t    free;
-    ngx_uint_t   i, bit, cachable, mask;
+    ngx_uint_t   i, bit, cacheable, mask;
 
     bit = 0;
-    cachable = 0;
+    cacheable = 0;
     free = -1;
 
 #if (NGX_SUPPRESS_WARN)
@@ -227,14 +227,14 @@ ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
                 ctx->slot = i;
                 return NGX_AGAIN;
             }
-            cachable++;
+            cacheable++;
 
         } else if (free == -1) {
             free = i;
         }
 
-        if (cachable == bl->cachable) {
-            if (free == -1 && cachable < bl->max_busy) {
+        if (cacheable == bl->cacheable) {
+            if (free == -1 && cacheable < bl->max_busy) {
                 free = i + 1;
             }
 
@@ -259,7 +259,7 @@ ngx_event_busy_lock_look_cachable(ngx_event_busy_lock_t *bl,
     bl->md5_mask[free / 8] |= 1 << (free & 7);
     ctx->slot = free;
 
-    bl->cachable++;
+    bl->cacheable++;
     bl->busy++;
 
     return NGX_OK;

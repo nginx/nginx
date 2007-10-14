@@ -397,7 +397,7 @@ ngx_http_browser_add_variable(ngx_conf_t *cf)
 
     for (var = ngx_http_browsers; var->name.len; var++) {
 
-        v = ngx_http_add_variable(cf, &var->name, NGX_HTTP_VAR_CHANGABLE);
+        v = ngx_http_add_variable(cf, &var->name, NGX_HTTP_VAR_CHANGEABLE);
         if (v == NULL) {
             return NGX_ERROR;
         }
@@ -673,7 +673,7 @@ ngx_http_modern_browser_value(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     bcf->modern_browser_value->len = value[1].len;
     bcf->modern_browser_value->valid = 1;
-    bcf->modern_browser_value->no_cachable = 0;
+    bcf->modern_browser_value->no_cacheable = 0;
     bcf->modern_browser_value->not_found = 0;
     bcf->modern_browser_value->data = value[1].data;
 
@@ -698,7 +698,7 @@ ngx_http_ancient_browser_value(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     bcf->ancient_browser_value->len = value[1].len;
     bcf->ancient_browser_value->valid = 1;
-    bcf->ancient_browser_value->no_cachable = 0;
+    bcf->ancient_browser_value->no_cacheable = 0;
     bcf->ancient_browser_value->not_found = 0;
     bcf->ancient_browser_value->data = value[1].data;
 

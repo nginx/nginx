@@ -314,7 +314,7 @@ ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
     for (i = 0; i < cmcf->variables.nelts; i++) {
-        if (r->variables[i].no_cachable) {
+        if (r->variables[i].no_cacheable) {
             r->variables[i].valid = 0;
             r->variables[i].not_found = 0;
         }
@@ -351,7 +351,7 @@ ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
 
 
 void
-ngx_http_script_flush_no_cachable_variables(ngx_http_request_t *r,
+ngx_http_script_flush_no_cacheable_variables(ngx_http_request_t *r,
     ngx_array_t *indices)
 {
     ngx_uint_t  n, *index;
@@ -359,7 +359,7 @@ ngx_http_script_flush_no_cachable_variables(ngx_http_request_t *r,
     if (indices) {
         index = indices->elts;
         for (n = 0; n < indices->nelts; n++) {
-            if (r->variables[index[n]].no_cachable) {
+            if (r->variables[index[n]].no_cacheable) {
                 r->variables[index[n]].valid = 0;
                 r->variables[index[n]].not_found = 0;
             }
@@ -1152,7 +1152,7 @@ ngx_http_script_set_var_code(ngx_http_script_engine_t *e)
 
     r->variables[code->index].len = e->sp->len;
     r->variables[code->index].valid = 1;
-    r->variables[code->index].no_cachable = 0;
+    r->variables[code->index].no_cacheable = 0;
     r->variables[code->index].not_found = 0;
     r->variables[code->index].data = e->sp->data;
 }

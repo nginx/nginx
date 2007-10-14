@@ -493,7 +493,7 @@ ngx_http_userid_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     }
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     ngx_sprintf(v->data, "%V=%08XD%08XD%08XD%08XD",
