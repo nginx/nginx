@@ -9,6 +9,127 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.14" date="15.10.2007">
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию команда SSI echo использует кодирование entity.
+</para>
+<para lang="en">
+now by default the "echo" SSI command uses entity encoding.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр encoding в команде SSI echo.
+</para>
+<para lang="en">
+the "encoding" parameter in the "echo" SSI command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директиву access_log можно использовать внутри блока limit_except.
+</para>
+<para lang="en">
+the "access_log" directive may be used inside the "limit_except" block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если все сервера апстрима оказывались недоступными,
+то до восстановления работоспособности
+у всех серверов вес становился равным одному;
+ошибка появилась в 0.6.6.
+</para>
+<para lang="en">
+if all upstream servers were failed, then all servers had got weight
+the was equal one until servers became alive;
+bug appeared in 0.6.6.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменных $date_local и $date_gmt вне модуля
+ngx_http_ssi_filter_module в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process
+if $date_local and $date_gmt were used outside the ngx_http_ssi_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании включённом отладочном логе
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if debug log was enabled.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ngx_http_memcached_module не устанавливал upstream_response_time.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+ngx_http_memcached_module did not set $upstream_response_time.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочий процесс мог зациклиться при использовании memcached.
+</para>
+<para lang="en">
+a worker process may got caught in an endless loop, if the memcached was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx распознавал параметры "close" и "keep-alive" в строке "Connection"
+в заголовке запроса только, если они были в нижнем регистре;
+ошибка появилась в 0.6.11.
+</para>
+<para lang="en">
+nginx supported low case only "close" and "keep-alive" values
+in the "Connection" request header line;
+bug appeared in 0.6.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+sub_filter не работал с пустую строку замены.
+</para>
+<para lang="en">
+sub_filter did not work with empty substitution.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в парсинге sub_filter.
+</para>
+<para lang="en">
+in sub_filter parsing.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.13" date="24.09.2007">
 
 <change type="bugfix">
