@@ -1035,7 +1035,6 @@ static void
 ngx_channel_handler(ngx_event_t *ev)
 {
     ngx_int_t          n;
-    ngx_socket_t       fd;
     ngx_channel_t      ch;
     ngx_connection_t  *c;
 
