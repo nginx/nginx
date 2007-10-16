@@ -19,6 +19,11 @@
 #endif
 
 
+#ifdef __CYGWIN__
+#define timezonevar             /* timezone is variable */
+#endif
+
+
 #include <sys/types.h>
 #include <sys/time.h>
 #if (NGX_HAVE_UNISTD_H)
@@ -63,6 +68,15 @@
 #if (NGX_HAVE_LIMITS_H)
 #include <limits.h>             /* IOV_MAX */
 #endif
+
+#if (NGX_HAVE_MALLOC_H)
+#include <malloc.h>             /* memalign() */
+#endif
+
+#if (NGX_HAVE_CRYPT_H)
+#include <crypt.h>
+#endif
+
 
 #ifndef IOV_MAX
 #define IOV_MAX   16
