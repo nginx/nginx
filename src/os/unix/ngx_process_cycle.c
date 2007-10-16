@@ -1054,7 +1054,7 @@ ngx_channel_handler(ngx_event_t *ev)
 
     if (n == NGX_ERROR) {
 
-        ngx_free_connection(c);
+        ngx_close_connection(c);
 
         fd = c->fd;
         c->fd = (ngx_socket_t) -1;
