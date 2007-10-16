@@ -12,12 +12,7 @@
 #include <ngx_event.h>
 #include <ngx_event_connect.h>
 #include <ngx_mysql.h>
-
-#if (NGX_HAVE_OPENSSL_SHA1_H)
-#include <openssl/sha.h>
-#else
-#include <sha.h>
-#endif
+#include <ngx_sha1.h>
 
 
 #define NGX_MYSQL_LONG_PASSWORD       0x0001
@@ -142,7 +137,7 @@ ngx_mysql_read_server_greeting(ngx_event_t *rev)
     ngx_mysql_greeting1_pkt_t  *gr1;
     ngx_mysql_greeting2_pkt_t  *gr2;
     ngx_mysql_auth_pkt_t       *auth;
-    SHA_CTX                     sha;
+    ngx_sha1_t                  sha;
     u_char                      hash1[20], hash2[20];
 
     c = rev->data;
@@ -241,19 +236,19 @@ ngx_mysql_read_server_greeting(ngx_event_t *rev)
 
         *p++ = (u_char) 20;
 
-        SHA1_Init(&sha);
-        SHA1_Update(&sha, m->passwd->data, m->passwd->len);
-        SHA1_Final(hash1, &sha);
+        ngx_sha1_init(&sha);
+        ngx_sha1_update(&sha, m->passwd->data, m->passwd->len);
+        ngx_sha1_final(hash1, &sha);
 
-        SHA1_Init(&sha);
-        SHA1_Update(&sha, hash1, 20);
-        SHA1_Final(hash2, &sha);
+        ngx_sha1_init(&sha);
+        ngx_sha1_update(&sha, hash1, 20);
+        ngx_sha1_final(hash2, &sha);
 
-        SHA1_Init(&sha);
-        SHA1_Update(&sha, gr2->salt1, 8);
-        SHA1_Update(&sha, gr2->salt2, 12);
-        SHA1_Update(&sha, hash2, 20);
-        SHA1_Final(hash2, &sha);
+        ngx_sha1_init(&sha);
+        ngx_sha1_update(&sha, gr2->salt1, 8);
+        ngx_sha1_update(&sha, gr2->salt2, 12);
+        ngx_sha1_update(&sha, hash2, 20);
+        ngx_sha1_final(hash2, &sha);
 
         for (i = 0; i < 20; i++) {
             *p++ = (u_char) (hash1[i] ^ hash2[i]);
