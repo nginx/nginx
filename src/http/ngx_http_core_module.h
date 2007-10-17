@@ -185,7 +185,6 @@ typedef struct {
 #if (NGX_PCRE)
     ngx_uint_t                 nregex;
     ngx_http_server_name_t    *regex;
-
 #endif
 
     /* the default server configuration for this address:port */
