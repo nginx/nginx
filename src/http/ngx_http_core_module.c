@@ -2292,9 +2292,12 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
 
+#if (NGX_PCRE)
+        sn->regex = NULL;
+#endif
+        sn->core_srv_conf = conf;
         sn->name.len = conf->server_name.len;
         sn->name.data = conf->server_name.data;
-        sn->core_srv_conf = conf;
     }
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
