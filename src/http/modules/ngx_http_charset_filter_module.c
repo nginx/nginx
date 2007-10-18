@@ -1519,9 +1519,8 @@ ngx_http_charset_postconfiguration(ngx_conf_t *cf)
         }
 
         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                      " no \"charset_map\" between the charsets "
-                      "\"%V\" and \"%V\"",
-                      &charset[c].name, &charset[recode[i].dst].name);
+                   "no \"charset_map\" between the charsets \"%V\" and \"%V\"",
+                   &charset[c].name, &charset[recode[i].dst].name);
         return NGX_ERROR;
 
     next:
