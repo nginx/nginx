@@ -21,6 +21,7 @@
 
 #ifdef __CYGWIN__
 #define timezonevar             /* timezone is variable */
+#define NGX_BROKEN_SCM_RIGHTS   1
 #endif
 
 
