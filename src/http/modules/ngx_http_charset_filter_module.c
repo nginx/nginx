@@ -367,7 +367,7 @@ no_charset_map:
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "no \"charset_map\" between the charsets \"%V\" and \"%V\"",
-                   from, to);
+                  from, to);
 
     return ngx_http_next_header_filter(r);
 }
