@@ -688,7 +688,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
         && clcf->client_max_body_size < r->headers_in.content_length_n)
     {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "client intented to send too large body: %O bytes",
+                      "client intended to send too large body: %O bytes",
                       r->headers_in.content_length_n);
 
         ngx_http_finalize_request(r, NGX_HTTP_REQUEST_ENTITY_TOO_LARGE);
