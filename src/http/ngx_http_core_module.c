@@ -185,6 +185,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_srv_conf_t, ignore_invalid_headers),
       NULL },
 
+    { ngx_string("merge_slashes"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_core_srv_conf_t, merge_slashes),
+      NULL },
+
     { ngx_string("location"),
       NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE12,
       ngx_http_core_location,
@@ -2233,6 +2240,7 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
     cscf->client_header_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->optimize_server_names = NGX_CONF_UNSET;
     cscf->ignore_invalid_headers = NGX_CONF_UNSET;
+    cscf->merge_slashes = NGX_CONF_UNSET;
 
     return cscf;
 }
@@ -2324,6 +2332,8 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->ignore_invalid_headers,
                               prev->ignore_invalid_headers, 1);
+
+    ngx_conf_merge_value(conf->merge_slashes, prev->merge_slashes, 1);
 
     return NGX_CONF_OK;
 }

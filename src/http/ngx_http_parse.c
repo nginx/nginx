@@ -908,7 +908,7 @@ header_done:
 
 
 ngx_int_t
-ngx_http_parse_complex_uri(ngx_http_request_t *r)
+ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 {
     u_char  c, ch, decoded, *p, *u;
     enum {
@@ -1016,8 +1016,12 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
+                break;
 #endif
             case '/':
+                if (merge_slashes) {
+                    *u++ = ch;
+                }
                 break;
             case '.':
                 state = sw_dot;
