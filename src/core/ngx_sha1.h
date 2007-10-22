@@ -22,9 +22,9 @@
 typedef SHA_CTX  ngx_sha1_t;
 
 
-#define  ngx_sha1_init    SHA1_Init
-#define  ngx_sha1_update  SHA1_Update
-#define  ngx_sha1_final   SHA1_Final
+#define ngx_sha1_init    SHA1_Init
+#define ngx_sha1_update  SHA1_Update
+#define ngx_sha1_final   SHA1_Final
 
 
 #endif /* _NGX_SHA1_H_INCLUDED_ */
