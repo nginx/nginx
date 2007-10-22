@@ -9,6 +9,108 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.15" date="22.10.2007">
+
+<change type="feature">
+<para lang="ru">
+совместимость с cygwin.<br/>
+Спасибо Владимиру Кутакову.
+</para>
+<para lang="en">
+cygwin compatibility.<br/>
+Thanks to Vladimir Kutakov.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива merge_slashes.
+</para>
+<para lang="en">
+the "merge_slashes" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива gzip_vary.
+</para>
+<para lang="en">
+the "gzip_vary" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server_tokens.
+</para>
+<para lang="en">
+the "server_tokens" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не раскодировал URI в команде SSI include.
+</para>
+<para lang="en">
+nginx did not unescape URI in the "include" SSI command.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменной в директивах charset или source_charset
+на старте или во время переконфигурации происходил segmentation fault,
+</para>
+<para lang="en">
+the segmentation fault was occurred on start or while reconfiguration
+if variable was used in the "charset" or "source_charset" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx возвращал ошибку 400 на запросы вида
+<nobr>"GET http://www.domain.com HTTP/1.0"</nobr>.<br/>
+Спасибо James Oakley.
+</para>
+<para lang="en">
+nginx returned the 400 response on requests like
+<nobr>"GET http://www.domain.com HTTP/1.0"</nobr>.<br/>
+Thanks to James Oakley.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после перенаправления запроса с телом запроса с помощью директивы
+error_page nginx пытался снова прочитать тело запроса;
+ошибка появилась в 0.6.7.
+</para>
+<para lang="en">
+if request with request body was redirected using the "error_page" directive,
+then nginx tried to read the request body again;
+bug appeared in 0.6.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе происходил segmentation fault, если у сервера,
+обрабатывающему запрос, не был явно определён server_name;
+ошибка появилась в 0.6.7.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process
+if no server_name was explicitly defined for server processing request;
+bug appeared in 0.6.7.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.14" date="15.10.2007">
 
 <change type="change">
