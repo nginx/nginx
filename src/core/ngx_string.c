@@ -1243,7 +1243,9 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
 
         switch (state) {
         case sw_usual:
-            if (ch == '?' && type == NGX_UNESCAPE_URI) {
+            if (ch == '?'
+                && (type & (NGX_UNESCAPE_URI|NGX_UNESCAPE_REDIRECT)))
+            {
                 *d++ = ch;
                 goto done;
             }
@@ -1286,7 +1288,7 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
             if (ch >= '0' && ch <= '9') {
                 ch = (u_char) ((decoded << 4) + ch - '0');
 
-                if (type == NGX_UNESCAPE_URI) {
+                if (type & NGX_UNESCAPE_REDIRECT) {
                     if (ch > '%' && ch < 0x7f) {
                         *d++ = ch;
                         break;
@@ -1306,7 +1308,17 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
             if (c >= 'a' && c <= 'f') {
                 ch = (u_char) ((decoded << 4) + c - 'a' + 10);
 
-                if (type == NGX_UNESCAPE_URI) {
+                if (type & NGX_UNESCAPE_URI) {
+                    if (ch == '?') {
+                        *d++ = ch;
+                        goto done;
+                    }
+
+                    *d++ = ch;
+                    break;
+                }
+
+                if (type & NGX_UNESCAPE_REDIRECT) {
                     if (ch == '?') {
                         *d++ = ch;
                         goto done;

@@ -750,7 +750,8 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
         dst = e->buf.data;
         src = e->buf.data;
 
-        ngx_unescape_uri(&dst, &src, e->pos - e->buf.data, NGX_UNESCAPE_URI);
+        ngx_unescape_uri(&dst, &src, e->pos - e->buf.data,
+                         NGX_UNESCAPE_REDIRECT);
 
         if (src < e->pos) {
             dst = ngx_copy(dst, src, e->pos - src);
