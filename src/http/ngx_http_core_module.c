@@ -1605,7 +1605,7 @@ ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name)
     }
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "could not find name location \"%V\"", name);
+                  "could not find named location \"%V\"", name);
 
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     return NGX_DONE;
