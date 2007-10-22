@@ -368,11 +368,11 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.server == NULL) {
         if (clcf->server_tokens) {
-            p = ngx_http_server_full_string;
+            p = (u_char *) ngx_http_server_full_string;
             len = sizeof(ngx_http_server_full_string) - 1;
 
         } else {
-            p = ngx_http_server_string;
+            p = (u_char *) ngx_http_server_string;
             len = sizeof(ngx_http_server_string) - 1;
         }
 
