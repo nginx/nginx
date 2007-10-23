@@ -473,10 +473,9 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
         if (value[i].data[0] == '/' && i != cf->args->nelts - 1) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                                "only the last index in \"index\" directive "
-                               "may be absolute");
-            return NGX_CONF_ERROR;
+                               "should be absolute");
         }
 
         if (value[i].len == 0) {
