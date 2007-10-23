@@ -503,6 +503,10 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 ilcf->max_index_len = index->name.len;
             }
 
+            if (index->name.data[0] == '/') {
+                continue;
+            }
+
             /* include the terminating '\0' to the length to use ngx_copy() */
             index->name.len++;
 
