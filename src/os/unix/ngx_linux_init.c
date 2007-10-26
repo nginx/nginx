@@ -8,12 +8,8 @@
 #include <ngx_core.h>
 
 
-static ngx_int_t ngx_linux_procfs(char *name, char *buf, size_t len,
-    ngx_log_t *log);
-
-
-char  ngx_linux_kern_ostype[50];
-char  ngx_linux_kern_osrelease[50];
+u_char  ngx_linux_kern_ostype[50];
+u_char  ngx_linux_kern_osrelease[50];
 
 int   ngx_linux_rtsig_max;
 
@@ -35,26 +31,21 @@ static ngx_os_io_t ngx_linux_io = {
 ngx_int_t
 ngx_os_specific_init(ngx_log_t *log)
 {
-    int        name[2];
-    size_t     len;
-    ngx_err_t  err;
+    int             name[2];
+    size_t          len;
+    ngx_err_t       err;
+    struct utsname  u;
 
-    if (ngx_linux_procfs("/proc/sys/kernel/ostype",
-                         ngx_linux_kern_ostype,
-                         sizeof(ngx_linux_kern_ostype), log)
-        == -1)
-    {
+    if (uname(&u) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno, "uname() failed");
         return NGX_ERROR;
     }
 
-    if (ngx_linux_procfs("/proc/sys/kernel/osrelease",
-                         ngx_linux_kern_osrelease,
-                         sizeof(ngx_linux_kern_osrelease), log)
-        == -1)
-    {
-        return NGX_ERROR;
-    }
+    (void) ngx_cpystrn(ngx_linux_kern_ostype, (u_char *) u.sysname,
+                       sizeof(ngx_linux_kern_ostype));
 
+    (void) ngx_cpystrn(ngx_linux_kern_osrelease, (u_char *) u.release,
+                       sizeof(ngx_linux_kern_osrelease));
 
     name[0] = CTL_KERN;
     name[1] = KERN_RTSIGMAX;
@@ -88,37 +79,4 @@ ngx_os_specific_status(ngx_log_t *log)
 
     ngx_log_error(NGX_LOG_NOTICE, log, 0, "sysctl(KERN_RTSIGMAX): %d",
                   ngx_linux_rtsig_max);
-}
-
-
-static ngx_int_t
-ngx_linux_procfs(char *name, char *buf, size_t len, ngx_log_t *log)
-{
-    int       n;
-    ngx_fd_t  fd;
-
-    fd = open(name, O_RDONLY);
-
-    if (fd == NGX_INVALID_FILE) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "open(\"%s\") failed", name);
-
-        return NGX_ERROR;
-    }
-
-    n = read(fd, buf, len);
-
-    if (n == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "read(\"%s\") failed", name);
-
-    } else {
-        if (buf[n - 1] == '\n') {
-            buf[--n] = '\0';
-        }
-    }
-
-    ngx_close_file(fd);
-
-    return n;
 }
