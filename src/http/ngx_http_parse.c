@@ -124,6 +124,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_major_digit,
         sw_first_minor_digit,
         sw_minor_digit,
+        sw_spaces_after_digit,
         sw_almost_done
     } state;
 
@@ -636,11 +637,30 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 goto done;
             }
 
+            if (ch == ' ') {
+                state = sw_spaces_after_digit;
+                break;
+            }
+
             if (ch < '0' || ch > '9') {
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
             r->http_minor = r->http_minor * 10 + ch - '0';
+            break;
+
+        case sw_spaces_after_digit:
+            switch (ch) {
+            case ' ':
+                break;
+            case CR:
+                state = sw_almost_done;
+                break;
+            case LF:
+                goto done;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
             break;
 
         /* end of request line */
