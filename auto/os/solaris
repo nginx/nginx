@@ -9,6 +9,8 @@ CORE_DEPS="$UNIX_DEPS $SOLARIS_DEPS"
 CORE_SRCS="$UNIX_SRCS $SOLARIS_SRCS "
 CORE_LIBS="$CORE_LIBS -lsocket -lnsl -lrt"
 
+NGX_RPATH=YES
+
 # Solaris's make does not support a blank line between target and rules
 ngx_spacer=
 
