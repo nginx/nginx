@@ -127,6 +127,8 @@ ngx_http_empty_gif_handler(ngx_http_request_t *r)
 
     if (r->method == NGX_HTTP_HEAD) {
         r->headers_out.status = NGX_HTTP_OK;
+        r->headers_out.content_length_n = sizeof(ngx_empty_gif);
+        r->headers_out.last_modified_time = 23349600;
 
         return ngx_http_send_header(r);
     }
