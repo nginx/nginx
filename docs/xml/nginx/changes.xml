@@ -9,15 +9,53 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.16" date="29.10.2007">
+
+<change type="change">
+<para lang="ru">
+теперь на Linux используется uname(2) вместо procfs.<br/>
+Спасибо Илье Новикову.
+</para>
+<para lang="en">
+now the uname(2) is used on Linux instead of procfs.<br/>
+Thanks to Ilya Novikov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве error_page использовался символ "?", то он экранировался
+при проксировании запроса;
+ошибка появилась в 0.6.11.
+</para>
+<para lang="en">
+if the "?" character was in a "error_page" directive, then it was escaped
+in a proxied request;
+bug appeared in 0.6.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с mget.
+</para>
+<para lang="en">
+compatibility with mget.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.15" date="22.10.2007">
 
 <change type="feature">
 <para lang="ru">
-совместимость с cygwin.<br/>
+совместимость с Cygwin.<br/>
 Спасибо Владимиру Кутакову.
 </para>
 <para lang="en">
-cygwin compatibility.<br/>
+Cygwin compatibility.<br/>
 Thanks to Vladimir Kutakov.
 </para>
 </change>
@@ -606,7 +644,7 @@ response header line.
 то на следующий запрос nginx возвращал 400.
 </para>
 <para lang="en">
-if an response different than 200 was returned to an request with body
+if a response different than 200 was returned to a request with body
 and connection went to the keep-alive state after the request, then
 nginx returned 400 for the next request.
 </para>
@@ -643,7 +681,7 @@ Thanks to Jiang Hong.
 ошибка появилась в 0.6.6.
 </para>
 <para lang="en">
-a worker process may got caught in an endless loop, if an "server" inside
+a worker process may got caught in an endless loop, if a "server" inside
 "upstream" block was marked as "down";
 bug appeared in 0.6.6.
 </para>
@@ -1478,7 +1516,7 @@ bug appeared in 0.3.50.
 </para>
 <para lang="en">
 the "[alert] zero size buf" error when FastCGI server was used and
-an request body written in a temporary file was multiple of 32K.
+a request body written in a temporary file was multiple of 32K.
 </para>
 </change>
 
@@ -2463,7 +2501,7 @@ ngx_http_perl_module did not work if perl was called recursively.
 nginx игнорировал имя сервера в строке запроса.
 </para>
 <para lang="en">
-nginx ignored a host name in an request line.
+nginx ignored a host name in a request line.
 </para>
 </change>
 
@@ -2541,7 +2579,7 @@ the "limit_except" directive supports all WebDAV methods.
 </para>
 <para lang="en">
 if the "add_before_body" directive was used without
-the "add_after_body" directive, then an response did not transferred complete.
+the "add_after_body" directive, then a response did not transferred complete.
 </para>
 </change>
 
@@ -2761,7 +2799,7 @@ the ngx_http_perl_module now tests the nginx.pm module version.
 </para>
 <para lang="en">
 if an "include" SSI command were before another "include" SSI command
-with an "wait" parameter, then the "wait" parameter might not work.
+with a "wait" parameter, then the "wait" parameter might not work.
 </para>
 </change>
 
@@ -2815,7 +2853,7 @@ the "charset" and "source_charset" directives support the variables.
 </para>
 <para lang="en">
 if an "include" SSI command were before another "include" SSI command
-with an "wait" parameter, then the "wait" parameter might not work.
+with a "wait" parameter, then the "wait" parameter might not work.
 </para>
 </change>
 
@@ -3000,7 +3038,7 @@ the ngx_http_browser_module.
 </para>
 <para lang="en">
 a segmentation fault may occur while redirecting the 400 error
-to the proxied server using an "proxy_pass" directive.
+to the proxied server using a "proxy_pass" directive.
 </para>
 </change>
 
@@ -3012,7 +3050,7 @@ unix domain сокет;
 </para>
 <para lang="en">
 a segmentation fault occurred if an unix domain socket was used in
-an "proxy_pass" directive;
+a "proxy_pass" directive;
 bug appeared in 0.3.47.
 </para>
 </change>
@@ -3392,7 +3430,7 @@ operators.
 происходил segmentation fault, если запрос возвращал редирект.
 </para>
 <para lang="en">
-a segmentation fault occurred if an request returned an redirect and
+a segmentation fault occurred if a request returned a redirect and
 some sent to client header lines were logged in the access log.
 </para>
 </change>
