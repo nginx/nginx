@@ -1205,10 +1205,10 @@ static ngx_int_t
 ngx_http_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    if (ngx_strstr(h->value.data, "close")) {
+    if (ngx_strcasestrn(h->value.data, "close", 5 - 1)) {
         r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
 
-    } else if (ngx_strstr(h->value.data, "keep-alive")) {
+    } else if (ngx_strcasestrn(h->value.data, "keep-alive", 10 - 1)) {
         r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
     }
 
@@ -1320,7 +1320,8 @@ ngx_http_process_request_header(ngx_http_request_t *r)
     }
 
     if (r->headers_in.transfer_encoding
-        && ngx_strstr(r->headers_in.transfer_encoding->value.data, "chunked"))
+        && ngx_strcasestrn(r->headers_in.transfer_encoding->value.data,
+                           "chunked", 7 - 1))
     {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent \"Transfer-Encoding: chunked\" header");
@@ -1352,7 +1353,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
         user_agent = r->headers_in.user_agent->value.data;
 
-        ua = (u_char *) ngx_strstr(user_agent, "MSIE");
+        ua = ngx_strstrn(user_agent, "MSIE", 4 - 1);
 
         if (ua && ua + 8 < user_agent + r->headers_in.user_agent->value.len) {
 
@@ -1370,7 +1371,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 #endif
         }
 
-        if (ngx_strstr(user_agent, "Opera")) {
+        if (ngx_strstrn(user_agent, "Opera", 5 - 1)) {
             r->headers_in.opera = 1;
             r->headers_in.msie = 0;
             r->headers_in.msie4 = 0;
@@ -1378,10 +1379,10 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
         if (!r->headers_in.msie && !r->headers_in.opera) {
 
-            if (ngx_strstr(user_agent, "Gecko/")) {
+            if (ngx_strstrn(user_agent, "Gecko/", 6 - 1)) {
                 r->headers_in.gecko = 1;
 
-            } else if (ngx_strstr(user_agent, "Konqueror")) {
+            } else if (ngx_strstrn(user_agent, "Konqueror", 9 - 1)) {
                 r->headers_in.konqueror = 1;
             }
         }

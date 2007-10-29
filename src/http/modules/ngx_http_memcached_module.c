@@ -425,16 +425,16 @@ ngx_http_memcached_filter(void *data, ssize_t bytes)
     if (u->length == ctx->rest) {
 
         if (ngx_strncmp(b->last,
-                        ngx_http_memcached_end + NGX_HTTP_MEMCACHED_END
-                                                 - ctx->rest,
-                        bytes) != 0)
+                   ngx_http_memcached_end + NGX_HTTP_MEMCACHED_END - ctx->rest,
+                   ctx->rest)
+            != 0)
         {
             ngx_log_error(NGX_LOG_ERR, ctx->request->connection->log, 0,
                           "memcached sent invalid trailer");
         }
 
-        u->length -= bytes;
-        ctx->rest -= bytes;
+        u->length = 0;
+        ctx->rest = 0;
 
         return NGX_OK;
     }
@@ -453,7 +453,8 @@ ngx_http_memcached_filter(void *data, ssize_t bytes)
 
     *ll = cl;
 
-    cl->buf->pos = b->last;
+    last = b->last;
+    cl->buf->pos = last;
     b->last += bytes;
     cl->buf->last = b->last;
 
@@ -461,20 +462,19 @@ ngx_http_memcached_filter(void *data, ssize_t bytes)
                    "memcached filter bytes:%z size:%z length:%z rest:%z",
                    bytes, b->last - b->pos, u->length, ctx->rest);
 
-    if (b->last - b->pos <= (ssize_t) (u->length - NGX_HTTP_MEMCACHED_END)) {
+    if (bytes <= (ssize_t) (u->length - NGX_HTTP_MEMCACHED_END)) {
         u->length -= bytes;
         return NGX_OK;
     }
 
-
-    last = b->pos + u->length - NGX_HTTP_MEMCACHED_END;
+    last += u->length - NGX_HTTP_MEMCACHED_END;
 
     if (ngx_strncmp(last, ngx_http_memcached_end, b->last - last) != 0) {
         ngx_log_error(NGX_LOG_ERR, ctx->request->connection->log, 0,
                       "memcached sent invalid trailer");
     }
 
-    ctx->rest = u->length - (b->last - b->pos);
+    ctx->rest -= b->last - last;
     b->last = last;
     cl->buf->last = last;
     u->length = ctx->rest;

@@ -279,7 +279,9 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
         || r->headers_in.accept_encoding == NULL
         || (r->headers_out.content_length_n != -1
             && r->headers_out.content_length_n < conf->min_length)
-        || ngx_strstr(r->headers_in.accept_encoding->value.data, "gzip") == NULL
+        || ngx_strcasestrn(r->headers_in.accept_encoding->value.data,
+                           "gzip", 4 - 1)
+           == NULL
        )
     {
         return ngx_http_next_header_filter(r);

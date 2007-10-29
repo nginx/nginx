@@ -442,7 +442,7 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
 
 
 /*
- * We use ngx_strcasecmp()/ngx_strncasecmp() for 7-bit ASCII string only,
+ * We use ngx_strcasecmp()/ngx_strncasecmp() for 7-bit ASCII strings only,
  * and implement our own ngx_strcasecmp()/ngx_strncasecmp()
  * to avoid libc locale overhead.  Besides, we use the ngx_uint_t's
  * instead of the u_char's, because they are slightly faster.
@@ -500,6 +500,61 @@ ngx_strncasecmp(u_char *s1, u_char *s2, size_t n)
     }
 
     return 0;
+}
+
+
+/*
+ * ngx_strstrn() and ngx_strcasestrn() are intended to search for static
+ * substring with known length in null-terminated string. The argument n
+ * must be length of the second substring - 1.
+ */
+
+u_char *
+ngx_strstrn(u_char *s1, char *s2, size_t n)
+{
+    u_char  c1, c2;
+
+    c2 = *(u_char *) s2++;
+
+    do {
+        do {
+            c1 = *s1++;
+
+            if (c1 == 0) {
+                return NULL;
+            }
+
+        } while (c1 != c2);
+
+    } while (ngx_strncmp(s1, (u_char *) s2, n) != 0);
+
+    return --s1;
+}
+
+
+u_char *
+ngx_strcasestrn(u_char *s1, char *s2, size_t n)
+{
+    ngx_uint_t  c1, c2;
+
+    c2 = (ngx_uint_t) *s2++;
+    c2  = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
+
+    do {
+        do {
+            c1 = (ngx_uint_t) *s1++;
+
+            if (c1 == 0) {
+                return NULL;
+            }
+
+            c1  = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
+
+        } while (c1 != c2);
+
+    } while (ngx_strncasecmp(s1, (u_char *) s2, n) != 0);
+
+    return --s1;
 }
 
 
