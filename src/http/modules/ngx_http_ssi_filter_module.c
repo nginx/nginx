@@ -212,6 +212,7 @@ static ngx_str_t ngx_http_ssi_null_string = ngx_null_string;
 
 #define  NGX_HTTP_SSI_ECHO_VAR         0
 #define  NGX_HTTP_SSI_ECHO_DEFAULT     1
+#define  NGX_HTTP_SSI_ECHO_ENCODING    2
 
 #define  NGX_HTTP_SSI_CONFIG_ERRMSG    0
 #define  NGX_HTTP_SSI_CONFIG_TIMEFMT   1
@@ -237,6 +238,7 @@ static ngx_http_ssi_param_t  ngx_http_ssi_include_params[] = {
 static ngx_http_ssi_param_t  ngx_http_ssi_echo_params[] = {
     { ngx_string("var"), NGX_HTTP_SSI_ECHO_VAR, 1, 0 },
     { ngx_string("default"), NGX_HTTP_SSI_ECHO_DEFAULT, 0, 0 },
+    { ngx_string("encoding"), NGX_HTTP_SSI_ECHO_ENCODING, 0, 0 },
     { ngx_null_string, 0, 0, 0 }
 };
 
@@ -355,6 +357,7 @@ found:
     ctx->value_len = slcf->value_len;
     ctx->last_out = &ctx->out;
 
+    ctx->encoding = NGX_HTTP_SSI_ENTITY_ENCODING;
     ctx->output = 1;
 
     ctx->params.elts = ctx->params_array;
@@ -2119,10 +2122,12 @@ static ngx_int_t
 ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
+    u_char                     *p;
+    uintptr_t                   len;
     ngx_int_t                   key;
     ngx_uint_t                  i;
     ngx_buf_t                  *b;
-    ngx_str_t                  *var, *value, text;
+    ngx_str_t                  *var, *value, *enc, text;
     ngx_chain_t                *cl;
     ngx_http_variable_value_t  *vv;
 
@@ -2168,6 +2173,69 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         if (value->len == 0) {
             return NGX_OK;
         }
+    }
+
+    enc = params[NGX_HTTP_SSI_ECHO_ENCODING];
+
+    if (enc) {
+        if (enc->len == 4 && ngx_strncmp(enc->data, "none", 4) == 0) {
+
+            ctx->encoding = NGX_HTTP_SSI_NO_ENCODING;
+
+        } else if (enc->len == 3 && ngx_strncmp(enc->data, "url", 3) == 0) {
+
+            ctx->encoding = NGX_HTTP_SSI_URL_ENCODING;
+
+        } else if (enc->len == 6 && ngx_strncmp(enc->data, "entity", 6) == 0) {
+
+            ctx->encoding = NGX_HTTP_SSI_ENTITY_ENCODING;
+
+        } else {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "unknown encoding \"%V\" in the \"echo\" command",
+                          enc);
+        }
+    }
+
+    switch (ctx->encoding) {
+
+    case NGX_HTTP_SSI_NO_ENCODING:
+        break;
+
+    case NGX_HTTP_SSI_URL_ENCODING:
+        len = 2 * ngx_escape_uri(NULL, value->data, value->len,
+                                 NGX_ESCAPE_HTML);
+
+        if (len) {
+            p = ngx_palloc(r->pool, value->len + len);
+            if (p == NULL) {
+                return NGX_HTTP_SSI_ERROR;
+            }
+
+            (void) ngx_escape_uri(p, value->data, value->len, NGX_ESCAPE_HTML);
+
+            value->len += len;
+            value->data = p;
+        }
+
+        break;
+
+    case NGX_HTTP_SSI_ENTITY_ENCODING:
+        len = ngx_escape_html(NULL, value->data, value->len);
+
+        if (len) {
+            p = ngx_palloc(r->pool, value->len + len);
+            if (p == NULL) {
+                return NGX_HTTP_SSI_ERROR;
+            }
+
+            (void) ngx_escape_html(p, value->data, value->len);
+
+            value->len += len;
+            value->data = p;
+        }
+
+        break;
     }
 
     b = ngx_calloc_buf(r->pool);

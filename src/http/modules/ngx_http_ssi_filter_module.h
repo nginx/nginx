@@ -13,15 +13,20 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_SSI_MAX_PARAMS     16
+#define NGX_HTTP_SSI_MAX_PARAMS       16
 
-#define NGX_HTTP_SSI_COMMAND_LEN    32
-#define NGX_HTTP_SSI_PARAM_LEN      32
-#define NGX_HTTP_SSI_PARAMS_N       4
+#define NGX_HTTP_SSI_COMMAND_LEN      32
+#define NGX_HTTP_SSI_PARAM_LEN        32
+#define NGX_HTTP_SSI_PARAMS_N         4
 
 
-#define NGX_HTTP_SSI_COND_IF        1
-#define NGX_HTTP_SSI_COND_ELSE      2
+#define NGX_HTTP_SSI_COND_IF          1
+#define NGX_HTTP_SSI_COND_ELSE        2
+
+
+#define NGX_HTTP_SSI_NO_ENCODING      0
+#define NGX_HTTP_SSI_URL_ENCODING     1
+#define NGX_HTTP_SSI_ENTITY_ENCODING  2
 
 
 typedef struct {
@@ -60,6 +65,7 @@ typedef struct {
     ngx_array_t              *blocks;
 
     unsigned                  conditional:2;
+    unsigned                  encoding:2;
     unsigned                  block:1;
     unsigned                  output:1;
     unsigned                  output_chosen:1;
