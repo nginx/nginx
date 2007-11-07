@@ -62,7 +62,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     /* the maximum limit size is 2G-1 - the page size */
 
-    if (limit == 0 || limit > NGX_SENDFILE_LIMIT - ngx_pagesize) {
+    if (limit == 0 || limit > (off_t) (NGX_SENDFILE_LIMIT - ngx_pagesize)) {
         limit = NGX_SENDFILE_LIMIT - ngx_pagesize;
     }
 

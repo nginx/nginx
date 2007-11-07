@@ -126,7 +126,7 @@ struct ngx_event_s {
 
 #endif
 
-    u_int            index;
+    ngx_uint_t       index;
 
     ngx_log_t       *log;
 
@@ -182,7 +182,7 @@ struct ngx_event_s {
 
     /* event should not cross cache line in SMP */
 
-    int              padding[NGX_EVENT_T_PADDING];
+    uint32_t         padding[NGX_EVENT_T_PADDING];
 #endif
 #endif
 };
@@ -195,14 +195,14 @@ typedef struct {
 
 
 typedef struct {
-    ngx_int_t  (*add)(ngx_event_t *ev, int event, u_int flags);
-    ngx_int_t  (*del)(ngx_event_t *ev, int event, u_int flags);
+    ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
+    ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
 
-    ngx_int_t  (*enable)(ngx_event_t *ev, int event, u_int flags);
-    ngx_int_t  (*disable)(ngx_event_t *ev, int event, u_int flags);
+    ngx_int_t  (*enable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
+    ngx_int_t  (*disable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
 
     ngx_int_t  (*add_conn)(ngx_connection_t *c);
-    ngx_int_t  (*del_conn)(ngx_connection_t *c, u_int flags);
+    ngx_int_t  (*del_conn)(ngx_connection_t *c, ngx_uint_t flags);
 
     ngx_int_t  (*process_changes)(ngx_cycle_t *cycle, ngx_uint_t nowait);
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
@@ -497,7 +497,7 @@ u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
 void ngx_process_events_and_timers(ngx_cycle_t *cycle);
-ngx_int_t ngx_handle_read_event(ngx_event_t *rev, u_int flags);
+ngx_int_t ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags);
 ngx_int_t ngx_handle_write_event(ngx_event_t *wev, size_t lowat);
 
 

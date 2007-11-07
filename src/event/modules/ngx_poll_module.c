@@ -11,15 +11,17 @@
 
 static ngx_int_t ngx_poll_init(ngx_cycle_t *cycle, ngx_msec_t timer);
 static void ngx_poll_done(ngx_cycle_t *cycle);
-static ngx_int_t ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags);
-static ngx_int_t ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_poll_add_event(ngx_event_t *ev, ngx_int_t event,
+    ngx_uint_t flags);
+static ngx_int_t ngx_poll_del_event(ngx_event_t *ev, ngx_int_t event,
+    ngx_uint_t flags);
 static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags);
 static char *ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
 static struct pollfd  *event_list;
-static int             nevents;
+static ngx_int_t       nevents;
 
 
 static ngx_str_t    poll_name = ngx_string("poll");
@@ -108,7 +110,7 @@ ngx_poll_done(ngx_cycle_t *cycle)
 
 
 static ngx_int_t
-ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
+ngx_poll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
     ngx_event_t       *e;
     ngx_connection_t  *c;
@@ -119,7 +121,7 @@ ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 
     if (ev->index != NGX_INVALID_INDEX) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                      "poll event fd:%d ev:%d is already set", c->fd, event);
+                      "poll event fd:%d ev:%i is already set", c->fd, event);
         return NGX_OK;
     }
 
@@ -137,11 +139,11 @@ ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "poll add event: fd:%d ev:%d", c->fd, event);
+                   "poll add event: fd:%d ev:%i", c->fd, event);
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
         event_list[nevents].fd = c->fd;
-        event_list[nevents].events = event;
+        event_list[nevents].events = (short) event;
         event_list[nevents].revents = 0;
 
         ev->index = nevents;
@@ -149,9 +151,9 @@ ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 
     } else {
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                       "poll add index: %d", e->index);
+                       "poll add index: %i", e->index);
 
-        event_list[e->index].events |= event;
+        event_list[e->index].events |= (short) event;
         ev->index = e->index;
     }
 
@@ -160,7 +162,7 @@ ngx_poll_add_event(ngx_event_t *ev, int event, u_int flags)
 
 
 static ngx_int_t
-ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
+ngx_poll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
     ngx_event_t       *e;
     ngx_connection_t  *c;
@@ -171,7 +173,7 @@ ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
     if (ev->index == NGX_INVALID_INDEX) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                      "poll event fd:%d ev:%d is already deleted",
+                      "poll event fd:%d ev:%i is already deleted",
                       c->fd, event);
         return NGX_OK;
     }
@@ -190,15 +192,15 @@ ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "poll del event: fd:%d ev:%d", c->fd, event);
+                   "poll del event: fd:%d ev:%i", c->fd, event);
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
         nevents--;
 
-        if (ev->index < (u_int) nevents) {
+        if (ev->index < (ngx_uint_t) nevents) {
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                           "index: copy event %d to %d", nevents, ev->index);
+                           "index: copy event %ui to %i", nevents, ev->index);
 
             event_list[ev->index] = event_list[nevents];
 
@@ -209,11 +211,11 @@ ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
                               "unexpected last event");
 
             } else {
-                if (c->read->index == (u_int) nevents) {
+                if (c->read->index == (ngx_uint_t) nevents) {
                     c->read->index = ev->index;
                 }
 
-                if (c->write->index == (u_int) nevents) {
+                if (c->write->index == (ngx_uint_t) nevents) {
                     c->write->index = ev->index;
                 }
             }
@@ -221,9 +223,9 @@ ngx_poll_del_event(ngx_event_t *ev, int event, u_int flags)
 
     } else {
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                       "poll del index: %d", e->index);
+                       "poll del index: %i", e->index);
 
-        event_list[e->index].events &= ~event;
+        event_list[e->index].events &= (short) ~event;
     }
 
     ev->index = NGX_INVALID_INDEX;

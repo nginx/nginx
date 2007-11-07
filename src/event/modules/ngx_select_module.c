@@ -12,8 +12,10 @@
 
 static ngx_int_t ngx_select_init(ngx_cycle_t *cycle, ngx_msec_t timer);
 static void ngx_select_done(ngx_cycle_t *cycle);
-static ngx_int_t ngx_select_add_event(ngx_event_t *ev, int event, u_int flags);
-static ngx_int_t ngx_select_del_event(ngx_event_t *ev, int event, u_int flags);
+static ngx_int_t ngx_select_add_event(ngx_event_t *ev, ngx_int_t event,
+    ngx_uint_t flags);
+static ngx_int_t ngx_select_del_event(ngx_event_t *ev, ngx_int_t event,
+    ngx_uint_t flags);
 static ngx_int_t ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags);
 static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -25,10 +27,10 @@ static fd_set         work_read_fd_set;
 static fd_set         work_write_fd_set;
 
 #if (NGX_WIN32)
-static int            max_read;
-static int            max_write;
+static ngx_uint_t     max_read;
+static ngx_uint_t     max_write;
 #else
-static int            max_fd;
+static ngx_int_t      max_fd;
 #endif
 
 static ngx_uint_t     nevents;
@@ -129,18 +131,18 @@ ngx_select_done(ngx_cycle_t *cycle)
 
 
 static ngx_int_t
-ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
+ngx_select_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
     ngx_connection_t  *c;
 
     c = ev->data;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "select add event fd:%d ev:%d", c->fd, event);
+                   "select add event fd:%d ev:%i", c->fd, event);
 
     if (ev->index != NGX_INVALID_INDEX) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                      "select event fd:%d ev:%d is already set", c->fd, event);
+                      "select event fd:%d ev:%i is already set", c->fd, event);
         return NGX_OK;
     }
 
@@ -190,7 +192,7 @@ ngx_select_add_event(ngx_event_t *ev, int event, u_int flags)
 
 
 static ngx_int_t
-ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
+ngx_select_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
     ngx_connection_t  *c;
 
@@ -203,7 +205,7 @@ ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "select del event fd:%d ev:%d", c->fd, event);
+                   "select del event fd:%d ev:%i", c->fd, event);
 
 #if (NGX_WIN32)
 
@@ -231,7 +233,7 @@ ngx_select_del_event(ngx_event_t *ev, int event, u_int flags)
 
 #endif
 
-    if (ev->index < (u_int) --nevents) {
+    if (ev->index < --nevents) {
         event_index[ev->index] = event_index[nevents];
         event_index[ev->index]->index = ev->index;
     }

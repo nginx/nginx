@@ -105,7 +105,7 @@ pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);
 
 
 extern char **environ;
-extern char *malloc_options;
+extern char  *malloc_options;
 
 
 #endif /* _NGX_FREEBSD_CONFIG_H_INCLUDED_ */

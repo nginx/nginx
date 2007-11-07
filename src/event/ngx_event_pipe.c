@@ -21,7 +21,7 @@ static ngx_int_t ngx_event_pipe_drain_chains(ngx_event_pipe_t *p);
 
 
 ngx_int_t
-ngx_event_pipe(ngx_event_pipe_t *p, int do_write)
+ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
 {
     u_int         flags;
     ngx_event_t  *rev, *wev;
