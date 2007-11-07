@@ -369,9 +369,14 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 }
             }
 
-            b->memory = 1;
-            b->pos = ctx->sub.data;
-            b->last = ctx->sub.data + ctx->sub.len;
+            if (ctx->sub.len) {
+                b->memory = 1;
+                b->pos = ctx->sub.data;
+                b->last = ctx->sub.data + ctx->sub.len;
+
+            } else {
+                b->sync = 1;
+            }
 
             cl->buf = b;
             cl->next = NULL;
@@ -557,6 +562,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
                 ch = ngx_tolower(ch);
             }
 
+            ctx->state = state;
             ctx->pos = p;
             ctx->looked = looked;
             ctx->copy_end = p;
@@ -578,6 +584,10 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
             looked++;
 
             if (looked == ctx->match.len) {
+                if ((size_t) (p - ctx->pos) < looked) {
+                    ctx->saved = 0;
+                }
+
                 ctx->state = sub_start_state;
                 ctx->pos = p + 1;
                 ctx->looked = looked;
