@@ -10,7 +10,8 @@
 #include <ngx_mail.h>
 
 
-ngx_int_t ngx_pop3_parse_command(ngx_mail_session_t *s)
+ngx_int_t
+ngx_mail_pop3_parse_command(ngx_mail_session_t *s)
 {
     u_char      ch, *p, *c, c0, c1, c2, c3;
     ngx_str_t  *arg;
@@ -207,7 +208,8 @@ invalid:
 }
 
 
-ngx_int_t ngx_imap_parse_command(ngx_mail_session_t *s)
+ngx_int_t
+ngx_mail_imap_parse_command(ngx_mail_session_t *s)
 {
     u_char      ch, *p, *c;
     ngx_str_t  *arg;
@@ -613,7 +615,8 @@ invalid:
 }
 
 
-ngx_int_t ngx_smtp_parse_command(ngx_mail_session_t *s)
+ngx_int_t
+ngx_mail_smtp_parse_command(ngx_mail_session_t *s)
 {
     u_char      ch, *p, *c, c0, c1, c2, c3;
     ngx_str_t  *arg;
@@ -819,6 +822,59 @@ invalid:
 
     s->state = sw_start;
     s->arg_start = NULL;
+
+    return NGX_MAIL_PARSE_INVALID_COMMAND;
+}
+
+
+ngx_int_t
+ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c)
+{
+    ngx_str_t                 *arg;
+
+#if (NGX_MAIL_SSL)
+    if (ngx_mail_starttls_only(s, c)) {
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+#endif
+
+    arg = s->args.elts;
+
+    if (arg[0].len == 5) {
+
+        if (ngx_strncasecmp(arg[0].data, (u_char *) "LOGIN", 5) == 0) {
+
+            if (s->args.nelts == 1) {
+                return NGX_MAIL_AUTH_LOGIN;
+            }
+
+            return NGX_MAIL_PARSE_INVALID_COMMAND;
+        }
+
+        if (ngx_strncasecmp(arg[0].data, (u_char *) "PLAIN", 5) == 0) {
+
+            if (s->args.nelts == 1) {
+                return NGX_MAIL_AUTH_PLAIN;
+            }
+
+            if (s->args.nelts == 2) {
+                return ngx_mail_auth_plain(s, c, 1);
+            }
+        }
+
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    if (arg[0].len == 8) {
+
+        if (s->args.nelts != 1) {
+            return NGX_MAIL_PARSE_INVALID_COMMAND;
+        }
+
+        if (ngx_strncasecmp(arg[0].data, (u_char *) "CRAM-MD5", 8) == 0) {
+            return NGX_MAIL_AUTH_CRAM_MD5;
+        }
+    }
 
     return NGX_MAIL_PARSE_INVALID_COMMAND;
 }

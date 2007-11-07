@@ -308,8 +308,6 @@ fi
 
 
 if [ $MAIL_SSL = YES ]; then
-    MAIL_DEPS="$MAIL_DEPS $MAIL_SSL_DEPS"
-    MAIL_SRCS="$MAIL_SRCS $MAIL_SSL_SRCS"
     have=NGX_MAIL_SSL . auto/have
     USE_OPENSSL=YES
 fi
@@ -341,6 +339,26 @@ if [ $MAIL = YES ]; then
 
     if [ $MAIL_SSL = YES ]; then
         modules="$modules $MAIL_SSL_MODULE"
+        MAIL_DEPS="$MAIL_DEPS $MAIL_SSL_DEPS"
+        MAIL_SRCS="$MAIL_SRCS $MAIL_SSL_SRCS"
+    fi
+
+    if [ $MAIL_POP3 = YES ]; then
+        modules="$modules $MAIL_POP3_MODULE"
+        MAIL_DEPS="$MAIL_DEPS $MAIL_POP3_DEPS"
+        MAIL_SRCS="$MAIL_SRCS $MAIL_POP3_SRCS"
+    fi
+
+    if [ $MAIL_IMAP = YES ]; then
+        modules="$modules $MAIL_IMAP_MODULE"
+        MAIL_DEPS="$MAIL_DEPS $MAIL_IMAP_DEPS"
+        MAIL_SRCS="$MAIL_SRCS $MAIL_IMAP_SRCS"
+    fi
+
+    if [ $MAIL_SMTP = YES ]; then
+        modules="$modules $MAIL_SMTP_MODULE"
+        MAIL_DEPS="$MAIL_DEPS $MAIL_SMTP_DEPS"
+        MAIL_SRCS="$MAIL_SRCS $MAIL_SMTP_SRCS"
     fi
 
     modules="$modules $MAIL_AUTH_HTTP_MODULE"

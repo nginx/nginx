@@ -9,6 +9,100 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.33" date="07.11.2007">
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию команда SSI echo использует кодирование entity.
+</para>
+<para lang="en">
+now by default the "echo" SSI command uses entity encoding.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр encoding в команде SSI echo.
+</para>
+<para lang="en">
+the "encoding" parameter in the "echo" SSI command.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы server_name и valid_referers поддерживают регулярные выражения.
+</para>
+<para lang="en">
+the "server_name" and "valid_referers" directives support regular expressions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы "server_name", "map", and "valid_referers" поддерживают
+маски вида "www.example.*".
+</para>
+<para lang="en">
+the "server_name", "map", and "valid_referers" directives support
+the "www.example.*" wildcards.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+sub_filter не работал с пустой строкой замены.
+</para>
+<para lang="en">
+sub_filter did not work with empty substitution.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в парсинге sub_filter.
+</para>
+<para lang="en">
+in sub_filter parsing.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочий процесс мог зациклиться при использовании memcached.
+</para>
+<para lang="en">
+a worker process may got caught in an endless loop, if the memcached was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx распознавал параметры "close" и "keep-alive" в строке "Connection"
+в заголовке запроса только, если они были в нижнем регистре;
+ошибка появилась в 0.5.32.
+</para>
+<para lang="en">
+nginx supported low case only "close" and "keep-alive" values
+in the "Connection" request header line;
+bug appeared in 0.5.32.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании разделяемой библиотеки PCRE,
+расположенной в нестандартном месте, nginx не запускался на Solaris.
+</para>
+<para lang="en">
+nginx could not start on Solaris if the shared PCRE library located
+in non-standard place was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.32" date="24.09.2007">
 
 <change type="change">
@@ -940,7 +1034,7 @@ bug appeared in 0.3.50.
 </para>
 <para lang="en">
 the "[alert] zero size buf" error when FastCGI server was used and
-an request body written in a temporary file was multiple of 32K.
+a request body written in a temporary file was multiple of 32K.
 </para>
 </change>
 
@@ -1925,7 +2019,7 @@ ngx_http_perl_module did not work if perl was called recursively.
 nginx игнорировал имя сервера в строке запроса.
 </para>
 <para lang="en">
-nginx ignored a host name in an request line.
+nginx ignored a host name in a request line.
 </para>
 </change>
 
@@ -2003,7 +2097,7 @@ the "limit_except" directive supports all WebDAV methods.
 </para>
 <para lang="en">
 if the "add_before_body" directive was used without
-the "add_after_body" directive, then an response did not transferred complete.
+the "add_after_body" directive, then a response did not transferred complete.
 </para>
 </change>
 
@@ -2223,7 +2317,7 @@ the ngx_http_perl_module now tests the nginx.pm module version.
 </para>
 <para lang="en">
 if an "include" SSI command were before another "include" SSI command
-with an "wait" parameter, then the "wait" parameter might not work.
+with a "wait" parameter, then the "wait" parameter might not work.
 </para>
 </change>
 
@@ -2277,7 +2371,7 @@ the "charset" and "source_charset" directives support the variables.
 </para>
 <para lang="en">
 if an "include" SSI command were before another "include" SSI command
-with an "wait" parameter, then the "wait" parameter might not work.
+with a "wait" parameter, then the "wait" parameter might not work.
 </para>
 </change>
 
@@ -2462,7 +2556,7 @@ the ngx_http_browser_module.
 </para>
 <para lang="en">
 a segmentation fault may occur while redirecting the 400 error
-to the proxied server using an "proxy_pass" directive.
+to the proxied server using a "proxy_pass" directive.
 </para>
 </change>
 
@@ -2474,7 +2568,7 @@ unix domain сокет;
 </para>
 <para lang="en">
 a segmentation fault occurred if an unix domain socket was used in
-an "proxy_pass" directive;
+a "proxy_pass" directive;
 bug appeared in 0.3.47.
 </para>
 </change>
@@ -2854,7 +2948,7 @@ operators.
 происходил segmentation fault, если запрос возвращал редирект.
 </para>
 <para lang="en">
-a segmentation fault occurred if an request returned an redirect and
+a segmentation fault occurred if a request returned a redirect and
 some sent to client header lines were logged in the access log.
 </para>
 </change>

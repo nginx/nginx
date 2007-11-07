@@ -423,6 +423,21 @@ MAIL_SRCS="src/mail/ngx_mail.c \
            src/mail/ngx_mail_handler.c \
            src/mail/ngx_mail_parse.c"
 
+MAIL_POP3_MODULE="ngx_mail_pop3_module"
+MAIL_POP3_DEPS="src/mail/ngx_mail_pop3_module.h"
+MAIL_POP3_SRCS="src/mail/ngx_mail_pop3_module.c \
+                src/mail/ngx_mail_pop3_handler.c"
+
+MAIL_IMAP_MODULE="ngx_mail_imap_module"
+MAIL_IMAP_DEPS="src/mail/ngx_mail_imap_module.h"
+MAIL_IMAP_SRCS="src/mail/ngx_mail_imap_module.c \
+                src/mail/ngx_mail_imap_handler.c"
+
+MAIL_SMTP_MODULE="ngx_mail_smtp_module"
+MAIL_SMTP_DEPS="src/mail/ngx_mail_smtp_module.h"
+MAIL_SMTP_SRCS="src/mail/ngx_mail_smtp_module.c \
+                src/mail/ngx_mail_smtp_handler.c"
+
 MAIL_SSL_MODULE="ngx_mail_ssl_module"
 MAIL_SSL_DEPS="src/mail/ngx_mail_ssl_module.h"
 MAIL_SSL_SRCS="src/mail/ngx_mail_ssl_module.c"

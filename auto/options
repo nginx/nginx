@@ -82,6 +82,9 @@ HTTP_STUB_STATUS=NO
 
 MAIL=NO
 MAIL_SSL=NO
+MAIL_POP3=YES
+MAIL_IMAP=YES
+MAIL_SMTP=YES
 
 NGX_ADDONS=
 
@@ -191,6 +194,9 @@ do
         # STUB
         --with-imap)                     MAIL=YES                   ;;
         --with-imap_ssl_module)          MAIL_SSL=YES               ;;
+        --without-mail_pop3_module)      MAIL_POP3=NO               ;;
+        --without-mail_imap_module)      MAIL_IMAP=NO               ;;
+        --without-mail_smtp_module)      MAIL_SMTP=NO               ;;
 
         --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
 
@@ -301,8 +307,11 @@ cat << END
 
   --without-http                     disable HTTP server
 
-  --with-mail                        enable IMAP4/POP3/SMTP proxy module
+  --with-mail                        enable POP3/IMAP4/SMTP proxy module
   --with-mail_ssl_module             enable ngx_mail_ssl_module
+  --without-mail_pop3_module         disable ngx_mail_pop3_module
+  --without-mail_imap_module         disable ngx_mail_imap_module
+  --without-mail_smtp_module         disable ngx_mail_smtp_module
 
   --add-module=PATH                  enable an external module
 
