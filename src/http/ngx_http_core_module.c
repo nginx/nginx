@@ -2272,9 +2272,12 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
 
+#if (NGX_PCRE)
+        sn->regex = NULL;
+#endif
+        sn->core_srv_conf = conf;
         sn->name.len = conf->server_name.len;
         sn->name.data = conf->server_name.data;
-        sn->core_srv_conf = conf;
     }
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
@@ -2719,6 +2722,10 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t               *value, name;
     ngx_uint_t               i;
     ngx_http_server_name_t  *sn;
+#if (NGX_PCRE)
+    ngx_str_t                err;
+    u_char                   errstr[NGX_MAX_CONF_ERRSTR];
+#endif
 
     value = cf->args->elts;
 
@@ -2729,6 +2736,13 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "first server name \"%V\" must not be wildcard",
                                &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+        if (value[1].data[0] == '~') {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "first server name \"%V\" "
+                               "must not be regular expression", &value[1]);
             return NGX_CONF_ERROR;
         }
 
@@ -2775,9 +2789,42 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
+#if (NGX_PCRE)
+        sn->regex = NULL;
+#endif
+        sn->core_srv_conf = cscf;
         sn->name.len = value[i].len;
         sn->name.data = value[i].data;
-        sn->core_srv_conf = cscf;
+
+        if (value[i].data[0] != '~') {
+            continue;
+        }
+
+#if (NGX_PCRE)
+        err.len = NGX_MAX_CONF_ERRSTR;
+        err.data = errstr;
+
+        value[i].len--;
+        value[i].data++;
+
+        sn->regex = ngx_regex_compile(&value[i], NGX_REGEX_CASELESS, cf->pool,
+                                      &err);
+
+        if (sn->regex == NULL) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+            return NGX_CONF_ERROR;
+        }
+
+        sn->name.len = value[i].len;
+        sn->name.data = value[i].data;
+
+#else
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the using of the regex \"%V\" "
+                           "requires PCRE library", &value[i]);
+
+        return NGX_CONF_ERROR;
+#endif
     }
 
     return NGX_CONF_OK;
