@@ -29,6 +29,36 @@ the "encoding" parameter in the "echo" SSI command.
 </para>
 </change>
 
+<change type="change">
+<para lang="ru">
+почтовый прокси-сервер разделён на три модуля: pop3, imap и smtp.
+</para>
+<para lang="en">
+mail proxy was split on three modules: pop3, imap and smtp.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры конфигурации --without-mail_pop3_module,
+--without-mail_imap_module и --without-mail_smtp_module.
+</para>
+<para lang="en">
+the --without-mail_pop3_module, --without-mail_imap_module,
+and --without-mail_smtp_module configuration parameters.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы smtp_greeting_delay и smtp_client_buffer модуля ngx_mail_smtp_module.
+</para>
+<para lang="en">
+the "smtp_greeting_delay" and "smtp_client_buffer" directives
+of the ngx_mail_smtp_module.
+</para>
+</change>
+
 <change type="feature">
 <para lang="ru">
 директивы server_name и valid_referers поддерживают регулярные выражения.
