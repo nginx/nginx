@@ -12,8 +12,7 @@
 #define NGX_HTTP_REFERER_NO_URI_PART  ((void *) 4)
 
 typedef struct {
-    ngx_hash_t               hash;
-    ngx_hash_wildcard_t     *dns_wildcards;
+    ngx_hash_combined_t      hash;
 
     ngx_flag_t               no_referer;
     ngx_flag_t               blocked_referer;
@@ -90,7 +89,10 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     rlcf = ngx_http_get_module_loc_conf(r, ngx_http_referer_module);
 
-    if (rlcf->hash.buckets == NULL && rlcf->dns_wildcards == NULL) {
+    if (rlcf->hash.hash.buckets == NULL
+        && rlcf->hash.wc_head == NULL
+        && rlcf->hash.wc_tail == NULL)
+    {
         goto valid;
     }
 
@@ -135,18 +137,10 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     len = p - ref;
 
-    if (rlcf->hash.buckets) {
-        uri = ngx_hash_find(&rlcf->hash, key, buf, len);
-        if (uri) {
-            goto uri;
-        }
-    }
+    uri = ngx_hash_find_combined(&rlcf->hash, key, buf, len);
 
-    if (rlcf->dns_wildcards) {
-        uri = ngx_hash_find_wildcard(rlcf->dns_wildcards, buf, len);
-        if (uri) {
-            goto uri;
-        }
+    if (uri) {
+        goto uri;
     }
 
 invalid:
@@ -208,7 +202,6 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->keys == NULL) {
         conf->hash = prev->hash;
-        conf->dns_wildcards = prev->dns_wildcards;
 
         ngx_conf_merge_value(conf->no_referer, prev->no_referer, 0);
         ngx_conf_merge_value(conf->blocked_referer, prev->blocked_referer, 0);
@@ -217,7 +210,9 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if ((conf->no_referer == 1 || conf->blocked_referer == 1)
-        && conf->keys->keys.nelts == 0 && conf->keys->dns_wildcards.nelts == 0)
+        && conf->keys->keys.nelts == 0
+        && conf->keys->dns_wc_head.nelts == 0
+        && conf->keys->dns_wc_tail.nelts == 0)
     {
         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                       "the \"none\" or \"blocked\" referers are specified "
@@ -233,7 +228,7 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     hash.pool = cf->pool;
 
     if (conf->keys->keys.nelts) {
-        hash.hash = &conf->hash;
+        hash.hash = &conf->hash.hash;
         hash.temp_pool = NULL;
 
         if (ngx_hash_init(&hash, conf->keys->keys.elts, conf->keys->keys.nelts)
@@ -243,24 +238,44 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    if (conf->keys->dns_wildcards.nelts) {
+    if (conf->keys->dns_wc_head.nelts) {
 
-        ngx_qsort(conf->keys->dns_wildcards.elts,
-                  (size_t) conf->keys->dns_wildcards.nelts,
+        ngx_qsort(conf->keys->dns_wc_head.elts,
+                  (size_t) conf->keys->dns_wc_head.nelts,
                   sizeof(ngx_hash_key_t),
                   ngx_http_cmp_referer_wildcards);
 
         hash.hash = NULL;
         hash.temp_pool = cf->temp_pool;
 
-        if (ngx_hash_wildcard_init(&hash, conf->keys->dns_wildcards.elts,
-                                   conf->keys->dns_wildcards.nelts)
+        if (ngx_hash_wildcard_init(&hash, conf->keys->dns_wc_head.elts,
+                                   conf->keys->dns_wc_head.nelts)
             != NGX_OK)
         {
             return NGX_CONF_ERROR;
         }
 
-        conf->dns_wildcards = (ngx_hash_wildcard_t *) hash.hash;
+        conf->hash.wc_head = (ngx_hash_wildcard_t *) hash.hash;
+    }
+
+    if (conf->keys->dns_wc_tail.nelts) {
+
+        ngx_qsort(conf->keys->dns_wc_tail.elts,
+                  (size_t) conf->keys->dns_wc_tail.nelts,
+                  sizeof(ngx_hash_key_t),
+                  ngx_http_cmp_referer_wildcards);
+
+        hash.hash = NULL;
+        hash.temp_pool = cf->temp_pool;
+
+        if (ngx_hash_wildcard_init(&hash, conf->keys->dns_wc_tail.elts,
+                                   conf->keys->dns_wc_tail.nelts)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+
+        conf->hash.wc_tail = (ngx_hash_wildcard_t *) hash.hash;
     }
 
     if (conf->no_referer == NGX_CONF_UNSET) {
@@ -373,23 +388,8 @@ static char *
 ngx_http_add_referer(ngx_conf_t *cf, ngx_hash_keys_arrays_t *keys,
     ngx_str_t *value, ngx_str_t *uri)
 {
-    u_char       ch;
-    ngx_int_t    rc;
-    ngx_str_t   *u;
-    ngx_uint_t   flags;
-
-    ch = value->data[0];
-
-    if ((ch == '*' && (value->len < 3 || value->data[1] != '.'))
-        || (ch == '.' && value->len < 2))
-    {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid DNS wildcard \"%V\"", value);
-
-        return NGX_CONF_ERROR;
-    }
-
-    flags = (ch == '*' || ch == '.') ? NGX_HASH_WILDCARD_KEY : 0;
+    ngx_int_t   rc;
+    ngx_str_t  *u;
 
     if (uri->len == 0) {
         u = NGX_HTTP_REFERER_NO_URI_PART;
@@ -403,10 +403,15 @@ ngx_http_add_referer(ngx_conf_t *cf, ngx_hash_keys_arrays_t *keys,
         *u = *uri;
     }
 
-    rc = ngx_hash_add_key(keys, value, u, flags);
+    rc = ngx_hash_add_key(keys, value, u, NGX_HASH_WILDCARD_KEY);
 
     if (rc == NGX_OK) {
         return NGX_CONF_OK;
+    }
+
+    if (rc == NGX_DECLINED) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid hostname or wildcard \"%V\"", value);
     }
 
     if (rc == NGX_BUSY) {

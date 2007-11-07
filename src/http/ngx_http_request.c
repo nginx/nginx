@@ -1463,19 +1463,10 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len,
 
     vn = r->virtual_names;
 
-    if (vn->hash.buckets) {
-        cscf = ngx_hash_find(&vn->hash, hash, host, len);
-        if (cscf) {
-            goto found;
-        }
-    }
+    cscf = ngx_hash_find_combined(vn, hash, host, len);
 
-    if (vn->dns_wildcards && vn->dns_wildcards->hash.buckets) {
-        cscf = ngx_hash_find_wildcard(vn->dns_wildcards, host, len);
-
-        if (cscf) {
-            goto found;
-        }
+    if (cscf) {
+        goto found;
     }
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
