@@ -181,7 +181,10 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     }
 
     allocated = path.len;
-    path.len = last - path.data - 1;
+    path.len = last - path.data;
+    if (path.len > 1) {
+        path.len--;
+    }
     path.data[path.len] = '\0';
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,

@@ -279,7 +279,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
     ngx_open_file_info_t  of;
 
     c = *last;
-    if (c != '/') {
+    if (c != '/' || path == last) {
         /* "alias" without trailing slash */
         c = *(++last);
     }
