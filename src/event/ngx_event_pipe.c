@@ -421,6 +421,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 {
     u_char            *prev;
     size_t             bsize;
+    ngx_int_t          rc;
     ngx_uint_t         flush, prev_last_shadow;
     ngx_chain_t       *out, **ll, *cl;
     ngx_connection_t  *downstream;
@@ -451,7 +452,13 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                     cl->buf->recycled = 0;
                 }
 
-                if (p->output_filter(p->output_ctx, p->out) == NGX_ERROR) {
+                rc = p->output_filter(p->output_ctx, p->out);
+
+                if (downstream->destroyed) {
+                    return NGX_ABORT;
+                }
+
+                if (rc == NGX_ERROR) {
                     p->downstream_error = 1;
                     return ngx_event_pipe_drain_chains(p);
                 }
@@ -467,12 +474,13 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                     cl->buf->recycled = 0;
                 }
 
-                if (p->output_filter(p->output_ctx, p->in) == NGX_ERROR) {
+                rc = p->output_filter(p->output_ctx, p->in);
 
-                    if (downstream->destroyed) {
-                        return NGX_ABORT;
-                    }
+                if (downstream->destroyed) {
+                    return NGX_ABORT;
+                }
 
+                if (rc == NGX_ERROR) {
                     p->downstream_error = 1;
                     return ngx_event_pipe_drain_chains(p);
                 }
@@ -602,7 +610,13 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             break;
         }
 
-        if (p->output_filter(p->output_ctx, out) == NGX_ERROR) {
+        rc = p->output_filter(p->output_ctx, out);
+
+        if (downstream->destroyed) {
+            return NGX_ABORT;
+        }
+
+        if (rc == NGX_ERROR) {
             p->downstream_error = 1;
             return ngx_event_pipe_drain_chains(p);
         }
