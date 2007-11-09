@@ -70,7 +70,7 @@ ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
      * I think that the equality of the dates is correcter
      */
 
-    if (ims != NGX_ERROR && ims == r->headers_out.last_modified_time) {
+    if (ims == r->headers_out.last_modified_time) {
         r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
         r->headers_out.content_type.len = 0;
         ngx_http_clear_content_length(r);
