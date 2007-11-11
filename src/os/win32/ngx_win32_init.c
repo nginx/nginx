@@ -39,13 +39,19 @@ static u_int               osviex;
 static OSVERSIONINFOEX     osvi;
 
 /* Should these pointers be per protocol ? */
-LPFN_ACCEPTEX              acceptex;
-LPFN_GETACCEPTEXSOCKADDRS  getacceptexsockaddrs;
-LPFN_TRANSMITFILE          transmitfile;
+LPFN_ACCEPTEX              ngx_acceptex;
+LPFN_GETACCEPTEXSOCKADDRS  ngx_getacceptexsockaddrs;
+LPFN_TRANSMITFILE          ngx_transmitfile;
+LPFN_TRANSMITPACKETS       ngx_transmitpackets;
+LPFN_CONNECTEX             ngx_connectex;
+LPFN_DISCONNECTEX          ngx_disconnectex;
 
-static GUID ae_guid = WSAID_ACCEPTEX;
+static GUID ax_guid = WSAID_ACCEPTEX;
 static GUID as_guid = WSAID_GETACCEPTEXSOCKADDRS;
 static GUID tf_guid = WSAID_TRANSMITFILE;
+static GUID tp_guid = WSAID_TRANSMITPACKETS;
+static GUID cx_guid = WSAID_CONNECTEX;
+static GUID dx_guid = WSAID_DISCONNECTEX;
 
 
 ngx_int_t ngx_os_init(ngx_log_t *log)
@@ -84,6 +90,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
      *  Windows 2000         250000
      *  Windows XP           250100
      *  Windows 2003         250200
+     *  Windows Vista/2008   260000
      *
      *  Windows CE x.x       3xxxxx
      */
@@ -121,7 +128,10 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     /* STUB: ngx_uint_t max */
     ngx_max_wsabufs = 1024 * 1024;
 
-    /* get AcceptEx(), GetAcceptExSockAddrs() and TransmitFile() addresses */
+    /*
+     * get AcceptEx(), GetAcceptExSockAddrs(), TransmitFile(),
+     * TransmitPackets(), ConnectEx(), and DisconnectEx() addresses
+     */
 
     s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (s == -1) {
@@ -130,32 +140,63 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &ae_guid, sizeof(GUID),
-                 &acceptex, sizeof(LPFN_ACCEPTEX), &bytes, NULL, NULL) == -1) {
-
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &ax_guid, sizeof(GUID),
+                 &ngx_acceptex, sizeof(LPFN_ACCEPTEX), &bytes, NULL, NULL)
+        == -1)
+    {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
                       "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
                                "WSAID_ACCEPTEX) failed");
-        return NGX_ERROR;
     }
 
     if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &as_guid, sizeof(GUID),
-                 &getacceptexsockaddrs, sizeof(LPFN_GETACCEPTEXSOCKADDRS),
-                 &bytes, NULL, NULL) == -1) {
-
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                 &ngx_getacceptexsockaddrs, sizeof(LPFN_GETACCEPTEXSOCKADDRS),
+                 &bytes, NULL, NULL)
+        == -1)
+    {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
                       "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
-                               "WSAID_ACCEPTEX) failed");
-        return NGX_ERROR;
+                               "WSAID_GETACCEPTEXSOCKADDRS) failed");
     }
 
     if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &tf_guid, sizeof(GUID),
-                 &transmitfile, sizeof(LPFN_TRANSMITFILE), &bytes,
-                                                           NULL, NULL) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                 &ngx_transmitfile, sizeof(LPFN_TRANSMITFILE), &bytes,
+                 NULL, NULL)
+        == -1)
+    {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
                       "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
                                "WSAID_TRANSMITFILE) failed");
-        return NGX_ERROR;
+    }
+
+    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &tp_guid, sizeof(GUID),
+                 &ngx_transmitpackets, sizeof(LPFN_TRANSMITPACKETS), &bytes,
+                 NULL, NULL)
+        == -1)
+    {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
+                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
+                               "WSAID_TRANSMITPACKETS) failed");
+    }
+
+    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &cx_guid, sizeof(GUID),
+                 &ngx_connectex, sizeof(LPFN_CONNECTEX), &bytes,
+                 NULL, NULL)
+        == -1)
+    {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
+                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
+                               "WSAID_CONNECTEX) failed");
+    }
+
+    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &dx_guid, sizeof(GUID),
+                 &ngx_disconnectex, sizeof(LPFN_DISCONNECTEX), &bytes,
+                 NULL, NULL)
+        == -1)
+    {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
+                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
+                               "WSAID_DISCONNECTEX) failed");
     }
 
     if (ngx_close_socket(s) == -1) {
