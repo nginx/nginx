@@ -185,6 +185,8 @@ typedef struct {
     WIN32_FIND_DATA   finddata;
     ngx_int_t         ready;
     u_char           *pattern;
+    ngx_str_t         name;
+    size_t            last;
     ngx_log_t        *log;
 } ngx_glob_t;
 

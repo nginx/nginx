@@ -327,11 +327,32 @@ ngx_read_dir(ngx_dir_t *dir)
 ngx_int_t
 ngx_open_glob(ngx_glob_t *gl)
 {
+    u_char  *p;
+    size_t   len;
+
     gl->dir = FindFirstFile((const char *) gl->pattern, &gl->finddata);
 
     if (gl->dir == INVALID_HANDLE_VALUE) {
         return NGX_ERROR;
     }
+
+    for (p = gl->pattern; *p; p++) {
+        if (*p == '/') {
+            gl->last = p + 1 - gl->pattern;
+        }
+    }
+
+    len = ngx_strlen(gl->finddata.cFileName);
+    gl->name.len = gl->last + len;
+
+    gl->name.data = ngx_alloc(gl->name.len + 1, gl->log);
+    if (gl->name.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(gl->name.data, gl->pattern, gl->last);
+    ngx_cpystrn(gl->name.data + gl->last, (u_char *) gl->finddata.cFileName,
+                len + 1);
 
     gl->ready = 1;
 
@@ -342,19 +363,34 @@ ngx_open_glob(ngx_glob_t *gl)
 ngx_int_t
 ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
 {
+    size_t     len;
     ngx_err_t  err;
 
     if (gl->ready) {
-        name->len = ngx_strlen(gl->finddata.cFileName);
-        name->data = (u_char *) gl->finddata.cFileName;
+        *name = gl->name;
 
         gl->ready = 0;
         return NGX_OK;
     }
 
+    ngx_free(gl->name.data);
+    gl->name.data = NULL;
+
     if (FindNextFile(gl->dir, &gl->finddata) != 0) {
-        name->len = ngx_strlen(gl->finddata.cFileName);
-        name->data = (u_char *) gl->finddata.cFileName;
+
+        len = ngx_strlen(gl->finddata.cFileName);
+        gl->name.len = gl->last + len;
+
+        gl->name.data = ngx_alloc(gl->name.len + 1, gl->log);
+        if (gl->name.data == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(gl->name.data, gl->pattern, gl->last);
+        ngx_cpystrn(gl->name.data + gl->last, (u_char *) gl->finddata.cFileName,
+                    len + 1);
+
+        *name = gl->name;
 
         return NGX_OK;
     }
@@ -375,7 +411,11 @@ ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
 void
 ngx_close_glob(ngx_glob_t *gl)
 {
-    if (FindClose(gl->dir) != 0) {
+    if (gl->name.data) {
+        ngx_free(gl->name.data);
+    }
+
+    if (FindClose(gl->dir) == 0) {
         ngx_log_error(NGX_LOG_ALERT, gl->log, ngx_errno,
                       "FindClose(%s) failed", gl->pattern);
     }
