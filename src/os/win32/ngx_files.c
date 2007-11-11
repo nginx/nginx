@@ -174,6 +174,32 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 }
 
 
+ssize_t
+ngx_read_fd(ngx_fd_t fd, void *buf, size_t size)
+{
+    u_long  n;
+
+    if (ReadFile(fd, buf, size, &n, NULL) != 0) {
+        return (size_t) n;
+    }
+
+    return -1;
+}
+
+
+ssize_t
+ngx_write_fd(ngx_fd_t fd, void *buf, size_t size)
+{
+    u_long  n;
+
+    if (WriteFile(fd, buf, size, &n, NULL) != 0) {
+        return (size_t) n;
+    }
+
+    return -1;
+}
+
+
 ngx_int_t
 ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 {
