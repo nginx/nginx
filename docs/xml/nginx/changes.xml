@@ -9,6 +9,77 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.17" date="15.11.2007">
+
+<change type="feature">
+<para lang="ru">
+поддержка строки "If-Range" в заголовке запроса.<br/>
+Спасибо Александру Инюхину.
+</para>
+<para lang="en">
+the "If-Range" request header line support.<br/>
+Thanks to Alexander V. Inyukhin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы msie_refresh повторно экранировались
+уже экранированные символы;
+ошибка появилась в 0.6.4.
+</para>
+<para lang="en">
+URL double escaping in a redirect of the "msie_refresh" directive;
+bug appeared in 0.6.4.
+</para>
+</change>
+
+<change type="bugfix">
+!!! autoindex and "alias /".
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива autoindex не работала при использовании "alias /".
+</para>
+<para lang="en">
+the "autoindex" directive did not work with the "alias /" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании подзапросов
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process if subrequests were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании SSL и gzip большие ответы могли передаваться не полностью.
+</para>
+<para lang="en">
+the big responses may be transferred truncated if SSL and gzip were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если ответ проксированного сервера был версии HTTP/0.9,
+то переменная $status была равна 0.
+</para>
+<para lang="en">
+the $status variable was equal to 0 if a proxied server returned response
+in HTTP/0.9 version.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.16" date="29.10.2007">
 
 <change type="change">
@@ -251,7 +322,7 @@ bug appeared in 0.6.11.
 
 <change type="bugfix">
 <para lang="ru">
-sub_filter не работал с пустую строку замены.
+sub_filter не работал с пустой строкой замены.
 </para>
 <para lang="en">
 sub_filter did not work with empty substitution.
