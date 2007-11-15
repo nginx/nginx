@@ -205,16 +205,16 @@ ngx_gmtime(time_t t, ngx_tm_t *tp)
 {
     ngx_int_t  sec, min, hour, mday, mon, year, wday, yday, days;
 
-    days = t / 86400;
+    days = (ngx_int_t) (t / 86400);
 
     /* Jaunary 1, 1970 was Thursday */
     wday = (4 + days) % 7;
 
     t %= 86400;
-    hour = t / 3600;
+    hour = (ngx_int_t) (t / 3600);
     t %= 3600;
-    min = t / 60;
-    sec = t % 60;
+    min = (ngx_int_t) (t / 60);
+    sec = (ngx_int_t) (t % 60);
 
     /* the algorithm based on Gauss's formula */
 

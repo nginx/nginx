@@ -493,7 +493,7 @@ ngx_http_read_discarded_request_body_handler(ngx_http_request_t *r)
     }
 
     if (r->lingering_time) {
-        timer = r->lingering_time - ngx_time();
+        timer = (ngx_msec_t) (r->lingering_time - ngx_time());
 
         if (timer <= 0) {
             r->discard_body = 0;

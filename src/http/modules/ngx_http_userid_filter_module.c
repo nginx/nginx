@@ -318,7 +318,7 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
             } else {
                 ctx->uid_set[0] = conf->service;
             }
-            ctx->uid_set[1] = ngx_time();
+            ctx->uid_set[1] = (uint32_t) ngx_time();
             ctx->uid_set[2] = ngx_pid;
             ctx->uid_set[3] = sequencer_v1;
             sequencer_v1 += 0x100;
@@ -345,7 +345,7 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
                 ctx->uid_set[0] = htonl(conf->service);
             }
 
-            ctx->uid_set[1] = htonl(ngx_time());
+            ctx->uid_set[1] = htonl((uint32_t) ngx_time());
             ctx->uid_set[2] = htonl(ngx_pid);
             ctx->uid_set[3] = htonl(sequencer_v2);
             sequencer_v2 += 0x100;

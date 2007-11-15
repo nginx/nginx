@@ -718,7 +718,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                     return;
                 }
 
-                ngx_add_timer(s->connection->read, timer * 1000);
+                ngx_add_timer(s->connection->read, (ngx_msec_t) (timer * 1000));
 
                 s->connection->read->handler = ngx_mail_auth_sleep_handler;
 
@@ -735,7 +735,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                     return;
                 }
 
-                ngx_add_timer(s->connection->read, timer * 1000);
+                ngx_add_timer(s->connection->read, (ngx_msec_t) (timer * 1000));
 
                 s->connection->read->handler = ngx_mail_auth_sleep_handler;
 
