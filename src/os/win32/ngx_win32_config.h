@@ -15,6 +15,9 @@
 #define STRICT
 #define WIN32_LEAN_AND_MEAN
 
+/* enable getenv() and gmtime() in msvc8 */
+#define _CRT_SECURE_NO_WARNINGS
+
 /*
  * we need to include <windows.h> explicity before <winsock2.h> because
  * the warning 4201 is enabled in <windows.h>
