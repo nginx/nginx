@@ -111,10 +111,7 @@ ngx_slab_init(ngx_slab_pool_t *pool)
 
     p += n * sizeof(ngx_slab_page_t);
 
-    /* STUB: possible overflow on 64-bit platform */
-    pages = (ngx_uint_t) ((uint64_t) size * ngx_pagesize
-                          / (ngx_pagesize + sizeof(ngx_slab_page_t))
-                              / ngx_pagesize);
+    pages = (ngx_uint_t) (size / (ngx_pagesize + sizeof(ngx_slab_page_t)));
 
     ngx_memzero(p, pages * sizeof(ngx_slab_page_t));
 
