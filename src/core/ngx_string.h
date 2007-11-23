@@ -114,7 +114,7 @@ ngx_copy(u_char *dst, u_char *src, size_t len)
 
 
 /* msvc and icc7 compile memcmp() to the inline loop */
-#define ngx_memcmp                memcmp
+#define ngx_memcmp(s1, s2, n)  memcmp((const char *) s1, (const char *) s2, n)
 
 
 u_char *ngx_cpystrn(u_char *dst, u_char *src, size_t n);
