@@ -58,6 +58,7 @@ typedef struct {
 } ngx_url_t;
 
 
+in_addr_t ngx_inet_addr(u_char *text, size_t len);
 size_t ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text, size_t len);
 size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
 ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr);
