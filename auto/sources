@@ -15,6 +15,7 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_list.h \
            src/core/ngx_hash.h \
            src/core/ngx_buf.h \
+           src/core/ngx_queue.h \
            src/core/ngx_string.h \
            src/core/ngx_parse.h \
            src/core/ngx_inet.h \

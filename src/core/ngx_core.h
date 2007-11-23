@@ -50,6 +50,7 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_alloc.h>
 #include <ngx_palloc.h>
 #include <ngx_buf.h>
+#include <ngx_queue.h>
 #include <ngx_array.h>
 #include <ngx_list.h>
 #include <ngx_hash.h>
