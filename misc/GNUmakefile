@@ -18,8 +18,6 @@ release:
 	rm $(TEMP)/$(NGINX)/src/event/modules/ngx_iocp_module.*
 	rm -r $(TEMP)/$(NGINX)/src/os/win32
 
-	rm $(TEMP)/$(NGINX)/src/core/ngx_resolver.*
-
 	rm -r $(TEMP)/$(NGINX)/src/mysql
 
 	rm $(TEMP)/$(NGINX)/src/http/modules/ngx_http_status_module.c
