@@ -69,6 +69,8 @@ static char *ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char * ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 static char *ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data);
@@ -490,6 +492,20 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, open_file_cache_events),
+      NULL },
+
+    { ngx_string("resolver"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_core_resolver,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("resolver_timeout"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, resolver_timeout),
       NULL },
 
       ngx_null_command
@@ -2391,6 +2407,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->keepalive_header = NGX_CONF_UNSET;
     lcf->lingering_time = NGX_CONF_UNSET_MSEC;
     lcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
+    lcf->resolver_timeout = NGX_CONF_UNSET_MSEC;
     lcf->reset_timedout_connection = NGX_CONF_UNSET;
     lcf->port_in_redirect = NGX_CONF_UNSET;
     lcf->msie_padding = NGX_CONF_UNSET;
@@ -2572,6 +2589,12 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->lingering_time, 30000);
     ngx_conf_merge_msec_value(conf->lingering_timeout,
                               prev->lingering_timeout, 5000);
+    ngx_conf_merge_msec_value(conf->resolver_timeout,
+                              prev->resolver_timeout, 30000);
+
+    if (conf->resolver == NULL) {
+        conf->resolver = prev->resolver;
+    }
 
     ngx_conf_merge_path_value(conf->client_body_temp_path,
                               prev->client_body_temp_path,
@@ -3355,6 +3378,33 @@ ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     lcf->internal = 1;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t  *clcf = conf;
+
+    ngx_url_t   u;
+    ngx_str_t  *value;
+
+    value = cf->args->elts;
+
+    u.host = value[1];
+    u.port = 53;
+
+    if (ngx_inet_resolve_host(cf->pool, &u) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V: %s", &u.host, u.err);
+        return NGX_CONF_ERROR;
+    }
+
+    clcf->resolver = ngx_resolver_create(&u.addrs[0], cf->cycle->new_log);
+    if (clcf->resolver == NULL) {
+        return NGX_OK;
+    }
 
     return NGX_CONF_OK;
 }
