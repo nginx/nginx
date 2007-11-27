@@ -2613,28 +2613,21 @@ ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
         buf = p;
     }
 
-    if (r->unparsed_uri.data) {
-        p = ngx_snprintf(buf, len, ", URL: \"%V\"", &r->unparsed_uri);
+    if (r->request_line.data == NULL && r->request_start) {
+        for (p = r->request_start; p < r->header_in->last; p++) {
+            if (*p == CR || *p == LF) {
+                break;
+            }
+        }
+
+        r->request_line.len = p - r->request_start;
+        r->request_line.data = r->request_start;
+    }
+
+    if (r->request_line.len) {
+        p = ngx_snprintf(buf, len, ", request: \"%V\"", &r->request_line);
         len -= p - buf;
         buf = p;
-
-    } else {
-        if (r->request_line.data == NULL && r->request_start) {
-            for (p = r->request_start; p < r->header_in->last; p++) {
-                if (*p == CR || *p == LF) {
-                    break;
-                }
-            }
-
-            r->request_line.len = p - r->request_start;
-            r->request_line.data = r->request_start;
-        }
-
-        if (r->request_line.len) {
-            p = ngx_snprintf(buf, len, ", request: \"%V\"", &r->request_line);
-            len -= p - buf;
-            buf = p;
-        }
     }
 
     if (r != sr) {
