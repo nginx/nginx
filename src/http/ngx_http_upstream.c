@@ -2609,6 +2609,10 @@ ngx_http_upstream_rewrite_location(ngx_http_request_t *r, ngx_table_elt_t *h,
         return rc;
     }
 
+    if (ho->value.data[0] != '/') {
+        r->headers_out.location = ho;
+    }
+
     /*
      * we do not set r->headers_out.location here to avoid the handling
      * the local redirects without a host name by ngx_http_header_filter()
