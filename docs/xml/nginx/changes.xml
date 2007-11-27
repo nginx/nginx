@@ -9,6 +9,19 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.19" date="27.11.2007">
+
+<change type="bugfix">
+<para lang="ru">
+версия 0.6.18 не собиралась.
+</para>
+<para lang="en">
+the 0.6.18 version could not be built.
+</para>
+</change>
+
+</changes>
+
 <changes ver="0.6.18" date="27.11.2007">
 
 <change type="change">
@@ -97,10 +110,6 @@ Thanks to Alexander V. Inyukhin.
 URL double escaping in a redirect of the "msie_refresh" directive;
 bug appeared in 0.6.4.
 </para>
-</change>
-
-<change type="bugfix">
-!!! autoindex and "alias /".
 </change>
 
 <change type="bugfix">
