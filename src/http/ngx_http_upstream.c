@@ -2652,15 +2652,17 @@ ngx_http_upstream_rewrite_refresh(ngx_http_request_t *r, ngx_table_elt_t *h,
             return NGX_OK;
         }
 
-#if (NGX_DEBUG)
         if (rc == NGX_OK) {
+            r->headers_out.refresh = ho;
+
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "rewritten refresh: \"%V\"", &ho->value);
         }
-#endif
 
         return rc;
     }
+
+    r->headers_out.refresh = ho;
 
     return NGX_OK;
 }
