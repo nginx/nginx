@@ -2649,7 +2649,7 @@ ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
 #endif
 
         p = ngx_snprintf(buf, len, ", upstream: \"%V%V%s%V\"",
-                         &u->conf->schema, u->peer.name,
+                         &u->schema, u->peer.name,
                          uri_separator, &u->uri);
         len -= p - buf;
         buf = p;

@@ -443,6 +443,8 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    u->schema = flcf->upstream.schema;
+
     u->peer.log = r->connection->log;
     u->peer.log_error = NGX_ERROR_ERR;
 #if (NGX_THREADS)
@@ -2170,8 +2172,6 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
     clcf->handler = ngx_http_fastcgi_handler;
-
-    lcf->upstream.location = clcf->name;
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;
