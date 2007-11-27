@@ -369,7 +369,14 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
         old = NULL;
     }
 
+    r->headers_out.last_modified_time = -1;
+
     if (old == NULL || *old == NULL) {
+
+        if (value->len == 0) {
+            return NGX_OK;
+        }
+
         h = ngx_list_push(&r->headers_out.headers);
         if (h == NULL) {
             return NGX_ERROR;
@@ -377,13 +384,16 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
 
     } else {
         h = *old;
+
+        if (value->len == 0) {
+            h->hash = 0;
+            return NGX_OK;
+        }
     }
 
     h->hash = hv->value.hash;
     h->key = hv->value.key;
     h->value = *value;
-
-    r->headers_out.last_modified_time = -1;
 
     return NGX_OK;
 }
