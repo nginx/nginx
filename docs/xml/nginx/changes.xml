@@ -9,6 +9,71 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.18" date="27.11.2007">
+
+<change type="change">
+<para lang="ru">
+теперь модуль ngx_http_userid_module в поле куки с номером процесса
+добавляет микросекунды на время старта.
+</para>
+<para lang="en">
+now the ngx_http_userid_module adds start time microseconds
+to the cookie field contains a pid value.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+в error_log теперь записывается полная строка запроса вместо только URI.
+</para>
+<para lang="en">
+now the full request line instead of URI only is written to error_log.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_pass поддерживает переменные.
+</para>
+<para lang="en">
+variables support in the "proxy_pass" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива resolver и resolver_timeout.
+</para>
+<para lang="en">
+the "resolver" and "resolver_timeout" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь директива "add_header last-modified ''" удаляет в заголовке ответа
+строку "Last-Modified".
+</para>
+<para lang="en">
+now the directive "add_header last-modified ''" deletes a "Last-Modified"
+response header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива limit_rate не позволяла передавать на полной скорости,
+даже если был указан очень большой лимит.
+</para>
+<para lang="en">
+the "limit_rate" directive did not allow to use full throughput,
+even if limit value was very high.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.17" date="15.11.2007">
 
 <change type="feature">
