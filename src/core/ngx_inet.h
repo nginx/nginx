@@ -35,6 +35,7 @@ typedef struct {
 
     ngx_str_t         url;
     ngx_str_t         host;
+    ngx_str_t         port_text;
     ngx_str_t         uri;
 
     in_port_t         port;

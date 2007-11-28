@@ -2645,8 +2645,6 @@ static ngx_int_t
 ngx_http_proxy_set_vars(ngx_pool_t *pool, ngx_url_t *u,
     ngx_http_proxy_vars_t *v)
 {
-    u_char  *p;
-
     if (!u->unix_socket) {
         if (u->no_port || u->port == u->default_port) {
             v->host_header = u->host;
@@ -2661,16 +2659,9 @@ ngx_http_proxy_set_vars(ngx_pool_t *pool, ngx_url_t *u,
             }
 
         } else {
-            p = ngx_palloc(pool, u->host.len + sizeof(":65536") - 1);
-            if (p == NULL) {
-                return NGX_ERROR;
-            }
-
-            v->host_header.len = ngx_sprintf(p, "%V:%d", &u->host, u->port) - p;
-            v->host_header.data = p;
-
-            v->port.len = v->host_header.len - u->host.len - 1;
-            v->port.data = p + u->host.len + 1;
+            v->host_header.len = u->host.len + 1 + u->port_text.len;
+            v->host_header.data = u->host.data;
+            v->port = u->port_text;
         }
 
     } else {

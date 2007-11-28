@@ -417,6 +417,9 @@ ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u)
             return NGX_ERROR;
         }
 
+        u->port_text.len = port_len;
+        u->port_text.data = port_start;
+
     } else {
         port = ngx_atoi(p, len);
 
