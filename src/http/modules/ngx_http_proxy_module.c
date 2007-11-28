@@ -637,8 +637,6 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
-    len = sizeof(ngx_http_proxy_version) - 1 + sizeof(CRLF) - 1;
-
     if (u->method.len) {
         /* HEAD was changed to GET to cache response */
         method = u->method;
@@ -652,6 +650,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         method.len++;
     }
 
+    len = method.len + sizeof(ngx_http_proxy_version) - 1 + sizeof(CRLF) - 1;
+
     escape = 0;
     loc_len = 0;
     unparsed_uri = 0;
@@ -659,12 +659,12 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
     if (plcf->proxy_lengths) {
-        len += method.len + ctx->vars.uri.len;
+        len += ctx->vars.uri.len;
 
     } else if (ctx->vars.uri.len == 0 && r->valid_unparsed_uri && r == r->main)
     {
         unparsed_uri = 1;
-        len += method.len + r->unparsed_uri.len;
+        len += r->unparsed_uri.len;
 
     } else {
         loc_len = (r->valid_location && ctx->vars.uri.len) ?
