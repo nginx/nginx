@@ -9,6 +9,24 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.20" date="28.11.2007">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы proxy_pass c URI-частью
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.6.19.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if a "proxy_pass" directive with URI-part was used;
+bug appeared in 0.6.19.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.19" date="27.11.2007">
 
 <change type="bugfix">
@@ -1198,6 +1216,604 @@ process identification number.
 <para lang="en">
 the "server_name", "map", and "valid_referers" directives support
 the "www.example.*" wildcards.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.5.33" date="07.11.2007">
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию команда SSI echo использует кодирование entity.
+</para>
+<para lang="en">
+now by default the "echo" SSI command uses entity encoding.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр encoding в команде SSI echo.
+</para>
+<para lang="en">
+the "encoding" parameter in the "echo" SSI command.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+почтовый прокси-сервер разделён на три модуля: pop3, imap и smtp.
+</para>
+<para lang="en">
+mail proxy was split on three modules: pop3, imap and smtp.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры конфигурации --without-mail_pop3_module,
+--without-mail_imap_module и --without-mail_smtp_module.
+</para>
+<para lang="en">
+the --without-mail_pop3_module, --without-mail_imap_module,
+and --without-mail_smtp_module configuration parameters.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы smtp_greeting_delay и smtp_client_buffer модуля ngx_mail_smtp_module.
+</para>
+<para lang="en">
+the "smtp_greeting_delay" and "smtp_client_buffer" directives
+of the ngx_mail_smtp_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы server_name и valid_referers поддерживают регулярные выражения.
+</para>
+<para lang="en">
+the "server_name" and "valid_referers" directives support regular expressions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы "server_name", "map", and "valid_referers" поддерживают
+маски вида "www.example.*".
+</para>
+<para lang="en">
+the "server_name", "map", and "valid_referers" directives support
+the "www.example.*" wildcards.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+sub_filter не работал с пустой строкой замены.
+</para>
+<para lang="en">
+sub_filter did not work with empty substitution.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в парсинге sub_filter.
+</para>
+<para lang="en">
+in sub_filter parsing.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочий процесс мог зациклиться при использовании memcached.
+</para>
+<para lang="en">
+a worker process may got caught in an endless loop, if the memcached was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx распознавал параметры "close" и "keep-alive" в строке "Connection"
+в заголовке запроса только, если они были в нижнем регистре;
+ошибка появилась в 0.5.32.
+</para>
+<para lang="en">
+nginx supported low case only "close" and "keep-alive" values
+in the "Connection" request header line;
+bug appeared in 0.5.32.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании разделяемой библиотеки PCRE,
+расположенной в нестандартном месте, nginx не запускался на Solaris.
+</para>
+<para lang="en">
+nginx could not start on Solaris if the shared PCRE library located
+in non-standard place was used.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.5.32" date="24.09.2007">
+
+<change type="change">
+<para lang="ru">
+теперь nginx пытается установить директивы worker_priority,
+worker_rlimit_nofile, worker_rlimit_core, worker_rlimit_sigpending
+без привилегий root'а.
+</para>
+<para lang="en">
+now nginx tries to set the "worker_priority", "worker_rlimit_nofile",
+"worker_rlimit_core", and "worker_rlimit_sigpending" without super-user
+privileges.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx экранирует символы пробела и "%" при передаче запроса
+серверу аутентификации почтового прокси-сервера.
+</para>
+<para lang="en">
+now nginx escapes space and "%" in request to a mail proxy authentication
+server.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx экранирует символ "%" в переменной $memcached_key.
+</para>
+<para lang="en">
+now nginx escapes "%" in $memcached_key variable.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+для обновления на лету версий 0.1.x создан специальный сценарий
+<nobr>make upgrade1.</nobr>
+</para>
+<para lang="en">
+the special make target "upgrade1" was defined for online upgrade of
+0.1.x versions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива "add_header Last-Modified ..." меняет строку "Last-Modified"
+в заголовке ответа.
+</para>
+<para lang="en">
+the "add_header Last-Modified ..." directive changes the "Last-Modified"
+response header line.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+почтовый прокси-сервер поддерживает AUTHENTICATE в режиме IMAP.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the mail proxy supports AUTHENTICATE in IMAP mode.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+почтовый прокси-сервер поддерживает STARTTLS в режиме SMTP.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the mail proxy supports STARTTLS in SMTP mode.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не закрывал файл каталога для запроса HEAD,
+если использовался autoindex<br/>
+Спасибо Arkadiusz Patyk.
+</para>
+<para lang="en">
+nginx did not close directory file on HEAD request if autoindex was used.<br/>
+Thanks to Arkadiusz Patyk.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_hide_header и fastcgi_hide_header не скрывали
+строки заголовка ответа с именем больше 32 символов.<br/>
+Спасибо Manlio Perillo.
+</para>
+<para lang="en">
+the "proxy_hide_header" and "fastcgi_hide_header" directives did not
+hide response header lines whose name was longer than 32 characters.<br/>
+Thanks to Manlio Perillo.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+счётчик активных соединений всегда рос при использовании почтового
+прокси-сервера.
+</para>
+<para lang="en">
+active connection counter always increased if mail proxy was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если бэкенд возвращал только заголовок ответа при небуферизированном
+проксировании, то nginx закрывал соединение с бэкендом по таймауту.
+</para>
+<para lang="en">
+if backend returned response header only using non-buffered proxy,
+then nginx closed backend connection on timeout.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал несколько строк "Connection" в заголовке запроса.
+</para>
+<para lang="en">
+nginx did not support several "Connection" request header lines.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+В строку заголовка ответа "Content-Type", указанную в методе
+$r->send_http_header(), не добавлялась кодировка, указанная в директиве charset.
+</para>
+<para lang="en">
+a charset set by the "charset" directive was not appended
+to the "Content-Type" header set by $r->send_http_header().
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании метода /dev/poll
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if /dev/poll method was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не работал на FreeBSD/sparc64.
+</para>
+<para lang="en">
+nginx did not work on FreeBSD/sparc64.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве auth_http был задан неправильный адрес, то
+в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process
+if invalid address was set in the "auth_http" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь по умолчанию nginx использует значение 511 для listen backlog
+на всех платформах, кроме FreeBSD.<br/>
+Спасибо Jiang Hong.
+</para>
+<para lang="en">
+now nginx uses default listen backlog value 511 on all platforms
+except FreeBSD.<br/>
+Thanks to Jiang Hong.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+sendfilev() в Solaris теперь не используется при передаче тела запроса
+FastCGI-серверу через unix domain сокет.
+</para>
+<para lang="en">
+now Solaris sendfilev() is not used to transfer the client request body
+to FastCGI-server via the unix domain socket.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании одного хоста в качестве бэкендов для протоколов HTTP и HTTPS
+без явного указания портов, nginx использовал только один порт&mdash;80 или 443.
+</para>
+<para lang="en">
+if the same host without specified port was used as backend for HTTP and HTTPS,
+then nginx used only one port&mdash;80 or 443.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_ignore_client_abort и fastcgi_ignore_client_abort не работали;
+ошибка появилась в 0.5.13.
+</para>
+<para lang="en">
+the "proxy_ignore_client_abort" and "fastcgi_ignore_client_abort" directives
+did not work;
+bug appeared in 0.5.13.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.5.31" date="15.08.2007">
+
+<change type="feature">
+<para lang="ru">
+именованные location'ы.
+</para>
+<para lang="en">
+named locations.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_store и fastcgi_store.
+</para>
+<para lang="en">
+the "proxy_store" and "fastcgi_store" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_store_access и fastcgi_store_access.
+</para>
+<para lang="en">
+the "proxy_store_access" and "fastcgi_store_access" directives.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.5.30" date="30.07.2007">
+
+<change type="feature">
+<para lang="ru">
+переменную $args можно устанавливать с помощью set.
+</para>
+<para lang="en">
+the $args variable can be set with the "set" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $is_args.
+</para>
+<para lang="en">
+the $is_args variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если клиент в почтовом прокси-сервере закрывал соединение,
+то nginx мог не закрывать соединение с бэкендом.
+</para>
+<para lang="en">
+if a client has closed connection to mail proxy
+ then nginx might not close connection to backend.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx экранирует пробел в переменной $memcached_key.
+</para>
+<para lang="en">
+now nginx escapes space in $memcached_key variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании протокола HTTPS в директиве proxy_pass
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process when
+the HTTPS protocol was used in the "proxy_pass" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+значение perl'овой переменной $$ модуля ngx_http_perl_module было равно
+номеру главного процесса.
+</para>
+<para lang="en">
+the perl $$ variable value in ngx_http_perl_module was equal to the master
+process identification number.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris/amd64 Sun Studio 11 и более ранними версиями;
+ошибка появилась в 0.5.29.
+</para>
+<para lang="en">
+fix building on Solaris/amd64 by Sun Studio 11 and early versions;
+bug appeared in 0.5.29.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.5.29" date="23.07.2007">
+
+<change type="feature">
+<para lang="ru">
+переменная $nginx_version.<br/>
+Спасибо Николаю Гречуху.
+</para>
+<para lang="en">
+$nginx_version variable.<br/>
+Thanks to Nick S. Grechukh.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если заголовок ответа был разделён в FastCGI-записях, то nginx передавал
+клиенту мусор в таких заголовках.
+</para>
+<para lang="en">
+if the FastCGI header was split in records,
+then nginx passed garbage in the header to a client.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с Sun Studio на Solaris/amd64 и Solaris/sparc64.<br/>
+Спасибо Jiang Hong и Андрею Нигматулину.
+</para>
+<para lang="en">
+Sun Studio compatibility on Solaris/amd64 and Solaris/sparc64.<br/>
+Thanks to Jiang Hong and Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+незначительных потенциальных ошибок.<br/>
+Спасибо Coverity's Scan.
+</para>
+<para lang="en">
+of minor potential bugs.<br/>
+Thanks to Coverity's Scan.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.5.28" date="17.07.2007">
+
+<change type="security">
+<para lang="ru">
+при использовании директивы msie_refresh был возможен XSS.<br/>
+Спасибо Максиму Богуку.
+</para>
+<para lang="en">
+the "msie_refresh" directive allowed XSS.<br/>
+Thanks to Maxim Boguk.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы auth_http_header
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if the "auth_http_header" directive was used.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если использовался метод аутентификации CRAM-MD5, но он не был разрешён,
+то в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process
+if the CRAM-MD5 authentication method was used, but it was not enabled.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался метод eventport.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if the eventport method was used.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.5.27" date="09.07.2007">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании удалённого подзапроса в SSI последующий
+подзапрос локального файла мог отдаваться клиенту в неверном порядке.
+</para>
+<para lang="en">
+if remote SSI subrequest was used, then posterior local file subrequest
+might transferred to client in wrong order.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+большие включения в SSI, сохранённые во временные файлы,
+передавались не полностью.
+</para>
+<para lang="en">
+large SSI inclusions buffered in temporary files were truncated.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.5.26" date="17.06.2007">
+
+<change type="bugfix">
+<para lang="ru">
+в парсинге SSI.
+</para>
+<para lang="en">
+in SSI parsing.
 </para>
 </change>
 
