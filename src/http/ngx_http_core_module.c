@@ -69,7 +69,7 @@ static char *ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
-static char * ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
+static char *ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 static char *ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data);
