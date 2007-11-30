@@ -102,7 +102,7 @@ typedef enum {
     ngx_pop3_auth_login_password,
     ngx_pop3_auth_plain,
     ngx_pop3_auth_cram_md5
-} ngx_po3_state_e;
+} ngx_pop3_state_e;
 
 
 typedef enum {
