@@ -3393,6 +3393,8 @@ ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
+    ngx_memzero(&u, sizeof(ngx_url_t));
+
     u.host = value[1];
     u.port = 53;
 
