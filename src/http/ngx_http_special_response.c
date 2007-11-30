@@ -307,7 +307,7 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_string(ngx_http_error_495_page), /* 495, https certificate error */
     ngx_string(ngx_http_error_496_page), /* 496, https no certificate */
     ngx_string(ngx_http_error_497_page), /* 497, http to https */
-    ngx_string(ngx_http_error_404_page), /* 498, invalid host name */
+    ngx_string(ngx_http_error_404_page), /* 498, canceled */
     ngx_null_string,                     /* 499, client has closed connection */
 
     ngx_string(ngx_http_error_500_page),
