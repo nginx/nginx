@@ -1335,13 +1335,6 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (r->plain_http) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent plain HTTP request to HTTPS port");
-        ngx_http_finalize_request(r, NGX_HTTP_TO_HTTPS);
-        return NGX_ERROR;
-    }
-
     if (r->headers_in.connection_type == NGX_HTTP_CONNECTION_KEEP_ALIVE) {
         if (r->headers_in.keep_alive) {
             r->headers_in.keep_alive_n =
@@ -1408,6 +1401,13 @@ ngx_http_process_request(ngx_http_request_t *r)
 #endif
 
     c = r->connection;
+
+    if (r->plain_http) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent plain HTTP request to HTTPS port");
+        ngx_http_finalize_request(r, NGX_HTTP_TO_HTTPS);
+        return;
+    }
 
 #if (NGX_HTTP_SSL)
 
