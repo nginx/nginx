@@ -1154,6 +1154,10 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
             r->args_start = new + (r->args_start - old);
         }
 
+        if (r->http_protocol.data) {
+            r->http_protocol.data = new + (r->http_protocol.data - old);
+        }
+
     } else {
         r->header_name_start = new;
         r->header_name_end = new + (r->header_name_end - old);
