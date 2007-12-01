@@ -11,7 +11,8 @@
 
 #if (NGX_HAVE_KQUEUE)
 
-ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
+ssize_t
+ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
     ssize_t       n;
     ngx_err_t     err;
@@ -126,7 +127,8 @@ ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 
 #else /* ! NGX_HAVE_KQUEUE */
 
-ssize_t ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
+ssize_t
+ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
     ssize_t       n;
     ngx_err_t     err;
