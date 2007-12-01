@@ -748,7 +748,7 @@ ngx_resolver_resend_handler(ngx_event_t *ev)
     /* lock addr mutex */
 
     atimer = ngx_resolver_resend(r, &r->addr_rbtree, &r->addr_resend_queue);
-       
+
     /* unlock addr mutex */
 
     if (ntimer == 0) {

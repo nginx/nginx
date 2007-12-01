@@ -121,12 +121,12 @@ typedef BOOL (PASCAL FAR * LPFN_TRANSMITFILE)(
 #pragma warning(disable:4201) /* Nonstandard extension, nameless struct/union */
 #endif
 
-typedef struct _TRANSMIT_PACKETS_ELEMENT { 
-    ULONG dwElFlags; 
+typedef struct _TRANSMIT_PACKETS_ELEMENT {
+    ULONG dwElFlags;
 #define TP_ELEMENT_MEMORY   1
 #define TP_ELEMENT_FILE     2
 #define TP_ELEMENT_EOP      4
-    ULONG cLength; 
+    ULONG cLength;
     union {
         struct {
             LARGE_INTEGER nFileOffset;
@@ -144,12 +144,12 @@ typedef struct _TRANSMIT_PACKETS_ELEMENT {
 #endif
 
 typedef BOOL (PASCAL FAR * LPFN_TRANSMITPACKETS) (
-    SOCKET hSocket,                             
-    TRANSMIT_PACKETS_ELEMENT *lpPacketArray,                               
-    DWORD nElementCount,                
-    DWORD nSendSize,                
-    LPOVERLAPPED lpOverlapped,                  
-    DWORD dwFlags                               
+    SOCKET hSocket,
+    TRANSMIT_PACKETS_ELEMENT *lpPacketArray,
+    DWORD nElementCount,
+    DWORD nSendSize,
+    LPOVERLAPPED lpOverlapped,
+    DWORD dwFlags
     );
 
 #define WSAID_TRANSMITPACKETS                                                \
