@@ -40,6 +40,13 @@ struct ngx_rbtree_s {
 };
 
 
+#define ngx_rbtree_init(tree, s, i)                                           \
+    ngx_rbtree_sentinel_init(s);                                              \
+    (tree)->root = s;                                                         \
+    (tree)->sentinel = s;                                                     \
+    (tree)->insert = i
+
+
 void ngx_rbtree_insert(ngx_thread_volatile ngx_rbtree_t *tree,
     ngx_rbtree_node_t *node);
 void ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
