@@ -28,6 +28,7 @@ static ngx_int_t ngx_aio_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 ngx_os_io_t ngx_os_aio = {
     ngx_aio_read,
     ngx_aio_read_chain,
+    NULL,
     ngx_aio_write,
     ngx_aio_write_chain,
     0

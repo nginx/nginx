@@ -22,6 +22,7 @@ ngx_fd_t    ngx_stderr_fileno;
 ngx_os_io_t ngx_os_io = {
     ngx_wsarecv,
     ngx_wsarecv_chain,
+    ngx_udp_wsarecv,
     NULL,
     ngx_wsasend_chain,
     0

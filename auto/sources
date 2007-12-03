@@ -164,6 +164,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_socket.c \
             src/os/unix/ngx_recv.c \
             src/os/unix/ngx_readv_chain.c \
+            src/os/unix/ngx_udp_recv.c \
             src/os/unix/ngx_send.c \
             src/os/unix/ngx_writev_chain.c \
             src/os/unix/ngx_channel.c \
@@ -229,6 +230,7 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_socket.c \
             src/os/win32/ngx_wsarecv.c \
             src/os/win32/ngx_wsarecv_chain.c \
+            src/os/win32/ngx_udp_wsarecv.c \
             src/os/win32/ngx_wsasend_chain.c \
             src/os/win32/ngx_win32_init.c \
             src/os/win32/ngx_user.c \

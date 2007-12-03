@@ -826,9 +826,9 @@ ngx_resolver_read_response(ngx_event_t *rev)
     c = rev->data;
 
     do {
-        n = ngx_recv(c, buf, NGX_RESOLVER_UDP_SIZE);
+        n = ngx_udp_recv(c, buf, NGX_RESOLVER_UDP_SIZE);
 
-        if (n == -1) {
+        if (n < 0) {
             return;
         }
 

@@ -90,6 +90,7 @@ ngx_module_t  ngx_iocp_module = {
 ngx_os_io_t ngx_iocp_io = {
     ngx_overlapped_wsarecv,
     NULL,
+    ngx_udp_overlapped_wsarecv,
     NULL,
     ngx_overlapped_wsasend_chain,
     0

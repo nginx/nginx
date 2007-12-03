@@ -429,6 +429,7 @@ extern ngx_os_io_t  ngx_io;
 
 #define ngx_recv             ngx_io.recv
 #define ngx_recv_chain       ngx_io.recv_chain
+#define ngx_udp_recv         ngx_io.udp_recv
 #define ngx_send             ngx_io.send
 #define ngx_send_chain       ngx_io.send_chain
 
