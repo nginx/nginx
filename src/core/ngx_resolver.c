@@ -99,11 +99,6 @@ ngx_resolver_create(ngx_peer_addr_t *addr, ngx_log_t *log)
         return NULL;
     }
 
-    uc = ngx_calloc(sizeof(ngx_udp_connection_t), log);
-    if (uc == NULL) {
-        return NULL;
-    }
-
     r->event = ngx_calloc(sizeof(ngx_event_t), log);
     if (r->event == NULL) {
         return NULL;
@@ -138,8 +133,6 @@ ngx_resolver_create(ngx_peer_addr_t *addr, ngx_log_t *log)
     r->event->log = log;
     r->ident = -1;
 
-    r->udp_connection = uc;
-
     r->resend_timeout = 5;
     r->expire = 30;
     r->valid = 300;
@@ -147,10 +140,19 @@ ngx_resolver_create(ngx_peer_addr_t *addr, ngx_log_t *log)
     r->log = log;
     r->log_level = NGX_LOG_ALERT;
 
-    uc->sockaddr = addr->sockaddr;
-    uc->socklen = addr->socklen;
-    uc->server = addr->name;
-    uc->log = log;
+    if (addr) {
+        uc = ngx_calloc(sizeof(ngx_udp_connection_t), log);
+        if (uc == NULL) {
+            return NULL;
+        }
+
+        r->udp_connection = uc;
+
+        uc->sockaddr = addr->sockaddr;
+        uc->socklen = addr->socklen;
+        uc->server = addr->name;
+        uc->log = log;
+    }
 
     return r;
 }
@@ -175,6 +177,10 @@ ngx_resolve_start(ngx_resolver_t *r, ngx_resolver_ctx_t *temp)
 
             return temp;
         }
+    }
+
+    if (r->udp_connection == NULL) {
+        return NGX_NO_RESOLVER;
     }
 
     ctx = ngx_resolver_calloc(r, sizeof(ngx_resolver_ctx_t));

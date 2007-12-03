@@ -26,6 +26,9 @@
 #define NGX_RESOLVE_TIMEDOUT  NGX_ETIMEDOUT
 
 
+#define NGX_NO_RESOLVER       (void *) -1
+
+
 typedef struct {
     ngx_connection_t         *connection;
     struct sockaddr          *sockaddr;

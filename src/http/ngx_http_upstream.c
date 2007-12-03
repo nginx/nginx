@@ -398,18 +398,19 @@ ngx_http_upstream_init(ngx_http_request_t *r)
             }
         }
 
-        if (clcf->resolver == NULL) {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                          "no resolver defined to resolve %V", host);
-            ngx_http_finalize_request(r, NGX_HTTP_BAD_GATEWAY);
-            return;
-        }
-
         temp.name = *host;
 
         ctx = ngx_resolve_start(clcf->resolver, &temp);
         if (ctx == NULL) {
             ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        if (ctx == NGX_NO_RESOLVER) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "no resolver defined to resolve %V", host);
+
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_GATEWAY);
             return;
         }
 
