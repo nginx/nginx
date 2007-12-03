@@ -675,7 +675,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                                         r->uri.len - loc_len, NGX_ESCAPE_URI);
         }
 
-        len += r->uri.len - loc_len + escape + sizeof("?") - 1 + r->args.len;
+        len += ctx->vars.uri.len + r->uri.len - loc_len + escape
+               + sizeof("?") - 1 + r->args.len;
     }
 
     ngx_http_script_flush_no_cacheable_variables(r, plcf->flushes);
