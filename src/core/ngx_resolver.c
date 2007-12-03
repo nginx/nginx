@@ -104,17 +104,11 @@ ngx_resolver_create(ngx_peer_addr_t *addr, ngx_log_t *log)
         return NULL;
     }
 
-    ngx_rbtree_sentinel_init(&r->name_sentinel);
+    ngx_rbtree_init(&r->name_rbtree, &r->name_sentinel,
+                    ngx_resolver_rbtree_insert_value);
 
-    r->name_rbtree.root = &r->name_sentinel;
-    r->name_rbtree.sentinel = &r->name_sentinel;
-    r->name_rbtree.insert = ngx_resolver_rbtree_insert_value;
-
-    ngx_rbtree_sentinel_init(&r->addr_sentinel);
-
-    r->addr_rbtree.root = &r->addr_sentinel;
-    r->addr_rbtree.sentinel = &r->addr_sentinel;
-    r->addr_rbtree.insert = ngx_rbtree_insert_value;
+    ngx_rbtree_init(&r->addr_rbtree, &r->addr_sentinel,
+                    ngx_rbtree_insert_value);
 
     ngx_queue_init(&r->name_resend_queue);
     ngx_queue_init(&r->addr_resend_queue);
