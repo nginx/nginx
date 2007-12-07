@@ -483,6 +483,89 @@ ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
 
 
 ngx_int_t
+ngx_create_path_and_rename_file(ngx_str_t *src, ngx_str_t *to,
+    ngx_uint_t access, ngx_uint_t full_path, ngx_uint_t delete, ngx_log_t *log)
+{
+    ngx_err_t  err;
+
+#if !(NGX_WIN32)
+
+    if (ngx_change_file_access(src->data, access) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
+                      ngx_change_file_access_n " \"%s\" failed", src->data);
+        err = 0;
+        goto failed;
+    }
+
+#endif
+
+    if (ngx_rename_file(src->data, to->data) != NGX_FILE_ERROR) {
+        return NGX_OK;
+    }
+
+    err = ngx_errno;
+
+    if (err == NGX_ENOENT) {
+
+        if (!full_path) {
+            goto failed;
+        }
+
+        err = ngx_create_full_path(to->data, ngx_dir_access(access));
+
+        if (err) {
+            ngx_log_error(NGX_LOG_CRIT, log, err,
+                          ngx_create_dir_n " \"%s\" failed", to->data);
+            err = 0;
+            goto failed;
+        }
+
+        if (ngx_rename_file(src->data, to->data) != NGX_FILE_ERROR) {
+            return NGX_OK;
+        }
+
+        err = ngx_errno;
+        goto failed;
+    }
+
+#if (NGX_WIN32)
+
+    if (err == NGX_EEXIST) {
+        if (ngx_win32_rename_file(src, to, log) == NGX_OK) {
+
+            if (ngx_rename_file(src->data, to->data) != NGX_FILE_ERROR) {
+                return NGX_OK;
+            }
+
+            err = ngx_errno;
+
+        } else {
+            err = 0;
+        }
+    }
+
+#endif
+
+failed:
+
+    if (delete) {
+        if (ngx_delete_file(src->data) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
+                          ngx_delete_file_n " \"%s\" failed", src->data);
+        }
+    }
+
+    if (err) {
+        ngx_log_error(NGX_LOG_CRIT, log, err,
+                      ngx_rename_file_n " \"%s\" to \"%s\" failed",
+                      src->data, to->data);
+    }
+
+    return NGX_ERROR;
+}
+
+
+ngx_int_t
 ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
 {
     void       *data, *prev;
