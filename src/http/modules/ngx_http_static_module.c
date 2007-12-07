@@ -49,7 +49,6 @@ ngx_http_static_handler(ngx_http_request_t *r)
 {
     u_char                    *last, *location;
     size_t                     root;
-    ngx_fd_t                   fd;
     ngx_str_t                  path;
     ngx_int_t                  rc;
     ngx_uint_t                 level;
@@ -140,9 +139,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    fd = of.fd;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "http static fd: %d", fd);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "http static fd: %d", of.fd);
 
     if (of.is_dir) {
 
@@ -230,7 +227,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
     b->last_buf = (r == r->main) ? 1: 0;
     b->last_in_chain = 1;
 
-    b->file->fd = fd;
+    b->file->fd = of.fd;
     b->file->name = path;
     b->file->log = log;
 

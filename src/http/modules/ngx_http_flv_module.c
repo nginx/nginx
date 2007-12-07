@@ -63,7 +63,6 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     u_char                    *p, *last;
     off_t                      start, len;
     size_t                     root;
-    ngx_fd_t                   fd;
     ngx_int_t                  rc;
     ngx_uint_t                 level, i;
     ngx_str_t                  path;
@@ -149,11 +148,9 @@ ngx_http_flv_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    fd = of.fd;
-
     if (!of.is_file) {
 
-        if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+        if (ngx_close_file(of.fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           ngx_close_file_n " \"%s\" failed", path.data);
         }
@@ -235,7 +232,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     b->last_buf = 1;
     b->last_in_chain = 1;
 
-    b->file->fd = fd;
+    b->file->fd = of.fd;
     b->file->name = path;
     b->file->log = log;
 
