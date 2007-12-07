@@ -201,14 +201,14 @@ ngx_write_fd(ngx_fd_t fd, void *buf, size_t size)
 
 
 ngx_int_t
-ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
+ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 {
     u_char             *name;
     ngx_int_t           rc;
     ngx_uint_t          collision;
     ngx_atomic_uint_t   num;
 
-    name = ngx_palloc(pool, to->len + 1 + 10 + 1 + sizeof("DELETE"));
+    name = ngx_alloc(to->len + 1 + 10 + 1 + sizeof("DELETE"), log);
     if (name == NULL) {
         return NGX_ERROR;
     }
@@ -230,7 +230,7 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
 
         collision = 1;
 
-        ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno, "MoveFile() failed");
+        ngx_log_error(NGX_LOG_CRIT, log, ngx_errno, "MoveFile() failed");
     }
 
     if (MoveFile((const char *) from->data, (const char *) to->data) == 0) {
@@ -241,14 +241,16 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_pool_t *pool)
     }
 
     if (DeleteFile((const char *) name) == 0) {
-        ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno, "DeleteFile() failed");
+        ngx_log_error(NGX_LOG_CRIT, log, ngx_errno, "DeleteFile() failed");
     }
 
     if (rc == NGX_ERROR) {
-        ngx_log_error(NGX_LOG_ERR, pool->log, ngx_errno, "MoveFile() failed");
+        ngx_log_error(NGX_LOG_CRIT, log, ngx_errno, "MoveFile() failed");
     }
 
     /* mutex_unlock() */
+
+    ngx_free(name);
 
     return rc;
 }

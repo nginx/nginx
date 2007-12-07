@@ -2224,7 +2224,7 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
 #if (NGX_WIN32)
 
     if (err == NGX_EEXIST) {
-        if (ngx_win32_rename_file(temp, &path, r->pool) != NGX_ERROR) {
+        if (ngx_win32_rename_file(temp, &path, r->connection->log) == NGX_OK) {
 
             if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
                 return;
