@@ -273,9 +273,11 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    /* ngx_crc32_init() requires ngx_cacheline_size set in ngx_os_init() */
+    /*
+     * ngx_crc32_table_init() requires ngx_cacheline_size set in ngx_os_init()
+     */
 
-    if (ngx_crc32_init() != NGX_OK) {
+    if (ngx_crc32_table_init() != NGX_OK) {
         return 1;
     }
 
