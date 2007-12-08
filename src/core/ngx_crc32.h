@@ -53,7 +53,7 @@ ngx_crc32_long(u_char *p, size_t len)
     crc = 0xffffffff
 
 
-static void
+static ngx_inline void
 ngx_crc32_update(uint32_t *crc, u_char *p, size_t len)
 {
     uint32_t  c;
