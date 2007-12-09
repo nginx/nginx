@@ -230,6 +230,10 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
 
     }
 
+    if (rc == NGX_DONE) {
+        return;
+    }
+
     if (rc > 600) {
         rc = NGX_OK;
     }
@@ -627,12 +631,13 @@ static ngx_int_t
 ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
     ngx_str_t **args, ngx_str_t *handler, ngx_str_t *rv)
 {
-    SV          *sv;
-    int          n, status;
-    char        *line;
-    STRLEN       len, n_a;
-    ngx_str_t    err;
-    ngx_uint_t   i;
+    SV                *sv;
+    int                n, status;
+    char              *line;
+    STRLEN             len, n_a;
+    ngx_str_t          err;
+    ngx_uint_t         i;
+    ngx_connection_t  *c;
 
     dSP;
 
@@ -658,15 +663,26 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
 
     PUTBACK;
 
+    c = r->connection;
+
     n = call_sv(sub, G_EVAL);
 
     SPAGAIN;
+
+    if (c->destroyed) {
+        PUTBACK;
+
+        FREETMPS;
+        LEAVE;
+
+        return NGX_DONE;
+    }
 
     if (n) {
         if (rv == NULL) {
             status = POPi;
 
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "call_sv: %d", status);
 
         } else {
@@ -697,9 +713,8 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
         }
         err.len = len + 1;
 
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "call_sv(\"%V\") failed: \"%V\"",
-                      handler, &err);
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "call_sv(\"%V\") failed: \"%V\"", handler, &err);
 
         if (rv) {
             return NGX_ERROR;
@@ -709,7 +724,7 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
     }
 
     if (n != 1) {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                       "call_sv(\"%V\") returned %d results", handler, n);
         status = NGX_OK;
     }
