@@ -42,8 +42,12 @@ ngx_http_perl_sv2str(pTHX_ ngx_http_request_t *r, ngx_str_t *s, SV *sv)
 
     s->len = len;
 
-    if (SvREADONLY(sv)) {
+    if (SvREADONLY(sv) && SvPOK(sv)) {
         s->data = p;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "perl sv2str: %08XD \"%V\"", sv->sv_flags, s);
+
         return NGX_OK;
     }
 
@@ -53,6 +57,9 @@ ngx_http_perl_sv2str(pTHX_ ngx_http_request_t *r, ngx_str_t *s, SV *sv)
     }
 
     ngx_memcpy(s->data, p, len);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "perl sv2str: %08XD \"%V\"", sv->sv_flags, s);
 
     return NGX_OK;
 }
@@ -532,7 +539,7 @@ print(r, ...)
             sv = SvRV(sv);
         }
 
-        if (SvREADONLY(sv)) {
+        if (SvREADONLY(sv) && SvPOK(sv)) {
 
             p = (u_char *) SvPV(sv, len);
 
