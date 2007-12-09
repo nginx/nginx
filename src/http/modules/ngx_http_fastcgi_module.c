@@ -995,7 +995,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                     for (i = 0; i < flcf->catch_stderr->nelts; i++) {
                         if (ngx_strstr(line.data, pattern[i].data)) {
-                            return NGX_HTTP_BAD_GATEWAY;
+                            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                         }
                     }
                 }
