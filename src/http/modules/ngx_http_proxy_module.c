@@ -959,7 +959,7 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
     if (ctx == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     rc = ngx_http_proxy_parse_status_line(r, ctx);
@@ -994,7 +994,7 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     u->headers_in.status_line.data = ngx_palloc(r->pool,
                                                 u->headers_in.status_line.len);
     if (u->headers_in.status_line.data == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     ngx_memcpy(u->headers_in.status_line.data, ctx->status_start,
@@ -1239,7 +1239,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
             h = ngx_list_push(&r->upstream->headers_in.headers);
             if (h == NULL) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                return NGX_ERROR;
             }
 
             h->hash = r->header_hash;
@@ -1250,7 +1250,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             h->key.data = ngx_palloc(r->pool,
                                h->key.len + 1 + h->value.len + 1 + h->key.len);
             if (h->key.data == NULL) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                return NGX_ERROR;
             }
 
             h->value.data = h->key.data + h->key.len + 1;
@@ -1272,7 +1272,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                                h->lowcase_key, h->key.len);
 
             if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                return NGX_ERROR;
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1297,7 +1297,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             if (r->upstream->headers_in.server == NULL) {
                 h = ngx_list_push(&r->upstream->headers_in.headers);
                 if (h == NULL) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    return NGX_ERROR;
                 }
 
                 h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
@@ -1313,7 +1313,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             if (r->upstream->headers_in.date == NULL) {
                 h = ngx_list_push(&r->upstream->headers_in.headers);
                 if (h == NULL) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    return NGX_ERROR;
                 }
 
                 h->hash = ngx_hash(ngx_hash(ngx_hash('d', 'a'), 't'), 'e');

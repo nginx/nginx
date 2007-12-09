@@ -887,7 +887,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
     if (f == NULL) {
         f = ngx_pcalloc(r->pool, sizeof(ngx_http_fastcgi_ctx_t));
         if (f == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            return NGX_ERROR;
         }
 
         ngx_http_set_ctx(r, f, ngx_http_fastcgi_module);
@@ -1063,7 +1063,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                 h = ngx_list_push(&u->headers_in.headers);
                 if (h == NULL) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    return NGX_ERROR;
                 }
 
                 if (f->split_parts && f->split_parts->nelts) {
@@ -1077,7 +1077,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                     p = ngx_palloc(r->pool, size);
                     if (p == NULL) {
-                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                        return NGX_ERROR;
                     }
 
                     buf.pos = p;
@@ -1105,7 +1105,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                     h->lowcase_key = ngx_palloc(r->pool, h->key.len);
                     if (h->lowcase_key == NULL) {
-                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                        return NGX_ERROR;
                     }
 
                 } else {
@@ -1117,7 +1117,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                                              h->key.len + 1 + h->value.len + 1
                                              + h->key.len);
                     if (h->key.data == NULL) {
-                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                        return NGX_ERROR;
                     }
 
                     h->value.data = h->key.data + h->key.len + 1;
@@ -1145,7 +1145,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                                    h->lowcase_key, h->key.len);
 
                 if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    return NGX_ERROR;
                 }
 
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1238,7 +1238,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
             f->split_parts = ngx_array_create(r->pool, 1,
                                         sizeof(ngx_http_fastcgi_split_part_t));
             if (f->split_parts == NULL) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                return NGX_ERROR;
             }
         }
 
