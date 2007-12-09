@@ -1174,7 +1174,10 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                     status = ngx_atoi(status_line->data, 3);
 
                     if (status == NGX_ERROR) {
-                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "upstream sent invalid status \"%V\"",
+                                      status_line);
+                        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                     }
 
                     u->headers_in.status_n = status;
