@@ -1803,10 +1803,6 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     ngx_http_conf_ctx_t       *ctx, *pctx;
     ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf, *pclcf, **clcfp;
-#if (NGX_PCRE)
-    ngx_str_t                  err;
-    u_char                     errstr[NGX_MAX_CONF_ERRSTR];
-#endif
 
     ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));
     if (ctx == NULL) {
@@ -1861,6 +1857,9 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
                        && value[1].data[1] == '*'))
         {
 #if (NGX_PCRE)
+            ngx_str_t  err;
+            u_char     errstr[NGX_MAX_CONF_ERRSTR];
+
             err.len = NGX_MAX_CONF_ERRSTR;
             err.data = errstr;
 
@@ -2803,10 +2802,6 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t               *value, name;
     ngx_uint_t               i;
     ngx_http_server_name_t  *sn;
-#if (NGX_PCRE)
-    ngx_str_t                err;
-    u_char                   errstr[NGX_MAX_CONF_ERRSTR];
-#endif
 
     value = cf->args->elts;
 
@@ -2882,6 +2877,10 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
 #if (NGX_PCRE)
+        {
+        ngx_str_t  err;
+        u_char     errstr[NGX_MAX_CONF_ERRSTR];
+
         err.len = NGX_MAX_CONF_ERRSTR;
         err.data = errstr;
 
@@ -2898,7 +2897,7 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         sn->name.len = value[i].len;
         sn->name.data = value[i].data;
-
+        }
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "the using of the regex \"%V\" "

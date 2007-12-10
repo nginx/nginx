@@ -29,10 +29,6 @@ ngx_mail_init_connection(ngx_connection_t *c)
     ngx_mail_in_port_t   *imip;
     ngx_mail_in_addr_t   *imia;
     ngx_mail_session_t   *s;
-#if (NGX_MAIL_SSL)
-    ngx_mail_ssl_conf_t  *sslcf;
-#endif
-
 
     /* find the server configuration for the address:port */
 
@@ -116,6 +112,8 @@ ngx_mail_init_connection(ngx_connection_t *c)
     c->log_error = NGX_ERROR_INFO;
 
 #if (NGX_MAIL_SSL)
+    {
+    ngx_mail_ssl_conf_t  *sslcf;
 
     sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
@@ -123,7 +121,7 @@ ngx_mail_init_connection(ngx_connection_t *c)
         ngx_mail_ssl_init_connection(&sslcf->ssl, c);
         return;
     }
-
+    }
 #endif
 
     ngx_mail_init_session(c);

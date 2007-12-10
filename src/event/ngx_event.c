@@ -428,13 +428,9 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     void              ***cf;
     u_char              *shared;
     size_t               size, cl;
-    ngx_event_conf_t    *ecf;
-    ngx_core_conf_t     *ccf;
     ngx_shm_t            shm;
-#if !(NGX_WIN32)
-    ngx_int_t            limit;
-    struct rlimit        rlmt;
-#endif
+    ngx_core_conf_t     *ccf;
+    ngx_event_conf_t    *ecf;
 
     cf = ngx_get_conf(cycle->conf_ctx, ngx_events_module);
 
@@ -456,6 +452,9 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     ngx_timer_resolution = ccf->timer_resolution;
 
 #if !(NGX_WIN32)
+    {
+    ngx_int_t      limit;
+    struct rlimit  rlmt;
 
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -475,7 +474,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
                           ecf->connections, limit);
         }
     }
-
+    }
 #endif /* !(NGX_WIN32) */
 
 
@@ -573,13 +572,6 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     ngx_core_conf_t     *ccf;
     ngx_event_conf_t    *ecf;
     ngx_event_module_t  *module;
-#if (NGX_WIN32)
-    ngx_iocp_conf_t     *iocpcf;
-#else
-    struct rlimit        rlmt;
-    struct sigaction     sa;
-    struct itimerval     itv;
-#endif
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
@@ -625,6 +617,8 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 #if !(NGX_WIN32)
 
     if (ngx_timer_resolution && !(ngx_event_flags & NGX_USE_TIMER_EVENT)) {
+        struct sigaction  sa;
+        struct itimerval  itv;
 
         ngx_memzero(&sa, sizeof(struct sigaction));
         sa.sa_handler = ngx_timer_signal_handler;
@@ -648,6 +642,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     }
 
     if (ngx_event_flags & NGX_USE_FD_EVENT) {
+        struct rlimit  rlmt;
 
         if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -774,6 +769,8 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 #if (NGX_WIN32)
 
         if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
+            ngx_iocp_conf_t  *iocpcf;
+
             rev->handler = ngx_event_acceptex;
 
             if (ngx_add_event(rev, 0, NGX_IOCP_ACCEPT) == NGX_ERROR) {

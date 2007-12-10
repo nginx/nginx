@@ -232,9 +232,6 @@ ngx_http_init_request(ngx_event_t *rev)
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_core_main_conf_t  *cmcf;
-#if (NGX_HTTP_SSL)
-    ngx_http_ssl_srv_conf_t    *sscf;
-#endif
 
 #if (NGX_STAT_STUB)
     ngx_atomic_fetch_add(ngx_stat_reading, -1);
@@ -354,6 +351,9 @@ ngx_http_init_request(ngx_event_t *rev)
 
 #if (NGX_HTTP_SSL)
 
+    {
+    ngx_http_ssl_srv_conf_t  *sscf;
+
     sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
     if (sscf->enable) {
 
@@ -369,6 +369,7 @@ ngx_http_init_request(ngx_event_t *rev)
         }
 
         r->main_filter_need_in_memory = 1;
+    }
     }
 
 #endif
@@ -1398,11 +1399,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 static void
 ngx_http_process_request(ngx_http_request_t *r)
 {
-    ngx_connection_t         *c;
-#if (NGX_HTTP_SSL)
-    long                      rc;
-    ngx_http_ssl_srv_conf_t  *sscf;
-#endif
+    ngx_connection_t  *c;
 
     c = r->connection;
 
@@ -1416,6 +1413,9 @@ ngx_http_process_request(ngx_http_request_t *r)
 #if (NGX_HTTP_SSL)
 
     if (c->ssl) {
+        long                      rc;
+        ngx_http_ssl_srv_conf_t  *sscf;
+
         sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
 
         if (sscf->verify) {
@@ -1469,12 +1469,6 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len,
 {
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
-#if (NGX_PCRE)
-    ngx_int_t                  n;
-    ngx_uint_t                 i;
-    ngx_str_t                  name;
-    ngx_http_server_name_t    *sn;
-#endif
 
     cscf = ngx_hash_find_combined(&r->virtual_names->names, hash, host, len);
 
@@ -1485,6 +1479,10 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len,
 #if (NGX_PCRE)
 
     if (r->virtual_names->nregex) {
+        ngx_int_t                n;
+        ngx_uint_t               i;
+        ngx_str_t                name;
+        ngx_http_server_name_t  *sn;
 
         name.len = len;
         name.data = host;

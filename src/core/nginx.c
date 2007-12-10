@@ -758,12 +758,6 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_core_conf_t  *ccf = conf;
 
-#if !(NGX_WIN32)
-    ngx_str_t       lock_file;
-    struct group   *grp;
-    struct passwd  *pwd;
-#endif
-
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
     ngx_conf_init_msec_value(ccf->timer_resolution, 0);
@@ -796,6 +790,8 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 #if !(NGX_WIN32)
 
     if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) {
+        struct group   *grp;
+        struct passwd  *pwd;
 
         ngx_set_errno(0);
         pwd = getpwnam(NGX_USER);
@@ -848,6 +844,9 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    {
+    ngx_str_t  lock_file;
+
     lock_file = cycle->old_cycle->lock_file;
 
     if (lock_file.len) {
@@ -880,6 +879,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         ngx_memcpy(ngx_cpymem(cycle->lock_file.data, ccf->lock_file.data,
                               ccf->lock_file.len),
                    ".accept", sizeof(".accept"));
+    }
     }
 
 #endif

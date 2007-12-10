@@ -302,7 +302,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
 static ngx_int_t
 ngx_mail_imap_login(ngx_mail_session_t *s, ngx_connection_t *c)
 {
-    ngx_str_t            *arg;
+    ngx_str_t  *arg;
 
 #if (NGX_MAIL_SSL)
     if (ngx_mail_starttls_only(s, c)) {
@@ -410,15 +410,14 @@ static ngx_int_t
 ngx_mail_imap_capability(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_mail_imap_srv_conf_t  *iscf;
-#if (NGX_MAIL_SSL)
-    ngx_mail_ssl_conf_t       *sslcf;
-#endif
 
     iscf = ngx_mail_get_module_srv_conf(s, ngx_mail_imap_module);
 
 #if (NGX_MAIL_SSL)
 
     if (c->ssl == NULL) {
+        ngx_mail_ssl_conf_t  *sslcf;
+
         sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
         if (sslcf->starttls == NGX_MAIL_STARTTLS_ON) {

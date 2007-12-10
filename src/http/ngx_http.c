@@ -101,9 +101,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_PCRE)
     ngx_uint_t                   regex;
 #endif
-#if (NGX_WIN32)
-    ngx_iocp_conf_t             *iocpcf;
-#endif
 
     /* the main http context */
 
@@ -821,9 +818,13 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->log.handler = ngx_accept_log_error;
 
 #if (NGX_WIN32)
+            {
+            ngx_iocp_conf_t  *iocpcf;
+
             iocpcf = ngx_event_get_conf(cf->cycle->conf_ctx, ngx_iocp_module);
             if (iocpcf->acceptex_read) {
                 ls->post_accept_buffer_size = cscf->client_header_buffer_size;
+            }
             }
 #endif
 

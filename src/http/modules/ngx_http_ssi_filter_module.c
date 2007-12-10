@@ -2373,11 +2373,6 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t    *expr, left, right;
     ngx_int_t     rc;
     ngx_uint_t    negative, noregex, flags;
-#if (NGX_PCRE)
-    ngx_str_t     err;
-    ngx_regex_t  *regex;
-    u_char        errstr[NGX_MAX_CONF_ERRSTR];
-#endif
 
     if (ctx->command.len == 2) {
         if (ctx->conditional) {
@@ -2511,6 +2506,10 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     } else {
 #if (NGX_PCRE)
+        ngx_str_t     err;
+        ngx_regex_t  *regex;
+        u_char        errstr[NGX_MAX_CONF_ERRSTR];
+
         err.len = NGX_MAX_CONF_ERRSTR;
         err.data = errstr;
 

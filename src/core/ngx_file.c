@@ -425,9 +425,6 @@ ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
     ngx_err_t         err;
     ngx_uint_t        i;
     ngx_path_t      **path;
-#if !(NGX_WIN32)
-    ngx_file_info_t   fi;
-#endif
 
     path = cycle->pathes.elts;
     for (i = 0; i < cycle->pathes.nelts; i++) {
@@ -447,6 +444,8 @@ ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
         }
 
 #if !(NGX_WIN32)
+        {
+        ngx_file_info_t   fi;
 
         if (ngx_file_info((const char *) path[i]->name.data, &fi) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
@@ -474,7 +473,7 @@ ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
                 return NGX_ERROR;
             }
         }
-
+        }
 #endif
     }
 

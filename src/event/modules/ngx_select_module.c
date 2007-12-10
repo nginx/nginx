@@ -254,9 +254,6 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_event_t        *ev, **queue;
     ngx_connection_t   *c;
     struct timeval      tv, *tp;
-#if !(NGX_WIN32)
-    ngx_uint_t          level;
-#endif
 
 #if !(NGX_WIN32)
 
@@ -348,6 +345,8 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 #else
 
     if (err) {
+        ngx_uint_t  level;
+
         if (err == NGX_EINTR) {
 
             if (ngx_event_timer_alarm) {

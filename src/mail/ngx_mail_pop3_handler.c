@@ -283,7 +283,7 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
 static ngx_int_t
 ngx_mail_pop3_user(ngx_mail_session_t *s, ngx_connection_t *c)
 {
-    ngx_str_t            *arg;
+    ngx_str_t  *arg;
 
 #if (NGX_MAIL_SSL)
     if (ngx_mail_starttls_only(s, c)) {
@@ -344,15 +344,14 @@ static ngx_int_t
 ngx_mail_pop3_capa(ngx_mail_session_t *s, ngx_connection_t *c, ngx_int_t stls)
 {
     ngx_mail_pop3_srv_conf_t  *pscf;
-#if (NGX_MAIL_SSL)
-    ngx_mail_ssl_conf_t       *sslcf;
-#endif
 
     pscf = ngx_mail_get_module_srv_conf(s, ngx_mail_pop3_module);
 
 #if (NGX_MAIL_SSL)
 
     if (stls && c->ssl == NULL) {
+        ngx_mail_ssl_conf_t  *sslcf;
+
         sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
         if (sslcf->starttls == NGX_MAIL_STARTTLS_ON) {

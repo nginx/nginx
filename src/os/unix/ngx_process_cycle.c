@@ -687,17 +687,16 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     ngx_uint_t         i;
     ngx_connection_t  *c;
-#if (NGX_THREADS)
-    ngx_int_t          n;
-    ngx_err_t          err;
-    ngx_core_conf_t   *ccf;
-#endif
 
     ngx_worker_process_init(cycle, 1);
 
     ngx_setproctitle("worker process");
 
 #if (NGX_THREADS)
+    {
+    ngx_int_t         n;
+    ngx_err_t         err;
+    ngx_core_conf_t  *ccf;
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
@@ -736,7 +735,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             }
         }
     }
-
+    }
 #endif
 
     for ( ;; ) {

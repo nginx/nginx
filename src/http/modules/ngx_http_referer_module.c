@@ -106,11 +106,6 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ngx_uint_t                 i, key;
     ngx_http_referer_conf_t   *rlcf;
     u_char                     buf[256];
-#if (NGX_PCRE)
-    ngx_int_t                  n;
-    ngx_str_t                  referer;
-    ngx_http_referer_regex_t  *regex;
-#endif
 
     rlcf = ngx_http_get_module_loc_conf(r, ngx_http_referer_module);
 
@@ -173,6 +168,9 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 #if (NGX_PCRE)
 
     if (rlcf->regex) {
+        ngx_int_t                  n;
+        ngx_str_t                  referer;
+        ngx_http_referer_regex_t  *regex;
 
         referer.len = len - 7;
         referer.data = ref;
