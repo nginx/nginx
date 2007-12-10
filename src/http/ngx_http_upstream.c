@@ -3510,10 +3510,10 @@ ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
     }
 
     hash->hash = &conf->hide_headers_hash;
-    hash->key = ngx_hash_key_lc; 
+    hash->key = ngx_hash_key_lc;
     hash->pool = cf->pool;
     hash->temp_pool = NULL;
-    
+
     return ngx_hash_init(hash, hide_headers.elts, hide_headers.nelts);
 }
 
