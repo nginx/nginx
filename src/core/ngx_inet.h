@@ -61,8 +61,8 @@ typedef struct {
 size_t ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text, size_t len);
 size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
 ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr);
-ngx_int_t ngx_parse_url(ngx_conf_t *cf, ngx_url_t *u);
-ngx_int_t ngx_inet_resolve_host(ngx_conf_t *cf, ngx_url_t *u);
+ngx_int_t ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u);
+ngx_int_t ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u);
 
 
 
