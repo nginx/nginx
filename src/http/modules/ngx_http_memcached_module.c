@@ -371,6 +371,7 @@ found:
         }
 
         u->headers_in.status_n = 200;
+        u->state->status = 200;
         u->buffer.pos = p + 1;
 
         return NGX_OK;
@@ -381,6 +382,7 @@ found:
                       "key: \"%V\" was not found by memcached", &ctx->key);
 
         u->headers_in.status_n = 404;
+        u->state->status = 404;
 
         return NGX_OK;
     }
