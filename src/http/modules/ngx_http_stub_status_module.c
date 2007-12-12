@@ -129,7 +129,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    return ngx_http_output_filter(r, &out);;
+    return ngx_http_output_filter(r, &out);
 }
 
 

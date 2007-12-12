@@ -57,7 +57,7 @@ ngx_os_specific_init(ngx_log_t *log)
 
     ngx_os_io = ngx_solaris_io;
 
-    return NGX_OK;;
+    return NGX_OK;
 }
 
 
