@@ -837,12 +837,15 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             }
         }
 
-        if (last == NGX_AGAIN && !ctx->done) {
-            return NGX_AGAIN;
-        }
+        if (ctx->out == NULL) {
 
-        if (ctx->out == NULL && ctx->busy == NULL) {
-            return NGX_OK;
+            if (last == NGX_AGAIN) {
+                return NGX_AGAIN;
+            }
+
+            if (ctx->busy == NULL) {
+                return NGX_OK;
+            }
         }
 
         last = ngx_http_next_body_filter(r, ctx->out);
