@@ -24,15 +24,15 @@ typedef MD5_CTX  ngx_md5_t;
 
 #if (NGX_OPENSSL_MD5)
 
-#define  ngx_md5_init    MD5_Init
-#define  ngx_md5_update  MD5_Update
-#define  ngx_md5_final   MD5_Final
+#define ngx_md5_init    MD5_Init
+#define ngx_md5_update  MD5_Update
+#define ngx_md5_final   MD5_Final
 
 #else
 
-#define  ngx_md5_init    MD5Init
-#define  ngx_md5_update  MD5Update
-#define  ngx_md5_final   MD5Final
+#define ngx_md5_init    MD5Init
+#define ngx_md5_update  MD5Update
+#define ngx_md5_final   MD5Final
 
 #endif
 

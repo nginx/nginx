@@ -11,7 +11,8 @@
 
 static int mday[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
-time_t ngx_http_parse_time(u_char *value, size_t len)
+time_t
+ngx_http_parse_time(u_char *value, size_t len)
 {
     u_char  *p, *end;
     int      day, month, year, hour, min, sec;
@@ -247,7 +248,7 @@ time_t ngx_http_parse_time(u_char *value, size_t len)
         year -= 1;
     }
 
-    /* Gauss's formula for Grigorian days from 1 March 1 BC */
+    /* Gauss's formula for Grigorian days from March 1, 1 BC */
 
     return (365 * year + year / 4 - year / 100 + year / 400
             + 367 * month / 12 - 31

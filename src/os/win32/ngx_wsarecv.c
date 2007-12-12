@@ -9,7 +9,8 @@
 #include <ngx_event.h>
 
 
-ssize_t ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
+ssize_t
+ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
 {
     int           rc;
     u_long        bytes, flags;
@@ -57,7 +58,8 @@ ssize_t ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
 }
 
 
-ssize_t ngx_overlapped_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
+ssize_t
+ngx_overlapped_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
 {
     int               rc;
     u_long            bytes, flags;
