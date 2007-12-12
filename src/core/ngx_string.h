@@ -155,14 +155,15 @@ size_t ngx_utf_length(u_char *p, size_t n);
 u_char *ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n);
 
 
-#define NGX_ESCAPE_URI        0
-#define NGX_ESCAPE_ARGS       1
-#define NGX_ESCAPE_HTML       2
-#define NGX_ESCAPE_REFRESH    3
-#define NGX_ESCAPE_MEMCACHED  4
-#define NGX_ESCAPE_MAIL_AUTH  5
+#define NGX_ESCAPE_URI         0
+#define NGX_ESCAPE_ARGS        1
+#define NGX_ESCAPE_HTML        2
+#define NGX_ESCAPE_REFRESH     3
+#define NGX_ESCAPE_MEMCACHED   4
+#define NGX_ESCAPE_MAIL_AUTH   5
 
-#define NGX_UNESCAPE_URI      1
+#define NGX_UNESCAPE_URI       1
+#define NGX_UNESCAPE_REDIRECT  2
 
 uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
     ngx_uint_t type);
