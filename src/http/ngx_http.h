@@ -113,9 +113,4 @@ extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
 extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
 
 
-/* STUB */
-ngx_int_t ngx_http_log_handler(ngx_http_request_t *r);
-/**/
-
-
 #endif /* _NGX_HTTP_H_INCLUDED_ */
