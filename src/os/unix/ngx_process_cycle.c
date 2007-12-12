@@ -409,6 +409,12 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
     ngx_err_t      err;
     ngx_channel_t  ch;
 
+#if (NGX_BROKEN_SCM_RIGHTS)
+
+    ch.command = 0;
+
+#else
+
     switch (signo) {
 
     case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
@@ -426,6 +432,8 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
     default:
         ch.command = 0;
     }
+
+#endif
 
     ch.fd = -1;
 
