@@ -434,7 +434,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
             ev->error = 1;
         }
 
-        if (!u->cachable && !u->store && u->peer.connection) {
+        if (!u->cacheable && !u->store && u->peer.connection) {
             ngx_log_error(NGX_LOG_INFO, ev->log, ev->kq_errno,
                           "kevent() reported that client closed prematurely "
                           "connection, so upstream connection is closed too");
@@ -500,7 +500,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ev->eof = 1;
     c->error = 1;
 
-    if (!u->cachable && !u->store && u->peer.connection) {
+    if (!u->cacheable && !u->store && u->peer.connection) {
         ngx_log_error(NGX_LOG_INFO, ev->log, err,
                       "client closed prematurely connection, "
                       "so upstream connection is closed too");
@@ -1511,7 +1511,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         }
     }
 
-    if (u->cachable) {
+    if (u->cacheable) {
         header = (ngx_http_cache_header_t *) u->buffer->start;
 
         header->expires = u->cache->ctx.expires;
@@ -1539,7 +1539,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->pool = r->pool;
     p->log = c->log;
 
-    p->cachable = u->cachable || u->store;
+    p->cacheable = u->cacheable || u->store;
 
     p->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t));
     if (p->temp_file == NULL) {
@@ -1552,7 +1552,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->temp_file->path = u->conf->temp_path;
     p->temp_file->pool = r->pool;
 
-    if (u->cachable || u->store) {
+    if (u->cacheable || u->store) {
         p->temp_file->persistent = 1;
 
     } else {
@@ -1576,7 +1576,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     p->preread_size = u->buffer.last - u->buffer.pos;
 
-    if (u->cachable) {
+    if (u->cacheable) {
 
         p->buf_to_file = ngx_calloc_buf(r->pool);
         if (p->buf_to_file == NULL) {
@@ -1953,14 +1953,14 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
 
 #if (NGX_HTTP_FILE_CACHE)
 
-        if (p->upstream_done && u->cachable) {
+        if (p->upstream_done && u->cacheable) {
             if (ngx_http_cache_update(r) == NGX_ERROR) {
                 ngx_http_busy_unlock(u->conf->busy_lock, &u->busy_lock);
                 ngx_http_upstream_finalize_request(r, u, 0);
                 return;
             }
 
-        } else if (p->upstream_eof && u->cachable) {
+        } else if (p->upstream_eof && u->cacheable) {
 
             /* TODO: check length & update cache */
 
@@ -1988,7 +1988,7 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http upstream downstream error");
 
-        if (!u->cachable && u->peer.connection) {
+        if (!u->cacheable && u->peer.connection) {
             ngx_http_upstream_finalize_request(r, u, 0);
         }
     }
@@ -2710,7 +2710,7 @@ ngx_http_upstream_addr_variable(ngx_http_request_t *r,
     ngx_http_upstream_state_t  *state;
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     if (r->upstream_states == NULL || r->upstream_states->nelts == 0) {
@@ -2781,7 +2781,7 @@ ngx_http_upstream_status_variable(ngx_http_request_t *r,
     ngx_http_upstream_state_t  *state;
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     if (r->upstream_states == NULL || r->upstream_states->nelts == 0) {
@@ -2847,7 +2847,7 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
     ngx_http_upstream_state_t  *state;
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     if (r->upstream_states == NULL || r->upstream_states->nelts == 0) {

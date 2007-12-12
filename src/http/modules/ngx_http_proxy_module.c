@@ -420,10 +420,10 @@ static ngx_str_t  ngx_http_proxy_hide_headers[] = {
 static ngx_http_variable_t  ngx_http_proxy_vars[] = {
 
     { ngx_string("proxy_host"), NULL, ngx_http_proxy_host_variable, 0,
-      NGX_HTTP_VAR_CHANGABLE|NGX_HTTP_VAR_NOHASH, 0 },
+      NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOHASH, 0 },
 
     { ngx_string("proxy_port"), NULL, ngx_http_proxy_port_variable, 0,
-      NGX_HTTP_VAR_CHANGABLE|NGX_HTTP_VAR_NOHASH, 0 },
+      NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOHASH, 0 },
 
     { ngx_string("proxy_add_x_forwarded_for"), NULL,
       ngx_http_proxy_add_x_forwarded_for_variable, 0, NGX_HTTP_VAR_NOHASH, 0 },
@@ -561,7 +561,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         len += r->uri.len - loc_len + escape + sizeof("?") - 1 + r->args.len;
     }
 
-    ngx_http_script_flush_no_cachable_variables(r, plcf->flushes);
+    ngx_http_script_flush_no_cacheable_variables(r, plcf->flushes);
 
     if (plcf->body_set_len) {
         le.ip = plcf->body_set_len->elts;
@@ -1249,7 +1249,7 @@ ngx_http_proxy_host_variable(ngx_http_request_t *r,
 
     v->len = plcf->host_header.len;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = plcf->host_header.data;
 
@@ -1267,7 +1267,7 @@ ngx_http_proxy_port_variable(ngx_http_request_t *r,
 
     v->len = plcf->port.len;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = plcf->port.data;
 
@@ -1282,7 +1282,7 @@ ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
     u_char  *p;
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     if (r->headers_in.x_forwarded_for == NULL) {
@@ -1326,7 +1326,7 @@ ngx_http_proxy_internal_body_length_variable(ngx_http_request_t *r,
     }
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     v->data = ngx_palloc(r->connection->pool, NGX_SIZE_T_LEN);

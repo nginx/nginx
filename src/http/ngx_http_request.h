@@ -449,7 +449,7 @@ struct ngx_http_request_s {
     unsigned                          limit_zone_set:1;
 
 #if 0
-    unsigned                          cachable:1;
+    unsigned                          cacheable:1;
 #endif
 
     unsigned                          pipeline:1;

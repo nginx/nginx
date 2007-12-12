@@ -28,7 +28,7 @@ typedef struct {
     unsigned    len:29;
 
     unsigned    valid:1;
-    unsigned    no_cachable:1;
+    unsigned    no_cacheable:1;
     unsigned    not_found:1;
 
     u_char     *data;

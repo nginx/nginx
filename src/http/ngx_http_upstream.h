@@ -243,7 +243,7 @@ struct ngx_http_upstream_s {
     ngx_http_cleanup_pt            *cleanup;
 
     unsigned                        store:1;
-    unsigned                        cachable:1;
+    unsigned                        cacheable:1;
     unsigned                        accel:1;
 
     unsigned                        buffering:1;

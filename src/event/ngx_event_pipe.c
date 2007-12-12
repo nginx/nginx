@@ -192,7 +192,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 chain->buf = b;
                 chain->next = NULL;
 
-            } else if (!p->cachable
+            } else if (!p->cacheable
                        && p->downstream->data == p->output_ctx
                        && p->downstream->write->ready
                        && !p->downstream->write->delayed)
@@ -209,7 +209,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
                 break;
 
-            } else if (p->cachable
+            } else if (p->cacheable
                        || p->temp_file->offset < p->max_temp_file_size)
             {
 
@@ -406,7 +406,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         }
     }
 
-    if (p->cachable && p->in) {
+    if (p->cacheable && p->in) {
         if (ngx_event_pipe_write_chain_to_temp_file(p) == NGX_ABORT) {
             return NGX_ABORT;
         }
@@ -542,7 +542,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
                 ngx_event_pipe_free_shadow_raw_buf(&p->free_raw_bufs, cl->buf);
 
-            } else if (!p->cachable && p->in) {
+            } else if (!p->cacheable && p->in) {
                 cl = p->in;
 
                 ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
@@ -612,7 +612,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         for (cl = p->free; cl; cl = cl->next) {
 
             if (cl->buf->temp_file) {
-                if (p->cachable || !p->cyclic_temp_file) {
+                if (p->cacheable || !p->cyclic_temp_file) {
                     continue;
                 }
 
@@ -659,7 +659,7 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         out = p->in;
     }
 
-    if (!p->cachable) {
+    if (!p->cacheable) {
 
         size = 0;
         cl = out;

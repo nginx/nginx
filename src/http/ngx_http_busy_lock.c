@@ -10,9 +10,9 @@
 
 
 
-static int ngx_http_busy_lock_look_cachable(ngx_http_busy_lock_t *bl,
-                                            ngx_http_busy_lock_ctx_t *bc,
-                                            int lock);
+static int ngx_http_busy_lock_look_cacheable(ngx_http_busy_lock_t *bl,
+                                             ngx_http_busy_lock_ctx_t *bc,
+                                             int lock);
 
 
 int ngx_http_busy_lock(ngx_http_busy_lock_t *bl, ngx_http_busy_lock_ctx_t *bc)
@@ -60,12 +60,12 @@ int ngx_http_busy_lock(ngx_http_busy_lock_t *bl, ngx_http_busy_lock_ctx_t *bc)
 }
 
 
-int ngx_http_busy_lock_cachable(ngx_http_busy_lock_t *bl,
-                                ngx_http_busy_lock_ctx_t *bc, int lock)
+int ngx_http_busy_lock_cacheable(ngx_http_busy_lock_t *bl,
+                                 ngx_http_busy_lock_ctx_t *bc, int lock)
 {
     int  rc;
 
-    rc = ngx_http_busy_lock_look_cachable(bl, bc, lock);
+    rc = ngx_http_busy_lock_look_cacheable(bl, bc, lock);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, bc->event->log, 0,
                    "http busylock: %d w:%d mw::%d",
@@ -121,22 +121,22 @@ void ngx_http_busy_unlock(ngx_http_busy_lock_t *bl,
 
     if (bl->md5) {
         bl->md5_mask[bc->slot / 8] &= ~(1 << (bc->slot & 7));
-        bl->cachable--;
+        bl->cacheable--;
     }
 
     bl->busy--;
 }
 
 
-static int ngx_http_busy_lock_look_cachable(ngx_http_busy_lock_t *bl,
-                                            ngx_http_busy_lock_ctx_t *bc,
-                                            int lock)
+static int ngx_http_busy_lock_look_cacheable(ngx_http_busy_lock_t *bl,
+                                             ngx_http_busy_lock_ctx_t *bc,
+                                             int lock)
 {
-    int    i, b, cachable, free;
+    int    i, b, cacheable, free;
     u_int  mask;
 
     b = 0;
-    cachable = 0;
+    cacheable = 0;
     free = -1;
 
 #if (NGX_SUPPRESS_WARN)
@@ -153,15 +153,15 @@ static int ngx_http_busy_lock_look_cachable(ngx_http_busy_lock_t *bl,
             if (ngx_memcmp(&bl->md5[i * 16], bc->md5, 16) == 0) {
                 return NGX_AGAIN;
             }
-            cachable++;
+            cacheable++;
 
         } else if (free == -1) {
             free = i;
         }
 
 #if 1
-        if (cachable == bl->cachable) {
-            if (free == -1 && cachable < bl->max_busy) {
+        if (cacheable == bl->cacheable) {
+            if (free == -1 && cacheable < bl->max_busy) {
                 free = i + 1;
             }
 
@@ -186,7 +186,7 @@ static int ngx_http_busy_lock_look_cachable(ngx_http_busy_lock_t *bl,
         bl->md5_mask[free / 8] |= 1 << (free & 7);
         bc->slot = free;
 
-        bl->cachable++;
+        bl->cacheable++;
         bl->busy++;
     }
 

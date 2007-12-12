@@ -303,10 +303,10 @@ static ngx_http_ssi_command_t  ngx_http_ssi_commands[] = {
 static ngx_http_variable_t  ngx_http_ssi_vars[] = {
 
     { ngx_string("date_local"), NULL, ngx_http_ssi_date_gmt_local_variable, 0,
-      NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("date_gmt"), NULL, ngx_http_ssi_date_gmt_local_variable, 1,
-      NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -2641,7 +2641,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
     char                 buf[NGX_HTTP_SSI_DATE_LEN];
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     tp = ngx_timeofday();

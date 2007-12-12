@@ -912,7 +912,7 @@ variable(r, name, value = NULL)
     if (value) {
         vv->len = val.len;
         vv->valid = 1;
-        vv->no_cachable = 0;
+        vv->no_cacheable = 0;
         vv->not_found = 0;
         vv->data = val.data;
 

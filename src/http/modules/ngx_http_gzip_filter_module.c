@@ -940,7 +940,7 @@ ngx_http_gzip_ratio_variable(ngx_http_request_t *r,
     ngx_http_gzip_ctx_t  *ctx;
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module);

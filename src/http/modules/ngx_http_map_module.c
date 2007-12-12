@@ -221,7 +221,7 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     name.len--;
     name.data++;
 
-    var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGABLE);
+    var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
     if (var == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -430,7 +430,7 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     }
 
     var->valid = 1;
-    var->no_cachable = 0;
+    var->no_cacheable = 0;
     var->not_found = 0;
 
     vp = ngx_array_push(&ctx->values_hash[key]);

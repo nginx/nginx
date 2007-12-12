@@ -143,34 +143,34 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("uri"), NULL, ngx_http_variable_request,
       offsetof(ngx_http_request_t, uri),
-      NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("document_uri"), NULL, ngx_http_variable_request,
       offsetof(ngx_http_request_t, uri),
-      NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("request"), NULL, ngx_http_variable_request,
       offsetof(ngx_http_request_t, request_line), 0, 0 },
 
     { ngx_string("document_root"), NULL,
-      ngx_http_variable_document_root, 0, NGX_HTTP_VAR_NOCACHABLE, 0 },
+      ngx_http_variable_document_root, 0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("query_string"), NULL, ngx_http_variable_request,
       offsetof(ngx_http_request_t, args),
-      NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("args"),
       ngx_http_variable_request_set,
       ngx_http_variable_request,
       offsetof(ngx_http_request_t, args),
-      NGX_HTTP_VAR_CHANGABLE|NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("is_args"), NULL, ngx_http_variable_is_args,
-      0, NGX_HTTP_VAR_NOCACHABLE, 0 },
+      0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("request_filename"), NULL,
       ngx_http_variable_request_filename, 0,
-      NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("server_name"), NULL, ngx_http_variable_request,
       offsetof(ngx_http_request_t, server_name), 0, 0 },
@@ -215,7 +215,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("limit_rate"), ngx_http_variable_request_set_size,
       ngx_http_variable_request,
       offsetof(ngx_http_request_t, limit_rate),
-      NGX_HTTP_VAR_CHANGABLE|NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("nginx_version"), NULL, ngx_http_variable_nginx_version,
       0, 0, 0 },
@@ -251,7 +251,7 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
 
         v = key[i].value;
 
-        if (!(v->flags & NGX_HTTP_VAR_CHANGABLE)) {
+        if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE)) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "the duplicate \"%V\" variable", name);
             return NULL;
@@ -375,8 +375,8 @@ ngx_http_get_indexed_variable(ngx_http_request_t *r, ngx_uint_t index)
     if (v[index].get_handler(r, &r->variables[index], v[index].data)
         == NGX_OK)
     {
-        if (v[index].flags & NGX_HTTP_VAR_NOCACHABLE) {
-            r->variables[index].no_cachable = 1;
+        if (v[index].flags & NGX_HTTP_VAR_NOCACHEABLE) {
+            r->variables[index].no_cacheable = 1;
         }
 
         return &r->variables[index];
@@ -397,7 +397,7 @@ ngx_http_get_flushed_variable(ngx_http_request_t *r, ngx_uint_t index)
     v = &r->variables[index];
 
     if (v->valid) {
-        if (!v->no_cachable) {
+        if (!v->no_cacheable) {
             return v;
         }
 
@@ -497,7 +497,7 @@ ngx_http_variable_request(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     if (s->data) {
         v->len = s->len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = s->data;
 
@@ -559,7 +559,7 @@ ngx_http_variable_header(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     if (h) {
         v->len = h->value.len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = h->value.data;
 
@@ -591,7 +591,7 @@ ngx_http_variable_headers(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     }
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     h = a->elts;
@@ -691,7 +691,7 @@ ngx_http_variable_unknown_header(ngx_http_variable_value_t *v, ngx_str_t *var,
         if (n + prefix == var->len && n == header[i].key.len) {
             v->len = header[i].value.len;
             v->valid = 1;
-            v->no_cachable = 0;
+            v->no_cacheable = 0;
             v->not_found = 0;
             v->data = header[i].value.data;
 
@@ -730,7 +730,7 @@ ngx_http_variable_host(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     }
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     return NGX_OK;
@@ -749,7 +749,7 @@ ngx_http_variable_binary_remote_addr(ngx_http_request_t *r,
 
     v->len = sizeof(in_addr_t);
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = (u_char *) &sin->sin_addr.s_addr;
 
@@ -763,7 +763,7 @@ ngx_http_variable_remote_addr(ngx_http_request_t *r,
 {
     v->len = r->connection->addr_text.len;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = r->connection->addr_text.data;
 
@@ -780,7 +780,7 @@ ngx_http_variable_remote_port(ngx_http_request_t *r,
 
     v->len = 0;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     v->data = ngx_palloc(r->pool, sizeof("65535") - 1);
@@ -832,7 +832,7 @@ ngx_http_variable_server_addr(ngx_http_request_t *r,
     v->len = ngx_inet_ntop(c->listening->family, &r->in_addr,
                            v->data, INET_ADDRSTRLEN);
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     return NGX_OK;
@@ -845,7 +845,7 @@ ngx_http_variable_server_port(ngx_http_request_t *r,
 {
     v->len = r->port_text->len - 1;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = r->port_text->data + 1;
 
@@ -862,7 +862,7 @@ ngx_http_variable_scheme(ngx_http_request_t *r,
     if (r->connection->ssl) {
         v->len = sizeof("https") - 1;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = (u_char *) "https";
 
@@ -873,7 +873,7 @@ ngx_http_variable_scheme(ngx_http_request_t *r,
 
     v->len = sizeof("http") - 1;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = (u_char *) "http";
 
@@ -886,7 +886,7 @@ ngx_http_variable_is_args(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     if (r->args.len == 0) {
@@ -914,7 +914,7 @@ ngx_http_variable_document_root(ngx_http_request_t *r,
     if (clcf->root_lengths == NULL) {
         v->len = clcf->root.len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = clcf->root.data;
 
@@ -932,7 +932,7 @@ ngx_http_variable_document_root(ngx_http_request_t *r,
 
         v->len = path.len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = path.data;
     }
@@ -956,7 +956,7 @@ ngx_http_variable_request_filename(ngx_http_request_t *r,
 
     v->len = path.len - 1;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = path.data;
 
@@ -971,7 +971,7 @@ ngx_http_variable_request_method(ngx_http_request_t *r,
     if (r->main->method_name.data) {
         v->len = r->main->method_name.len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = r->main->method_name.data;
 
@@ -1002,7 +1002,7 @@ ngx_http_variable_remote_user(ngx_http_request_t *r,
 
     v->len = r->headers_in.user.len;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = r->headers_in.user.data;
 
@@ -1030,7 +1030,7 @@ ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
 
     v->len = ngx_sprintf(p, "%O", sent) - p;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = p;
 
@@ -1045,7 +1045,7 @@ ngx_http_variable_sent_content_type(ngx_http_request_t *r,
     if (r->headers_out.content_type.len) {
         v->len = r->headers_out.content_type.len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = r->headers_out.content_type.data;
 
@@ -1066,7 +1066,7 @@ ngx_http_variable_sent_content_length(ngx_http_request_t *r,
     if (r->headers_out.content_length) {
         v->len = r->headers_out.content_length->value.len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = r->headers_out.content_length->value.data;
 
@@ -1081,7 +1081,7 @@ ngx_http_variable_sent_content_length(ngx_http_request_t *r,
 
         v->len = ngx_sprintf(p, "%O", r->headers_out.content_length_n) - p;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = p;
 
@@ -1103,7 +1103,7 @@ ngx_http_variable_sent_last_modified(ngx_http_request_t *r,
     if (r->headers_out.last_modified) {
         v->len = r->headers_out.last_modified->value.len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = r->headers_out.last_modified->value.data;
 
@@ -1119,7 +1119,7 @@ ngx_http_variable_sent_last_modified(ngx_http_request_t *r,
 
         v->len = ngx_http_time(p, r->headers_out.last_modified_time) - p;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = p;
 
@@ -1150,7 +1150,7 @@ ngx_http_variable_sent_connection(ngx_http_request_t *r,
 
     v->len = len;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = (u_char *) p;
 
@@ -1177,7 +1177,7 @@ ngx_http_variable_sent_keep_alive(ngx_http_request_t *r,
 
             v->len = ngx_sprintf(p, "timeout=%T", clcf->keepalive_header) - p;
             v->valid = 1;
-            v->no_cachable = 0;
+            v->no_cacheable = 0;
             v->not_found = 0;
             v->data = p;
 
@@ -1198,7 +1198,7 @@ ngx_http_variable_sent_transfer_encoding(ngx_http_request_t *r,
     if (r->chunked) {
         v->len = sizeof("chunked") - 1;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = (u_char *) "chunked";
 
@@ -1217,7 +1217,7 @@ ngx_http_variable_request_completion(ngx_http_request_t *r,
     if (r->request_complete) {
         v->len = 2;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = (u_char *) "OK";
 
@@ -1226,7 +1226,7 @@ ngx_http_variable_request_completion(ngx_http_request_t *r,
 
     v->len = 0;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = (u_char *) "";
 
@@ -1246,7 +1246,7 @@ ngx_http_variable_request_body_file(ngx_http_request_t *r,
 
     v->len = r->request_body->temp_file->file.name.len;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = r->request_body->temp_file->file.name.data;
 
@@ -1260,7 +1260,7 @@ ngx_http_variable_nginx_version(ngx_http_request_t *r,
 {
     v->len = sizeof(NGINX_VERSION) - 1;
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
     v->data = (u_char *) NGINX_VERSION;
 
@@ -1368,7 +1368,7 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
         if (ngx_strncmp(v[i].name.data, "upstream_http_", 14) == 0) {
             v[i].get_handler = ngx_http_upstream_header_variable;
             v[i].data = (uintptr_t) &v[i].name;
-            v[i].flags = NGX_HTTP_VAR_NOCACHABLE;
+            v[i].flags = NGX_HTTP_VAR_NOCACHEABLE;
 
             continue;
         }

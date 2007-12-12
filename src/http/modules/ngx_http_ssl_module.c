@@ -170,19 +170,19 @@ ngx_module_t  ngx_http_ssl_module = {
 static ngx_http_variable_t  ngx_http_ssl_vars[] = {
 
     { ngx_string("ssl_protocol"), NULL, ngx_http_ssl_static_variable,
-      (uintptr_t) ngx_ssl_get_protocol, NGX_HTTP_VAR_CHANGABLE, 0 },
+      (uintptr_t) ngx_ssl_get_protocol, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_cipher"), NULL, ngx_http_ssl_static_variable,
-      (uintptr_t) ngx_ssl_get_cipher_name, NGX_HTTP_VAR_CHANGABLE, 0 },
+      (uintptr_t) ngx_ssl_get_cipher_name, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_client_s_dn"), NULL, ngx_http_ssl_variable,
-      (uintptr_t) ngx_ssl_get_subject_dn, NGX_HTTP_VAR_CHANGABLE, 0 },
+      (uintptr_t) ngx_ssl_get_subject_dn, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_client_i_dn"), NULL, ngx_http_ssl_variable,
-      (uintptr_t) ngx_ssl_get_issuer_dn, NGX_HTTP_VAR_CHANGABLE, 0 },
+      (uintptr_t) ngx_ssl_get_issuer_dn, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_client_serial"), NULL, ngx_http_ssl_variable,
-      (uintptr_t) ngx_ssl_get_serial_number, NGX_HTTP_VAR_CHANGABLE, 0 },
+      (uintptr_t) ngx_ssl_get_serial_number, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -210,7 +210,7 @@ ngx_http_ssl_static_variable(ngx_http_request_t *r,
 
         v->len = len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
 
         return NGX_OK;
@@ -241,7 +241,7 @@ ngx_http_ssl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
         if (v->len) {
             v->valid = 1;
-            v->no_cachable = 0;
+            v->no_cacheable = 0;
             v->not_found = 0;
 
             return NGX_OK;

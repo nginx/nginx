@@ -336,7 +336,7 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     if (value.data) {
         v->len = value.len;
         v->valid = 1;
-        v->no_cachable = 0;
+        v->no_cacheable = 0;
         v->not_found = 0;
         v->data = value.data;
 
@@ -954,7 +954,7 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value[1].len--;
     value[1].data++;
 
-    v = ngx_http_add_variable(cf, &value[1], NGX_HTTP_VAR_CHANGABLE);
+    v = ngx_http_add_variable(cf, &value[1], NGX_HTTP_VAR_CHANGEABLE);
     if (v == NULL) {
         return NGX_CONF_ERROR;
     }
