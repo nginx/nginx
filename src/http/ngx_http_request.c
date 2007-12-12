@@ -603,10 +603,11 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 static void
 ngx_http_process_request_line(ngx_event_t *rev)
 {
-    ssize_t              n;
-    ngx_int_t            rc, rv;
-    ngx_connection_t    *c;
-    ngx_http_request_t  *r;
+    ssize_t                    n;
+    ngx_int_t                  rc, rv;
+    ngx_connection_t          *c;
+    ngx_http_request_t        *r;
+    ngx_http_core_srv_conf_t  *cscf;
 
     c = rev->data;
     r = c->data;
@@ -658,7 +659,9 @@ ngx_http_process_request_line(ngx_event_t *rev)
                     return;
                 }
 
-                rc = ngx_http_parse_complex_uri(r);
+                cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+                rc = ngx_http_parse_complex_uri(r, cscf->merge_slashes);
 
                 if (rc == NGX_HTTP_PARSE_INVALID_REQUEST) {
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,

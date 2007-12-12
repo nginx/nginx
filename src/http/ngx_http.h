@@ -64,7 +64,8 @@ int ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg);
 #endif
 
 ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b);
-ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r);
+ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r,
+    ngx_uint_t merge_slashes);
 ngx_int_t ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
     ngx_str_t *args, ngx_uint_t *flags);
 ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b);

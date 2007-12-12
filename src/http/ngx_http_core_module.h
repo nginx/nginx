@@ -143,6 +143,7 @@ typedef struct {
 
     ngx_flag_t                 optimize_server_names;
     ngx_flag_t                 ignore_invalid_headers;
+    ngx_flag_t                 merge_slashes;
 } ngx_http_core_srv_conf_t;
 
 
