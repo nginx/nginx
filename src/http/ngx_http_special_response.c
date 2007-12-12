@@ -10,8 +10,15 @@
 #include <nginx.h>
 
 
-static u_char error_tail[] =
+static u_char error_full_tail[] =
 "<hr><center>" NGINX_VER "</center>" CRLF
+"</body>" CRLF
+"</html>" CRLF
+;
+
+
+static u_char error_tail[] =
+"<hr><center>nginx</center>" CRLF
 "</body>" CRLF
 "</html>" CRLF
 ;
@@ -471,7 +478,8 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
     if (!r->zero_body) {
         if (error_pages[err].len) {
             r->headers_out.content_length_n = error_pages[err].len
-                                              + sizeof(error_tail) - 1;
+                + (clcf->server_tokens ? sizeof(error_full_tail) - 1:
+                                         sizeof(error_tail) - 1);
 
             if (clcf->msie_padding
                 && r->headers_in.msie
@@ -568,8 +576,14 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         }
 
         b->memory = 1;
-        b->pos = error_tail;
-        b->last = error_tail + sizeof(error_tail) - 1;
+
+        if (clcf->server_tokens) {
+            b->pos = error_full_tail;
+            b->last = error_full_tail + sizeof(error_full_tail) - 1;
+        } else {
+            b->pos = error_tail;
+            b->last = error_tail + sizeof(error_tail) - 1;
+        }
 
         cl->next = ngx_alloc_chain_link(r->pool);
         if (cl->next == NULL) {

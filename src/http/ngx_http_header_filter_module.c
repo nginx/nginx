@@ -45,7 +45,8 @@ ngx_module_t  ngx_http_header_filter_module = {
 };
 
 
-static char ngx_http_server_string[] = "Server: " NGINX_VER CRLF;
+static char ngx_http_server_string[] = "Server: nginx" CRLF;
+static char ngx_http_server_full_string[] = "Server: " NGINX_VER CRLF;
 
 
 static ngx_str_t ngx_http_status_lines[] = {
@@ -237,8 +238,11 @@ ngx_http_header_filter(ngx_http_request_t *r)
         len += ngx_http_status_lines[status].len;
     }
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
     if (r->headers_out.server == NULL) {
-        len += sizeof(ngx_http_server_string) - 1;
+        len += clcf->server_tokens ? sizeof(ngx_http_server_full_string) - 1:
+                                     sizeof(ngx_http_server_string) - 1;
     }
 
     if (r->headers_out.date == NULL) {
@@ -267,8 +271,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
     {
         len += sizeof("Last-Modified: Mon, 28 Sep 1970 06:00:00 GMT" CRLF) - 1;
     }
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->headers_out.location
         && r->headers_out.location->value.len
@@ -365,8 +367,16 @@ ngx_http_header_filter(ngx_http_request_t *r)
     *b->last++ = CR; *b->last++ = LF;
 
     if (r->headers_out.server == NULL) {
-        b->last = ngx_cpymem(b->last, ngx_http_server_string,
-                             sizeof(ngx_http_server_string) - 1);
+        if (clcf->server_tokens) {
+            p = (u_char *) ngx_http_server_full_string;
+            len = sizeof(ngx_http_server_full_string) - 1;
+
+        } else {
+            p = (u_char *) ngx_http_server_string;
+            len = sizeof(ngx_http_server_string) - 1;
+        }
+
+        b->last = ngx_cpymem(b->last, p, len);
     }
 
     if (r->headers_out.date == NULL) {
