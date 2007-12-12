@@ -1035,7 +1035,6 @@ static void
 ngx_channel_handler(ngx_event_t *ev)
 {
     ngx_int_t          n;
-    ngx_socket_t       fd;
     ngx_channel_t      ch;
     ngx_connection_t  *c;
 
@@ -1053,17 +1052,7 @@ ngx_channel_handler(ngx_event_t *ev)
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %i", n);
 
     if (n == NGX_ERROR) {
-
-        ngx_free_connection(c);
-
-        fd = c->fd;
-        c->fd = (ngx_socket_t) -1;
-
-        if (close(fd) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
-                          "close() channel failed");
-        }
-
+        ngx_close_connection(c);
         return;
     }
 
