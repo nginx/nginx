@@ -14,6 +14,7 @@
 typedef struct {
     ngx_flag_t           enable;
     ngx_flag_t           no_buffer;
+    ngx_flag_t           vary;
 
     ngx_array_t         *types;     /* array of ngx_str_t */
 
@@ -192,6 +193,13 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
       offsetof(ngx_http_gzip_conf_t, min_length),
       NULL },
 
+    { ngx_string("gzip_vary"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_gzip_conf_t, vary),
+      NULL },
+
       ngx_null_command
 };
 
@@ -261,6 +269,7 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
 {
     ngx_str_t             *type;
     ngx_uint_t             i;
+    ngx_table_elt_t       *header;
     ngx_http_gzip_ctx_t   *ctx;
     ngx_http_gzip_conf_t  *conf;
 
@@ -336,16 +345,31 @@ found:
 
     ctx->request = r;
 
-    r->headers_out.content_encoding = ngx_list_push(&r->headers_out.headers);
-    if (r->headers_out.content_encoding == NULL) {
+    header = ngx_list_push(&r->headers_out.headers);
+    if (header == NULL) {
         return NGX_ERROR;
     }
 
-    r->headers_out.content_encoding->hash = 1;
-    r->headers_out.content_encoding->key.len = sizeof("Content-Encoding") - 1;
-    r->headers_out.content_encoding->key.data = (u_char *) "Content-Encoding";
-    r->headers_out.content_encoding->value.len = sizeof("gzip") - 1;
-    r->headers_out.content_encoding->value.data = (u_char *) "gzip";
+    header->hash = 1;
+    header->key.len = sizeof("Content-Encoding") - 1;
+    header->key.data = (u_char *) "Content-Encoding";
+    header->value.len = sizeof("gzip") - 1;
+    header->value.data = (u_char *) "gzip";
+
+    r->headers_out.content_encoding = header;
+
+    if (conf->vary) {
+        header = ngx_list_push(&r->headers_out.headers);
+        if (header == NULL) {
+            return NGX_ERROR;
+        }
+
+        header->hash = 1;
+        header->key.len = sizeof("Vary") - 1;
+        header->key.data = (u_char *) "Vary";
+        header->value.len = sizeof("Accept-Encoding") - 1;
+        header->value.data = (u_char *) "Accept-Encoding";
+    }
 
     ctx->length = r->headers_out.content_length_n;
 
@@ -996,6 +1020,7 @@ ngx_http_gzip_create_conf(ngx_conf_t *cf)
 
     conf->enable = NGX_CONF_UNSET;
     conf->no_buffer = NGX_CONF_UNSET;
+    conf->vary = NGX_CONF_UNSET;
 
     conf->http_version = NGX_CONF_UNSET_UINT;
 
@@ -1031,6 +1056,7 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                               MAX_MEM_LEVEL - 1);
     ngx_conf_merge_value(conf->min_length, prev->min_length, 20);
     ngx_conf_merge_value(conf->no_buffer, prev->no_buffer, 0);
+    ngx_conf_merge_value(conf->vary, prev->vary, 0);
 
     if (conf->types == NULL) {
         if (prev->types == NULL) {
