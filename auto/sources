@@ -21,6 +21,8 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_file.h \
            src/core/ngx_crc.h \
            src/core/ngx_crc32.h \
+           src/core/ngx_md5.h \
+           src/core/ngx_sha1.h \
            src/core/ngx_rbtree.h \
            src/core/ngx_radix_tree.h \
            src/core/ngx_slab.h \
