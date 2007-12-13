@@ -9,6 +9,210 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.34" date="13.12.2007">
+
+<change type="change">
+<para lang="ru">
+в error_log теперь записывается полная строка запроса вместо только URI.
+</para>
+<para lang="en">
+now the full request line instead of URI only is written to error_log.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+совместимость с Cygwin.<br/>
+Спасибо Владимиру Кутакову.
+</para>
+<para lang="en">
+Cygwin compatibility.<br/>
+Thanks to Vladimir Kutakov.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива merge_slashes.
+</para>
+<para lang="en">
+the "merge_slashes" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива gzip_vary.
+</para>
+<para lang="en">
+the "gzip_vary" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server_tokens.
+</para>
+<para lang="en">
+the "server_tokens" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директиву access_log можно использовать внутри блока limit_except.
+</para>
+<para lang="en">
+the "access_log" directive may be used inside the "limit_except" block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+При использовании переменной $server_protocol в FastCGI-параметрах
+и запросе, длина которого была близка к значению директивы
+client_header_buffer_size,
+nginx выдавал alert "fastcgi: the request record is too big".
+</para>
+<para lang="en">
+if the $server_protocol was used in FastCGI parameters
+and a request line length was near to the "client_header_buffer_size"
+directive value,
+then nginx issued an alert "fastcgi: the request record is too big".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при обычном запросе версии HTTP/0.9 к HTTPS серверу nginx возвращал
+обычный ответ.
+</para>
+<para lang="en">
+if a plain text HTTP/0.9 version request was made to HTTPS server,
+then nginx returned usual response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы msie_refresh повторно экранировались
+уже экранированные символы;
+ошибка появилась в 0.5.28.
+</para>
+<para lang="en">
+URL double escaping in a redirect of the "msie_refresh" directive;
+bug appeared in 0.5.28.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании подзапросов
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process if subrequests were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании SSL и gzip большие ответы могли передаваться не полностью.
+</para>
+<para lang="en">
+the big responses may be transferred truncated if SSL and gzip were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с mget.
+</para>
+<para lang="en">
+compatibility with mget.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не раскодировал URI в команде SSI include.
+</para>
+<para lang="en">
+nginx did not unescape URI in the "include" SSI command.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменной в директивах charset или source_charset
+на старте или во время переконфигурации происходил segmentation fault,
+</para>
+<para lang="en">
+the segmentation fault was occurred on start or while reconfiguration
+if variable was used in the "charset" or "source_charset" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx возвращал ошибку 400 на запросы вида
+<nobr>"GET http://www.domain.com HTTP/1.0"</nobr>.<br/>
+Спасибо James Oakley.
+</para>
+<para lang="en">
+nginx returned the 400 response on requests like
+<nobr>"GET http://www.domain.com HTTP/1.0"</nobr>.<br/>
+Thanks to James Oakley.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменных $date_local и $date_gmt вне модуля
+ngx_http_ssi_filter_module в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process
+if $date_local and $date_gmt were used outside the ngx_http_ssi_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании включённом отладочном логе
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if debug log was enabled.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ngx_http_memcached_module не устанавливал upstream_response_time.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+ngx_http_memcached_module did not set $upstream_response_time.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочий процесс мог зациклиться при использовании memcached.
+</para>
+<para lang="en">
+a worker process may got caught in an endless loop, if the memcached was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.33" date="07.11.2007">
 
 <change type="change">
