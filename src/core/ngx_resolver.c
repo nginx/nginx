@@ -1204,6 +1204,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0,
                        "resolver cname:\"%V\"", &name);
 
+        ngx_queue_remove(&rn->queue);
+
         rn->cnlen = (u_short) name.len;
         rn->u.cname = name.data;
         rn->valid = ngx_time() + r->valid;
