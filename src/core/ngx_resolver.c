@@ -67,9 +67,9 @@ static void ngx_resolver_read_response(ngx_event_t *rev);
 static void ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf,
     size_t n);
 static void ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
-    ngx_uint_t ident, ngx_uint_t code, ngx_uint_t nan, ngx_uint_t i);
+    ngx_uint_t ident, ngx_uint_t code, ngx_uint_t nan, ngx_uint_t ans);
 static void ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
-    ngx_uint_t ident, ngx_uint_t code);
+    ngx_uint_t ident, ngx_uint_t code, ngx_uint_t nan);
 static ngx_resolver_node_t *ngx_resolver_lookup_name(ngx_resolver_t *r,
     ngx_str_t *name, uint32_t hash);
 static ngx_resolver_node_t *ngx_resolver_lookup_addr(ngx_resolver_t *r,
@@ -884,11 +884,6 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
         goto done;
     }
 
-    if (code == 0 && nan == 0) {
-        err = "no answers in DNS response";
-        goto done;
-    }
-
     i = sizeof(ngx_resolver_query_t);
 
     while (i < (ngx_uint_t) n) {
@@ -934,13 +929,13 @@ found:
     case NGX_RESOLVE_A:
 
         ngx_resolver_process_a(r, buf, n, ident, code, nan,
-                              i + sizeof(ngx_resolver_qs_t));
+                               i + sizeof(ngx_resolver_qs_t));
 
         break;
 
     case NGX_RESOLVE_PTR:
 
-        ngx_resolver_process_ptr(r, buf, n, ident, code);
+        ngx_resolver_process_ptr(r, buf, n, ident, code, nan);
 
         break;
 
@@ -1004,6 +999,10 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
                       "wrong ident %d response for %V, expect %d",
                       ident, &name, qident);
         goto failed;
+    }
+
+    if (code == 0 && nan == 0) {
+        code = 3; /* NXDOMAIN */
     }
 
     if (code) {
@@ -1252,7 +1251,7 @@ failed:
 
 static void
 ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
-    ngx_uint_t ident, ngx_uint_t code)
+    ngx_uint_t ident, ngx_uint_t code, ngx_uint_t nan)
 {
     char                 *err;
     size_t                len;
@@ -1307,6 +1306,10 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
                       ident, (addr >> 24) & 0xff, (addr >> 16) & 0xff,
                       (addr >> 8) & 0xff, addr & 0xff, qident);
         goto failed;
+    }
+
+    if (code == 0 && nan == 0) {
+        code = 3; /* NXDOMAIN */
     }
 
     if (code) {
