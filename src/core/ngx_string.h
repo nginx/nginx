@@ -141,7 +141,7 @@ off_t ngx_atoof(u_char *line, size_t n);
 time_t ngx_atotm(u_char *line, size_t n);
 ngx_int_t ngx_hextoi(u_char *line, size_t n);
 
-void ngx_md5_text(u_char *text, u_char *md5);
+u_char *ngx_hex_dump(u_char *dst, u_char *src, size_t len);
 
 
 #define ngx_base64_encoded_length(len)  (((len + 2) / 3) * 4)

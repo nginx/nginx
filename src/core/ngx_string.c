@@ -816,18 +816,17 @@ ngx_hextoi(u_char *line, size_t n)
 }
 
 
-void
-ngx_md5_text(u_char *text, u_char *md5)
+u_char *
+ngx_hex_dump(u_char *dst, u_char *src, size_t len)
 {
-    int            i;
     static u_char  hex[] = "0123456789abcdef";
 
-    for (i = 0; i < 16; i++) {
-        *text++ = hex[md5[i] >> 4];
-        *text++ = hex[md5[i] & 0xf];
+    while (len--) {
+        *dst++ = hex[*src >> 4];
+        *dst++ = hex[*src++ & 0xf];
     }
 
-    *text = '\0';
+    return dst;
 }
 
 
